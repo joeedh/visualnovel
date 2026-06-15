@@ -1,0 +1,106 @@
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
+import boundaries from 'eslint-plugin-boundaries';
+
+/**
+ * Flat config. Type-aware linting is intentionally NOT enabled here — `tsgo` owns
+ * type checking (see `pnpm check`). ESLint enforces correctness-lite rules, import
+ * cycles, and the §3 layering graph; stylistic rules defer to Prettier.
+ */
+
+// The acyclic dependency graph from docs/plans/initial-implementation.md §3.
+// Each package may import ONLY the packages listed here (plus externals).
+const ALLOWED = {
+  types: [],
+  util: ['types'],
+  config: ['types', 'util'],
+  parse: ['types', 'util'],
+  model: ['types', 'util', 'parse'],
+  store: ['types', 'util', 'parse'],
+  taskgraph: ['types', 'util', 'store'],
+  providers: ['types', 'util', 'config'],
+  pipeline: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'providers'],
+  scheduler: ['types', 'util', 'taskgraph', 'pipeline'],
+  cli: [
+    'types',
+    'util',
+    'config',
+    'parse',
+    'model',
+    'store',
+    'taskgraph',
+    'providers',
+    'pipeline',
+    'scheduler',
+  ],
+};
+
+const boundaryRules = Object.entries(ALLOWED).map(([from, allow]) => ({
+  from,
+  allow: [from, ...allow],
+}));
+
+export default tseslint.config(
+  {
+    ignores: ['**/dist/**', '**/node_modules/**', '**/*.tmp-*', 'apps/*/dist/**', 'coverage/**'],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  // Build scripts / config files run in Node (ESM or CJS), outside the TS project.
+  {
+    files: ['**/*.mjs', '**/*.cjs', '*.config.*', 'scripts/**'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        __dirname: 'readonly',
+        module: 'writable',
+        require: 'readonly',
+        console: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    files: ['packages/**/*.ts', 'apps/**/*.ts'],
+    plugins: { import: importPlugin, boundaries },
+    settings: {
+      'boundaries/elements': [
+        { type: 'types', pattern: 'packages/types', mode: 'folder' },
+        { type: 'util', pattern: 'packages/util', mode: 'folder' },
+        { type: 'config', pattern: 'packages/config', mode: 'folder' },
+        { type: 'parse', pattern: 'packages/parse', mode: 'folder' },
+        { type: 'model', pattern: 'packages/model', mode: 'folder' },
+        { type: 'store', pattern: 'packages/store', mode: 'folder' },
+        { type: 'taskgraph', pattern: 'packages/taskgraph', mode: 'folder' },
+        { type: 'providers', pattern: 'packages/providers', mode: 'folder' },
+        { type: 'pipeline', pattern: 'packages/pipeline', mode: 'folder' },
+        { type: 'scheduler', pattern: 'packages/scheduler', mode: 'folder' },
+        { type: 'cli', pattern: 'apps/cli', mode: 'folder' },
+      ],
+      'boundaries/dependency-nodes': ['import', 'dynamic-import'],
+      'import/resolver': { node: true },
+    },
+    rules: {
+      'import/no-cycle': 'error',
+      'boundaries/element-types': [
+        'error',
+        {
+          default: 'disallow',
+          rules: boundaryRules,
+        },
+      ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    files: ['**/*.test.ts', '**/__fixtures__/**'],
+    rules: { 'boundaries/element-types': 'off' },
+  },
+);

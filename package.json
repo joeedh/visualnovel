@@ -1,0 +1,38 @@
+{
+  "name": "visualnovel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VN Generator — turns authored inputs into a deduped, resumable pipeline of generated art assets + provenance manifest.",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "scripts": {
+    "check": "tsgo --noEmit -p tsconfig.json",
+    "test": "jest",
+    "lint": "eslint . && pnpm format:check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "node scripts/esbuild.cli.mjs",
+    "vngen": "node apps/cli/dist/cli.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.10.2",
+    "@typescript/native-preview": "latest",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.17.0",
+    "eslint-plugin-boundaries": "^5.0.1",
+    "eslint-plugin-import": "^2.31.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1"
+  }
+}

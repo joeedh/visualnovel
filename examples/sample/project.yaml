@@ -1,0 +1,11 @@
+title: The Transfer Student
+art_style: soft anime visual-novel illustration, cel shaded, warm lighting
+models:
+  image: gemini-2.5-flash-image
+  vision: [gemini-2.5-flash, claude-opus-4-8]
+  text: claude-opus-4-8
+image_params:
+  aspect: '16:9'
+concurrency: 4
+candidates: 3
+max_refine_attempts: 4

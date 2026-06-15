@@ -1,0 +1,24 @@
+{
+  "name": "@vn/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "vngen": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@vn/config": "workspace:*",
+    "@vn/model": "workspace:*",
+    "@vn/parse": "workspace:*",
+    "@vn/pipeline": "workspace:*",
+    "@vn/providers": "workspace:*",
+    "@vn/scheduler": "workspace:*",
+    "@vn/store": "workspace:*",
+    "@vn/taskgraph": "workspace:*",
+    "@vn/types": "workspace:*",
+    "@vn/util": "workspace:*"
+  }
+}

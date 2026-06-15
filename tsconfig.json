@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@vn/types": ["./packages/types/src/index.ts"],
+      "@vn/util": ["./packages/util/src/index.ts"],
+      "@vn/config": ["./packages/config/src/index.ts"],
+      "@vn/parse": ["./packages/parse/src/index.ts"],
+      "@vn/model": ["./packages/model/src/index.ts"],
+      "@vn/store": ["./packages/store/src/index.ts"],
+      "@vn/taskgraph": ["./packages/taskgraph/src/index.ts"],
+      "@vn/providers": ["./packages/providers/src/index.ts"],
+      "@vn/pipeline": ["./packages/pipeline/src/index.ts"],
+      "@vn/scheduler": ["./packages/scheduler/src/index.ts"],
+      "@vn/cli": ["./apps/cli/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/src/**/*.ts", "apps/*/src/**/*.ts"]
+}

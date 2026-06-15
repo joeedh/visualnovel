@@ -1,0 +1,14 @@
+{
+  "name": "@vn/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@vn/types": "workspace:*",
+    "@vn/util": "workspace:*",
+    "yaml": "^2.6.1"
+  }
+}

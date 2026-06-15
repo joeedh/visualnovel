@@ -1,0 +1,83 @@
+import type { AnyTask, Logger, ProjectModel, Providers, TaskGraph, TaskKind } from '@vn/types';
+import type { AssetStore } from '@vn/types';
+import type { ProjectConfig } from '@vn/config';
+
+/**
+ * Everything a runner needs to execute one task (report §5, §8). Distinct from the graph
+ * itself: the scheduler owns the graph and status transitions; a runner only produces an
+ * asset from a fully-specified task. `now` supplies timestamps because workflow/runner code
+ * must stay deterministic where possible — the caller injects the clock.
+ */
+export interface RunDeps {
+  model: ProjectModel;
+  store: AssetStore;
+  providers: Providers;
+  logger?: Logger;
+  /** Injected clock for provenance stamps (ISO string). */
+  now?: () => string;
+}
+
+/** A dry-run estimate of the generative work a plan implies (report §10 cost preview). */
+export interface CostPreview {
+  /** Image generation/edit calls. */
+  imageCalls: number;
+  /** Vision-review calls. */
+  reviewCalls: number;
+  /** Count of pending tasks by kind. */
+  byKind: Record<TaskKind, number>;
+  /** Pending tasks counted (status `pending`). */
+  pendingTasks: number;
+}
+
+const ZERO_BY_KIND = (): Record<TaskKind, number> => ({
+  location_ref: 0,
+  portrait: 0,
+  model_sheet: 0,
+  outfit_sheet: 0,
+  shot_image: 0,
+  vision_review: 0,
+  prompt_refine: 0,
+});
+
+/**
+ * Estimate the generative cost of the pending tasks in a graph (report §10). A single image
+ * task is one call; a shot task is the P7 worst case — up to `max_refine_attempts` image
+ * calls, each critiqued by every configured reviewer. This is the upper bound shown before
+ * spending money; the actual run usually costs less because most shots pass on attempt one.
+ */
+export function costPreview(graph: TaskGraph, config: ProjectConfig): CostPreview {
+  const byKind = ZERO_BY_KIND();
+  let imageCalls = 0;
+  let reviewCalls = 0;
+  let pendingTasks = 0;
+  const reviewers = config.models.vision.length;
+  const maxAttempts = Math.max(1, config.max_refine_attempts);
+
+  for (const task of graph.all()) {
+    if (task.status !== 'pending') continue;
+    pendingTasks += 1;
+    byKind[task.kind] += 1;
+    if (task.kind === 'shot_image') {
+      imageCalls += maxAttempts;
+      reviewCalls += maxAttempts * reviewers;
+    } else if (
+      task.kind === 'location_ref' ||
+      task.kind === 'portrait' ||
+      task.kind === 'model_sheet' ||
+      task.kind === 'outfit_sheet'
+    ) {
+      imageCalls += 1;
+    }
+  }
+
+  return { imageCalls, reviewCalls, byKind, pendingTasks };
+}
+
+/** Pending tasks in the graph, in topological order (what a run would execute). */
+export function pendingInOrder(graph: TaskGraph): AnyTask[] {
+  const byHash = new Map(graph.all().map((t) => [t.hash, t] as const));
+  return graph
+    .topoOrder()
+    .map((h) => byHash.get(h))
+    .filter((t): t is AnyTask => !!t && t.status === 'pending');
+}
