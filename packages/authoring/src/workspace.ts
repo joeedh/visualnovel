@@ -1,0 +1,169 @@
+/**
+ * A cheap project index (authoring-agent plan §6.1). It assembles `loadInputs` +
+ * `buildModel` into a flat list of which characters/locations/scenes exist — ids, names,
+ * and the file each lives in — without holding full bodies. The agent uses it to know
+ * what's there before reading anything. `load()` exposes the full model + raw docs for
+ * tools that need to read or edit prose; `index()` is the lightweight summary.
+ */
+import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
+import { parseFountain, parseFrontMatter, type FrontMatterDoc } from '@vn/parse';
+import { buildModel } from '@vn/model';
+import { loadInputs, ProjectPaths, type LoadedInputs } from '@vn/store';
+import { loadConfig } from '@vn/config';
+import { exists, readText } from '@vn/util';
+import type { CharacterStatus, Diagnostic, ProjectModel } from '@vn/types';
+
+/** A single character row in the index. */
+export interface CharacterEntry {
+  id: string;
+  name: string;
+  status: CharacterStatus;
+  file: string;
+}
+
+/** A single location row in the index. */
+export interface LocationEntry {
+  id: string;
+  name: string;
+  mined: boolean;
+  file: string;
+}
+
+/** A single scene row in the index (scenes live in the screenplay, not per-file). */
+export interface SceneEntry {
+  id: string;
+  location: string;
+  characters: string[];
+  choices: number;
+  reachable: boolean;
+}
+
+/** The lightweight structural snapshot the agent keeps in context. */
+export interface WorkspaceIndex {
+  root: string;
+  title: string;
+  screenplay?: string;
+  characters: CharacterEntry[];
+  locations: LocationEntry[];
+  scenes: SceneEntry[];
+  entry?: string;
+  diagnostics: Diagnostic[];
+}
+
+/** Full load result: the built model plus the raw docs (for editing/serialization). */
+export interface LoadedWorkspace {
+  title: string;
+  model: ProjectModel;
+  inputs: LoadedInputs;
+}
+
+/** Bind a workspace to a project root; all paths are resolved through `ProjectPaths`. */
+export class Workspace {
+  readonly paths: ProjectPaths;
+
+  constructor(readonly root: string) {
+    this.paths = new ProjectPaths(root);
+  }
+
+  /** Resolve the screenplay file (first `.fountain`, else first `.md`) if one exists. */
+  private async screenplayFile(): Promise<string | undefined> {
+    const dir = this.paths.screenplayDir;
+    if (!(await exists(dir))) return undefined;
+    const names = (await fs.readdir(dir)).filter((n) => /\.(fountain|md)$/i.test(n));
+    names.sort((a, b) =>
+      a.endsWith('.fountain') === b.endsWith('.fountain') ? 0 : a.endsWith('.fountain') ? -1 : 1,
+    );
+    return names[0] ? join(dir, names[0]) : undefined;
+  }
+
+  /** Load all inputs and build the validated project model. */
+  async load(): Promise<LoadedWorkspace> {
+    const inputs = await loadInputs(this.paths);
+    let title = 'Untitled';
+    try {
+      title = (await loadConfig(this.root)).title;
+    } catch {
+      // No (or invalid) project.yaml: the agent still operates, title is a placeholder.
+    }
+    const model = buildModel({
+      title,
+      characterDocs: inputs.characterDocs,
+      locationDocs: inputs.locationDocs,
+      script: parseFountain(inputs.scriptText),
+    });
+    return { title, model, inputs };
+  }
+
+  /** Build the lightweight index from the model. */
+  async index(): Promise<WorkspaceIndex> {
+    const { title, model } = await this.load();
+    const screenplay = await this.screenplayFile();
+
+    const characters: CharacterEntry[] = [...model.characters.values()].map((c) => ({
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      file: this.paths.characterFile(c.id),
+    }));
+    const locations: LocationEntry[] = [...model.locations.values()].map((l) => ({
+      id: l.id,
+      name: l.name,
+      mined: l.mined,
+      file: join(this.paths.locationsDir, `${l.id}.md`),
+    }));
+    const scenes: SceneEntry[] = [...model.scenes.values()].map((s) => ({
+      id: s.id,
+      location: s.location,
+      characters: s.characters,
+      choices: s.choices.length,
+      reachable: model.reachable.has(s.id),
+    }));
+
+    return {
+      root: this.root,
+      title,
+      screenplay,
+      characters,
+      locations,
+      scenes,
+      entry: model.entry,
+      diagnostics: model.diagnostics,
+    };
+  }
+
+  /** Read a character's raw doc (for editing). Returns null if the file is absent. */
+  async characterDoc(id: string): Promise<FrontMatterDoc | null> {
+    const file = this.paths.characterFile(id);
+    if (!(await exists(file))) return null;
+    return parseFrontMatter(await readText(file));
+  }
+
+  /** Read a location's raw doc (for editing). Returns null if the file is absent. */
+  async locationDoc(id: string): Promise<FrontMatterDoc | null> {
+    const file = join(this.paths.locationsDir, `${id}.md`);
+    if (!(await exists(file))) return null;
+    return parseFrontMatter(await readText(file));
+  }
+}
+
+/** Render an index as a compact human/agent-readable summary. */
+export function formatIndex(index: WorkspaceIndex): string {
+  const lines = [`# ${index.title}`, ''];
+  lines.push(`Characters (${index.characters.length}):`);
+  for (const c of index.characters) lines.push(`  - ${c.id} "${c.name}" [${c.status}]`);
+  lines.push(`Locations (${index.locations.length}):`);
+  for (const l of index.locations)
+    lines.push(`  - ${l.id} "${l.name}"${l.mined ? ' (mined)' : ''}`);
+  lines.push(`Scenes (${index.scenes.length}):`);
+  for (const s of index.scenes) {
+    const flags = [s.reachable ? '' : 'unreachable', s.choices ? `${s.choices} choices` : '']
+      .filter(Boolean)
+      .join(', ');
+    lines.push(`  - ${s.id} @${s.location}${flags ? ` (${flags})` : ''}`);
+  }
+  const errs = index.diagnostics.filter((d) => d.severity === 'error').length;
+  const warns = index.diagnostics.filter((d) => d.severity === 'warning').length;
+  lines.push('', `Diagnostics: ${errs} error(s), ${warns} warning(s)`);
+  return lines.join('\n');
+}

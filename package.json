@@ -18,8 +18,11 @@
     "lint": "eslint . && pnpm format:check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "build": "node scripts/esbuild.cli.mjs",
-    "vngen": "node apps/cli/dist/cli.js"
+    "build": "node scripts/esbuild.cli.mjs && node scripts/esbuild.authoring.mjs",
+    "build:cli": "node scripts/esbuild.cli.mjs",
+    "build:authoring": "node scripts/esbuild.authoring.mjs",
+    "vngen": "node apps/cli/dist/cli.js",
+    "vnauthor": "node apps/authoring/dist/vnauthor.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

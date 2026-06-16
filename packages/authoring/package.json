@@ -1,0 +1,20 @@
+{
+  "name": "@vn/authoring",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@vn/config": "workspace:*",
+    "@vn/git": "workspace:*",
+    "@vn/model": "workspace:*",
+    "@vn/parse": "workspace:*",
+    "@vn/providers": "workspace:*",
+    "@vn/store": "workspace:*",
+    "@vn/types": "workspace:*",
+    "@vn/util": "workspace:*",
+    "zod": "^3.24.1"
+  }
+}

@@ -15,22 +15,29 @@ without pulling in the generative pipeline.
 
 - Design: [`docs/vn-generator-report.md`](docs/vn-generator-report.md)
 - Implementation plan: [`docs/plans/initial-implementation.md`](docs/plans/initial-implementation.md)
+- Authoring agent plan: [`docs/plans/authoring-agent-implementation.md`](docs/plans/authoring-agent-implementation.md)
 - **Out of scope:** engine export (turning the manifest into a runnable VN). The pipeline
   stops at a populated `build/` + `manifest.json`.
+
+Alongside the pipeline is **`vnauthor`**, a plan-first conversational agent that helps an
+author write and refine the _inputs_ (characters, screenplay, locations). It lives entirely
+on the input side and is forbidden — by a boundaries lint rule — from importing the
+generative pipeline. See [Authoring agent](#authoring-agent-vnauthor) below.
 
 ## Commands
 
 Run from the repo root.
 
-| Task                         | Command                                                   |
-| ---------------------------- | --------------------------------------------------------- |
-| Typecheck (the gate)         | `pnpm check`                                              |
-| Test (all)                   | `pnpm test`                                               |
-| Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`           |
-| Lint (eslint + format check) | `pnpm lint`                                               |
-| Auto-format                  | `pnpm format`                                             |
-| Bundle the CLI               | `pnpm build`                                              |
-| Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`) |
+| Task                         | Command                                                                 |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| Typecheck (the gate)         | `pnpm check`                                                            |
+| Test (all)                   | `pnpm test`                                                             |
+| Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                         |
+| Lint (eslint + format check) | `pnpm lint`                                                             |
+| Auto-format                  | `pnpm format`                                                           |
+| Bundle the CLIs              | `pnpm build` (both `vngen` and `vnauthor`)                              |
+| Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)               |
+| Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`) |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 
@@ -62,11 +69,11 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store
-  │     │   │  │
-  │     │  taskgraph
-providers   │
-  │  │      │
+  │   model store      git
+  │     │   │  │  ╲     │
+  │     │  taskgraph ╲  │
+providers   │      ╲ ╲  │
+  │  │      │       authoring ── authoring-app (vnauthor)
   └──┴── pipeline
             │
         scheduler
@@ -74,19 +81,27 @@ providers   │
            cli
 ```
 
-| Package         | Responsibility                                                                                                                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@vn/types`     | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                 |
-| `@vn/util`      | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                           |
-| `@vn/config`    | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                              |
-| `@vn/parse`     | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                  |
-| `@vn/model`     | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                      |
-| `@vn/store`     | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                       |
-| `@vn/taskgraph` | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                           |
-| `@vn/providers` | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here. |
-| `@vn/pipeline`  | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                     |
-| `@vn/scheduler` | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                            |
-| `@vn/cli`       | `vngen run \| approve \| status \| graph \| cost`. Bundled by esbuild.                                                                                                                                          |
+The pipeline spine (`pipeline → scheduler → cli`) and the authoring branch
+(`authoring → authoring-app`) are disjoint below `@vn/store`/`@vn/providers`: `@vn/authoring`
+reuses the input-side packages (types, util, config, parse, model, store, providers, git) but
+**must never import `@vn/pipeline` or `@vn/scheduler`** — enforced by `eslint-plugin-boundaries`.
+
+| Package             | Responsibility                                                                                                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                        |
+| `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                  |
+| `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                     |
+| `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                         |
+| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                             |
+| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                              |
+| `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                  |
+| `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here.        |
+| `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                            |
+| `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                   |
+| `@vn/cli`           | `vngen run \| approve \| status \| graph \| cost`. Bundled by esbuild.                                                                                                                                                 |
+| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent. |
+| `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                     |
+| `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                               |
 
 ### Core ideas
 
@@ -159,6 +174,64 @@ node apps/cli/dist/cli.js approve aiko <hash> examples/sample
 node apps/cli/dist/cli.js run    examples/sample --mock      # clears the gate
 node apps/cli/dist/cli.js status examples/sample
 ```
+
+## Authoring agent (`vnauthor`)
+
+A plan-first, git-backed conversational agent that helps an author write and refine the
+inputs the pipeline consumes. It does **not** run the generative pipeline — it stops at
+well-formed, validated input files in a clean commit.
+
+```
+vnauthor [dir] [--mock] [--native]
+```
+
+- `--mock` runs offline with no model (read-only smoke test — exercises workspace/skill
+  loading and the REPL without API keys).
+- `--native` uses provider-native function-calling (Path B) when the configured model
+  supports `chatWithTools`; otherwise the agent falls back to structured ReAct (Path A).
+- Model + keys resolve exactly like `vngen`: `models.text` in `project.yaml`, key via env
+  var or a secret file under `<dir>/keys/`.
+
+REPL commands: `/help`, `/mode` (plan vs. execute), `/status` (project index),
+`/skills` (available skills), `/exit`.
+
+### How it works
+
+- **Two-mode state machine (`@vn/authoring` `loop.ts`).** The agent starts in **plan mode
+  (read-only)**: only non-mutating tools dispatch; any mutating tool is blocked until the
+  user approves a proposed plan. Approving a plan switches to **execute mode**, where edits
+  apply, `validate_inputs` runs, and `git_commit` is **blocked while error-severity
+  diagnostics remain** (soft/style issues only warn). One commit per approved plan.
+- **Always-confirm.** `git_revert`/`git_restore` and the first run of a script-bearing
+  skill route through the permission gate regardless of mode.
+- **Agent backend seam.** The loop targets an internal `AgentBackend`; `StructuredAgentBackend`
+  (Path A) drives tools as zod-validated JSON over the text seam, `NativeAgentBackend`
+  (Path B) drives them through the vendor tool protocol. The loop is the arg-validation
+  authority, so Path B advertises permissive tool params and re-validates via the registry.
+- **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested per-dir files
+  and `@import` lines; `AGENTS.md`/`CLAUDE.md` as fallbacks) > inferred defaults.
+  `update_context` turns a chat instruction into a durable line in `AICONTEXT.md`.
+- **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
+  `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed
+  front-matter so untouched prose and branch markers are preserved.
+
+### Skills
+
+Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md`
+(front-matter: `name`, `description`, `when-to-use`). A pure-prose skill returns its body as
+guidance; a skill with a `run.{mjs,js,cjs,sh}` script runs a vetted command — and **each run
+is permissioned** (always-confirm), executing in the workspace root with the workspace path
+as its first argument. See [`examples/sample/.aiagent/skills/new-character`](examples/sample/.aiagent/skills/new-character).
+
+### Try it (offline)
+
+```sh
+pnpm build
+printf '/skills\n/status\n/exit\n' | node apps/authoring/dist/vnauthor.js examples/sample --mock
+```
+
+[`examples/sample/AICONTEXT.md`](examples/sample/AICONTEXT.md) shows project guidance the
+agent honors.
 
 ## Conventions
 

@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { ProviderError } from '@vn/util';
-import type { ChatBackend, ChatRequest } from '../backend.js';
+import type { ChatBackend, ChatRequest, ChatToolReply, ToolSchema } from '../backend.js';
 
 const MIME: Record<string, string> = {
   png: 'image/png',
@@ -55,6 +55,45 @@ export function createAnthropicChat(apiKey: string, modelId: string): ChatBacken
           .join('\n');
       } catch (err) {
         throw new ProviderError(`Claude request failed (${modelId})`, { cause: err });
+      }
+    },
+    async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
+      const anthropic = await client();
+      const content: any[] = [];
+      for (const img of req.images ?? []) {
+        content.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: MIME[img.ext.toLowerCase()] ?? 'image/png',
+            data: Buffer.from(img.bytes).toString('base64'),
+          },
+        });
+      }
+      content.push({ type: 'text', text: req.prompt });
+      try {
+        const res = await anthropic.messages.create({
+          model: modelId,
+          max_tokens: 2048,
+          system: req.system,
+          tools: tools.map((t) => ({
+            name: t.name,
+            description: t.description,
+            input_schema: t.parameters,
+          })),
+          messages: [{ role: 'user', content }],
+        });
+        const blocks = res.content ?? [];
+        const text = blocks
+          .filter((b: any) => b.type === 'text')
+          .map((b: any) => b.text)
+          .join('\n');
+        const toolCalls = blocks
+          .filter((b: any) => b.type === 'tool_use')
+          .map((b: any) => ({ id: b.id, name: b.name, args: b.input }));
+        return { text: text || undefined, toolCalls };
+      } catch (err) {
+        throw new ProviderError(`Claude tool request failed (${modelId})`, { cause: err });
       }
     },
   };

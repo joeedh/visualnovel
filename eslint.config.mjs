@@ -18,10 +18,17 @@ const ALLOWED = {
   parse: ['types', 'util'],
   model: ['types', 'util', 'parse'],
   store: ['types', 'util', 'parse'],
+  git: ['util'],
   taskgraph: ['types', 'util', 'store'],
   providers: ['types', 'util', 'config'],
   pipeline: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'providers'],
   scheduler: ['types', 'util', 'taskgraph', 'pipeline'],
+  // Input-side agent core: reuses the deterministic packages + the LLM seam, and is
+  // forbidden from importing the generative pipeline/scheduler (authoring-agent plan §4).
+  authoring: ['types', 'util', 'config', 'parse', 'model', 'store', 'providers', 'git'],
+  // The interactive REPL: input-side only. Forbidden from the generative pipeline/scheduler
+  // (authoring-agent plan §4, §M4) — enforced here, not just documented.
+  'authoring-app': ['types', 'util', 'config', 'store', 'providers', 'git', 'authoring'],
   cli: [
     'types',
     'util',
@@ -74,11 +81,14 @@ export default tseslint.config(
         { type: 'parse', pattern: 'packages/parse', mode: 'folder' },
         { type: 'model', pattern: 'packages/model', mode: 'folder' },
         { type: 'store', pattern: 'packages/store', mode: 'folder' },
+        { type: 'git', pattern: 'packages/git', mode: 'folder' },
+        { type: 'authoring', pattern: 'packages/authoring', mode: 'folder' },
         { type: 'taskgraph', pattern: 'packages/taskgraph', mode: 'folder' },
         { type: 'providers', pattern: 'packages/providers', mode: 'folder' },
         { type: 'pipeline', pattern: 'packages/pipeline', mode: 'folder' },
         { type: 'scheduler', pattern: 'packages/scheduler', mode: 'folder' },
         { type: 'cli', pattern: 'apps/cli', mode: 'folder' },
+        { type: 'authoring-app', pattern: 'apps/authoring', mode: 'folder' },
       ],
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],
       'import/resolver': { node: true },

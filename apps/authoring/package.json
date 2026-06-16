@@ -1,0 +1,21 @@
+{
+  "name": "@vn/authoring-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "vnauthor": "./dist/vnauthor.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@vn/authoring": "workspace:*",
+    "@vn/config": "workspace:*",
+    "@vn/git": "workspace:*",
+    "@vn/providers": "workspace:*",
+    "@vn/store": "workspace:*",
+    "@vn/types": "workspace:*",
+    "@vn/util": "workspace:*"
+  }
+}

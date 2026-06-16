@@ -1,7 +1,14 @@
 import { Buffer } from 'node:buffer';
 import type { ImageParams, ImageResult } from '@vn/types';
 import { ProviderError } from '@vn/util';
-import type { ChatBackend, ChatRequest, ImageBackend, ImageInput } from '../backend.js';
+import type {
+  ChatBackend,
+  ChatRequest,
+  ChatToolReply,
+  ImageBackend,
+  ImageInput,
+  ToolSchema,
+} from '../backend.js';
 
 const MIME: Record<string, string> = {
   png: 'image/png',
@@ -63,6 +70,39 @@ export function createGeminiChat(apiKey: string, modelId: string): ChatBackend {
         return res.text ?? '';
       } catch (err) {
         throw new ProviderError(`Gemini request failed (${modelId})`, { cause: err });
+      }
+    },
+    async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
+      const ai = await client();
+      const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
+      try {
+        const res = await ai.models.generateContent({
+          model: modelId,
+          contents: [{ role: 'user', parts }],
+          config: {
+            ...(req.system ? { systemInstruction: req.system } : {}),
+            tools: [
+              {
+                functionDeclarations: tools.map((t) => ({
+                  name: t.name,
+                  description: t.description,
+                  parameters: t.parameters,
+                })),
+              },
+            ],
+          },
+        });
+        const replyParts = res?.candidates?.[0]?.content?.parts ?? [];
+        const text = replyParts
+          .filter((p: any) => typeof p.text === 'string')
+          .map((p: any) => p.text)
+          .join('');
+        const toolCalls = replyParts
+          .filter((p: any) => p.functionCall)
+          .map((p: any) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} }));
+        return { text: text || undefined, toolCalls };
+      } catch (err) {
+        throw new ProviderError(`Gemini tool request failed (${modelId})`, { cause: err });
       }
     },
   };

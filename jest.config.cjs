@@ -14,6 +14,8 @@ const PACKAGES = [
   'parse',
   'model',
   'store',
+  'git',
+  'authoring',
   'taskgraph',
   'providers',
   'pipeline',
@@ -47,6 +49,12 @@ module.exports = {
       displayName: '@vn/cli',
       rootDir: __dirname,
       testMatch: ['<rootDir>/apps/cli/**/*.test.ts'],
+    },
+    {
+      ...shared,
+      displayName: '@vn/authoring-app',
+      rootDir: __dirname,
+      testMatch: ['<rootDir>/apps/authoring/**/*.test.ts'],
     },
   ],
 };
