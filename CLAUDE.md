@@ -193,7 +193,7 @@ vnauthor [dir] [--mock] [--native]
   var or a secret file under `<dir>/keys/`.
 
 REPL commands: `/help`, `/mode` (plan vs. execute), `/status` (project index),
-`/skills` (available skills), `/exit`.
+`/skills` (available skills), `/exit` (or `/quit`).
 
 ### How it works
 
