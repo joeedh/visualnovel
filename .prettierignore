@@ -5,3 +5,9 @@ coverage/**
 keys/**
 docs/**
 Readme.MD
+
+# Authored project inputs (character/location markdown) are serialized by @vn/parse's
+# round-trip YAML front-matter writer, not prettier. Don't let prettier fight that
+# serializer's style — the agent owns these files' formatting.
+examples/**/characters/**
+examples/**/locations/**
