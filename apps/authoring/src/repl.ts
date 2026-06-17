@@ -5,9 +5,17 @@
  * is read. Agent events stream as they happen via the `onEvent` sink; the final message is
  * printed as the assistant's reply.
  */
-import { createInterface, type Interface } from 'node:readline';
+import { createInterface, emitKeypressEvents, type Interface } from 'node:readline';
 import { discoverSkills, formatIndex, skillRoots, type Permission, type Plan } from '@vn/authoring';
-import { createAuthoringAgent, type AuthoringSession } from './agent.js';
+import {
+  buildAgentBackend,
+  createAuthoringAgent,
+  supportsEffort,
+  EFFORT_LEVELS,
+  TEXT_MODELS,
+  type AuthoringSession,
+  type Effort,
+} from './agent.js';
 import { bold, cyan, dim, renderEvent, renderPlan, green, yellow } from './render.js';
 
 /**
@@ -18,6 +26,11 @@ export interface Channel {
   ask(question: string): Promise<string | null>;
   write(text: string): void;
   close(): void;
+  /**
+   * Register a handler for the Shift-Tab key (terminal only; absent in scripted channels).
+   * Used to cycle plan/execute mode without typing a command.
+   */
+  onShiftTab?(handler: () => void): void;
 }
 
 /**
@@ -51,6 +64,13 @@ export function terminalChannel(): Channel {
     write: (text) => void process.stdout.write(text.endsWith('\n') ? text : text + '\n'),
     close: () => {
       if (!closed) rl.close();
+    },
+    onShiftTab: (handler) => {
+      emitKeypressEvents(process.stdin, rl);
+      if (process.stdin.isTTY) process.stdin.setRawMode(true);
+      process.stdin.on('keypress', (_str, key?: { name?: string; shift?: boolean }) => {
+        if (key?.name === 'tab' && key.shift) handler();
+      });
     },
   };
 }
@@ -95,13 +115,42 @@ const HELP = [
   'Commands:',
   '  /help            show this help',
   '  /mode            show the current mode (plan or execute)',
+  '  /model [id]      show/switch the text model (no arg → interactive menu)',
+  '  /effort [level]  show/set reasoning effort (no arg → interactive menu)',
+  '  /clear           clear the conversation context (back to plan mode)',
   '  /status          list characters, locations, and scenes',
   '  /skills          list available authoring skills',
   '  /exit, /quit     leave vnauthor',
   '',
+  'Shift-Tab cycles between plan and execute mode.',
+  '',
   'Otherwise, just type what you want to do. The agent plans first (read-only); it asks',
   'before it edits or commits.',
 ].join('\n');
+
+/**
+ * Print a numbered menu and read a 1-based choice. Returns the chosen option, or null if
+ * the user entered nothing (cancel) or an out-of-range value.
+ */
+async function chooseFromMenu(
+  channel: Channel,
+  title: string,
+  options: string[],
+  current: string,
+): Promise<string | null> {
+  channel.write(bold(title));
+  options.forEach((opt, i) => {
+    channel.write(`  ${i + 1}. ${opt}${opt === current ? green(' (current)') : ''}`);
+  });
+  const raw = (await channel.ask(cyan('Choose a number (enter to cancel): ')))?.trim();
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > options.length) {
+    channel.write(yellow('Invalid choice.'));
+    return null;
+  }
+  return options[n - 1] ?? null;
+}
 
 /** Options for {@link runRepl}. */
 export interface ReplOptions {
@@ -135,7 +184,90 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   }
 
   channel.write(bold('vnauthor') + dim(` — authoring agent for ${opts.dir}`));
-  channel.write(dim('Type /help for commands, /exit to quit. You start in plan mode.\n'));
+  channel.write(
+    dim('Type /help for commands, /exit to quit. Shift-Tab cycles plan/execute mode.\n'),
+  );
+
+  // Shift-Tab cycles plan ⇆ execute mode (terminal only — scripted channels have no hook).
+  channel.onShiftTab?.(() => {
+    const next = session.agent.currentMode === 'plan' ? 'execute' : 'plan';
+    session.agent.setMode(next);
+    channel.write(dim(`-- ${next} mode (shift-tab) --`));
+  });
+
+  // Live model/effort settings; `/model` and `/effort` rebuild the backend and swap it in.
+  let currentModel = session.model;
+  let currentEffort: Effort | undefined;
+
+  /** Rebuild the backend with the current model+effort and hot-swap it into the agent. */
+  async function applySettings(model: string, effort: Effort | undefined): Promise<boolean> {
+    try {
+      const backend = await buildAgentBackend(opts.dir, { native: opts.native, model, effort });
+      session.agent.setBackend(backend);
+      currentModel = model;
+      currentEffort = effort;
+      return true;
+    } catch (err) {
+      channel.write(
+        yellow(`Could not apply settings: ${err instanceof Error ? err.message : err}`),
+      );
+      return false;
+    }
+  }
+
+  async function handleModel(arg: string): Promise<void> {
+    if (opts.mock) {
+      channel.write(yellow('Running with --mock — no model is in use, so /model has no effect.'));
+      return;
+    }
+    let target = arg;
+    if (!target) {
+      const picked = await chooseFromMenu(
+        channel,
+        'Select a text model',
+        TEXT_MODELS,
+        currentModel,
+      );
+      if (!picked) return void channel.write(dim('No change.'));
+      target = picked;
+    }
+    if (target === currentModel) return void channel.write(dim(`Already using ${target}.`));
+    if (await applySettings(target, currentEffort)) {
+      channel.write(green(`Model set to ${target}.`));
+      if (currentEffort && !supportsEffort(target)) {
+        channel.write(yellow(`Note: ${target} ignores effort; it has no extended-thinking knob.`));
+      }
+    }
+  }
+
+  async function handleEffort(arg: string): Promise<void> {
+    if (opts.mock) {
+      channel.write(yellow('Running with --mock — no model is in use, so /effort has no effect.'));
+      return;
+    }
+    const menu = ['default', ...EFFORT_LEVELS];
+    let choice = arg;
+    if (!choice) {
+      const picked = await chooseFromMenu(
+        channel,
+        'Select reasoning effort',
+        menu,
+        currentEffort ?? 'default',
+      );
+      if (!picked) return void channel.write(dim('No change.'));
+      choice = picked;
+    }
+    if (choice !== 'default' && !EFFORT_LEVELS.includes(choice as Effort)) {
+      return void channel.write(yellow(`Unknown effort "${choice}". Options: ${menu.join(', ')}.`));
+    }
+    const effort = choice === 'default' ? undefined : (choice as Effort);
+    if (await applySettings(currentModel, effort)) {
+      channel.write(green(`Effort set to ${effort ?? 'default'}.`));
+      if (effort && !supportsEffort(currentModel)) {
+        channel.write(yellow(`Note: ${currentModel} ignores effort (Claude Opus 4.5+ only).`));
+      }
+    }
+  }
 
   try {
     for (;;) {
@@ -152,6 +284,19 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       }
       if (line === '/mode') {
         channel.write(dim(`mode: ${session.agent.currentMode}`));
+        continue;
+      }
+      if (line === '/clear') {
+        session.agent.clear();
+        channel.write(dim('Context cleared. Back in plan mode.'));
+        continue;
+      }
+      if (line === '/model' || line.startsWith('/model ')) {
+        await handleModel(line.slice('/model'.length).trim());
+        continue;
+      }
+      if (line === '/effort' || line.startsWith('/effort ')) {
+        await handleEffort(line.slice('/effort'.length).trim());
         continue;
       }
       if (line === '/status') {

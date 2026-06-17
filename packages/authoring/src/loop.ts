@@ -115,7 +115,7 @@ const askSchema = z.object({ question: z.string().min(1) });
  * across `run` calls so a REPL can keep talking to the same `Agent`.
  */
 export class Agent {
-  private readonly backend: AgentBackend;
+  private backend: AgentBackend;
   private readonly ctx: ToolContext;
   private readonly permission: Permission;
   private readonly system: string;
@@ -148,6 +148,34 @@ export class Agent {
   /** The mode the machine is currently in. */
   get currentMode(): AgentMode {
     return this.mode;
+  }
+
+  /**
+   * Force the plan/execute mode directly (e.g. the REPL's Shift-Tab toggle). This bypasses
+   * the plan-approval gate, so switching to `execute` lets the agent apply edits without a
+   * formally approved plan — a deliberate manual override of the default flow.
+   */
+  setMode(mode: AgentMode): void {
+    this.mode = mode;
+  }
+
+  /**
+   * Reset the conversation (the `/clear` command): drop the transcript and the tracked edit
+   * set, and return to plan mode. Files on disk and git history are untouched — only the
+   * agent's in-memory context is cleared.
+   */
+  clear(): void {
+    this.messages.length = 0;
+    this.editedPaths.clear();
+    this.mode = 'plan';
+  }
+
+  /**
+   * Swap the model backend mid-session (e.g. after `/model` or `/effort`). Conversation
+   * history, mode, and tracked edits are preserved — only the next turn's model changes.
+   */
+  setBackend(backend: AgentBackend): void {
+    this.backend = backend;
   }
 
   /** The tool catalog advertised to the backend (registry + control tools). */

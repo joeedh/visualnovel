@@ -7,6 +7,7 @@ import {
   StubImageBackend,
   mapRefLoader,
   mergeReports,
+  supportsEffort,
 } from './index.js';
 
 const spec: ShotSpec = {
@@ -81,5 +82,21 @@ describe('BackendImageProvider — ImageProvider contract', () => {
       modelId: 'mock-image',
     });
     expect(result.bytes.length).toBeGreaterThan(0);
+  });
+});
+
+describe('supportsEffort', () => {
+  it('accepts models with output_config.effort and rejects those that 400 on it', () => {
+    for (const id of [
+      'claude-opus-4-8',
+      'claude-opus-4-5',
+      'claude-sonnet-4-6',
+      'claude-fable-5',
+    ]) {
+      expect(supportsEffort(id)).toBe(true);
+    }
+    for (const id of ['claude-haiku-4-5', 'claude-sonnet-4-5', 'gemini-2.5-pro']) {
+      expect(supportsEffort(id)).toBe(false);
+    }
   });
 });

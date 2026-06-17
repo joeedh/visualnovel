@@ -7,7 +7,27 @@
  */
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { openGit } from '@vn/git';
-import { createAnthropicChat, createGeminiChat, type ChatBackend } from '@vn/providers';
+import {
+  createAnthropicChat,
+  createGeminiChat,
+  type ChatBackend,
+  type Effort,
+} from '@vn/providers';
+
+export { supportsEffort, type Effort } from '@vn/providers';
+
+/** Curated text models offered by the `/model` menu; any id is also accepted directly. */
+export const TEXT_MODELS = [
+  'claude-opus-4-8',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5',
+  'claude-fable-5',
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+];
+
+/** Reasoning-effort levels offered by the `/effort` menu (Claude models that support it). */
+export const EFFORT_LEVELS: Effort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
 import {
   Agent,
   NativeAgentBackend,
@@ -33,32 +53,37 @@ class MockAgentBackend implements AgentBackend {
 }
 
 /** Choose the vendor backend for a text model id (mirrors @vn/providers’ private picker). */
-function chatBackendFor(modelId: string, keys: { gemini: string; anthropic: string }): ChatBackend {
+function chatBackendFor(
+  modelId: string,
+  keys: { gemini: string; anthropic: string },
+  effort?: Effort,
+): ChatBackend {
   const id = modelId.toLowerCase();
   if (id.startsWith('claude') || id.startsWith('anthropic')) {
-    return createAnthropicChat(keys.anthropic, modelId);
+    return createAnthropicChat(keys.anthropic, modelId, { effort });
   }
   return createGeminiChat(keys.gemini, modelId);
 }
 
 /**
- * Build the agent backend for a project, or a mock when offline. `native` selects Path B
+ * Build the agent backend for a project, or a mock when offline. `model`/`effort` override
+ * the configured defaults (used by `/model` and `/effort`). `native` selects Path B
  * (provider-native function-calling) when the chosen `ChatBackend` supports `chatWithTools`;
  * otherwise it falls back to Path A (structured ReAct over the text seam).
  */
-async function buildBackend(
+export async function buildAgentBackend(
   dir: string,
-  opts: { mock?: boolean; native?: boolean },
+  opts: { mock?: boolean; native?: boolean; model?: string; effort?: Effort },
 ): Promise<AgentBackend> {
   if (opts.mock) return new MockAgentBackend();
   const config = await loadConfig(dir);
-  const modelId = config.models.text;
+  const modelId = opts.model ?? config.models.text;
   const vendor = modelId.toLowerCase().startsWith('claude') ? 'anthropic' : 'gemini';
   const keys = await resolveKeys(config, {
     secretsDirs: await secretDirsFor(dir),
     require: [vendor],
   });
-  const chat = chatBackendFor(modelId, keys);
+  const chat = chatBackendFor(modelId, keys, opts.effort);
   if (opts.native && chat.chatWithTools) return new NativeAgentBackend(chat);
   return new StructuredAgentBackend(chat);
 }
@@ -67,6 +92,8 @@ async function buildBackend(
 export interface AuthoringSession {
   agent: Agent;
   ctx: ToolContext;
+  /** The text model the agent is currently bound to (what `/model` reports and changes). */
+  model: string;
 }
 
 /** Assemble an {@link Agent} bound to `dir`, with `permission` driving the gates. */
@@ -81,7 +108,8 @@ export async function createAuthoringAgent(
 ): Promise<AuthoringSession> {
   const ctx: ToolContext = { workspace: new Workspace(dir), git: openGit(dir) };
   const context = await loadContext(dir);
-  const backend = await buildBackend(dir, opts);
+  const model = (await loadConfig(dir)).models.text;
+  const backend = await buildAgentBackend(dir, { mock: opts.mock, native: opts.native, model });
   const agent = new Agent({
     backend,
     ctx,
@@ -89,5 +117,5 @@ export async function createAuthoringAgent(
     system: composeSystem(context),
     onEvent: opts.onEvent,
   });
-  return { agent, ctx };
+  return { agent, ctx, model };
 }

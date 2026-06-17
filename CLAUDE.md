@@ -194,8 +194,13 @@ vnauthor [dir] [--mock] [--native]
   var or a secret file under `<dir>/keys/` (falling back to a shared `keys/` at the
   enclosing repo root).
 
-REPL commands: `/help`, `/mode` (plan vs. execute), `/status` (project index),
-`/skills` (available skills), `/exit` (or `/quit`).
+REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the text model;
+no arg → interactive menu), `/effort [level]` (set reasoning effort — `low`…`max` map to
+Anthropic `output_config.effort` + adaptive thinking, ignored on models that don't support
+it; no arg → interactive menu), `/clear` (reset the conversation context, back to plan
+mode), `/status` (project index), `/skills` (available skills), `/exit` (or `/quit`).
+**Shift-Tab** cycles between plan and execute mode. `/model` and `/effort` rebuild the
+backend and hot-swap it into the running agent, preserving conversation state.
 
 ### How it works
 

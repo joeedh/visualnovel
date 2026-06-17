@@ -141,6 +141,47 @@ describe('read-only plan flow', () => {
   });
 });
 
+describe('setMode & clear', () => {
+  it('setMode forces the mode and clear resets to plan', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const agent = agentWith(ctx, [JSON.stringify({ final: 'ok' })], scriptPermission());
+      expect(agent.currentMode).toBe('plan');
+      agent.setMode('execute');
+      expect(agent.currentMode).toBe('execute');
+      agent.clear();
+      expect(agent.currentMode).toBe('plan');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('setBackend', () => {
+  it('hot-swaps the model backend; the next turn uses the new one', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const permission = scriptPermission();
+      const backend = new StructuredAgentBackend(
+        new RecordedChatBackend('mock', [JSON.stringify({ final: 'from the first model' })]),
+      );
+      const agent = new Agent({ backend, ctx, permission, system: 'SYS' });
+      const first = await agent.run('hello');
+      expect(first.final).toBe('from the first model');
+
+      agent.setBackend(
+        new StructuredAgentBackend(
+          new RecordedChatBackend('mock', [JSON.stringify({ final: 'from the second model' })]),
+        ),
+      );
+      const second = await agent.run('again');
+      expect(second.final).toBe('from the second model');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
 describe('plan-mode gate', () => {
   it('blocks a mutating tool in plan mode, then applies it after plan approval', async () => {
     const { ctx, dir, cleanup } = await tempProject();

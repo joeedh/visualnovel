@@ -13,6 +13,13 @@ export interface ChatRequest {
   images?: ImageInput[];
 }
 
+/**
+ * Reasoning-effort level (Anthropic `output_config.effort`). Higher levels think more and
+ * spend more tokens. Only meaningful for Claude models that support it (see
+ * `supportsEffort`); ignored elsewhere.
+ */
+export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 /** A tool advertised to a native function-calling model (JSON-Schema parameters). */
 export interface ToolSchema {
   name: string;

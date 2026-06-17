@@ -110,8 +110,42 @@ describe('runRepl (offline)', () => {
       const text = out.join('\n');
       expect(code).toBe(0);
       expect(text).toContain('Commands:');
+      expect(text).toContain('/model');
+      expect(text).toContain('/effort');
+      expect(text).toContain('/clear');
+      expect(text).toContain('Shift-Tab');
       expect(text).toContain('aiko');
       expect(text).toContain('[mock]');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('clears context with /clear', async () => {
+    const { dir, cleanup } = await tempProject();
+    try {
+      const { channel, out } = scriptChannel(['/clear', '/exit']);
+      const code = await runRepl({ dir, mock: true, channel });
+      const text = out.join('\n');
+      expect(code).toBe(0);
+      expect(text).not.toContain('unknown command');
+      expect(text).toContain('Context cleared');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('routes /model and /effort, reporting they have no effect under --mock', async () => {
+    const { dir, cleanup } = await tempProject();
+    try {
+      const { channel, out } = scriptChannel(['/model', '/effort', '/exit']);
+      const code = await runRepl({ dir, mock: true, channel });
+      const text = out.join('\n');
+      expect(code).toBe(0);
+      // Both commands are recognized (not "unknown command") and explain the --mock no-op.
+      expect(text).not.toContain('unknown command');
+      expect(text).toContain('/model has no effect');
+      expect(text).toContain('/effort has no effect');
     } finally {
       await cleanup();
     }
