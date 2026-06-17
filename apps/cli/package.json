@@ -10,6 +10,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@google/genai": "^0.3.0",
     "@vn/config": "workspace:*",
     "@vn/model": "workspace:*",
     "@vn/parse": "workspace:*",

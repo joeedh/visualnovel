@@ -47,6 +47,12 @@ importers:
 
   apps/authoring:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.32.1
+        version: 0.32.1
+      '@google/genai':
+        specifier: ^0.3.0
+        version: 0.3.1
       '@vn/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring
@@ -71,6 +77,12 @@ importers:
 
   apps/cli:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.32.1
+        version: 0.32.1
+      '@google/genai':
+        specifier: ^0.3.0
+        version: 0.3.1
       '@vn/config':
         specifier: workspace:*
         version: link:../../packages/config
