@@ -1,6 +1,6 @@
 import type { ProjectConfig, ResolvedKeys } from '@vn/config';
 import type { Logger, ProjectModel, Providers } from '@vn/types';
-import { loadConfig, resolveKeys } from '@vn/config';
+import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { parseFountain } from '@vn/parse';
 import { buildModel, errors as modelErrors } from '@vn/model';
 import { AssetStore, ProjectPaths, loadInputs } from '@vn/store';
@@ -56,7 +56,7 @@ export function assertValid(model: ProjectModel): void {
  */
 export async function buildProviders(
   project: LoadedProject,
-  opts: { mock?: boolean; secretsDir?: string; logger?: Logger } = {},
+  opts: { mock?: boolean; logger?: Logger } = {},
 ): Promise<Providers> {
   const loadRef = async (ref: { hash: string; ext: string }) => ({
     bytes: await project.store.read(ref),
@@ -65,7 +65,7 @@ export async function buildProviders(
   if (opts.mock) return createMockProviders({ refLoader: loadRef });
 
   const keys: ResolvedKeys = await resolveKeys(project.config, {
-    secretsDir: opts.secretsDir,
+    secretsDirs: await secretDirsFor(project.dir),
     require: ['gemini'],
   });
   return createProviders({ config: project.config, keys, loadRef });

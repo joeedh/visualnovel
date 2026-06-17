@@ -109,7 +109,6 @@ export interface ReplOptions {
   mock?: boolean;
   /** Use provider-native function-calling (Path B) when the model supports it. */
   native?: boolean;
-  secretsDir?: string;
   /** Inject a channel (tests); defaults to the real terminal. */
   channel?: Channel;
 }
@@ -124,7 +123,6 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
     session = await createAuthoringAgent(opts.dir, permission, {
       mock: opts.mock,
       native: opts.native,
-      secretsDir: opts.secretsDir,
       onEvent: (event) => {
         const line = renderEvent(event);
         if (line !== undefined) channel.write(line);

@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfig, resolveKeys } from './index.js';
+import { loadConfig, resolveKeys, secretDirsFor } from './index.js';
 
 async function tempProject(yaml: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'vn-config-'));
@@ -54,11 +54,48 @@ describe('resolveKeys', () => {
     await writeFile(join(secrets, 'gemini.txt'), 'file-gemini\n');
     await writeFile(join(secrets, 'claude.txt'), 'file-claude\n');
     const keys = await resolveKeys(config, {
-      secretsDir: secrets,
+      secretsDirs: [secrets],
       require: ['gemini', 'anthropic'],
     });
     expect(keys.gemini).toBe('file-gemini');
     expect(keys.anthropic).toBe('file-claude');
+  });
+
+  it('consults secret dirs in order, preferring the first', async () => {
+    const dir = await tempProject('title: T\n');
+    const config = await loadConfig(dir);
+    const projectKeys = join(dir, 'keys');
+    const rootKeys = join(dir, 'root-keys');
+    await mkdir(projectKeys, { recursive: true });
+    await mkdir(rootKeys, { recursive: true });
+    // gemini only at the project level, anthropic only at the (shared) root level.
+    await writeFile(join(projectKeys, 'gemini.txt'), 'project-gemini\n');
+    await writeFile(join(rootKeys, 'gemini.txt'), 'root-gemini\n');
+    await writeFile(join(rootKeys, 'claude.txt'), 'root-claude\n');
+    const keys = await resolveKeys(config, {
+      secretsDirs: [projectKeys, rootKeys],
+      require: ['gemini', 'anthropic'],
+    });
+    expect(keys.gemini).toBe('project-gemini');
+    expect(keys.anthropic).toBe('root-claude');
+  });
+});
+
+describe('secretDirsFor', () => {
+  it("includes the project's keys/ then the enclosing repo root's keys/", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'vn-repo-'));
+    await mkdir(join(root, '.git'), { recursive: true });
+    const project = join(root, 'examples', 'sample');
+    await mkdir(project, { recursive: true });
+    const dirs = await secretDirsFor(project);
+    expect(dirs).toEqual([join(project, 'keys'), join(root, 'keys')]);
+  });
+
+  it('de-duplicates when the project is itself the repo root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'vn-repo-root-'));
+    await mkdir(join(root, '.git'), { recursive: true });
+    const dirs = await secretDirsFor(root);
+    expect(dirs).toEqual([join(root, 'keys')]);
   });
 
   it('throws when a required key is missing, without leaking values', async () => {

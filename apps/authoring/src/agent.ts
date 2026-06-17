@@ -5,7 +5,7 @@
  * backend, and assembles the system prompt from the built-in contract + `AICONTEXT.md`.
  * `--mock` swaps in an offline backend so the REPL runs end-to-end without API keys.
  */
-import { loadConfig, resolveKeys } from '@vn/config';
+import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { openGit } from '@vn/git';
 import { createAnthropicChat, createGeminiChat, type ChatBackend } from '@vn/providers';
 import {
@@ -48,13 +48,16 @@ function chatBackendFor(modelId: string, keys: { gemini: string; anthropic: stri
  */
 async function buildBackend(
   dir: string,
-  opts: { mock?: boolean; native?: boolean; secretsDir?: string },
+  opts: { mock?: boolean; native?: boolean },
 ): Promise<AgentBackend> {
   if (opts.mock) return new MockAgentBackend();
   const config = await loadConfig(dir);
   const modelId = config.models.text;
   const vendor = modelId.toLowerCase().startsWith('claude') ? 'anthropic' : 'gemini';
-  const keys = await resolveKeys(config, { secretsDir: opts.secretsDir, require: [vendor] });
+  const keys = await resolveKeys(config, {
+    secretsDirs: await secretDirsFor(dir),
+    require: [vendor],
+  });
   const chat = chatBackendFor(modelId, keys);
   if (opts.native && chat.chatWithTools) return new NativeAgentBackend(chat);
   return new StructuredAgentBackend(chat);
@@ -73,7 +76,6 @@ export async function createAuthoringAgent(
   opts: {
     mock?: boolean;
     native?: boolean;
-    secretsDir?: string;
     onEvent?: (e: AgentEvent) => void;
   } = {},
 ): Promise<AuthoringSession> {

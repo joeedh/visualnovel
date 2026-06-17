@@ -151,7 +151,8 @@ vngen cost [dir]                    dry-run cost preview
 
 `--mock` uses deterministic offline providers (no API keys needed). Without it, `run`
 constructs real Gemini/Claude clients and requires a Gemini key (env var named in
-`project.yaml`, or a secret file under `<dir>/keys/`).
+`project.yaml`, or a secret file under `<dir>/keys/` — or a shared `keys/` at the
+enclosing repo root, consulted after the project's own).
 
 ### Project layout on disk
 
@@ -190,7 +191,8 @@ vnauthor [dir] [--mock] [--native]
 - `--native` uses provider-native function-calling (Path B) when the configured model
   supports `chatWithTools`; otherwise the agent falls back to structured ReAct (Path A).
 - Model + keys resolve exactly like `vngen`: `models.text` in `project.yaml`, key via env
-  var or a secret file under `<dir>/keys/`.
+  var or a secret file under `<dir>/keys/` (falling back to a shared `keys/` at the
+  enclosing repo root).
 
 REPL commands: `/help`, `/mode` (plan vs. execute), `/status` (project index),
 `/skills` (available skills), `/exit` (or `/quit`).

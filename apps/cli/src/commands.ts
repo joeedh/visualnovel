@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import type { Logger } from '@vn/types';
 import { toMermaid } from '@vn/model';
 import { writeApprovedPortrait, writeStoryGraph, setCharacterApproval } from '@vn/store';
@@ -97,7 +96,6 @@ export async function cmdRun(args: Args, logger: Logger): Promise<number> {
   await writeStoryGraph(project.paths, toMermaid(project.model));
   const providers = await buildProviders(project, {
     mock: Boolean(args.flags['mock']),
-    secretsDir: join(dir, 'keys'),
     logger,
   });
 

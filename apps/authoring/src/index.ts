@@ -15,7 +15,7 @@ export async function main(argv: string[]): Promise<number> {
     } else if (!arg.startsWith('-')) positional.push(arg);
   }
   const dir = positional[0] ?? '.';
-  return runRepl({ dir, mock, native, secretsDir: `${dir}/keys` });
+  return runRepl({ dir, mock, native });
 }
 
 function usage(): string {
