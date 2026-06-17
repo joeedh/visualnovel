@@ -45,6 +45,30 @@ importers:
         specifier: ^8.18.1
         version: 8.61.1(eslint@9.39.4)(typescript@5.9.3)
 
+  apps/authoring:
+    dependencies:
+      '@vn/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vn/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@vn/git':
+        specifier: workspace:*
+        version: link:../../packages/git
+      '@vn/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
+      '@vn/store':
+        specifier: workspace:*
+        version: link:../../packages/store
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../../packages/util
+
   apps/cli:
     dependencies:
       '@vn/config':
