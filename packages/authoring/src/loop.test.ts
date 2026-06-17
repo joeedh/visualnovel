@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -72,6 +73,13 @@ async function tempProject(script = SCRIPT): Promise<{
   await fs.writeFile(join(dir, 'project.yaml'), 'title: Test Project\n');
   const ctx: ToolContext = { workspace: new Workspace(dir), git: openGit(dir) };
   return { ctx, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
+}
+
+/** Init a repo with a local identity so commits succeed without relying on global config. */
+function initRepo(dir: string): void {
+  execFileSync('git', ['init'], { cwd: dir });
+  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
+  execFileSync('git', ['config', 'user.name', 'VN Test'], { cwd: dir });
 }
 
 /** A permission host scripted from fixed decisions, recording what it was asked. */
@@ -235,6 +243,46 @@ describe('commit gate', () => {
       const blocked = res.events.find((e) => e.type === 'blocked');
       expect(blocked).toMatchObject({ tool: 'git_commit' });
       expect(res.events.some((e) => e.type === 'tool')).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('auto-stages the agent edits and commits them when given no explicit paths', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      initRepo(dir);
+      const agent = agentWith(
+        ctx,
+        [
+          JSON.stringify({
+            tool: 'propose_plan',
+            args: { summary: 'Approve Aiko', steps: ['set status'], files: ['characters/aiko'] },
+          }),
+          JSON.stringify({ tool: 'edit_character', args: { id: 'aiko', status: 'approved' } }),
+          // No `paths` — the loop must stage exactly what the agent edited this plan.
+          JSON.stringify({ tool: 'git_commit', args: { message: 'Approve Aiko' } }),
+          JSON.stringify({ final: 'Committed.' }),
+        ],
+        scriptPermission(),
+      );
+      const res = await agent.run('approve aiko and commit');
+      expect(res.events.some((e) => e.type === 'blocked')).toBe(false);
+
+      // Exactly one commit, containing only the edited character file — untracked siblings
+      // (locations, screenplay, project.yaml) must NOT be swept in.
+      const log = execFileSync('git', ['log', '--oneline'], { cwd: dir }).toString().trim();
+      expect(log.split('\n')).toHaveLength(1);
+      expect(log).toContain('Approve Aiko');
+      const committed = execFileSync('git', ['show', '--name-only', '--pretty=format:', 'HEAD'], {
+        cwd: dir,
+      })
+        .toString()
+        .trim();
+      expect(committed).toBe('characters/aiko/character.md');
+      // The untracked siblings were not swept in: the tree is still dirty after the commit.
+      const status = await openGit(dir).status();
+      expect(status.dirty).toBe(true);
     } finally {
       await cleanup();
     }

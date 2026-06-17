@@ -21,6 +21,8 @@ export interface ToolSpec {
   name: string;
   description: string;
   mutating: boolean;
+  /** Compact `name?: type (note)` argument signature, so the model needn't guess fields. */
+  parameters?: string;
 }
 
 /** A single requested tool call. */
@@ -71,7 +73,10 @@ call another tool or finish. Never invent tools outside the provided list.`;
 /** Render the tool catalog for the prompt. */
 function renderTools(tools: ToolSpec[]): string {
   return tools
-    .map((t) => `- ${t.name}${t.mutating ? ' (mutating)' : ''}: ${t.description}`)
+    .map((t) => {
+      const head = `- ${t.name}${t.mutating ? ' (mutating)' : ''}: ${t.description}`;
+      return t.parameters ? `${head}\n    args: ${t.parameters}` : head;
+    })
     .join('\n');
 }
 
@@ -160,11 +165,11 @@ export class NativeAgentBackend implements AgentBackend {
     tools: ToolSpec[],
     mode: 'plan' | 'execute',
   ): Promise<AgentTurn> {
-    const schemas: ToolSchema[] = tools.map((t) => ({
-      name: t.name,
-      description: t.mutating ? `${t.description} (mutating)` : t.description,
-      parameters: LOOSE_PARAMS,
-    }));
+    const schemas: ToolSchema[] = tools.map((t) => {
+      let description = t.mutating ? `${t.description} (mutating)` : t.description;
+      if (t.parameters) description += ` Args: ${t.parameters}`;
+      return { name: t.name, description, parameters: LOOSE_PARAMS };
+    });
     const prompt = [
       `MODE: ${mode}${mode === 'plan' ? ' (read-only — mutating tools are blocked until a plan is approved)' : ''}`,
       '',

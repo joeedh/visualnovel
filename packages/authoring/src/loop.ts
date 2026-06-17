@@ -16,7 +16,13 @@
  */
 import { z } from 'zod';
 import type { AgentBackend, AgentMessage, ToolSpec } from './backend.js';
-import { createRegistry, type Tool, type ToolContext, type ToolResult } from './tools.js';
+import {
+  createRegistry,
+  describeToolParams,
+  type Tool,
+  type ToolContext,
+  type ToolResult,
+} from './tools.js';
 
 /** The two states of the plan/permission machine. */
 export type AgentMode = 'plan' | 'execute';
@@ -117,6 +123,8 @@ export class Agent {
   private readonly maxSteps: number;
   private readonly onEvent?: (event: AgentEvent) => void;
   private readonly messages: AgentMessage[] = [];
+  /** Workspace-relative paths the agent has written since the last commit (commit scope). */
+  private readonly editedPaths = new Set<string>();
   private mode: AgentMode;
 
   constructor(opts: AgentOptions) {
@@ -148,6 +156,7 @@ export class Agent {
       name: t.name,
       description: t.description,
       mutating: t.mutating,
+      parameters: describeToolParams(t.args),
     }));
     return [...fromRegistry, ...CONTROL_TOOLS];
   }
@@ -232,10 +241,20 @@ export class Agent {
           `Commit blocked: fix ${errors.length} validation error(s) first:\n` + errors.join('\n')
         );
       }
+      // Scope the commit to exactly what the agent edited this plan. Without this the bare
+      // `git commit` stages nothing (and fails), and would otherwise risk sweeping in
+      // unrelated dirty files when the workspace sits inside a larger repo.
+      const commitArgs = parsed.data as { message: string; paths?: string[] };
+      if (!commitArgs.paths || commitArgs.paths.length === 0) {
+        commitArgs.paths = [...this.editedPaths];
+      }
     }
 
     const result = await tool.run(parsed.data, this.ctx);
     emit({ type: 'tool', tool: name, args: parsed.data, result });
+    for (const p of result.written ?? []) this.editedPaths.add(p);
+    // One commit per approved plan: a successful commit closes out the tracked edit set.
+    if (name === 'git_commit' && result.ok && result.data) this.editedPaths.clear();
     return result.output;
   }
 

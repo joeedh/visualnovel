@@ -86,6 +86,36 @@ function formatDiagnostics(diags: Diagnostic[]): string {
     .join('\n');
 }
 
+/** Render a zod base type as a short name for a tool-arg signature. */
+function zodTypeName(t: ZodType): string {
+  if (t instanceof z.ZodOptional || t instanceof z.ZodDefault || t instanceof z.ZodNullable)
+    return zodTypeName(t._def.innerType as ZodType);
+  if (t instanceof z.ZodArray) return `${zodTypeName(t._def.type as ZodType)}[]`;
+  if (t instanceof z.ZodEnum) return (t._def.values as string[]).map((v) => `"${v}"`).join('|');
+  if (t instanceof z.ZodString) return 'string';
+  if (t instanceof z.ZodNumber) return 'number';
+  if (t instanceof z.ZodBoolean) return 'boolean';
+  if (t instanceof z.ZodObject) return 'object';
+  return 'any';
+}
+
+/**
+ * Render an object schema as a compact `name?: type (note)` signature so the model knows a
+ * tool's argument names and intent instead of guessing them. Returns '' for non-objects.
+ * Without this the model omits fields it can't name — e.g. a character's prose `description`.
+ */
+export function describeToolParams(schema: ZodType): string {
+  if (!(schema instanceof z.ZodObject)) return '';
+  const shape = schema.shape as Record<string, ZodType>;
+  return Object.entries(shape)
+    .map(([name, field]) => {
+      const optional = field instanceof z.ZodOptional || field instanceof z.ZodDefault;
+      const note = field.description ? ` (${field.description})` : '';
+      return `${name}${optional ? '?' : ''}: ${zodTypeName(field)}${note}`;
+    })
+    .join(', ');
+}
+
 // ── File & content ──────────────────────────────────────────────────────────
 
 const readFileTool: Tool<{ path: string; offset?: number; limit?: number }> = {
@@ -272,13 +302,16 @@ const extractEntitiesTool: Tool<Record<string, never>> = {
 // ── Editing (execute mode) ──────────────────────────────────────────────────
 
 const characterEditShape = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).describe('id of the character to edit'),
   name: z.string().optional(),
-  description: z.string().optional(),
+  description: z
+    .string()
+    .optional()
+    .describe('full prose body — the canonical description fed to the pipeline; replaces it whole'),
   status: z.enum(['draft', 'candidates', 'approved', 'locked']).optional(),
   defaultOutfit: z.string().optional(),
   traits: z.array(z.string()).optional(),
-  palette: z.array(z.string()).optional(),
+  palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
   referenceImages: z.array(z.string()).optional(),
 });
 
@@ -303,12 +336,15 @@ const editCharacterTool: Tool<z.infer<typeof characterEditShape>> = {
 };
 
 const locationEditShape = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).describe('id of the location to edit'),
   name: z.string().optional(),
-  description: z.string().optional(),
+  description: z
+    .string()
+    .optional()
+    .describe('full prose body — the canonical description fed to the pipeline; replaces it whole'),
   mood: z.string().optional(),
   lighting: z.string().optional(),
-  palette: z.array(z.string()).optional(),
+  palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
   variants: z.array(z.string()).optional(),
 });
 

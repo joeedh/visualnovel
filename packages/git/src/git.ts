@@ -120,7 +120,9 @@ export class Git {
     const before = await this.head();
     const r = await this.run(['commit', '-m', opts.message]);
     if (r.code !== 0) {
-      if (/nothing to commit/i.test(r.stdout + r.stderr)) return null;
+      // Git phrases an empty commit as "nothing to commit" or "no changes added to commit"
+      // depending on whether the tree is clean or just has nothing staged.
+      if (/nothing to commit|no changes added to commit/i.test(r.stdout + r.stderr)) return null;
       throw new GitError(`git commit failed: ${r.stderr.trim() || r.stdout.trim()}`);
     }
     const after = await this.head();

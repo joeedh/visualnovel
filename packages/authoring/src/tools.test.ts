@@ -2,7 +2,13 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
-import { createRegistry, Workspace, type Tool, type ToolContext } from './index.js';
+import {
+  createRegistry,
+  describeToolParams,
+  Workspace,
+  type Tool,
+  type ToolContext,
+} from './index.js';
 
 const CHARACTER = `---
 id: aiko
@@ -180,6 +186,23 @@ describe('editing tools', () => {
     }
   });
 
+  it('edit_character rewrites the prose body via description', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'edit_character',
+        { id: 'aiko', description: 'Aiko has red hair and green eyes.' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      const text = await fs.readFile(join(dir, 'characters', 'aiko', 'character.md'), 'utf8');
+      expect(text).toContain('Aiko has red hair and green eyes.');
+      expect(text).not.toContain('Aiko is a transfer student.');
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('edit_character rejects an invalid patch without writing', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
@@ -221,5 +244,15 @@ describe('registry metadata', () => {
     expect(tool('edit_character').mutating).toBe(true);
     expect(tool('git_revert').confirm).toBe(true);
     expect(tool('git_restore').confirm).toBe(true);
+  });
+
+  it('describes tool arg names and intent so the model need not guess them', () => {
+    const sig = describeToolParams(tool('edit_character').args);
+    // The prose body field must be named and explained — the gap that caused edit churn.
+    expect(sig).toContain('description?: string (full prose body');
+    expect(sig).toContain('id: string');
+    expect(sig).toContain('palette?: string[]');
+    // Enums render their literal options.
+    expect(sig).toContain('status?: "draft"|"candidates"|"approved"|"locked"');
   });
 });
