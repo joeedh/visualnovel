@@ -44,7 +44,7 @@ function usage(): string {
     '',
     'Commands:',
     '  run [dir] [--mock]   parse → validate → preview → execute to the next gate',
-    '  approve <char> [dir] [--hash=<h>]   approve a character portrait (auto-selects it)',
+    '  approve [dir] [--character=<id>] [--hash=<h>] [--yes]   approve portraits (interactive)',
     '  status [dir]         show task/asset/approval status',
     '  graph [dir]          emit the story branch graph (Mermaid)',
     '  cost [dir]           dry-run cost preview',

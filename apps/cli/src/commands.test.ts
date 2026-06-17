@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AssetStore, ProjectPaths } from '@vn/store';
-import { cmdApprove } from './commands.js';
+import { cmdApprove, type ApproveIO } from './commands.js';
 
 /** A minimal project on disk plus its asset store, ready for `cmdApprove`. */
 async function tempProject(): Promise<{
@@ -40,15 +40,29 @@ async function capture(run: () => Promise<number>): Promise<{ code: number; out:
   }
 }
 
+/** A scripted {@link ApproveIO}: feeds fixed answers, records prompts + output. */
+function scriptIO(answers: string[]): { io: ApproveIO; out: () => string } {
+  const lines: string[] = [];
+  let i = 0;
+  const io: ApproveIO = {
+    ask: (q) => (lines.push(q), Promise.resolve(answers[i++] ?? '')),
+    write: (l) => void lines.push(l),
+  };
+  return { io, out: () => lines.join('\n') };
+}
+
 const portraitMeta = (characterId: string) => ({
   kind: 'portrait' as const,
-  sourceTask: `task-${characterId}`,
+  sourceTask: `task-${characterId}-${Math.random()}`,
   modelId: 'mock-image',
   satisfies: { characterId },
 });
 
-describe('cmdApprove', () => {
-  it('auto-selects the character’s portrait hash from the manifest', async () => {
+const readChar = (dir: string): Promise<string> =>
+  fs.readFile(join(dir, 'characters', 'aiko', 'character.md'), 'utf8');
+
+describe('cmdApprove — single character (--character)', () => {
+  it('auto-selects the portrait hash from the manifest', async () => {
     const { dir, store, cleanup } = await tempProject();
     try {
       const ref = await store.write(
@@ -57,11 +71,11 @@ describe('cmdApprove', () => {
         portraitMeta('aiko'),
       );
       const { code, out } = await capture(() =>
-        cmdApprove({ positional: ['aiko', dir], flags: {} }),
+        cmdApprove({ positional: [dir], flags: { character: 'aiko' } }),
       );
       expect(code).toBe(0);
       expect(out).toContain(ref.hash);
-      const md = await fs.readFile(join(dir, 'characters', 'aiko', 'character.md'), 'utf8');
+      const md = await readChar(dir);
       expect(md).toContain('status: approved');
       expect(md).toContain(`approved_portrait: ${ref.hash}`);
     } finally {
@@ -73,7 +87,7 @@ describe('cmdApprove', () => {
     const { dir, cleanup } = await tempProject();
     try {
       const { code, out } = await capture(() =>
-        cmdApprove({ positional: ['aiko', dir], flags: {} }),
+        cmdApprove({ positional: [dir], flags: { character: 'aiko' } }),
       );
       expect(code).toBe(1);
       expect(out).toContain('No generated portrait');
@@ -82,18 +96,81 @@ describe('cmdApprove', () => {
     }
   });
 
-  it('asks the user to disambiguate when several portraits exist', async () => {
+  it('asks to disambiguate when several portraits exist', async () => {
     const { dir, store, cleanup } = await tempProject();
     try {
       const a = await store.write(new TextEncoder().encode('aiko-1'), 'png', portraitMeta('aiko'));
       const b = await store.write(new TextEncoder().encode('aiko-2'), 'png', portraitMeta('aiko'));
       const { code, out } = await capture(() =>
-        cmdApprove({ positional: ['aiko', dir], flags: {} }),
+        cmdApprove({ positional: [dir], flags: { character: 'aiko' } }),
       );
       expect(code).toBe(1);
       expect(out).toContain('Multiple portraits');
       expect(out).toContain(a.hash);
       expect(out).toContain(b.hash);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('cmdApprove — interactive (no character)', () => {
+  it('walks each pending character and approves on a yes', async () => {
+    const { dir, store, cleanup } = await tempProject();
+    try {
+      const ref = await store.write(
+        new TextEncoder().encode('aiko-portrait'),
+        'png',
+        portraitMeta('aiko'),
+      );
+      const { io, out } = scriptIO(['y']);
+      const code = await cmdApprove({ positional: [dir], flags: {} }, io);
+      expect(code).toBe(0);
+      expect(out()).toContain('awaiting approval');
+      const md = await readChar(dir);
+      expect(md).toContain('status: approved');
+      expect(md).toContain(`approved_portrait: ${ref.hash}`);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('skips a character when the user declines', async () => {
+    const { dir, store, cleanup } = await tempProject();
+    try {
+      await store.write(new TextEncoder().encode('aiko-portrait'), 'png', portraitMeta('aiko'));
+      const { io } = scriptIO(['n']);
+      const code = await cmdApprove({ positional: [dir], flags: {} }, io);
+      expect(code).toBe(0);
+      expect(await readChar(dir)).toContain('status: candidates');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('prompts for the candidate when several exist and honors the choice', async () => {
+    const { dir, store, cleanup } = await tempProject();
+    try {
+      await store.write(new TextEncoder().encode('aiko-1'), 'png', portraitMeta('aiko'));
+      const b = await store.write(new TextEncoder().encode('aiko-2'), 'png', portraitMeta('aiko'));
+      // Choose candidate 2, then confirm.
+      const { io } = scriptIO(['2', 'y']);
+      const code = await cmdApprove({ positional: [dir], flags: {} }, io);
+      expect(code).toBe(0);
+      expect(await readChar(dir)).toContain(`approved_portrait: ${b.hash}`);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reports nothing to do when the gate is already clear', async () => {
+    const { dir, store, cleanup } = await tempProject();
+    try {
+      await store.write(new TextEncoder().encode('p'), 'png', portraitMeta('aiko'));
+      await capture(() => cmdApprove({ positional: [dir], flags: { character: 'aiko' } })); // clear it
+      const { code, out } = await capture(() => cmdApprove({ positional: [dir], flags: {} }));
+      expect(code).toBe(0);
+      expect(out).toContain('Nothing to approve');
     } finally {
       await cleanup();
     }

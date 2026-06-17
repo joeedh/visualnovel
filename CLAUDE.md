@@ -143,7 +143,7 @@ reuses the input-side packages (types, util, config, parse, model, store, provid
 
 ```
 vngen run [dir] [--mock]            parse → validate → preview → execute to the next gate
-vngen approve <char> [dir] [--hash] approve a character portrait (hash auto-selected)
+vngen approve [dir] [--character][--hash][--yes]  interactively approve pending portraits
 vngen status [dir]                  task/asset/approval summary
 vngen graph [dir]                   emit the story branch graph (Mermaid)
 vngen cost [dir]                    dry-run cost preview
@@ -170,7 +170,7 @@ pnpm build
 node apps/cli/dist/cli.js graph  examples/sample
 node apps/cli/dist/cli.js cost   examples/sample
 node apps/cli/dist/cli.js run    examples/sample --mock      # halts at the aiko gate
-node apps/cli/dist/cli.js approve aiko examples/sample       # auto-selects aiko's portrait
+node apps/cli/dist/cli.js approve examples/sample --yes      # approve pending portraits (defaults)
 node apps/cli/dist/cli.js run    examples/sample --mock      # clears the gate
 node apps/cli/dist/cli.js status examples/sample
 ```

@@ -1,9 +1,10 @@
-import type { Logger } from '@vn/types';
+import { createInterface } from 'node:readline';
+import type { Asset, Logger } from '@vn/types';
 import { toMermaid } from '@vn/model';
 import { writeApprovedPortrait, writeStoryGraph, setCharacterApproval } from '@vn/store';
 import { gateStatus } from '@vn/pipeline';
 import { runPipeline } from '@vn/scheduler';
-import { assertValid, buildProviders, loadProject } from './project.js';
+import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
 
 /** Parsed CLI invocation: positional args + `--flag[=value]` options. */
 export interface Args {
@@ -119,33 +120,72 @@ export async function cmdRun(args: Args, logger: Logger): Promise<number> {
     for (const id of summary.gate.pending) {
       ok(`  ${id} — review candidates in ${project.paths.candidatesDir(id)}`);
     }
-    ok(
-      `Approve with: vngen approve <character> ${dir === '.' ? '' : `${dir} `}(auto-selects the portrait)`,
-    );
+    ok(`Approve them interactively with: vngen approve${dir === '.' ? '' : ` ${dir}`}`);
   } else {
     ok('Gate cleared — all reachable shots generated.');
   }
   return 0;
 }
 
-/**
- * `vngen approve <character> [dir] [--hash=<h>]` — pass a portrait through the gate (report
- * §P3). The asset hash is resolved automatically from the character's generated portrait in
- * the manifest; `--hash` overrides it when more than one candidate exists.
- */
-export async function cmdApprove(args: Args): Promise<number> {
-  const [characterId, dir = '.'] = args.positional;
-  if (!characterId) {
-    ok('Usage: vngen approve <character> [dir] [--hash=<assetHash>]');
-    return 1;
-  }
-  const project = await loadProject(dir);
+/** A line-oriented prompt seam so the interactive flow can be driven by tests. */
+export interface ApproveIO {
+  ask(question: string): Promise<string>;
+  write(line: string): void;
+}
 
-  let hash = typeof args.flags['hash'] === 'string' ? args.flags['hash'] : undefined;
-  if (!hash) {
-    const portraits = project.store
-      .manifest()
-      .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId);
+/** A terminal-backed {@link ApproveIO} over node:readline. */
+function terminalIO(): ApproveIO & { close(): void } {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return {
+    ask: (q) => new Promise((res) => rl.question(q, (a) => res(a))),
+    write: (l) => void process.stdout.write(l.endsWith('\n') ? l : l + '\n'),
+    close: () => rl.close(),
+  };
+}
+
+/** `yes` unless the answer is a clear no; blank takes the default. */
+function answeredYes(answer: string, dflt: boolean): boolean {
+  const t = answer.trim().toLowerCase();
+  if (!t) return dflt;
+  return t === 'y' || t === 'yes';
+}
+
+/** The character's portrait candidates in the manifest (one per character today). */
+function portraitsFor(project: LoadedProject, characterId: string): Asset[] {
+  return project.store
+    .manifest()
+    .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId);
+}
+
+/** Flip the character to approved with `hash`, copy the visible portrait, accept the asset. */
+async function approveCharacter(
+  project: LoadedProject,
+  characterId: string,
+  hash: string,
+): Promise<{ ok: boolean; message: string }> {
+  const flipped = await setCharacterApproval(project.paths, characterId, hash);
+  if (!flipped) return { ok: false, message: `No character file for "${characterId}".` };
+  const bytes = await project.store.read({ hash, ext: 'png' });
+  await writeApprovedPortrait(project.paths, characterId, bytes);
+  await project.store.accept(hash);
+  return { ok: true, message: `Approved ${characterId} → ${hash}.` };
+}
+
+/** Approve one named character (the `--character` path): resolve the hash, then flip it. */
+async function approveOne(
+  project: LoadedProject,
+  characterId: string,
+  explicitHash: string | undefined,
+  dir: string,
+): Promise<number> {
+  let hash = explicitHash;
+  if (hash) {
+    if (!project.store.has(hash)) {
+      ok(`No asset with hash "${hash}" in the store.`);
+      return 1;
+    }
+  } else {
+    const portraits = portraitsFor(project, characterId);
     if (portraits.length === 0) {
       ok(`No generated portrait for "${characterId}". Run \`vngen run ${dir}\` first.`);
       return 1;
@@ -156,19 +196,90 @@ export async function cmdApprove(args: Args): Promise<number> {
       return 1;
     }
     hash = portraits[0]!.hash;
-  } else if (!project.store.has(hash)) {
-    ok(`No asset with hash "${hash}" in the store.`);
+  }
+  const r = await approveCharacter(project, characterId, hash);
+  ok(r.ok ? `${r.message} Re-run \`vngen run ${dir}\` to continue past the gate.` : r.message);
+  return r.ok ? 0 : 1;
+}
+
+/**
+ * `vngen approve [dir] [--character=<id>] [--hash=<h>] [--yes]` — pass character portraits
+ * through the gate (report §P3). With no `--character`, it walks every character awaiting
+ * approval and prompts for each (default: approve the single generated candidate). The hash
+ * is auto-resolved from the manifest; `--hash` overrides it for `--character`. `--yes`
+ * accepts all defaults without prompting (required when stdin is not a terminal).
+ */
+export async function cmdApprove(args: Args, ioOverride?: ApproveIO): Promise<number> {
+  const dir = args.positional[0] ?? '.';
+  const project = await loadProject(dir);
+  const explicitHash = typeof args.flags['hash'] === 'string' ? args.flags['hash'] : undefined;
+  const onlyCharacter =
+    typeof args.flags['character'] === 'string' ? args.flags['character'] : undefined;
+
+  if (onlyCharacter) return approveOne(project, onlyCharacter, explicitHash, dir);
+
+  const pending = gateStatus(project.model).pending;
+  if (pending.length === 0) {
+    ok('Nothing to approve — every character used by a reachable scene is already approved.');
+    return 0;
+  }
+
+  const autoYes = Boolean(args.flags['yes']);
+  const interactive = Boolean(ioOverride) || Boolean(process.stdin.isTTY);
+  if (!interactive && !autoYes) {
+    ok('Non-interactive stdin. Pass --yes to approve all pending, or --character=<id> for one.');
     return 1;
   }
 
-  const flipped = await setCharacterApproval(project.paths, characterId, hash);
-  if (!flipped) {
-    ok(`No character file for "${characterId}".`);
-    return 1;
+  const term = ioOverride ? null : terminalIO();
+  const io = ioOverride ?? term!;
+  let approved = 0;
+  let skipped = 0;
+  try {
+    io.write(`${pending.length} character(s) awaiting approval: ${pending.join(', ')}`);
+    for (const id of pending) {
+      const portraits = portraitsFor(project, id);
+      if (portraits.length === 0) {
+        io.write(`• ${id}: no generated portrait yet — run \`vngen run ${dir}\` first. Skipping.`);
+        skipped++;
+        continue;
+      }
+
+      let hash = portraits[0]!.hash;
+      if (portraits.length > 1) {
+        io.write(`• ${id}: ${portraits.length} candidates —`);
+        portraits.forEach((p, i) => io.write(`    ${i + 1}. ${p.hash}`));
+        const raw = autoYes
+          ? '1'
+          : (await io.ask(`  Which candidate? [1-${portraits.length}, default 1]: `)).trim();
+        const n = Number(raw || '1');
+        if (!Number.isInteger(n) || n < 1 || n > portraits.length) {
+          io.write(`  Invalid choice — skipping ${id}.`);
+          skipped++;
+          continue;
+        }
+        hash = portraits[n - 1]!.hash;
+      }
+
+      const yes = autoYes
+        ? true
+        : answeredYes(await io.ask(`• Approve ${id} → ${hash.slice(0, 12)}…? [Y/n]: `), true);
+      if (!yes) {
+        io.write(`  Skipped ${id}.`);
+        skipped++;
+        continue;
+      }
+      const r = await approveCharacter(project, id, hash);
+      io.write(`  ${r.message}`);
+      if (r.ok) approved++;
+      else skipped++;
+    }
+  } finally {
+    term?.close();
   }
-  const bytes = await project.store.read({ hash, ext: 'png' });
-  await writeApprovedPortrait(project.paths, characterId, bytes);
-  await project.store.accept(hash);
-  ok(`Approved ${characterId} → ${hash}. Re-run \`vngen run ${dir}\` to continue past the gate.`);
+
+  io.write(`Approved ${approved} character(s)${skipped ? `, skipped ${skipped}` : ''}.`);
+  if (approved)
+    io.write(`Re-run \`vngen run${dir === '.' ? '' : ` ${dir}`}\` to continue past the gate.`);
   return 0;
 }

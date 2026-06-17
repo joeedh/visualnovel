@@ -1,7 +1,7 @@
 ---
 id: aiko
 name: Aiko
-status: draft
+status: approved
 default_outfit: uniform
 palette:
   - "#a02828"
@@ -13,6 +13,7 @@ traits:
   - soft-spoken
   - determined
 reference_images: []
+approved_portrait: 4e61ccadf6eb5276a8581d28e8afa3fc330fb7fe1b3a92a9f8f98da7f7806bfa
 ---
 
 Aiko is a sixteen-year-old transfer student with shoulder-length red hair and
