@@ -119,25 +119,48 @@ export async function cmdRun(args: Args, logger: Logger): Promise<number> {
     for (const id of summary.gate.pending) {
       ok(`  ${id} — review candidates in ${project.paths.candidatesDir(id)}`);
     }
-    ok('Approve with: vngen approve <character> <assetHash> [dir]');
+    ok(
+      `Approve with: vngen approve <character> ${dir === '.' ? '' : `${dir} `}(auto-selects the portrait)`,
+    );
   } else {
     ok('Gate cleared — all reachable shots generated.');
   }
   return 0;
 }
 
-/** `vngen approve <character> <hash> [dir]` — pass a portrait through the gate (report §P3). */
+/**
+ * `vngen approve <character> [dir] [--hash=<h>]` — pass a portrait through the gate (report
+ * §P3). The asset hash is resolved automatically from the character's generated portrait in
+ * the manifest; `--hash` overrides it when more than one candidate exists.
+ */
 export async function cmdApprove(args: Args): Promise<number> {
-  const [characterId, hash, dir = '.'] = args.positional;
-  if (!characterId || !hash) {
-    ok('Usage: vngen approve <character> <assetHash> [dir]');
+  const [characterId, dir = '.'] = args.positional;
+  if (!characterId) {
+    ok('Usage: vngen approve <character> [dir] [--hash=<assetHash>]');
     return 1;
   }
   const project = await loadProject(dir);
-  if (!project.store.has(hash)) {
+
+  let hash = typeof args.flags['hash'] === 'string' ? args.flags['hash'] : undefined;
+  if (!hash) {
+    const portraits = project.store
+      .manifest()
+      .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId);
+    if (portraits.length === 0) {
+      ok(`No generated portrait for "${characterId}". Run \`vngen run ${dir}\` first.`);
+      return 1;
+    }
+    if (portraits.length > 1) {
+      ok(`Multiple portraits for "${characterId}" — pick one with --hash=<assetHash>:`);
+      for (const p of portraits) ok(`  ${p.hash}`);
+      return 1;
+    }
+    hash = portraits[0]!.hash;
+  } else if (!project.store.has(hash)) {
     ok(`No asset with hash "${hash}" in the store.`);
     return 1;
   }
+
   const flipped = await setCharacterApproval(project.paths, characterId, hash);
   if (!flipped) {
     ok(`No character file for "${characterId}".`);
