@@ -41,6 +41,24 @@ const ALLOWED = {
     'pipeline',
     'scheduler',
   ],
+  // The Electron desktop app is the JOIN POINT above both branches: it embeds the authoring
+  // agent AND the generative scheduler/pipeline in one process and streams them to the
+  // renderer over IPC. It is the *only* element allowed to import both sides — authoring
+  // itself stays forbidden from the pipeline (see the `authoring` entry above).
+  desktop: [
+    'types',
+    'util',
+    'config',
+    'parse',
+    'model',
+    'store',
+    'git',
+    'taskgraph',
+    'providers',
+    'pipeline',
+    'scheduler',
+    'authoring',
+  ],
 };
 
 const boundaryRules = Object.entries(ALLOWED).map(([from, allow]) => ({

@@ -6,6 +6,10 @@ keys/**
 docs/**
 Readme.MD
 
+# Standalone, hand-authored design reference (compact single-line HTML/CSS kept on purpose).
+# It's an artifact, not source — don't let prettier reflow it into thousands of lines.
+apps/desktop/prototype.html
+
 # Authored project inputs (character/location markdown) are serialized by @vn/parse's
 # round-trip YAML front-matter writer, not prettier. Don't let prettier fight that
 # serializer's style — the agent owns these files' formatting.

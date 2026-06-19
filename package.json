@@ -9,7 +9,8 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "electron"
     ]
   },
   "scripts": {
