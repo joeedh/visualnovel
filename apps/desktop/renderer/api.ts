@@ -72,9 +72,15 @@ const MOCK_STATUS: PipelineStatus = {
   blockedOnGate: true,
 };
 
+const MOCK_CANDIDATES = [
+  { hash: '9e0a1b', accepted: false },
+  { hash: '9e0a2c', accepted: false },
+  { hash: '9e0a3d', accepted: false },
+];
+
 /** A do-nothing API backed by mock data, used when no preload bridge is present. */
 const fallback: DesktopApi = {
-  invoke: ((channel: string) => {
+  invoke: ((channel: string, arg?: unknown) => {
     switch (channel) {
       case 'workspace:index':
         return Promise.resolve(MOCK_INDEX);
@@ -82,6 +88,12 @@ const fallback: DesktopApi = {
         return Promise.resolve(MOCK_STATUS);
       case 'agent:setMode':
         return Promise.resolve('plan');
+      case 'agent:setModel':
+        return Promise.resolve(String(arg));
+      case 'gate:candidates':
+        return Promise.resolve(MOCK_CANDIDATES);
+      case 'gate:approve':
+        return Promise.resolve({ ok: true, message: '(preview) approved' });
       default:
         return Promise.resolve(undefined);
     }

@@ -16,7 +16,13 @@ import {
 import { openGit } from '@vn/git';
 import { parseFountain } from '@vn/parse';
 import { buildModel } from '@vn/model';
-import { AssetStore, ProjectPaths, loadInputs } from '@vn/store';
+import {
+  AssetStore,
+  ProjectPaths,
+  loadInputs,
+  setCharacterApproval,
+  writeApprovedPortrait,
+} from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { gateStatus } from '@vn/pipeline';
 import {
@@ -44,7 +50,12 @@ import {
 } from '@vn/authoring';
 import { runPipeline } from '@vn/scheduler';
 import type { ProjectModel, Providers } from '@vn/types';
-import type { PipelineRunResult, PipelineStatus } from '../shared/ipc.js';
+import type {
+  ApproveResult,
+  GateCandidate,
+  PipelineRunResult,
+  PipelineStatus,
+} from '../shared/ipc.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -134,9 +145,9 @@ export class WorkspaceSession {
     };
   }
 
-  private async buildBackend(config: ProjectConfig): Promise<AgentBackend> {
+  private async buildBackend(config: ProjectConfig, model?: string): Promise<AgentBackend> {
     if (this.mock) return new MockAgentBackend();
-    const modelId = config.models.text;
+    const modelId = model ?? config.models.text;
     const vendor = modelId.toLowerCase().startsWith('claude') ? 'anthropic' : 'gemini';
     const keys = await resolveKeys(config, {
       secretsDirs: await secretDirsFor(this.dir),
@@ -177,8 +188,38 @@ export class WorkspaceSession {
     return agent.currentMode;
   }
 
+  /** Hot-swap the text model and rebuild the backend, preserving conversation state. */
+  async setModel(modelId: string): Promise<string> {
+    this.model = modelId;
+    if (this.mock) return modelId;
+    const agent = await this.ensureAgent();
+    agent.setBackend(await this.buildBackend(await loadConfig(this.dir), modelId));
+    return modelId;
+  }
+
   async clearAgent(): Promise<void> {
     (await this.ensureAgent()).clear();
+  }
+
+  /** Portrait candidates for a character at the approval gate (from the manifest). */
+  async gateCandidates(characterId: string): Promise<GateCandidate[]> {
+    const project = await loadProject(this.dir);
+    return project.store
+      .manifest()
+      .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId)
+      .map((a) => ({ hash: a.hash, accepted: a.accepted }));
+  }
+
+  /** Flip a character to approved with `hash`: copy the visible portrait, accept the asset. */
+  async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
+    const project = await loadProject(this.dir);
+    if (!project.store.has(hash)) return { ok: false, message: `No asset "${hash}" in the store.` };
+    const flipped = await setCharacterApproval(project.paths, characterId, hash);
+    if (!flipped) return { ok: false, message: `No character file for "${characterId}".` };
+    const bytes = await project.store.read({ hash, ext: 'png' });
+    await writeApprovedPortrait(project.paths, characterId, bytes);
+    await project.store.accept(hash);
+    return { ok: true, message: `Approved ${characterId} → ${hash}.` };
   }
 
   async status(): Promise<PipelineStatus> {

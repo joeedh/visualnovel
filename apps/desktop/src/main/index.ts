@@ -50,6 +50,9 @@ function registerIpc(): void {
   ipcMain.handle('agent:setMode', (_event: IpcMainInvokeEvent, mode: AgentMode) =>
     getSession().setMode(mode),
   );
+  ipcMain.handle('agent:setModel', (_event: IpcMainInvokeEvent, modelId: string) =>
+    getSession().setModel(modelId),
+  );
   ipcMain.handle('agent:clear', () => getSession().clearAgent());
   ipcMain.handle(
     'plan:decision',
@@ -64,6 +67,14 @@ function registerIpc(): void {
   ipcMain.handle('pipeline:status', () => getSession().status());
   ipcMain.handle('pipeline:run', (_event: IpcMainInvokeEvent, opts: { mock: boolean }) =>
     getSession().runPipeline(opts.mock),
+  );
+  ipcMain.handle('gate:candidates', (_event: IpcMainInvokeEvent, characterId: string) =>
+    getSession().gateCandidates(characterId),
+  );
+  ipcMain.handle(
+    'gate:approve',
+    (_event: IpcMainInvokeEvent, payload: { characterId: string; hash: string }) =>
+      getSession().approveCharacter(payload.characterId, payload.hash),
   );
 }
 

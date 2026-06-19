@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { api, isLive, onAgentEvent } from './api';
+import { Palette } from './Palette';
+import { Floor } from './Floor';
 import type {
   AgentMode,
   PipelineStatus,
   Plan,
   PlanRequest,
-  Task,
   WorkspaceIndex,
 } from '../src/shared/ipc';
 
@@ -33,17 +34,23 @@ export function App(): JSX.Element {
   const [planReq, setPlanReq] = useState<PlanRequest | null>(null);
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const [model, setModelState] = useState('claude-opus-4-8');
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const pushFeed = useCallback((role: FeedItem['role'], text: string) => {
     setFeed((f) => [...f, { id: ++feedSeq, role, text }]);
   }, []);
 
+  const loadStatus = useCallback(() => {
+    void api.invoke('pipeline:status').then(setStatus);
+  }, []);
+
   // Load workspace index + pipeline status once.
   useEffect(() => {
     void api.invoke('workspace:index').then(setIndex);
-    void api.invoke('pipeline:status').then(setStatus);
-  }, []);
+    loadStatus();
+  }, [loadStatus]);
 
   // Subscribe to the agent event stream.
   useEffect(() => {
@@ -93,6 +100,18 @@ export function App(): JSX.Element {
     setMode(applied ?? next);
   }, [mode]);
 
+  const setModel = useCallback(async (id: string) => {
+    const applied = await api.invoke('agent:setModel', id);
+    setModelState(applied ?? id);
+  }, []);
+
+  const clearConvo = useCallback(async () => {
+    await api.invoke('agent:clear');
+    setFeed([]);
+    setMode('plan');
+    setDboxLine('Conversation cleared. Back to plan mode.');
+  }, []);
+
   const decidePlan = useCallback(
     (approved: boolean) => {
       if (!planReq) return;
@@ -113,12 +132,18 @@ export function App(): JSX.Element {
     }
   }, []);
 
-  // Shift-Tab toggles mode (the REPL's gesture).
+  // Shift-Tab toggles mode (the REPL's gesture); "/" opens the palette; Escape closes it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName ?? '';
       if (e.shiftKey && e.key === 'Tab') {
         e.preventDefault();
         void toggleMode();
+      } else if (e.key === '/' && !/^(input|textarea)$/i.test(tag)) {
+        e.preventDefault();
+        setPaletteOpen(true);
+      } else if (e.key === 'Escape') {
+        setPaletteOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -133,6 +158,7 @@ export function App(): JSX.Element {
         mode={mode}
         toggleMode={toggleMode}
         title={index?.title}
+        model={model}
       />
       {room === 'studio' ? (
         <Studio
@@ -144,9 +170,20 @@ export function App(): JSX.Element {
           inputRef={inputRef}
           send={send}
           busy={busy}
+          openPalette={() => setPaletteOpen(true)}
         />
       ) : (
-        <Floor status={status} runPipeline={runPipeline} busy={busy} />
+        <Floor status={status} runPipeline={runPipeline} refresh={loadStatus} busy={busy} />
+      )}
+      {paletteOpen && (
+        <Palette
+          currentModel={model}
+          mode={mode}
+          onModel={setModel}
+          onToggleMode={toggleMode}
+          onClear={clearConvo}
+          onClose={() => setPaletteOpen(false)}
+        />
       )}
     </div>
   );
@@ -158,6 +195,7 @@ function Topbar(props: {
   mode: AgentMode;
   toggleMode: () => void;
   title?: string;
+  model: string;
 }): JSX.Element {
   return (
     <header className="topbar">
@@ -185,6 +223,9 @@ function Topbar(props: {
         </button>
       </nav>
       <div className="spacer" />
+      <span className="badge-live mono" title="text model (open the palette with /)">
+        {props.model}
+      </span>
       <span className={`badge-live${isLive ? ' live' : ''}`}>{isLive ? 'live' : 'preview'}</span>
       <div className="mode">
         <button className={props.mode === 'plan' ? 'on warm' : ''} onClick={props.toggleMode}>
@@ -214,6 +255,7 @@ function Studio(props: {
   inputRef: RefObject<HTMLInputElement>;
   send: () => void;
   busy: boolean;
+  openPalette: () => void;
 }): JSX.Element {
   const idx = props.index;
   return (
@@ -296,11 +338,20 @@ function Studio(props: {
           <div className="composer">
             <input
               ref={props.inputRef}
+              name="composer"
               placeholder="Reply to vnauthor, or ask for a change…"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') props.send();
               }}
             />
+            <button
+              className="cmdbtn"
+              onClick={props.openPalette}
+              title="Commands & skills (/)"
+              aria-label="Commands and skills"
+            >
+              /
+            </button>
             <button className="send" onClick={props.send} disabled={props.busy} aria-label="Send">
               ↑
             </button>
@@ -333,44 +384,6 @@ function PlanCard(props: { plan: Plan; decide: (approved: boolean) => void }): J
             Approve →
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Floor(props: {
-  status: PipelineStatus | null;
-  runPipeline: () => void;
-  busy: boolean;
-}): JSX.Element {
-  const tasks: Task[] = props.status?.tasks ?? [];
-  const running = tasks.filter((t) => t.status === 'running').length;
-  return (
-    <div className="floor">
-      <div className="floorbar">
-        <div className="title">Production Floor</div>
-        <div className="sub">
-          {tasks.length} tasks · {running} running
-          {props.status?.blockedOnGate ? ' · blocked on gate' : ''}
-        </div>
-        <div className="spacer" />
-        <button className="runbtn" onClick={props.runPipeline} disabled={props.busy}>
-          ▸ run to next gate
-        </button>
-      </div>
-      <div className="tasks">
-        {tasks.map((t) => (
-          <div className="task" key={t.hash}>
-            <div className="row">
-              <span className="kind">{t.kind}</span>
-              <span className="h">{t.hash.slice(0, 8)}</span>
-            </div>
-            <span className={`st ${t.status}`}>
-              <span className="d" />
-              {t.status}
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   );

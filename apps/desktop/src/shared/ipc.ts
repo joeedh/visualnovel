@@ -49,6 +49,18 @@ export interface PipelineRunResult {
   preview: { pendingTasks: number; imageCalls: number; reviewCalls: number };
 }
 
+/** A portrait candidate offered for a character at the approval gate. */
+export interface GateCandidate {
+  hash: string;
+  accepted: boolean;
+}
+
+/** Outcome of approving a character's portrait. */
+export interface ApproveResult {
+  ok: boolean;
+  message: string;
+}
+
 /**
  * Channels invoked by the renderer and answered by main (request → response).
  * Keep the key as the literal channel string; the value types the (args) → result.
@@ -57,10 +69,13 @@ export interface InvokeChannels {
   'workspace:index': () => WorkspaceIndex;
   'agent:run': (userInput: string) => RunResult;
   'agent:setMode': (mode: AgentMode) => AgentMode;
+  'agent:setModel': (modelId: string) => string;
   'agent:clear': () => void;
   'plan:decision': (payload: { id: number; decision: PlanDecision }) => void;
   'pipeline:status': () => PipelineStatus;
   'pipeline:run': (opts: { mock: boolean }) => PipelineRunResult;
+  'gate:candidates': (characterId: string) => GateCandidate[];
+  'gate:approve': (payload: { characterId: string; hash: string }) => ApproveResult;
 }
 
 /** Events pushed from main to the renderer (fire-and-forget). */
