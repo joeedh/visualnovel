@@ -16,8 +16,11 @@ without pulling in the generative pipeline.
 - Design: [`docs/vn-generator-report.md`](docs/vn-generator-report.md)
 - Implementation plan: [`docs/plans/initial-implementation.md`](docs/plans/initial-implementation.md)
 - Authoring agent plan: [`docs/plans/authoring-agent-implementation.md`](docs/plans/authoring-agent-implementation.md)
-- **Out of scope:** engine export (turning the manifest into a runnable VN). The pipeline
-  stops at a populated `build/` + `manifest.json`.
+- Runner plan: [`docs/plans/runner.md`](docs/plans/runner.md)
+- **Out of scope:** _external_ engine export (Ren'Py/Ink/etc.). The generative pipeline core
+  stops at a populated `build/` + `manifest.json`. On top of that sits a small, in-house
+  **playable** (`vngen export` → `story.play.json`) and a **desktop runner** to actually
+  watch a generated VN — see [Playable & runner](#playable--desktop-runner) below.
 
 Alongside the pipeline is **`vnauthor`**, a plan-first conversational agent that helps an
 author write and refine the _inputs_ (characters, screenplay, locations). It lives entirely
@@ -181,7 +184,69 @@ node apps/cli/dist/cli.js run    examples/sample
 node apps/cli/dist/cli.js approve examples/sample            # interactively approve portraits
 node apps/cli/dist/cli.js run    examples/sample             # clears the gate, renders shots
 node apps/cli/dist/cli.js status examples/sample
+node apps/cli/dist/cli.js export examples/sample             # write the playable (story.play.json)
 ```
+
+## Playable & desktop runner
+
+The pipeline is presentation-agnostic — it stops at `manifest.json`. To actually _watch_ a
+generated VN, `@vn/export` projects the model + manifest into a small in-house **playable**
+and the desktop app plays it. This is deliberately **not** an external DSL export; it is a
+thin, ordered view over the existing `Scene`/`Shot`/`Asset` types. See
+[`docs/plans/runner.md`](docs/plans/runner.md).
+
+### `story.play.json` (the playable)
+
+`vngen export [dir]` writes `vngen/build/story.play.json` via `buildPlayable(model, store)`
+(pure, in `@vn/export`). Each scene flattens into ordered **beats** plus its branch edges:
+
+```jsonc
+{
+  "version": 1,
+  "title": "…",
+  "start": "arrival", // entry scene id
+  "characters": { "aiko": { "name": "Aiko", "portrait": { "hash": "…", "ext": "png" } } },
+  "scenes": {
+    "arrival": {
+      "beats": [
+        { "type": "show", "image": { "hash": "…", "ext": "png" } }, // bg/shot (image omitted if none)
+        { "type": "say", "who": "aiko", "text": "Um… hello." }, // attributed dialogue/parenthetical
+        { "type": "narrate", "text": "She bows, a little too deeply." }, // narration/action
+      ],
+      "choices": [{ "label": "Introduce yourself", "goto": "greet" }],
+      "next": "rooftop", // followed when choices is empty
+    },
+  },
+}
+```
+
+- **Real line ids drive per-line art.** Scenes carry structured `lines` (`SceneLine`, derived
+  from the screenplay at model build with stable `${sceneId}:L<n>` ids); `Shot.coversLines`
+  binds shots to exact lines. The exporter walks `scene.lines`, emitting a `show` beat
+  whenever the covering shot changes, then a `say`/`narrate`. When a run's shots aren't
+  in-memory, it reconstructs the deterministic shot grouping so `show` boundaries still land.
+- **Asset refs are `{hash, ext}`**, resolved by the runner (never inlined). A missing asset
+  is **omitted, not an error** — a partially- or un-generated project still plays (placeholder
+  background/portrait). `@vn/export` is a boundaries-constrained leaf: like `@vn/authoring` it
+  must not import `@vn/pipeline`/`@vn/scheduler`.
+
+### Desktop runner (`apps/desktop`, PLAY room)
+
+The Electron app's third room (**STUDIO · FLOOR · PLAY**) is the runner, in
+`renderer/Runner.tsx`:
+
+- **Live, no file needed.** The renderer calls the `story:play` IPC channel; the main process
+  builds the playable in-process from the loaded model + store (`session.playable()`).
+- **Image delivery — `vnasset://`.** A privileged custom protocol (registered in
+  `src/main/index.ts`) streams `build/assets/<hash>.<ext>` for `vnasset://<hash>.<ext>`, so
+  `<img src="vnasset://…">` loads content-addressed bytes. This is the app's only image path.
+- **Playthrough.** State is a navigation stack (`{ sceneId, frameIndex }[]`, last = current):
+  click / Space / → advances a beat; at scene end it shows choice buttons or auto-follows
+  `next`; a leaf scene shows "The End". **Back** (← / Backspace) rewinds. **Save / Load /
+  Reset** persist the stack to `localStorage`, keyed by workspace title.
+
+Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (defaults to the
+bundled sample in mock mode; `VN_PROJECT=<dir>` overrides the workspace).
 
 ## Authoring agent (`vnauthor`)
 
