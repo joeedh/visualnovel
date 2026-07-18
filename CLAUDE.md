@@ -248,6 +248,14 @@ The Electron app's third room (**STUDIO · FLOOR · PLAY**) is the runner, in
 Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (defaults to the
 bundled sample in mock mode; `VN_PROJECT=<dir>` overrides the workspace).
 
+**Live dev loop:** `pnpm --filter @vn/desktop dev` (`scripts/dev.desktop.mjs`) runs the three
+moving parts together — esbuild `--watch` (main + preload), the Vite renderer server with
+HMR, and Electron launched against it once it's up (`VITE_DEV_SERVER_URL`, which
+`src/main/index.ts` loads instead of the built file). Quitting the window (or Ctrl-C) tears
+the whole tree down. `VN_DEV_PORT` overrides the renderer port (default 5176); `VN_MOCK`/
+`VN_PROJECT` pass through to the main process. Main-process edits need a restart (the renderer
+hot-reloads on its own).
+
 ## Authoring agent (`vnauthor`)
 
 A plan-first, git-backed conversational agent that helps an author write and refine the

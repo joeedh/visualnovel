@@ -87,6 +87,8 @@ export default tseslint.config(
         module: 'writable',
         require: 'readonly',
         console: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
       },
     },
     rules: {

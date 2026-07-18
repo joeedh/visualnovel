@@ -8,6 +8,7 @@
     "build:main": "node ../../scripts/esbuild.desktop.mjs",
     "build:renderer": "vite build",
     "build": "pnpm build:main && pnpm build:renderer",
+    "dev": "node ../../scripts/dev.desktop.mjs",
     "dev:renderer": "vite",
     "start": "electron ."
   },
