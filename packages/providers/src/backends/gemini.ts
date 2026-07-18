@@ -17,6 +17,17 @@ const MIME: Record<string, string> = {
   webp: 'image/webp',
 };
 
+/** Best-effort one-line description of an SDK/HTTP error for the wrapped message. */
+function causeMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
 function lazyClient(apiKey: string): () => Promise<any> {
   let clientPromise: Promise<any> | undefined;
   return () => {
@@ -30,7 +41,29 @@ function lazyClient(apiKey: string): () => Promise<any> {
   };
 }
 
+/** Leading magic bytes of the image formats the pipeline produces/consumes. */
+const IMAGE_MAGIC: number[][] = [
+  [0x89, 0x50, 0x4e, 0x47], // PNG
+  [0xff, 0xd8, 0xff], // JPEG
+  [0x47, 0x49, 0x46, 0x38], // GIF
+  [0x52, 0x49, 0x46, 0x46], // RIFF (WebP)
+];
+
+function looksLikeImage(bytes: Uint8Array): boolean {
+  return IMAGE_MAGIC.some((sig) => sig.every((b, i) => bytes[i] === b));
+}
+
 function imagePart(img: ImageInput): any {
+  // Catch placeholder/mock bytes before the network round-trip — Gemini otherwise rejects
+  // them with an opaque "Unable to process input image" 400. The usual cause is a reference
+  // asset generated with `--mock` (deterministic non-image bytes) reused in a real run.
+  if (!looksLikeImage(img.bytes)) {
+    const head = JSON.stringify(Buffer.from(img.bytes.slice(0, 8)).toString('latin1'));
+    throw new ProviderError(
+      `reference image is not a valid PNG/JPEG/WebP (starts with ${head}). ` +
+        'Assets generated with --mock are placeholders — regenerate the references without --mock.',
+    );
+  }
   return {
     inlineData: {
       mimeType: MIME[img.ext.toLowerCase()] ?? 'image/png',
@@ -69,7 +102,9 @@ export function createGeminiChat(apiKey: string, modelId: string): ChatBackend {
         });
         return res.text ?? '';
       } catch (err) {
-        throw new ProviderError(`Gemini request failed (${modelId})`, { cause: err });
+        throw new ProviderError(`Gemini request failed (${modelId}): ${causeMessage(err)}`, {
+          cause: err,
+        });
       }
     },
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
@@ -102,7 +137,9 @@ export function createGeminiChat(apiKey: string, modelId: string): ChatBackend {
           .map((p: any) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} }));
         return { text: text || undefined, toolCalls };
       } catch (err) {
-        throw new ProviderError(`Gemini tool request failed (${modelId})`, { cause: err });
+        throw new ProviderError(`Gemini tool request failed (${modelId}): ${causeMessage(err)}`, {
+          cause: err,
+        });
       }
     },
   };
@@ -111,7 +148,14 @@ export function createGeminiChat(apiKey: string, modelId: string): ChatBackend {
 /** Gemini image generation/editing backend — "nano banana" (report §8). */
 export function createGeminiImage(apiKey: string, modelId: string): ImageBackend {
   const client = lazyClient(apiKey);
-  const run = async (parts: any[], params: ImageParams): Promise<ImageResult> => {
+  // Builds the request parts inside the async body so input-validation failures (see
+  // `imagePart`) surface as a rejected promise rather than a synchronous throw.
+  const run = async (
+    images: ImageInput[],
+    prompt: string,
+    params: ImageParams,
+  ): Promise<ImageResult> => {
+    const parts = [...images.map(imagePart), { text: prompt }];
     const ai = await client();
     try {
       const res = await ai.models.generateContent({
@@ -125,13 +169,14 @@ export function createGeminiImage(apiKey: string, modelId: string): ImageBackend
       return extractImage(res, modelId);
     } catch (err) {
       if (err instanceof ProviderError) throw err;
-      throw new ProviderError(`Gemini image request failed (${modelId})`, { cause: err });
+      throw new ProviderError(`Gemini image request failed (${modelId}): ${causeMessage(err)}`, {
+        cause: err,
+      });
     }
   };
   return {
     modelId,
-    generate: (prompt, refs, params) => run([...refs.map(imagePart), { text: prompt }], params),
-    edit: (base, prompt, refs, params) =>
-      run([imagePart(base), ...refs.map(imagePart), { text: prompt }], params),
+    generate: (prompt, refs, params) => run(refs, prompt, params),
+    edit: (base, prompt, refs, params) => run([base, ...refs], prompt, params),
   };
 }

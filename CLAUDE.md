@@ -142,36 +142,40 @@ reuses the input-side packages (types, util, config, parse, model, store, provid
 ## CLI
 
 ```
-vngen run [dir] [--mock]            parse → validate → preview → execute to the next gate
+vngen run [dir] [--mock]            parse → validate → execute to the next gate
 vngen approve [dir] [--character][--hash][--yes]  interactively approve pending portraits
 vngen status [dir]                  task/asset/approval summary
 vngen graph [dir]                   emit the story branch graph (Mermaid)
 vngen cost [dir]                    dry-run cost preview
 ```
 
-`--mock` uses deterministic offline providers (no API keys needed). Without it, `run`
-constructs real Gemini/Claude clients and requires a Gemini key (env var named in
-`project.yaml`, or a secret file under `<dir>/keys/` — or a shared `keys/` at the
-enclosing repo root, consulted after the project's own).
+`--mock` makes `run` a **dry run**: it plans, writes the story graph, and previews the work
+(like `cost`) but calls no model and writes no assets — no API keys needed. Without `--mock`,
+`run` constructs real Gemini/Claude clients and requires a Gemini key (env var named in
+`project.yaml`, or a secret file under `<dir>/keys/` — or a shared `keys/` at the enclosing
+repo root, consulted after the project's own). Mock runs never produce image bytes, so they
+can't be mixed into a real run's reference assets.
 
 ### Project layout on disk
 
 Authored input lives at the project root (`project.yaml`, `characters/<id>/character.md`,
-`locations/<id>.md`, `screenplay/*.fountain`). Everything generated lives under `.vngen/`:
+`locations/<id>.md`, `screenplay/*.fountain`). Everything generated lives under `vngen/`:
 `work/` (human-editable: story graph, candidates, `approved.png`), `build/` (machine:
-`assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). `.vngen/` is gitignored.
+`assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). `vngen/` is committed (it is
+the reproducible output of a run), not gitignored.
 
 ### Sample project
 
-[`examples/sample`](examples/sample) is a small branching VN. End-to-end with mocks:
+[`examples/sample`](examples/sample) is a small branching VN. Preview offline, then generate:
 
 ```sh
 pnpm build
 node apps/cli/dist/cli.js graph  examples/sample
-node apps/cli/dist/cli.js cost   examples/sample
-node apps/cli/dist/cli.js run    examples/sample --mock      # halts at the aiko gate
-node apps/cli/dist/cli.js approve examples/sample --yes      # approve pending portraits (defaults)
-node apps/cli/dist/cli.js run    examples/sample --mock      # clears the gate
+node apps/cli/dist/cli.js run    examples/sample --mock      # dry run: previews planned work
+# a real run needs a Gemini key (see above); it generates portraits, then halts at the gate:
+node apps/cli/dist/cli.js run    examples/sample
+node apps/cli/dist/cli.js approve examples/sample            # interactively approve portraits
+node apps/cli/dist/cli.js run    examples/sample             # clears the gate, renders shots
 node apps/cli/dist/cli.js status examples/sample
 ```
 
@@ -241,8 +245,9 @@ agent honors.
 
 ## Conventions
 
-- **Secrets.** The `keys/` directory and `.vngen/` are gitignored. API key _values_ must
-  never be logged or committed. `project.yaml` records only model ids and env-var names.
+- **Secrets.** The `keys/` directory is gitignored (the generated `vngen/` tree is not). API
+  key _values_ must never be logged or committed. `project.yaml` records only model ids and
+  env-var names.
   `resolveKeys` throws errors naming the _source_ (env var / file), never the value.
 - **Imports** use explicit `.js` extensions on relative paths (ESM + `verbatimModuleSyntax`).
   jest's `moduleNameMapper` strips them; esbuild and `tsgo` resolve them.

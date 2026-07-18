@@ -1,8 +1,11 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Logger } from '@vn/types';
 import { AssetStore, ProjectPaths } from '@vn/store';
-import { cmdApprove, type ApproveIO } from './commands.js';
+import { cmdApprove, cmdRun, type ApproveIO } from './commands.js';
+
+const silentLogger = { info() {}, warn() {}, error() {}, debug() {} } as unknown as Logger;
 
 /** A minimal project on disk plus its asset store, ready for `cmdApprove`. */
 async function tempProject(): Promise<{
@@ -60,6 +63,23 @@ const portraitMeta = (characterId: string) => ({
 
 const readChar = (dir: string): Promise<string> =>
   fs.readFile(join(dir, 'characters', 'aiko', 'character.md'), 'utf8');
+
+describe('cmdRun --mock (dry run)', () => {
+  it('previews planned work and writes no assets', async () => {
+    const { dir, cleanup } = await tempProject();
+    try {
+      const { code, out } = await capture(() =>
+        cmdRun({ positional: [dir], flags: { mock: true } }, silentLogger),
+      );
+      expect(code).toBe(0);
+      expect(out).toContain('Dry run');
+      const store = await AssetStore.open(new ProjectPaths(dir));
+      expect(store.manifest()).toHaveLength(0);
+    } finally {
+      await cleanup();
+    }
+  });
+});
 
 describe('cmdApprove — single character (--character)', () => {
   it('auto-selects the portrait hash from the manifest', async () => {

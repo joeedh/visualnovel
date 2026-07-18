@@ -5,6 +5,7 @@ import {
   ChatVisionReviewer,
   RecordedChatBackend,
   StubImageBackend,
+  createGeminiImage,
   mapRefLoader,
   mergeReports,
   supportsEffort,
@@ -82,6 +83,16 @@ describe('BackendImageProvider — ImageProvider contract', () => {
       modelId: 'mock-image',
     });
     expect(result.bytes.length).toBeGreaterThan(0);
+  });
+});
+
+describe('createGeminiImage — input validation', () => {
+  it('rejects non-image reference bytes before any API call (e.g. --mock placeholders)', async () => {
+    const image = createGeminiImage('fake-key', 'gemini-2.5-flash-image');
+    const mockRef = { bytes: new TextEncoder().encode('IMG:deadbeef'), ext: 'png' };
+    await expect(
+      image.generate('a shot', [mockRef], { modelId: 'gemini-2.5-flash-image' }),
+    ).rejects.toThrow(/not a valid PNG\/JPEG\/WebP/);
   });
 });
 

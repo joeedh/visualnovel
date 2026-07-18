@@ -3,7 +3,7 @@ import type { Asset, Logger } from '@vn/types';
 import { toMermaid } from '@vn/model';
 import { writeApprovedPortrait, writeStoryGraph, setCharacterApproval } from '@vn/store';
 import { gateStatus } from '@vn/pipeline';
-import { runPipeline } from '@vn/scheduler';
+import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
 
 /** Parsed CLI invocation: positional args + `--flag[=value]` options. */
@@ -66,6 +66,19 @@ export async function cmdStatus(args: Args): Promise<number> {
   return 0;
 }
 
+/** Print the planned-work preview from a dry-run summary (shared by `cost` and `run --mock`). */
+function printPreview(summary: RunSummary, header: string): void {
+  const { preview } = summary;
+  ok(header);
+  ok(`  pending tasks: ${preview.pendingTasks}`);
+  ok(`  image calls:   ${preview.imageCalls}`);
+  ok(`  review calls:  ${preview.reviewCalls}`);
+  for (const [kind, n] of Object.entries(preview.byKind)) if (n) ok(`    ${kind}: ${n}`);
+  ok(
+    `Gate: ${summary.gate.cleared ? 'cleared' : `awaiting approval — ${summary.gate.pending.join(', ')}`}`,
+  );
+}
+
 /** `vngen cost [dir]` — dry-run cost preview without spending (report §10). */
 export async function cmdCost(args: Args, logger: Logger): Promise<number> {
   const dir = args.positional[0] ?? '.';
@@ -74,19 +87,18 @@ export async function cmdCost(args: Args, logger: Logger): Promise<number> {
   assertValid(project.model);
   const providers = await buildProviders(project, { mock: true, logger });
   const summary = await runPipeline({ ...project, providers, dryRun: true, logger });
-  const { preview } = summary;
-  ok('Cost preview (upper bound):');
-  ok(`  pending tasks: ${preview.pendingTasks}`);
-  ok(`  image calls:   ${preview.imageCalls}`);
-  ok(`  review calls:  ${preview.reviewCalls}`);
-  for (const [kind, n] of Object.entries(preview.byKind)) if (n) ok(`    ${kind}: ${n}`);
-  ok(`Gate: ${summary.gate.cleared ? 'cleared' : `awaiting ${summary.gate.pending.join(', ')}`}`);
+  printPreview(summary, 'Cost preview (upper bound):');
   return 0;
 }
 
-/** `vngen run [dir] [--mock]` — execute to the next gate (report §10). */
+/**
+ * `vngen run [dir] [--mock]` — execute to the next gate (report §10). `--mock` is a dry run:
+ * it plans, writes the story graph, and previews the work without calling any model or
+ * writing assets (no API keys needed). Drop `--mock` to generate for real.
+ */
 export async function cmdRun(args: Args, logger: Logger): Promise<number> {
   const dir = args.positional[0] ?? '.';
+  const mock = Boolean(args.flags['mock']);
   const project = await loadProject(dir);
   if (project.model.diagnostics.length) {
     ok('Validation:');
@@ -95,17 +107,20 @@ export async function cmdRun(args: Args, logger: Logger): Promise<number> {
   assertValid(project.model);
 
   await writeStoryGraph(project.paths, toMermaid(project.model));
-  const providers = await buildProviders(project, {
-    mock: Boolean(args.flags['mock']),
-    logger,
-  });
+  const providers = await buildProviders(project, { mock, logger });
 
   const summary = await runPipeline({
     ...project,
     providers,
+    dryRun: mock,
     logger,
     now: () => new Date().toISOString(),
   });
+
+  if (mock) {
+    printPreview(summary, 'Dry run (--mock) — planned work, nothing generated:');
+    return 0;
+  }
 
   ok(`Ran ${summary.ran.length} task(s).`);
   const failed = summary.ran.filter((t) => t.status === 'failed');

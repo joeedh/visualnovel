@@ -5,6 +5,3 @@ coverage
 *.tsbuildinfo
 *.tmp-*
 .DS_Store
-
-# Generated per-project pipeline state, build assets, and work tree.
-.vngen/

@@ -431,7 +431,7 @@ machine output).
 
 ```
 my-novel/
-└─ .vngen/                          # all generated data, gitignorable (or partly tracked)
+└─ vngen/                           # all generated data, committed (reproducible run output)
    │
    ├─ work/                         # human-readable, editable intermediate artifacts
    │  ├─ characters/

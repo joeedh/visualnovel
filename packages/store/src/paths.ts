@@ -2,7 +2,7 @@ import { join } from 'node:path';
 
 /**
  * The on-disk layout for a project (report §9). Input files live at the project root;
- * everything generated lives under `.vngen/` split into a human-editable `work/` tree,
+ * everything generated lives under `vngen/` split into a human-editable `work/` tree,
  * a machine `build/` tree, and pipeline `state/`.
  */
 export class ProjectPaths {
@@ -30,7 +30,7 @@ export class ProjectPaths {
 
   // Generated — report §9.2
   get vngen(): string {
-    return join(this.root, '.vngen');
+    return join(this.root, 'vngen');
   }
   get work(): string {
     return join(this.vngen, 'work');

@@ -155,8 +155,8 @@ A two-state machine in `loop.ts`:
 
 Always-confirm (regardless of mode): `git_revert`/`restore` (must name the target ref),
 file deletion, first run of a script-bearing skill. **Secret hygiene** is inherited —
-keys resolve via `resolveKeys`, are never read into context or logged; `keys/` and
-`.vngen/` stay gitignored. If the tree is dirty with non-agent changes, surface them
+keys resolve via `resolveKeys`, are never read into context or logged; `keys/` stays
+gitignored. If the tree is dirty with non-agent changes, surface them
 before committing rather than sweeping them in. If not a git repo, offer `git init`,
 don't require it.
 
