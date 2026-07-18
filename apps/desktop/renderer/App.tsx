@@ -172,6 +172,7 @@ export function App(): JSX.Element {
           send={send}
           busy={busy}
           openPalette={() => setPaletteOpen(true)}
+          setRoom={setRoom}
         />
       ) : room === 'floor' ? (
         <Floor status={status} runPipeline={runPipeline} refresh={loadStatus} busy={busy} />
@@ -265,8 +266,20 @@ function Studio(props: {
   send: () => void;
   busy: boolean;
   openPalette: () => void;
+  setRoom: (r: Room) => void;
 }): JSX.Element {
   const idx = props.index;
+
+  // Drop a targeted starter into the composer and focus it, so the next agent
+  // turn is scoped to the picked entity. The composer is uncontrolled (ref-driven).
+  const seed = (text: string) => {
+    const el = props.inputRef.current;
+    if (!el) return;
+    el.value = text;
+    el.focus();
+    el.setSelectionRange(text.length, text.length);
+  };
+
   return (
     <div className="studio">
       <aside className="rail">
@@ -276,9 +289,25 @@ function Studio(props: {
           </div>
           {idx?.characters.map((c) => (
             <div className="rail-item" key={c.id}>
-              <span className="swatch" style={{ background: SWATCH[c.status] }} />
-              <span className="nm">{c.name}</span>
-              <span className={`pip ${c.status}`}>{c.status}</span>
+              <button
+                className="rail-face"
+                onClick={() => seed(`Refine ${c.name}'s character — `)}
+                title={`Ask vnauthor to revise ${c.name}`}
+              >
+                <span className="swatch" style={{ background: SWATCH[c.status] }} />
+                <span className="nm">{c.name}</span>
+              </button>
+              {c.status === 'candidates' ? (
+                <button
+                  className="rail-jump"
+                  onClick={() => props.setRoom('floor')}
+                  title="Portraits awaiting approval — go to the gate"
+                >
+                  gate →
+                </button>
+              ) : (
+                <span className={`pip ${c.status}`}>{c.status}</span>
+              )}
             </div>
           ))}
         </div>
@@ -287,13 +316,18 @@ function Studio(props: {
             SETS <span className="ct">{idx?.locations.length ?? 0}</span>
           </div>
           {idx?.locations.map((l) => (
-            <div className="rail-item" key={l.id}>
+            <button
+              className="rail-item pick"
+              key={l.id}
+              onClick={() => seed(`Refine the ${l.name} location — `)}
+              title={`Ask vnauthor to revise ${l.name}`}
+            >
               <span
                 className="swatch"
                 style={{ background: 'linear-gradient(135deg,#e0a857,#6b4f8a)' }}
               />
               <span className="nm">{l.name}</span>
-            </div>
+            </button>
           ))}
         </div>
         <div className="rail-group">
@@ -301,10 +335,15 @@ function Studio(props: {
             SCENES <span className="ct">{idx?.scenes.length ?? 0}</span>
           </div>
           {idx?.scenes.map((s) => (
-            <div className="scene-row" key={s.id}>
+            <button
+              className="scene-row pick"
+              key={s.id}
+              onClick={() => seed(`Revise scene ${s.id} — `)}
+              title={`Ask vnauthor to revise scene ${s.id}`}
+            >
               <span className={s.reachable ? 'ok' : 'un'}>{s.reachable ? '◆' : '◇'}</span>
               <span className="nm">{s.id}</span>
-            </div>
+            </button>
           ))}
         </div>
       </aside>

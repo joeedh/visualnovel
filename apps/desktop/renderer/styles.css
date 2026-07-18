@@ -244,6 +244,51 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Interactive rail rows: seed a targeted composer prompt on click. */
+.rail-face {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.rail-item.pick,
+.scene-row.pick {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.rail-face:hover,
+.rail-item.pick:hover,
+.scene-row.pick:hover {
+  background: var(--ink-line);
+  border-radius: var(--r-chrome);
+}
+.rail-jump {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(69, 200, 214, 0.35);
+  color: var(--signal);
+  background: none;
+  cursor: pointer;
+  flex: none;
+}
+.rail-jump:hover {
+  background: rgba(69, 200, 214, 0.12);
+}
 .swatch {
   width: 14px;
   height: 14px;
