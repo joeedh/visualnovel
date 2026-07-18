@@ -18,6 +18,9 @@ const ALLOWED = {
   parse: ['types', 'util'],
   model: ['types', 'util', 'parse'],
   store: ['types', 'util', 'parse'],
+  // Leaf exporter: manifest → playable projection. Reuses the input-side + store packages;
+  // forbidden from the generative pipeline/scheduler (runner plan, Part B), like `authoring`.
+  export: ['types', 'util', 'parse', 'model', 'store'],
   git: ['util'],
   taskgraph: ['types', 'util', 'store'],
   providers: ['types', 'util', 'config'],
@@ -36,6 +39,7 @@ const ALLOWED = {
     'parse',
     'model',
     'store',
+    'export',
     'taskgraph',
     'providers',
     'pipeline',
@@ -52,6 +56,7 @@ const ALLOWED = {
     'parse',
     'model',
     'store',
+    'export',
     'git',
     'taskgraph',
     'providers',
@@ -99,6 +104,7 @@ export default tseslint.config(
         { type: 'parse', pattern: 'packages/parse', mode: 'folder' },
         { type: 'model', pattern: 'packages/model', mode: 'folder' },
         { type: 'store', pattern: 'packages/store', mode: 'folder' },
+        { type: 'export', pattern: 'packages/export', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
         { type: 'authoring', pattern: 'packages/authoring', mode: 'folder' },
         { type: 'taskgraph', pattern: 'packages/taskgraph', mode: 'folder' },

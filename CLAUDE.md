@@ -69,7 +69,7 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store      git
+  │   model store ──── export      git
   │     │   │  │  ╲     │
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
@@ -85,6 +85,8 @@ The pipeline spine (`pipeline → scheduler → cli`) and the authoring branch
 (`authoring → authoring-app`) are disjoint below `@vn/store`/`@vn/providers`: `@vn/authoring`
 reuses the input-side packages (types, util, config, parse, model, store, providers, git) but
 **must never import `@vn/pipeline` or `@vn/scheduler`** — enforced by `eslint-plugin-boundaries`.
+`@vn/export` is a similarly-constrained leaf: it projects the manifest into `story.play.json`
+and is likewise forbidden from the generative pipeline/scheduler.
 
 | Package             | Responsibility                                                                                                                                                                                                         |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -94,11 +96,12 @@ reuses the input-side packages (types, util, config, parse, model, store, provid
 | `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                         |
 | `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                             |
 | `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                              |
+| `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced). |
 | `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                  |
 | `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here.        |
 | `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                            |
 | `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                   |
-| `@vn/cli`           | `vngen run \| approve \| status \| graph \| cost`. Bundled by esbuild.                                                                                                                                                 |
+| `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost`. Bundled by esbuild.                                                                                                                                       |
 | `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent. |
 | `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                     |
 | `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                               |
@@ -146,6 +149,7 @@ vngen run [dir] [--mock]            parse → validate → execute to the next g
 vngen approve [dir] [--character][--hash][--yes]  interactively approve pending portraits
 vngen status [dir]                  task/asset/approval summary
 vngen graph [dir]                   emit the story branch graph (Mermaid)
+vngen export [dir]                  write vngen/build/story.play.json (the playable)
 vngen cost [dir]                    dry-run cost preview
 ```
 

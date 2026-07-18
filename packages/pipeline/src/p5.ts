@@ -14,6 +14,10 @@ export function shotId(sceneId: string, raw: string): string {
 export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
   const location = model.locations.get(scene.location);
   const variant = location?.variants[0]?.id ?? 'day';
+  // The establishing shot carries the scene's narration + non-attributed action beats.
+  const establishingLines = scene.lines
+    .filter((l) => l.kind === 'narration' || l.kind === 'action')
+    .map((l) => l.id);
   const shots: Shot[] = [
     {
       id: shotId(scene.id, 'establishing'),
@@ -21,19 +25,23 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       framing: 'establishing',
       location: variant,
       subjects: [],
-      coversLines: [],
+      coversLines: establishingLines,
       status: 'pending',
     },
   ];
   scene.characters.forEach((characterId, i) => {
     const character = model.characters.get(characterId);
+    // A character's medium shot covers that character's dialogue lines.
+    const coversLines = scene.lines
+      .filter((l) => l.kind === 'dialogue' && l.speaker === characterId)
+      .map((l) => l.id);
     shots.push({
       id: shotId(scene.id, `beat${i + 1}`),
       sceneId: scene.id,
       framing: 'medium',
       location: variant,
       subjects: [{ characterId, outfit: character?.defaultOutfit ?? 'default' }],
-      coversLines: [],
+      coversLines,
       status: 'pending',
     });
   });
@@ -78,6 +86,8 @@ export async function decomposeScene(
       DECOMP_SYSTEM,
     );
     if (!result.shots.length) return deterministicShots(scene, model);
+    // Only accept line ids the scene actually has, so the LLM cannot invent bindings.
+    const realLineIds = new Set(scene.lines.map((l) => l.id));
     return result.shots.map((s) => ({
       id: shotId(scene.id, s.id),
       sceneId: scene.id,
@@ -90,7 +100,7 @@ export async function decomposeScene(
         expression: sub.expression,
       })),
       camera: s.camera,
-      coversLines: s.coversLines,
+      coversLines: s.coversLines.filter((id) => realLineIds.has(id)),
       status: 'pending' as const,
     }));
   } catch {

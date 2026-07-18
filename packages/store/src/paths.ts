@@ -52,6 +52,10 @@ export class ProjectPaths {
   get manifest(): string {
     return join(this.build, 'manifest.json');
   }
+  /** The flattened, ordered playable a runner interprets (`vngen export`). */
+  get storyPlay(): string {
+    return join(this.build, 'story.play.json');
+  }
 
   // work/
   get storyGraph(): string {

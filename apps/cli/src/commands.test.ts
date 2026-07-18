@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@vn/types';
 import { AssetStore, ProjectPaths } from '@vn/store';
-import { cmdApprove, cmdRun, type ApproveIO } from './commands.js';
+import type { Playable } from '@vn/types';
+import { cmdApprove, cmdExport, cmdRun, type ApproveIO } from './commands.js';
 
 const silentLogger = { info() {}, warn() {}, error() {}, debug() {} } as unknown as Logger;
 
@@ -75,6 +76,28 @@ describe('cmdRun --mock (dry run)', () => {
       expect(out).toContain('Dry run');
       const store = await AssetStore.open(new ProjectPaths(dir));
       expect(store.manifest()).toHaveLength(0);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('cmdExport', () => {
+  it('writes a playable story.play.json projected from the model', async () => {
+    const { dir, cleanup } = await tempProject();
+    try {
+      const { code, out } = await capture(() => cmdExport({ positional: [dir], flags: {} }));
+      expect(code).toBe(0);
+      expect(out).toContain('Exported');
+      const playPath = join(dir, 'vngen', 'build', 'story.play.json');
+      const play = JSON.parse(await fs.readFile(playPath, 'utf8')) as Playable;
+      expect(play.version).toBe(1);
+      expect(play.start).toBe('arrival');
+      // The single dialogue line is attributed to the resolved character id.
+      const say = play.scenes['arrival']!.beats.find((b) => b.type === 'say');
+      expect(say).toMatchObject({ type: 'say', who: 'aiko', text: 'Hi.' });
+      // No assets were generated, so no image refs leak into the beats.
+      expect(play.characters['aiko']!.portrait).toBeUndefined();
     } finally {
       await cleanup();
     }

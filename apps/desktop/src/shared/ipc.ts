@@ -15,7 +15,7 @@ import type {
   RunResult,
   WorkspaceIndex,
 } from '@vn/authoring';
-import type { Task } from '@vn/types';
+import type { Playable, Task } from '@vn/types';
 
 export type {
   AgentEvent,
@@ -25,7 +25,7 @@ export type {
   RunResult,
   WorkspaceIndex,
 } from '@vn/authoring';
-export type { Task, TaskKind, TaskStatus } from '@vn/types';
+export type { Playable, Beat, PlayableScene, Task, TaskKind, TaskStatus } from '@vn/types';
 
 /** A request from the main process for the user to approve/reject a proposed plan. */
 export interface PlanRequest {
@@ -76,6 +76,8 @@ export interface InvokeChannels {
   'pipeline:run': (opts: { mock: boolean }) => PipelineRunResult;
   'gate:candidates': (characterId: string) => GateCandidate[];
   'gate:approve': (payload: { characterId: string; hash: string }) => ApproveResult;
+  /** Build the playable (`story.play.json` shape) live from the loaded model + store. */
+  'story:play': () => Playable;
 }
 
 /** Events pushed from main to the renderer (fire-and-forget). */

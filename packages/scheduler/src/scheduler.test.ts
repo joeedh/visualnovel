@@ -37,6 +37,7 @@ function makeModel(): ProjectModel {
     location: 'classroom',
     characters: ['aiko'],
     body: 'Aiko enters and waves.',
+    lines: [],
     choices: [],
     shots: [],
   };

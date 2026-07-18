@@ -45,7 +45,7 @@ function location(id: string): Location {
 }
 
 function scene(id: string, characters: string[], loc: string): Scene {
-  return { id, location: loc, characters, body: 'They talk.', choices: [], shots: [] };
+  return { id, location: loc, characters, body: 'They talk.', lines: [], choices: [], shots: [] };
 }
 
 function model(characters: Character[], scenes: Scene[], locations: Location[]): ProjectModel {
@@ -118,6 +118,27 @@ describe('deterministicShots', () => {
     expect(shots[0]!.framing).toBe('establishing');
     expect(shots[1]!.subjects[0]!.characterId).toBe('aiko');
     expect(shots[1]!.id).toBe(shotId('s1', 'beat1'));
+  });
+
+  it('binds coversLines to real line ids — narration to establishing, dialogue per character', () => {
+    const s = scene('s1', ['aiko', 'ben'], 'class');
+    s.lines = [
+      { id: 's1:L1', kind: 'narration', text: 'The room is quiet.' },
+      { id: 's1:L2', kind: 'dialogue', speaker: 'aiko', text: 'Hi.' },
+      { id: 's1:L3', kind: 'dialogue', speaker: 'ben', text: 'Hey.' },
+      { id: 's1:L4', kind: 'action', speaker: 'aiko', text: 'She waves.' },
+    ];
+    const m = model(
+      [character('aiko', 'approved', 'h1'), character('ben', 'approved', 'h2')],
+      [s],
+      [location('class')],
+    );
+    const shots = deterministicShots(m.scenes.get('s1')!, m);
+    // Establishing covers narration + non-attributed... here the action is attributed but still
+    // narration/action-kinded, so both L1 and L4 land on the establishing shot.
+    expect(shots[0]!.coversLines).toEqual(['s1:L1', 's1:L4']);
+    expect(shots[1]!.coversLines).toEqual(['s1:L2']); // aiko's dialogue
+    expect(shots[2]!.coversLines).toEqual(['s1:L3']); // ben's dialogue
   });
 });
 

@@ -86,6 +86,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@vn/export':
+        specifier: workspace:*
+        version: link:../../packages/export
       '@vn/model':
         specifier: workspace:*
         version: link:../../packages/model
@@ -128,6 +131,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@vn/export':
+        specifier: workspace:*
+        version: link:../../packages/export
       '@vn/git':
         specifier: workspace:*
         version: link:../../packages/git
@@ -222,6 +228,18 @@ importers:
       yaml:
         specifier: ^2.6.1
         version: 2.9.0
+
+  packages/export:
+    dependencies:
+      '@vn/store':
+        specifier: workspace:*
+        version: link:../store
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../types
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../util
 
   packages/git:
     dependencies:

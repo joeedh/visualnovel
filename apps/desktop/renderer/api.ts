@@ -8,6 +8,7 @@ import type {
   DesktopApi,
   EventChannels,
   PipelineStatus,
+  Playable,
   Task,
   WorkspaceIndex,
 } from '../src/shared/ipc';
@@ -78,6 +79,39 @@ const MOCK_CANDIDATES = [
   { hash: '9e0a3d', accepted: false },
 ];
 
+/** A tiny playable so the PLAY room renders in a plain-browser design preview. */
+const MOCK_PLAYABLE: Playable = {
+  version: 1,
+  title: 'sample',
+  start: 'rooftop_intro',
+  characters: {
+    aiko: { name: 'Aiko' },
+    haruki: { name: 'Haruki' },
+  },
+  scenes: {
+    rooftop_intro: {
+      beats: [
+        { type: 'show' },
+        { type: 'narrate', text: 'The rooftop door swings open. Haruki is already there.' },
+        { type: 'say', who: 'aiko', text: "Oh — sorry. I didn't think anyone came up here." },
+        { type: 'say', who: 'haruki', text: "Most people don't. That's the appeal." },
+      ],
+      choices: [
+        { label: 'Step up beside him', goto: 'aiko_confession' },
+        { label: 'Head back inside', goto: 'rooftop_intro' },
+      ],
+    },
+    aiko_confession: {
+      beats: [
+        { type: 'show' },
+        { type: 'say', who: 'aiko', text: 'The new girl gets the quiet places, I guess.' },
+        { type: 'narrate', text: 'A faint, dry smile. She finds herself smiling too.' },
+      ],
+      choices: [],
+    },
+  },
+};
+
 /** A do-nothing API backed by mock data, used when no preload bridge is present. */
 const fallback: DesktopApi = {
   invoke: ((channel: string, arg?: unknown) => {
@@ -94,6 +128,8 @@ const fallback: DesktopApi = {
         return Promise.resolve(MOCK_CANDIDATES);
       case 'gate:approve':
         return Promise.resolve({ ok: true, message: '(preview) approved' });
+      case 'story:play':
+        return Promise.resolve(MOCK_PLAYABLE);
       default:
         return Promise.resolve(undefined);
     }

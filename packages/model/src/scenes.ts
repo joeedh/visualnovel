@@ -1,4 +1,4 @@
-import type { Choice, Scene } from '@vn/types';
+import type { Choice, Scene, SceneLine } from '@vn/types';
 import { parseBranchMarker, type FountainScript } from '@vn/parse';
 import { slug } from './slug.js';
 
@@ -31,6 +31,8 @@ export function splitScenes(script: FountainScript): { scenes: Scene[]; mined: M
   const bodyLines: string[] = [];
   const cueNames = new Set<string>();
   const sceneIdOverrides = new Map<Scene, string>();
+  /** Active speaker cue within the current scene; carried across the flattened element list. */
+  let currentSpeaker: string | undefined;
 
   const flush = (): void => {
     if (current) {
@@ -40,6 +42,12 @@ export function splitScenes(script: FountainScript): { scenes: Scene[]; mined: M
     }
     bodyLines.length = 0;
     cueNames.clear();
+    currentSpeaker = undefined;
+  };
+
+  /** Append a structured line to the current scene (id assigned in the final pass). */
+  const pushLine = (line: Omit<SceneLine, 'id'>): void => {
+    if (current) current.lines.push({ id: '', ...line });
   };
 
   let index = 0;
@@ -56,6 +64,7 @@ export function splitScenes(script: FountainScript): { scenes: Scene[]; mined: M
           characters: [],
           synopsis: pendingSynopsis,
           body: '',
+          lines: [],
           choices: [],
           next: undefined,
           shots: [],
@@ -80,12 +89,31 @@ export function splitScenes(script: FountainScript): { scenes: Scene[]; mined: M
       }
       case 'character':
         cueNames.add(el.name);
+        currentSpeaker = el.name;
         if (current) bodyLines.push(`${el.name}:`);
         break;
       case 'dialogue':
-      case 'action':
+        if (current) {
+          bodyLines.push(el.text);
+          pushLine({ kind: 'dialogue', speaker: currentSpeaker, text: el.text });
+        }
+        break;
       case 'parenthetical':
-        if (current) bodyLines.push(el.text);
+        if (current) {
+          bodyLines.push(el.text);
+          pushLine({ kind: 'parenthetical', speaker: currentSpeaker, text: el.text });
+        }
+        break;
+      case 'action':
+        if (current) {
+          bodyLines.push(el.text);
+          // Action after a cue is a stage direction for that speaker; otherwise narration.
+          pushLine(
+            currentSpeaker
+              ? { kind: 'action', speaker: currentSpeaker, text: el.text }
+              : { kind: 'narration', text: el.text },
+          );
+        }
         break;
       default:
         break;
@@ -93,10 +121,14 @@ export function splitScenes(script: FountainScript): { scenes: Scene[]; mined: M
   }
   flush();
 
-  // Apply [[scene: id]] overrides after splitting so ids are stable.
+  // Apply [[scene: id]] overrides after splitting so ids are stable, then stamp each line
+  // with its final `${scene.id}:L<n>` id (done here so ids reflect the overridden scene id).
   for (const scene of scenes) {
     const override = sceneIdOverrides.get(scene);
     if (override) scene.id = override;
+    scene.lines.forEach((line, i) => {
+      line.id = `${scene.id}:L${i + 1}`;
+    });
   }
 
   return { scenes, mined };

@@ -99,6 +99,7 @@ describe('sceneToFountain', () => {
       characters: [],
       synopsis: 'Ren hesitates at the door.',
       body: 'Ren stands at the threshold.',
+      lines: [],
       choices: [
         { label: 'Knock', goto: 's13' },
         { label: 'Leave', goto: 's14' },
@@ -124,6 +125,7 @@ describe('sceneToFountain', () => {
       location: 'hall',
       characters: [],
       body: '',
+      lines: [],
       choices: [],
       next: 'b',
       shots: [],

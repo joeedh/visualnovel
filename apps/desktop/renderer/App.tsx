@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { api, isLive, onAgentEvent } from './api';
 import { Palette } from './Palette';
 import { Floor } from './Floor';
+import { Runner } from './Runner';
 import type {
   AgentMode,
   PipelineStatus,
@@ -10,7 +11,7 @@ import type {
   WorkspaceIndex,
 } from '../src/shared/ipc';
 
-type Room = 'studio' | 'floor';
+type Room = 'studio' | 'floor' | 'play';
 
 /** A rendered line in the conversation feed. */
 interface FeedItem {
@@ -172,8 +173,10 @@ export function App(): JSX.Element {
           busy={busy}
           openPalette={() => setPaletteOpen(true)}
         />
-      ) : (
+      ) : room === 'floor' ? (
         <Floor status={status} runPipeline={runPipeline} refresh={loadStatus} busy={busy} />
+      ) : (
+        <Runner />
       )}
       {paletteOpen && (
         <Palette
@@ -220,6 +223,12 @@ function Topbar(props: {
           onClick={() => props.setRoom('floor')}
         >
           FLOOR
+        </button>
+        <button
+          className={`room${props.room === 'play' ? ' active' : ''}`}
+          onClick={() => props.setRoom('play')}
+        >
+          PLAY
         </button>
       </nav>
       <div className="spacer" />

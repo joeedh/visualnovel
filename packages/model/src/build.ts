@@ -46,21 +46,36 @@ function mergeMinedLocations(
   return locations;
 }
 
+/** Index character ids by their uppercased display name, for cue resolution. */
+function nameIndex(characters: Map<string, Character>): Map<string, string> {
+  const byName = new Map<string, string>();
+  for (const c of characters.values()) byName.set(c.name.toUpperCase(), c.id);
+  return byName;
+}
+
+/** Resolve a single uppercase Fountain cue name to a character id, or undefined. */
+function cueToId(
+  cue: string,
+  characters: Map<string, Character>,
+  byName: Map<string, string>,
+): string | undefined {
+  const baseName = cue
+    .replace(/\([^)]*\)/g, '')
+    .trim()
+    .toUpperCase();
+  return characters.has(slug(baseName)) ? slug(baseName) : byName.get(baseName);
+}
+
 /** Resolve uppercase Fountain cue names to character ids; returns ids + diagnostics. */
 function resolveCast(
   scene: Scene,
   characters: Map<string, Character>,
+  byName: Map<string, string>,
 ): { ids: string[]; diagnostics: Diagnostic[] } {
-  const byName = new Map<string, string>();
-  for (const c of characters.values()) byName.set(c.name.toUpperCase(), c.id);
   const ids: string[] = [];
   const diagnostics: Diagnostic[] = [];
   for (const cue of scene.characters) {
-    const baseName = cue
-      .replace(/\([^)]*\)/g, '')
-      .trim()
-      .toUpperCase();
-    const id = characters.has(slug(baseName)) ? slug(baseName) : byName.get(baseName);
+    const id = cueToId(cue, characters, byName);
     if (id) {
       if (!ids.includes(id)) ids.push(id);
     } else {
@@ -114,6 +129,7 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
   const { scenes: sceneList, mined } = splitScenes(inputs.script);
   const locations = mergeMinedLocations(userLocations, mined);
 
+  const byName = nameIndex(characters);
   const scenes = new Map<string, Scene>();
   for (const scene of sceneList) {
     if (scenes.has(scene.id)) {
@@ -124,8 +140,13 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
         where: scene.id,
       });
     }
-    const cast = resolveCast(scene, characters);
+    const cast = resolveCast(scene, characters, byName);
     scene.characters = cast.ids;
+    // Remap each line's speaker cue to a resolved character id (keep the raw cue if unknown,
+    // so a name still shows). Uses the same resolution as the cast above.
+    for (const line of scene.lines) {
+      if (line.speaker) line.speaker = cueToId(line.speaker, characters, byName) ?? line.speaker;
+    }
     diagnostics.push(...cast.diagnostics);
     scenes.set(scene.id, scene);
   }

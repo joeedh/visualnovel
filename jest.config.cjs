@@ -14,6 +14,7 @@ const PACKAGES = [
   'parse',
   'model',
   'store',
+  'export',
   'git',
   'authoring',
   'taskgraph',

@@ -83,6 +83,21 @@ export interface Choice {
   goto: string;
 }
 
+/**
+ * A single beat of a scene — one dialogue line, action paragraph, parenthetical, or
+ * narration. Each carries a stable, scene-scoped id (`${sceneId}:L<n>`) so shots can bind
+ * to exact lines and a runner can swap art per line. Derived from the Fountain source at
+ * model-build time (report §P5.1); not persisted independently.
+ */
+export interface SceneLine {
+  /** Stable, scene-scoped id, e.g. `arrival:L3`. */
+  id: string;
+  kind: 'dialogue' | 'action' | 'parenthetical' | 'narration';
+  /** Speaker character id; present for `dialogue`/`parenthetical` (and stage-direction action). */
+  speaker?: string;
+  text: string;
+}
+
 /** A single rendered image within a scene (report §3, §P5). */
 export interface Shot {
   id: string;
@@ -120,6 +135,12 @@ export interface Scene {
   synopsis?: string;
   /** Narrative body (action + dialogue) for shot decomposition. */
   body: string;
+  /**
+   * Structured, ordered lines derived from the screenplay — the source of truth shots bind
+   * to (via {@link Shot.coversLines}) and a runner replays. `body` is the lossy flattened
+   * form kept for back-compat; `lines` preserves speaker/kind. Regenerated each model build.
+   */
+  lines: SceneLine[];
   /** Branch edges; empty for a leaf. */
   choices: Choice[];
   /** Linear continuation when there are no explicit choices. */

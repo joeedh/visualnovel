@@ -49,7 +49,8 @@ import {
   type WorkspaceIndex,
 } from '@vn/authoring';
 import { runPipeline } from '@vn/scheduler';
-import type { ProjectModel, Providers } from '@vn/types';
+import { buildPlayable } from '@vn/export';
+import type { Playable, ProjectModel, Providers } from '@vn/types';
 import type {
   ApproveResult,
   GateCandidate,
@@ -220,6 +221,12 @@ export class WorkspaceSession {
     await writeApprovedPortrait(project.paths, characterId, bytes);
     await project.store.accept(hash);
     return { ok: true, message: `Approved ${characterId} → ${hash}.` };
+  }
+
+  /** Build the playable live from the current model + asset store (no file needed). */
+  async playable(): Promise<Playable> {
+    const project = await loadProject(this.dir);
+    return buildPlayable(project.model, project.store);
   }
 
   async status(): Promise<PipelineStatus> {

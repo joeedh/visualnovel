@@ -8,13 +8,24 @@
  * mock mode unless `VN_MOCK=0` is set (which then requires a real key). Override the
  * workspace with `VN_PROJECT=<dir>`.
  */
-import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, ipcMain, net, protocol, type IpcMainInvokeEvent } from 'electron';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { ProjectPaths } from '@vn/store';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import type { AgentMode, PlanDecision, PlanRequest } from '../shared/ipc.js';
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const MOCK = process.env.VN_MOCK !== '0';
+
+// Must be declared before `app.ready`: teaches Electron that `vnasset://` is a real,
+// image-loadable scheme (standard + secure) so `<img src="vnasset://…">` is allowed.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'vnasset',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+  },
+]);
 
 let win: BrowserWindow | null = null;
 let session: WorkspaceSession | null = null;
@@ -76,6 +87,25 @@ function registerIpc(): void {
     (_event: IpcMainInvokeEvent, payload: { characterId: string; hash: string }) =>
       getSession().approveCharacter(payload.characterId, payload.hash),
   );
+  ipcMain.handle('story:play', () => getSession().playable());
+}
+
+/**
+ * Serve stored asset bytes to the renderer over `vnasset://<hash>.<ext>` — the app's only
+ * image-loading path. The url host carries `<hash>.<ext>` (sha256 hashes are lowercase hex,
+ * so the standard-scheme host lowercasing is harmless); it maps to the content-addressed
+ * file under the workspace's `build/assets/`. A missing file simply fails the request and
+ * the runner falls back to a placeholder.
+ */
+function registerAssetProtocol(): void {
+  const paths = new ProjectPaths(defaultWorkspace());
+  protocol.handle('vnasset', (request) => {
+    const host = new URL(request.url).hostname;
+    const dot = host.lastIndexOf('.');
+    const hash = dot > 0 ? host.slice(0, dot) : host;
+    const ext = dot > 0 ? host.slice(dot + 1) : 'png';
+    return net.fetch(pathToFileURL(paths.assetFile(hash, ext)).toString());
+  });
 }
 
 function createWindow(): void {
@@ -100,6 +130,7 @@ function createWindow(): void {
 }
 
 void app.whenReady().then(() => {
+  registerAssetProtocol();
   registerIpc();
   createWindow();
   app.on('activate', () => {

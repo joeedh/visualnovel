@@ -2,6 +2,7 @@ import { createInterface } from 'node:readline';
 import type { Asset, Logger } from '@vn/types';
 import { toMermaid } from '@vn/model';
 import { writeApprovedPortrait, writeStoryGraph, setCharacterApproval } from '@vn/store';
+import { buildPlayable, writePlayable } from '@vn/export';
 import { gateStatus } from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
@@ -43,6 +44,25 @@ export async function cmdGraph(args: Args): Promise<number> {
   const mermaid = toMermaid(project.model);
   await writeStoryGraph(project.paths, mermaid);
   ok(mermaid);
+  return 0;
+}
+
+/**
+ * `vngen export [dir]` — project the model + asset store into `vngen/build/story.play.json`,
+ * the flattened, ordered playable a runner interprets (runner plan, Part C). Missing assets
+ * are omitted (not an error), so a partially-generated — or entirely un-generated — project
+ * still exports a playable story graph.
+ */
+export async function cmdExport(args: Args): Promise<number> {
+  const dir = args.positional[0] ?? '.';
+  const project = await loadProject(dir);
+  if (project.model.diagnostics.some((d) => d.severity === 'error')) {
+    ok('Validation (exporting anyway — a runner may hit missing scenes):');
+    reportDiagnostics(project.model);
+  }
+  const playable = buildPlayable(project.model, project.store);
+  await writePlayable(project.paths, playable);
+  ok(`Exported ${Object.keys(playable.scenes).length} scene(s) → ${project.paths.storyPlay}`);
   return 0;
 }
 

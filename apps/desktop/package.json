@@ -16,6 +16,7 @@
     "@google/genai": "^0.3.0",
     "@vn/authoring": "workspace:*",
     "@vn/config": "workspace:*",
+    "@vn/export": "workspace:*",
     "@vn/git": "workspace:*",
     "@vn/model": "workspace:*",
     "@vn/parse": "workspace:*",

@@ -79,6 +79,51 @@ describe('buildModel — valid project', () => {
   });
 });
 
+const LINES_SCRIPT = `INT. CLASSROOM - AFTERNOON
+
+[[scene: arrival]]
+
+The door slides open. Aiko steps in.
+
+AIKO
+Um... hello. I just transferred in.
+
+She bows, a little too deeply.
+
+REN
+Welcome.
+`;
+
+describe('splitScenes — structured lines', () => {
+  const model = buildModel(inputs(LINES_SCRIPT));
+  const lines = model.scenes.get('arrival')!.lines;
+
+  it('produces ordered lines with stable scene-scoped ids', () => {
+    expect(lines.map((l) => l.id)).toEqual([
+      'arrival:L1',
+      'arrival:L2',
+      'arrival:L3',
+      'arrival:L4',
+    ]);
+  });
+
+  it('classifies kinds: narration, dialogue, stage-direction action', () => {
+    expect(lines.map((l) => l.kind)).toEqual(['narration', 'dialogue', 'action', 'dialogue']);
+  });
+
+  it('attributes dialogue to resolved character ids and leaves narration unattributed', () => {
+    expect(lines[0]!.speaker).toBeUndefined();
+    expect(lines[1]!.speaker).toBe('aiko');
+    // Action after a cue is a stage direction for that speaker.
+    expect(lines[2]!).toMatchObject({ kind: 'action', speaker: 'aiko' });
+    expect(lines[3]!.speaker).toBe('ren');
+  });
+
+  it('reflects [[scene: id]] overrides in line ids', () => {
+    expect(lines.every((l) => l.id.startsWith('arrival:'))).toBe(true);
+  });
+});
+
 const INVALID = `INT. CLASSROOM - DAY
 
 [[scene: start]]

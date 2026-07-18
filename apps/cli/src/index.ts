@@ -1,5 +1,13 @@
 import { createLogger } from '@vn/util';
-import { cmdApprove, cmdCost, cmdGraph, cmdRun, cmdStatus, parseArgs } from './commands.js';
+import {
+  cmdApprove,
+  cmdCost,
+  cmdExport,
+  cmdGraph,
+  cmdRun,
+  cmdStatus,
+  parseArgs,
+} from './commands.js';
 
 /** Entry point: route `vngen <command>` to its handler (report §10). */
 export async function main(argv: string[]): Promise<number> {
@@ -20,6 +28,8 @@ export async function main(argv: string[]): Promise<number> {
         return await cmdStatus(args);
       case 'graph':
         return await cmdGraph(args);
+      case 'export':
+        return await cmdExport(args);
       case 'cost':
         return await cmdCost(args, logger);
       default:
@@ -47,6 +57,7 @@ function usage(): string {
     '  approve [dir] [--character=<id>] [--hash=<h>] [--yes]   approve portraits (interactive)',
     '  status [dir]         show task/asset/approval status',
     '  graph [dir]          emit the story branch graph (Mermaid)',
+    '  export [dir]         write vngen/build/story.play.json (the playable)',
     '  cost [dir]           dry-run cost preview',
     '',
   ].join('\n');
