@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { api, isLive, onAgentEvent } from './api';
 import { Palette } from './Palette';
 import { Floor } from './Floor';
+import { ResizeHandle, usePanelWidth } from './Resizable';
 import { Runner } from './Runner';
 import type {
   AgentMode,
@@ -277,6 +278,12 @@ function Studio(props: {
   setRoom: (r: Room) => void;
 }): JSX.Element {
   const idx = props.index;
+  const rail = usePanelWidth('studio.rail', {
+    defaultWidth: 212,
+    min: 150,
+    max: 520,
+    edge: 'left',
+  });
 
   // Drop a targeted starter into the composer and focus it, so the next agent
   // turn is scoped to the picked entity. The composer is uncontrolled (ref-driven).
@@ -289,7 +296,7 @@ function Studio(props: {
   };
 
   return (
-    <div className="studio">
+    <div className="studio" style={rail.trackStyle}>
       <aside className="rail">
         <div className="rail-group">
           <div className="rail-head">
@@ -355,6 +362,7 @@ function Studio(props: {
           ))}
         </div>
       </aside>
+      <ResizeHandle {...rail.handleProps} />
 
       <div className="convo">
         <div className="transcript">

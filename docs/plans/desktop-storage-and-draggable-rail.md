@@ -1,5 +1,10 @@
 # Desktop session storage + draggable rails
 
+**Status: implemented.** One deviation from §1 as written: `SessionStore.open(dir?, onChange?)`
+takes an optional listener, fired on every `set`. That is what makes `view.panelSize` move the
+panel live — main hangs the `session:changed` broadcast off it, so no write path can forget to
+announce itself, whether it came from a drag or a command.
+
 ## Context
 
 The desktop app's panel widths are hard-coded CSS grid tracks: `.studio { grid-template-columns: 212px 1fr }`

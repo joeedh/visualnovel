@@ -2,6 +2,7 @@ keys
 node_modules
 dist
 .turbo
+.vndesktop
 coverage
 *.tsbuildinfo
 *.tmp-*

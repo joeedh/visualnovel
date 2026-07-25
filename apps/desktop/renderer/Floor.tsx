@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
+import { ResizeHandle, usePanelWidth } from './Resizable';
 import type { GateCandidate, PipelineStatus, Task } from '../src/shared/ipc';
 
 /** The Production Floor: task board, the approval-gate barrier, and a per-task inspector. */
@@ -11,6 +12,12 @@ export function Floor(props: {
 }): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null);
   const [gateFor, setGateFor] = useState<string | null>(null);
+  const inspector = usePanelWidth('floor.inspector', {
+    defaultWidth: 320,
+    min: 220,
+    max: 640,
+    edge: 'right',
+  });
   const tasks = props.status?.tasks ?? [];
   const running = tasks.filter((t) => t.status === 'running').length;
   const sel = tasks.find((t) => t.hash === selected) ?? null;
@@ -28,7 +35,7 @@ export function Floor(props: {
           ▸ run to next gate
         </button>
       </div>
-      <div className="floor-body">
+      <div className="floor-body" style={inspector.trackStyle}>
         <div className="floor-main">
           {props.status?.gatePending.map((c) => (
             <div className="gatebar" key={c}>
@@ -63,6 +70,7 @@ export function Floor(props: {
             )}
           </div>
         </div>
+        <ResizeHandle {...inspector.handleProps} />
         <Inspector task={sel} />
       </div>
       {gateFor && (

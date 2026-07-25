@@ -1,5 +1,8 @@
 **/dist/**
 **/node_modules/**
+# Machine-written desktop session state (see apps/desktop/src/main/sessionstore.ts).
+# Prettier 3 doesn't read .gitignore, so it needs saying twice.
+**/.vndesktop/**
 pnpm-lock.yaml
 coverage/**
 keys/**

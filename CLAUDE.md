@@ -278,6 +278,26 @@ The Electron app's third room (**STUDIO · FLOOR · PLAY**) is the runner, in
   `next`; a leaf scene shows "The End". **Back** (← / Backspace) rewinds. **Save / Load /
   Reset** persist the stack to `localStorage`, keyed by workspace title.
 
+### Remembered UI state (`.vndesktop/session.json`)
+
+Panel widths (and anything else the shell should remember) live in a flat key/value file the
+main process owns — `apps/desktop/src/main/sessionstore.ts`, gitignored, **global per install**
+rather than per workspace. `VN_DESKTOP_HOME` relocates it; the default is one line away from
+`~/.vndesktop` once the app is installed rather than run from the repo.
+
+- **Multi-instance by construction.** Nothing stops two app instances sharing the file, so a
+  flush takes a `mkdir` lock (stale ones, >5s, are broken), re-reads the file _inside_ the
+  lock, and applies **only its dirty keys** over what it finds. Different keys from different
+  instances both survive; the same key is last-flush-wins.
+- **Synchronous first read.** The preload does one `sendSync('session:snapshot:sync')` and
+  `useSessionValue` seeds `useState` from it, so a saved width is the first thing painted
+  rather than a jump away from the default.
+- **One hook, both orientations.** `usePanelWidth(saveId, { defaultWidth, min, max, edge })`
+  (`renderer/Resizable.tsx`) stores under `panel.<saveId>.width`, hands back a
+  `--panel-w` `trackStyle` for the grid container and a `<ResizeHandle>`'s props. The STUDIO
+  rail (`edge: 'left'`) and the FLOOR inspector (`edge: 'right'`) use it unchanged. A drag
+  keeps the width local and persists once on release; `view.panelSize` is the scriptable path.
+
 Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (defaults to the
 bundled sample in mock mode; `VN_PROJECT=<dir>` overrides the workspace).
 
@@ -300,7 +320,7 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 
 - **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
   prop specs, the registry, the DSL, the execution stack, and the catalog projection — it is
-  domain-agnostic (deps: `types`, `util`, `git`). The 13 definitions live in
+  domain-agnostic (deps: `types`, `util`, `git`). The 14 definitions live in
   `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`)
   as thin wrappers over `WorkspaceSession`.
 - **Props are declarative specs, not zod.** The repo is on zod 3 (no `z.toJSONSchema`), and

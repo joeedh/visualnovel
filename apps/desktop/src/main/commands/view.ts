@@ -20,6 +20,23 @@ export const viewRoom = define({
   },
 });
 
+export const viewPanelSize = define({
+  id: 'view.panelSize',
+  title: 'Resize a panel',
+  description: 'Set the saved width of a resizable panel (studio.rail, floor.inspector).',
+  mutating: false,
+  props: {
+    id: prop.string("the panel's save id, e.g. studio.rail"),
+    width: prop.number('width in pixels', { min: 80, max: 1200 }),
+  },
+  run({ id, width }, ctx) {
+    // No `UiEffect` needed: the session store broadcasts its own change, which is what the
+    // renderer's `usePanelWidth` is already listening for.
+    ctx.host.state.set(`panel.${id}.width`, width);
+    return Promise.resolve({ message: `Panel ${id} is now ${width}px wide.` });
+  },
+});
+
 export const viewPalette = define({
   id: 'view.palette',
   title: 'Toggle palette',
