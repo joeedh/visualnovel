@@ -17,6 +17,7 @@
       "@vn/providers": ["./packages/providers/src/index.ts"],
       "@vn/pipeline": ["./packages/pipeline/src/index.ts"],
       "@vn/scheduler": ["./packages/scheduler/src/index.ts"],
+      "@vn/testkit": ["./packages/testkit/src/index.ts"],
       "@vn/cli": ["./apps/cli/src/index.ts"]
     }
   },

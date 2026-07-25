@@ -8,7 +8,7 @@ the individual plans hang off. Survey that motivated them:
 
 | # | Plan | Kind | Status | Depends on |
 | - | ---- | ---- | ------ | ---------- |
-| — | [test-fixtures](test-fixtures.md) | groundwork | not started | — |
+| — | [test-fixtures](test-fixtures.md) | groundwork | **done** | — |
 | 0 | [desktop-renderer-restructure](desktop-renderer-restructure.md) | refactor | not started | — |
 | 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | not started | 0, testkit |
 | 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | not started | 0, testkit |
@@ -33,6 +33,10 @@ incompatible — `apps/cli` writes a one-character/one-scene project to disk, wh
 and `scheduler` hand-build in-memory `ProjectModel` literals. Nothing produces a git-backed,
 multi-scene, actually-*run* project, which is what four of the five checklists below assert
 against. Split out into [test-fixtures](test-fixtures.md).
+
+**Resolved** — `@vn/testkit` ships `makeProject` / `synthProject` / `SCRIPTS`; the `cli`,
+`scheduler`, `pipeline`, `export` and `authoring-app` fixtures are migrated onto it, and
+`WorkspaceSession` has a suite for the first time.
 
 ### The renderer is not typechecked (plan 0, Wave 1)
 
@@ -149,11 +153,11 @@ Decided against in the survey, recorded here so it does not get re-proposed:
 
 ### — · Test fixtures
 
-- [ ] `@vn/testkit` builds, typechecks, and has its own green jest project
-- [ ] `makeProject` → run → approve → run clears the gate, on disk, from disk
-- [ ] `synthProject` deterministic; scenes-to-tasks ratio pinned
-- [ ] Project-shaped `mkdtemp` sites migrated
-- [ ] One end-to-end on-disk run test and one `WorkspaceSession` test exist
+- [x] `@vn/testkit` builds, typechecks, and has its own green jest project
+- [x] `makeProject` → run → approve → run clears the gate, on disk, from disk
+- [x] `synthProject` deterministic; scenes-to-tasks ratio pinned
+- [x] Project-shaped `mkdtemp` sites migrated
+- [x] One end-to-end on-disk run test and one `WorkspaceSession` test exist
 
 ### 0 · Restructure
 
@@ -201,7 +205,7 @@ One box per plan, ticked when that plan appends its section to
 `../research/debug-lessons-learned.md`. The last box is the consolidation — it is the only
 item in this file that cannot be done early.
 
-- [ ] test-fixtures
+- [x] test-fixtures
 - [ ] 0 · Restructure
 - [ ] 1 · Refine-loop inspector
 - [ ] 2 · Story branch editor

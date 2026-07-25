@@ -219,20 +219,41 @@ Move the existing fixtures over, deleting the bespoke builders as each lands:
 Then add the missing end-to-end coverage the migration makes cheap: **on-disk inputs → run
 → assert on-disk state**, and a first `WorkspaceSession` test.
 
+## As shipped
+
+Four things the implementation learned that the plan above could not know:
+
+- **The measured ratio is `L + 4C + 2N`** — `L` location plates, `4C` per character (one
+  portrait plus three model-sheet angles), `2N` shots (one establishing plus one per speaking
+  character, and `synthProject` gives every scene exactly one speaker). Pinned by
+  `synth.test.ts` at `scenes: 6, characters: 2, locations: 3` → 23 tasks. The default
+  `SCRIPTS.branching` fixture settles at 19.
+- **The gate is per scene, not per run.** A scene with no cast clears it immediately, so the
+  *first* run of `SCRIPTS.branching` already renders `good_end` and `bad_end`. Assert on
+  `blockedOnGate` / `gate.pending` / specific shot ids — never on "no shots ran". The old
+  `scheduler.test.ts` assertion held only because its hand-built model had a single scene.
+- **Characters and locations are inferred from the script** via `splitScenes(parseFountain(…))`
+  rather than hand-listed, so a fixture's ids cannot drift from the ones `buildModel` resolves.
+  `characters` / `locations` still override when a test needs a specific status or variant.
+- **`apps/authoring/src/tests/repl.test.ts` migrated too** — it was not in the Wave 4 table
+  (only `packages/authoring` was called out as unchanged), but its `tempProject` was
+  project-shaped and is now `makeProject`. The bare-scratch-dir sites (`config`, `store`,
+  `taskgraph/resume`, `git`, `packages/authoring`, `sessionstore`) stayed as they were.
+
 ## Checklist
 
-- [ ] `packages/testkit` builds, typechecks, and has its own green jest project
-- [ ] Boundaries: testkit may import anything; production importing testkit is a lint error
-- [ ] `makeProject` produces a project that loads with zero error diagnostics
-- [ ] `run` → gate → `approve` → `run` clears the gate, on disk, from disk
-- [ ] `git: true` yields a clean tree and byte-exact diffs on Windows
-- [ ] `SCRIPTS.branching` is byte-identical to the constant `playable.test.ts` uses today
-- [ ] `synthProject` is deterministic across runs; scenes-to-tasks ratio pinned by a test
-- [ ] All twelve `mkdtemp` sites reviewed; the project-shaped ones migrated
-- [ ] One end-to-end on-disk run test exists
-- [ ] One `WorkspaceSession` test exists
-- [ ] `pnpm check`, `pnpm test`, `pnpm lint` green
-- [ ] `CLAUDE.md` documents `@vn/testkit` (package table + a testing note)
-- [ ] Debug lessons appended to
+- [x] `packages/testkit` builds, typechecks, and has its own green jest project
+- [x] Boundaries: testkit may import anything; production importing testkit is a lint error
+- [x] `makeProject` produces a project that loads with zero error diagnostics
+- [x] `run` → gate → `approve` → `run` clears the gate, on disk, from disk
+- [x] `git: true` yields a clean tree and byte-exact diffs on Windows
+- [x] `SCRIPTS.branching` is byte-identical to the constant `playable.test.ts` uses today
+- [x] `synthProject` is deterministic across runs; scenes-to-tasks ratio pinned by a test
+- [x] All twelve `mkdtemp` sites reviewed; the project-shaped ones migrated
+- [x] One end-to-end on-disk run test exists
+- [x] One `WorkspaceSession` test exists
+- [x] `pnpm check`, `pnpm test`, `pnpm lint` green
+- [x] `CLAUDE.md` documents `@vn/testkit` (package table + a testing note)
+- [x] Debug lessons appended to
       [`../research/debug-lessons-learned.md`](../research/debug-lessons-learned.md) — see
       [Debug lessons](desktop-editors-tracking.md#debugging-lessons)

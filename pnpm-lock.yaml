@@ -384,6 +384,42 @@ importers:
         specifier: workspace:*
         version: link:../util
 
+  packages/testkit:
+    dependencies:
+      '@vn/config':
+        specifier: workspace:*
+        version: link:../config
+      '@vn/git':
+        specifier: workspace:*
+        version: link:../git
+      '@vn/model':
+        specifier: workspace:*
+        version: link:../model
+      '@vn/parse':
+        specifier: workspace:*
+        version: link:../parse
+      '@vn/providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@vn/scheduler':
+        specifier: workspace:*
+        version: link:../scheduler
+      '@vn/store':
+        specifier: workspace:*
+        version: link:../store
+      '@vn/taskgraph':
+        specifier: workspace:*
+        version: link:../taskgraph
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../types
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../util
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.0
+
   packages/types:
     dependencies:
       zod:

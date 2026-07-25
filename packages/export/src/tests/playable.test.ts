@@ -2,6 +2,7 @@ import type { Asset, AssetStore, ProjectModel } from '@vn/types';
 import { playableSchema } from '@vn/types';
 import { parseFountain, parseFrontMatter } from '@vn/parse';
 import { buildModel } from '@vn/model';
+import { SCRIPTS } from '@vn/testkit';
 import { buildPlayable } from '../playable.js';
 
 /** A minimal in-memory {@link AssetStore}: only `manifest()` matters to the exporter. */
@@ -31,51 +32,12 @@ const charDoc = (id: string, name: string) =>
 
 // A small branching story that mirrors examples/sample's shape: narration + attributed
 // dialogue, a choice fork, a linear next, and a two-character scene.
-const SCRIPT = `INT. CLASSROOM - AFTERNOON
-
-[[scene: arrival]]
-
-The door slides open. Aiko steps in.
-
-AIKO
-Um... hello.
-
-[[next: rooftop]]
-
-EXT. ROOFTOP - EVENING
-
-[[scene: rooftop]]
-
-Aiko pushes through the door. Haruki leans on the fence.
-
-AIKO
-Sorry.
-
-HARUKI
-Most people don't come up here.
-
-[[choice: Stay -> good_end]]
-[[choice: Leave -> bad_end]]
-
-INT. CLASSROOM - EVENING
-
-[[scene: good_end]]
-
-The light fades warmly.
-
-INT. HALL - NIGHT
-
-[[scene: bad_end]]
-
-The hall is empty.
-`;
-
 function sampleModel(): ProjectModel {
   return buildModel({
     title: 'The Transfer Student',
     characterDocs: [charDoc('aiko', 'Aiko'), charDoc('haruki', 'Haruki')],
     locationDocs: [],
-    script: parseFountain(SCRIPT),
+    script: parseFountain(SCRIPTS.branching),
   });
 }
 

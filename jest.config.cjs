@@ -23,6 +23,7 @@ const PACKAGES = [
   'providers',
   'pipeline',
   'scheduler',
+  'testkit',
 ];
 
 /** @type {import('jest').Config} */

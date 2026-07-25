@@ -34,6 +34,25 @@ const ALLOWED = {
   // `config` and `store` are pass-through only: the scheduler takes a `ProjectConfig` and a
   // `ProjectPaths` in `RunOptions` and hands them to `@vn/pipeline`, which owns both.
   scheduler: ['types', 'util', 'config', 'store', 'taskgraph', 'pipeline'],
+  // Test-only fixture builder: composes every layer to build real projects on disk, so it may
+  // import anything. Nothing may import IT — no rule grants that, and the default is
+  // `disallow`, so production code reaching for testkit is a lint error. Tests are exempt via
+  // the `**/*.test.ts` override below, which is the only place testkit belongs.
+  testkit: [
+    'types',
+    'util',
+    'config',
+    'parse',
+    'model',
+    'store',
+    'export',
+    'git',
+    'commands',
+    'taskgraph',
+    'providers',
+    'pipeline',
+    'scheduler',
+  ],
   // Input-side agent core: reuses the deterministic packages + the LLM seam, and is
   // forbidden from importing the generative pipeline/scheduler (authoring-agent plan §4).
   authoring: ['types', 'util', 'config', 'parse', 'model', 'store', 'providers', 'git'],
@@ -125,6 +144,7 @@ export default tseslint.config(
         { type: 'providers', pattern: 'packages/providers', mode: 'folder' },
         { type: 'pipeline', pattern: 'packages/pipeline', mode: 'folder' },
         { type: 'scheduler', pattern: 'packages/scheduler', mode: 'folder' },
+        { type: 'testkit', pattern: 'packages/testkit', mode: 'folder' },
         { type: 'cli', pattern: 'apps/cli', mode: 'folder' },
         { type: 'authoring-app', pattern: 'apps/authoring', mode: 'folder' },
         { type: 'desktop', pattern: 'apps/desktop', mode: 'folder' },

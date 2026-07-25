@@ -1,6 +1,4 @@
-import { promises as fs } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { makeProject } from '@vn/testkit';
 import { renderDiff, renderEvent, renderPlan } from '../render.js';
 import { runRepl, terminalPermission, type Channel } from '../repl.js';
 
@@ -22,20 +20,11 @@ function scriptChannel(inputs: string[]): { channel: Channel; out: string[] } {
 }
 
 async function tempProject(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
-  const dir = await fs.mkdtemp(join(tmpdir(), 'vn-repl-'));
-  await fs.mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
-  await fs.mkdir(join(dir, 'locations'), { recursive: true });
-  await fs.mkdir(join(dir, 'screenplay'), { recursive: true });
-  await fs.writeFile(
-    join(dir, 'characters', 'aiko', 'character.md'),
-    '---\nid: aiko\nname: Aiko\nstatus: draft\n---\n\nA transfer student.\n',
-  );
-  await fs.writeFile(
-    join(dir, 'screenplay', 'script.fountain'),
-    'Title: Test\n\nINT. CLASSROOM - DAY\n\n[[scene: arrival]]\n\nAIKO\nHi.\n',
-  );
-  await fs.writeFile(join(dir, 'project.yaml'), 'title: Test Project\n');
-  return { dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
+  const p = await makeProject({
+    title: 'Test Project',
+    script: 'INT. CLASSROOM - DAY\n\n[[scene: arrival]]\n\nAIKO\nHi.\n',
+  });
+  return { dir: p.dir, cleanup: () => p.cleanup() };
 }
 
 describe('render helpers', () => {

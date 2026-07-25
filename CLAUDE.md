@@ -117,10 +117,12 @@ reuses the input-side packages (types, util, config, parse, model, store, provid
 `@vn/export` is a similarly-constrained leaf: it projects the manifest into `story.play.json`
 and is likewise forbidden from the generative pipeline/scheduler.
 
-One package sits **outside the graph entirely**: `@vn/debug2d` (not drawn above) imports
-nothing from `packages/` and is imported only by the desktop renderer's dev-only debug glue
-(`debug2d: []` in `eslint.config.mjs`), so it stays strippable from production builds — see
-[2D debug layer](#2d-debug-layer-vndebug2d).
+Two packages sit **outside the graph entirely** (neither is drawn above). `@vn/debug2d`
+imports nothing from `packages/` and is imported only by the desktop renderer's dev-only
+debug glue (`debug2d: []` in `eslint.config.mjs`), so it stays strippable from production
+builds — see [2D debug layer](#2d-debug-layer-vndebug2d). `@vn/testkit` is the mirror image:
+it may import _every_ layer, and **nothing may import it** — see
+[Test fixtures](#test-fixtures-vntestkit).
 
 | Package             | Responsibility                                                                                                                                                                                                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -141,6 +143,7 @@ nothing from `packages/` and is imported only by the desktop renderer's dev-only
 | `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.                                                                           |
 | `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                                                                                               |
 | `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                                                                                                         |
+| `@vn/testkit`       | **Test-only** fixtures: `makeProject` (real inputs on disk → real run with mock providers), `synthProject` (deterministic scale), `SCRIPTS`, in-memory entity factories. Imports every layer; nothing may import it. See [Test fixtures](#test-fixtures-vntestkit).                              |
 
 ### Core ideas
 
@@ -353,6 +356,46 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 
 - **`view.*` commands run in main** and push a `command:ui` effect the renderer applies, rather
   than there being a second, renderer-side registry to keep in sync.
+
+## Test fixtures (`@vn/testkit`)
+
+A test-only package that builds **real projects on disk** and runs them through the **real
+scheduler** with mock providers, so a test asserts against generated state rather than a
+hand-built model. Plan: [`docs/plans/test-fixtures.md`](docs/plans/test-fixtures.md).
+
+```ts
+import { SCRIPTS, makeProject, synthProject } from '@vn/testkit';
+
+const p = await makeProject({ script: SCRIPTS.branching, git: true });
+try {
+  await p.run(); // real runPipeline + createMockProviders → halts at the gate
+  await p.approveAll(); // writes character.md AND store.accept(), like `vngen approve`
+  await p.run(); // gate clears; model sheets + shots render
+  const { model, store, graph } = await p.reload();
+} finally {
+  await p.cleanup(); // always, in a finally
+}
+```
+
+- **Fidelity is the point.** Every method goes through the code path production uses — inputs
+  are parsed from files, approval is written to front-matter, the scheduler runs for real — so
+  a fixture cannot pass by being kinder than the app. `characters`/`locations` are inferred
+  from the script by the same `splitScenes` the model build uses, so ids can't drift.
+- **Nothing may import it.** The boundaries rule grants `testkit` permission to import every
+  layer and grants no one permission to import `testkit`; since `boundaries/element-types`
+  defaults to `disallow`, a production import is a lint error. Test files are exempt from the
+  rule, which is the only place it belongs. It must never appear in an app's `dependencies`.
+- **The gate is per scene.** A scene with no cast renders on the _first_ run, before any
+  approval. Assert on `summary.blockedOnGate` / `summary.gate.pending` / specific shot ids —
+  never on "no shots ran".
+- **`synthProject({ scenes, fanout, characters, locations })`** generates a `fanout`-ary scene
+  tree with **no randomness** (task identity is `sha256(kind, inputs)`; a randomized script
+  would change the task set every run). Scenes are not nodes: a fully-run project settles at
+  `L + 4C + 2N` tasks, and reaching that total needs a real `run()`, not a `dryRun`.
+- **Mock runs produce fake image bytes.** Fine for structure, coverage math and round-trips;
+  never mix them into a real run's reference assets.
+- **In-memory factories** (`character`, `location`, `scene`, `model`) are also exported, for
+  unit tests of the pure planners where building on disk would just be noise.
 
 ## 2D debug layer (`@vn/debug2d`)
 

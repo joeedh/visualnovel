@@ -1,12 +1,15 @@
 import { promises as fs } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@vn/types';
 import { AssetStore, ProjectPaths } from '@vn/store';
 import type { Playable } from '@vn/types';
+import { makeProject } from '@vn/testkit';
 import { cmdApprove, cmdExport, cmdRun, type ApproveIO } from '../commands.js';
 
 const silentLogger = { info() {}, warn() {}, error() {}, debug() {} } as unknown as Logger;
+
+// One scene, one character awaiting approval — the smallest project `cmdApprove` acts on.
+const SCRIPT = 'INT. CLASSROOM - DAY\n\n[[scene: arrival]]\n\nAIKO\nHi.\n';
 
 /** A minimal project on disk plus its asset store, ready for `cmdApprove`. */
 async function tempProject(): Promise<{
@@ -14,20 +17,12 @@ async function tempProject(): Promise<{
   store: AssetStore;
   cleanup: () => Promise<void>;
 }> {
-  const dir = await fs.mkdtemp(join(tmpdir(), 'vn-cli-'));
-  await fs.mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
-  await fs.mkdir(join(dir, 'screenplay'), { recursive: true });
-  await fs.writeFile(join(dir, 'project.yaml'), 'title: Test\n');
-  await fs.writeFile(
-    join(dir, 'characters', 'aiko', 'character.md'),
-    '---\nid: aiko\nname: Aiko\nstatus: candidates\n---\n\nAiko.\n',
-  );
-  await fs.writeFile(
-    join(dir, 'screenplay', 'script.fountain'),
-    'Title: Test\n\nINT. CLASSROOM - DAY\n\n[[scene: arrival]]\n\nAIKO\nHi.\n',
-  );
-  const store = await AssetStore.open(new ProjectPaths(dir));
-  return { dir, store, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
+  const p = await makeProject({
+    title: 'Test',
+    script: SCRIPT,
+    characters: [{ id: 'aiko', name: 'Aiko', status: 'candidates' }],
+  });
+  return { dir: p.dir, store: (await p.reload()).store, cleanup: () => p.cleanup() };
 }
 
 /** Run a command, capturing everything it writes to stdout. */
@@ -102,6 +97,34 @@ describe('cmdExport', () => {
       await cleanup();
     }
   });
+});
+
+describe('end to end — on-disk inputs → run → export', () => {
+  it('renders with mock providers, then exports refs the store can resolve', async () => {
+    const p = await makeProject({ title: 'End to End', script: SCRIPT });
+    try {
+      expect((await p.run()).blockedOnGate).toBe(true);
+      expect(await p.approveAll()).toEqual(['aiko']);
+      expect((await p.run()).blockedOnGate).toBe(false);
+
+      const { code } = await capture(() => cmdExport({ positional: [p.dir], flags: {} }));
+      expect(code).toBe(0);
+      const playPath = join(p.dir, 'vngen', 'build', 'story.play.json');
+      const play = JSON.parse(await fs.readFile(playPath, 'utf8')) as Playable;
+
+      const portrait = play.characters['aiko']!.portrait;
+      const show = play.scenes['arrival']!.beats.find((b) => b.type === 'show');
+      expect(show).toMatchObject({ type: 'show', image: { ext: 'png' } });
+      const background = show?.type === 'show' ? show.image : undefined;
+
+      // Every ref the playable hands the runner must be resolvable from the store.
+      const { store } = await p.reload();
+      expect(store.has(portrait!.hash)).toBe(true);
+      expect(store.has(background!.hash)).toBe(true);
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
 });
 
 describe('cmdApprove — single character (--character)', () => {

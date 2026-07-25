@@ -1,7 +1,7 @@
-import type { Character, Location, ProjectModel, Scene } from '@vn/types';
 import { projectConfig } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
 import { createMockProviders } from '@vn/providers';
+import { character, location, model, scene } from '@vn/testkit';
 import {
   costPreview,
   deterministicShots,
@@ -17,48 +17,6 @@ const config = projectConfig.parse({
   art_style: 'watercolor',
   models: { vision: ['gemini', 'claude'] },
 });
-
-function character(id: string, status: Character['status'], approvedPortrait?: string): Character {
-  return {
-    id,
-    name: id.toUpperCase(),
-    description: `${id} description`,
-    traits: [],
-    palette: ['#112233'],
-    referenceImages: [],
-    status,
-    defaultOutfit: 'default',
-    outfits: [{ id: 'default', characterId: id, description: 'default outfit' }],
-    approvedPortrait,
-  };
-}
-
-function location(id: string): Location {
-  return {
-    id,
-    name: id,
-    description: `${id} desc`,
-    palette: [],
-    variants: [{ id: 'day', description: '' }],
-    mined: false,
-  };
-}
-
-function scene(id: string, characters: string[], loc: string): Scene {
-  return { id, location: loc, characters, body: 'They talk.', lines: [], choices: [], shots: [] };
-}
-
-function model(characters: Character[], scenes: Scene[], locations: Location[]): ProjectModel {
-  return {
-    title: 'Test',
-    characters: new Map(characters.map((c) => [c.id, c])),
-    locations: new Map(locations.map((l) => [l.id, l])),
-    scenes: new Map(scenes.map((s) => [s.id, s])),
-    reachable: new Set(scenes.map((s) => s.id)),
-    entry: scenes[0]?.id,
-    diagnostics: [],
-  };
-}
 
 describe('prompts', () => {
   it('folds art style and palette into a portrait prompt', () => {
