@@ -18,6 +18,8 @@ without pulling in the generative pipeline.
 - Authoring agent plan: [`docs/plans/authoring-agent-implementation.md`](docs/plans/authoring-agent-implementation.md)
 - Runner plan: [`docs/plans/runner.md`](docs/plans/runner.md)
 - Command system: [`docs/command-system.md`](docs/command-system.md)
+- Debugging guide: [`docs/debugGuide.md`](docs/debugGuide.md) — read this before debugging
+  anything in this repo; tools ordered cheapest-first, evidence over reproduction
 - Docs index: [`docs/index.md`](docs/index.md)
 - **Out of scope:** _external_ engine export (Ren'Py/Ink/etc.). The generative pipeline core
   stops at a populated `build/` + `manifest.json`. On top of that sits a small, in-house
@@ -335,7 +337,8 @@ IR** captured from the DOM (canvas/SVG adapters later), a **query engine** over 
 a causal **`explainPick`** that answers "why did my click miss / why is this on top" from
 ground truth instead of screenshots. Design:
 [`docs/research/2d-graphics-debug-api.md`](docs/research/2d-graphics-debug-api.md); plan:
-[`docs/plans/2d-graphics-debug-api.md`](docs/plans/2d-graphics-debug-api.md).
+[`docs/plans/2d-graphics-debug-api.md`](docs/plans/2d-graphics-debug-api.md); usage
+recipes: [`docs/debugGuide.md`](docs/debugGuide.md).
 
 - **Isolation is the design.** `@vn/debug2d` has zero dependencies (it even duplicates ~50
   lines of `Rect`/`Mat3` helpers in `geom.ts` — do not "deduplicate"), sits outside the

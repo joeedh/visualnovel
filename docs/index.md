@@ -10,6 +10,8 @@
 
 Reference material for the VN Generator monorepo. For the working guide to the code
 itself (commands, package layering, conventions), see [`../CLAUDE.md`](../CLAUDE.md).
+For how to debug the repo (state files, CDP, the 2D debug surface, known traps), see
+[`debugGuide.md`](debugGuide.md).
 
 Implementation plans live separately in [`plans/`](plans) and are not indexed here.
 
@@ -29,7 +31,7 @@ Surveys, investigations, and exploratory designs live in [`research/`](research)
 
 | Document | What it covers |
 | -------- | -------------- |
-| [`research/2d-graphics-debug-api.md`](research/2d-graphics-debug-api.md) | Exploratory design for a source-agnostic 2D debugging layer: a neutral fragment/frame IR captured from DOM and canvas alike, spatial + causal queries (`explainPick`, `explainTransform`, `whyInvalidated`), time travel, and invariants-as-tests. Aimed at the desktop app's rooms today and a node-based story editor later. Nothing implemented. |
+| [`research/2d-graphics-debug-api.md`](research/2d-graphics-debug-api.md) | Exploratory design for a source-agnostic 2D debugging layer: a neutral fragment/frame IR captured from DOM and canvas alike, spatial + causal queries (`explainPick`, `explainTransform`, `whyInvalidated`), time travel, and invariants-as-tests. The first slice (IR, DOM adapter, queries, `explainPick`) is implemented as `@vn/debug2d` — see [`debugGuide.md`](debugGuide.md) for usage. |
 
 ## Background & reference
 
