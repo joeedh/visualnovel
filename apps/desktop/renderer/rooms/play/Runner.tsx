@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from './api';
-import type { Beat, Playable, PlayableScene } from '../src/shared/ipc';
+import { api } from '../../api';
+import type { Beat, Playable, PlayableScene } from '../../../src/shared/ipc';
 
 /** A content-addressed asset ref, as it appears in the playable. */
 interface Ref {

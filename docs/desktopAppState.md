@@ -61,7 +61,7 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 - **Survives:** Page reload, app restart
 - **Lost when:** Browser storage is cleared, user uses incognito/private browsing
 
-**Code:** `renderer/Runner.tsx` lines 73–117 (`saveKey`, `save()`, `load()`)
+**Code:** `renderer/rooms/play/Runner.tsx` (`saveKey`, `save()`, `load()`)
 
 ---
 
@@ -95,7 +95,7 @@ not per workspace** — a rail width is about the window, not the project.
   each other's keys (same key is last-flush-wins)
 - **Survives:** app restart. **Lost when:** the file is deleted
 
-**Code:** `src/main/sessionstore.ts`, `renderer/session.ts`, `renderer/Resizable.tsx`
+**Code:** `src/main/sessionstore.ts`, `renderer/session.ts`, `renderer/ui/Resizable.tsx`
 
 ---
 
@@ -105,7 +105,8 @@ not per workspace** — a rail width is about the window, not the project.
 
 **Storage:** React component state (memory only)
 
-**Key pieces** (from `renderer/App.tsx`):
+**Key pieces** (split across `renderer/app/App.tsx` — the shell — and `renderer/app/useAgent.ts`
+— the conversation):
 | State | Type | Lifetime |
 |-------|------|----------|
 | `room` | `'studio' \| 'floor' \| 'play'` | Session only |
@@ -119,8 +120,8 @@ not per workspace** — a rail width is about the window, not the project.
 | `busy` | Async operation in flight | Session only |
 | `paletteOpen` | Palette menu visibility | Session only |
 
-Panel widths are the one exception: they live in `usePanelWidth` rather than `App.tsx`, and are
-persisted (category 2 above).
+Panel widths are the one exception: they live in `usePanelWidth` rather than in either file, and
+are persisted (category 2 above).
 
 **Lifecycle:**
 - Loaded once on mount (useEffect): `workspace:index` → `setIndex`, `pipeline:status` → `setStatus`
@@ -128,7 +129,8 @@ persisted (category 2 above).
 - Plan approval requests pushed via IPC (`'permission:plan'`) → `setPlanReq`
 - **Lost on:** Page reload, app restart (no persistence)
 
-**Code:** `renderer/App.tsx` lines 25–114
+**Code:** `renderer/app/App.tsx` (room, palette, index, status, `command:ui`) and
+`renderer/app/useAgent.ts` (mode, feed, `dboxLine`, `planReq`, model, busy)
 
 ---
 

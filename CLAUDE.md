@@ -55,6 +55,14 @@ Run from the repo root.
   `tsgo --noEmit -p tsconfig.json` over the whole workspace, not `tsgo -b`. The root
   `tsconfig.json` maps every `@vn/*` package to its `src/index.ts` via **relative**
   `paths` (TypeScript 7 / `tsgo` removed `baseUrl`, so non-relative paths are rejected).
+- **The renderer is checked by a second pass.** Root `tsconfig.json` includes only
+  `*/src/**`, and the desktop renderer deliberately lives outside `src` (at
+  `apps/desktop/renderer/**`) so the root check never sees its JSX. `pnpm check` is therefore
+  `tsgo -p tsconfig.json && pnpm check:renderer`, the latter running
+  `tsgo --noEmit -p renderer/tsconfig.json` in `apps/desktop`. Without that second pass
+  nothing typechecks the renderer at all — `vite build` uses esbuild, which never checks.
+  `renderer/tsconfig.json` has its own `paths` map; add `@vn/*` entries there as needed,
+  relative-form only.
 - **`tsgo`** comes from `@typescript/native-preview` (TS7 dev). `"jest"` is in
   `compilerOptions.types` so test globals typecheck.
 - **`esbuild` transpiles; `tsgo` verifies.** esbuild never type-checks. It is used in
@@ -266,10 +274,48 @@ thin, ordered view over the existing `Scene`/`Shot`/`Asset` types. See
   background/portrait). `@vn/export` is a boundaries-constrained leaf: like `@vn/authoring` it
   must not import `@vn/pipeline`/`@vn/scheduler`.
 
+### Renderer layout (`apps/desktop/renderer`)
+
+One directory per room, a thin shell, and a stylesheet split along the same seams. `main.tsx`
+is the only `.tsx` at the root.
+
+```
+renderer/
+  main.tsx              entry; installs @vn/debug2d behind import.meta.env.DEV
+  app/                  App.tsx (shell only), Topbar.tsx, Palette.tsx, useAgent.ts
+  rooms/studio/         Studio.tsx  Rail.tsx  Convo.tsx  PlanCard.tsx
+  rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  GateOverlay.tsx
+  rooms/play/           Runner.tsx
+  ui/                   Resizable.tsx — shared by two rooms, so it belongs to neither
+  styles/               index.css @imports tokens · shell · studio · floor · play
+```
+
+- **`App.tsx` owns only the shell**: `room`, `paletteOpen`, the workspace index/status, and
+  the `command:ui` subscription (`view.*` commands target the shell). The agent conversation —
+  feed, `dboxLine`, plan requests, `send`/`toggleMode`/`clear` — lives in `useAgent.ts` and is
+  passed to STUDIO as one object. `busy` is deliberately shell-wide, not agent-only: a
+  pipeline run from FLOOR disables the composer too.
+- **`styles/index.css` import order IS cascade order.** It reproduces the top-to-bottom order
+  of the single sheet this was split from, so a room's `@media` block still overrides the base
+  rule it narrows. Add a new sheet at the **end**, not the middle. Vite inlines the `@import`s
+  at build time, so one stylesheet still ships.
+- **`tokens.css` is the design contract**: `--sodium` `#f4a24c` is warm — the authored/human
+  side; `--signal` `#45c8d6` is cool — the machine/pipeline side; `--ink*` is the surface ramp;
+  `--disp`/`--prose`/`--mono` are display/prose/machine-data type. That split already encodes
+  "who made this", so **don't add new accent hues** — spend these two.
+- **Pure logic goes in `.ts` with a `tests/` sibling; `.tsx` stays thin rendering.** Jest's
+  desktop project is `**/apps/desktop/**/tests/*.test.ts` — `.ts` only, node environment, no
+  jsdom. Layout math, hit-testing, and derivation are exactly what you want under test and
+  exactly what jsdom can't help with; components are not tested. Same impure-shell/pure-core
+  split as `@vn/debug2d`, for the same reason. No jsdom, no React Testing Library.
+- **`prototype.html`** (at `apps/desktop/prototype.html`) is the original design reference and
+  shares class names with the stylesheet. It is neither built nor imported — leave it alone,
+  and don't treat it as the source of truth for tokens; `tokens.css` is.
+
 ### Desktop runner (`apps/desktop`, PLAY room)
 
 The Electron app's third room (**STUDIO · FLOOR · PLAY**) is the runner, in
-`renderer/Runner.tsx`:
+`renderer/rooms/play/Runner.tsx`:
 
 - **Live, no file needed.** The renderer calls the `story:play` IPC channel; the main process
   builds the playable in-process from the loaded model + store (`session.playable()`).
@@ -296,7 +342,7 @@ rather than per workspace. `VN_DESKTOP_HOME` relocates it; the default is one li
   `useSessionValue` seeds `useState` from it, so a saved width is the first thing painted
   rather than a jump away from the default.
 - **One hook, both orientations.** `usePanelWidth(saveId, { defaultWidth, min, max, edge })`
-  (`renderer/Resizable.tsx`) stores under `panel.<saveId>.width`, hands back a
+  (`renderer/ui/Resizable.tsx`) stores under `panel.<saveId>.width`, hands back a
   `--panel-w` `trackStyle` for the grid container and a `<ResizeHandle>`'s props. The STUDIO
   rail (`edge: 'left'`) and the FLOOR inspector (`edge: 'right'`) use it unchanged. A drag
   keeps the width local and persists once on release; `view.panelSize` is the scriptable path.

@@ -1,0 +1,12 @@
+/**
+ * The one stylesheet, assembled. Import order IS cascade order — it reproduces the
+ * top-to-bottom order of the single sheet this was split from, so a room's breakpoint
+ * still overrides the base rule it narrows. Add a new sheet at the end, not the middle.
+ *
+ * Vite inlines these at build time, so the app still ships one emitted stylesheet.
+ */
+@import './tokens.css';
+@import './shell.css';
+@import './studio.css';
+@import './floor.css';
+@import './play.css';

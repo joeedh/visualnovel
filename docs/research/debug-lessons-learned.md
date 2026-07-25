@@ -8,6 +8,11 @@
   * [The gate is per scene — "no shots ran" is the wrong assertion](#the-gate-is-per-scene--no-shots-ran-is-the-wrong-assertion)
   * [Windows: three things a git-backed temp dir needs](#windows-three-things-a-git-backed-temp-dir-needs)
   * [A new workspace package's deps aren't linked until `pnpm install`](#a-new-workspace-packages-deps-arent-linked-until-pnpm-install)
+- [0 · Renderer restructure](#0-%C2%B7-renderer-restructure)
+  * [A check that passes on the first run has not been shown to work](#a-check-that-passes-on-the-first-run-has-not-been-shown-to-work)
+  * [Splitting a stylesheet: diff the emitted rules, not the sources](#splitting-a-stylesheet-diff-the-emitted-rules-not-the-sources)
+  * [Verifying "all three rooms still render" without a screenshot](#verifying-all-three-rooms-still-render-without-a-screenshot)
+  * [Killing the dev loop leaves Electron running](#killing-the-dev-loop-leaves-electron-running)
 
 <!-- tocstop -->
 
@@ -100,3 +105,100 @@ every other package resolves it fine.
 **Lesson.** Adding `packages/<name>/package.json` doesn't create its `node_modules` link.
 Run `pnpm install` once after scaffolding a package — before concluding anything about
 tsconfig `paths`, which resolve `@vn/*` but not third-party deps.
+
+## 0 · Renderer restructure
+
+### A check that passes on the first run has not been shown to work
+
+**Symptom.** Wave 1 added `tsgo --noEmit -p renderer/tsconfig.json` to code that had *never*
+been typechecked. The plan budgeted for "a pile" of errors. It exited 0, first try, 11 files.
+
+That is the ambiguous outcome, not the good one: a `tsconfig` whose `include` matches nothing,
+or a `-p` pointed at a file that doesn't exist, also exits 0. The cheapest disambiguation is to
+break it on purpose:
+
+```sh
+echo 'const _deliberate: number = "not a number";' >> apps/desktop/renderer/main.tsx
+pnpm check          # expect TS2322 and exit 1
+git checkout apps/desktop/renderer/main.tsx
+```
+
+**Lesson.** Any new gate gets a falsification pass before it is called green. This is the same
+reason a test you have never seen fail is not evidence.
+
+### Splitting a stylesheet: diff the emitted rules, not the sources
+
+**Symptom (potential, caught before it shipped).** Splitting one 1260-line sheet into six is
+exactly the change where a cascade regression hides — `@media` blocks add no specificity, so a
+breakpoint that ends up *before* the base rule it narrows silently stops applying. Nothing type-
+checks it and the bundle size barely moves (19.30 kB → 19.30 kB, gzip 4.42 → 4.41 kB), so
+"the build still works" proves nothing.
+
+**Evidence — the normalization matters.** Compare the *emitted* CSS from `vite build`, one rule
+per line. The obvious first attempt is wrong:
+
+```sh
+tr '}' '}\n' < before.css     # WRONG: tr maps char→char, so '}\n' is truncated to '}'
+sed 's/}/}\n/g' < before.css  # right
+```
+
+With that fixed, two questions, in order — the set first, because an order diff on differing
+sets is unreadable:
+
+```sh
+for f in before after; do sed 's/}/}\n/g' $f.css | sed '/^$/d' > $f.rules; done
+diff <(sort before.rules) <(sort after.rules)   # same rules at all?  (199 = 199)
+diff before.rules after.rules                   # then: which ones moved, and does it matter?
+```
+
+Every moved rule is only a problem if some *other* rule it crossed shares a matching selector.
+Two blocks moved here (`.cmdbtn` past the `.overlay`/`.pal-*` group, and both `@media` blocks
+earlier); a `grep` for each moved selector in `after.rules` showed each override still sits
+after its base rule, and nothing re-matches afterward.
+
+**Confirm it live**, because the dev server assembles the sheet differently than `vite build`
+does — dev resolves `@import` into injected `<style>` elements, so dev-only ordering bugs are
+possible. Ask the CSSOM directly rather than looking at the window:
+
+```sh
+node scripts/vn-cdp.mjs --raw "(()=>{const h=[];[...document.styleSheets].forEach((ss,si)=>{let r;try{r=[...ss.cssRules]}catch(e){return}r.forEach((x,i)=>{if(/\.studio[{ >,]/.test(x.cssText))h.push(si+'.'+i)})});return h.join(',')})()"
+# 1.53 (base), 1.104 (@media override) — same sheet, override last. Correct.
+```
+
+**Negative result.** A screenshot would not have caught this, and neither would eyeballing the
+app at one window size: the `@media` blocks only apply under 860/980 px. Computed style via CDP
+(`getComputedStyle(document.querySelector('.studio')).gridTemplateColumns` → `"212px 1134.4px"`)
+proves the base rule; only the CSSOM rule order proves the override.
+
+### Verifying "all three rooms still render" without a screenshot
+
+`view.room` is a real command, so the room switch and the render are both checkable from the
+shell. `capture()` returns a **frame** (`{index, t, fragments, spaces, caps, fidelity, oracle}`),
+not an array — `capture().length` is `undefined`, which reads as a broken debug layer rather
+than a wrong property:
+
+```sh
+for r in studio floor play; do
+  node scripts/vn-cdp.mjs "view.room(name='$r')" > /dev/null
+  node scripts/vn-cdp.mjs --raw "window.__vnDebug.capture().fragments.length"
+done
+# 77 / 47 / 39 — each room mounts substantive DOM
+```
+
+`owners()` returns objects, so it stringifies to `[object Object]` in a joined expression; take
+the fields you want, or end in `.table()`.
+
+### Killing the dev loop leaves Electron running
+
+**Symptom.** `scripts/dev.desktop.mjs` tears its tree down on Ctrl-C, but killing the pnpm
+process from outside is not Ctrl-C — four `electron.exe` processes survived, still holding the
+CDP port.
+
+**Evidence.** The listener names the culprit PID, and that PID is the parent of the rest:
+
+```sh
+netstat -ano | grep 127.0.0.1:9222   # → LISTENING <pid>
+```
+
+Kill that process's children then the process itself, rather than every `electron.exe` on the
+box — on a dev machine, some of those belong to the user's editor.

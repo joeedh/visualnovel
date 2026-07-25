@@ -143,9 +143,10 @@ so one authorial act is one `CommandRecord` with one replayable `invocation`.
 1. **Refuse when `C` already has choices.** `Scene.next` is *"[l]inear continuation when there
    are no explicit choices"* (`packages/types/src/entities.ts:146`) — the runner shows choice
    buttons at scene end and only auto-follows `next` when there are none
-   (`apps/desktop/renderer/Runner.tsx`). So writing `C.next = B` on a scene that forks would
-   produce an edge the runner silently ignores — the story would never reach `B`. Reject with
-   a visible reason. A silently-dead edge is exactly the failure this editor exists to catch.
+   (`apps/desktop/renderer/rooms/play/Runner.tsx`). So writing `C.next = B` on a scene that
+   forks would produce an edge the runner silently ignores — the story would never reach `B`.
+   Reject with a visible reason. A silently-dead edge is exactly the failure this editor
+   exists to catch.
 2. **It is a rewire, not a move.** Scenes can be the target of many edges, and splicing does
    not touch `C`'s existing inbound edges. `C` stays reachable from wherever it already was.
    A true "move" would mean rewiring every inbound edge to `C`, which is far more destructive

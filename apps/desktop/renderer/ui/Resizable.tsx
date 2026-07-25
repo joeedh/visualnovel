@@ -13,7 +13,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from 'react';
-import { useSessionValue } from './session';
+import { useSessionValue } from '../session';
 
 /** Arrow-key nudge, and the coarser Shift-arrow one. */
 const STEP = 8;

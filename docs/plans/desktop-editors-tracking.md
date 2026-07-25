@@ -9,7 +9,7 @@ the individual plans hang off. Survey that motivated them:
 | # | Plan | Kind | Status | Depends on |
 | - | ---- | ---- | ------ | ---------- |
 | — | [test-fixtures](test-fixtures.md) | groundwork | **done** | — |
-| 0 | [desktop-renderer-restructure](desktop-renderer-restructure.md) | refactor | not started | — |
+| 0 | [desktop-renderer-restructure](desktop-renderer-restructure.md) | refactor | **done** | — |
 | 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | not started | 0, testkit |
 | 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | not started | 0, testkit |
 | 3 | [task-dag-view](task-dag-view.md) | upgrade | not started | 0, 2 (`renderer/graph/`), testkit |
@@ -44,6 +44,10 @@ Root `pnpm check` includes only `packages/*/src` and `apps/*/src`. The renderer 
 `apps/desktop/renderer/**` with its own `tsconfig.json` that **no script invokes**, and
 `vite build` transpiles via esbuild without checking. Renderer type errors are invisible
 until runtime today. Fixed first, before any new renderer code.
+
+**Resolved** — `pnpm check` is now `tsgo -p tsconfig.json && pnpm check:renderer`, the second
+pass running `tsgo --noEmit -p renderer/tsconfig.json` in `apps/desktop`. It was clean on the
+first run and was verified to fail on a deliberately introduced type error.
 
 ### There is no round-trip-safe screenplay writer (plan 2, Wave 1)
 
@@ -161,11 +165,11 @@ Decided against in the survey, recorded here so it does not get re-proposed:
 
 ### 0 · Restructure
 
-- [ ] `pnpm check` covers the renderer and is green
-- [ ] `App.tsx` under 120 lines; shell only
-- [ ] One directory per room
-- [ ] `styles/` split, cascade order preserved
-- [ ] `CLAUDE.md` toolchain notes updated
+- [x] `pnpm check` covers the renderer and is green
+- [x] `App.tsx` under 120 lines; shell only
+- [x] One directory per room
+- [x] `styles/` split, cascade order preserved
+- [x] `CLAUDE.md` toolchain notes updated
 
 ### 1 · Refine-loop inspector
 
@@ -206,7 +210,7 @@ One box per plan, ticked when that plan appends its section to
 item in this file that cannot be done early.
 
 - [x] test-fixtures
-- [ ] 0 · Restructure
+- [x] 0 · Restructure
 - [ ] 1 · Refine-loop inspector
 - [ ] 2 · Story branch editor
 - [ ] 3 · Task DAG view

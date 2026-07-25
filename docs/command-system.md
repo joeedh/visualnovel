@@ -367,8 +367,8 @@ schemas instead is an obvious follow-on.
 
 Deliberately out of scope for v1, in rough order of value:
 
-1. **Make `renderer/Palette.tsx` data-driven** off `command:catalog` — it is still the static
-   mockup that motivated this work.
+1. **Make `renderer/app/Palette.tsx` data-driven** off `command:catalog` — it is still the
+   static mockup that motivated this work.
 2. **Route `confirm` through the renderer.** The main process currently auto-approves, so
    `pipeline.run`'s `confirm: true` is not yet a real gate.
 3. **Feed `CatalogEntry.schema` to `NativeAgentBackend`** in place of `LOOSE_PARAMS`.

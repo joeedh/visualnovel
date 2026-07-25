@@ -15,7 +15,8 @@
     ]
   },
   "scripts": {
-    "check": "tsgo --noEmit -p tsconfig.json",
+    "check": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
+    "check:renderer": "pnpm --filter @vn/desktop check",
     "test": "jest",
     "lint": "eslint . && pnpm format:check",
     "format": "prettier --write .",

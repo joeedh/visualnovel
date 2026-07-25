@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AgentMode } from '../src/shared/ipc';
+import type { AgentMode } from '../../src/shared/ipc';
 
 /** Curated text models (mirrors apps/authoring TEXT_MODELS); any id is also valid. */
 const MODELS: { id: string; prov: string }[] = [

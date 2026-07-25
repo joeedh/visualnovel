@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/main/index.cjs",
   "scripts": {
+    "check": "tsgo --noEmit -p renderer/tsconfig.json",
     "build:main": "node ../../scripts/esbuild.desktop.mjs",
     "build:renderer": "vite build",
     "build:catalog": "node ../../scripts/gen-command-catalog.mjs",

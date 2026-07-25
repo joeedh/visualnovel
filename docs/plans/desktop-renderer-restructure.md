@@ -1,6 +1,6 @@
 # Plan: desktop renderer restructure
 
-**Status:** not started.
+**Status:** done.
 **Gates:** every editor plan in [`desktop-editors-tracking.md`](desktop-editors-tracking.md).
 Nothing else should start until this lands.
 
@@ -157,11 +157,28 @@ Component library, CSS modules or CSS-in-JS, state management library, renderer-
 routing, jsdom test setup, and touching `src/main/**` (which is already well-factored — 12
 files, none over 60 lines, plus `session.ts`).
 
+## As shipped — deviations
+
+- **Wave 1 surfaced zero errors.** The predicted "pile" did not materialize: the first-ever
+  renderer typecheck was clean. The check was verified to actually bite by introducing a
+  deliberate `TS2322` and confirming a non-zero exit, then reverting.
+- **`renderer/ui/` exists**, holding `Resizable.tsx`. Not in the plan's tree, but it is shared
+  by two rooms so it belongs to neither `rooms/studio/` nor `rooms/floor/`.
+- **`Palette.tsx` moved into `app/`** rather than staying at the root — the plan's rule is no
+  `.tsx` at `renderer/` root but `main.tsx`, and the palette is shell state.
+- **The overlay/palette rules went to `shell.css`, not `floor.css`.** The plan's sketch listed
+  `.overlay` under floor; it is the shell's modal scrim, used by the palette. The gate
+  overlay's own rules (`.choicebox`, `.cand*`, `.ch-*`) did go to `floor.css`.
+- **Equivalence of the split sheet was proved, not eyeballed.** Emitted CSS before/after
+  reduces to the same 199 rules; the only order changes are the two intentionally relocated
+  blocks, whose selectors nothing else matches. Confirmed live in the CSSOM: `.studio`/`.rail`
+  base rules at index 53/54, their `@media (max-width: 860px)` override at 104.
+
 ## Done
 
-- [ ] `pnpm check` covers the renderer and is green
-- [ ] `App.tsx` under 120 lines; no room component defined in it
-- [ ] One directory per room; no `.tsx` at `renderer/` root except `main.tsx`
-- [ ] `styles/` split, cascade order preserved, app visually identical
-- [ ] `CLAUDE.md` toolchain notes updated: the renderer typecheck exists and `pnpm check`
+- [x] `pnpm check` covers the renderer and is green
+- [x] `App.tsx` under 120 lines; no room component defined in it
+- [x] One directory per room; no `.tsx` at `renderer/` root except `main.tsx`
+- [x] `styles/` split, cascade order preserved, app visually identical
+- [x] `CLAUDE.md` toolchain notes updated: the renderer typecheck exists and `pnpm check`
       runs it
