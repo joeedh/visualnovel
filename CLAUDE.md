@@ -38,7 +38,7 @@ Run from the repo root.
 | Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                         |
 | Lint (eslint + format check) | `pnpm lint`                                                             |
 | Auto-format                  | `pnpm format`                                                           |
-| Bundle the CLIs              | `pnpm build` (both `vngen` and `vnauthor`)                              |
+| Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)          |
 | Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)               |
 | Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`) |
 
@@ -56,6 +56,14 @@ Run from the repo root.
   exactly two places: bundling the CLI (`scripts/esbuild.cli.mjs`) and as the jest
   transform (`scripts/jest-esbuild.cjs`). Internal packages are **source-only** — no
   per-package `dist`; consumers import `src/index.ts` directly.
+- **`turbo` orchestrates the bundles.** Each app owns a `build` script (`apps/cli`,
+  `apps/authoring`, `apps/desktop`); `pnpm build` is `turbo run build` (all three), and
+  `build:cli` / `build:authoring` / `build:desktop` are thin `--filter=…` wrappers for one
+  app at a time. Because internal packages are source-only (no build
+  task of their own), their sources can't be picked up via `dependsOn: ["^build"]` — so
+  `turbo.json` lists `packages/*/src/**`, the esbuild scripts, and the tsconfigs as
+  `globalDependencies`, which is what actually invalidates an app's cache. Outputs are
+  `dist/**`; the local cache lives in `.turbo` (gitignored).
 - **jest config is `jest.config.cjs`** (the plan said `.ts`) to avoid bootstrapping
   ts-node just to read config. One display-named project per package.
 - **Formatting uses standard `prettier`** (the plan mentioned a `@pathtx/prettier` fork,
