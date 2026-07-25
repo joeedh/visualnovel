@@ -79,7 +79,11 @@ Run from the repo root.
   an unclassified one — which `boundaries/element-types` silently passes. The layering below
   was advertised but not actually enforced until that was fixed.
 - **jest config is `jest.config.cjs`** (the plan said `.ts`) to avoid bootstrapping
-  ts-node just to read config. One display-named project per package.
+  ts-node just to read config. One display-named project per package. **Tests live in a
+  `tests/` subfolder beside the code they cover** (`packages/model/src/tests/model.test.ts`,
+  `packages/debug2d/src/dom/tests/stacking.test.ts`); every project's `testMatch` is
+  `**/<scope>/**/tests/*.test.ts`, so a `*.test.ts` outside a `tests/` dir is silently
+  never run.
 - **Formatting uses standard `prettier`** (the plan mentioned a `@pathtx/prettier` fork,
   which is not available here). `docs/**` and `Readme.MD` are in `.prettierignore`.
 - pnpm needs `"pnpm": { "onlyBuiltDependencies": ["esbuild"] }` so esbuild's postinstall

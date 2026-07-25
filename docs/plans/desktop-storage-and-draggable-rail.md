@@ -62,8 +62,8 @@ export class SessionStore {
 - **Debounce.** `set()` schedules a flush ~200 ms out and coalesces; `close()` flushes immediately. A drag persists
   once on pointer-up anyway (see §3), so this is belt-and-braces against write storms.
 
-**New: `apps/desktop/src/main/sessionstore.test.ts`** (the `@vn/desktop` jest project already matches
-`apps/desktop/**/*.test.ts`, `jest.config.cjs:61-66`). Cover: round-trip through a fresh instance; two stores over the
+**New: `apps/desktop/src/main/tests/sessionstore.test.ts`** (the `@vn/desktop` jest project already matches
+`apps/desktop/**/tests/*.test.ts`, `jest.config.cjs:61-66`). Cover: round-trip through a fresh instance; two stores over the
 same dir each setting a different key, both keys survive; corrupt JSON → `{}` and still writable; a stale lock dir is
 broken rather than deadlocking.
 
