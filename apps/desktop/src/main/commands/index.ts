@@ -10,7 +10,7 @@ import { agentClear, agentRun, agentSetMode, agentSetModel } from './agent.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
 import { storyExport, storyPlay } from './story.js';
-import { viewPalette, viewRoom } from './view.js';
+import { viewPalette, viewPanelSize, viewRoom } from './view.js';
 import { workspaceIndex } from './workspace.js';
 import type { CommandHost } from './host.js';
 
@@ -30,6 +30,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storyExport,
     storyPlay,
     viewPalette,
+    viewPanelSize,
     viewRoom,
     workspaceIndex,
   ]);

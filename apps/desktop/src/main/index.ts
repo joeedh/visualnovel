@@ -17,11 +17,13 @@ import { appendJsonl } from '@vn/util';
 import { CommandStack, toCatalog } from '@vn/commands';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
+import { SessionStore } from './sessionstore.js';
 import type {
   InvokeChannel,
   InvokeChannels,
   PlanDecision,
   PlanRequest,
+  SessionValue,
   UiEffect,
 } from '../shared/ipc.js';
 
@@ -50,6 +52,7 @@ protocol.registerSchemesAsPrivileged([
 let win: BrowserWindow | null = null;
 let session: WorkspaceSession | null = null;
 let stack: CommandStack<CommandHost> | null = null;
+let sessionStore: SessionStore | null = null;
 const pendingPlans = new Map<number, (decision: PlanDecision) => void>();
 let planSeq = 0;
 
@@ -74,6 +77,22 @@ function getSession(): WorkspaceSession {
   return session;
 }
 
+/** Opened once during `app.whenReady()`, before any window can ask for its snapshot. */
+function getSessionStore(): SessionStore {
+  if (!sessionStore) throw new Error('the session store is only available after app ready');
+  return sessionStore;
+}
+
+/**
+ * Every write broadcasts, whoever made it — that is what lets `view.panelSize` move a panel
+ * live. The echo back to the window that made the change re-applies the same value.
+ */
+async function openSessionStore(): Promise<void> {
+  sessionStore = await SessionStore.open(undefined, (key, value: SessionValue) => {
+    win?.webContents.send('session:changed', { key, value });
+  });
+}
+
 const registry = createDesktopRegistry();
 
 /**
@@ -86,6 +105,7 @@ function getStack(): CommandStack<CommandHost> {
     const paths = new ProjectPaths(root);
     const host: CommandHost = {
       session: getSession(),
+      state: getSessionStore(),
       ui: (effect: UiEffect) => win?.webContents.send('command:ui', effect),
     };
     stack = new CommandStack<CommandHost>({
@@ -148,6 +168,13 @@ function registerIpc(): void {
   handle('command:history', (limit) => getStack().history(limit));
   handle('command:undo', () => getStack().undo());
   handle('command:redo', () => getStack().redo());
+
+  handle('session:set', (payload) => getSessionStore().set(payload.key, payload.value));
+  // Synchronous on purpose (so the preload can hand the renderer its state before first
+  // paint) and therefore registered directly: `handle` above is `ipcMain.handle`-only.
+  ipcMain.on('session:snapshot:sync', (event) => {
+    event.returnValue = getSessionStore().snapshot();
+  });
 }
 
 /**
@@ -189,7 +216,8 @@ function createWindow(): void {
   });
 }
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
+  await openSessionStore();
   registerAssetProtocol();
   registerIpc();
   createWindow();
@@ -200,4 +228,13 @@ void app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// Quitting is synchronous, so hold it open for the one flush that may still be debounced.
+let flushingOnQuit = false;
+app.on('before-quit', (event) => {
+  if (flushingOnQuit || !sessionStore) return;
+  flushingOnQuit = true;
+  event.preventDefault();
+  void sessionStore.close().finally(() => app.quit());
 });

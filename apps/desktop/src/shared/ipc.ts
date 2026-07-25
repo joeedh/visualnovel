@@ -35,6 +35,15 @@ export type {
 /** The rooms the shell can show; `view.room` targets one. */
 export type Room = 'studio' | 'floor' | 'play';
 
+/** Anything the desktop session store can persist — plain JSON, nothing else. */
+export type SessionValue =
+  | string
+  | number
+  | boolean
+  | null
+  | SessionValue[]
+  | { [k: string]: SessionValue };
+
 /**
  * A UI change a command asks the renderer to apply. `view.*` commands run in main like any
  * other command — one registry, one catalog, reachable from CDP — and push the effect here
@@ -118,6 +127,8 @@ export interface InvokeChannels {
   /** v1 always refuses, pointing at `docs/gitUndoOptions.md` — see `@vn/commands`. */
   'command:undo': () => CommandOutcome;
   'command:redo': () => CommandOutcome;
+  /** Persist one piece of UI state; the initial read is the synchronous preload snapshot. */
+  'session:set': (payload: { key: string; value: SessionValue }) => void;
 }
 
 /** Events pushed from main to the renderer (fire-and-forget). */
@@ -125,6 +136,8 @@ export interface EventChannels {
   'agent:event': AgentEvent;
   'permission:plan': PlanRequest;
   'command:ui': UiEffect;
+  /** A session key changed — either by this window or by a command like `view.panelSize`. */
+  'session:changed': { key: string; value: SessionValue };
   log: { level: 'info' | 'warn' | 'error'; message: string };
 }
 
@@ -138,6 +151,14 @@ export interface DesktopApi {
     ...args: Parameters<InvokeChannels[C]>
   ): Promise<ReturnType<InvokeChannels[C]>>;
   on<C extends EventChannel>(channel: C, listener: (payload: EventChannels[C]) => void): () => void;
+  /**
+   * Persisted UI state (see `SessionStore`). `initial()` is deliberately synchronous — an
+   * async fetch would paint the panels at their defaults and then jump to the saved widths.
+   */
+  session: {
+    initial(): Record<string, SessionValue>;
+    set(key: string, value: SessionValue): void;
+  };
 }
 
 /**

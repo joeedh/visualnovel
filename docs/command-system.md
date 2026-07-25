@@ -210,7 +210,7 @@ A half-working undo on an author's only copy of their screenplay is worse than n
 
 ## The registered commands
 
-Thirteen, in six namespaces. Four are `mutating`; one asks for confirmation.
+Fourteen, in six namespaces. Four are `mutating`; one asks for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
@@ -227,6 +227,7 @@ Thirteen, in six namespaces. Four are `mutating`; one asks for confirmation.
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
 | `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
+| `view.panelSize`               | `id`, `width` (80–1200)           | Saved width of a resizable panel; persisted, not an effect. |
 
 ✍ mutating ⚠ confirm
 
@@ -234,8 +235,14 @@ Thirteen, in six namespaces. Four are `mutating`; one asks for confirmation.
 applies (`setRoom`, `setPaletteOpen`). The alternative — a second, renderer-side registry —
 would be one more thing to keep in sync, and CDP could not reach it.
 
+`view.panelSize` is the exception that needs no effect: it writes to the desktop session
+store, and the store broadcasts its own `session:changed`, which is what the renderer's
+`usePanelWidth` already listens for. Dragging a panel writes through the same store but
+_not_ through the command stack, so `commands.jsonl` doesn't collect a record per drag.
+
 `CommandHost` is the app-specific service bundle every command receives:
-`{ session: WorkspaceSession; ui(effect: UiEffect): void }`.
+`{ session: WorkspaceSession; state: SessionStore; ui(effect: UiEffect): void }`. `state` is
+persisted UI state — deliberately not called `session`, which is already the backend one.
 
 ---
 

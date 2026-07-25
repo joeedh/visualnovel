@@ -4,9 +4,10 @@
 
 - [State Categories](#state-categories)
   * [1. Playthrough State (Persistent via localStorage)](#1-playthrough-state-persistent-via-localstorage)
-  * [2. UI State (Ephemeral, React)](#2-ui-state-ephemeral-react)
-  * [3. Backend State (Main Process, Ephemeral)](#3-backend-state-main-process-ephemeral)
-  * [4. Project Files (Persistent on Disk)](#4-project-files-persistent-on-disk)
+  * [2. Remembered UI State (Persistent via the desktop session store)](#2-remembered-ui-state-persistent-via-the-desktop-session-store)
+  * [3. UI State (Ephemeral, React)](#3-ui-state-ephemeral-react)
+  * [4. Backend State (Main Process, Ephemeral)](#4-backend-state-main-process-ephemeral)
+  * [5. Project Files (Persistent on Disk)](#5-project-files-persistent-on-disk)
 - [Data Flow](#data-flow)
   * [1. Initial App Load](#1-initial-app-load)
   * [2. User Types in Studio](#2-user-types-in-studio)
@@ -17,7 +18,8 @@
 - [Rebuilding After Restart](#rebuilding-after-restart)
 - [IPC Contract](#ipc-contract)
 - [Design Rationale](#design-rationale)
-  * [Why no persistent UI state?](#why-no-persistent-ui-state)
+  * [Why so little persistent UI state?](#why-so-little-persistent-ui-state)
+  * [Why a main-process file, not localStorage, for panel widths?](#why-a-main-process-file-not-localstorage-for-panel-widths)
   * [Why re-read project files on each call?](#why-re-read-project-files-on-each-call)
   * [Why localStorage for playthrough?](#why-localstorage-for-playthrough)
   * [Why build the playable on-demand?](#why-build-the-playable-on-demand)
@@ -63,7 +65,41 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 
 ---
 
-### 2. UI State (Ephemeral, React)
+### 2. Remembered UI State (Persistent via the desktop session store)
+
+**What:** Shell layout the user has adjusted and expects back — currently the two panel widths.
+
+**Storage:** `.vndesktop/session.json` next to `apps/desktop/` (override with `VN_DESKTOP_HOME`;
+one line from `~/.vndesktop` once the app ships installed). Gitignored. **Global per install,
+not per workspace** — a rail width is about the window, not the project.
+
+**Shape:** a flat `Record<string, SessionValue>` with dotted keys.
+
+```jsonc
+{
+  "panel.studio.rail.width": 260,
+  "panel.floor.inspector.width": 380,
+}
+```
+
+**Lifecycle:**
+- Main opens the store during `app.whenReady()`, before any window exists
+- The preload reads the whole snapshot **synchronously** (`session:snapshot:sync`) so the
+  renderer's first paint already uses the saved widths — an async fetch would render the
+  default and then jump
+- `useSessionValue(key, fallback)` seeds `useState` from that snapshot, writes via
+  `session:set`, and re-reads on the `session:changed` broadcast
+- A drag keeps the width in local state and persists **once** on pointer-up; `set()` also
+  debounces ~200 ms, and `before-quit` flushes
+- Writes are merged **per key** under a `mkdir` lock, so two running instances don't clobber
+  each other's keys (same key is last-flush-wins)
+- **Survives:** app restart. **Lost when:** the file is deleted
+
+**Code:** `src/main/sessionstore.ts`, `renderer/session.ts`, `renderer/Resizable.tsx`
+
+---
+
+### 3. UI State (Ephemeral, React)
 
 **What:** Everything the user sees and interacts with in the STUDIO and FLOOR views—conversation, mode, pipline status, open dialogs.
 
@@ -83,6 +119,9 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 | `busy` | Async operation in flight | Session only |
 | `paletteOpen` | Palette menu visibility | Session only |
 
+Panel widths are the one exception: they live in `usePanelWidth` rather than `App.tsx`, and are
+persisted (category 2 above).
+
 **Lifecycle:**
 - Loaded once on mount (useEffect): `workspace:index` → `setIndex`, `pipeline:status` → `setStatus`
 - Agent events pushed from main via IPC (`'agent:event'`) → `pushFeed`, `setDboxLine`, etc.
@@ -93,7 +132,7 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 
 ---
 
-### 3. Backend State (Main Process, Ephemeral)
+### 4. Backend State (Main Process, Ephemeral)
 
 **What:** The server-side context that runs the agent, holds loaded models, and mediates file I/O.
 
@@ -140,7 +179,7 @@ class WorkspaceSession {
 
 ---
 
-### 4. Project Files (Persistent on Disk)
+### 5. Project Files (Persistent on Disk)
 
 **What:** The authored inputs and generated outputs—the source of truth for everything else.
 
@@ -309,6 +348,7 @@ invoke('pipeline:run', { mock })
 | Data | Where | Persists? | Who Reads | Who Writes |
 |------|-------|-----------|-----------|-----------|
 | Playthrough position | `localStorage` | ✓ Survives restart | Runner component | Save button |
+| Panel widths | `.vndesktop/session.json` | ✓ Survives restart | `usePanelWidth` | Drag release, `view.panelSize` |
 | Conversation history | React state | ✗ Lost on restart | Studio component | Agent events |
 | UI state (room, mode, etc.) | React state | ✗ Lost on restart | Components | User clicks + IPC events |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |
@@ -326,8 +366,9 @@ When the app restarts:
 
 1. **React state → all cleared.** UI returns to empty Studio view.
 2. **localStorage → playthrough saved.** If user was in Play room, click Load to restore position.
-3. **Project files → unchanged.** Workspace loads with latest committed state.
-4. **Main process → rebuilds on first use.**
+3. **`.vndesktop/session.json` → panel widths restored**, synchronously, before the first paint.
+4. **Project files → unchanged.** Workspace loads with latest committed state.
+5. **Main process → rebuilds on first use.**
    - First IPC call (e.g., `workspace:index`) → lazy-loads project, creates Agent
    - Subsequent calls → may rebuild project (no cache) but reuse Agent
 
@@ -352,6 +393,10 @@ The **conversation history is not recovered** because it's React state only. Eac
 | `gate:candidates` | `characterId: string` | GateCandidate[] | No (read from manifest) |
 | `gate:approve` | `{ characterId, hash }` | ApproveResult | No (edits file + store) |
 | `story:play` | none | Playable | No (built on-demand) |
+| `session:set` | `{ key, value }` | void | **Yes** (`.vndesktop/session.json`) |
+
+`session:snapshot:sync` is the odd one out: a **synchronous** `ipcMain.on` channel the preload
+calls once, before first paint, so the renderer never renders a default width and then jumps.
 
 **Main pushes these to renderer:**
 
@@ -359,16 +404,25 @@ The **conversation history is not recovered** because it's React state only. Eac
 |---------|---------|------|
 | `agent:event` | AgentEvent | During agent:run (each step) |
 | `permission:plan` | PlanRequest | Agent needs approval |
+| `session:changed` | `{ key, value }` | Any session write, whoever made it |
 | `log` | `{ level, message }` | Diagnostic logging |
 
 ---
 
 ## Design Rationale
 
-### Why no persistent UI state?
+### Why so little persistent UI state?
 - The desktop app is a **client for a workspace**, not a REPL session with long-lived conversation.
 - Restarting should feel like opening a fresh terminal in the project directory.
 - The authoring workflow is **step-and-approve** (user proposes → agent plans → user approves → agent executes), so losing mid-turn state is acceptable.
+- What does persist is only what the user *adjusted by hand* and would be annoyed to redo — a
+  dragged panel width. Derived or transient state stays ephemeral.
+
+### Why a main-process file, not localStorage, for panel widths?
+- The widths are about the **install**, not a workspace or an origin; a command
+  (`view.panelSize`) and a future preferences pane both need to write them from main.
+- The preload can read a main-process file **synchronously** before first paint. Two Electron
+  instances would also clobber each other in `localStorage`; per-key merge under a lock does not.
 
 ### Why re-read project files on each call?
 - Ensures the main process always sees the latest disk state (e.g., if user hand-edits a file).
@@ -402,6 +456,9 @@ The **conversation history is not recovered** because it's React state only. Eac
 ### Multiple windows/tabs of the same workspace
 - **localStorage:** Shared by origin, so playthrough saves will clobber each other (last window wins).
 - **Main process:** Separate app instance per window (Electron), so one WorkspaceSession per window.
+- **Session store:** Each instance has its own `SessionStore` over the same file. Writes merge
+  per key under a `mkdir` lock, so two instances editing *different* panels both survive; the
+  same panel is last-flush-wins. A lock left behind by a killed instance is broken after 5s.
 
 ### Switching workspaces
 - App only supports one workspace at a time (loaded at startup via `VN_PROJECT` env var).

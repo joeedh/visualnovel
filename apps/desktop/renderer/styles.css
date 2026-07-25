@@ -198,12 +198,46 @@ button {
   opacity: 1;
 }
 
+/* ---- resizable panels ---- */
+/* Out of flow, so it never takes a grid cell; the negative margins centre the 7px hit
+   target on the boundary whichever of `left`/`right` the hook set. */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  margin-left: -3px;
+  margin-right: -3px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: 0 3px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+.resize-handle:hover::after,
+.resize-handle.dragging::after {
+  background: var(--signal);
+}
+.resize-handle:focus-visible {
+  outline: none;
+}
+.resize-handle:focus-visible::after {
+  background: var(--sodium);
+}
+
 /* ---- studio ---- */
 .studio {
   display: grid;
-  grid-template-columns: 212px 1fr;
+  /* The track is driven by `usePanelWidth('studio.rail')`; the literal is the default. */
+  grid-template-columns: var(--panel-w, 212px) 1fr;
   height: 100%;
   min-height: 0;
+  position: relative;
 }
 .rail {
   background: var(--ink-sunken);
@@ -854,8 +888,10 @@ button {
 /* ---- floor: gate barrier + inspector ---- */
 .floor-body {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  /* Mirrors `.studio`, but the panel is on the right — see `usePanelWidth`'s `edge`. */
+  grid-template-columns: 1fr var(--panel-w, 320px);
   min-height: 0;
+  position: relative;
 }
 .floor-main {
   overflow: auto;
@@ -995,9 +1031,13 @@ button {
   font-family: var(--mono);
 }
 
+/* Both breakpoints collapse to a single column, so there is no boundary left to drag. */
 @media (max-width: 980px) {
   .floor-body {
     grid-template-columns: 1fr;
+  }
+  .floor-body > .resize-handle {
+    display: none;
   }
   .inspector {
     border-left: none;
@@ -1007,6 +1047,9 @@ button {
 @media (max-width: 860px) {
   .studio {
     grid-template-columns: 1fr;
+  }
+  .studio > .resize-handle {
+    display: none;
   }
   .rail {
     display: none;

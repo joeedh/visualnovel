@@ -9,6 +9,7 @@ import type {
   EventChannels,
   PipelineStatus,
   Playable,
+  SessionValue,
   Task,
   WorkspaceIndex,
 } from '../src/shared/ipc';
@@ -112,6 +113,23 @@ const MOCK_PLAYABLE: Playable = {
   },
 };
 
+/**
+ * The browser preview has no main process to persist to, so the session store's role is
+ * played by `localStorage` — enough that the resizable panels behave identically there.
+ */
+const PREVIEW_SESSION = 'vn.session';
+
+function previewSession(): Record<string, SessionValue> {
+  try {
+    return JSON.parse(localStorage.getItem(PREVIEW_SESSION) ?? '{}') as Record<
+      string,
+      SessionValue
+    >;
+  } catch {
+    return {};
+  }
+}
+
 /** A do-nothing API backed by mock data, used when no preload bridge is present. */
 const fallback: DesktopApi = {
   invoke: ((channel: string, arg?: unknown) => {
@@ -146,6 +164,12 @@ const fallback: DesktopApi = {
     }
   }) as DesktopApi['invoke'],
   on: () => () => {},
+  session: {
+    initial: previewSession,
+    set: (key, value) => {
+      localStorage.setItem(PREVIEW_SESSION, JSON.stringify({ ...previewSession(), [key]: value }));
+    },
+  },
 };
 
 export const api: DesktopApi = window.api ?? fallback;

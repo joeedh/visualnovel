@@ -4,7 +4,17 @@
  * Bundled as CommonJS (see `scripts/esbuild.desktop.mjs`).
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { CommandBridge, DesktopApi } from '../shared/ipc.js';
+import type { CommandBridge, DesktopApi, SessionValue } from '../shared/ipc.js';
+
+/**
+ * Read once, here, rather than from React: `sendSync` blocks, but it blocks the preload
+ * before anything has painted, and it is what keeps a saved panel width from being visible
+ * as a jump away from the default. The payload is a few hundred bytes of warm cache.
+ */
+const initialSession = ipcRenderer.sendSync('session:snapshot:sync') as Record<
+  string,
+  SessionValue
+>;
 
 const api: DesktopApi = {
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
@@ -15,6 +25,10 @@ const api: DesktopApi = {
     return () => {
       ipcRenderer.removeListener(channel, wrapped);
     };
+  },
+  session: {
+    initial: () => initialSession,
+    set: (key, value) => void ipcRenderer.invoke('session:set', { key, value }),
   },
 };
 
