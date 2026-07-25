@@ -10,6 +10,11 @@
  *   node scripts/vn-cdp.mjs --catalog
  *   node scripts/vn-cdp.mjs --history 5
  *   node scripts/vn-cdp.mjs --undo          # v1: refuses, see docs/gitUndoOptions.md
+ *   node scripts/vn-cdp.mjs --raw "window.__vnDebug.explainPick(400, 300)"
+ *
+ * --raw evaluates the expression as-is instead of wrapping it in window.vn.exec(). It
+ * crosses CDP with returnByValue, so the expression must end in a plain-data projection
+ * (.explain(), .table(), a string) — live objects and ResultSets do not survive the wire.
  */
 const PORT = process.env.VN_CDP_PORT ?? '9222';
 const HOST = '127.0.0.1';
@@ -67,9 +72,9 @@ function evaluate(socket, expression) {
 }
 
 const [arg, extra] = process.argv.slice(2);
-if (!arg) {
+if (!arg || (arg === '--raw' && !extra)) {
   process.stderr.write(
-    'usage: node scripts/vn-cdp.mjs "<command dsl>" | --catalog | --history [n] | --undo | --redo\n',
+    'usage: node scripts/vn-cdp.mjs "<command dsl>" | --catalog | --history [n] | --undo | --redo | --raw "<expr>"\n',
   );
   process.exit(2);
 }
@@ -79,6 +84,7 @@ const BRIDGE = {
   '--undo': 'window.vn.undo()',
   '--redo': 'window.vn.redo()',
   '--history': `window.vn.history(${extra ? Number(extra) : ''})`,
+  '--raw': extra,
 };
 const expression = BRIDGE[arg] ?? `window.vn.exec(${JSON.stringify(arg)})`;
 

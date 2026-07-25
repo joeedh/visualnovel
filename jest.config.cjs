@@ -17,6 +17,7 @@ const PACKAGES = [
   'export',
   'git',
   'commands',
+  'debug2d',
   'authoring',
   'taskgraph',
   'providers',

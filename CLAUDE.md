@@ -111,24 +111,30 @@ reuses the input-side packages (types, util, config, parse, model, store, provid
 `@vn/export` is a similarly-constrained leaf: it projects the manifest into `story.play.json`
 and is likewise forbidden from the generative pipeline/scheduler.
 
-| Package             | Responsibility                                                                                                                                                                                                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                                                                                            |
-| `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                      |
-| `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                         |
-| `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                                                                                             |
-| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                                                                                                 |
-| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                                                                                                  |
-| `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                     |
-| `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection. Domain-agnostic — the commands themselves are defined by the host app. Undo-less by decision (see [Command system](#command-system)). |
-| `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                                                                                      |
-| `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here.                                                                            |
-| `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                                                                                                |
-| `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                                                                                       |
-| `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost`. Bundled by esbuild.                                                                                                                                                                                                           |
-| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.                                                                     |
-| `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                                                                                         |
-| `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                                                                                                   |
+One package sits **outside the graph entirely**: `@vn/debug2d` (not drawn above) imports
+nothing from `packages/` and is imported only by the desktop renderer's dev-only debug glue
+(`debug2d: []` in `eslint.config.mjs`), so it stays strippable from production builds — see
+[2D debug layer](#2d-debug-layer-vndebug2d).
+
+| Package             | Responsibility                                                                                                                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                                                                                                  |
+| `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                            |
+| `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                               |
+| `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                                                                                                   |
+| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                                                                                                       |
+| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                                                                                                        |
+| `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                           |
+| `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection. Domain-agnostic — the commands themselves are defined by the host app. Undo-less by decision (see [Command system](#command-system)).       |
+| `@vn/debug2d`       | Source-agnostic 2D graphics debugging: fragment IR, space registry, DOM adapter (stacking-order z with culprit retention), query engine, `explainPick` rejection logs. Zero deps, outside the layering graph; dev-only in the desktop renderer. See [2D debug layer](#2d-debug-layer-vndebug2d). |
+| `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                                                                                            |
+| `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here.                                                                                  |
+| `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                                                                                                      |
+| `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                                                                                             |
+| `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost`. Bundled by esbuild.                                                                                                                                                                                                                 |
+| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.                                                                           |
+| `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                                                                                               |
+| `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                                                                                                         |
 
 ### Core ideas
 
@@ -321,6 +327,41 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 
 - **`view.*` commands run in main** and push a `command:ui` effect the renderer applies, rather
   than there being a second, renderer-side registry to keep in sync.
+
+## 2D debug layer (`@vn/debug2d`)
+
+A source-agnostic debugging layer for the desktop renderer's 2D UI: a neutral **fragment
+IR** captured from the DOM (canvas/SVG adapters later), a **query engine** over frames, and
+a causal **`explainPick`** that answers "why did my click miss / why is this on top" from
+ground truth instead of screenshots. Design:
+[`docs/research/2d-graphics-debug-api.md`](docs/research/2d-graphics-debug-api.md); plan:
+[`docs/plans/2d-graphics-debug-api.md`](docs/plans/2d-graphics-debug-api.md).
+
+- **Isolation is the design.** `@vn/debug2d` has zero dependencies (it even duplicates ~50
+  lines of `Rect`/`Mat3` helpers in `geom.ts` — do not "deduplicate"), sits outside the
+  layering graph, and is imported only by `apps/desktop/renderer/debug/install.ts`. The
+  install is a dynamic import behind `import.meta.env.DEV` in `main.tsx`, so `vite build`
+  drops the whole package from the production bundle.
+- **Impure shell, pure core.** `dom/snapshot.ts` does all browser reads in one batched pass
+  → plain snapshot tree; stacking order (CSS 2.1 walk with **culprit retention** — the
+  ancestor whose `transform`/`opacity`/… scoped your `z-index` is recorded on the fragment),
+  pick, and attribution are pure functions over that tree, unit-tested in node. jsdom has no
+  layout engine, so the shell stays thin and is validated live instead.
+- **Console + CDP surface.** Dev builds install `window.__vnDebug`
+  (`at`, `inAABB`, `byOwner`, `byTag`, `bySource`, `where`, `owners`, `capture`,
+  `explainPick`). Query results are chainable; `.explain()` / `.table()` are the plain-data
+  projections — the only things that survive CDP's `returnByValue`, so remote expressions
+  must end in one:
+
+  ```sh
+  node scripts/vn-cdp.mjs --raw "window.__vnDebug.explainPick(400, 300)"
+  node scripts/vn-cdp.mjs --raw "window.__vnDebug.at(400, 300).explain()"
+  ```
+
+- **Honesty contract.** DOM frames are `fidelity: 'sampled'` with `exactZ: false`; the
+  `elementsFromPoint` oracle is captured per query and a disagreement with the computed
+  stack prints a `⚠` line rather than being resolved silently. Explain output is
+  fixed-precision and deterministically ordered — the golden tests pin it verbatim.
 
 ## Authoring agent (`vnauthor`)
 

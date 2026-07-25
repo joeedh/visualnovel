@@ -20,6 +20,7 @@ export const PACKAGES = [
   'export',
   'git',
   'commands',
+  'debug2d',
   'taskgraph',
   'providers',
   'pipeline',

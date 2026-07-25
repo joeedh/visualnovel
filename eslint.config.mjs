@@ -25,6 +25,9 @@ const ALLOWED = {
   // The command framework: registry, prop specs, DSL, stack. Reads git HEAD for provenance,
   // knows nothing about the domain — commands themselves are defined by the host app.
   commands: ['types', 'util', 'git'],
+  // 2D debug layer: sits OUTSIDE the layering graph — imports nothing from packages/ and is
+  // imported only by the desktop renderer. Must stay strippable from production builds.
+  debug2d: [],
   taskgraph: ['types', 'util', 'store'],
   providers: ['types', 'util', 'config'],
   pipeline: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'providers'],
@@ -69,6 +72,7 @@ const ALLOWED = {
     'pipeline',
     'scheduler',
     'authoring',
+    'debug2d',
   ],
 };
 
@@ -115,6 +119,7 @@ export default tseslint.config(
         { type: 'export', pattern: 'packages/export', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
         { type: 'commands', pattern: 'packages/commands', mode: 'folder' },
+        { type: 'debug2d', pattern: 'packages/debug2d', mode: 'folder' },
         { type: 'authoring', pattern: 'packages/authoring', mode: 'folder' },
         { type: 'taskgraph', pattern: 'packages/taskgraph', mode: 'folder' },
         { type: 'providers', pattern: 'packages/providers', mode: 'folder' },

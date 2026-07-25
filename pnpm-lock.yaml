@@ -146,6 +146,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@vn/debug2d':
+        specifier: workspace:*
+        version: link:../../packages/debug2d
       '@vn/export':
         specifier: workspace:*
         version: link:../../packages/export
@@ -252,6 +255,8 @@ importers:
       yaml:
         specifier: ^2.6.1
         version: 2.9.0
+
+  packages/debug2d: {}
 
   packages/export:
     dependencies:

@@ -1,5 +1,9 @@
 # 2D graphics debug API — first slice (`@vn/debug2d`)
 
+> **Status: M0–M5 shipped.** All verification steps below pass, including the four-check
+> live validation against the running app. Deviations discovered during implementation are
+> recorded in [Shipped deviations](#shipped-deviations) at the end.
+
 ## Context
 
 [`docs/research/2d-graphics-debug-api.md`](../research/2d-graphics-debug-api.md) designs a
@@ -442,3 +446,32 @@ Context), `turbo.json` (its `packages/*/src/**` glob already covers the new pack
   (`.explain()`, `.table()`); live objects never cross `returnByValue`.
 - **jsdom coverage gap** — the thin-adapter bet (§5). Revisit with a real-browser harness
   only if live validation keeps finding snapshot bugs.
+
+---
+
+## Shipped deviations
+
+Differences between this plan as written and the code as shipped, all deliberate:
+
+- **`query/hit.ts` added** to the package layout: fragment hit geometry (`pickBounds`,
+  `hitsPoint`, `shapeBounds`) shared by the engine and `explainPick`. Putting it in either
+  consumer would have created an `engine ↔ explainPick` import cycle (`import/no-cycle`).
+- **IR fields made explicit.** The research doc said "record the culprit on the fragment"
+  without naming a field; shipped as `Fragment.zContext: ZContextRef` (`{ by, byLabel,
+  reason }`). Likewise `StyleSnapshot.zIndex` (the *declared* value the flagship line
+  prints), `Frame.oracle: OracleSample` (the per-capture `elementsFromPoint` sample), and
+  `CaptureOpts.oracleAt` (the point to sample it at).
+- **`FrameSource.capture` is synchronous** at v1 (the research sketch allowed
+  `Promise<Frame>`). DOM capture is sync, and a sync surface is what makes
+  `dbg.at(400,300).explain()` pleasant in a console and over CDP. Revisit at M6 if a
+  future source genuinely needs async.
+- **Browser APIs are typed structurally** (`DocumentLike`/`ElementLike` in
+  `dom/snapshot.ts`): the root tsconfig compiles packages without `lib.dom`, and the
+  structural seam keeps the package dependency-free even of ambient DOM types.
+  `install.ts` casts the real `document` at the boundary.
+- **`frame.ts` also exports `staticSource()`** — wraps a fixed frame as a `FrameSource`,
+  the standard way tests (here and downstream) feed synthetic frames to `createDebugger`.
+- **Live validation check 3 used the command palette** (`view.palette(open=true)`, which
+  renders a full-screen overlay above the FLOOR content) rather than `GateOverlay`: the
+  mock workspace had no pending approvals, and the palette exercises the same
+  scrim-above-occluded-content shape. Checks 1, 2 and 4 ran as written; all four passed.

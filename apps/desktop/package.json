@@ -19,6 +19,7 @@
     "@vn/authoring": "workspace:*",
     "@vn/commands": "workspace:*",
     "@vn/config": "workspace:*",
+    "@vn/debug2d": "workspace:*",
     "@vn/export": "workspace:*",
     "@vn/git": "workspace:*",
     "@vn/model": "workspace:*",
