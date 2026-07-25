@@ -45,25 +45,28 @@ module.exports = {
       ...shared,
       displayName: `@vn/${name}`,
       rootDir: __dirname,
-      testMatch: [`<rootDir>/packages/${name}/**/*.test.ts`],
+      // No <rootDir> prefix: jest's glob path-separator conversion breaks on
+      // dot-directories in the path (e.g. .claude/worktrees). Crawling is still
+      // scoped to rootDir via `roots`.
+      testMatch: [`**/packages/${name}/**/*.test.ts`],
     })),
     {
       ...shared,
       displayName: '@vn/cli',
       rootDir: __dirname,
-      testMatch: ['<rootDir>/apps/cli/**/*.test.ts'],
+      testMatch: ['**/apps/cli/**/*.test.ts'],
     },
     {
       ...shared,
       displayName: '@vn/authoring-app',
       rootDir: __dirname,
-      testMatch: ['<rootDir>/apps/authoring/**/*.test.ts'],
+      testMatch: ['**/apps/authoring/**/*.test.ts'],
     },
     {
       ...shared,
       displayName: '@vn/desktop',
       rootDir: __dirname,
-      testMatch: ['<rootDir>/apps/desktop/**/*.test.ts'],
+      testMatch: ['**/apps/desktop/**/*.test.ts'],
     },
   ],
 };
