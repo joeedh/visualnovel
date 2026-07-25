@@ -16,6 +16,7 @@ const PACKAGES = [
   'store',
   'export',
   'git',
+  'commands',
   'authoring',
   'taskgraph',
   'providers',
@@ -56,6 +57,12 @@ module.exports = {
       displayName: '@vn/authoring-app',
       rootDir: __dirname,
       testMatch: ['<rootDir>/apps/authoring/**/*.test.ts'],
+    },
+    {
+      ...shared,
+      displayName: '@vn/desktop',
+      rootDir: __dirname,
+      testMatch: ['<rootDir>/apps/desktop/**/*.test.ts'],
     },
   ],
 };

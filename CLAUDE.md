@@ -17,6 +17,8 @@ without pulling in the generative pipeline.
 - Implementation plan: [`docs/plans/initial-implementation.md`](docs/plans/initial-implementation.md)
 - Authoring agent plan: [`docs/plans/authoring-agent-implementation.md`](docs/plans/authoring-agent-implementation.md)
 - Runner plan: [`docs/plans/runner.md`](docs/plans/runner.md)
+- Command system: [`docs/command-system.md`](docs/command-system.md)
+- Docs index: [`docs/index.md`](docs/index.md)
 - **Out of scope:** _external_ engine export (Ren'Py/Ink/etc.). The generative pipeline core
   stops at a populated `build/` + `manifest.json`. On top of that sits a small, in-house
   **playable** (`vngen export` → `story.play.json`) and a **desktop runner** to actually
@@ -64,6 +66,15 @@ Run from the repo root.
   `turbo.json` lists `packages/*/src/**`, the esbuild scripts, and the tsconfigs as
   `globalDependencies`, which is what actually invalidates an app's cache. Outputs are
   `dist/**`; the local cache lives in `.turbo` (gitignored).
+- **The desktop bundle has a third step, `build:catalog`.** `scripts/gen-command-catalog.mjs`
+  bundles `apps/desktop/src/main/commands/catalog-entry.ts` and writes
+  `apps/desktop/dist/commands.json` (see [Command system](#command-system)). Both bundle
+  scripts share one alias map, `scripts/aliases.mjs`, so their package lists can't drift.
+- **The boundaries rule needs the TypeScript import resolver.** `eslint.config.mjs` sets
+  `'import/resolver': { typescript: … }`. With the legacy node resolver it resolved nothing
+  (source-only packages have an `exports` map and no `main`), and an _unresolved_ import is
+  an unclassified one — which `boundaries/element-types` silently passes. The layering below
+  was advertised but not actually enforced until that was fixed.
 - **jest config is `jest.config.cjs`** (the plan said `.ts`) to avoid bootstrapping
   ts-node just to read config. One display-named project per package.
 - **Formatting uses standard `prettier`** (the plan mentioned a `@pathtx/prettier` fork,
@@ -80,7 +91,7 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store ──── export      git
+  │   model store ──── export      git ──── commands
   │     │   │  │  ╲     │
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
@@ -99,23 +110,24 @@ reuses the input-side packages (types, util, config, parse, model, store, provid
 `@vn/export` is a similarly-constrained leaf: it projects the manifest into `story.play.json`
 and is likewise forbidden from the generative pipeline/scheduler.
 
-| Package             | Responsibility                                                                                                                                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                        |
-| `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                  |
-| `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                     |
-| `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                         |
-| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                             |
-| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                              |
-| `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced). |
-| `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                  |
-| `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here.        |
-| `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                            |
-| `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                   |
-| `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost`. Bundled by esbuild.                                                                                                                                       |
-| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent. |
-| `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                     |
-| `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                               |
+| Package             | Responsibility                                                                                                                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                                                                                            |
+| `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                      |
+| `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                         |
+| `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                                                                                             |
+| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                                                                                                 |
+| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                                                                                                  |
+| `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                     |
+| `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection. Domain-agnostic — the commands themselves are defined by the host app. Undo-less by decision (see [Command system](#command-system)). |
+| `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                                                                                      |
+| `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here.                                                                            |
+| `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                                                                                                |
+| `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                                                                                       |
+| `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost`. Bundled by esbuild.                                                                                                                                                                                                           |
+| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.                                                                     |
+| `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                                                                                         |
+| `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                                                                                                   |
 
 ### Core ideas
 
@@ -262,7 +274,52 @@ HMR, and Electron launched against it once it's up (`VITE_DEV_SERVER_URL`, which
 `src/main/index.ts` loads instead of the built file). Quitting the window (or Ctrl-C) tears
 the whole tree down. `VN_DEV_PORT` overrides the renderer port (default 5176); `VN_MOCK`/
 `VN_PROJECT` pass through to the main process. Main-process edits need a restart (the renderer
-hot-reloads on its own).
+hot-reloads on its own). The dev loop also defaults `VN_CDP_PORT=9222` — see
+[Command system](#command-system).
+
+## Command system
+
+Every desktop action the shell can take is a **registered command** rather than a bespoke IPC
+channel: typed properties, a string DSL, git-stamped provenance, one JSON catalog. The palette,
+the menus, the agent, and an external CDP client all reach the same registry. Full write-up:
+[`docs/command-system.md`](docs/command-system.md) (the implementation plan is
+[`docs/plans/command-system.md`](docs/plans/command-system.md)).
+
+- **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
+  prop specs, the registry, the DSL, the execution stack, and the catalog projection — it is
+  domain-agnostic (deps: `types`, `util`, `git`). The 13 definitions live in
+  `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`)
+  as thin wrappers over `WorkspaceSession`.
+- **Props are declarative specs, not zod.** The repo is on zod 3 (no `z.toJSONSchema`), and
+  one spec map feeds coercion, the DSL, the catalog's JSON Schema, and a future properties
+  panel. `coerceProps` is the single validation authority — it applies defaults, coerces the
+  loose values JSON/CDP callers send, and rejects unknown keys, so `run` always receives every
+  key present.
+- **DSL:** `namespace.command(a='x' b=1)` — commas optional, barewords parse as strings (so
+  `agent.setMode(mode=execute)` works). `formatCommand` is the inverse; a round-trip test pins
+  them together.
+- **Provenance, not undo.** Each execution appends a `CommandRecord` to
+  `vngen/state/commands.jsonl` (alongside `tasks.jsonl`) carrying `gitHead`, `gitDirty`,
+  `written` paths, and the replayable `invocation`. **v1 registers nothing undoable**:
+  `stack.undo()`/`.redo()` refuse and point at
+  [`docs/gitUndoOptions.md`](docs/gitUndoOptions.md), which surveys the strategies so the
+  choice is made deliberately later.
+- **Catalog.** `pnpm build` writes `apps/desktop/dist/commands.json` for external tooling. The
+  `command:catalog` IPC channel serves the **live** registry, never the file, so the app can't
+  be misled by a stale one; a test asserts the two match.
+- **CDP.** Setting `VN_CDP_PORT` makes the app open Chrome's own remote-debugging port, bound
+  to `127.0.0.1`. It is **opt-in and off by default** — the port grants full control of the
+  renderer. The preload exposes `window.vn` (`exec`/`catalog`/`history`/`undo`/`redo`) over
+  the existing IPC, so DevTools and CDP share one entry point:
+
+  ```sh
+  node scripts/vn-cdp.mjs "workspace.index()"
+  node scripts/vn-cdp.mjs --catalog
+  node scripts/vn-cdp.mjs --history 5      # exits non-zero on a failed command
+  ```
+
+- **`view.*` commands run in main** and push a `command:ui` effect the renderer applies, rather
+  than there being a second, renderer-side registry to keep in sync.
 
 ## Authoring agent (`vnauthor`)
 
@@ -340,3 +397,40 @@ agent honors.
   zod schemas in `@vn/types` so malformed data never reaches the deterministic core.
 - Keep new packages inside the layering graph above; the boundaries lint rule will reject
   an illegal cross-layer import.
+
+### Comments
+
+- **Non-doc comments use `//`.** Doc comments use proper `/** … */` brackets. Don't use
+  `/* … */` for ordinary inline commentary.
+- **Non-doc comments are at most 3 lines.** A longer block comment is allowed sparingly —
+  budget roughly one per 500 lines of a file — for genuinely load-bearing context that
+  can't be stated in three lines.
+- **Doc comments stay reasonably concise.** Say what the thing is and any non-obvious
+  contract; don't restate the signature or narrate the implementation.
+- **Temporary comments are marked `CLAUDENOTE:`.** Any scratch/working comment Claude
+  writes gets that prefix, and all of them must be removed before the final commit of a
+  plan (or at the end of the plan, whichever comes first).
+
+### Plans
+
+- **Plans live in [`docs/plans/`](docs/plans).** Any implementation plan gets written to
+  `docs/plans/<descriptive-name>.md` before the work starts, and is kept up to date as the
+  work proceeds — not left only in the conversation. the plan should have a properly
+  descriptive name.
+
+### Research
+
+- **Research lives in [`docs/research/`](docs/research).** Any survey, investigation
+  write-up, or report goes in `docs/research/<descriptive-name>.md` — not at the `docs/`
+  root and not only in the conversation. Design docs and implementation plans keep their
+  existing homes (`docs/`, `docs/plans/`).
+
+### Finishing a plan
+
+Before a plan is considered done:
+
+1. **Audit the comments** in all code the plan touched — stale, redundant, or
+   over-long comments get fixed or deleted, and every `CLAUDENOTE:` is gone.
+2. **Update the docs the plan affects** — the relevant file(s) under `docs/` (design,
+   plan, runner notes) and `CLAUDE.md` itself, so the described architecture, commands,
+   and conventions match the code as shipped.

@@ -10,6 +10,7 @@
       "@vn/store": ["./packages/store/src/index.ts"],
       "@vn/export": ["./packages/export/src/index.ts"],
       "@vn/git": ["./packages/git/src/index.ts"],
+      "@vn/commands": ["./packages/commands/src/index.ts"],
       "@vn/authoring": ["./packages/authoring/src/index.ts"],
       "@vn/taskgraph": ["./packages/taskgraph/src/index.ts"],
       "@vn/providers": ["./packages/providers/src/index.ts"],

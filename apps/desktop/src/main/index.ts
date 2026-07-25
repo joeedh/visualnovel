@@ -8,15 +8,35 @@
  * mock mode unless `VN_MOCK=0` is set (which then requires a real key). Override the
  * workspace with `VN_PROJECT=<dir>`.
  */
-import { app, BrowserWindow, ipcMain, net, protocol, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, ipcMain, net, protocol } from 'electron';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ProjectPaths } from '@vn/store';
+import { openGit } from '@vn/git';
+import { appendJsonl } from '@vn/util';
+import { CommandStack, toCatalog } from '@vn/commands';
+import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
-import type { AgentMode, PlanDecision, PlanRequest } from '../shared/ipc.js';
+import type {
+  InvokeChannel,
+  InvokeChannels,
+  PlanDecision,
+  PlanRequest,
+  UiEffect,
+} from '../shared/ipc.js';
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const MOCK = process.env.VN_MOCK !== '0';
+
+/**
+ * Opt-in, off by default: the remote-debugging port grants full control of the renderer, so
+ * it is never opened implicitly. Bound to loopback. Must be set before `app.whenReady()`.
+ */
+const CDP_PORT = process.env.VN_CDP_PORT;
+if (CDP_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', CDP_PORT);
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
+}
 
 // Must be declared before `app.ready`: teaches Electron that `vnasset://` is a real,
 // image-loadable scheme (standard + secure) so `<img src="vnasset://…">` is allowed.
@@ -29,6 +49,7 @@ protocol.registerSchemesAsPrivileged([
 
 let win: BrowserWindow | null = null;
 let session: WorkspaceSession | null = null;
+let stack: CommandStack<CommandHost> | null = null;
 const pendingPlans = new Map<number, (decision: PlanDecision) => void>();
 let planSeq = 0;
 
@@ -53,41 +74,80 @@ function getSession(): WorkspaceSession {
   return session;
 }
 
+const registry = createDesktopRegistry();
+
+/**
+ * The one execution path for every command, whatever the caller. History is appended to
+ * `vngen/state/commands.jsonl` alongside the pipeline's `tasks.jsonl`.
+ */
+function getStack(): CommandStack<CommandHost> {
+  if (!stack) {
+    const root = defaultWorkspace();
+    const paths = new ProjectPaths(root);
+    const host: CommandHost = {
+      session: getSession(),
+      ui: (effect: UiEffect) => win?.webContents.send('command:ui', effect),
+    };
+    stack = new CommandStack<CommandHost>({
+      registry,
+      context: {
+        root,
+        git: openGit(root),
+        host,
+        log: (level, message) => win?.webContents.send('log', { level, message }),
+        // TODO(desktop): route through the renderer once a confirm dialog exists; until
+        // then a `confirm: true` command is reachable only from the UI's own affordances.
+        confirm: () => Promise.resolve(true),
+      },
+      onRecord: (record) => appendJsonl(paths.commandsLog, record),
+    });
+  }
+  return stack;
+}
+
+/** Register against the channel map, so a handler can't drift from its declared signature. */
+function handle<C extends InvokeChannel>(
+  channel: C,
+  fn: (
+    ...args: Parameters<InvokeChannels[C]>
+  ) => ReturnType<InvokeChannels[C]> | Promise<ReturnType<InvokeChannels[C]>>,
+): void {
+  ipcMain.handle(channel, (_event, ...args) => fn(...(args as Parameters<InvokeChannels[C]>)));
+}
+
 function registerIpc(): void {
-  ipcMain.handle('workspace:index', () => getSession().index());
-  ipcMain.handle('agent:run', (_event: IpcMainInvokeEvent, input: string) =>
-    getSession().runAgent(input),
+  handle('workspace:index', () => getSession().index());
+  handle('agent:run', (input) => getSession().runAgent(input));
+  handle('agent:setMode', (mode) => getSession().setMode(mode));
+  handle('agent:setModel', (modelId) => getSession().setModel(modelId));
+  handle('agent:clear', () => getSession().clearAgent());
+  handle('plan:decision', (payload: { id: number; decision: PlanDecision }) => {
+    const resolve = pendingPlans.get(payload.id);
+    if (resolve) {
+      pendingPlans.delete(payload.id);
+      resolve(payload.decision);
+    }
+  });
+  handle('pipeline:status', () => getSession().status());
+  handle('pipeline:run', (opts) => getSession().runPipeline(opts.mock));
+  handle('gate:candidates', (characterId) => getSession().gateCandidates(characterId));
+  handle('gate:approve', (payload) =>
+    getSession().approveCharacter(payload.characterId, payload.hash),
   );
-  ipcMain.handle('agent:setMode', (_event: IpcMainInvokeEvent, mode: AgentMode) =>
-    getSession().setMode(mode),
-  );
-  ipcMain.handle('agent:setModel', (_event: IpcMainInvokeEvent, modelId: string) =>
-    getSession().setModel(modelId),
-  );
-  ipcMain.handle('agent:clear', () => getSession().clearAgent());
-  ipcMain.handle(
-    'plan:decision',
-    (_event: IpcMainInvokeEvent, payload: { id: number; decision: PlanDecision }) => {
-      const resolve = pendingPlans.get(payload.id);
-      if (resolve) {
-        pendingPlans.delete(payload.id);
-        resolve(payload.decision);
-      }
-    },
-  );
-  ipcMain.handle('pipeline:status', () => getSession().status());
-  ipcMain.handle('pipeline:run', (_event: IpcMainInvokeEvent, opts: { mock: boolean }) =>
-    getSession().runPipeline(opts.mock),
-  );
-  ipcMain.handle('gate:candidates', (_event: IpcMainInvokeEvent, characterId: string) =>
-    getSession().gateCandidates(characterId),
-  );
-  ipcMain.handle(
-    'gate:approve',
-    (_event: IpcMainInvokeEvent, payload: { characterId: string; hash: string }) =>
-      getSession().approveCharacter(payload.characterId, payload.hash),
-  );
-  ipcMain.handle('story:play', () => getSession().playable());
+  handle('story:play', () => getSession().playable());
+
+  handle('command:catalog', () => toCatalog(registry, '@vn/desktop'));
+  handle('command:exec', (request) => {
+    const source = request.source ?? 'ui';
+    if (request.dsl !== undefined) return getStack().execDsl(request.dsl, source);
+    if (request.id === undefined) {
+      return Promise.resolve({ ok: false as const, error: 'command:exec needs an id or a dsl' });
+    }
+    return getStack().exec(request.id, request.props ?? {}, source);
+  });
+  handle('command:history', (limit) => getStack().history(limit));
+  handle('command:undo', () => getStack().undo());
+  handle('command:redo', () => getStack().redo());
 }
 
 /**

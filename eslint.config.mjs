@@ -22,10 +22,15 @@ const ALLOWED = {
   // forbidden from the generative pipeline/scheduler (runner plan, Part B), like `authoring`.
   export: ['types', 'util', 'parse', 'model', 'store'],
   git: ['util'],
+  // The command framework: registry, prop specs, DSL, stack. Reads git HEAD for provenance,
+  // knows nothing about the domain — commands themselves are defined by the host app.
+  commands: ['types', 'util', 'git'],
   taskgraph: ['types', 'util', 'store'],
   providers: ['types', 'util', 'config'],
   pipeline: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'providers'],
-  scheduler: ['types', 'util', 'taskgraph', 'pipeline'],
+  // `config` and `store` are pass-through only: the scheduler takes a `ProjectConfig` and a
+  // `ProjectPaths` in `RunOptions` and hands them to `@vn/pipeline`, which owns both.
+  scheduler: ['types', 'util', 'config', 'store', 'taskgraph', 'pipeline'],
   // Input-side agent core: reuses the deterministic packages + the LLM seam, and is
   // forbidden from importing the generative pipeline/scheduler (authoring-agent plan §4).
   authoring: ['types', 'util', 'config', 'parse', 'model', 'store', 'providers', 'git'],
@@ -58,6 +63,7 @@ const ALLOWED = {
     'store',
     'export',
     'git',
+    'commands',
     'taskgraph',
     'providers',
     'pipeline',
@@ -108,6 +114,7 @@ export default tseslint.config(
         { type: 'store', pattern: 'packages/store', mode: 'folder' },
         { type: 'export', pattern: 'packages/export', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
+        { type: 'commands', pattern: 'packages/commands', mode: 'folder' },
         { type: 'authoring', pattern: 'packages/authoring', mode: 'folder' },
         { type: 'taskgraph', pattern: 'packages/taskgraph', mode: 'folder' },
         { type: 'providers', pattern: 'packages/providers', mode: 'folder' },
@@ -115,9 +122,19 @@ export default tseslint.config(
         { type: 'scheduler', pattern: 'packages/scheduler', mode: 'folder' },
         { type: 'cli', pattern: 'apps/cli', mode: 'folder' },
         { type: 'authoring-app', pattern: 'apps/authoring', mode: 'folder' },
+        { type: 'desktop', pattern: 'apps/desktop', mode: 'folder' },
       ],
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],
-      'import/resolver': { node: true },
+      /**
+       * The TypeScript resolver, not the node one. Internal packages are source-only —
+       * `@vn/x` has an `exports` map pointing at `src/index.ts` and no `main` — which the
+       * legacy node resolver cannot follow. It resolved nothing, and an unresolved import is
+       * an UNCLASSIFIED one, so `boundaries/element-types` silently passed every cross-layer
+       * import. This reads the root tsconfig's `paths`, so the layering below is real.
+       */
+      'import/resolver': {
+        typescript: { project: './tsconfig.json', alwaysTryTypes: true },
+      },
     },
     rules: {
       'import/no-cycle': 'error',

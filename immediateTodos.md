@@ -4,4 +4,4 @@ the resolve dialog should also let you edit what's being gated.
 [ ]: Clear the default main menu bar, add 'file' 'edit' and 'view' menus.
 [ ]: Add 'exit' to the file menu
 [ ]: Add 'provide model key' to the file menu, it should pop up a dialog
-     to provide the model key with a dropdown box for the model provider.
+to provide the model key with a dropdown box for the model provider.

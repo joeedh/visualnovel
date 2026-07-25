@@ -24,6 +24,7 @@ import {
   writeApprovedPortrait,
 } from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
+import { writeFileAtomic } from '@vn/util';
 import { gateStatus } from '@vn/pipeline';
 import {
   createAnthropicChat,
@@ -227,6 +228,14 @@ export class WorkspaceSession {
   async playable(): Promise<Playable> {
     const project = await loadProject(this.dir);
     return buildPlayable(project.model, project.store);
+  }
+
+  /** Write the playable to `vngen/build/story.play.json` — the `vngen export` equivalent. */
+  async exportPlayable(): Promise<{ path: string; scenes: number }> {
+    const project = await loadProject(this.dir);
+    const playable = buildPlayable(project.model, project.store);
+    await writeFileAtomic(project.paths.storyPlay, JSON.stringify(playable, null, 2) + '\n');
+    return { path: project.paths.storyPlay, scenes: Object.keys(playable.scenes).length };
   }
 
   async status(): Promise<PipelineStatus> {

@@ -1,0 +1,13 @@
+{
+  "name": "@vn/commands",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@vn/git": "workspace:*",
+    "@vn/util": "workspace:*"
+  }
+}

@@ -8,10 +8,9 @@ import type {
   PipelineStatus,
   Plan,
   PlanRequest,
+  Room,
   WorkspaceIndex,
 } from '../src/shared/ipc';
-
-type Room = 'studio' | 'floor' | 'play';
 
 /** A rendered line in the conversation feed. */
 interface FeedItem {
@@ -79,6 +78,15 @@ export function App(): JSX.Element {
   // Subscribe to plan-approval requests.
   useEffect(() => {
     return api.on('permission:plan', (req) => setPlanReq(req));
+  }, []);
+
+  // Apply UI effects pushed by `view.*` commands, so the palette, the menu bar and CDP all
+  // drive the shell through the one registry rather than a second renderer-side one.
+  useEffect(() => {
+    return api.on('command:ui', (effect) => {
+      if (effect.type === 'room') setRoom(effect.name);
+      else setPaletteOpen(effect.open);
+    });
   }, []);
 
   const send = useCallback(async () => {

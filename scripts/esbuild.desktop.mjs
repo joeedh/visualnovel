@@ -13,29 +13,10 @@
  * Usage: `node scripts/esbuild.desktop.mjs [--watch]`
  */
 import { build, context } from 'esbuild';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
+import { alias, EXTERNAL, REPO_ROOT as root } from './aliases.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const watch = process.argv.includes('--watch');
-
-const PACKAGES = [
-  'types',
-  'util',
-  'config',
-  'parse',
-  'model',
-  'store',
-  'git',
-  'taskgraph',
-  'providers',
-  'pipeline',
-  'scheduler',
-  'authoring',
-];
-const alias = Object.fromEntries(
-  PACKAGES.map((n) => [`@vn/${n}`, resolve(root, `packages/${n}/src/index.ts`)]),
-);
 
 /** Shared options; only entry/outfile differ between main and preload. */
 const common = {
@@ -45,9 +26,7 @@ const common = {
   target: 'node20',
   sourcemap: true,
   alias,
-  // Electron is provided by the runtime; the SDKs ship heavy/native bits and are
-  // lazy-imported by @vn/providers, so they stay external (only loaded on a real run).
-  external: ['electron', '@google/genai', '@anthropic-ai/sdk'],
+  external: EXTERNAL,
   logLevel: 'info',
 };
 

@@ -130,6 +130,17 @@ const fallback: DesktopApi = {
         return Promise.resolve({ ok: true, message: '(preview) approved' });
       case 'story:play':
         return Promise.resolve(MOCK_PLAYABLE);
+      // The catalog is a projection of the live registry, which a browser preview has no
+      // access to; an empty one keeps the palette rendering rather than throwing.
+      case 'command:catalog':
+        return Promise.resolve({ version: 1, source: '(preview)', commands: [] });
+      case 'command:history':
+        return Promise.resolve([]);
+      case 'command:exec':
+        return Promise.resolve({ ok: false, error: '(preview) no command stack' });
+      case 'command:undo':
+      case 'command:redo':
+        return Promise.resolve({ ok: false, error: '(preview) undo is not implemented' });
       default:
         return Promise.resolve(undefined);
     }

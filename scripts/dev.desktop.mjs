@@ -13,6 +13,8 @@
  *
  * Env: `VN_DEV_PORT` overrides the renderer port (default 5176); `VN_MOCK`/`VN_PROJECT`
  * pass straight through to the main process (mock sample project by default).
+ * `VN_CDP_PORT` (default 9222 in this loop only) opens the remote-debugging port that
+ * `scripts/vn-cdp.mjs` drives.
  *
  * Usage: `node scripts/dev.desktop.mjs`  (or `pnpm --filter @vn/desktop dev`)
  */
@@ -84,8 +86,14 @@ if (!(await waitForServer(devUrl))) {
   shutdown(1);
 }
 process.stdout.write(`dev: renderer up at ${devUrl} — launching Electron…\n`);
+// The dev loop opts into CDP so `scripts/vn-cdp.mjs` works out of the box; a packaged app
+// never opens the port unless the operator sets VN_CDP_PORT themselves.
 const electron = run('pnpm', ['exec', 'electron', '.'], {
   cwd: desktop,
-  env: { ...process.env, VITE_DEV_SERVER_URL: devUrl },
+  env: {
+    ...process.env,
+    VITE_DEV_SERVER_URL: devUrl,
+    VN_CDP_PORT: process.env.VN_CDP_PORT ?? '9222',
+  },
 });
 electron.on('exit', (code) => shutdown(code ?? 0));

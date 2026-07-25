@@ -87,6 +87,10 @@ export class ProjectPaths {
   get tasksLog(): string {
     return join(this.state, 'tasks.jsonl');
   }
+  /** Append-only history of executed commands (`@vn/commands`), mirroring `tasksLog`. */
+  get commandsLog(): string {
+    return join(this.state, 'commands.jsonl');
+  }
   reviewsDir(taskHash: string): string {
     return join(this.state, 'reviews', taskHash);
   }
