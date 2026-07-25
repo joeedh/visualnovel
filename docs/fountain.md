@@ -1,5 +1,33 @@
 # An Introduction to Fountain
 
+<!-- toc -->
+
+- [Why Fountain?](#why-fountain)
+- [The mental model](#the-mental-model)
+- [Title page (optional)](#title-page-optional)
+- [Core elements](#core-elements)
+  * [Scene headings (sluglines)](#scene-headings-sluglines)
+  * [Action (description)](#action-description)
+  * [Character cue](#character-cue)
+  * [Dialogue](#dialogue)
+  * [Parentheticals](#parentheticals)
+  * [Dual dialogue](#dual-dialogue)
+  * [Transitions](#transitions)
+- [Formatting & emphasis](#formatting--emphasis)
+- [Structural & special elements](#structural--special-elements)
+  * [Centered text](#centered-text)
+  * [Lyrics](#lyrics)
+  * [Sections and synopses (outlining)](#sections-and-synopses-outlining)
+  * [Notes](#notes)
+  * [Boneyard (block comments)](#boneyard-block-comments)
+  * [Page breaks](#page-breaks)
+- [Forced-element quick reference](#forced-element-quick-reference)
+- [A small complete example](#a-small-complete-example)
+- [A note on branching (project-specific)](#a-note-on-branching-project-specific)
+- [Further reading](#further-reading)
+
+<!-- tocstop -->
+
 **Fountain** is a plain-text markup format for writing screenplays. It is to
 screenplays roughly what Markdown is to prose: you write in an ordinary text editor
 using a few simple, unobtrusive conventions, and a parser infers the structure

@@ -40,6 +40,7 @@ Run from the repo root.
 | Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                         |
 | Lint (eslint + format check) | `pnpm lint`                                                             |
 | Auto-format                  | `pnpm format`                                                           |
+| Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/*.md`)                           |
 | Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)          |
 | Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)               |
 | Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`) |

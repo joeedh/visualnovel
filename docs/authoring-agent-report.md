@@ -1,5 +1,27 @@
 # The Authoring Agent — Design Report
 
+<!-- toc -->
+
+- [1. What the agent is for](#1-what-the-agent-is-for)
+- [2. Domain awareness (what the agent must "know")](#2-domain-awareness-what-the-agent-must-know)
+- [3. Context loading: `AICONTEXT.md` and friends](#3-context-loading-aicontextmd-and-friends)
+- [4. Plan mode](#4-plan-mode)
+- [5. Git integration](#5-git-integration)
+- [6. User-authored skills (extensibility)](#6-user-authored-skills-extensibility)
+- [7. Tools the agent needs](#7-tools-the-agent-needs)
+  * [File & content](#file--content)
+  * [Domain / validation](#domain--validation)
+  * [Git](#git)
+  * [Context & skills](#context--skills)
+  * [Interaction control](#interaction-control)
+- [8. Permissions & safety model](#8-permissions--safety-model)
+- [9. A typical session](#9-a-typical-session)
+- [10. Architecture at a glance](#10-architecture-at-a-glance)
+- [11. Open questions / decisions to make](#11-open-questions--decisions-to-make)
+- [12. Summary](#12-summary)
+
+<!-- tocstop -->
+
 > Scope: A conversational agent that helps a user **author and refine the input
 > files** for the visual novel generator — character descriptions, the branching
 > screenplay (Fountain + branch markers), and location descriptions. The agent chats

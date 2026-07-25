@@ -1,5 +1,18 @@
 # Undo strategies for the command stack
 
+<!-- toc -->
+
+- [1. Where v1 leaves off](#1-where-v1-leaves-off)
+- [2. Strategy A — per-command inverse (memento)](#2-strategy-a--per-command-inverse-memento)
+- [3. Strategy B — path-scoped restore](#3-strategy-b--path-scoped-restore)
+- [4. Strategy C — commit per mutating command](#4-strategy-c--commit-per-mutating-command)
+- [5. Strategy D — shadow snapshots (currently the strongest candidate)](#5-strategy-d--shadow-snapshots-currently-the-strongest-candidate)
+- [6. Strategy E — split by data class](#6-strategy-e--split-by-data-class)
+- [7. Cross-cutting problems](#7-cross-cutting-problems)
+- [8. Recommendation](#8-recommendation)
+
+<!-- tocstop -->
+
 `@vn/commands` ships **without undo**. `CommandStack.undo()` and `.redo()` refuse and point
 here. This document exists so that choice stays deliberate: it records what v1 already
 captures, what each candidate strategy would cost, and which one to reach for first.

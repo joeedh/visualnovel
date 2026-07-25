@@ -1,5 +1,34 @@
 # Desktop App State Model
 
+<!-- toc -->
+
+- [State Categories](#state-categories)
+  * [1. Playthrough State (Persistent via localStorage)](#1-playthrough-state-persistent-via-localstorage)
+  * [2. UI State (Ephemeral, React)](#2-ui-state-ephemeral-react)
+  * [3. Backend State (Main Process, Ephemeral)](#3-backend-state-main-process-ephemeral)
+  * [4. Project Files (Persistent on Disk)](#4-project-files-persistent-on-disk)
+- [Data Flow](#data-flow)
+  * [1. Initial App Load](#1-initial-app-load)
+  * [2. User Types in Studio](#2-user-types-in-studio)
+  * [3. Plan Approval Gate](#3-plan-approval-gate)
+  * [4. Playthrough (Play Room)](#4-playthrough-play-room)
+  * [5. Pipeline Execution (Floor Room)](#5-pipeline-execution-floor-room)
+- [Persistence Summary](#persistence-summary)
+- [Rebuilding After Restart](#rebuilding-after-restart)
+- [IPC Contract](#ipc-contract)
+- [Design Rationale](#design-rationale)
+  * [Why no persistent UI state?](#why-no-persistent-ui-state)
+  * [Why re-read project files on each call?](#why-re-read-project-files-on-each-call)
+  * [Why localStorage for playthrough?](#why-localstorage-for-playthrough)
+  * [Why build the playable on-demand?](#why-build-the-playable-on-demand)
+- [Edge Cases](#edge-cases)
+  * [App restarts mid-run](#app-restarts-mid-run)
+  * [User edits a file while app is running](#user-edits-a-file-while-app-is-running)
+  * [Multiple windows/tabs of the same workspace](#multiple-windowstabs-of-the-same-workspace)
+  * [Switching workspaces](#switching-workspaces)
+
+<!-- tocstop -->
+
 The desktop app (`apps/desktop`) uses a **minimal, file-based state model** where persistent state lives in project files and browser storage, while in-memory state is ephemeral and rebuilt on demand.
 
 ## State Categories

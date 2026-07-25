@@ -1,5 +1,33 @@
 # Visual Novel Generator — System Design Report
 
+<!-- toc -->
+
+- [1. Goals and guiding principles](#1-goals-and-guiding-principles)
+- [2. The big picture: pipeline phases](#2-the-big-picture-pipeline-phases)
+- [3. Core data model](#3-core-data-model)
+- [4. Phase detail](#4-phase-detail)
+  * [P0 — Ingestion & parsing](#p0--ingestion--parsing)
+  * [P1 — Location extraction & breakdown](#p1--location-extraction--breakdown)
+  * [P2 — Location reference shots](#p2--location-reference-shots)
+  * [P3 — Character design + human approval gate](#p3--character-design--human-approval-gate)
+  * [P4 — Model sheets (turnarounds) = the default outfit](#p4--model-sheets-turnarounds--the-default-outfit)
+  * [P5 — Scene & shot decomposition](#p5--scene--shot-decomposition)
+  * [P6 — Shot prompt synthesis](#p6--shot-prompt-synthesis)
+  * [P7 — Generate → critique → refine loop (≤ 4 iterations)](#p7--generate-%E2%86%92-critique-%E2%86%92-refine-loop-%E2%89%A4-4-iterations)
+- [5. Consistency strategy (the hard part), summarized](#5-consistency-strategy-the-hard-part-summarized)
+- [6. Modeling the branching screenplay](#6-modeling-the-branching-screenplay)
+- [7. Task graph & deduplication](#7-task-graph--deduplication)
+- [8. Gemini integration & the asset store](#8-gemini-integration--the-asset-store)
+- [9. Proposed directory layouts](#9-proposed-directory-layouts)
+  * [9.1 Input (authored by the user)](#91-input-authored-by-the-user)
+  * [9.2 Generated (produced by the system)](#92-generated-produced-by-the-system)
+- [10. Execution model, state & resumability](#10-execution-model-state--resumability)
+- [11. Key risks & open questions](#11-key-risks--open-questions)
+- [12. Suggested implementation stack (non-binding)](#12-suggested-implementation-stack-non-binding)
+- [13. End-to-end summary](#13-end-to-end-summary)
+
+<!-- tocstop -->
+
 > Scope: A pipeline that turns written character descriptions, an optional set of
 > reference images, a branching screenplay, and optional location descriptions into
 > a complete set of generated visual-novel art assets (backgrounds, character

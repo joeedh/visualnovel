@@ -1,5 +1,32 @@
 # A Survey of Visual Novel Formats & Scripting Languages
 
+<!-- toc -->
+
+- [How to read this survey](#how-to-read-this-survey)
+- [The three broad families](#the-three-broad-families)
+- [Prose-first & narrative-DSL formats](#prose-first--narrative-dsl-formats)
+  * [Fountain (screenplay markup)](#fountain-screenplay-markup)
+  * [Ink (inkle)](#ink-inkle)
+  * [Yarn Spinner](#yarn-spinner)
+  * [Twine (Harlowe / SugarCube / Snowman / Chapbook)](#twine-harlowe--sugarcube--snowman--chapbook)
+  * [Monogatari](#monogatari)
+- [Dedicated VN scripting languages & engines](#dedicated-vn-scripting-languages--engines)
+  * [Ren'Py](#renpy)
+  * [KiriKiri (KAG3 / TJS2)](#kirikiri-kag3--tjs2)
+  * [NScripter / ONScripter](#nscripter--onscripter)
+  * [TyranoScript / TyranoBuilder](#tyranoscript--tyranobuilder)
+  * [Naninovel (Unity)](#naninovel-unity)
+  * [Others worth knowing](#others-worth-knowing)
+- [Cross-cutting design dimensions](#cross-cutting-design-dimensions)
+  * [Branching notation](#branching-notation)
+  * [Presentation binding](#presentation-binding)
+  * [Authoring ergonomics & LLM-friendliness](#authoring-ergonomics--llm-friendliness)
+- [Implications for this project](#implications-for-this-project)
+- [Quick reference](#quick-reference)
+- [Further reading](#further-reading)
+
+<!-- tocstop -->
+
 This document surveys the landscape of **visual novel (VN) scripting languages, authoring
 formats, and runtime engines**. Its purpose is to orient this project: we generate
 *inputs* (characters, a branching Fountain screenplay, art assets, a provenance manifest)

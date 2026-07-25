@@ -1,5 +1,26 @@
 # The command system
 
+<!-- toc -->
+
+- [Why it exists](#why-it-exists)
+- [Two halves](#two-halves)
+- [Properties are declarative specs, not zod](#properties-are-declarative-specs-not-zod)
+  * [`coerceProps` is the single validation authority](#coerceprops-is-the-single-validation-authority)
+- [The DSL](#the-dsl)
+- [The stack](#the-stack)
+  * [`CommandRecord`](#commandrecord)
+  * [Undo is deferred, not forgotten](#undo-is-deferred-not-forgotten)
+- [The registered commands](#the-registered-commands)
+- [Reaching the commands](#reaching-the-commands)
+  * [From the renderer](#from-the-renderer)
+  * [From DevTools or CDP](#from-devtools-or-cdp)
+  * [From the agent](#from-the-agent)
+- [The catalog](#the-catalog)
+- [Testing](#testing)
+- [Follow-ons](#follow-ons)
+
+<!-- tocstop -->
+
 Every action the desktop shell can take is a **registered command**: a named, described,
 typed shim over a function that already exists. The palette, the menu bar, the authoring
 agent, and an external CDP client all reach the same registry through the same execution

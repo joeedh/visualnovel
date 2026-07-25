@@ -1,5 +1,13 @@
 # Documentation Index
 
+<!-- toc -->
+
+- [Design reports](#design-reports)
+- [Research](#research)
+- [Background & reference](#background--reference)
+
+<!-- tocstop -->
+
 Reference material for the VN Generator monorepo. For the working guide to the code
 itself (commands, package layering, conventions), see [`../CLAUDE.md`](../CLAUDE.md).
 

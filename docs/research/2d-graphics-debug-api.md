@@ -1,5 +1,39 @@
 # A source-agnostic 2D graphics debugging API
 
+<!-- toc -->
+
+- [1. The IR](#1-the-ir)
+  * [Fragment](#fragment)
+  * [Paint is not pick](#paint-is-not-pick)
+  * [Frame](#frame)
+  * [Spaces](#spaces)
+- [2. The capture seam](#2-the-capture-seam)
+  * [Capabilities, not lowest-common-denominator](#capabilities-not-lowest-common-denominator)
+- [3. Adapters](#3-adapters)
+  * [Canvas / scene graph](#canvas--scene-graph)
+  * [DOM](#dom)
+  * [SVG](#svg)
+- [4. Composite frames](#4-composite-frames)
+- [5. Query vocabulary](#5-query-vocabulary)
+  * [Spatial](#spatial)
+  * [Structural / semantic](#structural--semantic)
+  * [Diagnostic](#diagnostic)
+- [6. Explaining — the causal layer](#6-explaining--the-causal-layer)
+  * [`explainPick(x, y)` — an ordered rejection log](#explainpickx-y--an-ordered-rejection-log)
+  * [The rest of the family](#the-rest-of-the-family)
+- [7. Time](#7-time)
+- [8. Invariants](#8-invariants)
+- [9. Views](#9-views)
+- [10. Node-editor domain layer](#10-node-editor-domain-layer)
+- [11. Access paths](#11-access-paths)
+- [12. Pragmatics](#12-pragmatics)
+- [13. Testing](#13-testing)
+- [14. Suggested first slice](#14-suggested-first-slice)
+- [15. Where it lives](#15-where-it-lives)
+- [Open questions](#open-questions)
+
+<!-- tocstop -->
+
 _Status: exploratory design. Nothing here is implemented._
 
 A debugging layer for complex 2D UIs — the desktop app's rooms today, a node-based story
