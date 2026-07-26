@@ -106,6 +106,35 @@ export function buildShotPrompt(
     .trim();
 }
 
+/**
+ * What this shot is meant to depict: its own framing and cast first, the prose of the lines
+ * it covers as context.
+ *
+ * Deliberately *not* the scene synopsis. A scene describes action no single shot is
+ * responsible for, so a reviewer handed it flags every shot for the characters the scene
+ * mentions but the shot never ordered — and since a background plate can never satisfy that,
+ * the refine loop cannot converge and burns every attempt. `characters` is the authority on
+ * who must be in frame, and the description says so out loud.
+ */
+function shotDescription(shot: Shot, scene: Scene): string {
+  const covered = shot.coversLines.length
+    ? scene.lines.filter((l) => shot.coversLines.includes(l.id))
+    : [];
+  const prose = covered.map((l) => (l.speaker ? `${l.speaker}: ${l.text}` : l.text)).join(' ');
+  return [
+    `A single ${shot.framing} shot set in ${shot.location}.`,
+    shot.subjects.length
+      ? `Characters that must be in frame: ${shot.subjects.map((s) => s.characterId).join(', ')}.`
+      : 'This is a background plate: no characters are intended in frame, and their absence is not a defect.',
+    shot.camera ? `Camera: ${shot.camera}.` : '',
+    prose ? `Narrative context, for setting and mood only: ${prose}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** A reviewer-facing spec for a shot (report §P7). */
 export function shotSpec(
   shot: Shot,
@@ -119,7 +148,7 @@ export function shotSpec(
   framing?: string;
 } {
   return {
-    description: scene.synopsis ?? scene.body.slice(0, 200),
+    description: shotDescription(shot, scene),
     characters: shot.subjects.map((s) => s.characterId),
     outfit: shot.subjects[0]?.outfit,
     location: shot.location,

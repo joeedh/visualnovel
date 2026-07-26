@@ -10,6 +10,11 @@ export function shotId(sceneId: string, raw: string): string {
  * Deterministic shot decomposition (report §P5 baseline). Without an LLM we still produce
  * a runnable storyboard: one establishing shot of the scene's location plus one medium
  * shot per character present. Every shot defaults to the scene's primary location variant.
+ *
+ * The establishing shot carries the scene's cast, not an empty frame: it covers the
+ * narration and action beats, and those describe the characters doing things. An empty
+ * subject list would order a bare plate whose own lines contradict it — which the P2
+ * location reference already produces anyway. A cast-less scene still gets a bare plate.
  */
 export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
   const location = model.locations.get(scene.location);
@@ -24,7 +29,10 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       sceneId: scene.id,
       framing: 'establishing',
       location: variant,
-      subjects: [],
+      subjects: scene.characters.map((characterId) => ({
+        characterId,
+        outfit: model.characters.get(characterId)?.defaultOutfit ?? 'default',
+      })),
       coversLines: establishingLines,
       status: 'pending',
     },

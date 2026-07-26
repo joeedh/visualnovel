@@ -71,6 +71,25 @@ describe('runPipeline — gate-as-barrier end-to-end', () => {
     }
   }, 30_000);
 
+  it('gives up early when the critique repeats, instead of spending the whole cap', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 6 } });
+    try {
+      await p.run();
+      await p.approve('aiko');
+
+      // Same defect every time, so the second refinement reproduces the first prompt verbatim
+      // and the third attempt would be the identical request.
+      const summary = await p.run({ reviewResponses: [BLOCKING] });
+      const shots = summary.ran.filter((t) => t.kind === 'shot_image');
+      expect(shots.length).toBeGreaterThan(0);
+      expect(shots.every((t) => t.status === 'needs_human')).toBe(true);
+      // Two, not six: the cap is no longer what stops it.
+      expect(shots.every((t) => t.attempts.length === 2)).toBe(true);
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+
   it('dry-run previews cost without producing any assets', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {

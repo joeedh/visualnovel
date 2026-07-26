@@ -18,3 +18,10 @@ apps/desktop/prototype.html
 # serializer's style — the agent owns these files' formatting.
 examples/**/characters/**
 examples/**/locations/**
+
+# A run's output tree, written by @vn/store and @vn/pipeline. It's committed (it's the
+# reproducible result of a run), but its writers own its formatting — a prettier pass here
+# would show up as a spurious diff after every single run.
+**/vngen/build/**
+**/vngen/state/**
+**/vngen/work/**

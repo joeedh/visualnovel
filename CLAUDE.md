@@ -191,11 +191,27 @@ it may import _every_ layer, and **nothing may import it** — see
   Each attempt generates, has every configured reviewer critique against the shot spec,
   and merges verdicts; a blocking verdict triggers a deterministic prompt refinement and
   another attempt, capped at `config.max_refine_attempts`, after which the shot is flagged
-  `needs_human`. Every attempt is recorded on the task for provenance.
+  `needs_human`. Every attempt is recorded on the task for provenance. It also **stops early
+  when a refinement changes nothing** — refinement is deterministic, so an unchanged prompt
+  means the critique repeated verbatim and the next attempt would issue the identical request;
+  spending the rest of the cap on that is a re-roll, not a refinement.
+- **The reviewer is told what the _shot_ ordered, not what the scene contains.** `shotSpec`
+  (`packages/pipeline/src/prompts.ts`) describes the shot's own framing, location and cast,
+  and demotes the prose of its covered lines to "context only"; `spec.characters` is the
+  authority on who must be in frame, and an empty one says outright that a missing character
+  is not a defect. Handing over the scene synopsis instead made every background plate fail
+  for the characters the scene mentions but the shot never ordered — unsatisfiable, so the
+  loop burned every attempt and landed on `needs_human`. `shotSpec`'s output never enters a
+  task's `inputs`, so this rehashes nothing.
 - **Deterministic fallbacks.** Text steps (P1 location enrichment, P5 shot decomposition)
   use the LLM with structured-output enforcement but fall back to a deterministic baseline
   on any failure, so the whole pipeline runs end-to-end with mock providers and no API
-  calls.
+  calls. P5's baseline is one establishing shot **carrying the scene's cast** plus one medium
+  shot per character; only a cast-less scene gets a bare plate, since the establishing shot
+  covers the narration and action beats and those describe the characters doing things.
+  Because this changes the prompt it rehashes establishing tasks — but shots are persisted,
+  so an existing project keeps its old decomposition until `vngen/work/shots/*.json` is
+  deleted or edited.
 - **Provider seams.** The scheduler never imports a concrete provider — only `Task`,
   `deps`, `status`. Backends are swapped purely by changing model ids in `project.yaml`.
   Tests inject `RecordedChatBackend`/`StubImageBackend` (see `@vn/providers` `mock.ts` /

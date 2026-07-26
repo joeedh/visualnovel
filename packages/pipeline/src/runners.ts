@@ -96,7 +96,8 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
  * every vision reviewer critique it against the shot spec, merge the verdicts. A clean (no
  * blocking defects) result is accepted. A blocking result triggers a deterministic prompt
  * refinement and another attempt, up to `config.max_refine_attempts`; after that the shot
- * is flagged `needs_human` rather than silently shipping a flawed frame.
+ * is flagged `needs_human` rather than silently shipping a flawed frame. The loop also
+ * gives up early when a refinement changes nothing — see below.
  */
 function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
   return async (task, deps) => {
@@ -109,6 +110,7 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
 
     let prompt = task.inputs.prompt;
     let lastRef: AssetRef | undefined;
+    let stalledAfter: number | undefined;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const result = await deps.providers.image.generate(prompt, refs, task.inputs.params);
@@ -144,14 +146,25 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       }
 
       // Blocking defects: refine the prompt from the merged critique and try again.
-      prompt = refinePrompt(prompt, merged.defects);
+      const refined = refinePrompt(prompt, merged.defects);
+      // Refinement is deterministic, so an unchanged prompt means the reviewers returned the
+      // same critique and the next attempt would issue the identical request. Re-rolling it is
+      // a lottery ticket on the author's budget; a critique that will not move is what
+      // `needs_human` is for.
+      if (refined === prompt) {
+        stalledAfter = attempt;
+        break;
+      }
+      prompt = refined;
     }
 
     if (found) found.shot.status = 'needs_human';
     return {
       status: 'needs_human',
       output: lastRef?.hash,
-      error: `shot still has blocking defects after ${maxAttempts} attempts`,
+      error: stalledAfter
+        ? `shot still has blocking defects after ${stalledAfter} attempts; the critique repeated unchanged, so refining again would repeat the same request`
+        : `shot still has blocking defects after ${maxAttempts} attempts`,
     };
   };
 }

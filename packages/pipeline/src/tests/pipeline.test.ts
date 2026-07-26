@@ -10,6 +10,7 @@ import {
   planTasks,
   refinePrompt,
   shotId,
+  shotSpec,
 } from '../index.js';
 
 const config = projectConfig.parse({
@@ -24,6 +25,55 @@ describe('prompts', () => {
     expect(prompt).toContain('watercolor');
     expect(prompt).toContain('AIKO');
     expect(prompt).toContain('#112233');
+  });
+});
+
+describe('shotSpec', () => {
+  const s = scene('s1', ['aiko'], 'class');
+  s.synopsis = 'Aiko arrives and greets the player.';
+  s.lines = [
+    { id: 's1:L1', kind: 'narration', text: 'Rain streaks the windows.' },
+    { id: 's1:L2', kind: 'dialogue', speaker: 'aiko', text: 'Hi.' },
+  ];
+
+  it('describes the shot, not the scene, and quotes only its own lines', () => {
+    const spec = shotSpec(
+      {
+        id: 's1__b1',
+        sceneId: 's1',
+        framing: 'medium',
+        location: 'day',
+        subjects: [{ characterId: 'aiko', outfit: 'default' }],
+        coversLines: ['s1:L2'],
+        status: 'pending',
+      },
+      s,
+    );
+    expect(spec.description).not.toContain(s.synopsis!);
+    expect(spec.description).toContain('medium shot set in day');
+    expect(spec.description).toContain('must be in frame: aiko');
+    expect(spec.description).toContain('aiko: Hi.');
+    expect(spec.description).not.toContain('Rain streaks');
+  });
+
+  it('tells the reviewer a cast-less shot is a plate, so an absent character is not a defect', () => {
+    const spec = shotSpec(
+      {
+        id: 's1__est',
+        sceneId: 's1',
+        framing: 'establishing',
+        location: 'day',
+        subjects: [],
+        coversLines: ['s1:L1'],
+        status: 'pending',
+      },
+      s,
+    );
+    expect(spec.characters).toEqual([]);
+    expect(spec.description).toContain('background plate');
+    expect(spec.description).toContain('not a defect');
+    // The covered prose still travels, but explicitly demoted to context.
+    expect(spec.description).toContain('for setting and mood only: Rain streaks the windows.');
   });
 });
 
@@ -76,6 +126,19 @@ describe('deterministicShots', () => {
     expect(shots[0]!.framing).toBe('establishing');
     expect(shots[1]!.subjects[0]!.characterId).toBe('aiko');
     expect(shots[1]!.id).toBe(shotId('s1', 'beat1'));
+  });
+
+  it('casts the establishing shot from the scene, and leaves a cast-less scene a bare plate', () => {
+    const m = model(
+      [character('aiko', 'approved', 'h1'), character('ben', 'approved', 'h2')],
+      [scene('s1', ['aiko', 'ben'], 'class'), scene('s2', [], 'class')],
+      [location('class')],
+    );
+    expect(deterministicShots(m.scenes.get('s1')!, m)[0]!.subjects).toEqual([
+      { characterId: 'aiko', outfit: 'default' },
+      { characterId: 'ben', outfit: 'default' },
+    ]);
+    expect(deterministicShots(m.scenes.get('s2')!, m)[0]!.subjects).toEqual([]);
   });
 
   it('binds coversLines to real line ids — narration to establishing, dialogue per character', () => {
