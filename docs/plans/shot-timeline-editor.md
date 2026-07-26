@@ -28,7 +28,7 @@ pipeline, not in the app.
 Add a shots file to the generated tree, alongside the other run state:
 
 ```
-vngen/work/shots/<sceneId>.json      # or one shots.json; pick one and pin it in a schema
+vngen/work/shots/<sceneId>.json      # one file per scene
 ```
 
 - Zod schema in `@vn/types`, validated on read like every other machine-consumed file.
@@ -37,6 +37,56 @@ vngen/work/shots/<sceneId>.json      # or one shots.json; pick one and pin it in
 - Because it lives under `work/`, it is human-editable and committed — consistent with how
   `work/` is already described in `CLAUDE.md`.
 - `@vn/export`'s reconstruction fallback stays, for projects that predate this.
+
+#### Schema shape (decided)
+
+`Shot` mixes two kinds of field: what a human authored (`framing`, `location`, `subjects`,
+`camera`, `coversLines`) and what a run produced (`prompt`, `image`, `status`). Both are
+persisted — a shots file that omitted the run state would not be a readable record of the
+scene — but the produced half is **nested under `shotData` and marked as derived**, so the
+distinction is visible in the file itself rather than only in a doc:
+
+```jsonc
+{
+  "version": 1,
+  "scene": "arrival",
+  "shots": [
+    {
+      "id": "arrival__establishing",
+      "sceneId": "arrival",
+      "framing": "establishing",
+      "location": "evening",
+      "subjects": [],
+      "coversLines": ["arrival:L1", "arrival:L2"],
+
+      // Derived — rewritten wholesale on every run from the task graph and manifest.
+      // Present for reading (what this shot became); never an input. Editing it does
+      // nothing, and the next run overwrites it.
+      "shotData": {
+        "prompt": "…", // P6, rebuilt by buildShotPrompt from the authored fields
+        "image": "<sha256>", // P7 output; the manifest is the authority
+        "status": "accepted",
+      },
+    },
+  ],
+}
+```
+
+Rules that follow, and each is a test:
+
+- **`shotData` is optional on read.** Absent means "not run yet", which is also the state of
+  every shot the moment it is decomposed.
+- **Nothing reads it as authority.** Task status comes from `tasks.jsonl` and asset bytes from
+  `manifest.json`; a shots file restored from an old commit must not be able to convince the
+  pipeline that work is done. The loader may populate the in-memory `Shot` from it, but the
+  planner's decisions are unchanged by whether it was there.
+- **Only the authored half is compared** when deciding whether a persisted decomposition is
+  usable, so a run that produced nothing and a run that produced everything load identically.
+- **The in-memory `Shot` keeps its flat fields.** The planner mutates `shot.prompt` and the
+  runner reads `scene.shots`; restructuring the working type would ripple through
+  `planner.ts`, `runners.ts` and `playable.ts` for no gain. The store's reader/writer is the
+  single place that maps flat ↔ nested — which is also what forces `shotData` to be
+  *constructed* at write time from the run's results rather than carried along.
 
 **The staleness question needs an explicit answer:** if the screenplay changes, persisted
 shots may reference line ids that no longer exist. Recommended rule — drop unknown line ids
@@ -152,6 +202,7 @@ per-line art overrides, audio, and transitions.
 ## Done
 
 - [ ] Shots persist under `vngen/work/`, schema-validated, preferred over re-decomposition
+- [ ] `shotData` round-trips, is optional, and never overrides `tasks.jsonl` / `manifest.json`
 - [ ] Stale line ids drop with a diagnostic; human edits are never silently overwritten
 - [ ] Coverage strip renders a real scene with real frames
 - [ ] Gaps and overlaps are visible; uncovered lines are unmistakable
