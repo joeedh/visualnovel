@@ -102,23 +102,65 @@ export const minedLocationsSchema = z.object({
   ),
 });
 
+const shotFraming = z.enum(['wide', 'medium', 'close', 'establishing']);
+
+const shotSubject = z.object({
+  characterId: z.string(),
+  outfit: z.string().default('default'),
+  pose: z.string().optional(),
+  expression: z.string().optional(),
+});
+
 /** Shots proposed for one scene by the LLM (report §P5). */
 export const shotDecompositionSchema = z.object({
   shots: z.array(
     z.object({
       id: z.string(),
-      framing: z.enum(['wide', 'medium', 'close', 'establishing']),
+      framing: shotFraming,
       location: z.string(),
-      subjects: z.array(
-        z.object({
-          characterId: z.string(),
-          outfit: z.string().default('default'),
-          pose: z.string().optional(),
-          expression: z.string().optional(),
-        }),
-      ),
+      subjects: z.array(shotSubject),
       camera: z.string().optional(),
       coversLines: z.array(z.string()).default([]),
     }),
   ),
 });
+
+/**
+ * The derived half of a persisted shot: what a run produced, never what a human authored.
+ * Rewritten wholesale on every run from the task graph and the manifest, which remain the
+ * authority — this is a readable copy, not an input. Absent means "not run yet".
+ */
+export const shotDataSchema = z.object({
+  /** P6, rebuilt by `buildShotPrompt` from the authored fields. */
+  prompt: z.string().optional(),
+  /** P7 output asset hash; `manifest.json` is the authority for the bytes. */
+  image: z.string().optional(),
+  status: z.enum(['pending', 'prompted', 'generated', 'accepted', 'needs_human']),
+});
+
+/**
+ * `work/shots/<sceneId>.json` — one scene's decomposition, persisted so a run reuses it
+ * instead of re-decomposing (the LLM path is non-deterministic, and re-decomposing would
+ * change shot ids, hence task identities, hence regenerate art for no reason).
+ *
+ * Everything outside `shotData` is authored and is what a later run compares against.
+ */
+export const shotsFileSchema = z.object({
+  version: z.literal(1),
+  scene: z.string().min(1),
+  shots: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        sceneId: z.string().min(1),
+        framing: shotFraming,
+        location: z.string().min(1),
+        subjects: z.array(shotSubject).default([]),
+        camera: z.string().optional(),
+        coversLines: z.array(z.string()).default([]),
+        shotData: shotDataSchema.optional(),
+      }),
+    )
+    .default([]),
+});
+export type ShotsFile = z.infer<typeof shotsFileSchema>;

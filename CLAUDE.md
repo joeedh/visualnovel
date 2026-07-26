@@ -140,7 +140,7 @@ it may import _every_ layer, and **nothing may import it** — see
 | `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                               |
 | `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                                                                                                   |
 | `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                                                                                                       |
-| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` markdown tree.                                                                                                                                                                        |
+| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped.                                        |
 | `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                           |
 | `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection. Domain-agnostic — the commands themselves are defined by the host app. Undo-less by decision (see [Command system](#command-system)).       |
 | `@vn/debug2d`       | Source-agnostic 2D graphics debugging: fragment IR, space registry, DOM adapter (stacking-order z with culprit retention), query engine, `explainPick` rejection logs. Zero deps, outside the layering graph; dev-only in the desktop renderer. See [2D debug layer](#2d-debug-layer-vndebug2d). |
@@ -175,6 +175,17 @@ it may import _every_ layer, and **nothing may import it** — see
   only appear after that upstream task is `done`. Consequence: `vngen cost` is a snapshot
   of _currently-plannable_ work and undercounts tasks that only become plannable after an
   earlier wave finishes.
+- **Shot decompositions are persisted, not re-derived.** P5 is an LLM step, so re-running it
+  would produce different shot ids — hence different task hashes — and regenerate art for no
+  reason. The planner writes each scene's decomposition to `work/shots/<sceneId>.json` and
+  prefers it forever after; it only calls `decomposeScene` when no file exists. The file is
+  human-editable, and a malformed one throws rather than being silently re-decomposed over.
+  Authored fields sit at the top level; what a run produced is nested under **`shotData`** and
+  rewritten wholesale each pass — `tasks.jsonl` and `manifest.json` stay the authority, so a
+  shots file restored from an old commit cannot convince the pipeline that work is done. Line
+  ids the screenplay no longer has are dropped with a warning, and since `buildShotPrompt`
+  ignores `coversLines`, coverage edits rehash nothing. Dry runs read the file but never write
+  it — a mock decomposition must not be left for a real run to reuse.
 - **P7 generate→critique→refine loop** is folded into the `shot_image` runner (a
   documented deviation from the report's separate `vision_review`/`prompt_refine` nodes).
   Each attempt generates, has every configured reviewer critique against the shot spec,
@@ -212,9 +223,9 @@ can't be mixed into a real run's reference assets.
 
 Authored input lives at the project root (`project.yaml`, `characters/<id>/character.md`,
 `locations/<id>.md`, `screenplay/*.fountain`). Everything generated lives under `vngen/`:
-`work/` (human-editable: story graph, candidates, `approved.png`), `build/` (machine:
-`assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). `vngen/` is committed (it is
-the reproducible output of a run), not gitignored.
+`work/` (human-editable: story graph, candidates, `approved.png`, `shots/<sceneId>.json`),
+`build/` (machine: `assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). `vngen/` is
+committed (it is the reproducible output of a run), not gitignored.
 
 ### Sample project
 

@@ -1,6 +1,7 @@
 # Plan: shot timeline editor
 
-**Status:** not started, and **not ready to start** — see the blocker below.
+**Status:** Wave 1 (shot persistence) **shipped**. The editor itself is **not ready to start** —
+it still needs a project that has been through a real non-mock run.
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), plus shot
 persistence (Wave 1 here), plus a project that has been through a real non-mock run.
 **Size:** large. [`../research/graphThingsReport.md`](../research/graphThingsReport.md) §7.
@@ -13,7 +14,9 @@ emits a `show` whenever the covering shot changes. Adjusting which lines a shot 
 boundary-dragging problem: a timeline, not a graph, and not something you want to describe to
 an agent in a sentence.
 
-## Blocker: shots are not persisted
+## Blocker: shots are not persisted — **resolved, Wave 1 shipped**
+
+_(The description below is the pre-Wave-1 state; see [Wave 1 as shipped](#wave-1--as-shipped).)_
 
 **Nothing writes shots to disk.** `planTasks` decomposes a scene lazily the first time it
 clears the gate (`packages/pipeline/src/planner.ts:116`), mutating `scene.shots` in memory.
@@ -96,6 +99,46 @@ edits; that is the one behavior that would make the editor untrustworthy.
 This wave is worth doing on its own merits: today, two runs of the same project can produce
 different shot decompositions (the LLM path is non-deterministic), which quietly breaks the
 "deduped, resumable" promise for everything downstream of P5.
+
+### Wave 1 — as shipped
+
+Landed as its own commit, separate from any UI work, exactly as the risks section asked.
+
+- **`packages/types/src/schemas.ts`** — `shotsFileSchema` + `shotDataSchema`. The framing enum
+  and subject object were extracted into shared consts, so the persisted shape and
+  `shotDecompositionSchema` (what the LLM returns) cannot drift from each other.
+- **`packages/store/src/shots.ts`** (new) — `readShots` / `writeShots`, plus
+  `paths.shotsFile(sceneId)`. This is the only flat↔nested mapping point, which is what forces
+  `shotData` to be *constructed* at write time rather than carried around.
+  - `readShots` returns `null` **only** when the file is absent — that null is the sole signal
+    a caller may use to decide "decompose this scene". Malformed JSON _and_ a schema mismatch
+    both throw `ValidationError`; silently re-decomposing over a hand edit would make the file
+    untrustworthy to edit, which is the whole point of putting it under `work/`.
+  - `writeShots` skips a byte-identical rewrite and returns whether it wrote. `work/` is
+    committed, so an unchanged rerun has to leave `git status` clean.
+  - `shotData` is **omitted entirely** until a run produced something, so a freshly decomposed
+    file is purely authored material and reads as one.
+- **`packages/pipeline/src/planner.ts`** — `planTasks` gained optional `paths`, `logger`, and
+  `readOnlyShots`. Two write points, both owned by the planner rather than the scheduler:
+  immediately after decomposing, and once per scene per pass after the shot tasks are hashed.
+  `runPipeline` already guarantees a final `planTasks` pass after the last wave, so the second
+  write is what gets a completed run's outputs into the file — and it needed no new dependency
+  from `@vn/scheduler` on `@vn/store`.
+  - `refreshShotData` copies status/image **from the task graph**, overwriting whatever the
+    file loaded. That is what makes "nothing reads `shotData` as authority" true rather than
+    merely documented.
+  - `shot.image` was a documented-but-never-filled field before this; the image hash lived only
+    on the task's `output`. It is now populated at plan time.
+- **`readOnlyShots` on dry runs.** A dry run plans with mock providers, and a mock
+  decomposition persisted to `work/` would be reused by the next real run — the same class of
+  mistake as mixing mock image bytes into a real run's reference assets. Dry runs therefore
+  read the file (so a cost preview reflects the real decomposition) but never write it.
+
+Tests: `packages/store/src/tests/shots.test.ts` (round-trip, `shotData` omission, idempotent
+write, stale-line drop, both malformed cases) and `packages/pipeline/src/tests/shots.test.ts`,
+which drives real `makeProject` runs to prove a second run is byte-identical and re-hashes
+nothing, that a hand-written decomposition is honored while its `shotData: accepted` is
+ignored, that a stale line id is dropped without rehashing, and that a dry run writes nothing.
 
 ## The rehash boundary (scope this carefully)
 
@@ -201,11 +244,11 @@ per-line art overrides, audio, and transitions.
 
 ## Done
 
-- [ ] Shots persist under `vngen/work/`, schema-validated, preferred over re-decomposition
-- [ ] `shotData` round-trips, is optional, and never overrides `tasks.jsonl` / `manifest.json`
-- [ ] Stale line ids drop with a diagnostic; human edits are never silently overwritten
+- [x] Shots persist under `vngen/work/`, schema-validated, preferred over re-decomposition
+- [x] `shotData` round-trips, is optional, and never overrides `tasks.jsonl` / `manifest.json`
+- [x] Stale line ids drop with a diagnostic; human edits are never silently overwritten
 - [ ] Coverage strip renders a real scene with real frames
 - [ ] Gaps and overlaps are visible; uncovered lines are unmistakable
 - [ ] Drag commits one `story.setCoverage` command on drop
-- [ ] `coversLines` edits provably do not rehash any task
-- [ ] `CLAUDE.md` updated: `work/shots/` in the project layout, and P5's persistence rule
+- [x] `coversLines` edits provably do not rehash any task
+- [x] `CLAUDE.md` updated: `work/shots/` in the project layout, and P5's persistence rule

@@ -58,8 +58,9 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   const runners: Record<TaskKind, Runner> = createRunners(config);
   const ran: AnyTask[] = [];
 
-  // Always (re)plan first so the preview and gate reflect the current model state.
-  await planTasks({ model, graph, config, providers });
+  // Always (re)plan first so the preview and gate reflect the current model state. A dry run
+  // may read persisted shots but must not write a mock decomposition a real run would reuse.
+  await planTasks({ model, graph, config, providers, paths, logger, readOnlyShots: dryRun });
 
   if (dryRun) {
     return {
@@ -72,7 +73,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
 
   // Plan → run ready wave → replan, until no task is ready.
   for (;;) {
-    await planTasks({ model, graph, config, providers });
+    await planTasks({ model, graph, config, providers, paths, logger });
     const ready = graph.ready();
     if (ready.length === 0) break;
 
