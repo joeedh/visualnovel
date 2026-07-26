@@ -21,8 +21,10 @@ import {
   AssetStore,
   ProjectPaths,
   loadInputs,
+  readShots,
   setCharacterApproval,
   writeApprovedPortrait,
+  writeShots,
 } from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { writeFileAtomic } from '@vn/util';
@@ -59,11 +61,13 @@ import type {
   GateCandidate,
   PipelineRunResult,
   PipelineStatus,
+  SceneCoverage,
   StoryGraph,
 } from '../shared/ipc.js';
 import { narrowTask } from './reviews.js';
 import { storyGraphOf } from './storygraph.js';
 import type { BranchOp } from '../shared/branchops.js';
+import { setCoverage } from '../shared/coverage.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -289,6 +293,78 @@ export class WorkspaceSession {
       message: op.message,
       written: [relative(this.dir, project.scriptPath).split(sep).join('/')],
       graph: storyGraphOf(reloaded.model),
+    };
+  }
+
+  /**
+   * One scene's script and shots for the coverage timeline. Shots come off disk: a model built
+   * from inputs carries none, and the persisted decomposition is the one the run illustrated.
+   */
+  async sceneCoverage(sceneId: string): Promise<SceneCoverage> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) throw new Error(`No scene "${sceneId}".`);
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    const exts = new Map(project.store.manifest().map((a) => [a.hash, a.ext]));
+    return {
+      sceneId,
+      location: scene.location,
+      lines: scene.lines.map((l) => ({
+        id: l.id,
+        kind: l.kind,
+        ...(l.speaker ? { speaker: l.speaker } : {}),
+        text: l.text,
+      })),
+      shots: (loaded?.shots ?? []).map((s) => ({
+        id: s.id,
+        framing: s.framing,
+        subjects: s.subjects.map((sub) => sub.characterId),
+        coversLines: s.coversLines,
+        status: s.status,
+        ...(s.image ? { image: { hash: s.image, ext: exts.get(s.image) ?? 'png' } } : {}),
+      })),
+      decomposed: loaded !== null,
+    };
+  }
+
+  /**
+   * Rewrite one shot's coverage. The rule is `shared/coverage.ts`, so the timeline's mid-drag
+   * preview and this write cannot disagree; only `coversLines` is touched, and `buildShotPrompt`
+   * ignores it, so no task rehashes and no generated art is invalidated.
+   */
+  async setCoverage(
+    sceneId: string,
+    shotId: string,
+    lines: readonly string[],
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return { ok: false, message: `No scene "${sceneId}".`, written: [] };
+
+    const lineOrder = scene.lines.map((l) => l.id);
+    const loaded = await readShots(project.paths, sceneId, new Set(lineOrder));
+    if (!loaded) {
+      return {
+        ok: false,
+        message: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+        written: [],
+      };
+    }
+
+    const op = setCoverage(loaded.shots, { shot: shotId, lines, lineOrder });
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    const next = new Map(op.changed.map((s) => [s.id, s.coversLines]));
+    const shots = loaded.shots.map((s) => ({ ...s, coversLines: next.get(s.id) ?? s.coversLines }));
+    await writeShots(project.paths, sceneId, shots);
+
+    const gaps = op.uncovered.length ? ` ${op.uncovered.length} line(s) now uncovered.` : '';
+    return {
+      ok: true,
+      message: op.message + gaps,
+      written: [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.sceneCoverage(sceneId),
     };
   }
 

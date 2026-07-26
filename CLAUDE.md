@@ -335,10 +335,11 @@ renderer/
                         graph.ts · intent.ts · grab.ts · tween.ts (pure)
   rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  AttemptLoop.tsx
                         TaskGraphView.tsx · attempts.ts · taskGraph.ts (pure) · GateOverlay.tsx
+       …/timeline/      Timeline.tsx  ShotBracket.tsx · coverage.ts (pure)
   rooms/play/           Runner.tsx
   ui/                   Resizable.tsx — shared by two rooms, so it belongs to neither
   styles/               index.css @imports tokens · shell · studio · floor · play · graph ·
-                        branch · taskgraph
+                        branch · taskgraph · timeline
 ```
 
 - **`App.tsx` owns only the shell**: `room`, `paletteOpen`, the workspace index/status, and
@@ -405,10 +406,10 @@ Plan: [`docs/plans/story-branch-editor.md`](docs/plans/story-branch-editor.md).
 
 ### Task DAG view (FLOOR)
 
-FLOOR has two modes, `list` | `graph` (a segmented control in the floorbar,
+FLOOR's first two modes are `list` | `graph` (a segmented control in the floorbar,
 `view.mode(room=floor mode=graph)`), sharing one selection and one `Inspector` — the flat list
-is better for scanning, the graph for structure. Read-only: FLOOR mutates through
-`pipeline.run` and `gate.approve` only. `taskGraph.ts` is the pure derivation,
+is better for scanning, the graph for structure. Both are read-only: the only mutations from
+these two are `pipeline.run` and `gate.approve`. `taskGraph.ts` is the pure derivation,
 `TaskGraphView.tsx` the thin surface over `renderer/graph/`. Plan and as-shipped notes:
 [`docs/plans/task-dag-view.md`](docs/plans/task-dag-view.md).
 
@@ -430,6 +431,33 @@ and each fix is a pure function tested in node:
   the tasks alone) and ghosts each scene's expected work at `decomposeScene`'s deterministic
   baseline. Ghosts are **clusters, never addressable**: `onPick` acts on real tasks only, so
   the UI can't offer an estimate as a fact.
+
+### Coverage timeline (FLOOR)
+
+FLOOR's third mode, `timeline` (`view.mode(room=floor mode=timeline)`): a scene's screenplay
+down the page with the shots covering it bracketed beside it. It runs **vertically** because
+screenplays do, and it takes the full width — the task inspector is about other material, so
+`.floor-body.wide` drops it. This is the only surface that edits `Shot.coversLines`, which
+`buildShotPrompt` ignores, so every edit here is free: nothing rehashes and no art is
+invalidated. Plan and as-shipped notes:
+[`docs/plans/shot-timeline-editor.md`](docs/plans/shot-timeline-editor.md).
+
+- **One rule, previewed and committed.** `src/shared/coverage.ts` (`setCoverage`) is run by the
+  `story.setCoverage` command in main _and_ by the strip mid-drag — same split as
+  `branchops.ts`/`intent.ts`, so a refusal shown while an edge is carried is the refusal that
+  would happen. One command per drop; a drag is continuous, its commit is not.
+- **Claiming a line takes it from whatever held it.** The exporter shows the _first_ shot
+  covering a line, so double coverage silently hides the second shot's frame. Released lines
+  become **gaps** — a vermilion gutter — rather than being handed to a neighbour: an uncovered
+  line renders with no image, and revealing that is the point of the surface.
+- **Coverage is a set, never a range.** `timeline/coverage.ts` splits a shot into contiguous
+  _segments_ and lanes shots by extent, so the decomposer's interleaving (plate takes the
+  narration, each medium one speaker) draws as separate columns instead of nested brackets.
+  Only a shot's outermost handles drag; a shot covering nothing is listed under
+  `COVERS NOTHING` instead of being drawn.
+- **Rows are grid rows, so wrapped prose sizes itself.** The one thing measured is which row
+  the pointer is over: a full-width `.tl-band` behind each row, reached by `elementFromPoint`
+  once `.tl-grid.dragging` drops pointer events on the script and the brackets.
 
 ### Desktop runner (`apps/desktop`, PLAY room)
 
@@ -509,12 +537,13 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 
 - **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
   prop specs, the registry, the DSL, the execution stack, and the catalog projection — it is
-  domain-agnostic (deps: `types`, `util`, `git`). The 20 definitions live in
+  domain-agnostic (deps: `types`, `util`, `git`). The 22 definitions live in
   `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`)
-  as thin wrappers over `WorkspaceSession`. The `story.*` mutators
+  as thin wrappers over `WorkspaceSession`. The `story.*` branch mutators
   (`setChoice`/`removeChoice`/`setNext`/`spliceScene`) all go through
   `session.editBranches(decide)` → `applySceneBranchEdit` → reload, so the branch editor never
-  writes the screenplay by another path.
+  writes the screenplay by another path; `story.setCoverage` is the same arrangement one layer
+  down, the only writer of `work/shots/<sceneId>.json` outside the planner.
 - **Props are declarative specs, not zod.** The repo is on zod 3 (no `z.toJSONSchema`), and
   one spec map feeds coercion, the DSL, the catalog's JSON Schema, and a future properties
   panel. `coerceProps` is the single validation authority — it applies defaults, coerces the
@@ -546,7 +575,8 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 - **`view.*` commands run in main** and push a `command:ui` effect the renderer applies, rather
   than there being a second, renderer-side registry to keep in sync. `Room` stays a three-value
   union — an editor is a **mode within a room**, reached by `view.mode(room, mode)` and a
-  `{ type: 'mode' }` effect (STUDIO: `convo` | `branches`; FLOOR: `list` | `graph`). Which
+  `{ type: 'mode' }` effect (STUDIO: `convo` | `branches`; FLOOR: `list` | `graph` |
+  `timeline`). Which
   modes a room _has_ is a pairing, so `view.mode` re-checks it in `run` and refuses a bad one
   by throwing; `UiEffect`'s mode member is split per room so the renderer can't cross them
   either.

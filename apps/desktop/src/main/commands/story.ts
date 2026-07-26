@@ -125,6 +125,48 @@ export const storySpliceScene = define({
   },
 });
 
+export const storyCoverage = define({
+  id: 'story.coverage',
+  title: 'Scene coverage',
+  description: "A scene's lines and the shots that cover them — what the timeline draws.",
+  mutating: false,
+  props: { scene: prop.string('the scene to read') },
+  async run({ scene }, ctx) {
+    const coverage = await ctx.host.session.sceneCoverage(scene);
+    const covered = new Set(coverage.shots.flatMap((s) => s.coversLines));
+    const gaps = coverage.lines.filter((l) => !covered.has(l.id)).length;
+    return {
+      message: coverage.decomposed
+        ? `${coverage.shots.length} shot(s) over ${coverage.lines.length} line(s); ${gaps} uncovered.`
+        : `${scene} has no decomposition yet.`,
+      data: coverage,
+    };
+  },
+});
+
+export const storySetCoverage = define({
+  id: 'story.setCoverage',
+  title: 'Set shot coverage',
+  description:
+    'Set which lines a shot is on screen for. Claimed lines are taken off every other shot; ' +
+    'released ones become visible gaps. Changes no prompt, so nothing rehashes.',
+  mutating: true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    lines: prop.string('comma-separated line ids; empty clears the shot', { default: '' }),
+  },
+  async run({ scene, shot, lines }, ctx) {
+    const ids = lines
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const result = await ctx.host.session.setCoverage(scene, shot, ids);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
 export const storyPlay = define({
   id: 'story.play',
   title: 'Build playable',

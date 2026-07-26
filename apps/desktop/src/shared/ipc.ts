@@ -16,9 +16,12 @@ import type {
   WorkspaceIndex,
 } from '@vn/authoring';
 import type {
+  AssetRef,
   DefectReport,
   Diagnostic,
   Playable,
+  SceneLine,
+  Shot,
   Task as PipelineTask,
   TaskAttempt as PipelineTaskAttempt,
 } from '@vn/types';
@@ -49,10 +52,11 @@ export type Room = 'studio' | 'floor' | 'play';
 export type StudioMode = 'convo' | 'branches';
 
 /**
- * Which surface FLOOR shows: the task list, or the same tasks as a DAG. Both drive the same
- * selection and the same inspector — the list is better for scanning, the graph for structure.
+ * Which surface FLOOR shows. `list` and `graph` are the same tasks, driving the same selection
+ * and the same inspector — the list is better for scanning, the graph for structure. `timeline`
+ * is the coverage strip: a scene's screenplay against the shots that illustrate it.
  */
-export type FloorMode = 'list' | 'graph';
+export type FloorMode = 'list' | 'graph' | 'timeline';
 
 /** Anything the desktop session store can persist — plain JSON, nothing else. */
 export type SessionValue =
@@ -197,6 +201,39 @@ export interface StoryGraph {
   diagnostics: Diagnostic[];
 }
 
+/** One screenplay line as the timeline sets it: the authored side of the strip. */
+export interface CoverageLine {
+  id: string;
+  kind: SceneLine['kind'];
+  speaker?: string;
+  text: string;
+}
+
+/** One shot as a bracket: what it covers, and the frame it produced (if any). */
+export interface CoverageShot {
+  id: string;
+  framing: string;
+  /** Character ids in frame; empty is a background plate. */
+  subjects: string[];
+  coversLines: string[];
+  status: Shot['status'];
+  /** The accepted frame, for the thumbnail. Absent until a run produced one. */
+  image?: AssetRef;
+}
+
+/**
+ * A scene's script and its shots, the timeline's whole input. Shots come from the persisted
+ * decomposition (`work/shots/<sceneId>.json`) — a model loaded from disk carries none.
+ */
+export interface SceneCoverage {
+  sceneId: string;
+  location: string;
+  lines: CoverageLine[];
+  shots: CoverageShot[];
+  /** No decomposition on disk yet: the scene has not been planned past the gate. */
+  decomposed: boolean;
+}
+
 /** Outcome of a `story.*` branch edit: the patched graph, or why the patch was refused. */
 export interface BranchEditResult {
   ok: boolean;
@@ -229,6 +266,11 @@ export interface InvokeChannels {
    * *mutation* goes through a `story.*` command instead, for one provenance record per act.
    */
   'story:graph': () => StoryGraph;
+  /**
+   * One scene's lines + persisted shots, for the coverage timeline. A read; the edit goes
+   * through `story.setCoverage` like every other mutation.
+   */
+  'story:coverage': (sceneId: string) => SceneCoverage;
   /** The live registry projection — never the generated file, so the two can't diverge. */
   'command:catalog': () => CommandCatalog;
   'command:exec': (request: CommandExecRequest) => CommandOutcome;

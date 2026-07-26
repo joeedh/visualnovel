@@ -32,7 +32,11 @@
   * [A synthetic click on a graph node does nothing, by design](#a-synthetic-click-on-a-graph-node-does-nothing-by-design)
   * [PowerShell eats the inner quotes of a `--raw` expression](#powershell-eats-the-inner-quotes-of-a---raw-expression)
   * [Killing a stale dev loop on Windows, by command line](#killing-a-stale-dev-loop-on-windows-by-command-line)
-  * [`Task`'s `kind` does not narrow its `inputs`](#tasks-kind-does-not-narrow-its-inputs)
+- [4 · Shot timeline](#4-%C2%B7-shot-timeline)
+  * [The repair was correct and produced no change, because the reader never read it](#the-repair-was-correct-and-produced-no-change-because-the-reader-never-read-it)
+  * [A jest-green test file can still fail `tsgo`](#a-jest-green-test-file-can-still-fail-tsgo)
+  * [Reading React state in the same evaluation that dispatched the event](#reading-react-state-in-the-same-evaluation-that-dispatched-the-event)
+  * [`elementFromPoint` under a drag needs somewhere to land](#elementfrompoint-under-a-drag-needs-somewhere-to-land)
 
 <!-- tocstop -->
 
@@ -500,3 +504,48 @@ Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
 
 `/T` matters — esbuild, Vite and Electron are children, and killing only the parent leaves the
 ports held.
+
+## 4 · Shot timeline
+
+### The repair was correct and produced no change, because the reader never read it
+
+**Symptom.** Two scenes in the seeded workspace had accepted shot images and displayed none.
+Hand-editing `coversLines` in `vngen/work/shots/<scene>.json` — the documented free repair —
+changed nothing: the exported playable still had `withImage 0`.
+
+**What produced the evidence.** A throwaway esbuild-bundled script that called `buildPlayable`
+directly and counted `show` beats with and without an image. The file edit was fine; the
+exporter never opened the file. `coveringShots` consulted `scene.shots`, which a model rebuilt
+from disk never has, so it reconstructed the deterministic baseline for every scene and named
+shot ids the LLM-decomposed run had never produced.
+
+**Lesson.** When a data edit "does nothing", check that the consumer reads that source at all
+before re-checking the edit. Two independent faults were stacked here — a prompt that made
+`coversLines` unanswerable, and a reader that ignored the answer — and each alone blanks the
+scene, so fixing either one leaves the symptom exactly as it was.
+
+### A jest-green test file can still fail `tsgo`
+
+`packages/testkit/src/tests/record.test.ts` had a real type error (`string | undefined` where
+`string` was required) and had been committed and passing for a session. The jest transform is
+esbuild, which strips types without checking them. **`pnpm test` is not evidence that test code
+typechecks** — only `pnpm check` is, and it covers `tests/` too.
+
+### Reading React state in the same evaluation that dispatched the event
+
+**Symptom.** A synthetic `pointermove` over the timeline produced `undefined` for the preview
+notice, suggesting the drag never started. It had: a second CDP call a moment later found both
+`.tl-grid.dragging` and the notice text.
+
+The dispatch and the query were in one `Runtime.evaluate` expression, so the read happened
+before React re-rendered. **Split dispatch and assertion into separate `--raw` calls** — the
+same discipline as one evaluation per pointer event, for the same reason.
+
+### `elementFromPoint` under a drag needs somewhere to land
+
+The strip resolves "which line is the pointer over" from the DOM rather than from measured
+row geometry, but a drag lives in the bracket columns, where the only thing under the cursor is
+the bracket being dragged. The fix is structural, not a special case in the hit test: a
+full-width `.tl-band` per row behind everything, plus a `dragging` class that drops pointer
+events on the script and the brackets so the band is reachable. Verified by asserting the band
+rects against the bracket rects before simulating anything — geometry first, then events.

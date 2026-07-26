@@ -51,6 +51,7 @@ describe('the desktop registry', () => {
       'story.export',
       'story.removeChoice',
       'story.setChoice',
+      'story.setCoverage',
       'story.setNext',
       'story.spliceScene',
     ]);

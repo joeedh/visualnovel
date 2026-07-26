@@ -4,12 +4,16 @@ import { GateOverlay } from './GateOverlay';
 import { Inspector } from './Inspector';
 import { TaskBoard } from './TaskBoard';
 import { TaskGraphView } from './TaskGraphView';
+import { Timeline } from './timeline/Timeline';
 import type { FloorMode, PipelineStatus } from '../../../src/shared/ipc';
 
 /**
  * The Production Floor: the tasks — as a list or as a DAG — the approval gate, and a per-task
- * inspector. The two surfaces share one selection and one inspector; the list is better for
- * scanning, the graph for structure, so neither replaces the other.
+ * inspector. The two task surfaces share one selection and one inspector; the list is better
+ * for scanning, the graph for structure, so neither replaces the other.
+ *
+ * `timeline` is a third surface over different material — a scene's lines against the shots
+ * covering them — so it takes the full width and the task inspector goes away with it.
  */
 export function Floor(props: {
   status: PipelineStatus | null;
@@ -41,7 +45,7 @@ export function Floor(props: {
         </div>
         <div className="spacer" />
         <div className="seg" role="group" aria-label="Task view">
-          {(['list', 'graph'] as const).map((m) => (
+          {(['list', 'graph', 'timeline'] as const).map((m) => (
             <button
               key={m}
               className={props.mode === m ? 'on' : ''}
@@ -56,9 +60,14 @@ export function Floor(props: {
           ▸ run to next gate
         </button>
       </div>
-      <div className="floor-body" style={inspector.trackStyle}>
-        <div className={`floor-main${props.mode === 'graph' ? ' asgraph' : ''}`}>
-          {props.mode === 'graph' ? (
+      <div
+        className={`floor-body${props.mode === 'timeline' ? ' wide' : ''}`}
+        style={inspector.trackStyle}
+      >
+        <div className={`floor-main${props.mode === 'list' ? '' : ' asgraph'}`}>
+          {props.mode === 'timeline' ? (
+            <Timeline />
+          ) : props.mode === 'graph' ? (
             // The gate is drawn *in* the graph, so the bars below would be a second UI for it.
             <TaskGraphView
               status={props.status}
@@ -83,8 +92,12 @@ export function Floor(props: {
             </>
           )}
         </div>
-        <ResizeHandle {...inspector.handleProps} />
-        <Inspector task={sel} />
+        {props.mode !== 'timeline' && (
+          <>
+            <ResizeHandle {...inspector.handleProps} />
+            <Inspector task={sel} />
+          </>
+        )}
       </div>
       {gateFor && (
         <GateOverlay

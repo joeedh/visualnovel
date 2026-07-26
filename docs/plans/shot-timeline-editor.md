@@ -1,8 +1,8 @@
 # Plan: shot timeline editor
 
-**Status:** Wave 1 (shot persistence) **shipped**, and mock runs now emit viewable placeholder
-art, so the editor is **startable**; a real non-mock run of `examples/sample` is still the
-acceptance check.
+**Status:** Wave 1 (shot persistence) and Wave 2 (the coverage strip) **shipped**; a real
+non-mock run of `examples/sample` is still the acceptance check for whether boundaries land
+where the _art_ implies.
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), plus shot
 persistence (Wave 1 here).
 **Size:** large. [`../research/graphThingsReport.md`](../research/graphThingsReport.md) §7.
@@ -254,6 +254,48 @@ Mutations go through `@vn/commands` as one command per completed drag —
 `story.setCoverage(shot, lines)` — not per frame. A drag is continuous but its *commit* is
 discrete, so there is no coalescing problem as long as the command fires on drop.
 
+## Wave 2 — as shipped
+
+FLOOR gained a third mode, `timeline`, beside `list` and `graph` — the same segmented control,
+a new surface. It takes the full width (`.floor-body.wide`) and the task inspector goes with
+it: the strip is about different material, and a per-task panel beside it would be answering a
+question nobody asked.
+
+- **The rule is split exactly like `branchops`.** `src/shared/coverage.ts` holds `setCoverage`,
+  the pure mutation, and it is run by **both** the `story.setCoverage` command in main and the
+  timeline's mid-drag preview. So the sentence shown while an edge is carried is produced by
+  the function that will decide the drop — including its refusals.
+- **Claiming takes; releasing does not give.** Assigning a line to a shot removes it from
+  whatever held it, because the exporter shows the _first_ shot covering a line and a
+  doubly-covered line silently hides the second shot's frame. Lines a shot gives up become
+  gaps rather than being handed to a neighbour the author never named — the gap is the state
+  this editor exists to reveal, so inventing an owner for it would defeat the purpose.
+- **Never a range.** `renderer/rooms/floor/timeline/coverage.ts` turns a shot into contiguous
+  *segments* and assigns **lanes** by extent, so two interleaved shots get separate columns and
+  a bracket never draws inside another's span. A shot with a hole draws two brackets and one
+  head; only the outermost two carry drag handles, since an interior hole belongs to whatever
+  interleaves with it. A shot covering *nothing* is not drawn as a bracket at all — it is
+  listed under `COVERS NOTHING`, which is the other half of a gap and just as much a defect.
+- **`resolveDrag` extends by sweeping and retracts by releasing**, and leaves interior holes
+  alone in both directions. Retracting past the far edge keeps one line rather than emptying
+  the shot.
+- **Rows are laid out by CSS grid, not by measurement.** Each line is a grid row and a bracket
+  is `grid-row: from / to+1` in its lane's column, so prose that wraps to three lines sizes its
+  own row and the bracket follows. What the DOM *is* asked is which row the pointer is over:
+  a full-width `.tl-band` sits behind each row, and `.tl-grid.dragging` drops pointer events on
+  the script and the brackets so `elementFromPoint` reaches it — a drag lives in the bracket
+  columns, where there is otherwise nothing row-shaped under the cursor.
+- **Commands:** `story.coverage(scene)` (read) and `story.setCoverage(scene, shot, lines)`
+  (mutating), the latter taking comma-separated ids because prop specs have no array kind. Both
+  answer with the rebuilt `SceneCoverage`, so the strip never re-reads what it just wrote.
+
+Verified live over CDP against `examples/mySampleRepo`: `arrival`'s establishing shot covers
+L1 and L3, and rendered as two brackets in lane 0 with `beat1` in lane 1; a synthetic drag of
+`beat1`'s end handle onto L3 previewed `arrival__beat1 covers 2 line(s), taking 1 from 1 other
+shot(s).` and committed exactly one `story.setCoverage` record writing
+`vngen/work/shots/arrival.json`. `story.play()` before and after showed the `show` beat move —
+6 beats to 5 as L3 joined an accepted shot, and back to 6 on the reverse edit.
+
 ## Verification
 
 - `pnpm test` — `spansFor` against non-contiguous and overlapping fixtures taken from
@@ -289,8 +331,8 @@ per-line art overrides, audio, and transitions.
 - [x] Shots persist under `vngen/work/`, schema-validated, preferred over re-decomposition
 - [x] `shotData` round-trips, is optional, and never overrides `tasks.jsonl` / `manifest.json`
 - [x] Stale line ids drop with a diagnostic; human edits are never silently overwritten
-- [ ] Coverage strip renders a real scene with real frames
-- [ ] Gaps and overlaps are visible; uncovered lines are unmistakable
-- [ ] Drag commits one `story.setCoverage` command on drop
+- [x] Coverage strip renders a real scene with real frames
+- [x] Gaps and overlaps are visible; uncovered lines are unmistakable
+- [x] Drag commits one `story.setCoverage` command on drop
 - [x] `coversLines` edits provably do not rehash any task
 - [x] `CLAUDE.md` updated: `work/shots/` in the project layout, and P5's persistence rule

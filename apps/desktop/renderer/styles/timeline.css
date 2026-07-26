@@ -1,0 +1,254 @@
+/**
+ * FLOOR's coverage strip. The one place in the app where both sides sit side by side: the
+ * script column is authored material (`--prose`, sodium accents) and the brackets are machine
+ * output (`--mono`, signal). A line no shot covers gets a vermilion gutter — the state the
+ * whole surface exists to reveal.
+ */
+
+/* The timeline replaces the inspector rather than sharing the row with it. */
+.floor-body.wide {
+  grid-template-columns: 1fr;
+}
+
+.timeline {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
+}
+.tl-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--ink-line);
+  background: var(--ink-sunken);
+}
+.tl-bar .tt {
+  font-family: var(--disp);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  color: var(--signal);
+}
+.tl-bar .ct {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist-dim);
+}
+.tl-scene {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  padding: 5px 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.tl-notice {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist);
+}
+.tl-notice.preview {
+  color: var(--signal);
+}
+.tl-notice.ok {
+  color: var(--jade);
+}
+.tl-notice.refused {
+  color: var(--vermilion);
+}
+.tl-empty {
+  padding: 26px 22px;
+}
+
+.tl-body {
+  overflow: auto;
+  padding: 18px 22px 40px;
+  min-height: 0;
+}
+.tl-grid {
+  display: grid;
+  align-items: stretch;
+  column-gap: 14px;
+  row-gap: 2px;
+}
+/* Nothing else may take the pointer mid-drag: the row under the cursor is read from the DOM,
+   and the cursor is usually over a bracket, not over the script. */
+.tl-grid.dragging .tl-line,
+.tl-grid.dragging .tl-shot {
+  pointer-events: none;
+}
+.tl-band {
+  grid-row: auto;
+  border-radius: var(--r-chrome);
+}
+.tl-grid.dragging .tl-band:hover {
+  background: rgba(69, 200, 214, 0.07);
+}
+
+/* ---- the script column ---- */
+.tl-line {
+  padding: 5px 12px 5px 13px;
+  border-left: 2px solid transparent;
+  z-index: 1;
+}
+.tl-line .who {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sodium);
+}
+.tl-line .text {
+  font-family: var(--prose);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--paper);
+}
+.tl-line.action .text,
+.tl-line.narration .text {
+  color: var(--mist);
+  font-style: italic;
+}
+.tl-line.parenthetical .text {
+  color: var(--mist-dim);
+  font-size: 13px;
+}
+/* Uncovered: this line renders with no image in the playable. */
+.tl-line.gap {
+  border-left-color: var(--vermilion);
+}
+.tl-line.gap .text {
+  color: var(--mist);
+}
+/* Covered twice: the exporter shows the first shot, so the second's frame is never seen. */
+.tl-line.over {
+  border-left-color: var(--sodium);
+}
+
+/* ---- shot brackets ---- */
+.tl-shot {
+  position: relative;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-raised);
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  z-index: 1;
+}
+.tl-shot.sel {
+  border-color: var(--signal);
+}
+.tl-shot.dragging {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 1px var(--signal-deep) inset;
+}
+.tl-shot.rejected,
+.tl-shot.needs_human {
+  border-color: rgba(244, 162, 76, 0.5);
+}
+.tl-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.tl-head .fr {
+  color: var(--signal);
+  letter-spacing: 0.08em;
+}
+.tl-head .cast {
+  color: var(--mist-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tl-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--ink-sunken);
+  display: block;
+}
+.tl-frame.none {
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--mist-dim);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ink-sunken) 0 8px,
+    var(--ink-line-soft) 8px 9px
+  );
+}
+.tl-id {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--mist-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A hole in the coverage: the shot resumes here, so the bracket does too — but there is no
+   second head, because it is one shot. */
+.tl-cont {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist-dim);
+}
+
+/* The drag edges sit ON the boundary they move, half outside the bracket. */
+.tl-edge {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  height: 9px;
+  border: none;
+  border-radius: 5px;
+  background: var(--signal-deep);
+  opacity: 0.45;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.tl-edge:hover,
+.tl-shot.dragging .tl-edge {
+  opacity: 1;
+}
+.tl-edge.start {
+  top: -4px;
+}
+.tl-edge.end {
+  bottom: -4px;
+}
+
+.tl-orphans {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 10px 13px;
+  border: 1px dashed rgba(229, 83, 75, 0.5);
+  border-radius: var(--r-chrome);
+}
+.tl-orphans .tt {
+  font-family: var(--disp);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  color: var(--vermilion);
+}
+.tl-orphans .orph {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist);
+}

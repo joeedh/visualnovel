@@ -182,6 +182,7 @@ function registerIpc(): void {
   );
   handle('story:play', () => getSession().playable());
   handle('story:graph', () => getSession().storyGraph());
+  handle('story:coverage', (sceneId) => getSession().sceneCoverage(sceneId));
 
   handle('command:catalog', () => toCatalog(registry, '@vn/desktop'));
   handle('command:exec', (request) => {

@@ -210,7 +210,7 @@ A half-working undo on an author's only copy of their screenplay is worse than n
 
 ## The registered commands
 
-Twenty, in six namespaces. Nine are `mutating`; one asks for confirmation.
+Twenty-two, in six namespaces. Ten are `mutating`; one asks for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
@@ -221,17 +221,19 @@ Twenty, in six namespaces. Nine are `mutating`; one asks for confirmation.
 | `story.play`                   | —                                 | Build the playable in memory; writes nothing.              |
 | `story.export` ✍               | —                                 | Write `vngen/build/story.play.json` (`vngen export`).      |
 | `story.graph`                  | —                                 | Scenes + branch edges for the editor; reachability marked. |
+| `story.coverage`               | `scene`                           | One scene's lines + persisted shots — the timeline's input. |
 | `story.setChoice` ✍            | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
 | `story.removeChoice` ✍         | `scene`, `index`                  | Deletes the marker line; the prose is untouched.           |
 | `story.setNext` ✍              | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
 | `story.spliceScene` ✍          | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
+| `story.setCoverage` ✍          | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
 | `agent.clear`                  | —                                 | Resets the conversation, back to plan mode.                |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
 | `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
-| `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`, FLOOR `list`\|`graph`. |
+| `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`, FLOOR `list`\|`graph`\|`timeline`. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
 | `view.panelSize`               | `id`, `width` (80–1200)           | Saved width of a resizable panel; persisted, not an effect. |
 
@@ -245,12 +247,12 @@ reach it.
 `Room` stays a three-value union rather than growing into a mixed list of rooms and modes:
 an editor is a mode *within* a room, so it gets `view.mode(room, mode)` and a
 `{ type: 'mode' }` effect. Which modes a room *has* is a pairing of two props, which the spec
-layer can't express — `prop.oneOf` can only say "one of these four" — so `run` checks the pair
+layer can't express — `prop.oneOf` can only say "one of these five" — so `run` checks the pair
 and **refuses by throwing** (`STUDIO has no "graph" mode — try convo or branches.`), and the
 `UiEffect` mode member is split per room so the renderer's handler is exhaustive over the right
 set. The `story.*` mutators are the same discipline one level down —
-each is one authorial act, so a drag in the branch editor is one command and one
-`CommandRecord`, never a stream of them.
+each is one authorial act, so a drag in the branch editor or the coverage timeline is one
+command and one `CommandRecord`, never a stream of them.
 
 `view.panelSize` is the exception that needs no effect: it writes to the desktop session
 store, and the store broadcasts its own `session:changed`, which is what the renderer's

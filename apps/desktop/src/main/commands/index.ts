@@ -10,11 +10,13 @@ import { agentClear, agentRun, agentSetMode, agentSetModel } from './agent.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
 import {
+  storyCoverage,
   storyExport,
   storyGraph,
   storyPlay,
   storyRemoveChoice,
   storySetChoice,
+  storySetCoverage,
   storySetNext,
   storySpliceScene,
 } from './story.js';
@@ -35,11 +37,13 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     gateCandidates,
     pipelineRun,
     pipelineStatus,
+    storyCoverage,
     storyExport,
     storyGraph,
     storyPlay,
     storyRemoveChoice,
     storySetChoice,
+    storySetCoverage,
     storySetNext,
     storySpliceScene,
     viewMode,

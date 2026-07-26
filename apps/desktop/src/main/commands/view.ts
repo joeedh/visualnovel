@@ -23,7 +23,11 @@ export const viewRoom = define({
 
 /** What each mode shows, and — by which map it appears in — which room it belongs to. */
 const STUDIO_MODES = { convo: 'the conversation', branches: 'the branch editor' } as const;
-const FLOOR_MODES = { list: 'the task list', graph: 'the task graph' } as const;
+const FLOOR_MODES = {
+  list: 'the task list',
+  graph: 'the task graph',
+  timeline: 'the coverage timeline',
+} as const;
 
 type AnyMode = StudioMode | FloorMode;
 const isStudioMode = (mode: AnyMode): mode is StudioMode => mode in STUDIO_MODES;
@@ -33,12 +37,13 @@ export const viewMode = define({
   id: 'view.mode',
   title: "Switch a room's mode",
   description:
-    "Switch STUDIO's main column (convo | branches) or FLOOR's (list | graph). PLAY has no modes.",
+    "Switch STUDIO's main column (convo | branches) or FLOOR's (list | graph | timeline). " +
+    'PLAY has no modes.',
   mutating: false,
   props: {
     room: prop.oneOf(['studio', 'floor'] as const, 'the room whose mode changes'),
     mode: prop.oneOf(
-      ['convo', 'branches', 'list', 'graph'] as const,
+      ['convo', 'branches', 'list', 'graph', 'timeline'] as const,
       'the surface to show; must be one the room has',
     ),
   },
