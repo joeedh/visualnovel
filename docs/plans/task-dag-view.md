@@ -1,6 +1,6 @@
 # Plan: task DAG view
 
-**Status:** not started.
+**Status:** shipped.
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), and
 [story branch editor](story-branch-editor.md) for the `renderer/graph/` primitives.
 **Size:** medium. An upgrade to an existing surface, not a new one —
@@ -130,8 +130,55 @@ path whatsoever. FLOOR mutates through `pipeline.run` and `gate.approve` only.
 
 ## Done
 
-- [ ] List/graph toggle in the floorbar; both drive the same inspector
-- [ ] `deps` solid, ref-edges dashed, both correct on `examples/sample`
-- [ ] Gate rendered as a barrier in the graph, marked as derived, with `RESOLVE →`
-- [ ] Not-yet-plannable work shown as ghosts, not omitted
-- [ ] Pure derivation under test; acceptable at 300 nodes
+- [x] List/graph toggle in the floorbar; both drive the same inspector
+- [x] `deps` solid, ref-edges dashed, both correct on `examples/sample`
+- [x] Gate rendered as a barrier in the graph, marked as derived, with `RESOLVE →`
+- [x] Not-yet-plannable work shown as ghosts, not omitted
+- [x] Pure derivation under test; acceptable at 300 nodes
+
+## As shipped
+
+**Files.** `renderer/rooms/floor/taskGraph.ts` (pure) + `tests/taskGraph.test.ts`,
+`renderer/rooms/floor/TaskGraphView.tsx` (the only impure file),
+`renderer/styles/taskgraph.css`, and the toggle in `Floor.tsx`. `renderer/graph/` was reused
+**unchanged** — the layered layout needed no work to take the task DAG, which was the point of
+splitting it out in the branch editor.
+
+- **The barrier is a real node, placed by ranking-only edges.** `routeEdges` takes its edge
+  list separately from `layoutGraph`, so `taskGraphOf` hands layout a set of `ranking` edges
+  (`gate>…` into every gated node, `gate<…` out of every ungated one) that are never routed and
+  never drawn. The gate is therefore positioned by the same longest-path ranking as everything
+  else — *below* the portrait tasks, *above* everything it holds up — while still being drawn
+  as a rule rather than as wires, because a predicate has no arrows. A test asserts the ranking
+  edges are absent from the routed set, and another that every blocked node ranks strictly
+  below the line.
+- **Deviation: the derivations take the `StoryGraph`, not just the status.** The plan wrote
+  `ghostsFor(status, index)` / `barrierFor(status)`. What is not-yet-plannable cannot be read
+  off the task list at all — an empty task list and a finished project are the same `Task[]` on
+  the ghost question — so both take the story graph (fetched once over the existing
+  `story:graph` channel) and infer from scenes: a ghost cluster per reachable scene with no
+  shot tasks, sized by the **deterministic baseline** (`decomposeScene`'s fallback: one
+  establishing shot plus one per character), hung off the location plates it will reference.
+  Model-sheet ghosts are countless, since the sheet count is not knowable up front.
+- **Ghosts are clusters, never addressable.** `onPick` acts on `view.kind === 'task'` only, so
+  a ghost cannot be selected into the inspector — it is an estimate and the UI never pretends
+  otherwise. The `~6 shots` count and the `derived` marker on the gate are the two places the
+  view labels its own inference.
+- **A ref edge is only drawn when the ref has a producer**, matching `AssetRef.hash` back to
+  the task whose `output` equals it; author-supplied references resolve to nothing and are
+  skipped, and a ref that duplicates a `dep` is not double-drawn.
+- **FLOOR's gate bars are hidden in graph mode**, because the barrier carries the same
+  `RESOLVE →` affordance and two gate UIs on one screen is worse than either. `.gate-cta` opts
+  back into `pointer-events` — the node layer is `pointer-events: none` so that `pick` is the
+  single answer to "what is under the cursor", and a real button is the documented exception.
+- **`view.mode` grew a second room.** `room: studio | floor`, `mode: convo | branches | list |
+  graph`; the *pairing* is checked in `run` and refused with a throw
+  (`STUDIO has no "graph" mode — try convo or branches.`), since the prop layer can only say
+  "one of these four". `UiEffect`'s mode member is split per room, so the renderer's handler
+  can't cross the wires either.
+- **Verified live** over CDP against two on-disk `@vn/testkit` fixtures (mock `pipeline.run` is
+  a dry run and produces no tasks, so the app alone can't make them): gate-halted — 12 nodes, 4
+  gated ghosts, the barrier with `aiko →`/`haruki →`; gate-cleared — 19 real `done` nodes, no
+  barrier, no ghosts, 7 dep wires and 9 dashed ref wires.
+
+Replay (the stretch) was not started, as planned.

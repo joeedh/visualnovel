@@ -3,11 +3,18 @@ import { ResizeHandle, usePanelWidth } from '../../ui/Resizable';
 import { GateOverlay } from './GateOverlay';
 import { Inspector } from './Inspector';
 import { TaskBoard } from './TaskBoard';
-import type { PipelineStatus } from '../../../src/shared/ipc';
+import { TaskGraphView } from './TaskGraphView';
+import type { FloorMode, PipelineStatus } from '../../../src/shared/ipc';
 
-/** The Production Floor: task board, the approval-gate barrier, and a per-task inspector. */
+/**
+ * The Production Floor: the tasks — as a list or as a DAG — the approval gate, and a per-task
+ * inspector. The two surfaces share one selection and one inspector; the list is better for
+ * scanning, the graph for structure, so neither replaces the other.
+ */
 export function Floor(props: {
   status: PipelineStatus | null;
+  mode: FloorMode;
+  setMode: (mode: FloorMode) => void;
   runPipeline: () => void;
   refresh: () => void;
   busy: boolean;
@@ -33,24 +40,48 @@ export function Floor(props: {
           {props.status?.blockedOnGate ? ' · blocked on gate' : ''}
         </div>
         <div className="spacer" />
+        <div className="seg" role="group" aria-label="Task view">
+          {(['list', 'graph'] as const).map((m) => (
+            <button
+              key={m}
+              className={props.mode === m ? 'on' : ''}
+              onClick={() => props.setMode(m)}
+              aria-pressed={props.mode === m}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
         <button className="runbtn" onClick={props.runPipeline} disabled={props.busy}>
           ▸ run to next gate
         </button>
       </div>
       <div className="floor-body" style={inspector.trackStyle}>
-        <div className="floor-main">
-          {props.status?.gatePending.map((c) => (
-            <div className="gatebar" key={c}>
-              <span className="gt">⟂ GATE</span>
-              <span className="who">
-                awaiting portrait approval for <b>{c}</b>
-              </span>
-              <button className="gate-cta" onClick={() => setGateFor(c)}>
-                RESOLVE →
-              </button>
-            </div>
-          ))}
-          <TaskBoard tasks={tasks} selected={selected} onSelect={setSelected} />
+        <div className={`floor-main${props.mode === 'graph' ? ' asgraph' : ''}`}>
+          {props.mode === 'graph' ? (
+            // The gate is drawn *in* the graph, so the bars below would be a second UI for it.
+            <TaskGraphView
+              status={props.status}
+              selected={selected}
+              onSelect={setSelected}
+              onResolve={setGateFor}
+            />
+          ) : (
+            <>
+              {props.status?.gatePending.map((c) => (
+                <div className="gatebar" key={c}>
+                  <span className="gt">⟂ GATE</span>
+                  <span className="who">
+                    awaiting portrait approval for <b>{c}</b>
+                  </span>
+                  <button className="gate-cta" onClick={() => setGateFor(c)}>
+                    RESOLVE →
+                  </button>
+                </div>
+              ))}
+              <TaskBoard tasks={tasks} selected={selected} onSelect={setSelected} />
+            </>
+          )}
         </div>
         <ResizeHandle {...inspector.handleProps} />
         <Inspector task={sel} />

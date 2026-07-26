@@ -48,6 +48,12 @@ export type Room = 'studio' | 'floor' | 'play';
  */
 export type StudioMode = 'convo' | 'branches';
 
+/**
+ * Which surface FLOOR shows: the task list, or the same tasks as a DAG. Both drive the same
+ * selection and the same inspector — the list is better for scanning, the graph for structure.
+ */
+export type FloorMode = 'list' | 'graph';
+
 /** Anything the desktop session store can persist — plain JSON, nothing else. */
 export type SessionValue =
   | string
@@ -65,8 +71,13 @@ export type SessionValue =
 export type UiEffect =
   | { type: 'room'; name: Room }
   | { type: 'palette'; open: boolean }
-  /** `room` is carried even though only STUDIO has modes, so adding a second one is additive. */
-  | { type: 'mode'; room: Room; mode: StudioMode };
+  /**
+   * One member per room that has modes, rather than one with a widened `mode` — the pairing is
+   * what makes `effect.room === 'studio'` narrow `effect.mode`, so the shell cannot hand FLOOR's
+   * mode to STUDIO. `view.mode` re-checks the pair before pushing, and refuses a mismatch.
+   */
+  | { type: 'mode'; room: 'studio'; mode: StudioMode }
+  | { type: 'mode'; room: 'floor'; mode: FloorMode };
 
 /** Either form of invocation accepted over `command:exec`: structured, or a DSL string. */
 export interface CommandExecRequest {

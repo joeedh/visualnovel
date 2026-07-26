@@ -12,7 +12,7 @@ the individual plans hang off. Survey that motivated them:
 | 0 | [desktop-renderer-restructure](desktop-renderer-restructure.md) | refactor | **done** | — |
 | 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | **done** | 0, testkit |
 | 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | **done** | 0, testkit |
-| 3 | [task-dag-view](task-dag-view.md) | upgrade | not started | 0, 2 (`renderer/graph/`), testkit |
+| 3 | [task-dag-view](task-dag-view.md) | upgrade | **done** | 0, 2 (`renderer/graph/`), testkit |
 | 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | blocked | 0, testkit, shot persistence, a real run |
 
 Recommended order: **test-fixtures → 0 → 1 → 2 → 3 → 4.** test-fixtures and 0 are both
@@ -189,11 +189,11 @@ Decided against in the survey, recorded here so it does not get re-proposed:
 
 ### 3 · Task DAG view
 
-- [ ] List/graph toggle; shared inspector
-- [ ] `deps` solid, ref-edges dashed
-- [ ] Gate rendered as a derived barrier
-- [ ] Not-yet-plannable work ghosted, not omitted
-- [ ] Acceptable at 300 nodes
+- [x] List/graph toggle; shared inspector
+- [x] `deps` solid, ref-edges dashed
+- [x] Gate rendered as a derived barrier
+- [x] Not-yet-plannable work ghosted, not omitted
+- [x] Acceptable at 300 nodes
 
 ### 4 · Shot timeline
 

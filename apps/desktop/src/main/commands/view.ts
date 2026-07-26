@@ -4,6 +4,7 @@
  * rather than the renderer maintaining a second registry to keep in sync.
  */
 import { defineFor, prop } from '@vn/commands';
+import type { FloorMode, StudioMode } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -20,24 +21,43 @@ export const viewRoom = define({
   },
 });
 
+/** What each mode shows, and — by which map it appears in — which room it belongs to. */
+const STUDIO_MODES = { convo: 'the conversation', branches: 'the branch editor' } as const;
+const FLOOR_MODES = { list: 'the task list', graph: 'the task graph' } as const;
+
+type AnyMode = StudioMode | FloorMode;
+const isStudioMode = (mode: AnyMode): mode is StudioMode => mode in STUDIO_MODES;
+const isFloorMode = (mode: AnyMode): mode is FloorMode => mode in FLOOR_MODES;
+
 export const viewMode = define({
   id: 'view.mode',
   title: "Switch a room's mode",
-  description: "Switch STUDIO's main column between the conversation and the branch editor.",
+  description:
+    "Switch STUDIO's main column (convo | branches) or FLOOR's (list | graph). PLAY has no modes.",
   mutating: false,
   props: {
-    // Only STUDIO has modes today. The prop is here so a second one is an added value rather
-    // than a changed signature — and so the enum can't quietly accept a room that ignores it.
-    room: prop.oneOf(['studio'] as const, 'the room whose mode changes'),
-    mode: prop.oneOf(['convo', 'branches'] as const, 'the surface to show'),
+    room: prop.oneOf(['studio', 'floor'] as const, 'the room whose mode changes'),
+    mode: prop.oneOf(
+      ['convo', 'branches', 'list', 'graph'] as const,
+      'the surface to show; must be one the room has',
+    ),
   },
+  // The props layer can only say "one of these four"; which four belong to *this* room is a
+  // pairing, so it is checked here — and a throw is how a command refuses.
   run({ room, mode }, ctx) {
+    if (room === 'studio') {
+      if (!isStudioMode(mode)) throw new Error(modeError(room, mode, STUDIO_MODES));
+      ctx.host.ui({ type: 'mode', room, mode });
+      return Promise.resolve({ message: `Showing ${STUDIO_MODES[mode]}.` });
+    }
+    if (!isFloorMode(mode)) throw new Error(modeError(room, mode, FLOOR_MODES));
     ctx.host.ui({ type: 'mode', room, mode });
-    return Promise.resolve({
-      message: mode === 'branches' ? 'Showing the branch editor.' : 'Showing the conversation.',
-    });
+    return Promise.resolve({ message: `Showing ${FLOOR_MODES[mode]}.` });
   },
 });
+
+const modeError = (room: string, mode: string, modes: Record<string, string>): string =>
+  `${room.toUpperCase()} has no "${mode}" mode — try ${Object.keys(modes).join(' or ')}.`;
 
 export const viewPanelSize = define({
   id: 'view.panelSize',

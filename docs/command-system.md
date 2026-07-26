@@ -231,19 +231,24 @@ Twenty, in six namespaces. Nine are `mutating`; one asks for confirmation.
 | `agent.clear`                  | —                                 | Resets the conversation, back to plan mode.                |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
 | `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
-| `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO's `convo` \| `branches`.     |
+| `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`, FLOOR `list`\|`graph`. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
 | `view.panelSize`               | `id`, `width` (80–1200)           | Saved width of a resizable panel; persisted, not an effect. |
 
 ✍ mutating ⚠ confirm
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer
-applies (`setRoom`, `setPaletteOpen`, `setStudioMode`). The alternative — a second,
-renderer-side registry — would be one more thing to keep in sync, and CDP could not reach it.
+applies (`setRoom`, `setPaletteOpen`, `setStudioMode`, `setFloorMode`). The alternative — a
+second, renderer-side registry — would be one more thing to keep in sync, and CDP could not
+reach it.
 
 `Room` stays a three-value union rather than growing into a mixed list of rooms and modes:
 an editor is a mode *within* a room, so it gets `view.mode(room, mode)` and a
-`{ type: 'mode' }` effect. The `story.*` mutators are the same discipline one level down —
+`{ type: 'mode' }` effect. Which modes a room *has* is a pairing of two props, which the spec
+layer can't express — `prop.oneOf` can only say "one of these four" — so `run` checks the pair
+and **refuses by throwing** (`STUDIO has no "graph" mode — try convo or branches.`), and the
+`UiEffect` mode member is split per room so the renderer's handler is exhaustive over the right
+set. The `story.*` mutators are the same discipline one level down —
 each is one authorial act, so a drag in the branch editor is one command and one
 `CommandRecord`, never a stream of them.
 

@@ -289,10 +289,11 @@ renderer/
        …/branch/        BranchEditor.tsx  SceneCard.tsx  useBranch.ts
                         graph.ts · intent.ts · grab.ts · tween.ts (pure)
   rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  AttemptLoop.tsx
-                        attempts.ts (pure) · GateOverlay.tsx
+                        TaskGraphView.tsx · attempts.ts · taskGraph.ts (pure) · GateOverlay.tsx
   rooms/play/           Runner.tsx
   ui/                   Resizable.tsx — shared by two rooms, so it belongs to neither
-  styles/               index.css @imports tokens · shell · studio · floor · play · graph · branch
+  styles/               index.css @imports tokens · shell · studio · floor · play · graph ·
+                        branch · taskgraph
 ```
 
 - **`App.tsx` owns only the shell**: `room`, `paletteOpen`, the workspace index/status, and
@@ -331,7 +332,8 @@ renderer/
 `renderer/graph/` is the shared, domain-free canvas: `layout.ts` (layered DAG layout),
 `edges.ts` (routes + the polyline every hit test uses), `hit.ts` (`pick`), `viewport.ts`
 (pan/zoom), and `Canvas.tsx`, the only impure file. The branch editor is its first consumer;
-the task DAG view is the next. Plan: [`docs/plans/story-branch-editor.md`](docs/plans/story-branch-editor.md).
+the [task DAG view](#task-dag-view-floor) is the second, and it reuses the layer unchanged.
+Plan: [`docs/plans/story-branch-editor.md`](docs/plans/story-branch-editor.md).
 
 - **One geometry, drawn and hit-tested.** `routeEdges` emits the SVG path and its sampled
   polyline together, so an edge can't be clickable where it isn't drawn. Slop is authored in
@@ -355,6 +357,34 @@ the task DAG view is the next. Plan: [`docs/plans/story-branch-editor.md`](docs/
   makes them the size they look.
 - **Relayout is animated (`tween.ts`)** because a splice re-ranks the graph: the card does not
   stay where it was dropped, and without the transition that reads as breakage.
+
+### Task DAG view (FLOOR)
+
+FLOOR has two modes, `list` | `graph` (a segmented control in the floorbar,
+`view.mode(room=floor mode=graph)`), sharing one selection and one `Inspector` — the flat list
+is better for scanning, the graph for structure. Read-only: FLOOR mutates through
+`pipeline.run` and `gate.approve` only. `taskGraph.ts` is the pure derivation,
+`TaskGraphView.tsx` the thin surface over `renderer/graph/`. Plan and as-shipped notes:
+[`docs/plans/task-dag-view.md`](docs/plans/task-dag-view.md).
+
+The view exists because a literal rendering of `Task.deps` would be dishonest in three ways,
+and each fix is a pure function tested in node:
+
+- **The gate is not an edge.** P3 approval is a planner predicate (`sceneUnblocked`), so a
+  halted run has nothing ready and no edge saying why. `barrierFor` synthesizes a barrier node
+  and `taskGraphOf` positions it with **ranking-only edges** — handed to `layoutGraph` but not
+  to `routeEdges`, so the rank is real and the wires are never drawn. It renders as a dashed
+  rule marked `derived`, carrying one `RESOLVE →` per pending character.
+- **`deps` understates coupling.** A `shot_image`'s deps hold only its location plate; the
+  subject portraits arrive through `inputs.refs`. `buildRefEdges` matches an `AssetRef.hash`
+  back to the task whose `output` equals it — **deps solid, ref edges dashed**. A ref no task
+  produced (an author-supplied image) is not an edge.
+- **The graph is deliberately partial.** Planning is incremental, so shot tasks don't exist
+  until their plate is `done`; an empty region means "not yet plannable", not "nothing to do".
+  `ghostsFor` reads the story graph (not the task list — those two states look identical from
+  the tasks alone) and ghosts each scene's expected work at `decomposeScene`'s deterministic
+  baseline. Ghosts are **clusters, never addressable**: `onPick` acts on real tasks only, so
+  the UI can't offer an estimate as a fact.
 
 ### Desktop runner (`apps/desktop`, PLAY room)
 
@@ -450,7 +480,10 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 - **`view.*` commands run in main** and push a `command:ui` effect the renderer applies, rather
   than there being a second, renderer-side registry to keep in sync. `Room` stays a three-value
   union — an editor is a **mode within a room**, reached by `view.mode(room, mode)` and a
-  `{ type: 'mode' }` effect (STUDIO: `convo` | `branches`).
+  `{ type: 'mode' }` effect (STUDIO: `convo` | `branches`; FLOOR: `list` | `graph`). Which
+  modes a room _has_ is a pairing, so `view.mode` re-checks it in `run` and refuses a bad one
+  by throwing; `UiEffect`'s mode member is split per room so the renderer can't cross them
+  either.
 
 ## Test fixtures (`@vn/testkit`)
 

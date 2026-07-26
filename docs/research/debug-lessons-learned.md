@@ -26,6 +26,13 @@
   * [Simulating a drag over CDP takes one evaluation per event](#simulating-a-drag-over-cdp-takes-one-evaluation-per-event)
   * [Confirm a synthetic pointer's coordinates against the geometry, not the code](#confirm-a-synthetic-pointers-coordinates-against-the-geometry-not-the-code)
   * [A marker-only patch is verifiable with `git diff --no-index`](#a-marker-only-patch-is-verifiable-with-git-diff---no-index)
+- [3 · Task DAG view](#3-%C2%B7-task-dag-view)
+  * [The desktop app cannot produce tasks at all in mock mode](#the-desktop-app-cannot-produce-tasks-at-all-in-mock-mode)
+  * [A live CDP session leaves provenance in the workspace](#a-live-cdp-session-leaves-provenance-in-the-workspace)
+  * [A synthetic click on a graph node does nothing, by design](#a-synthetic-click-on-a-graph-node-does-nothing-by-design)
+  * [PowerShell eats the inner quotes of a `--raw` expression](#powershell-eats-the-inner-quotes-of-a---raw-expression)
+  * [Killing a stale dev loop on Windows, by command line](#killing-a-stale-dev-loop-on-windows-by-command-line)
+  * [`Task`'s `kind` does not narrow its `inputs`](#tasks-kind-does-not-narrow-its-inputs)
 
 <!-- tocstop -->
 
@@ -76,7 +83,9 @@ const shotIds = (tasks: AnyTask[]): string[] =>
     .map((t) => (t.inputs as TaskInputs['shot_image']).shotId);
 ```
 
-The cast is the idiom; every test that inspects task inputs by kind needs it.
+The cast is the idiom; every test that inspects task inputs by kind needs it. In *product*
+code, prefer narrowing on the shape — `if ('shotId' in inputs)` — which is a real narrowing
+rather than an assertion, and is what `subjectOf` (`renderer/rooms/floor/taskGraph.ts`) does.
 
 ### The gate is per scene — "no shots ran" is the wrong assertion
 
@@ -417,3 +426,77 @@ git diff --no-index -- examples/sample/screenplay "$SCRATCH/branchdemo/screenpla
 
 Empty output after an unwire-then-rewire is also the round-trip test, and it is stronger than
 any assertion available from inside the app.
+
+## 3 · Task DAG view
+
+### The desktop app cannot produce tasks at all in mock mode
+
+**Symptom.** FLOOR's new graph showed a gate barrier and seven ghosts and *zero* real nodes on
+`examples/sample`, no matter how many times `pipeline.run` was invoked. This reads exactly like
+a broken derivation.
+
+**What produced the evidence.** The command's own result, which says so:
+
+```sh
+node scripts/vn-cdp.mjs "pipeline.run(mock=true)"   # → ok, "ran 0 tasks"
+```
+
+`session.ts` passes `mock` straight through as `dryRun`, so a mock run plans and previews and
+writes nothing. The app has exactly two states available without an API key: no tasks, or a
+project that already had them.
+
+**Lesson.** On-disk task state comes from `@vn/testkit`, not from the app. A throwaway jest
+test that builds the fixtures and prints their paths is the cheapest bridge — one for the
+gate-halted state, one run through `approveAll()` for the cleared state — then
+`$env:VN_PROJECT=<dir>` before the dev loop. Delete the test afterwards; it carries a
+`CLAUDENOTE:` for exactly that reason. **Never** point a run at `examples/sample` to get
+tasks: the sample's committed `vngen/` tree is authored output, and fabricated provenance in it
+is worse than no fixture.
+
+### A live CDP session leaves provenance in the workspace
+
+`git status` after the verification pass showed an untracked `examples/sample/vngen/state/` —
+every `view.*` command executed over CDP had appended a `CommandRecord` to `commands.jsonl` in
+whatever workspace the app was pointed at. Harmless, but it is generated data in a committed
+tree, so **run `git status` at the end of any live session**, not only at the end of the code.
+
+### A synthetic click on a graph node does nothing, by design
+
+`document.querySelector('.tg-node').click()` selects nothing and produces no error: the node
+layer is `pointer-events: none` (`Canvas.tsx`), because `pick` is meant to be the single answer
+to "what is under the cursor". Nor does dispatching at `elementFromPoint` help — that lands on
+the SVG wire layer. Dispatch a real `PointerEvent` on the **surface**, at the node's client
+rect centre:
+
+```sh
+node scripts/vn-cdp.mjs --raw "(()=>{const n=[...document.querySelectorAll('.tg-node')][3],r=n.getBoundingClientRect();document.querySelector('.graph-canvas').dispatchEvent(new PointerEvent('pointerdown',{clientX:r.left+r.width/2,clientY:r.top+r.height/2,bubbles:true,pointerId:1,button:0,isPrimary:true}));return JSON.stringify({sel:document.querySelectorAll('.tg-node.sel').length})})()"
+```
+
+Same shape as the drag helper from plan 2: the geometry comes from the DOM, the event goes to
+the surface, and the assertion is one JSON object.
+
+### PowerShell eats the inner quotes of a `--raw` expression
+
+**Symptom.** `vn-cdp.mjs --raw` printed a bare `Uncaught` with no message. The expression was
+fine in DevTools.
+
+PowerShell strips inner double quotes when passing arguments to a native exe, so
+`--raw "document.querySelectorAll(".tg-node").length"` arrives as
+`document.querySelectorAll(.tg-node).length` — a syntax error, which CDP reports without a
+description. Quote the other way round: **double outside, single inside**. Worth recognizing on
+sight, because the error text points nowhere.
+
+### Killing a stale dev loop on Windows, by command line
+
+The port collision from plan 2 (`Port 5176 is already in use`, CDP `bind() returned an error`)
+recurs whenever a session ends without tearing the loop down. There is no pidfile; match on the
+command line:
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
+  Where-Object { $_.CommandLine -like '*dev.desktop.mjs*' } |
+  ForEach-Object { taskkill /PID $_.ProcessId /T /F }
+```
+
+`/T` matters — esbuild, Vite and Electron are children, and killing only the parent leaves the
+ports held.
