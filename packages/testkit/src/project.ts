@@ -94,22 +94,17 @@ function inferInputs(script: string): { characters: CharacterSpec[]; locations: 
   return { characters: [...characters.values()], locations: [...locations.values()] };
 }
 
-/** Reach through to the private runner for repo-local config `@vn/git` deliberately omits. */
-type GitInternals = { run(args: string[]): Promise<unknown> };
-
 /**
  * Initialize a repo with a deterministic identity. A temp dir inherits nothing, so commits
  * fail on a clean box without a local `user.*`; `core.autocrlf false` keeps diffs byte-exact
- * on Windows. Both are settings `@vn/git` holds no policy over — hence the single cast here,
- * absorbed once so no test has to repeat it.
+ * on Windows.
  */
 async function initRepo(dir: string): Promise<Git> {
   const git = openGit(dir);
   await git.init();
-  const internals = git as unknown as GitInternals;
-  await internals.run(['config', 'user.email', 'testkit@example.com']);
-  await internals.run(['config', 'user.name', 'VN Testkit']);
-  await internals.run(['config', 'core.autocrlf', 'false']);
+  await git.config('user.email', 'testkit@example.com');
+  await git.config('user.name', 'VN Testkit');
+  await git.config('core.autocrlf', 'false');
   await git.commit({ message: 'Fixture inputs', paths: ['-A'] });
   return git;
 }

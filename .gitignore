@@ -1,5 +1,8 @@
 keys
 node_modules
+# The desktop app's scratch workspace, seeded from examples/sample on first launch and given
+# its own git repo. Generated output belongs there, not in this tree.
+examples/mySampleRepo
 dist
 .turbo
 .vndesktop

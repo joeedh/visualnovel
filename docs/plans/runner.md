@@ -184,7 +184,8 @@ enforces it, mirroring how `@vn/authoring` is constrained).
    the right `who`, `show` beats appear where shots change, `choices`/`next`/`start` match
    the story graph. Since `examples/sample` may lack real generated assets, confirm image
    refs are present where assets exist and cleanly omitted where they don't.
-3. **Runner (via `/run` skill / electron):** launch the desktop app on `examples/sample`,
+3. **Runner (via `/run` skill / electron):** launch the desktop app (it opens
+   `examples/mySampleRepo`, seeded from `examples/sample` on first launch),
    switch to the **PLAY** room, and confirm: dialogue advances on click, speaker portraits
    render through `vnasset://` (or placeholder when absent), background swaps per shot,
    choices route to the correct next scene, Back rewinds, and Save→Reset→Load restores

@@ -9,22 +9,10 @@ async function tempRepo(): Promise<{ git: Git; dir: string; cleanup: () => Promi
   const git = openGit(dir);
   await git.init();
   // Local identity so commits work on a clean CI box.
-  await (git as unknown as { run: (a: string[]) => Promise<unknown> }).run([
-    'config',
-    'user.email',
-    'test@example.com',
-  ]);
-  await (git as unknown as { run: (a: string[]) => Promise<unknown> }).run([
-    'config',
-    'user.name',
-    'Test',
-  ]);
+  await git.config('user.email', 'test@example.com');
+  await git.config('user.name', 'Test');
   // Keep line endings byte-exact so revert/restore round-trips compare cleanly on Windows.
-  await (git as unknown as { run: (a: string[]) => Promise<unknown> }).run([
-    'config',
-    'core.autocrlf',
-    'false',
-  ]);
+  await git.config('core.autocrlf', 'false');
   return { git, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }
 
@@ -37,6 +25,16 @@ describe('@vn/git', () => {
       expect(await git.isRepo()).toBe(true);
       expect(await git.head()).toBeNull();
       expect(await git.log()).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reads back repo-local config, and answers null for an unset key', async () => {
+    const { git, cleanup } = await tempRepo();
+    try {
+      expect(await git.configGet('user.name')).toBe('Test');
+      expect(await git.configGet('vn.nothing.set')).toBeNull();
     } finally {
       await cleanup();
     }

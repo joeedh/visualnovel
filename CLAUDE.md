@@ -149,7 +149,7 @@ it may import _every_ layer, and **nothing may import it** — see
 | `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                                                                                                      |
 | `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                                                                                             |
 | `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost`. Bundled by esbuild.                                                                                                                                                                                                                 |
-| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.                                                                           |
+| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`/`config`). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.                                                                  |
 | `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                                                                                               |
 | `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                                                                                                         |
 | `@vn/testkit`       | **Test-only** fixtures: `makeProject` (real inputs on disk → real run with mock providers), `synthProject` (deterministic scale), `SCRIPTS`, in-memory entity factories. Imports every layer; nothing may import it. See [Test fixtures](#test-fixtures-vntestkit).                              |
@@ -241,12 +241,18 @@ real backend refuses as references — see [Test fixtures](#test-fixtures-vntest
 Authored input lives at the project root (`project.yaml`, `characters/<id>/character.md`,
 `locations/<id>.md`, `screenplay/*.fountain`). Everything generated lives under `vngen/`:
 `work/` (human-editable: story graph, candidates, `approved.png`, `shots/<sceneId>.json`),
-`build/` (machine: `assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). `vngen/` is
-committed (it is the reproducible output of a run), not gitignored.
+`build/` (machine: `assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). In a user's
+own project `vngen/` is **committed** — it is the reproducible output of a run, not
+gitignored. `examples/sample` is the one exception: it is a template this repo ships, so it
+stays inputs-only (see below).
 
 ### Sample project
 
-[`examples/sample`](examples/sample) is a small branching VN. Preview offline, then generate:
+[`examples/sample`](examples/sample) is a small branching VN, and a **read-only template**:
+the desktop app copies it rather than running in it (see
+[Seeded workspace](#seeded-workspace-examplesmysamplerepo)). The CLI has no such indirection,
+so a real run against it writes generated art into the source tree — point it at a copy if
+you want to keep `git status` legible. Preview offline, then generate:
 
 ```sh
 pnpm build
@@ -449,8 +455,29 @@ rather than per workspace. `VN_DESKTOP_HOME` relocates it; the default is one li
   rail (`edge: 'left'`) and the FLOOR inspector (`edge: 'right'`) use it unchanged. A drag
   keeps the width local and persists once on release; `view.panelSize` is the scriptable path.
 
-Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (defaults to the
-bundled sample in mock mode; `VN_PROJECT=<dir>` overrides the workspace).
+### Seeded workspace (`examples/mySampleRepo`)
+
+With no `VN_PROJECT`, the app opens **`examples/mySampleRepo`** and seeds it from
+`examples/sample` on first launch (`apps/desktop/src/main/workspace.ts`). It is resolved once
+in `app.whenReady()`, before the asset protocol or any session exists.
+
+- **Why**: a real run writes ~100 MB into `vngen/`, and doing that in the source tree buries
+  `git status` and erases the line between the sample we ship and the copy you've been messing
+  with. `examples/mySampleRepo` is **gitignored**, so its own git repo is invisible to the
+  parent — no submodule, no `gitlink`, no `--recursive` clone.
+- **Seeding copies inputs only** — everything in the template except `vngen/` (a fresh
+  workspace has not been run) and `keys/` (secrets) — then `git init`s and commits them as
+  `Sample project inputs`. A local `user.*` is set only when git can't already answer who the
+  committer is; `core.autocrlf false` is always set, since the branch editor patches the
+  screenplay byte-exactly.
+- **An existing directory is opened untouched.** Never re-copied, never overwritten: it is the
+  user's working copy. Resetting it is `rm -rf examples/mySampleRepo`, which needs no code and
+  cannot misfire.
+- Packaged builds have no repo-relative `examples/`, so the scratch workspace falls back to
+  `app.getPath('userData')/mySampleRepo`; a missing template then fails by name.
+
+Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (mock mode by
+default; `VN_PROJECT=<dir>` overrides the workspace).
 
 **Live dev loop:** `pnpm --filter @vn/desktop dev` (`scripts/dev.desktop.mjs`) runs the three
 moving parts together — esbuild `--watch` (main + preload), the Vite renderer server with

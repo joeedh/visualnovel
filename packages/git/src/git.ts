@@ -81,6 +81,26 @@ export class Git {
     await this.ok(['init']);
   }
 
+  /**
+   * Set a repo-local config value (`git config --local`). Plumbing, not policy: a freshly
+   * `init`ed repo has no committer identity, so whoever creates one has to supply
+   * `user.name`/`user.email` before `commit` will work on a clean machine.
+   */
+  async config(key: string, value: string): Promise<void> {
+    await this.ok(['config', '--local', key, value]);
+  }
+
+  /**
+   * Read an effective config value (local, then global, then system), or null when unset.
+   * Pairs with `config` so a caller can supply a fallback identity without stomping one the
+   * user already has.
+   */
+  async configGet(key: string): Promise<string | null> {
+    const r = await this.run(['config', '--get', key]);
+    const value = r.stdout.trim();
+    return r.code === 0 && value.length > 0 ? value : null;
+  }
+
   /** Current branch name (or `HEAD` when detached / unborn). */
   async branch(): Promise<string> {
     const r = await this.run(['rev-parse', '--abbrev-ref', 'HEAD']);

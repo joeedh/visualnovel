@@ -4,11 +4,12 @@
  * response); main → renderer pushes (agent events, plan-approval requests) go over
  * `webContents.send`.
  *
- * Defaults are offline-safe: the workspace is the bundled sample and the session runs in
- * mock mode unless `VN_MOCK=0` is set (which then requires a real key). Override the
- * workspace with `VN_PROJECT=<dir>`.
+ * Defaults are offline-safe: the workspace is a scratch repo seeded from the bundled sample
+ * (see `./workspace.ts`) and the session runs in mock mode unless `VN_MOCK=0` is set (which
+ * then requires a real key). Override the workspace with `VN_PROJECT=<dir>`.
  */
 import { app, BrowserWindow, ipcMain, net, protocol } from 'electron';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ProjectPaths } from '@vn/store';
@@ -18,6 +19,7 @@ import { CommandStack, toCatalog } from '@vn/commands';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
+import { seedWorkspace } from './workspace.js';
 import type {
   InvokeChannel,
   InvokeChannels,
@@ -56,9 +58,33 @@ let sessionStore: SessionStore | null = null;
 const pendingPlans = new Map<number, (decision: PlanDecision) => void>();
 let planSeq = 0;
 
-/** The bundled sample project: repo-root/examples/sample, relative to dist/main. */
-function defaultWorkspace(): string {
-  return process.env.VN_PROJECT ?? join(__dirname, '..', '..', '..', '..', 'examples', 'sample');
+let workspaceRoot: string | null = null;
+
+/** The resolved workspace. Only callable after `resolveWorkspace()` has run. */
+function workspace(): string {
+  if (!workspaceRoot) throw new Error('the workspace is only available after app ready');
+  return workspaceRoot;
+}
+
+/**
+ * Resolve the workspace once, before anything can ask for it. `VN_PROJECT` wins; otherwise
+ * the app seeds and opens `examples/mySampleRepo` beside the template, so a run never writes
+ * into the source tree. A packaged build has no repo-relative `examples/`, so the scratch
+ * workspace goes under `userData` — and a missing template then fails by name rather than as
+ * a bare ENOENT somewhere downstream.
+ */
+async function resolveWorkspace(): Promise<void> {
+  if (process.env.VN_PROJECT) {
+    workspaceRoot = process.env.VN_PROJECT;
+    return;
+  }
+  const examples = join(__dirname, '..', '..', '..', '..', 'examples');
+  const target = existsSync(examples)
+    ? join(examples, 'mySampleRepo')
+    : join(app.getPath('userData'), 'mySampleRepo');
+  const result = await seedWorkspace(join(examples, 'sample'), target);
+  if (result.seeded) console.log(`[vnstudio] seeded a new workspace at ${result.root}`);
+  workspaceRoot = result.root;
 }
 
 const deps: SessionDeps = {
@@ -73,7 +99,7 @@ const deps: SessionDeps = {
 };
 
 function getSession(): WorkspaceSession {
-  if (!session) session = new WorkspaceSession(defaultWorkspace(), MOCK, deps);
+  if (!session) session = new WorkspaceSession(workspace(), MOCK, deps);
   return session;
 }
 
@@ -101,7 +127,7 @@ const registry = createDesktopRegistry();
  */
 function getStack(): CommandStack<CommandHost> {
   if (!stack) {
-    const root = defaultWorkspace();
+    const root = workspace();
     const paths = new ProjectPaths(root);
     const host: CommandHost = {
       session: getSession(),
@@ -186,7 +212,7 @@ function registerIpc(): void {
  * the runner falls back to a placeholder.
  */
 function registerAssetProtocol(): void {
-  const paths = new ProjectPaths(defaultWorkspace());
+  const paths = new ProjectPaths(workspace());
   protocol.handle('vnasset', (request) => {
     const host = new URL(request.url).hostname;
     const dot = host.lastIndexOf('.');
@@ -218,6 +244,7 @@ function createWindow(): void {
 }
 
 void app.whenReady().then(async () => {
+  await resolveWorkspace();
   await openSessionStore();
   registerAssetProtocol();
   registerIpc();
