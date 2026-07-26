@@ -16,7 +16,13 @@ import {
 } from '@vn/store';
 import { Git, openGit } from '@vn/git';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
-import { createMockProviders } from '@vn/providers';
+import {
+  AssetCache,
+  CachedImageBackend,
+  StubImageBackend,
+  createMockProviders,
+  type ImageBackend,
+} from '@vn/providers';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import {
   characterDoc,
@@ -28,6 +34,7 @@ import {
   type LocationSpec,
 } from './inputs.js';
 import { SCRIPTS } from './scripts.js';
+import { FIXTURE_ASSET_DIR } from './assets.js';
 
 /** Everything `reload()` re-reads from disk — the same bundle `apps/cli` assembles. */
 export interface ProjectState {
@@ -58,6 +65,15 @@ export interface MakeProjectOptions {
   git?: boolean;
   /** Extra files, keyed by path relative to the project root. */
   files?: Record<string, string>;
+  /**
+   * `'cached'` serves **real** recorded art out of the fixture asset cache; anything it has
+   * no recording for falls through to a placeholder, and so does everything downstream of
+   * that (a ref's bytes are part of the next request's key). Default `'placeholder'`, so an
+   * existing suite is untouched and no test can pass only on a machine that has the cache.
+   */
+  assets?: 'placeholder' | 'cached';
+  /** Override the cache directory. Tests point this at a temp dir. */
+  assetCacheDir?: string;
 }
 
 const DEFAULT_TITLE = 'Testkit Project';
@@ -117,10 +133,15 @@ async function initRepo(dir: string): Promise<Git> {
 export class TestProject {
   readonly paths: ProjectPaths;
   private state?: ProjectState;
+  private imageBackend?: ImageBackend;
 
   constructor(
     readonly dir: string,
     readonly git?: Git,
+    private readonly assets: { mode: 'placeholder' | 'cached'; cacheDir: string } = {
+      mode: 'placeholder',
+      cacheDir: FIXTURE_ASSET_DIR,
+    },
   ) {
     this.paths = new ProjectPaths(dir);
   }
@@ -152,6 +173,7 @@ export class TestProject {
     const providers = createMockProviders({
       reviewResponses: opts.reviewResponses,
       refLoader: async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
+      imageBackend: await this.images(),
     });
     return runPipeline({
       model,
@@ -215,6 +237,20 @@ export class TestProject {
     return rm(this.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 
+  /**
+   * The image backend a run uses. `undefined` leaves `createMockProviders` on its stub; in
+   * `cached` mode the stub becomes the fallback behind the recorded corpus, so a request
+   * with no recording still produces a placeholder rather than failing the run.
+   */
+  private async images(): Promise<ImageBackend | undefined> {
+    if (this.assets.mode !== 'cached') return undefined;
+    if (!this.imageBackend) {
+      const cache = await AssetCache.open(this.assets.cacheDir);
+      this.imageBackend = new CachedImageBackend(cache, new StubImageBackend());
+    }
+    return this.imageBackend;
+  }
+
   private portraitsFor(store: AssetStore, characterId: string) {
     return store
       .manifest()
@@ -248,5 +284,8 @@ export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestPr
     await writeFileAtomic(join(dir, rel), content);
   }
 
-  return new TestProject(dir, opts.git ? await initRepo(dir) : undefined);
+  return new TestProject(dir, opts.git ? await initRepo(dir) : undefined, {
+    mode: opts.assets ?? 'placeholder',
+    cacheDir: opts.assetCacheDir ?? FIXTURE_ASSET_DIR,
+  });
 }

@@ -65,13 +65,18 @@ export function mapRefLoader(map: Map<string, ImageInput> = new Map()): RefLoade
  * provider, two clean reviewers (no defects), and a passthrough text LLM.
  */
 export function createMockProviders(
-  opts: { reviewResponses?: string[]; refLoader?: RefLoader } = {},
+  opts: {
+    reviewResponses?: string[];
+    refLoader?: RefLoader;
+    /** Replaces the stub image backend — e.g. a `CachedImageBackend` wrapping it. */
+    imageBackend?: ImageBackend;
+  } = {},
 ): Providers {
   const loadRef = opts.refLoader ?? mapRefLoader();
   const clean = '{"reviewer":"mock","defects":[]}';
   const reviewerResponses = opts.reviewResponses ?? [clean];
   return {
-    image: new BackendImageProvider(new StubImageBackend(), loadRef),
+    image: new BackendImageProvider(opts.imageBackend ?? new StubImageBackend(), loadRef),
     reviewers: [
       new ChatVisionReviewer(
         'gemini',

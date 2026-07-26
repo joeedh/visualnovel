@@ -164,3 +164,34 @@ export const shotsFileSchema = z.object({
     .default([]),
 });
 export type ShotsFile = z.infer<typeof shotsFileSchema>;
+
+/**
+ * One recorded image-model response in the fixture asset cache. Provenance in the same
+ * spirit as `manifest.json`: enough to see what was asked for, of which model, and when —
+ * so a stale or orphaned entry can be recognized without replaying the request.
+ */
+export const assetCacheEntrySchema = z.object({
+  /** `requestKey`: sha256 over the operation, prompt, ordered ref-byte hashes, and params. */
+  key: z.string().min(1),
+  op: z.enum(['generate', 'edit']),
+  ext: z.string().min(1),
+  /** The model that actually produced these bytes. `params.modelId` is part of `key`. */
+  modelId: z.string().min(1),
+  prompt: z.string(),
+  /** sha256 of each reference image's bytes, in the order they were sent. */
+  refs: z.array(z.string()).default([]),
+  params: z.record(z.unknown()).default({}),
+  bytes: z.number().int().nonnegative(),
+  /** ISO date of the recording. */
+  recordedAt: z.string(),
+  /** The fixture whose run produced it, when the recorder knows. */
+  fixture: z.string().optional(),
+});
+export type AssetCacheEntry = z.infer<typeof assetCacheEntrySchema>;
+
+/** `index.json` of a fixture asset cache; the bytes live beside it as `<key>.<ext>`. */
+export const assetCacheIndexSchema = z.object({
+  version: z.literal(1),
+  entries: z.array(assetCacheEntrySchema).default([]),
+});
+export type AssetCacheIndex = z.infer<typeof assetCacheIndexSchema>;

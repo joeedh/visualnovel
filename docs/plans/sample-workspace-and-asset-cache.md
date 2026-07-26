@@ -146,24 +146,33 @@ class CachedImageBackend implements ImageBackend {
   constructor(
     private readonly cache: AssetCache,
     private readonly inner: ImageBackend,
-    private readonly opts: { record?: boolean } = {},
+    private readonly opts: { record?: boolean; fixture?: string } = {},
   ) {}
 
-  async generate(prompt: string, refs: ImageInput[], params: ImageParams) {
-    const key = requestKey(prompt, refs, params);
-    const hit = await this.cache.get(key);
-    if (hit) return { ...hit, modelId: params.modelId };
-    const out = await this.inner.generate(prompt, refs, params);
-    if (this.opts.record) await this.cache.put(key, out, { prompt, params });
-    return out;
+  generate(prompt: string, refs: ImageInput[], params: ImageParams) {
+    return this.serve('generate', prompt, refs, params, () => this.inner.generate(...));
+  }
+  // An edit's base image folds in as its first ref; `op` is what keeps the two apart.
+  edit(base: ImageInput, prompt: string, refs: ImageInput[], params: ImageParams) {
+    return this.serve('edit', prompt, [base, ...refs], params, () => this.inner.edit(...));
   }
 }
 ```
 
-`requestKey` = `sha256(canonicalJson({ prompt, refs: refs.map(r => sha256(r.bytes)), params }))`.
+`requestKey` = `sha256(canonicalJson({ op, prompt, refs: refs.map(r => sha256(r.bytes)), params }))`.
 That is deliberately *not* the task hash: the backend never sees a task, and keying on what
 determines the image means the cache dedupes across task kinds too. `params` already carries
 `modelId` (from `config.models.image`), so a recording cannot be served for a different model.
+
+Two things the sketch above did not anticipate, both shipped:
+
+- **A hit reports the model that made the bytes**, taken from the entry, not `params.modelId`.
+  They agree today (the model id is inside the key), but the recording is the authority on its
+  own provenance and stamping the caller's id over it would make the manifest lie.
+- **`put` refuses placeholder bytes** (`isPlaceholderImage`). Text steps fall back to
+  deterministic baselines on any provider failure, so a recording run that quietly degraded
+  would otherwise bake mock art into a committed corpus permanently — the same guard
+  `imagePart` already applies to references in the Gemini backend.
 
 ### The chain constraint
 
@@ -217,7 +226,13 @@ which is a real run. That split keeps the boundaries rule intact with no excepti
 
 `makeProject({ assets: 'cached' })` opts a fixture in; the default stays placeholder-only, so
 existing suites are untouched and the cache can never make a test pass that would otherwise
-fail on a machine without it.
+fail on a machine without it. `assetCacheDir` overrides the directory, which is how the cache's
+own tests record into a temp dir instead of the committed corpus.
+
+**`makeProject` never records.** `TestProject.run` always uses mock providers, so a record flag
+there could only ever write placeholders — which `put` would refuse anyway. Recording lives on
+`CachedImageBackend({ record: true })`, reachable only from the Wave 3 script that runs real
+providers.
 
 ### Refreshing
 
@@ -238,9 +253,11 @@ gate.
    cast dropped; the existing `vngen/` tree migrated into `examples/mySampleRepo` (which now
    carries two commits: the seeded inputs, then the run's output); CLAUDE.md,
    `docs/desktopAppState.md` and `docs/plans/runner.md` updated.
-2. **Cache core.** `AssetCache` + `requestKey` + `CachedImageBackend` in `@vn/providers`;
-   `makeProject({ assets: 'cached' })`; index schema in `@vn/types`; unit tests against a
-   temp cache dir (no committed bytes yet).
+2. ~~**Cache core.**~~ **Done.** `AssetCache` + `requestKey` + `CachedImageBackend`
+   (`packages/providers/src/cache.ts`); `assetCacheIndexSchema` in `@vn/types`;
+   `createMockProviders({ imageBackend })` so the stub can be wrapped;
+   `makeProject({ assets, assetCacheDir })` + `FIXTURE_ASSET_DIR`. Tested against temp cache
+   dirs only — no committed bytes yet.
 3. **Record.** Run the chosen fixture for real, commit the corpus, wire the `--check` report.
 
 Waves 1 and 2 are independent. Wave 3 is the only one that costs money.
@@ -251,9 +268,9 @@ Waves 1 and 2 are independent. Wave 3 is the only one that costs money.
       one untouched
 - [x] `examples/sample` is inputs-only and gitignore keeps generated output out of the parent
 - [x] `Git.config` lands; testkit's `GitInternals` cast is gone
-- [ ] Cache hit/miss keyed on prompt + ref hashes + params, with a test proving a changed
+- [x] Cache hit/miss keyed on prompt + ref hashes + params, with a test proving a changed
       prompt misses
-- [ ] A holed cache degrades to placeholders downstream rather than mixing
-- [ ] `makeProject` default behaviour unchanged; opt-in only
+- [x] A holed cache degrades to placeholders downstream rather than mixing
+- [x] `makeProject` default behaviour unchanged; opt-in only
 - [ ] Refresh script reports added/reused/orphaned; staleness never fails a suite
 - [ ] Committed corpus size recorded here, with the per-refresh cost stated

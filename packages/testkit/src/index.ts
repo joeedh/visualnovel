@@ -6,6 +6,7 @@
  * the boundaries rule grants no one permission, so a production import is a lint error.
  * Test files are exempt from that rule, which is the only place it belongs.
  */
+export * from './assets.js';
 export * from './scripts.js';
 export * from './inputs.js';
 export * from './project.js';
