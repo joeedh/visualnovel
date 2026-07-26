@@ -9,8 +9,16 @@ import { CommandRegistry } from '@vn/commands';
 import { agentClear, agentRun, agentSetMode, agentSetModel } from './agent.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
-import { storyExport, storyPlay } from './story.js';
-import { viewPalette, viewPanelSize, viewRoom } from './view.js';
+import {
+  storyExport,
+  storyGraph,
+  storyPlay,
+  storyRemoveChoice,
+  storySetChoice,
+  storySetNext,
+  storySpliceScene,
+} from './story.js';
+import { viewMode, viewPalette, viewPanelSize, viewRoom } from './view.js';
 import { workspaceIndex } from './workspace.js';
 import type { CommandHost } from './host.js';
 
@@ -28,7 +36,13 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     pipelineRun,
     pipelineStatus,
     storyExport,
+    storyGraph,
     storyPlay,
+    storyRemoveChoice,
+    storySetChoice,
+    storySetNext,
+    storySpliceScene,
+    viewMode,
     viewPalette,
     viewPanelSize,
     viewRoom,

@@ -6,6 +6,7 @@
 import { promises as fs } from 'node:fs';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
+import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
 
 const deps: SessionDeps = {
   emitEvent: () => {},
@@ -51,6 +52,121 @@ describe('WorkspaceSession — reading a project', () => {
     const play = await sessionFor(p).playable();
     expect(play.start).toBe('arrival');
     expect(play.characters['aiko']!.portrait).toBeUndefined();
+  });
+});
+
+/** The Wave 3 write path: `storyGraph` reads the wiring, `editBranches` rewires it. */
+describe('WorkspaceSession — branch editing', () => {
+  const SCRIPT = 'screenplay/script.fountain';
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeEach(async () => {
+    p = await makeProject({ title: 'Branches', script: SCRIPTS.diamond });
+    session = sessionFor(p);
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  it('derives scenes, stable edge ids and reachability from the model', async () => {
+    const graph = await session.storyGraph();
+    expect(graph.start).toBe('arrival');
+    expect(graph.scenes.map((s) => s.id)).toEqual(['arrival', 'greet', 'observe', 'rooftop']);
+    expect(graph.edges.map((e) => e.id)).toEqual([
+      'arrival#choice:0',
+      'arrival#choice:1',
+      'greet#next',
+      'observe#next',
+    ]);
+    expect(graph.edges[0]).toMatchObject({
+      from: 'arrival',
+      to: 'greet',
+      kind: 'choice',
+      label: 'Speak up',
+      index: 0,
+      dangling: false,
+    });
+    expect(graph.scenes.every((s) => s.reachable)).toBe(true);
+  });
+
+  it('marks an unreachable scene rather than dropping it', async () => {
+    const orphaned = await makeProject({ title: 'Orphan', script: SCRIPTS.orphan });
+    try {
+      const graph = await sessionFor(orphaned).storyGraph();
+      expect(graph.scenes.find((s) => s.id === 'forgotten')?.reachable).toBe(false);
+      expect(graph.diagnostics.some((d) => d.where === 'forgotten')).toBe(true);
+    } finally {
+      await orphaned.cleanup();
+    }
+  });
+
+  it('writes only marker lines, and reports the file it wrote', async () => {
+    const before = await p.read(SCRIPT);
+    const result = await session.editBranches((scenes) =>
+      setNext(scenes, { scene: 'rooftop', goto: 'arrival' }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.written).toEqual([SCRIPT]);
+    const after = await p.read(SCRIPT);
+    const markerless = (text: string): string[] =>
+      text.split('\n').filter((l) => !/^\s*\[\[(choice|next):/.test(l));
+    expect(markerless(after)).toEqual(markerless(before));
+    // A cycle back to the entry scene is legal; the model just picks it up.
+    expect((await session.storyGraph()).edges.map((e) => e.id)).toContain('rooftop#next');
+  });
+
+  it('rebuilds reachability after the edit, so a cut branch goes dark', async () => {
+    const result = await session.editBranches((scenes) =>
+      setChoice(scenes, { scene: 'arrival', goto: 'greet', label: 'Speak up', index: 1 }),
+    );
+    const dark = result.graph?.scenes.filter((s) => !s.reachable).map((s) => s.id);
+    expect(dark).toEqual(['observe']);
+  });
+
+  it('refuses a rewire without touching the file', async () => {
+    const before = await p.read(SCRIPT);
+    const result = await session.editBranches((scenes) =>
+      spliceScene(scenes, { scene: 'arrival', from: 'greet' }),
+    );
+    expect(result).toMatchObject({ ok: false, written: [] });
+    expect(result.message).toContain('already forks');
+    expect(await p.read(SCRIPT)).toBe(before);
+  });
+
+  it('reports a rewire that was already in place as writing nothing', async () => {
+    const result = await session.editBranches((scenes) =>
+      setNext(scenes, { scene: 'greet', goto: 'rooftop' }),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.written).toEqual([]);
+    expect(result.message).toContain('nothing written');
+  });
+
+  it('splices a scene into a choice edge as one patch', async () => {
+    const result = await session.editBranches((scenes) =>
+      spliceScene(scenes, { scene: 'rooftop', from: 'arrival', edge: 0 }),
+    );
+    expect(result.ok).toBe(true);
+
+    const edges = result.graph?.edges ?? [];
+    // The decision keeps its label; only its first stop moved. rooftop then leads to greet.
+    expect(edges.find((e) => e.id === 'arrival#choice:0')).toMatchObject({
+      to: 'rooftop',
+      label: 'Speak up',
+    });
+    expect(edges.find((e) => e.id === 'rooftop#next')).toMatchObject({ to: 'greet' });
+    expect(result.graph?.scenes.every((s) => s.reachable)).toBe(true);
+  });
+
+  it('flags a next on a forking scene as inert instead of hiding it', async () => {
+    const result = await session.editBranches((scenes) =>
+      setNext(scenes, { scene: 'arrival', goto: 'rooftop' }),
+    );
+    const next = result.graph?.edges.find((e) => e.id === 'arrival#next');
+    expect(next).toMatchObject({ to: 'rooftop', inert: true });
   });
 });
 

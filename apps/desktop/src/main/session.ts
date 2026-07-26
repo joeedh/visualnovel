@@ -13,9 +13,10 @@ import {
   type ProjectConfig,
   type ResolvedKeys,
 } from '@vn/config';
+import { relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import { parseFountain } from '@vn/parse';
-import { buildModel } from '@vn/model';
+import { applySceneBranchEdit, buildModel } from '@vn/model';
 import {
   AssetStore,
   ProjectPaths,
@@ -51,14 +52,18 @@ import {
 } from '@vn/authoring';
 import { runPipeline } from '@vn/scheduler';
 import { buildPlayable } from '@vn/export';
-import type { Playable, ProjectModel, Providers } from '@vn/types';
+import type { Playable, ProjectModel, Providers, Scene } from '@vn/types';
 import type {
   ApproveResult,
+  BranchEditResult,
   GateCandidate,
   PipelineRunResult,
   PipelineStatus,
+  StoryGraph,
 } from '../shared/ipc.js';
 import { narrowTask } from './reviews.js';
+import { storyGraphOf } from './storygraph.js';
+import type { BranchOp } from '../shared/branchops.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -94,6 +99,9 @@ interface LoadedProject {
   model: ProjectModel;
   store: AssetStore;
   graph: TaskGraph;
+  /** The screenplay this model was built from — the file a branch edit patches. */
+  scriptPath?: string;
+  scriptText: string;
 }
 
 async function loadProject(dir: string): Promise<LoadedProject> {
@@ -109,7 +117,16 @@ async function loadProject(dir: string): Promise<LoadedProject> {
   });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  return { dir, config, paths, model, store, graph };
+  return {
+    dir,
+    config,
+    paths,
+    model,
+    store,
+    graph,
+    scriptPath: inputs.scriptPath,
+    scriptText: inputs.scriptText,
+  };
 }
 
 async function buildProviders(project: LoadedProject, mock: boolean): Promise<Providers> {
@@ -223,6 +240,56 @@ export class WorkspaceSession {
     await writeApprovedPortrait(project.paths, characterId, bytes);
     await project.store.accept(hash);
     return { ok: true, message: `Approved ${characterId} → ${hash}.` };
+  }
+
+  /** Scenes + branch edges for the STUDIO branch editor, derived from the validated model. */
+  async storyGraph(): Promise<StoryGraph> {
+    const project = await loadProject(this.dir);
+    return storyGraphOf(project.model);
+  }
+
+  /**
+   * The single write path for every `story.*` edit: decide the rewire against the freshly
+   * loaded scenes, patch the screenplay's branch markers, write atomically, and rebuild the
+   * model. `decide` is passed in rather than the edits themselves so the decision and the
+   * patch see the same load — a scene list read a moment earlier could already be stale.
+   *
+   * Rebuilding is not optional: reachability changes with the wiring, and a stale `reachable`
+   * set would draw live scenes as dead.
+   */
+  async editBranches(decide: (scenes: Map<string, Scene>) => BranchOp): Promise<BranchEditResult> {
+    const project = await loadProject(this.dir);
+    const op = decide(project.model.scenes);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+    if (!project.scriptPath) {
+      return { ok: false, message: 'This project has no screenplay file to edit.', written: [] };
+    }
+
+    const patched = applySceneBranchEdit(project.scriptText, op.edits);
+    if (patched.diagnostics.length > 0) {
+      return {
+        ok: false,
+        message: patched.diagnostics.map((d) => d.message).join(' '),
+        written: [],
+      };
+    }
+    if (patched.text === project.scriptText) {
+      return {
+        ok: true,
+        message: `${op.message} (already wired that way — nothing written)`,
+        written: [],
+        graph: storyGraphOf(project.model),
+      };
+    }
+
+    await writeFileAtomic(project.scriptPath, patched.text);
+    const reloaded = await loadProject(this.dir);
+    return {
+      ok: true,
+      message: op.message,
+      written: [relative(this.dir, project.scriptPath).split(sep).join('/')],
+      graph: storyGraphOf(reloaded.model),
+    };
   }
 
   /** Build the playable live from the current model + asset store (no file needed). */

@@ -1,6 +1,7 @@
 # Plan: story branch editor
 
-**Status:** not started. **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md).
+**Status:** in progress — Waves 1–3 landed; Wave 4 (the editor surface) is next.
+**Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md).
 **Blocks:** [task DAG view](task-dag-view.md) (which reuses the `renderer/graph/` primitives
 this plan creates).
 **Size:** large — the only genuinely new *editor* in
@@ -82,6 +83,27 @@ scene id that does not exist; a file where two scenes share a heading; a two-sce
 applied in one pass; and a two-scene edit where the second scene is missing, which must leave
 the file byte-identical.
 
+#### As shipped (`packages/model/src/branchpatch.ts`)
+
+- **Scene identity comes from the real parser, position from a raw scan.** `splitScenes`
+  supplies the authoritative ids (so the id-derivation rules can't drift), while a separate
+  scan over a **boneyard-masked** copy — masked, not deleted, so offsets stay aligned — finds
+  the heading line of each scene by mirroring the parser's rules exactly. If the two disagree
+  on scene count, the patch is refused (`branch_patch_scan`) rather than guessed at.
+- **Escaping decision: labels are always written quoted and trimmed.** `parseBranchMarker`
+  backtracks to the last viable `->` and strips one leading/trailing quote, so a quoted label
+  round-trips even when it contains `->` *or* quotes. A label containing `]]` or a newline
+  cannot round-trip at any quoting and is rejected up front (`branch_patch_label`), as is an
+  empty label or a goto with whitespace (`branch_patch_goto`).
+- **Insert anchors, in order:** the first existing marker of that kind → for `next`, the last
+  choice line → the `[[scene:]]` marker → the heading. Per-kind indentation is preserved, and
+  an insert still lands when its anchor line was deleted by the same patch.
+- **The re-parse assertion earns its keep.** A note-only line is *not* blank to the parser, so
+  a heading directly beneath one is not a heading — deleting that note **creates a scene**.
+  That case is a test, and it refuses (`branch_patch_verify`).
+- The sweep over `examples/sample` runs six edit shapes against every scene and requires each
+  to land the intended graph exactly while leaving every other scene's wiring untouched.
+
 ## Wave 2 — shared graph primitives
 
 `renderer/graph/`, created here and reused by the DAG view. Pure `.ts` with `tests/`
@@ -104,6 +126,26 @@ Two constraints worth stating up front, both from `@vn/debug2d`'s design notes:
 - **Layout must be deterministic.** Same graph in, same positions out — no randomized
   force-directed step. Otherwise the view reshuffles on every re-render and tests can't pin
   anything.
+
+#### As shipped (`renderer/graph/`)
+
+`types.ts` holds the neutral vocabulary (`GraphNode`/`GraphEdge`, rect helpers) so nothing in
+the layer knows what a scene is — the DAG view projects tasks into the same shapes.
+
+- **Cycles are ranked, not rejected.** An iterative DFS (a deep chain is a realistic graph and
+  would overflow a recursive one) classifies back edges; ranking is longest-path over the
+  forward subgraph only. A graph that is *nothing but* a cycle has no root, so the DFS seeds
+  from every node in input order after the roots run out.
+- **Crossing reduction sorts by `(barycentre, current slot)`** — a total order, so the result
+  can't depend on the engine's sort stability. Ranks are centred on `x = 0`, so adding a node
+  to one rank doesn't shift the others sideways.
+- **Routing and hit-testing share one curve.** `routeEdges` returns both the SVG path and the
+  sampled polyline it was sampled from; an edge can't be clickable where it isn't drawn.
+- **`Canvas.tsx` co-transforms two layers** — SVG for wires, HTML for cards and labels (SVG
+  text has no wrapping, and the labels are typeset prose). The node layer is
+  `pointer-events: none`: every pointer question goes through `pick`, so there is one answer to
+  "what is under the cursor". Wheel-zoom is a native non-passive listener, since React's
+  `onWheel` is passive and `preventDefault` there is a no-op.
 
 **Decision: v1 has no manual node positioning.** `Scene` has no `x`/`y`, and adding a
 position store means inventing a UI-state file, deciding whether it is committed, and
@@ -163,6 +205,42 @@ Because these are registry commands, they are reachable from the palette and CDP
 ```sh
 node scripts/vn-cdp.mjs "story.setNext(scene='arrival' goto='rooftop')"
 ```
+
+#### As shipped (`apps/desktop/src/main/`)
+
+- **`branchops.ts` is the pure half; the commands are thin.** `setChoice` / `removeChoice` /
+  `setNext` / `spliceScene` take the current scenes and return
+  `{ ok: true, edits, message } | { ok: false, error }` — no I/O, so the four splice rules are
+  pinned by node tests (`tests/branchops.test.ts`) rather than an Electron session. The command
+  definitions only translate props into one of those calls.
+- **`session.editBranches(decide)` takes a decider, not the edits.** The decision and the patch
+  then see the same load: a scene list read a moment earlier could already be stale. It is the
+  only write path for branch wiring — patch → `writeFileAtomic` → **reload the model** → return
+  the rebuilt `StoryGraph`, so reachability is never a wave behind the wiring.
+- **A refusal throws.** `CommandStack.exec` turns a throw into `{ ok: false, error }` and still
+  records it, which is the idiom `gate.approve` already uses. Refusal messages say *why* (`greet
+  already forks into 1 choice(s), and a scene's next is only followed when it has none — the
+  spliced edge would never be taken.`) because that sentence is the UI's refusal text too.
+- **Splice reports what it overwrote.** Rule 1 refuses a middle scene with *choices*; it does
+  **not** refuse one with an existing `next`, which would make the gesture useless on a linear
+  script. Instead the message carries `(replacing c → z)`, so the dropped edge is in the
+  `CommandRecord` rather than silent. A test pins the wording.
+- **`loadInputs` now returns `scriptPath`.** The "which file is the screenplay" rule
+  (first `.fountain`, else first `.md`) stays in `@vn/store`; the editor patches exactly the
+  file the model was built from instead of re-deriving it and drifting.
+- **Optional numeric props use `-1`, not absence.** A `@vn/commands` prop is optional only by
+  having a default, so `index` / `edge` default to `-1` meaning "append" / "the next edge".
+- **Edge ids are `<from>#choice:<n>` / `<from>#next`** (`storygraph.ts`). Stable across reloads
+  so a selection survives a rebuild, and they carry exactly the arguments the command that would
+  change that edge needs — a drag on a wire maps back to an invocation with no lookup table.
+- **An inert `next` is drawn, not hidden.** A scene with both choices and a `next` has a `next`
+  the runner never follows — but `computeReachable` counts it, so hiding it would make a scene
+  look reachable with no inbound edge. It ships as `inert: true` instead, struck through, where
+  the author can delete it.
+- **`story:graph` is a typed IPC read** alongside `story:play`. Mutations still go only through
+  the `story.*` commands, so one authorial act is one `CommandRecord`.
+- **`view.mode` moved to Wave 4**, where the surface that consumes the effect lands. Shipping
+  the command first would have meant an effect the renderer silently drops.
 
 ## Wave 4 — the editor surface
 
@@ -231,6 +309,37 @@ Every mutation is one command → one `CommandRecord`. No continuous-drag coales
 because no continuous drag mutates anything — a drag is continuous but its *commit* is
 discrete.
 
+#### As shipped (`renderer/rooms/studio/branch/`)
+
+- **The editor replaces the transcript, not the room.** `Convo` grew one optional `surface`
+  prop; STUDIO passes `<BranchEditor>` when `mode === 'branches'`. The composer below it is the
+  same element either way, so switching modes never costs the author what they were typing —
+  which is the whole argument for putting the editor next to the agent rather than in a room of
+  its own. `App.tsx` owns `studioMode` because the `command:ui` subscription is already there.
+- **`useBranch` is the seam to main**, holding the `StoryGraph`, the status line, and `run` —
+  one `window.vn.exec` per gesture, then a reload from the returned graph. `BranchEditor.tsx`
+  stays rendering and gesture state.
+- **A drag's verdict comes from `intent.ts`, which calls the same `branchops` the command
+  will.** So the refusal shown mid-drag is not a second implementation of the rules that could
+  disagree with the one that runs — while a card is carried, *every* wire is asked, and the
+  refusing ones are marked with the reason the command would have given.
+- **`grab.ts` resolves the two small targets before `pick` does.** The connect handle sits on a
+  card's bottom edge and an arrowhead on the target's top edge, so half of each disc lands where
+  `pick` answers "background" or "that card" — and nodes beat edges. Testing the discs first is
+  what makes them the size they look; without it the handle is only grabbable from inside the
+  card and the arrowhead not at all. Pure, with `tests/grab.test.ts`.
+- **A press becomes a splice and is tested for a wire in the same `pointermove`.** Converting
+  and returning meant a fast drag ended over a wire it had never been asked about.
+- **`useAnimatedLayout` tweens positions, not the graph.** A relayout after a splice re-ranks
+  the cards; the tween carries the old positions into the new topology so the card that was just
+  dropped visibly *moves* to its new rank. New nodes start at their destination rather than
+  flying in from nowhere. `tests/tween.test.ts` pins it, including that it returns the target
+  layout by identity once done.
+- **Inline label editing is the `edge-label` opting back into pointer events.** The node layer
+  is `pointer-events: none` so `pick` is the single hit-test authority; the label is the one
+  element that needs a real DOM target, and a freshly created choice opens its editor
+  automatically because "New choice" is a placeholder, not a name.
+
 ## Verification
 
 - `pnpm test` — the patcher (Wave 1) and layout/hit/viewport (Wave 2). These are the parts
@@ -285,14 +394,17 @@ image per scene.
 
 ## Done
 
-- [ ] `applySceneBranchEdit` lands with the re-parse assertion and full test coverage,
+- [x] `applySceneBranchEdit` lands with the re-parse assertion and full test coverage,
       applying a multi-scene edit atomically
-- [ ] `renderer/graph/` primitives exist, deterministic, tested in node
-- [ ] Five `story.*` commands registered, in the catalog, driveable from CDP
-- [ ] Drag-to-splice works, refuses a target with choices for a visible reason, and animates
+- [x] `renderer/graph/` primitives exist, deterministic, tested in node
+- [x] Five `story.*` commands registered, in the catalog, driveable from CDP
+- [x] Drag-to-splice works, refuses a target with choices for a visible reason, and animates
       the relayout
-- [ ] Branch editor renders `examples/sample` correctly, dead scenes dashed
-- [ ] An edge rewire changes only marker lines in `git diff`
-- [ ] `vngen graph` and the editor agree on the same project
-- [ ] `CLAUDE.md` + [`../command-system.md`](../command-system.md) updated with the new
+- [x] Branch editor renders `examples/sample` correctly, dead scenes dashed
+- [x] An edge rewire changes only marker lines in `git diff`
+- [x] `vngen graph` and the editor agree on the same project
+- [x] `CLAUDE.md` + [`../command-system.md`](../command-system.md) updated with the new
       commands and the `view.mode` effect
+- [x] Debug lessons appended to
+      [`../research/debug-lessons-learned.md`](../research/debug-lessons-learned.md) — see
+      [Debug lessons](desktop-editors-tracking.md#debugging-lessons)

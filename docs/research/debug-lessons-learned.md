@@ -20,6 +20,12 @@
   * [`--raw` with an `await` returns *Promise was collected*](#--raw-with-an-await-returns-promise-was-collected)
   * [Verify a degraded state by building one, not by assuming it](#verify-a-degraded-state-by-building-one-not-by-assuming-it)
   * [Orphaned Electron, again — the PowerShell form](#orphaned-electron-again--the-powershell-form)
+- [2 · Story branch editor](#2-%C2%B7-story-branch-editor)
+  * [An invalid CSS transform is dropped silently, and the layer just sits at world coordinates](#an-invalid-css-transform-is-dropped-silently-and-the-layer-just-sits-at-world-coordinates)
+  * [The drag was fine; the app under CDP was the previous build](#the-drag-was-fine-the-app-under-cdp-was-the-previous-build)
+  * [Simulating a drag over CDP takes one evaluation per event](#simulating-a-drag-over-cdp-takes-one-evaluation-per-event)
+  * [Confirm a synthetic pointer's coordinates against the geometry, not the code](#confirm-a-synthetic-pointers-coordinates-against-the-geometry-not-the-code)
+  * [A marker-only patch is verifiable with `git diff --no-index`](#a-marker-only-patch-is-verifiable-with-git-diff---no-index)
 
 <!-- tocstop -->
 
@@ -331,3 +337,83 @@ Get-NetTCPConnection -LocalPort 9222,5176 -State Listen | ForEach-Object {
 
 Then re-query the ports to confirm they are released — the kill can succeed while a child
 keeps the socket.
+
+## 2 · Story branch editor
+
+### An invalid CSS transform is dropped silently, and the layer just sits at world coordinates
+
+**Symptom.** The branch editor rendered — right number of cards, right wires, right labels —
+but every card sat piled at the canvas's left edge while the wires were correctly placed.
+Simulated drags did nothing, which read as "pointer events are broken".
+
+**What produced the evidence.** Reading the two layers' transforms side by side, rather than
+looking at the drag code at all:
+
+```sh
+node scripts/vn-cdp.mjs --raw "JSON.stringify({svg: document.querySelector('.graph-wires g').getAttribute('transform'), html: document.querySelector('.graph-layer').style.transform})"
+# {"svg":"translate(567.1953125 48) scale(0.664)","html":""}
+```
+
+An empty `style.transform` after assigning a non-empty string is the whole diagnosis: the SVG
+form (`translate(x y)`) is not valid CSS (which needs `translate(3px, 4px)`), and CSS drops a
+transform it cannot parse without an error anywhere — no console warning, no exception, no
+DevTools strike-through. Fixed by a separate `cssTransformOf`, with a test pinning both forms
+so they cannot be swapped again.
+
+**Lesson.** When a co-transformed pair disagrees, read *both* transforms out of the DOM before
+touching the geometry. And treat "assigned a style, read it back empty" as a parse failure
+rather than a stale render.
+
+### The drag was fine; the app under CDP was the previous build
+
+**False trail, and the expensive one.** Two rounds of "the pointerdown isn't reaching React"
+were spent on an app started with `pnpm --filter @vn/desktop start`, which serves the *built*
+renderer — so every source edit was invisible. `dev` is the loop with HMR.
+
+Symptom to recognize: a fix that changes behaviour not at all, twice, with no error. Before
+diagnosing further, confirm the running app contains the change (bump something observable, or
+just use `dev`). Related and already recorded above: a stale Electron on 9222 means CDP is
+talking to an app you didn't start.
+
+### Simulating a drag over CDP takes one evaluation per event
+
+React batches state updates, and the window-level `pointermove`/`pointerup` listeners are
+installed by an effect *after* the render that begins the drag. A `down` and a `move` in the
+same evaluation therefore reach no listener, and reading the DOM in that same task shows the
+pre-drag state either way. One `vn-cdp.mjs` call per event, one more to assert:
+
+```sh
+node scripts/vn-cdp.mjs --raw "window.__drag.down(window.__drag.handleAt('ending')),'down'"
+node scripts/vn-cdp.mjs --raw "window.__drag.move(window.__drag.centerAt('arrival')),'move'"
+node scripts/vn-cdp.mjs --raw "JSON.stringify(window.__drag.state())"
+```
+
+The helper worth writing first is `state()` — one object with the status line, the per-wire
+verdict classes, and whether the ghost/carried elements exist. Every assertion in the wave was
+a diff of that object, and it made two real bugs obvious that a screenshot would not have:
+`over` staying `null` through the press→splice transition, and a grab disc unreachable from
+one side.
+
+### Confirm a synthetic pointer's coordinates against the geometry, not the code
+
+Before blaming a hit-test, check the pointer is where you think it is. The SVG path's own
+midpoint is ground truth, and `getScreenCTM` maps it to client coordinates:
+
+```sh
+node scripts/vn-cdp.mjs --raw "(()=>{const p=document.querySelectorAll('.graph-wire')[2];const w=p.getPointAtLength(p.getTotalLength()/2);/* …compare to the world point the app computes… */})()"
+```
+
+That returned a discrepancy of 0.0005 world units — which eliminated the entire coordinate
+pipeline in one call and left only the handler, where the bug was.
+
+### A marker-only patch is verifiable with `git diff --no-index`
+
+The fixture is a copy of `examples/sample` in the scratchpad, so it is not a git repo — but the
+assertion "the editor changed only branch markers" is still one command:
+
+```sh
+git diff --no-index -- examples/sample/screenplay "$SCRATCH/branchdemo/screenplay"
+```
+
+Empty output after an unwire-then-rewire is also the round-trip test, and it is stronger than
+any assertion available from inside the app.

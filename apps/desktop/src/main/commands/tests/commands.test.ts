@@ -44,7 +44,16 @@ describe('the desktop registry', () => {
 
   it('marks the file-writing commands mutating and nothing undoable in v1', () => {
     const mutating = commands.filter((c) => c.mutating).map((c) => c.id);
-    expect(mutating).toEqual(['agent.run', 'gate.approve', 'pipeline.run', 'story.export']);
+    expect(mutating).toEqual([
+      'agent.run',
+      'gate.approve',
+      'pipeline.run',
+      'story.export',
+      'story.removeChoice',
+      'story.setChoice',
+      'story.setNext',
+      'story.spliceScene',
+    ]);
     expect(commands.filter((c) => c.undoable)).toEqual([]);
   });
 

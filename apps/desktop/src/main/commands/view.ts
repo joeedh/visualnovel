@@ -20,6 +20,25 @@ export const viewRoom = define({
   },
 });
 
+export const viewMode = define({
+  id: 'view.mode',
+  title: "Switch a room's mode",
+  description: "Switch STUDIO's main column between the conversation and the branch editor.",
+  mutating: false,
+  props: {
+    // Only STUDIO has modes today. The prop is here so a second one is an added value rather
+    // than a changed signature — and so the enum can't quietly accept a room that ignores it.
+    room: prop.oneOf(['studio'] as const, 'the room whose mode changes'),
+    mode: prop.oneOf(['convo', 'branches'] as const, 'the surface to show'),
+  },
+  run({ room, mode }, ctx) {
+    ctx.host.ui({ type: 'mode', room, mode });
+    return Promise.resolve({
+      message: mode === 'branches' ? 'Showing the branch editor.' : 'Showing the conversation.',
+    });
+  },
+});
+
 export const viewPanelSize = define({
   id: 'view.panelSize',
   title: 'Resize a panel',

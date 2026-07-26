@@ -1,0 +1,307 @@
+/**
+ * The branch editor: index cards on a table, wired together.
+ *
+ * The two hues do the explaining, as everywhere else — `--sodium` for the authored decisions
+ * (a choice, its label, the scene you wrote) and `--signal` for what the machine derived (the
+ * fallthrough, reachability, a drop the rules would accept). Refusals are the one exception:
+ * they borrow `--vermilion`, because a refusal is neither.
+ */
+
+.branch {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
+}
+
+.branch-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+}
+.branch-bar .tt {
+  font-family: var(--disp);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  color: var(--mist-dim);
+}
+.branch-bar .ct {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist-dim);
+}
+.branch-bar .ghost {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  color: var(--mist);
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.branch-bar .ghost:hover {
+  color: var(--paper);
+  border-color: var(--mist-dim);
+}
+
+.branch-canvas {
+  min-height: 0;
+}
+
+/* An empty project has nothing to lay out, so it says what to do instead of showing a void. */
+.branch.empty {
+  place-items: center;
+  padding: 40px;
+}
+.branch .invite {
+  max-width: 46ch;
+  font-family: var(--prose);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--mist);
+  text-align: center;
+}
+
+/* ---- the cards ---- */
+
+.scene-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  padding: 8px 10px;
+  background: var(--ink-raised);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  border-top: 2px solid var(--mist-dim);
+  box-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.9);
+}
+.scene-card.entry {
+  border-top-color: var(--sodium);
+}
+/* Unreachable: still drawn, and drawn as unfinished business rather than as an error. */
+.scene-card.dead {
+  border-style: dashed;
+  opacity: 0.62;
+}
+.scene-card.sel {
+  border-color: var(--signal);
+}
+.scene-card.carried {
+  box-shadow: 0 26px 46px -20px rgba(0, 0, 0, 0.95);
+}
+
+.scene-card header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.scene-card .id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--paper);
+}
+.scene-card .loc {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mist-dim);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.scene-card .synopsis {
+  font-family: var(--prose);
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--mist);
+  overflow: hidden;
+  margin: 4px 0;
+  /* Two lines of the synopsis is a beat; more is the script, which is not this surface. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.scene-card .unwritten {
+  font-style: italic;
+  color: var(--mist-dim);
+}
+.scene-card footer {
+  display: flex;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--mist-dim);
+}
+.scene-card .cast {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.scene-card .lines {
+  margin-left: auto;
+  font-family: var(--mono);
+}
+
+/* The drag-out handle. Pointer questions go through `pick`, so this is purely a target sign. */
+.scene-card .handle {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--ink-raised);
+  border: 1px solid var(--mist-dim);
+}
+.scene-card:hover .handle {
+  border-color: var(--sodium);
+  background: var(--sodium);
+}
+
+.scene-stub {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+  padding: 6px 10px;
+  border: 1px dashed var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: transparent;
+}
+.scene-stub .id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--mist-dim);
+}
+.scene-stub .tag {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--vermilion);
+  opacity: 0.8;
+}
+
+/* ---- wires ---- */
+
+/* A `next` the runner will never follow, because the scene grew choices. Struck through, since
+   the line is still in the screenplay — it is inert, not gone. */
+.graph-wire.kind-inert {
+  stroke: var(--mist-dim);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.45;
+}
+
+.edge-label {
+  pointer-events: auto;
+  background: var(--ink-sunken);
+  border: 1px solid transparent;
+  border-radius: var(--r-chrome);
+  padding: 1px 6px;
+  max-width: 200px;
+  font-family: var(--prose);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper);
+}
+.edge-label:hover {
+  border-color: var(--sodium);
+}
+.edge-label.sel {
+  border-color: var(--signal);
+}
+.edge-input {
+  pointer-events: auto;
+  width: 180px;
+  background: var(--ink);
+  border: 1px solid var(--sodium);
+  border-radius: var(--r-chrome);
+  padding: 1px 6px;
+  font-family: var(--prose);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper);
+}
+
+/* ---- drag overlays ---- */
+
+.branch-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.branch-overlay .verdict {
+  fill: none;
+  stroke-width: 6;
+  opacity: 0.3;
+}
+.branch-overlay .verdict.accept {
+  stroke: var(--signal);
+}
+.branch-overlay .verdict.refuse {
+  stroke: var(--vermilion);
+  stroke-dasharray: 6 5;
+}
+.branch-overlay .verdict.over {
+  opacity: 0.75;
+}
+.branch-overlay .ghost-wire {
+  stroke: var(--sodium);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.branch-overlay .endpoint {
+  fill: var(--signal);
+  stroke: var(--ink-sunken);
+  stroke-width: 2;
+}
+
+/* The carried card is translucent and the original stays put: a splice rewires the story, it
+   does not move the scene. Pretending otherwise would promise a layout the ranker won't give. */
+.carried-card {
+  position: absolute;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.branch-line {
+  padding: 6px 14px;
+  border-top: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+  font-size: 12px;
+  min-height: 30px;
+  color: var(--mist-dim);
+}
+.branch-line.ok {
+  color: var(--jade);
+}
+.branch-line.preview {
+  color: var(--signal);
+}
+.branch-line.refused {
+  color: var(--vermilion);
+}
+
+.rail-head .rail-mode {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-family: var(--disp);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  color: var(--mist-dim);
+}
+.rail-head .rail-mode:hover {
+  color: var(--sodium);
+}
+.rail-head .rail-mode.on {
+  color: var(--sodium);
+}

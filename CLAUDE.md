@@ -284,12 +284,15 @@ is the only `.tsx` at the root.
 renderer/
   main.tsx              entry; installs @vn/debug2d behind import.meta.env.DEV
   app/                  App.tsx (shell only), Topbar.tsx, Palette.tsx, useAgent.ts
+  graph/                Canvas.tsx + pure layout · edges · hit · viewport (see below)
   rooms/studio/         Studio.tsx  Rail.tsx  Convo.tsx  PlanCard.tsx
+       …/branch/        BranchEditor.tsx  SceneCard.tsx  useBranch.ts
+                        graph.ts · intent.ts · grab.ts · tween.ts (pure)
   rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  AttemptLoop.tsx
                         attempts.ts (pure) · GateOverlay.tsx
   rooms/play/           Runner.tsx
   ui/                   Resizable.tsx — shared by two rooms, so it belongs to neither
-  styles/               index.css @imports tokens · shell · studio · floor · play
+  styles/               index.css @imports tokens · shell · studio · floor · play · graph · branch
 ```
 
 - **`App.tsx` owns only the shell**: `room`, `paletteOpen`, the workspace index/status, and
@@ -322,6 +325,36 @@ renderer/
 - **`prototype.html`** (at `apps/desktop/prototype.html`) is the original design reference and
   shares class names with the stylesheet. It is neither built nor imported — leave it alone,
   and don't treat it as the source of truth for tokens; `tokens.css` is.
+
+### Graph canvas (`renderer/graph`) and the branch editor (STUDIO)
+
+`renderer/graph/` is the shared, domain-free canvas: `layout.ts` (layered DAG layout),
+`edges.ts` (routes + the polyline every hit test uses), `hit.ts` (`pick`), `viewport.ts`
+(pan/zoom), and `Canvas.tsx`, the only impure file. The branch editor is its first consumer;
+the task DAG view is the next. Plan: [`docs/plans/story-branch-editor.md`](docs/plans/story-branch-editor.md).
+
+- **One geometry, drawn and hit-tested.** `routeEdges` emits the SVG path and its sampled
+  polyline together, so an edge can't be clickable where it isn't drawn. Slop is authored in
+  **screen** pixels and divided by the scale before it meets world geometry — `pick` does that
+  conversion itself so callers can't do it backwards.
+- **Two co-transformed layers**: an SVG one for wires, an HTML one for cards and labels (typeset
+  material, and SVG text has no wrapping). They carry the same viewport, via `transformOf` for
+  SVG and **`cssTransformOf` for HTML** — the two syntaxes are not interchangeable, and CSS drops
+  a transform it can't parse _silently_. The node layer is `pointer-events: none`; an element
+  that needs a real DOM target (an inline label editor) opts itself back in.
+- **No manual node positions, so every drag is semantic.** `Scene` has no `x`/`y` and layout is
+  automatic: dragging a card's handle to another card wires it (`story.setChoice`/`setNext`),
+  dropping a card on a wire splices it in (`story.spliceScene`), pulling a wire's arrowhead off
+  its target unwires it. Each commits **one** command on release — a drag is continuous, its
+  commit is discrete.
+- **The refusal shown mid-drag is the refusal that would happen.** `intent.ts` asks the same
+  `src/shared/branchops.ts` the command runs, so while a card is carried every wire is marked
+  accept/refuse with the reason the command would have given.
+- **`grab.ts` resolves the handle and the arrowhead before `pick` does.** Both discs straddle a
+  card boundary, where `pick` answers "background" or "that card" — testing them first is what
+  makes them the size they look.
+- **Relayout is animated (`tween.ts`)** because a splice re-ranks the graph: the card does not
+  stay where it was dropped, and without the transition that reads as breakage.
 
 ### Desktop runner (`apps/desktop`, PLAY room)
 
@@ -380,9 +413,12 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 
 - **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
   prop specs, the registry, the DSL, the execution stack, and the catalog projection — it is
-  domain-agnostic (deps: `types`, `util`, `git`). The 14 definitions live in
+  domain-agnostic (deps: `types`, `util`, `git`). The 20 definitions live in
   `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`)
-  as thin wrappers over `WorkspaceSession`.
+  as thin wrappers over `WorkspaceSession`. The `story.*` mutators
+  (`setChoice`/`removeChoice`/`setNext`/`spliceScene`) all go through
+  `session.editBranches(decide)` → `applySceneBranchEdit` → reload, so the branch editor never
+  writes the screenplay by another path.
 - **Props are declarative specs, not zod.** The repo is on zod 3 (no `z.toJSONSchema`), and
   one spec map feeds coercion, the DSL, the catalog's JSON Schema, and a future properties
   panel. `coerceProps` is the single validation authority — it applies defaults, coerces the
@@ -412,7 +448,9 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   ```
 
 - **`view.*` commands run in main** and push a `command:ui` effect the renderer applies, rather
-  than there being a second, renderer-side registry to keep in sync.
+  than there being a second, renderer-side registry to keep in sync. `Room` stays a three-value
+  union — an editor is a **mode within a room**, reached by `view.mode(room, mode)` and a
+  `{ type: 'mode' }` effect (STUDIO: `convo` | `branches`).
 
 ## Test fixtures (`@vn/testkit`)
 

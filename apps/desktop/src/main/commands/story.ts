@@ -1,8 +1,129 @@
-/** The playable: build it in memory for the PLAY room, or write it to disk. */
-import { defineFor } from '@vn/commands';
+/**
+ * The story's structure as commands: read the branch graph, and rewire it.
+ *
+ * Every mutating command here follows the same path — a pure `branchops` decision, then
+ * `session.editBranches`, which patches the screenplay's branch markers, writes atomically and
+ * rebuilds the model. Nothing else in the app writes branch wiring, so one authorial act is
+ * one `CommandRecord` with one replayable invocation.
+ */
+import { defineFor, prop, type CommandContext, type CommandOutput } from '@vn/commands';
+import {
+  removeChoice,
+  setChoice,
+  setNext,
+  spliceScene,
+  type BranchOp,
+  type SceneMap,
+} from '../../shared/branchops.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
+
+/** `-1` is the props layer's "absent": a command prop is optional only by having a default. */
+const OPTIONAL_INDEX = -1;
+const at = (index: number): number | undefined => (index < 0 ? undefined : index);
+
+/** Apply a rewire, or refuse loudly — the stack turns a throw into `{ ok: false, error }`. */
+async function apply(
+  ctx: CommandContext<CommandHost>,
+  decide: (scenes: SceneMap) => BranchOp,
+): Promise<CommandOutput> {
+  const result = await ctx.host.session.editBranches(decide);
+  if (!result.ok) throw new Error(result.message);
+  return { message: result.message, data: result.graph, written: result.written };
+}
+
+export const storyGraph = define({
+  id: 'story.graph',
+  title: 'Story graph',
+  description: 'Scenes, branch edges and reachability — what the branch editor draws.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const graph = await ctx.host.session.storyGraph();
+    const dead = graph.scenes.filter((s) => !s.reachable).length;
+    return {
+      message: `${graph.scenes.length} scene(s), ${graph.edges.length} edge(s), ${dead} unreachable.`,
+      data: graph,
+    };
+  },
+});
+
+export const storySetChoice = define({
+  id: 'story.setChoice',
+  title: 'Set a choice',
+  description: 'Add a branch choice to a scene, or replace the one at an index.',
+  mutating: true,
+  props: {
+    scene: prop.string('the scene the choice is offered in'),
+    goto: prop.string('the scene it leads to'),
+    label: prop.string('the decision text shown to the player'),
+    index: prop.number('which choice to replace; omit to append a new one', {
+      default: OPTIONAL_INDEX,
+      min: OPTIONAL_INDEX,
+    }),
+  },
+  run({ scene, goto, label, index }, ctx) {
+    const chosen = at(index);
+    return apply(ctx, (scenes) =>
+      setChoice(scenes, {
+        scene,
+        goto,
+        label,
+        ...(chosen !== undefined ? { index: chosen } : {}),
+      }),
+    );
+  },
+});
+
+export const storyRemoveChoice = define({
+  id: 'story.removeChoice',
+  title: 'Remove a choice',
+  description: "Delete one of a scene's branch choices by index.",
+  mutating: true,
+  props: {
+    scene: prop.string('the scene to edit'),
+    index: prop.number('which choice to remove', { min: 0 }),
+  },
+  run({ scene, index }, ctx) {
+    return apply(ctx, (scenes) => removeChoice(scenes, { scene, index }));
+  },
+});
+
+export const storySetNext = define({
+  id: 'story.setNext',
+  title: 'Set the next scene',
+  description: "Set a scene's linear continuation, or clear it by passing an empty goto.",
+  mutating: true,
+  props: {
+    scene: prop.string('the scene to edit'),
+    goto: prop.string('the scene to continue to; empty clears the continuation', { default: '' }),
+  },
+  run({ scene, goto }, ctx) {
+    return apply(ctx, (scenes) => setNext(scenes, { scene, goto }));
+  },
+});
+
+export const storySpliceScene = define({
+  id: 'story.spliceScene',
+  title: 'Splice a scene into an edge',
+  description: 'Rewire A→B into A→C→B in one patch. Refuses when C already forks.',
+  mutating: true,
+  props: {
+    scene: prop.string('the scene to splice in (C)'),
+    from: prop.string('the scene the edge leaves (A)'),
+    edge: prop.number('which choice on `from`; omit for its next edge', {
+      default: OPTIONAL_INDEX,
+      min: OPTIONAL_INDEX,
+    }),
+  },
+  run({ scene, from, edge }, ctx) {
+    const chosen = at(edge);
+    return apply(ctx, (scenes) =>
+      spliceScene(scenes, { scene, from, ...(chosen !== undefined ? { edge: chosen } : {}) }),
+    );
+  },
+});
 
 export const storyPlay = define({
   id: 'story.play',

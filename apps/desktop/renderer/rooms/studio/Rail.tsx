@@ -1,4 +1,4 @@
-import type { Room, WorkspaceIndex } from '../../../src/shared/ipc';
+import type { Room, StudioMode, WorkspaceIndex } from '../../../src/shared/ipc';
 
 const SWATCH: Record<string, string> = {
   approved: 'linear-gradient(135deg,#d98a6b,#7a3f4e)',
@@ -10,6 +10,8 @@ export function Rail(props: {
   index: WorkspaceIndex | null;
   seed: (text: string) => void;
   setRoom: (r: Room) => void;
+  mode: StudioMode;
+  setMode: (mode: StudioMode) => void;
 }): JSX.Element {
   const idx = props.index;
   return (
@@ -64,6 +66,13 @@ export function Rail(props: {
       <div className="rail-group">
         <div className="rail-head">
           SCENES <span className="ct">{idx?.scenes.length ?? 0}</span>
+          <button
+            className={`rail-mode${props.mode === 'branches' ? ' on' : ''}`}
+            onClick={() => props.setMode(props.mode === 'branches' ? 'convo' : 'branches')}
+            title={props.mode === 'branches' ? 'Back to the conversation' : 'Edit the branches'}
+          >
+            {props.mode === 'branches' ? 'convo' : 'branches'}
+          </button>
         </div>
         {idx?.scenes.map((s) => (
           <button

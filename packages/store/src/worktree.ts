@@ -9,6 +9,12 @@ export interface LoadedInputs {
   characterDocs: FrontMatterDoc[];
   locationDocs: FrontMatterDoc[];
   scriptText: string;
+  /**
+   * Absolute path `scriptText` was read from, or undefined when the project has no screenplay.
+   * Returned so a writer (the desktop branch editor) patches the same file the model was built
+   * from, instead of re-deriving "which file is the screenplay" and drifting from this rule.
+   */
+  scriptPath?: string;
 }
 
 async function listDirs(dir: string): Promise<string[]> {
@@ -43,7 +49,7 @@ export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
   const scriptPath = fountain[0] ?? markdown[0];
   const scriptText = scriptPath ? await fs.readFile(scriptPath, 'utf8') : '';
 
-  return { characterDocs, locationDocs, scriptText };
+  return { characterDocs, locationDocs, scriptText, scriptPath };
 }
 
 /** Persist the Mermaid story graph to `work/story.graph.mmd` (report §6). */

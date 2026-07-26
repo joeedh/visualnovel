@@ -10,6 +10,7 @@ import type {
   PipelineStatus,
   Playable,
   SessionValue,
+  StoryGraph,
   Task,
   WorkspaceIndex,
 } from '../src/shared/ipc';
@@ -113,6 +114,60 @@ const MOCK_PLAYABLE: Playable = {
   },
 };
 
+/** The same story as a branch graph, so the editor has something to draw in the preview. */
+const MOCK_GRAPH: StoryGraph = {
+  start: 'rooftop_intro',
+  scenes: [
+    {
+      id: 'rooftop_intro',
+      location: 'rooftop',
+      synopsis: 'Aiko finds Haruki already on the roof.',
+      characters: ['aiko', 'haruki'],
+      lines: 4,
+      reachable: true,
+    },
+    {
+      id: 'aiko_confession',
+      location: 'rooftop',
+      synopsis: 'She stays, and says the quiet part.',
+      characters: ['aiko'],
+      lines: 3,
+      reachable: true,
+    },
+    {
+      id: 'hallway',
+      location: 'hallway',
+      synopsis: 'A scene nothing points at yet.',
+      characters: [],
+      lines: 1,
+      reachable: false,
+    },
+  ],
+  edges: [
+    {
+      id: 'rooftop_intro#choice:0',
+      from: 'rooftop_intro',
+      to: 'aiko_confession',
+      kind: 'choice',
+      label: 'Step up beside him',
+      index: 0,
+      dangling: false,
+    },
+    {
+      id: 'rooftop_intro#choice:1',
+      from: 'rooftop_intro',
+      to: 'rooftop_intro',
+      kind: 'choice',
+      label: 'Head back inside',
+      index: 1,
+      dangling: false,
+    },
+  ],
+  diagnostics: [
+    { severity: 'warning', code: 'unreachable_scene', message: 'unreachable', where: 'hallway' },
+  ],
+};
+
 /**
  * The browser preview has no main process to persist to, so the session store's role is
  * played by `localStorage` — enough that the resizable panels behave identically there.
@@ -148,6 +203,8 @@ const fallback: DesktopApi = {
         return Promise.resolve({ ok: true, message: '(preview) approved' });
       case 'story:play':
         return Promise.resolve(MOCK_PLAYABLE);
+      case 'story:graph':
+        return Promise.resolve(MOCK_GRAPH);
       // The catalog is a projection of the live registry, which a browser preview has no
       // access to; an empty one keeps the palette rendering rather than throwing.
       case 'command:catalog':

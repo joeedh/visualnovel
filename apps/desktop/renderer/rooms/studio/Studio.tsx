@@ -1,13 +1,20 @@
 import { ResizeHandle, usePanelWidth } from '../../ui/Resizable';
 import { Convo } from './Convo';
 import { Rail } from './Rail';
+import { BranchEditor } from './branch/BranchEditor';
 import type { Agent } from '../../app/useAgent';
-import type { Room, WorkspaceIndex } from '../../../src/shared/ipc';
+import type { Room, StudioMode, WorkspaceIndex } from '../../../src/shared/ipc';
 
-/** STUDIO: the authored side — a workspace rail beside the vnauthor conversation. */
+/**
+ * STUDIO: the authored side — a workspace rail beside either the vnauthor conversation or the
+ * branch editor. Both are the *same* column, so wiring two scenes and then asking the agent to
+ * write what goes between them is one continuous gesture rather than a trip to another room.
+ */
 export function Studio(props: {
   index: WorkspaceIndex | null;
   agent: Agent;
+  mode: StudioMode;
+  setMode: (mode: StudioMode) => void;
   openPalette: () => void;
   setRoom: (r: Room) => void;
 }): JSX.Element {
@@ -30,9 +37,19 @@ export function Studio(props: {
 
   return (
     <div className="studio" style={rail.trackStyle}>
-      <Rail index={props.index} seed={seed} setRoom={props.setRoom} />
+      <Rail
+        index={props.index}
+        seed={seed}
+        setRoom={props.setRoom}
+        mode={props.mode}
+        setMode={props.setMode}
+      />
       <ResizeHandle {...rail.handleProps} />
-      <Convo agent={props.agent} openPalette={props.openPalette} />
+      <Convo
+        agent={props.agent}
+        openPalette={props.openPalette}
+        {...(props.mode === 'branches' ? { surface: <BranchEditor seed={seed} /> } : {})}
+      />
     </div>
   );
 }

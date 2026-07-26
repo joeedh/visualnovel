@@ -6,7 +6,7 @@ import { useAgent } from './useAgent';
 import { Floor } from '../rooms/floor/Floor';
 import { Runner } from '../rooms/play/Runner';
 import { Studio } from '../rooms/studio/Studio';
-import type { PipelineStatus, Room, WorkspaceIndex } from '../../src/shared/ipc';
+import type { PipelineStatus, Room, StudioMode, WorkspaceIndex } from '../../src/shared/ipc';
 
 /**
  * The shell, and only the shell: which room is up, the palette, and the workspace-level
@@ -15,6 +15,7 @@ import type { PipelineStatus, Room, WorkspaceIndex } from '../../src/shared/ipc'
  */
 export function App(): JSX.Element {
   const [room, setRoom] = useState<Room>('studio');
+  const [studioMode, setStudioMode] = useState<StudioMode>('convo');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [index, setIndex] = useState<WorkspaceIndex | null>(null);
   const [status, setStatus] = useState<PipelineStatus | null>(null);
@@ -36,7 +37,8 @@ export function App(): JSX.Element {
   useEffect(() => {
     return api.on('command:ui', (effect) => {
       if (effect.type === 'room') setRoom(effect.name);
-      else setPaletteOpen(effect.open);
+      else if (effect.type === 'palette') setPaletteOpen(effect.open);
+      else if (effect.room === 'studio') setStudioMode(effect.mode);
     });
   }, []);
 
@@ -82,6 +84,8 @@ export function App(): JSX.Element {
         <Studio
           index={index}
           agent={agent}
+          mode={studioMode}
+          setMode={setStudioMode}
           openPalette={() => setPaletteOpen(true)}
           setRoom={setRoom}
         />

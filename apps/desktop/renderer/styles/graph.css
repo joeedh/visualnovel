@@ -1,0 +1,79 @@
+/**
+ * The shared graph canvas — used by the branch editor and, later, the task DAG view. Only the
+ * chrome lives here; what a node *looks* like is the room's business, so `.graph-node` is a
+ * positioned box and nothing more.
+ */
+
+.graph-canvas {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  background: var(--ink-sunken);
+  /* A faint plotting grid, so panning an empty area still reads as movement. */
+  background-image: radial-gradient(circle at 1px 1px, var(--ink-line-soft) 1px, transparent 0);
+  background-size: 32px 32px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.graph-canvas:active {
+  cursor: grabbing;
+}
+
+.graph-wires,
+.graph-layer {
+  position: absolute;
+  inset: 0;
+}
+.graph-wires {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Every pointer question is answered by `pick`, not by the DOM; an element that needs a real
+   target (an inline label editor) opts itself back in. */
+.graph-layer {
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.graph-wire {
+  fill: none;
+  stroke: var(--mist-dim);
+  stroke-width: 1.5;
+}
+.graph-wire.kind-next {
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+.graph-wire.kind-choice {
+  stroke: var(--sodium);
+  stroke-width: 2;
+  opacity: 0.75;
+}
+.graph-wire.back {
+  opacity: 0.55;
+}
+.graph-wires marker path {
+  fill: var(--mist-dim);
+}
+
+.graph-node {
+  position: absolute;
+}
+
+.graph-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 1px 6px;
+  max-width: 220px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--prose);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: balance;
+}

@@ -11,7 +11,7 @@ the individual plans hang off. Survey that motivated them:
 | — | [test-fixtures](test-fixtures.md) | groundwork | **done** | — |
 | 0 | [desktop-renderer-restructure](desktop-renderer-restructure.md) | refactor | **done** | — |
 | 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | **done** | 0, testkit |
-| 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | not started | 0, testkit |
+| 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | **done** | 0, testkit |
 | 3 | [task-dag-view](task-dag-view.md) | upgrade | not started | 0, 2 (`renderer/graph/`), testkit |
 | 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | blocked | 0, testkit, shot persistence, a real run |
 
@@ -180,12 +180,12 @@ Decided against in the survey, recorded here so it does not get re-proposed:
 
 ### 2 · Story branch editor
 
-- [ ] `applySceneBranchEdit` + re-parse assertion, multi-scene edits applied atomically
-- [ ] `renderer/graph/` primitives, deterministic, tested
-- [ ] `story.*` commands registered and CDP-driveable
-- [ ] Drag-to-splice: four semantic rules held, refusals visible during the drag
-- [ ] Edge rewire changes only marker lines in `git diff`
-- [ ] `vngen graph` and the editor agree
+- [x] `applySceneBranchEdit` + re-parse assertion, multi-scene edits applied atomically
+- [x] `renderer/graph/` primitives, deterministic, tested
+- [x] `story.*` commands registered and CDP-driveable
+- [x] Drag-to-splice: four semantic rules held, refusals visible during the drag
+- [x] Edge rewire changes only marker lines in `git diff`
+- [x] `vngen graph` and the editor agree
 
 ### 3 · Task DAG view
 
@@ -212,7 +212,7 @@ item in this file that cannot be done early.
 - [x] test-fixtures
 - [x] 0 · Restructure
 - [x] 1 · Refine-loop inspector
-- [ ] 2 · Story branch editor
+- [x] 2 · Story branch editor
 - [ ] 3 · Task DAG view
 - [ ] 4 · Shot timeline
 - [ ] Scratch file committed complete, on its own, before any consolidation edits

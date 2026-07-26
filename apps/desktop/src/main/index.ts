@@ -155,6 +155,7 @@ function registerIpc(): void {
     getSession().approveCharacter(payload.characterId, payload.hash),
   );
   handle('story:play', () => getSession().playable());
+  handle('story:graph', () => getSession().storyGraph());
 
   handle('command:catalog', () => toCatalog(registry, '@vn/desktop'));
   handle('command:exec', (request) => {
