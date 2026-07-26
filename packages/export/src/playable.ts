@@ -20,8 +20,9 @@ import type {
   ProjectModel,
   Scene,
   SceneLine,
+  Shot,
 } from '@vn/types';
-import { ProjectPaths } from '@vn/store';
+import { ProjectPaths, readShots } from '@vn/store';
 import { writeFileAtomic } from '@vn/util';
 
 /**
@@ -34,17 +35,41 @@ interface CoveringShot {
 }
 
 /**
- * The shots that bind lines → images for a scene. Prefers the scene's own decomposed shots;
- * when those are absent (the model rebuilt from disk never carries them — they live only
- * in-memory during a run), it reconstructs the *deterministic* baseline, mirroring
- * `@vn/pipeline`'s `deterministicShots` (which this package must not import): an establishing
- * shot over the scene's narration/action lines, plus one medium shot per character over that
- * character's dialogue lines. The reconstructed ids match the pipeline's `${sceneId}__<raw>`
- * scheme so images from a deterministic run resolve.
+ * Read every scene's persisted decomposition (`work/shots/<sceneId>.json`) for the exporter.
+ *
+ * A model rebuilt from disk carries no shots — they exist in memory only while the planner is
+ * running — so without this the exporter falls back to reconstructing the deterministic
+ * baseline for *every* scene. For a scene the LLM decomposed that reconstruction names shot
+ * ids no run ever produced, and each one resolves to a `show` beat with no image: the art was
+ * generated, paid for, and then never displayed.
+ *
+ * Stale `coversLines` are dropped the same way the planner drops them, so a screenplay edited
+ * under its shots exports what the planner would next persist.
  */
-function coveringShots(scene: Scene): CoveringShot[] {
-  if (scene.shots.length > 0) {
-    return scene.shots.map((s) => ({ id: s.id, coversLines: s.coversLines }));
+export async function loadSceneShots(
+  paths: ProjectPaths,
+  model: ProjectModel,
+): Promise<Map<string, Shot[]>> {
+  const byScene = new Map<string, Shot[]>();
+  for (const scene of model.scenes.values()) {
+    const loaded = await readShots(paths, scene.id, new Set(scene.lines.map((l) => l.id)));
+    if (loaded) byScene.set(scene.id, loaded.shots);
+  }
+  return byScene;
+}
+
+/**
+ * The shots that bind lines → images for a scene. Prefers the persisted decomposition, then
+ * the scene's own in-memory shots; with neither it reconstructs the *deterministic* baseline,
+ * mirroring `@vn/pipeline`'s `deterministicShots` (which this package must not import): an
+ * establishing shot over the scene's narration/action lines, plus one medium shot per
+ * character over that character's dialogue lines. The reconstructed ids match the pipeline's
+ * `${sceneId}__<raw>` scheme so images from a deterministic run resolve.
+ */
+function coveringShots(scene: Scene, persisted?: readonly Shot[]): CoveringShot[] {
+  const own = persisted?.length ? persisted : scene.shots;
+  if (own.length > 0) {
+    return own.map((s) => ({ id: s.id, coversLines: s.coversLines }));
   }
   const lineIds = (predicate: (l: SceneLine) => boolean): string[] =>
     scene.lines.filter(predicate).map((l) => l.id);
@@ -96,8 +121,8 @@ class AssetIndex {
 }
 
 /** Flatten one scene's lines into an ordered beat list. */
-function sceneBeats(scene: Scene, assets: AssetIndex): Beat[] {
-  const shots = coveringShots(scene);
+function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[]): Beat[] {
+  const shots = coveringShots(scene, persisted);
   const beats: Beat[] = [];
   let currentShotId: string | undefined;
 
@@ -117,8 +142,15 @@ function sceneBeats(scene: Scene, assets: AssetIndex): Beat[] {
   return beats;
 }
 
-/** Build the in-memory {@link Playable} from a project model + its asset store. */
-export function buildPlayable(model: ProjectModel, store: AssetStore): Playable {
+/**
+ * Build the in-memory {@link Playable} from a project model + its asset store. Pure; hand it
+ * {@link loadSceneShots}'s result whenever the model came off disk rather than out of a run.
+ */
+export function buildPlayable(
+  model: ProjectModel,
+  store: AssetStore,
+  shots?: ReadonlyMap<string, readonly Shot[]>,
+): Playable {
   const assets = new AssetIndex(store.manifest());
 
   const characters: Playable['characters'] = {};
@@ -130,7 +162,7 @@ export function buildPlayable(model: ProjectModel, store: AssetStore): Playable 
   const scenes: Record<string, PlayableScene> = {};
   for (const scene of model.scenes.values()) {
     scenes[scene.id] = {
-      beats: sceneBeats(scene, assets),
+      beats: sceneBeats(scene, assets, shots?.get(scene.id)),
       choices: scene.choices.map((c) => ({ label: c.label, goto: c.goto })),
       ...(scene.next ? { next: scene.next } : {}),
     };

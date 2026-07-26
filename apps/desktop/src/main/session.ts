@@ -51,7 +51,7 @@ import {
   type WorkspaceIndex,
 } from '@vn/authoring';
 import { runPipeline } from '@vn/scheduler';
-import { buildPlayable } from '@vn/export';
+import { buildPlayable, loadSceneShots } from '@vn/export';
 import type { Playable, ProjectModel, Providers, Scene } from '@vn/types';
 import type {
   ApproveResult,
@@ -295,13 +295,15 @@ export class WorkspaceSession {
   /** Build the playable live from the current model + asset store (no file needed). */
   async playable(): Promise<Playable> {
     const project = await loadProject(this.dir);
-    return buildPlayable(project.model, project.store);
+    const shots = await loadSceneShots(project.paths, project.model);
+    return buildPlayable(project.model, project.store, shots);
   }
 
   /** Write the playable to `vngen/build/story.play.json` — the `vngen export` equivalent. */
   async exportPlayable(): Promise<{ path: string; scenes: number }> {
     const project = await loadProject(this.dir);
-    const playable = buildPlayable(project.model, project.store);
+    const shots = await loadSceneShots(project.paths, project.model);
+    const playable = buildPlayable(project.model, project.store, shots);
     await writeFileAtomic(project.paths.storyPlay, JSON.stringify(playable, null, 2) + '\n');
     return { path: project.paths.storyPlay, scenes: Object.keys(playable.scenes).length };
   }

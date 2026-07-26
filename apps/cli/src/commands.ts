@@ -2,7 +2,7 @@ import { createInterface } from 'node:readline';
 import type { Asset, Logger } from '@vn/types';
 import { toMermaid } from '@vn/model';
 import { writeApprovedPortrait, writeStoryGraph, setCharacterApproval } from '@vn/store';
-import { buildPlayable, writePlayable } from '@vn/export';
+import { buildPlayable, loadSceneShots, writePlayable } from '@vn/export';
 import { gateStatus } from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
@@ -60,7 +60,8 @@ export async function cmdExport(args: Args): Promise<number> {
     ok('Validation (exporting anyway — a runner may hit missing scenes):');
     reportDiagnostics(project.model);
   }
-  const playable = buildPlayable(project.model, project.store);
+  const shots = await loadSceneShots(project.paths, project.model);
+  const playable = buildPlayable(project.model, project.store, shots);
   await writePlayable(project.paths, playable);
   ok(`Exported ${Object.keys(playable.scenes).length} scene(s) → ${project.paths.storyPlay}`);
   return 0;

@@ -60,8 +60,14 @@ const DECOMP_SYSTEM = [
   'You are a visual-novel storyboard artist. Decompose a scene into a short ordered list',
   'of illustrated shots. Each shot names its framing (wide|medium|close|establishing), a',
   'location variant id, and the subjects (characterId + outfit + optional pose/expression).',
-  'Cover the scene with as few shots as tell it clearly. Respond ONLY with JSON of the form',
-  '{"shots":[{"id","framing","location","subjects":[{"characterId","outfit","pose?","expression?"}],"camera?","coversLines":[]}]}.',
+  'Cover the scene with as few shots as tell it clearly.',
+  'The scene is given to you as numbered lines, each prefixed with its id in square brackets.',
+  '`coversLines` lists the ids of the lines a shot is on screen for — copy them verbatim from',
+  'the prompt. Assign EVERY line to exactly one shot, in order: a shot with no lines is never',
+  'displayed, and a line with no shot leaves the previous image on screen. Respond ONLY with',
+  'JSON of the form {"shots":[{"id","framing","location",',
+  '"subjects":[{"characterId","outfit","pose?","expression?"}],"camera?",',
+  '"coversLines":["scene:L1","scene:L2"]}]}.',
 ].join(' ');
 
 /**
@@ -76,13 +82,19 @@ export async function decomposeScene(
 ): Promise<Shot[]> {
   const location = model.locations.get(scene.location);
   const variants = location?.variants.map((v) => v.id) ?? ['day'];
+  // The identified lines, not `scene.body`: `coversLines` asks for line ids, and the flattened
+  // body has none in it. Handing over prose and expecting ids back is unanswerable.
+  const lines = scene.lines.map(
+    (l) => `[${l.id}] ${l.speaker ? `${l.kind}/${l.speaker}` : l.kind}: ${l.text}`,
+  );
   const prompt = [
     `Scene id: ${scene.id}`,
     `Location: ${scene.location} (variants: ${variants.join(', ')})`,
     `Characters present: ${scene.characters.join(', ') || 'none'}`,
     scene.synopsis ? `Synopsis: ${scene.synopsis}` : '',
     '',
-    scene.body,
+    'Lines:',
+    ...lines,
   ]
     .filter(Boolean)
     .join('\n');
@@ -96,7 +108,7 @@ export async function decomposeScene(
     if (!result.shots.length) return deterministicShots(scene, model);
     // Only accept line ids the scene actually has, so the LLM cannot invent bindings.
     const realLineIds = new Set(scene.lines.map((l) => l.id));
-    return result.shots.map((s) => ({
+    const shots: Shot[] = result.shots.map((s) => ({
       id: shotId(scene.id, s.id),
       sceneId: scene.id,
       framing: s.framing,
@@ -111,7 +123,28 @@ export async function decomposeScene(
       coversLines: s.coversLines.filter((id) => realLineIds.has(id)),
       status: 'pending' as const,
     }));
+    return withCoverage(shots, scene, model);
   } catch {
     return deterministicShots(scene, model);
   }
+}
+
+/**
+ * Guarantee the storyboard actually binds to the screenplay. Coverage is what makes a shot
+ * reachable — the exporter emits a `show` beat only where the covering shot changes — so a
+ * decomposition that binds nothing renders every one of its images and displays none of them.
+ * That is not a stylistic difference from the baseline; it is an unplayable scene, and it is
+ * what a model returns when asked for line ids it was never shown.
+ *
+ * `coversLines` is not part of a shot's task hash (`buildShotPrompt` ignores it), so repairing
+ * coverage here rehashes nothing.
+ */
+function withCoverage(shots: Shot[], scene: Scene, model: ProjectModel): Shot[] {
+  const covered = new Set(shots.flatMap((s) => s.coversLines));
+  if (!scene.lines.some((l) => covered.has(l.id))) return deterministicShots(scene, model);
+  // A scene has to open on something: with the first line uncovered there is no `show` before
+  // the first beat, so the runner starts on a blank frame no matter how good the rest is.
+  const first = scene.lines[0];
+  if (first && !covered.has(first.id) && shots[0]) shots[0].coversLines.unshift(first.id);
+  return shots;
 }

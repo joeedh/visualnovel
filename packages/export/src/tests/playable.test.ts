@@ -1,9 +1,13 @@
-import type { Asset, AssetStore, ProjectModel } from '@vn/types';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { Asset, AssetStore, ProjectModel, Shot } from '@vn/types';
 import { playableSchema } from '@vn/types';
 import { parseFountain, parseFrontMatter } from '@vn/parse';
 import { buildModel } from '@vn/model';
+import { ProjectPaths, writeShots } from '@vn/store';
 import { SCRIPTS } from '@vn/testkit';
-import { buildPlayable } from '../playable.js';
+import { buildPlayable, loadSceneShots } from '../playable.js';
 
 /** A minimal in-memory {@link AssetStore}: only `manifest()` matters to the exporter. */
 function fakeStore(assets: Asset[] = []): AssetStore {
@@ -120,5 +124,54 @@ describe('buildPlayable', () => {
     };
     const play = buildPlayable(withApproved, fakeStore());
     expect(play.characters['aiko']!.portrait).toEqual({ hash: 'approved-hash', ext: 'png' });
+  });
+});
+
+describe('persisted decompositions', () => {
+  const model = sampleModel();
+  const lines = model.scenes.get('arrival')!.lines.map((l) => l.id);
+
+  /** A decomposition the deterministic baseline would never produce — LLM-shaped ids. */
+  const llmShots = (): Shot[] => [
+    {
+      id: 'arrival__llm-1',
+      sceneId: 'arrival',
+      framing: 'wide',
+      location: 'evening',
+      subjects: [],
+      coversLines: lines,
+      status: 'accepted',
+    },
+  ];
+
+  it('uses the persisted shots instead of reconstructing the baseline', () => {
+    const store = fakeStore([
+      asset({
+        hash: 'llm1',
+        kind: 'shot_image',
+        satisfies: { sceneId: 'arrival', shotId: 'arrival__llm-1' },
+      }),
+    ]);
+    // Without the decomposition the exporter guesses `arrival__establishing`, which matches
+    // nothing in the manifest: every image the run paid for stays off screen.
+    const guessed = buildPlayable(model, store).scenes['arrival']!.beats;
+    expect(guessed.filter((b) => b.type === 'show' && b.image)).toHaveLength(0);
+
+    const play = buildPlayable(model, store, new Map([['arrival', llmShots()]]));
+    const shows = play.scenes['arrival']!.beats.filter((b) => b.type === 'show');
+    // One shot covers every line, so the image is shown once and never changes.
+    expect(shows).toHaveLength(1);
+    expect(shows[0]).toMatchObject({ image: { hash: 'llm1', ext: 'png' } });
+  });
+
+  it('reads them off disk, dropping line ids the screenplay no longer has', async () => {
+    const paths = new ProjectPaths(await mkdtemp(join(tmpdir(), 'vn-export-')));
+    const stale = llmShots();
+    stale[0]!.coversLines = [...lines, 'arrival:L99'];
+    await writeShots(paths, 'arrival', stale);
+
+    const loaded = await loadSceneShots(paths, model);
+    expect([...loaded.keys()]).toEqual(['arrival']);
+    expect(loaded.get('arrival')![0]!.coversLines).toEqual(lines);
   });
 });

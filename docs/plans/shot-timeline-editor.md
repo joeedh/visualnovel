@@ -135,11 +135,48 @@ Landed as its own commit, separate from any UI work, exactly as the risks sectio
   mistake as mixing mock image bytes into a real run's reference assets. Dry runs therefore
   read the file (so a cost preview reflects the real decomposition) but never write it.
 
+- **`@vn/export` reads the file too** _(follow-up; see [The `coversLines` bug](#the-coverslines-bug))_.
+  Wave 1 kept the reconstruction fallback "for projects that predate this" but left it as the
+  exporter's _only_ source, so a persisted decomposition never reached the playable at all.
+  `loadSceneShots(paths, model)` now reads every scene's file and `buildPlayable` takes the
+  result; the reconstruction is the last resort it was meant to be.
+
 Tests: `packages/store/src/tests/shots.test.ts` (round-trip, `shotData` omission, idempotent
 write, stale-line drop, both malformed cases) and `packages/pipeline/src/tests/shots.test.ts`,
 which drives real `makeProject` runs to prove a second run is byte-identical and re-hashes
 nothing, that a hand-written decomposition is honored while its `shotData: accepted` is
 ignored, that a stale line id is dropped without rehashing, and that a dry run writes nothing.
+
+## The `coversLines` bug
+
+Found while looking at the seeded workspace: the two scenes the LLM decomposed (`observe`,
+`ending`) had **six accepted, paid-for shot images and displayed none of them.** Two
+independent faults, either of which alone produces a blank scene.
+
+**1. The model was asked a question it could not answer.** `DECOMP_SYSTEM` showed a response
+template literally containing `"coversLines":[]` — an empty answer, modelled for it — and the
+user prompt handed over `scene.body`, which is flattened prose with no line ids in it. There
+was no way to name a line id from what it was shown, so it copied the empty array, and
+`realLineIds` filtering kept `[]`.
+
+Fixed in `packages/pipeline/src/p5.ts`: the prompt now enumerates the scene as
+`[<lineId>] <kind>/<speaker>: <text>`, the system prompt says `coversLines` holds those ids
+copied verbatim and that **every** line must be assigned to exactly one shot, and the template
+shows a populated array. `withCoverage` is the safety net — a decomposition that binds no real
+line falls back to `deterministicShots` (it is unplayable, not merely different), and an
+uncovered first line is given to the first shot so a scene cannot open on a blank frame.
+
+**2. The persisted decomposition never reached the exporter.** A model rebuilt from disk
+carries no shots, so `coveringShots` reconstructed the deterministic baseline for _every_
+scene — naming ids like `observe__establishing` that an LLM-decomposed run never produced.
+Every lookup missed and every `show` beat came out image-less. Fixed by `loadSceneShots`
+above, wired into `cmdExport` and both `WorkspaceSession` playable paths.
+
+**Repairing an affected project costs nothing.** `buildShotPrompt` ignores `coversLines`, so
+coverage can be hand-edited into an existing `work/shots/<sceneId>.json` with the shot ids
+left alone: task hashes are unchanged and the already-generated images resolve. Deleting the
+files instead would re-decompose, re-hash, and re-buy the art. `examples/mySampleRepo` was
+repaired in place this way.
 
 ## The rehash boundary (scope this carefully)
 

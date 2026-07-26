@@ -4,6 +4,7 @@ import { createMockProviders } from '@vn/providers';
 import { character, location, model, scene } from '@vn/testkit';
 import {
   costPreview,
+  decomposeScene,
   deterministicShots,
   gateStatus,
   buildPortraitPrompt,
@@ -160,6 +161,83 @@ describe('deterministicShots', () => {
     expect(shots[0]!.coversLines).toEqual(['s1:L1', 's1:L4']);
     expect(shots[1]!.coversLines).toEqual(['s1:L2']); // aiko's dialogue
     expect(shots[2]!.coversLines).toEqual(['s1:L3']); // ben's dialogue
+  });
+});
+
+describe('decomposeScene (LLM path)', () => {
+  const build = () => {
+    const s = scene('s1', ['aiko'], 'class');
+    s.lines = [
+      { id: 's1:L1', kind: 'narration', text: 'The room is quiet.' },
+      { id: 's1:L2', kind: 'dialogue', speaker: 'aiko', text: 'Hi.' },
+    ];
+    return model([character('aiko', 'approved', 'h1')], [s], [location('class')]);
+  };
+
+  /** Mock providers whose text LLM answers with one canned decomposition. */
+  const providersReturning = (shots: unknown[]) =>
+    createMockProviders({ textResponses: [JSON.stringify({ shots })] });
+
+  const SHOT = (id: string, coversLines: string[]) => ({
+    id,
+    framing: 'medium',
+    location: 'day',
+    subjects: [{ characterId: 'aiko', outfit: 'default' }],
+    coversLines,
+  });
+
+  it('shows the model each line with its id, so coversLines is answerable at all', async () => {
+    const m = build();
+    const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
+    let seen = '';
+    const inner = providers.text;
+    providers.text = {
+      complete: (p, s) => inner.complete(p, s),
+      structured: (prompt, parse, system) => {
+        seen = `${prompt}\n---\n${system}`;
+        return inner.structured(prompt, parse, system);
+      },
+    };
+
+    await decomposeScene(m.scenes.get('s1')!, m, providers);
+    expect(seen).toContain('[s1:L1] narration: The room is quiet.');
+    expect(seen).toContain('[s1:L2] dialogue/aiko: Hi.');
+    // The template must not model an empty answer — that is what the LLM copied.
+    expect(seen).not.toContain('"coversLines":[]');
+  });
+
+  it('keeps a decomposition that binds lines, dropping ids the scene does not have', async () => {
+    const m = build();
+    const shots = await decomposeScene(
+      m.scenes.get('s1')!,
+      m,
+      providersReturning([SHOT('a', ['s1:L1']), SHOT('b', ['s1:L2', 's1:L9'])]),
+    );
+    expect(shots.map((s) => s.id)).toEqual([shotId('s1', 'a'), shotId('s1', 'b')]);
+    expect(shots[1]!.coversLines).toEqual(['s1:L2']);
+  });
+
+  it('falls back to the baseline when the decomposition binds nothing', async () => {
+    const m = build();
+    // Every shot would be generated and none ever displayed — an unplayable scene, not a
+    // stylistic difference, so the baseline is strictly better than honoring it.
+    const shots = await decomposeScene(
+      m.scenes.get('s1')!,
+      m,
+      providersReturning([SHOT('a', []), SHOT('b', ['s1:L9'])]),
+    );
+    expect(shots.map((s) => s.id)).toEqual([shotId('s1', 'establishing'), shotId('s1', 'beat1')]);
+  });
+
+  it('gives the first line to the first shot, so the scene cannot open on a blank frame', async () => {
+    const m = build();
+    const shots = await decomposeScene(
+      m.scenes.get('s1')!,
+      m,
+      providersReturning([SHOT('a', []), SHOT('b', ['s1:L2'])]),
+    );
+    expect(shots[0]!.coversLines).toEqual(['s1:L1']);
+    expect(shots[1]!.coversLines).toEqual(['s1:L2']);
   });
 });
 

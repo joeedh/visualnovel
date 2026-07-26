@@ -67,6 +67,12 @@ export function mapRefLoader(map: Map<string, ImageInput> = new Map()): RefLoade
 export function createMockProviders(
   opts: {
     reviewResponses?: string[];
+    /**
+     * Scripted text-LLM replies, e.g. a canned shot decomposition. The default echoes the
+     * prompt, which no structured schema accepts — so a pipeline test gets the deterministic
+     * fallback unless it says otherwise.
+     */
+    textResponses?: string[];
     refLoader?: RefLoader;
     /** Replaces the stub image backend — e.g. a `CachedImageBackend` wrapping it. */
     imageBackend?: ImageBackend;
@@ -89,6 +95,8 @@ export function createMockProviders(
         loadRef,
       ),
     ],
-    text: new ChatTextLLM(new RecordedChatBackend('mock-text', (req) => req.prompt)),
+    text: new ChatTextLLM(
+      new RecordedChatBackend('mock-text', opts.textResponses ?? ((req) => req.prompt)),
+    ),
   };
 }

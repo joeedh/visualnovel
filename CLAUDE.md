@@ -212,6 +212,14 @@ it may import _every_ layer, and **nothing may import it** — see
   Because this changes the prompt it rehashes establishing tasks — but shots are persisted,
   so an existing project keeps its old decomposition until `vngen/work/shots/*.json` is
   deleted or edited.
+- **P5 is shown the scene as identified lines, not prose.** `coversLines` asks for line ids, so
+  `decomposeScene` enumerates the scene as `[<lineId>] <kind>/<speaker>: <text>` and requires
+  every line be assigned to exactly one shot. Handing over the flattened `scene.body` and a
+  response template containing `"coversLines":[]` made the question unanswerable, and the model
+  did the only thing it could — copied the empty array, producing shots that were generated and
+  never displayed. `withCoverage` is the backstop: a decomposition binding no real line falls
+  back to the baseline, and an uncovered first line goes to the first shot so a scene cannot
+  open on a blank frame. See [`docs/plans/shot-timeline-editor.md`](docs/plans/shot-timeline-editor.md).
 - **Provider seams.** The scheduler never imports a concrete provider — only `Task`,
   `deps`, `status`. Backends are swapped purely by changing model ids in `project.yaml`.
   Tests inject `RecordedChatBackend`/`StubImageBackend` (see `@vn/providers` `mock.ts` /
@@ -302,8 +310,11 @@ thin, ordered view over the existing `Scene`/`Shot`/`Asset` types. See
 - **Real line ids drive per-line art.** Scenes carry structured `lines` (`SceneLine`, derived
   from the screenplay at model build with stable `${sceneId}:L<n>` ids); `Shot.coversLines`
   binds shots to exact lines. The exporter walks `scene.lines`, emitting a `show` beat
-  whenever the covering shot changes, then a `say`/`narrate`. When a run's shots aren't
-  in-memory, it reconstructs the deterministic shot grouping so `show` boundaries still land.
+  whenever the covering shot changes, then a `say`/`narrate`. A model rebuilt from disk carries
+  no shots, so callers pass `loadSceneShots(paths, model)` — the persisted decompositions —
+  into `buildPlayable`; only with no file at all does it reconstruct the deterministic shot
+  grouping. Reconstructing over an LLM decomposition names shot ids no run produced, and every
+  `show` then comes out image-less.
 - **Asset refs are `{hash, ext}`**, resolved by the runner (never inlined). A missing asset
   is **omitted, not an error** — a partially- or un-generated project still plays (placeholder
   background/portrait). `@vn/export` is a boundaries-constrained leaf: like `@vn/authoring` it

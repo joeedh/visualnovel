@@ -30,11 +30,11 @@ describe('checkCorpus', () => {
     for (const [key, tag] of [
       [orphanKey, 'orphan'],
       [goneKey, 'gone'],
-    ]) {
+    ] as const) {
       await cache.put(
         key,
-        { bytes: ART(tag!), ext: 'png', modelId: 'test-image-1' },
-        { op: 'generate', prompt: tag!, refs: [], params: PARAMS },
+        { bytes: ART(tag), ext: 'png', modelId: 'test-image-1' },
+        { op: 'generate', prompt: tag, refs: [], params: PARAMS },
       );
     }
     await fs.rm(join(cacheDir, `${goneKey}.png`));
