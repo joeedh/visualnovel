@@ -13,13 +13,14 @@ the individual plans hang off. Survey that motivated them:
 | 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | **done** | 0, testkit |
 | 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | **done** | 0, testkit |
 | 3 | [task-dag-view](task-dag-view.md) | upgrade | **done** | 0, 2 (`renderer/graph/`), testkit |
-| 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | Wave 1 **done**; editor blocked | 0, testkit, ~~shot persistence~~, a real run |
+| 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | Wave 1 **done**; editor startable | 0, testkit, ~~shot persistence~~, ~~a real run~~ |
 
 Recommended order: **test-fixtures → 0 → 1 → 2 → 3 → 4.** test-fixtures and 0 are both
 "make the ground testable" work and are independent of each other, so they can run in
 parallel. 1 is small and independent, so it is a good first exercise of the restructured
 layout. 2 creates `renderer/graph/`, which 3 consumes. 4 is last because it needs generated
-art to be testable at all.
+art to be testable at all — which mock runs now supply as marked placeholder PNGs, leaving
+only the final acceptance pass dependent on a real run.
 
 ## Blockers found while planning
 

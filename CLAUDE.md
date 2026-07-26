@@ -216,8 +216,9 @@ vngen cost [dir]                    dry-run cost preview
 (like `cost`) but calls no model and writes no assets — no API keys needed. Without `--mock`,
 `run` constructs real Gemini/Claude clients and requires a Gemini key (env var named in
 `project.yaml`, or a secret file under `<dir>/keys/` — or a shared `keys/` at the enclosing
-repo root, consulted after the project's own). Mock runs never produce image bytes, so they
-can't be mixed into a real run's reference assets.
+repo root, consulted after the project's own). `vngen run --mock` writes no assets at all;
+mock providers used directly (tests, `@vn/testkit`) emit **marked placeholder PNGs** that a
+real backend refuses as references — see [Test fixtures](#test-fixtures-vntestkit).
 
 ### Project layout on disk
 
@@ -531,8 +532,15 @@ try {
   tree with **no randomness** (task identity is `sha256(kind, inputs)`; a randomized script
   would change the task set every run). Scenes are not nodes: a fully-run project settles at
   `L + 4C + 2N` tasks, and reaching that total needs a real `run()`, not a `dryRun`.
-- **Mock runs produce fake image bytes.** Fine for structure, coverage math and round-trips;
-  never mix them into a real run's reference assets.
+- **Mock runs produce placeholder art, and it is marked as such.** `StubImageBackend` emits a
+  real 64×36 PNG (`packages/providers/src/placeholder.ts`) — colour and stripe derived from the
+  same seed, so a mock project is _viewable_ in the desktop app instead of a strip of broken
+  thumbnails, and distinct shots look distinct. The bytes are hand-encoded with stored deflate
+  blocks rather than `zlib`, because they are content-addressed and zlib's output is only
+  stable per library version. Every placeholder carries a `tEXt` chunk keyed
+  `vn-mock-placeholder`; `imagePart` in the Gemini backend rejects any reference carrying it.
+  That marker _is_ the "never mix mock assets into a real run" guarantee now — a placeholder
+  decodes fine, so magic-byte sniffing can no longer tell it from generated art.
 - **In-memory factories** (`character`, `location`, `scene`, `model`) are also exported, for
   unit tests of the pure planners where building on disk would just be noise.
 

@@ -9,6 +9,7 @@ import type {
   ImageInput,
   ToolSchema,
 } from '../backend.js';
+import { isPlaceholderImage } from '../placeholder.js';
 
 const MIME: Record<string, string> = {
   png: 'image/png',
@@ -54,9 +55,16 @@ function looksLikeImage(bytes: Uint8Array): boolean {
 }
 
 function imagePart(img: ImageInput): any {
-  // Catch placeholder/mock bytes before the network round-trip — Gemini otherwise rejects
-  // them with an opaque "Unable to process input image" 400. The usual cause is a reference
-  // asset generated with `--mock` (deterministic non-image bytes) reused in a real run.
+  // A --mock asset decodes fine, so only its marker distinguishes it from generated art.
+  // Reusing one as a reference would silently condition a paid run on a coloured rectangle.
+  if (isPlaceholderImage(img.bytes)) {
+    throw new ProviderError(
+      'reference image is a --mock placeholder, not generated art. ' +
+        'Regenerate the references without --mock.',
+    );
+  }
+  // Catch other non-image bytes before the network round-trip — Gemini otherwise rejects
+  // them with an opaque "Unable to process input image" 400.
   if (!looksLikeImage(img.bytes)) {
     const head = JSON.stringify(Buffer.from(img.bytes.slice(0, 8)).toString('latin1'));
     throw new ProviderError(

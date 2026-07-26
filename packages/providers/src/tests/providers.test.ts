@@ -8,6 +8,7 @@ import {
   createGeminiImage,
   mapRefLoader,
   mergeReports,
+  placeholderPng,
   supportsEffort,
 } from '../index.js';
 
@@ -74,7 +75,13 @@ describe('BackendImageProvider — ImageProvider contract', () => {
     const a = await provider.generate('a portrait of Aiko', [], { modelId: 'mock-image' });
     const b = await provider.generate('a portrait of Aiko', [], { modelId: 'mock-image' });
     expect(a.ext).toBe('png');
-    expect(new TextDecoder().decode(a.bytes)).toBe(new TextDecoder().decode(b.bytes));
+    expect(Buffer.from(a.bytes).equals(Buffer.from(b.bytes))).toBe(true);
+  });
+
+  it('produces a decodable image, so a mock run is viewable rather than a broken thumbnail', async () => {
+    const provider = new BackendImageProvider(new StubImageBackend(), loadRef);
+    const { bytes } = await provider.generate('a portrait of Aiko', [], { modelId: 'mock-image' });
+    expect([...bytes.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 
   it('edits relative to a base image', async () => {
@@ -87,11 +94,19 @@ describe('BackendImageProvider — ImageProvider contract', () => {
 });
 
 describe('createGeminiImage — input validation', () => {
-  it('rejects non-image reference bytes before any API call (e.g. --mock placeholders)', async () => {
+  it('rejects a --mock placeholder reference before any API call', async () => {
     const image = createGeminiImage('fake-key', 'gemini-2.5-flash-image');
-    const mockRef = { bytes: new TextEncoder().encode('IMG:deadbeef'), ext: 'png' };
+    const mockRef = { bytes: placeholderPng('deadbeefcafe0123'), ext: 'png' };
     await expect(
       image.generate('a shot', [mockRef], { modelId: 'gemini-2.5-flash-image' }),
+    ).rejects.toThrow(/--mock placeholder/);
+  });
+
+  it('rejects reference bytes that are not an image at all', async () => {
+    const image = createGeminiImage('fake-key', 'gemini-2.5-flash-image');
+    const junkRef = { bytes: new TextEncoder().encode('IMG:deadbeef'), ext: 'png' };
+    await expect(
+      image.generate('a shot', [junkRef], { modelId: 'gemini-2.5-flash-image' }),
     ).rejects.toThrow(/not a valid PNG\/JPEG\/WebP/);
   });
 });

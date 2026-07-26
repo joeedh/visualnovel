@@ -1,9 +1,10 @@
 # Plan: shot timeline editor
 
-**Status:** Wave 1 (shot persistence) **shipped**. The editor itself is **not ready to start** —
-it still needs a project that has been through a real non-mock run.
+**Status:** Wave 1 (shot persistence) **shipped**, and mock runs now emit viewable placeholder
+art, so the editor is **startable**; a real non-mock run of `examples/sample` is still the
+acceptance check.
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), plus shot
-persistence (Wave 1 here), plus a project that has been through a real non-mock run.
+persistence (Wave 1 here).
 **Size:** large. [`../research/graphThingsReport.md`](../research/graphThingsReport.md) §7.
 
 ## Why
@@ -222,14 +223,18 @@ discrete, so there is no coalescing problem as long as the command fires on drop
   `deterministicShots` output, and `resolveDrag`'s no-double-coverage invariant.
 - Round-trip: edit coverage → `vngen export` → assert `show` beats moved to the expected
   positions in `story.play.json`, and that the PLAY room reflects it.
-- Live: requires a real non-mock run of `examples/sample`. In mock mode every bracket is
-  empty and the editor is not meaningfully testable — plan for that rather than discovering
-  it.
+- Live: mock runs now emit real, seed-derived placeholder PNGs (`vn-mock-placeholder`, see
+  `packages/providers/src/placeholder.ts`), so brackets, thumbnails and drag geometry _are_
+  reviewable in mock mode — distinct shots are visibly distinct. What a placeholder still
+  cannot tell you is whether coverage boundaries land where the **art** implies, so a real
+  non-mock run of `examples/sample` remains the acceptance check, not the development loop.
 
 ## Risks
 
-- **Building this against mock data produces a strip of gray boxes** and a false sense that
-  it works. Get one real run first; this is the reason this plan is ordered last.
+- **Building this against mock data used to produce a strip of broken thumbnails** — that is
+  why this plan is ordered last. Mitigated after Wave 1: placeholders are real PNGs, so layout
+  is honest. The residual risk is narrower and still real — placeholder art carries no
+  composition, so it cannot expose a coverage boundary that is off by a line.
 - **Non-contiguous coverage** is the default output of the deterministic decomposer, not an
   edge case. A range-based UI will look correct on a one-character scene and fall apart on a
   two-character one.

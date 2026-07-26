@@ -4,6 +4,7 @@ import type { ChatBackend, ChatRequest, ImageBackend, ImageInput, RefLoader } fr
 import { ChatTextLLM } from './text.js';
 import { ChatVisionReviewer } from './review.js';
 import { BackendImageProvider } from './image.js';
+import { placeholderPng } from './placeholder.js';
 
 /**
  * A scripted chat backend for tests and recorded fixtures. Each call returns the next
@@ -25,14 +26,18 @@ export class RecordedChatBackend implements ChatBackend {
   }
 }
 
-/** A deterministic image backend: bytes derive from the prompt so outputs are stable. */
+/**
+ * A deterministic image backend: bytes derive from the prompt so outputs are stable. The bytes
+ * are a real (marked) placeholder PNG, so a mock run is viewable in the desktop app — see
+ * `placeholder.ts` for why that does not weaken the mock-assets-in-a-real-run guard.
+ */
 export class StubImageBackend implements ImageBackend {
   constructor(readonly modelId = 'mock-image') {}
 
   private make(prompt: string, refs: ImageInput[]): ImageResult {
     const seedText = prompt + refs.map((r) => sha256(r.bytes)).join(',');
     return {
-      bytes: new TextEncoder().encode(`IMG:${sha256(seedText).slice(0, 16)}`),
+      bytes: placeholderPng(sha256(seedText).slice(0, 16)),
       ext: 'png',
       modelId: this.modelId,
     };

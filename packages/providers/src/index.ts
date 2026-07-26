@@ -5,5 +5,6 @@ export * from './review.js';
 export * from './image.js';
 export * from './factory.js';
 export * from './mock.js';
+export * from './placeholder.js';
 export { createAnthropicChat, supportsEffort } from './backends/anthropic.js';
 export { createGeminiChat, createGeminiImage } from './backends/gemini.js';
