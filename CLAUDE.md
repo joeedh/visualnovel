@@ -596,7 +596,20 @@ try {
   model id, because the recording is the authority on its own provenance; and `put` refuses
   placeholder bytes, so a recording run that fell back to mocks can't bake them in. Recording
   is not reachable from `makeProject` — it lives on `CachedImageBackend({ record: true })`,
-  which only the (real-provider, costed) refresh script uses.
+  which only the refresh script uses.
+- **The refresh script records image calls only.**
+  `node scripts/record-fixture-assets.mjs [--fixture linear] [--check]` — a thin driver over
+  `packages/testkit/src/record.ts`, which is in the package (not the script) so it is
+  typechecked and inside the boundaries graph. Recording runs the fixture with
+  `createMockProviders({ imageBackend: cached })`: **mock text and vision, real image model**,
+  because P5 decomposition is an LLM step and a recording made against a real text model would
+  carry shot descriptions no replaying fixture ever asks for again — the corpus would be dead
+  bytes. Mock text pins the run to the deterministic baseline, which is what a replay produces;
+  the price is that a recorded P7 loop is one attempt deep. `--check` is free and offline and
+  **reports, never gates** — a suite that failed on a stale entry would put a paid re-record in
+  the way of an ordinary prompt change. It derives reused/missed/orphaned from
+  `CachedImageBackend.log`, and marks the orphan list suspect whenever anything missed, since
+  past the first miss the chain constraint re-keys every later request.
 - **In-memory factories** (`character`, `location`, `scene`, `model`) are also exported, for
   unit tests of the pure planners where building on disk would just be noise.
 

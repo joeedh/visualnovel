@@ -236,15 +236,36 @@ providers.
 
 ### Refreshing
 
-`scripts/record-fixture-assets.mjs <fixture>` — builds the fixture, runs it against **real**
-providers with `record: true`, writes new entries, and prints an added/reused/orphaned
-summary. Needs a Gemini key; it is a deliberate, human-initiated, costed action.
+`node scripts/record-fixture-assets.mjs [--fixture linear] [--check]`. The logic is
+`packages/testkit/src/record.ts` (`recordCorpus`, `checkCorpus`, `formatReport`); the `.mjs`
+is a thin driver that bundles it the way `gen-command-catalog.mjs` does, since testkit is
+source-only TypeScript. Keeping it in the package means it is typechecked and inside the
+boundaries graph rather than being an unlinted script.
+
+**Only the image backend is real.** This was not obvious up front and it is the load-bearing
+decision: P5 shot decomposition is an LLM step, so a recording made against a real *text* model
+carries shot descriptions no replaying fixture ever asks for again — every image prompt
+downstream of it would miss and the corpus would be dead bytes on arrival. So the recorder is
+`createMockProviders({ imageBackend: cached })`: mock text and vision pin the run to the
+deterministic baseline decomposition, which is exactly what a replay produces. The price is
+that a recorded P7 loop is one attempt deep. Replayability and LLM nondeterminism cannot both
+be had, and the cache is for real *art*.
+
+That also meant `createProviders` needed no new seam — `createMockProviders` already accepts an
+`imageBackend`. The only new surface is `RunOptions.providers` on `TestProject`, whose doc
+comment says outright that no test may pass it.
 
 **Staleness is reported, never gated.** A test that failed on a stale cache would block
 ordinary work behind a paid re-record — a prompt change is exactly when you least want that.
-So: one test asserts `index.json` is well-formed and every entry has its file; a separate
-`--check` mode reports entries no fixture asks for and requests no entry covers. Report, not
-gate.
+`--check` is free and offline: it replays the fixture with a placeholder backend behind the
+cache and reports reused / missed / orphaned / indexed-but-missing, derived from
+`CachedImageBackend.log` (the only place that knows which keys a fixture actually *asks* for;
+the cache knows only what it holds). When anything missed, the report says so and marks the
+orphan list as suspect — past the first miss the chain constraint re-keys every request, so an
+"orphan" there describes the divergence, not a genuinely unused entry.
+
+Measured, not estimated: `linear` issues **9 image requests** end to end (4 in wave 1, 5 after
+the gate), matching the `L + 4C + 2N` estimate above.
 
 ## Waves
 
@@ -258,7 +279,10 @@ gate.
    `createMockProviders({ imageBackend })` so the stub can be wrapped;
    `makeProject({ assets, assetCacheDir })` + `FIXTURE_ASSET_DIR`. Tested against temp cache
    dirs only — no committed bytes yet.
-3. **Record.** Run the chosen fixture for real, commit the corpus, wire the `--check` report.
+3. **Record.** Script + `--check` report shipped (`packages/testkit/src/record.ts`,
+   `scripts/record-fixture-assets.mjs`), verified against an empty corpus. **Running it for
+   real is outstanding** — it needs a Gemini key and a decision to spend, so the corpus is not
+   committed yet and every fixture still replays to placeholders.
 
 Waves 1 and 2 are independent. Wave 3 is the only one that costs money.
 
@@ -272,5 +296,6 @@ Waves 1 and 2 are independent. Wave 3 is the only one that costs money.
       prompt misses
 - [x] A holed cache degrades to placeholders downstream rather than mixing
 - [x] `makeProject` default behaviour unchanged; opt-in only
-- [ ] Refresh script reports added/reused/orphaned; staleness never fails a suite
+- [x] Refresh script reports added/reused/orphaned; staleness never fails a suite
+- [ ] The corpus is actually recorded and committed (needs a Gemini key — costs money)
 - [ ] Committed corpus size recorded here, with the per-refresh cost stated

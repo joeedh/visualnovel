@@ -1,0 +1,198 @@
+/**
+ * Record and audit the fixture asset corpus. Driven by `scripts/record-fixture-assets.mjs`;
+ * it lives here rather than in the script so it is typechecked and inside the layering graph.
+ *
+ * **Only the image backend is real.** Text and vision stay mocked, and that is the whole
+ * design: P5 shot decomposition is an LLM step, so a recording made against a real text model
+ * would carry shot descriptions no replaying fixture ever asks for again — every image prompt
+ * downstream would miss, and the corpus would be dead bytes. Mocking text pins the run to the
+ * deterministic baseline decomposition, which is exactly what a replay produces. The cost is
+ * that a recorded P7 loop is one attempt deep; the cache exists to hold real *art*, and
+ * replayability and LLM nondeterminism cannot both be had.
+ *
+ * Plan: `docs/plans/sample-workspace-and-asset-cache.md`.
+ */
+import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
+import type { AssetCacheEntry } from '@vn/types';
+import {
+  AssetCache,
+  CachedImageBackend,
+  StubImageBackend,
+  createGeminiImage,
+  createMockProviders,
+  type ImageBackend,
+  type ServedRequest,
+} from '@vn/providers';
+import { FIXTURE_ASSET_DIR } from './assets.js';
+import { makeProject, type TestProject } from './project.js';
+import { SCRIPTS } from './scripts.js';
+
+export type FixtureName = keyof typeof SCRIPTS;
+
+export interface CorpusOptions {
+  /** Which `SCRIPTS` entry to build. Default `linear` — the smallest runnable fixture. */
+  fixture?: FixtureName;
+  /** Override the corpus directory. Default `packages/testkit/assets`. */
+  cacheDir?: string;
+  log?: (line: string) => void;
+}
+
+export interface CorpusReport {
+  fixture: FixtureName;
+  /** Requests the cache answered. */
+  reused: number;
+  /** Requests that fell through — written back only on a recording run. */
+  missed: number;
+  /** Newly written entries. Always 0 for `checkCorpus`. */
+  added: number;
+  /** Indexed entries the run never asked for. */
+  orphaned: AssetCacheEntry[];
+  /** Indexed entries whose bytes are gone. */
+  missingFiles: AssetCacheEntry[];
+  /** Entries the corpus holds after the run. */
+  entries: number;
+  /** Total recorded size, in bytes. */
+  totalBytes: number;
+}
+
+const noop = () => undefined;
+
+/**
+ * Run a fixture to completion — through the gate, so the second wave's shots render too.
+ * The image backend is whatever the caller hands in, so one driver serves both record and
+ * check; `run` is the real scheduler either way.
+ */
+async function runFixture(
+  fixture: FixtureName,
+  images: ImageBackend,
+  log: (line: string) => void,
+): Promise<TestProject> {
+  const p = await makeProject({ script: SCRIPTS[fixture] });
+  const first = await p.run({ providers: providersFor(p, images) });
+  log(`  wave 1: ${first.ran.length} task(s) done`);
+  if (first.blockedOnGate) {
+    const approved = await p.approveAll();
+    log(`  gate: approved ${approved.length} character(s)`);
+    const second = await p.run({ providers: providersFor(p, images) });
+    log(`  wave 2: ${second.ran.length} task(s) done`);
+  }
+  return p;
+}
+
+/** Mock everything except the image backend — see the file header for why. */
+function providersFor(p: TestProject, images: ImageBackend) {
+  return createMockProviders({
+    refLoader: async (ref) => {
+      const { store } = await p.current();
+      return { bytes: await store.read(ref), ext: ref.ext };
+    },
+    imageBackend: images,
+  });
+}
+
+function summarize(
+  fixture: FixtureName,
+  cache: AssetCache,
+  log: readonly ServedRequest[],
+): CorpusReport {
+  const asked = new Set(log.map((r) => r.key));
+  const entries = cache.entries();
+  return {
+    fixture,
+    reused: log.filter((r) => r.hit).length,
+    missed: log.filter((r) => !r.hit).length,
+    added: log.filter((r) => r.recorded).length,
+    orphaned: entries.filter((e) => !asked.has(e.key)),
+    missingFiles: [],
+    entries: entries.length,
+    totalBytes: entries.reduce((n, e) => n + e.bytes, 0),
+  };
+}
+
+/**
+ * Record a fixture against the **real** image model. Costs money, needs a Gemini key, and is
+ * meant to be run by a human who decided to spend it — never by a suite.
+ */
+export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusReport> {
+  const fixture = opts.fixture ?? 'linear';
+  const log = opts.log ?? noop;
+  const cache = await AssetCache.open(opts.cacheDir ?? FIXTURE_ASSET_DIR);
+
+  // Built once against a throwaway project purely to resolve the model id and key the same way
+  // the CLI does; the project the run uses is created inside `runFixture`.
+  const probe = await makeProject({ script: SCRIPTS[fixture] });
+  let backend: CachedImageBackend;
+  try {
+    const config = await loadConfig(probe.dir);
+    const keys = await resolveKeys(config, {
+      secretsDirs: await secretDirsFor(process.cwd()),
+      require: ['gemini'],
+    });
+    backend = new CachedImageBackend(cache, createGeminiImage(keys.gemini, config.models.image), {
+      record: true,
+      fixture,
+    });
+    log(`recording "${fixture}" against ${config.models.image}`);
+  } finally {
+    await probe.cleanup();
+  }
+
+  const p = await runFixture(fixture, backend, log);
+  await p.cleanup();
+  return summarize(fixture, cache, backend.log);
+}
+
+/**
+ * Audit the corpus without spending anything: replay the fixture against the cache with a
+ * placeholder backend behind it, then compare what was asked for against what is held.
+ *
+ * **Reports, never gates.** A stale entry costs a fixture its real art and nothing else — a
+ * suite that failed here would put a paid re-record in the way of an ordinary prompt change,
+ * which is exactly when you least want it.
+ */
+export async function checkCorpus(opts: CorpusOptions = {}): Promise<CorpusReport> {
+  const fixture = opts.fixture ?? 'linear';
+  const log = opts.log ?? noop;
+  const cache = await AssetCache.open(opts.cacheDir ?? FIXTURE_ASSET_DIR);
+  const backend = new CachedImageBackend(cache, new StubImageBackend());
+
+  const p = await runFixture(fixture, backend, log);
+  await p.cleanup();
+
+  const report = summarize(fixture, cache, backend.log);
+  for (const entry of cache.entries()) {
+    if (!(await cache.get(entry.key))) report.missingFiles.push(entry);
+  }
+  return report;
+}
+
+/** A human-readable report. Returned rather than printed, so the driver owns the stream. */
+export function formatReport(report: CorpusReport): string {
+  const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+  const lines = [
+    `fixture   ${report.fixture}`,
+    `reused    ${report.reused}`,
+    `missed    ${report.missed}`,
+    `added     ${report.added}`,
+    `corpus    ${report.entries} entr${report.entries === 1 ? 'y' : 'ies'}, ${mb(report.totalBytes)}`,
+  ];
+  if (report.missingFiles.length) {
+    lines.push(`\nindexed but missing on disk (${report.missingFiles.length}):`);
+    for (const e of report.missingFiles)
+      lines.push(`  ${e.key}.${e.ext}  ${e.prompt.slice(0, 60)}`);
+  }
+  if (report.orphaned.length) {
+    lines.push(`\nnothing asked for (${report.orphaned.length}):`);
+    for (const e of report.orphaned) lines.push(`  ${e.key}.${e.ext}  ${e.prompt.slice(0, 60)}`);
+  }
+  if (report.missed > 0) {
+    // A ref's bytes are in the next request's key, so the first miss re-keys everything after
+    // it. Past that point "orphaned" describes the divergence, not a genuinely unused entry.
+    lines.push(
+      `\nnote: ${report.missed} miss(es) — a ref's bytes are part of the next request's key, so`,
+      `everything downstream of the first miss asks a different question than a full corpus`,
+      `would. Treat the orphan list as suspect until the corpus is complete.`,
+    );
+  }
+  return lines.join('\n');
+}

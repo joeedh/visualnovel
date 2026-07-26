@@ -149,6 +149,21 @@ export interface CachedImageOptions {
 }
 
 /**
+ * One request as the backend saw it, in call order. This is the only place that knows which
+ * keys a fixture actually asks for — the cache knows what it *holds* — so both halves of the
+ * refresh report (reused vs. added, and which entries nothing asked for) derive from it.
+ */
+export interface ServedRequest {
+  key: string;
+  op: ImageOp;
+  prompt: string;
+  /** The cache answered it. */
+  hit: boolean;
+  /** The miss was written back. Always false without `record`. */
+  recorded: boolean;
+}
+
+/**
  * An `ImageBackend` that serves recorded bytes when it has them and delegates otherwise, so
  * nothing above the seam changes.
  *
@@ -158,6 +173,9 @@ export interface CachedImageOptions {
  * is quietly presented as generated art.
  */
 export class CachedImageBackend implements ImageBackend {
+  /** Every request this backend served, in call order. */
+  readonly log: ServedRequest[] = [];
+
   constructor(
     private readonly cache: AssetCache,
     private readonly inner: ImageBackend,
@@ -196,11 +214,15 @@ export class CachedImageBackend implements ImageBackend {
     const hit = await this.cache.get(key);
     // The recorded `modelId` is what actually made the bytes; `params.modelId` is in the key,
     // so a hit already agrees with what was asked for.
-    if (hit) return hit;
+    if (hit) {
+      this.log.push({ key, op, prompt, hit: true, recorded: false });
+      return hit;
+    }
     const result = await call();
     if (this.opts.record) {
       await this.cache.put(key, result, { op, prompt, refs, params, fixture: this.opts.fixture });
     }
+    this.log.push({ key, op, prompt, hit: false, recorded: !!this.opts.record });
     return result;
   }
 }

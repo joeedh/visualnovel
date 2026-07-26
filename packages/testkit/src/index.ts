@@ -7,6 +7,7 @@
  * Test files are exempt from that rule, which is the only place it belongs.
  */
 export * from './assets.js';
+export * from './record.js';
 export * from './scripts.js';
 export * from './inputs.js';
 export * from './project.js';

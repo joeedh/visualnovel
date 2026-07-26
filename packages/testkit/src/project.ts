@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ProjectModel } from '@vn/types';
+import type { ProjectModel, Providers } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
 import type { ProjectConfig } from '@vn/config';
 import { loadConfig } from '@vn/config';
@@ -44,11 +44,17 @@ export interface ProjectState {
   graph: TaskGraph;
 }
 
-/** How a run should behave. Mock providers always; `dryRun` plans and previews only. */
+/** How a run should behave. Mock providers unless told otherwise; `dryRun` plans and previews only. */
 export interface RunOptions {
   dryRun?: boolean;
   /** Scripted reviewer verdicts, e.g. a blocking defect to drive the P7 refine loop. */
   reviewResponses?: string[];
+  /**
+   * Replace the mock provider bundle outright. The escape hatch exists for exactly one
+   * caller — `scripts/record-fixture-assets.mjs`, which needs real providers to record
+   * against. **No test should pass this**: a suite that reaches a network is not a suite.
+   */
+  providers?: Providers;
 }
 
 export interface MakeProjectOptions {
@@ -167,14 +173,16 @@ export class TestProject {
     return this.state ?? this.reload();
   }
 
-  /** Reload, then run the real scheduler with mock providers. */
+  /** Reload, then run the real scheduler — with mock providers unless `opts.providers` says otherwise. */
   async run(opts: RunOptions = {}): Promise<RunSummary> {
     const { config, model, store, graph } = await this.reload();
-    const providers = createMockProviders({
-      reviewResponses: opts.reviewResponses,
-      refLoader: async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
-      imageBackend: await this.images(),
-    });
+    const providers =
+      opts.providers ??
+      createMockProviders({
+        reviewResponses: opts.reviewResponses,
+        refLoader: async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
+        imageBackend: await this.images(),
+      });
     return runPipeline({
       model,
       graph,
