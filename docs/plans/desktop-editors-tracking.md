@@ -110,10 +110,13 @@ an auto-laid-out canvas, and a content-addressed task graph where a wrong hash s
 silently-repeated work rather than an error. What is learned getting each one working is
 worth more than the code, and it is exactly what gets forgotten by the next plan.
 
-So, in addition to the two steps in CLAUDE.md's [Finishing a plan](../../CLAUDE.md#finishing-a-plan):
+**Done** — every plan appended its section, and the accumulated file was consolidated into
+[`../debugGuide.md`](../debugGuide.md) and deleted. The full scratch file is in history at
+`git show 6d1029b:docs/research/debug-lessons-learned.md`; the consolidation commit's diff is
+the record of what the editorial pass chose to drop. The procedure that was followed, kept
+because the next batch of plans should follow it too:
 
-- **At the end of every plan, append a section to
-  [`../research/debug-lessons-learned.md`](../research/debug-lessons-learned.md)** — created
+- **At the end of every plan, append a section to `../research/debug-lessons-learned.md`** — created
   by whichever plan finishes first. One section per plan, headed with the plan name; the
   append lands in that plan's own final commit, so the file accumulates in history as the
   work proceeds. Record what actually went wrong and how it was found: the symptom as first
@@ -216,6 +219,7 @@ item in this file that cannot be done early.
 - [x] 2 · Story branch editor
 - [x] 3 · Task DAG view
 - [x] 4 · Shot timeline
-- [ ] Scratch file committed complete, on its own, before any consolidation edits
-- [ ] Consolidated into `../debugGuide.md`, reorganized by symptom; scratch file deleted in a
+- [x] Scratch file committed complete, before any consolidation edits — `6d1029b`, plan 4's
+      own final commit, which is where the last section landed
+- [x] Consolidated into `../debugGuide.md`, reorganized by symptom; scratch file deleted in a
       second commit

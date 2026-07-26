@@ -405,6 +405,6 @@ image per scene.
 - [x] `vngen graph` and the editor agree on the same project
 - [x] `CLAUDE.md` + [`../command-system.md`](../command-system.md) updated with the new
       commands and the `view.mode` effect
-- [x] Debug lessons appended to
-      [`../research/debug-lessons-learned.md`](../research/debug-lessons-learned.md) — see
-      [Debug lessons](desktop-editors-tracking.md#debugging-lessons)
+- [x] Debug lessons appended to `research/debug-lessons-learned.md` — see
+      [Debug lessons](desktop-editors-tracking.md#debugging-lessons); since consolidated into
+      [`../debugGuide.md`](../debugGuide.md)
