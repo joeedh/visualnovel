@@ -13,6 +13,13 @@
   * [Splitting a stylesheet: diff the emitted rules, not the sources](#splitting-a-stylesheet-diff-the-emitted-rules-not-the-sources)
   * [Verifying "all three rooms still render" without a screenshot](#verifying-all-three-rooms-still-render-without-a-screenshot)
   * [Killing the dev loop leaves Electron running](#killing-the-dev-loop-leaves-electron-running)
+- [1 · Refine-loop inspector](#1-%C2%B7-refine-loop-inspector)
+  * [A UI for a rare state is unfalsifiable until you can produce the state](#a-ui-for-a-rare-state-is-unfalsifiable-until-you-can-produce-the-state)
+  * [The false trail: every shot came out one-attempt anyway](#the-false-trail-every-shot-came-out-one-attempt-anyway)
+  * [`byOwner` is an exact match, so the component name matches nothing](#byowner-is-an-exact-match-so-the-component-name-matches-nothing)
+  * [`--raw` with an `await` returns *Promise was collected*](#--raw-with-an-await-returns-promise-was-collected)
+  * [Verify a degraded state by building one, not by assuming it](#verify-a-degraded-state-by-building-one-not-by-assuming-it)
+  * [Orphaned Electron, again — the PowerShell form](#orphaned-electron-again--the-powershell-form)
 
 <!-- tocstop -->
 
@@ -202,3 +209,125 @@ netstat -ano | grep 127.0.0.1:9222   # → LISTENING <pid>
 
 Kill that process's children then the process itself, rather than every `electron.exe` on the
 box — on a dev machine, some of those belong to the user's editor.
+
+## 1 · Refine-loop inspector
+
+### A UI for a rare state is unfalsifiable until you can produce the state
+
+**Symptom.** Nothing. That is the problem: the inspector renders multi-attempt `shot_image`
+tasks, and no fixture in the repo produces one. A mock run gives every shot exactly one
+attempt, so every rendering decision — the spine, the correction gap, the triage block —
+would have been checked against a shape that never occurs.
+
+The plan's two suggested fixtures both fail on inspection, before any code:
+
+- **Hand-written `tasks.jsonl`.** It can fabricate three attempts, but each attempt's
+  thumbnail is `vnasset://<hash>.<ext>` served from `build/assets/` — bytes that a
+  hand-written log does not have. It tests the half that was never in doubt.
+- **`examples/sample` run for real.** The refine loop only re-runs when a reviewer *blocks*,
+  which is not reproducible on demand, and a committed sample project must never carry
+  fabricated provenance.
+
+**What worked.** A throwaway project from `@vn/testkit` driven through the **real**
+`runPipeline`, with two scripted backends: an image backend emitting real PNG bytes, and a
+reviewer backend that blocks the first N attempts of chosen shots and then passes. Both seams
+already exist for mock runs — the only new thing is a policy that varies by shot. That yields
+genuine `done`-after-three and `needs_human` tasks, with real bytes in the store and a real
+`tasks.jsonl` written by the code under test.
+
+**Lesson.** When a display is for a state the app rarely reaches, the fixture is the hard
+part and it comes first. Building the UI first means discovering the shape is wrong after
+it is styled.
+
+### The false trail: every shot came out one-attempt anyway
+
+**Symptom.** With the scripted reviewer in place, the run still produced nothing but
+single-attempt tasks. The obvious readings — the policy never fires, the runner ignores
+verdicts, `max_refine_attempts` is 1 — were all wrong.
+
+**Evidence.** Log what the policy actually receives, not what you think it receives:
+
+```
+shot spec: {"location":"day", ...}   # expected "dorm_room"
+```
+
+`ShotSpec.location` is a **variant id** (`packages/pipeline/src/p5.ts:26,42`), not a location
+name, and every testkit location defaults to `variants: ['day']`. So every shot in the project
+reported the same location and a policy keyed on the location name matched none of them. Fixed
+by giving each location a distinct first variant.
+
+**Lesson.** A field named `location` holding `"day"` is the kind of thing a type cannot catch
+(both are `string`). When a filter matches nothing, print the value it filtered on before
+questioning the machinery around it. Secondary: parse the spec (`JSON.parse`) rather than
+regexing it — the regex "worked" and hid the mismatch by matching a different field.
+
+### `byOwner` is an exact match, so the component name matches nothing
+
+**Symptom.** The plan's own verification command returns `[]` on a panel that is visibly
+rendering:
+
+```sh
+node scripts/vn-cdp.mjs --raw "window.__vnDebug.byOwner('AttemptLoop').table()"   # []
+```
+
+**Why.** `byOwner` compares `f.owner.id` for equality, and fiber-derived ids are
+`Component/label` — `AttemptLoop/div.loop`, never bare `AttemptLoop`. An empty result from a
+query engine reads as "the thing isn't there", which is the worst possible failure mode for a
+debug tool: it sends you to look at the renderer.
+
+```sh
+node scripts/vn-cdp.mjs --raw "window.__vnDebug.where(f => f.owner.id.startsWith('AttemptLoop')).table()"
+node scripts/vn-cdp.mjs --raw "window.__vnDebug.owners().map(o => o.id).join(',')"   # when unsure of the id
+```
+
+**Lesson.** Before believing an empty query result, ask the engine what ids exist. `owners()`
+is one call and settles it.
+
+### `--raw` with an `await` returns *Promise was collected*
+
+**Symptom.** Reading an IPC result over CDP fails with `Error: Promise was collected` rather
+than returning anything — the expression's promise is GC'd before the evaluation resolves.
+
+**Workaround.** Split it across two calls: stash on a global, then read the global.
+
+```sh
+node scripts/vn-cdp.mjs --raw "window.vn.exec(\"pipeline.status()\").then(r => (window.__x = r)) && 'started'"
+node scripts/vn-cdp.mjs --raw "JSON.stringify(window.__x).slice(0, 400)"
+```
+
+### Verify a degraded state by building one, not by assuming it
+
+**Symptom (avoided).** "A mock run has no assets, so the thumbnails will be empty" is a
+prediction, and the interesting question is *how* it is empty — a `<img src>` that 404s
+renders a broken-image icon, which is a bug, not a design.
+
+**What produced the evidence.** A copy of the fixture with `build/assets/` emptied and the
+manifest reduced to an empty asset list, then counted directly:
+
+```sh
+node scripts/vn-cdp.mjs --raw "JSON.stringify({imgs: document.querySelectorAll('.att-shot img').length, none: document.querySelectorAll('.att-shot.none').length})"
+# {"imgs":0,"none":3}  — placeholders, and no <img> emitted at all
+```
+
+Zero `<img>` is the load-bearing half: the url is built only when the attempt resolved an
+`outputExt` from the manifest, so a missing asset never becomes a request.
+
+**Trap.** `manifest.json` is `{"version":1,"assets":[…]}`, not a bare array. Writing `[]`
+produces a manifest that fails to parse rather than one that is empty, and the app degrades
+along a completely different path than the one being tested.
+
+### Orphaned Electron, again — the PowerShell form
+
+Plan 0's entry recurred verbatim: stopping the background dev-loop task twice left
+`electron.exe` on CDP 9222 and `node.exe` on Vite 5176. It is not a one-off, so the reusable
+form, without needing `netstat` + `grep`:
+
+```powershell
+Get-NetTCPConnection -LocalPort 9222,5176 -State Listen | ForEach-Object {
+  Get-CimInstance Win32_Process -Filter "ParentProcessId = $($_.OwningProcess)" | Stop-Process -Force
+  Stop-Process -Id $_.OwningProcess -Force
+}
+```
+
+Then re-query the ports to confirm they are released — the kill can succeed while a child
+keeps the socket.

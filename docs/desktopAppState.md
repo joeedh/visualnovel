@@ -400,6 +400,13 @@ The **conversation history is not recovered** because it's React state only. Eac
 `session:snapshot:sync` is the odd one out: a **synchronous** `ipcMain.on` channel the preload
 calls once, before first paint, so the renderer never renders a default width and then jumps.
 
+`pipeline:status` returns tasks **narrowed at the boundary** (`src/main/reviews.ts`), not raw
+pipeline tasks. `TaskAttempt.reviews` is `unknown[]` in `@vn/types` because it is read back from
+`tasks.jsonl` as JSON; main parses each entry with `defectReportSchema` and drops the ones that
+fail, so the renderer's `Task` can promise `reviews: DefectReport[]`. Main also stamps
+`outputExt` by looking the attempt's output hash up in the manifest — an attempt records only
+the hash, and the FLOOR inspector needs both halves to build a `vnasset://<hash>.<ext>` url.
+
 **Main pushes these to renderer:**
 
 | Channel | Payload | When |

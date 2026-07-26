@@ -299,50 +299,232 @@
   color: var(--mist-dim);
   margin: 18px 0 10px;
 }
-.attempt {
-  display: flex;
-  gap: 11px;
-  margin-bottom: 12px;
-}
-.attempt .frame {
-  width: 46px;
-  height: 60px;
-  border-radius: 3px;
-  flex: none;
-  border: 1px solid var(--ink-line);
-  background: linear-gradient(135deg, #7a5b8a, #312840);
-  position: relative;
-}
-.attempt .frame .no {
-  position: absolute;
-  top: 2px;
-  left: 4px;
-  font-family: var(--mono);
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.7);
-}
-.attempt .err {
-  font-size: 11.5px;
-  color: var(--vermilion);
-}
-.attempt .okline {
-  font-size: 11.5px;
-  color: var(--jade);
-}
 .insp-empty {
   color: var(--mist-dim);
   font-size: 12.5px;
   margin-top: 8px;
 }
+
+/* ---- refine loop: the P7 generate → critique → refine spine ---- */
+/* Machine work, so the whole panel stays on the cool side: --signal for structure and ids,
+   --prose for the reviewers' written critique. */
+.loop {
+  display: flex;
+  flex-direction: column;
+}
+.att {
+  border: 1px solid var(--ink-line);
+  border-left: 2px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-raised);
+  overflow: hidden;
+}
+.att.accepted {
+  border-left-color: var(--jade);
+}
+.att.rejected {
+  border-left-color: var(--mist-dim);
+}
+.att.failed {
+  border-left-color: var(--vermilion);
+}
+.att.pending {
+  border-left-color: var(--signal);
+}
+.att-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  border-bottom: 1px solid var(--ink-line-soft);
+}
+.att-head .n {
+  letter-spacing: 0.1em;
+  color: var(--signal);
+}
+.att-head .verdict {
+  color: var(--mist-dim);
+}
+.att.accepted .att-head .verdict {
+  color: var(--jade);
+}
+.att.failed .att-head .verdict {
+  color: var(--vermilion);
+}
+.att-head .h {
+  margin-left: auto;
+  color: var(--mist-dim);
+}
+.att-shot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: none;
+  background: var(--ink-sunken);
+}
+.att-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* A mock run writes no image bytes, so this state is normal, not an error. */
+.att-shot.none {
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist-dim);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ink-sunken) 0 8px,
+    var(--ink-line-soft) 8px 9px
+  );
+}
+.att-err {
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: var(--vermilion);
+}
+.att-note {
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist-dim);
+}
+.att-note.clean {
+  color: var(--jade);
+}
+.defects {
+  list-style: none;
+  padding: 4px 10px 9px;
+}
+.dfct {
+  padding: 5px 0;
+}
+.dfct + .dfct {
+  border-top: 1px solid var(--ink-line-soft);
+}
+.dfct-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist);
+}
+.dfct .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--mist);
+}
+.dfct.blocking .dot {
+  background: var(--vermilion);
+}
+.dfct.major .dot {
+  background: var(--sodium);
+}
+.dfct.minor .dot {
+  background: var(--mist);
+}
+.dfct.blocking .sev {
+  color: var(--vermilion);
+}
+.dfct .cat {
+  color: var(--paper);
+}
+.dfct .rev {
+  margin-left: auto;
+  color: var(--mist-dim);
+}
+.dfct .desc {
+  font-family: var(--prose);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--mist);
+  margin-top: 2px;
+}
+/* The gap between two attempts IS the causal step, so it carries the weight. */
+.step {
+  position: relative;
+  margin-left: 13px;
+  padding: 9px 0 9px 16px;
+  border-left: 1px solid var(--signal-deep);
+}
+.step::after {
+  content: '▾';
+  position: absolute;
+  left: -6px;
+  bottom: -2px;
+  font-size: 10px;
+  color: var(--signal-deep);
+}
+.step .fix {
+  font-family: var(--prose);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--signal);
+}
+.step .fix .pen {
+  font-family: var(--mono);
+  color: var(--signal-deep);
+}
+.step .fix.none {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist-dim);
+}
+.lightbox {
+  max-width: 92vw;
+  max-height: 88vh;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  box-shadow: var(--shadow);
+}
+
+/* ---- needs_human triage ---- */
 .triage {
   margin-top: 12px;
   border: 1px solid rgba(244, 162, 76, 0.4);
   background: rgba(244, 162, 76, 0.06);
   border-radius: var(--r-chrome);
   padding: 9px 12px;
-  font-size: 12px;
+}
+.tri-head {
+  font-size: 11px;
   color: var(--sodium);
   font-family: var(--mono);
+}
+.tri-line,
+.tri-list {
+  font-family: var(--prose);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--mist);
+  margin-top: 6px;
+}
+.tri-list {
+  list-style: none;
+}
+.tri-list li + li {
+  margin-top: 5px;
+}
+.tri-list b {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sodium);
+}
+.tri-list .who {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist-dim);
+  margin-left: 6px;
 }
 
 /* Collapses to a single column, so there is no boundary left to drag. */

@@ -58,6 +58,7 @@ import type {
   PipelineRunResult,
   PipelineStatus,
 } from '../shared/ipc.js';
+import { narrowTask } from './reviews.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -241,8 +242,9 @@ export class WorkspaceSession {
   async status(): Promise<PipelineStatus> {
     const project = await loadProject(this.dir);
     const gate = gateStatus(project.model);
+    const exts = new Map(project.store.manifest().map((a) => [a.hash, a.ext]));
     return {
-      tasks: [...project.graph.all()],
+      tasks: [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
       gatePending: gate.pending,
       blockedOnGate: !gate.cleared,
     };

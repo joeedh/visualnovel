@@ -10,7 +10,7 @@ the individual plans hang off. Survey that motivated them:
 | - | ---- | ---- | ------ | ---------- |
 | — | [test-fixtures](test-fixtures.md) | groundwork | **done** | — |
 | 0 | [desktop-renderer-restructure](desktop-renderer-restructure.md) | refactor | **done** | — |
-| 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | not started | 0, testkit |
+| 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | **done** | 0, testkit |
 | 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | not started | 0, testkit |
 | 3 | [task-dag-view](task-dag-view.md) | upgrade | not started | 0, 2 (`renderer/graph/`), testkit |
 | 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | blocked | 0, testkit, shot persistence, a real run |
@@ -173,10 +173,10 @@ Decided against in the survey, recorded here so it does not get re-proposed:
 
 ### 1 · Refine-loop inspector
 
-- [ ] `reviews` validated at the main-process boundary
-- [ ] Attempts render as a causal spine with defects and thumbnails
-- [ ] Correction delta correct across strip-and-replace
-- [ ] `needs_human` explains itself
+- [x] `reviews` validated at the main-process boundary
+- [x] Attempts render as a causal spine with defects and thumbnails
+- [x] Correction delta correct across strip-and-replace
+- [x] `needs_human` explains itself
 
 ### 2 · Story branch editor
 
@@ -211,7 +211,7 @@ item in this file that cannot be done early.
 
 - [x] test-fixtures
 - [x] 0 · Restructure
-- [ ] 1 · Refine-loop inspector
+- [x] 1 · Refine-loop inspector
 - [ ] 2 · Story branch editor
 - [ ] 3 · Task DAG view
 - [ ] 4 · Shot timeline

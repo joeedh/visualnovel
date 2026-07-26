@@ -62,7 +62,8 @@ Run from the repo root.
   `tsgo --noEmit -p renderer/tsconfig.json` in `apps/desktop`. Without that second pass
   nothing typechecks the renderer at all — `vite build` uses esbuild, which never checks.
   `renderer/tsconfig.json` has its own `paths` map; add `@vn/*` entries there as needed,
-  relative-form only.
+  relative-form only. Its `types` carries `node` and `jest` — renderer `tests/` siblings are
+  typechecked by that pass, not the root one.
 - **`tsgo`** comes from `@typescript/native-preview` (TS7 dev). `"jest"` is in
   `compilerOptions.types` so test globals typecheck.
 - **`esbuild` transpiles; `tsgo` verifies.** esbuild never type-checks. It is used in
@@ -284,7 +285,8 @@ renderer/
   main.tsx              entry; installs @vn/debug2d behind import.meta.env.DEV
   app/                  App.tsx (shell only), Topbar.tsx, Palette.tsx, useAgent.ts
   rooms/studio/         Studio.tsx  Rail.tsx  Convo.tsx  PlanCard.tsx
-  rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  GateOverlay.tsx
+  rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  AttemptLoop.tsx
+                        attempts.ts (pure) · GateOverlay.tsx
   rooms/play/           Runner.tsx
   ui/                   Resizable.tsx — shared by two rooms, so it belongs to neither
   styles/               index.css @imports tokens · shell · studio · floor · play
@@ -308,6 +310,15 @@ renderer/
   jsdom. Layout math, hit-testing, and derivation are exactly what you want under test and
   exactly what jsdom can't help with; components are not tested. Same impure-shell/pure-core
   split as `@vn/debug2d`, for the same reason. No jsdom, no React Testing Library.
+- **The FLOOR inspector renders the P7 refine loop**, since `shot_image` folds
+  generate → critique → refine into one runner and the task board would otherwise show one node
+  that made four image calls for no visible reason. `AttemptLoop.tsx` stacks the attempts with
+  the `Corrections:` clause that caused each next one in the gap between them; `attempts.ts` is
+  the pure half. Two contracts: `blocking` is computed exactly as `mergeReports`
+  (`@vn/providers`) computes it, so the UI can't disagree with the verdict the runner acted on;
+  and every attempt's bytes are in the store (`store.write` runs per attempt, `store.accept`
+  only on the clean one), so rejected frames are viewable over `vnasset://`. Plan and its
+  as-shipped notes: [`docs/plans/refine-loop-inspector.md`](docs/plans/refine-loop-inspector.md).
 - **`prototype.html`** (at `apps/desktop/prototype.html`) is the original design reference and
   shares class names with the stylesheet. It is neither built nor imported — leave it alone,
   and don't treat it as the source of truth for tokens; `tokens.css` is.

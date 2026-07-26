@@ -1,6 +1,32 @@
+import { AttemptLoop } from './AttemptLoop';
+import { survivingDefects } from './attempts';
 import type { Task } from '../../../src/shared/ipc';
 
-/** Per-task detail: identity, dependency count, and the generate → critique → refine attempts. */
+/** Why the loop gave up, named — not just that it did. */
+function Triage(props: { task: Task }): JSX.Element {
+  const survived = survivingDefects(props.task);
+  return (
+    <div className="triage">
+      <div className="tri-head">
+        ⚑ needs_human — still blocking after {props.task.attempts.length} attempts
+      </div>
+      {survived.length === 0 ? (
+        <p className="tri-line">No blocking defect was recorded on the last attempt.</p>
+      ) : (
+        <ul className="tri-list">
+          {survived.map((d, i) => (
+            <li key={i}>
+              <b>{d.category}</b> — {d.description}
+              <span className="who">{d.reviewers.join(' + ')}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Per-task detail: identity, dependency count, and the generate → critique → refine loop. */
 export function Inspector(props: { task: Task | null }): JSX.Element {
   const t = props.task;
   if (!t) {
@@ -27,27 +53,16 @@ export function Inspector(props: { task: Task | null }): JSX.Element {
         <span>attempts</span>
         <b>{t.attempts.length}</b>
       </div>
-      {t.status === 'needs_human' && (
-        <div className="triage">⚑ needs_human — max refine attempts reached</div>
-      )}
+      {t.status === 'needs_human' && <Triage task={t} />}
       <div className="strip-head">ATTEMPTS · generate → critique → refine</div>
       {t.attempts.length === 0 ? (
-        <div className="insp-empty">No attempts recorded yet.</div>
+        <div className="insp-empty">
+          {t.kind === 'shot_image'
+            ? 'No attempts recorded yet.'
+            : 'This kind runs in a single pass — it records no per-attempt critique.'}
+        </div>
       ) : (
-        t.attempts.map((a, i) => (
-          <div className="attempt" key={i}>
-            <div className="frame">
-              <span className="no">{String(a.attempt ?? i + 1).padStart(2, '0')}</span>
-            </div>
-            <div className="notes">
-              {a.error ? (
-                <div className="err">{a.error}</div>
-              ) : (
-                <div className="okline">{a.output ? `→ ${a.output.slice(0, 8)}` : 'generated'}</div>
-              )}
-            </div>
-          </div>
-        ))
+        <AttemptLoop task={t} />
       )}
     </aside>
   );

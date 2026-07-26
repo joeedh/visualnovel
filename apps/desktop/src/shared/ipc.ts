@@ -15,7 +15,12 @@ import type {
   RunResult,
   WorkspaceIndex,
 } from '@vn/authoring';
-import type { Playable, Task } from '@vn/types';
+import type {
+  DefectReport,
+  Playable,
+  Task as PipelineTask,
+  TaskAttempt as PipelineTaskAttempt,
+} from '@vn/types';
 import type {
   CommandCatalog,
   CommandOutcome,
@@ -67,7 +72,28 @@ export type {
   RunResult,
   WorkspaceIndex,
 } from '@vn/authoring';
-export type { Playable, Beat, PlayableScene, Task, TaskKind, TaskStatus } from '@vn/types';
+export type { Playable, Beat, PlayableScene, TaskKind, TaskStatus } from '@vn/types';
+export type { Defect, DefectReport } from '@vn/types';
+
+/**
+ * `TaskAttempt.reviews` is `unknown[]` in `@vn/types` — it is read back from `tasks.jsonl` as
+ * JSON on resume, so the persisted type cannot claim more than it can prove. Main narrows it
+ * once, at the boundary, and the renderer consumes the narrowed shape.
+ */
+export interface TaskAttempt extends Omit<PipelineTaskAttempt, 'reviews'> {
+  reviews: DefectReport[];
+  /**
+   * Extension of `output` in the asset store. An attempt records only the hash, so main
+   * looks the ext up in the manifest — the renderer needs both halves to build a
+   * `vnasset://<hash>.<ext>` url, and guessing `png` would silently mis-serve anything else.
+   */
+  outputExt?: string;
+}
+
+/** A task as the renderer sees it: identical to the pipeline's, with validated `reviews`. */
+export interface Task extends Omit<PipelineTask, 'attempts'> {
+  attempts: TaskAttempt[];
+}
 
 /** A request from the main process for the user to approve/reject a proposed plan. */
 export interface PlanRequest {

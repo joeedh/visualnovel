@@ -1,6 +1,6 @@
 # Plan: refine-loop inspector
 
-**Status:** not started. **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md).
+**Status:** shipped. **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md).
 **Size:** small — the cheapest item in [`../research/graphThingsReport.md`](../research/graphThingsReport.md) §6.
 
 ## Why
@@ -110,17 +110,53 @@ renderer/rooms/floor/
 - `attemptOutcome(task, attempt, index)` → `'accepted' | 'rejected' | 'failed'`. Only the
   last attempt of a `done` task is accepted; a `needs_human` task has none.
 
+## As shipped
+
+Five deviations, each forced by the recorded fixture run rather than chosen up front:
+
+- **`attemptOutcome` has a fourth value, `'pending'`.** The plan's three assume the loop has
+  ruled. A `running` task's last attempt has not been judged yet, and calling it `rejected`
+  would assert a verdict the runner never reached.
+- **`TaskAttempt` gained `outputExt`, stamped in main.** An attempt records only the output
+  hash; the ext lives in the manifest. `vnasset://<hash>` with a guessed `png` silently
+  mis-serves anything else, so `narrowTask` looks the ext up and the renderer builds a url
+  only when it has both halves. This is also what makes the mock-run degradation clean: with
+  no manifest entry there is no `outputExt`, so no `<img>` is emitted at all — placeholders,
+  not broken images.
+- **`promptRepeated(prev, next)`.** Observed live: when every reviewer repeats its critique
+  verbatim, `refinePrompt` strips and re-appends an identical `Corrections:` clause, so two
+  attempts share a byte-identical prompt (and produced the same output hash). `correctionDelta`
+  is correctly null there, but an unexplained gap between two identical frames reads as a
+  rendering bug — so the gap says *same critique — the prompt did not change*.
+- **The defect dedupe is display-only, and diverges from the runner.** `mergeReports`
+  (`packages/providers/src/review.ts:52`) only flatMaps and checks for a blocking severity —
+  it does not dedupe, so a fix agreed on by two reviewers really does appear twice in the
+  `Corrections:` clause. The UI collapses the pair and keeps both reviewer names; `blocking`
+  is still computed exactly as the runner computes it.
+- **The `needs_human` triage lives in `Inspector.tsx`, not the spine**, above the attempts
+  rather than after them — the question "why did this stop" is asked before the loop is read.
+
 ## Verification
 
-- `pnpm test` — the three pure functions, including the strip-and-replace delta case and a
-  malformed-`reviews` payload.
-- Live: a mock run produces no images, so the thumbnails will be empty by design. Confirm
-  the panel degrades to structure-only rather than showing broken images.
-- Live with real assets: run `examples/sample` non-mock far enough to get a multi-attempt
-  shot, or hand-craft a `tasks.jsonl` fixture with a three-attempt task.
+- `pnpm test` — the pure functions, including the strip-and-replace delta case, a verbatim
+  multi-defect clause from the recorded run, and a malformed-`reviews` payload.
+- Live: a mock run stores no image bytes, so no attempt resolves an `outputExt` and the
+  panel renders `no stored frame` placeholders — structure only, zero `<img>` elements.
+  Verified against a copy of the fixture with `build/assets` emptied.
+- Live with real assets: neither approach in the original plan works. A hand-written
+  `tasks.jsonl` cannot produce viewable frames (the bytes must exist in the store), and
+  `examples/sample` must never carry fabricated provenance. What was used instead: a
+  throwaway project built by `@vn/testkit` and driven through the **real** `runPipeline` with
+  a scripted reviewer backend that blocks the first N attempts of chosen shots, plus an image
+  backend emitting real PNG bytes. That yields genuine three-attempt `done` and `needs_human`
+  tasks. One trap: `ShotSpec.location` is a **variant id**, not a location name, and every
+  testkit location defaults to `variants: ['day']` — a reviewer policy keyed on the location
+  name matches nothing and every shot comes out one-attempt.
 
 ```sh
-node scripts/vn-cdp.mjs --raw "window.__vnDebug.byOwner('AttemptLoop').table()"
+# `byOwner` is an exact match on ids of the form `AttemptLoop/div.loop`, so the bare
+# component name matches nothing. Match the prefix instead.
+node scripts/vn-cdp.mjs --raw "window.__vnDebug.where(f => f.owner.id.startsWith('AttemptLoop')).table()"
 ```
 
 ## Risks
@@ -132,8 +168,8 @@ node scripts/vn-cdp.mjs --raw "window.__vnDebug.byOwner('AttemptLoop').table()"
 
 ## Done
 
-- [ ] Attempts render as a causal spine with per-attempt defects and thumbnails
-- [ ] `reviews` validated at the main-process boundary; malformed data degrades gracefully
-- [ ] Correction delta shown between attempts, correct across the strip-and-replace case
-- [ ] `needs_human` explains itself: which defects survived, from which reviewer
-- [ ] Pure logic under test; `.tsx` holds no logic worth testing
+- [x] Attempts render as a causal spine with per-attempt defects and thumbnails
+- [x] `reviews` validated at the main-process boundary; malformed data degrades gracefully
+- [x] Correction delta shown between attempts, correct across the strip-and-replace case
+- [x] `needs_human` explains itself: which defects survived, from which reviewer
+- [x] Pure logic under test; `.tsx` holds no logic worth testing
