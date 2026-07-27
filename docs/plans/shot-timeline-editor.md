@@ -1,8 +1,8 @@
 # Plan: shot timeline editor
 
-**Status:** Wave 1 (shot persistence) and Wave 2 (the coverage strip) **shipped**; a real
-non-mock run of `examples/sample` is still the acceptance check for whether boundaries land
-where the _art_ implies.
+**Status:** **Done.** Wave 1 (shot persistence) and Wave 2 (the coverage strip) shipped, and
+the acceptance pass on a real non-mock run is complete — see
+[Acceptance on a real run](#acceptance-on-a-real-run).
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), plus shot
 persistence (Wave 1 here).
 **Size:** large. [`../research/graphThingsReport.md`](../research/graphThingsReport.md) §7.
@@ -308,6 +308,43 @@ shot(s).` and committed exactly one `story.setCoverage` record writing
   cannot tell you is whether coverage boundaries land where the **art** implies, so a real
   non-mock run of `examples/sample` remains the acceptance check, not the development loop.
 
+## Acceptance on a real run
+
+Run against `examples/mySampleRepo` (the seeded scratch workspace, which already held a real
+51-asset run), with real Gemini art and a real Claude text model for P5.
+
+**Setup.** Two scenes there still carried decompositions made by the *old* P5 prompt —
+`observe` (4 shots) and `ending` (2 shots). Both are **one-line scenes**, and only the first
+shot of each covered anything: `observe__observe-2/-3/-4` and `ending__ending-2` covered
+nothing at all, so four paid frames existed that the exporter could never show. Deleting just
+those two `work/shots/*.json` re-decomposed them under the fixed prompt; the three
+deterministic-baseline scenes were left alone, so portraits, plates and model sheets were all
+reused and only the affected shot art regenerated (2 tasks, both `done`).
+
+**What the fixed prompt produced.** `observe__S1` covering `observe:L1`, `ending__S1` covering
+`ending:L1` — one shot each, every line assigned, no gaps and no dead frames. That is the
+`coversLines` fix working end to end against a real text model, not a mock.
+
+**Do boundaries land where the art implies?** Yes, and this is the thing placeholders could
+not answer. `rooftop` alternates two speakers: `rooftop__beat1` covers L2 and L5 (both Aiko)
+and `rooftop__beat2` covers L3 and L6 (both Haruki), and the two frames are unmistakably
+different pictures — Aiko on the rooftop at sunset, Haruki alone in the same place. Reading
+down the timeline, each speaker's lines sit under their own frame. The non-contiguous,
+interleaved coverage the decomposer emits is exactly what the laned bracket layout was built
+for, and on real art it reads correctly rather than as an artifact of the layout.
+
+**Two things the surface correctly reveals but does not cause**, both P5/P7 concerns:
+
+- **Full coverage is not full fidelity.** `observe__S1` covers "Aiko slips into the seat by the
+  window…" with `characters: []`, so the frame is an empty classroom. The shot is honest to its
+  spec and P7 passed it — `shotSpec` says an empty cast means a missing character is not a
+  defect — but the line describes a character acting. The timeline shows the line covered,
+  which it is; it cannot show that the cast was ordered wrong.
+- **Covered is not the same as rendered.** Three establishing shots (`arrival`, `greet`,
+  `rooftop`) sit at `needs_human` after exhausting the refine cap, so their `show` beats export
+  with no image. In the playable that is `arrival` at 3 `show` beats with 1 image. Covered-but
+  -artless is a distinct state from uncovered, and the two must not be conflated.
+
 ## Risks
 
 - **Building this against mock data used to produce a strip of broken thumbnails** — that is
@@ -336,3 +373,4 @@ per-line art overrides, audio, and transitions.
 - [x] Drag commits one `story.setCoverage` command on drop
 - [x] `coversLines` edits provably do not rehash any task
 - [x] `CLAUDE.md` updated: `work/shots/` in the project layout, and P5's persistence rule
+- [x] Acceptance pass on a real non-mock run — boundaries land where the art implies

@@ -13,7 +13,7 @@ the individual plans hang off. Survey that motivated them:
 | 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | **done** | 0, testkit |
 | 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | **done** | 0, testkit |
 | 3 | [task-dag-view](task-dag-view.md) | upgrade | **done** | 0, 2 (`renderer/graph/`), testkit |
-| 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | **done** (acceptance pass on a real run still open) | 0, testkit, ~~shot persistence~~, ~~a real run~~ |
+| 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | **done** | 0, testkit, ~~shot persistence~~, ~~a real run~~ |
 
 Recommended order: **test-fixtures → 0 → 1 → 2 → 3 → 4.** test-fixtures and 0 are both
 "make the ground testable" work and are independent of each other, so they can run in
@@ -206,6 +206,8 @@ Decided against in the survey, recorded here so it does not get re-proposed:
 - [x] Gaps and overlaps visible; non-contiguous coverage handled _(Wave 2)_
 - [x] `coversLines` edits provably do not rehash _(Wave 1)_
 - [x] Round-trip verified through `story.play.json` _(Wave 2, live over CDP)_
+- [x] Acceptance pass on a real non-mock run _(see the plan's
+      [Acceptance on a real run](shot-timeline-editor.md#acceptance-on-a-real-run))_
 
 ### Debug lessons
 
