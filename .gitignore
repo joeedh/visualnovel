@@ -9,4 +9,6 @@ dist
 coverage
 *.tsbuildinfo
 *.tmp-*
+# Bundled entry points the build scripts require() and delete; an aborted run leaves one behind.
+.record-entry.cjs*
 .DS_Store

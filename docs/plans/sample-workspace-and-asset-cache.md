@@ -279,12 +279,40 @@ the gate), matching the `L + 4C + 2N` estimate above.
    `createMockProviders({ imageBackend })` so the stub can be wrapped;
    `makeProject({ assets, assetCacheDir })` + `FIXTURE_ASSET_DIR`. Tested against temp cache
    dirs only — no committed bytes yet.
-3. **Record.** Script + `--check` report shipped (`packages/testkit/src/record.ts`,
-   `scripts/record-fixture-assets.mjs`), verified against an empty corpus. **Running it for
-   real is outstanding** — it needs a Gemini key and a decision to spend, so the corpus is not
-   committed yet and every fixture still replays to placeholders.
+3. ~~**Record.**~~ **Done.** The corpus is recorded and committed: **9 entries, 11.3 MB** in
+   `packages/testkit/assets/`, all from `gemini-2.5-flash-image`. `--check` replays it at
+   **reused 9 / missed 0**, which is the whole-chain guarantee holding — every ref's bytes
+   matched, so no request downstream of another was re-keyed.
 
 Waves 1 and 2 are independent. Wave 3 is the only one that costs money.
+
+### What the first real run exposed
+
+The script had never been run for real, and two defects only a paid run could surface. Both
+are fixed; both were invisible because the report said `corpus 0 entries` and exited 0.
+
+- **The bundle could not resolve `@google/genai`.** The SDKs are `EXTERNAL` and lazy-imported,
+  and `@google/genai` is a dependency of `@vn/providers` alone — but the bundle was emitted to
+  `packages/testkit/.record-entry.cjs`, from where node cannot resolve it. Every image task
+  failed the moment the backend was first touched, so the cache saw **zero** requests. It now
+  bundles into `packages/providers/`.
+- **The report could not say so.** `RunSummary.ran` is every task that reached a _terminal_
+  state, failures included, and the scheduler stores a failure's message only in its log — so
+  "wave 1: 3 task(s) done" was three failures. Testkit's `run()` now takes a `logger`,
+  `runFixture` collects `task.end` errors into `CorpusReport.failed`, `formatReport` prints
+  them, and the script exits non-zero. Staleness is still only ever reported; a _failed task_
+  is a different thing and is not reported quietly.
+- **`FIXTURE_ASSET_DIR` does not survive bundling.** It is `join(__dirname, '..', 'assets')`,
+  correct under jest's per-file CJS transform (`packages/testkit/src` → `packages/testkit/assets`)
+  and wrong under any bundle, where esbuild rewrites `__dirname` to the *output* directory. The
+  first successful recording therefore wrote a complete corpus to `packages/assets/` — adjacent,
+  plausible, and invisible to every fixture. The script now passes `cacheDir` explicitly, and
+  `assets.test.ts` pins reachability at the default path (falsified by moving the directory).
+
+**Per-refresh cost.** Nine `gemini-2.5-flash-image` generations, ~$0.039 each ≈ **$0.35** per
+full re-record of `linear`. Re-recording is not incremental: a ref's bytes are part of the next
+request's key, so changing an early prompt re-keys everything downstream of it and the whole
+chain is regenerated.
 
 ## Checklist
 
@@ -297,5 +325,6 @@ Waves 1 and 2 are independent. Wave 3 is the only one that costs money.
 - [x] A holed cache degrades to placeholders downstream rather than mixing
 - [x] `makeProject` default behaviour unchanged; opt-in only
 - [x] Refresh script reports added/reused/orphaned; staleness never fails a suite
-- [ ] The corpus is actually recorded and committed (needs a Gemini key — costs money)
-- [ ] Committed corpus size recorded here, with the per-refresh cost stated
+- [x] The corpus is actually recorded and committed (needs a Gemini key — costs money)
+- [x] Committed corpus size recorded here, with the per-refresh cost stated — **9 entries,
+      11.3 MB**; ~**$0.35** per full re-record of `linear`, and a re-record is always full

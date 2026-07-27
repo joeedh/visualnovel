@@ -72,6 +72,29 @@ describe('makeProject({ assets: "cached" })', () => {
     }
   }, 30_000);
 
+  /**
+   * The committed corpus is only useful if the default `FIXTURE_ASSET_DIR` finds it, and that
+   * path is `__dirname`-relative — which esbuild rewrites when it bundles. A recorder writing
+   * to a plausible-but-wrong directory reports a full corpus and leaves every fixture on
+   * placeholders. Assert reachability only: staleness must never gate a suite, since the fix
+   * for it is a paid re-record.
+   */
+  it('reaches the committed corpus at the default path', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear, assets: 'cached' });
+    try {
+      await p.run();
+      const { store } = await p.reload();
+      const assets = store.manifest();
+      const real = [];
+      for (const a of assets) {
+        if (!isPlaceholderImage(await store.read({ hash: a.hash, ext: a.ext }))) real.push(a);
+      }
+      expect(real.length).toBeGreaterThan(0);
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+
   it('defaults to placeholders, so a suite cannot depend on a cache being present', async () => {
     const p = await makeProject({ script: SCRIPTS.linear, assetCacheDir: cacheDir });
     try {

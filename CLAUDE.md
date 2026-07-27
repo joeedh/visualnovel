@@ -628,6 +628,7 @@ try {
 - **`makeProject({ assets: 'cached' })` replays _real_ recorded art** out of
   `packages/testkit/assets/` (`<key>.<ext>` + an `index.json` of provenance), for the fixtures
   that exist to be _looked at_ — the PLAY room, the FLOOR inspector — rather than asserted on.
+  The corpus is recorded and committed: **9 entries, 11.3 MB**, covering `linear` end to end.
   `CachedImageBackend` (`@vn/providers`) wraps `StubImageBackend`, keyed on
   `sha256(op, prompt, ordered ref-byte hashes, params)` — not the task hash, since the backend
   never sees a task. Default is `'placeholder'`, so no suite can pass only on a machine that
@@ -650,7 +651,19 @@ try {
   **reports, never gates** — a suite that failed on a stale entry would put a paid re-record in
   the way of an ordinary prompt change. It derives reused/missed/orphaned from
   `CachedImageBackend.log`, and marks the orphan list suspect whenever anything missed, since
-  past the first miss the chain constraint re-keys every later request.
+  past the first miss the chain constraint re-keys every later request. A **failed task** is a
+  different thing from a stale entry and is never quiet: `runFixture` collects `task.end` errors
+  through a `logger` passed to testkit's `run()` (the scheduler stores a failure's message
+  nowhere else — `RunSummary.ran` counts failures as terminal), `formatReport` prints them, and
+  the script exits non-zero. A full re-record of `linear` is 9 image calls, ~$0.35, and is
+  always full — a changed prompt re-keys everything downstream of it.
+- **The recorder's bundle location and `cacheDir` are both load-bearing.** The model SDKs are
+  `EXTERNAL` and lazy-imported, and `@google/genai` is a dependency of `@vn/providers` alone, so
+  the bundle is emitted into `packages/providers/` — from anywhere else node cannot resolve it
+  and every image task fails on first use. And `FIXTURE_ASSET_DIR` is `__dirname`-relative,
+  which esbuild rewrites to the _output_ directory, so the script passes `cacheDir` explicitly
+  rather than letting a bundle write a complete corpus somewhere adjacent and plausible. Both
+  cost a paid run to discover; see `docs/plans/sample-workspace-and-asset-cache.md`.
 - **In-memory factories** (`character`, `location`, `scene`, `model`) are also exported, for
   unit tests of the pure planners where building on disk would just be noise.
 

@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "key": "14da078627f5dc41dfa1867f7a1dad7de2849a2f17ff32e32c0cc47f8d234502",
+      "op": "edit",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. Full-body front view of Aiko wearing uniform. Preserve the exact face and look from the reference image. Aiko, a fixture character. Palette: #a02828, #e8c8b0. Neutral background, consistent lighting, turnaround model-sheet style.",
+      "refs": [
+        "a7c222b14b80c43863e63c3e5c9b774027cb76a0ecfc4fc359226cf742e9a7ae"
+      ],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 927071,
+      "recordedAt": "2026-07-27T03:49:51.910Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "4ac5825ef4b06dc6af30fba301f2bebf3431fd5a4ce48161088934b16f2e553e",
+      "op": "generate",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. establishing shot in Classroom (day). Subjects: Aiko, wearing uniform. Render as a single illustrated frame, no UI text.",
+      "refs": [
+        "f1f6e5ff6473436e1ee2e2af92b046f8f69061c056b06f706b4d863d51dc0eb9",
+        "a7c222b14b80c43863e63c3e5c9b774027cb76a0ecfc4fc359226cf742e9a7ae"
+      ],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 1837892,
+      "recordedAt": "2026-07-27T03:49:52.250Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "84325bf66dc01e3e8fb263a26885a88cb535e69495b272dcef2ae320fbf28c77",
+      "op": "edit",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. Full-body side view of Aiko wearing uniform. Preserve the exact face and look from the reference image. Aiko, a fixture character. Palette: #a02828, #e8c8b0. Neutral background, consistent lighting, turnaround model-sheet style.",
+      "refs": [
+        "a7c222b14b80c43863e63c3e5c9b774027cb76a0ecfc4fc359226cf742e9a7ae"
+      ],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 795505,
+      "recordedAt": "2026-07-27T03:49:54.808Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "94a7e098170dc8b74d9b974355617e0d836fb4082f9daf6c99d27702811e733a",
+      "op": "generate",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. medium shot in Classroom (day). Subjects: Aiko, wearing uniform. Render as a single illustrated frame, no UI text.",
+      "refs": [
+        "f1f6e5ff6473436e1ee2e2af92b046f8f69061c056b06f706b4d863d51dc0eb9",
+        "a7c222b14b80c43863e63c3e5c9b774027cb76a0ecfc4fc359226cf742e9a7ae"
+      ],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 1840601,
+      "recordedAt": "2026-07-27T03:50:01.406Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "b23ea7d3abcee941767dbfb289abcf4878fd797b6a33e5e9327c27b6a46e9913",
+      "op": "generate",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. Establishing shot of Rooftop. Rooftop, a fixture location. Mood: quiet. Time of day / condition: evening. Palette: #d8c19a, #8aa6c1. No characters, no text.",
+      "refs": [],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 1569696,
+      "recordedAt": "2026-07-27T03:49:34.747Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "b6a694f6ee1eb38637e20e76ddfc0a6dfd8b17cae7071f2ea62fd05615c69a93",
+      "op": "generate",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. Character portrait of Aiko. Aiko, a fixture character. Palette: #a02828, #e8c8b0. Neutral pose and expression, plain neutral background, head-and-shoulders framing.",
+      "refs": [],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 1090139,
+      "recordedAt": "2026-07-27T03:49:34.678Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "c5559007bd2f986e8ac3f4c8e7aff652818de15df5f37f4e73bf554f8ee88fba",
+      "op": "generate",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. establishing shot in Rooftop (evening). No characters in frame. Render as a single illustrated frame, no UI text.",
+      "refs": [
+        "c4679efbff7a4a29881db0973165f68deabd3ebfaa0963e0f951ca39e65cdc43"
+      ],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 1636520,
+      "recordedAt": "2026-07-27T03:49:42.709Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "c8e0f6c7024d812a210d3b7f436032dc798a054ddf9e86ea423d38b5d6a9b6f3",
+      "op": "generate",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. Establishing shot of Classroom. Classroom, a fixture location. Mood: quiet. Time of day / condition: day. Palette: #d8c19a, #8aa6c1. No characters, no text.",
+      "refs": [],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 1282971,
+      "recordedAt": "2026-07-27T03:49:34.631Z",
+      "fixture": "linear"
+    },
+    {
+      "key": "d3fef58618a93878feae8a13b61c3be6222eb90c54a2d926b92dc59bf1adaca3",
+      "op": "edit",
+      "ext": "png",
+      "modelId": "gemini-2.5-flash-image",
+      "prompt": "Art style: flat fixture illustration. Full-body back view of Aiko wearing uniform. Preserve the exact face and look from the reference image. Aiko, a fixture character. Palette: #a02828, #e8c8b0. Neutral background, consistent lighting, turnaround model-sheet style.",
+      "refs": [
+        "a7c222b14b80c43863e63c3e5c9b774027cb76a0ecfc4fc359226cf742e9a7ae"
+      ],
+      "params": {
+        "modelId": "gemini-2.5-flash-image",
+        "aspect": "16:9"
+      },
+      "bytes": 905631,
+      "recordedAt": "2026-07-27T03:49:52.843Z",
+      "fixture": "linear"
+    }
+  ]
+}

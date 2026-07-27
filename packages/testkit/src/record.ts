@@ -13,7 +13,7 @@
  * Plan: `docs/plans/sample-workspace-and-asset-cache.md`.
  */
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
-import type { AssetCacheEntry } from '@vn/types';
+import type { AnyTask, AssetCacheEntry, Logger } from '@vn/types';
 import {
   AssetCache,
   CachedImageBackend,
@@ -53,6 +53,13 @@ export interface CorpusReport {
   entries: number;
   /** Total recorded size, in bytes. */
   totalBytes: number;
+  /** Tasks that ended `failed`. A recording run that hit one recorded less than it was asked to. */
+  failed: FailedTask[];
+}
+
+export interface FailedTask {
+  kind: string;
+  error: string;
 }
 
 const noop = () => undefined;
@@ -66,17 +73,45 @@ async function runFixture(
   fixture: FixtureName,
   images: ImageBackend,
   log: (line: string) => void,
-): Promise<TestProject> {
-  const p = await makeProject({ script: SCRIPTS[fixture] });
-  const first = await p.run({ providers: providersFor(p, images) });
-  log(`  wave 1: ${first.ran.length} task(s) done`);
+): Promise<{ project: TestProject; failed: FailedTask[] }> {
+  const failed: FailedTask[] = [];
+  // A failure's message is only ever *logged* — the scheduler does not store it on the task —
+  // so collect it here. `ran` counts every terminal task, failures included, and a paid run
+  // that generated nothing must not read as a clean one.
+  const collector: Logger = {
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: (msg, fields) => {
+      if (msg !== 'task.end') return;
+      failed.push({
+        kind: String(fields?.['kind']),
+        error: String(fields?.['error'] ?? 'unknown'),
+      });
+    },
+    child: () => collector,
+  };
+  const tally = (wave: number, summary: { ran: readonly AnyTask[] }, before: number) => {
+    const bad = failed.length - before;
+    log(
+      `  wave ${wave}: ${summary.ran.length - bad} task(s) done` + (bad ? `, ${bad} FAILED` : ''),
+    );
+  };
+
+  const project = await makeProject({ script: SCRIPTS[fixture] });
+  const first = await project.run({ providers: providersFor(project, images), logger: collector });
+  tally(1, first, 0);
   if (first.blockedOnGate) {
-    const approved = await p.approveAll();
+    const approved = await project.approveAll();
     log(`  gate: approved ${approved.length} character(s)`);
-    const second = await p.run({ providers: providersFor(p, images) });
-    log(`  wave 2: ${second.ran.length} task(s) done`);
+    const before = failed.length;
+    const second = await project.run({
+      providers: providersFor(project, images),
+      logger: collector,
+    });
+    tally(2, second, before);
   }
-  return p;
+  return { project, failed };
 }
 
 /** Mock everything except the image backend — see the file header for why. */
@@ -94,6 +129,7 @@ function summarize(
   fixture: FixtureName,
   cache: AssetCache,
   log: readonly ServedRequest[],
+  failed: FailedTask[],
 ): CorpusReport {
   const asked = new Set(log.map((r) => r.key));
   const entries = cache.entries();
@@ -106,6 +142,7 @@ function summarize(
     missingFiles: [],
     entries: entries.length,
     totalBytes: entries.reduce((n, e) => n + e.bytes, 0),
+    failed,
   };
 }
 
@@ -137,9 +174,9 @@ export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusRepo
     await probe.cleanup();
   }
 
-  const p = await runFixture(fixture, backend, log);
-  await p.cleanup();
-  return summarize(fixture, cache, backend.log);
+  const { project, failed } = await runFixture(fixture, backend, log);
+  await project.cleanup();
+  return summarize(fixture, cache, backend.log, failed);
 }
 
 /**
@@ -156,10 +193,10 @@ export async function checkCorpus(opts: CorpusOptions = {}): Promise<CorpusRepor
   const cache = await AssetCache.open(opts.cacheDir ?? FIXTURE_ASSET_DIR);
   const backend = new CachedImageBackend(cache, new StubImageBackend());
 
-  const p = await runFixture(fixture, backend, log);
-  await p.cleanup();
+  const { project, failed } = await runFixture(fixture, backend, log);
+  await project.cleanup();
 
-  const report = summarize(fixture, cache, backend.log);
+  const report = summarize(fixture, cache, backend.log, failed);
   for (const entry of cache.entries()) {
     if (!(await cache.get(entry.key))) report.missingFiles.push(entry);
   }
@@ -176,6 +213,12 @@ export function formatReport(report: CorpusReport): string {
     `added     ${report.added}`,
     `corpus    ${report.entries} entr${report.entries === 1 ? 'y' : 'ies'}, ${mb(report.totalBytes)}`,
   ];
+  if (report.failed.length) {
+    lines.push(
+      `\nFAILED TASKS (${report.failed.length}) — the run recorded less than it was asked to:`,
+    );
+    for (const f of report.failed) lines.push(`  ${f.kind}: ${f.error}`);
+  }
   if (report.missingFiles.length) {
     lines.push(`\nindexed but missing on disk (${report.missingFiles.length}):`);
     for (const e of report.missingFiles)

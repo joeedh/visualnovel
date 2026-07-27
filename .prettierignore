@@ -25,3 +25,7 @@ examples/**/locations/**
 **/vngen/build/**
 **/vngen/state/**
 **/vngen/work/**
+
+# The recorded fixture-art corpus. `index.json` is written by AssetCache on every re-record,
+# so a prettier pass over it would be undone by the next one.
+packages/testkit/assets/**

@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ProjectModel, Providers } from '@vn/types';
+import type { Logger, ProjectModel, Providers } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
 import type { ProjectConfig } from '@vn/config';
 import { loadConfig } from '@vn/config';
@@ -55,6 +55,12 @@ export interface RunOptions {
    * against. **No test should pass this**: a suite that reaches a network is not a suite.
    */
   providers?: Providers;
+  /**
+   * Receive the scheduler's structured events. A failure's message lives only here — the
+   * scheduler logs it and does not store it on the task — so without one a wave of failed
+   * tasks is indistinguishable from a wave of successful ones in the returned summary.
+   */
+  logger?: Logger;
 }
 
 export interface MakeProjectOptions {
@@ -191,6 +197,7 @@ export class TestProject {
       config,
       paths: this.paths,
       dryRun: opts.dryRun,
+      logger: opts.logger,
     });
   }
 
