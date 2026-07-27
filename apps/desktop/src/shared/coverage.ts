@@ -44,6 +44,10 @@ const refuse = (error: string): CoverageOp => ({ ok: false, error });
  * Lines the shot gives up are simply released. They become gaps, which the timeline draws as
  * uncovered — the one state this editor exists to reveal — rather than being quietly handed to
  * a neighbour the author did not name.
+ *
+ * Refuses a claim that would leave another shot covering nothing: releasing does not give lines
+ * back, so a drag that swept over a neighbour and returned would destroy it. Revealing a shot
+ * that covers nothing is this surface's job; manufacturing one is not.
  */
 export function setCoverage(
   shots: readonly CoverShot[],
@@ -74,6 +78,20 @@ export function setCoverage(
     .sort((a, b) => Number(b.id === target.id) - Number(a.id === target.id));
 
   if (!changed.length) return refuse(`${target.id} already covers exactly those lines.`);
+
+  // Emptying a *neighbour* is a deletion in disguise, and a drag sweeps across its neighbours on
+  // the way to anywhere. Releasing does not give lines back, so dragging an edge over a shot and
+  // returning would leave it real, paid for, and permanently undisplayable. The dragged shot may
+  // still empty itself (`resolveDrag` never asks for that); this refuses only the side effect.
+  const emptied = changed.filter(
+    (s) => s.id !== target.id && s.coversLines.length === 0 && before.get(s.id)!.length > 0,
+  );
+  if (emptied.length) {
+    return refuse(
+      `That would leave ${emptied.map((s) => s.id).join(', ')} covering nothing. ` +
+        `Move its coverage somewhere else first.`,
+    );
+  }
   const taken = changed
     .filter((s) => s.id !== target.id)
     .reduce((n, s) => n + before.get(s.id)!.length - s.coversLines.length, 0);

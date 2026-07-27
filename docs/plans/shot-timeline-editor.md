@@ -2,7 +2,9 @@
 
 **Status:** **Done.** Wave 1 (shot persistence) and Wave 2 (the coverage strip) shipped, and
 the acceptance pass on a real non-mock run is complete — see
-[Acceptance on a real run](#acceptance-on-a-real-run).
+[Acceptance on a real run](#acceptance-on-a-real-run). Two amendments since: the drag draws a
+ghost rather than [re-laning the strip](#amendment--the-drag-draws-a-ghost-instead-of-re-laning),
+and a claim may not [empty a neighbour](#amendment--a-claim-may-not-empty-a-neighbour).
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), plus shot
 persistence (Wave 1 here).
 **Size:** large. [`../research/graphThingsReport.md`](../research/graphThingsReport.md) §7.
@@ -295,6 +297,80 @@ L1 and L3, and rendered as two brackets in lane 0 with `beat1` in lane 1; a synt
 shot(s).` and committed exactly one `story.setCoverage` record writing
 `vngen/work/shots/arrival.json`. `story.play()` before and after showed the `show` beat move —
 6 beats to 5 as L3 joined an accepted shot, and back to 6 on the reverse edit.
+
+## Amendment — the drag draws a ghost instead of re-laning
+
+Wave 2 previewed a drop by re-deriving the whole strip: `spansFor` over mutated shots, once per
+pointer move. That is wrong in a way only visible with a hand on the mouse, which is where the
+feedback came from — dragging one bracket **reorders the tracks**.
+
+`assignLanes` is greedy first-fit over shot _extents_, so changing the dragged shot's extent
+re-ranks every shot. In `arrival`: `establishing` covers L1 + L3 (lane 0) and `beat1` covers L2
+(lane 1). Pull `beat1`'s start onto L1 and the two stop overlapping, so the preview collapses to
+one lane — the grid goes from three columns to two, `beat1` teleports a column left, and the
+handle slides out from under the pointer, all while the button is still down. Nothing had been
+committed; the strip was just answering a different question than the one being asked.
+
+- **The strip is committed coverage for the whole gesture.** Rows, brackets, lanes, the column
+  template, the gap/overlap gutters and the header counts all come from `cov`. Nothing about the
+  layout is a function of `drag`.
+- **`previewOf` (pure, in `timeline/coverage.ts`) is the proposal**, resolved against committed
+  coverage and returning the ghost's `segments`, the `lane` the shot **already** has, and the
+  rows it would `claim` / `release`. It deliberately does not call `spansFor` — that is the
+  function whose lane fit caused the problem.
+- **Drawn as an overlay**: dashed signal `.tl-ghost` brackets above the real ones
+  (`pointer-events: none`), and a tint on the affected `.tl-band`s — signal for claimed,
+  vermilion for released. A released row keeps its old bracket drawn over it until release, so
+  the tint is the only thing that can say it is about to become a gap.
+- Same principle the branch editor already follows, where relayout is animated *after* a splice
+  commits: **layout changes on commit, not during the gesture.** A no-op drop now also clears
+  its preview notice rather than leaving a sentence describing an edit that never happened.
+
+Verified live over CDP on `arrival`, mid-drag with `beat1`'s start handle on L1:
+`gridTemplateColumns` `662.688px 305.85px 305.862px` and all three brackets byte-identical to
+the committed snapshot, alongside `ghost: ["col3 row1 / 3"]`, `marks: ["tl-band claim#0"]` and
+the notice `arrival__beat1 covers 2 line(s), taking 1 from 1 other shot(s).` Releasing back on
+the original row appended no `CommandRecord`. The unit test pins the counterfactual directly:
+`previewOf(...).lane` is 1 while `spansFor` over the mutated shots puts the same shot in lane 0.
+
+## Amendment — a claim may not empty a neighbour
+
+The ghost amendment was reported as "it appears to not work (it corrupted the graph)". The
+corruption was real and the report was accurate; the cause was a **separate, pre-existing**
+defect in the rule, not in the drawing. Three consecutive records in `commands.jsonl` show it:
+
+```
+13  arrival__establishing → [L3]        retract the start; L1 released → gap
+14  arrival__establishing → [L2, L3]    "taking 1 from 1 other shot(s)" → beat1 emptied
+15  arrival__establishing → [L3]        L2 released → nobody gets it back
+```
+
+`arrival__beat1` covered exactly one line. Sweeping an edge over it claimed that line, and the
+return trip released it to nobody — leaving a real, paid-for shot covering nothing, permanently
+undisplayable, with no gesture that could put it back. **Claiming takes, releasing does not
+give**, so any drag that passes across a single-line neighbour destroys it in transit.
+`resolveDrag`'s "a drag never empties the dragged shot" guard protects only the shot under the
+hand; nothing protected the ones it swept over.
+
+- **`setCoverage` refuses a claim that would empty another shot**, naming it. That is the
+  existing mid-drag contract doing its job: the strip draws the refused ghost in vermilion and
+  the notice carries the reason, so the refusal is visible while the button is still down and
+  the drop simply does not commit. Refusing beats clamping the claim — a claim that silently
+  stops short of what the pointer asked for is unpredictable, and this surface's whole premise
+  is that the preview is the commit.
+- **Only the side effect is refused.** `setCoverage(shot=X lines='')` still succeeds from the
+  command DSL: emptying a shot deliberately is an addressable act, and no drag can ask for it.
+  A shot that already covered nothing is not a victim, so it never triggers the refusal.
+- **The refused ghost is still drawn.** A ghost that vanished on refusal would read as the drag
+  having stopped tracking; it stays, in vermilion, and the notice says why.
+
+Verified live over CDP on `greet` — `greet__establishing: [greet:L1]`, `greet__beat1:
+[greet:L2]`, the same one-line-neighbour shape that corrupted `arrival`. Dragging the
+establishing shot's end handle onto `beat1`'s row gives `ghost: ["tl-ghost refused col2 row1 /
+3"]`, both brackets and `gridTemplateColumns` unchanged, **no** band tints (a refused claim must
+not promise rows it cannot take), and the notice `That would leave greet__beat1 covering nothing.
+Move its coverage somewhere else first.` Releasing appended no `CommandRecord` (24 before, 24
+after) and left `greet.json` byte-identical.
 
 ## Verification
 

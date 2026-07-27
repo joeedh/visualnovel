@@ -9,18 +9,23 @@
  *
  * Dragging a bracket's edge previews through `shared/coverage`, the same rule `story.setCoverage`
  * runs in main, and commits **one** command on release — a drag is continuous, its commit is not.
+ * The preview is drawn *over* the strip and never applied to it: the brackets hold their lanes
+ * for the whole gesture and only the ghost moves.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../../api';
 import { setCoverage } from '../../../../src/shared/coverage';
 import { ShotBracket } from './ShotBracket';
-import { resolveDrag, spansFor, type Edge } from './coverage.js';
+import { previewOf, resolveDrag, spansFor, type Edge } from './coverage.js';
 import type { SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
 
 interface Drag {
   shotId: string;
   edge: Edge;
+  /** What the drop asks for; `null` when it changes nothing. Drawn even when refused. */
   lines: string[] | null;
+  /** Whether `setCoverage` would accept it. A refused drop is drawn and never committed. */
+  ok: boolean;
 }
 
 interface Notice {
@@ -51,30 +56,33 @@ export function Timeline(): JSX.Element {
 
   const cov = useMemo(() => spansFor(data?.lines ?? [], data?.shots ?? []), [data]);
 
-  // What the strip would look like on release, so the drop is drawn before it happens.
-  const shown = useMemo(() => {
-    if (!data || !drag?.lines) return cov;
-    const claimed = new Set(drag.lines);
-    return spansFor(
-      data.lines,
-      data.shots.map((s) =>
-        s.id === drag.shotId
-          ? { ...s, coversLines: drag.lines! }
-          : { ...s, coversLines: s.coversLines.filter((id) => !claimed.has(id)) },
-      ),
-    );
-  }, [cov, data, drag]);
+  // The drop drawn over the strip, never applied to it: re-deriving coverage per pointer move
+  // re-lanes shots the author never touched. The strip changes on release, like a splice.
+  const ghost = useMemo(
+    () => (drag?.lines ? previewOf(cov, drag.shotId, drag.lines) : null),
+    [cov, drag],
+  );
+
+  // Only for a drop that would be accepted: tinting rows a refused claim cannot take would
+  // promise an edit that is not going to happen.
+  const marks = useMemo(() => {
+    const m = new Map<number, 'claim' | 'release'>();
+    if (!ghost || !drag?.ok) return m;
+    for (const i of ghost.released) m.set(i, 'release');
+    for (const i of ghost.claimed) m.set(i, 'claim');
+    return m;
+  }, [ghost, drag]);
 
   const preview = useCallback(
     (shotId: string, edge: Edge, target: number): Drag => {
       const lines = resolveDrag(cov, shotId, edge, target);
-      if (!lines) return { shotId, edge, lines: null };
+      if (!lines) return { shotId, edge, lines: null, ok: false };
       const order = cov.rows.map((r) => r.line.id);
       const op = setCoverage(data?.shots ?? [], { shot: shotId, lines, lineOrder: order });
       setNotice(
         op.ok ? { tone: 'preview', text: op.message } : { tone: 'refused', text: op.error },
       );
-      return { shotId, edge, lines: op.ok ? lines : null };
+      return { shotId, edge, lines, ok: op.ok };
     },
     [cov, data],
   );
@@ -89,7 +97,13 @@ export function Timeline(): JSX.Element {
     const onUp = (): void => {
       const pending = drag;
       setDrag(null);
-      if (!pending.lines) return;
+      // A drop that changes nothing takes its preview with it, rather than leaving a sentence
+      // on screen describing an edit that did not happen. A *refused* one keeps its reason.
+      if (!pending.lines) {
+        setNotice(null);
+        return;
+      }
+      if (!pending.ok) return;
       void api
         .invoke('command:exec', {
           id: 'story.setCoverage',
@@ -131,8 +145,8 @@ export function Timeline(): JSX.Element {
           ))}
         </select>
         <span className="ct">
-          {shown.spans.length} shot(s) · {shown.gaps.length} uncovered
-          {shown.overlaps.length ? ` · ${shown.overlaps.length} overlapping` : ''}
+          {cov.spans.length} shot(s) · {cov.gaps.length} uncovered
+          {cov.overlaps.length ? ` · ${cov.overlaps.length} overlapping` : ''}
         </span>
         {notice && <span className={`tl-notice ${notice.tone}`}>{notice.text}</span>}
       </div>
@@ -148,20 +162,21 @@ export function Timeline(): JSX.Element {
           <div
             className={`tl-grid${drag ? ' dragging' : ''}`}
             style={{
-              gridTemplateColumns: `minmax(0, 1.3fr) repeat(${Math.max(shown.lanes, 1)}, minmax(130px, 0.6fr))`,
+              gridTemplateColumns: `minmax(0, 1.3fr) repeat(${Math.max(cov.lanes, 1)}, minmax(130px, 0.6fr))`,
             }}
           >
             {/* A full-width hit band per row, behind everything: a drag lives in the bracket
-                columns, so the pointer is rarely over the script when it needs a row. */}
-            {shown.rows.map((row) => (
+                columns, so the pointer is rarely over the script when it needs a row. It also
+                carries the preview tint, since a released row keeps its bracket until release. */}
+            {cov.rows.map((row) => (
               <div
                 key={`band:${row.line.id}`}
-                className="tl-band"
+                className={`tl-band${marks.has(row.index) ? ` ${marks.get(row.index)!}` : ''}`}
                 data-line-index={row.index}
                 style={{ gridColumn: '1 / -1', gridRow: row.index + 1 }}
               />
             ))}
-            {shown.rows.map((row) => (
+            {cov.rows.map((row) => (
               <div
                 key={row.line.id}
                 className={`tl-line ${row.line.kind}${row.shots.length === 0 ? ' gap' : ''}${row.shots.length > 1 ? ' over' : ''}`}
@@ -171,7 +186,7 @@ export function Timeline(): JSX.Element {
                 <div className="text">{row.line.text}</div>
               </div>
             ))}
-            {shown.spans.flatMap((span) =>
+            {cov.spans.flatMap((span) =>
               span.segments.map((segment, i) => (
                 <ShotBracket
                   key={`${span.shot.id}#${i}`}
@@ -182,16 +197,29 @@ export function Timeline(): JSX.Element {
                   selected={span.shot.id === selected}
                   dragging={drag?.shotId === span.shot.id}
                   onSelect={() => setSelected(span.shot.id)}
-                  onGrab={(edge) => setDrag({ shotId: span.shot.id, edge, lines: null })}
+                  onGrab={(edge) => setDrag({ shotId: span.shot.id, edge, lines: null, ok: false })}
                 />
               )),
             )}
+            {/* Drawn last and above the brackets: the ghost is what release would produce, in
+                the dragged shot's existing lane. A refused drop is still drawn — the reason is
+                in the notice, and a ghost that vanished would read as the drag having stopped. */}
+            {ghost?.segments.map((segment) => (
+              <div
+                key={`ghost:${segment.from}`}
+                className={`tl-ghost${drag?.ok ? '' : ' refused'}`}
+                style={{
+                  gridColumn: ghost.lane + 2,
+                  gridRow: `${segment.from + 1} / ${segment.to + 2}`,
+                }}
+              />
+            ))}
           </div>
-          {shown.orphans.length > 0 && (
+          {cov.orphans.length > 0 && (
             <div className="tl-orphans">
               <span className="tt">COVERS NOTHING</span>
               {/* Real, paid-for shots the runner will never display — the other half of a gap. */}
-              {shown.orphans.map((s) => (
+              {cov.orphans.map((s) => (
                 <span key={s.id} className="orph">
                   {s.id}
                 </span>

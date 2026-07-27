@@ -446,10 +446,22 @@ invalidated. Plan and as-shipped notes:
   `story.setCoverage` command in main _and_ by the strip mid-drag — same split as
   `branchops.ts`/`intent.ts`, so a refusal shown while an edge is carried is the refusal that
   would happen. One command per drop; a drag is continuous, its commit is not.
+- **A drag previews; it never re-lanes.** Lanes are greedy first-fit over shot _extents_, so
+  re-deriving coverage per pointer move moves brackets the author never touched into other
+  columns and changes the grid's column count under the cursor. The strip therefore draws
+  committed coverage for the whole gesture and `previewOf` draws the proposal over it — ghost
+  brackets in the dragged shot's **existing** lane, plus a tint on the rows it would claim and
+  release. Same rule as the branch editor's animated relayout: layout changes on commit, not
+  during the gesture. It also keeps the grabbed handle under the pointer.
 - **Claiming a line takes it from whatever held it.** The exporter shows the _first_ shot
   covering a line, so double coverage silently hides the second shot's frame. Released lines
   become **gaps** — a vermilion gutter — rather than being handed to a neighbour: an uncovered
-  line renders with no image, and revealing that is the point of the surface.
+  line renders with no image, and revealing that is the point of the surface. But a claim that
+  would leave another shot covering **nothing** is refused, because releasing does not give lines
+  back: a drag that swept across a neighbour and returned would destroy it, and the return trip
+  could not undo it. Revealing a shot that covers nothing is this surface's job; manufacturing
+  one is not. The dragged shot may still empty itself via the command DSL — only the side effect
+  is refused.
 - **Coverage is a set, never a range.** `timeline/coverage.ts` splits a shot into contiguous
   _segments_ and lanes shots by extent, so the decomposer's interleaving (plate takes the
   narration, each medium one speaker) draws as separate columns instead of nested brackets.

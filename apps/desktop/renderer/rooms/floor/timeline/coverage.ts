@@ -9,8 +9,8 @@
  * *segments*, and crossing extents are separated into lanes so their brackets can't collide.
  *
  * The mutation rule lives in `src/shared/coverage.ts` and is applied by the command; what is
- * here is view math plus `resolveDrag`, which only decides which lines the dragged shot ends up
- * asking for.
+ * here is view math, `resolveDrag` (which lines the dragged shot ends up asking for) and
+ * `previewOf` (how that proposal is drawn over the strip without disturbing it).
  */
 import type { CoverageLine, CoverageShot } from '../../../../src/shared/ipc';
 
@@ -156,6 +156,55 @@ export function resolveDrag(
 
   const lines = [...covered].sort((a, b) => a - b).map((i) => coverage.rows[i]!.line.id);
   return sameIds(lines, span.shot.coversLines) ? null : lines;
+}
+
+/** What a drag would produce, drawn over the committed strip rather than applied to it. */
+export interface DragPreview {
+  shotId: string;
+  /** The lane the shot already occupies. A preview never re-lanes — see `previewOf`. */
+  lane: number;
+  /** Contiguous runs of the proposed line set: the ghost brackets. */
+  segments: Segment[];
+  /** Rows the shot does not cover yet and would. */
+  claimed: number[];
+  /** Rows it would give up. Each becomes a gap unless another shot already covers it too. */
+  released: number[];
+}
+
+/**
+ * The ghost geometry for an in-flight drag, resolved against **committed** coverage.
+ *
+ * Deliberately not `spansFor` over mutated shots: lanes are greedy first-fit over *extents*, so
+ * re-deriving them per pointer move moves shots the author never touched into other columns and
+ * changes the column count under the cursor. The dragged shot keeps `span.lane` and every other
+ * bracket keeps its geometry; only this overlay moves. It also keeps the grabbed handle under
+ * the pointer, since the bracket it belongs to no longer slides out from beneath it.
+ *
+ * Returns `null` for a shot that draws no bracket — it has no lane to draw a ghost in.
+ */
+export function previewOf(
+  coverage: Coverage,
+  shotId: string,
+  lines: readonly string[],
+): DragPreview | null {
+  const span = coverage.spans.find((s) => s.shot.id === shotId);
+  if (!span) return null;
+
+  const index = new Map(coverage.rows.map((r) => [r.line.id, r.index]));
+  const next = [
+    ...new Set(lines.map((id) => index.get(id)).filter((i): i is number => i !== undefined)),
+  ].sort((a, b) => a - b);
+  if (next.length === 0) return null;
+
+  const now = new Set(span.segments.flatMap((s) => range(s.from, s.to)));
+  const proposed = new Set(next);
+  return {
+    shotId,
+    lane: span.lane,
+    segments: runsOf(shotId, next),
+    claimed: next.filter((i) => !now.has(i)),
+    released: [...now].filter((i) => !proposed.has(i)).sort((a, b) => a - b),
+  };
 }
 
 const range = (from: number, to: number): number[] =>
