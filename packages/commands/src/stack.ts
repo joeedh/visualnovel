@@ -1,17 +1,19 @@
 /**
  * The command stack: the one execution path for every command, and the history of what ran.
  *
- * v1 is undo-less by decision. Every record still captures the document repo's HEAD, whether
- * the worktree was dirty, and which paths were written — the inputs each strategy in
- * `docs/gitUndoOptions.md` needs — so adding undo later is additive, not a rewrite.
+ * Undo is opt-in per command and rests on shadow snapshots (`undo.ts`): with a journal wired,
+ * a command marked `undoable` is bracketed by two captures of the document tree, and undo/redo
+ * move the working copy between them. Without one, the stack behaves exactly as it did before
+ * undo existed and refuses both.
  */
 import { formatCommand, parseCommand, DslError } from './dsl.js';
 import { coerceProps, type PropSpecMap } from './props.js';
 import type { CommandRegistry } from './registry.js';
+import type { Snapshot, UndoJournal } from './undo.js';
 import type { CommandContext, CommandOutcome, CommandRecord, CommandSource } from './command.js';
 
-const UNDO_MESSAGE =
-  'undo is not implemented yet — strategies are surveyed in docs/gitUndoOptions.md';
+const NO_JOURNAL =
+  'undo is unavailable here — no snapshot journal is wired (see docs/gitUndoOptions.md)';
 
 export interface CommandStackOptions<Host> {
   registry: CommandRegistry<Host>;
@@ -20,10 +22,23 @@ export interface CommandStackOptions<Host> {
   onRecord?(record: CommandRecord): void | Promise<void>;
   /** Injectable clock, so tests get stable timestamps. */
   now?(): string;
+  /** Enables undo/redo. Absent means the stack refuses both, as it did before undo landed. */
+  journal?: UndoJournal;
+}
+
+/** What the UI needs to render undo/redo affordances honestly. */
+export interface UndoState {
+  canUndo: boolean;
+  canRedo: boolean;
+  /** The invocation undo would reverse, for a tooltip. Null when there is nothing to undo. */
+  undoLabel: string | null;
+  redoLabel: string | null;
 }
 
 export class CommandStack<Host = unknown> {
   private readonly records: CommandRecord[] = [];
+  /** Undone records, most recent last — the redo stack. */
+  private readonly undone: CommandRecord[] = [];
   private seq = 0;
 
   constructor(private readonly opts: CommandStackOptions<Host>) {}
@@ -66,8 +81,9 @@ export class CommandStack<Host = unknown> {
 
     const startedAt = this.now();
     const { head, dirty } = await this.gitState();
+    const seq = ++this.seq;
     const base = {
-      seq: ++this.seq,
+      seq,
       id,
       props,
       invocation: formatCommand(id, props),
@@ -78,16 +94,28 @@ export class CommandStack<Host = unknown> {
       startedAt,
     };
 
+    // Snapshot before the command runs, not after it fails: a command that half-ran has still
+    // written, and the pre-state is the only thing that describes where it started.
+    const journal = command.undoable && command.mutating ? this.opts.journal : undefined;
+    const pre = await this.capture(journal, seq, 'pre');
+
     try {
       const output = await command.run(props as never, ctx);
+      const post = await this.capture(journal, seq, 'post');
       const record: CommandRecord = {
         ...base,
         finishedAt: this.now(),
         status: 'ok',
         message: output.message,
         ...(output.written ? { written: output.written } : {}),
+        ...(pre && post
+          ? { undo: { pre: pre.commit, post: post.commit, changed: pre.tree !== post.tree } }
+          : {}),
       };
+      // A fresh act invalidates every redo behind it — the branch they belonged to is gone.
+      if (command.mutating) this.undone.length = 0;
       await this.record(record);
+      this.prune(journal);
       return { ok: true, record, data: output.data };
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
@@ -108,24 +136,161 @@ export class CommandStack<Host = unknown> {
     return limit === undefined ? [...this.records] : this.records.slice(-limit);
   }
 
+  /**
+   * The record undo would reverse: the most recent one that actually changed the workspace.
+   *
+   * Non-mutating records are skipped, so a `view.room` between two edits does not stand in the
+   * way, and the stack's own undo/redo entries are skipped because they are history rather
+   * than undo points. So is a bracketed command that changed nothing (`undo.changed === false`):
+   * its two trees are identical, so reaching past it cannot skip over an edit. A candidate
+   * without snapshots at all is still *returned* — undo names it and refuses, rather than
+   * quietly reaching past it to an older edit the author never pointed at.
+   */
+  undoCandidate(): CommandRecord | null {
+    const undone = new Set(this.undone.map((r) => r.seq));
+    for (let i = this.records.length - 1; i >= 0; i--) {
+      const record = this.records[i]!;
+      if (!record.mutating || record.status !== 'ok' || record.stack) continue;
+      if (record.undo && !record.undo.changed) continue;
+      if (undone.has(record.seq)) continue;
+      return record;
+    }
+    return null;
+  }
+
+  undoState(): UndoState {
+    const undo = this.undoCandidate();
+    const redo = this.undone[this.undone.length - 1] ?? null;
+    const undoable = Boolean(this.opts.journal && undo?.undo);
+    return {
+      canUndo: undoable,
+      canRedo: Boolean(this.opts.journal && redo),
+      undoLabel: undoable ? undo!.invocation : null,
+      redoLabel: redo ? redo.invocation : null,
+    };
+  }
+
   canUndo(): boolean {
-    return false;
+    return this.undoState().canUndo;
   }
 
   canRedo(): boolean {
-    return false;
+    return this.undoState().canRedo;
   }
 
-  undo(): Promise<CommandOutcome> {
-    return Promise.resolve({ ok: false, error: UNDO_MESSAGE });
+  /** Move the working copy back to the candidate's `pre` snapshot. */
+  async undo(): Promise<CommandOutcome> {
+    const journal = this.opts.journal;
+    if (!journal) return { ok: false, error: NO_JOURNAL };
+    const target = this.undoCandidate();
+    if (!target) return { ok: false, error: 'nothing to undo' };
+    if (!target.undo) {
+      return { ok: false, error: `"${target.id}" was not recorded as undoable` };
+    }
+    return this.move({
+      target,
+      kind: 'undo',
+      expected: target.undo.post,
+      to: target.undo.pre,
+      done: () => this.undone.push(target),
+    });
   }
 
-  redo(): Promise<CommandOutcome> {
-    return Promise.resolve({ ok: false, error: UNDO_MESSAGE });
+  /**
+   * Move the working copy forward to the record's `post` snapshot.
+   *
+   * Restoring the post-state, never replaying `invocation` — a replay is a *re-run*, and for
+   * anything touching a model or reading changed inputs it would produce a different result
+   * (`docs/gitUndoOptions.md` §7). The invocation stays on the record for exactly that use.
+   */
+  async redo(): Promise<CommandOutcome> {
+    const journal = this.opts.journal;
+    if (!journal) return { ok: false, error: NO_JOURNAL };
+    const target = this.undone[this.undone.length - 1];
+    if (!target?.undo) return { ok: false, error: 'nothing to redo' };
+    return this.move({
+      target,
+      kind: 'redo',
+      expected: target.undo.pre,
+      to: target.undo.post,
+      done: () => void this.undone.pop(),
+    });
+  }
+
+  /** The shared body of undo and redo: guard, restore, record. */
+  private async move(opts: {
+    target: CommandRecord;
+    kind: 'undo' | 'redo';
+    expected: string;
+    to: string;
+    done: () => void;
+  }): Promise<CommandOutcome> {
+    const journal = this.opts.journal!;
+    const { target, kind } = opts;
+    const startedAt = this.now();
+    let checked;
+    try {
+      checked = await journal.check(opts.expected);
+      if (!checked.ok)
+        return { ok: false, error: `cannot ${kind} ${target.invocation}: ${checked.error}` };
+      await journal.restore(checked.tree, opts.to);
+    } catch (err) {
+      return {
+        ok: false,
+        error: `${kind} failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+    opts.done();
+
+    const { head, dirty } = await this.gitState();
+    const record: CommandRecord = {
+      seq: ++this.seq,
+      id: `stack.${kind}`,
+      props: { target: target.seq },
+      invocation: `stack.${kind}(target=${target.seq})`,
+      source: 'ui',
+      mutating: true,
+      stack: kind,
+      gitHead: head,
+      gitDirty: dirty,
+      startedAt,
+      finishedAt: this.now(),
+      status: 'ok',
+      message: `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.invocation}.`,
+    };
+    await this.record(record);
+    return { ok: true, record };
   }
 
   private now(): string {
     return this.opts.now?.() ?? new Date().toISOString();
+  }
+
+  /** Snapshot, or degrade to no undo point: provenance must not be able to fail a command. */
+  private async capture(
+    journal: UndoJournal | undefined,
+    seq: number,
+    label: 'pre' | 'post',
+  ): Promise<Snapshot | null> {
+    if (!journal) return null;
+    try {
+      return await journal.capture(seq, label);
+    } catch (err) {
+      this.opts.context.log('warn', `undo snapshot (${label} ${seq}) failed: ${String(err)}`);
+      return null;
+    }
+  }
+
+  /** Housekeeping, so it can never fail the command it follows. */
+  private prune(journal: UndoJournal | undefined): void {
+    if (!journal) return;
+    const warn = (err: unknown): void =>
+      this.opts.context.log('warn', `undo snapshots not pruned: ${String(err)}`);
+    try {
+      void journal.prune().catch(warn);
+    } catch (err) {
+      warn(err);
+    }
   }
 
   /**

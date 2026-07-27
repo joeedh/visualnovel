@@ -11,8 +11,16 @@ import type {
   PipelineStatus,
   Room,
   StudioMode,
+  UndoState,
   WorkspaceIndex,
 } from '../../src/shared/ipc';
+
+const NO_UNDO: UndoState = {
+  canUndo: false,
+  canRedo: false,
+  undoLabel: null,
+  redoLabel: null,
+};
 
 /**
  * The shell, and only the shell: which room is up, the palette, and the workspace-level
@@ -26,6 +34,11 @@ export function App(): JSX.Element {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [index, setIndex] = useState<WorkspaceIndex | null>(null);
   const [status, setStatus] = useState<PipelineStatus | null>(null);
+  const [undo, setUndo] = useState<UndoState>(NO_UNDO);
+  // Bumped only by an undo/redo, and used to remount the room: those are the writes a room
+  // did not make itself, so its own refresh never fires for them.
+  const [revision, setRevision] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
   const agent = useAgent();
   const { setBusy, toggleMode } = agent;
 
@@ -45,10 +58,26 @@ export function App(): JSX.Element {
     return api.on('command:ui', (effect) => {
       if (effect.type === 'room') setRoom(effect.name);
       else if (effect.type === 'palette') setPaletteOpen(effect.open);
-      else if (effect.room === 'studio') setStudioMode(effect.mode);
+      else if (effect.type === 'undo') {
+        setUndo(effect.state);
+        setRevision(effect.revision);
+      } else if (effect.room === 'studio') setStudioMode(effect.mode);
       else setFloorMode(effect.mode);
     });
   }, []);
+
+  // A refusal is the interesting outcome here — undo declines rather than guessing when the
+  // workspace moved under it, and the author needs to be told why.
+  const move = useCallback(async (direction: 'undo' | 'redo') => {
+    const result = await api.invoke(direction === 'undo' ? 'command:undo' : 'command:redo');
+    setNotice(result.ok ? (result.record?.message ?? null) : result.error);
+  }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const runPipeline = useCallback(async () => {
     setBusy(true);
@@ -64,7 +93,13 @@ export function App(): JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName ?? '';
-      if (e.shiftKey && e.key === 'Tab') {
+      const accel = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      // Not while typing: in a composer or a label editor these belong to the text field.
+      if (accel && (key === 'z' || key === 'y') && !/^(input|textarea)$/i.test(tag)) {
+        e.preventDefault();
+        void move(key === 'y' || e.shiftKey ? 'redo' : 'undo');
+      } else if (e.shiftKey && e.key === 'Tab') {
         e.preventDefault();
         void toggleMode();
       } else if (e.key === '/' && !/^(input|textarea)$/i.test(tag)) {
@@ -76,7 +111,7 @@ export function App(): JSX.Element {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [toggleMode]);
+  }, [toggleMode, move]);
 
   return (
     <div className="app">
@@ -87,9 +122,15 @@ export function App(): JSX.Element {
         toggleMode={agent.toggleMode}
         title={index?.title}
         model={agent.model}
+        undo={undo}
+        onUndo={() => void move('undo')}
+        onRedo={() => void move('redo')}
       />
+      {/* `key` is the undo revision: a restore rewrote files the room is displaying, and a
+          remount is how it re-reads them without every surface growing its own subscription. */}
       {room === 'studio' ? (
         <Studio
+          key={revision}
           index={index}
           agent={agent}
           mode={studioMode}
@@ -99,6 +140,7 @@ export function App(): JSX.Element {
         />
       ) : room === 'floor' ? (
         <Floor
+          key={revision}
           status={status}
           mode={floorMode}
           setMode={setFloorMode}
@@ -107,8 +149,9 @@ export function App(): JSX.Element {
           busy={agent.busy}
         />
       ) : (
-        <Runner />
+        <Runner key={revision} />
       )}
+      {notice && <div className="shell-notice mono">{notice}</div>}
       {paletteOpen && (
         <Palette
           currentModel={agent.model}

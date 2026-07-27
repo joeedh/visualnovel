@@ -6,6 +6,23 @@
   grid-template-rows: auto 1fr;
   height: 100vh;
 }
+/* Transient, and shell-wide because undo is: it can be driven from any room, and a refusal
+   ("the workspace has changed since that command ran") has to be read wherever you are. */
+.shell-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: 70ch;
+  padding: 9px 14px;
+  font-size: 12px;
+  color: var(--paper);
+  background: var(--ink-raised);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 60;
+}
 .topbar {
   display: flex;
   align-items: center;
@@ -90,6 +107,28 @@
 .badge-live.live {
   color: var(--jade);
   border-color: rgba(95, 181, 140, 0.4);
+}
+
+/* Undo acts on authored documents, so it is warm. */
+.undo {
+  display: flex;
+  gap: 2px;
+}
+.undo button {
+  border: 1px solid var(--ink-line);
+  background: var(--ink-sunken);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 8px;
+  color: var(--sodium);
+}
+.undo button:hover:not(:disabled) {
+  background: var(--ink-raised);
+}
+.undo button:disabled {
+  color: var(--mist-dim);
+  opacity: 0.4;
 }
 
 .mode {

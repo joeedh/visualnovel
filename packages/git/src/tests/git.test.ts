@@ -129,4 +129,115 @@ describe('@vn/git', () => {
       await cleanup();
     }
   });
+
+  describe('snapshot plumbing', () => {
+    it('writes a tree of the working copy, honoring an exclude pathspec', async () => {
+      const { git, dir, cleanup } = await tempRepo();
+      try {
+        await fs.mkdir(join(dir, 'gen'), { recursive: true });
+        await write(dir, 'doc.md', 'authored\n');
+        await write(dir, 'gen/big.bin', 'generated\n');
+
+        const tree = await git.writeTree(['.', ':(exclude)gen']);
+        const listed = await git.show(tree);
+        expect(listed).toContain('doc.md');
+        expect(listed).not.toContain('big.bin');
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('leaves HEAD and the real index alone', async () => {
+      const { git, dir, cleanup } = await tempRepo();
+      try {
+        await write(dir, 'a.md', 'one\n');
+        await git.commit({ message: 'init', paths: ['a.md'] });
+        await write(dir, 'untracked.md', 'not staged\n');
+
+        const head = await git.head();
+        await git.writeTree();
+
+        expect(await git.head()).toBe(head);
+        // Still untracked (`??`), not staged — a snapshot must not touch the author's index.
+        const status = await git.status();
+        expect(status.entries).toEqual([{ x: '?', y: '?', path: 'untracked.md' }]);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('moves the working copy between two trees, deletions included', async () => {
+      const { git, dir, cleanup } = await tempRepo();
+      try {
+        await fs.mkdir(join(dir, 'gen'), { recursive: true });
+        await write(dir, 'keep.md', 'before\n');
+        await write(dir, 'doomed.md', 'exists\n');
+        await write(dir, 'gen/out.bin', 'generated\n');
+        const scope = ['.', ':(exclude)gen'];
+        const before = await git.writeTree(scope);
+
+        // A modification, a creation, and a deletion — the three cases undo has to reverse.
+        await write(dir, 'keep.md', 'after\n');
+        await write(dir, 'added.md', 'new\n');
+        await fs.rm(join(dir, 'doomed.md'));
+        await write(dir, 'gen/out.bin', 'regenerated\n');
+        const after = await git.writeTree(scope);
+
+        await git.applyTree(after, before);
+        expect(await fs.readFile(join(dir, 'keep.md'), 'utf8')).toBe('before\n');
+        expect(await fs.readFile(join(dir, 'doomed.md'), 'utf8')).toBe('exists\n');
+        await expect(fs.access(join(dir, 'added.md'))).rejects.toThrow();
+        // Outside the pathspec, so in neither tree: undo has no opinion about generated output.
+        expect(await fs.readFile(join(dir, 'gen/out.bin'), 'utf8')).toBe('regenerated\n');
+
+        await git.applyTree(before, after);
+        expect(await fs.readFile(join(dir, 'keep.md'), 'utf8')).toBe('after\n');
+        expect(await fs.readFile(join(dir, 'added.md'), 'utf8')).toBe('new\n');
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('parks a snapshot under a private ref, invisible to the log', async () => {
+      const { git, dir, cleanup } = await tempRepo();
+      try {
+        await write(dir, 'a.md', 'one\n');
+        await git.commit({ message: 'init', paths: ['a.md'] });
+        await write(dir, 'a.md', 'two\n');
+
+        const tree = await git.writeTree();
+        const snap = await git.commitTree(tree, {
+          message: 'vn: pre 1',
+          parents: [await git.head()],
+        });
+        await git.updateRef('refs/vn/undo/1/pre', snap);
+
+        expect(await git.listRefs('refs/vn/undo')).toEqual([
+          { ref: 'refs/vn/undo/1/pre', sha: snap },
+        ]);
+        expect(await git.treeOf(snap)).toBe(tree);
+        // The author's history never mentions it.
+        expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
+
+        await git.deleteRef('refs/vn/undo/1/pre');
+        expect(await git.listRefs('refs/vn/undo')).toEqual([]);
+        await git.deleteRef('refs/vn/undo/1/pre'); // missing is not an error
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('snapshots an unborn repo', async () => {
+      const { git, dir, cleanup } = await tempRepo();
+      try {
+        await write(dir, 'a.md', 'one\n');
+        const tree = await git.writeTree();
+        // No HEAD to parent onto — the snapshot is still a valid, restorable root commit.
+        const snap = await git.commitTree(tree, { message: 'vn: pre 1', parents: [null] });
+        expect(await git.treeOf(snap)).toBe(tree);
+      } finally {
+        await cleanup();
+      }
+    });
+  });
 });

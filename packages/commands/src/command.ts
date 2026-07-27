@@ -52,10 +52,12 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
   /** True if the command always needs explicit user confirmation, regardless of caller. */
   confirm?: boolean;
   /**
-   * Reserved. v1 registers nothing undoable and `CommandStack.undo` refuses — the strategy
-   * survey lives in `docs/gitUndoOptions.md`.
+   * Whether the stack should snapshot the document tree around this command so it can be
+   * undone. Only meaningful with `mutating: true`, and only for commands whose writes are
+   * *documents* — generated output is content-addressed and is the task graph's business, not
+   * undo's (`docs/gitUndoOptions.md` §6).
    */
-  undoable?: false;
+  undoable?: boolean;
   run(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CommandOutput>;
 }
 
@@ -105,4 +107,19 @@ export interface CommandRecord {
   message: string;
   written?: string[];
   error?: string;
+  /**
+   * Shadow snapshots taken either side of an undoable command — commit shas parked under
+   * `refs/vn/undo/<seq>/`. Absent means the record is not an undo point, which is how history
+   * written before undo existed stays readable.
+   *
+   * `changed` is the two trees compared, not what the command claimed it wrote: false means
+   * the workspace is provably identical either side, so undo walks past it rather than
+   * reporting that it reversed something the author would see no trace of.
+   */
+  undo?: { pre: string; post: string; changed: boolean };
+  /**
+   * Set on the stack's own undo/redo entries. They mutate the worktree, so they are recorded,
+   * but they are history rather than undo points and are skipped when choosing a candidate.
+   */
+  stack?: 'undo' | 'redo';
 }

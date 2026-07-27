@@ -42,7 +42,7 @@ describe('the desktop registry', () => {
     }
   });
 
-  it('marks the file-writing commands mutating and nothing undoable in v1', () => {
+  it('marks the file-writing commands mutating', () => {
     const mutating = commands.filter((c) => c.mutating).map((c) => c.id);
     expect(mutating).toEqual([
       'agent.run',
@@ -55,7 +55,23 @@ describe('the desktop registry', () => {
       'story.setNext',
       'story.spliceScene',
     ]);
-    expect(commands.filter((c) => c.undoable)).toEqual([]);
+  });
+
+  /**
+   * Undo restores a snapshot of the *document* tree, so only commands whose writes are
+   * documents may opt in. The rest write generated output (`story.export`), append to a log
+   * (`pipeline.run`), or straddle both classes (`gate.approve` flips `character.md` **and**
+   * marks the asset accepted in `manifest.json`) — see `docs/plans/command-undo-redo.md`.
+   */
+  it('opts only the document writers into undo, and nothing non-mutating', () => {
+    expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
+      'story.removeChoice',
+      'story.setChoice',
+      'story.setCoverage',
+      'story.setNext',
+      'story.spliceScene',
+    ]);
+    expect(commands.filter((c) => c.undoable && !c.mutating)).toEqual([]);
   });
 
   it('projects to a catalog with a usage template and a schema per command', () => {

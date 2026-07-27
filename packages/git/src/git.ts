@@ -6,6 +6,8 @@
  * to one repo `root`.
  */
 import { execFile } from 'node:child_process';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { GitError } from './errors.js';
 
 interface RunResult {
@@ -15,12 +17,17 @@ interface RunResult {
 }
 
 /** Run a git subcommand in `cwd`, capturing output. Never throws on non-zero exit. */
-function run(cwd: string, args: string[]): Promise<RunResult> {
+function run(cwd: string, args: string[], indexFile?: string): Promise<RunResult> {
   return new Promise((resolve) => {
     execFile(
       'git',
       args,
-      { cwd, windowsHide: true, maxBuffer: 64 * 1024 * 1024 },
+      {
+        cwd,
+        windowsHide: true,
+        maxBuffer: 64 * 1024 * 1024,
+        ...(indexFile ? { env: { ...process.env, GIT_INDEX_FILE: indexFile } } : {}),
+      },
       (err, stdout, stderr) => {
         const code =
           err && typeof (err as { code?: unknown }).code === 'number'
@@ -54,20 +61,45 @@ export interface GitStatus {
 /** ASCII unit separator: a delimiter that never appears in commit metadata. */
 const FIELD_SEP = '';
 
+/** One `refs/…` entry. */
+export interface RefInfo {
+  ref: string;
+  sha: string;
+}
+
+/** Distinguishes scratch index files, so two processes on one repo cannot collide. */
+let scratchIndexCount = 0;
+
 /** A non-interactive handle to one git repository. */
 export class Git {
   constructor(readonly root: string) {}
 
-  private run(args: string[]): Promise<RunResult> {
-    return run(this.root, args);
+  private run(args: string[], indexFile?: string): Promise<RunResult> {
+    return run(this.root, args, indexFile);
   }
 
-  private async ok(args: string[]): Promise<string> {
-    const r = await this.run(args);
+  private async ok(args: string[], indexFile?: string): Promise<string> {
+    const r = await this.run(args, indexFile);
     if (r.code !== 0) {
       throw new GitError(`git ${args[0]} failed: ${r.stderr.trim() || r.stdout.trim()}`);
     }
     return r.stdout;
+  }
+
+  /**
+   * Run `fn` against a private, empty index file, then remove it.
+   *
+   * Every caller below stages into this rather than the repo's real index — a stray `git add`
+   * against that would silently stage whatever the author had in progress.
+   */
+  private async withScratchIndex<T>(fn: (indexFile: string) => Promise<T>): Promise<T> {
+    const dir = (await this.ok(['rev-parse', '--absolute-git-dir'])).trim();
+    const file = join(dir, `vn-index-${process.pid}-${++scratchIndexCount}`);
+    try {
+      return await fn(file);
+    } finally {
+      await rm(file, { force: true });
+    }
   }
 
   /** True if `root` is inside a git work tree. */
@@ -197,6 +229,75 @@ export class Git {
   /** Restore a path to its state at `ref` (defaults to HEAD). */
   async restore(path: string, ref = 'HEAD'): Promise<void> {
     await this.ok(['restore', '--source', ref, '--', path]);
+  }
+
+  // ---- object plumbing: snapshots that never move HEAD or the index ----
+
+  /**
+   * The tree of the working copy as it stands, without touching HEAD, the index, or history.
+   *
+   * `paths` is a git pathspec, so `':(exclude)vngen/build'` scopes a snapshot to one data
+   * class. Ignored files are excluded as usual, which is what keeps `keys/` out of a snapshot.
+   * The resulting tree is unreferenced — park it under a ref (see `commitTree`/`updateRef`)
+   * or `gc` may reclaim it.
+   */
+  async writeTree(paths: string[] = ['.']): Promise<string> {
+    return this.withScratchIndex(async (index) => {
+      await this.ok(['add', '-A', '--', ...paths], index);
+      return (await this.ok(['write-tree'], index)).trim();
+    });
+  }
+
+  /** Create a commit object for `tree`. Moves no ref — the caller decides where it lands. */
+  async commitTree(
+    tree: string,
+    opts: { message: string; parents?: (string | null)[] },
+  ): Promise<string> {
+    const parents = (opts.parents ?? []).filter((p): p is string => Boolean(p));
+    const args = ['commit-tree', tree, ...parents.flatMap((p) => ['-p', p]), '-m', opts.message];
+    return (await this.ok(args)).trim();
+  }
+
+  /** The tree a commit points at. */
+  async treeOf(commit: string): Promise<string> {
+    return (await this.ok(['rev-parse', `${commit}^{tree}`])).trim();
+  }
+
+  /** Point a ref at `sha`, creating or moving it. */
+  async updateRef(ref: string, sha: string): Promise<void> {
+    await this.ok(['update-ref', ref, sha]);
+  }
+
+  /** Delete a ref. Missing is not an error. */
+  async deleteRef(ref: string): Promise<void> {
+    await this.run(['update-ref', '-d', ref]);
+  }
+
+  /** Every ref under `prefix`, e.g. `refs/vn/undo`. */
+  async listRefs(prefix: string): Promise<RefInfo[]> {
+    const out = await this.ok(['for-each-ref', '--format=%(refname) %(objectname)', prefix]);
+    return out
+      .split('\n')
+      .filter((l) => l.trim().length > 0)
+      .map((l) => {
+        const [ref, sha] = l.trim().split(' ');
+        return { ref: ref ?? '', sha: sha ?? '' };
+      });
+  }
+
+  /**
+   * Move the working copy from tree `from` to tree `to`, leaving HEAD, the index and history
+   * alone. Paths in neither tree — anything the snapshot's pathspec excluded — are untouched.
+   *
+   * Seeding the scratch index with `from` is what makes the delete half work: a file created
+   * after `from` is in neither tree, so a plain checkout would leave it behind. Git only knows
+   * to remove it because the seeded index says it was there.
+   */
+  async applyTree(from: string, to: string): Promise<void> {
+    await this.withScratchIndex(async (index) => {
+      await this.ok(['read-tree', from], index);
+      await this.ok(['read-tree', '-u', '--reset', to], index);
+    });
   }
 }
 

@@ -9,7 +9,7 @@
  *   node scripts/vn-cdp.mjs "workspace.index()"
  *   node scripts/vn-cdp.mjs --catalog
  *   node scripts/vn-cdp.mjs --history 5
- *   node scripts/vn-cdp.mjs --undo          # v1: refuses, see docs/gitUndoOptions.md
+ *   node scripts/vn-cdp.mjs --undo          # and --redo; refuses if the workspace moved
  *   node scripts/vn-cdp.mjs --raw "window.__vnDebug.explainPick(400, 300)"
  *
  * --raw evaluates the expression as-is instead of wrapping it in window.vn.exec(). It

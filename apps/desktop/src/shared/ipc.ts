@@ -31,6 +31,7 @@ import type {
   CommandRecord,
   CommandSource,
   PropValue,
+  UndoState,
 } from '@vn/commands';
 
 export type {
@@ -39,6 +40,7 @@ export type {
   CommandRecord,
   CommandSource,
   PropValue,
+  UndoState,
 } from '@vn/commands';
 
 /** The rooms the shell can show; `view.room` targets one. */
@@ -81,7 +83,14 @@ export type UiEffect =
    * mode to STUDIO. `view.mode` re-checks the pair before pushing, and refuses a mismatch.
    */
   | { type: 'mode'; room: 'studio'; mode: StudioMode }
-  | { type: 'mode'; room: 'floor'; mode: FloorMode };
+  | { type: 'mode'; room: 'floor'; mode: FloorMode }
+  /**
+   * Pushed after every command, so the undo/redo affordances stay honest whoever ran it — the
+   * palette, a drag, or CDP. `revision` counts undo/redo moves **only**: those are the writes
+   * a room did not make itself, so it is what a room remounts on. An ordinary command already
+   * refreshes the surface that issued it.
+   */
+  | { type: 'undo'; state: UndoState; revision: number };
 
 /** Either form of invocation accepted over `command:exec`: structured, or a DSL string. */
 export interface CommandExecRequest {
@@ -275,7 +284,7 @@ export interface InvokeChannels {
   'command:catalog': () => CommandCatalog;
   'command:exec': (request: CommandExecRequest) => CommandOutcome;
   'command:history': (limit?: number) => CommandRecord[];
-  /** v1 always refuses, pointing at `docs/gitUndoOptions.md` — see `@vn/commands`. */
+  /** Restores a snapshot; refuses (never guesses) if the workspace moved — see `@vn/commands`. */
   'command:undo': () => CommandOutcome;
   'command:redo': () => CommandOutcome;
   /** Persist one piece of UI state; the initial read is the synchronous preload snapshot. */

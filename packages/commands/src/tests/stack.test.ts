@@ -3,6 +3,7 @@ import { defineCommand, defineFor, type CommandContext, type CommandRecord } fro
 import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
 import { CommandStack } from '../stack.js';
+import type { UndoJournal } from '../undo.js';
 import type { Git } from '@vn/git';
 
 /** Just the slice of Git the stack touches, so tests need no repo on disk. */
@@ -205,16 +206,359 @@ describe('execDsl', () => {
   });
 });
 
-describe('undo (v1)', () => {
-  it('refuses and points at the strategy report', async () => {
+/**
+ * The workspace as one value, so the stack's bookkeeping can be tested without a repo. The
+ * journal's own git behaviour is exercised against a real one in `undo.test.ts`.
+ */
+class FakeJournal {
+  private n = 0;
+  readonly trees = new Map<string, string>();
+  readonly captured: string[] = [];
+  pruneCalls = 0;
+  constructor(private readonly world: { value: string }) {}
+
+  capture(seq: number, label: string): Promise<{ commit: string; tree: string }> {
+    const commit = `c${++this.n}`;
+    this.trees.set(commit, this.world.value);
+    this.captured.push(`${seq}/${label}`);
+    return Promise.resolve({ commit, tree: this.world.value });
+  }
+  currentTree(): Promise<string> {
+    return Promise.resolve(this.world.value);
+  }
+  check(expected: string): Promise<{ ok: true; tree: string } | { ok: false; error: string }> {
+    const tree = this.trees.get(expected)!;
+    return Promise.resolve(
+      tree === this.world.value
+        ? { ok: true, tree }
+        : { ok: false, error: 'the workspace has changed since that command ran' },
+    );
+  }
+  restore(_from: string, to: string): Promise<void> {
+    this.world.value = this.trees.get(to)!;
+    return Promise.resolve();
+  }
+  prune(): Promise<void> {
+    this.pruneCalls++;
+    return Promise.resolve();
+  }
+}
+
+/** A stack whose one mutating command sets the workspace to a named state. */
+function undoSetup() {
+  const world = { value: 'w0' };
+  const registry = new CommandRegistry<Host>();
+  registry.registerAll([
+    define({
+      id: 'demo.edit',
+      title: 'Edit',
+      description: 'Set the workspace to a value.',
+      mutating: true,
+      undoable: true,
+      props: { to: prop.string('the new value') },
+      run(props) {
+        world.value = props.to;
+        return Promise.resolve({ message: `set ${props.to}` });
+      },
+    }),
+    // Mutating but not opted in — undo must name it rather than reach past it.
+    define({
+      id: 'demo.generate',
+      title: 'Generate',
+      description: 'Writes generated output only.',
+      mutating: true,
+      props: {},
+      run: () => Promise.resolve({ message: 'generated' }),
+    }),
+    // Opted in and half-runs: the workspace may have moved, but there is no post-state.
+    define({
+      id: 'demo.editFails',
+      title: 'Edit (fails)',
+      description: 'Mutates, then throws.',
+      mutating: true,
+      undoable: true,
+      props: {},
+      run() {
+        world.value = 'half-written';
+        return Promise.reject(new Error('boom'));
+      },
+    }),
+    define({
+      id: 'demo.look',
+      title: 'Look',
+      description: 'Reads and writes nothing.',
+      mutating: false,
+      props: {},
+      run: () => Promise.resolve({ message: 'looked' }),
+    }),
+    greet,
+    explode,
+  ]);
+  const journal = new FakeJournal(world);
+  const stack = new CommandStack<Host>({
+    registry,
+    context: { root: '/ws', git: fakeGit(), host: { seen: [] }, log: () => {} },
+    journal: journal as unknown as UndoJournal,
+    now: () => '2026-07-25T00:00:00.000Z',
+  });
+  return { stack, world, journal };
+}
+
+describe('undo/redo', () => {
+  it('brackets an undoable command with snapshots, and leaves others unbracketed', async () => {
+    const { stack, journal } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.exec('demo.generate', {}, 'ui');
+    const [edit, generate] = stack.history();
+    expect(edit!.undo).toEqual({ pre: 'c1', post: 'c2', changed: true });
+    expect(generate!.undo).toBeUndefined();
+    // Only the opted-in command is snapshotted, and only it pays for the housekeeping.
+    expect(journal.captured).toEqual(['1/pre', '1/post']);
+    expect(journal.pruneCalls).toBe(1);
+  });
+
+  it('does not snapshot a command that claims undoable without being mutating', async () => {
+    const world = { value: 'w0' };
+    const registry = new CommandRegistry<Host>();
+    registry.register(
+      define({
+        id: 'demo.claims',
+        title: 'Claims',
+        description: 'Says undoable but writes nothing.',
+        mutating: false,
+        undoable: true,
+        props: {},
+        run: () => Promise.resolve({ message: 'read' }),
+      }),
+    );
+    const journal = new FakeJournal(world);
+    const stack = new CommandStack<Host>({
+      registry,
+      context: { root: '/ws', git: fakeGit(), host: { seen: [] }, log: () => {} },
+      journal: journal as unknown as UndoJournal,
+    });
+
+    // `undoable` is only meaningful with `mutating`, and the stack enforces that rather than
+    // trusting the pairing — an unbracketed record is honest, a bracketed no-op is not.
+    await stack.exec('demo.claims', {}, 'ui');
+    expect(journal.captured).toEqual([]);
+    expect(stack.history()[0]!.undo).toBeUndefined();
+    expect(stack.canUndo()).toBe(false);
+  });
+
+  it('does not make a failed command an undo point, even a half-written one', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    expect(await stack.exec('demo.editFails', {}, 'ui')).toMatchObject({ ok: false });
+    expect(world.value).toBe('half-written');
+
+    // No post-state was captured, so there is nothing to restore *to*. Undo reaches back to
+    // the last command that completed — and the drift check is what catches the debris.
+    const failed = stack.history()[1]!;
+    expect(failed).toMatchObject({ status: 'error' });
+    expect(failed.undo).toBeUndefined();
+    expect(stack.undoCandidate()).toMatchObject({ id: 'demo.edit' });
+    expect(await stack.undo()).toMatchObject({ ok: false });
+    expect(world.value).toBe('half-written');
+  });
+
+  it('walks past a bracketed command that changed nothing', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    // The same value again: the command reports success, and the two trees are identical.
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    expect(stack.history()[1]!.undo).toMatchObject({ changed: false });
+
+    // Undo names the edit that is actually visible, not the one that wrote nothing.
+    expect(stack.undoState().undoLabel).toBe("demo.edit(to='w1')");
+    expect(stack.undoCandidate()!.seq).toBe(1);
+    await stack.undo();
+    expect(world.value).toBe('w0');
+  });
+
+  it('restores the pre-state and records the undo as history, not as an undo point', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    expect(world.value).toBe('w1');
+
+    expect(await stack.undo()).toMatchObject({ ok: true });
+    expect(world.value).toBe('w0');
+    expect(stack.history()[1]).toMatchObject({
+      id: 'stack.undo',
+      stack: 'undo',
+      mutating: true,
+      message: "Undid demo.edit(to='w1').",
+    });
+    // The undo entry itself must not become the next candidate.
+    expect(stack.undoCandidate()).toBeNull();
+    expect(stack.canUndo()).toBe(false);
+  });
+
+  it('redoes by restoring the post-state', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.undo();
+    expect(stack.canRedo()).toBe(true);
+
+    expect(await stack.redo()).toMatchObject({ ok: true });
+    expect(world.value).toBe('w1');
+    expect(stack.history()[2]).toMatchObject({ id: 'stack.redo', stack: 'redo' });
+    expect(stack.canRedo()).toBe(false);
+    expect(stack.canUndo()).toBe(true);
+  });
+
+  it('walks back through several edits, newest first', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.exec('demo.edit', { to: 'w2' }, 'ui');
+    await stack.undo();
+    expect(world.value).toBe('w1');
+    await stack.undo();
+    expect(world.value).toBe('w0');
+    await stack.redo();
+    expect(world.value).toBe('w1');
+  });
+
+  it('skips non-mutating and failed records when choosing a candidate', async () => {
+    const { stack } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.exec('demo.explode', {}, 'ui');
+    expect(stack.undoCandidate()).toMatchObject({ id: 'demo.edit' });
+    expect(stack.undoState().undoLabel).toBe("demo.edit(to='w1')");
+  });
+
+  it('names a candidate that is not undoable rather than reaching past it', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.exec('demo.generate', {}, 'ui');
+
+    const outcome = await stack.undo();
+    expect(outcome).toMatchObject({
+      ok: false,
+      error: '"demo.generate" was not recorded as undoable',
+    });
+    expect(world.value).toBe('w1');
+    expect(stack.canUndo()).toBe(false);
+  });
+
+  it('refuses when the workspace moved since the command ran', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    world.value = 'hand-edited'; // an author, an editor, another process
+
+    const outcome = await stack.undo();
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.error).toMatch(/workspace has changed/);
+    expect(world.value).toBe('hand-edited');
+  });
+
+  it('refuses a redo when the workspace moved, and keeps it available', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.undo();
+    world.value = 'hand-edited';
+
+    const outcome = await stack.redo();
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.error).toMatch(/cannot redo.*workspace has changed/);
+    expect(world.value).toBe('hand-edited');
+    // A refusal is not a consumption: the redo stays on the stack for once the drift is dealt
+    // with, and no `stack.redo` record is written, because nothing was redone.
+    expect(stack.canRedo()).toBe(true);
+    expect(stack.history()).toHaveLength(2);
+  });
+
+  it('surfaces a failed restore without marking anything undone', async () => {
+    const { stack, world, journal } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    journal.restore = () => Promise.reject(new Error('index.lock exists'));
+
+    const outcome = await stack.undo();
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.error).toMatch(/undo failed: index.lock exists/);
+    expect(world.value).toBe('w1');
+    // The candidate is untouched, so the author can retry once the lock clears.
+    expect(stack.undoCandidate()).toMatchObject({ id: 'demo.edit' });
+    expect(stack.canRedo()).toBe(false);
+  });
+
+  it('keeps the redo stack across a non-mutating command', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.undo();
+    await stack.exec('demo.look', {}, 'ui');
+
+    // Only a new *act* invalidates the branch a redo belongs to. Looking around is not one.
+    expect(stack.undoState()).toMatchObject({ canRedo: true, redoLabel: "demo.edit(to='w1')" });
+    expect(await stack.redo()).toMatchObject({ ok: true });
+    expect(world.value).toBe('w1');
+  });
+
+  it('drops the redo stack when a new act lands on top', async () => {
+    const { stack, world } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.undo();
+    await stack.exec('demo.edit', { to: 'w2' }, 'ui');
+
+    expect(stack.canRedo()).toBe(false);
+    expect(await stack.redo()).toMatchObject({ ok: false, error: 'nothing to redo' });
+    expect(world.value).toBe('w2');
+  });
+
+  it('reports nothing to undo on a fresh stack', async () => {
+    const { stack } = undoSetup();
+    expect(stack.undoState()).toEqual({
+      canUndo: false,
+      canRedo: false,
+      undoLabel: null,
+      redoLabel: null,
+    });
+    expect(await stack.undo()).toMatchObject({ ok: false, error: 'nothing to undo' });
+  });
+
+  it('refuses both when no journal is wired', async () => {
     const { stack } = setup();
     await stack.exec('demo.greet', { who: 'a' }, 'ui');
     expect(stack.canUndo()).toBe(false);
     expect(stack.canRedo()).toBe(false);
     for (const outcome of [await stack.undo(), await stack.redo()]) {
       expect(outcome).toMatchObject({ ok: false });
-      expect(outcome.ok === false && outcome.error).toMatch(/docs\/gitUndoOptions\.md/);
+      expect(outcome.ok === false && outcome.error).toMatch(/no snapshot journal is wired/);
     }
+  });
+
+  it('records the command anyway when a snapshot fails', async () => {
+    const world = { value: 'w0' };
+    const registry = new CommandRegistry<Host>();
+    registry.register(
+      define({
+        id: 'demo.edit',
+        title: 'Edit',
+        description: 'Set the workspace.',
+        mutating: true,
+        undoable: true,
+        props: {},
+        run: () => Promise.resolve({ message: 'edited' }),
+      }),
+    );
+    const logs: string[] = [];
+    const broken = new FakeJournal(world);
+    broken.capture = () => Promise.reject(new Error('no repo'));
+    const stack = new CommandStack<Host>({
+      registry,
+      context: {
+        root: '/ws',
+        git: fakeGit(),
+        host: { seen: [] },
+        log: (l, m) => logs.push(`${l}: ${m}`),
+      },
+      journal: broken as unknown as UndoJournal,
+    });
+
+    // Provenance must never be able to fail the act it describes.
+    expect(await stack.exec('demo.edit', {}, 'ui')).toMatchObject({ ok: true });
+    expect(stack.history()[0]!.undo).toBeUndefined();
+    expect(logs.join()).toMatch(/undo snapshot.*no repo/);
   });
 });
 

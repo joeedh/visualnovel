@@ -9,7 +9,7 @@
 - [The DSL](#the-dsl)
 - [The stack](#the-stack)
   * [`CommandRecord`](#commandrecord)
-  * [Undo is deferred, not forgotten](#undo-is-deferred-not-forgotten)
+  * [Undo is opt-in, and rests on shadow snapshots](#undo-is-opt-in-and-rests-on-shadow-snapshots)
 - [The registered commands](#the-registered-commands)
 - [Reaching the commands](#reaching-the-commands)
   * [From the renderer](#from-the-renderer)
@@ -28,8 +28,9 @@ path, and every execution is recorded with the document repo's git HEAD.
 
 This document describes what shipped. The implementation plan — including the deviations
 from it and the follow-ons deliberately left out — is
-[`plans/command-system.md`](plans/command-system.md). The deferred undo/redo design is
-[`gitUndoOptions.md`](gitUndoOptions.md).
+[`plans/command-system.md`](plans/command-system.md). Undo/redo landed later, on top of this;
+the strategy survey is [`gitUndoOptions.md`](gitUndoOptions.md) and the plan that carried out
+its recommendation is [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 ---
 
@@ -185,6 +186,8 @@ interface CommandRecord {
   message: string;
   written?: string[]; // workspace-relative paths the command wrote
   error?: string;
+  undo?: { pre: string; post: string; changed: boolean }; // shadow snapshots; absent ⇒ not an undo point
+  stack?: 'undo' | 'redo'; // set on the stack's own entries, which are history, not undo points
 }
 ```
 
@@ -192,19 +195,34 @@ interface CommandRecord {
 at `vngen/state/commands.jsonl` — alongside the pipeline's own `tasks.jsonl`, and for the same
 reason: an append-only log that can be replayed and diffed.
 
-### Undo is deferred, not forgotten
+### Undo is opt-in, and rests on shadow snapshots
 
-**v1 registers nothing undoable.** `Command.undoable` is typed `?: false`, so today nothing
-can accidentally claim to be reversible, and `stack.undo()` / `.redo()` return an explicit
-refusal pointing at [`gitUndoOptions.md`](gitUndoOptions.md).
+v1 shipped undo-less on purpose — a half-working undo on an author's only copy of their
+screenplay is worse than none. It landed once the story editors made destructive edits
+reachable from a *gesture*. The mechanism is
+[`gitUndoOptions.md`](gitUndoOptions.md) §8: **shadow snapshots** of the document tree, **split
+by data class**, and **refuse rather than guess** when the repo moved. Full write-up:
+[`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
-That report surveys five strategies and recommends shadow snapshots for document state paired
-with the existing task graph for generated output. The point of recording `gitHead`,
-`gitDirty`, `written` and `invocation` now is that **the record shape is the commitment; the
-mechanism is not** — every candidate strategy is built from fields v1 already writes, so
-adopting one is additive.
+- **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
+  the five `story.*` document mutators set it. A command whose writes are generated output, or
+  that straddles both classes, stays out — see the table below.
+- **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of
+  an undoable command into detached commits parked under `refs/vn/undo/<seq>/{pre,post}`. HEAD
+  never moves and the index is never touched. Snapshots are scoped to the document class
+  (`['.', ':(exclude)vngen/build', ':(exclude)vngen/state']`), which is both why a `pipeline.run`
+  between two edits is not drift and why hashing stays sub-second on a 100 MB workspace.
+- **`changed` is measured, not claimed.** `undo.changed` compares the two trees. `written` is
+  what a command *said* it wrote; two equal tree shas are proof. A `changed: false` record is
+  walked past, so a no-op edit never becomes the undo point.
+- **Drift refuses.** Undo snapshots the worktree first; if that tree isn't the candidate's
+  `post` tree, something changed since the command ran and undo declines by name rather than
+  discarding it.
+- **Redo restores the post state**, never replays `invocation` — a replay is a *re-run*.
+- **A stack without a journal behaves exactly as before**: `undo()` / `.redo()` refuse.
 
-A half-working undo on an author's only copy of their screenplay is worse than none.
+Undo and redo each append their own `CommandRecord` tagged `stack`, so `commands.jsonl` does
+not lie about what touched the worktree.
 
 ---
 
@@ -222,11 +240,11 @@ Twenty-two, in six namespaces. Ten are `mutating`; one asks for confirmation.
 | `story.export` ✍               | —                                 | Write `vngen/build/story.play.json` (`vngen export`).      |
 | `story.graph`                  | —                                 | Scenes + branch edges for the editor; reachability marked. |
 | `story.coverage`               | `scene`                           | One scene's lines + persisted shots — the timeline's input. |
-| `story.setChoice` ✍            | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
-| `story.removeChoice` ✍         | `scene`, `index`                  | Deletes the marker line; the prose is untouched.           |
-| `story.setNext` ✍              | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
-| `story.spliceScene` ✍          | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
-| `story.setCoverage` ✍          | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
+| `story.setChoice` ✍ ↺          | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
+| `story.removeChoice` ✍ ↺       | `scene`, `index`                  | Deletes the marker line; the prose is untouched.           |
+| `story.setNext` ✍ ↺            | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
+| `story.spliceScene` ✍ ↺        | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
+| `story.setCoverage` ✍ ↺        | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
@@ -237,7 +255,13 @@ Twenty-two, in six namespaces. Ten are `mutating`; one asks for confirmation.
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
 | `view.panelSize`               | `id`, `width` (80–1200)           | Saved width of a resizable panel; persisted, not an effect. |
 
-✍ mutating ⚠ confirm
+✍ mutating ⚠ confirm ↺ undoable
+
+**Only the `story.*` document mutators are undoable**, because undo restores a snapshot of the
+document tree. `gate.approve` straddles both data classes — undoing `character.md` would leave
+`manifest.json` still marking the asset `accepted` — `story.export` and `pipeline.run` write
+only generated output, and `agent.run` owns its own commits, one per approved plan. The
+reasoning is in [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer
 applies (`setRoom`, `setPaletteOpen`, `setStudioMode`, `setFloorMode`). The alternative — a
@@ -284,6 +308,11 @@ one event channel:
 The pre-existing channels (`gate:approve`, `pipeline:run`, …) still work, so the renderer can
 migrate to commands incrementally rather than in one cut.
 
+`UiEffect` also carries an `{ type: 'undo'; state; revision }` member, pushed from `onRecord`
+after **every** command — so the topbar's undo/redo affordances stay honest whoever ran it, with
+no polling. `revision` counts undo/redo moves only; the shell remounts the room on it, since
+those are the writes a room did not make itself.
+
 While wiring this up, `registerIpc()` gained a typed `handle<C>()` wrapper that registers
 against `InvokeChannels`, so a handler can no longer drift from its declared signature — the
 old hand-annotated `ipcMain.handle` calls could and did.
@@ -316,7 +345,7 @@ node scripts/vn-cdp.mjs "workspace.index()"
 node scripts/vn-cdp.mjs "view.room(name='play')"   # visibly switches rooms
 node scripts/vn-cdp.mjs --catalog
 node scripts/vn-cdp.mjs --history 5
-node scripts/vn-cdp.mjs --undo                     # v1: refuses, by design
+node scripts/vn-cdp.mjs --undo                     # and --redo
 ```
 
 A failed or refused command exits non-zero, so it composes in a shell.
@@ -374,11 +403,14 @@ schemas instead is an obvious follow-on.
 
 - `pnpm exec jest --selectProjects @vn/commands` — DSL parse/format round-trip and error
   columns, prop coercion and defaults, required-missing and unknown-key rejection, stack
-  record contents (seq order, `gitHead` populated, error records), catalog schema shape.
+  record contents (seq order, `gitHead` populated, error records), catalog schema shape, undo
+  candidate selection and its refusals, and the journal itself against a **real** temp repo —
+  its whole job is git behaviour, so mocking git would test nothing.
 - `pnpm exec jest --selectProjects @vn/desktop` — the registry's namespaces and ids, that
-  every prop carries a description, that the mutating set is exactly the four expected
-  commands and nothing is undoable, and that the generated `commands.json` deep-equals the
-  live registry (skipped when the file hasn't been generated).
+  every prop carries a description, that the mutating set is exactly the expected commands,
+  that only the document writers are undoable and nothing undoable is non-mutating, and that
+  the generated `commands.json` deep-equals the live registry (skipped when the file hasn't
+  been generated).
 
 ---
 
@@ -391,4 +423,5 @@ Deliberately out of scope for v1, in rough order of value:
 2. **Route `confirm` through the renderer.** The main process currently auto-approves, so
    `pipeline.run`'s `confirm: true` is not yet a real gate.
 3. **Feed `CatalogEntry.schema` to `NativeAgentBackend`** in place of `LOOSE_PARAMS`.
-4. **Undo**, per [`gitUndoOptions.md`](gitUndoOptions.md), starting with `gate.approve`.
+4. **Undoable `gate.approve`**, which needs `manifest.json` re-pointed alongside the document
+   restore — the one straddling case undo left out.

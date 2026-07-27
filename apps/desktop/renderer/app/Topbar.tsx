@@ -1,5 +1,5 @@
 import { isLive } from '../api';
-import type { AgentMode, Room } from '../../src/shared/ipc';
+import type { AgentMode, Room, UndoState } from '../../src/shared/ipc';
 
 /** The room nav plus the badges that say which project, model and mode are live. */
 export function Topbar(props: {
@@ -9,6 +9,9 @@ export function Topbar(props: {
   toggleMode: () => void;
   title?: string;
   model: string;
+  undo: UndoState;
+  onUndo: () => void;
+  onRedo: () => void;
 }): JSX.Element {
   return (
     <header className="topbar">
@@ -42,6 +45,23 @@ export function Topbar(props: {
         </button>
       </nav>
       <div className="spacer" />
+      {/* The tooltip names the exact invocation, so undo is never a leap of faith. */}
+      <div className="undo">
+        <button
+          disabled={!props.undo.canUndo}
+          onClick={props.onUndo}
+          title={props.undo.undoLabel ? `Undo ${props.undo.undoLabel}` : 'Nothing to undo'}
+        >
+          ⟲
+        </button>
+        <button
+          disabled={!props.undo.canRedo}
+          onClick={props.onRedo}
+          title={props.undo.redoLabel ? `Redo ${props.undo.redoLabel}` : 'Nothing to redo'}
+        >
+          ⟳
+        </button>
+      </div>
       <span className="badge-live mono" title="text model (open the palette with /)">
         {props.model}
       </span>

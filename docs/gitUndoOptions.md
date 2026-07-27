@@ -10,12 +10,16 @@
 - [6. Strategy E — split by data class](#6-strategy-e--split-by-data-class)
 - [7. Cross-cutting problems](#7-cross-cutting-problems)
 - [8. Recommendation](#8-recommendation)
+  * [As carried out](#as-carried-out)
 
 <!-- tocstop -->
 
-`@vn/commands` ships **without undo**. `CommandStack.undo()` and `.redo()` refuse and point
-here. This document exists so that choice stays deliberate: it records what v1 already
-captures, what each candidate strategy would cost, and which one to reach for first.
+**Status: §8 has been carried out** — see [§8](#8-recommendation) for what shipped and where
+it deviated, and [`plans/command-undo-redo.md`](plans/command-undo-redo.md) for the
+implementation. The survey below is left as written, in the present tense of a `@vn/commands`
+that shipped **without** undo: it records what v1 already captured, what each candidate
+strategy would cost, and which one to reach for first. That is the reasoning the choice rests
+on, and it is worth being able to re-read when the next data class wants undoing.
 
 The short version: **the record shape is the commitment; the mechanism is not.** Every
 strategy below is built from fields v1 already writes, so adopting one is additive.
@@ -121,8 +125,10 @@ corresponding post-snapshot.
 
 - **Full fidelity.** Captures dirty and untracked state, so it is correct regardless of
   `gitDirty` — the one strategy that doesn't need the worktree to be clean.
-- **Invisible.** `refs/vn/*` doesn't appear in `git log`, `git branch`, or the author's
-  history. Nothing is pushed.
+- **Private.** `refs/vn/*` doesn't appear in `git log`, `git branch`, `git status`, or the
+  author's history, and nothing is pushed (the default refspec covers `refs/heads/*`). Private
+  is not invisible, though: `git log --all` and `git fsck` do show them, and must — they are
+  real commits kept alive by real refs, which is what makes them restorable.
 - **Doesn't depend on `written`.** Correctness no longer rests on each command honestly
   declaring its writes — which removes §3's worst failure mode.
 - **Prunable.** Drop refs beyond the last N commands and let `gc` reclaim them.
@@ -202,3 +208,31 @@ Migration, in order, none of which changes the v1 `CommandRecord`:
 
 Until step 1 lands, `undo()` refusing loudly is the correct behavior. A half-working undo on
 an author's only copy of their screenplay is worse than none.
+
+### As carried out
+
+Steps 1, 2, 3 and 5 shipped as written. Three things came out differently, each because
+implementing it taught something the survey could not know:
+
+- **Step 4 did not start with `gate.approve`.** Its `written` set straddles both data classes:
+  undoing the document half (`character.md` front-matter, `approved.png`) would leave
+  `manifest.json` still marking that asset `accepted`, which the gate-candidates list reads.
+  The pipeline would still behave correctly — the front-matter is the real gate — but one
+  surface would show a checkmark for an approval that no longer exists. The five `story.*`
+  document mutators went first instead; they are pure-document *and* the ones reachable from a
+  drag, which is where the risk actually was. `gate.approve` needs the manifest re-pointed as
+  part of the undo — §2 as an escape hatch, its one sanctioned use.
+- **The record carries a pair of snapshots, not one** — `undo?: { pre, post, changed }` —
+  because redo needs the post-state and the drift check needs something to compare *against*.
+  `changed` is the two trees compared, not `written`: `written` is a claim (§3 was rejected for
+  trusting it), and a command that wrote nothing must not become the undo point.
+- **The drift check is a tree comparison, not a HEAD comparison.** Step 3 said "refusing when
+  HEAD has moved past `record.gitHead`", but the interesting case is the common one: HEAD never
+  moves and the *worktree* changed. Snapshotting now and comparing to `post` catches both, and
+  catches an edit made in another editor between the command and the undo.
+
+Scoping the snapshot to the document class (`['.', ':(exclude)vngen/build',
+':(exclude)vngen/state']`) turned out to do three jobs at once, not the one §6 promised: it
+keeps the hash under a second on a 100 MB workspace, it keeps undo from rolling back generated
+work a later run would have to pay for again, and it is what makes a `pipeline.run` between two
+edits read as *not drift*.

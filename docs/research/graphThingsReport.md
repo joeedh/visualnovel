@@ -245,11 +245,12 @@ value than the pipeline views because sessions are short and the transcript is r
 **Nodes:** `CommandRecord` entries in `vngen/state/commands.jsonl`, each stamped with
 `gitHead`, `gitDirty`, `written` paths, and the replayable `invocation`.
 
-Today this is a linear log, because v1 registers nothing undoable — `stack.undo()` refuses
-and points at [`../gitUndoOptions.md`](../gitUndoOptions.md). The graph-shaped version is the
-**join against git history**: commands as a lane beside commits, showing which files each
-touched. If an undo strategy is ever adopted it becomes a genuine tree (branching on
-redo-after-undo), and having the visualizer first would inform that choice.
+The log is linear, but it is no longer flat: undo shipped
+([`../plans/command-undo-redo.md`](../plans/command-undo-redo.md)), so records carry `pre`/`post`
+snapshot commits and the stack's own undo/redo entries are tagged. The graph-shaped version is
+the **join against git history**: commands as a lane beside commits, showing which files each
+touched — with the snapshot commits already sitting in the object database, waiting to be
+drawn as the side branch they are.
 
 **Priority: low, but cheap and it de-risks a pending decision.**
 

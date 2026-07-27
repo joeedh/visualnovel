@@ -213,9 +213,11 @@ const fallback: DesktopApi = {
         return Promise.resolve([]);
       case 'command:exec':
         return Promise.resolve({ ok: false, error: '(preview) no command stack' });
+      // Undo restores a git snapshot of the workspace, and a browser preview has no
+      // workspace — the affordances stay disabled here rather than pretending.
       case 'command:undo':
       case 'command:redo':
-        return Promise.resolve({ ok: false, error: '(preview) undo is not implemented' });
+        return Promise.resolve({ ok: false, error: '(preview) no workspace to restore' });
       default:
         return Promise.resolve(undefined);
     }

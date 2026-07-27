@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { ProjectPaths } from '@vn/store';
 import { openGit } from '@vn/git';
 import { appendJsonl } from '@vn/util';
-import { CommandStack, toCatalog } from '@vn/commands';
+import { CommandStack, UndoJournal, toCatalog } from '@vn/commands';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
@@ -122,6 +122,17 @@ async function openSessionStore(): Promise<void> {
 const registry = createDesktopRegistry();
 
 /**
+ * What an undo snapshot covers: the authored documents, and nothing the pipeline generated.
+ * `build/` is content-addressed and `state/` is an append-only log — rolling either back would
+ * throw away work a later run has to pay for again, and excluding them is also what keeps a
+ * `pipeline.run` between two edits from reading as workspace drift.
+ */
+const UNDO_PATHS = ['.', ':(exclude)vngen/build', ':(exclude)vngen/state'];
+
+/** Counts undo/redo moves, so a room knows when the files changed under it. */
+let undoRevision = 0;
+
+/**
  * The one execution path for every command, whatever the caller. History is appended to
  * `vngen/state/commands.jsonl` alongside the pipeline's `tasks.jsonl`.
  */
@@ -129,6 +140,7 @@ function getStack(): CommandStack<CommandHost> {
   if (!stack) {
     const root = workspace();
     const paths = new ProjectPaths(root);
+    const git = openGit(root);
     const host: CommandHost = {
       session: getSession(),
       state: getSessionStore(),
@@ -138,14 +150,19 @@ function getStack(): CommandStack<CommandHost> {
       registry,
       context: {
         root,
-        git: openGit(root),
+        git,
         host,
         log: (level, message) => win?.webContents.send('log', { level, message }),
         // TODO(desktop): route through the renderer once a confirm dialog exists; until
         // then a `confirm: true` command is reachable only from the UI's own affordances.
         confirm: () => Promise.resolve(true),
       },
-      onRecord: (record) => appendJsonl(paths.commandsLog, record),
+      journal: new UndoJournal({ git, paths: UNDO_PATHS }),
+      onRecord: async (record) => {
+        if (record.stack) undoRevision++;
+        await appendJsonl(paths.commandsLog, record);
+        host.ui({ type: 'undo', state: getStack().undoState(), revision: undoRevision });
+      },
     });
   }
   return stack;

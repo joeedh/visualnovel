@@ -3,4 +3,5 @@ export * from './command.js';
 export * from './registry.js';
 export * from './dsl.js';
 export * from './stack.js';
+export * from './undo.js';
 export * from './catalog.js';
