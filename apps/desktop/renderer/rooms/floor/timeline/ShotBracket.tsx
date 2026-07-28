@@ -1,4 +1,4 @@
-import type { Edge, Segment, ShotSpan } from './coverage.js';
+import type { Edge, Segment, ShotSpan } from '../../../../src/shared/coverage.js';
 
 /**
  * One contiguous run of a shot's coverage. A shot with holes draws several of these; only the

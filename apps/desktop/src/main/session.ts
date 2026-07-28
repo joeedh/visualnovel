@@ -28,7 +28,7 @@ import {
 } from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { writeFileAtomic } from '@vn/util';
-import { gateStatus } from '@vn/pipeline';
+import { costPreview, gateStatus, isApproved } from '@vn/pipeline';
 import {
   createAnthropicChat,
   createGeminiChat,
@@ -234,6 +234,27 @@ export class WorkspaceSession {
       .map((a) => ({ hash: a.hash, accepted: a.accepted }));
   }
 
+  /**
+   * Whether an approval would land, without performing one: the character, the candidate, and
+   * whether it is already approved. A read — `gate.approve` re-decides for itself.
+   */
+  async gateCandidacy(
+    characterId: string,
+    hash: string,
+  ): Promise<{ character: boolean; candidate: boolean; approved: boolean; candidates: number }> {
+    const project = await loadProject(this.dir);
+    const character = project.model.characters.get(characterId);
+    const candidates = project.store
+      .manifest()
+      .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId);
+    return {
+      character: Boolean(character),
+      candidate: candidates.some((a) => a.hash === hash),
+      approved: character ? isApproved(character) : false,
+      candidates: candidates.length,
+    };
+  }
+
   /** Flip a character to approved with `hash`: copy the visible portrait, accept the asset. */
   async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
     const project = await loadProject(this.dir);
@@ -392,6 +413,41 @@ export class WorkspaceSession {
       tasks: [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
       gatePending: gate.pending,
       blockedOnGate: !gate.cleared,
+    };
+  }
+
+  /**
+   * What a run would find, without planning one. Planning is not free and not read-only —
+   * `planTasks` mutates the graph and may call the decomposer — so this reports the *already
+   * planned* pending work and the gate, and separately whether the keys a real run needs
+   * resolve. Incremental planning means "nothing pending" is not "nothing to do", so the count
+   * is a report, never a refusal.
+   */
+  async runPreconditions(mock: boolean): Promise<{
+    pending: number;
+    blockedOnGate: boolean;
+    gatePending: string[];
+    /** Why keys did not resolve — naming the source, never a value. Null when they did. */
+    keyError: string | null;
+  }> {
+    const project = await loadProject(this.dir);
+    const gate = gateStatus(project.model);
+    let keyError: string | null = null;
+    if (!mock) {
+      try {
+        await resolveKeys(project.config, {
+          secretsDirs: await secretDirsFor(project.dir),
+          require: ['gemini'],
+        });
+      } catch (err) {
+        keyError = err instanceof Error ? err.message : String(err);
+      }
+    }
+    return {
+      pending: costPreview(project.graph, project.config).pendingTasks,
+      blockedOnGate: !gate.cleared,
+      gatePending: gate.pending,
+      keyError,
     };
   }
 

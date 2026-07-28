@@ -9,7 +9,7 @@
 import { defineFor, formatVerdicts, prop, toInteractionCatalog } from '@vn/commands';
 import {
   branchState,
-  createBranchInteractions,
+  createDesktopInteractions,
   INTERACTION_IDS,
 } from '../../shared/interactions.js';
 import type { CommandHost } from './host.js';
@@ -17,7 +17,7 @@ import type { CommandHost } from './host.js';
 const define = defineFor<CommandHost>();
 
 /** The registry, also projected and verified against the commands by the catalog entry. */
-export const desktopInteractions = createBranchInteractions();
+export const desktopInteractions = createDesktopInteractions();
 
 export const interactionList = define({
   id: 'interaction.list',
@@ -42,13 +42,19 @@ export const interactionTargets = define({
   mutating: false,
   props: {
     interaction: prop.oneOf(INTERACTION_IDS, 'which gesture to judge'),
-    carried: prop.string('what is being carried — a scene id, or an edge id for branch.unwire'),
+    carried: prop.string(
+      'what is being carried — a scene id, an edge id for branch.unwire, or a ' +
+        '`<shotId>#start`/`#end` handle for timeline.cover',
+    ),
+    scene: prop.string('which scene, for a gesture judged against one scene', { default: '' }),
   },
-  async run({ interaction, carried }, ctx) {
+  async run({ interaction, carried, scene }, ctx) {
     const gesture = desktopInteractions.get(interaction);
     if (!gesture) throw new Error(`No interaction "${interaction}".`);
 
-    const verdicts = gesture.targets(branchState(await ctx.host.session.storyGraph()), carried);
+    // Each gesture is judged against the state its surface holds, so the state is built per
+    // namespace rather than there being one union every interaction has to accept.
+    const verdicts = gesture.targets(await stateFor(interaction, scene, ctx.host), carried);
     const accepted = verdicts.filter((v) => v.accept).length;
     const summary = `${accepted} of ${verdicts.length} target(s) would accept ${carried}.`;
     return {
@@ -57,3 +63,10 @@ export const interactionTargets = define({
     };
   },
 });
+
+async function stateFor(interaction: string, scene: string, host: CommandHost): Promise<unknown> {
+  if (!interaction.startsWith('timeline.')) return branchState(await host.session.storyGraph());
+  if (!scene) throw new Error(`"${interaction}" is judged against one scene — pass scene=<id>.`);
+  const { sceneId, lines, shots } = await host.session.sceneCoverage(scene);
+  return { sceneId, lines, shots };
+}

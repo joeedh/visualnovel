@@ -62,9 +62,41 @@ const guarded = define({
   },
 });
 
+/** A precondition and the run it does *not* gate: `check` refuses, `run` goes ahead anyway. */
+const checked = define({
+  id: 'demo.checked',
+  title: 'Checked',
+  description: 'Declares a precondition.',
+  mutating: true,
+  props: { who: prop.string('who to greet'), count: prop.number('n', { default: 1 }) },
+  check(props) {
+    return Promise.resolve(
+      props.who === 'nobody'
+        ? { ok: false, reason: 'there is no one to greet' }
+        : { ok: true, note: `would greet ${props.who} ${props.count} time(s)` },
+    );
+  },
+  run(_p, ctx) {
+    ctx.host.seen.push('checked');
+    return Promise.resolve({ message: 'ran' });
+  },
+});
+
+const brokenCheck = define({
+  id: 'demo.brokenCheck',
+  title: 'Broken check',
+  description: 'Its precondition throws.',
+  mutating: true,
+  props: {},
+  check() {
+    return Promise.reject(new Error('the model is not loaded'));
+  },
+  run: () => Promise.resolve({ message: 'ran' }),
+});
+
 function setup(over: Partial<CommandContext<Host>> = {}) {
   const registry = new CommandRegistry<Host>();
-  registry.registerAll([greet, explode, guarded]);
+  registry.registerAll([greet, explode, guarded, checked, brokenCheck]);
   const host: Host = { seen: [] };
   const persisted: CommandRecord[] = [];
   const logs: string[] = [];
@@ -203,6 +235,66 @@ describe('execDsl', () => {
     expect(outcome).toMatchObject({ ok: false });
     expect(outcome.ok === false && outcome.error).toMatch(/could not parse command/);
     expect(stack.history()).toEqual([]);
+  });
+});
+
+describe('CommandStack.check', () => {
+  it('reports the command’s own accept, with what it found', async () => {
+    const { stack } = setup();
+    expect(await stack.check('demo.checked', { who: 'aiko' })).toEqual({
+      state: 'accept',
+      // The default landed, so the check saw exactly what `run` would.
+      message: 'would greet aiko 1 time(s)',
+    });
+  });
+
+  it('reports a refusal with the rule’s own sentence', async () => {
+    const { stack } = setup();
+    expect(await stack.check('demo.checked', { who: 'nobody' })).toEqual({
+      state: 'refuse',
+      message: 'there is no one to greet',
+    });
+  });
+
+  /**
+   * The rule the whole three-state design exists for. A command with no precondition has said
+   * nothing about whether it would run; answering `accept` would be inventing an opinion.
+   */
+  it('reports a command with no check as undeclared, never as an accept', async () => {
+    const { stack } = setup();
+    expect(await stack.check('demo.greet', { who: 'aiko' })).toEqual({
+      state: 'undeclared',
+      message: '"demo.greet" declares no precondition',
+    });
+  });
+
+  it('refuses unknown props and unknown commands', async () => {
+    const { stack } = setup();
+    expect(await stack.check('demo.checked', { nope: 1 })).toMatchObject({ state: 'refuse' });
+    expect(await stack.check('demo.nope', {})).toEqual({
+      state: 'refuse',
+      message: 'unknown command "demo.nope"',
+    });
+  });
+
+  it('says a check failed to answer rather than passing the crash off as a refusal', async () => {
+    const { stack } = setup();
+    expect(await stack.check('demo.brokenCheck', {})).toEqual({
+      state: 'refuse',
+      message: 'check for "demo.brokenCheck" failed: the model is not loaded',
+    });
+  });
+
+  it('changes nothing: a check is neither recorded nor a gate on exec', async () => {
+    const { stack, host, persisted } = setup();
+    await stack.check('demo.checked', { who: 'nobody' });
+    expect(stack.history()).toEqual([]);
+    expect(persisted).toEqual([]);
+
+    // A refused check does not stop the command. `run` re-decides against the state it finds,
+    // and a check that gated would turn a lost race into an unreachable command.
+    expect(await stack.exec('demo.checked', { who: 'nobody' }, 'ui')).toMatchObject({ ok: true });
+    expect(host.seen).toEqual(['checked']);
   });
 });
 
@@ -574,6 +666,8 @@ describe('registry', () => {
   it('lists commands in a stable, id-sorted order', () => {
     const { registry } = setup();
     expect(registry.list().map((c) => c.id)).toEqual([
+      'demo.brokenCheck',
+      'demo.checked',
       'demo.explode',
       'demo.greet',
       'demo.guarded',
@@ -591,7 +685,14 @@ describe('toCatalog', () => {
 
     const entry = catalog.commands.find((c) => c.id === 'demo.greet')!;
     expect(entry.usage).toBe("demo.greet(who='')");
-    expect(entry).toMatchObject({ mutating: true, confirm: false, undoable: false });
+    expect(entry).toMatchObject({
+      mutating: true,
+      confirm: false,
+      undoable: false,
+      checkable: false,
+    });
+    // The flag says a precondition exists to ask, not that asking would accept.
+    expect(catalog.commands.find((c) => c.id === 'demo.checked')!.checkable).toBe(true);
     expect(entry.props).toEqual([
       { name: 'who', kind: 'string', description: 'who to greet', required: true },
     ]);

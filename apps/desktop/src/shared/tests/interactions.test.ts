@@ -8,10 +8,15 @@ import {
   unwire,
   CANVAS,
   NEW_CHOICE,
+  createDesktopInteractions,
+  handleId,
+  timelineCover,
   type BranchState,
+  type CoverState,
 } from '../interactions.js';
+import { UNRESOLVED } from '@vn/commands';
 import type { SceneMap } from '../branchops.js';
-import type { StoryEdge } from '../ipc.js';
+import type { CoverageShot, StoryEdge } from '../ipc.js';
 
 const scenes: SceneMap = new Map([
   ['greet', { id: 'greet', choices: [{ label: 'Say hello', goto: 'rooftop' }] }],
@@ -209,5 +214,76 @@ describe('the branch interactions', () => {
   it('refuses an edge the graph no longer has rather than answering for a guess', () => {
     const [verdict] = branchUnwire.targets(state, 'gone#next');
     expect(verdict).toEqual({ target: CANVAS, accept: false, reason: 'No edge "gone#next".' });
+  });
+});
+
+describe('timeline.cover', () => {
+  const shot = (id: string, coversLines: string[]): CoverageShot => ({
+    id,
+    framing: 'medium',
+    subjects: [],
+    coversLines,
+    status: 'accepted',
+  });
+
+  const cover: CoverState = {
+    sceneId: 'arrival',
+    lines: ['L1', 'L2', 'L3', 'L4'].map((n) => ({
+      id: `arrival:${n}`,
+      kind: 'action' as const,
+      text: n,
+    })),
+    shots: [
+      shot('arrival__establishing', ['arrival:L1', 'arrival:L4']),
+      shot('arrival__aiko', ['arrival:L2']),
+      shot('arrival__ren', ['arrival:L3']),
+    ],
+  };
+
+  it('judges only the rows the drop would change, in screenplay order', () => {
+    const verdicts = timelineCover.targets(cover, handleId('arrival__aiko', 'end'));
+    // aiko covers L2 alone: dropping its end on L2 is where it already is, and dropping it on L1
+    // would retract past the start, which `resolveDrag` refuses to do. Neither is a candidate.
+    expect(verdicts.map((v) => v.target)).toEqual(['arrival:L3', 'arrival:L4']);
+  });
+
+  it('carries the setCoverage the drop would run, ready to execute', () => {
+    // Retracting the establishing shot's start off L1 releases it — a gap, not a hand-over.
+    const [l2] = timelineCover.targets(cover, handleId('arrival__establishing', 'start'));
+    expect(l2?.target).toBe('arrival:L2');
+    expect(l2?.accept && l2.invoke).toEqual({
+      id: 'story.setCoverage',
+      props: { scene: 'arrival', shot: 'arrival__establishing', lines: 'arrival:L4' },
+    });
+  });
+
+  it('refuses with the rule’s own sentence where a drop would empty a neighbour', () => {
+    // Sweeping ren's start up over L2 claims aiko's only line, leaving it covering nothing.
+    const verdicts = timelineCover.targets(cover, handleId('arrival__ren', 'start'));
+    expect(verdicts.find((v) => v.target === 'arrival:L2')).toMatchObject({
+      accept: false,
+      reason: expect.stringContaining('leave arrival__aiko covering nothing'),
+    });
+  });
+
+  it('refuses the grab, not the targets, when the carried handle names nothing', () => {
+    expect(timelineCover.targets(cover, 'arrival__aiko')).toEqual([
+      { target: UNRESOLVED, accept: false, reason: expect.stringContaining('Malformed handle') },
+    ]);
+    expect(timelineCover.targets(cover, handleId('arrival__gone', 'end'))).toEqual([
+      { target: UNRESOLVED, accept: false, reason: expect.stringContaining('arrival__gone') },
+    ]);
+  });
+});
+
+describe('the registry', () => {
+  it('holds every declared gesture, and each names only commands the app has', () => {
+    const registry = createDesktopInteractions();
+    expect(registry.list().map((i) => i.id)).toEqual([
+      'branch.connect',
+      'branch.splice',
+      'branch.unwire',
+      'timeline.cover',
+    ]);
   });
 });

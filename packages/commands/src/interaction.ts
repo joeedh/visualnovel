@@ -23,16 +23,27 @@ export type Verdict =
   | { target: string; accept: true; note: string; invoke: Invocation }
   | { target: string; accept: false; reason: string };
 
-/** Interaction ids are shaped like command ids: `branch.splice`, `timeline.setCoverage`. */
+/** Interaction ids are shaped like command ids: `branch.splice`, `timeline.cover`. */
 export const INTERACTION_ID = COMMAND_ID;
 
-export interface Interaction<State = any, Carried = string> {
+/**
+ * The target a verdict names when the *carried token itself* is the problem — it parses to
+ * nothing, or names something the state does not have. See `Interaction.targets`.
+ */
+export const UNRESOLVED = 'unresolved';
+
+export interface Interaction<State = any> {
   id: string;
   title: string;
   description: string;
   /** What the user picks up, in words — "a scene card's connect handle". */
   grab: string;
-  /** What is carried while the gesture is live — "the scene the wire leaves". */
+  /**
+   * What is carried while the gesture is live — "the scene the wire leaves". The carried value
+   * itself is always a **string token**: a gesture is named by a pointer, and the thing under it
+   * has an id. An interaction wanting structure encodes it (`<shotId>#start`) and parses it in
+   * `targets`.
+   */
   carries: string;
   /** What counts as a target — "any wire". */
   accepts: string;
@@ -44,23 +55,30 @@ export interface Interaction<State = any, Carried = string> {
   /** Whether abandoning the gesture is always free — true for a drag, false for a wizard. */
   cancellable: boolean;
   /**
-   * Every candidate target with a verdict, in a stable order. Pure: no IO, no mutation. The
-   * caller supplies `State`, so this can run in the renderer mid-drag and in main on request.
+   * Every candidate target with a verdict, in a stable order. The caller supplies `State`, so
+   * this can run in the renderer mid-drag and in main on request.
+   *
+   * **Synchronous and pure, and it has to stay that way** — it runs once per pointer move, so it
+   * may not await, read the filesystem, or touch a session. That is the reason a *command*'s
+   * precondition is `check` (async, reaches the host) and not something folded in here.
+   *
+   * **A carried token that names nothing refuses; it does not return `[]`.** An empty list reads
+   * as "nowhere to drop this", which is a statement about the targets; a token naming a shot the
+   * scene does not have is a statement about the grab, and the caller needs to be told which.
+   * Such a verdict names `UNRESOLVED` unless the state has a truer target to hang it on.
    */
-  targets(state: State, carried: Carried): Verdict[];
+  targets(state: State, carried: string): Verdict[];
 }
 
-/** Identity, but it infers `State`/`Carried` from the literal so `targets` is typed in place. */
-export function defineInteraction<State, Carried>(
-  interaction: Interaction<State, Carried>,
-): Interaction<State, Carried> {
+/** Identity, but it infers `State` from the literal so `targets` is typed in place. */
+export function defineInteraction<State>(interaction: Interaction<State>): Interaction<State> {
   return interaction;
 }
 
 export class InteractionRegistry<State = any> {
-  private readonly byId = new Map<string, Interaction<State, any>>();
+  private readonly byId = new Map<string, Interaction<State>>();
 
-  register<C>(interaction: Interaction<State, C>): void {
+  register(interaction: Interaction<State>): void {
     if (!INTERACTION_ID.test(interaction.id)) {
       throw new Error(`invalid interaction id "${interaction.id}" (expected e.g. "branch.splice")`);
     }
@@ -70,15 +88,15 @@ export class InteractionRegistry<State = any> {
     this.byId.set(interaction.id, interaction);
   }
 
-  registerAll(interactions: Interaction<State, any>[]): void {
+  registerAll(interactions: Interaction<State>[]): void {
     for (const i of interactions) this.register(i);
   }
 
-  get(id: string): Interaction<State, any> | undefined {
+  get(id: string): Interaction<State> | undefined {
     return this.byId.get(id);
   }
 
-  list(): Interaction<State, any>[] {
+  list(): Interaction<State>[] {
     return [...this.byId.values()].sort((a, b) => a.id.localeCompare(b.id));
   }
 
@@ -105,10 +123,10 @@ export class InteractionRegistry<State = any> {
  * The verdict for one target, or undefined when it is not a candidate at all. "Not a target"
  * and "a target that refuses" are different answers and the caller usually cares which.
  */
-export function can<S, C>(
-  interaction: Interaction<S, C>,
+export function can<S>(
+  interaction: Interaction<S>,
   state: S,
-  carried: C,
+  carried: string,
   target: string,
 ): Verdict | undefined {
   return interaction.targets(state, carried).find((v) => v.target === target);

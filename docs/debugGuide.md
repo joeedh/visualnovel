@@ -207,6 +207,20 @@ This is the preferred way for an agent to poke the app: no screenshots, no windo
 exit code reflects command failure. Commands executed this way are recorded in
 `commands.jsonl` like any other — check `--history` when unsure what actually ran.
 
+**Ask before you act.** A mutating command's refusal is reachable without running it, so a
+diagnosis costs nothing and writes nothing:
+
+```sh
+node scripts/vn-cdp.mjs --raw "window.vn.check('story.setNext', {scene: 'arrival'}).then(r => (window.__x = r)) && 'ok'"
+node scripts/vn-cdp.mjs --raw "JSON.stringify(window.__x)"
+#  {"state":"refuse","message":"arrival has no next scene to clear."}
+```
+
+`state` is three-valued: `undeclared` means the command states no precondition, **not** that it
+would succeed. The DSL form (`command.check(invocation="…")`) nests quotes two deep, which
+PowerShell mangles — use `window.vn.check` with an id and props from PowerShell, or run the DSL
+form from a POSIX shell.
+
 Four rules for `--raw`, each of which produces a misleading failure when broken:
 
 - **Return plain JSON data** (CDP uses `returnByValue`). End debug queries in `.explain()` /

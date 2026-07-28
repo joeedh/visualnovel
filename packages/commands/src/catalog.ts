@@ -32,6 +32,8 @@ export interface CatalogEntry {
   mutating: boolean;
   confirm: boolean;
   undoable: boolean;
+  /** Whether `stack.check` has a precondition to consult. False means `undeclared`, not `accept`. */
+  checkable: boolean;
   props: CatalogProp[];
   /** A ready-to-paste DSL template, e.g. `gate.approve(characterId='' hash='')`. */
   usage: string;
@@ -114,6 +116,7 @@ export function toCatalog(
       mutating: command.mutating,
       confirm: command.confirm ?? false,
       undoable: command.undoable ?? false,
+      checkable: Boolean(command.check),
       props: entries.map(([name, spec]) => ({
         name,
         kind: spec.kind,

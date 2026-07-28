@@ -13,7 +13,7 @@ import { prop } from '../props.js';
 /** A toy domain: a room with doors, only some of which are unlocked. */
 type Doors = Record<string, boolean>;
 
-const walk = defineInteraction<Doors, string>({
+const walk = defineInteraction<Doors>({
   id: 'room.walk',
   title: 'Walk through a door',
   description: 'Drag yourself onto a door.',

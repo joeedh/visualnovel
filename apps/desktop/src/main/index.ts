@@ -145,6 +145,9 @@ function getStack(): CommandStack<CommandHost> {
       session: getSession(),
       state: getSessionStore(),
       ui: (effect: UiEffect) => win?.webContents.send('command:ui', effect),
+      // Lazily through `getStack`, not the local `stack`: the host is built while the stack
+      // is still being constructed, so capturing it here would capture `undefined`.
+      check: (id, props) => getStack().check(id, props),
     };
     stack = new CommandStack<CommandHost>({
       registry,
@@ -210,6 +213,7 @@ function registerIpc(): void {
     }
     return getStack().exec(request.id, request.props ?? {}, source);
   });
+  handle('command:check', (request) => getStack().check(request.id, request.props ?? {}));
   handle('command:history', (limit) => getStack().history(limit));
   handle('command:undo', () => getStack().undo());
   handle('command:redo', () => getStack().redo());

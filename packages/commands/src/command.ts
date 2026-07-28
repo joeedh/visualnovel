@@ -58,8 +58,26 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
    * undo's (`docs/gitUndoOptions.md` §6).
    */
   undoable?: boolean;
+  /**
+   * Would this run, and if not why? A report about *now* — never a gate on `run`, which
+   * re-decides against the state it actually finds. A check that passed and a run that then
+   * refuses is a race the caller is entitled to lose; a check that gated would only turn that
+   * race into a state where the command cannot be reached at all.
+   *
+   * It **reads and does not write**, so asking is always free. Absence is not permission: a
+   * command with no check reports `undeclared`, which is the honest answer.
+   *
+   * Only mutating commands declare one. A non-mutating command's answer is the command itself.
+   */
+  check?(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CheckResult>;
   run(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CommandOutput>;
 }
+
+/**
+ * A precondition's answer. `note` on an accept is not decoration — it is where the check says
+ * what it found (`4 task(s) ready`), which is the part worth reading before committing to work.
+ */
+export type CheckResult = { ok: true; note: string } | { ok: false; reason: string };
 
 /** Identity, but it infers `M` from the literal so `run`'s props are typed at the call site. */
 export function defineCommand<M extends PropSpecMap, Host>(

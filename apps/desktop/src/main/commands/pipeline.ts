@@ -27,6 +27,16 @@ export const pipelineRun = define({
   // the command, not the props, so the confirmation is unconditional.
   confirm: true,
   props: { mock: prop.boolean('dry run: preview only, no model calls', { default: true }) },
+  async check({ mock }, ctx) {
+    const state = await ctx.host.session.runPreconditions(mock);
+    if (state.keyError) return { ok: false, reason: state.keyError };
+    // Pending work is reported, never refused: planning is incremental, so "nothing pending"
+    // means nothing is plannable *yet* — the run itself is what discovers the rest.
+    const gate = state.blockedOnGate
+      ? ` Gate pending: ${state.gatePending.join(', ') || 'none'}.`
+      : '';
+    return { ok: true, note: `${state.pending} task(s) pending.${gate}` };
+  },
   async run({ mock }, ctx) {
     const result = await ctx.host.session.runPipeline(mock);
     const what = mock

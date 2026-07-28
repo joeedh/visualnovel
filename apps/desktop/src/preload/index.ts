@@ -45,6 +45,7 @@ const vn: CommandBridge = {
       'command:exec',
       props === undefined ? { dsl: dslOrId, source: 'cdp' } : { id: dslOrId, props, source: 'cdp' },
     ),
+  check: (id, props) => ipcRenderer.invoke('command:check', { id, props: props ?? {} }),
   catalog: () => ipcRenderer.invoke('command:catalog'),
   history: (limit) => ipcRenderer.invoke('command:history', limit),
   undo: () => ipcRenderer.invoke('command:undo'),

@@ -131,6 +131,46 @@ export class CommandStack<Host = unknown> {
     }
   }
 
+  /**
+   * Would `id` run right now? The command's own precondition, asked without running it.
+   *
+   * Three states, not two. `undeclared` is the answer for a command that has no check — absence
+   * of a precondition is not permission, and reporting it as an accept would put words in the
+   * command's mouth. Props are coerced first, so a check sees exactly what `run` would.
+   *
+   * Nothing here gates `exec`: a check is a report about now, and `run` re-decides.
+   */
+  async check(
+    id: string,
+    raw: Record<string, unknown>,
+  ): Promise<{ state: 'accept' | 'refuse' | 'undeclared'; message: string }> {
+    const command = this.opts.registry.get(id);
+    if (!command) return { state: 'refuse', message: `unknown command "${id}"` };
+
+    const coerced = coerceProps(command.props as PropSpecMap, raw);
+    if (!coerced.ok) {
+      return {
+        state: 'refuse',
+        message: `invalid props for "${id}": ${coerced.errors.join('; ')}`,
+      };
+    }
+    if (!command.check) {
+      return { state: 'undeclared', message: `"${id}" declares no precondition` };
+    }
+
+    try {
+      const result = await command.check(coerced.value as never, this.opts.context);
+      return result.ok
+        ? { state: 'accept', message: result.note }
+        : { state: 'refuse', message: result.reason };
+    } catch (err) {
+      // A check that throws has failed to answer, which is not the same as a refusal by the
+      // rule — say which, rather than reporting the crash as the command's own reason.
+      const detail = err instanceof Error ? err.message : String(err);
+      return { state: 'refuse', message: `check for "${id}" failed: ${detail}` };
+    }
+  }
+
   /** Most recent last. `limit` keeps the tail. */
   history(limit?: number): CommandRecord[] {
     return limit === undefined ? [...this.records] : this.records.slice(-limit);

@@ -12,4 +12,12 @@ export interface CommandHost {
   state: SessionStore;
   /** Push a UI change to the renderer over the `command:ui` event channel. */
   ui(effect: UiEffect): void;
+  /**
+   * Ask another command's precondition — the stack's own `check`, reached through the host
+   * because a command cannot import the stack that runs it.
+   */
+  check(
+    id: string,
+    props: Record<string, unknown>,
+  ): Promise<{ state: 'accept' | 'refuse' | 'undeclared'; message: string }>;
 }

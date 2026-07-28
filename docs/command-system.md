@@ -11,6 +11,8 @@
   * [`CommandRecord`](#commandrecord)
   * [Undo is opt-in, and rests on shadow snapshots](#undo-is-opt-in-and-rests-on-shadow-snapshots)
 - [The registered commands](#the-registered-commands)
+  * [Interactions: the gesture surface](#interactions-the-gesture-surface)
+  * [Preconditions: asking before acting](#preconditions-asking-before-acting)
 - [Reaching the commands](#reaching-the-commands)
   * [From the renderer](#from-the-renderer)
   * [From DevTools or CDP](#from-devtools-or-cdp)
@@ -228,36 +230,38 @@ not lie about what touched the worktree.
 
 ## The registered commands
 
-Twenty-four, in seven namespaces. Ten are `mutating`; one asks for confirmation.
+Twenty-five, in eight namespaces. Nine are `mutating`; eight declare a precondition; one asks
+for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
+| `command.check`                | `invocation`                      | Would that invocation run? See [Preconditions](#preconditions-asking-before-acting). |
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
-| `gate.approve` ✍               | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
+| `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
 | `pipeline.status`              | —                                 | Task counts, gate-pending characters, gate-blocked state.  |
-| `pipeline.run` ✍ ⚠            | `mock` (default `true`)           | The only `confirm: true` command — it spends money.        |
+| `pipeline.run` ✍ ⚠ ✓          | `mock` (default `true`)           | The only `confirm: true` command — it spends money.        |
 | `story.play`                   | —                                 | Build the playable in memory; writes nothing.              |
-| `story.export` ✍               | —                                 | Write `vngen/build/story.play.json` (`vngen export`).      |
+| `story.export` ✍ ✓             | —                                 | Write `vngen/build/story.play.json` (`vngen export`).      |
 | `story.graph`                  | —                                 | Scenes + branch edges for the editor; reachability marked. |
 | `story.coverage`               | `scene`                           | One scene's lines + persisted shots — the timeline's input. |
-| `story.setChoice` ✍ ↺          | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
-| `story.removeChoice` ✍ ↺       | `scene`, `index`                  | Deletes the marker line; the prose is untouched.           |
-| `story.setNext` ✍ ↺            | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
-| `story.spliceScene` ✍ ↺        | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
-| `story.setCoverage` ✍ ↺        | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
+| `story.setChoice` ✍ ↺ ✓        | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
+| `story.removeChoice` ✍ ↺ ✓     | `scene`, `index`                  | Deletes the marker line; the prose is untouched.           |
+| `story.setNext` ✍ ↺ ✓          | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
+| `story.spliceScene` ✍ ↺ ✓      | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
+| `story.setCoverage` ✍ ↺ ✓      | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
 | `agent.clear`                  | —                                 | Resets the conversation, back to plan mode.                |
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
-| `interaction.targets`          | `interaction`, `carried`          | Every target of a gesture, accepted or refused with why.   |
+| `interaction.targets`          | `interaction`, `carried`, `scene`        | Every target of a gesture, accepted or refused with why.   |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
 | `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
 | `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`, FLOOR `list`\|`graph`\|`timeline`. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
 | `view.panelSize`               | `id`, `width` (80–1200)           | Saved width of a resizable panel; persisted, not an effect. |
 
-✍ mutating ⚠ confirm ↺ undoable
+✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
 **Only the `story.*` document mutators are undoable**, because undo restores a snapshot of the
 document tree. `gate.approve` straddles both data classes — undoing `character.md` would leave
@@ -297,10 +301,12 @@ would run) or refuse (with the sentence the command itself would have given). It
 path of its own — every gesture terminates in a registered command, and
 `InteractionRegistry.verify` fails the build if it names one that does not exist.
 
-The three branch-editor gestures (`branch.connect`, `branch.splice`, `branch.unwire`) are
-declared in `apps/desktop/src/shared/interactions.ts`, beside `branchops.ts` and for the same
-reason: `BranchEditor` runs `branchSplice.targets` to draw its mid-drag verdict overlay, and
-`interaction.targets` runs the same call in main, so an author and an agent cannot be told
+The four gestures — the branch editor's `branch.connect`, `branch.splice`, `branch.unwire` and
+the coverage timeline's `timeline.cover` — are declared in
+`apps/desktop/src/shared/interactions.ts`, beside `branchops.ts`/`coverage.ts` and for the same
+reason: `BranchEditor` runs `branchSplice.targets` to draw its mid-drag verdict overlay, the
+`Timeline` evaluates `timelineCover.targets` once per grab for its notice, and
+`interaction.targets` runs the same call in main — so an author and an agent cannot be told
 different things about the same drop.
 
 ```sh
@@ -315,8 +321,59 @@ Full design, including what deliberately is _not_ an interaction:
 [`plans/interaction-model.md`](plans/interaction-model.md).
 
 `CommandHost` is the app-specific service bundle every command receives:
-`{ session: WorkspaceSession; state: SessionStore; ui(effect: UiEffect): void }`. `state` is
-persisted UI state — deliberately not called `session`, which is already the backend one.
+`{ session: WorkspaceSession; state: SessionStore; ui(effect: UiEffect): void; check(id, props) }`.
+`state` is persisted UI state — deliberately not called `session`, which is already the backend
+one; `check` is the stack's own precondition query, reached through the host because a command
+cannot import the stack that runs it.
+
+Two state types now pass through `targets`, so `interaction.targets` builds the state the named
+gesture wants: a `timeline.*` gesture is judged against one scene and takes a `scene` prop,
+everything else gets the branch graph. The registry is untyped in its state
+(`InteractionRegistry`, `State = any`) for the same reason, and the carried value is **always a
+string** — an interaction with structure encodes it (`arrival__beat1#end`) and parses it in
+`targets`, refusing a token that names nothing against the `UNRESOLVED` target.
+
+### Preconditions: asking before acting
+
+An interaction answers "would this drop work" for a gesture. `check` answers it for a command:
+
+```ts
+type CheckResult = { ok: true; note: string } | { ok: false; reason: string };
+interface Command<M, Host> {
+  check?(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CheckResult>;
+}
+stack.check(id, props): Promise<{ state: 'accept' | 'refuse' | 'undeclared'; message: string }>
+```
+
+Four rules, and the third state is the load-bearing one:
+
+1. **Absence is `undeclared`, never `accept`.** Collapsing "nobody wrote a check" into "would
+   succeed" is the one way this can lie, and it would lie by default on every command nobody
+   got to.
+2. **A check is a report about now.** The workspace can move between check and exec; `run`
+   re-decides and stays the only authority. Nothing calls `check` on the way into `exec`.
+3. **A check reads and does not write** — each is a load plus a pure decision, so asking is free.
+4. **Only mutating commands declare one.** A read has nothing to prevent. A test pins the list.
+
+The `story.*` checks are the *same* pure decision the command runs (`branchops`, `setCoverage`),
+taken against a freshly read graph and discarded — so the refusal you are shown is the refusal
+that would happen, the same honesty rule the mid-drag overlays follow. `gate.approve` asks
+whether the character exists and the hash is among its candidates (already-approved is a note,
+not a refusal: re-approving is how an author changes their mind). `pipeline.run` refuses only
+when `mock: false` and no key resolves — the half that is certain and expensive to discover by
+running — and reports pending work and the gate as its note, because "is anything plannable"
+cannot be answered without planning, which would write.
+
+`checkable` on each catalog entry says which commands have a precondition to ask.
+
+```sh
+node scripts/vn-cdp.mjs "command.check(invocation=\"story.setNext(scene='arrival')\")"
+#  story.setNext: refuse — arrival has no next scene to clear.
+node scripts/vn-cdp.mjs --raw "window.vn.check('pipeline.run', {mock: false})"
+```
+
+Full design, and why this is not the same function as `targets`:
+[`plans/preconditions-and-timeline-interaction.md`](plans/preconditions-and-timeline-interaction.md).
 
 ---
 
@@ -324,12 +381,13 @@ persisted UI state — deliberately not called `session`, which is already the b
 
 ### From the renderer
 
-Three invoke channels on the existing typed IPC map (`apps/desktop/src/shared/ipc.ts`), plus
-one event channel:
+Invoke channels on the existing typed IPC map (`apps/desktop/src/shared/ipc.ts`), plus one
+event channel:
 
 ```ts
 'command:catalog': () => CommandCatalog;
 'command:exec':    (r: { id?; props?; dsl?; source? }) => CommandOutcome;
+'command:check':   (r: { id; props? }) => CommandCheck;
 'command:history': (limit?: number) => CommandRecord[];
 'command:undo' / 'command:redo': () => CommandOutcome;
 // event:
@@ -356,6 +414,7 @@ The preload exposes a second bridge, `window.vn`, over that same IPC:
 await vn.catalog();
 await vn.exec("view.room(name='floor')"); // DSL form
 await vn.exec('gate.approve', { characterId: 'aiko', hash: '9e0a1b' }); // id + props form
+await vn.check('gate.approve', { characterId: 'aiko', hash: '9e0a1b' }); // would it run?
 await vn.history(5);
 ```
 
@@ -405,6 +464,7 @@ and a **JSON Schema** for the props object.
   "mutating": false,
   "confirm": false,
   "undoable": false,
+  "checkable": false,
   "props": [{ "name": "name", "kind": "enum", "required": true, "values": ["studio", "floor", "play"] }],
   "usage": "view.room(name='studio')",
   "schema": {
@@ -437,14 +497,16 @@ schemas instead is an obvious follow-on.
 
 - `pnpm exec jest --selectProjects @vn/commands` — DSL parse/format round-trip and error
   columns, prop coercion and defaults, required-missing and unknown-key rejection, stack
-  record contents (seq order, `gitHead` populated, error records), catalog schema shape, undo
+  record contents (seq order, `gitHead` populated, error records), `check`'s three states and
+  its refusal to let a crashed check read as the command's own reason, catalog schema shape, undo
   candidate selection and its refusals, and the journal itself against a **real** temp repo —
   its whole job is git behaviour, so mocking git would test nothing.
 - `pnpm exec jest --selectProjects @vn/desktop` — the registry's namespaces and ids, that
   every prop carries a description, that the mutating set is exactly the expected commands,
-  that only the document writers are undoable and nothing undoable is non-mutating, and that
-  the generated `commands.json` deep-equals the live registry (skipped when the file hasn't
-  been generated).
+  that only the document writers are undoable and nothing undoable is non-mutating, that the
+  commands declaring a precondition are exactly the mutators (minus `agent.run`, whose answer
+  is a model's), and that the generated `commands.json` deep-equals the live registry (skipped
+  when the file hasn't been generated).
 
 ---
 

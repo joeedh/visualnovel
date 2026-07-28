@@ -1,20 +1,22 @@
 /**
- * The branch editor's gestures, declared: what each one carries, which targets would take it,
- * and the command each drop commits.
+ * The app's direct-manipulation gestures, declared: what each one carries, which targets would
+ * take it, and the command each drop commits.
  *
- * Every decision here delegates to `branchops`, the same module the `story.*` commands run in
- * main. So the sentence shown while a card hovers over a wire it cannot be spliced into is
- * produced by the function that would have refused the drop, and `interaction.targets` answers
- * with that same sentence without anything being attempted.
+ * Every decision here delegates to the same rule module the matching `story.*` command runs in
+ * main — `branchops` for the branch editor, `coverage` for the timeline. So the sentence shown
+ * while a card hovers over a wire it cannot be spliced into is produced by the function that
+ * would have refused the drop, and `interaction.targets` answers with that same sentence without
+ * anything being attempted.
  *
- * It is in `shared/` rather than in the renderer because both halves need it: the editor runs
- * `targets` mid-drag, and main runs it to answer an agent. See
+ * It is in `shared/` rather than in the renderer because both halves need it: the surfaces run
+ * `targets` during a gesture, and main runs it to answer an agent. See
  * `docs/plans/interaction-model.md`.
  */
-import { defineInteraction, InteractionRegistry, type Verdict } from '@vn/commands';
+import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
 import { removeChoice, setChoice, setNext, spliceScene } from './branchops.js';
 import type { BranchOp, SceneMap } from './branchops.js';
-import type { PropValue, StoryEdge, StoryGraph } from './ipc.js';
+import { resolveDrag, setCoverage, spansFor, type Edge } from './coverage.js';
+import type { CoverageLine, CoverageShot, PropValue, StoryEdge, StoryGraph } from './ipc.js';
 
 /** A new choice has to be called something before the author has named it. */
 export const NEW_CHOICE = 'New choice';
@@ -169,7 +171,7 @@ export const branchState = (story: StoryGraph): BranchState => ({
 // The interactions.
 // ---------------------------------------------------------------------------
 
-export const branchConnect = defineInteraction<BranchState, string>({
+export const branchConnect = defineInteraction<BranchState>({
   id: 'branch.connect',
   title: 'Wire a scene to another',
   description:
@@ -184,7 +186,7 @@ export const branchConnect = defineInteraction<BranchState, string>({
     [...state.scenes.keys()].map((to) => verdict(connect(state.scenes, from, to), to)),
 });
 
-export const branchSplice = defineInteraction<BranchState, string>({
+export const branchSplice = defineInteraction<BranchState>({
   id: 'branch.splice',
   title: 'Splice a scene into an edge',
   description:
@@ -204,7 +206,7 @@ export const branchSplice = defineInteraction<BranchState, string>({
  * so there is nowhere else it could land. It is still an interaction rather than a bare
  * command because the verdict — whether that edge can be removed at all — is worth asking for.
  */
-export const branchUnwire = defineInteraction<BranchState, string>({
+export const branchUnwire = defineInteraction<BranchState>({
   id: 'branch.unwire',
   title: 'Unwire an edge',
   description:
@@ -222,10 +224,105 @@ export const branchUnwire = defineInteraction<BranchState, string>({
   },
 });
 
-export const INTERACTION_IDS = ['branch.connect', 'branch.splice', 'branch.unwire'] as const;
+// ---------------------------------------------------------------------------
+// The timeline's one gesture.
+// ---------------------------------------------------------------------------
 
-export function createBranchInteractions(): InteractionRegistry<BranchState> {
-  const registry = new InteractionRegistry<BranchState>();
-  registry.registerAll([branchConnect, branchSplice, branchUnwire]);
+/** Everything `timeline.cover` is judged against: exactly `SceneCoverage` minus `decomposed`. */
+export interface CoverState {
+  sceneId: string;
+  lines: CoverageLine[];
+  shots: CoverageShot[];
+}
+
+/** `<shotId>#start` / `<shotId>#end` — the handle, as one token. */
+export const handleId = (shotId: string, edge: Edge): string => `${shotId}#${edge}`;
+
+const parseHandle = (carried: string): { shotId: string; edge: Edge } | null => {
+  const cut = carried.lastIndexOf('#');
+  const edge = carried.slice(cut + 1);
+  if (cut <= 0 || (edge !== 'start' && edge !== 'end')) return null;
+  return { shotId: carried.slice(0, cut), edge };
+};
+
+/**
+ * Dragging a bracket's outer handle onto a line. Unlike the branch gestures, most targets are
+ * *not* candidates at all: dropping the handle back where it already is changes nothing, so those
+ * rows are dropped from the list rather than reported as an accept the author would learn nothing
+ * from — "no target" and "a target that refuses" are different answers.
+ */
+export const timelineCover = defineInteraction<CoverState>({
+  id: 'timeline.cover',
+  title: 'Drag a shot’s coverage',
+  description:
+    "Drag a bracket's start or end handle onto a line of the scene. Extending claims every line " +
+    'it sweeps, taking each off whatever shot held it; retracting releases them as gaps. Refused ' +
+    'when it would leave another shot covering nothing.',
+  grab: "a shot bracket's start or end handle",
+  carries: 'the handle — `<shotId>#start` or `<shotId>#end`',
+  accepts: 'any line of the scene',
+  commands: ['story.setCoverage'],
+  cancellable: true,
+  targets: (state, carried) => {
+    const handle = parseHandle(carried);
+    if (!handle) {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          reason: `Malformed handle "${carried}" (expected "<shotId>#start" or "<shotId>#end").`,
+        },
+      ];
+    }
+    const coverage = spansFor(state.lines, state.shots);
+    if (!coverage.spans.some((s) => s.shot.id === handle.shotId)) {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          // A shot covering nothing draws no bracket, so it has no handle to have been grabbed.
+          reason: `No shot "${handle.shotId}" covers anything in ${state.sceneId}.`,
+        },
+      ];
+    }
+
+    const lineOrder = state.lines.map((l) => l.id);
+    const verdicts: Verdict[] = [];
+    for (const row of coverage.rows) {
+      const lines = resolveDrag(coverage, handle.shotId, handle.edge, row.index);
+      if (!lines) continue;
+      const op = setCoverage(state.shots, { shot: handle.shotId, lines, lineOrder });
+      verdicts.push(
+        op.ok
+          ? {
+              target: row.line.id,
+              accept: true,
+              note: op.message,
+              invoke: {
+                id: 'story.setCoverage',
+                props: { scene: state.sceneId, shot: handle.shotId, lines: lines.join(',') },
+              },
+            }
+          : { target: row.line.id, accept: false, reason: op.error },
+      );
+    }
+    return verdicts;
+  },
+});
+
+export const INTERACTION_IDS = [
+  'branch.connect',
+  'branch.splice',
+  'branch.unwire',
+  'timeline.cover',
+] as const;
+
+/**
+ * Every gesture the app declares. The registry is state-agnostic (`any`) because its members are
+ * judged against different states — the caller supplies the one the gesture wants.
+ */
+export function createDesktopInteractions(): InteractionRegistry {
+  const registry = new InteractionRegistry();
+  registry.registerAll([branchConnect, branchSplice, branchUnwire, timelineCover]);
   return registry;
 }

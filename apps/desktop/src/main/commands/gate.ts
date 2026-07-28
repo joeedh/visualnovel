@@ -28,6 +28,24 @@ export const gateApprove = define({
     characterId: prop.string('the character to approve'),
     hash: prop.string('the asset hash to approve'),
   },
+  async check({ characterId, hash }, ctx) {
+    const state = await ctx.host.session.gateCandidacy(characterId, hash);
+    if (!state.character) return { ok: false, reason: `No character "${characterId}".` };
+    if (!state.candidate) {
+      return {
+        ok: false,
+        reason: `${characterId} has no candidate ${hash} (${state.candidates} on file).`,
+      };
+    }
+    // Already approved is not a refusal: approving a second candidate is how an author
+    // changes their mind, and the command supports it.
+    return {
+      ok: true,
+      note: state.approved
+        ? `Would replace ${characterId}'s approved portrait.`
+        : `Would clear ${characterId} from the gate.`,
+    };
+  },
   async run({ characterId, hash }, ctx) {
     const result = await ctx.host.session.approveCharacter(characterId, hash);
     if (!result.ok) throw new Error(result.message);

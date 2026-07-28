@@ -7,6 +7,7 @@
  */
 import { CommandRegistry } from '@vn/commands';
 import { agentClear, agentRun, agentSetMode, agentSetModel } from './agent.js';
+import { commandCheck } from './command.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { interactionList, interactionTargets } from './interaction.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
@@ -34,6 +35,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     agentRun,
     agentSetMode,
     agentSetModel,
+    commandCheck,
     gateApprove,
     gateCandidates,
     interactionList,

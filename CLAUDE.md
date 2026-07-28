@@ -443,10 +443,20 @@ screenplays do, and it takes the full width — the task inspector is about othe
 invalidated. Plan and as-shipped notes:
 [`docs/plans/shot-timeline-editor.md`](docs/plans/shot-timeline-editor.md).
 
-- **One rule, previewed and committed.** `src/shared/coverage.ts` (`setCoverage`) is run by the
-  `story.setCoverage` command in main _and_ by the strip mid-drag — same split as
-  `branchops.ts`/`intent.ts`, so a refusal shown while an edge is carried is the refusal that
-  would happen. One command per drop; a drag is continuous, its commit is not.
+- **One rule, previewed and committed.** `src/shared/coverage.ts` holds the whole gesture's
+  logic — `setCoverage` (the rule), `spansFor` (the geometry) and `resolveDrag` (which lines a
+  drop asks for) — run by the `story.setCoverage` command in main _and_ by the strip mid-drag,
+  so a refusal shown while a handle is carried is the refusal that would happen. Only `previewOf`
+  stays in the renderer: it is ghost geometry for drawing, and main has no use for it. One
+  command per drop; a drag is continuous, its commit is not.
+- **The gesture is declared, not just implemented.** `timeline.cover` (in
+  `src/shared/interactions.ts`) is the second interaction: it carries `<shotId>#start` /
+  `<shotId>#end` and judges **every** row of the scene, so an agent can ask what a drag would do
+  without performing one. `Timeline.tsx` evaluates `targets` **once per grab** — state and
+  carried are both fixed for the gesture — and indexes the verdicts by line id for its notice
+  and its commit; it still calls `resolveDrag` per pointer move for the ghost's _geometry_,
+  which a verdict does not carry. A row the drop would not change is dropped from the list
+  rather than reported: "nothing happens" is what release already does silently.
 - **A drag previews; it never re-lanes.** Lanes are greedy first-fit over shot _extents_, so
   re-deriving coverage per pointer move moves brackets the author never touched into other
   columns and changes the grid's column count under the cursor. The strip therefore draws
@@ -550,9 +560,9 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 
 - **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
   prop specs, the registry, the DSL, the execution stack, the interaction layer, and the catalog
-  projection — it is domain-agnostic (deps: `types`, `util`, `git`). The 24 definitions live in
+  projection — it is domain-agnostic (deps: `types`, `util`, `git`). The 25 definitions live in
   `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`,
-  `interaction`)
+  `interaction`, `command`)
   as thin wrappers over `WorkspaceSession`. The `story.*` branch mutators
   (`setChoice`/`removeChoice`/`setNext`/`spliceScene`) all go through
   `session.editBranches(decide)` → `applySceneBranchEdit` → reload, so the branch editor never
@@ -584,23 +594,41 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   plan: [`docs/plans/command-undo-redo.md`](docs/plans/command-undo-redo.md).
 - **Interactions declare the gestures; commands stay the only write path.** A command says what
   the app can do; on the direct-manipulation surfaces that omits most of the interface. An
-  `Interaction` (`packages/commands/src/interaction.ts`) adds a name, a carried object, and —
+  `Interaction` (`packages/commands/src/interaction.ts`) adds a name, a carried token, and —
   the point — `targets(state, carried)`, a **query** returning every candidate marked accept
   (with the invocation a drop would run) or refuse (with the sentence the command itself would
   have given). It never writes: every gesture terminates in a registered command, and
-  `InteractionRegistry.verify` fails the build if it names one the app lacks. The branch
-  editor's three (`branch.connect`/`splice`/`unwire`) live in `src/shared/interactions.ts`
-  beside `branchops.ts`, for the same reason — `BranchEditor` draws its mid-drag verdict overlay
-  from `branchSplice.targets` and `interaction.targets` runs the same call in main, so an author
-  and an agent can't be told different things about one drop. Inline label editing is
-  deliberately _not_ an interaction: no carried object, no enumerable targets. Plan:
-  [`docs/plans/interaction-model.md`](docs/plans/interaction-model.md).
+  `InteractionRegistry.verify` fails the build if it names one the app lacks. All four
+  (`branch.connect`/`splice`/`unwire`, `timeline.cover`) live in `src/shared/interactions.ts`
+  beside the rules they run, for the same reason — `BranchEditor` draws its mid-drag verdict
+  overlay from `branchSplice.targets`, the `Timeline` evaluates `timelineCover.targets` once per
+  grab, and `interaction.targets` runs the same call in main, so an author and an agent can't be
+  told different things about one drop. Inline label editing is deliberately _not_ an
+  interaction: no carried object, no enumerable targets. **The carried value is always a
+  string** — one with structure encodes it (`arrival__beat1#end`) and parses it in `targets`,
+  refusing a token that names nothing against `UNRESOLVED` rather than returning `[]`, since an
+  empty list means "no targets here", not "you asked about something absent". `targets` is
+  synchronous and pure because it runs per pointer move, which is exactly why a command's
+  precondition is a separate function. Plans:
+  [`docs/plans/interaction-model.md`](docs/plans/interaction-model.md),
+  [`docs/plans/preconditions-and-timeline-interaction.md`](docs/plans/preconditions-and-timeline-interaction.md).
+- **A mutating command declares its refusal before it runs.** `Command.check` is an optional
+  async precondition and `stack.check(id, props)` answers in **three** states: `accept` (with
+  what it found), `refuse` (with the sentence the command itself would give), and `undeclared`
+  — because absence of a check is not permission, and reporting it as an accept would lie by
+  default. It never gates `exec`, which re-decides for itself; it reads and never writes; and
+  only mutating commands declare one (a test pins the list). The `story.*` checks re-run the
+  _same_ pure decision the command runs against a freshly read graph and discard it, so the
+  refusal shown is the refusal that would happen. `pipeline.run` refuses only on an
+  unresolvable key with `mock=false` — "is anything plannable" can't be answered without
+  planning, which writes. Reachable as `command.check(invocation=…)`, `window.vn.check`, and
+  `checkable` in the catalog.
 - **Catalog.** `pnpm build` writes `apps/desktop/dist/commands.json` for external tooling. The
   `command:catalog` IPC channel serves the **live** registry, never the file, so the app can't
   be misled by a stale one; a test asserts the two match.
 - **CDP.** Setting `VN_CDP_PORT` makes the app open Chrome's own remote-debugging port, bound
   to `127.0.0.1`. It is **opt-in and off by default** — the port grants full control of the
-  renderer. The preload exposes `window.vn` (`exec`/`catalog`/`history`/`undo`/`redo`) over
+  renderer. The preload exposes `window.vn` (`exec`/`check`/`catalog`/`history`/`undo`/`redo`) over
   the existing IPC, so DevTools and CDP share one entry point:
 
   ```sh

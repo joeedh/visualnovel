@@ -18,6 +18,7 @@ describe('the desktop registry', () => {
   it('registers every namespace the UI reaches', () => {
     expect(createDesktopRegistry().namespaces()).toEqual([
       'agent',
+      'command',
       'gate',
       'interaction',
       'pipeline',
@@ -76,6 +77,26 @@ describe('the desktop registry', () => {
     expect(commands.filter((c) => c.undoable && !c.mutating)).toEqual([]);
   });
 
+  /**
+   * A check is a precondition on an *act*. A non-mutating command has no precondition worth
+   * asking about — running it is how you find out — so declaring one there would advertise a
+   * question with no answer behind it. `agent.run` is the one mutator with no check: what it
+   * would do is decided by a model, not by state this process can read.
+   */
+  it('declares a precondition on the mutators, and only on mutators', () => {
+    expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
+      'gate.approve',
+      'pipeline.run',
+      'story.export',
+      'story.removeChoice',
+      'story.setChoice',
+      'story.setCoverage',
+      'story.setNext',
+      'story.spliceScene',
+    ]);
+    expect(commands.filter((c) => c.check && !c.mutating)).toEqual([]);
+  });
+
   it('projects to a catalog with a usage template and a schema per command', () => {
     for (const entry of catalog().commands) {
       expect(entry.usage).toMatch(/^[a-z][\w.]*\(.*\)$/);
@@ -95,6 +116,7 @@ describe('the desktop registry', () => {
       'branch.connect',
       'branch.splice',
       'branch.unwire',
+      'timeline.cover',
     ]);
   });
 });

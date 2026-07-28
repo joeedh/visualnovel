@@ -100,6 +100,12 @@ export interface CommandExecRequest {
   source?: CommandSource;
 }
 
+/** A precondition's answer. Three states: absence of a check is `undeclared`, not `accept`. */
+export interface CommandCheck {
+  state: 'accept' | 'refuse' | 'undeclared';
+  message: string;
+}
+
 export type {
   AgentEvent,
   AgentMode,
@@ -284,6 +290,11 @@ export interface InvokeChannels {
   'command:catalog': () => CommandCatalog;
   'command:exec': (request: CommandExecRequest) => CommandOutcome;
   'command:history': (limit?: number) => CommandRecord[];
+  /**
+   * Would that invocation run? A read, never a gate — `command:exec` re-decides for itself.
+   * `undeclared` is the honest answer for a command that states no precondition.
+   */
+  'command:check': (request: { id: string; props?: Record<string, PropValue> }) => CommandCheck;
   /** Restores a snapshot; refuses (never guesses) if the workspace moved — see `@vn/commands`. */
   'command:undo': () => CommandOutcome;
   'command:redo': () => CommandOutcome;
@@ -328,6 +339,8 @@ export interface DesktopApi {
  */
 export interface CommandBridge {
   exec(dslOrId: string, props?: Record<string, PropValue>): Promise<CommandOutcome>;
+  /** Ask a command's precondition without running it. Same argument forms as `exec`. */
+  check(id: string, props?: Record<string, PropValue>): Promise<CommandCheck>;
   catalog(): Promise<CommandCatalog>;
   history(limit?: number): Promise<CommandRecord[]>;
   undo(): Promise<CommandOutcome>;
