@@ -325,6 +325,23 @@ its possible successors (see `vn-generator-report.md`, §6). Fountain's **Sectio
 and **Notes** are convenient anchors for this, and because they're ignored by ordinary
 Fountain renderers, a file with our branch markers still parses as valid Fountain.
 
+Every project marker is a **note**, so all of them are invisible to other tooling:
+
+| Marker | Means |
+|---|---|
+| `[[scene: id]]` | Names the scene this heading starts |
+| `[[choice: label -> id]]` | One branch out of the scene |
+| `[[next: id]]` | Followed when the scene offers no choices |
+| `[[line: L4]]` | The id of the element it leads — see below |
+| `[[nextline: 12]]` | The scene's line-id allocator; sits under the heading |
+
+`[[line:]]` and `[[nextline:]]` exist because `Shot.coversLines` binds art to line ids.
+An id derived from position silently re-points every shot below an inserted line, so ids
+are **allocated and written down** instead: a `[[line: L4]]` note on its own line
+immediately above an element names that element, and `[[nextline:]]` records the next
+free number for the scene. Reading a screenplay never writes to it — unmarked elements
+get ids in memory, and persisting them is the separate `story.assignLineIds` command.
+
 ---
 
 ## Further reading

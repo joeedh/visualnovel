@@ -14,8 +14,24 @@ export function Rail(props: {
   setMode: (mode: StudioMode) => void;
 }): JSX.Element {
   const idx = props.index;
+  const diagnostics = idx?.diagnostics ?? [];
   return (
     <aside className="rail">
+      {/* First, and only when there are any: an id that aliases or names no line is the kind
+          of thing the rest of the rail looks perfectly healthy in spite of. */}
+      {diagnostics.length > 0 && (
+        <div className="rail-group">
+          <div className="rail-head">
+            DIAGNOSTICS <span className="ct">{diagnostics.length}</span>
+          </div>
+          {diagnostics.map((d, i) => (
+            <div className={`diag ${d.severity}`} key={`${d.code}:${d.where ?? ''}:${i}`}>
+              <span className="code">{d.code}</span>
+              <span className="msg">{d.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="rail-group">
         <div className="rail-head">
           CAST <span className="ct">{idx?.characters.length ?? 0}</span>

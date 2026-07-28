@@ -88,6 +88,10 @@ export interface Choice {
  * narration. Each carries a stable, scene-scoped id (`${sceneId}:L<n>`) so shots can bind
  * to exact lines and a runner can swap art per line. Derived from the Fountain source at
  * model-build time (report §P5.1); not persisted independently.
+ *
+ * The local part is **allocated**, not positional: `[[line: L4]]` in the source names it,
+ * and anything unmarked takes the next id from {@link Scene.nextLineId}. Inserting a line
+ * therefore leaves every other line's id alone.
  */
 export interface SceneLine {
   /** Stable, scene-scoped id, e.g. `arrival:L3`. */
@@ -141,6 +145,12 @@ export interface Scene {
    * form kept for back-compat; `lines` preserves speaker/kind. Regenerated each model build.
    */
   lines: SceneLine[];
+  /**
+   * Monotonic high-water mark for this scene's line-id allocator — the next local id to
+   * hand out. Read from `[[nextline: n]]` when present, otherwise derived as
+   * `max(allocated) + 1`. Retired ids are never reused, so it only ever rises.
+   */
+  nextLineId?: number;
   /** Branch edges; empty for a leaf. */
   choices: Choice[];
   /** Linear continuation when there are no explicit choices. */

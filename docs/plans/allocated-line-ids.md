@@ -1,6 +1,6 @@
 # Allocated line ids
 
-Status: **planned**. Move one of the direction argued in
+Status: **shipped** (see [As shipped](#as-shipped)). Move one of the direction argued in
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md)
 — and the only one that stands entirely on its own. It ships against the existing single-file
 screenplay, needs no editor, and closes a silent-corruption path that exists today.
@@ -192,6 +192,91 @@ Not-quiet is the point of the change, so none of these are warnings-in-a-log.
    persisted one, and the palette claim — which becomes true in step 7 rather than staying
    aspirational), `docs/command-system.md` (the palette is catalog-driven; `checkable` is what it
    consults), and `docs/fountain.md` (the marker table).
+
+## As shipped
+
+All nine steps landed. `pnpm check`, `pnpm test` (663 tests, 61 suites) and `pnpm lint` are green.
+
+### Deviations
+
+- **`FountainElement.line`** (zero-based source index) was added in step 1 rather than being
+  assumed. The writer needs to know which raw line an element came from, and nothing carried that.
+  `stripBoneyard` therefore **blanks in place** instead of deleting, so a boneyard never shifts the
+  indices, and `srcLine()` adds the title-page lines back.
+- **Step 4's "insertion would break a cue" test is a preservation test instead.** The placement rule
+  puts a dialogue mark *after* the `CHARACTER` cue and inside the block, so with the rule applied
+  correctly there is no input that breaks a cue — the case can only be reached by breaking the
+  writer. What is pinned is the property that matters: cues, blanks and branch markers survive a
+  write byte-for-byte, plus the safety net's own refusal path (`line_ids_verify`).
+- **`branchpatch.ts` narrowed rather than widened.** `parseBranchMarker` now returns two kinds
+  `markersOn` has no business rewriting, so it pushes only `choice`/`next` occurrences. A
+  regression test (`leaves line-id markers alone while rewiring around them`) pins it: the branch
+  editor and the id writer share one file, and a rewire must not eat a `[[line:]]`.
+- **The palette executes over `command:exec`**, the channel `window.vn.exec` itself forwards to,
+  rather than reaching for `window.vn`. Same stack, same provenance, same undo — and the
+  browser-only design preview still renders, because `renderer/api.ts`'s fallback answers the
+  channel. The fallback answers `command:check` with `undeclared`, not `refuse`: a preview has no
+  precondition to consult, and dressing that up as a verdict would put a sentence in the palette no
+  command ever said.
+- **The palette's pure half is `renderer/app/catalog.ts`, not `palette.ts`.** TypeScript resolves
+  `.ts` before `.tsx`, so on a case-insensitive filesystem `./Palette` from `App.tsx` bound to
+  `palette.ts` and the two names collided. `catalog.ts` is also the more honest name — it is about
+  catalog entries.
+- **Highlighting a row is not navigating to it.** The first cut opened the props view on focus,
+  which meant hovering a command left the list. `select` now only arms the check; the click decides
+  between the props view and running. `run` takes its props as an argument because a click focuses
+  the row first and the resulting `setValues` has not landed yet.
+- **The verdict is re-asked after every execution.** A command that just ran changed what its own
+  precondition would answer, and leaving the old sentence up would describe work already done.
+
+### Verified on `examples/mySampleRepo`
+
+Driven over CDP (`node scripts/vn-cdp.mjs`) against the real desktop app, mock mode:
+
+```
+$ vn-cdp --raw "window.vn.check('story.assignLineIds', {})"
+{ "state": "accept", "message": "14 line id(s) would be written into the screenplay." }
+
+$ vn-cdp "story.assignLineIds()"
+"message": "Wrote 14 line id(s) into the screenplay."
+"written": ["screenplay/script.fountain"]
+"undo": { "pre": "6b5f923…", "post": "3e3b047…", "changed": true }
+```
+
+Coverage for all five scenes (every shot, with the first 46 characters of each line it covers) was
+captured before and after: **identical**. Then a new opening paragraph was hand-inserted at the top
+of `arrival`, above the marked `L1`:
+
+| | `arrival__establishing` covers | `arrival__beat1` covers |
+| --- | --- | --- |
+| before | `L2` "Um… hello. I'm Aiko…" | `L1` "The door slides open…" |
+| **marked**, after insertion | `L2` "Um… hello. I'm Aiko…" | `L1` "The door slides open…" |
+| **unmarked** (same insertion, marks reverted) | `L2` "The door slides open…" | `L1` "Chalk dust hangs…" |
+
+The third row is the bug, reproduced: both shots silently re-point one line down, and nothing
+reports it. The second row is the fix. The inserted line reads as `arrival:L4` — the allocator's
+next id — and `story.assignLineIds(scene='arrival')` then wrote `[[line: L4]]` and bumped
+`[[nextline:]]` 4 → 5, leaving every other id untouched. A second run reports
+`Every line in the screenplay already carries its id.`
+
+The same command was then driven **from the palette** with trusted CDP input
+(`Input.dispatchMouseEvent` / `Input.insertText`), which is the path an author takes:
+
+```
+groups:           "SKILLS · .aiagent/skills / SESSION / COMMANDS 26"
+typed "assign" →  "story.assignLineIds"
+hover           →  ✓ 1 line id(s) would be written into the screenplay.
+click           →  props view, one field: scene
+typed "greet"   →  ✓ 1 line id(s) would be written into scene "greet".
+click run       →  Wrote 1 line id(s) into scene "greet".
+--undo          →  Undid story.assignLineIds(scene='greet').
+--redo          →  Redid story.assignLineIds(scene='greet').
+```
+
+**One environmental trap worth writing down**: an occluded Electron window is throttled by
+Chromium, so `element.click()` and `.focus()` from `Runtime.evaluate` appear to be ignored — React
+handlers are attached and simply never render. `Page.bringToFront` first, and prefer the `Input`
+domain over synthetic DOM events.
 
 ## Not in this plan
 

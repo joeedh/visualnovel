@@ -170,6 +170,72 @@ describe('WorkspaceSession — branch editing', () => {
   });
 });
 
+/** `story.assignLineIds`: the ids reading allocated, written down so an insertion can't move them. */
+describe('WorkspaceSession — line ids', () => {
+  const SCRIPT = 'screenplay/script.fountain';
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeEach(async () => {
+    p = await makeProject({ title: 'Line ids', script: SCRIPTS.linear });
+    session = sessionFor(p);
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  const lineIds = async (scene: string) =>
+    (await session.sceneCoverage(scene)).lines.map((l) => l.id);
+
+  it('previews the marks without writing any', async () => {
+    const before = await p.read(SCRIPT);
+    const preview = await session.previewLineIds();
+    expect(preview.ok).toBe(true);
+    expect(preview.assigned).toBeGreaterThan(0);
+    expect(await p.read(SCRIPT)).toBe(before);
+  });
+
+  it('writes the ids reading already allocated, changing none of them', async () => {
+    const before = await lineIds('arrival');
+    const result = await session.writeLineIds();
+    expect(result).toMatchObject({ ok: true, written: [SCRIPT] });
+    expect(await lineIds('arrival')).toEqual(before);
+    expect(await p.read(SCRIPT)).toContain('[[line: L1]]');
+  });
+
+  it('is a no-op the second time, and says so', async () => {
+    await session.writeLineIds();
+    const text = await p.read(SCRIPT);
+    const again = await session.writeLineIds();
+    expect(again).toMatchObject({ ok: true, written: [] });
+    expect(again.message).toContain('already carries its id');
+    expect(await p.read(SCRIPT)).toBe(text);
+  });
+
+  it('scopes to one scene, and holds ids still when a line is inserted above them', async () => {
+    // The whole point of the plan: with marks written, an insertion allocates a fresh id
+    // instead of shifting every id below it onto different prose.
+    await session.writeLineIds('arrival');
+    const before = await lineIds('arrival');
+
+    const text = await p.read(SCRIPT);
+    await p.write(SCRIPT, text.replace('[[line: L1]]', 'A new opening beat.\n\n[[line: L1]]'));
+
+    const after = await lineIds('arrival');
+    expect(after.slice(1)).toEqual(before);
+    expect(before).not.toContain(after[0]);
+  });
+
+  it('refuses a scene it does not have, and writes nothing', async () => {
+    const before = await p.read(SCRIPT);
+    const preview = await session.previewLineIds('nope');
+    expect(preview.ok).toBe(false);
+    expect(await session.writeLineIds('nope')).toMatchObject({ ok: false, written: [] });
+    expect(await p.read(SCRIPT)).toBe(before);
+  });
+});
+
 describe('WorkspaceSession — over a generated project', () => {
   let p: TestProject;
   let session: WorkspaceSession;

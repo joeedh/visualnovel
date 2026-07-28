@@ -16,7 +16,7 @@ import {
 import { relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import { parseFountain } from '@vn/parse';
-import { applySceneBranchEdit, buildModel } from '@vn/model';
+import { applySceneBranchEdit, assignLineIds, buildModel } from '@vn/model';
 import {
   AssetStore,
   ProjectPaths,
@@ -314,6 +314,61 @@ export class WorkspaceSession {
       message: op.message,
       written: [relative(this.dir, project.scriptPath).split(sep).join('/')],
       graph: storyGraphOf(reloaded.model),
+    };
+  }
+
+  /**
+   * The line-id patch the screenplay would take, computed and thrown away. `assignLineIds` is
+   * the whole rule — including its safety net — so a refusal here is the refusal `writeLineIds`
+   * would give, not a description of one.
+   */
+  async previewLineIds(
+    sceneId?: string,
+  ): Promise<{ ok: boolean; message: string; assigned: number }> {
+    const project = await loadProject(this.dir);
+    if (!project.scriptPath) {
+      return { ok: false, message: 'This project has no screenplay file to edit.', assigned: 0 };
+    }
+    const patch = assignLineIds(project.scriptText, sceneId);
+    if (patch.diagnostics.length > 0) {
+      return { ok: false, message: patch.diagnostics.map((d) => d.message).join(' '), assigned: 0 };
+    }
+    const where = sceneId ? `scene "${sceneId}"` : 'the screenplay';
+    return {
+      ok: true,
+      message: patch.assigned
+        ? `${patch.assigned} line id(s) would be written into ${where}.`
+        : `Every line in ${where} already carries its id.`,
+      assigned: patch.assigned,
+    };
+  }
+
+  /**
+   * Persist the ids reading already allocated as `[[line:]]` marks. Nothing about the model
+   * changes — the ids are the same ones `splitScenes` handed out — so this writes the
+   * screenplay and reports; the point is that a *later* insertion can no longer shift them.
+   */
+  async writeLineIds(
+    sceneId?: string,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const project = await loadProject(this.dir);
+    if (!project.scriptPath) {
+      return { ok: false, message: 'This project has no screenplay file to edit.', written: [] };
+    }
+    const patch = assignLineIds(project.scriptText, sceneId);
+    if (patch.diagnostics.length > 0) {
+      return { ok: false, message: patch.diagnostics.map((d) => d.message).join(' '), written: [] };
+    }
+    const where = sceneId ? `scene "${sceneId}"` : 'the screenplay';
+    if (patch.text === project.scriptText) {
+      return { ok: true, message: `Every line in ${where} already carries its id.`, written: [] };
+    }
+
+    await writeFileAtomic(project.scriptPath, patch.text);
+    return {
+      ok: true,
+      message: `Wrote ${patch.assigned} line id(s) into ${where}.`,
+      written: [relative(this.dir, project.scriptPath).split(sep).join('/')],
     };
   }
 

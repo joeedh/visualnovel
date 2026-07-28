@@ -35,6 +35,8 @@ import type {
 } from '@vn/commands';
 
 export type {
+  CatalogEntry,
+  CatalogProp,
   CommandCatalog,
   CommandOutcome,
   CommandRecord,

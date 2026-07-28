@@ -35,8 +35,8 @@ export function App(): JSX.Element {
   const [index, setIndex] = useState<WorkspaceIndex | null>(null);
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [undo, setUndo] = useState<UndoState>(NO_UNDO);
-  // Bumped only by an undo/redo, and used to remount the room: those are the writes a room
-  // did not make itself, so its own refresh never fires for them.
+  // Bumped by an undo/redo or a palette-run mutating command, and used to remount the room:
+  // those are the writes a room did not make itself, so its own refresh never fires for them.
   const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const agent = useAgent();
@@ -45,6 +45,14 @@ export function App(): JSX.Element {
   const loadStatus = useCallback(() => {
     void api.invoke('pipeline:status').then(setStatus);
   }, []);
+
+  // A command run from the palette can have written anything the shell displays — the index's
+  // diagnostics most of all — so re-read the workspace and remount the room, as undo does.
+  const reload = useCallback(() => {
+    void api.invoke('workspace:index').then(setIndex);
+    loadStatus();
+    setRevision((n) => n + 1);
+  }, [loadStatus]);
 
   // Load workspace index + pipeline status once.
   useEffect(() => {
@@ -122,6 +130,7 @@ export function App(): JSX.Element {
         toggleMode={agent.toggleMode}
         title={index?.title}
         model={agent.model}
+        diagnostics={index?.diagnostics ?? []}
         undo={undo}
         onUndo={() => void move('undo')}
         onRedo={() => void move('redo')}
@@ -160,6 +169,7 @@ export function App(): JSX.Element {
           onToggleMode={agent.toggleMode}
           onClear={agent.clearConvo}
           onClose={() => setPaletteOpen(false)}
+          onRan={reload}
         />
       )}
     </div>

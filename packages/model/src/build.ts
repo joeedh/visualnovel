@@ -126,7 +126,8 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     userLocations.set(res.value.id, res.value);
   }
 
-  const { scenes: sceneList, mined } = splitScenes(inputs.script);
+  const { scenes: sceneList, mined, diagnostics: lineDiagnostics } = splitScenes(inputs.script);
+  diagnostics.push(...lineDiagnostics);
   const locations = mergeMinedLocations(userLocations, mined);
 
   const byName = nameIndex(characters);

@@ -3,6 +3,11 @@
 _Investigation. Not a plan — no steps, no waves committed to. It argues a shape and names what
 it costs._
 
+_Status: **move one has shipped.** Allocated line ids landed as
+[`../plans/allocated-line-ids.md`](../plans/allocated-line-ids.md), so blocker 1 below is fixed;
+2 and 3 stand as written. The seven plans this document produced, and which of them are built,
+are tracked in [`../plans/index.md`](../plans/index.md)._
+
 <!-- toc -->
 
 - [The question](#the-question)
@@ -54,6 +59,11 @@ longer has. After an insertion `L1..Ln` all still exist. They just mean differen
 This is the real blocker. It is also independent of everything else here: positional ids are
 wrong today, they are merely unreachable because nothing can edit prose. Any move in this
 direction starts by making them allocated rather than derived.
+
+**Fixed.** Ids are now allocated by `splitScenes` and written down as `[[line: L4]]` /
+`[[nextline: 12]]` notes; reading never writes, and `story.assignLineIds` is the opt-in,
+undoable command that persists them. See
+[`../plans/allocated-line-ids.md`](../plans/allocated-line-ids.md).
 
 ### 2. Scene serialization is lossy, so edits cannot round-trip through the model
 
@@ -301,7 +311,9 @@ The first move is not the editor. It is **allocated line ids** — the `[[line:]
 by `splitScenes` in preference to the positional stamp, allocated for unmarked elements and
 written back. That is a correctness fix that stands on its own: it closes a silent-corruption path
 that exists today, it works on the existing single-file screenplay before any chunking, it is
-testable without a line of UI, and everything else here depends on it.
+testable without a line of UI, and everything else here depends on it. **This is the move that
+shipped**, essentially as described — the one change of substance is that allocation happens in
+memory and persisting is a separate command, so loading a project never writes to it.
 
 The chunk split, the export path, and the editing commands are the second, third and fourth moves,
 and each is useful before the next one lands. The order matters in one specific way: the ids have

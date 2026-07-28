@@ -108,6 +108,10 @@
   color: var(--jade);
   border-color: rgba(95, 181, 140, 0.4);
 }
+.badge-live.diag-count.bad {
+  color: var(--vermilion);
+  border-color: rgba(229, 83, 75, 0.45);
+}
 
 /* Undo acts on authored documents, so it is warm. */
 .undo {
@@ -315,4 +319,114 @@
   border-radius: 3px;
   padding: 1px 7px;
   margin-left: auto;
+}
+.pal-search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font: inherit;
+  color: var(--paper);
+}
+.pal-search input::placeholder {
+  color: var(--mist-dim);
+}
+.pal-group .ct {
+  color: var(--signal);
+  letter-spacing: 0;
+}
+/* The command rows are real buttons, so focus reaches them by keyboard; the reset keeps
+   them shaped like the static rows above them. */
+button.pal-row {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+}
+.pal-row.on {
+  background: var(--ink-raised);
+}
+
+.pal-verdict {
+  display: flex;
+  gap: 8px;
+  padding: 5px 12px 9px;
+  font-size: 11.5px;
+  color: var(--mist);
+}
+.pal-verdict .mk {
+  font-family: var(--mono);
+}
+.pal-verdict.accept .mk {
+  color: var(--signal);
+}
+.pal-verdict.refuse .mk,
+.pal-verdict.refuse .tx {
+  color: var(--vermilion);
+}
+.pal-outcome {
+  padding: 3px 12px 9px;
+  font-size: 11.5px;
+  color: var(--sodium);
+}
+.pal-desc {
+  padding: 6px 12px 10px;
+  font-size: 12px;
+  color: var(--mist);
+}
+.pal-field {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 6px 12px;
+}
+.pal-field .fn {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--paper);
+}
+.pal-field .fn .req {
+  color: var(--sodium);
+}
+.pal-field input,
+.pal-field select {
+  background: var(--ink-raised);
+  border: 1px solid var(--ink-line);
+  border-radius: 5px;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 5px 8px;
+}
+.pal-field input[type='checkbox'] {
+  justify-self: start;
+  accent-color: var(--signal);
+}
+.pal-field .fd {
+  grid-column: 2;
+  font-size: 11px;
+  color: var(--mist-dim);
+}
+.pal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 10px 12px 4px;
+}
+.pal-actions button {
+  border-radius: 6px;
+  border: 1px solid var(--ink-line);
+  background: none;
+  font-size: 12px;
+  padding: 6px 14px;
+  color: var(--mist);
+}
+.pal-actions .go {
+  color: var(--signal);
+  border-color: rgba(69, 200, 214, 0.4);
+}
+.pal-actions .go.warm {
+  color: var(--sodium);
+  border-color: rgba(244, 162, 76, 0.45);
 }

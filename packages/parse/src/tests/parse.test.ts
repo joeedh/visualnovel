@@ -71,6 +71,26 @@ describe('parseFountain', () => {
     expect(notes).toContain('choice: "Tell her the truth" -> s13_truth');
   });
 
+  it('records the source line of every element, past a title page', () => {
+    const lines = SAMPLE.split('\n');
+    const at = (el: { line: number }) => lines[el.line];
+    expect(at(script.elements.find((e) => e.type === 'scene_heading')!)).toBe(
+      'INT. CLASSROOM - AFTERNOON #s12#',
+    );
+    expect(at(script.elements.find((e) => e.type === 'character')!)).toBe('AIKO');
+    expect(at(script.elements.find((e) => e.type === 'parenthetical')!)).toBe('(to herself)');
+    expect(at(script.elements.find((e) => e.type === 'dialogue')!)).toBe('Five more minutes.');
+    expect(at(script.elements.find((e) => e.type === 'note')!)).toBe('[[scene: s12_classroom]]');
+  });
+
+  it('keeps source lines aligned across a multi-line boneyard', () => {
+    const text = 'Before.\n\n/* cut this\nand this */\n\nAfter.\n';
+    const after = parseFountain(text).elements.find(
+      (e) => e.type === 'action' && e.text.trim() === 'After.',
+    );
+    expect(text.split('\n')[after!.line]).toBe('After.');
+  });
+
   it('emits a section and a synopsis', () => {
     expect(script.elements.some((e) => e.type === 'section' && e.text === 'Act One')).toBe(true);
     expect(script.elements.some((e) => e.type === 'synopsis')).toBe(true);
@@ -94,6 +114,19 @@ describe('parseBranchMarker', () => {
   it('parses next/goto', () => {
     expect(parseBranchMarker('next: s13')).toEqual({ kind: 'next', goto: 's13' });
     expect(parseBranchMarker('goto: s99')).toEqual({ kind: 'next', goto: 's99' });
+  });
+  it('parses line ids', () => {
+    expect(parseBranchMarker('line: L4')).toEqual({ kind: 'line', id: 'L4' });
+    expect(parseBranchMarker('  LINE:  L12  ')).toEqual({ kind: 'line', id: 'L12' });
+    expect(parseBranchMarker('line:')).toBeNull();
+    expect(parseBranchMarker('line: L4 L5')).toBeNull();
+  });
+  it('parses the nextline allocator', () => {
+    expect(parseBranchMarker('nextline: 12')).toEqual({ kind: 'nextline', value: 12 });
+  });
+  it('treats a non-numeric nextline as a plain note', () => {
+    expect(parseBranchMarker('nextline: L12')).toBeNull();
+    expect(parseBranchMarker('nextline:')).toBeNull();
   });
   it('ignores plain notes', () => {
     expect(parseBranchMarker('is this too on-the-nose?')).toBeNull();

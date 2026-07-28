@@ -123,8 +123,12 @@ function markersOn(line: string, index: number): { occ: Occurrence[]; scene: boo
   while ((m = NOTE.exec(line)) !== null) {
     const marker = parseBranchMarker(m[1] ?? '');
     if (!marker) continue;
+    // Only the wiring markers are this patcher's business; `line`/`nextline` belong to
+    // `lineids.ts` and must survive a rewire untouched.
     if (marker.kind === 'scene') scene = true;
-    else occ.push({ line: index, start: m.index, end: m.index + m[0].length, kind: marker.kind });
+    else if (marker.kind === 'choice' || marker.kind === 'next') {
+      occ.push({ line: index, start: m.index, end: m.index + m[0].length, kind: marker.kind });
+    }
   }
   return { occ, scene };
 }

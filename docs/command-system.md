@@ -15,6 +15,7 @@
   * [Preconditions: asking before acting](#preconditions-asking-before-acting)
 - [Reaching the commands](#reaching-the-commands)
   * [From the renderer](#from-the-renderer)
+  * [From the palette](#from-the-palette)
   * [From DevTools or CDP](#from-devtools-or-cdp)
   * [From the agent](#from-the-agent)
 - [The catalog](#the-catalog)
@@ -230,7 +231,7 @@ not lie about what touched the worktree.
 
 ## The registered commands
 
-Twenty-five, in eight namespaces. Nine are `mutating`; eight declare a precondition; one asks
+Twenty-six, in eight namespaces. Ten are `mutating`; nine declare a precondition; one asks
 for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
@@ -249,6 +250,7 @@ for confirmation.
 | `story.setNext` ✍ ↺ ✓          | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
 | `story.spliceScene` ✍ ↺ ✓      | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
 | `story.setCoverage` ✍ ↺ ✓      | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
+| `story.assignLineIds` ✍ ↺ ✓    | `scene` (default `''`)            | Writes allocated ids down as `[[line:]]` marks; empty `scene` means all. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
@@ -406,6 +408,38 @@ While wiring this up, `registerIpc()` gained a typed `handle<C>()` wrapper that 
 against `InvokeChannels`, so a handler can no longer drift from its declared signature — the
 old hand-annotated `ipcMain.handle` calls could and did.
 
+### From the palette
+
+The `/` palette (`renderer/app/Palette.tsx`) is a **view of the catalog**, not a hand-kept list:
+it fetches `command:catalog` once — the live registry, never `dist/commands.json` — and renders a
+`COMMANDS` group under the existing skills and session rows. A newly registered command therefore
+appears in the palette with no palette edit at all, which is what makes the claim at the top of
+this document ("the palette … reaches the same registry") true rather than aspirational.
+
+- **The form is generated from `props`.** Each `CatalogProp` becomes a checkbox (`boolean`), a
+  `<select>` (`enum`, options from `values`) or a text/number input; lists edit as comma-separated
+  text. `blankProps` seeds it from each prop's `default`, so what is submitted matches what
+  `coerceProps` would accept. A command with no props runs straight from its row.
+- **`mutating` is marked `writes`; `confirm` takes a second click.** The main process still
+  auto-approves `confirm` for other callers — that half of follow-on 2 is still open — but from
+  the palette, `pipeline.run` is a real two-step.
+- **`checkable` entries show their verdict, re-asked on every keystroke.** The answer is
+  `command:check`, so it is the same three states the command declares: `accept` and `refuse`
+  render inline (✓ / ✕ with the sentence the command itself would give), and **`undeclared`
+  renders as nothing at all** — a command that states no precondition has not said yes. The
+  verdict never gates the run; a refusal surfaces as the execution error, from a stack that
+  re-decided for itself. It is also re-asked after every run, since a command that just ran
+  changed what its own precondition would now answer.
+- **Highlighting a row is not navigating to it.** Focus and hover only arm the check, so the
+  verdict is there to read before the click that opens the form or runs the command.
+- **Execution is `command:exec` with `source: 'ui'`** — the same stack `window.vn.exec` and CDP
+  reach, so provenance, history and undo are identical whoever ran it. When a `mutating` command
+  lands, the shell re-reads the workspace index and remounts the room, exactly as it does for
+  undo: those are writes a room did not make itself.
+
+The pure half — filtering, blank values, field coercion — is `renderer/app/catalog.ts` with a
+`tests/` sibling; `Palette.tsx` stays thin rendering.
+
 ### From DevTools or CDP
 
 The preload exposes a second bridge, `window.vn`, over that same IPC:
@@ -514,10 +548,12 @@ schemas instead is an obvious follow-on.
 
 Deliberately out of scope for v1, in rough order of value:
 
-1. **Make `renderer/app/Palette.tsx` data-driven** off `command:catalog` — it is still the
-   static mockup that motivated this work.
-2. **Route `confirm` through the renderer.** The main process currently auto-approves, so
-   `pipeline.run`'s `confirm: true` is not yet a real gate.
+1. ~~**Make `renderer/app/Palette.tsx` data-driven** off `command:catalog`.~~ **Shipped** as
+   step 7 of [`plans/allocated-line-ids.md`](plans/allocated-line-ids.md) — see
+   [From the palette](#from-the-palette).
+2. **Route `confirm` through the renderer.** The palette now takes a second click, but the main
+   process still auto-approves for every other caller, so `pipeline.run`'s `confirm: true` is not
+   a gate for the agent or CDP.
 3. **Feed `CatalogEntry.schema` to `NativeAgentBackend`** in place of `LOOSE_PARAMS`.
 4. **Undoable `gate.approve`**, which needs `manifest.json` re-pointed alongside the document
    restore — the one straddling case undo left out.

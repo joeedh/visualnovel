@@ -1,5 +1,5 @@
 import { isLive } from '../api';
-import type { AgentMode, Room, UndoState } from '../../src/shared/ipc';
+import type { AgentMode, Diagnostic, Room, UndoState } from '../../src/shared/ipc';
 
 /** The room nav plus the badges that say which project, model and mode are live. */
 export function Topbar(props: {
@@ -9,10 +9,15 @@ export function Topbar(props: {
   toggleMode: () => void;
   title?: string;
   model: string;
+  diagnostics: Diagnostic[];
   undo: UndoState;
   onUndo: () => void;
   onRedo: () => void;
 }): JSX.Element {
+  // Errors displace warnings in the badge: one count, and the worse one wins it.
+  const errors = props.diagnostics.filter((d) => d.severity === 'error').length;
+  const shown = errors || props.diagnostics.length;
+  const label = `${shown} ${errors ? 'error' : 'warning'}${shown === 1 ? '' : 's'}`;
   return (
     <header className="topbar">
       <div className="brand">
@@ -62,6 +67,16 @@ export function Topbar(props: {
           ⟳
         </button>
       </div>
+      {/* Visible from FLOOR and PLAY too: the rail lists them, but an error found while
+          watching the pipeline should not need a room change to be noticed at all. */}
+      {props.diagnostics.length > 0 && (
+        <span
+          className={`badge-live diag-count${errors ? ' bad' : ''}`}
+          title={`${props.diagnostics.length} workspace diagnostic(s) — listed in the STUDIO rail`}
+        >
+          {label}
+        </span>
+      )}
       <span className="badge-live mono" title="text model (open the palette with /)">
         {props.model}
       </span>

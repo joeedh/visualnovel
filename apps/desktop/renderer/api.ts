@@ -213,6 +213,10 @@ const fallback: DesktopApi = {
         return Promise.resolve([]);
       case 'command:exec':
         return Promise.resolve({ ok: false, error: '(preview) no command stack' });
+      // Not `refuse`: a preview has no precondition to consult, and dressing that up as a
+      // verdict would put a sentence in the palette no command ever said.
+      case 'command:check':
+        return Promise.resolve({ state: 'undeclared', message: '(preview) no command stack' });
       // Undo restores a git snapshot of the workspace, and a browser preview has no
       // workspace — the affordances stay disabled here rather than pretending.
       case 'command:undo':

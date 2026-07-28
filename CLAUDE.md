@@ -138,7 +138,7 @@ it may import _every_ layer, and **nothing may import it** — see
 | `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                                                                                                                                                                                                                           |
 | `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                                                                                                                                                     |
 | `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                                                                                                                                                        |
-| `@vn/parse`         | Fountain parser + `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` branch markers; markdown front-matter. Pure, no I/O policy. Shared with the future authoring agent.                                                                                                                                                                                                                                            |
+| `@vn/parse`         | Fountain parser + note markers: `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` for branching, `[[line: L4]]` / `[[nextline: 12]]` for allocated line ids; markdown front-matter. Pure, no I/O policy. Shared with the authoring agent.                                                                                                                                                                          |
 | `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                                                                                                                                                                                                                                |
 | `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped.                                                                                                                                                                 |
 | `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                                                                                                                                                    |
@@ -186,6 +186,18 @@ it may import _every_ layer, and **nothing may import it** — see
   ids the screenplay no longer has are dropped with a warning, and since `buildShotPrompt`
   ignores `coversLines`, coverage edits rehash nothing. Dry runs read the file but never write
   it — a mock decomposition must not be left for a real run to reuse.
+- **Line ids are allocated and written down, and reading never writes.** `Shot.coversLines` binds
+  art to `${sceneId}:L<n>`, so an id derived from position silently re-points every shot below an
+  inserted line — money spent, nothing reported. `splitScenes` therefore prefers a `[[line: L4]]`
+  note (a Fountain note leading the element it names) and allocates only for unmarked elements,
+  from the scene's `[[nextline: 12]]` mark raised past every id actually in use — a stale allocator
+  is a bug, not a licence to reuse an id. Duplicate and dangling marks are `error` diagnostics.
+  Allocation happens **in memory**: loading a project never touches it. Persisting is
+  `story.assignLineIds` (undoable, `apps/desktop/src/main/commands/story.ts` over
+  `assignLineIds` in `packages/model/src/lineids.ts`), a surgical patcher that adds only whole
+  marker lines and re-parses its own output, discarding the patch unless it reproduces the same
+  scenes line for line — a note above a `CHARACTER` cue would turn it into action and un-speak the
+  dialogue below it. Plan: [`docs/plans/allocated-line-ids.md`](docs/plans/allocated-line-ids.md).
 - **P7 generate→critique→refine loop** is folded into the `shot_image` runner (a
   documented deviation from the report's separate `vision_review`/`prompt_refine` nodes).
   Each attempt generates, has every configured reviewer critique against the shot spec,
@@ -329,6 +341,7 @@ is the only `.tsx` at the root.
 renderer/
   main.tsx              entry; installs @vn/debug2d behind import.meta.env.DEV
   app/                  App.tsx (shell only), Topbar.tsx, Palette.tsx, useAgent.ts
+                        catalog.ts (pure) — the palette's filtering and field coercion
   graph/                Canvas.tsx + pure layout · edges · hit · viewport (see below)
   rooms/studio/         Studio.tsx  Rail.tsx  Convo.tsx  PlanCard.tsx
        …/branch/        BranchEditor.tsx  SceneCard.tsx  useBranch.ts
@@ -560,7 +573,7 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 
 - **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
   prop specs, the registry, the DSL, the execution stack, the interaction layer, and the catalog
-  projection — it is domain-agnostic (deps: `types`, `util`, `git`). The 25 definitions live in
+  projection — it is domain-agnostic (deps: `types`, `util`, `git`). The 26 definitions live in
   `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`,
   `interaction`, `command`)
   as thin wrappers over `WorkspaceSession`. The `story.*` branch mutators
@@ -585,7 +598,7 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   index is never touched. Snapshots exclude `vngen/build` and `vngen/state`: those are
   content-addressed and append-only, rolling them back would discard work a run has to pay for
   again, and excluding them is also what keeps a `pipeline.run` between two edits from reading
-  as drift. Only the five `story.*` document mutators opt in; `gate.approve` straddles both
+  as drift. Only the six `story.*` document mutators opt in; `gate.approve` straddles both
   data classes and is deliberately out. Undo **refuses rather than guesses** when the worktree
   no longer matches the record's `post` tree, redo **restores the post-state rather than
   replaying**, and `undo.changed` (the two trees compared, not what the command _claimed_ it
@@ -626,6 +639,16 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 - **Catalog.** `pnpm build` writes `apps/desktop/dist/commands.json` for external tooling. The
   `command:catalog` IPC channel serves the **live** registry, never the file, so the app can't
   be misled by a stale one; a test asserts the two match.
+- **The palette is a view of that catalog**, not a hand-kept list: `Palette.tsx` fetches
+  `command:catalog` and generates a form from each entry's props, so a new command appears in the
+  `/` menu the moment it is registered. `mutating` entries are marked `writes`, `confirm` ones
+  take a second click, and a `checkable` one has its verdict re-asked on every keystroke — an
+  `undeclared` answer renders as **nothing at all**, and the verdict never gates the run (a
+  refusal surfaces as the exec error, from the stack that re-decided for itself). Highlighting a
+  row only arms the check; the click is what navigates or runs. Execution goes over `command:exec`,
+  the same stack `window.vn.exec` and CDP reach, so provenance and undo are identical whoever ran
+  it. Pure half in `renderer/app/catalog.ts` (filtering, blank values, field coercion) with a
+  `tests/` sibling.
 - **CDP.** Setting `VN_CDP_PORT` makes the app open Chrome's own remote-debugging port, bound
   to `127.0.0.1`. It is **opt-in and off by default** — the port grants full control of the
   renderer. The preload exposes `window.vn` (`exec`/`check`/`catalog`/`history`/`undo`/`redo`) over

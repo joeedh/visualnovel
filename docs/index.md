@@ -33,13 +33,13 @@ Surveys, investigations, and exploratory designs live in [`research/`](research)
 | Document | What it covers |
 | -------- | -------------- |
 | [`research/graphThingsReport.md`](research/graphThingsReport.md) | An inventory of the graph-shaped structures in the repo that could back a node editor or visualizer — story branches, the task DAG, prompt assembly, the refine loop, shot/line coverage, asset provenance, the approval gate — with what each view reveals, and the case for one heterogeneous adapter with the views as filters. |
-| [`research/scene-chunks-as-the-authored-unit.md`](research/scene-chunks-as-the-authored-unit.md) | What it would take to stop processing a preexisting screenplay and let the author freely edit per-scene chunks: why positional line ids are the real blocker, why `Scene.lines` already carries what a lossless Fountain export needs, the Markdown-with-front-matter chunk format and its `[[line:]]` id markers, prose-drift as a surfaced marker rather than a rehash, and what Fountain becomes (import once, export always). |
+| [`research/scene-chunks-as-the-authored-unit.md`](research/scene-chunks-as-the-authored-unit.md) | What it would take to stop processing a preexisting screenplay and let the author freely edit per-scene chunks: why positional line ids are the real blocker, why `Scene.lines` already carries what a lossless Fountain export needs, the Markdown-with-front-matter chunk format and its `[[line:]]` id markers, prose-drift as a surfaced marker rather than a rehash, and what Fountain becomes (import once, export always). The first move — allocated line ids — has shipped. |
 | [`research/2d-graphics-debug-api.md`](research/2d-graphics-debug-api.md) | Exploratory design for a source-agnostic 2D debugging layer: a neutral fragment/frame IR captured from DOM and canvas alike, spatial + causal queries (`explainPick`, `explainTransform`, `whyInvalidated`), time travel, and invariants-as-tests. The first slice (IR, DOM adapter, queries, `explainPick`) is implemented as `@vn/debug2d` — see [`debugGuide.md`](debugGuide.md) for usage. |
 
 ## Background & reference
 
 | Document | What it covers |
 | -------- | -------------- |
-| [`fountain.md`](fountain.md) | An introduction to Fountain, the plain-text screenplay format used for input, plus the conventions the parser relies on. |
+| [`fountain.md`](fountain.md) | An introduction to Fountain, the plain-text screenplay format used for input, plus the conventions the parser relies on — including this project's note markers (`[[scene:]]`, `[[choice:]]`, `[[next:]]`, `[[line:]]`, `[[nextline:]]`). |
 | [`visualNovelFormats.md`](visualNovelFormats.md) | A survey of VN scripting languages, authoring formats, and runtime engines — context for how our intermediate representation models story, branching, and presentation. |
 | [`original-prompt.md`](original-prompt.md) | The original request that kicked off the project, kept verbatim for provenance. |

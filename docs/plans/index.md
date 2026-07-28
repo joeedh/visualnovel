@@ -39,7 +39,7 @@ current one.
 | [`sample-workspace-and-asset-cache.md`](sample-workspace-and-asset-cache.md) | shipped | `examples/mySampleRepo` seeding and the recorded asset corpus |
 | [`2d-graphics-debug-api.md`](2d-graphics-debug-api.md) | shipped | `@vn/debug2d` — fragment IR, DOM adapter, query engine, `explainPick` |
 | [`interaction-model.md`](interaction-model.md) | partial | `Interaction`/`targets`; four gestures declared, the general surface is not finished |
-| [`allocated-line-ids.md`](allocated-line-ids.md) | planned | Line ids that survive an edit, plus a diagnostics surface |
+| [`allocated-line-ids.md`](allocated-line-ids.md) | shipped | Line ids that survive an edit, the diagnostics surface, the catalog-driven palette |
 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | planned | `parse(write(scene)) ≡ scene` — what `lines` currently drops |
 | [`scene-chunk-files.md`](scene-chunk-files.md) | planned | `scenes/<id>.md` replaces the one contended screenplay |
 | [`fountain-import-export.md`](fountain-import-export.md) | planned | `vngen import` / `vngen screenplay` |
@@ -51,13 +51,13 @@ current one.
 ## Scene authoring (the current batch)
 
 Seven plans that together make a scene an editable document. They come from
-[`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
-and **none of them is implemented**. The order below is a dependency order, not a preference:
-each plan's guarantees are what the next one rests on.
+[`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
+The order below is a dependency order, not a preference: each plan's guarantees are what the next
+one rests on. **1 is shipped; 2–7 are not implemented.**
 
 | # | Plan | Depends on | Why it is here |
 | --- | --- | --- | --- |
-| 1 | [`allocated-line-ids.md`](allocated-line-ids.md) | — | Positional ids re-point every shot when a line is inserted. Nothing may edit prose until ids survive |
+| 1 | [`allocated-line-ids.md`](allocated-line-ids.md) ✔ | — | Positional ids re-point every shot when a line is inserted. Nothing may edit prose until ids survive |
 | 2 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | — | Writing a scene back today loses its heading. Nothing may write a scene until the writer is honest |
 | 3 | [`scene-chunk-files.md`](scene-chunk-files.md) | 1, 2 | One contended screenplay becomes one file per scene |
 | 4 | [`fountain-import-export.md`](fountain-import-export.md) | 2, 3 | Migrates existing projects in, and keeps the format from being lock-in |
@@ -111,7 +111,7 @@ plan; none is fixed yet.
 
 ### Checklist
 
-- [ ] 1 — allocated line ids
+- [x] 1 — allocated line ids
 - [ ] 2 — lossless scene serialization
 - [ ] 3 — scene chunk files
 - [ ] 4 — Fountain import and export

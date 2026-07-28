@@ -259,6 +259,41 @@ describe('applySceneBranchEdit', () => {
     expect(text.split('\n').every((l, i, a) => i === a.length - 1 || l.endsWith('\r'))).toBe(true);
   });
 
+  // The two writers share a file. A rewire removes the wiring markers it replaces, and a
+  // line-id mark is not one of them — eating one would silently re-point a shot's coverage.
+  it('leaves line-id markers alone while rewiring around them', () => {
+    const marked = [
+      'INT. DORM ROOM - DAY',
+      '',
+      '[[scene: arrival]]',
+      '[[nextline: 3]]',
+      '[[next: greet]]',
+      '',
+      '[[line: L1]]',
+      'She sets down her bag.',
+      '',
+      'INT. HALLWAY - DAY',
+      '',
+      '[[scene: greet]]',
+      '[[nextline: 2]]',
+      '',
+      '[[line: L1]]',
+      'Footsteps echo.',
+      '',
+    ].join('\n');
+
+    const { text, diagnostics } = applySceneBranchEdit(marked, [
+      { sceneId: 'arrival', next: null, choices: [{ label: 'Wait', goto: 'greet' }] },
+    ]);
+    expect(diagnostics).toEqual([]);
+    expect(text.match(/\[\[line: L1\]\]/g)).toHaveLength(2);
+    expect(text).toContain('[[nextline: 3]]');
+    expect(scenesOf(text).map((s) => s.lines.map((l) => l.id))).toEqual([
+      ['arrival:L1'],
+      ['greet:L1'],
+    ]);
+  });
+
   it('does nothing, successfully, for an empty edit list', () => {
     expect(applySceneBranchEdit(SCRIPT, [])).toEqual({ text: SCRIPT, diagnostics: [] });
   });

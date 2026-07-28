@@ -134,6 +134,34 @@
 .scene-row .un {
   color: var(--mist-dim);
 }
+/* A model diagnostic. Vermilion is reserved for error — a warning is legible, not alarming. */
+.diag {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-left: 2px solid var(--mist-dim);
+  border-radius: 0 var(--r-chrome) var(--r-chrome) 0;
+  background: var(--ink-line);
+}
+.diag.error {
+  border-left-color: var(--vermilion);
+}
+.diag .code {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--mist-dim);
+}
+.diag.error .code {
+  color: var(--vermilion);
+}
+.diag .msg {
+  font-family: var(--prose);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--mist);
+}
 
 .convo {
   display: grid;

@@ -51,6 +51,7 @@ describe('the desktop registry', () => {
       'agent.run',
       'gate.approve',
       'pipeline.run',
+      'story.assignLineIds',
       'story.export',
       'story.removeChoice',
       'story.setChoice',
@@ -68,6 +69,7 @@ describe('the desktop registry', () => {
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
+      'story.assignLineIds',
       'story.removeChoice',
       'story.setChoice',
       'story.setCoverage',
@@ -87,6 +89,7 @@ describe('the desktop registry', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
       'gate.approve',
       'pipeline.run',
+      'story.assignLineIds',
       'story.export',
       'story.removeChoice',
       'story.setChoice',

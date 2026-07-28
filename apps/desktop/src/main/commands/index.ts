@@ -12,6 +12,7 @@ import { gateApprove, gateCandidates } from './gate.js';
 import { interactionList, interactionTargets } from './interaction.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
 import {
+  storyAssignLineIds,
   storyCoverage,
   storyExport,
   storyGraph,
@@ -42,6 +43,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     interactionTargets,
     pipelineRun,
     pipelineStatus,
+    storyAssignLineIds,
     storyCoverage,
     storyExport,
     storyGraph,

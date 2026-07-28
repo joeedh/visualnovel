@@ -3,5 +3,6 @@ export * from './entities.js';
 export * from './scenes.js';
 export * from './serialize.js';
 export * from './branchpatch.js';
+export * from './lineids.js';
 export * from './graph.js';
 export * from './build.js';
