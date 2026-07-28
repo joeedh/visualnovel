@@ -1,13 +1,11 @@
 /**
- * Projecting a `StoryGraph` into the neutral shapes `renderer/graph/` lays out — and back.
+ * Projecting a `StoryGraph` into the neutral shapes `renderer/graph/` lays out.
  *
- * The inverse (`scenesOf`) is the load-bearing half. It rebuilds each scene's `choices`/`next`
- * from the edges the view is drawing, so the editor can ask the *real* `branchops` whether a
- * drop would be accepted while the pointer is still down. Without it the drag would have to
- * carry its own copy of the splice rules, and a copy is a thing that can disagree.
+ * The inverse — `scenesOf`, which rebuilds each scene's `choices`/`next` from the edges being
+ * drawn so a drop can be judged by the *real* `branchops` mid-drag — lives in
+ * `src/shared/interactions.ts` with the gestures that need it.
  */
-import type { SceneMap } from '../../../../src/shared/branchops';
-import type { StoryEdge, StoryGraph } from '../../../../src/shared/ipc';
+import type { StoryGraph } from '../../../../src/shared/ipc';
 import type { Graph } from '../../../graph/types.js';
 
 /**
@@ -49,40 +47,3 @@ export function branchGraph(story: StoryGraph): BranchGraph {
     },
   };
 }
-
-/**
- * The branch structure the graph describes, back in `Scene` terms. Choice order comes from
- * `StoryEdge.index` rather than array position, so it is the same index the command takes.
- */
-export function scenesOf(story: StoryGraph): SceneMap {
-  const scenes = new Map<string, { id: string; choices: { label: string; goto: string }[] }>();
-  for (const scene of story.scenes) scenes.set(scene.id, { id: scene.id, choices: [] });
-
-  const nexts = new Map<string, string>();
-  const choices = new Map<string, { index: number; label: string; goto: string }[]>();
-  for (const edge of story.edges) {
-    if (!scenes.has(edge.from)) continue;
-    if (edge.kind === 'next') nexts.set(edge.from, edge.to);
-    else {
-      const list = choices.get(edge.from) ?? [];
-      list.push({ index: edge.index ?? list.length, label: edge.label ?? '', goto: edge.to });
-      choices.set(edge.from, list);
-    }
-  }
-
-  const out = new Map<string, { id: string; choices: { label: string; goto: string }[] }>();
-  for (const [id, scene] of scenes) {
-    const list = (choices.get(id) ?? [])
-      .sort((a, b) => a.index - b.index)
-      .map(({ label, goto }) => ({ label, goto }));
-    const next = nexts.get(id);
-    out.set(id, { ...scene, choices: list, ...(next !== undefined ? { next } : {}) });
-  }
-  return out;
-}
-
-/** The `story.spliceScene` arguments that address an edge. A `next` edge has no index. */
-export const edgeTarget = (edge: StoryEdge): { from: string; edge?: number } => ({
-  from: edge.from,
-  ...(edge.kind === 'choice' && edge.index !== undefined ? { edge: edge.index } : {}),
-});

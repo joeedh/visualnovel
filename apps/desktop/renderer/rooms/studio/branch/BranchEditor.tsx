@@ -16,9 +16,16 @@ import { edgeAt, nodeAt, type Pick as GraphPick } from '../../../graph/hit.js';
 import { layoutGraph } from '../../../graph/layout.js';
 import { fit, toWorld, IDENTITY, type Viewport } from '../../../graph/viewport.js';
 import { SceneCard, StubCard } from './SceneCard';
-import { branchGraph, scenesOf, CARD, type BranchGraph } from './graph.js';
+import { branchGraph, CARD, type BranchGraph } from './graph.js';
 import { grabAt } from './grab.js';
-import { connect, relabel, splice, unwire } from './intent.js';
+import {
+  branchSplice,
+  connect,
+  relabel,
+  scenesOf,
+  splice,
+  unwire,
+} from '../../../../src/shared/interactions.js';
 import { useAnimatedLayout, useBranch } from './useBranch.js';
 import type { Point, Size } from '../../../graph/types.js';
 import type { StoryEdge } from '../../../../src/shared/ipc';
@@ -220,15 +227,12 @@ export function BranchEditor(props: { seed: (text: string) => void }): JSX.Eleme
 
   // A splice verdict depends only on which card is being carried, so every wire can say
   // whether it would take it — the reason has to be visible during the gesture, not after.
+  // This is `branch.splice`'s own `targets`, so the overlay and `interaction.targets` cannot
+  // give an author and an agent different answers about the same drop.
   const verdicts = useMemo(() => {
     if (drag?.kind !== 'splice' || !story) return null;
-    const carried = drag.scene;
-    return new Map(
-      story.edges.map((e) => {
-        const decision = splice(scenes, carried, e);
-        return [e.id, decision.ok ? null : decision.reason] as const;
-      }),
-    );
+    const judged = branchSplice.targets({ scenes, edges: story.edges }, drag.scene);
+    return new Map(judged.map((v) => [v.target, v.accept ? null : v.reason] as const));
   }, [drag, scenes, story]);
 
   const hovering = drag?.kind === 'splice' && drag.over ? (verdicts?.get(drag.over) ?? null) : null;

@@ -332,7 +332,7 @@ renderer/
   graph/                Canvas.tsx + pure layout · edges · hit · viewport (see below)
   rooms/studio/         Studio.tsx  Rail.tsx  Convo.tsx  PlanCard.tsx
        …/branch/        BranchEditor.tsx  SceneCard.tsx  useBranch.ts
-                        graph.ts · intent.ts · grab.ts · tween.ts (pure)
+                        graph.ts · grab.ts · tween.ts (pure)
   rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  AttemptLoop.tsx
                         TaskGraphView.tsx · attempts.ts · taskGraph.ts (pure) · GateOverlay.tsx
        …/timeline/      Timeline.tsx  ShotBracket.tsx · coverage.ts (pure)
@@ -395,9 +395,10 @@ Plan: [`docs/plans/story-branch-editor.md`](docs/plans/story-branch-editor.md).
   dropping a card on a wire splices it in (`story.spliceScene`), pulling a wire's arrowhead off
   its target unwires it. Each commits **one** command on release — a drag is continuous, its
   commit is discrete.
-- **The refusal shown mid-drag is the refusal that would happen.** `intent.ts` asks the same
-  `src/shared/branchops.ts` the command runs, so while a card is carried every wire is marked
-  accept/refuse with the reason the command would have given.
+- **The refusal shown mid-drag is the refusal that would happen.** `src/shared/interactions.ts`
+  asks the same `branchops.ts` the command runs, so while a card is carried every wire is marked
+  accept/refuse with the reason the command would have given — and `interaction.targets` answers
+  an agent with that same verdict list.
 - **`grab.ts` resolves the handle and the arrowhead before `pick` does.** Both discs straddle a
   card boundary, where `pick` answers "background" or "that card" — testing them first is what
   makes them the size they look.
@@ -548,9 +549,10 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 [`docs/plans/command-system.md`](docs/plans/command-system.md)).
 
 - **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
-  prop specs, the registry, the DSL, the execution stack, and the catalog projection — it is
-  domain-agnostic (deps: `types`, `util`, `git`). The 22 definitions live in
-  `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`)
+  prop specs, the registry, the DSL, the execution stack, the interaction layer, and the catalog
+  projection — it is domain-agnostic (deps: `types`, `util`, `git`). The 24 definitions live in
+  `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`,
+  `interaction`)
   as thin wrappers over `WorkspaceSession`. The `story.*` branch mutators
   (`setChoice`/`removeChoice`/`setNext`/`spliceScene`) all go through
   `session.editBranches(decide)` → `applySceneBranchEdit` → reload, so the branch editor never
@@ -580,6 +582,19 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   wrote) keeps a no-op edit from becoming the undo point. A stack with no journal refuses both,
   exactly as before undo landed. Survey: [`docs/gitUndoOptions.md`](docs/gitUndoOptions.md);
   plan: [`docs/plans/command-undo-redo.md`](docs/plans/command-undo-redo.md).
+- **Interactions declare the gestures; commands stay the only write path.** A command says what
+  the app can do; on the direct-manipulation surfaces that omits most of the interface. An
+  `Interaction` (`packages/commands/src/interaction.ts`) adds a name, a carried object, and —
+  the point — `targets(state, carried)`, a **query** returning every candidate marked accept
+  (with the invocation a drop would run) or refuse (with the sentence the command itself would
+  have given). It never writes: every gesture terminates in a registered command, and
+  `InteractionRegistry.verify` fails the build if it names one the app lacks. The branch
+  editor's three (`branch.connect`/`splice`/`unwire`) live in `src/shared/interactions.ts`
+  beside `branchops.ts`, for the same reason — `BranchEditor` draws its mid-drag verdict overlay
+  from `branchSplice.targets` and `interaction.targets` runs the same call in main, so an author
+  and an agent can't be told different things about one drop. Inline label editing is
+  deliberately _not_ an interaction: no carried object, no enumerable targets. Plan:
+  [`docs/plans/interaction-model.md`](docs/plans/interaction-model.md).
 - **Catalog.** `pnpm build` writes `apps/desktop/dist/commands.json` for external tooling. The
   `command:catalog` IPC channel serves the **live** registry, never the file, so the app can't
   be misled by a stale one; a test asserts the two match.

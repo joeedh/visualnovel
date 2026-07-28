@@ -5,8 +5,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { COMMAND_ID, toCatalog } from '@vn/commands';
+import { COMMAND_ID } from '@vn/commands';
 import { catalog } from '../catalog-entry.js';
+import { desktopInteractions } from '../interaction.js';
 import { createDesktopRegistry } from '../index.js';
 
 const GENERATED = join(__dirname, '..', '..', '..', '..', 'dist', 'commands.json');
@@ -18,6 +19,7 @@ describe('the desktop registry', () => {
     expect(createDesktopRegistry().namespaces()).toEqual([
       'agent',
       'gate',
+      'interaction',
       'pipeline',
       'story',
       'view',
@@ -81,6 +83,20 @@ describe('the desktop registry', () => {
       expect(entry.schema.additionalProperties).toBe(false);
     }
   });
+
+  /**
+   * The one guarantee that keeps the gesture surface and the command surface from becoming two
+   * truths about what the app can do. `catalog()` runs it too, so a bad build fails; this says
+   * so out loud, and pins the interactions that ship.
+   */
+  it('terminates every interaction in a command that exists', () => {
+    expect(() => desktopInteractions.verify(createDesktopRegistry())).not.toThrow();
+    expect(catalog().interactions?.map((i) => i.id)).toEqual([
+      'branch.connect',
+      'branch.splice',
+      'branch.unwire',
+    ]);
+  });
 });
 
 /**
@@ -97,6 +113,6 @@ describe('the generated commands.json', () => {
   }
 
   (generated ? it : it.skip)('matches the live registry', () => {
-    expect(JSON.parse(generated!)).toEqual(toCatalog(createDesktopRegistry(), '@vn/desktop'));
+    expect(JSON.parse(generated!)).toEqual(catalog());
   });
 });

@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../../api';
 import { DURATION, tweenLayout } from './tween.js';
-import type { Intent } from './intent.js';
+import type { Intent } from '../../../../src/shared/interactions.js';
 import type { GraphLayout } from '../../../graph/layout.js';
 import type { StoryGraph } from '../../../../src/shared/ipc';
 

@@ -1,5 +1,6 @@
 import { storyGraphOf } from '../../../../../src/main/storygraph.js';
-import { branchGraph, edgeTarget, scenesOf, CARD, STUB } from '../graph.js';
+import { edgeTarget, scenesOf } from '../../../../../src/shared/interactions.js';
+import { branchGraph, CARD, STUB } from '../graph.js';
 import type { ProjectModel, Scene } from '@vn/types';
 import type { StoryEdge } from '../../../../../src/shared/ipc';
 
@@ -67,6 +68,8 @@ describe('branchGraph', () => {
   });
 });
 
+// `scenesOf` and `edgeTarget` live in `src/shared/` — main needs them too — but they are still
+// `StoryGraph` projections, so they are covered here with the projection they invert.
 describe('scenesOf', () => {
   it('round-trips the branch structure the model was built from', () => {
     const story = sample();

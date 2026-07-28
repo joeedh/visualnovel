@@ -1,6 +1,17 @@
-import { connect, relabel, splice, unwire, NEW_CHOICE } from '../intent.js';
-import type { SceneMap } from '../../../../../src/shared/branchops';
-import type { StoryEdge } from '../../../../../src/shared/ipc';
+import {
+  branchConnect,
+  branchSplice,
+  branchUnwire,
+  connect,
+  relabel,
+  splice,
+  unwire,
+  CANVAS,
+  NEW_CHOICE,
+  type BranchState,
+} from '../interactions.js';
+import type { SceneMap } from '../branchops.js';
+import type { StoryEdge } from '../ipc.js';
 
 const scenes: SceneMap = new Map([
   ['greet', { id: 'greet', choices: [{ label: 'Say hello', goto: 'rooftop' }] }],
@@ -126,5 +137,77 @@ describe('relabel', () => {
   it('refuses a next, which carries no label', () => {
     const decision = relabel(scenes, edge({ kind: 'next' }), 'anything');
     expect(decision).toEqual({ ok: false, reason: 'Only a choice carries a label.' });
+  });
+});
+
+/**
+ * The interactions add no rules — they enumerate targets and hand each one to the decision
+ * above. So these assert the enumeration and that the verdict is verbatim what the drop
+ * would have produced; the rules themselves are `branchops.test.ts`'s business.
+ */
+describe('the branch interactions', () => {
+  const nextEdge: StoryEdge = {
+    id: 'rooftop#next',
+    from: 'rooftop',
+    to: 'ending',
+    kind: 'next',
+    dangling: false,
+  };
+  const state: BranchState = {
+    scenes,
+    edges: [
+      edge({ id: 'greet#choice:0' }),
+      nextEdge,
+      edge({ id: 'forks#choice:0', from: 'forks', to: 'ending', index: 0, label: 'Left' }),
+    ],
+  };
+
+  it('judges every scene as a connect target', () => {
+    const verdicts = branchConnect.targets(state, 'ending');
+    expect(verdicts.map((v) => v.target)).toEqual([...scenes.keys()]);
+    expect(verdicts.every((v) => v.accept)).toBe(true);
+  });
+
+  it('carries the command the drop would run, ready to execute', () => {
+    const [greet] = branchConnect.targets(state, 'ending');
+    expect(greet?.accept && greet.invoke).toEqual({
+      id: 'story.setNext',
+      props: { scene: 'ending', goto: 'greet' },
+    });
+  });
+
+  it('judges every edge as a splice target, refusing with branchops’ own sentence', () => {
+    const verdicts = branchSplice.targets(state, 'forks');
+    expect(verdicts.map((v) => (v.accept ? 'accept' : v.reason))).toEqual([
+      expect.stringContaining('forks already forks into 1 choice(s)'),
+      expect.stringContaining('forks already forks into 1 choice(s)'),
+      'forks cannot be spliced into its own edge.',
+    ]);
+  });
+
+  it('accepts a splice only where the carried scene is legal', () => {
+    const verdicts = branchSplice.targets(state, 'quiet');
+    expect(verdicts.filter((v) => v.accept).map((v) => v.target)).toEqual([
+      'greet#choice:0',
+      'rooftop#next',
+      'forks#choice:0',
+    ]);
+  });
+
+  it('gives unwire one target, since the arrowhead has nowhere else to land', () => {
+    const verdicts = branchUnwire.targets(state, 'greet#choice:0');
+    expect(verdicts).toEqual([
+      {
+        target: CANVAS,
+        accept: true,
+        note: 'Removed greet → rooftop ("Say hello").',
+        invoke: { id: 'story.removeChoice', props: { scene: 'greet', index: 0 } },
+      },
+    ]);
+  });
+
+  it('refuses an edge the graph no longer has rather than answering for a guess', () => {
+    const [verdict] = branchUnwire.targets(state, 'gone#next');
+    expect(verdict).toEqual({ target: CANVAS, accept: false, reason: 'No edge "gone#next".' });
   });
 });

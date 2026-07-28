@@ -228,7 +228,7 @@ not lie about what touched the worktree.
 
 ## The registered commands
 
-Twenty-two, in six namespaces. Ten are `mutating`; one asks for confirmation.
+Twenty-four, in seven namespaces. Ten are `mutating`; one asks for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
@@ -249,6 +249,8 @@ Twenty-two, in six namespaces. Ten are `mutating`; one asks for confirmation.
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
 | `agent.clear`                  | —                                 | Resets the conversation, back to plan mode.                |
+| `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
+| `interaction.targets`          | `interaction`, `carried`          | Every target of a gesture, accepted or refused with why.   |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
 | `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
 | `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`, FLOOR `list`\|`graph`\|`timeline`. |
@@ -282,6 +284,35 @@ command and one `CommandRecord`, never a stream of them.
 store, and the store broadcasts its own `session:changed`, which is what the renderer's
 `usePanelWidth` already listens for. Dragging a panel writes through the same store but
 _not_ through the command stack, so `commands.jsonl` doesn't collect a record per drag.
+
+### Interactions: the gesture surface
+
+A command answers _what can this app do_. On the direct-manipulation surfaces that leaves out
+most of the interface — nothing in `commands.json` says that `story.spliceScene` is normally
+reached by dropping a card on a wire, that most wires would refuse that card, or why.
+
+An **interaction** names the gesture and, crucially, offers a **query** rather than a list:
+`targets(state, carried)` returns every candidate marked accept (with the invocation the drop
+would run) or refuse (with the sentence the command itself would have given). It has no write
+path of its own — every gesture terminates in a registered command, and
+`InteractionRegistry.verify` fails the build if it names one that does not exist.
+
+The three branch-editor gestures (`branch.connect`, `branch.splice`, `branch.unwire`) are
+declared in `apps/desktop/src/shared/interactions.ts`, beside `branchops.ts` and for the same
+reason: `BranchEditor` runs `branchSplice.targets` to draw its mid-drag verdict overlay, and
+`interaction.targets` runs the same call in main, so an author and an agent cannot be told
+different things about the same drop.
+
+```sh
+node scripts/vn-cdp.mjs "interaction.targets(interaction='branch.splice' carried='arrival')"
+#  0 of 5 target(s) would accept arrival.
+#  refuse · arrival#choice:0 · arrival cannot be spliced into its own edge.
+#  refuse · greet#next · arrival already forks into 2 choice(s), and a scene's next is only
+#    followed when it has none — the spliced edge would never be taken.
+```
+
+Full design, including what deliberately is _not_ an interaction:
+[`plans/interaction-model.md`](plans/interaction-model.md).
 
 `CommandHost` is the app-specific service bundle every command receives:
 `{ session: WorkspaceSession; state: SessionStore; ui(effect: UiEffect): void }`. `state` is
@@ -359,7 +390,10 @@ tool loop to the registry is a follow-on, not shipped.
 
 ## The catalog
 
-`toCatalog(registry, source)` projects the registry into a serializable shape. Per command:
+`toCatalog(registry, source, interactions?)` projects the registry into a serializable shape.
+The optional third argument adds an `interactions` array — everything about a gesture except
+`targets`, which only means anything against live state. It is additive, so a consumer that
+knows only about commands reads the same file unchanged. Per command:
 the metadata, a `props` array, a ready-to-paste `usage` template
 (`gate.approve(characterId='' hash='')`, built by formatting type-appropriate placeholders),
 and a **JSON Schema** for the props object.

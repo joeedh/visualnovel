@@ -2,6 +2,7 @@ export * from './props.js';
 export * from './command.js';
 export * from './registry.js';
 export * from './dsl.js';
+export * from './interaction.js';
 export * from './stack.js';
 export * from './undo.js';
 export * from './catalog.js';

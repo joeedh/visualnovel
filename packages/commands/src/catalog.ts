@@ -4,7 +4,9 @@
  * provider-native function calling) can consume the surface without importing this package.
  */
 import { formatCommand } from './dsl.js';
+import { toInteractionCatalog, type InteractionCatalogEntry } from './interaction.js';
 import type { CommandRegistry } from './registry.js';
+import type { InteractionRegistry } from './interaction.js';
 import type { Prop, PropKind, PropValue } from './props.js';
 
 export interface CatalogProp {
@@ -41,6 +43,11 @@ export interface CommandCatalog {
   /** Which registry this was generated from, e.g. `@vn/desktop`. */
   source: string;
   commands: CatalogEntry[];
+  /**
+   * The gesture surface, when the host declares one. Additive and optional: a consumer that
+   * only knows about commands reads the same file unchanged.
+   */
+  interactions?: InteractionCatalogEntry[];
 }
 
 /** A placeholder of the right type, so `usage` is a template the user can fill in. */
@@ -79,7 +86,11 @@ function jsonType(spec: Prop<PropValue, boolean>): Record<string, unknown> {
   }
 }
 
-export function toCatalog(registry: CommandRegistry<any>, source: string): CommandCatalog {
+export function toCatalog(
+  registry: CommandRegistry<any>,
+  source: string,
+  interactions?: InteractionRegistry<any>,
+): CommandCatalog {
   const commands = registry.list().map<CatalogEntry>((command) => {
     const entries = Object.entries(command.props);
     const properties: Record<string, Record<string, unknown>> = {};
@@ -116,5 +127,10 @@ export function toCatalog(registry: CommandRegistry<any>, source: string): Comma
     };
   });
 
-  return { version: 1, source, commands };
+  return {
+    version: 1,
+    source,
+    commands,
+    ...(interactions ? { interactions: toInteractionCatalog(interactions) } : {}),
+  };
 }
