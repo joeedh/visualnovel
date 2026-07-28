@@ -1,0 +1,201 @@
+# Scene chunk files
+
+Status: **planned**. Move two of
+[`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
+after [`allocated-line-ids.md`](allocated-line-ids.md) and
+[`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
+lives, and nothing else: no editor, no new commands beyond the ones that must be retargeted.
+
+<!-- toc -->
+
+<!-- tocstop -->
+
+## Why
+
+`screenplay/*.fountain` is one contended document. Two writers collide on it, the branch editor's
+surgical patcher exists partly to make that survivable, and adding "the author is typing in it"
+makes the contention continuous rather than occasional. Per-scene chunks make it go away by
+construction — the same move `work/shots/<sceneId>.json` already made for decompositions, for the
+same reason.
+
+The blast radius of a bad write shrinks with it. Today a malformed patch can damage every scene in
+the project; with chunks it can damage one, and the scene it damages is the one being edited.
+
+## The shape
+
+**`scenes/<id>.md` at the project root, beside `characters/` and `locations/`.** Front-matter for
+the scene's structured fields, a Fountain body for its prose. Same loader
+(`@vn/parse`'s `frontmatter.ts`), same `fromDoc`/`toDoc` round-trip the other two entities have,
+same "authored input lives at the root, generated output lives under `vngen/`" rule.
+
+```markdown
+---
+scene: arrival
+location: school_gate
+heading: EXT. SCHOOL GATE - AFTERNOON
+synopsis: Aiko is waiting at the gate, and has been for a while.
+next: rooftop
+nextLineId: 12
+---
+
+[[line: L1]]
+Rain ticks off the gate.
+
+AIKO
+[[line: L4]]
+Um… hello.
+
+[[choice: "Introduce yourself" -> greet]]
+```
+
+Three notes on the format, each of which is a decision rather than an accident:
+
+- **The scene id is front-matter, not a `[[scene:]]` marker.** The filename and the `scene:` key
+  must agree, and a mismatch is an error rather than one silently winning. `[[scene:]]` in a chunk
+  body is ignored with a warning; it is the single-file form's mechanism, not this one's.
+- **The heading is a field, and it is the whole heading string.** `EXT.` and the time-of-day are
+  what `lossless-scene-serialization.md` adds to `Scene`; keeping the raw line as authored means
+  the body never has to be re-derived from a slug.
+- **`choices`/`next` stay `[[…]]` markers in the body, not front-matter arrays.** They are
+  positional in the prose (a choice belongs where the scene ends) and the branch editor already
+  patches exactly those bytes. Moving them to front-matter would mean rewriting
+  `applySceneBranchEdit` in the same change that moves the file, and each of those is a place a
+  screenplay can be corrupted. `next:` appears above only because it is genuinely scene-level;
+  **pick one home for it and pin it with a test** — the alternative is two writers disagreeing.
+
+### Scene order stops being a fact, and one thing depends on it
+
+`buildModel` sets `const entry = sceneList[0]?.id` (`packages/model/src/build.ts:154`), documented
+on `ProjectModel.entry` as "first scene in the screenplay". Files in a directory have no order —
+`readdir` gives an arbitrary one that looks alphabetical until it isn't — so **the entry scene
+becomes ambiguous the moment scenes are files**, and it silently becomes whichever scene sorts
+first. Everything downstream inherits it: `computeReachable` starts there, dead-scene detection is
+derived from it, and `story.play.json`'s `start` is it.
+
+So chunking requires an explicit entry. `start:` in `project.yaml` is the right home — it is
+scene-level project configuration, `@vn/config` already validates that file, and the playable
+already has a `start` field to fill from it. A missing `start` is an **error diagnostic** naming
+the fix, not a fallback to sorted-first: a project whose entry scene is chosen by filename
+alphabetics is a project that will one day silently start somewhere else.
+
+Nothing else depends on file order. There is no implicit fallthrough — `next` comes only from a
+marker (`packages/model/src/scenes.ts:87`), so a scene with no `next` and no choices is a leaf
+today and stays one.
+
+### Both forms load, until the importer exists
+
+`loadInputs` prefers `scenes/` when it exists and falls back to `screenplay/` when it does not.
+Not forever — [`fountain-import-export.md`](fountain-import-export.md) is what retires the
+fallback — but during this move it is what keeps `examples/sample`, every `@vn/testkit` fixture,
+and every existing user project working while the chunk path is built. **A project with both is an
+error**, not a merge: two sources of truth for one scene is the failure this whole direction
+exists to prevent.
+
+## What has to be retargeted
+
+The format is the easy half. Four call sites duplicate the same
+`loadInputs` → `parseFountain` → `buildModel` sequence, and they are the real scope:
+
+| Call site | What it assumes |
+| --- | --- |
+| `apps/cli/src/project.ts:26` | one `scriptText` |
+| `apps/desktop/src/main/session.ts:114` | one `scriptText` **and** `scriptPath`, carried on `LoadedProject` for the branch editor to patch |
+| `packages/authoring/src/workspace.ts:89` | plus `screenplayFile()` for the index, and `INPUT_GLOBS` in `tools.ts:150` |
+| `packages/testkit/src/project.ts:297` | writes `screenplay/script.fountain` from `SCRIPTS` |
+
+Four copies of one sequence is three too many for a change that alters it. **Add
+`loadProjectModel(paths, config)` to `@vn/store` and have all four call it** — the desktop and CLI
+`loadProject` functions become that call plus their own store/graph assembly. This is a
+prerequisite of the move, not a tidy-up: doing it after means making the same edit four times and
+discovering the fourth in a test that only runs on a machine with the asset corpus.
+
+Then the writers:
+
+- **`applySceneBranchEdit` patches one chunk instead of the screenplay.** Its total re-parse safety
+  net survives intact and gets cheaper — re-parsing one scene rather than the file. The header
+  comment's "Assumes a single screenplay file" (`branchpatch.ts:198`) is what changes.
+- **`session.editBranches` and `story.setCoverage` are unaffected in shape**, but
+  `LoadedProject.scriptPath` becomes per-scene. The rule it encodes — a writer patches the same
+  file the model was built from, rather than re-deriving which file that is — is exactly the rule
+  worth keeping when there are many files, so it becomes `Scene`-scoped rather than dropped.
+- **`@vn/store` gets `scenes.ts`, sibling to `shots.ts`**, as the only place on-disk chunk maps to
+  in-memory `Scene`. `shots.ts` is the model to copy, including its "the file is human-editable, so
+  a malformed one throws rather than being silently rewritten" behaviour.
+
+### A naming collision that already exists
+
+`ProjectPaths.sceneFile(id)` returns `vngen/work/scenes/<id>.md` and `writeSceneFile` writes it —
+both are **dead code**, with no callers outside `paths.ts` and `worktree.ts` themselves. Authored
+chunks want the name `sceneFile`, at the project root. Delete the unused pair in this plan rather
+than working around it, and do it in its own commit so the deletion is visible as a deletion.
+
+## Failure modes
+
+| Failure | What happens | Guard |
+| --- | --- | --- |
+| Filename and `scene:` disagree | two ids for one scene; shots bind to the loser | error diagnostic naming both |
+| Two chunks claim one id | one silently wins by readdir order | error diagnostic listing both files |
+| `scenes/` and `screenplay/` both present | model built from one, edits written to the other | error diagnostic; refuse to load |
+| No `start:` in `project.yaml` | entry chosen alphabetically, project starts elsewhere after a rename | error diagnostic |
+| `start:` names a missing scene | empty playable | error diagnostic, same class as `dangling_goto` |
+| A chunk is malformed | scene silently absent; its shots orphaned | throw, as `readShots` does |
+
+Every one of these is an error diagnostic rather than a throw except the last, and step 6 of
+[`allocated-line-ids.md`](allocated-line-ids.md) is why that is now safe: diagnostics have a
+surface. Before that plan lands they would be produced and rendered nowhere.
+
+## Steps
+
+1. **`loadProjectModel` in `@vn/store`.** One function, the four call sites converted to it, no
+   behaviour change. Green `pnpm check` / `pnpm test` before anything else moves.
+2. **Delete `sceneFile`/`writeSceneFile`.** The dead `work/scenes/` pair, on its own.
+3. **`@vn/types`: the chunk schema.** `SceneDoc` zod schema for the front-matter, mirroring how
+   characters and locations are validated at the boundary. `start` added to the `project.yaml`
+   schema in `@vn/config`.
+4. **`@vn/store`'s `scenes.ts`.** `readSceneChunk` / `writeSceneChunk`, `sceneFromDoc` /
+   `sceneToDoc` in `@vn/model` beside the other two entities' pair, reusing
+   `sceneToFountain` for the body. The round-trip test extends the one
+   `lossless-scene-serialization.md` establishes rather than starting a second.
+5. **`loadInputs` reads both forms.** `scenes/` preferred, `screenplay/` fallback, both-present an
+   error. `LoadedInputs` grows scene docs; `scriptText`/`scriptPath` stay for the fallback path.
+6. **`buildModel` takes scenes, not just a script.** `BuildInputs.sceneDocs` alongside `script`;
+   `entry` from `config.start` with the diagnostics above. `splitScenes` is unchanged — it still
+   handles the fallback path, and a chunk body goes through `parseFountain` + `splitScenes` per
+   file, which is what keeps one parser rather than two.
+7. **Retarget the writers.** `applySceneBranchEdit` to one chunk; `session.editBranches` and the
+   `story.*` commands to per-scene paths; the authoring workspace index and `INPUT_GLOBS`.
+8. **`@vn/testkit` writes chunks.** `makeProject` gains `{ format: 'chunks' | 'screenplay' }`,
+   defaulting to **chunks**, with `SCRIPTS` converted by the same code path step 4 provides. Keep
+   at least one fixture on `screenplay` so the fallback stays tested until it is retired.
+9. **Convert `examples/sample`.** By hand or by the step-4 writer, verified by a full
+   `vngen run --mock` + `graph` + `export` against a fresh copy, and by opening
+   `examples/mySampleRepo` in the desktop app. The task hashes must not move: the shot prompt is
+   built from `lines`, so a scene that round-trips unchanged plans identical work. **If any task
+   rehashes, stop** — something in the round-trip is lossy and the corpus in
+   `packages/testkit/assets/` is about to be invalidated.
+10. **Docs.** This file's As-shipped section; `CLAUDE.md`'s project-layout and `@vn/store` sections;
+    `docs/vn-generator-report.md` §9.1; `docs/fountain.md` on what a chunk body may contain.
+
+## Not in this plan
+
+- **Editing.** No commands that change prose, no UI. This plan moves the file; it does not make
+  anything write to it beyond the branch/coverage writers that already existed.
+- **Retiring `screenplay/`.** The fallback stays until the importer exists. Deleting the only
+  supported input format in the same change that introduces its replacement leaves no way back.
+- **Splitting or merging scenes.** Creating and deleting chunk files is a
+  [`scene-editing-commands.md`](scene-editing-commands.md) concern; this plan only reads and
+  rewrites existing ones.
+- **A directory layout per act, or nested `scenes/`.** Flat, one level, like `locations/`. Ordering
+  and grouping are presentation and belong to `start` and the branch graph.
+
+## Alternatives considered
+
+- **Keep one file, add file locking.** Solves concurrent writes and not the blast radius, and a
+  lock across an interactive editing session is a lock held for minutes.
+- **One JSON file per scene.** Rejected in the research doc for the reason that governs the whole
+  direction: prose stops being diffable, and a retyped paragraph becomes an unreadable diff.
+- **`vngen/work/scenes/` instead of the project root.** Wrong tree. `vngen/` is output; a scene is
+  authored input, and putting it under `work/` makes "delete `vngen/` and re-run" destroy the
+  screenplay.
+- **Derive the entry scene from the graph** — the scene nothing points to. Ambiguous in a story
+  with more than one such scene, and wrong the moment a branch loops back to the opening.
