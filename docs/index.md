@@ -13,7 +13,8 @@ itself (commands, package layering, conventions), see [`../CLAUDE.md`](../CLAUDE
 For how to debug the repo (state files, CDP, the 2D debug surface, known traps), see
 [`debugGuide.md`](debugGuide.md).
 
-Implementation plans live separately in [`plans/`](plans) and are not indexed here.
+Implementation plans live separately in [`plans/`](plans); [`plans/index.md`](plans/index.md)
+lists all of them with their build status.
 
 ## Design reports
 
