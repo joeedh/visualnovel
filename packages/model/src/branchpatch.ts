@@ -1,10 +1,11 @@
 /**
  * Surgical branch-marker patching for a Fountain screenplay (story branch editor, Wave 1).
  *
- * `sceneToFountain` is lossy by design — `Scene.body` is flattened prose, so re-serializing a
- * scene destroys cues, parentheticals and formatting. Rewiring a branch must therefore not go
- * through it. This module rewrites **only** `[[choice: …]]` and `[[next: …]]` note lines,
- * leaving every other byte of the file exactly as authored.
+ * `sceneToFountain` is lossless (`parse(write(scene)) ≡ scene`) but not byte-exact: the author's
+ * spacing, comment style and marker placement are theirs, and a rewire has no business
+ * reformatting the file. So this module rewrites **only** `[[choice: …]]` and `[[next: …]]` note
+ * lines, leaving every other byte exactly as authored. The serializer is for scenes the app
+ * authored; this is for scenes it inherited.
  *
  * The safety net is total: after patching, the whole file is re-parsed and the resulting scene
  * list is compared against the intended one. Any divergence — a marker written into the wrong
@@ -175,8 +176,9 @@ function canonical(scenes: Scene[]): string {
     scenes.map((s) => ({
       id: s.id,
       location: s.location,
+      locationVariant: s.locationVariant ?? null,
+      headingPrefix: s.headingPrefix ?? null,
       synopsis: s.synopsis ?? null,
-      body: s.body,
       characters: s.characters,
       lines: s.lines.map((l) => ({
         id: l.id,

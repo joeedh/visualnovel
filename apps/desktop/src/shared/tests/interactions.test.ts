@@ -230,7 +230,7 @@ describe('timeline.cover', () => {
     sceneId: 'arrival',
     lines: ['L1', 'L2', 'L3', 'L4'].map((n) => ({
       id: `arrival:${n}`,
-      kind: 'action' as const,
+      kind: 'narration' as const,
       text: n,
     })),
     shots: [

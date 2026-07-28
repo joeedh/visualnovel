@@ -38,9 +38,9 @@ export function location(id: string): Location {
   };
 }
 
-/** A scene with a body but no structured lines — enough to plan shots against. */
+/** A scene with a cast but no lines — enough to plan shots against; fill `lines` to cover. */
 export function scene(id: string, characters: string[] = [], loc = 'classroom'): Scene {
-  return { id, location: loc, characters, body: 'They talk.', lines: [], choices: [], shots: [] };
+  return { id, location: loc, characters, lines: [], choices: [], shots: [] };
 }
 
 /** Assemble a model in which every scene is reachable and the first one is the entry. */

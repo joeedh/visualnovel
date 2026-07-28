@@ -11,7 +11,6 @@ const wired = (id: string, choices: Scene['choices'], next?: string): Scene => (
   id,
   location: 'classroom',
   characters: [],
-  body: 'They talk.',
   lines: [],
   shots: [],
   choices,

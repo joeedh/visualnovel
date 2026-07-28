@@ -37,7 +37,23 @@ interface Slot {
   /** Source line of the element's text. */
   line: number;
   marked: boolean;
+  /**
+   * The mark has to go *on* the element's line rather than above it. True only for an
+   * unforced transition (`CUT TO:`), which the parser recognizes by the blank line above it —
+   * the one a mark would fill, turning it into an action paragraph.
+   */
+  inline: boolean;
 }
+
+/** The element types `splitScenes` turns into `SceneLine`s, in the same order it sees them. */
+const LINE_BEARING = new Set([
+  'action',
+  'dialogue',
+  'parenthetical',
+  'transition',
+  'lyric',
+  'centered',
+]);
 
 function err(code: string, message: string, where?: string): Diagnostic {
   return { severity: 'error', code, message, ...(where ? { where } : {}) };
@@ -73,6 +89,7 @@ function localOf(id: string): string {
 function scan(
   script: FountainScript,
   scenes: Scene[],
+  lines: RawLine[],
 ): { slots: Slot[]; anchors: Map<Scene, number>; allocatorLines: Map<Scene, number> } {
   const slots: Slot[] = [];
   const anchors = new Map<Scene, number>();
@@ -97,8 +114,12 @@ function scan(
       else if (marker?.kind === 'scene') anchors.set(scene, el.line);
       continue;
     }
-    if (el.type === 'action' || el.type === 'dialogue' || el.type === 'parenthetical') {
-      slots.push({ scene, index: index++, line: el.line, marked: pending });
+    if (LINE_BEARING.has(el.type)) {
+      // An unforced `CUT TO:` is recognized by the blanks around it; only the forced `>` form
+      // survives a marker line above it.
+      const forced = (lines[el.line]?.text ?? '').trimStart().startsWith('>');
+      const inline = el.type === 'transition' && !forced;
+      slots.push({ scene, index: index++, line: el.line, marked: pending, inline });
       pending = false;
     }
   }
@@ -111,8 +132,9 @@ function canonical(scenes: Scene[]): string {
     scenes.map((s) => ({
       id: s.id,
       location: s.location,
+      locationVariant: s.locationVariant ?? null,
+      headingPrefix: s.headingPrefix ?? null,
       synopsis: s.synopsis ?? null,
-      body: s.body,
       characters: s.characters,
       nextLineId: s.nextLineId ?? null,
       lines: s.lines.map((l) => ({
@@ -150,7 +172,8 @@ function skeleton(script: FountainScript): string {
  *
  * Marks are inserted directly above the element's own text — for dialogue and parentheticals
  * that is inside the block, after the `CHARACTER` cue, which is the only placement that does
- * not un-speak the line. Running it twice is a no-op.
+ * not un-speak the line. The one exception is an unforced `CUT TO:` transition, whose mark
+ * rides on its own line (see {@link Slot.inline}). Running it twice is a no-op.
  */
 export function assignLineIds(text: string, sceneId?: string): LineIdPatchResult {
   const unchanged = (diagnostics: Diagnostic[]): LineIdPatchResult => ({
@@ -169,7 +192,8 @@ export function assignLineIds(text: string, sceneId?: string): LineIdPatchResult
     return unchanged([err('line_ids_scene', `no scene '${sceneId}' in the screenplay`, sceneId)]);
   }
 
-  const { slots, anchors, allocatorLines } = scan(script, before.scenes);
+  const lines = splitLines(text);
+  const { slots, anchors, allocatorLines } = scan(script, before.scenes, lines);
   for (const scene of before.scenes) {
     const found = slots.filter((s) => s.scene === scene).length;
     if (found !== scene.lines.length || !anchors.has(scene)) {
@@ -184,7 +208,6 @@ export function assignLineIds(text: string, sceneId?: string): LineIdPatchResult
     }
   }
 
-  const lines = splitLines(text);
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const inserts = new Map<number, string[]>();
   const rewritten = new Map<number, string>();
@@ -198,9 +221,17 @@ export function assignLineIds(text: string, sceneId?: string): LineIdPatchResult
       if (slot.scene !== scene || slot.marked) continue;
       const target = scene.lines[slot.index];
       if (!target) continue;
-      // Insert *before* the element by anchoring to the previous line: the output pass
-      // appends after a line, and the element's own line must stay below its mark.
-      addAfter(slot.line - 1, `${indentOf(slot.line)}[[line: ${localOf(target.id)}]]`);
+      const mark = `[[line: ${localOf(target.id)}]]`;
+      if (slot.inline) {
+        // The mark rides on the element's own line: notes are stripped before the line is
+        // classified, so the blanks the element depends on are left where they were.
+        const current = lines[slot.line]?.text ?? '';
+        rewritten.set(slot.line, current.replace(/^(\s*)/, `$1${mark}`));
+      } else {
+        // Insert *before* the element by anchoring to the previous line: the output pass
+        // appends after a line, and the element's own line must stay below its mark.
+        addAfter(slot.line - 1, `${indentOf(slot.line)}${mark}`);
+      }
       assigned++;
     }
 

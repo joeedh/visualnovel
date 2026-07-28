@@ -40,7 +40,7 @@ current one.
 | [`2d-graphics-debug-api.md`](2d-graphics-debug-api.md) | shipped | `@vn/debug2d` — fragment IR, DOM adapter, query engine, `explainPick` |
 | [`interaction-model.md`](interaction-model.md) | partial | `Interaction`/`targets`; four gestures declared, the general surface is not finished |
 | [`allocated-line-ids.md`](allocated-line-ids.md) | shipped | Line ids that survive an edit, the diagnostics surface, the catalog-driven palette |
-| [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | planned | `parse(write(scene)) ≡ scene` — what `lines` currently drops |
+| [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | shipped | `parse(write(scene)) ≡ scene`; `Scene.body` retired, headings and three line kinds retained |
 | [`scene-chunk-files.md`](scene-chunk-files.md) | planned | `scenes/<id>.md` replaces the one contended screenplay |
 | [`fountain-import-export.md`](fountain-import-export.md) | planned | `vngen import` / `vngen screenplay` |
 | [`scene-editing-commands.md`](scene-editing-commands.md) | planned | Nine `story.*` prose commands, `lineops.ts`, `session.editScene` |
@@ -53,12 +53,12 @@ current one.
 Seven plans that together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **1 is shipped; 2–7 are not implemented.**
+one rests on. **1 and 2 are shipped; 3–7 are not implemented.**
 
 | # | Plan | Depends on | Why it is here |
 | --- | --- | --- | --- |
 | 1 | [`allocated-line-ids.md`](allocated-line-ids.md) ✔ | — | Positional ids re-point every shot when a line is inserted. Nothing may edit prose until ids survive |
-| 2 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | — | Writing a scene back today loses its heading. Nothing may write a scene until the writer is honest |
+| 2 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) ✔ | — | Writing a scene back today loses its heading. Nothing may write a scene until the writer is honest |
 | 3 | [`scene-chunk-files.md`](scene-chunk-files.md) | 1, 2 | One contended screenplay becomes one file per scene |
 | 4 | [`fountain-import-export.md`](fountain-import-export.md) | 2, 3 | Migrates existing projects in, and keeps the format from being lock-in |
 | 5 | [`scene-editing-commands.md`](scene-editing-commands.md) | 1, 3 | The only write path for prose. No UI; verifiable through the palette and CDP |
@@ -90,12 +90,14 @@ Recorded here because each was settled once and every later plan assumes it.
 ### Blockers found while planning
 
 Things that are broken or dead today and that a plan above has to deal with. Each is scoped into a
-plan; none is fixed yet.
+plan; the ones marked **fixed** have shipped with the plan that owned them.
 
-- `headingFor` (`packages/model/src/serialize.ts:60`) reconstructs every heading as
-  `INT. <LOCATION> - DAY`, discarding `EXT.` and the time of day → plan 2.
-- `currentSpeaker` (`packages/model/src/scenes.ts`) is cleared only on `flush()`, and the
-  `action`-with-speaker branch describes a case `parseFountain` cannot produce → plan 2.
+- ~~`headingFor` (`packages/model/src/serialize.ts:60`) reconstructs every heading as
+  `INT. <LOCATION> - DAY`, discarding `EXT.` and the time of day~~ → **fixed** in plan 2:
+  `Scene` carries `headingPrefix` and `locationVariant`, and `headingFor` is gone.
+- ~~`currentSpeaker` (`packages/model/src/scenes.ts`) is cleared only on `flush()`, and the
+  `action`-with-speaker branch describes a case `parseFountain` cannot produce~~ → **fixed** in
+  plan 2: attribution ends with the dialogue block, and `'action'` is no longer a `SceneLine.kind`.
 - `buildModel` takes the entry scene as `sceneList[0]` (`packages/model/src/build.ts:154`), which
   becomes readdir order the moment scenes are files → plan 3 adds `start:` to `project.yaml`.
 - Four call sites duplicate `loadInputs` → `parseFountain` → `buildModel` (CLI, desktop session,
@@ -112,7 +114,7 @@ plan; none is fixed yet.
 ### Checklist
 
 - [x] 1 — allocated line ids
-- [ ] 2 — lossless scene serialization
+- [x] 2 — lossless scene serialization
 - [ ] 3 — scene chunk files
 - [ ] 4 — Fountain import and export
 - [ ] 5 — scene editing commands

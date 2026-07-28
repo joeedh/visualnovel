@@ -139,7 +139,7 @@ it may import _every_ layer, and **nothing may import it** — see
 | `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                                                                                                                                                     |
 | `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                                                                                                                                                        |
 | `@vn/parse`         | Fountain parser + note markers: `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` for branching, `[[line: L4]]` / `[[nextline: 12]]` for allocated line ids; markdown front-matter. Pure, no I/O policy. Shared with the authoring agent.                                                                                                                                                                          |
-| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`.                                                                                                                                                                                                                                                                |
+| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`. Also the **writers**: `sceneToFountain` (lossless — `parse(write(scene)) ≡ scene`), the surgical `branchpatch`/`lineids` patchers, and the `*ToDoc` serializers.                                                                                               |
 | `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped.                                                                                                                                                                 |
 | `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                                                                                                                                                    |
 | `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection, and the `UndoJournal` behind opt-in undo/redo. Domain-agnostic — the commands themselves are defined by the host app.                                                                                                                                                |
@@ -198,6 +198,24 @@ it may import _every_ layer, and **nothing may import it** — see
   marker lines and re-parses its own output, discarding the patch unless it reproduces the same
   scenes line for line — a note above a `CHARACTER` cue would turn it into action and un-speak the
   dialogue below it. Plan: [`docs/plans/allocated-line-ids.md`](docs/plans/allocated-line-ids.md).
+- **A scene survives a trip through text: `parse(write(scene)) ≡ scene`.** `sceneToFountain`
+  (`packages/model/src/serialize.ts`) writes from `Scene.lines` — the sibling of the
+  `fromDoc(toDoc(x)) ≡ x` the character/location serializers already give, and pinned the same
+  way, by a property test over the `@vn/testkit` scripts and hand-built scenes. `Scene.body` is
+  **gone**: flattened prose cannot be told back apart (`NAME:` and an action paragraph containing
+  a colon are the same string), so keeping it invited exactly the reconstruction it could not
+  support. What makes the property hold is that the model retains what Fountain says — the
+  heading's prefix _and_ its time-of-day variant (the variant is what the location plate is
+  generated from; reconstructing it turned `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`),
+  plus `transition`/`lyric`/`centered` lines. `section`, `page_break` and dual dialogue stay
+  dropped, deliberately. **Blank lines are structural** and a `[[…]]` marker line is not blank,
+  so a cue always gets a blank above it, nothing but a `[[line:]]` mark goes between a cue and
+  its first dialogue line, and anything that could be read as another element is written in its
+  forced form (`!`, `@`, `>`, `~`) — `needsForcedAction` tests every alternative reading the
+  parser has, not just the ones this writer's own layout would allow. Byte-exactness is neither
+  achievable nor wanted: the surgical patchers (`branchpatch.ts`, `lineids.ts`) still handle
+  files the author wrote, because their formatting is theirs. Plan:
+  [`docs/plans/lossless-scene-serialization.md`](docs/plans/lossless-scene-serialization.md).
 - **P7 generate→critique→refine loop** is folded into the `shot_image` runner (a
   documented deviation from the report's separate `vision_review`/`prompt_refine` nodes).
   Each attempt generates, has every configured reviewer critique against the shot spec,
@@ -226,7 +244,7 @@ it may import _every_ layer, and **nothing may import it** — see
   deleted or edited.
 - **P5 is shown the scene as identified lines, not prose.** `coversLines` asks for line ids, so
   `decomposeScene` enumerates the scene as `[<lineId>] <kind>/<speaker>: <text>` and requires
-  every line be assigned to exactly one shot. Handing over the flattened `scene.body` and a
+  every line be assigned to exactly one shot. Handing over flattened prose and a
   response template containing `"coversLines":[]` made the question unanswerable, and the model
   did the only thing it could — copied the empty array, producing shots that were generated and
   never displayed. `withCoverage` is the backstop: a decomposition binding no real line falls

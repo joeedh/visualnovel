@@ -1,6 +1,7 @@
 # Lossless scene serialization
 
-Status: **planned**. The prerequisite the research doc treats as a detail. It follows
+Status: **shipped** (see [As shipped](#as-shipped)). The prerequisite the research doc treats as a
+detail. It follows
 [`allocated-line-ids.md`](allocated-line-ids.md) and precedes
 [`scene-chunk-files.md`](scene-chunk-files.md) — every later move in
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md)
@@ -203,3 +204,56 @@ way to write.
 - **Serialize to Fountain only at export, keep an internal format for editing.** Two formats, two
   parsers, and the diffable-prose property — the reason the chunk format was chosen at all — is
   lost for everything except the export.
+
+## As shipped
+
+All eight steps landed. `pnpm check`, `pnpm test` (684 tests, 62 suites) and `pnpm lint` are green.
+The property test is `packages/model/src/tests/roundtrip.test.ts`.
+
+### Deviations
+
+- **`'action'` was removed from `SceneLine.kind`, not left alongside `narration`.** Step 4 makes
+  every action element parse to `narration`, so nothing produces `'action'` — but the kind stayed
+  _constructible_, and a hand-built `kind: 'action'` scene round-trips to `narration`, which makes
+  the property false for a scene the types say is legal. A kind no reader can produce and no writer
+  can reproduce is not a kind. Three test fixtures and a `.tl-line.action` CSS rule were the only
+  users.
+- **`Scene.body` was deleted outright rather than made derived.** Step 7 planned to keep one
+  derived reader; it turned out both `canonical()` safety-net projections (`branchpatch.ts`,
+  `lineids.ts`) already carried `lines` with `id`/`kind`/`speaker`/`text`, so `body` added nothing
+  either of them was checking. Both gained `locationVariant` and `headingPrefix` instead, which
+  makes them strictly stricter than before. Keeping a flattened copy of prose around is how it gets
+  read back in.
+- **Transitions are always written in the forced `>` form.** The unforced `CUT TO:` needs blank
+  lines on _both_ sides, and the line's own `[[line:]]` mark occupies the one above it. `>` is the
+  same element by a route that does not depend on this writer's layout — which is the same argument
+  `needsForcedAction` makes for action paragraphs.
+- **The serializer always emits `[[line:]]` and `[[nextline:]]`.** The plan left marker output
+  unspecified; a scene written without them re-parses with freshly allocated ids, and any shot
+  bound to the old ones silently covers nothing. A human-facing (unmarked) rendering is a separate
+  concern, not a mode of this function.
+- **`assignLineIds` needed widening _and_ a new placement rule.** `lineids.ts` scanned four element
+  types; step 2 added three more, and an unscanned line-bearing element makes the writer's slots
+  disagree with `scene.lines`. Worse, an own-line mark above an unforced `CUT TO:` fills the blank
+  the parser recognizes it by — turning it into an action paragraph, which the total re-parse safety
+  net then rejects as a whole-file refusal. So `Slot.inline` writes that one case's mark **on** the
+  element's line (`[[line: L2]]CUT TO:`): `extractNotes` strips it before classification while
+  `isBlank` reads the raw line, so the blanks stay where they were. Forcedness is read from the raw
+  source line, not inferred.
+- **`deterministicShots`' establishing shot now filters by kind, not by absence of a speaker.** The
+  attribution fix in step 4 is what made "unattributed" mean "narration" — before it, every
+  narration line after the first cue carried a speaker and was excluded from the plate.
+  `coversLines` is not in a shot's task hash, so this rehashed nothing.
+
+### What is representable, and what is not
+
+The property holds for every scene the parser can produce. Three constructible scenes it does not
+hold for, all of which require hand-building a `Scene` the parser would never emit:
+
+- **Text containing `[[`, `]]` or `/*`.** Notes and boneyard are stripped before classification, so
+  the text comes back shortened. Fountain has no escape for either.
+- **A narration line whose text is exactly `(…)`.** Written plainly it is an action paragraph and
+  round-trips; written inside a dialogue block it would be a parenthetical — but an unattributed
+  parenthetical is unreachable from the parser, so the writer puts it with the narration.
+- **Blank or whitespace-only dialogue text.** A blank line ends the dialogue block; there is no
+  representation of an empty spoken line, and forcing it with `!` would make it narration.

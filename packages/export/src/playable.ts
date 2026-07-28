@@ -62,8 +62,8 @@ export async function loadSceneShots(
  * The shots that bind lines → images for a scene. Prefers the persisted decomposition, then
  * the scene's own in-memory shots; with neither it reconstructs the *deterministic* baseline,
  * mirroring `@vn/pipeline`'s `deterministicShots` (which this package must not import): an
- * establishing shot over the scene's narration/action lines, plus one medium shot per
- * character over that character's dialogue lines. The reconstructed ids match the pipeline's
+ * establishing shot over the scene's unattributed lines, plus one medium shot per character
+ * over that character's dialogue lines. The reconstructed ids match the pipeline's
  * `${sceneId}__<raw>` scheme so images from a deterministic run resolve.
  */
 function coveringShots(scene: Scene, persisted?: readonly Shot[]): CoveringShot[] {
@@ -76,7 +76,7 @@ function coveringShots(scene: Scene, persisted?: readonly Shot[]): CoveringShot[
   const shots: CoveringShot[] = [
     {
       id: `${scene.id}__establishing`,
-      coversLines: lineIds((l) => l.kind === 'narration' || l.kind === 'action'),
+      coversLines: lineIds((l) => l.kind !== 'dialogue' && l.kind !== 'parenthetical'),
     },
   ];
   scene.characters.forEach((characterId, i) => {
@@ -133,6 +133,9 @@ function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[
       const image = assets.shotImage(shot.id);
       beats.push(image ? { type: 'show', image } : { type: 'show' });
     }
+    // A transition is coverable but is not shown: `CUT TO:` is an instruction to the reader
+    // of a screenplay, not a line of the story. It still changes the frame above.
+    if (line.kind === 'transition') continue;
     if ((line.kind === 'dialogue' || line.kind === 'parenthetical') && line.speaker) {
       beats.push({ type: 'say', who: line.speaker, text: line.text });
     } else {

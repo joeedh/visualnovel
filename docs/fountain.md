@@ -24,6 +24,7 @@
 - [Forced-element quick reference](#forced-element-quick-reference)
 - [A small complete example](#a-small-complete-example)
 - [A note on branching (project-specific)](#a-note-on-branching-project-specific)
+- [What the model retains (project-specific)](#what-the-model-retains-project-specific)
 - [Further reading](#further-reading)
 
 <!-- tocstop -->
@@ -341,6 +342,31 @@ are **allocated and written down** instead: a `[[line: L4]]` note on its own lin
 immediately above an element names that element, and `[[nextline:]]` records the next
 free number for the scene. Reading a screenplay never writes to it — unmarked elements
 get ids in memory, and persisting them is the separate `story.assignLineIds` command.
+
+An unforced `CUT TO:` is the one element whose mark goes **on** its own line
+(`[[line: L2]]CUT TO:`) rather than above it: the parser recognizes it by the blank line
+above, and a marker line is not blank.
+
+## What the model retains (project-specific)
+
+`splitScenes` turns a screenplay into scenes whose prose is a list of **lines**, and
+`sceneToFountain` writes them back — `parse(write(scene)) ≡ scene`, pinned by a property
+test. Which elements survive that trip is therefore a decision, not an accident:
+
+| Element | Kept as | Notes |
+|---|---|---|
+| Action | `narration` | The catch-all; written back forced with `!` when it would re-parse as something else |
+| Dialogue | `dialogue` | Carries its speaker (the cue name) |
+| Parenthetical | `parenthetical` | Carries its speaker |
+| Transition | `transition` | Coverable by a shot, but produces no beat in the playable — it is a cut, not a line the reader is shown |
+| Lyric | `lyric` | |
+| Centered text | `centered` | |
+| Scene heading | the scene itself | Prefix and time-of-day variant are kept — the variant is what the location plate is generated from |
+| Synopsis | `Scene.synopsis` | Handed to the LLM |
+| Notes | branch markers | Everything else in `[[ … ]]` is ignored |
+| Section (`#`) | **dropped** | Deliberate: it means nothing to the pipeline, and a line kind no shot could cover is worse than losing it |
+| Page break | **dropped** | Same |
+| `character.dual` (`^`) | **dropped** | Simultaneous dialogue has no representation downstream |
 
 ---
 

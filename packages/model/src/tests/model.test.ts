@@ -107,15 +107,16 @@ describe('splitScenes — structured lines', () => {
     ]);
   });
 
-  it('classifies kinds: narration, dialogue, stage-direction action', () => {
-    expect(lines.map((l) => l.kind)).toEqual(['narration', 'dialogue', 'action', 'dialogue']);
+  it('classifies kinds: narration and dialogue', () => {
+    expect(lines.map((l) => l.kind)).toEqual(['narration', 'dialogue', 'narration', 'dialogue']);
   });
 
   it('attributes dialogue to resolved character ids and leaves narration unattributed', () => {
     expect(lines[0]!.speaker).toBeUndefined();
     expect(lines[1]!.speaker).toBe('aiko');
-    // Action after a cue is a stage direction for that speaker.
-    expect(lines[2]!).toMatchObject({ kind: 'action', speaker: 'aiko' });
+    // A cue's speaker ends with its dialogue block: the action below it is nobody's.
+    expect(lines[2]!.kind).toBe('narration');
+    expect(lines[2]!.speaker).toBeUndefined();
     expect(lines[3]!.speaker).toBe('ren');
   });
 

@@ -19,9 +19,10 @@ export function shotId(sceneId: string, raw: string): string {
 export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
   const location = model.locations.get(scene.location);
   const variant = location?.variants[0]?.id ?? 'day';
-  // The establishing shot carries the scene's narration + non-attributed action beats.
+  // The establishing shot carries every unattributed line — narration, transitions, lyrics,
+  // centered text. Each character's medium shot below takes that character's dialogue.
   const establishingLines = scene.lines
-    .filter((l) => l.kind === 'narration' || l.kind === 'action')
+    .filter((l) => l.kind !== 'dialogue' && l.kind !== 'parenthetical')
     .map((l) => l.id);
   const shots: Shot[] = [
     {
@@ -82,8 +83,8 @@ export async function decomposeScene(
 ): Promise<Shot[]> {
   const location = model.locations.get(scene.location);
   const variants = location?.variants.map((v) => v.id) ?? ['day'];
-  // The identified lines, not `scene.body`: `coversLines` asks for line ids, and the flattened
-  // body has none in it. Handing over prose and expecting ids back is unanswerable.
+  // The identified lines, each prefixed with its id: `coversLines` asks for line ids, so
+  // handing over flattened prose and expecting ids back is unanswerable.
   const lines = scene.lines.map(
     (l) => `[${l.id}] ${l.speaker ? `${l.kind}/${l.speaker}` : l.kind}: ${l.text}`,
   );

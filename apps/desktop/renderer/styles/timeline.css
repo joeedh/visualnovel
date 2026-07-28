@@ -132,14 +132,27 @@
   line-height: 1.4;
   color: var(--paper);
 }
-.tl-line.action .text,
-.tl-line.narration .text {
+.tl-line.narration .text,
+.tl-line.lyric .text {
   color: var(--mist);
   font-style: italic;
 }
 .tl-line.parenthetical .text {
   color: var(--mist-dim);
   font-size: 13px;
+}
+/* Machine-ish material: a transition is an instruction, a centered line is typeset. */
+.tl-line.transition .text {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mist-dim);
+  text-align: right;
+}
+.tl-line.centered .text {
+  text-align: center;
+  text-transform: uppercase;
 }
 /* Uncovered: this line renders with no image in the playable. */
 .tl-line.gap {

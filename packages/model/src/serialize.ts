@@ -56,31 +56,131 @@ export function docToMarkdown(doc: FrontMatterDoc): string {
   return stringifyFrontMatter(doc.data, doc.body.trimStart());
 }
 
-/** A scene heading reconstructed from a location id (variant info is not on the Scene). */
-function headingFor(scene: Scene): string {
-  return `INT. ${scene.location.replace(/[-_]/g, ' ').toUpperCase()} - DAY`;
+// Mirrors `SCENE_PREFIX` and the character-cue test in `@vn/parse`'s fountain.ts. Duplicated
+// rather than exported from there for the same reason `branchpatch.ts` duplicates the first:
+// this is one caller's need, and the parser is on the hot path for every consumer.
+const SCENE_PREFIX = /^(int\.?\/ext\.?|int\.?|ext\.?|est\.?|i\/e)[ .]/i;
+const CUE_SHAPE = /^[A-Z0-9][A-Z0-9 .'`-]*(\([^)]*\))?\s*\^?$/;
+
+/** The local part of a composed `${sceneId}:L<n>` line id — what a `[[line:]]` mark carries. */
+function localOf(id: string): string {
+  const colon = id.lastIndexOf(':');
+  return colon < 0 ? id : id.slice(colon + 1);
 }
 
 /**
- * Serialize a Scene back into a Fountain block: heading, the branch markers that carry
- * its id / choices / linear next, an optional synopsis, then the narrative body. Re-parsing
- * the result (`parseFountain` → `splitScenes`) recovers the scene's graph fields — id,
- * location, choices, next, synopsis (body/cast reconstruction is best-effort, since the
- * body is stored as flattened prose). Used for new-scene scaffolds and diff previews.
+ * The allocator to write when the scene carries none. Derived the way `splitScenes` derives
+ * it — past every id in use — so a scene that has never been through a read still gets a mark
+ * that cannot hand out an id twice.
+ */
+function nextLineIdOf(scene: Scene): number {
+  let max = 0;
+  for (const line of scene.lines) {
+    const m = /^L(\d+)$/.exec(localOf(line.id));
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return max + 1;
+}
+
+/** Whether `text` would be read as a character cue rather than an action paragraph. */
+function looksLikeCue(text: string): boolean {
+  return CUE_SHAPE.test(text) && /[A-Z]/.test(text) && text === text.toUpperCase();
+}
+
+/**
+ * Whether an action paragraph has to be forced with `!` to come back as itself. Every
+ * alternative reading the parser has is tested, including the ones that also require a blank
+ * line above: the surrounding blanks are this writer's to arrange, but a serializer that is
+ * only correct because of its own layout breaks the moment anything reformats it.
+ */
+function needsForcedAction(text: string): boolean {
+  const t = text.trim();
+  if (t === '' || text.startsWith('!')) return true;
+  if (/^[#=~>]/.test(t)) return true;
+  if (t.startsWith('.') && !t.startsWith('..')) return true;
+  if (SCENE_PREFIX.test(t)) return true;
+  if (/[A-Z][A-Z ]*TO:$/.test(t)) return true;
+  return looksLikeCue(t);
+}
+
+/** The scene heading, written from the fields the heading was read into. */
+function headingOf(scene: Scene): string {
+  const name = scene.location.replace(/[-_]/g, ' ').toUpperCase();
+  const variant = (scene.locationVariant ?? 'day').replace(/[-_]/g, ' ').toUpperCase();
+  // No prefix means the heading was forced, and a forced heading has to stay forced — without
+  // the leading `.` the line is an action paragraph and the scene stops existing.
+  const head = scene.headingPrefix ? `${scene.headingPrefix} ${name}` : `.${name}`;
+  return `${head} - ${variant}`;
+}
+
+/**
+ * Serialize a Scene back into a Fountain block, losslessly: `parse(write(scene)) ≡ scene` for
+ * every field the model carries except `shots`, which is not serialized. The heading comes from
+ * the scene's own heading fields — a heading reconstructed from the location slug alone is
+ * wrong about the variant, and the variant is what the location plate is generated from.
+ *
+ * Line ids are written as `[[line:]]` marks and the allocator as `[[nextline:]]`, the same
+ * placement `assignLineIds` uses, so a scene this wrote and a scene an author marked by hand
+ * are the same file. A human-facing (unmarked) rendering is a separate concern.
+ *
+ * Three blank-line rules govern the body, because `parseFountain` tests blankness on the *raw*
+ * line and a `[[…]]` marker line is not blank:
+ *
+ * - a cue always gets a blank line above it, including as the scene's first element;
+ * - nothing goes between a cue and its first dialogue line except a `[[line:]]` mark;
+ * - anything that could be read as another element is written in its forced form.
  */
 export function sceneToFountain(scene: Scene): string {
-  const lines: string[] = [headingFor(scene), ''];
-  lines.push(`[[scene: ${scene.id}]]`);
+  const out: string[] = [headingOf(scene), ''];
+  out.push(`[[scene: ${scene.id}]]`);
   for (const choice of scene.choices) {
-    lines.push(`[[choice: "${choice.label}" -> ${choice.goto}]]`);
+    out.push(`[[choice: "${choice.label}" -> ${choice.goto}]]`);
   }
-  if (scene.next) lines.push(`[[next: ${scene.next}]]`);
-  lines.push('');
-  if (scene.synopsis) {
-    lines.push(`= ${scene.synopsis}`, '');
+  if (scene.next) out.push(`[[next: ${scene.next}]]`);
+  out.push(`[[nextline: ${scene.nextLineId ?? nextLineIdOf(scene)}]]`, '');
+  if (scene.synopsis) out.push(`= ${scene.synopsis}`, '');
+
+  /** Open a new block: everything but a continuing dialogue line needs a blank line above. */
+  const gap = (): void => {
+    if (out[out.length - 1] !== '') out.push('');
+  };
+  let openSpeaker: string | undefined;
+
+  for (const line of scene.lines) {
+    const mark = `[[line: ${localOf(line.id)}]]`;
+    const attributed = line.kind === 'dialogue' || line.kind === 'parenthetical';
+    if (attributed && line.speaker !== undefined) {
+      if (line.speaker !== openSpeaker) {
+        gap();
+        // A mixed-case speaker is not a cue by the auto-detection rules; `@` forces it.
+        out.push(looksLikeCue(line.speaker) ? line.speaker : `@${line.speaker}`);
+        openSpeaker = line.speaker;
+      }
+      out.push(mark, line.kind === 'parenthetical' ? `(${line.text})` : line.text);
+      continue;
+    }
+
+    openSpeaker = undefined;
+    gap();
+    out.push(mark);
+    if (line.kind === 'transition') {
+      // Always the forced `>` form: the unforced `CUT TO:` needs a blank line above it, and
+      // the line's own `[[line:]]` mark is sitting there.
+      out.push(`>${line.text}`);
+    } else if (line.kind === 'lyric') {
+      out.push(`~${line.text}`);
+    } else if (line.kind === 'centered') {
+      out.push(`>${line.text}<`);
+    } else {
+      // An unattributed dialogue/parenthetical is unreachable from `parseFountain` — both live
+      // inside a block a cue opened — so it falls here with the narration.
+      const text = line.kind === 'parenthetical' ? `(${line.text})` : line.text;
+      out.push(needsForcedAction(text) ? `!${text}` : text);
+    }
   }
-  if (scene.body.trim()) lines.push(scene.body.trim(), '');
-  return lines.join('\n');
+
+  gap();
+  return out.join('\n');
 }
 
 /** A partial edit to a character; only the provided fields are changed. */

@@ -148,7 +148,7 @@ describe('deterministicShots', () => {
       { id: 's1:L1', kind: 'narration', text: 'The room is quiet.' },
       { id: 's1:L2', kind: 'dialogue', speaker: 'aiko', text: 'Hi.' },
       { id: 's1:L3', kind: 'dialogue', speaker: 'ben', text: 'Hey.' },
-      { id: 's1:L4', kind: 'action', speaker: 'aiko', text: 'She waves.' },
+      { id: 's1:L4', kind: 'transition', text: 'CUT TO:' },
     ];
     const m = model(
       [character('aiko', 'approved', 'h1'), character('ben', 'approved', 'h2')],
@@ -156,8 +156,7 @@ describe('deterministicShots', () => {
       [location('class')],
     );
     const shots = deterministicShots(m.scenes.get('s1')!, m);
-    // Establishing covers narration + non-attributed... here the action is attributed but still
-    // narration/action-kinded, so both L1 and L4 land on the establishing shot.
+    // Everything unattributed goes to the establishing shot, transitions included.
     expect(shots[0]!.coversLines).toEqual(['s1:L1', 's1:L4']);
     expect(shots[1]!.coversLines).toEqual(['s1:L2']); // aiko's dialogue
     expect(shots[2]!.coversLines).toEqual(['s1:L3']); // ben's dialogue

@@ -1,4 +1,4 @@
-import type { Choice, Diagnostic, Scene, SceneLine } from '@vn/types';
+import type { Choice, Diagnostic, HeadingPrefix, Scene, SceneLine } from '@vn/types';
 import { parseBranchMarker, type FountainScript } from '@vn/parse';
 import { slug } from './slug.js';
 
@@ -9,13 +9,30 @@ export interface MinedLocation {
   variant: string;
 }
 
+const HEADING_PREFIX = /^(int\.?\/ext\.?|int\.?|ext\.?|est\.?|i\/e)[ .]+/i;
+
 /** Parse `INT. CLASSROOM - AFTERNOON` into a location id/name + time-of-day variant. */
 export function parseHeading(heading: string): MinedLocation {
-  const withoutPrefix = heading.replace(/^(int\.?\/ext\.?|int\.?|ext\.?|est\.?|i\/e)[ .]+/i, '');
+  const withoutPrefix = heading.replace(HEADING_PREFIX, '');
   const parts = withoutPrefix.split(/\s+-\s+/);
   const name = (parts[0] ?? withoutPrefix).trim();
   const variant = parts.length > 1 ? slug(parts.slice(1).join(' ')) : 'day';
   return { id: slug(name), name: name.replace(/\s+/g, ' ').trim(), variant: variant || 'day' };
+}
+
+/**
+ * The heading's interior/exterior prefix in canonical spelling, or `undefined` when it has
+ * none — a forced `.HEADING`. Kept on the scene because `sceneToFountain` writes the heading
+ * back and a reconstructed one is wrong about the thing the plate is generated from.
+ */
+export function headingPrefixOf(heading: string): HeadingPrefix | undefined {
+  const raw = HEADING_PREFIX.exec(heading)?.[1]?.toLowerCase().replace(/\./g, '');
+  if (!raw) return undefined;
+  if (raw === 'int/ext') return 'INT./EXT.';
+  if (raw === 'i/e') return 'I/E';
+  if (raw === 'ext') return 'EXT.';
+  if (raw === 'est') return 'EST.';
+  return 'INT.';
 }
 
 /** What one `splitScenes` pass recovered from a script. */
@@ -29,7 +46,11 @@ export interface SplitResult {
 /**
  * Split a Fountain script into scene graph nodes (report §6, §P5.1). Each scene heading
  * starts a node; branch markers inside the node supply its id, choices, and linear
- * `next`. The narrative body is retained for the later (generative) shot decomposition.
+ * `next`. The prose is retained as {@link Scene.lines} — the only form it is kept in.
+ *
+ * Every element that can carry art becomes a {@link SceneLine} — dialogue, parentheticals,
+ * action, transitions, lyrics and centered text. Only `section` and `page_break` are dropped,
+ * deliberately (see the `default` below).
  *
  * Line ids are **honoured where marked and allocated where not**: `[[line: L4]]` names the
  * next line-bearing element, `[[nextline: n]]` is the scene's allocator, and anything
@@ -42,7 +63,6 @@ export function splitScenes(script: FountainScript): SplitResult {
   const diagnostics: Diagnostic[] = [];
   let current: Scene | null = null;
   let pendingSynopsis: string | undefined;
-  const bodyLines: string[] = [];
   const cueNames = new Set<string>();
   const sceneIdOverrides = new Map<Scene, string>();
   /** Active speaker cue within the current scene; carried across the flattened element list. */
@@ -59,11 +79,9 @@ export function splitScenes(script: FountainScript): SplitResult {
   const flush = (): void => {
     if (current) {
       if (pendingLineId !== undefined) addDangling(current, pendingLineId);
-      current.body = bodyLines.join('\n').trim();
       current.characters = [...cueNames];
       scenes.push(current);
     }
-    bodyLines.length = 0;
     cueNames.clear();
     currentSpeaker = undefined;
     pendingLineId = undefined;
@@ -82,6 +100,12 @@ export function splitScenes(script: FountainScript): SplitResult {
 
   let index = 0;
   for (const el of script.elements) {
+    // A cue's speaker survives only its own dialogue block. Notes are interleaved into blocks
+    // and must not break it; everything else ends it. Left standing, the speaker attributed
+    // narration three exchanges later to whoever spoke last.
+    if (el.type !== 'dialogue' && el.type !== 'parenthetical' && el.type !== 'note') {
+      currentSpeaker = undefined;
+    }
     switch (el.type) {
       case 'scene_heading': {
         flush();
@@ -91,16 +115,15 @@ export function splitScenes(script: FountainScript): SplitResult {
         current = {
           id: el.sceneNumber ? slug(el.sceneNumber) : `${loc.id}_${index}`,
           location: loc.id,
+          locationVariant: loc.variant,
+          headingPrefix: headingPrefixOf(el.text),
           characters: [],
           synopsis: pendingSynopsis,
-          body: '',
           lines: [],
           choices: [],
           next: undefined,
           shots: [],
         };
-        // Stash the heading's intended variant on the scene via the first mined entry.
-        current.location = loc.id;
         pendingSynopsis = undefined;
         break;
       }
@@ -127,32 +150,24 @@ export function splitScenes(script: FountainScript): SplitResult {
       case 'character':
         cueNames.add(el.name);
         currentSpeaker = el.name;
-        if (current) bodyLines.push(`${el.name}:`);
         break;
       case 'dialogue':
-        if (current) {
-          bodyLines.push(el.text);
-          pushLine({ kind: 'dialogue', speaker: currentSpeaker, text: el.text });
-        }
+        pushLine({ kind: 'dialogue', speaker: currentSpeaker, text: el.text });
         break;
       case 'parenthetical':
-        if (current) {
-          bodyLines.push(el.text);
-          pushLine({ kind: 'parenthetical', speaker: currentSpeaker, text: el.text });
-        }
+        pushLine({ kind: 'parenthetical', speaker: currentSpeaker, text: el.text });
         break;
       case 'action':
-        if (current) {
-          bodyLines.push(el.text);
-          // Action after a cue is a stage direction for that speaker; otherwise narration.
-          pushLine(
-            currentSpeaker
-              ? { kind: 'action', speaker: currentSpeaker, text: el.text }
-              : { kind: 'narration', text: el.text },
-          );
-        }
+        pushLine({ kind: 'narration', text: el.text });
+        break;
+      case 'transition':
+      case 'lyric':
+      case 'centered':
+        pushLine({ kind: el.type, text: el.text });
         break;
       default:
+        // `section` and `page_break` are dropped deliberately: they mean nothing to the
+        // pipeline, and a line kind no shot would ever cover is worse than losing them.
         break;
     }
   }

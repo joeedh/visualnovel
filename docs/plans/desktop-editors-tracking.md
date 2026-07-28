@@ -62,6 +62,11 @@ The branch editor therefore needs a **surgical marker patcher** that rewrites on
 as the safety net. Mitigating factor: there is exactly one screenplay file
 (`packages/store/src/worktree.ts:43` reads `fountain[0]` only).
 
+**Resolved** — [`lossless-scene-serialization.md`](lossless-scene-serialization.md) rewrote
+`sceneToFountain` against `Scene.lines` and retired `Scene.body` entirely; the contract
+`parse(write(scene)) ≡ scene` is pinned by a property test. The surgical patcher stays for
+inherited files, where the author's formatting is theirs to keep.
+
 ### Shots are never persisted (plan 4, Wave 1)
 
 `planTasks` decomposes scenes lazily into `scene.shots` in memory

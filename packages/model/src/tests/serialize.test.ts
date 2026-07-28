@@ -98,7 +98,6 @@ describe('sceneToFountain', () => {
       location: 'rooftop',
       characters: [],
       synopsis: 'Ren hesitates at the door.',
-      body: 'Ren stands at the threshold.',
       lines: [],
       choices: [
         { label: 'Knock', goto: 's13' },
@@ -124,7 +123,6 @@ describe('sceneToFountain', () => {
       id: 'a',
       location: 'hall',
       characters: [],
-      body: '',
       lines: [],
       choices: [],
       next: 'b',

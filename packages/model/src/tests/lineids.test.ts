@@ -51,7 +51,7 @@ describe('splitScenes — line id allocation', () => {
   it('honours a mark on action, on dialogue after a cue, and the allocator', () => {
     const { scenes, diagnostics } = split(MARKED);
     expect(localIds(MARKED)).toEqual(['L1', 'L4', 'L7']);
-    expect(scenes[0]!.lines.map((l) => l.kind)).toEqual(['narration', 'dialogue', 'action']);
+    expect(scenes[0]!.lines.map((l) => l.kind)).toEqual(['narration', 'dialogue', 'narration']);
     expect(scenes[0]!.nextLineId).toBe(12);
     expect(diagnostics).toEqual([]);
   });
@@ -218,7 +218,10 @@ Hi.
     const elements = parseFountain(text).elements.map((e) => e.type);
     expect(elements).toContain('transition');
     expect(elements).toContain('character');
+    // The unforced transition keeps its blank line above, so its mark rides on its own line.
+    expect(text).toContain('\n\n[[line: L2]]CUT TO:\n\n');
     expect(sceneOf(text)[0]!.lines).toEqual(sceneOf(risky)[0]!.lines);
+    expect(assignLineIds(text).text).toBe(text);
   });
 
   it('refuses a scene it does not have', () => {

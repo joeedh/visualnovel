@@ -128,7 +128,7 @@ describe('applySceneBranchEdit', () => {
     ]);
     expect(diagnostics).toEqual([]);
     expect(text.split('\n').slice(0, 2)).toEqual(['INT. GARDEN - DAY', '[[next: elsewhere]]']);
-    expect(scenesOf(text)[0]?.body).toBe('Rain on the stones.');
+    expect(scenesOf(text)[0]?.lines.map((l) => l.text)).toEqual(['Rain on the stones.']);
   });
 
   // The parser strips one leading and one trailing quote, and `->` splits at the *last*

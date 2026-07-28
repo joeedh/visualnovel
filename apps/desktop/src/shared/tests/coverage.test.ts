@@ -129,7 +129,7 @@ describe('setCoverage', () => {
 // ---------------------------------------------------------------------------
 
 const SCRIPT: CoverageLine[] = [
-  { id: 's:L1', kind: 'action', text: 'The roof, at dusk.' },
+  { id: 's:L1', kind: 'narration', text: 'The roof, at dusk.' },
   { id: 's:L2', kind: 'dialogue', speaker: 'aiko', text: 'Um… hello.' },
   { id: 's:L3', kind: 'dialogue', speaker: 'ren', text: 'You came.' },
   { id: 's:L4', kind: 'narration', text: 'She bows, a little too deeply.' },
