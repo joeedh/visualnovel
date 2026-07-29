@@ -108,8 +108,11 @@ re-importing its output reproduces the project.
    `packages/model/src/screenplay.ts`; it also reports the `entry` the chunk form needs for
    `start:`, and the comparison projection `branchpatch.ts` and `lineids.ts` each kept privately
    is now the shared `canonicalScenes`.
-2. **`scriptFromScenes` in `@vn/model`.** The inverse projection: graph-ordered scenes in, one
-   Fountain string out, `{ clean }` option. Built on `sceneToFountain`, not beside it.
+2. ✔ **`scriptFromScenes` in `@vn/model`.** The inverse projection: graph-ordered scenes in, one
+   Fountain string out, `{ clean }` option. Built on `sceneToFountain`, not beside it. Shipped
+   taking the graph rather than a pre-ordered list — the reading order is part of the contract, so
+   it belongs where it can be tested — over a `SceneGraph` (`scenes` + `entry`) that a
+   `ProjectModel` satisfies without the projection asking for fields it will not write.
 3. **`vngen import`.** The CLI command, the `.imported` rename, refusal on an existing `scenes/`,
    and the abort-on-divergence path. Usage text updated for both exports.
 4. **`vngen screenplay`.** The CLI command, `-o` / `-` / `--clean`.

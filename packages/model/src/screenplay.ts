@@ -1,19 +1,21 @@
 /**
- * Turning one whole-screenplay Fountain file into one `scenes/<id>.md` chunk per scene
- * (Fountain import/export, step 1). Pure — a parsed script in, the documents to write out — so
- * the CLI command is left with nothing but I/O and refusals.
+ * Both directions between one whole-screenplay Fountain file and one `scenes/<id>.md` chunk per
+ * scene (Fountain import/export, steps 1–2). Pure — parsed input in, the text or documents to
+ * write out — so the CLI commands are left with nothing but I/O and refusals.
  *
- * The conversion has to prove itself before a byte of it is written, because an author cannot
- * review a migration they have not seen. Every chunk is re-read through `sceneFromDoc` and
- * compared against the scene the screenplay produced; one divergence empties `chunks`, the same
- * way `branchpatch.ts` discards its patch.
+ * The two are not symmetric, on purpose. **Import** has to prove itself before a byte of it is
+ * written, because an author cannot review a migration they have not seen: every chunk is re-read
+ * through `sceneFromDoc` and compared against the scene the screenplay produced, and one
+ * divergence empties `chunks`, the same way `branchpatch.ts` discards its patch. **Export** is a
+ * projection with no such duty — it claims nothing about being re-importable, though the default
+ * form is.
  */
 import type { Diagnostic, Scene } from '@vn/types';
 import type { FountainScript, FrontMatterDoc } from '@vn/parse';
 import { canonicalScenes } from './canonical.js';
 import { sceneFromDoc } from './entities.js';
 import { splitScenes } from './scenes.js';
-import { sceneToDoc } from './serialize.js';
+import { sceneToDoc, sceneToFountain } from './serialize.js';
 
 /** One converted scene: the filename stem it belongs at, and the document to write there. */
 export interface SceneChunk {
@@ -186,4 +188,86 @@ export function sceneChunksFromScript(
     entry: failed ? undefined : (opts.start ?? split.scenes[0]?.id),
     diagnostics,
   };
+}
+
+/**
+ * What the export needs of a project: the scenes and where the story starts. A `ProjectModel` is
+ * one, and so is a bare scene list — the projection has no business asking for characters,
+ * locations or diagnostics it will not write.
+ */
+export interface SceneGraph {
+  scenes: Map<string, Scene>;
+  entry?: string | undefined;
+}
+
+/** Options for {@link scriptFromScenes}. */
+export interface ScreenplayOptions {
+  /**
+   * Drop the `[[…]]` machine markers, for a destination that is a human or Final Draft. **One
+   * way**: the scene ids, the branch structure and `nextLineId` all live in those markers, so
+   * clean output is a reading copy and not an input to `vngen import`.
+   */
+  clean?: boolean;
+}
+
+/** A marker-only line, and nothing else on it — what `clean` removes. */
+const MARKER_LINE = /^\s*(?:\[\[[\s\S]*?\]\]\s*)+$/;
+
+/**
+ * Marker lines were carrying this file's blank-line structure, so removing them leaves doubled
+ * blanks behind — and in Fountain a blank line is not decoration.
+ */
+function stripMarkers(text: string): string {
+  const out: string[] = [];
+  for (const line of text.split('\n')) {
+    if (MARKER_LINE.test(line)) continue;
+    if (line.trim() === '' && (out.length === 0 || out[out.length - 1]?.trim() === '')) continue;
+    out.push(line);
+  }
+  return out.join('\n');
+}
+
+/**
+ * Reading order: breadth-first from the entry, `next` before `choices`. Not the order the scenes
+ * are stored in — a directory sorts alphabetically, which produces a screenplay nobody can read —
+ * but the order a playthrough tends to meet them in.
+ */
+function readingOrder(graph: SceneGraph): { ordered: Scene[]; unreachable: Scene[] } {
+  const ordered: Scene[] = [];
+  const seen = new Set<string>();
+  const queue = graph.entry === undefined ? [] : [graph.entry];
+  while (queue.length > 0) {
+    const id = queue.shift() as string;
+    if (seen.has(id)) continue;
+    const scene = graph.scenes.get(id);
+    // A dangling goto is `buildModel`'s error to report; here it is simply not a scene to write.
+    if (!scene) continue;
+    seen.add(id);
+    ordered.push(scene);
+    if (scene.next) queue.push(scene.next);
+    for (const choice of scene.choices) queue.push(choice.goto);
+  }
+  return { ordered, unreachable: [...graph.scenes.values()].filter((s) => !seen.has(s.id)) };
+}
+
+/**
+ * Project a scene graph back into one Fountain screenplay — the escape hatch that keeps the chunk
+ * format from being lock-in. Read-only, and stale the moment it is written: this is not a mirror
+ * kept in sync, it is a file produced on request.
+ *
+ * Scenes come out in reading order, with anything the entry cannot reach appended under a
+ * `# Unreachable` section rather than dropped — an unreachable scene is still the author's work.
+ * Machine markers are kept by default (they are Fountain notes, so every renderer ignores them)
+ * which makes the output a valid `vngen import` input; `clean` drops them one-way.
+ */
+export function scriptFromScenes(graph: SceneGraph, opts: ScreenplayOptions = {}): string {
+  const { ordered, unreachable } = readingOrder(graph);
+  const blocks = ordered.map((scene) => sceneToFountain(scene));
+  if (unreachable.length > 0) {
+    blocks.push('# Unreachable\n', ...unreachable.map((scene) => sceneToFountain(scene)));
+  }
+  // Each block already ends in a newline, so joining on one puts a blank line between them —
+  // which is what a scene heading needs above it.
+  const text = blocks.join('\n');
+  return opts.clean ? stripMarkers(text) : text;
 }

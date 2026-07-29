@@ -1,9 +1,11 @@
 /**
- * `sceneChunksFromScript` — the pure half of `vngen import`.
+ * The pure halves of `vngen import` and `vngen screenplay`.
  *
- * Two things are being asserted, and only the second is about diagnostics: that every fixture
- * screenplay converts to chunks that re-read as the same scenes (the migration is faithful), and
- * that each way it can go wrong empties `chunks` rather than writing a partial conversion.
+ * For the importer, two things are being asserted and only the second is about diagnostics: that
+ * every fixture screenplay converts to chunks that re-read as the same scenes (the migration is
+ * faithful), and that each way it can go wrong empties `chunks` rather than writing a partial
+ * conversion. For the exporter it is one thing — the default output is still a screenplay this
+ * repo can read back, which is what makes the chunk format an escape hatch rather than lock-in.
  */
 import { parseFountain, parseFrontMatter } from '@vn/parse';
 import type { Scene } from '@vn/types';
@@ -11,8 +13,14 @@ import { SCRIPTS } from '@vn/testkit';
 import { canonicalScenes } from '../canonical.js';
 import { sceneFromDoc } from '../entities.js';
 import { splitScenes } from '../scenes.js';
-import { sceneChunksFromScript } from '../screenplay.js';
+import { sceneChunksFromScript, scriptFromScenes, type SceneGraph } from '../screenplay.js';
 import { docToMarkdown } from '../serialize.js';
+
+/** The scene graph a script describes, as the exporter wants it. */
+function graphOf(script: string, entry = 'arrival'): SceneGraph {
+  const { scenes } = splitScenes(parseFountain(script));
+  return { scenes: new Map(scenes.map((s) => [s.id, s])), entry };
+}
 
 const codes = (script: string, start?: string): string[] =>
   sceneChunksFromScript(
@@ -156,6 +164,113 @@ She sets her bag down.
     for (const script of Object.values(SCRIPTS)) {
       expect(codes(script)).toEqual([]);
     }
+  });
+});
+
+describe('scriptFromScenes', () => {
+  for (const [name, script] of Object.entries(SCRIPTS)) {
+    it(`writes '${name}' as a screenplay that reads back as the same scenes`, () => {
+      const graph = graphOf(script);
+      const out = scriptFromScenes(graph);
+      const back = splitScenes(parseFountain(out));
+
+      expect(back.diagnostics).toEqual([]);
+      // Reading order, not storage order — so compare against the ids the export chose.
+      const written = out.match(/\[\[scene: (\S+)\]\]/g)?.map((m) => /: (\S+)\]\]/.exec(m)?.[1]);
+      expect(back.scenes.map((s) => s.id)).toEqual(written);
+      expect(canonicalScenes(back.scenes)).toBe(
+        canonicalScenes(back.scenes.map((s) => graph.scenes.get(s.id) as Scene)),
+      );
+    });
+  }
+
+  // Pinned verbatim: this is a file a user opens, so its layout is part of the contract and a
+  // reformat should have to be deliberate. `clean` is the version a screenwriting tool sees.
+  it('lays a screenplay out the way an author expects', () => {
+    expect(scriptFromScenes(graphOf(SCRIPTS.linear))).toBe(
+      `INT. CLASSROOM - DAY
+
+[[scene: arrival]]
+[[next: rooftop]]
+[[nextline: 3]]
+
+[[line: L1]]
+Aiko sets her bag down by the window.
+
+AIKO
+[[line: L2]]
+It's quieter than I expected.
+
+EXT. ROOFTOP - EVENING
+
+[[scene: rooftop]]
+[[nextline: 2]]
+
+[[line: L1]]
+The city hums somewhere below.
+`,
+    );
+    expect(scriptFromScenes(graphOf(SCRIPTS.linear), { clean: true })).toBe(
+      `INT. CLASSROOM - DAY
+
+Aiko sets her bag down by the window.
+
+AIKO
+It's quieter than I expected.
+
+EXT. ROOFTOP - EVENING
+
+The city hums somewhere below.
+`,
+    );
+  });
+
+  it('orders breadth-first from the entry, next before choices', () => {
+    const out = scriptFromScenes(graphOf(SCRIPTS.branching));
+    expect(splitScenes(parseFountain(out)).scenes.map((s) => s.id)).toEqual([
+      'arrival',
+      'rooftop',
+      'good_end',
+      'bad_end',
+    ]);
+  });
+
+  it('appends what the entry cannot reach under a section rather than dropping it', () => {
+    const out = scriptFromScenes(graphOf(SCRIPTS.orphan));
+    expect(out).toContain('# Unreachable');
+    expect(out.indexOf('[[scene: forgotten]]')).toBeGreaterThan(out.indexOf('# Unreachable'));
+    expect(splitScenes(parseFountain(out)).scenes.map((s) => s.id)).toEqual([
+      'arrival',
+      'rooftop',
+      'forgotten',
+    ]);
+  });
+
+  it('writes nothing but the section when there is no entry to walk from', () => {
+    const out = scriptFromScenes({ scenes: graphOf(SCRIPTS.linear).scenes, entry: undefined });
+    expect(out.startsWith('# Unreachable')).toBe(true);
+    expect(splitScenes(parseFountain(out)).scenes).toHaveLength(2);
+  });
+
+  it('clean output drops every marker and leaves readable Fountain', () => {
+    const out = scriptFromScenes(graphOf(SCRIPTS.branching), { clean: true });
+    expect(out).not.toContain('[[');
+    expect(out).not.toMatch(/\n\n\n/);
+    // Still a screenplay: headings, cues and dialogue survive; only the machine notes went.
+    expect(out).toContain('INT. CLASSROOM - AFTERNOON');
+    expect(out).toContain('AIKO');
+    expect(out).toContain('Um... hello.');
+    const back = splitScenes(parseFountain(out));
+    expect(back.scenes.map((s) => s.characters)).toEqual([['AIKO'], ['AIKO', 'HARUKI'], [], []]);
+  });
+
+  it('clean output is one-way: the branch structure went with the markers', () => {
+    const back = splitScenes(
+      parseFountain(scriptFromScenes(graphOf(SCRIPTS.branching), { clean: true })),
+    );
+    expect(back.scenes.map((s) => s.next)).toEqual([undefined, undefined, undefined, undefined]);
+    expect(back.scenes.flatMap((s) => s.choices)).toEqual([]);
+    expect(back.scenes.map((s) => s.id)).not.toContain('arrival');
   });
 });
 
