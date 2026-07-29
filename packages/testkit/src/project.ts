@@ -75,10 +75,11 @@ export interface MakeProjectOptions {
   /** Fountain source. Default: `SCRIPTS.branching`. */
   script?: string;
   /**
-   * Which on-disk form the scenes are written in. `'chunks'` splits `script` into
-   * `scenes/<id>.md` through the same writer the app uses and adds `start:` to `project.yaml`;
-   * `'screenplay'` writes the one `screenplay/script.fountain`. The script is the same either
-   * way — a fixture describes its story once, and the format is how it is stored.
+   * Which on-disk form the scenes are written in. Default `'chunks'`: `script` is split into
+   * `scenes/<id>.md` through the same writer the app uses, with `start:` added to
+   * `project.yaml`. `'screenplay'` writes the one `screenplay/script.fountain` instead, and
+   * exists so the fallback stays under test. The script is the same either way — a fixture
+   * describes its story once, and the format is how it is stored.
    */
   format?: 'chunks' | 'screenplay';
   /** `git init` + a deterministic identity + an initial commit of the inputs. */
@@ -282,7 +283,7 @@ export class TestProject {
 /** Build a real project on disk from authored inputs. Always `cleanup()` in a `finally`. */
 export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestProject> {
   const script = opts.script ?? SCRIPTS.branching;
-  const format = opts.format ?? 'screenplay';
+  const format = opts.format ?? 'chunks';
   const split = splitScenes(parseFountain(script));
   const inferred = inferInputs(split);
   const characters = (opts.characters ?? inferred.characters).map((c) => toSpec<CharacterSpec>(c));

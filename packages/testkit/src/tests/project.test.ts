@@ -17,7 +17,9 @@ describe('makeProject — inputs on disk', () => {
       expect(config.title).toBe('The Transfer Student');
       expect(errors(model)).toEqual([]);
       expect(model.entry).toBe('arrival');
-      expect([...model.scenes.keys()]).toEqual(['arrival', 'rooftop', 'good_end', 'bad_end']);
+      // Chunk order is the directory's, i.e. by id: a `scenes/` project has no document order,
+      // which is exactly why the entry scene is named in `project.yaml` rather than inferred.
+      expect([...model.scenes.keys()]).toEqual(['arrival', 'bad_end', 'good_end', 'rooftop']);
     } finally {
       await p.cleanup();
     }
@@ -78,8 +80,8 @@ describe('makeProject — inputs on disk', () => {
 });
 
 describe('makeProject — scenes as chunks', () => {
-  it('writes one file per scene and no screenplay, entry named by start:', async () => {
-    const p = await makeProject({ format: 'chunks' });
+  it('writes one file per scene and no screenplay by default, entry named by start:', async () => {
+    const p = await makeProject();
     try {
       const { config, model } = await p.reload();
       expect(config.start).toBe('arrival');
@@ -93,6 +95,22 @@ describe('makeProject — scenes as chunks', () => {
       expect(chunk).not.toContain('[[scene:');
       expect(chunk).toContain('INT. CLASSROOM - AFTERNOON');
       await expect(fs.stat(p.paths.screenplayDir)).rejects.toThrow();
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('still writes the one-screenplay form on request, so the fallback stays tested', async () => {
+    const p = await makeProject({ format: 'screenplay' });
+    try {
+      const { config, model } = await p.reload();
+      expect(config.start).toBeUndefined();
+      expect(errors(model)).toEqual([]);
+      // Document order, and the entry inferred from it rather than named.
+      expect([...model.scenes.keys()]).toEqual(['arrival', 'rooftop', 'good_end', 'bad_end']);
+      expect(model.entry).toBe('arrival');
+      expect(await p.read('screenplay/script.fountain')).toContain('[[scene: arrival]]');
+      await expect(fs.stat(p.paths.scenesDir)).rejects.toThrow();
     } finally {
       await p.cleanup();
     }
@@ -189,10 +207,10 @@ describe('TestProject — git', () => {
       expect((await p.git!.status()).dirty).toBe(false);
       expect(await p.diff()).toBe('');
 
-      const script = await p.read('screenplay/script.fountain');
-      await p.write('screenplay/script.fountain', script.replace('[[next: rooftop]]', ''));
+      const chunk = await p.read('scenes/arrival.md');
+      await p.write('scenes/arrival.md', chunk.replace('[[next: rooftop]]', ''));
 
-      const diff = await p.diff('screenplay/');
+      const diff = await p.diff('scenes/');
       expect(diff).toContain('-[[next: rooftop]]');
       expect(await p.diff('characters/')).toBe('');
     } finally {

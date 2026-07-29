@@ -56,14 +56,17 @@ describe('WorkspaceSession — reading a project', () => {
   });
 });
 
-/** The Wave 3 write path: `storyGraph` reads the wiring, `editBranches` rewires it. */
+/**
+ * The Wave 3 write path: `storyGraph` reads the wiring, `editBranches` rewires it. Pinned to the
+ * one-screenplay form, where every scene shares a file — the per-chunk form is asserted below.
+ */
 describe('WorkspaceSession — branch editing', () => {
   const SCRIPT = 'screenplay/script.fountain';
   let p: TestProject;
   let session: WorkspaceSession;
 
   beforeEach(async () => {
-    p = await makeProject({ title: 'Branches', script: SCRIPTS.diamond });
+    p = await makeProject({ title: 'Branches', script: SCRIPTS.diamond, format: 'screenplay' });
     session = sessionFor(p);
   });
 
@@ -171,14 +174,17 @@ describe('WorkspaceSession — branch editing', () => {
   });
 });
 
-/** `story.assignLineIds`: the ids reading allocated, written down so an insertion can't move them. */
+/**
+ * `story.assignLineIds`: the ids reading allocated, written down so an insertion can't move them.
+ * Also on the screenplay form — a script written as one file is what has no marks to begin with.
+ */
 describe('WorkspaceSession — line ids', () => {
   const SCRIPT = 'screenplay/script.fountain';
   let p: TestProject;
   let session: WorkspaceSession;
 
   beforeEach(async () => {
-    p = await makeProject({ title: 'Line ids', script: SCRIPTS.linear });
+    p = await makeProject({ title: 'Line ids', script: SCRIPTS.linear, format: 'screenplay' });
     session = sessionFor(p);
   });
 
