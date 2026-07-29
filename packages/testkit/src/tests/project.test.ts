@@ -77,6 +77,52 @@ describe('makeProject — inputs on disk', () => {
   });
 });
 
+describe('makeProject — scenes as chunks', () => {
+  it('writes one file per scene and no screenplay, entry named by start:', async () => {
+    const p = await makeProject({ format: 'chunks' });
+    try {
+      const { config, model } = await p.reload();
+      expect(config.start).toBe('arrival');
+      expect(errors(model)).toEqual([]);
+      expect([...model.scenes.keys()]).toEqual(['arrival', 'bad_end', 'good_end', 'rooftop']);
+      expect(model.entry).toBe('arrival');
+
+      const chunk = await p.read('scenes/arrival.md');
+      expect(chunk).toContain('scene: arrival');
+      // The id lives in front-matter now; a body marker could rename the file it sits in.
+      expect(chunk).not.toContain('[[scene:');
+      expect(chunk).toContain('INT. CLASSROOM - AFTERNOON');
+      await expect(fs.stat(p.paths.screenplayDir)).rejects.toThrow();
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('plans byte-identical work either way — the format is storage, not content', async () => {
+    const chunks = await makeProject({ format: 'chunks' });
+    const screenplay = await makeProject({ format: 'screenplay' });
+    try {
+      const hashes = async (p: typeof chunks): Promise<string[]> => {
+        await p.run();
+        await p.approveAll();
+        await p.run();
+        return (await p.reload()).graph
+          .all()
+          .map((t) => t.hash)
+          .sort();
+      };
+      // Task identity is sha256(kind, inputs), and the shot prompt is built from `lines`. A
+      // scene that survives the split unchanged therefore keys to the same work.
+      const fromChunks = await hashes(chunks);
+      expect(fromChunks.length).toBeGreaterThan(0);
+      expect(fromChunks).toEqual(await hashes(screenplay));
+    } finally {
+      await chunks.cleanup();
+      await screenplay.cleanup();
+    }
+  }, 60_000);
+});
+
 describe('TestProject.run — the gate, end to end on disk', () => {
   it('halts at the character gate, then clears it after approve', async () => {
     const p = await makeProject({ title: 'Gate' });

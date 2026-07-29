@@ -6,13 +6,14 @@ import { writeFileAtomic } from '@vn/util';
 import type { ProjectConfig } from '@vn/config';
 import { loadConfig } from '@vn/config';
 import { parseFountain } from '@vn/parse';
-import { modelFromInputs, slug, splitScenes } from '@vn/model';
+import { modelFromInputs, sceneToDoc, slug, splitScenes } from '@vn/model';
 import {
   AssetStore,
   ProjectPaths,
   loadInputs,
   setCharacterApproval,
   writeApprovedPortrait,
+  writeSceneChunk,
 } from '@vn/store';
 import { Git, openGit } from '@vn/git';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
@@ -73,6 +74,13 @@ export interface MakeProjectOptions {
   locations?: (string | LocationSpec)[];
   /** Fountain source. Default: `SCRIPTS.branching`. */
   script?: string;
+  /**
+   * Which on-disk form the scenes are written in. `'chunks'` splits `script` into
+   * `scenes/<id>.md` through the same writer the app uses and adds `start:` to `project.yaml`;
+   * `'screenplay'` writes the one `screenplay/script.fountain`. The script is the same either
+   * way — a fixture describes its story once, and the format is how it is stored.
+   */
+  format?: 'chunks' | 'screenplay';
   /** `git init` + a deterministic identity + an initial commit of the inputs. */
   git?: boolean;
   /** Extra files, keyed by path relative to the project root. */
@@ -97,12 +105,15 @@ function cueId(cue: string): string {
 }
 
 /**
- * Derive the characters and locations a script needs, by splitting it exactly as the real
- * model build does. Cheaper than hand-listing them per fixture, and it cannot drift from
- * the ids `buildModel` will resolve.
+ * Derive the characters and locations a script needs, from the same split the real model build
+ * does. Cheaper than hand-listing them per fixture, and it cannot drift from the ids
+ * `buildModel` will resolve.
  */
-function inferInputs(script: string): { characters: CharacterSpec[]; locations: LocationSpec[] } {
-  const { scenes, mined } = splitScenes(parseFountain(script));
+function inferInputs(split: ReturnType<typeof splitScenes>): {
+  characters: CharacterSpec[];
+  locations: LocationSpec[];
+} {
+  const { scenes, mined } = split;
 
   const characters = new Map<string, CharacterSpec>();
   for (const scene of scenes) {
@@ -271,12 +282,17 @@ export class TestProject {
 /** Build a real project on disk from authored inputs. Always `cleanup()` in a `finally`. */
 export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestProject> {
   const script = opts.script ?? SCRIPTS.branching;
-  const inferred = inferInputs(script);
+  const format = opts.format ?? 'screenplay';
+  const split = splitScenes(parseFountain(script));
+  const inferred = inferInputs(split);
   const characters = (opts.characters ?? inferred.characters).map((c) => toSpec<CharacterSpec>(c));
   const locations = (opts.locations ?? inferred.locations).map((l) => toSpec<LocationSpec>(l));
   const config = {
     title: opts.title ?? DEFAULT_TITLE,
     art_style: DEFAULT_ART_STYLE,
+    // Chunks have no document order, so the entry scene has to be named. Document order is
+    // exactly what the script still has, so name the scene the screenplay form would pick.
+    ...(format === 'chunks' && split.scenes[0] ? { start: split.scenes[0].id } : {}),
     ...opts.config,
   };
 
@@ -289,7 +305,11 @@ export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestPr
   for (const spec of locations) {
     await writeFileAtomic(join(paths.locationsDir, `${spec.id}.md`), locationDoc(spec));
   }
-  await writeFileAtomic(join(paths.screenplayDir, 'script.fountain'), script);
+  if (format === 'chunks') {
+    for (const scene of split.scenes) await writeSceneChunk(paths, scene.id, sceneToDoc(scene));
+  } else {
+    await writeFileAtomic(join(paths.screenplayDir, 'script.fountain'), script);
+  }
   for (const [rel, content] of Object.entries(opts.files ?? {})) {
     await writeFileAtomic(join(dir, rel), content);
   }
