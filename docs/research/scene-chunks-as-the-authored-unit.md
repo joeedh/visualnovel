@@ -3,10 +3,12 @@
 _Investigation. Not a plan — no steps, no waves committed to. It argues a shape and names what
 it costs._
 
-_Status: **move one has shipped.** Allocated line ids landed as
-[`../plans/allocated-line-ids.md`](../plans/allocated-line-ids.md), so blocker 1 below is fixed;
-2 and 3 stand as written. The seven plans this document produced, and which of them are built,
-are tracked in [`../plans/index.md`](../plans/index.md)._
+_Status: **moves one and two have shipped.** Allocated line ids landed as
+[`../plans/allocated-line-ids.md`](../plans/allocated-line-ids.md) and lossless scene
+serialization as
+[`../plans/lossless-scene-serialization.md`](../plans/lossless-scene-serialization.md), so
+blockers 1 and 2 below are fixed; 3 stands as written. The seven plans this document produced,
+and which of them are built, are tracked in [`../plans/index.md`](../plans/index.md)._
 
 <!-- toc -->
 
@@ -81,6 +83,12 @@ But the lossiness is in `body`, not in the model. **`Scene.lines` already carrie
 needs to be regenerated** — `kind`, `speaker`, `text` per line, which is exactly a cue, a
 parenthetical, a dialogue block, or an action paragraph. A serializer written against `lines`
 instead of `body` is lossless for everything `lines` retains.
+
+**Fixed.** `sceneToFountain` writes from `lines` under the contract `parse(write(scene)) ≡ scene`,
+pinned by a property test; the heading's prefix and variant are retained, transitions/lyrics/
+centered text became line kinds, and `Scene.body` is gone. The surgical patcher stays for files
+the author wrote. See
+[`../plans/lossless-scene-serialization.md`](../plans/lossless-scene-serialization.md).
 
 ### 3. One file, many writers
 
