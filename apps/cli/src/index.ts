@@ -4,6 +4,7 @@ import {
   cmdCost,
   cmdExport,
   cmdGraph,
+  cmdImport,
   cmdRun,
   cmdStatus,
   parseArgs,
@@ -30,6 +31,8 @@ export async function main(argv: string[]): Promise<number> {
         return await cmdGraph(args);
       case 'export':
         return await cmdExport(args);
+      case 'import':
+        return await cmdImport(args);
       case 'cost':
         return await cmdCost(args, logger);
       default:
@@ -57,7 +60,8 @@ function usage(): string {
     '  approve [dir] [--character=<id>] [--hash=<h>] [--yes]   approve portraits (interactive)',
     '  status [dir]         show task/asset/approval status',
     '  graph [dir]          emit the story branch graph (Mermaid)',
-    '  export [dir]         write vngen/build/story.play.json (the playable)',
+    '  import [dir]         convert screenplay/*.fountain into scenes/<id>.md chunks',
+    '  export [dir]         write vngen/build/story.play.json (the playable, not a screenplay)',
     '  cost [dir]           dry-run cost preview',
     '',
   ].join('\n');

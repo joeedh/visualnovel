@@ -1,7 +1,19 @@
+import { promises as fs } from 'node:fs';
 import { createInterface } from 'node:readline';
 import type { Asset, Logger } from '@vn/types';
-import { toMermaid } from '@vn/model';
-import { writeApprovedPortrait, writeStoryGraph, setCharacterApproval } from '@vn/store';
+import { exists } from '@vn/util';
+import { loadConfig, setStartScene } from '@vn/config';
+import { parseFountain } from '@vn/parse';
+import { sceneChunksFromScript, toMermaid } from '@vn/model';
+import {
+  loadInputs,
+  ProjectPaths,
+  readSceneChunks,
+  writeApprovedPortrait,
+  writeSceneChunk,
+  writeStoryGraph,
+  setCharacterApproval,
+} from '@vn/store';
 import { buildPlayable, loadSceneShots, writePlayable } from '@vn/export';
 import { gateStatus } from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
@@ -44,6 +56,65 @@ export async function cmdGraph(args: Args): Promise<number> {
   const mermaid = toMermaid(project.model);
   await writeStoryGraph(project.paths, mermaid);
   ok(mermaid);
+  return 0;
+}
+
+/**
+ * `vngen import [dir]` — convert a `screenplay/*.fountain` project into one `scenes/<id>.md`
+ * chunk per scene (fountain-import-export plan). One direction, once, and never over authored
+ * work: it refuses if `scenes/` already holds chunks, and `sceneChunksFromScript` proves the
+ * conversion reads back as the same scenes before a byte of it is written.
+ *
+ * The screenplay is not deleted — it moves to `<name>.fountain.imported`, an extension
+ * `loadInputs` does not look at. That rename is done last, because until it happens the project
+ * holds both formats and does not load.
+ */
+export async function cmdImport(args: Args): Promise<number> {
+  const dir = args.positional[0] ?? '.';
+  const paths = new ProjectPaths(dir);
+  const config = await loadConfig(dir);
+
+  // An empty `scenes/` has nothing to lose; a chunk in it is either a previous import or work
+  // the author wrote by hand, and re-running would silently overwrite the second.
+  const already = await readSceneChunks(paths);
+  if (already.length > 0) {
+    ok(`${paths.scenesDir} already holds ${already.length} scene chunk(s).`);
+    ok('Delete the directory if you really want to import over them; there is no --force.');
+    return 1;
+  }
+
+  const inputs = await loadInputs(paths);
+  if (inputs.scriptPath === undefined) {
+    ok(`No screenplay to import — expected a .fountain file in ${paths.screenplayDir}.`);
+    return 1;
+  }
+  const asideName = `${inputs.scriptPath}.imported`;
+  if (await exists(asideName)) {
+    ok(`${asideName} already exists — move or delete it first.`);
+    return 1;
+  }
+
+  const result = sceneChunksFromScript(
+    parseFountain(inputs.scriptText),
+    config.start === undefined ? {} : { start: config.start },
+  );
+  if (result.diagnostics.length) {
+    ok(`Reading ${inputs.scriptPath}:`);
+    reportDiagnostics(result);
+  }
+  if (result.diagnostics.some((d) => d.severity === 'error')) {
+    ok('Nothing was converted and no file was touched.');
+    return 1;
+  }
+
+  for (const chunk of result.chunks) await writeSceneChunk(paths, chunk.id, chunk.doc);
+  ok(`Wrote ${result.chunks.length} scene chunk(s) → ${paths.scenesDir}`);
+  // A directory has no document order, so the entry the screenplay implied has to be written down.
+  if (result.entry !== undefined && (await setStartScene(dir, result.entry))) {
+    ok(`Set start: ${result.entry} in ${paths.projectConfig}`);
+  }
+  await fs.rename(inputs.scriptPath, asideName);
+  ok(`Moved the screenplay aside → ${asideName} (delete it once you are satisfied).`);
   return 0;
 }
 

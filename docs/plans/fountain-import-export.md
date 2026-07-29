@@ -113,8 +113,15 @@ re-importing its output reproduces the project.
    taking the graph rather than a pre-ordered list — the reading order is part of the contract, so
    it belongs where it can be tested — over a `SceneGraph` (`scenes` + `entry`) that a
    `ProjectModel` satisfies without the projection asking for fields it will not write.
-3. **`vngen import`.** The CLI command, the `.imported` rename, refusal on an existing `scenes/`,
-   and the abort-on-divergence path. Usage text updated for both exports.
+3. ✔ **`vngen import`.** The CLI command, the `.imported` rename, refusal on an existing `scenes/`,
+   and the abort-on-divergence path. Usage text updated for both exports. Shipped as `cmdImport`
+   in `apps/cli/src/commands.ts`; it deliberately does not go through `loadProject`, which would
+   build a model and report the both-formats error instead of fixing it. The screenplay file is
+   found by `loadInputs` rather than a second glob, so the importer cannot disagree with the loader
+   about which file is authoritative. Writing `start:` needed a writer for `project.yaml`:
+   `@vn/config`'s `setStartScene` splices the one line and leaves every other byte — including
+   hand-written comments — alone, the same way the prose writers splice front-matter. The rename is
+   **last**, because until it happens the project holds both formats and does not load.
 4. **`vngen screenplay`.** The CLI command, `-o` / `-` / `--clean`.
 5. **Desktop `workspace.import` and `story.screenplay`.** Both `mutating`, both with a `check`
    (`workspace.import` refuses when `scenes/` exists or no screenplay is present;

@@ -1,7 +1,7 @@
-import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfig, resolveKeys, secretDirsFor } from '../index.js';
+import { loadConfig, resolveKeys, secretDirsFor, setStartScene, withStartScene } from '../index.js';
 
 async function tempProject(yaml: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'vn-config-'));
@@ -33,6 +33,52 @@ describe('loadConfig', () => {
   it('throws ConfigError when project.yaml is absent', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'vn-config-empty-'));
     await expect(loadConfig(dir)).rejects.toThrow(/no project\.yaml/);
+  });
+});
+
+describe('withStartScene', () => {
+  it('adds start: under the title and leaves comments alone', () => {
+    const before = '# my novel\ntitle: My Novel\n\n# how it looks\nart_style: watercolor\n';
+    expect(withStartScene(before, 'arrival')).toBe(
+      '# my novel\ntitle: My Novel\nstart: arrival\n\n# how it looks\nart_style: watercolor\n',
+    );
+  });
+
+  it('replaces an existing start: in place', () => {
+    expect(withStartScene('title: T\nstart: old\nconcurrency: 2\n', 'new')).toBe(
+      'title: T\nstart: new\nconcurrency: 2\n',
+    );
+  });
+
+  it('appends when there is no title to sit under', () => {
+    expect(withStartScene('art_style: ink', 'arrival')).toBe('art_style: ink\nstart: arrival\n');
+    expect(withStartScene('', 'arrival')).toBe('start: arrival\n');
+  });
+});
+
+describe('setStartScene', () => {
+  it('writes the entry scene and reads back through loadConfig', async () => {
+    const dir = await tempProject('title: My Novel\nart_style: watercolor\n');
+    expect(await setStartScene(dir, 'arrival')).toBe(true);
+    expect((await loadConfig(dir)).start).toBe('arrival');
+    expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe(
+      'title: My Novel\nstart: arrival\nart_style: watercolor\n',
+    );
+  });
+
+  it('leaves a config that already names that scene untouched', async () => {
+    const dir = await tempProject('title: My Novel\nstart: arrival\n');
+    expect(await setStartScene(dir, 'arrival')).toBe(false);
+  });
+
+  // A scene id is a filename stem, so it can be `1.2` or `true` — which YAML reads as a number
+  // and a bool unless the serializer quotes them. Written and read back is the property.
+  it('keeps an id YAML would otherwise read as something else a string', async () => {
+    for (const id of ['1.2', 'true', 'no', '0755']) {
+      const dir = await tempProject('title: T\n');
+      expect(await setStartScene(dir, id)).toBe(true);
+      expect((await loadConfig(dir)).start).toBe(id);
+    }
   });
 });
 

@@ -1,10 +1,11 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import type { Logger } from '@vn/types';
+import type { Logger, Scene } from '@vn/types';
+import { canonicalScenes } from '@vn/model';
 import { AssetStore, ProjectPaths } from '@vn/store';
 import type { Playable } from '@vn/types';
-import { makeProject } from '@vn/testkit';
-import { cmdApprove, cmdExport, cmdRun, type ApproveIO } from '../commands.js';
+import { makeProject, SCRIPTS } from '@vn/testkit';
+import { cmdApprove, cmdExport, cmdImport, cmdRun, type ApproveIO } from '../commands.js';
 
 const silentLogger = { info() {}, warn() {}, error() {}, debug() {} } as unknown as Logger;
 
@@ -73,6 +74,97 @@ describe('cmdRun --mock (dry run)', () => {
       expect(store.manifest()).toHaveLength(0);
     } finally {
       await cleanup();
+    }
+  });
+});
+
+describe('cmdImport', () => {
+  /** The model's scenes as one comparable string, ordered so storage order cannot matter. */
+  const scenesOf = (scenes: Map<string, Scene>): string =>
+    canonicalScenes([...scenes.values()].sort((a, b) => a.id.localeCompare(b.id)));
+
+  it('converts a screenplay project to chunks the model reads back identically', async () => {
+    const p = await makeProject({ format: 'screenplay', script: SCRIPTS.branching });
+    try {
+      const before = await p.reload();
+      const beforeTasks = (await p.run({ dryRun: true })).preview;
+
+      const { code, out } = await capture(() => cmdImport({ positional: [p.dir], flags: {} }));
+      expect(code).toBe(0);
+      expect(out).toContain('Wrote 4 scene chunk(s)');
+      expect(out).toContain('start: arrival');
+
+      // The screenplay is still there under a name `loadInputs` does not look at, so the
+      // project loads from the chunks alone rather than reporting two input formats.
+      expect(await fs.readdir(join(p.dir, 'screenplay'))).toEqual(['script.fountain.imported']);
+      expect(await fs.readdir(join(p.dir, 'scenes'))).toEqual([
+        'arrival.md',
+        'bad_end.md',
+        'good_end.md',
+        'rooftop.md',
+      ]);
+
+      const after = await p.reload();
+      expect(after.model.diagnostics).toEqual([]);
+      expect(after.config.start).toBe('arrival');
+      expect(scenesOf(after.model.scenes)).toBe(scenesOf(before.model.scenes));
+      // Nothing a task hashes names a file, so the migration must not move any work.
+      expect((await p.run({ dryRun: true })).preview).toEqual(beforeTasks);
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+
+  it('refuses over an existing scenes/ rather than overwriting authored work', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const arrival = await p.read(join('scenes', 'arrival.md'));
+      const { code, out } = await capture(() => cmdImport({ positional: [p.dir], flags: {} }));
+      expect(code).toBe(1);
+      expect(out).toContain('already holds 2 scene chunk(s)');
+      expect(out).toContain('there is no --force');
+      expect(await p.read(join('scenes', 'arrival.md'))).toBe(arrival);
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('reports there is nothing to import when the project has no screenplay', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      await fs.rm(join(p.dir, 'scenes'), { recursive: true });
+      const { code, out } = await capture(() => cmdImport({ positional: [p.dir], flags: {} }));
+      expect(code).toBe(1);
+      expect(out).toContain('No screenplay to import');
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('touches no file when the conversion cannot be proven', async () => {
+    const script = `INT. CLASSROOM - DAY
+
+[[scene: arrival]]
+
+She sets her bag down.
+
+EXT. ROOFTOP - NIGHT
+
+[[scene: arrival]]
+
+The city hums below.
+`;
+    const p = await makeProject({ format: 'screenplay', script });
+    try {
+      const { code, out } = await capture(() => cmdImport({ positional: [p.dir], flags: {} }));
+      expect(code).toBe(1);
+      expect(out).toContain('[import_duplicate_scene]');
+      expect(out).toContain('no file was touched');
+      expect(await fs.readdir(join(p.dir, 'screenplay'))).toEqual(['script.fountain']);
+      await expect(fs.readdir(join(p.dir, 'scenes'))).rejects.toThrow();
+      expect(await p.read('project.yaml')).not.toContain('start:');
+    } finally {
+      await p.cleanup();
     }
   });
 });
