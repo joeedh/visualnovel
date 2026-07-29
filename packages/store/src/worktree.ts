@@ -49,16 +49,6 @@ export async function writeStoryGraph(paths: ProjectPaths, mermaid: string): Pro
   await writeFileAtomic(paths.storyGraph, mermaid);
 }
 
-/** Write a per-scene markdown file (front-matter + body) under `work/scenes/`. */
-export async function writeSceneFile(
-  paths: ProjectPaths,
-  id: string,
-  data: Record<string, unknown>,
-  body: string,
-): Promise<void> {
-  await writeFileAtomic(paths.sceneFile(id), stringifyFrontMatter(data, body));
-}
-
 /** Write a location breakdown markdown file under `work/locations/<id>/`. */
 export async function writeBreakdown(
   paths: ProjectPaths,

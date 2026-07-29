@@ -41,7 +41,7 @@ current one.
 | [`interaction-model.md`](interaction-model.md) | partial | `Interaction`/`targets`; four gestures declared, the general surface is not finished |
 | [`allocated-line-ids.md`](allocated-line-ids.md) | shipped | Line ids that survive an edit, the diagnostics surface, the catalog-driven palette |
 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | shipped | `parse(write(scene)) ≡ scene`; `Scene.body` retired, headings and three line kinds retained |
-| [`scene-chunk-files.md`](scene-chunk-files.md) | partial | `scenes/<id>.md` replaces the one contended screenplay; step 1 (the collapsed load sequence) is in |
+| [`scene-chunk-files.md`](scene-chunk-files.md) | partial | `scenes/<id>.md` replaces the one contended screenplay; steps 1–2 (the collapsed load sequence, the dead-path deletion) are in |
 | [`fountain-import-export.md`](fountain-import-export.md) | planned | `vngen import` / `vngen screenplay` |
 | [`scene-editing-commands.md`](scene-editing-commands.md) | planned | Nine `story.*` prose commands, `lineops.ts`, `session.editScene` |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | planned | Correcting a line in the coverage timeline; drift marking |
@@ -100,10 +100,12 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
   plan 2: attribution ends with the dialogue block, and `'action'` is no longer a `SceneLine.kind`.
 - `buildModel` takes the entry scene as `sceneList[0]` (`packages/model/src/build.ts:154`), which
   becomes readdir order the moment scenes are files → plan 3 adds `start:` to `project.yaml`.
-- Four call sites duplicate `loadInputs` → `parseFountain` → `buildModel` (CLI, desktop session,
-  authoring workspace, testkit) → plan 3 step 1 collapses them into `loadProjectModel`.
-- `ProjectPaths.sceneFile` / `writeSceneFile` are dead, and they hold the name authored chunks
-  want → plan 3 step 2 deletes them.
+- ~~Four call sites duplicate `loadInputs` → `parseFountain` → `buildModel` (CLI, desktop session,
+  authoring workspace, testkit)~~ → **fixed** in plan 3 step 1: `@vn/model`'s `modelFromInputs` is
+  the one sequencing point, and `LoadedInputs` moved to `@vn/parse` so the reader and the builder
+  name one shape. Not `loadProjectModel` in `@vn/store` as planned — store may not import `model`.
+- ~~`ProjectPaths.sceneFile` / `writeSceneFile` are dead, and they hold the name authored chunks
+  want~~ → **fixed** in plan 3 step 2: both deleted, so the name is free for authored chunks.
 - `vngen export` and `story.export` already mean the playable, so Fountain output needs a different
   name → plan 4 uses `vngen screenplay` / `story.screenplay`.
 - `Timeline.tsx:156` refuses to draw an undecomposed scene, which is exactly the scene you want to

@@ -79,9 +79,6 @@ export class ProjectPaths {
   locationRefsDir(id: string): string {
     return join(this.work, 'locations', id, 'refs');
   }
-  sceneFile(id: string): string {
-    return join(this.work, 'scenes', `${id}.md`);
-  }
   /** One scene's persisted shot decomposition (P5); human-editable, committed. */
   shotsFile(sceneId: string): string {
     return join(this.work, 'shots', `${sceneId}.json`);

@@ -1,7 +1,7 @@
 # Scene chunk files
 
-Status: **in progress** — step 1 of 10 is shipped (the loading sequence is collapsed); the format
-itself does not exist yet. Move two of
+Status: **in progress** — steps 1–2 of 10 are shipped (the loading sequence is collapsed and the
+dead `work/scenes/` pair is gone); the format itself does not exist yet. Move two of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 after [`allocated-line-ids.md`](allocated-line-ids.md) and
 [`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
@@ -164,7 +164,7 @@ surface. Before that plan lands they would be produced and rendered nowhere.
 
 1. ✔ **`modelFromInputs` in `@vn/model`**, `LoadedInputs` in `@vn/parse`, the four call sites
    converted, no behaviour change. Green `pnpm check` / `pnpm test` before anything else moves.
-2. **Delete `sceneFile`/`writeSceneFile`.** The dead `work/scenes/` pair, on its own.
+2. ✔ **Delete `sceneFile`/`writeSceneFile`.** The dead `work/scenes/` pair, on its own.
 3. **`@vn/types`: the chunk schema.** `SceneDoc` zod schema for the front-matter, mirroring how
    characters and locations are validated at the boundary. `start` added to the `project.yaml`
    schema in `@vn/config`.
