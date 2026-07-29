@@ -2,19 +2,35 @@
 
 <!-- toc -->
 
+- [As-shipped guides](#as-shipped-guides)
 - [Design reports](#design-reports)
 - [Research](#research)
 - [Background & reference](#background--reference)
 
 <!-- tocstop -->
 
-Reference material for the VN Generator monorepo. For the working guide to the code
-itself (commands, package layering, conventions), see [`../CLAUDE.md`](../CLAUDE.md).
-For how to debug the repo (state files, CDP, the 2D debug surface, known traps), see
-[`debugGuide.md`](debugGuide.md).
+Reference material for the VN Generator monorepo. For the working map of the code itself
+(package layering, the invariants in brief, conventions), see [`../CLAUDE.md`](../CLAUDE.md);
+each area's full write-up is below. For how to debug the repo (state files, CDP, the 2D debug
+surface, known traps), see [`debugGuide.md`](debugGuide.md).
 
 Implementation plans live separately in [`plans/`](plans); [`plans/index.md`](plans/index.md)
 lists all of them with their build status.
+
+## As-shipped guides
+
+How a part of the system actually works today, in the detail CLAUDE.md only summarizes.
+
+| Document | What it covers |
+| -------- | -------------- |
+| [`toolchain.md`](toolchain.md) | How the repo is built, checked, tested and formatted, and why each choice deviates from the original plan: the two-pass typecheck, source-only packages, turbo's `globalDependencies`, the command-catalog build step, the import resolver the boundaries rule needs, and the `tests/` folder convention. |
+| [`pipeline-contracts.md`](pipeline-contracts.md) | The load-bearing invariants of the generative pipeline, each stated with the failure it prevents: content-addressed task identity and asset storage, the gate-as-barrier, incremental planning, persisted shot decompositions, allocated line ids, lossless scene serialization, the P7 refine loop, and the deterministic fallbacks. |
+| [`command-system.md`](command-system.md) | The desktop app's command system: typed property specs, the registry, the `namespace.command(a='x')` DSL, the git-stamped execution stack, undo/redo, the interaction layer that declares the direct-manipulation gestures, per-command preconditions (`check`), the build-time JSON catalog, and CDP access. |
+| [`desktop-app.md`](desktop-app.md) | The Electron app: renderer layout and its cascade/token contracts, the shared graph canvas, the STUDIO branch editor, FLOOR's task DAG view and coverage timeline, the PLAY runner and `vnasset://`, the session store, and the seeded `examples/mySampleRepo` workspace. |
+| [`playable-format.md`](playable-format.md) | `story.play.json` — the in-house playable `@vn/export` projects from the model + manifest: beat shape, branch edges, `{hash, ext}` asset refs, and why a missing asset is omitted rather than an error. |
+| [`testkit.md`](testkit.md) | `@vn/testkit`: real projects on disk run through the real scheduler with mock providers, the per-scene gate, `synthProject`'s determinism, marked placeholder art, and the recorded-asset corpus with its refresh script. |
+| [`vnauthor.md`](vnauthor.md) | The authoring agent as shipped: CLI flags, REPL commands, the plan/execute state machine, the agent-backend seam, context precedence, and skills. |
+| [`debugGuide.md`](debugGuide.md) | How to debug anything here, cheapest tool first: the gates, reading state on disk, reproducing offline, driving the desktop app over CDP, `window.__vnDebug`, and the known traps. |
 
 ## Design reports
 
@@ -23,8 +39,7 @@ lists all of them with their build status.
 | [`vn-generator-report.md`](vn-generator-report.md) | The core system design: goals, the deterministic-vs-generative split, phases P1–P7, the task graph, the asset store, and the provenance manifest. Stops short of engine export. |
 | [`authoring-agent-report.md`](authoring-agent-report.md) | Design of `vnauthor`, the plan-first conversational agent that helps an author write and refine the *input* files (characters, screenplay, locations). Input-side only — it never runs the generative pipeline. |
 | [`desktopAppState.md`](desktopAppState.md) | The desktop app's state model: what persists in project files vs. `localStorage` vs. memory, and how the PLAY room's playthrough stack is saved and restored. |
-| [`command-system.md`](command-system.md) | The desktop app's command system as shipped: typed property specs, the registry, the `namespace.command(a='x')` DSL, the git-stamped execution stack, undo/redo, the interaction layer that declares the direct-manipulation gestures, per-command preconditions (`check`), the build-time JSON catalog, and CDP access. |
-| [`gitUndoOptions.md`](gitUndoOptions.md) | Why the command stack ships without undo, and what it would take to add: five candidate strategies (memento, path-scoped restore, commit-per-command, shadow snapshots, split-by-data-class), their failure modes, and a migration path that keeps the v1 record shape. |
+| [`gitUndoOptions.md`](gitUndoOptions.md) | The survey that decided how undo works: five candidate strategies (memento, path-scoped restore, commit-per-command, shadow snapshots, split-by-data-class) and their failure modes. Shadow snapshots won — see [`command-system.md`](command-system.md) for what shipped. |
 
 ## Research
 

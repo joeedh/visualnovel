@@ -1,6 +1,9 @@
 # CLAUDE.md
 
-Guidance for Claude Code (and humans) working in this repository.
+Guidance for Claude Code (and humans) working in this repository. This file is the map:
+what the packages are, what the invariants are, and where the full write-up of each area
+lives. Deep as-shipped detail is in [`docs/`](docs) — follow the pointers rather than
+duplicating them here.
 
 ## What this is
 
@@ -13,18 +16,16 @@ schedule) from **generative steps** (LLM / image-model calls). Package boundarie
 that split and are enforced by lint rules, so the input-side packages can be reused
 without pulling in the generative pipeline.
 
+- Docs index: [`docs/index.md`](docs/index.md)
 - Design: [`docs/vn-generator-report.md`](docs/vn-generator-report.md)
-- Implementation plan: [`docs/plans/initial-implementation.md`](docs/plans/initial-implementation.md)
-- Authoring agent plan: [`docs/plans/authoring-agent-implementation.md`](docs/plans/authoring-agent-implementation.md)
-- Runner plan: [`docs/plans/runner.md`](docs/plans/runner.md)
-- Command system: [`docs/command-system.md`](docs/command-system.md)
+- Pipeline contracts (the invariants below, in full):
+  [`docs/pipeline-contracts.md`](docs/pipeline-contracts.md)
 - Debugging guide: [`docs/debugGuide.md`](docs/debugGuide.md) — read this before debugging
   anything in this repo; tools ordered cheapest-first, evidence over reproduction
-- Docs index: [`docs/index.md`](docs/index.md)
 - **Out of scope:** _external_ engine export (Ren'Py/Ink/etc.). The generative pipeline core
   stops at a populated `build/` + `manifest.json`. On top of that sits a small, in-house
   **playable** (`vngen export` → `story.play.json`) and a **desktop runner** to actually
-  watch a generated VN — see [Playable & runner](#playable--desktop-runner) below.
+  watch a generated VN — see [Playable & desktop app](#playable--desktop-app) below.
 
 Alongside the pipeline is **`vnauthor`**, a plan-first conversational agent that helps an
 author write and refine the _inputs_ (characters, screenplay, locations). It lives entirely
@@ -49,54 +50,16 @@ Run from the repo root.
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 
-### Toolchain notes (deviations from the plan — intentional)
+The toolchain's shape — and every deliberate deviation from the original plan — is
+[`docs/toolchain.md`](docs/toolchain.md). Four things bite often enough to repeat here:
 
-- **Typecheck is flat, not project-references.** `pnpm check` runs
-  `tsgo --noEmit -p tsconfig.json` over the whole workspace, not `tsgo -b`. The root
-  `tsconfig.json` maps every `@vn/*` package to its `src/index.ts` via **relative**
-  `paths` (TypeScript 7 / `tsgo` removed `baseUrl`, so non-relative paths are rejected).
-- **The renderer is checked by a second pass.** Root `tsconfig.json` includes only
-  `*/src/**`, and the desktop renderer deliberately lives outside `src` (at
-  `apps/desktop/renderer/**`) so the root check never sees its JSX. `pnpm check` is therefore
-  `tsgo -p tsconfig.json && pnpm check:renderer`, the latter running
-  `tsgo --noEmit -p renderer/tsconfig.json` in `apps/desktop`. Without that second pass
-  nothing typechecks the renderer at all — `vite build` uses esbuild, which never checks.
-  `renderer/tsconfig.json` has its own `paths` map; add `@vn/*` entries there as needed,
-  relative-form only. Its `types` carries `node` and `jest` — renderer `tests/` siblings are
-  typechecked by that pass, not the root one.
-- **`tsgo`** comes from `@typescript/native-preview` (TS7 dev). `"jest"` is in
-  `compilerOptions.types` so test globals typecheck.
-- **`esbuild` transpiles; `tsgo` verifies.** esbuild never type-checks. It is used in
-  exactly two places: bundling the CLI (`scripts/esbuild.cli.mjs`) and as the jest
-  transform (`scripts/jest-esbuild.cjs`). Internal packages are **source-only** — no
-  per-package `dist`; consumers import `src/index.ts` directly.
-- **`turbo` orchestrates the bundles.** Each app owns a `build` script (`apps/cli`,
-  `apps/authoring`, `apps/desktop`); `pnpm build` is `turbo run build` (all three), and
-  `build:cli` / `build:authoring` / `build:desktop` are thin `--filter=…` wrappers for one
-  app at a time. Because internal packages are source-only (no build
-  task of their own), their sources can't be picked up via `dependsOn: ["^build"]` — so
-  `turbo.json` lists `packages/*/src/**`, the esbuild scripts, and the tsconfigs as
-  `globalDependencies`, which is what actually invalidates an app's cache. Outputs are
-  `dist/**`; the local cache lives in `.turbo` (gitignored).
-- **The desktop bundle has a third step, `build:catalog`.** `scripts/gen-command-catalog.mjs`
-  bundles `apps/desktop/src/main/commands/catalog-entry.ts` and writes
-  `apps/desktop/dist/commands.json` (see [Command system](#command-system)). Both bundle
-  scripts share one alias map, `scripts/aliases.mjs`, so their package lists can't drift.
-- **The boundaries rule needs the TypeScript import resolver.** `eslint.config.mjs` sets
-  `'import/resolver': { typescript: … }`. With the legacy node resolver it resolved nothing
-  (source-only packages have an `exports` map and no `main`), and an _unresolved_ import is
-  an unclassified one — which `boundaries/element-types` silently passes. The layering below
-  was advertised but not actually enforced until that was fixed.
-- **jest config is `jest.config.cjs`** (the plan said `.ts`) to avoid bootstrapping
-  ts-node just to read config. One display-named project per package. **Tests live in a
-  `tests/` subfolder beside the code they cover** (`packages/model/src/tests/model.test.ts`,
-  `packages/debug2d/src/dom/tests/stacking.test.ts`); every project's `testMatch` is
-  `**/<scope>/**/tests/*.test.ts`, so a `*.test.ts` outside a `tests/` dir is silently
-  never run.
-- **Formatting uses standard `prettier`** (the plan mentioned a `@pathtx/prettier` fork,
-  which is not available here). `docs/**` and `Readme.MD` are in `.prettierignore`.
-- pnpm needs `"pnpm": { "onlyBuiltDependencies": ["esbuild"] }` so esbuild's postinstall
-  runs.
+- `pnpm check` is **two** passes: the flat workspace check plus `pnpm check:renderer`, because
+  `apps/desktop/renderer/**` lives outside `src/` and nothing else typechecks it.
+- **Tests must live in a `tests/` subfolder** beside the code they cover; a `*.test.ts`
+  anywhere else is silently never run.
+- Internal packages are **source-only** (no per-package `dist`) — consumers import
+  `src/index.ts` directly. esbuild transpiles; only `tsgo` type-checks.
+- Imports use explicit `.js` extensions on relative paths (ESM + `verbatimModuleSyntax`).
 
 ## Architecture
 
@@ -156,104 +119,40 @@ it may import _every_ layer, and **nothing may import it** — see
 
 ### Core ideas
 
-- **Content-addressed task graph.** A task's identity is `sha256(kind, inputs)` where
-  inputs include the normalized prompt, ordered reference asset hashes, model id, and
-  params. Identical work collapses to one node → dedupe, resumability, and staleness for
-  free. Every status transition is appended to `state/tasks.jsonl`; replaying it (last
-  writer wins per hash) rebuilds the graph, which makes runs crash-safe and resumable.
-- **Content-addressed asset store.** Image bytes are stored once at
-  `build/assets/<hash>.<ext>`; `manifest.json` is the provenance index. Manifest writes are
-  serialized through a single-writer queue so parallel tasks don't race on the atomic
-  rename (this matters on Windows).
-- **Gate-as-barrier.** The character-approval gate (P3) is not a task dependency — it's
-  enforced by the planner: shot tasks for a scene are only emitted once every character in
-  that scene is `approved`. A `vngen run` naturally halts at the gate with nothing left
-  ready. Approving (via `vngen approve`) flips `character.md`; the next `run` plans and
-  executes the downstream work. Scenes with no characters render immediately.
-- **Incremental planning.** The planner is called once per scheduler wave. Tasks whose
-  identity depends on an upstream output (a shot references its produced location plate)
-  only appear after that upstream task is `done`. Consequence: `vngen cost` is a snapshot
-  of _currently-plannable_ work and undercounts tasks that only become plannable after an
-  earlier wave finishes.
-- **Shot decompositions are persisted, not re-derived.** P5 is an LLM step, so re-running it
-  would produce different shot ids — hence different task hashes — and regenerate art for no
-  reason. The planner writes each scene's decomposition to `work/shots/<sceneId>.json` and
-  prefers it forever after; it only calls `decomposeScene` when no file exists. The file is
-  human-editable, and a malformed one throws rather than being silently re-decomposed over.
-  Authored fields sit at the top level; what a run produced is nested under **`shotData`** and
-  rewritten wholesale each pass — `tasks.jsonl` and `manifest.json` stay the authority, so a
-  shots file restored from an old commit cannot convince the pipeline that work is done. Line
-  ids the screenplay no longer has are dropped with a warning, and since `buildShotPrompt`
-  ignores `coversLines`, coverage edits rehash nothing. Dry runs read the file but never write
-  it — a mock decomposition must not be left for a real run to reuse.
-- **Line ids are allocated and written down, and reading never writes.** `Shot.coversLines` binds
-  art to `${sceneId}:L<n>`, so an id derived from position silently re-points every shot below an
-  inserted line — money spent, nothing reported. `splitScenes` therefore prefers a `[[line: L4]]`
-  note (a Fountain note leading the element it names) and allocates only for unmarked elements,
-  from the scene's `[[nextline: 12]]` mark raised past every id actually in use — a stale allocator
-  is a bug, not a licence to reuse an id. Duplicate and dangling marks are `error` diagnostics.
-  Allocation happens **in memory**: loading a project never touches it. Persisting is
-  `story.assignLineIds` (undoable, `apps/desktop/src/main/commands/story.ts` over
-  `assignLineIds` in `packages/model/src/lineids.ts`), a surgical patcher that adds only whole
-  marker lines and re-parses its own output, discarding the patch unless it reproduces the same
-  scenes line for line — a note above a `CHARACTER` cue would turn it into action and un-speak the
-  dialogue below it. Plan: [`docs/plans/allocated-line-ids.md`](docs/plans/allocated-line-ids.md).
+Each of these is a contract that costs money or corrupts provenance when broken; the full
+statement of every one — with the failure it prevents — is in
+[`docs/pipeline-contracts.md`](docs/pipeline-contracts.md).
+
+- **Content-addressed task graph.** Task identity is `sha256(kind, inputs)` (normalized
+  prompt, ordered ref hashes, model id, params), so identical work collapses to one node.
+  Every status transition appends to `state/tasks.jsonl`; replaying it rebuilds the graph,
+  which is what makes runs resumable and crash-safe.
+- **Content-addressed asset store.** Bytes live once at `build/assets/<hash>.<ext>`;
+  `manifest.json` is the provenance index, written through a single-writer queue.
+- **Gate-as-barrier.** The P3 character-approval gate is a planner predicate, not a task
+  dependency: a run simply halts with nothing ready. Scenes with no cast render immediately.
+- **Incremental planning.** The planner runs once per wave, so `vngen cost` only counts
+  _currently-plannable_ work and undercounts what a later wave unlocks.
+- **Shot decompositions are persisted, not re-derived.** `work/shots/<sceneId>.json` is
+  preferred forever after it exists; authored fields at top level, run output under
+  `shotData`. `buildShotPrompt` ignores `coversLines`, so coverage edits rehash nothing.
+- **Line ids are allocated and written down, and reading never writes.** `[[line: L4]]` marks
+  bind art to lines; allocation is in-memory and persisting is the undoable
+  `story.assignLineIds`, which re-parses its own patch and discards it unless the scenes come
+  back identical.
 - **A scene survives a trip through text: `parse(write(scene)) ≡ scene`.** `sceneToFountain`
-  (`packages/model/src/serialize.ts`) writes from `Scene.lines` — the sibling of the
-  `fromDoc(toDoc(x)) ≡ x` the character/location serializers already give, and pinned the same
-  way, by a property test over the `@vn/testkit` scripts and hand-built scenes. `Scene.body` is
-  **gone**: flattened prose cannot be told back apart (`NAME:` and an action paragraph containing
-  a colon are the same string), so keeping it invited exactly the reconstruction it could not
-  support. What makes the property hold is that the model retains what Fountain says — the
-  heading's prefix _and_ its time-of-day variant (the variant is what the location plate is
-  generated from; reconstructing it turned `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`),
-  plus `transition`/`lyric`/`centered` lines. `section`, `page_break` and dual dialogue stay
-  dropped, deliberately. **Blank lines are structural** and a `[[…]]` marker line is not blank,
-  so a cue always gets a blank above it, nothing but a `[[line:]]` mark goes between a cue and
-  its first dialogue line, and anything that could be read as another element is written in its
-  forced form (`!`, `@`, `>`, `~`) — `needsForcedAction` tests every alternative reading the
-  parser has, not just the ones this writer's own layout would allow. Byte-exactness is neither
-  achievable nor wanted: the surgical patchers (`branchpatch.ts`, `lineids.ts`) still handle
-  files the author wrote, because their formatting is theirs. Plan:
-  [`docs/plans/lossless-scene-serialization.md`](docs/plans/lossless-scene-serialization.md).
-- **P7 generate→critique→refine loop** is folded into the `shot_image` runner (a
-  documented deviation from the report's separate `vision_review`/`prompt_refine` nodes).
-  Each attempt generates, has every configured reviewer critique against the shot spec,
-  and merges verdicts; a blocking verdict triggers a deterministic prompt refinement and
-  another attempt, capped at `config.max_refine_attempts`, after which the shot is flagged
-  `needs_human`. Every attempt is recorded on the task for provenance. It also **stops early
-  when a refinement changes nothing** — refinement is deterministic, so an unchanged prompt
-  means the critique repeated verbatim and the next attempt would issue the identical request;
-  spending the rest of the cap on that is a re-roll, not a refinement.
-- **The reviewer is told what the _shot_ ordered, not what the scene contains.** `shotSpec`
-  (`packages/pipeline/src/prompts.ts`) describes the shot's own framing, location and cast,
-  and demotes the prose of its covered lines to "context only"; `spec.characters` is the
-  authority on who must be in frame, and an empty one says outright that a missing character
-  is not a defect. Handing over the scene synopsis instead made every background plate fail
-  for the characters the scene mentions but the shot never ordered — unsatisfiable, so the
-  loop burned every attempt and landed on `needs_human`. `shotSpec`'s output never enters a
-  task's `inputs`, so this rehashes nothing.
-- **Deterministic fallbacks.** Text steps (P1 location enrichment, P5 shot decomposition)
-  use the LLM with structured-output enforcement but fall back to a deterministic baseline
-  on any failure, so the whole pipeline runs end-to-end with mock providers and no API
-  calls. P5's baseline is one establishing shot **carrying the scene's cast** plus one medium
-  shot per character; only a cast-less scene gets a bare plate, since the establishing shot
-  covers the narration and action beats and those describe the characters doing things.
-  Because this changes the prompt it rehashes establishing tasks — but shots are persisted,
-  so an existing project keeps its old decomposition until `vngen/work/shots/*.json` is
-  deleted or edited.
-- **P5 is shown the scene as identified lines, not prose.** `coversLines` asks for line ids, so
-  `decomposeScene` enumerates the scene as `[<lineId>] <kind>/<speaker>: <text>` and requires
-  every line be assigned to exactly one shot. Handing over flattened prose and a
-  response template containing `"coversLines":[]` made the question unanswerable, and the model
-  did the only thing it could — copied the empty array, producing shots that were generated and
-  never displayed. `withCoverage` is the backstop: a decomposition binding no real line falls
-  back to the baseline, and an uncovered first line goes to the first shot so a scene cannot
-  open on a blank frame. See [`docs/plans/shot-timeline-editor.md`](docs/plans/shot-timeline-editor.md).
-- **Provider seams.** The scheduler never imports a concrete provider — only `Task`,
-  `deps`, `status`. Backends are swapped purely by changing model ids in `project.yaml`.
-  Tests inject `RecordedChatBackend`/`StubImageBackend` (see `@vn/providers` `mock.ts` /
-  `createMockProviders`) to exercise the contracts without network.
+  writes from `Scene.lines` (there is no `Scene.body`), keeps the heading's prefix and
+  time-of-day variant, and forces (`!`, `@`, `>`, `~`) anything that could be re-read as
+  another element. Blank lines are structural.
+- **P7 generate→critique→refine is folded into the `shot_image` runner**, capped by
+  `config.max_refine_attempts`, stopping early when a refinement changes nothing, and flagging
+  `needs_human` rather than looping. The reviewer is told what the _shot_ ordered, never the
+  scene synopsis.
+- **Deterministic fallbacks.** P1/P5 use the LLM with structured-output enforcement but fall
+  back to a deterministic baseline on any failure, so the whole pipeline runs end-to-end with
+  mock providers and no API calls.
+- **Provider seams.** The scheduler never imports a concrete provider — only `Task`, `deps`,
+  `status`. Backends swap by changing model ids in `project.yaml`.
 
 ## CLI
 
@@ -288,9 +187,9 @@ stays inputs-only (see below).
 
 [`examples/sample`](examples/sample) is a small branching VN, and a **read-only template**:
 the desktop app copies it rather than running in it (see
-[Seeded workspace](#seeded-workspace-examplesmysamplerepo)). The CLI has no such indirection,
-so a real run against it writes generated art into the source tree — point it at a copy if
-you want to keep `git status` legible. Preview offline, then generate:
+[`docs/desktop-app.md`](docs/desktop-app.md#seeded-workspace-examplesmysamplerepo)). The CLI
+has no such indirection, so a real run against it writes generated art into the source tree —
+point it at a copy if you want to keep `git status` legible. Preview offline, then generate:
 
 ```sh
 pnpm build
@@ -304,373 +203,74 @@ node apps/cli/dist/cli.js status examples/sample
 node apps/cli/dist/cli.js export examples/sample             # write the playable (story.play.json)
 ```
 
-## Playable & desktop runner
+## Playable & desktop app
 
-The pipeline is presentation-agnostic — it stops at `manifest.json`. To actually _watch_ a
-generated VN, `@vn/export` projects the model + manifest into a small in-house **playable**
-and the desktop app plays it. This is deliberately **not** an external DSL export; it is a
-thin, ordered view over the existing `Scene`/`Shot`/`Asset` types. See
-[`docs/plans/runner.md`](docs/plans/runner.md).
+The pipeline is presentation-agnostic — it stops at `manifest.json`. `@vn/export` projects the
+model + manifest into a small in-house **playable** (`story.play.json`), and the Electron app
+plays it. This is deliberately **not** an external DSL export; it is a thin, ordered view over
+the existing `Scene`/`Shot`/`Asset` types.
 
-### `story.play.json` (the playable)
+- Playable format and its contracts: [`docs/playable-format.md`](docs/playable-format.md)
+  (plan: [`docs/plans/runner.md`](docs/plans/runner.md)).
+- The app — renderer layout, the shared graph canvas, the STUDIO branch editor, FLOOR's task
+  DAG and coverage timeline, the PLAY runner, the session store, and the seeded workspace:
+  [`docs/desktop-app.md`](docs/desktop-app.md).
+- What persists where: [`docs/desktopAppState.md`](docs/desktopAppState.md).
 
-`vngen export [dir]` writes `vngen/build/story.play.json` via `buildPlayable(model, store)`
-(pure, in `@vn/export`). Each scene flattens into ordered **beats** plus its branch edges:
+Rules worth knowing before touching the renderer:
 
-```jsonc
-{
-  "version": 1,
-  "title": "…",
-  "start": "arrival", // entry scene id
-  "characters": { "aiko": { "name": "Aiko", "portrait": { "hash": "…", "ext": "png" } } },
-  "scenes": {
-    "arrival": {
-      "beats": [
-        { "type": "show", "image": { "hash": "…", "ext": "png" } }, // bg/shot (image omitted if none)
-        { "type": "say", "who": "aiko", "text": "Um… hello." }, // attributed dialogue/parenthetical
-        { "type": "narrate", "text": "She bows, a little too deeply." }, // narration/action
-      ],
-      "choices": [{ "label": "Introduce yourself", "goto": "greet" }],
-      "next": "rooftop", // followed when choices is empty
-    },
-  },
-}
-```
-
-- **Real line ids drive per-line art.** Scenes carry structured `lines` (`SceneLine`, derived
-  from the screenplay at model build with stable `${sceneId}:L<n>` ids); `Shot.coversLines`
-  binds shots to exact lines. The exporter walks `scene.lines`, emitting a `show` beat
-  whenever the covering shot changes, then a `say`/`narrate`. A model rebuilt from disk carries
-  no shots, so callers pass `loadSceneShots(paths, model)` — the persisted decompositions —
-  into `buildPlayable`; only with no file at all does it reconstruct the deterministic shot
-  grouping. Reconstructing over an LLM decomposition names shot ids no run produced, and every
-  `show` then comes out image-less.
-- **Asset refs are `{hash, ext}`**, resolved by the runner (never inlined). A missing asset
-  is **omitted, not an error** — a partially- or un-generated project still plays (placeholder
-  background/portrait). `@vn/export` is a boundaries-constrained leaf: like `@vn/authoring` it
-  must not import `@vn/pipeline`/`@vn/scheduler`.
-
-### Renderer layout (`apps/desktop/renderer`)
-
-One directory per room, a thin shell, and a stylesheet split along the same seams. `main.tsx`
-is the only `.tsx` at the root.
-
-```
-renderer/
-  main.tsx              entry; installs @vn/debug2d behind import.meta.env.DEV
-  app/                  App.tsx (shell only), Topbar.tsx, Palette.tsx, useAgent.ts
-                        catalog.ts (pure) — the palette's filtering and field coercion
-  graph/                Canvas.tsx + pure layout · edges · hit · viewport (see below)
-  rooms/studio/         Studio.tsx  Rail.tsx  Convo.tsx  PlanCard.tsx
-       …/branch/        BranchEditor.tsx  SceneCard.tsx  useBranch.ts
-                        graph.ts · grab.ts · tween.ts (pure)
-  rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  AttemptLoop.tsx
-                        TaskGraphView.tsx · attempts.ts · taskGraph.ts (pure) · GateOverlay.tsx
-       …/timeline/      Timeline.tsx  ShotBracket.tsx · coverage.ts (pure)
-  rooms/play/           Runner.tsx
-  ui/                   Resizable.tsx — shared by two rooms, so it belongs to neither
-  styles/               index.css @imports tokens · shell · studio · floor · play · graph ·
-                        branch · taskgraph · timeline
-```
-
-- **`App.tsx` owns only the shell**: `room`, `paletteOpen`, the workspace index/status, and
-  the `command:ui` subscription (`view.*` commands target the shell). The agent conversation —
-  feed, `dboxLine`, plan requests, `send`/`toggleMode`/`clear` — lives in `useAgent.ts` and is
-  passed to STUDIO as one object. `busy` is deliberately shell-wide, not agent-only: a
-  pipeline run from FLOOR disables the composer too.
-- **`styles/index.css` import order IS cascade order.** It reproduces the top-to-bottom order
-  of the single sheet this was split from, so a room's `@media` block still overrides the base
-  rule it narrows. Add a new sheet at the **end**, not the middle. Vite inlines the `@import`s
-  at build time, so one stylesheet still ships.
-- **`tokens.css` is the design contract**: `--sodium` `#f4a24c` is warm — the authored/human
-  side; `--signal` `#45c8d6` is cool — the machine/pipeline side; `--ink*` is the surface ramp;
-  `--disp`/`--prose`/`--mono` are display/prose/machine-data type. That split already encodes
-  "who made this", so **don't add new accent hues** — spend these two.
-- **Pure logic goes in `.ts` with a `tests/` sibling; `.tsx` stays thin rendering.** Jest's
-  desktop project is `**/apps/desktop/**/tests/*.test.ts` — `.ts` only, node environment, no
-  jsdom. Layout math, hit-testing, and derivation are exactly what you want under test and
-  exactly what jsdom can't help with; components are not tested. Same impure-shell/pure-core
-  split as `@vn/debug2d`, for the same reason. No jsdom, no React Testing Library.
-- **The FLOOR inspector renders the P7 refine loop**, since `shot_image` folds
-  generate → critique → refine into one runner and the task board would otherwise show one node
-  that made four image calls for no visible reason. `AttemptLoop.tsx` stacks the attempts with
-  the `Corrections:` clause that caused each next one in the gap between them; `attempts.ts` is
-  the pure half. Two contracts: `blocking` is computed exactly as `mergeReports`
-  (`@vn/providers`) computes it, so the UI can't disagree with the verdict the runner acted on;
-  and every attempt's bytes are in the store (`store.write` runs per attempt, `store.accept`
-  only on the clean one), so rejected frames are viewable over `vnasset://`. Plan and its
-  as-shipped notes: [`docs/plans/refine-loop-inspector.md`](docs/plans/refine-loop-inspector.md).
-- **`prototype.html`** (at `apps/desktop/prototype.html`) is the original design reference and
-  shares class names with the stylesheet. It is neither built nor imported — leave it alone,
-  and don't treat it as the source of truth for tokens; `tokens.css` is.
-
-### Graph canvas (`renderer/graph`) and the branch editor (STUDIO)
-
-`renderer/graph/` is the shared, domain-free canvas: `layout.ts` (layered DAG layout),
-`edges.ts` (routes + the polyline every hit test uses), `hit.ts` (`pick`), `viewport.ts`
-(pan/zoom), and `Canvas.tsx`, the only impure file. The branch editor is its first consumer;
-the [task DAG view](#task-dag-view-floor) is the second, and it reuses the layer unchanged.
-Plan: [`docs/plans/story-branch-editor.md`](docs/plans/story-branch-editor.md).
-
-- **One geometry, drawn and hit-tested.** `routeEdges` emits the SVG path and its sampled
-  polyline together, so an edge can't be clickable where it isn't drawn. Slop is authored in
-  **screen** pixels and divided by the scale before it meets world geometry — `pick` does that
-  conversion itself so callers can't do it backwards.
-- **Two co-transformed layers**: an SVG one for wires, an HTML one for cards and labels (typeset
-  material, and SVG text has no wrapping). They carry the same viewport, via `transformOf` for
-  SVG and **`cssTransformOf` for HTML** — the two syntaxes are not interchangeable, and CSS drops
-  a transform it can't parse _silently_. The node layer is `pointer-events: none`; an element
-  that needs a real DOM target (an inline label editor) opts itself back in.
-- **No manual node positions, so every drag is semantic.** `Scene` has no `x`/`y` and layout is
-  automatic: dragging a card's handle to another card wires it (`story.setChoice`/`setNext`),
-  dropping a card on a wire splices it in (`story.spliceScene`), pulling a wire's arrowhead off
-  its target unwires it. Each commits **one** command on release — a drag is continuous, its
-  commit is discrete.
-- **The refusal shown mid-drag is the refusal that would happen.** `src/shared/interactions.ts`
-  asks the same `branchops.ts` the command runs, so while a card is carried every wire is marked
-  accept/refuse with the reason the command would have given — and `interaction.targets` answers
-  an agent with that same verdict list.
-- **`grab.ts` resolves the handle and the arrowhead before `pick` does.** Both discs straddle a
-  card boundary, where `pick` answers "background" or "that card" — testing them first is what
-  makes them the size they look.
-- **Relayout is animated (`tween.ts`)** because a splice re-ranks the graph: the card does not
-  stay where it was dropped, and without the transition that reads as breakage.
-
-### Task DAG view (FLOOR)
-
-FLOOR's first two modes are `list` | `graph` (a segmented control in the floorbar,
-`view.mode(room=floor mode=graph)`), sharing one selection and one `Inspector` — the flat list
-is better for scanning, the graph for structure. Both are read-only: the only mutations from
-these two are `pipeline.run` and `gate.approve`. `taskGraph.ts` is the pure derivation,
-`TaskGraphView.tsx` the thin surface over `renderer/graph/`. Plan and as-shipped notes:
-[`docs/plans/task-dag-view.md`](docs/plans/task-dag-view.md).
-
-The view exists because a literal rendering of `Task.deps` would be dishonest in three ways,
-and each fix is a pure function tested in node:
-
-- **The gate is not an edge.** P3 approval is a planner predicate (`sceneUnblocked`), so a
-  halted run has nothing ready and no edge saying why. `barrierFor` synthesizes a barrier node
-  and `taskGraphOf` positions it with **ranking-only edges** — handed to `layoutGraph` but not
-  to `routeEdges`, so the rank is real and the wires are never drawn. It renders as a dashed
-  rule marked `derived`, carrying one `RESOLVE →` per pending character.
-- **`deps` understates coupling.** A `shot_image`'s deps hold only its location plate; the
-  subject portraits arrive through `inputs.refs`. `buildRefEdges` matches an `AssetRef.hash`
-  back to the task whose `output` equals it — **deps solid, ref edges dashed**. A ref no task
-  produced (an author-supplied image) is not an edge.
-- **The graph is deliberately partial.** Planning is incremental, so shot tasks don't exist
-  until their plate is `done`; an empty region means "not yet plannable", not "nothing to do".
-  `ghostsFor` reads the story graph (not the task list — those two states look identical from
-  the tasks alone) and ghosts each scene's expected work at `decomposeScene`'s deterministic
-  baseline. Ghosts are **clusters, never addressable**: `onPick` acts on real tasks only, so
-  the UI can't offer an estimate as a fact.
-
-### Coverage timeline (FLOOR)
-
-FLOOR's third mode, `timeline` (`view.mode(room=floor mode=timeline)`): a scene's screenplay
-down the page with the shots covering it bracketed beside it. It runs **vertically** because
-screenplays do, and it takes the full width — the task inspector is about other material, so
-`.floor-body.wide` drops it. This is the only surface that edits `Shot.coversLines`, which
-`buildShotPrompt` ignores, so every edit here is free: nothing rehashes and no art is
-invalidated. Plan and as-shipped notes:
-[`docs/plans/shot-timeline-editor.md`](docs/plans/shot-timeline-editor.md).
-
-- **One rule, previewed and committed.** `src/shared/coverage.ts` holds the whole gesture's
-  logic — `setCoverage` (the rule), `spansFor` (the geometry) and `resolveDrag` (which lines a
-  drop asks for) — run by the `story.setCoverage` command in main _and_ by the strip mid-drag,
-  so a refusal shown while a handle is carried is the refusal that would happen. Only `previewOf`
-  stays in the renderer: it is ghost geometry for drawing, and main has no use for it. One
-  command per drop; a drag is continuous, its commit is not.
-- **The gesture is declared, not just implemented.** `timeline.cover` (in
-  `src/shared/interactions.ts`) is the second interaction: it carries `<shotId>#start` /
-  `<shotId>#end` and judges **every** row of the scene, so an agent can ask what a drag would do
-  without performing one. `Timeline.tsx` evaluates `targets` **once per grab** — state and
-  carried are both fixed for the gesture — and indexes the verdicts by line id for its notice
-  and its commit; it still calls `resolveDrag` per pointer move for the ghost's _geometry_,
-  which a verdict does not carry. A row the drop would not change is dropped from the list
-  rather than reported: "nothing happens" is what release already does silently.
-- **A drag previews; it never re-lanes.** Lanes are greedy first-fit over shot _extents_, so
-  re-deriving coverage per pointer move moves brackets the author never touched into other
-  columns and changes the grid's column count under the cursor. The strip therefore draws
-  committed coverage for the whole gesture and `previewOf` draws the proposal over it — ghost
-  brackets in the dragged shot's **existing** lane, plus a tint on the rows it would claim and
-  release. Same rule as the branch editor's animated relayout: layout changes on commit, not
-  during the gesture. It also keeps the grabbed handle under the pointer.
-- **Claiming a line takes it from whatever held it.** The exporter shows the _first_ shot
-  covering a line, so double coverage silently hides the second shot's frame. Released lines
-  become **gaps** — a vermilion gutter — rather than being handed to a neighbour: an uncovered
-  line renders with no image, and revealing that is the point of the surface. But a claim that
-  would leave another shot covering **nothing** is refused, because releasing does not give lines
-  back: a drag that swept across a neighbour and returned would destroy it, and the return trip
-  could not undo it. Revealing a shot that covers nothing is this surface's job; manufacturing
-  one is not. The dragged shot may still empty itself via the command DSL — only the side effect
-  is refused.
-- **Coverage is a set, never a range.** `timeline/coverage.ts` splits a shot into contiguous
-  _segments_ and lanes shots by extent, so the decomposer's interleaving (plate takes the
-  narration, each medium one speaker) draws as separate columns instead of nested brackets.
-  Only a shot's outermost handles drag; a shot covering nothing is listed under
-  `COVERS NOTHING` instead of being drawn.
-- **Rows are grid rows, so wrapped prose sizes itself.** The one thing measured is which row
-  the pointer is over: a full-width `.tl-band` behind each row, reached by `elementFromPoint`
-  once `.tl-grid.dragging` drops pointer events on the script and the brackets.
-
-### Desktop runner (`apps/desktop`, PLAY room)
-
-The Electron app's third room (**STUDIO · FLOOR · PLAY**) is the runner, in
-`renderer/rooms/play/Runner.tsx`:
-
-- **Live, no file needed.** The renderer calls the `story:play` IPC channel; the main process
-  builds the playable in-process from the loaded model + store (`session.playable()`).
-- **Image delivery — `vnasset://`.** A privileged custom protocol (registered in
-  `src/main/index.ts`) streams `build/assets/<hash>.<ext>` for `vnasset://<hash>.<ext>`, so
-  `<img src="vnasset://…">` loads content-addressed bytes. This is the app's only image path.
-- **Playthrough.** State is a navigation stack (`{ sceneId, frameIndex }[]`, last = current):
-  click / Space / → advances a beat; at scene end it shows choice buttons or auto-follows
-  `next`; a leaf scene shows "The End". **Back** (← / Backspace) rewinds. **Save / Load /
-  Reset** persist the stack to `localStorage`, keyed by workspace title.
-
-### Remembered UI state (`.vndesktop/session.json`)
-
-Panel widths (and anything else the shell should remember) live in a flat key/value file the
-main process owns — `apps/desktop/src/main/sessionstore.ts`, gitignored, **global per install**
-rather than per workspace. `VN_DESKTOP_HOME` relocates it; the default is one line away from
-`~/.vndesktop` once the app is installed rather than run from the repo.
-
-- **Multi-instance by construction.** Nothing stops two app instances sharing the file, so a
-  flush takes a `mkdir` lock (stale ones, >5s, are broken), re-reads the file _inside_ the
-  lock, and applies **only its dirty keys** over what it finds. Different keys from different
-  instances both survive; the same key is last-flush-wins.
-- **Synchronous first read.** The preload does one `sendSync('session:snapshot:sync')` and
-  `useSessionValue` seeds `useState` from it, so a saved width is the first thing painted
-  rather than a jump away from the default.
-- **One hook, both orientations.** `usePanelWidth(saveId, { defaultWidth, min, max, edge })`
-  (`renderer/ui/Resizable.tsx`) stores under `panel.<saveId>.width`, hands back a
-  `--panel-w` `trackStyle` for the grid container and a `<ResizeHandle>`'s props. The STUDIO
-  rail (`edge: 'left'`) and the FLOOR inspector (`edge: 'right'`) use it unchanged. A drag
-  keeps the width local and persists once on release; `view.panelSize` is the scriptable path.
-
-### Seeded workspace (`examples/mySampleRepo`)
-
-With no `VN_PROJECT`, the app opens **`examples/mySampleRepo`** and seeds it from
-`examples/sample` on first launch (`apps/desktop/src/main/workspace.ts`). It is resolved once
-in `app.whenReady()`, before the asset protocol or any session exists.
-
-- **Why**: a real run writes ~100 MB into `vngen/`, and doing that in the source tree buries
-  `git status` and erases the line between the sample we ship and the copy you've been messing
-  with. `examples/mySampleRepo` is **gitignored**, so its own git repo is invisible to the
-  parent — no submodule, no `gitlink`, no `--recursive` clone.
-- **Seeding copies inputs only** — everything in the template except `vngen/` (a fresh
-  workspace has not been run) and `keys/` (secrets) — then `git init`s and commits them as
-  `Sample project inputs`. A local `user.*` is set only when git can't already answer who the
-  committer is; `core.autocrlf false` is always set, since the branch editor patches the
-  screenplay byte-exactly.
-- **An existing directory is opened untouched.** Never re-copied, never overwritten: it is the
-  user's working copy. Resetting it is `rm -rf examples/mySampleRepo`, which needs no code and
-  cannot misfire.
-- Packaged builds have no repo-relative `examples/`, so the scratch workspace falls back to
-  `app.getPath('userData')/mySampleRepo`; a missing template then fails by name.
+- **Pure logic goes in `.ts` with a `tests/` sibling; `.tsx` stays thin rendering.** The jest
+  desktop project is node-only — no jsdom, no React Testing Library, components untested.
+- **`styles/index.css` import order IS cascade order** — add a new sheet at the end.
+- **`tokens.css` is the design contract**: `--sodium` (warm) is the authored/human side,
+  `--signal` (cool) the machine/pipeline side. Don't add new accent hues.
+- **A mid-gesture verdict must be the verdict that would happen** — the drag overlays call the
+  same pure rule the command runs. Layout changes on commit, never during a gesture.
 
 Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (mock mode by
-default; `VN_PROJECT=<dir>` overrides the workspace).
-
-**Live dev loop:** `pnpm --filter @vn/desktop dev` (`scripts/dev.desktop.mjs`) runs the three
-moving parts together — esbuild `--watch` (main + preload), the Vite renderer server with
-HMR, and Electron launched against it once it's up (`VITE_DEV_SERVER_URL`, which
-`src/main/index.ts` loads instead of the built file). Quitting the window (or Ctrl-C) tears
-the whole tree down. `VN_DEV_PORT` overrides the renderer port (default 5176); `VN_MOCK`/
-`VN_PROJECT` pass through to the main process. Main-process edits need a restart (the renderer
-hot-reloads on its own). The dev loop also defaults `VN_CDP_PORT=9222` — see
-[Command system](#command-system).
+default; `VN_PROJECT=<dir>` overrides the workspace). Live dev loop:
+`pnpm --filter @vn/desktop dev`.
 
 ## Command system
 
 Every desktop action the shell can take is a **registered command** rather than a bespoke IPC
 channel: typed properties, a string DSL, git-stamped provenance, one JSON catalog. The palette,
 the menus, the agent, and an external CDP client all reach the same registry. Full write-up:
-[`docs/command-system.md`](docs/command-system.md) (the implementation plan is
-[`docs/plans/command-system.md`](docs/plans/command-system.md)).
+[`docs/command-system.md`](docs/command-system.md); plan:
+[`docs/plans/command-system.md`](docs/plans/command-system.md).
 
-- **`@vn/commands` is the framework, the desktop app owns the commands.** The package holds
-  prop specs, the registry, the DSL, the execution stack, the interaction layer, and the catalog
-  projection — it is domain-agnostic (deps: `types`, `util`, `git`). The 26 definitions live in
-  `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`, `view`,
-  `interaction`, `command`)
-  as thin wrappers over `WorkspaceSession`. The `story.*` branch mutators
-  (`setChoice`/`removeChoice`/`setNext`/`spliceScene`) all go through
+- **`@vn/commands` is the framework; the desktop app owns the commands.** The 26 definitions
+  live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`,
+  `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
+- **Commands are the only write path.** The `story.*` branch mutators go through
   `session.editBranches(decide)` → `applySceneBranchEdit` → reload, so the branch editor never
-  writes the screenplay by another path; `story.setCoverage` is the same arrangement one layer
-  down, the only writer of `work/shots/<sceneId>.json` outside the planner.
-- **Props are declarative specs, not zod.** The repo is on zod 3 (no `z.toJSONSchema`), and
-  one spec map feeds coercion, the DSL, the catalog's JSON Schema, and a future properties
-  panel. `coerceProps` is the single validation authority — it applies defaults, coerces the
-  loose values JSON/CDP callers send, and rejects unknown keys, so `run` always receives every
-  key present.
-- **DSL:** `namespace.command(a='x' b=1)` — commas optional, barewords parse as strings (so
-  `agent.setMode(mode=execute)` works). `formatCommand` is the inverse; a round-trip test pins
-  them together.
-- **Provenance.** Each execution appends a `CommandRecord` to `vngen/state/commands.jsonl`
-  (alongside `tasks.jsonl`) carrying `gitHead`, `gitDirty`, `written` paths, and the replayable
-  `invocation` — plus, for an undoable command, the pair of snapshots below.
-- **Undo is opt-in, and restores a shadow snapshot of the _document_ tree.** With an
-  `UndoJournal` wired, the stack brackets an `undoable` command with two captures of the
-  worktree into detached commits under `refs/vn/undo/<seq>/{pre,post}` — HEAD never moves, the
-  index is never touched. Snapshots exclude `vngen/build` and `vngen/state`: those are
-  content-addressed and append-only, rolling them back would discard work a run has to pay for
-  again, and excluding them is also what keeps a `pipeline.run` between two edits from reading
-  as drift. Only the six `story.*` document mutators opt in; `gate.approve` straddles both
-  data classes and is deliberately out. Undo **refuses rather than guesses** when the worktree
-  no longer matches the record's `post` tree, redo **restores the post-state rather than
-  replaying**, and `undo.changed` (the two trees compared, not what the command _claimed_ it
-  wrote) keeps a no-op edit from becoming the undo point. A stack with no journal refuses both,
-  exactly as before undo landed. Survey: [`docs/gitUndoOptions.md`](docs/gitUndoOptions.md);
-  plan: [`docs/plans/command-undo-redo.md`](docs/plans/command-undo-redo.md).
-- **Interactions declare the gestures; commands stay the only write path.** A command says what
-  the app can do; on the direct-manipulation surfaces that omits most of the interface. An
-  `Interaction` (`packages/commands/src/interaction.ts`) adds a name, a carried token, and —
-  the point — `targets(state, carried)`, a **query** returning every candidate marked accept
-  (with the invocation a drop would run) or refuse (with the sentence the command itself would
-  have given). It never writes: every gesture terminates in a registered command, and
-  `InteractionRegistry.verify` fails the build if it names one the app lacks. All four
-  (`branch.connect`/`splice`/`unwire`, `timeline.cover`) live in `src/shared/interactions.ts`
-  beside the rules they run, for the same reason — `BranchEditor` draws its mid-drag verdict
-  overlay from `branchSplice.targets`, the `Timeline` evaluates `timelineCover.targets` once per
-  grab, and `interaction.targets` runs the same call in main, so an author and an agent can't be
-  told different things about one drop. Inline label editing is deliberately _not_ an
-  interaction: no carried object, no enumerable targets. **The carried value is always a
-  string** — one with structure encodes it (`arrival__beat1#end`) and parses it in `targets`,
-  refusing a token that names nothing against `UNRESOLVED` rather than returning `[]`, since an
-  empty list means "no targets here", not "you asked about something absent". `targets` is
-  synchronous and pure because it runs per pointer move, which is exactly why a command's
-  precondition is a separate function. Plans:
-  [`docs/plans/interaction-model.md`](docs/plans/interaction-model.md),
-  [`docs/plans/preconditions-and-timeline-interaction.md`](docs/plans/preconditions-and-timeline-interaction.md).
-- **A mutating command declares its refusal before it runs.** `Command.check` is an optional
-  async precondition and `stack.check(id, props)` answers in **three** states: `accept` (with
-  what it found), `refuse` (with the sentence the command itself would give), and `undeclared`
-  — because absence of a check is not permission, and reporting it as an accept would lie by
-  default. It never gates `exec`, which re-decides for itself; it reads and never writes; and
-  only mutating commands declare one (a test pins the list). The `story.*` checks re-run the
-  _same_ pure decision the command runs against a freshly read graph and discard it, so the
-  refusal shown is the refusal that would happen. `pipeline.run` refuses only on an
-  unresolvable key with `mock=false` — "is anything plannable" can't be answered without
-  planning, which writes. Reachable as `command.check(invocation=…)`, `window.vn.check`, and
-  `checkable` in the catalog.
-- **Catalog.** `pnpm build` writes `apps/desktop/dist/commands.json` for external tooling. The
-  `command:catalog` IPC channel serves the **live** registry, never the file, so the app can't
-  be misled by a stale one; a test asserts the two match.
-- **The palette is a view of that catalog**, not a hand-kept list: `Palette.tsx` fetches
-  `command:catalog` and generates a form from each entry's props, so a new command appears in the
-  `/` menu the moment it is registered. `mutating` entries are marked `writes`, `confirm` ones
-  take a second click, and a `checkable` one has its verdict re-asked on every keystroke — an
-  `undeclared` answer renders as **nothing at all**, and the verdict never gates the run (a
-  refusal surfaces as the exec error, from the stack that re-decided for itself). Highlighting a
-  row only arms the check; the click is what navigates or runs. Execution goes over `command:exec`,
-  the same stack `window.vn.exec` and CDP reach, so provenance and undo are identical whoever ran
-  it. Pure half in `renderer/app/catalog.ts` (filtering, blank values, field coercion) with a
-  `tests/` sibling.
-- **CDP.** Setting `VN_CDP_PORT` makes the app open Chrome's own remote-debugging port, bound
-  to `127.0.0.1`. It is **opt-in and off by default** — the port grants full control of the
-  renderer. The preload exposes `window.vn` (`exec`/`check`/`catalog`/`history`/`undo`/`redo`) over
-  the existing IPC, so DevTools and CDP share one entry point:
+  writes the screenplay by another path; `story.setCoverage` is the only writer of
+  `work/shots/<sceneId>.json` outside the planner.
+- **Props are declarative specs, not zod** (the repo is on zod 3). `coerceProps` is the single
+  validation authority — defaults, coercion of loose JSON/CDP values, unknown-key rejection.
+- **DSL:** `namespace.command(a='x' b=1)`; commas optional, barewords are strings.
+  `formatCommand` is the inverse and a round-trip test pins them together.
+- **Provenance and undo.** Each execution appends a `CommandRecord` to
+  `vngen/state/commands.jsonl`. Undo is **opt-in** (the six `story.*` document mutators only)
+  and restores a shadow snapshot of the document tree under `refs/vn/undo/<seq>/{pre,post}` —
+  HEAD and the index are never touched, `vngen/build` and `vngen/state` are excluded, and undo
+  **refuses rather than guesses** when the worktree has drifted.
+- **Interactions declare the gestures** (`packages/commands/src/interaction.ts`): a carried
+  string token plus `targets(state, carried)`, a pure synchronous query returning every
+  candidate marked accept (with the invocation a drop would run) or refuse (with the sentence
+  the command itself would give). They never write.
+- **A mutating command declares its refusal before it runs.** `stack.check(id, props)` answers
+  `accept` | `refuse` | `undeclared` — absence of a check is not permission. It never gates
+  `exec`, which re-decides for itself.
+- **`view.*` commands run in main** and push a `command:ui` effect; there is no second,
+  renderer-side registry. `Room` stays a three-value union — an editor is a **mode within a
+  room** (STUDIO: `convo` | `branches`; FLOOR: `list` | `graph` | `timeline`).
+- **The catalog is generated, and the palette is a view of it.** `pnpm build` writes
+  `apps/desktop/dist/commands.json` for external tooling; the `command:catalog` IPC channel
+  serves the **live** registry, and a test asserts the two match.
+- **CDP is opt-in** via `VN_CDP_PORT` (bound to `127.0.0.1`; the port grants full control of
+  the renderer). `window.vn` (`exec`/`check`/`catalog`/`history`/`undo`/`redo`) is the one
+  entry point DevTools and CDP share:
 
   ```sh
   node scripts/vn-cdp.mjs "workspace.index()"
@@ -678,20 +278,12 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   node scripts/vn-cdp.mjs --history 5      # exits non-zero on a failed command
   ```
 
-- **`view.*` commands run in main** and push a `command:ui` effect the renderer applies, rather
-  than there being a second, renderer-side registry to keep in sync. `Room` stays a three-value
-  union — an editor is a **mode within a room**, reached by `view.mode(room, mode)` and a
-  `{ type: 'mode' }` effect (STUDIO: `convo` | `branches`; FLOOR: `list` | `graph` |
-  `timeline`). Which
-  modes a room _has_ is a pairing, so `view.mode` re-checks it in `run` and refuses a bad one
-  by throwing; `UiEffect`'s mode member is split per room so the renderer can't cross them
-  either.
-
 ## Test fixtures (`@vn/testkit`)
 
 A test-only package that builds **real projects on disk** and runs them through the **real
 scheduler** with mock providers, so a test asserts against generated state rather than a
-hand-built model. Plan: [`docs/plans/test-fixtures.md`](docs/plans/test-fixtures.md).
+hand-built model. Full write-up: [`docs/testkit.md`](docs/testkit.md); plan:
+[`docs/plans/test-fixtures.md`](docs/plans/test-fixtures.md).
 
 ```ts
 import { SCRIPTS, makeProject, synthProject } from '@vn/testkit';
@@ -707,171 +299,62 @@ try {
 }
 ```
 
-- **Fidelity is the point.** Every method goes through the code path production uses — inputs
-  are parsed from files, approval is written to front-matter, the scheduler runs for real — so
-  a fixture cannot pass by being kinder than the app. `characters`/`locations` are inferred
-  from the script by the same `splitScenes` the model build uses, so ids can't drift.
-- **Nothing may import it.** The boundaries rule grants `testkit` permission to import every
-  layer and grants no one permission to import `testkit`; since `boundaries/element-types`
-  defaults to `disallow`, a production import is a lint error. Test files are exempt from the
-  rule, which is the only place it belongs. It must never appear in an app's `dependencies`.
-- **The gate is per scene.** A scene with no cast renders on the _first_ run, before any
-  approval. Assert on `summary.blockedOnGate` / `summary.gate.pending` / specific shot ids —
-  never on "no shots ran".
-- **`synthProject({ scenes, fanout, characters, locations })`** generates a `fanout`-ary scene
-  tree with **no randomness** (task identity is `sha256(kind, inputs)`; a randomized script
-  would change the task set every run). Scenes are not nodes: a fully-run project settles at
-  `L + 4C + 2N` tasks, and reaching that total needs a real `run()`, not a `dryRun`.
-- **Mock runs produce placeholder art, and it is marked as such.** `StubImageBackend` emits a
-  real 64×36 PNG (`packages/providers/src/placeholder.ts`) — colour and stripe derived from the
-  same seed, so a mock project is _viewable_ in the desktop app instead of a strip of broken
-  thumbnails, and distinct shots look distinct. The bytes are hand-encoded with stored deflate
-  blocks rather than `zlib`, because they are content-addressed and zlib's output is only
-  stable per library version. Every placeholder carries a `tEXt` chunk keyed
-  `vn-mock-placeholder`; `imagePart` in the Gemini backend rejects any reference carrying it.
-  That marker _is_ the "never mix mock assets into a real run" guarantee now — a placeholder
-  decodes fine, so magic-byte sniffing can no longer tell it from generated art.
-- **`makeProject({ assets: 'cached' })` replays _real_ recorded art** out of
-  `packages/testkit/assets/` (`<key>.<ext>` + an `index.json` of provenance), for the fixtures
-  that exist to be _looked at_ — the PLAY room, the FLOOR inspector — rather than asserted on.
-  The corpus is recorded and committed: **9 entries, 11.3 MB**, covering `linear` end to end.
-  `CachedImageBackend` (`@vn/providers`) wraps `StubImageBackend`, keyed on
-  `sha256(op, prompt, ordered ref-byte hashes, params)` — not the task hash, since the backend
-  never sees a task. Default is `'placeholder'`, so no suite can pass only on a machine that
-  has the corpus. Three contracts: a ref's bytes are in both the task hash _and_ the cache key,
-  so **a cache is whole-chain or nothing** — a hole misses, and everything downstream of it
-  misses too and degrades to placeholders rather than mixing; a hit reports the **recorded**
-  model id, because the recording is the authority on its own provenance; and `put` refuses
-  placeholder bytes, so a recording run that fell back to mocks can't bake them in. Recording
-  is not reachable from `makeProject` — it lives on `CachedImageBackend({ record: true })`,
-  which only the refresh script uses.
-- **The refresh script records image calls only.**
-  `node scripts/record-fixture-assets.mjs [--fixture linear] [--check]` — a thin driver over
-  `packages/testkit/src/record.ts`, which is in the package (not the script) so it is
-  typechecked and inside the boundaries graph. Recording runs the fixture with
-  `createMockProviders({ imageBackend: cached })`: **mock text and vision, real image model**,
-  because P5 decomposition is an LLM step and a recording made against a real text model would
-  carry shot descriptions no replaying fixture ever asks for again — the corpus would be dead
-  bytes. Mock text pins the run to the deterministic baseline, which is what a replay produces;
-  the price is that a recorded P7 loop is one attempt deep. `--check` is free and offline and
-  **reports, never gates** — a suite that failed on a stale entry would put a paid re-record in
-  the way of an ordinary prompt change. It derives reused/missed/orphaned from
-  `CachedImageBackend.log`, and marks the orphan list suspect whenever anything missed, since
-  past the first miss the chain constraint re-keys every later request. A **failed task** is a
-  different thing from a stale entry and is never quiet: `runFixture` collects `task.end` errors
-  through a `logger` passed to testkit's `run()` (the scheduler stores a failure's message
-  nowhere else — `RunSummary.ran` counts failures as terminal), `formatReport` prints them, and
-  the script exits non-zero. A full re-record of `linear` is 9 image calls, ~$0.35, and is
-  always full — a changed prompt re-keys everything downstream of it.
-- **The recorder's bundle location and `cacheDir` are both load-bearing.** The model SDKs are
-  `EXTERNAL` and lazy-imported, and `@google/genai` is a dependency of `@vn/providers` alone, so
-  the bundle is emitted into `packages/providers/` — from anywhere else node cannot resolve it
-  and every image task fails on first use. And `FIXTURE_ASSET_DIR` is `__dirname`-relative,
-  which esbuild rewrites to the _output_ directory, so the script passes `cacheDir` explicitly
-  rather than letting a bundle write a complete corpus somewhere adjacent and plausible. Both
-  cost a paid run to discover; see `docs/plans/sample-workspace-and-asset-cache.md`.
-- **In-memory factories** (`character`, `location`, `scene`, `model`) are also exported, for
-  unit tests of the pure planners where building on disk would just be noise.
+- **Fidelity is the point** — every method goes through the code path production uses, so a
+  fixture cannot pass by being kinder than the app.
+- **Nothing may import it.** A production import is a lint error; it must never appear in an
+  app's `dependencies`.
+- **The gate is per scene.** A cast-less scene renders on the _first_ run — assert on
+  `summary.blockedOnGate` / `summary.gate.pending` / specific shot ids, never on "no shots ran".
+- **`synthProject`** is deterministic by construction (randomness would re-key every task);
+  a fully-run project settles at `L + 4C + 2N` tasks.
+- **Mock art is marked art.** Placeholder PNGs carry a `vn-mock-placeholder` `tEXt` chunk and
+  the Gemini backend refuses any reference carrying it — that marker _is_ the "never mix mock
+  assets into a real run" guarantee. `makeProject({ assets: 'cached' })` replays the real
+  recorded corpus instead, whole-chain or not at all.
 
 ## 2D debug layer (`@vn/debug2d`)
 
-A source-agnostic debugging layer for the desktop renderer's 2D UI: a neutral **fragment
-IR** captured from the DOM (canvas/SVG adapters later), a **query engine** over frames, and
-a causal **`explainPick`** that answers "why did my click miss / why is this on top" from
-ground truth instead of screenshots. Design:
-[`docs/research/2d-graphics-debug-api.md`](docs/research/2d-graphics-debug-api.md); plan:
-[`docs/plans/2d-graphics-debug-api.md`](docs/plans/2d-graphics-debug-api.md); usage
+A source-agnostic debugging layer for the desktop renderer's 2D UI: a neutral **fragment IR**
+captured from the DOM, a **query engine** over frames, and a causal **`explainPick`** that
+answers "why did my click miss / why is this on top" from ground truth instead of screenshots.
+Design: [`docs/research/2d-graphics-debug-api.md`](docs/research/2d-graphics-debug-api.md);
+plan: [`docs/plans/2d-graphics-debug-api.md`](docs/plans/2d-graphics-debug-api.md); usage
 recipes: [`docs/debugGuide.md`](docs/debugGuide.md).
 
-- **Isolation is the design.** `@vn/debug2d` has zero dependencies (it even duplicates ~50
-  lines of `Rect`/`Mat3` helpers in `geom.ts` — do not "deduplicate"), sits outside the
-  layering graph, and is imported only by `apps/desktop/renderer/debug/install.ts`. The
-  install is a dynamic import behind `import.meta.env.DEV` in `main.tsx`, so `vite build`
-  drops the whole package from the production bundle.
-- **Impure shell, pure core.** `dom/snapshot.ts` does all browser reads in one batched pass
-  → plain snapshot tree; stacking order (CSS 2.1 walk with **culprit retention** — the
-  ancestor whose `transform`/`opacity`/… scoped your `z-index` is recorded on the fragment),
-  pick, and attribution are pure functions over that tree, unit-tested in node. jsdom has no
-  layout engine, so the shell stays thin and is validated live instead.
-- **Console + CDP surface.** Dev builds install `window.__vnDebug`
-  (`at`, `inAABB`, `byOwner`, `byTag`, `bySource`, `where`, `owners`, `capture`,
-  `explainPick`). Query results are chainable; `.explain()` / `.table()` are the plain-data
-  projections — the only things that survive CDP's `returnByValue`, so remote expressions
-  must end in one:
-
-  ```sh
-  node scripts/vn-cdp.mjs --raw "window.__vnDebug.explainPick(400, 300)"
-  node scripts/vn-cdp.mjs --raw "window.__vnDebug.at(400, 300).explain()"
-  ```
-
-- **Honesty contract.** DOM frames are `fidelity: 'sampled'` with `exactZ: false`; the
-  `elementsFromPoint` oracle is captured per query and a disagreement with the computed
-  stack prints a `⚠` line rather than being resolved silently. Explain output is
-  fixed-precision and deterministically ordered — the golden tests pin it verbatim.
+- **Isolation is the design.** Zero dependencies (it even duplicates ~50 lines of `Rect`/`Mat3`
+  helpers in `geom.ts` — do not "deduplicate"), outside the layering graph, imported only by
+  `apps/desktop/renderer/debug/install.ts` behind `import.meta.env.DEV`, so `vite build` drops
+  the whole package from production.
+- **Impure shell, pure core.** `dom/snapshot.ts` does all browser reads in one batched pass;
+  stacking order (with **culprit retention**), pick, and attribution are pure functions over
+  that snapshot, unit-tested in node.
+- **Honesty contract.** DOM frames are `fidelity: 'sampled'` with `exactZ: false`; a
+  disagreement with the `elementsFromPoint` oracle prints a `⚠` rather than being resolved
+  silently. Explain output is fixed-precision and deterministically ordered — golden tests pin
+  it verbatim.
+- Dev builds install `window.__vnDebug`; query results are chainable and `.explain()` /
+  `.table()` are the only projections that survive CDP's `returnByValue`, so remote expressions
+  must end in one.
 
 ## Authoring agent (`vnauthor`)
 
-A plan-first, git-backed conversational agent that helps an author write and refine the
-inputs the pipeline consumes. It does **not** run the generative pipeline — it stops at
-well-formed, validated input files in a clean commit.
+A plan-first, git-backed conversational agent that helps an author write and refine the inputs
+the pipeline consumes. It does **not** run the generative pipeline — it stops at well-formed,
+validated input files in a clean commit. Full write-up: [`docs/vnauthor.md`](docs/vnauthor.md);
+design: [`docs/authoring-agent-report.md`](docs/authoring-agent-report.md).
 
 ```
 vnauthor [dir] [--mock] [--native]
 ```
 
-- `--mock` runs offline with no model (read-only smoke test — exercises workspace/skill
-  loading and the REPL without API keys).
-- `--native` uses provider-native function-calling (Path B) when the configured model
-  supports `chatWithTools`; otherwise the agent falls back to structured ReAct (Path A).
-- Model + keys resolve exactly like `vngen`: `models.text` in `project.yaml`, key via env
-  var or a secret file under `<dir>/keys/` (falling back to a shared `keys/` at the
-  enclosing repo root).
-
-REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the text model;
-no arg → interactive menu), `/effort [level]` (set reasoning effort — `low`…`max` map to
-Anthropic `output_config.effort` + adaptive thinking, ignored on models that don't support
-it; no arg → interactive menu), `/clear` (reset the conversation context, back to plan
-mode), `/status` (project index), `/skills` (available skills), `/exit` (or `/quit`).
-**Shift-Tab** cycles between plan and execute mode. `/model` and `/effort` rebuild the
-backend and hot-swap it into the running agent, preserving conversation state.
-
-### How it works
-
-- **Two-mode state machine (`@vn/authoring` `loop.ts`).** The agent starts in **plan mode
-  (read-only)**: only non-mutating tools dispatch; any mutating tool is blocked until the
-  user approves a proposed plan. Approving a plan switches to **execute mode**, where edits
-  apply, `validate_inputs` runs, and `git_commit` is **blocked while error-severity
-  diagnostics remain** (soft/style issues only warn). One commit per approved plan.
-- **Always-confirm.** `git_revert`/`git_restore` and the first run of a script-bearing
-  skill route through the permission gate regardless of mode.
-- **Agent backend seam.** The loop targets an internal `AgentBackend`; `StructuredAgentBackend`
-  (Path A) drives tools as zod-validated JSON over the text seam, `NativeAgentBackend`
-  (Path B) drives them through the vendor tool protocol. The loop is the arg-validation
-  authority, so Path B advertises permissive tool params and re-validates via the registry.
-- **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested per-dir files
-  and `@import` lines; `AGENTS.md`/`CLAUDE.md` as fallbacks) > inferred defaults.
-  `update_context` turns a chat instruction into a durable line in `AICONTEXT.md`.
-- **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
-  `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed
-  front-matter so untouched prose and branch markers are preserved.
-
-### Skills
-
-Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md`
-(front-matter: `name`, `description`, `when-to-use`). A pure-prose skill returns its body as
-guidance; a skill with a `run.{mjs,js,cjs,sh}` script runs a vetted command — and **each run
-is permissioned** (always-confirm), executing in the workspace root with the workspace path
-as its first argument. See [`examples/sample/.aiagent/skills/new-character`](examples/sample/.aiagent/skills/new-character).
-
-### Try it (offline)
-
-```sh
-pnpm build
-printf '/skills\n/status\n/exit\n' | node apps/authoring/dist/vnauthor.js examples/sample --mock
-```
-
-[`examples/sample/AICONTEXT.md`](examples/sample/AICONTEXT.md) shows project guidance the
-agent honors.
+- **Plan mode is read-only.** Mutating tools are blocked until the user approves a proposed
+  plan; approving switches to execute mode, and `git_commit` stays blocked while
+  error-severity diagnostics remain. One commit per approved plan.
+- **Always-confirm** for `git_revert`/`git_restore` and the first run of a script-bearing skill.
+- **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `apply*Edit` serializers
+  (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter.
+- **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested files and
+  `@import`s; `AGENTS.md`/`CLAUDE.md` as fallbacks) > inferred defaults.
 
 ## Conventions
 
@@ -912,6 +395,16 @@ agent honors.
   write-up, or report goes in `docs/research/<descriptive-name>.md` — not at the `docs/`
   root and not only in the conversation. Design docs and implementation plans keep their
   existing homes (`docs/`, `docs/plans/`).
+
+### Documentation
+
+- **This file is the map, not the territory.** Keep CLAUDE.md to what a contributor needs
+  in-hand: the layering, the commands, the invariants in one or two lines each, and a pointer
+  to the doc that states them in full. When a section here grows past roughly a screen of
+  as-shipped detail, move it under `docs/` and leave the pointer — a `docs/` page is read on
+  demand, whereas everything here is carried into every session.
+- **Every new `docs/` page is listed in [`docs/index.md`](docs/index.md)** with a one-line
+  summary of what it covers.
 
 ### Finishing a plan
 
