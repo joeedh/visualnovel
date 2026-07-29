@@ -41,7 +41,7 @@ current one.
 | [`interaction-model.md`](interaction-model.md) | partial | `Interaction`/`targets`; four gestures declared, the general surface is not finished |
 | [`allocated-line-ids.md`](allocated-line-ids.md) | shipped | Line ids that survive an edit, the diagnostics surface, the catalog-driven palette |
 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | shipped | `parse(write(scene)) ≡ scene`; `Scene.body` retired, headings and three line kinds retained |
-| [`scene-chunk-files.md`](scene-chunk-files.md) | partial | `scenes/<id>.md` replaces the one contended screenplay; steps 1–8 are in — a chunk project loads, builds, validates and is written to, and every fixture is one file per scene; `examples/sample` and the docs are step 9–10 |
+| [`scene-chunk-files.md`](scene-chunk-files.md) | partial | `scenes/<id>.md` replaces the one contended screenplay; steps 1–9 are in — a chunk project loads, builds, validates and is written to, and every fixture and `examples/sample` is one file per scene; only the docs outside the plan are left |
 | [`fountain-import-export.md`](fountain-import-export.md) | planned | `vngen import` / `vngen screenplay` |
 | [`scene-editing-commands.md`](scene-editing-commands.md) | planned | Nine `story.*` prose commands, `lineops.ts`, `session.editScene` |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | planned | Correcting a line in the coverage timeline; drift marking |

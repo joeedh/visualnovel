@@ -1,10 +1,9 @@
 # Scene chunk files
 
-Status: **in progress** — steps 1–8 of 10 are shipped: the format exists, a `scenes/` project
-loads, builds, validates and is **written** to by the branch and line-id writers, and every
-`@vn/testkit` fixture is one file per scene by default. `examples/sample` is still on
-`screenplay/` (step 9), and the docs outside this file still describe the old layout (step 10).
-Move two of
+Status: **in progress** — steps 1–9 of 10 are shipped: the format exists, a `scenes/` project
+loads, builds, validates and is **written** to by the branch and line-id writers, every
+`@vn/testkit` fixture is one file per scene by default, and `examples/sample` is authored that
+way. Only the docs outside this file still describe the old layout (step 10). Move two of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 after [`allocated-line-ids.md`](allocated-line-ids.md) and
 [`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
@@ -236,14 +235,29 @@ surface. Before that plan lands they would be produced and rendered nowhere.
    sharing one file, and a script written as one file is what arrives with no line-id marks. The
    acceptance criterion for step 9 is proved here at fixture scale: a full approve-and-run in each
    format plans **identical task hashes**.
-9. **Convert `examples/sample`.** By hand or by the step-4 writer, verified by a full
-   `vngen run --mock` + `graph` + `export` against a fresh copy, and by opening
-   `examples/mySampleRepo` in the desktop app. The task hashes must not move: the shot prompt is
-   built from `lines`, so a scene that round-trips unchanged plans identical work. **If any task
-   rehashes, stop** — something in the round-trip is lossy and the corpus in
-   `packages/testkit/assets/` is about to be invalidated. One test reads the sample screenplay
-   directly — `branchpatch.test.ts`'s generated sweep, which is the patcher's integration test —
-   and has to be pointed at the chunks.
+9. ✔ **Convert `examples/sample`.** Five `scenes/<id>.md` files and `start: arrival`; each body is
+   the screenplay block it came from, minus the `[[scene:]]` marker, so the diff is a move rather
+   than a rewrite. Converted by hand rather than by the step-4 writer, deliberately: the writer
+   would also stamp `[[line:]]`/`[[nextline:]]` on every line, and the shipped template is more
+   useful showing the minimum a chunk may be — an unmarked body, which is also the input
+   `assignLineIds` exists for.
+
+   **Nothing rehashed.** A throwaway test planned both forms of the sample through two waves and
+   compared sorted `kind + hash`: identical. So are `vngen graph`, `vngen cost` and the exported
+   `story.play.json`, byte for byte, between a screenplay-form copy and the converted one.
+
+   Three tests read the sample directly, and each moved to what it was actually testing:
+   `branchpatch.test.ts`'s generated sweep is now two sweeps — the sample's chunks (one scene per
+   file, id forced from front-matter) and `SCRIPTS.branching` for the multi-scene property that no
+   _other_ scene's markers move; `lineids.test.ts` sweeps the sample's unmarked chunk bodies.
+   `apps/desktop/src/main/tests/sample.test.ts` is new and is the only test that opens the
+   **committed** template: `seedWorkspace` into a scratch dir, then index, graph and one rewire.
+   The sample's `AICONTEXT.md` and its `new-character` skill described the screenplay form to the
+   authoring agent and now describe chunks.
+
+   An `examples/mySampleRepo` seeded before the conversion stays on `screenplay/`, which still
+   loads — `seedWorkspace` never re-copies over a working copy, by design. Delete it to get the
+   chunk form.
 10. **Docs.** This file's As-shipped section; `CLAUDE.md`'s project-layout and `@vn/store` sections;
     `docs/vn-generator-report.md` §9.1; `docs/fountain.md` on what a chunk body may contain.
 

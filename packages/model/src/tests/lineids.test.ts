@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseFountain } from '@vn/parse';
+import { parseFountain, splitFrontMatter } from '@vn/parse';
 import { assignLineIds } from '../lineids.js';
 import { splitScenes } from '../scenes.js';
 
@@ -246,18 +246,24 @@ She bows.
     expect(text).toBe(aliased);
   });
 
-  it('leaves the sample screenplay meaning exactly what it did', () => {
-    const source = readFileSync(
-      join(__dirname, '../../../../examples/sample/screenplay/script.fountain'),
-      'utf8',
-    );
-    const { text, diagnostics } = assignLineIds(source);
-    expect(diagnostics).toEqual([]);
-    expect(text).not.toBe(source);
-    const before = splitScenes(parseFountain(source));
-    const after = splitScenes(parseFountain(text));
-    expect(after.scenes).toEqual(before.scenes);
-    expect(assignLineIds(text).text).toBe(text);
+  // The shipped sample is authored unmarked, which is exactly the input this writer exists for.
+  it('leaves the sample scene chunks meaning exactly what they did', () => {
+    const dir = join(__dirname, '../../../../examples/sample/scenes');
+    const ids = readdirSync(dir)
+      .filter((name) => name.endsWith('.md'))
+      .map((name) => name.slice(0, -'.md'.length));
+    expect(ids.length).toBeGreaterThan(2);
+
+    for (const id of ids) {
+      const source = splitFrontMatter(readFileSync(join(dir, `${id}.md`), 'utf8')).body;
+      const { text, diagnostics } = assignLineIds(source);
+      expect(diagnostics).toEqual([]);
+      expect(text).not.toBe(source);
+      const before = splitScenes(parseFountain(source), { sceneId: id });
+      const after = splitScenes(parseFountain(text), { sceneId: id });
+      expect(after.scenes).toEqual(before.scenes);
+      expect(assignLineIds(text).text).toBe(text);
+    }
   });
 });
 

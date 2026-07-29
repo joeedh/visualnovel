@@ -4,9 +4,10 @@
  * rather than on the re-parsed graph, because preserving untouched bytes is the point — a
  * graph assertion would pass on a file whose prose had been rewritten.
  */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { parseFountain } from '@vn/parse';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { parseFountain, splitFrontMatter } from '@vn/parse';
+import { SCRIPTS } from '@vn/testkit';
 import { applySceneBranchEdit, type SceneBranchEdit } from '../branchpatch.js';
 import { splitScenes } from '../scenes.js';
 
@@ -39,8 +40,10 @@ const SCRIPT = [
   '',
 ].join('\n');
 
-const scenesOf = (text: string) => splitScenes(parseFountain(text)).scenes;
-const sceneNamed = (text: string, id: string) => scenesOf(text).find((s) => s.id === id);
+const scenesOf = (text: string, opts: { sceneId?: string } = {}) =>
+  splitScenes(parseFountain(text), opts).scenes;
+const sceneNamed = (text: string, id: string, opts: { sceneId?: string } = {}) =>
+  scenesOf(text, opts).find((s) => s.id === id);
 
 describe('applySceneBranchEdit', () => {
   it('changes only the marker lines it was asked to change', () => {
@@ -387,20 +390,8 @@ describe('applySceneBranchEdit — a scene chunk body', () => {
   });
 });
 
-/**
- * The re-parse assertion is the integration test — so drive it over the real sample screenplay
- * with a generated sweep rather than hand-picked edits, and require that every result either
- * lands the intended graph exactly or refuses and returns the file untouched.
- */
-describe('applySceneBranchEdit over examples/sample', () => {
-  const file = resolve(__dirname, '../../../../examples/sample/screenplay/script.fountain');
-  const source = readFileSync(file, 'utf8');
-  const ids = scenesOf(source).map((s) => s.id);
-
-  it('has scenes to sweep', () => {
-    expect(ids.length).toBeGreaterThan(2);
-  });
-
+/** Every rewiring worth trying against a scene list: each scene, at each arity, twice over. */
+function sweepOf(ids: string[]): SceneBranchEdit[] {
   const edits: SceneBranchEdit[] = [];
   for (const [i, sceneId] of ids.entries()) {
     const a = ids[(i + 1) % ids.length] as string;
@@ -421,26 +412,71 @@ describe('applySceneBranchEdit over examples/sample', () => {
       { sceneId, choices: [{ label: 'Only', goto: b }], next: a },
     );
   }
+  return edits;
+}
 
-  it.each(edits.map((e) => [JSON.stringify(e), e] as const))('%s', (_name, edit) => {
-    const { text, diagnostics } = applySceneBranchEdit(source, [edit]);
-    // Nothing in the sweep is malformed, so a refusal here is a real bug, not a safe no-op.
-    expect(diagnostics).toEqual([]);
-    const scene = sceneNamed(text, edit.sceneId);
-    expect(scene).toBeDefined();
-    if (edit.choices) expect(scene?.choices ?? []).toEqual(edit.choices);
-    if (edit.next !== undefined) expect(scene?.next).toBe(edit.next ?? undefined);
-    // Untouched scenes keep their wiring, and no scene is created or lost.
-    const before = scenesOf(source);
-    const after = scenesOf(text);
-    expect(after.map((s) => s.id)).toEqual(before.map((s) => s.id));
-    for (const s of after) {
-      if (s.id === edit.sceneId) continue;
-      const was = before.find((p) => p.id === s.id);
-      expect({ choices: s.choices, next: s.next }).toEqual({
-        choices: was?.choices,
-        next: was?.next,
-      });
-    }
+/**
+ * Land one sweep edit and re-read the result: the edited scene has exactly the graph asked for,
+ * every other scene in the file keeps the wiring it had, and no scene is created or lost.
+ */
+function expectLands(source: string, edit: SceneBranchEdit, opts: { sceneId?: string } = {}): void {
+  const { text, diagnostics } = applySceneBranchEdit(source, [edit], opts);
+  // Nothing in the sweep is malformed, so a refusal here is a real bug, not a safe no-op.
+  expect(diagnostics).toEqual([]);
+  const scene = sceneNamed(text, edit.sceneId, opts);
+  expect(scene).toBeDefined();
+  if (edit.choices) expect(scene?.choices ?? []).toEqual(edit.choices);
+  if (edit.next !== undefined) expect(scene?.next).toBe(edit.next ?? undefined);
+
+  const before = scenesOf(source, opts);
+  const after = scenesOf(text, opts);
+  expect(after.map((s) => s.id)).toEqual(before.map((s) => s.id));
+  for (const s of after) {
+    if (s.id === edit.sceneId) continue;
+    const was = before.find((p) => p.id === s.id);
+    expect({ choices: s.choices, next: s.next }).toEqual({
+      choices: was?.choices,
+      next: was?.next,
+    });
+  }
+}
+
+/**
+ * The re-parse assertion is the integration test, so drive it with a generated sweep over the
+ * real shipped sample rather than hand-picked edits. `examples/sample` authors its scenes as
+ * chunks, which is one file per scene with the id forced from front-matter — the form the
+ * desktop branch editor patches.
+ */
+describe('applySceneBranchEdit over examples/sample scene chunks', () => {
+  const dir = resolve(__dirname, '../../../../examples/sample/scenes');
+  const ids = readdirSync(dir)
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => name.slice(0, -'.md'.length));
+  const bodyOf = (id: string) => splitFrontMatter(readFileSync(join(dir, `${id}.md`), 'utf8')).body;
+
+  it('has scenes to sweep', () => {
+    expect(ids.length).toBeGreaterThan(2);
+  });
+
+  it.each(sweepOf(ids).map((e) => [JSON.stringify(e), e] as const))('%s', (_name, edit) => {
+    expectLands(bodyOf(edit.sceneId), edit, { sceneId: edit.sceneId });
+  });
+});
+
+/**
+ * The same sweep over a multi-scene screenplay, where the property that can actually break is
+ * that no *other* scene's markers move. `SCRIPTS.branching` stands in for the sample now that
+ * the sample is chunks; the `screenplay/` form outlives it until the importer retires it.
+ */
+describe('applySceneBranchEdit over a whole screenplay', () => {
+  const source = SCRIPTS.branching;
+  const ids = scenesOf(source).map((s) => s.id);
+
+  it('has several scenes in the one file', () => {
+    expect(ids.length).toBeGreaterThan(2);
+  });
+
+  it.each(sweepOf(ids).map((e) => [JSON.stringify(e), e] as const))('%s', (_name, edit) => {
+    expectLands(source, edit);
   });
 });

@@ -18,10 +18,13 @@ rules with `update_context`.
 - New characters start `status: draft` and need a one-paragraph visual description (hair,
   eyes, default outfit, silhouette) so the image pipeline has something to work from.
 
-## Screenplay conventions
+## Scene conventions
 
+- One scene per file: `scenes/<id>.md`, front-matter `scene: <id>` matching the filename, and
+  a body that is a complete one-scene Fountain screenplay starting with its own heading. The
+  entry scene is `start:` in `project.yaml`.
 - Every branch target named in a `[[choice: … -> id]]` or `[[next: id]]` marker must have a
-  matching `[[scene: id]]`. Run `validate_inputs` before proposing a commit.
+  matching `scenes/<id>.md`. Run `validate_inputs` before proposing a commit.
 - Prefer 2 choices per branch point; 3 at most. Always provide a path back to a shared
   scene so the graph stays reachable (no dead ends).
 

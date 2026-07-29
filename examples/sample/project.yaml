@@ -1,4 +1,5 @@
 title: The Transfer Student
+start: arrival
 art_style: soft anime visual-novel illustration, cel shaded, warm lighting
 models:
   image: gemini-2.5-flash-image
