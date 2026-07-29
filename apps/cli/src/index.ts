@@ -6,6 +6,7 @@ import {
   cmdGraph,
   cmdImport,
   cmdRun,
+  cmdScreenplay,
   cmdStatus,
   parseArgs,
 } from './commands.js';
@@ -33,6 +34,8 @@ export async function main(argv: string[]): Promise<number> {
         return await cmdExport(args);
       case 'import':
         return await cmdImport(args);
+      case 'screenplay':
+        return await cmdScreenplay(args);
       case 'cost':
         return await cmdCost(args, logger);
       default:
@@ -61,6 +64,9 @@ function usage(): string {
     '  status [dir]         show task/asset/approval status',
     '  graph [dir]          emit the story branch graph (Mermaid)',
     '  import [dir]         convert screenplay/*.fountain into scenes/<id>.md chunks',
+    '  screenplay [dir] [-o <file>|-] [--clean]   write the scenes back out as one Fountain file',
+    '                       (default <dir>/screenplay.fountain; --clean drops the [[…]] markers,',
+    '                        which takes the scene ids, the branches and nextLineId with them)',
     '  export [dir]         write vngen/build/story.play.json (the playable, not a screenplay)',
     '  cost [dir]           dry-run cost preview',
     '',

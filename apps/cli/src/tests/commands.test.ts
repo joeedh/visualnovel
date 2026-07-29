@@ -1,11 +1,20 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import type { Logger, Scene } from '@vn/types';
-import { canonicalScenes } from '@vn/model';
+import { canonicalScenes, sceneChunksFromScript } from '@vn/model';
+import { parseFountain } from '@vn/parse';
 import { AssetStore, ProjectPaths } from '@vn/store';
 import type { Playable } from '@vn/types';
 import { makeProject, SCRIPTS } from '@vn/testkit';
-import { cmdApprove, cmdExport, cmdImport, cmdRun, type ApproveIO } from '../commands.js';
+import {
+  cmdApprove,
+  cmdExport,
+  cmdImport,
+  cmdRun,
+  cmdScreenplay,
+  parseArgs,
+  type ApproveIO,
+} from '../commands.js';
 
 const silentLogger = { info() {}, warn() {}, error() {}, debug() {} } as unknown as Logger;
 
@@ -163,6 +172,103 @@ The city hums below.
       expect(await fs.readdir(join(p.dir, 'screenplay'))).toEqual(['script.fountain']);
       await expect(fs.readdir(join(p.dir, 'scenes'))).rejects.toThrow();
       expect(await p.read('project.yaml')).not.toContain('start:');
+    } finally {
+      await p.cleanup();
+    }
+  });
+});
+
+describe('parseArgs', () => {
+  it('reads a short flag value from the next argument, and `-` as that value', () => {
+    expect(parseArgs(['dir', '-o', 'out.fountain'])).toEqual({
+      positional: ['dir'],
+      flags: { o: 'out.fountain' },
+    });
+    expect(parseArgs(['-o', '-', '--clean'])).toEqual({
+      positional: [],
+      flags: { o: '-', clean: true },
+    });
+    expect(parseArgs(['-o=out.fountain'])).toEqual({
+      positional: [],
+      flags: { o: 'out.fountain' },
+    });
+  });
+
+  it('leaves an unlisted short flag a boolean and a bare `-` a positional', () => {
+    expect(parseArgs(['-x', 'dir'])).toEqual({ positional: ['dir'], flags: { x: true } });
+    expect(parseArgs(['-'])).toEqual({ positional: ['-'], flags: {} });
+  });
+});
+
+describe('cmdScreenplay', () => {
+  it('writes one screenplay at the project root that imports back to the same scenes', async () => {
+    const p = await makeProject({ script: SCRIPTS.branching });
+    try {
+      const { code, out } = await capture(() => cmdScreenplay({ positional: [p.dir], flags: {} }));
+      expect(code).toBe(0);
+      expect(out).toContain('Wrote 4 scene(s)');
+      const text = await p.read('screenplay.fountain');
+
+      // Reading order, and still an input this repo accepts — the point of the escape hatch.
+      expect(text.match(/\[\[scene: (\S+)\]\]/g)).toEqual([
+        '[[scene: arrival]]',
+        '[[scene: rooftop]]',
+        '[[scene: good_end]]',
+        '[[scene: bad_end]]',
+      ]);
+      const { model } = await p.reload();
+      const chunks = sceneChunksFromScript(parseFountain(text));
+      expect(chunks.diagnostics).toEqual([]);
+      expect(chunks.chunks.map((c) => c.id).sort()).toEqual([...model.scenes.keys()].sort());
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('writes to stdout for -o -, and to an explicit path otherwise', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const { code, out } = await capture(() =>
+        cmdScreenplay({ positional: [p.dir], flags: { o: '-' } }),
+      );
+      expect(code).toBe(0);
+      expect(out).toContain('INT. CLASSROOM - DAY');
+      expect(out).not.toContain('Wrote');
+      await expect(fs.stat(join(p.dir, 'screenplay.fountain'))).rejects.toThrow();
+
+      const elsewhere = join(p.dir, 'reading-copy.fountain');
+      await capture(() => cmdScreenplay({ positional: [p.dir], flags: { o: elsewhere } }));
+      expect(await fs.readFile(elsewhere, 'utf8')).toBe(out);
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('drops the markers under --clean', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const { code } = await capture(() =>
+        cmdScreenplay({ positional: [p.dir], flags: { clean: true } }),
+      );
+      expect(code).toBe(0);
+      const text = await p.read('screenplay.fountain');
+      expect(text).not.toContain('[[');
+      expect(text).toContain('INT. CLASSROOM - DAY');
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('refuses to write into screenplay/, which no project loads past', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const target = join(p.dir, 'screenplay', 'again.fountain');
+      const { code, out } = await capture(() =>
+        cmdScreenplay({ positional: [p.dir], flags: { o: target } }),
+      );
+      expect(code).toBe(1);
+      expect(out).toContain('Refusing to write into');
+      await expect(fs.stat(target)).rejects.toThrow();
     } finally {
       await p.cleanup();
     }

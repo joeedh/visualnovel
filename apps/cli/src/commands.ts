@@ -1,10 +1,11 @@
 import { promises as fs } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Asset, Logger } from '@vn/types';
-import { exists } from '@vn/util';
+import { exists, writeFileAtomic } from '@vn/util';
 import { loadConfig, setStartScene } from '@vn/config';
 import { parseFountain } from '@vn/parse';
-import { sceneChunksFromScript, toMermaid } from '@vn/model';
+import { sceneChunksFromScript, scriptFromScenes, toMermaid } from '@vn/model';
 import {
   loadInputs,
   ProjectPaths,
@@ -19,19 +20,31 @@ import { gateStatus } from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
 
-/** Parsed CLI invocation: positional args + `--flag[=value]` options. */
+/** Parsed CLI invocation: positional args + `--flag[=value]` / `-o <value>` options. */
 export interface Args {
   positional: string[];
   flags: Record<string, string | boolean>;
 }
 
+/**
+ * Short flags that take the next argument as their value. The table is tiny and lives here on
+ * purpose — a short flag not listed is a boolean, which is one rule instead of a parser that
+ * guesses from what follows.
+ */
+const VALUED_SHORT = new Set(['o']);
+
 export function parseArgs(argv: string[]): Args {
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
     if (arg.startsWith('--')) {
       const [key, value] = arg.slice(2).split('=', 2);
       flags[key!] = value ?? true;
+    } else if (arg.length > 1 && arg.startsWith('-')) {
+      // `-` alone is length 1, so it is a value (stdout) rather than an empty short flag.
+      const [key, value] = arg.slice(1).split('=', 2);
+      flags[key!] = value ?? (VALUED_SHORT.has(key!) ? (argv[++i] ?? '') : true);
     } else {
       positional.push(arg);
     }
@@ -115,6 +128,47 @@ export async function cmdImport(args: Args): Promise<number> {
   }
   await fs.rename(inputs.scriptPath, asideName);
   ok(`Moved the screenplay aside → ${asideName} (delete it once you are satisfied).`);
+  return 0;
+}
+
+/**
+ * `vngen screenplay [dir] [-o <file>|-] [--clean]` — project the scenes back into one Fountain
+ * screenplay (fountain-import-export plan). The escape hatch that keeps the chunk format from
+ * being lock-in: read-only, stale the moment it is written, and no claim to be a mirror.
+ *
+ * The default output sits at the project root, never in `screenplay/` — a `.fountain` in there
+ * is a second source of truth for every scene, which is the error `loadInputs` reports. `--clean`
+ * strips the `[[…]]` markers for a human or a screenwriting tool, and takes the scene ids, the
+ * branch structure and `nextLineId` with them, so that output cannot be imported back.
+ */
+export async function cmdScreenplay(args: Args): Promise<number> {
+  const dir = args.positional[0] ?? '.';
+  const project = await loadProject(dir);
+  if (project.model.scenes.size === 0) {
+    ok('No scenes to write.');
+    return 1;
+  }
+  if (project.model.diagnostics.some((d) => d.severity === 'error')) {
+    ok('Validation (writing anyway — a projection can describe a broken story):');
+    reportDiagnostics(project.model);
+  }
+
+  const text = scriptFromScenes(project.model, { clean: Boolean(args.flags['clean']) });
+  const out = typeof args.flags['o'] === 'string' ? args.flags['o'] : undefined;
+  if (out === '-') {
+    process.stdout.write(text);
+    return 0;
+  }
+
+  // Relative to the shell for an explicit `-o`, and to the project for the default.
+  const file = out ? resolve(out) : join(dir, 'screenplay.fountain');
+  if (dirname(file) === resolve(project.paths.screenplayDir)) {
+    ok(`Refusing to write into ${project.paths.screenplayDir} — a screenplay there is a second`);
+    ok('source of truth for every scene, which is an error the project will not load past.');
+    return 1;
+  }
+  await writeFileAtomic(file, text);
+  ok(`Wrote ${project.model.scenes.size} scene(s) → ${file}`);
   return 0;
 }
 

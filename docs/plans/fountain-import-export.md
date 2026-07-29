@@ -122,7 +122,12 @@ re-importing its output reproduces the project.
    `@vn/config`'s `setStartScene` splices the one line and leaves every other byte — including
    hand-written comments — alone, the same way the prose writers splice front-matter. The rename is
    **last**, because until it happens the project holds both formats and does not load.
-4. **`vngen screenplay`.** The CLI command, `-o` / `-` / `--clean`.
+4. ✔ **`vngen screenplay`.** The CLI command, `-o` / `-` / `--clean`. Shipped as `cmdScreenplay`;
+   `parseArgs` grew a short-flag rule for `-o` (a listed short flag takes the next argument, an
+   unlisted one is a boolean — one rule rather than a parser that guesses from what follows). It
+   also **refuses an `-o` inside `screenplay/`**, not just defaulting away from it: a `.fountain`
+   there is a second source of truth for every scene. Step 6 retires the fallback and that refusal
+   with it.
 5. **Desktop `workspace.import` and `story.screenplay`.** Both `mutating`, both with a `check`
    (`workspace.import` refuses when `scenes/` exists or no screenplay is present;
    `story.screenplay` refuses on an empty model, like `story.export`). Neither is `undoable`:
