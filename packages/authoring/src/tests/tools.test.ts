@@ -77,6 +77,31 @@ async function tempProject(): Promise<{
   return { ctx, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }
 
+/** The same project authored as chunks: one `scenes/<id>.md` per scene, no screenplay. */
+async function tempChunkProject(): Promise<{
+  ctx: ToolContext;
+  dir: string;
+  cleanup: () => Promise<void>;
+}> {
+  const dir = await fs.mkdtemp(join(tmpdir(), 'vn-tools-chunks-'));
+  await fs.mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
+  await fs.mkdir(join(dir, 'locations'), { recursive: true });
+  await fs.mkdir(join(dir, 'scenes'), { recursive: true });
+  await fs.writeFile(join(dir, 'characters', 'aiko', 'character.md'), CHARACTER);
+  await fs.writeFile(join(dir, 'locations', 'classroom.md'), LOCATION);
+  await fs.writeFile(
+    join(dir, 'scenes', 'arrival.md'),
+    '---\nscene: arrival\n---\n\nINT. CLASSROOM - DAY\n\n[[next: ending]]\n\nAIKO\nHello.\n',
+  );
+  await fs.writeFile(
+    join(dir, 'scenes', 'ending.md'),
+    '---\nscene: ending\n---\n\nINT. CLASSROOM - EVENING\n\nThe end.\n',
+  );
+  await fs.writeFile(join(dir, 'project.yaml'), 'title: Test Project\nstart: arrival\n');
+  const ctx: ToolContext = { workspace: new Workspace(dir), git: openGit(dir) };
+  return { ctx, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
+}
+
 const registry = createRegistry();
 function tool(name: string): Tool {
   const t = registry.get(name);
@@ -104,9 +129,33 @@ describe('workspace index', () => {
       await cleanup();
     }
   });
+
+  it('names the chunk a scene lives in, and no screenplay, for a chunk project', async () => {
+    const { ctx, cleanup } = await tempChunkProject();
+    try {
+      const index = await ctx.workspace.index();
+      expect(index.screenplay).toBeUndefined();
+      expect(index.entry).toBe('arrival');
+      expect(index.scenes.map((s) => s.id)).toEqual(['arrival', 'ending']);
+      expect(index.scenes[0]!.file).toBe(join(ctx.workspace.root, 'scenes', 'arrival.md'));
+    } finally {
+      await cleanup();
+    }
+  });
 });
 
 describe('read-only tools', () => {
+  it('search reaches scene chunks, not only the screenplay', async () => {
+    const { ctx, cleanup } = await tempChunkProject();
+    try {
+      const r = await run('search', { query: 'The end' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('ending.md');
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('list_workspace summarizes the project', async () => {
     const { ctx, cleanup } = await tempProject();
     try {

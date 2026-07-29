@@ -15,7 +15,13 @@ import {
 } from '@vn/config';
 import { relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
-import { applySceneBranchEdit, assignLineIds, modelFromInputs } from '@vn/model';
+import {
+  applySceneBranchEdit,
+  assignLineIds,
+  modelFromInputs,
+  type SceneBranchEdit,
+} from '@vn/model';
+import { splitFrontMatter, type LoadedInputs } from '@vn/parse';
 import {
   AssetStore,
   ProjectPaths,
@@ -94,6 +100,21 @@ export interface SessionDeps {
   requestPlan(plan: Plan): Promise<PlanDecision>;
 }
 
+/**
+ * One authored file holding scene prose, as the prose writers need it: `prefix + script` is the
+ * file, and only `script` is ever patched. A chunk's `prefix` is its front-matter block, kept
+ * byte-exact so a rewire never reformats YAML the author wrote.
+ */
+interface SceneSource {
+  file: string;
+  prefix: string;
+  script: string;
+  /** The scene ids this file holds — one for a chunk, all of them for a screenplay. */
+  scenes: string[];
+  /** Set for a chunk: the id front-matter gives it, which its body cannot override. */
+  chunkId?: string;
+}
+
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
 interface LoadedProject {
   dir: string;
@@ -102,9 +123,44 @@ interface LoadedProject {
   model: ProjectModel;
   store: AssetStore;
   graph: TaskGraph;
-  /** The screenplay this model was built from — the file a branch edit patches. */
-  scriptPath?: string;
-  scriptText: string;
+  /** The files this model's scenes were built from — the files a prose edit patches. */
+  sources: SceneSource[];
+}
+
+/**
+ * The prose files behind a model, in whichever form the project authored them. Derived from the
+ * same `loadInputs` result the model was built from, so a writer cannot re-decide "which file is
+ * the screenplay" and drift from the rule the reader used.
+ */
+function sourcesOf(inputs: LoadedInputs, model: ProjectModel): SceneSource[] {
+  if (inputs.sceneDocs.length > 0) {
+    return inputs.sceneDocs.map((chunk) => ({
+      file: chunk.file,
+      prefix: splitFrontMatter(chunk.text).prefix,
+      script: chunk.doc.body,
+      scenes: [chunk.id],
+      chunkId: chunk.id,
+    }));
+  }
+  if (!inputs.scriptPath) return [];
+  return [
+    {
+      file: inputs.scriptPath,
+      prefix: '',
+      script: inputs.scriptText,
+      scenes: [...model.scenes.keys()],
+    },
+  ];
+}
+
+/** The patcher options a source needs: a chunk forces its id, a screenplay reads its markers. */
+function patchOptions(source: SceneSource): { sceneId?: string } {
+  return source.chunkId === undefined ? {} : { sceneId: source.chunkId };
+}
+
+/** Workspace-relative and forward-slashed, which is what a `written` list reports. */
+function relPath(dir: string, file: string): string {
+  return relative(dir, file).split(sep).join('/');
 }
 
 async function loadProject(dir: string): Promise<LoadedProject> {
@@ -114,16 +170,7 @@ async function loadProject(dir: string): Promise<LoadedProject> {
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  return {
-    dir,
-    config,
-    paths,
-    model,
-    store,
-    graph,
-    scriptPath: inputs.scriptPath,
-    scriptText: inputs.scriptText,
-  };
+  return { dir, config, paths, model, store, graph, sources: sourcesOf(inputs, model) };
 }
 
 async function buildProviders(project: LoadedProject, mock: boolean): Promise<Providers> {
@@ -268,9 +315,10 @@ export class WorkspaceSession {
 
   /**
    * The single write path for every `story.*` edit: decide the rewire against the freshly
-   * loaded scenes, patch the screenplay's branch markers, write atomically, and rebuild the
-   * model. `decide` is passed in rather than the edits themselves so the decision and the
-   * patch see the same load — a scene list read a moment earlier could already be stale.
+   * loaded scenes, patch the branch markers in whichever file each scene lives in, write
+   * atomically, and rebuild the model. `decide` is passed in rather than the edits themselves
+   * so the decision and the patch see the same load — a scene list read a moment earlier could
+   * already be stale.
    *
    * Rebuilding is not optional: reachability changes with the wiring, and a stale `reachable`
    * set would draw live scenes as dead.
@@ -279,19 +327,35 @@ export class WorkspaceSession {
     const project = await loadProject(this.dir);
     const op = decide(project.model.scenes);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
-    if (!project.scriptPath) {
-      return { ok: false, message: 'This project has no screenplay file to edit.', written: [] };
+    if (project.sources.length === 0) {
+      return { ok: false, message: 'This project has no scene files to edit.', written: [] };
     }
 
-    const patched = applySceneBranchEdit(project.scriptText, op.edits);
-    if (patched.diagnostics.length > 0) {
-      return {
-        ok: false,
-        message: patched.diagnostics.map((d) => d.message).join(' '),
-        written: [],
-      };
+    const groups = new Map<SceneSource, SceneBranchEdit[]>();
+    for (const edit of op.edits) {
+      const source = project.sources.find((s) => s.scenes.includes(edit.sceneId));
+      if (!source) {
+        return { ok: false, message: `No file holds scene "${edit.sceneId}".`, written: [] };
+      }
+      groups.set(source, [...(groups.get(source) ?? []), edit]);
     }
-    if (patched.text === project.scriptText) {
+
+    // Every patch is computed before any is written: a splice spanning three chunks that is
+    // refused on the third must leave the first two exactly as they were.
+    const pending: { source: SceneSource; text: string }[] = [];
+    for (const [source, edits] of groups) {
+      const patched = applySceneBranchEdit(source.script, edits, patchOptions(source));
+      if (patched.diagnostics.length > 0) {
+        return {
+          ok: false,
+          message: patched.diagnostics.map((d) => d.message).join(' '),
+          written: [],
+        };
+      }
+      if (patched.text !== source.script) pending.push({ source, text: patched.text });
+    }
+
+    if (pending.length === 0) {
       return {
         ok: true,
         message: `${op.message} (already wired that way — nothing written)`,
@@ -300,68 +364,97 @@ export class WorkspaceSession {
       };
     }
 
-    await writeFileAtomic(project.scriptPath, patched.text);
+    for (const { source, text } of pending) {
+      await writeFileAtomic(source.file, source.prefix + text);
+    }
     const reloaded = await loadProject(this.dir);
     return {
       ok: true,
       message: op.message,
-      written: [relative(this.dir, project.scriptPath).split(sep).join('/')],
+      written: pending.map((p) => relPath(this.dir, p.source.file)),
       graph: storyGraphOf(reloaded.model),
     };
   }
 
   /**
-   * The line-id patch the screenplay would take, computed and thrown away. `assignLineIds` is
-   * the whole rule — including its safety net — so a refusal here is the refusal `writeLineIds`
-   * would give, not a description of one.
+   * The line-id patch every affected file would take, computed and not written. Shared by
+   * `previewLineIds` and `writeLineIds` so a preview is the decision the write makes, not a
+   * description of one — `assignLineIds` is the whole rule, including its safety net.
    */
+  private async planLineIds(sceneId?: string): Promise<{
+    ok: boolean;
+    message: string;
+    assigned: number;
+    where: string;
+    pending: { source: SceneSource; text: string }[];
+  }> {
+    const project = await loadProject(this.dir);
+    const where = sceneId ? `scene "${sceneId}"` : 'the project';
+    const fail = (message: string) => ({ ok: false, message, assigned: 0, where, pending: [] });
+
+    if (project.sources.length === 0) return fail('This project has no scene files to edit.');
+    const targets = sceneId
+      ? project.sources.filter((s) => s.scenes.includes(sceneId))
+      : project.sources;
+    if (sceneId && targets.length === 0) return fail(`No file holds scene "${sceneId}".`);
+
+    let assigned = 0;
+    const pending: { source: SceneSource; text: string }[] = [];
+    for (const source of targets) {
+      // A chunk is already the one scene asked for; only a screenplay needs the filter.
+      const patch = assignLineIds(
+        source.script,
+        source.chunkId === undefined ? sceneId : undefined,
+      );
+      if (patch.diagnostics.length > 0) {
+        return fail(patch.diagnostics.map((d) => d.message).join(' '));
+      }
+      assigned += patch.assigned;
+      if (patch.text !== source.script) pending.push({ source, text: patch.text });
+    }
+    return { ok: true, message: '', assigned, where, pending };
+  }
+
+  /** What `writeLineIds` would do, without doing it. */
   async previewLineIds(
     sceneId?: string,
   ): Promise<{ ok: boolean; message: string; assigned: number }> {
-    const project = await loadProject(this.dir);
-    if (!project.scriptPath) {
-      return { ok: false, message: 'This project has no screenplay file to edit.', assigned: 0 };
-    }
-    const patch = assignLineIds(project.scriptText, sceneId);
-    if (patch.diagnostics.length > 0) {
-      return { ok: false, message: patch.diagnostics.map((d) => d.message).join(' '), assigned: 0 };
-    }
-    const where = sceneId ? `scene "${sceneId}"` : 'the screenplay';
+    const plan = await this.planLineIds(sceneId);
+    if (!plan.ok) return { ok: false, message: plan.message, assigned: 0 };
     return {
       ok: true,
-      message: patch.assigned
-        ? `${patch.assigned} line id(s) would be written into ${where}.`
-        : `Every line in ${where} already carries its id.`,
-      assigned: patch.assigned,
+      message: plan.assigned
+        ? `${plan.assigned} line id(s) would be written into ${plan.where}.`
+        : `Every line in ${plan.where} already carries its id.`,
+      assigned: plan.assigned,
     };
   }
 
   /**
    * Persist the ids reading already allocated as `[[line:]]` marks. Nothing about the model
-   * changes — the ids are the same ones `splitScenes` handed out — so this writes the
-   * screenplay and reports; the point is that a *later* insertion can no longer shift them.
+   * changes — the ids are the same ones `splitScenes` handed out — so this writes the prose
+   * files and reports; the point is that a *later* insertion can no longer shift them.
    */
   async writeLineIds(
     sceneId?: string,
   ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const project = await loadProject(this.dir);
-    if (!project.scriptPath) {
-      return { ok: false, message: 'This project has no screenplay file to edit.', written: [] };
-    }
-    const patch = assignLineIds(project.scriptText, sceneId);
-    if (patch.diagnostics.length > 0) {
-      return { ok: false, message: patch.diagnostics.map((d) => d.message).join(' '), written: [] };
-    }
-    const where = sceneId ? `scene "${sceneId}"` : 'the screenplay';
-    if (patch.text === project.scriptText) {
-      return { ok: true, message: `Every line in ${where} already carries its id.`, written: [] };
+    const plan = await this.planLineIds(sceneId);
+    if (!plan.ok) return { ok: false, message: plan.message, written: [] };
+    if (plan.pending.length === 0) {
+      return {
+        ok: true,
+        message: `Every line in ${plan.where} already carries its id.`,
+        written: [],
+      };
     }
 
-    await writeFileAtomic(project.scriptPath, patch.text);
+    for (const { source, text } of plan.pending) {
+      await writeFileAtomic(source.file, source.prefix + text);
+    }
     return {
       ok: true,
-      message: `Wrote ${patch.assigned} line id(s) into ${where}.`,
-      written: [relative(this.dir, project.scriptPath).split(sep).join('/')],
+      message: `Wrote ${plan.assigned} line id(s) into ${plan.where}.`,
+      written: plan.pending.map((p) => relPath(this.dir, p.source.file)),
     };
   }
 

@@ -1,5 +1,6 @@
 /**
- * Surgical branch-marker patching for a Fountain screenplay (story branch editor, Wave 1).
+ * Surgical branch-marker patching for authored Fountain — a whole `screenplay/*.fountain` or
+ * one `scenes/<id>.md` body (story branch editor, Wave 1).
  *
  * `sceneToFountain` is lossless (`parse(write(scene)) ≡ scene`) but not byte-exact: the author's
  * spacing, comment style and marker placement are theirs, and a rewire has no business
@@ -31,6 +32,16 @@ export interface SceneBranchEdit {
 export interface BranchPatchResult {
   text: string;
   diagnostics: Diagnostic[];
+}
+
+/** How to read the text being patched. */
+export interface BranchPatchOptions {
+  /**
+   * Patch a scene chunk's body: the id comes from the file's front-matter, so it is forced onto
+   * the one scene the body may hold rather than taken from the heading. More than one heading
+   * is a refusal — a chunk that holds two scenes has no single id to be.
+   */
+  sceneId?: string;
 }
 
 // Mirrors `SCENE_PREFIX` in `@vn/parse`'s fountain.ts. Duplicated rather than exported from
@@ -201,17 +212,32 @@ function canonical(scenes: Scene[]): string {
  * `sceneToFountain` so hand-authored and tool-authored files converge. A label containing
  * `]]` or a newline cannot round-trip and is rejected.
  *
- * Assumes a single screenplay file, which is what `@vn/store`'s worktree reads
- * (`fountain[0]`). Multi-file support would need a file argument here.
+ * `text` is one authored file: a whole `screenplay/*.fountain`, or the Fountain body of one
+ * `scenes/<id>.md` with `opts.sceneId` naming it. A caller whose edits span several chunks
+ * patches each file, and must compute every patch before writing any of them — a refusal on
+ * the third file has to leave the first two alone.
  */
-export function applySceneBranchEdit(text: string, edits: SceneBranchEdit[]): BranchPatchResult {
+export function applySceneBranchEdit(
+  text: string,
+  edits: SceneBranchEdit[],
+  opts: BranchPatchOptions = {},
+): BranchPatchResult {
   const unchanged = (diagnostics: Diagnostic[]): BranchPatchResult => ({ text, diagnostics });
 
   const invalid = validate(edits);
   if (invalid.length > 0) return unchanged(invalid);
   if (edits.length === 0) return { text, diagnostics: [] };
 
-  const scenes = splitScenes(parseFountain(text)).scenes;
+  const scenes = splitScenes(parseFountain(text), opts).scenes;
+  if (opts.sceneId !== undefined && scenes.length !== 1) {
+    return unchanged([
+      err(
+        'branch_patch_chunk',
+        `scene chunk '${opts.sceneId}' holds ${scenes.length} scene(s); exactly one is required`,
+        opts.sceneId,
+      ),
+    ]);
+  }
   const lines = splitLines(text);
   const masked = splitLines(maskBoneyard(text));
   const headings = findHeadings(masked);
@@ -229,9 +255,10 @@ export function applySceneBranchEdit(text: string, edits: SceneBranchEdit[]): Br
   const byId = new Map(scenes.map((s, i) => [s.id, i]));
   const missing = edits.filter((e) => !byId.has(e.sceneId));
   if (missing.length > 0) {
+    const where = opts.sceneId === undefined ? 'the screenplay' : `chunk '${opts.sceneId}'`;
     return unchanged(
       missing.map((e) =>
-        err('branch_patch_scene', `no scene '${e.sceneId}' in the screenplay`, e.sceneId),
+        err('branch_patch_scene', `no scene '${e.sceneId}' in ${where}`, e.sceneId),
       ),
     );
   }
@@ -322,12 +349,12 @@ export function applySceneBranchEdit(text: string, edits: SceneBranchEdit[]): Br
       next: edit.next === undefined ? s.next : (edit.next ?? undefined),
     } satisfies Scene;
   });
-  const actual = splitScenes(parseFountain(patched)).scenes;
+  const actual = splitScenes(parseFountain(patched), opts).scenes;
   if (canonical(actual) !== canonical(expected)) {
     return unchanged([
       err(
         'branch_patch_verify',
-        're-parsing the patched screenplay did not reproduce the intended scenes; ' +
+        're-parsing the patched text did not reproduce the intended scenes; ' +
           'the file was left unchanged',
       ),
     ]);

@@ -24,7 +24,7 @@ export interface ProjectModel {
   scenes: Map<string, Scene>;
   /** Scene ids reachable from the entry scene. */
   reachable: Set<string>;
-  /** Entry scene id (first scene in the screenplay). */
+  /** Entry scene id: `project.yaml`'s `start:`, or the screenplay's first scene without one. */
   entry?: string;
   diagnostics: Diagnostic[];
 }

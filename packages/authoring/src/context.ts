@@ -21,7 +21,14 @@ PROJECT LAYOUT (the input contract):
 - project.yaml                      — title, art_style, model ids, key env-var names.
 - characters/<id>/character.md      — YAML front-matter + canonical prose description.
 - locations/<id>.md                 — YAML front-matter + prose description.
-- screenplay/*.fountain             — Fountain screenplay with branch markers.
+- scenes/<id>.md                    — one scene per file: \`scene: <id>\` front-matter + a
+                                      complete one-scene Fountain body (heading included).
+- screenplay/*.fountain             — the whole screenplay in one file, with [[scene:]] markers.
+
+A project authors its scenes in ONE of those two forms, never both — holding both is a hard
+error and neither is read. With scenes/, project.yaml's \`start:\` names the entry scene (a
+directory has no document order) and a chunk body carries no [[scene:]] marker: its id is the
+front-matter's, and the body cannot override it. Prefer scenes/ for a new project.
 
 CHARACTER front-matter: id, name, status(draft|candidates|approved|locked),
 default_outfit, traits[], palette[ hex ], reference_images[], approved_portrait?.

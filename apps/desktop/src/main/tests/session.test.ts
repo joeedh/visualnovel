@@ -4,6 +4,7 @@
  * over a real generated project — testkit runs the pipeline, the session reads it back.
  */
 import { promises as fs } from 'node:fs';
+import { sep } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
@@ -233,6 +234,132 @@ describe('WorkspaceSession — line ids', () => {
     expect(preview.ok).toBe(false);
     expect(await session.writeLineIds('nope')).toMatchObject({ ok: false, written: [] });
     expect(await p.read(SCRIPT)).toBe(before);
+  });
+});
+
+/**
+ * The same write paths against `scenes/<id>.md`. A rewire that spans two scenes spans two files
+ * here, which is the whole difference — so these assert on *which* files were written, and on
+ * the front-matter surviving a patch that only ever meant to touch prose.
+ */
+describe('WorkspaceSession — scenes authored as chunks', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeEach(async () => {
+    p = await makeProject({ title: 'Chunks', script: SCRIPTS.diamond, format: 'chunks' });
+    session = sessionFor(p);
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  /**
+   * Drop the `[[line:]]`/`[[nextline:]]` marks `sceneToFountain` wrote, leaving bodies that read
+   * like hand-authored ones — a fixture chunk is born fully marked, so nothing else would.
+   */
+  const unmark = async (): Promise<void> => {
+    for (const id of ['arrival', 'greet', 'observe', 'rooftop']) {
+      const file = `scenes/${id}.md`;
+      await p.write(
+        file,
+        (await p.read(file)).replace(/^\[\[(?:line|nextline):[^\]]*\]\]\n/gm, ''),
+      );
+    }
+  };
+
+  it('reads the same graph out of one file per scene', async () => {
+    const graph = await session.storyGraph();
+    expect(graph.start).toBe('arrival');
+    expect(graph.scenes.map((s) => s.id)).toEqual(['arrival', 'greet', 'observe', 'rooftop']);
+    expect(graph.edges.map((e) => e.id)).toEqual([
+      'arrival#choice:0',
+      'arrival#choice:1',
+      'greet#next',
+      'observe#next',
+    ]);
+    expect(graph.scenes.every((s) => s.reachable)).toBe(true);
+  });
+
+  it('names the chunk each scene lives in, and reports no screenplay', async () => {
+    const index = await session.index();
+    expect(index.screenplay).toBeUndefined();
+    expect(index.scenes.map((s) => s.file?.endsWith(`scenes${sep}${s.id}.md`))).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('patches only the chunks a rewire touches, front-matter untouched', async () => {
+    // A comment is the sharp case: re-serializing the YAML would drop it, splicing keeps it.
+    const arrival = await p.read('scenes/arrival.md');
+    await p.write('scenes/arrival.md', arrival.replace('---\n', '---\n# hand-written\n'));
+    const greet = await p.read('scenes/greet.md');
+
+    const result = await session.editBranches((scenes) =>
+      spliceScene(scenes, { scene: 'rooftop', from: 'arrival', edge: 0 }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.written).toEqual(['scenes/arrival.md', 'scenes/rooftop.md']);
+    expect(await p.read('scenes/greet.md')).toBe(greet);
+
+    const patched = await p.read('scenes/arrival.md');
+    expect(patched).toContain('# hand-written');
+    expect(patched).toContain('scene: arrival');
+    // The id stays the front-matter's: a body that named itself could contradict its own file.
+    expect(patched).not.toContain('[[scene:');
+    expect(await p.read('scenes/rooftop.md')).toContain('[[next: greet]]');
+
+    const edges = result.graph?.edges ?? [];
+    expect(edges.find((e) => e.id === 'arrival#choice:0')).toMatchObject({
+      to: 'rooftop',
+      label: 'Speak up',
+    });
+    expect(edges.find((e) => e.id === 'rooftop#next')).toMatchObject({ to: 'greet' });
+  });
+
+  it('refuses a rewire without writing any chunk', async () => {
+    const before = await p.read('scenes/arrival.md');
+    const result = await session.editBranches((scenes) =>
+      spliceScene(scenes, { scene: 'arrival', from: 'greet' }),
+    );
+    expect(result).toMatchObject({ ok: false, written: [] });
+    expect(await p.read('scenes/arrival.md')).toBe(before);
+  });
+
+  it('finds a written chunk already marked — the writer emits the ids it read', async () => {
+    const result = await session.writeLineIds();
+    expect(result).toMatchObject({ ok: true, written: [] });
+    expect(result.message).toContain('already carries its id');
+  });
+
+  it('writes line ids into every chunk that lacks them', async () => {
+    await unmark();
+    const result = await session.writeLineIds();
+    expect(result).toMatchObject({ ok: true });
+    expect(result.written).toEqual([
+      'scenes/arrival.md',
+      'scenes/greet.md',
+      'scenes/observe.md',
+      'scenes/rooftop.md',
+    ]);
+    expect(await p.read('scenes/greet.md')).toContain('[[line: L1]]');
+
+    const again = await session.writeLineIds();
+    expect(again).toMatchObject({ ok: true, written: [] });
+    expect(again.message).toContain('already carries its id');
+  });
+
+  it('scopes a line-id write to the one chunk holding that scene', async () => {
+    await unmark();
+    const result = await session.writeLineIds('greet');
+    expect(result).toMatchObject({ ok: true, written: ['scenes/greet.md'] });
+    expect(result.message).toContain('scene "greet"');
+    expect(await p.read('scenes/arrival.md')).not.toContain('[[line:');
   });
 });
 

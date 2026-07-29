@@ -11,15 +11,26 @@ export interface FrontMatterDoc {
 const FENCE = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
 /**
+ * The front-matter block and the body as byte-exact halves: `prefix + body` is the file, less
+ * a BOM. A patcher that rewrites only prose splices its result back onto `prefix`, so YAML the
+ * author wrote — key order, spacing, comments — survives where re-serializing it would not.
+ */
+export function splitFrontMatter(text: string): { prefix: string; body: string } {
+  const normalized = text.startsWith('﻿') ? text.slice(1) : text;
+  const match = FENCE.exec(normalized);
+  if (!match) return { prefix: '', body: normalized };
+  return { prefix: match[0], body: normalized.slice(match[0].length) };
+}
+
+/**
  * Read YAML front-matter delimited by `---` fences at the top of a markdown file.
  * Files without a fence parse to `{ data: {}, body: <whole text> }`.
  */
 export function parseFrontMatter(text: string): FrontMatterDoc {
-  const normalized = text.startsWith('﻿') ? text.slice(1) : text;
-  const match = FENCE.exec(normalized);
-  if (!match) return { data: {}, body: normalized };
-  const data = (parseYaml(match[1] ?? '') ?? {}) as Record<string, unknown>;
-  return { data, body: normalized.slice(match[0].length) };
+  const { prefix, body } = splitFrontMatter(text);
+  if (!prefix) return { data: {}, body };
+  const yaml = FENCE.exec(prefix)?.[1] ?? '';
+  return { data: (parseYaml(yaml) ?? {}) as Record<string, unknown>, body };
 }
 
 /** Serialize front-matter + body back into a markdown file (round-trips `parse`). */

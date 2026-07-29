@@ -153,11 +153,10 @@ describe('buildModel — validation', () => {
   });
 });
 
-const chunk = (id: string, body: string): SceneChunkDoc => ({
-  id,
-  file: `scenes/${id}.md`,
-  doc: parseFrontMatter(`---\nscene: ${id}\n---\n\n${body}`),
-});
+const chunk = (id: string, body: string): SceneChunkDoc => {
+  const text = `---\nscene: ${id}\n---\n\n${body}`;
+  return { id, file: `scenes/${id}.md`, doc: parseFrontMatter(text), text };
+};
 
 function chunkInputs(sceneDocs: SceneChunkDoc[], start?: string, script = ''): BuildInputs {
   return {

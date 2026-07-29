@@ -147,7 +147,7 @@ const listWorkspaceTool: Tool<Record<string, never>> = {
   },
 };
 
-const INPUT_GLOBS = ['characters', 'locations', 'screenplay'];
+const INPUT_GLOBS = ['characters', 'locations', 'scenes', 'screenplay'];
 
 /** Recursively collect text input files under the workspace's authored directories. */
 async function collectInputFiles(root: string): Promise<string[]> {

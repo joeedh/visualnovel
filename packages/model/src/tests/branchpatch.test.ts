@@ -325,6 +325,69 @@ describe('applySceneBranchEdit', () => {
 });
 
 /**
+ * A chunk body is the same Fountain with the id supplied from outside it. Nothing about the
+ * patching changes; what changes is where the id comes from, and that a chunk is one scene.
+ */
+describe('applySceneBranchEdit — a scene chunk body', () => {
+  const CHUNK = [
+    'INT. DORM ROOM - DAY',
+    '',
+    '[[next: greet]]',
+    '',
+    'She sets down her bag.',
+    '',
+  ].join('\n');
+
+  it('patches a body that never names itself, id supplied by the caller', () => {
+    const { text, diagnostics } = applySceneBranchEdit(
+      CHUNK,
+      [{ sceneId: 'arrival', next: null, choices: [{ label: 'Wait', goto: 'greet' }] }],
+      { sceneId: 'arrival' },
+    );
+    expect(diagnostics).toEqual([]);
+    expect(text).toContain('[[choice: "Wait" -> greet]]');
+    expect(text).not.toContain('[[next:');
+    // The body stays anonymous: the file's front-matter is the one place the id lives.
+    expect(text).not.toContain('[[scene:');
+    expect(text).toContain('She sets down her bag.');
+  });
+
+  it('refuses an edit naming a scene this chunk is not', () => {
+    const { text, diagnostics } = applySceneBranchEdit(CHUNK, [{ sceneId: 'greet', next: null }], {
+      sceneId: 'arrival',
+    });
+    expect(text).toBe(CHUNK);
+    expect(diagnostics).toEqual([
+      {
+        severity: 'error',
+        code: 'branch_patch_scene',
+        message: "no scene 'greet' in chunk 'arrival'",
+        where: 'greet',
+      },
+    ]);
+  });
+
+  it('refuses a chunk holding two scenes — there is no single id it could be', () => {
+    const two = `${CHUNK}\nINT. HALLWAY - DAY\n\nFootsteps echo.\n`;
+    const { text, diagnostics } = applySceneBranchEdit(two, [{ sceneId: 'arrival', next: null }], {
+      sceneId: 'arrival',
+    });
+    expect(text).toBe(two);
+    expect(diagnostics.map((d) => d.code)).toEqual(['branch_patch_chunk']);
+    expect(diagnostics[0]!.message).toContain('2 scene(s)');
+  });
+
+  it('refuses a body with no scene heading at all', () => {
+    const { diagnostics } = applySceneBranchEdit(
+      'Just prose, no heading.\n',
+      [{ sceneId: 'arrival', next: 'greet' }],
+      { sceneId: 'arrival' },
+    );
+    expect(diagnostics.map((d) => d.code)).toEqual(['branch_patch_chunk']);
+  });
+});
+
+/**
  * The re-parse assertion is the integration test — so drive it over the real sample screenplay
  * with a generated sweep rather than hand-picked edits, and require that every result either
  * lands the intended graph exactly or refuses and returns the file untouched.

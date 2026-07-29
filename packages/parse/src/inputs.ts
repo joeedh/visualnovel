@@ -17,6 +17,12 @@ export interface SceneChunkDoc {
   /** Absolute path, for diagnostics and for the writer that patches this same file. */
   file: string;
   doc: FrontMatterDoc;
+  /**
+   * The file's bytes as read. A prose patcher rewrites `doc.body` and splices it back under
+   * the front-matter block `splitFrontMatter` takes off this text, so the author's YAML is
+   * never re-serialized — and it patches exactly the bytes the model was built from.
+   */
+  text: string;
 }
 
 export interface LoadedInputs {

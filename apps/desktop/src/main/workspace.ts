@@ -61,7 +61,7 @@ export async function seedWorkspace(template: string, target: string): Promise<S
     await git.config('user.email', FALLBACK_IDENTITY.email);
     await git.config('user.name', FALLBACK_IDENTITY.name);
   }
-  // Same reason testkit sets it: the branch editor patches the screenplay byte-exactly.
+  // Same reason testkit sets it: the branch editor patches scene prose byte-exactly.
   await git.config('core.autocrlf', 'false');
   await git.commit({ message: 'Sample project inputs', paths: ['-A'] });
 

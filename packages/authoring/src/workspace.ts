@@ -30,19 +30,22 @@ export interface LocationEntry {
   file: string;
 }
 
-/** A single scene row in the index (scenes live in the screenplay, not per-file). */
+/** A single scene row in the index. */
 export interface SceneEntry {
   id: string;
   location: string;
   characters: string[];
   choices: number;
   reachable: boolean;
+  /** The chunk this scene lives in; absent when the scenes come from a screenplay. */
+  file?: string;
 }
 
 /** The lightweight structural snapshot the agent keeps in context. */
 export interface WorkspaceIndex {
   root: string;
   title: string;
+  /** The one screenplay file, when that is the form this project authors in. */
   screenplay?: string;
   characters: CharacterEntry[];
   locations: LocationEntry[];
@@ -95,8 +98,11 @@ export class Workspace {
 
   /** Build the lightweight index from the model. */
   async index(): Promise<WorkspaceIndex> {
-    const { title, model } = await this.load();
-    const screenplay = await this.screenplayFile();
+    const { title, model, inputs } = await this.load();
+    // Which form the project authored in is the loader's decision, not a second guess here:
+    // chunks win, and a screenplay left beside them is not what the model was built from.
+    const chunkFiles = new Map(inputs.sceneDocs.map((c) => [c.id, c.file]));
+    const screenplay = chunkFiles.size > 0 ? undefined : await this.screenplayFile();
 
     const characters: CharacterEntry[] = [...model.characters.values()].map((c) => ({
       id: c.id,
@@ -116,12 +122,13 @@ export class Workspace {
       characters: s.characters,
       choices: s.choices.length,
       reachable: model.reachable.has(s.id),
+      ...(chunkFiles.has(s.id) ? { file: chunkFiles.get(s.id)! } : {}),
     }));
 
     return {
       root: this.root,
       title,
-      screenplay,
+      ...(screenplay ? { screenplay } : {}),
       characters,
       locations,
       scenes,

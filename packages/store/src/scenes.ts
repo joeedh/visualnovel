@@ -38,7 +38,8 @@ export async function readSceneChunk(
 ): Promise<SceneChunkDoc | null> {
   const file = paths.sceneFile(id);
   if (!(await exists(file))) return null;
-  return { id, file, doc: parseChunk(file, await readText(file)) };
+  const text = await readText(file);
+  return { id, file, doc: parseChunk(file, text), text };
 }
 
 /**
@@ -57,7 +58,8 @@ export async function readSceneChunks(paths: ProjectPaths): Promise<SceneChunkDo
   const chunks: SceneChunkDoc[] = [];
   for (const id of ids) {
     const file = join(paths.scenesDir, `${id}.md`);
-    chunks.push({ id, file, doc: parseChunk(file, await readText(file)) });
+    const text = await readText(file);
+    chunks.push({ id, file, doc: parseChunk(file, text), text });
   }
   return chunks;
 }
