@@ -1,6 +1,7 @@
 # Scene chunk files
 
-Status: **planned**. Move two of
+Status: **in progress** — step 1 of 10 is shipped (the loading sequence is collapsed); the format
+itself does not exist yet. Move two of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 after [`allocated-line-ids.md`](allocated-line-ids.md) and
 [`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
@@ -101,13 +102,28 @@ The format is the easy half. Four call sites duplicate the same
 | `apps/cli/src/project.ts:26` | one `scriptText` |
 | `apps/desktop/src/main/session.ts:114` | one `scriptText` **and** `scriptPath`, carried on `LoadedProject` for the branch editor to patch |
 | `packages/authoring/src/workspace.ts:89` | plus `screenplayFile()` for the index, and `INPUT_GLOBS` in `tools.ts:150` |
-| `packages/testkit/src/project.ts:297` | writes `screenplay/script.fountain` from `SCRIPTS` |
+| `packages/testkit/src/project.ts:162` | `reload()`; and `makeProject` writes `screenplay/script.fountain` from `SCRIPTS` |
 
-Four copies of one sequence is three too many for a change that alters it. **Add
-`loadProjectModel(paths, config)` to `@vn/store` and have all four call it** — the desktop and CLI
-`loadProject` functions become that call plus their own store/graph assembly. This is a
+Four copies of one sequence is three too many for a change that alters it, so collapsing them is a
 prerequisite of the move, not a tidy-up: doing it after means making the same edit four times and
 discovering the fourth in a test that only runs on a machine with the asset corpus.
+
+**Where the collapsed function lives is constrained by the layering.** `@vn/store` may import only
+`types`, `util` and `parse` (`eslint.config.mjs:20`), so it cannot call `buildModel` — a single
+`loadProjectModel` in `@vn/store` is not available without widening the graph, which would also
+hand `@vn/model` to `taskgraph` and `scheduler` transitively, both of which exclude it on purpose.
+So the sequence splits along the seam that already exists:
+
+- **`@vn/parse` owns `LoadedInputs`** — it owns `FrontMatterDoc`, and `@vn/types` cannot name that
+  shape without duplicating it. One declaration, imported by the reader and the builder alike.
+- **`@vn/store` keeps `loadInputs(paths)`** — all of the disk reading, none of the model.
+- **`@vn/model` gains `modelFromInputs(inputs, { title })`** — the one place `parseFountain` and
+  `buildModel` are sequenced. It takes the config fields it needs rather than a `ProjectConfig`,
+  because `@vn/model` does not depend on `@vn/config` either.
+
+Each of the four call sites becomes two calls, and when `scenes/` arrives exactly two files change:
+`store/worktree.ts` (read `scenes/`, fall back to `screenplay/`) and `model/build.ts` (consume
+`sceneDocs`, take `entry` from `config.start`).
 
 Then the writers:
 
@@ -146,8 +162,8 @@ surface. Before that plan lands they would be produced and rendered nowhere.
 
 ## Steps
 
-1. **`loadProjectModel` in `@vn/store`.** One function, the four call sites converted to it, no
-   behaviour change. Green `pnpm check` / `pnpm test` before anything else moves.
+1. ✔ **`modelFromInputs` in `@vn/model`**, `LoadedInputs` in `@vn/parse`, the four call sites
+   converted, no behaviour change. Green `pnpm check` / `pnpm test` before anything else moves.
 2. **Delete `sceneFile`/`writeSceneFile`.** The dead `work/scenes/` pair, on its own.
 3. **`@vn/types`: the chunk schema.** `SceneDoc` zod schema for the front-matter, mirroring how
    characters and locations are validated at the boundary. `start` added to the `project.yaml`

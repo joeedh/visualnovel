@@ -15,8 +15,7 @@ import {
 } from '@vn/config';
 import { relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
-import { parseFountain } from '@vn/parse';
-import { applySceneBranchEdit, assignLineIds, buildModel } from '@vn/model';
+import { applySceneBranchEdit, assignLineIds, modelFromInputs } from '@vn/model';
 import {
   AssetStore,
   ProjectPaths,
@@ -112,13 +111,7 @@ async function loadProject(dir: string): Promise<LoadedProject> {
   const config = await loadConfig(dir);
   const paths = new ProjectPaths(dir);
   const inputs = await loadInputs(paths);
-  const script = parseFountain(inputs.scriptText);
-  const model = buildModel({
-    title: config.title,
-    characterDocs: inputs.characterDocs,
-    locationDocs: inputs.locationDocs,
-    script,
-  });
+  const model = modelFromInputs(inputs, { title: config.title });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
   return {

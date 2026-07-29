@@ -1,8 +1,7 @@
 import type { ProjectConfig, ResolvedKeys } from '@vn/config';
 import type { Logger, ProjectModel, Providers } from '@vn/types';
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
-import { parseFountain } from '@vn/parse';
-import { buildModel, errors as modelErrors } from '@vn/model';
+import { errors as modelErrors, modelFromInputs } from '@vn/model';
 import { AssetStore, ProjectPaths, loadInputs } from '@vn/store';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
 import { createMockProviders, createProviders } from '@vn/providers';
@@ -27,13 +26,7 @@ export async function loadProject(dir: string): Promise<LoadedProject> {
   const config = await loadConfig(dir);
   const paths = new ProjectPaths(dir);
   const inputs = await loadInputs(paths);
-  const script = parseFountain(inputs.scriptText);
-  const model = buildModel({
-    title: config.title,
-    characterDocs: inputs.characterDocs,
-    locationDocs: inputs.locationDocs,
-    script,
-  });
+  const model = modelFromInputs(inputs, { title: config.title });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
   return { dir, config, paths, model, store, graph };

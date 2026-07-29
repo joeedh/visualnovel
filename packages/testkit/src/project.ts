@@ -6,7 +6,7 @@ import { writeFileAtomic } from '@vn/util';
 import type { ProjectConfig } from '@vn/config';
 import { loadConfig } from '@vn/config';
 import { parseFountain } from '@vn/parse';
-import { buildModel, slug, splitScenes } from '@vn/model';
+import { modelFromInputs, slug, splitScenes } from '@vn/model';
 import {
   AssetStore,
   ProjectPaths,
@@ -162,12 +162,7 @@ export class TestProject {
   async reload(): Promise<ProjectState> {
     const config = await loadConfig(this.dir);
     const inputs = await loadInputs(this.paths);
-    const model = buildModel({
-      title: config.title,
-      characterDocs: inputs.characterDocs,
-      locationDocs: inputs.locationDocs,
-      script: parseFountain(inputs.scriptText),
-    });
+    const model = modelFromInputs(inputs, { title: config.title });
     const store = await AssetStore.open(this.paths);
     const graph = await loadGraph(this.paths);
     this.state = { config, model, store, graph };

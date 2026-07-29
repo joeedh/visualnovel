@@ -1,15 +1,15 @@
 /**
  * A cheap project index (authoring-agent plan §6.1). It assembles `loadInputs` +
- * `buildModel` into a flat list of which characters/locations/scenes exist — ids, names,
+ * `modelFromInputs` into a flat list of which characters/locations/scenes exist — ids, names,
  * and the file each lives in — without holding full bodies. The agent uses it to know
  * what's there before reading anything. `load()` exposes the full model + raw docs for
  * tools that need to read or edit prose; `index()` is the lightweight summary.
  */
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { parseFountain, parseFrontMatter, type FrontMatterDoc } from '@vn/parse';
-import { buildModel } from '@vn/model';
-import { loadInputs, ProjectPaths, type LoadedInputs } from '@vn/store';
+import { parseFrontMatter, type FrontMatterDoc, type LoadedInputs } from '@vn/parse';
+import { modelFromInputs } from '@vn/model';
+import { loadInputs, ProjectPaths } from '@vn/store';
 import { loadConfig } from '@vn/config';
 import { exists, readText } from '@vn/util';
 import type { CharacterStatus, Diagnostic, ProjectModel } from '@vn/types';
@@ -86,12 +86,7 @@ export class Workspace {
     } catch {
       // No (or invalid) project.yaml: the agent still operates, title is a placeholder.
     }
-    const model = buildModel({
-      title,
-      characterDocs: inputs.characterDocs,
-      locationDocs: inputs.locationDocs,
-      script: parseFountain(inputs.scriptText),
-    });
+    const model = modelFromInputs(inputs, { title });
     return { title, model, inputs };
   }
 

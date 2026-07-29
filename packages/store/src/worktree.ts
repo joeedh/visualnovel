@@ -1,21 +1,13 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { parseFrontMatter, stringifyFrontMatter, type FrontMatterDoc } from '@vn/parse';
+import {
+  parseFrontMatter,
+  stringifyFrontMatter,
+  type FrontMatterDoc,
+  type LoadedInputs,
+} from '@vn/parse';
 import { ensureDir, exists, writeFileAtomic } from '@vn/util';
 import { ProjectPaths } from './paths.js';
-
-/** Parsed input documents read off disk, ready to feed `@vn/model`'s `buildModel`. */
-export interface LoadedInputs {
-  characterDocs: FrontMatterDoc[];
-  locationDocs: FrontMatterDoc[];
-  scriptText: string;
-  /**
-   * Absolute path `scriptText` was read from, or undefined when the project has no screenplay.
-   * Returned so a writer (the desktop branch editor) patches the same file the model was built
-   * from, instead of re-deriving "which file is the screenplay" and drifting from this rule.
-   */
-  scriptPath?: string;
-}
 
 async function listDirs(dir: string): Promise<string[]> {
   if (!(await exists(dir))) return [];

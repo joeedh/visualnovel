@@ -1,5 +1,10 @@
 import type { Character, Diagnostic, Location, ProjectModel, Scene } from '@vn/types';
-import type { FountainScript, FrontMatterDoc } from '@vn/parse';
+import {
+  parseFountain,
+  type FountainScript,
+  type FrontMatterDoc,
+  type LoadedInputs,
+} from '@vn/parse';
 import { characterFromDoc, locationFromDoc } from './entities.js';
 import { splitScenes, type MinedLocation } from './scenes.js';
 import { computeReachable, successors } from './graph.js';
@@ -186,6 +191,22 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
   }
 
   return { title: inputs.title, characters, locations, scenes, reachable, entry, diagnostics };
+}
+
+/**
+ * Build the model from documents as read off disk — the one place `parseFountain` and
+ * `buildModel` are sequenced. Every caller that loads a project (CLI, desktop session,
+ * authoring workspace, testkit) goes through here, so a change to how authored input becomes
+ * a model is one edit rather than four. Takes the config fields it needs, not a
+ * `ProjectConfig`: `@vn/model` does not depend on `@vn/config`.
+ */
+export function modelFromInputs(inputs: LoadedInputs, opts: { title: string }): ProjectModel {
+  return buildModel({
+    title: opts.title,
+    characterDocs: inputs.characterDocs,
+    locationDocs: inputs.locationDocs,
+    script: parseFountain(inputs.scriptText),
+  });
 }
 
 /** True when the model has no error-severity diagnostics. */
