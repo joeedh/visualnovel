@@ -2,7 +2,13 @@ import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseFrontMatter } from '@vn/parse';
-import { AssetStore, ProjectPaths, loadInputs, setCharacterApproval } from '../index.js';
+import {
+  AssetStore,
+  ProjectPaths,
+  loadInputs,
+  setCharacterApproval,
+  writeSceneChunk,
+} from '../index.js';
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'vn-store-'));
@@ -66,6 +72,39 @@ describe('worktree IO', () => {
     expect(inputs.characterDocs).toHaveLength(1);
     expect(inputs.characterDocs[0]!.data['id']).toBe('aiko');
     expect(inputs.scriptText).toContain('INT. ROOM');
+    expect(inputs.sceneDocs).toEqual([]);
+    expect(inputs.diagnostics).toEqual([]);
+  });
+
+  it('reads scenes/ chunks, with no screenplay to fall back to', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    await writeSceneChunk(paths, 'arrival', {
+      data: { scene: 'arrival' },
+      body: 'INT. ROOM - DAY\n\nAction.\n',
+    });
+
+    const inputs = await loadInputs(paths);
+    expect(inputs.sceneDocs.map((c) => c.id)).toEqual(['arrival']);
+    expect(inputs.scriptText).toBe('');
+    expect(inputs.scriptPath).toBeUndefined();
+    expect(inputs.diagnostics).toEqual([]);
+  });
+
+  it('refuses a project holding both forms, reading neither', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    await writeSceneChunk(paths, 'arrival', {
+      data: { scene: 'arrival' },
+      body: 'INT. ROOM - DAY\n\nAction.\n',
+    });
+    await mkdir(paths.screenplayDir, { recursive: true });
+    await writeFile(join(paths.screenplayDir, 'script.fountain'), 'INT. ROOM - DAY\n\nAction.\n');
+
+    const inputs = await loadInputs(paths);
+    expect(inputs.sceneDocs).toEqual([]);
+    expect(inputs.scriptText).toBe('');
+    expect(inputs.diagnostics).toHaveLength(1);
+    expect(inputs.diagnostics[0]!.code).toBe('two_input_formats');
+    expect(inputs.diagnostics[0]!.message).toContain('script.fountain');
   });
 
   it('flips a character to approved with the chosen portrait hash', async () => {

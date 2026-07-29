@@ -8,6 +8,7 @@ import {
 } from '@vn/parse';
 import { ensureDir, exists, writeFileAtomic } from '@vn/util';
 import { ProjectPaths } from './paths.js';
+import { readSceneChunks } from './scenes.js';
 
 async function listDirs(dir: string): Promise<string[]> {
   if (!(await exists(dir))) return [];
@@ -23,7 +24,11 @@ async function listFiles(dir: string, ext: string): Promise<string[]> {
     .map((e) => join(dir, e.name));
 }
 
-/** Read all authored input files for a project (report §9.1). */
+/**
+ * Read all authored input files for a project (report §9.1). Scenes come from `scenes/<id>.md`
+ * chunks, or from the one `screenplay/` file when a project has not been converted — both forms
+ * load until the importer retires the fallback, and a project holding both is refused.
+ */
 export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
   const characterDocs: FrontMatterDoc[] = [];
   for (const id of await listDirs(paths.charactersDir)) {
@@ -36,12 +41,32 @@ export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
     locationDocs.push(parseFrontMatter(await fs.readFile(file, 'utf8')));
   }
 
+  const sceneDocs = await readSceneChunks(paths);
   const fountain = await listFiles(paths.screenplayDir, '.fountain');
   const markdown = fountain.length === 0 ? await listFiles(paths.screenplayDir, '.md') : [];
   const scriptPath = fountain[0] ?? markdown[0];
-  const scriptText = scriptPath ? await fs.readFile(scriptPath, 'utf8') : '';
 
-  return { characterDocs, locationDocs, scriptText, scriptPath };
+  // Two sources of truth for one scene is the failure chunks exist to prevent, so a project
+  // holding both is refused outright rather than resolved by a preference — a model built from
+  // one while edits land in the other is the shape of that failure.
+  if (sceneDocs.length > 0 && scriptPath !== undefined) {
+    return {
+      characterDocs,
+      locationDocs,
+      sceneDocs: [],
+      scriptText: '',
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'two_input_formats',
+          message: `project has both scenes/ (${sceneDocs.length} chunk${sceneDocs.length === 1 ? '' : 's'}) and ${scriptPath}; keep one — a scene cannot live in two files`,
+        },
+      ],
+    };
+  }
+
+  const scriptText = scriptPath ? await fs.readFile(scriptPath, 'utf8') : '';
+  return { characterDocs, locationDocs, sceneDocs, scriptText, scriptPath, diagnostics: [] };
 }
 
 /** Persist the Mermaid story graph to `work/story.graph.mmd` (report §6). */

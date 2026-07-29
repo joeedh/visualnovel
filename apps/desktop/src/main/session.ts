@@ -111,7 +111,7 @@ async function loadProject(dir: string): Promise<LoadedProject> {
   const config = await loadConfig(dir);
   const paths = new ProjectPaths(dir);
   const inputs = await loadInputs(paths);
-  const model = modelFromInputs(inputs, { title: config.title });
+  const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
   return {

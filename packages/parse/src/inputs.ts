@@ -1,3 +1,4 @@
+import type { Diagnostic } from '@vn/types';
 import type { FrontMatterDoc } from './frontmatter.js';
 
 /**
@@ -21,6 +22,8 @@ export interface SceneChunkDoc {
 export interface LoadedInputs {
   characterDocs: FrontMatterDoc[];
   locationDocs: FrontMatterDoc[];
+  /** Authored scene chunks; empty when the project is still on the `screenplay/` form. */
+  sceneDocs: SceneChunkDoc[];
   scriptText: string;
   /**
    * Absolute path `scriptText` was read from, or undefined when the project has no screenplay.
@@ -28,4 +31,9 @@ export interface LoadedInputs {
    * from, instead of re-deriving "which file is the screenplay" and drifting from this rule.
    */
   scriptPath?: string;
+  /**
+   * Problems found while reading, carried into the model's diagnostics rather than thrown —
+   * the reader has no way to report, and every other input problem is a diagnostic too.
+   */
+  diagnostics: Diagnostic[];
 }

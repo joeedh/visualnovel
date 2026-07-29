@@ -1,4 +1,4 @@
-import { parseFountain, parseFrontMatter } from '@vn/parse';
+import { parseFountain, parseFrontMatter, type SceneChunkDoc } from '@vn/parse';
 import { buildModel, errors, isValid, toMermaid, type BuildInputs } from '../index.js';
 
 const charDoc = (id: string, name: string) =>
@@ -150,5 +150,89 @@ describe('buildModel — validation', () => {
     expect(
       model.diagnostics.some((d) => d.code === 'unreachable_scene' && d.where === 'orphan'),
     ).toBe(true);
+  });
+});
+
+const chunk = (id: string, body: string): SceneChunkDoc => ({
+  id,
+  file: `scenes/${id}.md`,
+  doc: parseFrontMatter(`---\nscene: ${id}\n---\n\n${body}`),
+});
+
+function chunkInputs(sceneDocs: SceneChunkDoc[], start?: string, script = ''): BuildInputs {
+  return {
+    title: 'Test',
+    characterDocs: [charDoc('aiko', 'Aiko'), charDoc('ren', 'Ren')],
+    locationDocs: [],
+    sceneDocs,
+    script: parseFountain(script),
+    start,
+  };
+}
+
+const ARRIVAL_CHUNK = `INT. CLASSROOM - DAY
+
+[[choice: "go up" -> rooftop]]
+
+AIKO
+Hi.
+`;
+
+const ROOFTOP_CHUNK = `INT. ROOFTOP - SUNSET
+
+REN
+Yo.
+`;
+
+describe('buildModel — scenes authored as chunks', () => {
+  const CHUNKS = [chunk('arrival', ARRIVAL_CHUNK), chunk('rooftop', ROOFTOP_CHUNK)];
+  const model = buildModel(chunkInputs(CHUNKS, 'arrival'));
+
+  it('keys scenes by their chunk id and takes the entry from start:', () => {
+    expect([...model.scenes.keys()]).toEqual(['arrival', 'rooftop']);
+    expect(model.entry).toBe('arrival');
+    expect(model.scenes.get('arrival')!.lines[0]!.id).toBe('arrival:L1');
+  });
+
+  it('mines locations, resolves cast, and validates edges as the screenplay form does', () => {
+    expect(model.scenes.get('arrival')!.choices.map((c) => c.goto)).toEqual(['rooftop']);
+    expect(model.locations.get('rooftop')!.variants.map((v) => v.id)).toEqual(['sunset']);
+    expect(model.scenes.get('rooftop')!.characters).toEqual(['ren']);
+    expect(model.reachable).toEqual(new Set(['arrival', 'rooftop']));
+    expect(errors(model)).toHaveLength(0);
+  });
+
+  it('ignores the screenplay when chunks are present — the forms never mix', () => {
+    const both = buildModel(chunkInputs(CHUNKS, 'arrival', VALID));
+    expect([...both.scenes.keys()]).toEqual(['arrival', 'rooftop']);
+  });
+
+  it('errors when a chunk project has no start:, rather than guessing one', () => {
+    const m = buildModel(chunkInputs(CHUNKS));
+    expect(m.entry).toBeUndefined();
+    expect(errors(m).map((d) => d.code)).toContain('missing_start');
+  });
+
+  it('errors when start: names a scene no chunk provides', () => {
+    const m = buildModel(chunkInputs(CHUNKS, 'nowhere'));
+    expect(m.entry).toBeUndefined();
+    const err = errors(m).find((d) => d.code === 'unknown_start');
+    expect(err!.message).toContain('"nowhere"');
+  });
+
+  it('reports a bad chunk without losing the good ones', () => {
+    const m = buildModel(
+      chunkInputs([CHUNKS[0]!, chunk('rooftop', 'No heading here.\n')], 'arrival'),
+    );
+    expect([...m.scenes.keys()]).toEqual(['arrival']);
+    expect(errors(m).map((d) => d.code)).toContain('scene_body');
+  });
+
+  it("carries the loader's own diagnostics through to the model", () => {
+    const m = buildModel({
+      ...chunkInputs(CHUNKS, 'arrival'),
+      diagnostics: [{ severity: 'error', code: 'two_input_formats', message: 'both forms' }],
+    });
+    expect(errors(m).map((d) => d.code)).toContain('two_input_formats');
   });
 });

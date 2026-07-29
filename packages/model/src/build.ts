@@ -4,8 +4,9 @@ import {
   type FountainScript,
   type FrontMatterDoc,
   type LoadedInputs,
+  type SceneChunkDoc,
 } from '@vn/parse';
-import { characterFromDoc, locationFromDoc } from './entities.js';
+import { characterFromDoc, locationFromDoc, sceneFromDoc } from './entities.js';
 import { splitScenes, type MinedLocation } from './scenes.js';
 import { computeReachable, successors } from './graph.js';
 import { slug } from './slug.js';
@@ -15,7 +16,75 @@ export interface BuildInputs {
   title: string;
   characterDocs: FrontMatterDoc[];
   locationDocs: FrontMatterDoc[];
+  /** Authored scene chunks. When any are present `script` is ignored — the forms never mix. */
+  sceneDocs?: SceneChunkDoc[];
   script: FountainScript;
+  /**
+   * The entry scene from `project.yaml`'s `start:`. Required with `sceneDocs`, which have no
+   * document order to fall back on; honoured for a screenplay too, where the first scene is the
+   * fallback.
+   */
+  start?: string;
+  /** Diagnostics from reading the inputs, carried through so they are reported with the rest. */
+  diagnostics?: Diagnostic[];
+}
+
+/** The scenes a build starts from, whichever form they were authored in. */
+function readScenes(inputs: BuildInputs): {
+  scenes: Scene[];
+  mined: MinedLocation[];
+  diagnostics: Diagnostic[];
+} {
+  if (!inputs.sceneDocs?.length) return splitScenes(inputs.script);
+
+  const scenes: Scene[] = [];
+  const mined: MinedLocation[] = [];
+  const diagnostics: Diagnostic[] = [];
+  for (const chunk of inputs.sceneDocs) {
+    const res = sceneFromDoc(chunk.doc, chunk.id);
+    if (!res.ok) {
+      diagnostics.push(res.diagnostic);
+      continue;
+    }
+    scenes.push(res.value.scene);
+    mined.push(...res.value.mined);
+    diagnostics.push(...res.value.diagnostics);
+  }
+  return { scenes, mined, diagnostics };
+}
+
+/**
+ * The entry scene. A chunk project has no document order to fall back on, so a missing `start:`
+ * is an error naming the fix rather than the scene whose filename sorts first — an entry chosen
+ * by alphabetics is one that silently moves the day a scene is renamed.
+ */
+function entryOf(
+  inputs: BuildInputs,
+  scenes: Map<string, Scene>,
+  first: string | undefined,
+  diagnostics: Diagnostic[],
+): string | undefined {
+  if (inputs.start === undefined) {
+    if (!inputs.sceneDocs?.length) return first;
+    if (scenes.size > 0) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'missing_start',
+        message: `project.yaml has no start:, and scenes/ has no order to take an entry scene from; add start: <scene id>`,
+      });
+    }
+    return undefined;
+  }
+  if (!scenes.has(inputs.start)) {
+    diagnostics.push({
+      severity: 'error',
+      code: 'unknown_start',
+      message: `project.yaml start: names unknown scene "${inputs.start}"`,
+      where: inputs.start,
+    });
+    return undefined;
+  }
+  return inputs.start;
 }
 
 function mergeMinedLocations(
@@ -101,7 +170,7 @@ function resolveCast(
  * them before any money is spent on generation.
  */
 export function buildModel(inputs: BuildInputs): ProjectModel {
-  const diagnostics: Diagnostic[] = [];
+  const diagnostics: Diagnostic[] = [...(inputs.diagnostics ?? [])];
 
   const characters = new Map<string, Character>();
   for (const doc of inputs.characterDocs) {
@@ -131,8 +200,8 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     userLocations.set(res.value.id, res.value);
   }
 
-  const { scenes: sceneList, mined, diagnostics: lineDiagnostics } = splitScenes(inputs.script);
-  diagnostics.push(...lineDiagnostics);
+  const { scenes: sceneList, mined, diagnostics: sceneDiagnostics } = readScenes(inputs);
+  diagnostics.push(...sceneDiagnostics);
   const locations = mergeMinedLocations(userLocations, mined);
 
   const byName = nameIndex(characters);
@@ -157,7 +226,7 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     scenes.set(scene.id, scene);
   }
 
-  const entry = sceneList[0]?.id;
+  const entry = entryOf(inputs, scenes, sceneList[0]?.id, diagnostics);
   const reachable = computeReachable(scenes, entry);
 
   // Validate edges and reachability.
@@ -200,12 +269,18 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
  * a model is one edit rather than four. Takes the config fields it needs, not a
  * `ProjectConfig`: `@vn/model` does not depend on `@vn/config`.
  */
-export function modelFromInputs(inputs: LoadedInputs, opts: { title: string }): ProjectModel {
+export function modelFromInputs(
+  inputs: LoadedInputs,
+  opts: { title: string; start?: string },
+): ProjectModel {
   return buildModel({
     title: opts.title,
+    start: opts.start,
     characterDocs: inputs.characterDocs,
     locationDocs: inputs.locationDocs,
+    sceneDocs: inputs.sceneDocs,
     script: parseFountain(inputs.scriptText),
+    diagnostics: inputs.diagnostics,
   });
 }
 

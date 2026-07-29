@@ -81,12 +81,15 @@ export class Workspace {
   async load(): Promise<LoadedWorkspace> {
     const inputs = await loadInputs(this.paths);
     let title = 'Untitled';
+    let start: string | undefined;
     try {
-      title = (await loadConfig(this.root)).title;
+      const config = await loadConfig(this.root);
+      title = config.title;
+      start = config.start;
     } catch {
       // No (or invalid) project.yaml: the agent still operates, title is a placeholder.
     }
-    const model = modelFromInputs(inputs, { title });
+    const model = modelFromInputs(inputs, { title, start });
     return { title, model, inputs };
   }
 
