@@ -208,7 +208,7 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
 [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
-  the five `story.*` document mutators set it. A command whose writes are generated output, or
+  the six `story.*` document mutators set it. A command whose writes are generated output, or
   that straddles both classes, stays out — see the table below.
 - **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of
   an undoable command into detached commits parked under `refs/vn/undo/<seq>/{pre,post}`. HEAD

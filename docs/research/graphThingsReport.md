@@ -21,7 +21,13 @@
 
 <!-- tocstop -->
 
-_Status: survey. Nothing here is implemented; no decision has been made to build any of it._
+_Status: survey, **partly built**. The three highest-ranked candidates shipped, each as a mode
+within an existing room rather than a new one: §1 the story branch editor (STUDIO's `branches`,
+[`../plans/story-branch-editor.md`](../plans/story-branch-editor.md)), §2 the task DAG viewer
+(FLOOR's `graph`, [`../plans/task-dag-view.md`](../plans/task-dag-view.md)), and §7 the shot
+timeline (FLOOR's `timeline`, [`../plans/shot-timeline-editor.md`](../plans/shot-timeline-editor.md)).
+They share one canvas (`apps/desktop/renderer/graph/`) but **not** the heterogeneous adapter
+proposed below — each view projects its own node/edge model. §§3–6 and 8–10 remain unbuilt._
 
 An inventory of the structures in this repo that could back a node-based editor or
 visualizer, what each one's nodes and edges actually are, and which ones a graph view would
@@ -69,7 +75,7 @@ metadata, not project data).
 
 ## 1. Story branch graph
 
-**Nodes:** `Scene` (`packages/types/src/entities.ts:129`).
+**Nodes:** `Scene` (`packages/types/src/entities.ts:145`).
 **Edges:** `Choice.goto`, labeled (`entities.ts:81`), plus `Scene.next` for the linear
 continuation.
 
@@ -89,6 +95,8 @@ and — if nodes render the first accepted shot image as a thumbnail — a story
 hybrid.
 
 **Priority: first.** Highest author-facing value, and the write-back path already exists.
+**Built** as STUDIO's `branches` mode; it writes back through `applySceneBranchEdit` via the
+`story.*` commands, which is the first of the two options in the open questions below.
 
 ## 2. Task DAG
 
@@ -108,14 +116,14 @@ Three things make this the most valuable read-only view:
   edge — it is a planner predicate (`sceneUnblocked`, `packages/pipeline/src/gate.ts:12`).
   A run halts with nothing ready and no edge explaining why. A graph view has to synthesize
   the barrier to be honest about it (see §4).
-- **`deps` is narrower than the true data dependency.** In `planner.ts:145`, a `shot_image`
+- **`deps` is narrower than the true data dependency.** In `planner.ts:223`, a `shot_image`
   task lists only its `location_ref` task in `deps`, while the subject portraits enter
   through `refs` as `AssetRef`s taken from `character.approvedPortrait`. The scheduling DAG
   is therefore a subgraph of the real provenance graph; the character→shot edges are only
   recoverable via `refs` (§5). A view that draws `deps` alone will understate coupling.
 - **The graph is deliberately partial.** Planning is incremental — called once per scheduler
   wave — so shot tasks do not exist until their location plate is `done`
-  (`planner.ts:127-128`). The view must distinguish "not yet plannable" from "nothing to
+  (`planner.ts:202-203`). The view must distinguish "not yet plannable" from "nothing to
   do", or it reads as a stalled pipeline. This is the same caveat that makes `vngen cost` a
   snapshot of currently-plannable work.
 
@@ -123,7 +131,9 @@ Per-node actions worth having: inspect `attempts[]`, open the produced asset, re
 the owning shot/scene.
 
 **Priority: second.** Read-only, but it is what makes dedupe, staleness, and the gate
-comprehensible instead of mysterious.
+comprehensible instead of mysterious. **Built** as FLOOR's `graph` mode, which does synthesize
+the gate as an explicit barrier node and draws `refs` edges alongside `deps`, exactly as the
+three caveats above demanded.
 
 ## 3. Prompt assembly
 
@@ -156,7 +166,7 @@ replacing the hardcoded builders. Two consequences to design around before commi
 
 **Nodes:** the seven `TaskKind`s plus the P3 gate as an explicit barrier.
 **Edges:** the fixed dependency rules encoded in `planTasks`
-(`packages/pipeline/src/planner.ts:66`).
+(`packages/pipeline/src/planner.ts:132`).
 
 Roughly ten nodes: `location_ref` (no deps, always plannable) → the gate ← `portrait`;
 `model_sheet` and `outfit_sheet` past the gate off the approved portrait; `shot_image`
@@ -170,7 +180,7 @@ it is a static diagram plus live counts per kind.
 
 ## 5. Asset provenance
 
-**Nodes:** `Asset` (`entities.ts:152`).
+**Nodes:** `Asset` (`entities.ts:179`).
 **Edges:** `Asset.refs` (ordered reference hashes fed into generation) and `Asset.sourceTask`
 back into the task DAG.
 
@@ -201,8 +211,9 @@ already on disk.** No new persistence, no new instrumentation.
 
 ## 7. Shot sequence / scene timeline
 
-**Nodes:** `SceneLine` (`entities.ts:92`, stable `${sceneId}:L<n>` ids) and `Shot`
-(`entities.ts:102`). **Edges:** `Shot.coversLines` — many lines to one shot.
+**Nodes:** `SceneLine` (`entities.ts:97`, allocated `${sceneId}:L<n>` ids written back as
+`[[line:]]` markers) and `Shot` (`entities.ts:118`). **Edges:** `Shot.coversLines` — many
+lines to one shot.
 
 Intrinsically linear, so a node graph is the wrong metaphor. What this wants is a
 **video-editor timeline**: lines as a strip, shots as clips spanning ranges of them, with
@@ -215,7 +226,8 @@ It is also the natural home for editing `framing`, `location` (variant), `subjec
 `camera` per shot.
 
 **The sleeper.** Not a graph, but the highest-frequency editing surface once art starts
-landing.
+landing. **Built** as FLOOR's `timeline` mode; dragging a clip boundary runs
+`story.setCoverage`, the only writer of `work/shots/<sceneId>.json` outside the planner.
 
 ## 8. Character → outfit → sheet, and the gate
 
@@ -225,7 +237,7 @@ with `approvedPortrait` and `defaultOutfit` as distinguished pointers. A tree.
 Not graph-editor material on its own, but it is the natural surface for the approval gate
 (`draft → candidates → approved → locked`). The interesting edge is cross-cutting:
 character → the scenes they appear in (`Scene.characters`), filtered to reachable scenes the
-way `usedCharacters` does (`planner.ts:21`).
+way `usedCharacters` does (`planner.ts:31`).
 
 **That bipartite projection — unapproved characters on one side, the scenes they block on
 the other — is the single clearest answer to "why is my run halted."** It is worth building
@@ -278,32 +290,41 @@ value.
 
 ## Summary
 
-| # | Graph | Kind | Value | Cost |
-| - | ----- | ---- | ----- | ---- |
-| 1 | Story branch | **Editor** | High — authors are blind to topology today | Low; write-back exists |
-| 2 | Task DAG | Viewer | High — explains gate/dedupe/staleness | Low; `TaskGraph` gives topology |
-| 6 | Refine loop | Viewer | High — best debugging artifact | Very low; pure projection |
-| 8 | Gate blockers | Viewer | High — answers "why halted" | Very low |
-| 7 | Shot timeline | **Editor** (timeline) | High once art lands | Medium; new interaction model |
-| 4 | Pipeline schematic | Diagram | Medium — legend for #2 | Very low |
-| 5 | Asset provenance | Viewer | Medium | Low |
-| 3 | Prompt assembly | Viewer → Editor | Medium → high | Low → architectural |
-| 9 | Agent trace | Viewer | Low–medium | Low |
-| 10 | Command history | Viewer | Low | Low |
+| # | Graph | Kind | Value | Cost | Status |
+| - | ----- | ---- | ----- | ---- | ------ |
+| 1 | Story branch | **Editor** | High — authors are blind to topology today | Low; write-back exists | **built** (STUDIO `branches`) |
+| 2 | Task DAG | Viewer | High — explains gate/dedupe/staleness | Low; `TaskGraph` gives topology | **built** (FLOOR `graph`) |
+| 6 | Refine loop | Viewer | High — best debugging artifact | Very low; pure projection | — |
+| 8 | Gate blockers | Viewer | High — answers "why halted" | Very low | partly — the barrier node in FLOOR `graph`, not the bipartite view |
+| 7 | Shot timeline | **Editor** (timeline) | High once art lands | Medium; new interaction model | **built** (FLOOR `timeline`) |
+| 4 | Pipeline schematic | Diagram | Medium — legend for #2 | Very low | — |
+| 5 | Asset provenance | Viewer | Medium | Low | — |
+| 3 | Prompt assembly | Viewer → Editor | Medium → high | Low → architectural | — |
+| 9 | Agent trace | Viewer | Low–medium | Low | — |
+| 10 | Command history | Viewer | Low | Low | — |
 
 If exactly one thing gets built: **the story branch editor**. If two: add the **task DAG**
 viewer. If the heterogeneous adapter proposed at the top gets written
 first, those two are its first two views and the rest are filters.
 
+That is the one recommendation the build did *not* follow: #1, #2 and #7 shipped as three
+independent projections sharing a domain-blind layout/routing canvas
+(`apps/desktop/renderer/graph/`, which "may not know about scenes, choices or tasks"), not as
+filters over one heterogeneous project-data adapter. Cross-view navigation is therefore still
+hand-wired per view. Whether the adapter is worth writing now, with three views already built
+against the seam, is an open question and no longer a cheap one.
+
 ## Open questions
 
-- Does the branch editor write back through `@vn/model`'s serializers, or does it own a
-  separate mutation path? The former keeps one round-trip-safety guarantee; the latter is
-  simpler to build and immediately at risk of drifting from the parser.
-- Where does a graph room live relative to STUDIO · FLOOR · PLAY — a fourth room, or a mode
-  within FLOOR?
-- Every mutation should route through `@vn/commands` (typed props, DSL, git-stamped
-  provenance) rather than a bespoke IPC channel. Continuous drags do not map cleanly onto
-  discrete command records; some coalescing policy is needed.
+- ~~Does the branch editor write back through `@vn/model`'s serializers, or does it own a
+  separate mutation path?~~ **Answered: the serializers.** `story.*` → `session.editBranches`
+  → `applySceneBranchEdit`, so the branch editor has no second write path.
+- ~~Where does a graph room live relative to STUDIO · FLOOR · PLAY — a fourth room, or a mode
+  within FLOOR?~~ **Answered: a mode within a room**, and `Room` stayed a three-value union —
+  branches under STUDIO, the DAG and timeline under FLOOR.
+- ~~Every mutation should route through `@vn/commands`~~ **— it does**; commands are the only
+  write path. The coalescing question survives: a continuous drag still resolves to **one**
+  command record at commit, so the intermediate states are not in the log and layout changes
+  on commit rather than during the gesture.
 - If prompt graphs become project data (§3), do they live in `project.yaml`, or as their own
   authored files alongside characters and locations?

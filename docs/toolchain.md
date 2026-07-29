@@ -35,10 +35,14 @@ wired that way" companion.
 
 ## Bundling
 
-- **`esbuild` transpiles; `tsgo` verifies.** esbuild never type-checks. It is used in exactly
-  two places: bundling the CLI (`scripts/esbuild.cli.mjs`) and as the jest transform
-  (`scripts/jest-esbuild.cjs`). Internal packages are **source-only** — no per-package
-  `dist`; consumers import `src/index.ts` directly.
+- **`esbuild` transpiles; `tsgo` verifies.** esbuild never type-checks. It bundles the three
+  apps (`scripts/esbuild.cli.mjs`, `scripts/esbuild.authoring.mjs`,
+  `scripts/esbuild.desktop.mjs` — the last for the Electron main process and preload only;
+  the renderer goes through vite), bundles the command catalog entrypoint
+  (`scripts/gen-command-catalog.mjs`), and serves as the jest transform
+  (`scripts/jest-esbuild.cjs`). Internal
+  packages are **source-only** — no per-package `dist`; consumers import `src/index.ts`
+  directly.
 - **`turbo` orchestrates the bundles.** Each app owns a `build` script (`apps/cli`,
   `apps/authoring`, `apps/desktop`); `pnpm build` is `turbo run build` (all three), and
   `build:cli` / `build:authoring` / `build:desktop` are thin `--filter=…` wrappers for one app
@@ -77,4 +81,5 @@ wired that way" companion.
 
 - **Formatting uses standard `prettier`** (the plan mentioned a `@pathtx/prettier` fork, which
   is not available here). `docs/**` and `Readme.MD` are in `.prettierignore`.
-- pnpm needs `"pnpm": { "onlyBuiltDependencies": ["esbuild"] }` so esbuild's postinstall runs.
+- pnpm needs `"pnpm": { "onlyBuiltDependencies": ["esbuild", "electron"] }` so those two
+  packages' postinstall scripts run — esbuild fetches its platform binary, electron its runtime.

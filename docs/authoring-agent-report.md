@@ -192,7 +192,15 @@ This keeps the core agent small while letting each author encode their own workf
 
 ## 7. Tools the agent needs
 
-Grouped by concern. (Names illustrative.)
+Grouped by concern. (Names illustrative — the shipped registry is
+`packages/authoring/src/tools.ts` and its 23 tools are enumerated in
+[`vnauthor.md`](vnauthor.md). It follows this grouping, with four differences: editing is
+typed per entity — `create_character` / `create_location` / `edit_character` /
+`edit_location` — rather than a generic `edit_file`, so every write goes through `@vn/model`'s
+round-trip-safe serializers; `load_context` is not a tool, because context is loaded before
+the loop starts, not requested by the model; and the interaction-control group has no tools at
+all — mode is owned by the REPL and the permission gate, not by something the model can call,
+which is what makes plan mode a guarantee rather than a request.)
 
 ### File & content
 | Tool | Purpose |

@@ -195,7 +195,8 @@ underneath the record.
 
 Migration, in order, none of which changes the v1 `CommandRecord`:
 
-1. Add `writeTree` / `commitTree` / `updateRef` / `readTree` to `@vn/git`. Still policy-free.
+1. Add `writeTree` / `commitTree` / `updateRef` / `treeOf` / `applyTree` to `@vn/git`. Still
+   policy-free. (Shipped with `deleteRef` / `listRefs` alongside them.)
 2. Snapshot before each mutating command into `refs/vn/undo/<seq>`; record the snapshot sha
    as a **new optional field** on `CommandRecord`. Records without it are simply not
    undoable — old history stays readable.
@@ -218,7 +219,7 @@ implementing it taught something the survey could not know:
   undoing the document half (`character.md` front-matter, `approved.png`) would leave
   `manifest.json` still marking that asset `accepted`, which the gate-candidates list reads.
   The pipeline would still behave correctly — the front-matter is the real gate — but one
-  surface would show a checkmark for an approval that no longer exists. The five `story.*`
+  surface would show a checkmark for an approval that no longer exists. The six `story.*`
   document mutators went first instead; they are pure-document *and* the ones reachable from a
   drag, which is where the risk actually was. `gate.approve` needs the manifest re-pointed as
   part of the undo — §2 as an escape hatch, its one sanctioned use.

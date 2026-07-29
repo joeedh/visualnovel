@@ -16,8 +16,9 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
 
 ## Shape
 
-`vngen export [dir]` writes `vngen/build/story.play.json` via `buildPlayable(model, store)`
-(pure, in `@vn/export`). Each scene flattens into ordered **beats** plus its branch edges:
+`vngen export [dir]` writes `vngen/build/story.play.json` via
+`buildPlayable(model, store, shots?)` (pure, in `@vn/export`; the optional third argument is
+covered under Contracts). Each scene flattens into ordered **beats** plus its branch edges:
 
 ```jsonc
 {
@@ -49,6 +50,10 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
   `buildPlayable`; only with no file at all does it reconstruct the deterministic shot
   grouping. Reconstructing over an LLM decomposition names shot ids no run produced, and every
   `show` then comes out image-less.
+- **A `transition` line is coverable but produces no beat.** `CUT TO:` is an instruction to the
+  reader of a screenplay, not a line of the story — so a shot may cover it, and covering it
+  still changes the frame above (the `show` beat is emitted), but the transition itself is not
+  said or narrated. It is the one `SceneLine.kind` with no beat of its own.
 - **Asset refs are `{hash, ext}`**, resolved by the runner (never inlined). A missing asset is
   **omitted, not an error** — a partially- or un-generated project still plays (placeholder
   background/portrait).

@@ -2,6 +2,7 @@
 
 <!-- toc -->
 
+- [Where this report differs from what shipped](#where-this-report-differs-from-what-shipped)
 - [1. Goals and guiding principles](#1-goals-and-guiding-principles)
 - [2. The big picture: pipeline phases](#2-the-big-picture-pipeline-phases)
 - [3. Core data model](#3-core-data-model)
@@ -38,6 +39,29 @@
 > (Ren'Py, Naninovel, TyranoBuilder, etc.). This report stops at a clean,
 > well-organized library of generated images + metadata that an export step could
 > later consume.
+
+---
+
+## Where this report differs from what shipped
+
+This is the **original design report**, kept as written. The architecture it proposes is the
+one that got built, but seven specifics came out differently once implemented. For the
+invariants as they actually hold today, read
+[`pipeline-contracts.md`](pipeline-contracts.md); this list is only the delta.
+
+| Report says | Shipped |
+| ----------- | ------- |
+| §4 P4 — outfit sheets generated on demand for non-default clothing | Not built. `outfit_sheet` is a declared `TaskKind` whose runner is `unsupported(...)`. |
+| §7 — `vision_review` and `prompt_refine` as separate task nodes | Folded into the `shot_image` runner, so one task node makes several API calls. `TaskAttempt[]` still records each iteration. |
+| §5.4, §4 P6 — a shared "style anchor" image threaded through every generation | Not built. Style consistency rests on `config.art_style` in the prompt preamble (`stylePreamble`) alone. |
+| §4 P2, §5.3 — generate one location plate, then *edit* it for each variant | Each variant is generated fresh, from the prompt, with `refs: []` (`planner.ts:150-158`). |
+| §3, §4 P5 — Shot blocks live inside the scene's markdown file | Shots are persisted separately as `work/shots/<sceneId>.json`, authored fields at top level and run output under `shotData`. |
+| §9.2 — `character.resolved.md`, `build/shots/`, `state/cache.sqlite` | None exist. Shots live under `work/`, not `build/`; there is no sqlite cache — `state/tasks.jsonl` replayed *is* the cache. |
+| §4 P7 — a hard cap of 4 refine iterations | Configurable: `config.max_refine_attempts`, which defaults to 4. |
+
+One thing the report holds out of scope has since been partly built, in a narrower form than
+it warns against: there is no external-engine export, but there *is* a small in-house playable
+(`story.play.json`) and a desktop runner — see [`playable-format.md`](playable-format.md).
 
 ---
 

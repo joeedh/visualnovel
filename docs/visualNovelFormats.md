@@ -35,6 +35,12 @@ Understanding the target formats a manifest might eventually be exported *into* 
 those formats model story, branching, dialogue, and presentation — informs both the shape
 of our intermediate representation and any future export work.
 
+Since this survey was written, one narrow thing on that axis did get built — but it is not an
+export in the sense meant here. `@vn/export` projects the model + manifest into
+`story.play.json`, a **flattened ordered view over our own types** for our own desktop runner
+([`playable-format.md`](playable-format.md)). It has no scripting language, no macro system,
+and no engine on the far side. Everything below remains a target we do not emit.
+
 A visual novel is, at its core, a **branching script that drives presentation**: it
 sequences dialogue and narration over a backdrop of character sprites, background art,
 music, and sound, and it offers the reader choices that route through the branch graph.

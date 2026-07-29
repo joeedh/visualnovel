@@ -10,6 +10,7 @@ validated input files in a clean commit. Design:
 
 - [Running it](#running-it)
 - [How it works](#how-it-works)
+- [Tools](#tools)
 - [Skills](#skills)
 
 <!-- tocstop -->
@@ -65,6 +66,30 @@ agent honors.
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter
   so untouched prose and branch markers are preserved.
+
+## Tools
+
+The registry is `packages/authoring/src/tools.ts` — 23 tools. **M** marks `mutating: true`
+(blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
+whatever the mode).
+
+| Group | Tools |
+| ----- | ----- |
+| Read & search | `read_file`, `list_workspace`, `search` |
+| Domain & validation | `validate_inputs`, `parse_fountain`, `story_graph`, `extract_entities` |
+| Entity editing | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M** |
+| Raw write | `write_file` **M** |
+| Context | `update_context` **M** |
+| Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
+| Git (write) | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C** |
+| Skills | `discover_skills`, `run_skill` **M** (**C** on the first run of a script-bearing skill) |
+
+Two absences are deliberate. **Editing is typed per entity** rather than a generic
+`edit_file`: `edit_character`/`edit_location` route through `@vn/model`'s serializers, so the
+round-trip guarantee holds by construction and `write_file` stays the escape hatch for files
+with no schema. And **nothing lets the model change its own mode** — there is no
+`enter_plan_mode`/`exit_plan_mode` tool. Mode is owned by the REPL and the permission gate,
+which is what makes plan mode a guarantee rather than a request.
 
 ## Skills
 

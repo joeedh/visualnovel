@@ -60,7 +60,7 @@ build output, so `git status` shows nothing and a fresh `pnpm test` reproduces i
 against the live registry. Rebuild before reading any source:
 
 ```sh
-node scripts/gen-command-catalog.mjs   # "commands.json: 22 command(s)" — green again
+node scripts/gen-command-catalog.mjs   # "commands.json: 26 command(s)" — green again
 ```
 
 **A gate that passes on its first run has not been shown to work.** A `tsconfig` whose

@@ -101,7 +101,7 @@ not per workspace** — a rail width is about the window, not the project.
 
 ### 3. UI State (Ephemeral, React)
 
-**What:** Everything the user sees and interacts with in the STUDIO and FLOOR views—conversation, mode, pipline status, open dialogs.
+**What:** Everything the user sees and interacts with in the STUDIO and FLOOR views—conversation, mode, pipeline status, open dialogs.
 
 **Storage:** React component state (memory only)
 
@@ -110,18 +110,27 @@ not per workspace** — a rail width is about the window, not the project.
 | State | Type | Lifetime |
 |-------|------|----------|
 | `room` | `'studio' \| 'floor' \| 'play'` | Session only |
+| `studioMode` | `'convo' \| 'branches'` — the editor within STUDIO | Session only |
+| `floorMode` | `'list' \| 'graph' \| 'timeline'` — the editor within FLOOR | Session only |
 | `mode` | `'plan' \| 'execute'` | Session only |
 | `feed` | `FeedItem[]` (conversation history) | Session only |
 | `dboxLine` | Current agent message | Session only |
 | `status` | Pipeline task list + gate pending | Session only (reloaded via `pipeline:status` IPC) |
 | `index` | Workspace index (characters, scenes, locations) | Session only (loaded once via `workspace:index` IPC) |
+| `undo` | `UndoState` — `canUndo`/`canRedo` plus the two tooltip labels | Session only (pushed on the `command:ui` `undo` effect) |
+| `revision` | Counter bumped by an undo/redo or a palette-run mutating command; used as each room's React `key` so it remounts | Session only |
+| `notice` | Transient banner — a command's result message or its refusal; self-clears after 4s | Session only |
 | `planReq` | Pending plan approval request | Session only |
 | `model` | Text model id for display | Session only |
 | `busy` | Async operation in flight | Session only |
 | `paletteOpen` | Palette menu visibility | Session only |
 
-Panel widths are the one exception: they live in `usePanelWidth` rather than in either file, and
-are persisted (category 2 above).
+`room`, `studioMode` and `floorMode` are not set directly by the components: the `view.*`
+commands run in **main** and push a `command:ui` effect, so there is no second renderer-side
+registry — see [`command-system.md`](command-system.md).
+
+Panel widths are the one exception to the ephemerality: they live in `usePanelWidth` rather
+than in either file, and are persisted (category 2 above).
 
 **Lifecycle:**
 - Loaded once on mount (useEffect): `workspace:index` → `setIndex`, `pipeline:status` → `setStatus`
@@ -129,8 +138,9 @@ are persisted (category 2 above).
 - Plan approval requests pushed via IPC (`'permission:plan'`) → `setPlanReq`
 - **Lost on:** Page reload, app restart (no persistence)
 
-**Code:** `renderer/app/App.tsx` (room, palette, index, status, `command:ui`) and
-`renderer/app/useAgent.ts` (mode, feed, `dboxLine`, `planReq`, model, busy)
+**Code:** `renderer/app/App.tsx` (room, `studioMode`, `floorMode`, palette, index, status,
+undo, revision, notice, and the `command:ui` handler) and `renderer/app/useAgent.ts` (mode,
+feed, `dboxLine`, `planReq`, model, busy)
 
 ---
 
@@ -177,7 +187,7 @@ class WorkspaceSession {
 - Model can be switched mid-conversation via `agent:setModel(newModelId)` → rebuilds `ChatBackend`, preserves Agent conversation state
 - Mode toggled via `agent:setMode()` without losing context
 
-**Code:** `src/main/session.ts` lines 127–266
+**Code:** `WorkspaceSession` in `src/main/session.ts`
 
 ---
 
@@ -202,16 +212,29 @@ class WorkspaceSession {
 │   ├── build/
 │   │   ├── assets/
 │   │   │   └── <sha256>.<ext>  # Content-addressed image bytes
-│   │   └── manifest.json       # Provenance index (which task produced what asset)
+│   │   ├── manifest.json       # Provenance index (which task produced what asset)
+│   │   └── story.play.json     # The playable, written by `vngen export`
 │   ├── state/
-│   │   └── tasks.jsonl         # Append-only task status log (crash recovery + resume)
+│   │   ├── tasks.jsonl         # Append-only task status log (crash recovery + resume)
+│   │   ├── commands.jsonl      # Append-only CommandRecord log (provenance + undo)
+│   │   └── reviews/<taskHash>  # Vision-review reports per task
 │   └── work/
 │       ├── story.graph.mmd     # Mermaid diagram of story branches
-│       ├── approved.png        # Last approved portrait
-│       └── …
+│       ├── characters/<id>/
+│       │   ├── approved.png    # The approved portrait for that character
+│       │   ├── candidates/     # Portraits awaiting approval
+│       │   └── outfits/<outfit>/sheet/
+│       ├── locations/<id>/
+│       │   ├── breakdown.md    # P1 location breakdown
+│       │   └── refs/           # Reference plates
+│       ├── scenes/<id>.md
+│       └── shots/<sceneId>.json  # Persisted shot decomposition (preferred once it exists)
 └── keys/                     # API keys (gitignored)
     └── …
 ```
+
+Paths are not spelled out anywhere but `packages/store/src/paths.ts`; that module is the
+single authority and this tree is a reading of it.
 
 **What's committed:**
 - `project.yaml`, characters, locations, screenplay
@@ -359,6 +382,8 @@ invoke('pipeline:run', { mock })
 | Assets | `build/assets/` | ✓ On disk | AssetStore | Pipeline image tasks |
 | Manifest | `vngen/build/manifest.json` | ✓ On disk | AssetStore | Pipeline tasks |
 | Task graph | `vngen/state/tasks.jsonl` | ✓ On disk | TaskGraph loader | Pipeline runner |
+| Command history | `vngen/state/commands.jsonl` | ✓ On disk | `CommandStack` (`command:history`) | Every command execution, via `onRecord` |
+| Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | The six undoable `story.*` commands |
 
 ---
 
@@ -395,7 +420,20 @@ The **conversation history is not recovered** because it's React state only. Eac
 | `gate:candidates` | `characterId: string` | GateCandidate[] | No (read from manifest) |
 | `gate:approve` | `{ characterId, hash }` | ApproveResult | No (edits file + store) |
 | `story:play` | none | Playable | No (built on-demand) |
+| `story:graph` | none | StoryGraph | No (read; mutations go through `story.*` commands) |
+| `story:coverage` | `sceneId: string` | SceneCoverage | No (read; the edit is `story.setCoverage`) |
+| `command:catalog` | none | CommandCatalog | No (the **live** registry, never the generated file) |
+| `command:exec` | CommandExecRequest | CommandOutcome | **Yes** — appends to `vngen/state/commands.jsonl` |
+| `command:history` | `limit?: number` | CommandRecord[] | No (read back from the log) |
+| `command:check` | `{ id, props? }` | CommandCheck | No (a read, never a gate — `exec` re-decides) |
+| `command:undo` | none | CommandOutcome | **Yes** (restores a snapshot; refuses on drift) |
+| `command:redo` | none | CommandOutcome | **Yes** |
 | `session:set` | `{ key, value }` | void | **Yes** (`.vndesktop/session.json`) |
+
+The `story:*` reads and the `command:*` family are the two halves of one rule: **commands are
+the only write path.** There is no mutating IPC channel for the branch editor or the timeline —
+a read channel feeds the view, and every edit is a `story.*` command with a `CommandRecord`.
+See [`command-system.md`](command-system.md).
 
 `session:snapshot:sync` is the odd one out: a **synchronous** `ipcMain.on` channel the preload
 calls once, before first paint, so the renderer never renders a default width and then jumps.
@@ -413,6 +451,7 @@ the hash, and the FLOOR inspector needs both halves to build a `vnasset://<hash>
 |---------|---------|------|
 | `agent:event` | AgentEvent | During agent:run (each step) |
 | `permission:plan` | PlanRequest | Agent needs approval |
+| `command:ui` | UiEffect | A `view.*` command changed room/mode, or undo state moved |
 | `session:changed` | `{ key, value }` | Any session write, whoever made it |
 | `log` | `{ level, message }` | Diagnostic logging |
 

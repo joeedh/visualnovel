@@ -45,6 +45,10 @@ is the only `.tsx` at the root.
 ```
 renderer/
   main.tsx              entry; installs @vn/debug2d behind import.meta.env.DEV
+  api.ts                typed access to main; falls back to mock data outside Electron
+  session.ts            `useSessionValue` — UI state durable in `.vndesktop/session.json`
+  global.d.ts           ambient declarations for what the preload injects
+  debug/install.ts      dev-only @vn/debug2d glue; vite build drops it entirely
   app/                  App.tsx (shell only), Topbar.tsx, Palette.tsx, useAgent.ts
                         catalog.ts (pure) — the palette's filtering and field coercion
   graph/                Canvas.tsx + pure layout · edges · hit · viewport (see below)
