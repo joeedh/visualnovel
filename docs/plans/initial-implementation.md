@@ -1,5 +1,10 @@
 # Initial Implementation Plan — VN Generator
 
+Status: **shipped.** The monorepo, the package layering, phases P1–P7, the task graph, the
+store, the scheduler and the `vngen` CLI are all in the codebase; this plan is history, not a
+task list. As-shipped detail lives in [`../pipeline-contracts.md`](../pipeline-contracts.md)
+and [`../toolchain.md`](../toolchain.md).
+
 > Implements the design in [`docs/vn-generator-report.md`](../vn-generator-report.md).
 > Scope: a pnpm/TypeScript monorepo that turns authored inputs (characters,
 > branching screenplay, optional locations + reference images) into a deduped,

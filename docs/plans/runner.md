@@ -1,5 +1,9 @@
 # Plan: Playable export format + desktop VN runner
 
+Status: **shipped** — `@vn/export`, `vngen export`, and the desktop PLAY room. As-shipped
+detail: [`../playable-format.md`](../playable-format.md) and
+[`../desktop-app.md`](../desktop-app.md).
+
 ## Context
 
 The pipeline deliberately stops at `manifest.json` (a presentation-agnostic IR: story

@@ -1,6 +1,7 @@
 # Plan: story branch editor
 
-**Status:** in progress — Waves 1–3 landed; Wave 4 (the editor surface) is next.
+**Status:** shipped — Waves 1–4 landed; each wave records its deviations in its own
+As-shipped section, and the [Done](#done) checklist is complete.
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md).
 **Blocks:** [task DAG view](task-dag-view.md) (which reuses the `renderer/graph/` primitives
 this plan creates).

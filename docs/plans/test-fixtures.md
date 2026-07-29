@@ -1,5 +1,7 @@
 # Test fixtures — `@vn/testkit`
 
+Status: **shipped** (see [As shipped](#as-shipped)).
+
 A test-only package that builds real VN projects on disk, runs them through the real
 scheduler with mock providers, and hands back the resulting `dir` / `paths` / `model` /
 `store` / `graph` / `git`. Prerequisite for

@@ -1,5 +1,7 @@
 # Command system for the desktop app
 
+Status: **shipped** (see [Status — shipped](#status--shipped) at the end).
+
 ## Context
 
 The desktop app (`apps/desktop`) has no generic way to name, describe, or invoke an

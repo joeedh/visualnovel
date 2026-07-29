@@ -1,5 +1,8 @@
 # Authoring Agent — Implementation Plan
 
+Status: **shipped** as `@vn/authoring` + `@vn/authoring-app`. The as-shipped write-up is
+[`../vnauthor.md`](../vnauthor.md).
+
 > Implements the design in [`docs/authoring-agent-report.md`](../authoring-agent-report.md).
 > Scope: a plan-first, git-backed, format-aware conversational agent that helps a user
 > **author and refine the input files** the VN Generator consumes — characters, the
