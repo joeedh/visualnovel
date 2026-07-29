@@ -253,7 +253,7 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 [`docs/command-system.md`](docs/command-system.md); plan:
 [`docs/plans/command-system.md`](docs/plans/command-system.md).
 
-- **`@vn/commands` is the framework; the desktop app owns the commands.** The 26 definitions
+- **`@vn/commands` is the framework; the desktop app owns the commands.** The 28 definitions
   live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`,
   `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
 - **Commands are the only write path.** The `story.*` branch mutators go through

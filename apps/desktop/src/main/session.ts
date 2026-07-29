@@ -10,29 +10,36 @@ import {
   loadConfig,
   resolveKeys,
   secretDirsFor,
+  setStartScene,
   type ProjectConfig,
   type ResolvedKeys,
 } from '@vn/config';
-import { relative, sep } from 'node:path';
+import { rename } from 'node:fs/promises';
+import { join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
   applySceneBranchEdit,
   assignLineIds,
   modelFromInputs,
+  sceneChunksFromScript,
+  scriptFromScenes,
   type SceneBranchEdit,
+  type SceneChunk,
 } from '@vn/model';
-import { splitFrontMatter, type LoadedInputs } from '@vn/parse';
+import { parseFountain, splitFrontMatter, type LoadedInputs } from '@vn/parse';
 import {
   AssetStore,
   ProjectPaths,
   loadInputs,
+  readSceneChunks,
   readShots,
   setCharacterApproval,
   writeApprovedPortrait,
+  writeSceneChunk,
   writeShots,
 } from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
-import { writeFileAtomic } from '@vn/util';
+import { exists, writeFileAtomic } from '@vn/util';
 import { costPreview, gateStatus, isApproved } from '@vn/pipeline';
 import {
   createAnthropicChat,
@@ -459,6 +466,99 @@ export class WorkspaceSession {
   }
 
   /**
+   * The migration `workspace.import` would perform, decided and not written: the chunks
+   * `sceneChunksFromScript` proved read back as the same scenes, plus the screenplay to move
+   * aside. Shared with `previewImport`, so the sentence a refused check reports is the refusal.
+   */
+  private async planImport(): Promise<{
+    ok: boolean;
+    message: string;
+    chunks: SceneChunk[];
+    entry: string | undefined;
+    scriptPath: string | undefined;
+  }> {
+    const paths = new ProjectPaths(this.dir);
+    const fail = (message: string) => ({
+      ok: false,
+      message,
+      chunks: [],
+      entry: undefined,
+      scriptPath: undefined,
+    });
+
+    // An existing chunk is either a previous import or hand-authored work, and importing over
+    // the second is the loss this refusal exists to prevent. Checked before `loadInputs`,
+    // which reports both-formats as a diagnostic rather than the thing to fix.
+    const already = await readSceneChunks(paths);
+    if (already.length > 0) {
+      return fail(`scenes/ already holds ${already.length} chunk(s); importing would overwrite.`);
+    }
+    const inputs = await loadInputs(paths);
+    if (inputs.scriptPath === undefined) {
+      return fail('There is no screenplay/*.fountain to import.');
+    }
+    const aside = `${inputs.scriptPath}.imported`;
+    if (await exists(aside)) return fail(`${relPath(this.dir, aside)} already exists.`);
+
+    const config = await loadConfig(this.dir);
+    const result = sceneChunksFromScript(
+      parseFountain(inputs.scriptText),
+      config.start === undefined ? {} : { start: config.start },
+    );
+    const errors = result.diagnostics.filter((d) => d.severity === 'error');
+    if (errors.length > 0) return fail(errors.map((d) => d.message).join(' '));
+
+    const warnings = result.diagnostics.length ? ` ${result.diagnostics.length} warning(s).` : '';
+    return {
+      ok: true,
+      message: `${result.chunks.length} scene(s) would move into scenes/.${warnings}`,
+      chunks: result.chunks,
+      entry: result.entry,
+      scriptPath: inputs.scriptPath,
+    };
+  }
+
+  /** What `importScreenplay` would do, without doing it. */
+  async previewImport(): Promise<{ ok: boolean; message: string }> {
+    const { ok, message } = await this.planImport();
+    return { ok, message };
+  }
+
+  /**
+   * Convert a `screenplay/*.fountain` project into one chunk per scene — the `vngen import`
+   * equivalent. The screenplay is moved aside rather than deleted, and **last**: until it stops
+   * being a `.fountain`, the project holds both formats and does not load.
+   */
+  async importScreenplay(): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const plan = await this.planImport();
+    if (!plan.ok || plan.scriptPath === undefined) {
+      return { ok: false, message: plan.message, written: [] };
+    }
+
+    const paths = new ProjectPaths(this.dir);
+    const written: string[] = [];
+    for (const chunk of plan.chunks) {
+      await writeSceneChunk(paths, chunk.id, chunk.doc);
+      written.push(relPath(this.dir, paths.sceneFile(chunk.id)));
+    }
+    // A directory has no document order, so the entry the screenplay implied is written down.
+    if (plan.entry !== undefined && (await setStartScene(this.dir, plan.entry))) {
+      written.push(relPath(this.dir, paths.projectConfig));
+    }
+    const aside = `${plan.scriptPath}.imported`;
+    await rename(plan.scriptPath, aside);
+    written.push(relPath(this.dir, aside));
+
+    return {
+      ok: true,
+      message:
+        `Imported ${plan.chunks.length} scene(s) into scenes/; the screenplay is now ` +
+        `${relPath(this.dir, aside)} — delete it once you are satisfied.`,
+      written,
+    };
+  }
+
+  /**
    * One scene's script and shots for the coverage timeline. Shots come off disk: a model built
    * from inputs carries none, and the persisted decomposition is the one the run illustrated.
    */
@@ -544,6 +644,32 @@ export class WorkspaceSession {
     const playable = buildPlayable(project.model, project.store, shots);
     await writeFileAtomic(project.paths.storyPlay, JSON.stringify(playable, null, 2) + '\n');
     return { path: project.paths.storyPlay, scenes: Object.keys(playable.scenes).length };
+  }
+
+  /**
+   * Project the scenes back into one Fountain screenplay at the project root — the `vngen
+   * screenplay` equivalent. Never into `screenplay/`, which is a second source of truth for every
+   * scene; `clean` drops the `[[…]]` markers and with them the scene ids, the branches and
+   * `nextLineId`, so that output is a reading copy and not an input.
+   */
+  async writeScreenplay(clean: boolean): Promise<{
+    ok: boolean;
+    message: string;
+    written: string[];
+  }> {
+    const project = await loadProject(this.dir);
+    if (project.model.scenes.size === 0) {
+      return { ok: false, message: 'There is no scene to write.', written: [] };
+    }
+    const file = join(this.dir, 'screenplay.fountain');
+    await writeFileAtomic(file, scriptFromScenes(project.model, { clean }));
+    return {
+      ok: true,
+      message: `Wrote ${project.model.scenes.size} scene(s) to screenplay.fountain${
+        clean ? ' (clean: markers dropped, so it cannot be imported back)' : ''
+      }.`,
+      written: [relPath(this.dir, file)],
+    };
   }
 
   async status(): Promise<PipelineStatus> {

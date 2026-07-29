@@ -18,13 +18,14 @@ import {
   storyGraph,
   storyPlay,
   storyRemoveChoice,
+  storyScreenplay,
   storySetChoice,
   storySetCoverage,
   storySetNext,
   storySpliceScene,
 } from './story.js';
 import { viewMode, viewPalette, viewPanelSize, viewRoom } from './view.js';
-import { workspaceIndex } from './workspace.js';
+import { workspaceImport, workspaceIndex } from './workspace.js';
 import type { CommandHost } from './host.js';
 
 export type { CommandHost } from './host.js';
@@ -49,6 +50,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storyGraph,
     storyPlay,
     storyRemoveChoice,
+    storyScreenplay,
     storySetChoice,
     storySetCoverage,
     storySetNext,
@@ -57,6 +59,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     viewPalette,
     viewPanelSize,
     viewRoom,
+    workspaceImport,
     workspaceIndex,
   ]);
   return registry;

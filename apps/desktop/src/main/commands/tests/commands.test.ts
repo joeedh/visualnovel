@@ -54,18 +54,22 @@ describe('the desktop registry', () => {
       'story.assignLineIds',
       'story.export',
       'story.removeChoice',
+      'story.screenplay',
       'story.setChoice',
       'story.setCoverage',
       'story.setNext',
       'story.spliceScene',
+      'workspace.import',
     ]);
   });
 
   /**
    * Undo restores a snapshot of the *document* tree, so only commands whose writes are
-   * documents may opt in. The rest write generated output (`story.export`), append to a log
-   * (`pipeline.run`), or straddle both classes (`gate.approve` flips `character.md` **and**
-   * marks the asset accepted in `manifest.json`) — see `docs/plans/command-undo-redo.md`.
+   * documents may opt in. The rest write generated output (`story.export`, `story.screenplay`),
+   * append to a log (`pipeline.run`), restructure the whole worktree (`workspace.import`, whose
+   * own `.imported` rename is the reversal), or straddle both classes (`gate.approve` flips
+   * `character.md` **and** marks the asset accepted in `manifest.json`) — see
+   * `docs/plans/command-undo-redo.md`.
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
@@ -92,10 +96,12 @@ describe('the desktop registry', () => {
       'story.assignLineIds',
       'story.export',
       'story.removeChoice',
+      'story.screenplay',
       'story.setChoice',
       'story.setCoverage',
       'story.setNext',
       'story.spliceScene',
+      'workspace.import',
     ]);
     expect(commands.filter((c) => c.check && !c.mutating)).toEqual([]);
   });

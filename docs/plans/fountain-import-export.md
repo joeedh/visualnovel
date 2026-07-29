@@ -128,11 +128,19 @@ re-importing its output reproduces the project.
    also **refuses an `-o` inside `screenplay/`**, not just defaulting away from it: a `.fountain`
    there is a second source of truth for every scene. Step 6 retires the fallback and that refusal
    with it.
-5. **Desktop `workspace.import` and `story.screenplay`.** Both `mutating`, both with a `check`
+5. ✔ **Desktop `workspace.import` and `story.screenplay`.** Both `mutating`, both with a `check`
    (`workspace.import` refuses when `scenes/` exists or no screenplay is present;
    `story.screenplay` refuses on an empty model, like `story.export`). Neither is `undoable`:
    `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst at,
-   and the `.imported` rename is the reversal a user can actually perform.
+   and the `.imported` rename is the reversal a user can actually perform. Shipped as thin wrappers
+   over three new `WorkspaceSession` methods, following the `planLineIds` shape: a private
+   `planImport` decides the whole conversion and both `previewImport` (the check) and
+   `importScreenplay` (the run) read it, so a refused check reports the sentence the run would
+   have given. `writeScreenplay(clean)` mirrors `exportPlayable` and always writes
+   `<dir>/screenplay.fountain` — the app offers no `-o`, so the CLI's "not inside `screenplay/`"
+   refusal has nothing to guard here. The registry test's `mutating` and `check` lists grew by
+   two; `undoable` did not. `docs/command-system.md`'s table and counts (28/12/11) and
+   `CLAUDE.md`'s definition count were updated with the code rather than deferred to step 8.
 6. **Retire the fallback.** `loadInputs` stops reading `screenplay/`, and a project with one and no
    `scenes/` gets an error diagnostic naming `vngen import`. The `screenplay` fixture kept by
    `scene-chunk-files.md` step 8 converts to chunks, and its test becomes an import test.

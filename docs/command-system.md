@@ -231,7 +231,7 @@ not lie about what touched the worktree.
 
 ## The registered commands
 
-Twenty-six, in eight namespaces. Ten are `mutating`; nine declare a precondition; one asks
+Twenty-eight, in eight namespaces. Twelve are `mutating`; eleven declare a precondition; one asks
 for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
@@ -243,6 +243,7 @@ for confirmation.
 | `pipeline.run` ✍ ⚠ ✓          | `mock` (default `true`)           | The only `confirm: true` command — it spends money.        |
 | `story.play`                   | —                                 | Build the playable in memory; writes nothing.              |
 | `story.export` ✍ ✓             | —                                 | Write `vngen/build/story.play.json` (`vngen export`).      |
+| `story.screenplay` ✍ ✓         | `clean` (default `false`)         | Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way. |
 | `story.graph`                  | —                                 | Scenes + branch edges for the editor; reachability marked. |
 | `story.coverage`               | `scene`                           | One scene's lines + persisted shots — the timeline's input. |
 | `story.setChoice` ✍ ↺ ✓        | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
@@ -258,6 +259,7 @@ for confirmation.
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
 | `interaction.targets`          | `interaction`, `carried`, `scene`        | Every target of a gesture, accepted or refused with why.   |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
+| `workspace.import` ✍ ✓         | —                                 | Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
 | `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
 | `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`, FLOOR `list`\|`graph`\|`timeline`. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
@@ -267,8 +269,10 @@ for confirmation.
 
 **Only the `story.*` document mutators are undoable**, because undo restores a snapshot of the
 document tree. `gate.approve` straddles both data classes — undoing `character.md` would leave
-`manifest.json` still marking the asset `accepted` — `story.export` and `pipeline.run` write
-only generated output, and `agent.run` owns its own commits, one per approved plan. The
+`manifest.json` still marking the asset `accepted` — `story.export`, `story.screenplay` and
+`pipeline.run` write only generated output, and `agent.run` owns its own commits, one per approved
+plan. `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst
+at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can perform. The
 reasoning is in [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer
