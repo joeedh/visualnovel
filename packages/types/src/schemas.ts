@@ -31,23 +31,31 @@ export const locationFrontMatter = z.object({
 });
 export type LocationFrontMatter = z.infer<typeof locationFrontMatter>;
 
-const choiceSchema = z.object({ label: z.string(), goto: z.string() });
-
-/** Front-matter of `scenes/<id>.md`. */
-export const sceneFrontMatter = z.object({
-  id: z.string().min(1),
-  location: z.string().min(1),
-  characters: z.array(z.string()).default([]),
-  synopsis: z.string().optional(),
-  choices: z.array(choiceSchema).default([]),
-  next: z.string().optional(),
-});
+/**
+ * Front-matter of `scenes/<id>.md` — the scene's identity and nothing else. Every other
+ * field (heading, location, synopsis, choices, next, line ids) lives in the Fountain body,
+ * where `splitScenes` reads it and `sceneToFountain` writes it back losslessly; a
+ * front-matter copy would be a second source of truth for a field that already has one.
+ * Hence `.strict()`: an unrecognized key is an error, not a silently ignored line.
+ */
+export const sceneFrontMatter = z
+  .object({
+    /** Must equal the filename stem; `@vn/model` reports a mismatch rather than picking one. */
+    scene: z.string().min(1),
+  })
+  .strict();
 export type SceneFrontMatter = z.infer<typeof sceneFrontMatter>;
 
 /** `project.yaml` (report §8, §11). */
 export const projectConfig = z.object({
   title: z.string().min(1),
   art_style: z.string().default(''),
+  /**
+   * The entry scene's id. Optional here because the `screenplay/` form still gets its entry
+   * from document order; a `scenes/` project without it is an error diagnostic from the model,
+   * which can name the scene ids on offer as this schema cannot.
+   */
+  start: z.string().min(1).optional(),
   models: z
     .object({
       image: z.string().default('gemini-2.5-flash-image'),

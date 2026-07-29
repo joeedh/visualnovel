@@ -86,6 +86,12 @@ Recorded here because each was settled once and every later plan assumes it.
 - **Both input formats load during the move**, and a project with both is an error.
   [`fountain-import-export.md`](fountain-import-export.md) is what retires the `screenplay/`
   fallback.
+- **A scene chunk's front-matter is its identity and nothing else** — `scene: <id>`, matching the
+  filename, on a closed schema. Heading, location, synopsis, `choices`, `next` and line ids stay
+  `[[…]]` markers and Fountain elements in the body, because `splitScenes` already reads them there
+  and `sceneToFountain` already writes them back losslessly. **Marked for revisit once 4–7 have
+  shipped**, against working editors rather than ahead of them —
+  [`scene-chunk-files.md`](scene-chunk-files.md#the-shape) records the argument on both sides.
 
 ### Blockers found while planning
 

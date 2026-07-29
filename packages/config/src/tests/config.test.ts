@@ -17,6 +17,12 @@ describe('loadConfig', () => {
     expect(config.models.image).toBe('gemini-2.5-flash-image');
     expect(config.concurrency).toBe(4);
     expect(config.max_refine_attempts).toBe(4);
+    expect(config.start).toBeUndefined();
+  });
+
+  it('reads the entry scene from start:', async () => {
+    const dir = await tempProject('title: My Novel\nstart: arrival\n');
+    expect((await loadConfig(dir)).start).toBe('arrival');
   });
 
   it('throws ConfigError on a missing title', async () => {

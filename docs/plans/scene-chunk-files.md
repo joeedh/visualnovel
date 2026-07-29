@@ -24,20 +24,22 @@ the project; with chunks it can damage one, and the scene it damages is the one 
 
 ## The shape
 
-**`scenes/<id>.md` at the project root, beside `characters/` and `locations/`.** Front-matter for
-the scene's structured fields, a Fountain body for its prose. Same loader
-(`@vn/parse`'s `frontmatter.ts`), same `fromDoc`/`toDoc` round-trip the other two entities have,
-same "authored input lives at the root, generated output lives under `vngen/`" rule.
+**`scenes/<id>.md` at the project root, beside `characters/` and `locations/`.** Front-matter
+carries the scene's **identity and nothing else**; the body is a one-scene Fountain screenplay,
+heading included. Same loader (`@vn/parse`'s `frontmatter.ts`), same `fromDoc`/`toDoc` round-trip
+the other two entities have, same "authored input lives at the root, generated output lives under
+`vngen/`" rule.
 
 ```markdown
 ---
 scene: arrival
-location: school_gate
-heading: EXT. SCHOOL GATE - AFTERNOON
-synopsis: Aiko is waiting at the gate, and has been for a while.
-next: rooftop
-nextLineId: 12
 ---
+
+EXT. SCHOOL GATE - AFTERNOON
+
+= Aiko is waiting at the gate, and has been for a while.
+
+[[nextline: 12]]
 
 [[line: L1]]
 Rain ticks off the gate.
@@ -47,6 +49,7 @@ AIKO
 Um… hello.
 
 [[choice: "Introduce yourself" -> greet]]
+[[next: rooftop]]
 ```
 
 Three notes on the format, each of which is a decision rather than an accident:
@@ -54,15 +57,27 @@ Three notes on the format, each of which is a decision rather than an accident:
 - **The scene id is front-matter, not a `[[scene:]]` marker.** The filename and the `scene:` key
   must agree, and a mismatch is an error rather than one silently winning. `[[scene:]]` in a chunk
   body is ignored with a warning; it is the single-file form's mechanism, not this one's.
-- **The heading is a field, and it is the whole heading string.** `EXT.` and the time-of-day are
-  what `lossless-scene-serialization.md` adds to `Scene`; keeping the raw line as authored means
-  the body never has to be re-derived from a slug.
-- **`choices`/`next` stay `[[…]]` markers in the body, not front-matter arrays.** They are
-  positional in the prose (a choice belongs where the scene ends) and the branch editor already
-  patches exactly those bytes. Moving them to front-matter would mean rewriting
-  `applySceneBranchEdit` in the same change that moves the file, and each of those is a place a
-  screenplay can be corrupted. `next:` appears above only because it is genuinely scene-level;
-  **pick one home for it and pin it with a test** — the alternative is two writers disagreeing.
+- **Every other field stays in the body, and the front-matter schema is closed.** `splitScenes`
+  already recovers all of them from a body — `location` and its time-of-day variant and the heading
+  prefix from the heading (`scenes.ts:112`), `synopsis` from the `=` element, `choices` / `next` /
+  `nextLineId` / line ids from `[[…]]` markers — and `sceneToFountain` already writes all of them
+  back losslessly. A front-matter copy of any one of them would be a second source of truth for a
+  field that already has one, so an unrecognized front-matter key is an **error** rather than a
+  silently ignored line. This settles the `next:` question below: it is a body marker, and a test
+  pins that.
+- **The body is a complete scene, heading and all.** So the chunk reader is
+  `parseFountain(body)` → `splitScenes` → expect exactly one scene, and the writer is
+  `sceneToFountain` unchanged. No second serializer, and plan 2's `parse(write(scene)) ≡ scene`
+  keeps covering the whole file rather than covering the body while the fields drift.
+
+An earlier draft of this plan put `location`, `heading`, `synopsis`, `next` and `nextLineId` in
+front-matter, on the grounds that keeping the raw heading as a field means the body never has to be
+re-derived from a slug. [`lossless-scene-serialization.md`](lossless-scene-serialization.md) took
+that reason away — `Scene` now carries `headingPrefix` and `locationVariant`, and `headingFor` is
+gone — so the body-only form gets the same guarantee without the duplication.
+**Revisit this once plans 4–7 have shipped**: the editing commands and the STUDIO script mode are
+what will show whether greppable structured fields are worth a second writer, and that is a
+judgement best made against working editors rather than ahead of them.
 
 ### Scene order stops being a fact, and one thing depends on it
 
@@ -150,6 +165,7 @@ than working around it, and do it in its own commit so the deletion is visible a
 | Failure | What happens | Guard |
 | --- | --- | --- |
 | Filename and `scene:` disagree | two ids for one scene; shots bind to the loser | error diagnostic naming both |
+| Front-matter names a field the body owns | two sources of truth; whichever the reader prefers wins silently | closed schema — an unrecognized key is an error |
 | Two chunks claim one id | one silently wins by readdir order | error diagnostic listing both files |
 | `scenes/` and `screenplay/` both present | model built from one, edits written to the other | error diagnostic; refuse to load |
 | No `start:` in `project.yaml` | entry chosen alphabetically, project starts elsewhere after a rename | error diagnostic |
@@ -165,9 +181,13 @@ surface. Before that plan lands they would be produced and rendered nowhere.
 1. ✔ **`modelFromInputs` in `@vn/model`**, `LoadedInputs` in `@vn/parse`, the four call sites
    converted, no behaviour change. Green `pnpm check` / `pnpm test` before anything else moves.
 2. ✔ **Delete `sceneFile`/`writeSceneFile`.** The dead `work/scenes/` pair, on its own.
-3. **`@vn/types`: the chunk schema.** `SceneDoc` zod schema for the front-matter, mirroring how
-   characters and locations are validated at the boundary. `start` added to the `project.yaml`
-   schema in `@vn/config`.
+3. ✔ **`@vn/types`: the chunk schema.** `sceneFrontMatter` for the front-matter, named and validated
+   like `characterFrontMatter` / `locationFrontMatter` but `.strict()`, since identity is all it
+   holds. It replaces the dead schema of the same name — which was never imported anywhere and
+   declared `choices` / `next` / `location` as front-matter, the opposite of the decision above.
+   `start` added to the `project.yaml` schema (in `@vn/types`; `@vn/config` only parses it),
+   optional at the schema level because the missing-`start` error is a model diagnostic in step 6
+   and the `screenplay/` fallback path does not need one.
 4. **`@vn/store`'s `scenes.ts`.** `readSceneChunk` / `writeSceneChunk`, `sceneFromDoc` /
    `sceneToDoc` in `@vn/model` beside the other two entities' pair, reusing
    `sceneToFountain` for the body. The round-trip test extends the one
