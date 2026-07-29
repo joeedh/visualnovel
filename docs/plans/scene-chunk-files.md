@@ -1,7 +1,8 @@
 # Scene chunk files
 
-Status: **in progress** — steps 1–2 of 10 are shipped (the loading sequence is collapsed and the
-dead `work/scenes/` pair is gone); the format itself does not exist yet. Move two of
+Status: **in progress** — steps 1–6 of 10 are shipped: the format exists and a `scenes/` project
+loads, builds and validates end to end. Nothing **writes** one yet — the branch/coverage writers,
+the testkit, and `examples/sample` are still on `screenplay/` (steps 7–9). Move two of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 after [`allocated-line-ids.md`](allocated-line-ids.md) and
 [`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
@@ -197,12 +198,18 @@ surface. Before that plan lands they would be produced and rendered nowhere.
    lines come out `${filename}:L<n>` rather than being renamed afterwards, and
    `sceneToFountain(scene, { sceneMarker: false })` omits the `[[scene:]]` line that front-matter
    now owns. `roundtrip.test.ts`'s `survives` checks both forms of every case it already had.
-5. **`loadInputs` reads both forms.** `scenes/` preferred, `screenplay/` fallback, both-present an
-   error. `LoadedInputs` grows scene docs; `scriptText`/`scriptPath` stay for the fallback path.
-6. **`buildModel` takes scenes, not just a script.** `BuildInputs.sceneDocs` alongside `script`;
+5. ✔ **`loadInputs` reads both forms.** `scenes/` preferred, `screenplay/` fallback, both-present an
+   error. `LoadedInputs` grows scene docs; `scriptText`/`scriptPath` stay for the fallback path. It
+   also grew `diagnostics`, because "this project holds both forms" is a verdict the loader reaches
+   and only the model reports; a both-present project loads as **neither** form, not as one of them.
+6. ✔ **`buildModel` takes scenes, not just a script.** `BuildInputs.sceneDocs` alongside `script`;
    `entry` from `config.start` with the diagnostics above. `splitScenes` is unchanged — it still
    handles the fallback path, and a chunk body goes through `parseFountain` + `splitScenes` per
-   file, which is what keeps one parser rather than two.
+   file, which is what keeps one parser rather than two. Shipped as **one commit with step 5**:
+   separately, there is an intermediate state where a `scenes/` project loads to an empty model.
+   `sceneDocs` / `start` / `diagnostics` are all optional on `BuildInputs` so the existing
+   hand-built-inputs tests still compile. A chunk that fails to read is one error diagnostic and
+   the other chunks still build.
 7. **Retarget the writers.** `applySceneBranchEdit` to one chunk; `session.editBranches` and the
    `story.*` commands to per-scene paths; the authoring workspace index and `INPUT_GLOBS`.
 8. **`@vn/testkit` writes chunks.** `makeProject` gains `{ format: 'chunks' | 'screenplay' }`,

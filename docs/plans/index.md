@@ -41,7 +41,7 @@ current one.
 | [`interaction-model.md`](interaction-model.md) | partial | `Interaction`/`targets`; four gestures declared, the general surface is not finished |
 | [`allocated-line-ids.md`](allocated-line-ids.md) | shipped | Line ids that survive an edit, the diagnostics surface, the catalog-driven palette |
 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | shipped | `parse(write(scene)) ≡ scene`; `Scene.body` retired, headings and three line kinds retained |
-| [`scene-chunk-files.md`](scene-chunk-files.md) | partial | `scenes/<id>.md` replaces the one contended screenplay; steps 1–2 (the collapsed load sequence, the dead-path deletion) are in |
+| [`scene-chunk-files.md`](scene-chunk-files.md) | partial | `scenes/<id>.md` replaces the one contended screenplay; steps 1–6 are in — a chunk project loads, builds and validates, but nothing writes one yet |
 | [`fountain-import-export.md`](fountain-import-export.md) | planned | `vngen import` / `vngen screenplay` |
 | [`scene-editing-commands.md`](scene-editing-commands.md) | planned | Nine `story.*` prose commands, `lineops.ts`, `session.editScene` |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | planned | Correcting a line in the coverage timeline; drift marking |
