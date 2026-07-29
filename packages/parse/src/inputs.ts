@@ -6,6 +6,18 @@ import type { FrontMatterDoc } from './frontmatter.js';
  * side by side in the layering graph and neither may import the other — one declaration is
  * what keeps them from drifting on the shape.
  */
+/**
+ * One `scenes/<id>.md` as read from disk. The id is the **filename stem**, carried alongside
+ * the doc because the front-matter `scene:` key has to agree with it — a mismatch is an error
+ * naming both rather than one of the two silently winning.
+ */
+export interface SceneChunkDoc {
+  id: string;
+  /** Absolute path, for diagnostics and for the writer that patches this same file. */
+  file: string;
+  doc: FrontMatterDoc;
+}
+
 export interface LoadedInputs {
   characterDocs: FrontMatterDoc[];
   locationDocs: FrontMatterDoc[];

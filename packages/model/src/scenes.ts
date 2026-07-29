@@ -43,6 +43,17 @@ export interface SplitResult {
   diagnostics: Diagnostic[];
 }
 
+/** Options for {@link splitScenes}. */
+export interface SplitOptions {
+  /**
+   * Force the id of every scene found. A chunk file's id is its filename, and forcing it here
+   * rather than renaming the scene afterwards is what makes its line ids come out
+   * `${id}:L<n>`. A caller that passes it must reject a body with more than one heading — the
+   * scenes would collide on the id.
+   */
+  sceneId?: string;
+}
+
 /**
  * Split a Fountain script into scene graph nodes (report §6, §P5.1). Each scene heading
  * starts a node; branch markers inside the node supply its id, choices, and linear
@@ -57,7 +68,7 @@ export interface SplitResult {
  * unmarked takes the next id from it. Reading never writes — a screenplay with no marks
  * allocates `L1..Ln` in document order, exactly what a positional stamp produced.
  */
-export function splitScenes(script: FountainScript): SplitResult {
+export function splitScenes(script: FountainScript, opts: SplitOptions = {}): SplitResult {
   const scenes: Scene[] = [];
   const mined: MinedLocation[] = [];
   const diagnostics: Diagnostic[] = [];
@@ -178,7 +189,19 @@ export function splitScenes(script: FountainScript): SplitResult {
   // known before a single one is allocated — an allocated id must never land on a marked one).
   for (const scene of scenes) {
     const override = sceneIdOverrides.get(scene);
-    if (override) scene.id = override;
+    if (opts.sceneId !== undefined) {
+      // A chunk carries its id in front-matter, so a body marker cannot rename the file it
+      // lives in. Warned about rather than obeyed or dropped in silence.
+      if (override !== undefined && override !== opts.sceneId) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'ignored_scene_marker',
+          message: `[[scene: ${override}]] in scene "${opts.sceneId}" is ignored; a chunk's id is its filename`,
+          where: opts.sceneId,
+        });
+      }
+      scene.id = opts.sceneId;
+    } else if (override) scene.id = override;
 
     const marked = new Map<string, number>();
     let maxMarked = 0;

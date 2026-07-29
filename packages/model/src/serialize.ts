@@ -51,6 +51,16 @@ export function locationToDoc(location: Location): FrontMatterDoc {
   };
 }
 
+/** Options for {@link sceneToFountain}. */
+export interface SceneWriteOptions {
+  /**
+   * Write the `[[scene: id]]` marker (default true). A chunk file carries its id in
+   * front-matter, so writing the marker as well would give one id two homes — and reading it
+   * back warns, since the marker is the single-file form's mechanism.
+   */
+  sceneMarker?: boolean;
+}
+
 /** Render a doc as the markdown file text it would be written to disk as. */
 export function docToMarkdown(doc: FrontMatterDoc): string {
   return stringifyFrontMatter(doc.data, doc.body.trimStart());
@@ -130,9 +140,9 @@ function headingOf(scene: Scene): string {
  * - nothing goes between a cue and its first dialogue line except a `[[line:]]` mark;
  * - anything that could be read as another element is written in its forced form.
  */
-export function sceneToFountain(scene: Scene): string {
+export function sceneToFountain(scene: Scene, opts: SceneWriteOptions = {}): string {
   const out: string[] = [headingOf(scene), ''];
-  out.push(`[[scene: ${scene.id}]]`);
+  if (opts.sceneMarker !== false) out.push(`[[scene: ${scene.id}]]`);
   for (const choice of scene.choices) {
     out.push(`[[choice: "${choice.label}" -> ${choice.goto}]]`);
   }
@@ -181,6 +191,15 @@ export function sceneToFountain(scene: Scene): string {
 
   gap();
   return out.join('\n');
+}
+
+/**
+ * Serialize a Scene into a `scenes/<id>.md` doc (inverse of `sceneFromDoc`). Front-matter is
+ * the scene's id and nothing else; every other field is written into the Fountain body, where
+ * `sceneToFountain` already puts it losslessly.
+ */
+export function sceneToDoc(scene: Scene): FrontMatterDoc {
+  return { data: { scene: scene.id }, body: sceneToFountain(scene, { sceneMarker: false }) };
 }
 
 /** A partial edit to a character; only the provided fields are changed. */

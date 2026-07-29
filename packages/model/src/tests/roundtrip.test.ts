@@ -1,15 +1,17 @@
 /**
- * The round-trip property for scenes: `parse(write(scene)) ≡ scene`.
+ * The round-trip property for scenes: `parse(write(scene)) ≡ scene`, in both forms a scene is
+ * written in — a block of a single screenplay, and a `scenes/<id>.md` chunk.
  *
  * The sibling of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and what makes
  * `sceneToFountain` safe to write with. Comparison is structural — every field the model
  * carries except `shots`, which is never serialized.
  */
-import { parseFountain } from '@vn/parse';
+import { parseFountain, parseFrontMatter } from '@vn/parse';
 import type { HeadingPrefix, Scene, SceneLine } from '@vn/types';
 import { SCRIPTS } from '@vn/testkit';
+import { sceneFromDoc } from '../entities.js';
 import { splitScenes } from '../scenes.js';
-import { sceneToFountain } from '../serialize.js';
+import { docToMarkdown, sceneToDoc, sceneToFountain } from '../serialize.js';
 
 /** The scene reduced to what a round-trip has to preserve. */
 function projected(scene: Scene): unknown {
@@ -35,8 +37,20 @@ function reparse(scene: Scene): Scene {
   return scenes[0] as Scene;
 }
 
+/**
+ * The same, as a chunk — through the file *text*, so the front-matter fence is part of the
+ * round trip rather than only the doc it parses to.
+ */
+function rechunk(scene: Scene): Scene {
+  const result = sceneFromDoc(parseFrontMatter(docToMarkdown(sceneToDoc(scene))), scene.id);
+  if (!result.ok) throw new Error(result.diagnostic.message);
+  expect(result.value.diagnostics).toEqual([]);
+  return result.value.scene;
+}
+
 const survives = (scene: Scene): void => {
   expect(projected(reparse(scene))).toEqual(projected(scene));
+  expect(projected(rechunk(scene))).toEqual(projected(scene));
 };
 
 describe('sceneToFountain — round trip over the fixture scripts', () => {
@@ -157,6 +171,66 @@ describe('sceneToFountain — round trip over scene shape', () => {
 
   it('an allocator raised past the ids in use', () => {
     survives(sceneOf('s', [{ kind: 'narration', text: 'One line.' }], { nextLineId: 12 }));
+  });
+});
+
+describe('sceneFromDoc — what a chunk is allowed to be', () => {
+  const chunk = (data: Record<string, unknown>, body: string): ReturnType<typeof sceneFromDoc> =>
+    sceneFromDoc({ data, body }, 'arrival');
+  const HEADING = 'EXT. SCHOOL GATE - AFTERNOON\n\n[[nextline: 1]]\n';
+
+  it('writes the id to front-matter and never to the body as well', () => {
+    const doc = sceneToDoc(sceneOf('arrival', [{ kind: 'narration', text: 'Rain.' }]));
+    expect(doc.data).toEqual({ scene: 'arrival' });
+    expect(doc.body).not.toContain('[[scene:');
+  });
+
+  it('rejects a front-matter key the body owns', () => {
+    for (const key of ['next', 'location', 'heading', 'synopsis']) {
+      const result = chunk({ scene: 'arrival', [key]: 'rooftop' }, HEADING);
+      expect(result.ok ? 'accepted' : result.diagnostic.code).toBe('scene_frontmatter');
+    }
+  });
+
+  it('rejects a filename and a scene: key that disagree, naming both', () => {
+    const result = chunk({ scene: 'rooftop' }, HEADING);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.diagnostic.code).toBe('scene_id');
+    expect(result.diagnostic.message).toContain('rooftop');
+    expect(result.diagnostic.message).toContain('arrival');
+  });
+
+  it('rejects a body with no heading, and one with more than one', () => {
+    const none = chunk({ scene: 'arrival' }, 'Just some prose.\n');
+    expect(none.ok ? 'accepted' : none.diagnostic.code).toBe('scene_body');
+    const two = chunk({ scene: 'arrival' }, `${HEADING}\nINT. ROOFTOP - NIGHT\n\nMore.\n`);
+    expect(two.ok ? 'accepted' : two.diagnostic.code).toBe('scene_body');
+  });
+
+  it('takes its id from the filename and warns about a [[scene:]] marker that disagrees', () => {
+    const result = chunk({ scene: 'arrival' }, `${HEADING}\n[[scene: rooftop]]\n\nRain.\n`);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.scene.id).toBe('arrival');
+    expect(result.value.scene.lines[0]?.id).toBe('arrival:L1');
+    expect(result.value.diagnostics).toEqual([
+      {
+        severity: 'warning',
+        code: 'ignored_scene_marker',
+        message: '[[scene: rooftop]] in scene "arrival" is ignored; a chunk\'s id is its filename',
+        where: 'arrival',
+      },
+    ]);
+  });
+
+  it('mines the location from the heading, as the screenplay form does', () => {
+    const result = chunk({ scene: 'arrival' }, HEADING);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.mined).toEqual([
+      { id: 'school_gate', name: 'SCHOOL GATE', variant: 'afternoon' },
+    ]);
   });
 });
 

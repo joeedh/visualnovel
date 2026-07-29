@@ -188,10 +188,15 @@ surface. Before that plan lands they would be produced and rendered nowhere.
    `start` added to the `project.yaml` schema (in `@vn/types`; `@vn/config` only parses it),
    optional at the schema level because the missing-`start` error is a model diagnostic in step 6
    and the `screenplay/` fallback path does not need one.
-4. **`@vn/store`'s `scenes.ts`.** `readSceneChunk` / `writeSceneChunk`, `sceneFromDoc` /
-   `sceneToDoc` in `@vn/model` beside the other two entities' pair, reusing
-   `sceneToFountain` for the body. The round-trip test extends the one
-   `lossless-scene-serialization.md` establishes rather than starting a second.
+4. ✔ **`@vn/store`'s `scenes.ts`.** `readSceneChunk` / `readSceneChunks` / `writeSceneChunk` deal
+   in docs, not `Scene`s — the same seam step 1 split along — and `sceneFromDoc` / `sceneToDoc` in
+   `@vn/model` sit beside the other two entities' pair, reusing `sceneToFountain` for the body.
+   `SceneChunkDoc` (`id` = filename stem, `file`, `doc`) joins `LoadedInputs` in `@vn/parse`. Two
+   options were needed to keep one parser and one writer serving both formats:
+   `splitScenes(script, { sceneId })` forces the id **before** line ids are composed, so a chunk's
+   lines come out `${filename}:L<n>` rather than being renamed afterwards, and
+   `sceneToFountain(scene, { sceneMarker: false })` omits the `[[scene:]]` line that front-matter
+   now owns. `roundtrip.test.ts`'s `survives` checks both forms of every case it already had.
 5. **`loadInputs` reads both forms.** `scenes/` preferred, `screenplay/` fallback, both-present an
    error. `LoadedInputs` grows scene docs; `scriptText`/`scriptPath` stay for the fallback path.
 6. **`buildModel` takes scenes, not just a script.** `BuildInputs.sceneDocs` alongside `script`;

@@ -27,6 +27,13 @@ export class ProjectPaths {
   get screenplayDir(): string {
     return join(this.root, 'screenplay');
   }
+  get scenesDir(): string {
+    return join(this.root, 'scenes');
+  }
+  /** One authored scene chunk: front-matter identity plus a one-scene Fountain body. */
+  sceneFile(id: string): string {
+    return join(this.scenesDir, `${id}.md`);
+  }
 
   // Generated — report §9.2
   get vngen(): string {
