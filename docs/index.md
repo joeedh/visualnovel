@@ -37,7 +37,7 @@ How a part of the system actually works today, in the detail CLAUDE.md only summ
 | Document | What it covers |
 | -------- | -------------- |
 | [`vn-generator-report.md`](vn-generator-report.md) | The core system design: goals, the deterministic-vs-generative split, phases P1–P7, the task graph, the asset store, and the provenance manifest. Stops short of engine export. |
-| [`authoring-agent-report.md`](authoring-agent-report.md) | Design of `vnauthor`, the plan-first conversational agent that helps an author write and refine the *input* files (characters, screenplay, locations). Input-side only — it never runs the generative pipeline. |
+| [`authoring-agent-report.md`](authoring-agent-report.md) | Design of `vnauthor`, the plan-first conversational agent that helps an author write and refine the *input* files (characters, scenes, locations). Input-side only — it never runs the generative pipeline. |
 | [`desktopAppState.md`](desktopAppState.md) | The desktop app's state model: what persists in project files vs. `localStorage` vs. memory, and how the PLAY room's playthrough stack is saved and restored. |
 | [`gitUndoOptions.md`](gitUndoOptions.md) | The survey that decided how undo works: five candidate strategies (memento, path-scoped restore, commit-per-command, shadow snapshots, split-by-data-class) and their failure modes. Shadow snapshots won — see [`command-system.md`](command-system.md) for what shipped. |
 
@@ -55,6 +55,6 @@ Surveys, investigations, and exploratory designs live in [`research/`](research)
 
 | Document | What it covers |
 | -------- | -------------- |
-| [`fountain.md`](fountain.md) | An introduction to Fountain, the plain-text screenplay format used for input, plus the conventions the parser relies on — including this project's note markers (`[[scene:]]`, `[[choice:]]`, `[[next:]]`, `[[line:]]`, `[[nextline:]]`). |
+| [`fountain.md`](fountain.md) | An introduction to Fountain, the plain-text screenplay format used for scene prose, plus the conventions the parser relies on — including this project's note markers (`[[scene:]]`, `[[choice:]]`, `[[next:]]`, `[[line:]]`, `[[nextline:]]`) and where the Fountain lives: the body of a `scenes/<id>.md`, one scene per file. |
 | [`visualNovelFormats.md`](visualNovelFormats.md) | A survey of VN scripting languages, authoring formats, and runtime engines — context for how our intermediate representation models story, branching, and presentation. |
 | [`original-prompt.md`](original-prompt.md) | The original request that kicked off the project, kept verbatim for provenance. |

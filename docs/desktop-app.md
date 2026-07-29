@@ -251,10 +251,11 @@ in `app.whenReady()`, before the asset protocol or any session exists.
 - **Seeding copies inputs only** — everything in the template except `vngen/` (a fresh
   workspace has not been run) and `keys/` (secrets) — then `git init`s and commits them as
   `Sample project inputs`. A local `user.*` is set only when git can't already answer who the
-  committer is; `core.autocrlf false` is always set, since the branch editor patches the
-  screenplay byte-exactly.
+  committer is; `core.autocrlf false` is always set, since the branch editor patches scene
+  prose byte-exactly.
 - **An existing directory is opened untouched.** Never re-copied, never overwritten: it is the
   user's working copy. Resetting it is `rm -rf examples/mySampleRepo`, which needs no code and
-  cannot misfire.
+  cannot misfire. A copy seeded before the template became one file per scene therefore stays
+  on the `screenplay/` form, which still loads; delete it to get `scenes/<id>.md`.
 - Packaged builds have no repo-relative `examples/`, so the scratch workspace falls back to
   `app.getPath('userData')/mySampleRepo`; a missing template then fails by name.

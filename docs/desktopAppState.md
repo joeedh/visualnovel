@@ -198,15 +198,18 @@ class WorkspaceSession {
 **Locations:**
 ```
 <workspace>/
-├── project.yaml              # Config: title, models, API key env vars
+├── project.yaml              # Config: title, models, API key env vars, `start:` (entry scene)
 ├── characters/
 │   ├── <id>/character.md     # Character front-matter + prose
 │   └── …
 ├── locations/
 │   ├── <id>.md               # Location description
 │   └── …
-├── screenplay/
-│   ├── *.fountain            # Branching script (Fountain format)
+├── scenes/
+│   ├── <id>.md               # One scene: `scene: <id>` front-matter + one-scene Fountain body
+│   └── …
+├── screenplay/               # LEGACY, still loads: the whole branching script in one file
+│   ├── *.fountain            # (a project holding both `scenes/` and this is an error)
 │   └── …
 ├── vngen/
 │   ├── build/
@@ -227,23 +230,24 @@ class WorkspaceSession {
 │       ├── locations/<id>/
 │       │   ├── breakdown.md    # P1 location breakdown
 │       │   └── refs/           # Reference plates
-│       ├── scenes/<id>.md
 │       └── shots/<sceneId>.json  # Persisted shot decomposition (preferred once it exists)
 └── keys/                     # API keys (gitignored)
     └── …
 ```
 
 Paths are not spelled out anywhere but `packages/store/src/paths.ts`; that module is the
-single authority and this tree is a reading of it.
+single authority and this tree is a reading of it. Which scene files a project actually has is
+decided in one place too — `loadInputs` (`packages/store/src/worktree.ts`), which prefers
+`scenes/` and falls back to `screenplay/`.
 
 **What's committed:**
-- `project.yaml`, characters, locations, screenplay
+- `project.yaml`, characters, locations, scenes
 - `vngen/` generated outputs (graph, manifest, assets)
 - Not committed: `keys/`, `.env` files
 
 **Read by main process via:**
 - `@vn/config` — parses `project.yaml`
-- `@vn/parse` — reads `.fountain` files
+- `@vn/parse` — parses Fountain (a `scenes/<id>.md` body or a whole `.fountain`) and front-matter
 - `@vn/store` — reads characters/locations, indexes `build/assets/`
 - `@vn/model` — validates and builds the story graph
 - `@vn/taskgraph` — reads `state/tasks.jsonl`
@@ -263,7 +267,7 @@ Renderer                         Main                     Files
        │    └─────────────────────→ ensureAgent()
        │                            loadProject()
        │                             ├─ readConfig()  ──→ project.yaml
-       │                             ├─ buildModel()  ──→ characters/, screenplay/
+       │                             ├─ buildModel()  ──→ characters/, scenes/
        │                             ├─ openStore()   ──→ manifest.json
        │                             └─ loadGraph()   ──→ tasks.jsonl
        │    ←──────────────────── return WorkspaceIndex
@@ -325,7 +329,7 @@ User navigates to PLAY room
 Runner useEffect mounts
   ├─ invoke('story:play')
   │    └─→ loadProject()
-  │        ├─ Read project.yaml, characters, screenplay
+  │        ├─ Read project.yaml, characters, scenes
   │        ├─ Build model
   │        ├─ Read manifest.json + assets/
   │        └─ buildPlayable(model, store) → Playable JSON

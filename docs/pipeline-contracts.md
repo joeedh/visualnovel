@@ -11,7 +11,7 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
 
 - [Identity and storage](#identity-and-storage)
 - [Scheduling](#scheduling)
-- [Shots, lines, and the screenplay](#shots-lines-and-the-screenplay)
+- [Scenes, shots, and lines](#scenes-shots-and-lines)
 - [Generation and review](#generation-and-review)
 - [Seams](#seams)
 
@@ -42,8 +42,26 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   _currently-plannable_ work and undercounts tasks that only become plannable after an earlier
   wave finishes.
 
-## Shots, lines, and the screenplay
+## Scenes, shots, and lines
 
+- **A scene is one file, and only the reader decides which files those are.** Authored scenes are
+  `scenes/<id>.md`: front-matter that is `scene: <id>` and nothing else (a closed schema — a key
+  the body owns, like `next` or `location`, is an error), over a body that is a complete one-scene
+  Fountain screenplay including its own heading. The id comes from the filename and front-matter
+  together and the body cannot override it, so a file cannot be renamed by editing its prose. A
+  directory has no document order, which is why the entry scene is `start:` in `project.yaml`
+  rather than whichever file sorts first. The older `screenplay/*.fountain` form still loads —
+  entry inferred from document order — and a project holding **both** is refused outright rather
+  than resolved, because the failure it prevents is a model built from one file and edits written
+  to the other. `loadInputs` (`packages/store/src/worktree.ts`) is the single place that decides;
+  every writer takes its target list from the same `LoadedInputs` the model was built from, so
+  nothing gets a second opinion. Two further rules follow, and both were failures first: a patch
+  spanning several chunks is **computed in full before anything is written** (a splice refused on
+  the third file must leave the first two exactly as they were), and front-matter is spliced
+  byte-exactly via `splitFrontMatter` rather than re-serialized, because re-serializing YAML
+  silently drops the author's comments. Plan:
+  [`plans/scene-chunk-files.md`](plans/scene-chunk-files.md); the format itself is in
+  [`fountain.md`](fountain.md#where-the-fountain-lives-project-specific).
 - **Shot decompositions are persisted, not re-derived.** P5 is an LLM step, so re-running it
   would produce different shot ids — hence different task hashes — and regenerate art for no
   reason. The planner writes each scene's decomposition to `work/shots/<sceneId>.json` and
@@ -52,7 +70,7 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   Authored fields sit at the top level; what a run produced is nested under **`shotData`** and
   rewritten wholesale each pass — `tasks.jsonl` and `manifest.json` stay the authority, so a
   shots file restored from an old commit cannot convince the pipeline that work is done. Line
-  ids the screenplay no longer has are dropped with a warning, and since `buildShotPrompt`
+  ids the scene no longer has are dropped with a warning, and since `buildShotPrompt`
   ignores `coversLines`, coverage edits rehash nothing. Dry runs read the file but never write
   it — a mock decomposition must not be left for a real run to reuse.
 - **Line ids are allocated and written down, and reading never writes.** `Shot.coversLines`

@@ -150,7 +150,7 @@ Snapshots also say nothing about **why** something changed, so they pair best wi
 
 Stop treating "the workspace" as one thing. It is two:
 
-- **Documents** (`characters/`, `locations/`, `screenplay/`, `project.yaml`) — hand-authored,
+- **Documents** (`characters/`, `locations/`, `scenes/`, `project.yaml`) — hand-authored,
   small, genuinely mutable. Undo here means restoring bytes → **Strategy D**.
 - **Generated output** (`vngen/build/assets/`, `manifest.json`, `tasks.jsonl`) — already
   content-addressed and append-only. Assets are immutable by construction; the manifest is an

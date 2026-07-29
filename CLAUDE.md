@@ -101,9 +101,9 @@ it may import _every_ layer, and **nothing may import it** — see
 | `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                                                                                                                                                                                                                           |
 | `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                                                                                                                                                     |
 | `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                                                                                                                                                        |
-| `@vn/parse`         | Fountain parser + note markers: `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` for branching, `[[line: L4]]` / `[[nextline: 12]]` for allocated line ids; markdown front-matter. Pure, no I/O policy. Shared with the authoring agent.                                                                                                                                                                          |
+| `@vn/parse`         | Fountain parser + note markers: `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` for branching, `[[line: L4]]` / `[[nextline: 12]]` for allocated line ids; markdown front-matter, including the byte-exact `splitFrontMatter` a prose patcher splices under. Also the `LoadedInputs` / `SceneChunkDoc` shapes the reader and the model builder both name. Pure, no I/O policy. Shared with the authoring agent.  |
 | `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`. Also the **writers**: `sceneToFountain` (lossless — `parse(write(scene)) ≡ scene`), the surgical `branchpatch`/`lineids` patchers, and the `*ToDoc` serializers.                                                                                               |
-| `@vn/store`         | Content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped.                                                                                                                                                                 |
+| `@vn/store`         | The only reader of a project's files: `loadInputs` (authored `scenes/<id>.md` chunks, or the `screenplay/` fallback), the content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped.                                       |
 | `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                                                                                                                                                    |
 | `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection, and the `UndoJournal` behind opt-in undo/redo. Domain-agnostic — the commands themselves are defined by the host app.                                                                                                                                                |
 | `@vn/debug2d`       | Source-agnostic 2D graphics debugging: fragment IR, space registry, DOM adapter (stacking-order z with culprit retention), query engine, `explainPick` rejection logs. Zero deps, outside the layering graph; dev-only in the desktop renderer. See [2D debug layer](#2d-debug-layer-vndebug2d).                                                                                                                          |
@@ -144,6 +144,11 @@ statement of every one — with the failure it prevents — is in
   writes from `Scene.lines` (there is no `Scene.body`), keeps the heading's prefix and
   time-of-day variant, and forces (`!`, `@`, `>`, `~`) anything that could be re-read as
   another element. Blank lines are structural.
+- **One scene, one file — and a writer patches the file the model was built from.** Prose writers
+  derive their target list from the same `loadInputs` result that produced the model, so nothing
+  re-decides which file is authoritative; a patch spanning several chunks is computed in full
+  before any of it is written, and front-matter is spliced byte-exactly rather than
+  re-serialized, so hand-written YAML comments survive.
 - **P7 generate→critique→refine is folded into the `shot_image` runner**, capped by
   `config.max_refine_attempts`, stopping early when a refinement changes nothing, and flagging
   `needs_human` rather than looping. The reviewer is told what the _shot_ ordered, never the
@@ -176,12 +181,21 @@ real backend refuses as references — see [Test fixtures](#test-fixtures-vntest
 ### Project layout on disk
 
 Authored input lives at the project root (`project.yaml`, `characters/<id>/character.md`,
-`locations/<id>.md`, `screenplay/*.fountain`). Everything generated lives under `vngen/`:
+`locations/<id>.md`, `scenes/<id>.md`). Everything generated lives under `vngen/`:
 `work/` (human-editable: story graph, candidates, `approved.png`, `shots/<sceneId>.json`),
 `build/` (machine: `assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). In a user's
 own project `vngen/` is **committed** — it is the reproducible output of a run, not
 gitignored. `examples/sample` is the one exception: it is a template this repo ships, so it
 stays inputs-only (see below).
+
+**A scene is one file.** `scenes/<id>.md` holds `scene: <id>` front-matter — identity and
+nothing else, matching the filename — over a body that is a complete one-scene Fountain
+screenplay, heading and `[[…]]` markers included. A directory has no document order, so the
+entry scene is `start:` in `project.yaml`. The older one-contended-file form
+(`screenplay/*.fountain`, entry inferred from document order) still **loads**, and a project
+holding both is a hard error; [`fountain-import-export.md`](docs/plans/fountain-import-export.md)
+is what retires it. What a body may contain:
+[`docs/fountain.md`](docs/fountain.md#where-the-fountain-lives-project-specific).
 
 ### Sample project
 
@@ -244,7 +258,7 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
 - **Commands are the only write path.** The `story.*` branch mutators go through
   `session.editBranches(decide)` → `applySceneBranchEdit` → reload, so the branch editor never
-  writes the screenplay by another path; `story.setCoverage` is the only writer of
+  writes scene prose by another path; `story.setCoverage` is the only writer of
   `work/shots/<sceneId>.json` outside the planner.
 - **Props are declarative specs, not zod** (the repo is on zod 3). `coerceProps` is the single
   validation authority — defaults, coercion of loose JSON/CDP values, unknown-key rejection.

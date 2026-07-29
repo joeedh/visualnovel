@@ -41,7 +41,7 @@ current one.
 | [`interaction-model.md`](interaction-model.md) | partial | `Interaction`/`targets`; four gestures declared, the general surface is not finished |
 | [`allocated-line-ids.md`](allocated-line-ids.md) | shipped | Line ids that survive an edit, the diagnostics surface, the catalog-driven palette |
 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | shipped | `parse(write(scene)) ≡ scene`; `Scene.body` retired, headings and three line kinds retained |
-| [`scene-chunk-files.md`](scene-chunk-files.md) | partial | `scenes/<id>.md` replaces the one contended screenplay; steps 1–9 are in — a chunk project loads, builds, validates and is written to, and every fixture and `examples/sample` is one file per scene; only the docs outside the plan are left |
+| [`scene-chunk-files.md`](scene-chunk-files.md) | shipped | `scenes/<id>.md` replaces the one contended screenplay; `start:` names the entry, front-matter is identity only, both prose patchers retargeted, `screenplay/` still loads |
 | [`fountain-import-export.md`](fountain-import-export.md) | planned | `vngen import` / `vngen screenplay` |
 | [`scene-editing-commands.md`](scene-editing-commands.md) | planned | Nine `story.*` prose commands, `lineops.ts`, `session.editScene` |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | planned | Correcting a line in the coverage timeline; drift marking |
@@ -53,13 +53,13 @@ current one.
 Seven plans that together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **1 and 2 are shipped, 3 is in progress; 4–7 are not implemented.**
+one rests on. **1, 2 and 3 are shipped; 4–7 are not implemented.**
 
 | # | Plan | Depends on | Why it is here |
 | --- | --- | --- | --- |
 | 1 | [`allocated-line-ids.md`](allocated-line-ids.md) ✔ | — | Positional ids re-point every shot when a line is inserted. Nothing may edit prose until ids survive |
 | 2 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) ✔ | — | Writing a scene back today loses its heading. Nothing may write a scene until the writer is honest |
-| 3 | [`scene-chunk-files.md`](scene-chunk-files.md) | 1, 2 | One contended screenplay becomes one file per scene |
+| 3 | [`scene-chunk-files.md`](scene-chunk-files.md) ✔ | 1, 2 | One contended screenplay becomes one file per scene |
 | 4 | [`fountain-import-export.md`](fountain-import-export.md) | 2, 3 | Migrates existing projects in, and keeps the format from being lock-in |
 | 5 | [`scene-editing-commands.md`](scene-editing-commands.md) | 1, 3 | The only write path for prose. No UI; verifiable through the palette and CDP |
 | 6 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | 5 | Correct a line where you can see the frame it produced |
@@ -104,8 +104,10 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
 - ~~`currentSpeaker` (`packages/model/src/scenes.ts`) is cleared only on `flush()`, and the
   `action`-with-speaker branch describes a case `parseFountain` cannot produce~~ → **fixed** in
   plan 2: attribution ends with the dialogue block, and `'action'` is no longer a `SceneLine.kind`.
-- `buildModel` takes the entry scene as `sceneList[0]` (`packages/model/src/build.ts:154`), which
-  becomes readdir order the moment scenes are files → plan 3 adds `start:` to `project.yaml`.
+- ~~`buildModel` takes the entry scene as `sceneList[0]` (`packages/model/src/build.ts:154`), which
+  becomes readdir order the moment scenes are files~~ → **fixed** in plan 3 step 6: `entry` comes
+  from `config.start`, and a missing or dangling `start:` is an error diagnostic rather than a
+  fallback to sorted-first.
 - ~~Four call sites duplicate `loadInputs` → `parseFountain` → `buildModel` (CLI, desktop session,
   authoring workspace, testkit)~~ → **fixed** in plan 3 step 1: `@vn/model`'s `modelFromInputs` is
   the one sequencing point, and `LoadedInputs` moved to `@vn/parse` so the reader and the builder
@@ -123,7 +125,7 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
 
 - [x] 1 — allocated line ids
 - [x] 2 — lossless scene serialization
-- [ ] 3 — scene chunk files
+- [x] 3 — scene chunk files
 - [ ] 4 — Fountain import and export
 - [ ] 5 — scene editing commands
 - [ ] 6 — line editing in FLOOR

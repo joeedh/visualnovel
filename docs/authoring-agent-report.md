@@ -66,7 +66,9 @@ produces malformed files:
 
 - **Project layout** (the `input/` side from the generator report): `project.yaml`,
   `characters/<id>/character.md` (+ optional `refs/`), `locations/<id>.md`,
-  `screenplay/*.fountain`.
+  `screenplay/*.fountain`. _As shipped_ scenes are authored one per file —
+  `scenes/<id>.md`, entry named by `start:` — with `screenplay/` a still-loading legacy
+  form; see [`fountain.md`](fountain.md#where-the-fountain-lives-project-specific).
 - **Character file schema** — YAML front-matter (`id`, `name`, `status`,
   `default_outfit`, `palette`, `reference_images`, …) + canonical prose description +
   wardrobe section.

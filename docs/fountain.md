@@ -24,6 +24,7 @@
 - [Forced-element quick reference](#forced-element-quick-reference)
 - [A small complete example](#a-small-complete-example)
 - [A note on branching (project-specific)](#a-note-on-branching-project-specific)
+- [Where the Fountain lives (project-specific)](#where-the-fountain-lives-project-specific)
 - [What the model retains (project-specific)](#what-the-model-retains-project-specific)
 - [Further reading](#further-reading)
 
@@ -36,7 +37,9 @@ using a few simple, unobtrusive conventions, and a parser infers the structure
 
 Because Fountain files are just UTF-8 text, they are diff-friendly, version-control
 friendly, and trivially machine-parseable — which is exactly why this project uses it
-as the screenplay input format (see `vn-generator-report.md`).
+as the input format for scene prose (see `vn-generator-report.md`). This project writes
+**one scene per file**, so the Fountain lives in the body of a `scenes/<id>.md` — see
+[Where the Fountain lives](#where-the-fountain-lives-project-specific).
 
 ---
 
@@ -346,6 +349,52 @@ get ids in memory, and persisting them is the separate `story.assignLineIds` com
 An unforced `CUT TO:` is the one element whose mark goes **on** its own line
 (`[[line: L2]]CUT TO:`) rather than above it: the parser recognizes it by the blank line
 above, and a marker line is not blank.
+
+## Where the Fountain lives (project-specific)
+
+An authored scene is one file, `scenes/<id>.md` at the project root beside `characters/`
+and `locations/`. It is a markdown file with YAML front-matter, and the front-matter is
+**identity and nothing else**:
+
+```markdown
+---
+scene: rooftop
+---
+
+EXT. ROOFTOP - EVENING
+
+Aiko pushes through the heavy door.
+
+AIKO
+Oh — sorry. I didn't think anyone came up here.
+
+[[next: ending]]
+```
+
+The rules that make that body predictable:
+
+- **The body is a complete one-scene Fountain screenplay**, its own heading included. Not a
+  fragment, not prose with the heading hoisted into front-matter — everything on this page
+  applies to it unchanged, and the same parser reads it.
+- **Exactly one scene heading.** A body with none, or with two, is refused: there is no single
+  id it could belong to.
+- **No `[[scene:]]` marker.** The id is the filename and the `scene:` key, which must agree; a
+  body that could rename its own file is the one thing the front-matter exists to prevent.
+- **Every other field stays in the body**, as a Fountain element or a `[[…]]` marker —
+  `location` and the time-of-day variant in the heading, `synopsis` as `=`, `choices`/`next` and
+  the line ids as markers. Front-matter is a **closed** schema, so putting one of them up there
+  is an error rather than a second source of truth.
+- **No title page.** `Title:` and friends belong to a screenplay, not a scene; the project title
+  is `title:` in `project.yaml`.
+- Line-id marks are optional. A hand-authored scene usually has none — reading allocates them in
+  memory, and `story.assignLineIds` is what writes them down.
+
+A directory has no document order, so the entry scene is named by `start:` in `project.yaml`.
+
+The older form — one `screenplay/*.fountain` holding every scene, separated by `[[scene: id]]`
+markers, entry inferred from document order — still loads, and a project holding **both** forms
+is a hard error. [`plans/fountain-import-export.md`](plans/fountain-import-export.md) is what
+retires it, and what will make a single Fountain file an export target rather than an input.
 
 ## What the model retains (project-specific)
 

@@ -404,7 +404,7 @@ interactivity; use CDP when you need reproducibility or you're an agent.
   from inside the app:
 
   ```sh
-  git diff --no-index -- examples/sample/screenplay "$SCRATCH/branchdemo/screenplay"
+  git diff --no-index -- examples/sample/scenes "$SCRATCH/branchdemo/scenes"
   ```
 
 - **Windows, if you build a git-backed temp dir by hand** (`@vn/testkit`'s `initRepo` already

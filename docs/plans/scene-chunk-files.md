@@ -1,9 +1,6 @@
 # Scene chunk files
 
-Status: **in progress** — steps 1–9 of 10 are shipped: the format exists, a `scenes/` project
-loads, builds, validates and is **written** to by the branch and line-id writers, every
-`@vn/testkit` fixture is one file per scene by default, and `examples/sample` is authored that
-way. Only the docs outside this file still describe the old layout (step 10). Move two of
+Status: **shipped** (see [As shipped](#as-shipped)). Move two of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 after [`allocated-line-ids.md`](allocated-line-ids.md) and
 [`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
@@ -258,8 +255,12 @@ surface. Before that plan lands they would be produced and rendered nowhere.
    An `examples/mySampleRepo` seeded before the conversion stays on `screenplay/`, which still
    loads — `seedWorkspace` never re-copies over a working copy, by design. Delete it to get the
    chunk form.
-10. **Docs.** This file's As-shipped section; `CLAUDE.md`'s project-layout and `@vn/store` sections;
-    `docs/vn-generator-report.md` §9.1; `docs/fountain.md` on what a chunk body may contain.
+10. ✔ **Docs.** This file's As-shipped section; `CLAUDE.md`'s project-layout and `@vn/store`
+    sections; `docs/vn-generator-report.md` §9.1; `docs/fountain.md` on what a chunk body may
+    contain. Six more pages turned out to describe the old layout as fact and were corrected too —
+    `pipeline-contracts.md`, `desktopAppState.md`, `desktop-app.md`, `index.md`, `debugGuide.md`,
+    `gitUndoOptions.md` — and the two design reports got dated as-shipped notes rather than
+    rewrites, since they are kept as written.
 
 ## Not in this plan
 
@@ -284,3 +285,58 @@ surface. Before that plan lands they would be produced and rendered nowhere.
   screenplay.
 - **Derive the entry scene from the graph** — the scene nothing points to. Ambiguous in a story
   with more than one such scene, and wrong the moment a branch loops back to the opening.
+
+## As shipped
+
+All ten steps landed. `pnpm check`, `pnpm test` (762 tests, 65 suites) and `pnpm lint` are green.
+A `scenes/` project loads, builds, validates, exports and is written to by both prose patchers;
+`@vn/testkit` builds one by default; `examples/sample` is authored that way; and `screenplay/`
+still loads until [`fountain-import-export.md`](fountain-import-export.md) retires it.
+
+**The move cost nothing.** The acceptance criterion — converting a project's format must not
+regenerate a single asset — was checked twice: at fixture scale in step 8 (a full approve-and-run
+in each format plans identical task hashes) and on `examples/sample` in step 9 (both forms planned
+through two waves, sorted `kind + hash` identical; `vngen graph`, `vngen cost` and the exported
+`story.play.json` byte-identical). It holds because nothing in a task's `inputs` names a file.
+
+### Deviations
+
+- **`modelFromInputs` lives in `@vn/model`, not `loadProjectModel` in `@vn/store`.** The plan named
+  the store; the layering forbids it — `@vn/store` may not import `@vn/model`, and widening that
+  would hand `@vn/model` to `taskgraph` and `scheduler` transitively. So the sequence splits at the
+  seam that already existed, and `LoadedInputs` / `SceneChunkDoc` moved to `@vn/parse` because it is
+  the deepest package that can name a `FrontMatterDoc`.
+- **`loadInputs` grew `diagnostics`.** "This project holds both forms" is a verdict the *reader*
+  reaches and only the *model* can report. A both-present project therefore loads as **neither**
+  form rather than as one of them — refusing is the whole point, and loading one while reporting an
+  error would be a model built from a file the author did not mean.
+- **Steps 5 and 6 shipped as one commit**, and step 8's option shipped **before** step 7. Separating
+  5 from 6 leaves an intermediate state where a `scenes/` project loads to an empty model; and the
+  writers can only be tested against a real chunk project, which only testkit can build — so the
+  fixture option had to precede the writers it exists to test, with the default flip after.
+- **`applySceneBranchEdit` takes the scene id rather than finding it.** A chunk body never names
+  itself, so the id is forced onto the one scene the body may hold, and a body with two headings or
+  none is a refusal rather than a guess.
+- **`previewLineIds` and `writeLineIds` collapsed into wrappers over one `planLineIds`.** Not in the
+  plan, but writing many files made it necessary: both must compute every patch before writing any,
+  and the cheapest way to guarantee the preview *is* the decision the write makes is for there to be
+  one decision.
+- **Front-matter is spliced, never re-serialized.** `@vn/parse` gained `splitFrontMatter` and
+  `SceneChunkDoc` carries the file's bytes, so a rewire keeps the author's YAML — key order,
+  spacing, comments — byte-exact. Round-tripping through `stringifyFrontMatter` silently drops
+  comments, which is a real edit to a file the author owns.
+- **`examples/sample` was converted by hand.** The step-4 writer would also stamp
+  `[[line:]]`/`[[nextline:]]` on every line; a shipped template is more useful showing the *minimum*
+  a chunk may be, and an unmarked body is exactly the input `assignLineIds` exists for. It also
+  keeps the diff readable as a move.
+- **An `examples/mySampleRepo` seeded before the conversion stays on `screenplay/`.** `seedWorkspace`
+  never re-copies over a working copy, by design; the old form still loads. Delete the directory to
+  get the chunk form.
+
+### Still open
+
+- **The closed front-matter schema is marked for revisit** once plans 4–7 have shipped, against
+  working editors rather than ahead of them — [The shape](#the-shape) records the argument on both
+  sides.
+- **`write_file` still accepts a `scenes/` path** unvalidated;
+  [`scene-editing-commands.md`](scene-editing-commands.md) step 6 is where it learns to refuse.
