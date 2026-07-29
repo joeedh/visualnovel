@@ -1,8 +1,10 @@
 # Scene chunk files
 
-Status: **in progress** — steps 1–6 of 10 are shipped: the format exists and a `scenes/` project
-loads, builds and validates end to end. Nothing **writes** one yet — the branch/coverage writers,
-the testkit, and `examples/sample` are still on `screenplay/` (steps 7–9). Move two of
+Status: **in progress** — steps 1–8 of 10 are shipped: the format exists, a `scenes/` project
+loads, builds, validates and is **written** to by the branch and line-id writers, and every
+`@vn/testkit` fixture is one file per scene by default. `examples/sample` is still on
+`screenplay/` (step 9), and the docs outside this file still describe the old layout (step 10).
+Move two of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 after [`allocated-line-ids.md`](allocated-line-ids.md) and
 [`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
@@ -210,17 +212,38 @@ surface. Before that plan lands they would be produced and rendered nowhere.
    `sceneDocs` / `start` / `diagnostics` are all optional on `BuildInputs` so the existing
    hand-built-inputs tests still compile. A chunk that fails to read is one error diagnostic and
    the other chunks still build.
-7. **Retarget the writers.** `applySceneBranchEdit` to one chunk; `session.editBranches` and the
-   `story.*` commands to per-scene paths; the authoring workspace index and `INPUT_GLOBS`.
-8. **`@vn/testkit` writes chunks.** `makeProject` gains `{ format: 'chunks' | 'screenplay' }`,
-   defaulting to **chunks**, with `SCRIPTS` converted by the same code path step 4 provides. Keep
-   at least one fixture on `screenplay` so the fallback stays tested until it is retired.
+7. ✔ **Retarget the writers.** `applySceneBranchEdit` takes an optional `sceneId`: a chunk body
+   never names itself, so the id is forced onto the one scene the body may hold, and a body with
+   two headings (or none) is a refusal rather than a guess. `session.editBranches` and
+   `writeLineIds` work off a `SceneSource[]` derived from the same `loadInputs` result the model
+   was built from — so a writer cannot re-decide which file is authoritative — and both **compute
+   every patch before writing any**, because a splice spanning three chunks that is refused on the
+   third has to leave the first two alone. `previewLineIds` and `writeLineIds` became wrappers over
+   one `planLineIds`, which makes the preview literally the decision the write makes. Front-matter
+   is **spliced, never re-serialized**: `SceneChunkDoc` carries the file's bytes and `@vn/parse`
+   gained `splitFrontMatter`, so a rewire keeps the author's YAML — key order, spacing, comments —
+   byte-exact, which round-tripping through `stringifyFrontMatter` would not. On the authoring
+   side `scenes/` joined `INPUT_GLOBS`, the workspace index names the file each scene lives in and
+   reports no screenplay when chunks are what the model was built from, and the built-in input
+   contract in `context.ts` describes both forms and that a project holds exactly one.
+8. ✔ **`@vn/testkit` writes chunks.** `makeProject` gained
+   `{ format: 'chunks' | 'screenplay' }`, defaulting to **chunks**, with `SCRIPTS` converted by
+   the same code path step 4 provides; `synthProject` inherits it, so the scale fixture is one
+   file per scene too. Shipped in **two commits**: the option itself landed **before** step 7,
+   because the writers can only be tested against a real chunk project and only testkit can build
+   one, and flipping the default came after. Two desktop describes are pinned to
+   `format: 'screenplay'` so the fallback keeps its coverage — branch editing there is every scene
+   sharing one file, and a script written as one file is what arrives with no line-id marks. The
+   acceptance criterion for step 9 is proved here at fixture scale: a full approve-and-run in each
+   format plans **identical task hashes**.
 9. **Convert `examples/sample`.** By hand or by the step-4 writer, verified by a full
    `vngen run --mock` + `graph` + `export` against a fresh copy, and by opening
    `examples/mySampleRepo` in the desktop app. The task hashes must not move: the shot prompt is
    built from `lines`, so a scene that round-trips unchanged plans identical work. **If any task
    rehashes, stop** — something in the round-trip is lossy and the corpus in
-   `packages/testkit/assets/` is about to be invalidated.
+   `packages/testkit/assets/` is about to be invalidated. One test reads the sample screenplay
+   directly — `branchpatch.test.ts`'s generated sweep, which is the patcher's integration test —
+   and has to be pointed at the chunks.
 10. **Docs.** This file's As-shipped section; `CLAUDE.md`'s project-layout and `@vn/store` sections;
     `docs/vn-generator-report.md` §9.1; `docs/fountain.md` on what a chunk body may contain.
 
