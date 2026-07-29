@@ -102,9 +102,12 @@ re-importing its output reproduces the project.
 
 ## Steps
 
-1. **`sceneChunksFromScript` in `@vn/model`.** Pure: a `FountainScript` plus config in, a list of
+1. ✔ **`sceneChunksFromScript` in `@vn/model`.** Pure: a `FountainScript` plus config in, a list of
    `{ id, doc }` out, with the id-allocation and the round-trip comparison. No I/O, so it is
-   testable against every fixture in `@vn/testkit`'s `SCRIPTS`.
+   testable against every fixture in `@vn/testkit`'s `SCRIPTS`. Shipped in
+   `packages/model/src/screenplay.ts`; it also reports the `entry` the chunk form needs for
+   `start:`, and the comparison projection `branchpatch.ts` and `lineids.ts` each kept privately
+   is now the shared `canonicalScenes`.
 2. **`scriptFromScenes` in `@vn/model`.** The inverse projection: graph-ordered scenes in, one
    Fountain string out, `{ clean }` option. Built on `sceneToFountain`, not beside it.
 3. **`vngen import`.** The CLI command, the `.imported` rename, refusal on an existing `scenes/`,

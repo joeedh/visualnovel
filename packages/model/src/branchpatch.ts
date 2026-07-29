@@ -16,6 +16,7 @@
  */
 import type { Choice, Diagnostic, Scene } from '@vn/types';
 import { parseBranchMarker, parseFountain } from '@vn/parse';
+import { canonicalScenes } from './canonical.js';
 import { splitScenes } from './scenes.js';
 
 /**
@@ -181,28 +182,6 @@ function validate(edits: SceneBranchEdit[]): Diagnostic[] {
   return out;
 }
 
-/** The scene list the caller asked for, as a canonical string for comparison. */
-function canonical(scenes: Scene[]): string {
-  return JSON.stringify(
-    scenes.map((s) => ({
-      id: s.id,
-      location: s.location,
-      locationVariant: s.locationVariant ?? null,
-      headingPrefix: s.headingPrefix ?? null,
-      synopsis: s.synopsis ?? null,
-      characters: s.characters,
-      lines: s.lines.map((l) => ({
-        id: l.id,
-        kind: l.kind,
-        speaker: l.speaker ?? null,
-        text: l.text,
-      })),
-      choices: s.choices.map((c) => ({ label: c.label, goto: c.goto })),
-      next: s.next ?? null,
-    })),
-  );
-}
-
 /**
  * Apply branch rewires to a Fountain source, atomically. All edits are resolved against a
  * single scan, so two edits to the same scene are a caller error rather than a last-writer
@@ -350,7 +329,7 @@ export function applySceneBranchEdit(
     } satisfies Scene;
   });
   const actual = splitScenes(parseFountain(patched), opts).scenes;
-  if (canonical(actual) !== canonical(expected)) {
+  if (canonicalScenes(actual) !== canonicalScenes(expected)) {
     return unchanged([
       err(
         'branch_patch_verify',

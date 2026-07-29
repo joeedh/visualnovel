@@ -14,6 +14,7 @@
  */
 import type { Diagnostic, Scene } from '@vn/types';
 import { parseBranchMarker, parseFountain, type FountainScript } from '@vn/parse';
+import { canonicalScenes } from './canonical.js';
 import { splitScenes } from './scenes.js';
 
 /** The patched source plus anything that went wrong. On any error the text is unchanged. */
@@ -124,29 +125,6 @@ function scan(
     }
   }
   return { slots, anchors, allocatorLines };
-}
-
-/** The scenes, projected for comparison. Line ids are included — they are the whole point. */
-function canonical(scenes: Scene[]): string {
-  return JSON.stringify(
-    scenes.map((s) => ({
-      id: s.id,
-      location: s.location,
-      locationVariant: s.locationVariant ?? null,
-      headingPrefix: s.headingPrefix ?? null,
-      synopsis: s.synopsis ?? null,
-      characters: s.characters,
-      nextLineId: s.nextLineId ?? null,
-      lines: s.lines.map((l) => ({
-        id: l.id,
-        kind: l.kind,
-        speaker: l.speaker ?? null,
-        text: l.text,
-      })),
-      choices: s.choices.map((c) => ({ label: c.label, goto: c.goto })),
-      next: s.next ?? null,
-    })),
-  );
 }
 
 /**
@@ -267,7 +245,7 @@ export function assignLineIds(text: string, sceneId?: string): LineIdPatchResult
   const after = splitScenes(reparsed);
   if (
     after.diagnostics.length > 0 ||
-    canonical(after.scenes) !== canonical(before.scenes) ||
+    canonicalScenes(after.scenes) !== canonicalScenes(before.scenes) ||
     skeleton(reparsed) !== skeleton(script)
   ) {
     return unchanged([
