@@ -236,9 +236,46 @@ correction, since a drift derived from comparing prompt hashes would compare two
    - **`write_file`'s refusal is a path-owner lookup** (`guardedBy`), not a special case: first path
      segment `scenes` → "written by `edit_scene`". A second validated tree would add a line, not a
      branch.
-7. **Verify from the palette and CDP.** Every command run against `examples/mySampleRepo` with no
+7. ✔ **Verify from the palette and CDP.** Every command run against `examples/mySampleRepo` with no
    editor: insert, retype, move, split, merge, undo each one, and confirm `vngen status` task
    counts move exactly where the plan says they should and nowhere else.
+
+   Done, and the pass earned its place — it started by finding that `mySampleRepo` was still in the
+   retired one-file form, so `workspace.import` was the first command verified (5 chunks, task counts
+   unchanged), and it ended with a defect. What it established:
+   - **`check` and `exec` agree, every time.** Each command was `check`ed and then run; the verdict
+     sentence and the record's message were identical in all nine cases, including the fallout
+     clauses. `story.deleteScene(rooftop)` refused with `greet (next), observe (next) still point(s)
+     at rooftop`; a non-adjacent `mergeScene` refused with `a merge only removes a boundary`.
+   - **Prose editing costs no art.** `vngen status` sat at 24 done / 3 needs_human across insert,
+     retype, move, delete, setSpeaker, split, merge, newScene and spliceScene — and **`vngen status`
+     is the wrong instrument to prove that with**, which the step's wording missed: it counts the
+     status *log*, so unplanned work cannot show up in it. `vngen cost` is the one that plans. It
+     read 0 pending at baseline and 0 after every prose edit; the single time it moved was
+     `newScene(heading='INT. HALLWAY - AFTERNOON')`, which introduced a *location* and so wanted one
+     `location_ref`. A new entity costs; moving prose around does not.
+   - **The storyboard arithmetic is exact.** Splitting `rooftop` at L4: `rooftop__establishing`
+     (covering L7) followed its line into `rooftop_late` keeping its id, and `rooftop__beat2` (L3–L6)
+     reported `lose 3 line(s) of coverage, 1 already rendered`. Merging `ending` into `rooftop`
+     carried `ending__S1` and removed `ending.md` *and* `ending.json`, both in `written`. Deleting a
+     line left a shot at `coversLines: []` rather than deleting paid-for art.
+   - **Undo is exact and refuses when it can't be.** Every command undone; `git status` came back to
+     nothing but `vngen/state/commands.jsonl` each time (excluded from the snapshot by design), files
+     the command created were removed and files it deleted came back. Redo restores. A hand edit
+     between run and undo makes undo refuse by name and exit non-zero.
+   - **`interaction.targets('script.moveLine', 'arrival:L3')` answered 2, not 4** — the two drops
+     that would reorder nothing are absent, as step 5 says.
+   - **The palette is a sufficient UI on its own**, which is what "with no editor" was asking. Filter
+     → row → props form with `kind` pre-set to `dialogue`, the verdict live as the fields fill
+     (`✕ No scene ""` → `✓ Inserted greet:L3 (narration) after greet:L2.`), `run` reporting that same
+     sentence with `source: 'ui'`, and the shell's `⟲` undoing it.
+
+   **The defect: the live catalog had no interactions.** `command:catalog` called `toCatalog(registry,
+   '@vn/desktop')` while the build-time generator called `toCatalog(..., desktopInteractions)`, so
+   `window.vn.catalog()` reported five commands' worth of gestures as zero — and the test that
+   "asserts the two match" compared `commands.json` against the *generator's* projection, never the
+   channel's. Fixed by leaving one projection, `catalogOf(registry)`, used by both, with a test on it.
+   Two call sites building the same thing is the shape of this bug; there is now one.
 8. **Docs.** This file's As-shipped section; `CLAUDE.md`'s command-system section (the command
    count moves by nine and the "the only writer of `work/shots/…`" sentence gains a second writer);
    `docs/command-system.md`'s table, counts and markers.

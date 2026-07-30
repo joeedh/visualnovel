@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { COMMAND_ID } from '@vn/commands';
-import { catalog } from '../catalog-entry.js';
+import { catalog, catalogOf } from '../catalog-entry.js';
 import { desktopInteractions } from '../interaction.js';
 import { createDesktopRegistry } from '../index.js';
 
@@ -159,9 +159,26 @@ describe('the desktop registry', () => {
 });
 
 /**
- * The `command:catalog` channel serves the live registry, so a stale `commands.json` can
- * never mislead the app itself — but it can mislead external tooling, which is what this
- * catches. Skipped when the file hasn't been generated (a check-only checkout).
+ * The `command:catalog` channel projects through `catalogOf`, so what it serves is what the
+ * generator writes. It used to call `toCatalog` itself and drifted — the channel claimed the app
+ * had no gestures while `commands.json` listed five — which is what this pins.
+ */
+describe('the live catalog', () => {
+  it('is the same projection the generator writes', () => {
+    expect(catalogOf(createDesktopRegistry())).toEqual(catalog());
+  });
+
+  it('carries the interactions, which an agent asking what it can do needs', () => {
+    expect(catalogOf(createDesktopRegistry()).interactions?.length).toBe(
+      desktopInteractions.list().length,
+    );
+  });
+});
+
+/**
+ * The channel serves the live registry, so a stale `commands.json` can never mislead the app
+ * itself — but it can mislead external tooling, which is what this catches. Skipped when the file
+ * hasn't been generated (a check-only checkout).
  */
 describe('the generated commands.json', () => {
   let generated: string | undefined;

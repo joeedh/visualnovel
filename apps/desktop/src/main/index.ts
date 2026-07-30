@@ -15,8 +15,9 @@ import { pathToFileURL } from 'node:url';
 import { ProjectPaths } from '@vn/store';
 import { openGit } from '@vn/git';
 import { appendJsonl } from '@vn/util';
-import { CommandStack, UndoJournal, toCatalog } from '@vn/commands';
+import { CommandStack, UndoJournal } from '@vn/commands';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
+import { catalogOf } from './commands/catalog-entry.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
 import { seedWorkspace } from './workspace.js';
@@ -204,7 +205,9 @@ function registerIpc(): void {
   handle('story:graph', () => getSession().storyGraph());
   handle('story:coverage', (sceneId) => getSession().sceneCoverage(sceneId));
 
-  handle('command:catalog', () => toCatalog(registry, '@vn/desktop'));
+  // `catalogOf`, not a second `toCatalog` call: the two drifted, and the channel served a
+  // catalog with no interactions while `commands.json` listed five.
+  handle('command:catalog', () => catalogOf(registry));
   handle('command:exec', (request) => {
     const source = request.source ?? 'ui';
     if (request.dsl !== undefined) return getStack().execDsl(request.dsl, source);
