@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
+import { ProjectPaths, readShots, writeShots } from '@vn/store';
+import type { Shot } from '@vn/types';
 import {
   createRegistry,
   describeToolParams,
@@ -263,6 +265,19 @@ describe('editing tools', () => {
     }
   });
 
+  it('write_file refuses a scene chunk, which edit_scene owns', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run('write_file', { path: 'scenes/arrival.md', content: 'anything' }, ctx);
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('edit_scene');
+      // The refusal is the point: an unvalidated overwrite is what writes duplicate line ids.
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('update_context persists a rule', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
@@ -270,6 +285,107 @@ describe('editing tools', () => {
       expect(r.ok).toBe(true);
       const text = await fs.readFile(join(dir, 'AICONTEXT.md'), 'utf8');
       expect(text).toContain('Aiko is shy.');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+/**
+ * `edit_scene`: the agent's only prose write path. What is asserted here is that it is the *same*
+ * write path the desktop's `story.*` commands are — the decisions, the refusals and the storyboard
+ * accounting all come from `@vn/scriptedit`, which has its own suites for each. So these cases are
+ * about the seam: which file changed, what the tool refuses on its own, and what it reports.
+ */
+describe('edit_scene', () => {
+  it('retypes a line, writing only that chunk', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'edit_scene',
+        { op: 'setLineText', line: 'arrival:L1', text: 'Good afternoon.' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['scenes/arrival.md']);
+      const text = await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8');
+      expect(text).toContain('Good afternoon.');
+      // The first edit canonicalizes the chunk, line-id marks included — there is no surgical
+      // form of a prose edit, so the ids the reader allocated get written down.
+      expect(text).toContain('[[line: L1]]');
+      expect(await fs.readFile(join(dir, 'scenes', 'greet.md'), 'utf8')).toBe(CHUNKS.greet);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('creates a scene chunk from a heading', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'edit_scene',
+        { op: 'newScene', scene: 'rooftop', heading: 'EXT. ROOFTOP - DUSK' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      const text = await fs.readFile(join(dir, 'scenes', 'rooftop.md'), 'utf8');
+      expect(text).toContain('scene: rooftop');
+      expect(text).toContain('EXT. ROOFTOP - DUSK');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('names the arguments an op needs instead of guessing them', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run('edit_scene', { op: 'splitScene', scene: 'arrival' }, ctx);
+      expect(r.ok).toBe(false);
+      expect(r.output).toBe('splitScene needs: at, into');
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('passes a refusal through from the rules, untouched', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run('edit_scene', { op: 'deleteScene', scene: 'ending' }, ctx);
+      expect(r.ok).toBe(false);
+      // The sentence is `lineops`': it names every referrer, which is what makes it actionable.
+      expect(r.output).toContain('greet (next)');
+      expect(r.output).toContain('observe (next)');
+      expect(await fs.readFile(join(dir, 'scenes', 'ending.md'), 'utf8')).toBe(CHUNKS.ending);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reports what an edit costs the storyboard, and rewrites it', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const paths = new ProjectPaths(dir);
+      const shot: Shot = {
+        id: 'arrival__beat1',
+        sceneId: 'arrival',
+        framing: 'medium',
+        location: 'classroom',
+        subjects: [{ characterId: 'aiko', outfit: 'uniform' }],
+        coversLines: ['arrival:L1'],
+        status: 'pending',
+      };
+      await writeShots(paths, 'arrival', [shot]);
+
+      const r = await run('edit_scene', { op: 'deleteLine', line: 'arrival:L1' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('1 shot(s) lose 1 line(s) of coverage');
+      expect(r.output).toContain('1 shot(s) end up covering nothing');
+      // The shot is kept, covering nothing: it is real and paid for, and deleting art is the
+      // author's call. The storyboard is rewritten to say so, and that file is in `written`.
+      const after = await readShots(paths, 'arrival');
+      expect(after?.shots.map((s) => s.coversLines)).toEqual([[]]);
+      expect(r.written).toContain('vngen/work/shots/arrival.json');
     } finally {
       await cleanup();
     }

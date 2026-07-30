@@ -66,10 +66,14 @@ agent honors.
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter
   so untouched prose and branch markers are preserved.
+- **Prose edits are the desktop's edits.** `edit_scene` names the same nine acts the `story.*`
+  commands do and runs the same `@vn/scriptedit` decisions, so a refusal an author sees mid-drag is
+  the refusal the agent gets, and the storyboard consequence is accounted for once. See
+  [`command-system.md`](command-system.md#from-the-agent).
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 23 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 24 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -78,6 +82,7 @@ whatever the mode).
 | Read & search | `read_file`, `list_workspace`, `search` |
 | Domain & validation | `validate_inputs`, `parse_fountain`, `story_graph`, `extract_entities` |
 | Entity editing | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M** |
+| Scene prose | `edit_scene` **M** |
 | Raw write | `write_file` **M** |
 | Context | `update_context` **M** |
 | Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
@@ -87,7 +92,10 @@ whatever the mode).
 Two absences are deliberate. **Editing is typed per entity** rather than a generic
 `edit_file`: `edit_character`/`edit_location` route through `@vn/model`'s serializers, so the
 round-trip guarantee holds by construction and `write_file` stays the escape hatch for files
-with no schema. And **nothing lets the model change its own mode** — there is no
+with no schema — but **not for scenes**. `write_file` refuses a `scenes/` path outright and names
+`edit_scene` instead, because a chunk written whole is a chunk with no proof: duplicate line ids, a
+lost heading, a scene id that stopped matching its filename, and stranded storyboards, none of which
+anything downstream would notice. And **nothing lets the model change its own mode** — there is no
 `enter_plan_mode`/`exit_plan_mode` tool. Mode is owned by the REPL and the permission gate,
 which is what makes plan mode a guarantee rather than a request.
 

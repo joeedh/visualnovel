@@ -60,7 +60,17 @@ const ALLOWED = {
   ],
   // Input-side agent core: reuses the deterministic packages + the LLM seam, and is
   // forbidden from importing the generative pipeline/scheduler (authoring-agent plan §4).
-  authoring: ['types', 'util', 'config', 'parse', 'model', 'store', 'providers', 'git'],
+  authoring: [
+    'types',
+    'util',
+    'config',
+    'parse',
+    'model',
+    'store',
+    'scriptedit',
+    'providers',
+    'git',
+  ],
   // The interactive REPL: input-side only. Forbidden from the generative pipeline/scheduler
   // (authoring-agent plan §4, §M4) — enforced here, not just documented.
   'authoring-app': ['types', 'util', 'config', 'store', 'providers', 'git', 'authoring'],

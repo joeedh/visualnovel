@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { parseFrontMatter, type FrontMatterDoc, type LoadedInputs } from '@vn/parse';
 import { modelFromInputs } from '@vn/model';
 import { loadInputs, ProjectPaths } from '@vn/store';
+import { sourcesOf, type SceneEditInput } from '@vn/scriptedit/write';
 import { loadConfig } from '@vn/config';
 import { exists, readText } from '@vn/util';
 import type { CharacterStatus, Diagnostic, ProjectModel } from '@vn/types';
@@ -125,6 +126,20 @@ export class Workspace {
       scenes,
       entry: model.entry,
       diagnostics: model.diagnostics,
+    };
+  }
+
+  /**
+   * Everything a scene edit is decided and patched against, off **one** load — which is the
+   * contract, not an optimization: a writer must patch the files the model it decided against was
+   * built from, or it re-decides which file is authoritative halfway through.
+   */
+  async sceneEditInput(): Promise<SceneEditInput> {
+    const { model, inputs } = await this.load();
+    return {
+      paths: this.paths,
+      sources: sourcesOf(inputs),
+      ...(model.entry === undefined ? {} : { entry: model.entry }),
     };
   }
 

@@ -1,8 +1,8 @@
 # Scene editing commands
 
 Status: **partial** — the nine commands are registered and runnable, they carry the storyboard with
-them, and the gesture is declared; what remains is the agent tool, the palette/CDP pass, and the
-docs. The ticks in
+them, the gesture is declared, and `vnauthor`'s `edit_scene` runs the same decisions; what remains is
+the palette/CDP pass and the docs. The ticks in
 [Steps](#steps) are the detail. Move four of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
@@ -207,7 +207,7 @@ correction, since a drift derived from comparing prompt hashes would compare two
    - **`script.*` takes no `scene` prop.** A line id names its own scene, so `stateFor` hands the
      gesture `session.scriptState()` whole; passing a scene would be a second answer to the same
      question. That is also what stops `scriptState()` being test-only.
-6. **Agent tools.** `edit_scene` in `@vn/authoring`'s registry, routed through the same `lineops`
+6. ✔ **Agent tools.** `edit_scene` in `@vn/authoring`'s registry, routed through the same `lineops`
    decisions, so `vnauthor` is not the one writer that goes around them. And **`write_file` must
    refuse `scenes/`** (`packages/authoring/src/tools.ts:408`) — it is a whole-file overwrite with
    no validation, which is exactly the path that would write a chunk with duplicate line ids.
@@ -220,6 +220,22 @@ correction, since a drift derived from comparing prompt hashes would compare two
    the source list and the plan/apply pair are `@vn/scriptedit`, which `@vn/authoring` may import.
    The split the step anticipated ("if this reaches into the plan-diff rendering and the permission
    gate") is still possible on top; that was a different, earlier obstacle.
+
+   Landed as **one tool with an `op` enum, not nine tools.** Nine would have been nine descriptions
+   for a model to choose between, all of them "edit a scene"; one tool with `op` puts the choice in a
+   place the schema can enumerate. The op names are the `story.*` command ids verbatim
+   (`setLineText` … `mergeScene`), so an agent transcript and a command history read as the same
+   vocabulary. Three seam decisions:
+   - **The tool refuses only an absent argument.** `SCENE_OP_ARGS` says which props each op cannot be
+     attempted without, and nothing else is checked here — whether a line may be empty, whether a
+     dialogue line needs a speaker, whether a scene may be deleted are judgments `@vn/scriptedit`
+     already makes, and making them twice is how two answers start to disagree. The agent gets the
+     palette's sentence.
+   - **`Workspace.sceneEditInput()` is the one-load contract.** Sources and entry come off a single
+     `load()`, because a writer must patch the files the model it decided against was built from.
+   - **`write_file`'s refusal is a path-owner lookup** (`guardedBy`), not a special case: first path
+     segment `scenes` → "written by `edit_scene`". A second validated tree would add a line, not a
+     branch.
 7. **Verify from the palette and CDP.** Every command run against `examples/mySampleRepo` with no
    editor: insert, retype, move, split, merge, undo each one, and confirm `vngen status` task
    counts move exactly where the plan says they should and nowhere else.

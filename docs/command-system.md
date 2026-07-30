@@ -492,6 +492,13 @@ A failed or refused command exits non-zero, so it composes in a shell.
 `CommandSource` includes `'agent'`; the plumbing is in place, but wiring the authoring agent's
 tool loop to the registry is a follow-on, not shipped.
 
+What _is_ shipped is the thing that matters more: the agent and the commands share the **decisions**
+rather than the transport. `vnauthor`'s `edit_scene` tool takes an `op` named after the `story.*`
+command it mirrors and calls the same `@vn/scriptedit` rule, so a refusal the author reads mid-drag
+is the sentence the agent gets back, and the storyboard fallout is accounted for once, in one place.
+Routing the tool loop through the registry later would buy provenance in `commands.jsonl` — not
+different behaviour. See [`vnauthor.md`](vnauthor.md#tools).
+
 ---
 
 ## The catalog

@@ -225,6 +225,9 @@ importers:
       '@vn/providers':
         specifier: workspace:*
         version: link:../providers
+      '@vn/scriptedit':
+        specifier: workspace:*
+        version: link:../scriptedit
       '@vn/store':
         specifier: workspace:*
         version: link:../store

@@ -20,6 +20,20 @@ import {
   type LocationEdit,
 } from '@vn/model';
 import { docToMarkdown } from '@vn/model';
+import {
+  deleteLine,
+  deleteScene,
+  insertLine,
+  mergeScene,
+  moveLine,
+  newScene,
+  setLineText,
+  setSpeaker,
+  splitScene,
+  type LineOp,
+  type ScriptState,
+} from '@vn/scriptedit';
+import { applyScenePlan, planSceneEdit, scenePlanMessage } from '@vn/scriptedit/write';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import type { Diagnostic } from '@vn/types';
 import type { Git } from '@vn/git';
@@ -404,14 +418,153 @@ const createLocationTool: Tool<{ name: string; description?: string }> = {
   },
 };
 
+// ── Scene prose (execute mode) ──────────────────────────────────────────────
+
+/**
+ * The nine acts, named exactly as the desktop's `story.*` commands are, because they *are* those
+ * commands' decisions: an agent transcript and a command history should read as the same vocabulary.
+ */
+const SCENE_OPS = [
+  'setLineText',
+  'insertLine',
+  'deleteLine',
+  'moveLine',
+  'setSpeaker',
+  'newScene',
+  'deleteScene',
+  'splitScene',
+  'mergeScene',
+] as const;
+
+type SceneOp = (typeof SCENE_OPS)[number];
+
+const LINE_KINDS = [
+  'dialogue',
+  'parenthetical',
+  'narration',
+  'transition',
+  'lyric',
+  'centered',
+] as const;
+
+const sceneEditShape = z.object({
+  op: z.enum(SCENE_OPS).describe('which act; the arguments each one needs are listed below'),
+  scene: z
+    .string()
+    .optional()
+    .describe('insertLine, newScene, deleteScene, splitScene, mergeScene'),
+  line: z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
+  text: z.string().optional().describe('setLineText, insertLine'),
+  after: z
+    .string()
+    .optional()
+    .describe('insertLine, moveLine: the line to sit after; omit for the top of the scene'),
+  kind: z.enum(LINE_KINDS).optional().describe('insertLine; defaults to dialogue'),
+  speaker: z
+    .string()
+    .optional()
+    .describe('insertLine, setSpeaker: the character cue; empty makes the line narration'),
+  heading: z.string().optional().describe('newScene: e.g. INT. CLASSROOM - EVENING'),
+  at: z.string().optional().describe('splitScene: the line id that starts the second half'),
+  into: z.string().optional().describe('splitScene: the new scene id; mergeScene: the absorber'),
+});
+
+type SceneEditArgs = z.infer<typeof sceneEditShape>;
+
+/**
+ * What each op cannot be attempted without. Only *absence* is checked here — whether a line may be
+ * empty, whether a dialogue line needs a speaker, whether a scene may be deleted are all judgments
+ * `@vn/scriptedit` already makes, and making them twice is how two answers start to disagree.
+ */
+const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
+  setLineText: ['line', 'text'],
+  insertLine: ['scene', 'text'],
+  deleteLine: ['line'],
+  moveLine: ['line'],
+  setSpeaker: ['line'],
+  newScene: ['scene', 'heading'],
+  deleteScene: ['scene'],
+  splitScene: ['scene', 'at', 'into'],
+  mergeScene: ['scene', 'into'],
+};
+
+/** The one `@vn/scriptedit` decision an op names, with the tool's defaults filled in. */
+function sceneDecider(a: SceneEditArgs): (state: ScriptState) => LineOp {
+  const scene = a.scene ?? '';
+  const line = a.line ?? '';
+  const text = a.text ?? '';
+  const after = a.after ?? '';
+  const speaker = a.speaker ?? '';
+  const into = a.into ?? '';
+  switch (a.op) {
+    case 'setLineText':
+      return (s) => setLineText(s, { line, text });
+    case 'insertLine':
+      return (s) => insertLine(s, { scene, after, kind: a.kind ?? 'dialogue', speaker, text });
+    case 'deleteLine':
+      return (s) => deleteLine(s, { line });
+    case 'moveLine':
+      return (s) => moveLine(s, { line, after });
+    case 'setSpeaker':
+      return (s) => setSpeaker(s, { line, speaker });
+    case 'newScene':
+      return (s) => newScene(s, { scene, heading: a.heading ?? '' });
+    case 'deleteScene':
+      return (s) => deleteScene(s, { scene });
+    case 'splitScene':
+      return (s) => splitScene(s, { scene, at: a.at ?? '', into });
+    case 'mergeScene':
+      return (s) => mergeScene(s, { scene, into });
+  }
+}
+
+/**
+ * The agent's one prose write path, over the same decisions the palette and the branch editor run.
+ * It exists so that `vnauthor` is not the writer that goes around them: a whole-file overwrite can
+ * duplicate line ids and strand storyboards, and nothing downstream would notice.
+ */
+const editSceneTool: Tool<SceneEditArgs> = {
+  name: 'edit_scene',
+  description:
+    'Edit scene prose: retype, insert, delete, move or re-attribute a line; create, delete, ' +
+    'split or merge a scene. The only way to change a scenes/<id>.md — write_file refuses them. ' +
+    'Reports what the edit costs the storyboard.',
+  mutating: true,
+  args: sceneEditShape,
+  async run(a, ctx) {
+    const missing = SCENE_OP_ARGS[a.op].filter((name) => a[name] === undefined);
+    if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
+
+    const input = await ctx.workspace.sceneEditInput();
+    const plan = await planSceneEdit(input, sceneDecider(a));
+    if (!plan.ok) return fail(plan.message);
+
+    const { written, removed } = await applyScenePlan(input, plan);
+    const paths = [...written, ...removed].map((file) => rel(ctx.workspace.root, file));
+    return ok(scenePlanMessage(plan), { written: paths, data: { paths, fallout: plan.fallout } });
+  },
+};
+
+/** A path a validated tool owns, which `write_file` therefore must not overwrite blind. */
+function guardedBy(path: string): string | null {
+  const first = path.replace(/\\/g, '/').split('/')[0];
+  return first === 'scenes' ? 'edit_scene' : null;
+}
+
 const writeFileTool: Tool<{ path: string; content: string }> = {
   name: 'write_file',
-  description: 'Create or overwrite a workspace file (e.g. a screenplay). Execute mode only.',
+  description:
+    'Create or overwrite a workspace file. Execute mode only, and never a scene: scenes/ belongs ' +
+    'to edit_scene.',
   mutating: true,
   args: z.object({ path: z.string(), content: z.string() }),
   async run(a, ctx) {
     const abs = resolveInWorkspace(ctx.workspace.root, a.path);
     if (!abs) return fail(`path "${a.path}" is outside the workspace`);
+    // A chunk written whole is unvalidated: duplicate line ids, a lost heading, a scene id that
+    // no longer matches the filename. `edit_scene` proves each of those before it writes.
+    const owner = guardedBy(rel(ctx.workspace.root, abs));
+    if (owner) return fail(`${a.path} is written by ${owner}, not write_file`);
     await writeFileAtomic(abs, a.content);
     return ok(`Wrote ${a.path}.`, { written: [rel(ctx.workspace.root, abs)] });
   },
@@ -586,6 +739,7 @@ export const ALL_TOOLS: Tool[] = [
   editLocationTool,
   createCharacterTool,
   createLocationTool,
+  editSceneTool,
   writeFileTool,
   updateContextTool,
   discoverSkillsTool,
