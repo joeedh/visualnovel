@@ -297,7 +297,7 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   `exec`, which re-decides for itself.
 - **`view.*` commands run in main** and push a `command:ui` effect; there is no second,
   renderer-side registry. `Room` stays a three-value union — an editor is a **mode within a
-  room** (STUDIO: `convo` | `branches`; FLOOR: `list` | `graph` | `timeline`).
+  room** (STUDIO: `convo` | `branches` | `script`; FLOOR: `list` | `graph` | `timeline`).
 - **The catalog is generated, and the palette is a view of it.** `pnpm build` writes
   `apps/desktop/dist/commands.json` for external tooling; the `command:catalog` IPC channel
   serves the **live** registry. Both go through one projection, `catalogOf` — two `toCatalog` call

@@ -1,0 +1,135 @@
+/**
+ * STUDIO's script column: a screenplay page, not a form. The prose is authored material
+ * (`--prose`, paper) and the only machine-side marks are the line ids in the gutter (`--mono`,
+ * dim) — a line id is the name a shot's coverage binds to, so it earns a place, quietly.
+ *
+ * The per-kind rules deliberately echo FLOOR's strip (`timeline.css`): the same line looks the
+ * same in both rooms, because it is the same line.
+ */
+
+.script {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+
+.script-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+}
+.script-bar .tt {
+  font-family: var(--disp);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  color: var(--sodium);
+}
+.script-bar .ct {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist-dim);
+}
+.sc-scene {
+  background: var(--ink-sunken);
+  color: var(--paper);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.sc-note {
+  padding: 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist-dim);
+}
+
+.sc-page {
+  overflow: auto;
+  min-height: 0;
+  padding: 18px 22px 40px;
+}
+.sc-heading {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--signal);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ink-line);
+  margin-bottom: 14px;
+}
+
+.sc-line {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 3px 0;
+}
+.sc-line .lid {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 2.2;
+  color: var(--ink-line);
+  text-align: right;
+  user-select: none;
+}
+/* The gutter is a reference, not a label — it comes forward when the row is under the pointer. */
+.sc-line:hover .lid {
+  color: var(--mist-dim);
+}
+.sc-line .who {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sodium);
+}
+.sc-line .text {
+  font-family: var(--prose);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--paper);
+  white-space: pre-wrap;
+}
+.sc-line.narration .text,
+.sc-line.lyric .text {
+  color: var(--mist);
+  font-style: italic;
+}
+.sc-line.parenthetical .text {
+  color: var(--mist-dim);
+  font-size: 13px;
+}
+.sc-line.transition .text {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mist-dim);
+  text-align: right;
+}
+.sc-line.centered .text {
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* A project with no scenes has nothing to open, so it says where a scene comes from. */
+.script.empty {
+  place-items: center;
+  padding: 40px;
+}
+.script .invite {
+  max-width: 46ch;
+  font-family: var(--prose);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--mist);
+  text-align: center;
+}

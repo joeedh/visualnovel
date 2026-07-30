@@ -1,6 +1,7 @@
 # Script composition in STUDIO
 
-Status: **planned**. Move six of
+Status: **partial** — step 1 is shipped and carries its own as-shipped note below; steps 2–9 are
+not built. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -97,10 +98,30 @@ a few lines once the shared selection exists, and it turns the rail from a repor
 
 ## Steps
 
-1. **The `script` STUDIO mode.** `STUDIO_MODES`, `StudioMode`, `view.mode`, and the shared scene
+1. ✔ **The `script` STUDIO mode.** `STUDIO_MODES`, `StudioMode`, `view.mode`, and the shared scene
    selection lifted so `branches` and `script` read the same one. No editing yet — the mode renders
    the selected scene's lines read-only. Independently verifiable, and it proves the plumbing
    before any gesture exists.
+
+   As shipped, and verified against a copy of `examples/mySampleRepo` over CDP: `script` is the
+   third `StudioMode`, `Studio.tsx` owns `scene: string | null`, and
+   `renderer/rooms/studio/script/` holds `ScriptEditor.tsx` over a pure `script.ts` with a `tests/`
+   sibling. Four things the step did not say:
+
+   - **The selection is filled in by whichever editor mounts first**, from `graph.start` (never
+     `scenes[0]` alone — a directory has no document order). It has to be written *up* into the
+     room rather than kept as a local default, or the two modes disagree about what "the scene" is
+     the first time you switch.
+   - **No new IPC channel.** `story:coverage` already answers with a scene's lines, so the script
+     column reads it rather than adding a second line-level read that could give a different
+     answer about what a scene contains. It carries shots too, which this step ignores.
+   - **Clicking a card now selects as well as seeding** the composer with `Revise scene <id> — `.
+     Both are reads, so one click can do both; and `.scene-card.sel` is one class for "selected",
+     with the connect-drag highlight it already had.
+   - **The rail's SCENES head carries two mode buttons**, not one cycling three. `branches` and
+     `script` each toggle back to `convo`, because one button cycling three modes puts the branch
+     editor two clicks away half the time. The selection survives the trip through `convo` — it is
+     the room's, not the surface's.
 2. **`script.ts`, pure, beside the room.** The keystroke-to-command mapping above, line-handle hit
    resolution, and the split/merge boundary rules. Node tests; the `.tsx` stays thin, as everywhere
    else in this renderer.

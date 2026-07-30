@@ -110,7 +110,8 @@ not per workspace** — a rail width is about the window, not the project.
 | State | Type | Lifetime |
 |-------|------|----------|
 | `room` | `'studio' \| 'floor' \| 'play'` | Session only |
-| `studioMode` | `'convo' \| 'branches'` — the editor within STUDIO | Session only |
+| `studioMode` | `'convo' \| 'branches' \| 'script'` — the editor within STUDIO | Session only |
+| `scene` | `string \| null` — the scene `branches` and `script` share; lives in `Studio.tsx`, not the shell | Until the room changes (STUDIO unmounts) |
 | `floorMode` | `'list' \| 'graph' \| 'timeline'` — the editor within FLOOR | Session only |
 | `mode` | `'plan' \| 'execute'` | Session only |
 | `feed` | `FeedItem[]` (conversation history) | Session only |

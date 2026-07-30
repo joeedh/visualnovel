@@ -50,11 +50,12 @@ export type {
 export type Room = 'studio' | 'floor' | 'play';
 
 /**
- * Which surface STUDIO shows in its main column: the vnauthor conversation, or the branch
- * editor. A mode rather than a fourth room — the composer stays put underneath either one, so
- * you can wire two scenes and then ask the agent to write what goes between them.
+ * Which surface STUDIO shows in its main column: the vnauthor conversation, the branch editor,
+ * or the script editor. A mode rather than a fourth room — the composer stays put underneath any
+ * of them, so you can wire two scenes, write what goes between them, and ask the agent about it
+ * without leaving the column. `branches` and `script` are two views of one selected scene.
  */
-export type StudioMode = 'convo' | 'branches';
+export type StudioMode = 'convo' | 'branches' | 'script';
 
 /**
  * Which surface FLOOR shows. `list` and `graph` are the same tasks, driving the same selection
@@ -307,8 +308,9 @@ export interface InvokeChannels {
    */
   'story:graph': () => StoryGraph;
   /**
-   * One scene's lines + persisted shots, for the coverage timeline. A read; the edit goes
-   * through `story.setCoverage` like every other mutation.
+   * One scene's lines + persisted shots. FLOOR's coverage timeline and STUDIO's script column
+   * both read it — one line-level read rather than two that could disagree about what a scene
+   * contains. A read; the edit goes through a `story.*` command like every other mutation.
    */
   'story:coverage': (sceneId: string) => SceneCoverage;
   /** The live registry projection — never the generated file, so the two can't diverge. */

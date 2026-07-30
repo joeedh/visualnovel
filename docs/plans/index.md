@@ -46,7 +46,7 @@ current one.
 | [`scene-editing-commands.md`](scene-editing-commands.md) | shipped | Nine `story.*` prose commands over `@vn/scriptedit`, `session.editScene`, the storyboard fallout, `script.moveLine`, and `vnauthor`'s `edit_scene` — one write path for prose, no UI |
 | [`scene-edit-package.md`](scene-edit-package.md) | shipped | The scene-edit rules and write path now live in `@vn/scriptedit` (pure barrel; `@vn/scriptedit/write` for the filesystem half), where `vnauthor` can reach them |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | shipped | Retyping a line in the coverage timeline, and `Shot.proseHash` → the drift mark on the shot it produced |
-| [`script-composition-in-studio.md`](script-composition-in-studio.md) | planned | STUDIO's `script` mode — writing, splitting and merging scenes |
+| [`script-composition-in-studio.md`](script-composition-in-studio.md) | partial | STUDIO's `script` mode — writing, splitting and merging scenes (step 1 shipped: the mode and the shared scene selection, read-only) |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 
 ## Scene authoring (the current batch)
@@ -54,7 +54,7 @@ current one.
 Seven plans that together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **1 through 6 are shipped; 7 is not started.** One plan not
+one rests on. **1 through 6 are shipped; 7 is under way.** One plan not
 in the original seven has been carved out since:
 [`scene-edit-package.md`](scene-edit-package.md), a prerequisite for 5's agent tool.
 

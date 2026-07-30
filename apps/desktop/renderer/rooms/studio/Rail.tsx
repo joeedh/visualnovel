@@ -82,13 +82,27 @@ export function Rail(props: {
       <div className="rail-group">
         <div className="rail-head">
           SCENES <span className="ct">{idx?.scenes.length ?? 0}</span>
-          <button
-            className={`rail-mode${props.mode === 'branches' ? ' on' : ''}`}
-            onClick={() => props.setMode(props.mode === 'branches' ? 'convo' : 'branches')}
-            title={props.mode === 'branches' ? 'Back to the conversation' : 'Edit the branches'}
-          >
-            {props.mode === 'branches' ? 'convo' : 'branches'}
-          </button>
+          {/* Both editors, each toggling back to the conversation — a single button cycling three
+              modes would make "the branches" two clicks away half the time. */}
+          <span className="rail-modes">
+            {(['branches', 'script'] as const).map((m) => (
+              <button
+                key={m}
+                className={`rail-mode${props.mode === m ? ' on' : ''}`}
+                onClick={() => props.setMode(props.mode === m ? 'convo' : m)}
+                aria-pressed={props.mode === m}
+                title={
+                  props.mode === m
+                    ? 'Back to the conversation'
+                    : m === 'branches'
+                      ? 'Edit the branches'
+                      : 'Write the script'
+                }
+              >
+                {m}
+              </button>
+            ))}
+          </span>
         </div>
         {idx?.scenes.map((s) => (
           <button

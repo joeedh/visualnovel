@@ -271,7 +271,7 @@ fifteen are undoable; one asks for confirmation.
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
 | `workspace.import` ✍ ✓         | —                                 | Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
 | `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
-| `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`, FLOOR `list`\|`graph`\|`timeline`. |
+| `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`\|`script`, FLOOR `list`\|`graph`\|`timeline`. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
 | `view.panelSize`               | `id`, `width` (80–1200)           | Saved width of a resizable panel; persisted, not an effect. |
 
@@ -293,8 +293,8 @@ reach it.
 `Room` stays a three-value union rather than growing into a mixed list of rooms and modes:
 an editor is a mode *within* a room, so it gets `view.mode(room, mode)` and a
 `{ type: 'mode' }` effect. Which modes a room *has* is a pairing of two props, which the spec
-layer can't express — `prop.oneOf` can only say "one of these five" — so `run` checks the pair
-and **refuses by throwing** (`STUDIO has no "graph" mode — try convo or branches.`), and the
+layer can't express — `prop.oneOf` can only say "one of these six" — so `run` checks the pair
+and **refuses by throwing** (`STUDIO has no "graph" mode — try convo or branches or script.`), and the
 `UiEffect` mode member is split per room so the renderer's handler is exhaustive over the right
 set. The `story.*` mutators are the same discipline one level down —
 each is one authorial act, so a drag in the branch editor or the coverage timeline is one

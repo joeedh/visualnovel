@@ -289,8 +289,13 @@
   color: var(--vermilion);
 }
 
-.rail-head .rail-mode {
+/* The SCENES head carries both editors as a pair, so the group holds the right edge. */
+.rail-head .rail-modes {
   margin-left: auto;
+  display: flex;
+  gap: 9px;
+}
+.rail-head .rail-mode {
   background: none;
   border: none;
   font-family: var(--disp);

@@ -47,7 +47,12 @@ type Drag =
   | { kind: 'splice'; scene: string; at: Point; over: string | null }
   | { kind: 'unwire'; edge: string; at: Point; armed: boolean };
 
-export function BranchEditor(props: { seed: (text: string) => void }): JSX.Element {
+export function BranchEditor(props: {
+  seed: (text: string) => void;
+  /** The room's scene selection, shared with the `script` mode. */
+  scene: string | null;
+  onScene: (sceneId: string) => void;
+}): JSX.Element {
   const { story, notice, setNotice, run } = useBranch();
   const [viewport, setViewport] = useState<Viewport>(IDENTITY);
   const [surface, setSurface] = useState<Size | null>(null);
@@ -173,6 +178,9 @@ export function BranchEditor(props: { seed: (text: string) => void }): JSX.Eleme
       if (!current) return;
 
       if (current.kind === 'press') {
+        // A click is a selection *and* a scoped agent prompt: both are reads, and the selection
+        // is what the `script` mode opens when the author switches to it.
+        state.props.onScene(current.scene);
         state.props.seed(`Revise scene ${current.scene} — `);
         return;
       }
@@ -257,7 +265,9 @@ export function BranchEditor(props: { seed: (text: string) => void }): JSX.Eleme
       <SceneCard
         scene={scene}
         entry={story?.start === scene.id}
-        selected={wiring?.scene === scene.id || wiring?.over === scene.id}
+        selected={
+          props.scene === scene.id || wiring?.scene === scene.id || wiring?.over === scene.id
+        }
       />
     );
   };
