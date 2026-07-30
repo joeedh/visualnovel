@@ -1,7 +1,8 @@
 # Scene editing commands
 
-Status: **partial** — the nine commands are registered and runnable and they carry the storyboard
-with them; what remains is the drag interaction, the agent tool, and the docs. The ticks in
+Status: **partial** — the nine commands are registered and runnable, they carry the storyboard with
+them, and the gesture is declared; what remains is the agent tool, the palette/CDP pass, and the
+docs. The ticks in
 [Steps](#steps) are the detail. Move four of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
@@ -190,10 +191,20 @@ correction, since a drift derived from comparing prompt hashes would compare two
      the same plan; `story.ts`'s `previewEdit` calls `previewSceneEdit` instead of re-deciding.
    - **Removed shot files join `removed`**, so `CommandOutput.written` (which is "paths this command
      changed") covers the storyboard as well as the chunk.
-5. **The `script.moveLine` interaction.** Declared in `src/shared/interactions.ts` beside the other
+5. ✔ **The `script.moveLine` interaction.** Declared in `src/shared/interactions.ts` beside the other
    four: carries a line id, `targets` judges every insertion point in the scene. It commits
    `story.moveLine`. Declaring it here rather than in a UI plan is the point of the interaction
-   layer — an agent can ask what a drag would do before any drag exists.
+   layer — an agent can ask what a drag would do before any drag exists. Landed as written, with
+   three decisions the sketch left open:
+   - **The targets are insertion points, not lines**, so there is one more of them than there are
+     lines: an exported `TOP` sentinel (`story.moveLine`'s empty `after`, which is not addressable),
+     then "after each line".
+   - **A drop that would reorder nothing is not a target.** `timeline.cover`'s rule, and it is
+     enforced by *running* `moveLine` and comparing the resulting id order with the current one
+     rather than by index arithmetic — so the omission cannot disagree with the op.
+   - **`script.*` takes no `scene` prop.** A line id names its own scene, so `stateFor` hands the
+     gesture `session.scriptState()` whole; passing a scene would be a second answer to the same
+     question. That is also what stops `scriptState()` being test-only.
 6. **Agent tools.** `edit_scene` in `@vn/authoring`'s registry, routed through the same `lineops`
    decisions, so `vnauthor` is not the one writer that goes around them. And **`write_file` must
    refuse `scenes/`** (`packages/authoring/src/tools.ts:408`) — it is a whole-file overwrite with

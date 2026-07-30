@@ -43,8 +43,8 @@ export const interactionTargets = define({
   props: {
     interaction: prop.oneOf(INTERACTION_IDS, 'which gesture to judge'),
     carried: prop.string(
-      'what is being carried — a scene id, an edge id for branch.unwire, or a ' +
-        '`<shotId>#start`/`#end` handle for timeline.cover',
+      'what is being carried — a scene id, an edge id for branch.unwire, a ' +
+        '`<shotId>#start`/`#end` handle for timeline.cover, or a line id for script.moveLine',
     ),
     scene: prop.string('which scene, for a gesture judged against one scene', { default: '' }),
   },
@@ -64,7 +64,12 @@ export const interactionTargets = define({
   },
 });
 
+/**
+ * The state a gesture's namespace is judged against. `script.*` takes no `scene` prop: a line id
+ * names its own scene, so passing one would be a second answer to the same question.
+ */
 async function stateFor(interaction: string, scene: string, host: CommandHost): Promise<unknown> {
+  if (interaction.startsWith('script.')) return host.session.scriptState();
   if (!interaction.startsWith('timeline.')) return branchState(await host.session.storyGraph());
   if (!scene) throw new Error(`"${interaction}" is judged against one scene — pass scene=<id>.`);
   const { sceneId, lines, shots } = await host.session.sceneCoverage(scene);

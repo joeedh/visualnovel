@@ -152,6 +152,7 @@ describe('the desktop registry', () => {
       'branch.connect',
       'branch.splice',
       'branch.unwire',
+      'script.moveLine',
       'timeline.cover',
     ]);
   });

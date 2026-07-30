@@ -307,13 +307,19 @@ would run) or refuse (with the sentence the command itself would have given). It
 path of its own — every gesture terminates in a registered command, and
 `InteractionRegistry.verify` fails the build if it names one that does not exist.
 
-The four gestures — the branch editor's `branch.connect`, `branch.splice`, `branch.unwire` and
-the coverage timeline's `timeline.cover` — are declared in
-`apps/desktop/src/shared/interactions.ts`, beside `branchops.ts`/`coverage.ts` and for the same
-reason: `BranchEditor` runs `branchSplice.targets` to draw its mid-drag verdict overlay, the
-`Timeline` evaluates `timelineCover.targets` once per grab for its notice, and
+The five gestures — the branch editor's `branch.connect`, `branch.splice` and `branch.unwire`, the
+coverage timeline's `timeline.cover`, and the script's `script.moveLine` — are declared in
+`apps/desktop/src/shared/interactions.ts`, beside `branchops.ts`/`coverage.ts`/`lineops.ts` and for
+the same reason: `BranchEditor` runs `branchSplice.targets` to draw its mid-drag verdict overlay,
+the `Timeline` evaluates `timelineCover.targets` once per grab for its notice, and
 `interaction.targets` runs the same call in main — so an author and an agent cannot be told
 different things about the same drop.
+
+`script.moveLine` has **no surface yet**, and that is the layer earning its keep rather than an
+omission: an agent can ask which insertion points in a scene would reorder anything, and get each
+one with the `story.moveLine` it would run, before any drag exists to make it. Its targets are
+insertion points, so there is one more of them than there are lines — `top`, then "after each
+line" — and a drop that would reorder nothing is left out rather than reported as an accept.
 
 ```sh
 node scripts/vn-cdp.mjs "interaction.targets(interaction='branch.splice' carried='arrival')"
@@ -332,9 +338,11 @@ Full design, including what deliberately is _not_ an interaction:
 one; `check` is the stack's own precondition query, reached through the host because a command
 cannot import the stack that runs it.
 
-Two state types now pass through `targets`, so `interaction.targets` builds the state the named
-gesture wants: a `timeline.*` gesture is judged against one scene and takes a `scene` prop,
-everything else gets the branch graph. The registry is untyped in its state
+Three state types now pass through `targets`, so `interaction.targets` builds the state the named
+gesture wants: a `timeline.*` gesture is judged against one scene and takes a `scene` prop, a
+`script.*` gesture gets every scene as its chunk parses (a line id names its own scene, so a `scene`
+prop would be a second answer to the same question), everything else gets the branch graph. The
+registry is untyped in its state
 (`InteractionRegistry`, `State = any`) for the same reason, and the carried value is **always a
 string** — an interaction with structure encodes it (`arrival__beat1#end`) and parses it in
 `targets`, refusing a token that names nothing against the `UNRESOLVED` target.

@@ -3,10 +3,10 @@
  * take it, and the command each drop commits.
  *
  * Every decision here delegates to the same rule module the matching `story.*` command runs in
- * main — `branchops` for the branch editor, `coverage` for the timeline. So the sentence shown
- * while a card hovers over a wire it cannot be spliced into is produced by the function that
- * would have refused the drop, and `interaction.targets` answers with that same sentence without
- * anything being attempted.
+ * main — `branchops` for the branch editor, `coverage` for the timeline, `lineops` for the script.
+ * So the sentence shown while a card hovers over a wire it cannot be spliced into is produced by
+ * the function that would have refused the drop, and `interaction.targets` answers with that same
+ * sentence without anything being attempted.
  *
  * It is in `shared/` rather than in the renderer because both halves need it: the surfaces run
  * `targets` during a gesture, and main runs it to answer an agent. See
@@ -17,6 +17,7 @@ import { removeChoice, setChoice, setNext, spliceScene } from './branchops.js';
 import type { BranchOp, SceneMap } from './branchops.js';
 import { resolveDrag, setCoverage, spansFor, type Edge } from './coverage.js';
 import type { CoverageLine, CoverageShot, PropValue, StoryEdge, StoryGraph } from './ipc.js';
+import { moveLine, sceneIdOf, type ScriptState } from './lineops.js';
 
 /** A new choice has to be called something before the author has named it. */
 export const NEW_CHOICE = 'New choice';
@@ -310,10 +311,81 @@ export const timelineCover = defineInteraction<CoverState>({
   },
 });
 
+// ---------------------------------------------------------------------------
+// The script's one gesture. No surface runs it yet — declaring it here is the point of the
+// layer: an agent can ask what a drag would do before the drag exists.
+// ---------------------------------------------------------------------------
+
+/**
+ * The insertion point above a scene's first line — `story.moveLine`'s empty `after`, which is
+ * not addressable as a target. Safe as a name because every line id is `<scene>:L<n>`.
+ */
+export const TOP = 'top';
+
+/**
+ * Dragging a line to another position in its own scene. The targets are *insertion points*, so
+ * there is one more of them than there are lines: {@link TOP}, then "after each line".
+ *
+ * Two kinds of non-target, and the distinction is the same one `timeline.cover` draws: a drop
+ * that would reorder nothing is left out of the list entirely rather than reported as an accept
+ * the author would learn nothing from, while a drop `lineops` refuses comes back as a refusal
+ * carrying its sentence. A line id from another scene is not a near-miss target — coverage cannot
+ * cross a scene boundary — so it is the whole gesture that is unresolved.
+ */
+export const scriptMoveLine = defineInteraction<ScriptState>({
+  id: 'script.moveLine',
+  title: 'Move a line within its scene',
+  description:
+    'Drag a line to another position in the same scene. Line ids do not change, so no shot ' +
+    'detaches — but a shot was made to depict its covered lines in order, so rendered art ' +
+    'covering the moved line drifts.',
+  grab: "a line's drag handle in the script column",
+  carries: 'the line being moved',
+  accepts: 'an insertion point in the same scene — `top`, or any other line to sit after',
+  commands: ['story.moveLine'],
+  cancellable: true,
+  targets: (state, carried) => {
+    const scene = state.scenes.get(sceneIdOf(carried));
+    if (!scene?.lines.some((l) => l.id === carried)) {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          reason: scene
+            ? `Scene "${scene.id}" has no line "${carried}".`
+            : `"${carried}" is not a line of any loaded scene.`,
+        },
+      ];
+    }
+
+    const order = scene.lines.map((l) => l.id).join('\n');
+    const verdicts: Verdict[] = [];
+    for (const target of [TOP, ...scene.lines.map((l) => l.id)]) {
+      if (target === carried) continue;
+      const props = { line: carried, after: target === TOP ? '' : target };
+      const op = moveLine(state, props);
+      if (!op.ok) {
+        verdicts.push({ target, accept: false, reason: op.error });
+        continue;
+      }
+      const after = op.writes.find((s) => s.id === scene.id);
+      if (after && after.lines.map((l) => l.id).join('\n') === order) continue;
+      verdicts.push({
+        target,
+        accept: true,
+        note: op.message,
+        invoke: { id: 'story.moveLine', props },
+      });
+    }
+    return verdicts;
+  },
+});
+
 export const INTERACTION_IDS = [
   'branch.connect',
   'branch.splice',
   'branch.unwire',
+  'script.moveLine',
   'timeline.cover',
 ] as const;
 
@@ -323,6 +395,6 @@ export const INTERACTION_IDS = [
  */
 export function createDesktopInteractions(): InteractionRegistry {
   const registry = new InteractionRegistry();
-  registry.registerAll([branchConnect, branchSplice, branchUnwire, timelineCover]);
+  registry.registerAll([branchConnect, branchSplice, branchUnwire, timelineCover, scriptMoveLine]);
   return registry;
 }

@@ -10,13 +10,18 @@ import {
   NEW_CHOICE,
   createDesktopInteractions,
   handleId,
+  scriptMoveLine,
   timelineCover,
+  TOP,
   type BranchState,
   type CoverState,
 } from '../interactions.js';
 import { UNRESOLVED } from '@vn/commands';
+import { splitScenes } from '@vn/model';
+import { parseFountain } from '@vn/parse';
 import type { SceneMap } from '../branchops.js';
 import type { CoverageShot, StoryEdge } from '../ipc.js';
+import type { ScriptState } from '../lineops.js';
 
 const scenes: SceneMap = new Map([
   ['greet', { id: 'greet', choices: [{ label: 'Say hello', goto: 'rooftop' }] }],
@@ -276,6 +281,63 @@ describe('timeline.cover', () => {
   });
 });
 
+describe('script.moveLine', () => {
+  /** Real ids from the real allocator, for the reason `lineops.test.ts` gives. */
+  const script: ScriptState = (() => {
+    const split = splitScenes(
+      parseFountain(`INT. CLASSROOM - EVENING
+
+[[scene: arrival]]
+
+Aiko slips into the seat by the window.
+
+AIKO
+You're late.
+
+REN
+The train stopped.
+`),
+    );
+    expect(split.diagnostics).toEqual([]);
+    return { scenes: new Map(split.scenes.map((s) => [s.id, s])), entry: 'arrival' };
+  })();
+
+  it('offers every insertion point that would reorder something, in scene order', () => {
+    // L2 sits second of three, so `top` and "after L3" move it; "after L1" is where it is.
+    const verdicts = scriptMoveLine.targets(script, 'arrival:L2');
+    expect(verdicts.map((v) => v.target)).toEqual([TOP, 'arrival:L3']);
+    expect(verdicts.every((v) => v.accept)).toBe(true);
+  });
+
+  it('drops the no-op at the top for a line already there', () => {
+    const verdicts = scriptMoveLine.targets(script, 'arrival:L1');
+    expect(verdicts.map((v) => v.target)).toEqual(['arrival:L2', 'arrival:L3']);
+  });
+
+  it('carries the moveLine the drop would run, with top as an empty after', () => {
+    const [top] = scriptMoveLine.targets(script, 'arrival:L3');
+    expect(top?.accept && top.invoke).toEqual({
+      id: 'story.moveLine',
+      props: { line: 'arrival:L3', after: '' },
+    });
+    expect(top?.accept && top.note).toBe('Moved arrival:L3 to the top in arrival.');
+  });
+
+  it('refuses the grab when the carried line is not in any loaded scene', () => {
+    expect(scriptMoveLine.targets(script, 'arrival:L9')).toEqual([
+      { target: UNRESOLVED, accept: false, reason: 'Scene "arrival" has no line "arrival:L9".' },
+    ]);
+    // A line of another scene is not a near-miss target: coverage cannot cross the boundary.
+    expect(scriptMoveLine.targets(script, 'rooftop:L1')).toEqual([
+      {
+        target: UNRESOLVED,
+        accept: false,
+        reason: '"rooftop:L1" is not a line of any loaded scene.',
+      },
+    ]);
+  });
+});
+
 describe('the registry', () => {
   it('holds every declared gesture, and each names only commands the app has', () => {
     const registry = createDesktopInteractions();
@@ -283,6 +345,7 @@ describe('the registry', () => {
       'branch.connect',
       'branch.splice',
       'branch.unwire',
+      'script.moveLine',
       'timeline.cover',
     ]);
   });

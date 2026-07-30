@@ -244,8 +244,8 @@ export const storySetLineText = define({
   id: 'story.setLineText',
   title: 'Retype a line',
   description:
-    "Replace one line's text. The line id survives, so every shot covering it still does — but " +
-    'a shot prompt is built from its covered prose, so accepted art of this line goes stale.',
+    "Replace one line's text. The line id survives, so every shot covering it still does — but a " +
+    'shot prompt never reads prose, so rendered art of this line drifts and will not re-render.',
   mutating: true,
   undoable: true,
   props: {
@@ -309,8 +309,8 @@ export const storyMoveLine = define({
   id: 'story.moveLine',
   title: 'Move a line',
   description:
-    'Reorder a line within its scene. Ids do not change, so nothing detaches — but a shot ' +
-    'prompt reads its covered lines in order, so art covering the moved line goes stale.',
+    'Reorder a line within its scene. Ids do not change, so nothing detaches — but a shot was ' +
+    'made to depict its covered lines in order, so art covering the moved line drifts.',
   mutating: true,
   undoable: true,
   props: {
