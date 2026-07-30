@@ -45,7 +45,7 @@ current one.
 | [`fountain-import-export.md`](fountain-import-export.md) | shipped | `vngen import` / `vngen screenplay`, the desktop pair, and the retirement of `screenplay/` as an input |
 | [`scene-editing-commands.md`](scene-editing-commands.md) | shipped | Nine `story.*` prose commands over `@vn/scriptedit`, `session.editScene`, the storyboard fallout, `script.moveLine`, and `vnauthor`'s `edit_scene` — one write path for prose, no UI |
 | [`scene-edit-package.md`](scene-edit-package.md) | shipped | The scene-edit rules and write path now live in `@vn/scriptedit` (pure barrel; `@vn/scriptedit/write` for the filesystem half), where `vnauthor` can reach them |
-| [`line-editing-in-floor.md`](line-editing-in-floor.md) | planned | Correcting a line in the coverage timeline; drift marking |
+| [`line-editing-in-floor.md`](line-editing-in-floor.md) | partial | Correcting a line in the coverage timeline; drift marking |
 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | planned | STUDIO's `script` mode — writing, splitting and merging scenes |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 
@@ -54,7 +54,7 @@ current one.
 Seven plans that together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **1 through 5 are shipped, 6 and 7 are not started.** One plan not
+one rests on. **1 through 5 are shipped, 6 is in progress, 7 is not started.** One plan not
 in the original seven has been carved out since:
 [`scene-edit-package.md`](scene-edit-package.md), a prerequisite for 5's agent tool.
 

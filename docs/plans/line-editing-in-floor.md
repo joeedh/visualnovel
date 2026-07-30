@@ -1,6 +1,6 @@
 # Line editing in FLOOR
 
-Status: **planned**. Move five of
+Status: **in progress** — step 1 is shipped; 2–7 are not. Move five of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first surface that can change prose. It consumes
 [`scene-editing-commands.md`](scene-editing-commands.md) and adds no write path of its own. Its
@@ -96,9 +96,20 @@ drag gestures follow.
 
 ## Steps
 
-1. **`editing.ts`, pure, beside `coverage.ts`.** Which row is editable, what the commit's props
+1. ✔ **`editing.ts`, pure, beside `coverage.ts`.** Which row is editable, what the commit's props
    are, and the two-modes rule (an open editor suppresses grabs, a live drag suppresses editing).
    Node tests, as with every other pure half in this room.
+
+   As shipped: `canEdit`/`canGrab` over a `StripMode`, `lineOf` (folds a pasted newline — a line
+   with a newline in it is not one line), `commitOf` (the `story.setLineText` invocation, or `null`
+   when the draft says what the line already says), and `noticeForCheck`. Three corrections to the
+   text above. **Every row is editable**, whatever its kind, so "which row" turned out to be no
+   function at all — the restriction that matters is the speaker, and that is an absence in the
+   `.tsx`. **"Entering one closes the other" is wrong**: closing an editor commits it, so grabbing a
+   handle would silently write a half-typed line and reload the strip under the gesture — the grab
+   is refused instead. And the **no-op** is decided locally while an *empty* line is not: one is
+   whether an act happened (an undo point that undoes nothing is worse than none), the other is
+   legality, which is `@vn/scriptedit`'s and would be a second copy of the rule here.
 2. **Undecomposed scenes render.** Script column only, no bracket columns, an explanatory note
    rather than a refusal. Ahead of the editor itself, since it is independently useful.
 3. **In-place editing in `Timeline.tsx`.** Click to edit, Enter/blur to commit, Escape to revert,
