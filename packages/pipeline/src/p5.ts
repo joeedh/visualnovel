@@ -57,6 +57,22 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
   return shots;
 }
 
+/**
+ * Resolve a decomposition's `characterId` to a character the model actually has.
+ *
+ * The planner needs an approved portrait per subject and skips a shot whose subject it cannot
+ * find — silently and forever, since the decomposition is persisted. So an invented id is not a
+ * cosmetic error: it is a shot that never renders and never says why. Ids are lowercase slugs, so
+ * matching case-insensitively resolves the common miss (prose says `Aiko`, the sheet is `aiko`)
+ * without guessing; anything else is dropped, like an invented line id.
+ */
+function resolveSubject(raw: string, model: ProjectModel): string | undefined {
+  if (model.characters.has(raw)) return raw;
+  const wanted = raw.toLowerCase();
+  for (const id of model.characters.keys()) if (id.toLowerCase() === wanted) return id;
+  return undefined;
+}
+
 const DECOMP_SYSTEM = [
   'You are a visual-novel storyboard artist. Decompose a scene into a short ordered list',
   'of illustrated shots. Each shot names its framing (wide|medium|close|establishing), a',
@@ -114,12 +130,11 @@ export async function decomposeScene(
       sceneId: scene.id,
       framing: s.framing,
       location: variants.includes(s.location) ? s.location : (variants[0] ?? 'day'),
-      subjects: s.subjects.map((sub) => ({
-        characterId: sub.characterId,
-        outfit: sub.outfit,
-        pose: sub.pose,
-        expression: sub.expression,
-      })),
+      subjects: s.subjects.flatMap((sub) => {
+        const characterId = resolveSubject(sub.characterId, model);
+        if (!characterId) return [];
+        return [{ characterId, outfit: sub.outfit, pose: sub.pose, expression: sub.expression }];
+      }),
       camera: s.camera,
       coversLines: s.coversLines.filter((id) => realLineIds.has(id)),
       status: 'pending' as const,
