@@ -1,6 +1,6 @@
 # Line editing in FLOOR
 
-Status: **in progress** — steps 1–4 are shipped; 5–7 are not. Move five of
+Status: **in progress** — steps 1–6 are shipped; the docs step (7) is not. Move five of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first surface that can change prose. It consumes
 [`scene-editing-commands.md`](scene-editing-commands.md) and adds no write path of its own. Its
@@ -171,11 +171,36 @@ drag gestures follow.
    - **A coverage edit does mark drift**, though `shotFallout.drifted` counts only retypes. One
      question is being asked — "does this frame illustrate the words it is against?" — and extending
      a bracket over another line makes the answer no, in the same sense a retype does.
-5. **Drift rendering.** The bracket state and its `--mono` label, distinct from `COVERS NOTHING`.
-6. **Verify on `examples/mySampleRepo`.** Edit a covered line, confirm the shot marks drifted, then
+5. ✔ **Drift rendering.** The bracket state and its `--mono` label, distinct from `COVERS NOTHING`.
+
+   As shipped: `timeline/drift.ts`'s `driftTag`/`staleCount` (pure, node-tested), a dashed sodium
+   bracket, and `OLD PROSE` in the head. Three choices the step left open:
+
+   - **The label is `OLD PROSE`, not `DRIFTED`.** "Drifted" is this repo's word for the state; the
+     author's word for the problem is that the frame illustrates old prose. The tooltip carries the
+     rest, including the part no glyph can: nothing re-renders on its own.
+   - **`unknown` renders, quietly.** A dim `PROSE?` with no border change. Rendering nothing would
+     claim the frame is fine, which is not what the record says — and every shot in an existing
+     project is `unknown` until it is next rendered, so a loud mark would light the strip up over
+     something the author cannot act on. It is also why the bar counts only `drifted`.
+   - **The mark goes on the head, never over the frame.** The image is still what the runner will
+     show. Dimming or striking it would say the art is invalid; the words moved.
+6. ✔ **Verify on `examples/mySampleRepo`.** Edit a covered line, confirm the shot marks drifted, then
    `vngen run` and confirm it **stays** drifted — nothing rehashed, so nothing re-rendered, and that
    is the whole reason the mark exists. Edit an uncovered line and confirm nothing marks. Undo the
    edit and confirm the mark clears, because the derivation is a comparison rather than a flag.
+
+   As shipped, over CDP against a copy of the sample workspace. Its committed shots predate
+   `proseHash`, so one was stamped by hand to stand for a shot rendered after the field existed —
+   which made the transitional state part of the test rather than a blind spot: `arrival__beat1`
+   read `current` (no tag) and `arrival__establishing` read `PROSE?` side by side. Retyping
+   `arrival:L1` in the strip turned beat1 dashed with `OLD PROSE`, the bar to
+   `2 shot(s) · 1 uncovered · 1 on old prose`, and left `establishing` alone; retyping the uncovered
+   `arrival:L3` marked nothing (`1 on old prose` still); `stack.undo` restored the prose and the mark
+   cleared itself, no flag to reset. **The rerun half is the jest test, not the manual pass**: a real
+   run needs a Gemini key and `--mock` writes nothing, so `pipeline/src/tests/drift.test.ts` drives
+   the real scheduler over mock providers and asserts the stamp survives a second run — the same
+   claim, and it stays asserted.
 7. **Docs.** This file's As-shipped section; [`../desktop-app.md`](../desktop-app.md)'s
    coverage-timeline section (which says "every edit here is free: nothing rehashes and no art is
    invalidated" — true, and from here on the incomplete half of the story, because the surface will

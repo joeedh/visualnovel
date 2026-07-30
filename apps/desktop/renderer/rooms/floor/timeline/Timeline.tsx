@@ -42,6 +42,7 @@ import {
   noticeForCheck,
   type Notice,
 } from './editing.js';
+import { staleCount } from './drift.js';
 import type { Verdict } from '@vn/commands';
 import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
 
@@ -86,6 +87,7 @@ export function Timeline(): JSX.Element {
   }, [sceneId]);
 
   const cov = useMemo(() => spansFor(data?.lines ?? [], data?.shots ?? []), [data]);
+  const stale = staleCount(data?.shots ?? []);
 
   // The drop drawn over the strip, never applied to it: re-deriving coverage per pointer move
   // re-lanes shots the author never touched. The strip changes on release, like a splice.
@@ -223,7 +225,7 @@ export function Timeline(): JSX.Element {
             ? 'no shots yet'
             : `${cov.spans.length} shot(s) · ${cov.gaps.length} uncovered${
                 cov.overlaps.length ? ` · ${cov.overlaps.length} overlapping` : ''
-              }`}
+              }${stale ? ` · ${stale} on old prose` : ''}`}
         </span>
         {notice && <span className={`tl-notice ${notice.tone}`}>{notice.text}</span>}
       </div>

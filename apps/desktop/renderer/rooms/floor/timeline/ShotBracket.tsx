@@ -1,4 +1,5 @@
 import type { Edge, Segment, ShotSpan } from '../../../../src/shared/coverage.js';
+import { driftTag } from './drift.js';
 
 /**
  * One contiguous run of a shot's coverage. A shot with holes draws several of these; only the
@@ -19,10 +20,11 @@ export function ShotBracket(props: {
   const { shot } = props.span;
   const src = shot.image ? `vnasset://${shot.image.hash}.${shot.image.ext}` : null;
   const cast = shot.subjects.length ? shot.subjects.join(' · ') : 'plate';
+  const stale = driftTag(shot.drift);
 
   return (
     <div
-      className={`tl-shot ${shot.status}${props.selected ? ' sel' : ''}${props.dragging ? ' dragging' : ''}`}
+      className={`tl-shot ${shot.status}${stale ? ` ${stale.state}` : ''}${props.selected ? ' sel' : ''}${props.dragging ? ' dragging' : ''}`}
       style={{
         gridColumn: props.span.lane + 2,
         gridRow: `${props.segment.from + 1} / ${props.segment.to + 2}`,
@@ -35,6 +37,13 @@ export function ShotBracket(props: {
           <div className="tl-head">
             <span className="fr">{shot.framing}</span>
             <span className="cast">{cast}</span>
+            {/* The frame is still what the runner will show, so the mark goes on the head rather
+                than over the image — this says the words moved, not that the art is invalid. */}
+            {stale && (
+              <span className={`drift ${stale.state}`} title={stale.title}>
+                {stale.label}
+              </span>
+            )}
           </div>
           {src ? (
             <img className="tl-frame" src={src} alt={shot.id} draggable={false} />

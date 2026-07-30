@@ -242,6 +242,14 @@
 .tl-shot.needs_human {
   border-color: rgba(244, 162, 76, 0.5);
 }
+/* Old prose: dashed, because nothing is wrong with this frame — the words under it moved. Sodium,
+   since the change was the author's, and dashed rather than solid so it is not read as `sel`. */
+.tl-shot.drifted {
+  border-style: dashed;
+  border-color: rgba(244, 162, 76, 0.65);
+}
+/* `unknown` gets no border at all: it is a fact about the record, not about the art, and every
+   shot rendered before the hash existed would otherwise light the whole strip up. */
 .tl-head {
   display: flex;
   align-items: baseline;
@@ -258,6 +266,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Pushed to the far end of the head so a long cast list shortens rather than pushing it out. */
+.tl-head .drift {
+  margin-left: auto;
+  flex: none;
+  letter-spacing: 0.08em;
+  cursor: help;
+}
+.tl-head .drift.drifted {
+  color: var(--sodium);
+}
+.tl-head .drift.unknown {
+  color: var(--mist-dim);
 }
 .tl-frame {
   width: 100%;
