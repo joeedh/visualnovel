@@ -79,3 +79,16 @@ export async function writeSceneChunk(
   await writeFileAtomic(file, next);
   return true;
 }
+
+/**
+ * Delete one chunk — a scene that stopped existing. Returns whether there was a file to remove;
+ * an absent one is not an error, because the caller's decision was made against a load that may
+ * be a moment old. Nothing else in the tree is touched: `work/shots/<id>.json` outlives the scene
+ * until its owner cleans it up.
+ */
+export async function deleteSceneChunk(paths: ProjectPaths, id: string): Promise<boolean> {
+  const file = paths.sceneFile(id);
+  if (!(await exists(file))) return false;
+  await fs.rm(file);
+  return true;
+}

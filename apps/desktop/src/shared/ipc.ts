@@ -262,6 +262,22 @@ export interface BranchEditResult {
 }
 
 /**
+ * Outcome of a `story.*` prose edit. Separate from `BranchEditResult` because a prose edit can
+ * change the scene *set* — a split adds a chunk, a delete or a merge removes one — so what
+ * happened is not fully described by the files that were written.
+ */
+export interface SceneEditResult {
+  ok: boolean;
+  message: string;
+  /** Workspace-relative paths written — empty when the edit was refused or changed nothing. */
+  written: string[];
+  /** Workspace-relative chunks deleted. */
+  removed: string[];
+  /** The rebuilt graph; absent on refusal. Wiring moves with a split or a merge. */
+  graph?: StoryGraph;
+}
+
+/**
  * Channels invoked by the renderer and answered by main (request → response).
  * Keep the key as the literal channel string; the value types the (args) → result.
  */

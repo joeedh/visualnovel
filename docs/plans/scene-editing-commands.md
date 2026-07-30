@@ -1,7 +1,7 @@
 # Scene editing commands
 
-Status: **partial** — step 1 (the pure decisions) has landed; the ticks in
-[Steps](#steps) are the detail. Move four of
+Status: **partial** — the pure decisions and the write path have landed; nothing is reachable as a
+command yet. The ticks in [Steps](#steps) are the detail. Move four of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
 [`scene-chunk-files.md`](scene-chunk-files.md) for the file layout and
@@ -125,10 +125,28 @@ it, not to add a "don't rehash" flag that would let the manifest lie about what 
    (`[old, new]` — coverage *can* follow, which is what makes `splitScene`'s shot carrying
    possible) and `retyped` (ids whose prompt contribution changed, so the art is stale). The
    decisions are pure over scenes, so the shot counts they feed are step 4's to read.
-2. **`session.editScene(sceneId, decide)`.** Load → decide → serialize through `sceneToFountain` →
+2. ✔ **`session.editScene(sceneId, decide)`.** Load → decide → serialize through `sceneToFountain` →
    re-parse and compare → write one chunk atomically → reload. The re-parse is the same safety net
    `applySceneBranchEdit` has, and it is cheaper here: one scene, and the serializer's round-trip
-   property test already covers the general case.
+   property test already covers the general case. Landed as `editScene(decide)` with **no `sceneId`
+   argument** — a line id names its own scene and four of the nine ops span several, so the scene
+   set is the unit, not one scene. Three things it does that the sketch did not say:
+   - **The state is parsed from the chunk files, not taken from the model.** `buildModel` rewrites
+     `line.speaker` from the cue an author typed (`AIKO`) to the character id it resolves to
+     (`aiko`), so re-serializing a model scene would rewrite every cue in the file. `LoadedProject`
+     now carries the pre-model `Scene` beside each source's bytes, and `session.scriptState()`
+     exposes exactly what the decisions (and step 3's checks) see.
+   - **The safety net compares the bytes, not the scenes.** `write → read → write` has to be a
+     fixpoint, which is the same claim as `parse(write(scene)) ≡ scene` without needing a deep
+     equality over `Scene`. Every scene in the op is proved before any file is touched.
+   - **Front-matter is spliced, not re-serialized** (the `editBranches` rule), so a chunk's YAML
+     comments survive a prose edit — but the *body* is written whole, so **the first prose edit to a
+     hand-authored chunk canonicalizes it**, `[[line:]]` marks included. For a chunk `vngen import`
+     wrote, that is a no-op, and a genuine no-op is reported as writing nothing.
+
+   `deleteSceneChunk` is new in `@vn/store` (a scene that stopped existing), and it deliberately
+   leaves `work/shots/<id>.json` behind — cleaning that up is step 4's, with the rest of the
+   coverage consequences.
 3. **The nine commands.** Thin, in `apps/desktop/src/main/commands/story.ts`, each `check` running
    the same `lineops` decision against a freshly read scene and discarding it.
 4. **Coverage consequences.** `splitScene`'s shot carrying, and the detachment counts in every

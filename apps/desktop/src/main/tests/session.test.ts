@@ -8,6 +8,14 @@ import { join, sep } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
+import {
+  deleteScene,
+  insertLine,
+  mergeScene,
+  newScene,
+  setLineText,
+  splitScene,
+} from '../../shared/lineops.js';
 
 const deps: SessionDeps = {
   emitEvent: () => {},
@@ -355,6 +363,176 @@ describe('WorkspaceSession — scenes authored as chunks', () => {
     expect(result).toMatchObject({ ok: true, written: ['scenes/greet.md'] });
     expect(result.message).toContain('scene "greet"');
     expect(await p.read('scenes/arrival.md')).not.toContain('[[line:');
+  });
+});
+
+/**
+ * `editScene`: the one write path for prose. Every case here is about the *file* — which chunk the
+ * edit landed in, what it still says, and what stopped existing — because the decision itself is
+ * already pinned by `shared/tests/lineops.test.ts`.
+ */
+describe('WorkspaceSession — prose editing', () => {
+  const ROOFTOP = 'scenes/rooftop.md';
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeEach(async () => {
+    p = await makeProject({ title: 'Prose', script: SCRIPTS.branching });
+    session = sessionFor(p);
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  const state = () => session.scriptState();
+
+  it('retypes one line, in one chunk, keeping the cue the author typed', async () => {
+    const arrival = await p.read('scenes/arrival.md');
+    const result = await session.editScene((s) =>
+      setLineText(s, { line: 'rooftop:L2', text: 'I got held up.' }),
+    );
+
+    expect(result).toMatchObject({ ok: true, written: [ROOFTOP], removed: [] });
+    const text = await p.read(ROOFTOP);
+    expect(text).toContain('I got held up.');
+    expect(text).not.toContain('Sorry.');
+    expect(await p.read('scenes/arrival.md')).toBe(arrival);
+    // The state is parsed from the chunk, not from the model, so `AIKO` is still a cue and not
+    // the `aiko` id `buildModel` resolves it to — which would come back out as `@aiko`.
+    expect(text).toContain('\nAIKO\n');
+    expect(text).not.toContain('@aiko');
+  });
+
+  it('keeps hand-written front-matter, and marks the ids it re-serialized', async () => {
+    const before = await p.read(ROOFTOP);
+    await p.write(
+      ROOFTOP,
+      before
+        .replace('---\n', '---\n# hand-written\n')
+        .replace(/^\[\[(?:line|nextline):.*\]\]\n/gm, ''),
+    );
+
+    await session.editScene((s) => setLineText(s, { line: 'rooftop:L1', text: 'The city hums.' }));
+
+    const text = await p.read(ROOFTOP);
+    expect(text).toContain('# hand-written');
+    expect(text).toContain('scene: rooftop');
+    // Re-serializing writes the marks: the first prose edit canonicalizes a hand-authored chunk.
+    expect(text).toContain('[[line: L1]]');
+    expect(text).toContain('[[nextline: 4]]');
+  });
+
+  it('allocates a fresh id for an inserted line, holding the others still', async () => {
+    const before = (await session.sceneCoverage('rooftop')).lines.map((l) => l.id);
+    const result = await session.editScene((s) =>
+      insertLine(s, {
+        scene: 'rooftop',
+        after: 'rooftop:L1',
+        kind: 'dialogue',
+        speaker: 'HARUKI',
+        text: 'You came.',
+      }),
+    );
+
+    expect(result).toMatchObject({ ok: true, written: [ROOFTOP] });
+    const after = (await session.sceneCoverage('rooftop')).lines;
+    expect(after.map((l) => l.id)).toEqual([
+      'rooftop:L1',
+      'rooftop:L4',
+      'rooftop:L2',
+      'rooftop:L3',
+    ]);
+    expect(before).not.toContain('rooftop:L4');
+    // Speakers on the way back out are resolved ids — the model's view, not the file's.
+    expect(after[1]).toMatchObject({ speaker: 'haruki', text: 'You came.' });
+  });
+
+  it('reports an edit that changes nothing as writing nothing', async () => {
+    const before = await p.read(ROOFTOP);
+    const result = await session.editScene((s) =>
+      setLineText(s, { line: 'rooftop:L2', text: 'Sorry.' }),
+    );
+
+    expect(result).toMatchObject({ ok: true, written: [], removed: [] });
+    expect(result.message).toContain('nothing written');
+    expect(await p.read(ROOFTOP)).toBe(before);
+  });
+
+  it('refuses an edit without touching a file', async () => {
+    const before = await p.read(ROOFTOP);
+    const result = await session.editScene((s) => deleteScene(s, { scene: 'rooftop' }));
+
+    expect(result).toMatchObject({ ok: false, written: [], removed: [] });
+    expect(result.message).toContain('arrival (next)');
+    expect(await p.read(ROOFTOP)).toBe(before);
+  });
+
+  it('splits a scene into a new chunk, and the branch out goes with the tail', async () => {
+    const result = await session.editScene((s) =>
+      splitScene(s, { scene: 'rooftop', at: 'rooftop:L3', into: 'reply' }),
+    );
+
+    expect(result).toMatchObject({ ok: true, written: [ROOFTOP, 'scenes/reply.md'], removed: [] });
+    const tail = await p.read('scenes/reply.md');
+    expect(tail).toContain('scene: reply');
+    expect(tail).toContain("Most people don't come up here.");
+    // Local ids survive the move, which is what lets a shot follow its lines across the split.
+    expect(tail).toContain('[[line: L3]]');
+    expect(await p.read(ROOFTOP)).not.toContain('[[choice:');
+
+    const edges = result.graph?.edges ?? [];
+    expect(edges.find((e) => e.id === 'rooftop#next')).toMatchObject({ to: 'reply' });
+    expect(edges.find((e) => e.id === 'reply#choice:0')).toMatchObject({ to: 'good_end' });
+    expect(result.graph?.scenes.every((sc) => sc.reachable)).toBe(true);
+  });
+
+  it('merges a linear continuation, renumbering the lines it absorbs', async () => {
+    const result = await session.editScene((s) =>
+      mergeScene(s, { scene: 'rooftop', into: 'arrival' }),
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      written: ['scenes/arrival.md'],
+      removed: [ROOFTOP],
+    });
+    expect(result.message).toContain('stops covering it');
+
+    const merged = await session.sceneCoverage('arrival');
+    expect(merged.lines.map((l) => l.id)).toEqual([
+      'arrival:L1',
+      'arrival:L2',
+      'arrival:L3',
+      'arrival:L4',
+      'arrival:L5',
+    ]);
+    expect(result.graph?.scenes.map((sc) => sc.id)).toEqual(['arrival', 'bad_end', 'good_end']);
+    expect(result.graph?.edges.find((e) => e.id === 'arrival#choice:0')).toMatchObject({
+      to: 'good_end',
+    });
+  });
+
+  it('creates an empty chunk nothing points at, and can delete it again', async () => {
+    const created = await session.editScene((s) =>
+      newScene(s, { scene: 'attic', heading: 'INT. ATTIC - NIGHT' }),
+    );
+    expect(created).toMatchObject({ ok: true, written: ['scenes/attic.md'] });
+    expect(await p.read('scenes/attic.md')).toContain('INT. ATTIC - NIGHT');
+    expect(created.graph?.scenes.find((sc) => sc.id === 'attic')).toMatchObject({
+      reachable: false,
+    });
+
+    const removed = await session.editScene((s) => deleteScene(s, { scene: 'attic' }));
+    expect(removed).toMatchObject({ ok: true, written: [], removed: ['scenes/attic.md'] });
+    expect(removed.graph?.scenes.map((sc) => sc.id)).not.toContain('attic');
+  });
+
+  it('hands the checks the scenes as their files parse', async () => {
+    const s = await state();
+    expect([...s.scenes.keys()]).toEqual(['arrival', 'bad_end', 'good_end', 'rooftop']);
+    expect(s.entry).toBe('arrival');
+    expect(s.scenes.get('rooftop')?.lines[1]).toMatchObject({ speaker: 'AIKO', text: 'Sorry.' });
   });
 });
 
