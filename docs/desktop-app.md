@@ -11,6 +11,7 @@
 - [Running it](#running-it)
 - [Renderer layout](#renderer-layout)
 - [Graph canvas and the branch editor (STUDIO)](#graph-canvas-and-the-branch-editor-studio)
+- [Script column (STUDIO)](#script-column-studio)
 - [Task DAG view (FLOOR)](#task-dag-view-floor)
 - [Coverage timeline (FLOOR)](#coverage-timeline-floor)
 - [The runner (PLAY)](#the-runner-play)
@@ -53,15 +54,17 @@ renderer/
                         catalog.ts (pure) — the palette's filtering and field coercion
   graph/                Canvas.tsx + pure layout · edges · hit · viewport (see below)
   rooms/studio/         Studio.tsx  Rail.tsx  Convo.tsx  PlanCard.tsx
+                        diagnostics.ts (pure) — which diagnostics are a way into a scene
        …/branch/        BranchEditor.tsx  SceneCard.tsx  useBranch.ts
-                        graph.ts · grab.ts · tween.ts (pure)
+                        graph.ts · grab.ts · tween.ts · compose.ts (pure)
+       …/script/        ScriptEditor.tsx · script.ts (pure)
   rooms/floor/          Floor.tsx   TaskBoard.tsx  Inspector.tsx  AttemptLoop.tsx
                         TaskGraphView.tsx · attempts.ts · taskGraph.ts (pure) · GateOverlay.tsx
        …/timeline/      Timeline.tsx  ShotBracket.tsx · coverage.ts (pure)
   rooms/play/           Runner.tsx
   ui/                   Resizable.tsx — shared by two rooms, so it belongs to neither
   styles/               index.css @imports tokens · shell · studio · floor · play · graph ·
-                        branch · taskgraph · timeline
+                        branch · taskgraph · timeline · script
 ```
 
 - **`App.tsx` owns only the shell**: `room`, `paletteOpen`, the workspace index/status, and the
@@ -126,6 +129,52 @@ Plan: [`plans/story-branch-editor.md`](plans/story-branch-editor.md).
   makes them the size they look.
 - **Relayout is animated (`tween.ts`)** because a splice re-ranks the graph: the card does not
   stay where it was dropped, and without the transition that reads as breakage.
+- **Which scenes exist is decided here** (`compose.ts`): a scene made from nothing, and a scene
+  removed. A new scene lands deliberately *unwired* — the canvas is where you then wire it — and it
+  has a second home in the script column ("a scene after this one", which wires it too). Delete has
+  only this one home: offering it from inside the prose of the scene being deleted is an invitation
+  to lose work. Both are confirmed against `stack.check` on hover, so the refusal (`arrival is the
+  entry scene — point start: in project.yaml elsewhere first.`) arrives before the click.
+
+## Script column (STUDIO)
+
+STUDIO's third mode, `script` (`view.mode(room=studio mode=script)`): one scene's lines down the
+column, typed. It shares the scene selection with `branches` — the two are views of one scene, so
+picking a card and switching mode lands on it, and `Studio.tsx` owns the selection for that reason.
+Plan and as-shipped notes:
+[`plans/script-composition-in-studio.md`](plans/script-composition-in-studio.md).
+
+- **The model is a list of lines, not a buffer.** There is no document being diffed on save: a
+  keystroke either belongs to the open row's textarea or names one command, and `script.ts` is the
+  pure function that decides which. Enter commits the row (and, from the end of a line, opens a
+  composer below — a paragraph is one `setLineText` plus one `insertLine` per line, each its own
+  undo point); Backspace at the start of an *emptied* line is `story.deleteLine`; Escape discards.
+- **A composer row is not a line yet.** `story.insertLine` refuses empty text — an empty line has
+  no lossless Fountain form — so Enter cannot create a line and let the author type into it.
+  Committing the composer *is* the insert, and the id it minted is found by position in the
+  reloaded scene (`insertedAfter`), never read back out of a message.
+- **Attribution is a cue, not an id.** The cue picker writes `AIKO`, because a prose edit is decided
+  against the scene as its file parses, where speakers are still cues — writing the resolved id back
+  would rewrite `AIKO` as `@aiko`. The cast offered is the *project's*, since attributing a line is
+  how a character enters a scene; an unresolved cue is offered verbatim so picking cannot silently
+  discard one typed by hand.
+- **Split, merge and new-scene are confirmed, not committed on click.** Each moves lines across a
+  scene boundary or creates a file, and only the command can state the cost — so the strip holds the
+  invocation, shows `stack.check`'s sentence (the detachment count a split would cause, the refusal a
+  merge would give), and commits on a second gesture. The editable fields in the strip are the
+  invocation's props. A new scene is **two** commands (`newScene` then `setNext`), because undoing
+  the wire should not also delete the prose.
+- **Affordances are the rules, not guesses at them.** A split is offered at every line but the
+  first, since `splitScene` refuses a split that would empty the head; merge is offered only where
+  the scene's single `next` is the boundary at the bottom of the column; "continue to a new scene"
+  only from a leaf, because putting a scene *between* two others is the branch editor's splice.
+  A line drag is judged per frame against `script.moveLine.targets` over a one-scene `ScriptState`
+  built from the coverage — the same rule the command runs, so the mid-drag verdict is the verdict.
+- **The rail's diagnostics are a way in.** A diagnostic whose `where` names a scene the workspace
+  lists renders as a button that opens that scene in this column; `diagnostics.ts` decides which
+  ones qualify, because `where` is an *entity* id and can name a scene that does not exist. Both
+  editors call the shell's `onEdit` after a write so the group is current — deliberately an index
+  re-read rather than a `revision` bump, which would remount the room mid-gesture.
 
 ## Task DAG view (FLOOR)
 

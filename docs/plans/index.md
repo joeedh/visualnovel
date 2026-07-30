@@ -10,10 +10,9 @@ Status values:
 - **partial** — some of it is built and the plan still describes unbuilt work.
 - **planned** — nothing built yet.
 
-Two batches carry extra working detail of their own:
-[`desktop-editors-tracking.md`](desktop-editors-tracking.md) for the desktop editors (all
-shipped), and the [scene authoring](#scene-authoring-the-current-batch) section below for the
-current one.
+Two batches carry extra working detail of their own, and both are now complete:
+[`desktop-editors-tracking.md`](desktop-editors-tracking.md) for the desktop editors, and the
+[scene authoring](#scene-authoring) section below.
 
 <!-- toc -->
 
@@ -46,15 +45,15 @@ current one.
 | [`scene-editing-commands.md`](scene-editing-commands.md) | shipped | Nine `story.*` prose commands over `@vn/scriptedit`, `session.editScene`, the storyboard fallout, `script.moveLine`, and `vnauthor`'s `edit_scene` — one write path for prose, no UI |
 | [`scene-edit-package.md`](scene-edit-package.md) | shipped | The scene-edit rules and write path now live in `@vn/scriptedit` (pure barrel; `@vn/scriptedit/write` for the filesystem half), where `vnauthor` can reach them |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | shipped | Retyping a line in the coverage timeline, and `Shot.proseHash` → the drift mark on the shot it produced |
-| [`script-composition-in-studio.md`](script-composition-in-studio.md) | partial | STUDIO's `script` mode — writing, splitting and merging scenes (steps 1–8 shipped: the mode, the shared scene selection, a column that writes, inserts, deletes, reorders and attributes lines, the confirmed acts that change which scenes exist, clickable diagnostics, and the end-to-end pass on `examples/mySampleRepo`; only step 9's doc sweep is left) |
+| [`script-composition-in-studio.md`](script-composition-in-studio.md) | shipped | STUDIO's `script` mode — a column that writes, inserts, deletes, reorders and attributes lines, the confirmed acts that change which scenes exist, clickable diagnostics, and the end-to-end pass: a scene written in the app, generated, watched in PLAY |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 
-## Scene authoring (the current batch)
+## Scene authoring
 
 Seven plans that together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **1 through 6 are shipped; 7 is under way.** One plan not
+one rests on. **All seven are shipped.** One plan not
 in the original seven has been carved out since:
 [`scene-edit-package.md`](scene-edit-package.md), a prerequisite for 5's agent tool.
 
@@ -67,7 +66,7 @@ in the original seven has been carved out since:
 | 5 | [`scene-editing-commands.md`](scene-editing-commands.md) ✔ | 1, 3 | The only write path for prose. No UI; verified through the palette and CDP |
 | — | [`scene-edit-package.md`](scene-edit-package.md) ✔ | 5 | Not one of the seven. 5's rules lived in the desktop app, and a package cannot import an app — so the agent tool needed them moved first |
 | 6 | [`line-editing-in-floor.md`](line-editing-in-floor.md) ✔ | 5 | Correct a line where you can see the frame it produced |
-| 7 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | 5 | Write, reorder, split and merge — everything that changes which lines exist |
+| 7 | [`script-composition-in-studio.md`](script-composition-in-studio.md) ✔ | 5 | Write, reorder, split and merge — everything that changes which lines exist |
 
 6 and 7 are siblings and independent of each other; the division is one sentence — **FLOOR edits
 a line, STUDIO edits the script.**
@@ -99,8 +98,9 @@ Recorded here because each was settled once and every later plan assumes it.
 - **A scene chunk's front-matter is its identity and nothing else** — `scene: <id>`, matching the
   filename, on a closed schema. Heading, location, synopsis, `choices`, `next` and line ids stay
   `[[…]]` markers and Fountain elements in the body, because `splitScenes` already reads them there
-  and `sceneToFountain` already writes them back losslessly. **Marked for revisit once 4–7 have
-  shipped**, against working editors rather than ahead of them —
+  and `sceneToFountain` already writes them back losslessly. It was marked for revisit once 4–7 had
+  shipped, against working editors rather than ahead of them, so **that revisit is now due** —
+  nothing built since has wanted a field there, which is itself the evidence.
   [`scene-chunk-files.md`](scene-chunk-files.md#the-shape) records the argument on both sides.
 
 ### Blockers found while planning
@@ -124,13 +124,15 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
   name one shape. Not `loadProjectModel` in `@vn/store` as planned — store may not import `model`.
 - ~~`ProjectPaths.sceneFile` / `writeSceneFile` are dead, and they hold the name authored chunks
   want~~ → **fixed** in plan 3 step 2: both deleted, so the name is free for authored chunks.
-- `vngen export` and `story.export` already mean the playable, so Fountain output needs a different
-  name → plan 4 uses `vngen screenplay` / `story.screenplay`.
+- ~~`vngen export` and `story.export` already mean the playable, so Fountain output needs a
+  different name~~ → **fixed** in plan 4: the Fountain projection is `vngen screenplay` /
+  `story.screenplay`, and the two artifacts never share a name.
 - ~~`Timeline.tsx:156` refuses to draw an undecomposed scene, which is exactly the scene you want to
   write before paying for art~~ → **fixed** in plan 6 step 2: the script column renders on its own
   with a note, and the vermilion gap gutter waits for a decomposition rather than marking every line.
-- `write_file` (`packages/authoring/src/tools.ts:408`) is an unvalidated whole-file overwrite that
-  would happily write a chunk with duplicate line ids → plan 5 step 6 makes it refuse `scenes/`.
+- ~~`write_file` (`packages/authoring/src/tools.ts:408`) is an unvalidated whole-file overwrite
+  that would happily write a chunk with duplicate line ids~~ → **fixed** in plan 5 step 6:
+  `write_file` refuses `scenes/` outright and its description names `edit_scene` instead.
 
 ### Checklist
 
@@ -140,7 +142,7 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
 - [x] 4 — Fountain import and export
 - [x] 5 — scene editing commands
 - [x] 6 — line editing in FLOOR
-- [ ] 7 — script composition in STUDIO
+- [x] 7 — script composition in STUDIO
 
 ## Keeping this file true
 

@@ -1,10 +1,10 @@
 # Script composition in STUDIO
 
-Status: **partial** — steps 1–8 are shipped and carry their own as-shipped notes below, so the
-column already writes, reorders and attributes prose, both surfaces change which scenes exist, the
-rail's diagnostics are a way into one, and the end-to-end pass — a scene written in the app,
-generated, watched in PLAY — has been done against `examples/mySampleRepo`; only step 9's doc
-sweep is left. Move six of
+Status: **shipped** — all nine steps, each carrying its own as-shipped notes below, plus the
+[As shipped](#as-shipped) summary. The column writes, reorders and attributes prose, both surfaces
+change which scenes exist, the rail's diagnostics are a way into one, and the end-to-end pass — a
+scene written in the app, generated, watched in PLAY — has been done against
+`examples/mySampleRepo`. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -358,9 +358,41 @@ a few lines once the shared selection exists, and it turns the rail from a repor
 
    `examples/mySampleRepo` is gitignored, so none of this run is in the repo — the step reads as
    though the verified project were committed, and it is not.
-9. **Docs.** This file's As-shipped section; `CLAUDE.md`'s STUDIO and renderer-layout sections and
+9. ✔ **Docs.** This file's As-shipped section; `CLAUDE.md`'s STUDIO and renderer-layout sections and
    the `view.mode` mode list; `docs/command-system.md`'s mode table; `docs/desktopAppState.md` if
    the selection persists.
+
+   As shipped, plus one page the step did not name: `docs/desktop-app.md` had **no script-column
+   section at all** — a whole mode of a room, undocumented — so it got one, beside the branch
+   editor's, along with the renderer tree (`…/script/`, `diagnostics.ts`, `compose.ts`,
+   `script.css`) and a bullet on the canvas's create/delete. `docs/command-system.md`'s mode table
+   and its `script.moveLine` paragraph were already current — steps 1 and 4 wrote them as they went,
+   which is the intent. `docs/desktopAppState.md` needed the opposite of what the step guessed: the
+   selection does **not** persist (it is `Studio.tsx` state and dies with the room), and what
+   changed is `index`, which is no longer read once — it is re-read after any edit a room makes.
+
+## As shipped
+
+Every step above carries its own notes; this is what a reader needs before touching the column.
+
+- **STUDIO's third mode is `script`**, sharing the scene selection with `branches` because the two
+  are views of one scene. `Studio.tsx` owns the selection; `openScene` sets it and the mode together.
+- **A list of lines, not a buffer.** `script.ts` is the pure decision — what a keystroke means, what
+  a drop means, which structural acts are offered, what an act's commands are — and `ScriptEditor.tsx`
+  runs whatever it names. Every write is a `story.*` command, so the record says what the author did.
+- **The rule the plan got wrong**, and the one worth remembering: `story.insertLine` refuses empty
+  text, so Enter cannot create a line and let the author type into it. The composer row is not a
+  line yet; committing it is the insert, and the id it minted is found by *position* in the reloaded
+  scene.
+- **Structural acts confirm.** Split, merge and new-scene show `stack.check`'s own sentence — the
+  detachment count, the refusal — and commit on a second gesture. A new scene is two commands.
+- **Affordances are the commands' rules**, asked rather than guessed: no split at the first line, no
+  merge without a single clean `next`, no "continue" from a non-leaf, and a drag judged per frame by
+  `script.moveLine.targets` over a one-scene state built from the coverage.
+- **Nothing here invalidates art.** Retyping a covered line rehashes nothing (`buildShotPrompt`
+  reads neither `coversLines` nor line text), so the frame goes on illustrating words that are gone;
+  drift is *reported* in FLOOR by plan 6's `proseHash`/`driftOf`. A split or merge carries a shot's
+  coverage across rather than stranding it, and says how much it detached.
 
 ## Not in this plan
 

@@ -240,9 +240,9 @@ the existing `Scene`/`Shot`/`Asset` types.
 
 - Playable format and its contracts: [`docs/playable-format.md`](docs/playable-format.md)
   (plan: [`docs/plans/runner.md`](docs/plans/runner.md)).
-- The app — renderer layout, the shared graph canvas, the STUDIO branch editor, FLOOR's task
-  DAG and coverage timeline, the PLAY runner, the session store, and the seeded workspace:
-  [`docs/desktop-app.md`](docs/desktop-app.md).
+- The app — renderer layout, the shared graph canvas, the STUDIO branch editor and script column,
+  FLOOR's task DAG and coverage timeline, the PLAY runner, the session store, and the seeded
+  workspace: [`docs/desktop-app.md`](docs/desktop-app.md).
 - What persists where: [`docs/desktopAppState.md`](docs/desktopAppState.md).
 
 Rules worth knowing before touching the renderer:
@@ -257,6 +257,10 @@ Rules worth knowing before touching the renderer:
   `--signal` (cool) the machine/pipeline side. Don't add new accent hues.
 - **A mid-gesture verdict must be the verdict that would happen** — the drag overlays call the
   same pure rule the command runs. Layout changes on commit, never during a gesture.
+- **The script column edits a list of lines, not a buffer.** A keystroke either belongs to the open
+  row or names one command; an act that moves lines across a scene boundary (split, merge, new
+  scene) shows `stack.check`'s sentence and commits on a second gesture. No document is diffed on
+  save, and there is no second write path for prose.
 
 Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (mock mode by
 default; `VN_PROJECT=<dir>` overrides the workspace). Live dev loop:

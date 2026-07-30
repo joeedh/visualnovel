@@ -117,7 +117,7 @@ not per workspace** — a rail width is about the window, not the project.
 | `feed` | `FeedItem[]` (conversation history) | Session only |
 | `dboxLine` | Current agent message | Session only |
 | `status` | Pipeline task list + gate pending | Session only (reloaded via `pipeline:status` IPC) |
-| `index` | Workspace index (characters, scenes, locations) | Session only (loaded once via `workspace:index` IPC) |
+| `index` | Workspace index (characters, scenes, locations, diagnostics) | Session only (via `workspace:index` IPC: on mount, and re-read after any edit a room made itself) |
 | `undo` | `UndoState` — `canUndo`/`canRedo` plus the two tooltip labels | Session only (pushed on the `command:ui` `undo` effect) |
 | `revision` | Counter bumped by an undo/redo or a palette-run mutating command; used as each room's React `key` so it remounts | Session only |
 | `notice` | Transient banner — a command's result message or its refusal; self-clears after 4s | Session only |
@@ -132,6 +132,11 @@ registry — see [`command-system.md`](command-system.md).
 
 Panel widths are the one exception to the ephemerality: they live in `usePanelWidth` rather
 than in either file, and are persisted (category 2 above).
+
+`index` is re-read rather than remounted. The STUDIO rail's diagnostics are clickable — a
+diagnostic that names a scene opens it — so they have to be current after an edit the room made
+itself, and `App.refreshIndex` (passed to both STUDIO editors as `onEdit`) re-reads the index
+*without* bumping `revision`: a remount would throw away the editor's own state mid-gesture.
 
 **Lifecycle:**
 - Loaded once on mount (useEffect): `workspace:index` → `setIndex`, `pipeline:status` → `setStatus`
