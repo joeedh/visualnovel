@@ -46,7 +46,7 @@ current one.
 | [`scene-editing-commands.md`](scene-editing-commands.md) | shipped | Nine `story.*` prose commands over `@vn/scriptedit`, `session.editScene`, the storyboard fallout, `script.moveLine`, and `vnauthor`'s `edit_scene` — one write path for prose, no UI |
 | [`scene-edit-package.md`](scene-edit-package.md) | shipped | The scene-edit rules and write path now live in `@vn/scriptedit` (pure barrel; `@vn/scriptedit/write` for the filesystem half), where `vnauthor` can reach them |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | shipped | Retyping a line in the coverage timeline, and `Shot.proseHash` → the drift mark on the shot it produced |
-| [`script-composition-in-studio.md`](script-composition-in-studio.md) | partial | STUDIO's `script` mode — writing, splitting and merging scenes (steps 1–7 shipped: the mode, the shared scene selection, a column that writes, inserts, deletes, reorders and attributes lines, the confirmed acts that change which scenes exist, and clickable diagnostics) |
+| [`script-composition-in-studio.md`](script-composition-in-studio.md) | partial | STUDIO's `script` mode — writing, splitting and merging scenes (steps 1–8 shipped: the mode, the shared scene selection, a column that writes, inserts, deletes, reorders and attributes lines, the confirmed acts that change which scenes exist, clickable diagnostics, and the end-to-end pass on `examples/mySampleRepo`; only step 9's doc sweep is left) |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 
 ## Scene authoring (the current batch)

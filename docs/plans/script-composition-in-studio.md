@@ -1,8 +1,10 @@
 # Script composition in STUDIO
 
-Status: **partial** — steps 1–7 are shipped and carry their own as-shipped notes below, so the
-column already writes, reorders and attributes prose, both surfaces change which scenes exist, and
-the rail's diagnostics are a way into one; steps 8–9 are not built. Move six of
+Status: **partial** — steps 1–8 are shipped and carry their own as-shipped notes below, so the
+column already writes, reorders and attributes prose, both surfaces change which scenes exist, the
+rail's diagnostics are a way into one, and the end-to-end pass — a scene written in the app,
+generated, watched in PLAY — has been done against `examples/mySampleRepo`; only step 9's doc
+sweep is left. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -318,9 +320,44 @@ a few lines once the shared selection exists, and it turns the rail from a repor
    `dangling_line_id` row was a button titled `Open ending in the script column`; clicking it from
    `convo` switched to `script` on that scene, and committing one line edit — which rewrites the
    chunk from `Scene.lines` and so drops the orphan marker — emptied the group without a reload.
-8. **Verify on `examples/mySampleRepo`.** Write a scene from nothing, wire it, run the pipeline
+8. ✔ **Verify on `examples/mySampleRepo`.** Write a scene from nothing, wire it, run the pipeline
    past the gate, confirm it renders in PLAY. That end-to-end pass — authored in the app, generated,
    watched — is the thing this whole direction was for, and it is the acceptance test.
+
+   It passes. `epilogue` was written on the branch canvas, given two lines in the script column,
+   wired from the palette (`✓ending continues to epilogue.`), decomposed by Claude into two shots,
+   rendered by `gemini-2.5-flash-image`, and watched in PLAY: `arrival > greet > rooftop > ending >
+   epilogue`, each of the two new lines over the frame ordered for it. Five things the step was
+   silent about, in the order they bit:
+
+   - **The step cost money and could not have been done otherwise.** `pipeline.run` wires one
+     `mock` prop to both "use mock providers" and `dryRun`, and `App.runPipeline` hardcodes
+     `{ mock: !isLive || true }` — so the app has no offline generate at all, and the acceptance
+     test necessarily spends real API budget. The run was authorized before it happened.
+   - **A seeded workspace cannot see the repo's shared `keys/`.** `findRepoRoot` stops at
+     `.git`, and `seedWorkspace` gives `examples/mySampleRepo` its own repo, so `secretDirsFor`
+     never walks up to the monorepo's `keys/`. A live run from the app needs `$GEMINI_API_KEY` in
+     the environment or a `keys/` inside the workspace.
+   - **The wire had to come from the palette.** A `<select>`-free canvas drag is impractical to
+     drive over CDP. The palette filters by command *name*, so a whole DSL invocation matches
+     nothing — type `setNext`, pick the row, fill the props.
+   - **A failed task does not record why, and nothing replans it.** The first `shot_image` for
+     `epilogue__S1` threw inside `image.generate` (transient; the identical task succeeded on the
+     next run). `Task` has no `error` field, and `scheduler` passes only `{ output }` to
+     `setStatus`, so `tasks.jsonl` kept `status: "failed"` with `attempts: []` and no reason —
+     the message survives only on the logger, which the app's stdout had swallowed. Worse, the
+     `failed` node is terminal: the next run planned nothing and the CLI still printed "Gate
+     cleared — all reachable shots generated." Not fixed here; both belong to the scheduler.
+   - **An invented character id made a shot permanently unrenderable** — fixed, in `da45b5d`.
+     `epilogue`'s second line is narration, so nobody is cast by dialogue and the P5 prompt said
+     "Characters present: none"; Claude read the prose and returned `characterId: "Aiko"` against
+     a sheet that is `aiko`. `coversLines` and `location` were validated against the scene but
+     `characterId` was not, and the planner skips a shot whose subject it cannot resolve — so the
+     shot sat unrendered behind a cleared gate and a clean `status`. `decomposeScene` now resolves
+     the id case-insensitively (ids are lowercase slugs) and drops one that still does not exist.
+
+   `examples/mySampleRepo` is gitignored, so none of this run is in the repo — the step reads as
+   though the verified project were committed, and it is not.
 9. **Docs.** This file's As-shipped section; `CLAUDE.md`'s STUDIO and renderer-layout sections and
    the `view.mode` mode list; `docs/command-system.md`'s mode table; `docs/desktopAppState.md` if
    the selection persists.
