@@ -1,6 +1,7 @@
 # Scene editing commands
 
-Status: **planned**. Move four of
+Status: **partial** — step 1 (the pure decisions) has landed; the ticks in
+[Steps](#steps) are the detail. Move four of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
 [`scene-chunk-files.md`](scene-chunk-files.md) for the file layout and
@@ -49,7 +50,7 @@ that would happen.
 | `story.newScene` | create a chunk from nothing |
 | `story.deleteScene` | remove one, refusing while anything points at it |
 | `story.splitScene` | one scene becomes two at a line boundary |
-| `story.mergeScene` | two become one |
+| `story.mergeScene` | two become one — only across a linear continuation, and only when nothing else points at the scene being absorbed |
 
 All nine are `mutating`, all nine are `undoable` (a scene chunk is a document, the same class as
 the screenplay the rewires already snapshot), and all nine declare a `check`. Not
@@ -112,9 +113,18 @@ it, not to add a "don't rehash" flag that would let the manifest lie about what 
 
 ## Steps
 
-1. **`src/shared/lineops.ts`.** The nine pure decisions over a `Scene`, returning the same
+1. ✔ **`src/shared/lineops.ts`.** The nine pure decisions over a `Scene`, returning the same
    `{ ok, message } | { ok: false, error }` shape `branchops.ts` uses. Node tests, no I/O. This is
-   the bulk of the plan and it is all pure.
+   the bulk of the plan and it is all pure. Landed as written, with three shapes the plan sketch
+   did not name. **The nine decisions all take one `ScriptState`** (`scenes` keyed by id, plus the
+   `entry` a delete has to refuse) rather than a single `Scene`, because four of them are about the
+   scene *set* — and they return the scenes to **write whole** plus the chunks to **remove**, not a
+   patch. **A line id names its own scene**, so `setLineText`/`deleteLine`/`moveLine`/`setSpeaker`
+   take no scene prop and cannot be addressed inconsistently. And the coverage consequence is
+   three separate lists rather than one count: `retired` (ids that stop existing), `moved`
+   (`[old, new]` — coverage *can* follow, which is what makes `splitScene`'s shot carrying
+   possible) and `retyped` (ids whose prompt contribution changed, so the art is stale). The
+   decisions are pure over scenes, so the shot counts they feed are step 4's to read.
 2. **`session.editScene(sceneId, decide)`.** Load → decide → serialize through `sceneToFountain` →
    re-parse and compare → write one chunk atomically → reload. The re-parse is the same safety net
    `applySceneBranchEdit` has, and it is cheaper here: one scene, and the serializer's round-trip
