@@ -255,7 +255,8 @@ in `app.whenReady()`, before the asset protocol or any session exists.
   prose byte-exactly.
 - **An existing directory is opened untouched.** Never re-copied, never overwritten: it is the
   user's working copy. Resetting it is `rm -rf examples/mySampleRepo`, which needs no code and
-  cannot misfire. A copy seeded before the template became one file per scene therefore stays
-  on the `screenplay/` form, which still loads; delete it to get `scenes/<id>.md`.
+  cannot misfire. A copy seeded before the template became one file per scene therefore still
+  holds the `screenplay/` form, which no longer loads: run `workspace.import` on it, or delete
+  the directory to get the current template.
 - Packaged builds have no repo-relative `examples/`, so the scratch workspace falls back to
   `app.getPath('userData')/mySampleRepo`; a missing template then fails by name.

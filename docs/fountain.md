@@ -25,6 +25,7 @@
 - [A small complete example](#a-small-complete-example)
 - [A note on branching (project-specific)](#a-note-on-branching-project-specific)
 - [Where the Fountain lives (project-specific)](#where-the-fountain-lives-project-specific)
+- [One Fountain file, in and out (project-specific)](#one-fountain-file-in-and-out-project-specific)
 - [What the model retains (project-specific)](#what-the-model-retains-project-specific)
 - [Further reading](#further-reading)
 
@@ -392,9 +393,69 @@ The rules that make that body predictable:
 A directory has no document order, so the entry scene is named by `start:` in `project.yaml`.
 
 The older form — one `screenplay/*.fountain` holding every scene, separated by `[[scene: id]]`
-markers, entry inferred from document order — still loads, and a project holding **both** forms
-is a hard error. [`plans/fountain-import-export.md`](plans/fountain-import-export.md) is what
-retires it, and what will make a single Fountain file an export target rather than an input.
+markers, entry inferred from document order — is **no longer read**. A project holding one and no
+`scenes/` reports an error naming `vngen import`; one left beside chunks is a warning telling you
+to delete it or rename it `<name>.fountain.imported`, which the reader does not look at. A single
+Fountain file is now an export target rather than an input — see below.
+
+## One Fountain file, in and out (project-specific)
+
+Two commands, two directions, and only one of them is a migration:
+
+```sh
+vngen import     [dir]                       # screenplay/*.fountain → scenes/<id>.md, once
+vngen screenplay [dir] [-o <file>|-] [--clean]   # scenes → one Fountain file, any time
+```
+
+**`vngen import` runs once.** It refuses over an existing `scenes/`, converts every scene, writes
+`start:` into `project.yaml`, and moves the original to `<name>.fountain.imported` **last** — while
+it is still a `.fountain` the project reports it on every load, so the rename is what finishes the
+job. Scene ids are carried through unchanged (generated art binds to them), the whole conversion is
+round-trip-checked in memory before any file is written, and anything the model cannot keep —
+sections, page breaks, dual dialogue, the title page — is a warning naming what will be absent
+rather than a silent drop. Every line gets a `[[line:]]` mark under a `[[nextline:]]` allocator, so
+the file you first open is the file the app will keep.
+
+**`vngen screenplay` is a projection**, in the same sense `vngen export` is — no claim that
+re-importing its output reproduces the project, and no relation to `story.play.json`, which is what
+`export` writes. What comes out:
+
+```fountain
+INT. CLASSROOM - DAY
+
+[[scene: arrival]]
+[[next: rooftop]]
+[[nextline: 3]]
+
+[[line: L1]]
+Aiko sets her bag down by the window.
+
+AIKO
+[[line: L2]]
+It's quieter than I expected.
+
+EXT. ROOFTOP - EVENING
+
+[[scene: rooftop]]
+[[nextline: 2]]
+
+[[line: L1]]
+The city hums somewhere below.
+```
+
+- **Order is the graph's, not the directory's**: breadth-first from `start:`, `next` before
+  `choices`. Anything the entry cannot reach is appended under a `# Unreachable` section rather
+  than dropped.
+- **Markers are kept by default**, which is what makes the output a valid input to `vngen import`.
+  `--clean` drops all of them for a human or a screenwriting tool, and that output is explicitly
+  one-way: the branch structure went with the markers.
+- **It writes where it is told** — `<dir>/screenplay.fountain` by default, `-o` to override, `-`
+  for stdout — and it refuses an `-o` inside `screenplay/`, where the project would report the
+  file on every load from now on.
+
+`examples/sample` is the shipped worked example: it was converted by running `vngen import` on it,
+and a test proves it is a fixed point — export it, import that, and the committed files come back
+byte for byte.
 
 ## What the model retains (project-specific)
 

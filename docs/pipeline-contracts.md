@@ -50,17 +50,21 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   Fountain screenplay including its own heading. The id comes from the filename and front-matter
   together and the body cannot override it, so a file cannot be renamed by editing its prose. A
   directory has no document order, which is why the entry scene is `start:` in `project.yaml`
-  rather than whichever file sorts first. The older `screenplay/*.fountain` form still loads —
-  entry inferred from document order — and a project holding **both** is refused outright rather
-  than resolved, because the failure it prevents is a model built from one file and edits written
-  to the other. `loadInputs` (`packages/store/src/worktree.ts`) is the single place that decides;
+  rather than whichever file sorts first. The older `screenplay/*.fountain` form is **not read at
+  all**: the failure the old both-present error prevented — a model built from one file and edits
+  written to the other — cannot happen once nothing builds scenes from the screenplay, so a project
+  holding one and no `scenes/` gets an error naming `vngen import`, and one left beside chunks gets
+  a warning to delete or rename it. `loadInputs` (`packages/store/src/worktree.ts`) is the single
+  place that decides — including *which* file is that leftover, via the exported `findScreenplay`
+  the importer calls too, so the file the reader complains about is the file the importer converts;
   every writer takes its target list from the same `LoadedInputs` the model was built from, so
   nothing gets a second opinion. Two further rules follow, and both were failures first: a patch
   spanning several chunks is **computed in full before anything is written** (a splice refused on
   the third file must leave the first two exactly as they were), and front-matter is spliced
   byte-exactly via `splitFrontMatter` rather than re-serialized, because re-serializing YAML
-  silently drops the author's comments. Plan:
-  [`plans/scene-chunk-files.md`](plans/scene-chunk-files.md); the format itself is in
+  silently drops the author's comments. Plans:
+  [`plans/scene-chunk-files.md`](plans/scene-chunk-files.md) and
+  [`plans/fountain-import-export.md`](plans/fountain-import-export.md); the format itself is in
   [`fountain.md`](fountain.md#where-the-fountain-lives-project-specific).
 - **Shot decompositions are persisted, not re-derived.** P5 is an LLM step, so re-running it
   would produce different shot ids — hence different task hashes — and regenerate art for no

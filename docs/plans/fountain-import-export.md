@@ -1,10 +1,11 @@
 # Fountain import and export
 
-Status: **planned**. Move three of
+Status: **shipped** — every step is ticked and [As shipped](#as-shipped) records what changed on
+the way. Move three of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 It depends on [`lossless-scene-serialization.md`](lossless-scene-serialization.md) for the writer
-and [`scene-chunk-files.md`](scene-chunk-files.md) for the target, and it is what lets that plan's
-`screenplay/` fallback finally be retired.
+and [`scene-chunk-files.md`](scene-chunk-files.md) for the target, and it is what retired that
+plan's `screenplay/` fallback.
 
 <!-- toc -->
 
@@ -196,9 +197,38 @@ re-importing its output reproduces the project.
      made scene order alphabetical. Same nodes, same edges, one line moved.
    - The sample's `AICONTEXT.md` gained the rule the marks imply — art binds to line ids, so take
      the next one the allocator names and never renumber.
-8. **Docs.** This file's As-shipped section; `CLAUDE.md`'s CLI table and project-layout section;
+8. ✔ **Docs.** This file's As-shipped section; `CLAUDE.md`'s CLI table and project-layout section;
    `docs/vn-generator-report.md` §9.1; `docs/fountain.md` gains "what an exported screenplay looks
-   like"; `docs/command-system.md`'s command table and counts.
+   like"; `docs/command-system.md`'s command table and counts. Landed as written, plus four pages
+   that named the fallback in passing and would otherwise have been the only remaining claim that
+   it loads: `pipeline-contracts.md`'s scene contract, `desktopAppState.md`'s worktree tree,
+   `desktop-app.md`'s seeded-workspace note, and `authoring-agent-report.md`'s as-shipped aside.
+   `docs/command-system.md` was already done in step 5.
+
+## As shipped
+
+Everything above is built. What a reader should take from it that the steps do not say on their own:
+
+- **The two names stuck, and they had to.** `export`/`story.export` mean the playable;
+  `screenplay`/`story.screenplay` mean Fountain. Both surfaces say which artifact they write in
+  their own help text, because "export" alone is now ambiguous in a way no amount of docs fixes.
+- **Import is one direction, once, and it proves itself before it writes.** The whole conversion
+  runs in memory and is compared back through `canonicalScenes` — the same safety net
+  `branchpatch.ts` uses for a one-line edit — so a divergence aborts having touched nothing. Scene
+  ids are carried through unchanged, which is why generated art survives the migration, and the
+  `.fountain` is moved aside rather than deleted, **last**, because that rename is what stops the
+  project reporting it.
+- **Retirement was subtraction, not a flag.** Nothing reads `screenplay/`; `findScreenplay` only
+  *reports* it. The old both-present hard error became a warning in the process, because a file that
+  builds no scenes cannot contend with the ones that do — and that softening is what let the
+  importer finish without a window where the project fails to load.
+- **The escape hatch is tested by the template.** `examples/sample` was converted by running the
+  importer, and it is a fixed point of the pair: export it, import that, and the committed bytes
+  come back. That is the claim that makes the chunk format a working format rather than lock-in, and
+  it now fails the build if either projection drifts.
+- **What the export cannot say, it says out loud.** `--clean` output is one-way and the help says
+  so; sections, page breaks, dual dialogue and the title page are warnings naming what will be
+  absent, not silent drops.
 
 ## Not in this plan
 

@@ -208,8 +208,8 @@ class WorkspaceSession {
 ├── scenes/
 │   ├── <id>.md               # One scene: `scene: <id>` front-matter + one-scene Fountain body
 │   └── …
-├── screenplay/               # LEGACY, still loads: the whole branching script in one file
-│   ├── *.fountain            # (a project holding both `scenes/` and this is an error)
+├── screenplay/               # RETIRED, never read: the whole branching script in one file
+│   ├── *.fountain            # (reported on every load — run `vngen import` / `workspace.import`)
 │   └── …
 ├── vngen/
 │   ├── build/
@@ -237,8 +237,8 @@ class WorkspaceSession {
 
 Paths are not spelled out anywhere but `packages/store/src/paths.ts`; that module is the
 single authority and this tree is a reading of it. Which scene files a project actually has is
-decided in one place too — `loadInputs` (`packages/store/src/worktree.ts`), which prefers
-`scenes/` and falls back to `screenplay/`.
+decided in one place too — `loadInputs` (`packages/store/src/worktree.ts`), which reads `scenes/`
+and only *reports* a leftover `screenplay/`.
 
 **What's committed:**
 - `project.yaml`, characters, locations, scenes
