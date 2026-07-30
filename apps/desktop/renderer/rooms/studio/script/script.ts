@@ -174,6 +174,44 @@ export function insertedAfter(lines: readonly CoverageLine[], after: string): Co
   return at < 0 ? null : (lines[at + 1] ?? null);
 }
 
+/**
+ * The row the editor moves to once an act's commands have run, and the draft it opens with —
+ * resolved against the *reloaded* lines, because that is the only place the id an insert just
+ * minted can be found. `null` closes the editor.
+ */
+export function nextEditing(
+  lines: readonly CoverageLine[],
+  from: Editing,
+  then: Continue,
+): { editing: Editing; draft: string } | null {
+  if (then.open === 'none') return null;
+  if (then.open === 'line') {
+    const line = lines.find((l) => l.id === then.line);
+    return line ? { editing: { row: 'line', line }, draft: line.text } : null;
+  }
+  if (then.after !== COMPOSED) return { editing: { row: 'new', after: then.after }, draft: '' };
+  const made = insertedAfter(lines, from.row === 'new' ? from.after : '');
+  return made ? { editing: { row: 'new', after: made.id }, draft: '' } : null;
+}
+
+/** One rendered row: a line of the scene, or the composer sitting after `after`. */
+export type ScriptRow = { line: CoverageLine } | { compose: string };
+
+/**
+ * The column's rows, with the composer spliced in where it belongs. A composer whose `after` names
+ * no line in the scene is dropped rather than floated to the end — the line it was anchored to is
+ * gone, and a row that has forgotten where it is would insert somewhere the author did not point.
+ */
+export function scriptRows(lines: readonly CoverageLine[], editing: Editing | null): ScriptRow[] {
+  const after = editing?.row === 'new' ? editing.after : null;
+  const rows: ScriptRow[] = after === '' ? [{ compose: '' }] : [];
+  for (const line of lines) {
+    rows.push({ line });
+    if (after === line.id) rows.push({ compose: line.id });
+  }
+  return rows;
+}
+
 // ---------------------------------------------------------------------------
 // Dragging a line: where a drop lands, and the state `script.moveLine` is judged against.
 // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 # Script composition in STUDIO
 
-Status: **partial** — steps 1 and 2 are shipped and carry their own as-shipped notes below; steps
-3–9 are not built. Move six of
+Status: **partial** — steps 1–3 are shipped and carry their own as-shipped notes below, so the
+column already writes prose; steps 4–9 are not built. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -155,9 +155,36 @@ a few lines once the shared selection exists, and it turns the rail from a repor
      A move reads one scene's line order and nothing else, so the line-id allocator is left absent
      rather than invented — a test drives the real interaction through it to prove the state is
      enough.
-3. **In-place editing and Enter/Backspace.** `setLineText`, `insertLine`, `deleteLine`. The FLOOR
+3. ✔ **In-place editing and Enter/Backspace.** `setLineText`, `insertLine`, `deleteLine`. The FLOOR
    editor's affordance, reused rather than reimplemented — if the two drift, the pure half moves to
    `src/shared/`.
+
+   As shipped: `nextEditing` and `scriptRows` finish the pure side — where the editor goes after an
+   act, and where a composer row sits among the lines — and `ScriptEditor.tsx` gained one `act`
+   function that runs a `keyAct` result's steps in order, re-reads the scene, and opens whatever the
+   act said comes next. Four things the step did not say:
+
+   - **A command's round trip is a frame the column has to survive.** `act` closes the editor,
+     awaits `command:exec` (~800 ms against a real project), re-reads `story:coverage`, and only
+     then reopens — so `nextEditing` is given the *reloaded* lines rather than the ones the keystroke
+     saw, which is the only way a composed line's freshly-minted id can be found at all.
+   - **A refusal reopens the row it came from** with the draft intact and the command's own sentence
+     beside it. That makes `setLineText`'s "a line cannot be empty" reachable rather than
+     theoretical — and Backspace on an emptied line is the gesture that means it, so the refusal is
+     never what an author gets for clearing a line.
+   - **Only `preview` notices are cleared as you type.** An `ok` or `refused` sentence describes
+     something that happened and stays until the next act; a preview describes a draft, and a draft
+     that no longer says anything has nothing to preview.
+   - **Enter needs a line to be pressed at the end of, so an empty scene needs a way in.** Two
+     buttons the step did not mention: `.sc-start` ("_arrival_ has no lines yet — write the first
+     one") when the scene is empty, and a `+ line` after the last line. Both open a composer;
+     neither is a second write path.
+
+   Verified live over CDP against a scratch copy of `examples/mySampleRepo`: retyped a line, Enter at
+   its end opened a composer, composing inserted `arrival:L4` (dialogue, cue inherited from the AIKO
+   block above) between L2 and L3, Escape discarded the trailing composer, and Backspace on an
+   emptied L4 deleted it and reopened L2. The file came back to three lines with `nextline: 5` — the
+   consumed id is not recycled.
 4. **`story.moveLine` by drag**, through `script.moveLine`, with the same accept/refuse overlay the
    branch editor and the timeline draw from their interactions.
 5. **`story.setSpeaker`.** The one edit that changes a line's `kind`, and therefore the exporter's

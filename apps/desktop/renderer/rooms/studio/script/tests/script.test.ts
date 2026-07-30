@@ -9,7 +9,9 @@ import {
   localLineId,
   mergeTarget,
   moveStateOf,
+  nextEditing,
   proposeSceneId,
+  scriptRows,
   splitBoundaries,
   type Draft,
 } from '../script.js';
@@ -193,6 +195,56 @@ describe('insertedAfter', () => {
     expect(insertedAfter(lines, 'a:L4')).toBeNull();
     expect(insertedAfter(lines, 'a:L9')).toBeNull();
     expect(insertedAfter([], '')).toBeNull();
+  });
+});
+
+describe('nextEditing', () => {
+  it('opens a composer under the line an insert just minted, found by position', () => {
+    const grown = [...lines];
+    grown.splice(2, 0, { id: 'a:L7', kind: 'dialogue', speaker: 'aiko', text: 'You came.' });
+    expect(
+      nextEditing(grown, { row: 'new', after: 'a:L2' }, { open: 'compose', after: COMPOSED }),
+    ).toEqual({ editing: { row: 'new', after: 'a:L7' }, draft: '' });
+  });
+
+  it('reopens a line with its own text as the draft', () => {
+    expect(
+      nextEditing(
+        lines,
+        { row: 'line', line: lines[1] as CoverageLine },
+        {
+          open: 'line',
+          line: 'a:L1',
+        },
+      ),
+    ).toEqual({ editing: { row: 'line', line: lines[0] }, draft: 'The gate stands open.' });
+  });
+
+  it('closes rather than guess when the line it would open is gone', () => {
+    const from = { row: 'line', line: lines[1] as CoverageLine } as const;
+    expect(nextEditing(lines, from, { open: 'line', line: 'a:L9' })).toBeNull();
+    expect(nextEditing(lines, from, { open: 'none' })).toBeNull();
+  });
+});
+
+describe('scriptRows', () => {
+  it('splices the composer in where it was opened', () => {
+    expect(scriptRows(lines, { row: 'new', after: 'a:L2' })[2]).toEqual({ compose: 'a:L2' });
+    expect(scriptRows(lines, { row: 'new', after: '' })[0]).toEqual({ compose: '' });
+    expect(scriptRows(lines, { row: 'new', after: '' })).toHaveLength(lines.length + 1);
+  });
+
+  it('shows only lines while a line is being retyped, or nothing is', () => {
+    expect(scriptRows(lines, { row: 'line', line: lines[1] as CoverageLine })).toHaveLength(
+      lines.length,
+    );
+    expect(scriptRows(lines, null)).toHaveLength(lines.length);
+  });
+
+  // The line it was anchored to is gone, and a row that has forgotten where it is would insert
+  // somewhere the author never pointed.
+  it('drops a composer anchored to a line that is no longer there', () => {
+    expect(scriptRows(lines, { row: 'new', after: 'a:L9' })).toHaveLength(lines.length);
   });
 });
 

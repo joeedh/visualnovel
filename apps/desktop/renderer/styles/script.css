@@ -43,6 +43,23 @@
   font-size: 11px;
 }
 
+/* The bar's right edge is where a command speaks: what an edit will cost, or what it did. */
+.sc-notice {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist);
+}
+.sc-notice.preview {
+  color: var(--signal);
+}
+.sc-notice.ok {
+  color: var(--jade);
+}
+.sc-notice.refused {
+  color: var(--vermilion);
+}
+
 .sc-note {
   padding: 18px;
   font-family: var(--mono);
@@ -118,6 +135,76 @@
 .sc-line.centered .text {
   text-align: center;
   text-transform: uppercase;
+}
+
+/* ---- editing a line, and composing one ---- */
+
+/* The open row is sodium: the authored side is what is moving. Same mark as FLOOR's strip. */
+.sc-line:has(.sc-grow) {
+  background: rgba(244, 162, 76, 0.06);
+}
+.sc-line .text {
+  cursor: text;
+}
+/* The invisible `::after` sizer carries the same string as the textarea, so the row is exactly as
+   tall as the text without anything being measured. */
+.sc-grow {
+  display: grid;
+}
+.sc-grow::after {
+  content: attr(data-value) ' ';
+  visibility: hidden;
+}
+.sc-grow > textarea,
+.sc-grow::after {
+  grid-area: 1 / 1 / 2 / 2;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+.sc-grow > textarea {
+  resize: none;
+  overflow: hidden;
+  background: none;
+  color: inherit;
+  caret-color: var(--sodium);
+  outline: none;
+}
+/* A row that is not a line yet: no id to show, because no id has been allocated. */
+.sc-line.new .lid {
+  color: var(--sodium);
+}
+.sc-line.new .text {
+  font-family: var(--prose);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--paper);
+}
+
+/* Somewhere to start when Enter has no line to be pressed at the end of. */
+.sc-start,
+.sc-add {
+  display: block;
+  background: none;
+  border: 1px dashed var(--ink-line);
+  border-radius: var(--r-chrome);
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.sc-add {
+  margin: 12px 0 0 44px;
+}
+.sc-start:hover,
+.sc-add:hover {
+  color: var(--sodium);
+  border-color: var(--sodium);
 }
 
 /* A project with no scenes has nothing to open, so it says where a scene comes from. */
