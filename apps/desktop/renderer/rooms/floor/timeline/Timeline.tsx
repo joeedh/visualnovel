@@ -145,24 +145,32 @@ export function Timeline(): JSX.Element {
           ))}
         </select>
         <span className="ct">
-          {cov.spans.length} shot(s) · {cov.gaps.length} uncovered
-          {cov.overlaps.length ? ` · ${cov.overlaps.length} overlapping` : ''}
+          {/* An undecomposed scene has no shots and therefore no uncovered lines worth
+              counting — every line is uncovered, which is a pre-run state and not a gap. */}
+          {data && !data.decomposed
+            ? 'no shots yet'
+            : `${cov.spans.length} shot(s) · ${cov.gaps.length} uncovered${
+                cov.overlaps.length ? ` · ${cov.overlaps.length} overlapping` : ''
+              }`}
         </span>
         {notice && <span className={`tl-notice ${notice.tone}`}>{notice.text}</span>}
       </div>
 
       {!data ? (
         <div className="insp-empty tl-empty">Loading…</div>
-      ) : !data.decomposed ? (
-        <div className="insp-empty tl-empty">
-          {data.sceneId} has no decomposition yet — run the pipeline past the gate.
-        </div>
       ) : (
         <div className="tl-body">
+          {/* Not a refusal to draw anything: correcting a line is exactly what an author wants
+              to do *before* paying for art, so the script renders with no bracket columns. */}
+          {!data.decomposed && (
+            <div className="tl-note">
+              {data.sceneId} has no shots yet — they appear once a run gets past the character gate.
+            </div>
+          )}
           <div
             className={`tl-grid${drag ? ' dragging' : ''}`}
             style={{
-              gridTemplateColumns: `minmax(0, 1.3fr) repeat(${Math.max(cov.lanes, 1)}, minmax(130px, 0.6fr))`,
+              gridTemplateColumns: `minmax(0, 1.3fr)${cov.lanes ? ` repeat(${cov.lanes}, minmax(130px, 0.6fr))` : ''}`,
             }}
           >
             {/* A full-width hit band per row, behind everything: a drag lives in the bracket
@@ -179,7 +187,9 @@ export function Timeline(): JSX.Element {
             {cov.rows.map((row) => (
               <div
                 key={row.line.id}
-                className={`tl-line ${row.line.kind}${row.shots.length === 0 ? ' gap' : ''}${row.shots.length > 1 ? ' over' : ''}`}
+                // A gap means "this line renders with no image"; before a decomposition exists
+                // that is true of every line and says nothing, so the gutter waits for shots.
+                className={`tl-line ${row.line.kind}${data.decomposed && row.shots.length === 0 ? ' gap' : ''}${row.shots.length > 1 ? ' over' : ''}`}
                 style={{ gridColumn: 1, gridRow: row.index + 1 }}
               >
                 {row.line.speaker && <div className="who">{row.line.speaker}</div>}

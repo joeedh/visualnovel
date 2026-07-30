@@ -63,6 +63,19 @@
 .tl-empty {
   padding: 26px 22px;
 }
+/* A scene with no decomposition still draws its script — the note says why there are no
+   brackets, because refusing to draw the prose refuses the edit an author wants first. */
+.tl-note {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--mist-dim);
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  border-left: 2px solid var(--signal-deep);
+  background: var(--ink-sunken);
+  border-radius: var(--r-chrome);
+}
 
 .tl-body {
   overflow: auto;

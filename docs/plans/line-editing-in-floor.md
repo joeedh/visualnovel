@@ -110,8 +110,16 @@ drag gestures follow.
    is refused instead. And the **no-op** is decided locally while an *empty* line is not: one is
    whether an act happened (an undo point that undoes nothing is worse than none), the other is
    legality, which is `@vn/scriptedit`'s and would be a second copy of the rule here.
-2. **Undecomposed scenes render.** Script column only, no bracket columns, an explanatory note
+2. ✔ **Undecomposed scenes render.** Script column only, no bracket columns, an explanatory note
    rather than a refusal. Ahead of the editor itself, since it is independently useful.
+
+   As shipped: the `!data.decomposed` branch is gone, the grid emits no bracket columns when
+   `cov.lanes` is 0, and a `.tl-note` says where the shots are. Two things the step did not
+   anticipate, both the same mistake in different clothes — **an undecomposed scene is a pre-run
+   state, not a defect.** Every line would otherwise draw the vermilion `gap` gutter ("this line
+   renders with no image"), and the bar would read `0 shot(s) · 6 uncovered`. Both are literally
+   true and both say the scene is broken, so the gutter waits for a decomposition and the bar says
+   `no shots yet`.
 3. **In-place editing in `Timeline.tsx`.** Click to edit, Enter/blur to commit, Escape to revert,
    commit through `story.setLineText`. The affected-shot count from the command's `check`, shown
    before the commit.
