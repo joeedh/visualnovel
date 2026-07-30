@@ -9,6 +9,7 @@ wired that way" companion.
 
 - [Typecheck](#typecheck)
 - [Bundling](#bundling)
+- [Adding a package](#adding-a-package)
 - [Lint](#lint)
 - [Test](#test)
 - [Format and package manager](#format-and-package-manager)

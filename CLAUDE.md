@@ -280,7 +280,7 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 - **DSL:** `namespace.command(a='x' b=1)`; commas optional, barewords are strings.
   `formatCommand` is the inverse and a round-trip test pins them together.
 - **Provenance and undo.** Each execution appends a `CommandRecord` to
-  `vngen/state/commands.jsonl`. Undo is **opt-in** (the six `story.*` document mutators only)
+  `vngen/state/commands.jsonl`. Undo is **opt-in** (the fifteen `story.*` document mutators only)
   and restores a shadow snapshot of the document tree under `refs/vn/undo/<seq>/{pre,post}` —
   HEAD and the index are never touched, `vngen/build` and `vngen/state` are excluded, and undo
   **refuses rather than guesses** when the worktree has drifted.
@@ -296,7 +296,8 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   room** (STUDIO: `convo` | `branches`; FLOOR: `list` | `graph` | `timeline`).
 - **The catalog is generated, and the palette is a view of it.** `pnpm build` writes
   `apps/desktop/dist/commands.json` for external tooling; the `command:catalog` IPC channel
-  serves the **live** registry, and a test asserts the two match.
+  serves the **live** registry. Both go through one projection, `catalogOf` — two `toCatalog` call
+  sites drifted once, and the channel served a catalog with no interactions in it.
 - **CDP is opt-in** via `VN_CDP_PORT` (bound to `127.0.0.1`; the port grants full control of
   the renderer). `window.vn` (`exec`/`check`/`catalog`/`history`/`undo`/`redo`) is the one
   entry point DevTools and CDP share:

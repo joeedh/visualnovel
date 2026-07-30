@@ -1,8 +1,8 @@
 # Scene editing commands
 
-Status: **partial** — the nine commands are registered and runnable, they carry the storyboard with
-them, the gesture is declared, and `vnauthor`'s `edit_scene` runs the same decisions; what remains is
-the palette/CDP pass and the docs. The ticks in
+Status: **shipped** — the nine commands are registered and runnable, they carry the storyboard with
+them, the gesture is declared, `vnauthor`'s `edit_scene` runs the same decisions, and the whole set is
+verified from the palette and CDP against a real project. See [As shipped](#as-shipped). The ticks in
 [Steps](#steps) are the detail. Move four of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
@@ -276,9 +276,42 @@ correction, since a drift derived from comparing prompt hashes would compare two
    "asserts the two match" compared `commands.json` against the *generator's* projection, never the
    channel's. Fixed by leaving one projection, `catalogOf(registry)`, used by both, with a test on it.
    Two call sites building the same thing is the shape of this bug; there is now one.
-8. **Docs.** This file's As-shipped section; `CLAUDE.md`'s command-system section (the command
+8. ✔ **Docs.** This file's As-shipped section; `CLAUDE.md`'s command-system section (the command
    count moves by nine and the "the only writer of `work/shots/…`" sentence gains a second writer);
-   `docs/command-system.md`'s table, counts and markers.
+   `docs/command-system.md`'s table, counts and markers. Also `docs/vnauthor.md` for `edit_scene`,
+   and the undoable count in three places — it was "the six `story.*` document mutators" and is now
+   fifteen.
+
+## As shipped
+
+The plan's shape survived; the surprises were all about where the decisions had to *live*. Nine
+`story.*` commands and one `edit_scene` tool, all over one pure rule module, and every step's
+correction is recorded in place above. What a reader coming to this cold should know:
+
+- **The rules are `@vn/scriptedit`, not the desktop app.** They started in
+  `apps/desktop/src/shared/`, which made step 6 impossible — a package may not import an app — and
+  moving them out became its own plan, [`scene-edit-package.md`](scene-edit-package.md). The package
+  has **two entries** because the renderer previews a drag by running `moveLine`: the barrel is pure
+  and browser-safe, and the half that touches the filesystem is `@vn/scriptedit/write`.
+- **Every writer is the same writer.** The palette, a CDP client, an in-app gesture and `vnauthor`
+  all reach one `planSceneEdit`/`applyScenePlan` pair, so there is one answer to "may I", one
+  storyboard accounting, and one set of sentences. `write_file` refuses `scenes/` rather than being
+  a tenth path.
+- **Ids are allocated, and a split does not renumber.** The lines that moved into a new scene keep
+  the numbers they had (`rooftop:L7` becomes `rooftop_late:L7`), because renumbering is what detaches
+  art from prose. Scene-scoped ids mean a cross-scene move is a detachment, which is *reported* —
+  never silently repaired.
+- **No prose edit costs an image.** Verified with `vngen cost`, not `vngen status`: the status log
+  cannot show unplanned work, so it looks reassuring whatever happens. Prose edits plan nothing; the
+  only thing that moved the preview was a new scene heading introducing a location.
+- **Coverage is carried, and never quietly discarded.** A shot follows its lines across a split or a
+  merge keeping its id; a shot left covering nothing is kept, because it is real art someone paid
+  for; and a *scene* left with no shots loses its file, because an absent file is the only way to say
+  "decompose this again".
+
+Still open: the two editor plans ([`line-editing-in-floor.md`](line-editing-in-floor.md),
+[`script-composition-in-studio.md`](script-composition-in-studio.md)) build the surfaces, and
+`script.moveLine` has no gesture to attach to until the first of them lands.
 
 ## Not in this plan
 

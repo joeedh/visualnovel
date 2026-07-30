@@ -208,8 +208,9 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
 [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
-  the six `story.*` document mutators set it. A command whose writes are generated output, or
-  that straddles both classes, stays out — see the table below.
+  the fifteen `story.*` document mutators set it — the six branch/coverage ones it shipped for, plus
+  the nine prose edits. A command whose writes are generated output, or that straddles both classes,
+  stays out — see the table below.
 - **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of
   an undoable command into detached commits parked under `refs/vn/undo/<seq>/{pre,post}`. HEAD
   never moves and the index is never touched. Snapshots are scoped to the document class
@@ -231,8 +232,8 @@ not lie about what touched the worktree.
 
 ## The registered commands
 
-Twenty-eight, in eight namespaces. Twelve are `mutating`; eleven declare a precondition; one asks
-for confirmation.
+Thirty-seven, in eight namespaces. Twenty-one are `mutating`; twenty declare a precondition;
+fifteen are undoable; one asks for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
@@ -252,6 +253,15 @@ for confirmation.
 | `story.spliceScene` ✍ ↺ ✓      | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
 | `story.setCoverage` ✍ ↺ ✓      | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
 | `story.assignLineIds` ✍ ↺ ✓    | `scene` (default `''`)            | Writes allocated ids down as `[[line:]]` marks; empty `scene` means all. |
+| `story.setLineText` ✍ ↺ ✓      | `line`, `text`                    | Retype one line. Says how many rendered shots now illustrate the old prose. |
+| `story.insertLine` ✍ ↺ ✓       | `scene`, `text`, `after` (default `''`), `kind` (default `dialogue`), `speaker` (default `''`) | Empty `after` means the top of the scene; the id is allocated, not positional. |
+| `story.deleteLine` ✍ ↺ ✓       | `line`                            | A shot left covering nothing is **kept** — deleting paid-for art is the author's call. |
+| `story.moveLine` ✍ ↺ ✓         | `line`, `after` (default `''`)    | Reorder within the scene. What `script.moveLine` commits.  |
+| `story.setSpeaker` ✍ ↺ ✓       | `line`, `speaker` (default `''`)  | Empty `speaker` makes the line narration.                  |
+| `story.newScene` ✍ ↺ ✓         | `scene`, `heading`                | A `scenes/<id>.md` with a heading and no lines; nothing points at it yet. |
+| `story.deleteScene` ✍ ↺ ✓      | `scene`                           | Refuses while anything still points at it, naming what.    |
+| `story.splitScene` ✍ ↺ ✓       | `scene`, `at`, `into`             | `at` starts the second half; shots follow their lines, keeping their ids. |
+| `story.mergeScene` ✍ ↺ ✓       | `scene`, `into`                   | Only across a `next` boundary; `scene`'s file and storyboard are removed. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
@@ -370,9 +380,12 @@ Four rules, and the third state is the load-bearing one:
 3. **A check reads and does not write** — each is a load plus a pure decision, so asking is free.
 4. **Only mutating commands declare one.** A read has nothing to prevent. A test pins the list.
 
-The `story.*` checks are the *same* pure decision the command runs (`branchops`, `setCoverage`),
-taken against a freshly read graph and discarded — so the refusal you are shown is the refusal
-that would happen, the same honesty rule the mid-drag overlays follow. `gate.approve` asks
+The `story.*` checks are the *same* pure decision the command runs (`branchops`, `setCoverage`,
+`@vn/scriptedit`'s `lineops`), taken against a freshly read graph and discarded — so the refusal you
+are shown is the refusal that would happen, the same honesty rule the mid-drag overlays follow. For
+the nine prose editors that extends past refusals to the *cost*: a check reports the same storyboard
+fallout the run reports (`1 shot(s) lose 3 line(s) of coverage, 1 already rendered`), because both
+read it off the same plan. `gate.approve` asks
 whether the character exists and the hash is among its candidates (already-approved is a note,
 not a refusal: re-approving is how an author changes their mind). `pipeline.run` refuses only
 when `mock: false` and no key resolves — the half that is certain and expensive to discover by
@@ -540,6 +553,13 @@ import.
 **The `command:catalog` IPC channel serves the live registry, never the file**, so the app
 itself cannot be misled by a stale one. The file exists for external tooling, and a test
 asserts the two are equal.
+
+Both go through **one** function, `catalogOf(registry)`. They didn't at first — the channel called
+`toCatalog(registry, '@vn/desktop')` and the generator called `toCatalog(…, desktopInteractions)`, so
+`window.vn.catalog()` claimed the app had no gestures while `commands.json` listed five. The
+equality test could not catch it, because it compared the file against the *generator's* projection
+rather than the channel's. Two call sites building the same value is the shape of that bug; the fix
+was to have one.
 
 The `schema` field is incidentally the repo's first zod-free JSON-Schema emission.
 `NativeAgentBackend` currently advertises a hand-written `LOOSE_PARAMS`; feeding it these
