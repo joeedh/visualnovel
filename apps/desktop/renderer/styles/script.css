@@ -185,6 +185,33 @@
   color: var(--paper);
 }
 
+/* ---- moving a line ---- */
+
+/* The gutter is the handle, so it says so: `touch-action` keeps a drag from scrolling the page. */
+.sc-line .lid {
+  cursor: grab;
+  touch-action: none;
+}
+.sc-page.dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+/* The carried line stays in place — the rule below is what moves. Same as a card splice. */
+.sc-line.carried {
+  opacity: 0.4;
+}
+/* The insertion point, drawn where the drop would land. A refused drop is drawn too: an author
+   holding a line over a place it cannot go should see the place, not nothing. */
+.sc-drop {
+  height: 2px;
+  margin: 1px 0 1px 44px;
+  border-radius: 1px;
+  background: var(--sodium);
+}
+.sc-drop.refuse {
+  background: var(--vermilion);
+}
+
 /* Somewhere to start when Enter has no line to be pressed at the end of. */
 .sc-start,
 .sc-add {

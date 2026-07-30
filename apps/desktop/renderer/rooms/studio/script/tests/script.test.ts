@@ -15,6 +15,7 @@ import {
   splitBoundaries,
   type Draft,
 } from '../script.js';
+import type { Invocation } from '@vn/commands';
 import type {
   CoverageLine,
   SceneCoverage,
@@ -225,6 +226,15 @@ describe('nextEditing', () => {
     expect(nextEditing(lines, from, { open: 'line', line: 'a:L9' })).toBeNull();
     expect(nextEditing(lines, from, { open: 'none' })).toBeNull();
   });
+
+  // A drop commits a command with no editor open, so there is no row it came from.
+  it('takes no `from` for an act no editor started', () => {
+    expect(nextEditing(lines, null, { open: 'none' })).toBeNull();
+    expect(nextEditing(lines, null, { open: 'line', line: 'a:L3' })).toEqual({
+      editing: { row: 'line', line: lines[2] },
+      draft: 'quietly',
+    });
+  });
 });
 
 describe('scriptRows', () => {
@@ -299,6 +309,51 @@ describe('moveStateOf', () => {
     });
     // Dropping where it already sits reorders nothing, so it is not a target at all.
     expect(verdicts.map((v) => v.target)).not.toContain('a:L1');
+  });
+});
+
+/**
+ * The composition the column performs per pointer move, with the DOM read stubbed out: measured
+ * rows → `dropTarget` → the verdict judged on the grab. Nothing else decides anything, which is
+ * why the surface can stay thin.
+ */
+describe('a drag, from a pointer position to an invocation', () => {
+  const coverage: SceneCoverage = {
+    sceneId: 'a',
+    location: 'gate',
+    lines,
+    shots: [],
+    decomposed: false,
+  };
+  const boxes = lines.map((l, i) => ({ id: l.id, top: i * 20, bottom: i * 20 + 20 }));
+  const dropAt = (carried: string, y: number) => {
+    const verdicts = new Map(
+      scriptMoveLine.targets(moveStateOf(coverage), carried).map((v) => [v.target, v]),
+    );
+    return verdicts.get(dropTarget(boxes, y)) ?? null;
+  };
+
+  const commits = (carried: string, y: number): Invocation | null => {
+    const verdict = dropAt(carried, y);
+    return verdict?.accept ? verdict.invoke : null;
+  };
+
+  it('commits the verdict the drop lands on', () => {
+    expect(commits('a:L4', 5)).toEqual({
+      id: 'story.moveLine',
+      props: { line: 'a:L4', after: '' },
+    });
+    // y=50 is past L3's midpoint, so the insertion point is "after a:L3".
+    expect(commits('a:L1', 50)).toEqual({
+      id: 'story.moveLine',
+      props: { line: 'a:L1', after: 'a:L3' },
+    });
+  });
+
+  it('finds no verdict where the drop would reorder nothing', () => {
+    // Over its own row, and over the point just above it — both leave the order as it was.
+    expect(dropAt('a:L2', 30)).toBeNull();
+    expect(dropAt('a:L2', 10)).toBeNull();
   });
 });
 

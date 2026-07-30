@@ -326,11 +326,13 @@ coverage timeline's `timeline.cover`, and the script's `script.moveLine` — are
 `interaction.targets` runs the same call in main — so an author and an agent cannot be told
 different things about the same drop.
 
-`script.moveLine` has **no surface yet**, and that is the layer earning its keep rather than an
-omission: an agent can ask which insertion points in a scene would reorder anything, and get each
-one with the `story.moveLine` it would run, before any drag exists to make it. Its targets are
-insertion points, so there is one more of them than there are lines — `top`, then "after each
-line" — and a drop that would reorder nothing is left out rather than reported as an accept.
+`script.moveLine` was declared and tested with **no surface at all**, and that is the layer earning
+its keep: an agent could ask which insertion points in a scene would reorder anything, and get each
+one with the `story.moveLine` it would run, before any drag existed to make it. STUDIO's script
+column is now its first consumer and needed no new decision to become one. Its targets are insertion
+points, so there is one more of them than there are lines — `top`, then "after each line" — and a
+drop that would reorder nothing is left out rather than reported as an accept, which is what lets
+the column show no insertion rule at all where a drop would change nothing.
 
 ```sh
 node scripts/vn-cdp.mjs "interaction.targets(interaction='branch.splice' carried='arrival')"

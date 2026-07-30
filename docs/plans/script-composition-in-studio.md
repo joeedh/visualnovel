@@ -1,7 +1,7 @@
 # Script composition in STUDIO
 
-Status: **partial** — steps 1–3 are shipped and carry their own as-shipped notes below, so the
-column already writes prose; steps 4–9 are not built. Move six of
+Status: **partial** — steps 1–4 are shipped and carry their own as-shipped notes below, so the
+column already writes and reorders prose; steps 5–9 are not built. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -185,8 +185,31 @@ a few lines once the shared selection exists, and it turns the rail from a repor
    block above) between L2 and L3, Escape discarded the trailing composer, and Backspace on an
    emptied L4 deleted it and reopened L2. The file came back to three lines with `nextline: 5` — the
    consumed id is not recycled.
-4. **`story.moveLine` by drag**, through `script.moveLine`, with the same accept/refuse overlay the
+4. ✔ **`story.moveLine` by drag**, through `script.moveLine`, with the same accept/refuse overlay the
    branch editor and the timeline draw from their interactions.
+
+   As shipped: the gutter is the handle — it is already the row's name, and a line's name is what a
+   move is about. The grab judges every insertion point once (`scriptMoveLine.targets` over
+   `moveStateOf`), each pointer move reads that answer off by row (`dropTarget` over measured
+   `RowBox`es, the drag's only DOM read), and the drop runs `verdict.invoke` verbatim through the
+   same `act` a keystroke uses. The carried row dims and stays put; only the insertion rule moves,
+   and the order changes on release. Three things the step did not say:
+
+   - **The verdict→`Notice` rule moved to `src/shared/lineedit.ts`** (`noticeForVerdict`) rather than
+     being written a second time, and FLOOR's timeline now reads it from there. That module already
+     held `Notice` and the `check` half; a `Verdict` is the same question asked mid-gesture.
+   - **`nextEditing` takes `from: Editing | null`.** A drop commits a command with no editor open, so
+     there is no row for a refusal to hand a draft back to — which is what `act`'s `from` is for.
+   - **The refuse tone is drawn but currently unreachable from this surface.** `moveLine`'s only
+     refusals are a line that does not exist and "after itself", and `targets` omits the latter, so
+     every insertion point the column offers accepts or is left out. The rule is still "draw the
+     verdict, whatever it says" — the same as the timeline — so a refusal `moveLine` grows later
+     needs no work here.
+
+   Verified live over CDP: carried `arrival:L3` up, watched the sentence change per insertion point
+   (`Moved arrival:L3 to the top in arrival.` / `… after arrival:L1 …`), saw the rule and the
+   sentence both vanish over its own row, dropped at the top and got the reorder in
+   `scenes/arrival.md`, then carried it back to the end. The gesture never opened an editor.
 5. **`story.setSpeaker`.** The one edit that changes a line's `kind`, and therefore the exporter's
    beat type — it belongs here rather than in FLOOR for exactly that reason.
 6. **Split, merge, new scene, delete scene.** With the detachment counts from each command's

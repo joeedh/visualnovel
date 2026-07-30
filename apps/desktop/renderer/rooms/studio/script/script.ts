@@ -178,10 +178,13 @@ export function insertedAfter(lines: readonly CoverageLine[], after: string): Co
  * The row the editor moves to once an act's commands have run, and the draft it opens with —
  * resolved against the *reloaded* lines, because that is the only place the id an insert just
  * minted can be found. `null` closes the editor.
+ *
+ * `from` is `null` for an act no editor started — a drag commits a command too, and it has no row
+ * to have come from.
  */
 export function nextEditing(
   lines: readonly CoverageLine[],
-  from: Editing,
+  from: Editing | null,
   then: Continue,
 ): { editing: Editing; draft: string } | null {
   if (then.open === 'none') return null;
@@ -190,7 +193,7 @@ export function nextEditing(
     return line ? { editing: { row: 'line', line }, draft: line.text } : null;
   }
   if (then.after !== COMPOSED) return { editing: { row: 'new', after: then.after }, draft: '' };
-  const made = insertedAfter(lines, from.row === 'new' ? from.after : '');
+  const made = insertedAfter(lines, from?.row === 'new' ? from.after : '');
   return made ? { editing: { row: 'new', after: made.id }, draft: '' } : null;
 }
 

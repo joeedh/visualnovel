@@ -8,7 +8,7 @@
  * another room's directory is how two copies of a rule start. Nothing here writes: a caller gets
  * an `Invocation` and runs it through the command stack like every other mutation.
  */
-import type { Invocation } from '@vn/commands';
+import type { Invocation, Verdict } from '@vn/commands';
 import type { CommandCheck, CoverageLine } from './ipc.js';
 
 /**
@@ -37,7 +37,13 @@ export function commitOf(line: CoverageLine, draft: string): Invocation | null {
   return { id: 'story.setLineText', props: { line: line.id, text } };
 }
 
-/** A one-line message above the rows. `preview` is what would happen; `ok`/`refused` did. */
+/**
+ * A one-line message above the rows. `preview` is what would happen; `ok`/`refused` did.
+ *
+ * The two ways a command speaks before it runs both land here — a `check` asked while the author
+ * types, and a `Verdict` judged while something is carried — so the two surfaces cannot disagree
+ * about which of those reads as a warning.
+ */
 export interface Notice {
   tone: 'ok' | 'refused' | 'preview';
   text: string;
@@ -55,4 +61,14 @@ export function noticeForCheck(check: CommandCheck): Notice | null {
   return check.state === 'accept'
     ? { tone: 'preview', text: check.message }
     : { tone: 'refused', text: check.message };
+}
+
+/**
+ * The same thing for a gesture mid-flight: the verdict's own sentence, so what the author reads
+ * while a thing is carried is what the command would have said had they dropped it.
+ */
+export function noticeForVerdict(verdict: Verdict): Notice {
+  return verdict.accept
+    ? { tone: 'preview', text: verdict.note }
+    : { tone: 'refused', text: verdict.reason };
 }

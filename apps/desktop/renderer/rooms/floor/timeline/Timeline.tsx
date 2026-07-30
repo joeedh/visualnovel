@@ -32,7 +32,12 @@ import {
   type Edge,
 } from '../../../../src/shared/coverage.js';
 import { handleId, timelineCover } from '../../../../src/shared/interactions.js';
-import { commitOf, noticeForCheck, type Notice } from '../../../../src/shared/lineedit.js';
+import {
+  commitOf,
+  noticeForCheck,
+  noticeForVerdict,
+  type Notice,
+} from '../../../../src/shared/lineedit.js';
 import { ShotBracket } from './ShotBracket';
 import { previewOf } from './coverage.js';
 import { GRAB_BLOCKED, canEdit, canGrab } from './editing.js';
@@ -382,12 +387,9 @@ function atRow(drag: Drag, coverage: Coverage, row: number): Drag {
   return { ...drag, lines, verdict };
 }
 
-/** The verdict's own sentence, so the author reads what the command would have said. */
+/** Nothing to say where the drop is not a candidate; otherwise the verdict's own sentence. */
 function noticeOf(drag: Drag): Notice | null {
-  if (!drag.verdict) return null;
-  return drag.verdict.accept
-    ? { tone: 'preview', text: drag.verdict.note }
-    : { tone: 'refused', text: drag.verdict.reason };
+  return drag.verdict ? noticeForVerdict(drag.verdict) : null;
 }
 
 /** Which script row the pointer is over, read from the DOM rather than from measured geometry. */

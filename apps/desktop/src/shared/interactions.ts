@@ -312,8 +312,8 @@ export const timelineCover = defineInteraction<CoverState>({
 });
 
 // ---------------------------------------------------------------------------
-// The script's one gesture. No surface runs it yet — declaring it here is the point of the
-// layer: an agent can ask what a drag would do before the drag exists.
+// The script's one gesture. It was declared and tested here before any surface ran it, which is
+// the point of the layer; STUDIO's script column is now its first consumer.
 // ---------------------------------------------------------------------------
 
 /**

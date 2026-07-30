@@ -9,21 +9,47 @@
  * Every gesture terminates in a `story.*` command, and *which* one is `script.ts`'s decision — this
  * file opens editors, runs what it is told to run, and moves the caret. There is no buffer here to
  * diff: the model is a list of lines.
+ *
+ * Dragging a line by its gutter is the `script.moveLine` interaction, and this surface is its first
+ * consumer — the gesture was declared and tested before any of this existed. The grab asks it to
+ * judge every insertion point at once; each pointer move reads that answer off by row rather than
+ * re-deciding, and the drop runs `verdict.invoke` verbatim. So the sentence shown mid-drag, the drop
+ * that is allowed, and what `interaction.targets` tells an agent are one verdict.
  */
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../../../api';
 import {
+  dropTarget,
   insertOf,
   keyAct,
   localLineId,
+  moveStateOf,
   nextEditing,
   scriptRows,
   type Continue,
   type Editing,
+  type RowBox,
 } from './script.js';
-import { commitOf, noticeForCheck, type Notice } from '../../../../src/shared/lineedit.js';
-import type { Invocation } from '@vn/commands';
+import { TOP, scriptMoveLine } from '../../../../src/shared/interactions.js';
+import {
+  commitOf,
+  noticeForCheck,
+  noticeForVerdict,
+  type Notice,
+} from '../../../../src/shared/lineedit.js';
+import type { Invocation, Verdict } from '@vn/commands';
 import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
+
+interface Drag {
+  /** The line being carried. */
+  line: string;
+  /** Every insertion point's verdict, judged once on the grab. Keyed by `TOP` or a line id. */
+  verdicts: Map<string, Verdict>;
+  /** The insertion point under the pointer; `null` before the first move. */
+  target: string | null;
+  /** The verdict there, or `null` where the drop would reorder nothing. */
+  verdict: Verdict | null;
+}
 
 export function ScriptEditor(props: {
   /** The room's scene selection, shared with `branches`. `null` until the graph is known. */
@@ -35,8 +61,10 @@ export function ScriptEditor(props: {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [draft, setDraft] = useState('');
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [drag, setDrag] = useState<Drag | null>(null);
   // Set by a key that already acted, so the blur it causes cannot commit the same draft twice.
   const settled = useRef(false);
+  const page = useRef<HTMLDivElement | null>(null);
 
   // The selection belongs to the room, so an absent one is filled in *there* rather than kept as
   // a local default the branch editor would never see.
@@ -51,6 +79,7 @@ export function ScriptEditor(props: {
   useEffect(() => {
     if (!props.scene) return;
     setEditing(null);
+    setDrag(null);
     setNotice(null);
     void api.invoke('story:coverage', props.scene).then(setData);
   }, [props.scene]);
@@ -106,17 +135,20 @@ export function ScriptEditor(props: {
   /**
    * Run an act: its commands in order, stopping at the first refusal, then re-read the scene and
    * put the editor where the act said it goes. A refusal reopens the row the author was in, so the
-   * draft comes back beside the command's own reason for turning it down.
+   * draft comes back beside the command's own reason for turning it down — `from` is `null` for an
+   * act no editor started, like a drop, which has no draft to hand back.
    */
-  const act = async (from: Editing, steps: Invocation[], then: Continue): Promise<void> => {
+  const act = async (from: Editing | null, steps: Invocation[], then: Continue): Promise<void> => {
     setEditing(null);
     let ran = false;
     for (const step of steps) {
       const outcome = await api.invoke('command:exec', { ...step, source: 'ui' });
       if (!outcome.ok) {
         setNotice({ tone: 'refused', text: outcome.error });
-        settled.current = false;
-        setEditing(from);
+        if (from) {
+          settled.current = false;
+          setEditing(from);
+        }
         return;
       }
       setNotice({ tone: 'ok', text: outcome.record.message ?? 'Done.' });
@@ -146,6 +178,61 @@ export function ScriptEditor(props: {
     }
     void act(from, [invocation], { open: 'none' });
   };
+
+  /**
+   * Pick a line up by its gutter. Every insertion point is judged here, once — a drag that
+   * re-asked per pointer move could change its mind about a drop the author is already over.
+   */
+  const grab = (line: CoverageLine, e: React.PointerEvent): void => {
+    if (!shown) return;
+    // Keeps the gesture from also being a text selection or a focus change.
+    e.preventDefault();
+    setEditing(null);
+    setNotice(null);
+    const judged = scriptMoveLine.targets(moveStateOf(shown), line.id);
+    setDrag({
+      line: line.id,
+      verdicts: new Map(judged.map((v) => [v.target, v])),
+      target: null,
+      verdict: null,
+    });
+  };
+
+  // Window-level, so a drag that leaves the column still tracks and still releases.
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: PointerEvent): void => {
+      const target = dropTarget(rowBoxes(page.current), e.clientY);
+      // A row `targets` did not judge is a drop that would reorder nothing: no rule, no sentence.
+      const verdict = drag.verdicts.get(target) ?? null;
+      setDrag({ ...drag, target, verdict });
+      setNotice(verdict ? noticeForVerdict(verdict) : null);
+    };
+    const onUp = (): void => {
+      const pending = drag;
+      setDrag(null);
+      // A drop that changes nothing takes its sentence with it; a refused one keeps its reason.
+      if (!pending.verdict) {
+        setNotice(null);
+        return;
+      }
+      if (!pending.verdict.accept) return;
+      // The verdict's own invocation, not a second construction of it.
+      void act(null, [pending.verdict.invoke], { open: 'none' });
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [drag, shown]);
+
+  /** The insertion rule, drawn where the drop would land. Refused drops are drawn too. */
+  const dropRule = (at: string): JSX.Element | null =>
+    drag?.target === at && drag.verdict ? (
+      <div className={`sc-drop ${drag.verdict.accept ? 'accept' : 'refuse'}`} />
+    ) : null;
 
   const editor = (row: Editing, label: string): JSX.Element => (
     // The sizer carries the draft as `content`, so the row grows as you type without anything
@@ -218,7 +305,7 @@ export function ScriptEditor(props: {
       {!shown ? (
         <div className="sc-note">Loading…</div>
       ) : (
-        <div className="sc-page">
+        <div className={`sc-page${drag ? ' dragging' : ''}`} ref={page}>
           {/* The heading as the scene's own slugline, so the column reads as a screenplay page
               rather than as a list that happens to be in order. */}
           <div className="sc-heading">{shown.location}</div>
@@ -227,6 +314,7 @@ export function ScriptEditor(props: {
               {shown.sceneId} has no lines yet — write the first one.
             </button>
           )}
+          {dropRule(TOP)}
           {scriptRows(shown.lines, editing).map((row) =>
             'compose' in row ? (
               <div className="sc-line new" key="compose">
@@ -236,23 +324,35 @@ export function ScriptEditor(props: {
                 </div>
               </div>
             ) : (
-              <div className={`sc-line ${row.line.kind}`} key={row.line.id}>
-                <span className="lid" title={row.line.id}>
-                  {localLineId(row.line.id)}
-                </span>
-                <div className="sc-body">
-                  {/* Not editable here: changing who says a line changes its kind, hence the
-                      exporter's beat type. That is `story.setSpeaker`, a later step. */}
-                  {row.line.speaker && <div className="who">{row.line.speaker}</div>}
-                  {editing?.row === 'line' && editing.line.id === row.line.id ? (
-                    editor(editing, `Retype ${row.line.id}`)
-                  ) : (
-                    <div className="text" onClick={() => openLine(row.line)}>
-                      {row.line.text}
-                    </div>
-                  )}
+              <Fragment key={row.line.id}>
+                <div
+                  className={`sc-line ${row.line.kind}${drag?.line === row.line.id ? ' carried' : ''}`}
+                  data-line={row.line.id}
+                >
+                  {/* The gutter is the handle: it is already the row's name, and a line's name is
+                      what a move is about. */}
+                  <span
+                    className="lid"
+                    title={row.line.id}
+                    onPointerDown={(e) => grab(row.line, e)}
+                  >
+                    {localLineId(row.line.id)}
+                  </span>
+                  <div className="sc-body">
+                    {/* Not editable here: changing who says a line changes its kind, hence the
+                        exporter's beat type. That is `story.setSpeaker`, a later step. */}
+                    {row.line.speaker && <div className="who">{row.line.speaker}</div>}
+                    {editing?.row === 'line' && editing.line.id === row.line.id ? (
+                      editor(editing, `Retype ${row.line.id}`)
+                    ) : (
+                      <div className="text" onClick={() => openLine(row.line)}>
+                        {row.line.text}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+                {dropRule(row.line.id)}
+              </Fragment>
             ),
           )}
           {shown.lines.length > 0 && (
@@ -268,4 +368,16 @@ export function ScriptEditor(props: {
       )}
     </div>
   );
+}
+
+/**
+ * The rendered line rows, measured. The only DOM read the drag does — `dropTarget` decides which
+ * insertion point they mean, and it is tested in node against boxes like these.
+ */
+function rowBoxes(page: HTMLElement | null): RowBox[] {
+  const rows = page?.querySelectorAll<HTMLElement>('[data-line]') ?? [];
+  return [...rows].map((el) => {
+    const box = el.getBoundingClientRect();
+    return { id: el.dataset.line ?? '', top: box.top, bottom: box.bottom };
+  });
 }
