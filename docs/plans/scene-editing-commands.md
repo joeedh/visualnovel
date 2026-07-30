@@ -208,9 +208,15 @@ correction, since a drift derived from comparing prompt hashes would compare two
 6. **Agent tools.** `edit_scene` in `@vn/authoring`'s registry, routed through the same `lineops`
    decisions, so `vnauthor` is not the one writer that goes around them. And **`write_file` must
    refuse `scenes/`** (`packages/authoring/src/tools.ts:408`) — it is a whole-file overwrite with
-   no validation, which is exactly the path that would write a chunk with duplicate line ids. If
-   this turns out to reach into the plan-diff rendering and the permission gate more than expected,
-   it splits into its own plan; start it here.
+   no validation, which is exactly the path that would write a chunk with duplicate line ids.
+
+   **Blocked on [`scene-edit-package.md`](scene-edit-package.md), and the reason is worth recording:
+   "the same `lineops` decisions" was not reachable as written.** `lineops.ts` and `shotfallout.ts`
+   are in `apps/desktop/src/shared/`, and a package may not import an app — so routing the agent
+   through them means moving them into one first. That is a move with no behaviour change, which is
+   why it is its own plan rather than a bullet here. The split the step anticipated ("if this reaches
+   into the plan-diff rendering and the permission gate") is still possible on top; this is a
+   different, earlier obstacle.
 7. **Verify from the palette and CDP.** Every command run against `examples/mySampleRepo` with no
    editor: insert, retype, move, split, merge, undo each one, and confirm `vngen status` task
    counts move exactly where the plan says they should and nowhere else.

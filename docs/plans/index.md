@@ -43,7 +43,8 @@ current one.
 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | shipped | `parse(write(scene)) ≡ scene`; `Scene.body` retired, headings and three line kinds retained |
 | [`scene-chunk-files.md`](scene-chunk-files.md) | shipped | `scenes/<id>.md` replaces the one contended screenplay; `start:` names the entry, front-matter is identity only, both prose patchers retargeted (`screenplay/` still loaded when it shipped; plan 4 retired it) |
 | [`fountain-import-export.md`](fountain-import-export.md) | shipped | `vngen import` / `vngen screenplay`, the desktop pair, and the retirement of `screenplay/` as an input |
-| [`scene-editing-commands.md`](scene-editing-commands.md) | planned | Nine `story.*` prose commands, `lineops.ts`, `session.editScene` |
+| [`scene-editing-commands.md`](scene-editing-commands.md) | partial | Nine `story.*` prose commands, `lineops.ts`, `session.editScene`, `shotfallout.ts`, `script.moveLine`; the agent tool and the docs remain |
+| [`scene-edit-package.md`](scene-edit-package.md) | planned | Moving the scene-edit rules and write path into `@vn/scriptedit` so the agent can reach them |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | planned | Correcting a line in the coverage timeline; drift marking |
 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | planned | STUDIO's `script` mode — writing, splitting and merging scenes |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
@@ -53,7 +54,9 @@ current one.
 Seven plans that together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **1 through 4 are shipped; 5–7 are not implemented.**
+one rests on. **1 through 4 are shipped, 5 is in progress, 6 and 7 are not started.** One plan not
+in the original seven has been carved out since:
+[`scene-edit-package.md`](scene-edit-package.md), a prerequisite for 5's agent tool.
 
 | # | Plan | Depends on | Why it is here |
 | --- | --- | --- | --- |
@@ -62,6 +65,7 @@ one rests on. **1 through 4 are shipped; 5–7 are not implemented.**
 | 3 | [`scene-chunk-files.md`](scene-chunk-files.md) ✔ | 1, 2 | One contended screenplay becomes one file per scene |
 | 4 | [`fountain-import-export.md`](fountain-import-export.md) ✔ | 2, 3 | Migrates existing projects in, and keeps the format from being lock-in |
 | 5 | [`scene-editing-commands.md`](scene-editing-commands.md) | 1, 3 | The only write path for prose. No UI; verifiable through the palette and CDP |
+| — | [`scene-edit-package.md`](scene-edit-package.md) | 5 | Not one of the seven. 5's rules live in the desktop app, and a package cannot import an app — so the agent tool needs them moved first |
 | 6 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | 5 | Correct a line where you can see the frame it produced |
 | 7 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | 5 | Write, reorder, split and merge — everything that changes which lines exist |
 
