@@ -1,7 +1,8 @@
 # Scene editing commands
 
-Status: **partial** — the pure decisions and the write path have landed; nothing is reachable as a
-command yet. The ticks in [Steps](#steps) are the detail. Move four of
+Status: **partial** — the nine commands are registered and runnable; what remains is their coverage
+consequences, the drag interaction, the agent tool, and the docs. The ticks in [Steps](#steps) are
+the detail. Move four of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
 [`scene-chunk-files.md`](scene-chunk-files.md) for the file layout and
@@ -147,8 +148,20 @@ it, not to add a "don't rehash" flag that would let the manifest lie about what 
    `deleteSceneChunk` is new in `@vn/store` (a scene that stopped existing), and it deliberately
    leaves `work/shots/<id>.json` behind — cleaning that up is step 4's, with the rest of the
    coverage consequences.
-3. **The nine commands.** Thin, in `apps/desktop/src/main/commands/story.ts`, each `check` running
-   the same `lineops` decision against a freshly read scene and discarding it.
+3. ✔ **The nine commands.** Thin, in `apps/desktop/src/main/commands/story.ts`, each `check` running
+   the same `lineops` decision against a freshly read scene and discarding it. Landed as written —
+   an `edit`/`previewEdit` pair beside the rewires' `apply`/`preview`, and nine definitions that do
+   nothing but shape props into a `lineops` call. The registry is 37 commands. Two details:
+   - **A removed chunk is reported in `written`.** `CommandOutput.written` is "paths this command
+     changed", which is what provenance and undo both want from it, so `editScene`'s `removed` list
+     is appended rather than dropped or given a field of its own on the record.
+   - **`insertLine`'s `kind` is the enum** (`prop.oneOf(LINE_KINDS, …)`, defaulting to `dialogue`),
+     so the DSL and the catalog schema both list what a line may be, and `lineops` still owns the
+     rule that only dialogue and parentheticals may carry a speaker.
+
+   The detachment counts the plan promises in these messages are not here: `lineops` reports
+   `retired`/`moved`/`retyped` as line ids, and turning those into shot counts means reading
+   `work/shots/*.json` — step 4.
 4. **Coverage consequences.** `splitScene`'s shot carrying, and the detachment counts in every
    affected `check` and `message`. The one part that touches `work/shots/*.json`, and it goes
    through the same writer `story.setCoverage` uses rather than a second one.
