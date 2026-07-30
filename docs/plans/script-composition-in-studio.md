@@ -1,7 +1,7 @@
 # Script composition in STUDIO
 
-Status: **partial** — step 1 is shipped and carries its own as-shipped note below; steps 2–9 are
-not built. Move six of
+Status: **partial** — steps 1 and 2 are shipped and carry their own as-shipped notes below; steps
+3–9 are not built. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -50,12 +50,20 @@ So the mapping from typing to commands is fixed, and it is the first thing to ge
 
 - Typing inside a line changes nothing until commit; committing is `story.setLineText`, on blur or
   Enter, exactly as in FLOOR.
-- **Enter at the end of a line is `story.insertLine`**, committed immediately, because the new line
-  must exist before it can be typed into. It is an authorial act on its own — the author asked for
-  a line — so it is its own undo point, and undoing it removes an empty line.
+- **Enter at the end of a line opens a composer row**, and committing that row is
+  `story.insertLine`. It is an authorial act on its own — the author asked for a line — so it is
+  its own undo point, and undoing it removes the line they typed.
+
+  This was planned the other way round ("Enter **is** `story.insertLine`, committed immediately,
+  because the new line must exist before it can be typed into") and step 2 found it impossible:
+  `insertLine` refuses a line with no text, and it has to, because an empty line has no lossless
+  Fountain form. A row that is not a line yet removes the need — nothing has to exist before it
+  can be typed into if the thing being typed into is the draft.
 - Backspace at the start of an empty line is `story.deleteLine`. Backspace at the start of a
   non-empty one does **nothing** — merging two lines is a delete plus a text change, and silently
   spending two commands on a keystroke that usually means "I mis-hit" is worse than doing nothing.
+  "Empty" is the *draft's*: clearing a line and pressing Backspace deletes it, which is the act
+  `setLineText`'s own refusal ("A line cannot be empty — delete it instead") names.
 - Dragging a line's handle is `story.moveLine`, through the `script.moveLine` interaction the
   commands plan declares. This surface is its first consumer, and it should be the first thing
   built that proves an interaction can be authored before its UI.
@@ -122,9 +130,31 @@ a few lines once the shared selection exists, and it turns the rail from a repor
      `script` each toggle back to `convo`, because one button cycling three modes puts the branch
      editor two clicks away half the time. The selection survives the trip through `convo` — it is
      the room's, not the surface's.
-2. **`script.ts`, pure, beside the room.** The keystroke-to-command mapping above, line-handle hit
+2. ✔ **`script.ts`, pure, beside the room.** The keystroke-to-command mapping above, line-handle hit
    resolution, and the split/merge boundary rules. Node tests; the `.tsx` stays thin, as everywhere
    else in this renderer.
+
+   As shipped: `keyAct(scene, editing, draft, key)` answers `type` | `discard` |
+   `run(steps, then)` — an ordered list of invocations plus where the editor goes next, so the
+   `.tsx` runs commands and moves focus without deciding anything. Four things the step did not
+   say:
+
+   - **The Enter rule was wrong and is corrected above.** An `Editing` row is either an existing
+     line or a **composer** (`{row: 'new', after}`) that is not a line yet; `insertOf` is what it
+     commits. `COMPOSED` stands in for the id the insert will mint, and `insertedAfter` resolves it
+     from the reload by position — no command message is ever parsed.
+   - **A new line inherits attribution from the line above** (`attributionAfter`): a dialogue block
+     continues under the same cue, a parenthetical is followed by the spoken line, and everything
+     else starts narration, because `insertLine` refuses a speaker on a kind nobody speaks.
+   - **The shared half moved now rather than "if the two drift".** `lineOf`, `commitOf`, `Notice`
+     and `noticeForCheck` are `src/shared/lineedit.ts`; `timeline/editing.ts` keeps only the
+     strip's two-gesture rules. STUDIO reaching into `rooms/floor/` is how a second copy starts,
+     and step 3 says reuse.
+   - **The move gesture is judged against a synthetic one-scene `ScriptState`** (`moveStateOf`),
+     because `script.moveLine.targets` wants a `ScriptState` and the column has a `SceneCoverage`.
+     A move reads one scene's line order and nothing else, so the line-id allocator is left absent
+     rather than invented — a test drives the real interaction through it to prove the state is
+     enough.
 3. **In-place editing and Enter/Backspace.** `setLineText`, `insertLine`, `deleteLine`. The FLOOR
    editor's affordance, reused rather than reimplemented — if the two drift, the pure half moves to
    `src/shared/`.

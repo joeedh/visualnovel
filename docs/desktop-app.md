@@ -218,7 +218,9 @@ feature — hence the drift marking below. Plans and as-shipped notes:
   and a refused commit reopens the editor with the draft beside the reason. Editing and coverage
   dragging are two modes over one grid: a handle's `pointerdown` is prevented and so cannot blur an
   open editor, which means the **grab is refused with a sentence** rather than the half-typed line
-  being committed under the gesture. `timeline/editing.ts` is the pure half.
+  being committed under the gesture. `timeline/editing.ts` is the pure half of the two-mode rule;
+  retyping itself is `src/shared/lineedit.ts`, shared with STUDIO's script column so the two
+  surfaces cannot disagree about what a draft commits.
 - **An undecomposed scene renders its script.** Correcting a line is exactly what an author wants to
   do *before* paying for art, so a scene with no `work/shots/<id>.json` draws the script column with
   no bracket columns and a note saying where the shots come from — not a refusal. Both the vermilion

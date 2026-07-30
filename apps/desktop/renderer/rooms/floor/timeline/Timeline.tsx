@@ -32,16 +32,10 @@ import {
   type Edge,
 } from '../../../../src/shared/coverage.js';
 import { handleId, timelineCover } from '../../../../src/shared/interactions.js';
+import { commitOf, noticeForCheck, type Notice } from '../../../../src/shared/lineedit.js';
 import { ShotBracket } from './ShotBracket';
 import { previewOf } from './coverage.js';
-import {
-  GRAB_BLOCKED,
-  canEdit,
-  canGrab,
-  commitOf,
-  noticeForCheck,
-  type Notice,
-} from './editing.js';
+import { GRAB_BLOCKED, canEdit, canGrab } from './editing.js';
 import { staleCount } from './drift.js';
 import type { Verdict } from '@vn/commands';
 import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
