@@ -309,9 +309,10 @@ path of its own — every gesture terminates in a registered command, and
 
 The five gestures — the branch editor's `branch.connect`, `branch.splice` and `branch.unwire`, the
 coverage timeline's `timeline.cover`, and the script's `script.moveLine` — are declared in
-`apps/desktop/src/shared/interactions.ts`, beside `branchops.ts`/`coverage.ts`/`lineops.ts` and for
-the same reason: `BranchEditor` runs `branchSplice.targets` to draw its mid-drag verdict overlay,
-the `Timeline` evaluates `timelineCover.targets` once per grab for its notice, and
+`apps/desktop/src/shared/interactions.ts`, beside `branchops.ts`/`coverage.ts` (and delegating to
+`@vn/scriptedit`'s `lineops`) for the same reason those are shared: `BranchEditor` runs
+`branchSplice.targets` to draw its mid-drag verdict overlay, the `Timeline` evaluates
+`timelineCover.targets` once per grab for its notice, and
 `interaction.targets` runs the same call in main — so an author and an agent cannot be told
 different things about the same drop.
 

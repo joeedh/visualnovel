@@ -38,6 +38,8 @@ const shared = {
     // Workspace packages resolve straight to source.
     '^@vn/cli$': '<rootDir>/apps/cli/src/index.ts',
     '^@vn/([^/]+)$': '<rootDir>/packages/$1/src/index.ts',
+    // A subpath export names its source file: `@vn/scriptedit/write` → `src/write.ts`.
+    '^@vn/([^/]+)/([^/]+)$': '<rootDir>/packages/$1/src/$2.ts',
   },
 };
 

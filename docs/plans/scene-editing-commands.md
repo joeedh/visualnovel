@@ -33,17 +33,19 @@ the arrangement `src/shared/coverage.ts` already proved.
 `branchops.ts` + `session.editBranches` + the `story.*` rewires already have, one layer down:
 
 ```
-src/shared/lineops.ts     pure: (scene, args) -> LineOp { ok, message, doc } | { ok: false, error }
-src/shared/shotfallout.ts pure: (op, shots) -> which storyboards move, lose coverage, or drift
-session.planSceneEdit()   load -> decide -> validate -> prove the round-trip -> fallout (no writes)
-  previewSceneEdit()      the plan's message and note, thrown away — what `check` answers
-  editScene()             the plan, written: chunks, then storyboards, then reload
-story.* commands          check = the same decision, discarded; run = apply
+lineops.ts            pure: (scene, args) -> LineOp { ok, message, doc } | { ok: false, error }
+shotfallout.ts        pure: (op, shots) -> which storyboards move, lose coverage, or drift
+planSceneEdit()       load -> decide -> validate -> prove the round-trip -> fallout (no writes)
+  previewSceneEdit()  the plan's message and note, thrown away — what `check` answers
+  editScene()         the plan, written: chunks, then storyboards, then reload
+story.* commands      check = the same decision, discarded; run = apply
 ```
 
-`lineops.ts` is in `src/shared/` rather than `src/main/` for the reason the other two are: the
-renderer runs the same function to preview a gesture, so the refusal shown mid-drag is the refusal
-that would happen.
+The four upper rows shipped in `apps/desktop/src/shared/` and `session.ts`, and
+[`scene-edit-package.md`](scene-edit-package.md) has since moved them into `@vn/scriptedit` so the
+agent tool in step 6 can reach them. Nothing about the arrangement changed — a surface still runs
+the same function to preview a gesture, so the refusal shown mid-drag is the refusal that would
+happen; the functions are just no longer app-local.
 
 | Command | What it does |
 | --- | --- |
@@ -210,13 +212,14 @@ correction, since a drift derived from comparing prompt hashes would compare two
    refuse `scenes/`** (`packages/authoring/src/tools.ts:408`) — it is a whole-file overwrite with
    no validation, which is exactly the path that would write a chunk with duplicate line ids.
 
-   **Blocked on [`scene-edit-package.md`](scene-edit-package.md), and the reason is worth recording:
-   "the same `lineops` decisions" was not reachable as written.** `lineops.ts` and `shotfallout.ts`
-   are in `apps/desktop/src/shared/`, and a package may not import an app — so routing the agent
-   through them means moving them into one first. That is a move with no behaviour change, which is
-   why it is its own plan rather than a bullet here. The split the step anticipated ("if this reaches
-   into the plan-diff rendering and the permission gate") is still possible on top; this is a
-   different, earlier obstacle.
+   **Was blocked on [`scene-edit-package.md`](scene-edit-package.md), and the reason is worth
+   recording: "the same `lineops` decisions" was not reachable as written.** `lineops.ts` and
+   `shotfallout.ts` were in `apps/desktop/src/shared/`, and a package may not import an app — so
+   routing the agent through them meant moving them into one first. That is a move with no behaviour
+   change, which is why it was its own plan rather than a bullet here. It has shipped: the decisions,
+   the source list and the plan/apply pair are `@vn/scriptedit`, which `@vn/authoring` may import.
+   The split the step anticipated ("if this reaches into the plan-diff rendering and the permission
+   gate") is still possible on top; that was a different, earlier obstacle.
 7. **Verify from the palette and CDP.** Every command run against `examples/mySampleRepo` with no
    editor: insert, retype, move, split, merge, undo each one, and confirm `vngen status` task
    counts move exactly where the plan says they should and nowhere else.

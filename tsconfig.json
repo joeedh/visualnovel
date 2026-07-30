@@ -10,6 +10,7 @@
       "@vn/store": ["./packages/store/src/index.ts"],
       "@vn/export": ["./packages/export/src/index.ts"],
       "@vn/scriptedit": ["./packages/scriptedit/src/index.ts"],
+      "@vn/scriptedit/write": ["./packages/scriptedit/src/write.ts"],
       "@vn/git": ["./packages/git/src/index.ts"],
       "@vn/commands": ["./packages/commands/src/index.ts"],
       "@vn/debug2d": ["./packages/debug2d/src/index.ts"],

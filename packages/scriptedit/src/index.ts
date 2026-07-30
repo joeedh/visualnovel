@@ -1,11 +1,15 @@
 /**
- * `@vn/scriptedit` — the scene-edit decision rules and the write path that applies them,
- * in a package both the desktop app and the authoring agent can import.
+ * `@vn/scriptedit` — the scene-edit decision rules, in a package both the desktop app and the
+ * authoring agent can import.
  *
- * The rules were in `apps/desktop/src/shared/`, which made them unreachable from
- * `@vn/authoring` (a package may not import an app) — so the agent's `edit_scene` had no way
- * to be the same answer as the desktop's `story.*` commands. See
- * `docs/plans/scene-edit-package.md`.
+ * The rules were in `apps/desktop/src/shared/`, which made them unreachable from `@vn/authoring`
+ * (a package may not import an app) — so the agent's `edit_scene` had no way to be the same answer
+ * as the desktop's `story.*` commands. See `docs/plans/scene-edit-package.md`.
+ *
+ * **This entry is pure and browser-safe**, and deliberately so: the renderer runs `moveLine` to
+ * preview a drag, so a bundle for the browser must be able to reach the rules. The write path —
+ * which reads and writes files — is `@vn/scriptedit/write`, a separate entry a browser bundle
+ * cannot pull in by accident.
  */
 
 export {

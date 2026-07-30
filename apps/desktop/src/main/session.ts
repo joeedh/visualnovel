@@ -22,23 +22,14 @@ import {
   assignLineIds,
   modelFromInputs,
   sceneChunksFromScript,
-  sceneFromDoc,
-  sceneToDoc,
   scriptFromScenes,
   type SceneBranchEdit,
   type SceneChunk,
 } from '@vn/model';
-import {
-  parseFountain,
-  splitFrontMatter,
-  stringifyFrontMatter,
-  type LoadedInputs,
-} from '@vn/parse';
+import { parseFountain } from '@vn/parse';
 import {
   AssetStore,
   ProjectPaths,
-  deleteSceneChunk,
-  deleteShots,
   findScreenplay,
   loadInputs,
   readSceneChunks,
@@ -76,14 +67,18 @@ import {
 } from '@vn/authoring';
 import { runPipeline } from '@vn/scheduler';
 import { buildPlayable, loadSceneShots } from '@vn/export';
+import type { LineOp, ScriptState } from '@vn/scriptedit';
 import {
-  scenesTouchedBy,
-  shotFallout,
-  type LineOp,
-  type ScriptState,
-  type ShotFallout,
-} from '@vn/scriptedit';
-import type { Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
+  applyScenePlan,
+  planSceneEdit,
+  scenePlanMessage,
+  scriptStateOf,
+  sourcesOf,
+  type SceneEditInput,
+  type ScenePlan,
+  type SceneSource,
+} from '@vn/scriptedit/write';
+import type { Playable, ProjectModel, Providers, Scene } from '@vn/types';
 import type {
   ApproveResult,
   BranchEditResult,
@@ -125,26 +120,6 @@ export interface SessionDeps {
   requestPlan(plan: Plan): Promise<PlanDecision>;
 }
 
-/**
- * One authored file holding scene prose, as the prose writers need it: `prefix + script` is the
- * file, and only `script` is ever patched. A chunk's `prefix` is its front-matter block, kept
- * byte-exact so a rewire never reformats YAML the author wrote.
- */
-interface SceneSource {
-  /** The one scene this file holds — the id front-matter gives it, which its body cannot override. */
-  id: string;
-  file: string;
-  prefix: string;
-  script: string;
-  /**
-   * The scene as this file parses, **before** `buildModel` resolves anything: speakers are still
-   * the cues the author typed (`AIKO`, not `aiko`). A prose edit is decided and re-serialized
-   * against this rather than against the model's scene, or writing it back would rewrite every
-   * cue as the character id it resolved to.
-   */
-  scene?: Scene;
-}
-
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
 interface LoadedProject {
   dir: string;
@@ -157,46 +132,12 @@ interface LoadedProject {
   sources: SceneSource[];
 }
 
-/**
- * The prose files behind a model. Derived from the same `loadInputs` result the model was built
- * from — not from a second look at `scenes/` — so a writer patches exactly the bytes the model
- * was read from rather than whatever is there by the time it writes.
- */
-function sourcesOf(inputs: LoadedInputs): SceneSource[] {
-  return inputs.sceneDocs.map((chunk) => {
-    // The same `sceneFromDoc` the model build runs. A chunk it refuses stays a source — the
-    // branch patchers work on its text — but carries no scene, so no prose edit can touch it.
-    const read = sceneFromDoc(chunk.doc, chunk.id);
-    return {
-      id: chunk.id,
-      file: chunk.file,
-      prefix: splitFrontMatter(chunk.text).prefix,
-      script: chunk.doc.body,
-      ...(read.ok ? { scene: read.value.scene } : {}),
-    };
-  });
-}
-
-/**
- * What a prose edit is decided against. The scenes come off the sources — the chunk files as they
- * parse — and the entry off `project.yaml`, which is the only place a chunk project records one.
- */
-function stateOf(project: LoadedProject): ScriptState {
-  const scenes = new Map<string, Scene>();
-  for (const source of project.sources) {
-    if (source.scene) scenes.set(source.id, source.scene);
-  }
-  return { scenes, ...(project.config.start === undefined ? {} : { entry: project.config.start }) };
-}
-
-/**
- * A chunk's bytes from its own front-matter block and a freshly serialized body. `prefix` ends at
- * the closing fence's single newline, and `stringifyFrontMatter` puts one blank line after it — so
- * this is the form a chunk the app wrote already has, and a rewrite of one is not a diff.
- */
-function chunkText(prefix: string, body: string): string {
-  return `${prefix}\n${body.replace(/^\n+/, '')}`;
-}
+/** The three things `@vn/scriptedit` decides and writes against, off one load. */
+const editInputOf = (project: LoadedProject): SceneEditInput => ({
+  paths: project.paths,
+  sources: project.sources,
+  ...(project.config.start === undefined ? {} : { entry: project.config.start }),
+});
 
 /** Workspace-relative and forward-slashed, which is what a `written` list reports. */
 function relPath(dir: string, file: string): string {
@@ -424,130 +365,44 @@ export class WorkspaceSession {
    */
   async scriptState(): Promise<ScriptState> {
     const project = await loadProject(this.dir);
-    return stateOf(project);
+    return scriptStateOf(project.sources, project.config.start);
   }
 
   /**
-   * Everything a prose edit would do, decided and not written: the chunk bytes, the chunks to
-   * delete, and what all of it does to the storyboard. Shared by `previewSceneEdit` and
-   * `editScene`, so a `check` reports the consequence the run produces rather than a description
-   * of one.
-   *
-   * Two things here that `editBranches` does not have to do. Scenes are **re-serialized** rather
-   * than patched, because there is no surgical form of "insert a line" — which means the first
-   * prose edit to a hand-authored chunk canonicalizes it, line-id marks included. And every scene
-   * is validated *before* anything is written: the bytes must read back as the scene they were
-   * written from, or the whole edit is refused with nothing touched.
+   * A prose edit decided against a fresh load and not written — `@vn/scriptedit` owns the rules and
+   * the proof; this is only the load. Shared by `previewSceneEdit` and `editScene`, so a `check`
+   * reports the consequence the run produces rather than a description of one.
    */
-  private async planSceneEdit(decide: (state: ScriptState) => LineOp): Promise<
-    | { ok: false; message: string }
-    | {
-        ok: true;
-        message: string;
-        project: LoadedProject;
-        pending: { file: string; text: string }[];
-        chunkRemoves: string[];
-        fallout: ShotFallout;
-      }
-  > {
+  private async planScene(
+    decide: (state: ScriptState) => LineOp,
+  ): Promise<{ project: LoadedProject; plan: ScenePlan }> {
     const project = await loadProject(this.dir);
-    const op = decide(stateOf(project));
-    if (!op.ok) return { ok: false, message: op.error };
-
-    // Every file is serialized and proved before any is written: a split that is refused on its
-    // second half must leave the first exactly as it was.
-    const pending: { file: string; text: string }[] = [];
-    for (const scene of op.writes) {
-      const doc = sceneToDoc(scene);
-      const read = sceneFromDoc(doc, scene.id);
-      if (!read.ok) return { ok: false, message: read.diagnostic.message };
-      const errors = read.value.diagnostics.filter((d) => d.severity === 'error');
-      if (errors.length > 0) return { ok: false, message: errors.map((d) => d.message).join(' ') };
-      // The serializer is lossless, so a scene that reads back as itself writes back identically.
-      // Comparing the text rather than the scenes keeps the check on the bytes being written.
-      if (sceneToDoc(read.value.scene).body !== doc.body) {
-        return {
-          ok: false,
-          message: `Writing ${scene.id} would not read back as the scene it was written from.`,
-        };
-      }
-
-      // An existing chunk keeps its front-matter byte-exactly — only the body is ours to rewrite;
-      // a new one is written the way the importer writes chunks.
-      const source = project.sources.find((s) => s.id === scene.id);
-      if (source === undefined) {
-        pending.push({
-          file: project.paths.sceneFile(scene.id),
-          text: stringifyFrontMatter(doc.data, doc.body),
-        });
-        continue;
-      }
-      const text = chunkText(source.prefix, doc.body);
-      if (text !== source.prefix + source.script) pending.push({ file: source.file, text });
-    }
-
-    // The shots as they sit on disk, unfiltered: `readShots(knownLineIds)` would drop the very
-    // ids the edit is about to remap, which is the coverage this is here to carry.
-    const shots = new Map<string, readonly Shot[]>();
-    for (const sceneId of scenesTouchedBy(op)) {
-      const loaded = await readShots(project.paths, sceneId);
-      if (loaded) shots.set(sceneId, loaded.shots);
-    }
-
-    return {
-      ok: true,
-      message: op.message,
-      project,
-      pending,
-      chunkRemoves: op.removes,
-      fallout: shotFallout(op, shots),
-    };
+    return { project, plan: await planSceneEdit(editInputOf(project), decide) };
   }
 
   /** What `editScene` would do and cost the storyboard, without doing it. */
   async previewSceneEdit(
     decide: (state: ScriptState) => LineOp,
   ): Promise<{ ok: boolean; message: string }> {
-    const plan = await this.planSceneEdit(decide);
+    const { plan } = await this.planScene(decide);
     if (!plan.ok) return { ok: false, message: plan.message };
-    const note = plan.fallout.note;
-    return { ok: true, message: note ? `${plan.message} ${note}` : plan.message };
+    return { ok: true, message: scenePlanMessage(plan) };
   }
 
   /**
-   * The single write path for every prose edit, and the sibling of `editBranches`: take the
-   * decided plan, write the chunks, remove the ones the edit ended, carry the storyboard through
-   * the same `writeShots` the planner uses, then rebuild the model.
+   * The single write path for every prose edit, and the sibling of `editBranches`: apply the proved
+   * plan — chunks, storyboards, removals — then rebuild the model. The app's own part is reporting:
+   * `applyScenePlan` answers in absolute paths, and a `written` list is workspace-relative.
    */
   async editScene(decide: (state: ScriptState) => LineOp): Promise<SceneEditResult> {
-    const plan = await this.planSceneEdit(decide);
+    const { project, plan } = await this.planScene(decide);
     if (!plan.ok) return { ok: false, message: plan.message, written: [], removed: [] };
-    const { project, pending, fallout } = plan;
 
-    const written: string[] = [];
-    for (const { file, text } of pending) {
-      await writeFileAtomic(file, text);
-      written.push(relPath(this.dir, file));
-    }
-    for (const [sceneId, shots] of fallout.writes) {
-      if (await writeShots(project.paths, sceneId, shots)) {
-        written.push(relPath(this.dir, project.paths.shotsFile(sceneId)));
-      }
-    }
+    const input = editInputOf(project);
+    const paths = await applyScenePlan(input, plan);
+    const written = paths.written.map((file) => relPath(this.dir, file));
+    const removed = paths.removed.map((file) => relPath(this.dir, file));
 
-    const removed: string[] = [];
-    for (const id of plan.chunkRemoves) {
-      if (await deleteSceneChunk(project.paths, id)) {
-        removed.push(relPath(this.dir, project.paths.sceneFile(id)));
-      }
-    }
-    for (const id of fallout.removes) {
-      if (await deleteShots(project.paths, id)) {
-        removed.push(relPath(this.dir, project.paths.shotsFile(id)));
-      }
-    }
-
-    const message = fallout.note ? `${plan.message} ${fallout.note}` : plan.message;
     if (written.length === 0 && removed.length === 0) {
       return {
         ok: true,
@@ -558,7 +413,13 @@ export class WorkspaceSession {
       };
     }
     const reloaded = await loadProject(this.dir);
-    return { ok: true, message, written, removed, graph: storyGraphOf(reloaded.model) };
+    return {
+      ok: true,
+      message: scenePlanMessage(plan),
+      written,
+      removed,
+      graph: storyGraphOf(reloaded.model),
+    };
   }
 
   /**

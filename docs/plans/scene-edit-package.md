@@ -1,7 +1,7 @@
 # A shared scene-edit package (`@vn/scriptedit`)
 
-Status: **partial** — the package exists and the pure halves (`lineops`, `shotfallout`) live in it;
-the sources helper and the write path are still in the desktop session. A prerequisite carved out of
+Status: **shipped** — `@vn/scriptedit` holds the decision rules, the source list and the plan/apply
+write path; `session.editScene` is the load and the reporting. A prerequisite carved out of
 [`scene-editing-commands.md`](scene-editing-commands.md) step 6, which cannot be done as written:
 the rules it says to route the agent tool through live in `apps/desktop/src/shared/lineops.ts`, and
 a package may not import an app. This plan moves the scene-edit decision rules **and their write
@@ -52,6 +52,24 @@ tests move with the code, since a `tests/` sibling is where jest looks.
 | `session.ts`'s `SceneSource`, `sourcesOf`, `chunkText`, `stateOf` | `packages/scriptedit/src/sources.ts`     |
 | `session.ts`'s `planSceneEdit` + the write half of `editScene`    | `packages/scriptedit/src/apply.ts`       |
 
+`@vn/scriptedit`'s public surface, as shipped — **two entries**, because the renderer needs the
+rules and must not be able to reach the filesystem:
+
+```ts
+// `@vn/scriptedit` — pure, browser-safe
+insertLine / setLineText / setSpeaker / moveLine / deleteLine
+newScene / deleteScene / splitScene / mergeScene    // the nine decisions
+shotFallout(op, shots)                // what the decision costs in storyboards
+sceneIdOf, ScriptState, LineOp, AppliedLineOp
+
+// `@vn/scriptedit/write` — reads and writes files
+sourcesOf(inputs)                     // the files a model was built from — both write paths' targets
+scriptStateOf(sources, entry?)        // what a decision is made against
+planSceneEdit(input, decide)          // decide + prove + price the storyboard; writes nothing
+applyScenePlan(input, plan)           // the I/O, in absolute paths
+scenePlanMessage(plan)                // the one sentence a check and a run must agree on
+```
+
 `sourcesOf`/`chunkText` move even though this plan is about prose edits, because `editBranches`
 shares them — leaving them behind would mean the branch write path and the prose write path derive
 their target files two different ways, which is the one thing
@@ -67,7 +85,7 @@ tool rewires branches yet; when one does, it follows the same route).
 
 ```ts
 planSceneEdit(input: SceneEditInput, decide: (state: ScriptState) => LineOp): Promise<ScenePlan>
-applySceneEdit(input: SceneEditInput, plan: AppliedPlan): Promise<{ written: string[]; removed: string[] }>
+applyScenePlan(input: SceneEditInput, plan: AppliedScenePlan): Promise<{ written: string[]; removed: string[] }>
 ```
 
 where `SceneEditInput` is `{ paths: ProjectPaths; sources: SceneSource[]; entry?: string }` — the
@@ -92,10 +110,37 @@ the host's job, because `vnauthor` and the desktop report them differently.
    depth. Proven, rather than assumed, with a throwaway `import … from '@vn/pipeline'` in
    `lineops.ts`: `boundaries/element-types` rejected it as `'scriptedit' → 'pipeline'`, so the new
    element really is classified — an unresolved import would have passed silently.
-3. **Move the sources + write path** — `sources.ts` and `apply.ts`. `session.editScene` /
+3. **Move the sources + write path** ✔ — `sources.ts` and `apply.ts`. `session.editScene` /
    `previewSceneEdit` become thin: load, delegate, relativize, reload. `editBranches` takes
-   `SceneSource`/`chunkText` from the package.
-4. **Docs** — `CLAUDE.md`'s layering diagram and package table, `docs/index.md`, this file's
+   `SceneSource` from the package.
+
+   Two names came out different from the sketch. The apply half is **`applyScenePlan(input, plan)`**,
+   not `applySceneEdit` — it applies a plan that already proved itself, and saying so is what keeps
+   anyone from expecting it to re-decide. And `stateOf(project)` became
+   **`scriptStateOf(sources, entry?)`**, because `LoadedProject` is the desktop's shape and the seam
+   is deliberately narrower than it. Two things fell out of the split that the plan did not predict:
+   the plan no longer carries the `LoadedProject` back out (the caller loaded it, so handing it back
+   was only ever a convenience), and `scenePlanMessage(plan)` is exported because the
+   message-plus-fallout-note concatenation was duplicated in `previewSceneEdit` and `editScene` and
+   is the one string a check and a run must agree on. `session.ts` sheds seven imports.
+
+   **The package needs two entries, and that is the one thing this plan got wrong.** A single barrel
+   over both halves broke `build:renderer`: `interactions.ts` lives in `shared/` and is imported by
+   the renderer (it runs `moveLine` to preview a drag), so re-pointing it at `@vn/scriptedit` made
+   `apply.ts` — and through it `@vn/store`'s `import { join } from 'node:path'` — reachable from a
+   browser bundle, and vite failed with `"join" is not exported by "__vite-browser-external"`.
+   Neither typecheck pass catches this: the renderer's use of `ProjectPaths` is type-only and erases,
+   while the store *functions* `apply.ts` calls do not. So the barrel is the **pure** half and the
+   filesystem half is `@vn/scriptedit/write` — the dangerous entry is the one a caller has to name,
+   and a browser bundle cannot reach it by accident. A subpath export is new to this repo and touches
+   a fourth and fifth enumeration beyond the four a new package needs: `package.json`'s `exports`
+   map (which also blocks deep `@vn/scriptedit/src/apply.js` imports), the root `tsconfig` `paths`, a
+   `'^@vn/([^/]+)/([^/]+)$'` rule in jest's `moduleNameMapper`, and a `SUBPATHS` list in
+   `scripts/aliases.mjs`. `boundaries/element-types` classifies the subpath correctly — proven the
+   same way as the package itself, with a throwaway `@vn/scriptedit/write` import in `@vn/model`
+   ("File is of type 'model'. Dependency is of type 'scriptedit'"), which matters because an
+   unresolved specifier would have been an unclassified one and passed silently.
+4. **Docs** ✔ — `CLAUDE.md`'s layering diagram and package table, `docs/index.md`, this file's
    As-shipped section, and plan 5's step 6 (which stops being blocked).
 
 Then plan 5 step 6 proceeds: `edit_scene` in `@vn/authoring` over `@vn/scriptedit`, and `write_file`

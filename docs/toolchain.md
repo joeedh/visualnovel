@@ -57,6 +57,29 @@ wired that way" companion.
   bundle scripts share one alias map, `scripts/aliases.mjs`, so their package lists can't
   drift.
 
+## Adding a package
+
+Four separate lists enumerate packages, and each one is resolved by a different tool — so a
+package can typecheck, pass its tests, and still fail to bundle:
+
+1. the root `tsconfig.json` `paths` map (what `tsgo` resolves),
+2. `PACKAGES` in `jest.config.cjs` (the display-named project; a project with no matching tests
+   fails `pnpm test`, so add it in the same commit as the code),
+3. `ALLOWED` + `boundaries/elements` in `eslint.config.mjs` (the layer and its allow-list),
+4. `PACKAGES` in `scripts/aliases.mjs` (what esbuild resolves, for both bundle scripts).
+
+Vite is the fifth resolver and needs nothing: it reads the workspace symlink and the package's
+own `exports` map.
+
+**A subpath export** — `@vn/scriptedit/write` is the only one — costs two more entries, because a
+subpath names its source file rather than `index.ts`: a `paths` line of its own in the root
+`tsconfig`, and the `'^@vn/([^/]+)/([^/]+)$'` rule in jest's `moduleNameMapper`. `scripts/aliases.mjs`
+carries them in a `SUBPATHS` list beside `PACKAGES`. Split a package this way when **one half must
+stay out of the renderer's bundle**: the renderer imports `apps/desktop/src/shared/`, so anything
+reachable from there reaches the browser, and neither typecheck pass catches it (a type-only use of
+a node-side type erases cleanly — only `vite build` fails, with
+`"…" is not exported by "__vite-browser-external"`).
+
 ## Lint
 
 - **The boundaries rule needs the TypeScript import resolver.** `eslint.config.mjs` sets
