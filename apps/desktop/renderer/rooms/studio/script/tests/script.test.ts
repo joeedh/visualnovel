@@ -1,7 +1,12 @@
+import { isSpeakable } from '@vn/scriptedit';
 import { TOP, scriptMoveLine } from '../../../../../src/shared/interactions.js';
 import {
   COMPOSED,
   attributionAfter,
+  castFor,
+  cueChoices,
+  cueFor,
+  cueLabel,
   dropTarget,
   insertOf,
   insertedAfter,
@@ -12,7 +17,9 @@ import {
   nextEditing,
   proposeSceneId,
   scriptRows,
+  setSpeakerOf,
   splitBoundaries,
+  type CastMember,
   type Draft,
 } from '../script.js';
 import type { Invocation } from '@vn/commands';
@@ -354,6 +361,71 @@ describe('a drag, from a pointer position to an invocation', () => {
     // Over its own row, and over the point just above it — both leave the order as it was.
     expect(dropAt('a:L2', 30)).toBeNull();
     expect(dropAt('a:L2', 10)).toBeNull();
+  });
+});
+
+describe('the cue picker', () => {
+  const cast: CastMember[] = [
+    { id: 'aiko', name: 'Aiko' },
+    { id: 'tanaka', name: 'Mr. Tanaka' },
+  ];
+
+  it('offers a cue, not an id — a prose edit is written back as the author would type it', () => {
+    expect(cueFor(cast[0] as CastMember)).toBe('AIKO');
+    expect(cueFor({ id: 'ghost', name: '' })).toBe('GHOST');
+  });
+
+  it('resolves a speaker whether it is an id or the raw cue that resolved to nothing', () => {
+    expect(castFor(cast, 'aiko')?.id).toBe('aiko');
+    expect(castFor(cast, 'AIKO')?.id).toBe('aiko');
+    expect(castFor(cast, 'Mr. Tanaka')?.id).toBe('tanaka');
+    expect(castFor(cast, 'kenji')).toBeNull();
+    expect(castFor(cast, undefined)).toBeNull();
+  });
+
+  it('labels a row with the cast name it resolves to, and an unknown cue verbatim', () => {
+    expect(cueLabel(cast, 'aiko')).toBe('Aiko');
+    expect(cueLabel(cast, 'KENJI')).toBe('KENJI');
+    expect(cueLabel(cast, undefined)).toBe('');
+  });
+
+  it('offers the whole cast plus "no one", with the line\'s own cue marked current', () => {
+    expect(cueChoices(cast, 'aiko')).toEqual([
+      { cue: 'AIKO', label: 'Aiko', current: true },
+      { cue: 'MR. TANAKA', label: 'Mr. Tanaka', current: false },
+      { cue: '', label: 'no one (narration)', current: false },
+    ]);
+  });
+
+  it('marks "no one" current on a narration line, so re-picking it is not an act', () => {
+    const choices = cueChoices(cast, undefined);
+    expect(choices.filter((c) => c.current)).toEqual([
+      { cue: '', label: 'no one (narration)', current: true },
+    ]);
+  });
+
+  it('keeps an unresolved cue in the list, so picking through it cannot discard one', () => {
+    expect(cueChoices(cast, 'KENJI')).toContainEqual({
+      cue: 'KENJI',
+      label: 'KENJI — not in characters/',
+      current: true,
+    });
+  });
+
+  it('asks for `story.setSpeaker`, and for narration with an empty cue', () => {
+    expect(setSpeakerOf('a:L1', 'AIKO')).toEqual({
+      id: 'story.setSpeaker',
+      props: { line: 'a:L1', speaker: 'AIKO' },
+    });
+    expect(setSpeakerOf('a:L2', '').props).toEqual({ line: 'a:L2', speaker: '' });
+  });
+
+  it('offers the picker only where `setSpeaker` would act — its own predicate', () => {
+    expect(lines.filter((l) => isSpeakable(l.kind)).map((l) => l.id)).toEqual([
+      'a:L1',
+      'a:L2',
+      'a:L3',
+    ]);
   });
 });
 

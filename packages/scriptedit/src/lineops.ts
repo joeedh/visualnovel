@@ -244,6 +244,15 @@ export function moveLine(state: ScriptState, args: { line: string; after: string
 }
 
 /**
+ * Whether attribution means anything for a line of this kind — the kinds {@link setSpeaker} will
+ * act on. Exported because a surface offering the edit has to decide *which rows get the
+ * affordance* synchronously, and an affordance that can only be refused is worse than none.
+ */
+export function isSpeakable(kind: SceneLine['kind']): boolean {
+  return kind === 'dialogue' || kind === 'parenthetical' || kind === 'narration';
+}
+
+/**
  * Change or clear who speaks a line — and with it the line's kind, since attribution is what
  * separates dialogue from narration. A transition, lyric or centered line is refused: there is
  * nobody for it to be spoken by, and `sceneToFountain` has no cue to write it under.
@@ -254,11 +263,7 @@ export function setSpeaker(state: ScriptState, args: { line: string; speaker: st
 
   const { scene, index } = found;
   const before = scene.lines[index] as SceneLine;
-  if (
-    before.kind !== 'dialogue' &&
-    before.kind !== 'parenthetical' &&
-    before.kind !== 'narration'
-  ) {
+  if (!isSpeakable(before.kind)) {
     return refuse(`A ${before.kind} line is not spoken by anyone.`);
   }
 

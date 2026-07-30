@@ -16,6 +16,7 @@ export {
   deleteLine,
   deleteScene,
   insertLine,
+  isSpeakable,
   mergeScene,
   moveLine,
   newScene,

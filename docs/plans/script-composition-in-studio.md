@@ -1,7 +1,7 @@
 # Script composition in STUDIO
 
-Status: **partial** — steps 1–4 are shipped and carry their own as-shipped notes below, so the
-column already writes and reorders prose; steps 5–9 are not built. Move six of
+Status: **partial** — steps 1–5 are shipped and carry their own as-shipped notes below, so the
+column already writes, reorders and attributes prose; steps 6–9 are not built. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -210,8 +210,40 @@ a few lines once the shared selection exists, and it turns the rail from a repor
    (`Moved arrival:L3 to the top in arrival.` / `… after arrival:L1 …`), saw the rule and the
    sentence both vanish over its own row, dropped at the top and got the reorder in
    `scenes/arrival.md`, then carried it back to the end. The gesture never opened an editor.
-5. **`story.setSpeaker`.** The one edit that changes a line's `kind`, and therefore the exporter's
+5. ✔ **`story.setSpeaker`.** The one edit that changes a line's `kind`, and therefore the exporter's
    beat type — it belongs here rather than in FLOOR for exactly that reason.
+
+   As shipped: the cue on a row **is** the control that changes it — a button that looks like a cue,
+   which opens a `<select>` over the project's cast plus "no one (narration)". Choosing writes
+   `story.setSpeaker` through the same `act` a keystroke and a drop use. Four things the step did not
+   say:
+
+   - **The value sent is a Fountain cue, never a character id.** A prose edit is decided against the
+     scene as its *file* parses (`SceneSource.scene`), where speakers are still the cues the author
+     typed — so sending the resolved id `aiko` would rewrite `AIKO` as `@aiko` on the way out.
+     `cueFor` is the cast member's name uppercased, which is what an author types and what
+     `buildModel` resolves back to that id; verified by attributing a line and finding `HARUKI` in
+     the chunk with the neighbouring `AIKO` untouched.
+   - **The cast is a closed list, and an unresolved cue is offered verbatim.** The column will not
+     mint a cue nothing in `characters/` answers to — naming a character who does not exist is a
+     `characters/` edit, and this control writes prose. But a hand-written `KENJI` is shown on the
+     row and is the picker's current option (labelled `— not in characters/`), so opening the picker
+     and closing it cannot silently discard one.
+   - **`isSpeakable` moved into `@vn/scriptedit`** and `setSpeaker` now asks it, because the surface
+     has to decide *which rows get the affordance* synchronously and an affordance that can only be
+     refused is worse than none. A transition line renders no cue slot at all; a narration line
+     renders a `who?` that is invisible until the row is hovered.
+   - **No `check` preview, because the run's own message already carries the cost.** `previewEdit`
+     and `edit` return the same sentence, and a native `<select>` has nothing to preview on — the
+     drift warning arrives with the `ok` notice ("`arrival:L1` is spoken by HARUKI. 1 rendered
+     shot(s) still illustrate the old prose…"). Re-picking the cue a line already carries is not an
+     authorial act: no record, no undo point — and it is the only way to leave a narration line
+     alone, which `setSpeaker` would otherwise refuse ("has no speaker to clear").
+
+   Verified live over CDP against a scratch copy of `examples/mySampleRepo`: attributed the narration
+   `arrival:L1` to Haruki (row became `dialogue`, file gained a plain `HARUKI` cue), re-picked
+   `arrival:L2`'s own `AIKO` and got no record, cleared it and watched the row become narration —
+   three picks, two `story.setSpeaker` records.
 6. **Split, merge, new scene, delete scene.** With the detachment counts from each command's
    `check` shown before commit, and `newScene`'s two homes.
 7. **Clickable diagnostics.** The rail group selects a scene and switches mode.

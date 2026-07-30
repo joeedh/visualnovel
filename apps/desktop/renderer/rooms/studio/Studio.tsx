@@ -58,7 +58,15 @@ export function Studio(props: {
         {...(props.mode === 'branches'
           ? { surface: <BranchEditor seed={seed} scene={scene} onScene={setScene} /> }
           : props.mode === 'script'
-            ? { surface: <ScriptEditor scene={scene} onScene={setScene} /> }
+            ? {
+                surface: (
+                  <ScriptEditor
+                    scene={scene}
+                    onScene={setScene}
+                    cast={props.index?.characters ?? []}
+                  />
+                ),
+              }
             : {})}
       />
     </div>

@@ -101,12 +101,39 @@
 .sc-line:hover .lid {
   color: var(--mist-dim);
 }
+/* The cue is also the control that changes it, so it is a button that looks like a cue — the row
+   reads as a screenplay until the pointer is on it. */
 .sc-line .who {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--sodium);
+  cursor: pointer;
+}
+.sc-line .who:hover {
+  text-decoration: underline dotted;
+}
+/* A narration line has nobody to name, so its slot stays out of the way until it is wanted. */
+.sc-line .who.none {
+  color: var(--ink-line);
+  opacity: 0;
+}
+.sc-line:hover .who.none {
+  opacity: 1;
+}
+.sc-line .who.picking {
+  background: var(--ink-sunken);
+  border: 1px solid var(--sodium);
+  border-radius: var(--r-chrome);
+  padding: 1px 4px;
+  text-transform: none;
+  letter-spacing: 0.04em;
 }
 .sc-line .text {
   font-family: var(--prose);

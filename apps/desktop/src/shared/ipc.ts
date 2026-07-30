@@ -113,6 +113,7 @@ export interface CommandCheck {
 export type {
   AgentEvent,
   AgentMode,
+  CharacterEntry,
   Plan,
   PlanDecision,
   RunResult,

@@ -14,7 +14,12 @@ import type { ScriptState } from '@vn/scriptedit';
 import type { Scene } from '@vn/types';
 import { TOP } from '../../../../src/shared/interactions.js';
 import { commitOf, lineOf } from '../../../../src/shared/lineedit.js';
-import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
+import type {
+  CharacterEntry,
+  CoverageLine,
+  SceneCoverage,
+  StoryGraph,
+} from '../../../../src/shared/ipc';
 
 /**
  * The local part of a `${sceneId}:L<n>` id, which is what the gutter shows. The scene half is
@@ -214,6 +219,80 @@ export function scriptRows(lines: readonly CoverageLine[], editing: Editing | nu
   }
   return rows;
 }
+
+// ---------------------------------------------------------------------------
+// Who says a line: the project's cast, offered as cues.
+// ---------------------------------------------------------------------------
+
+/** A cast member as the cue picker needs them — `WorkspaceIndex.characters`, narrowed. */
+export type CastMember = Pick<CharacterEntry, 'id' | 'name'>;
+
+/**
+ * One option in a line's cue picker: the cue `story.setSpeaker` would be given, what the author
+ * reads, and whether it is what the line already says.
+ */
+export interface CueChoice {
+  /** A Fountain cue, or `''` for "no one" — which makes the line narration. */
+  cue: string;
+  label: string;
+  /** Choosing this is not an authorial act: nothing about the line would change. */
+  current: boolean;
+}
+
+/**
+ * The cue for a cast member: their name, uppercased, which is what an author types in a Fountain
+ * screenplay and what `buildModel` resolves back to this id. Deliberately *not* the id — a prose
+ * edit is decided against the scene as its file parses, where speakers are still cues, so writing
+ * an id back would rewrite `AIKO` as `@aiko`.
+ */
+export function cueFor(member: CastMember): string {
+  return (member.name || member.id).toUpperCase();
+}
+
+/**
+ * The cast member a line's speaker names, or `null`. A speaker is a resolved character id after
+ * `buildModel` has seen it and the raw cue when it resolved to nothing, so both are matched.
+ */
+export function castFor(cast: readonly CastMember[], speaker?: string): CastMember | null {
+  if (!speaker) return null;
+  const cue = speaker.toUpperCase();
+  return cast.find((m) => m.id === speaker || cueFor(m) === cue) ?? null;
+}
+
+/** What a row's cue slot shows: the cast member's name, an unresolved cue verbatim, or nothing. */
+export function cueLabel(cast: readonly CastMember[], speaker?: string): string {
+  if (!speaker) return '';
+  return castFor(cast, speaker)?.name || speaker;
+}
+
+/**
+ * A line's attribution options: the whole project cast, then the cue it already carries if that is
+ * nobody in `characters/`, then "no one".
+ *
+ * The cast is the project's rather than the scene's — attributing a line is how a character gets
+ * into a scene in the first place. An unresolved cue is offered so picking through the list cannot
+ * silently discard a cue the author typed by hand; naming a character who does not exist yet is
+ * not offered at all, because that is a `characters/` edit and this control writes prose.
+ */
+export function cueChoices(cast: readonly CastMember[], speaker?: string): CueChoice[] {
+  const mine = castFor(cast, speaker);
+  const choices: CueChoice[] = cast.map((m) => ({
+    cue: cueFor(m),
+    label: m.name || m.id,
+    current: m === mine,
+  }));
+  if (speaker && !mine) {
+    choices.push({ cue: speaker, label: `${speaker} — not in characters/`, current: true });
+  }
+  choices.push({ cue: '', label: 'no one (narration)', current: !speaker });
+  return choices;
+}
+
+/** `story.setSpeaker` as the column asks for it. An empty `speaker` makes the line narration. */
+export const setSpeakerOf = (line: string, cue: string): Invocation => ({
+  id: 'story.setSpeaker',
+  props: { line, speaker: cue },
+});
 
 // ---------------------------------------------------------------------------
 // Dragging a line: where a drop lands, and the state `script.moveLine` is judged against.

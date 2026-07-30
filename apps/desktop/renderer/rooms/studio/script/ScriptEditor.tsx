@@ -10,6 +10,11 @@
  * file opens editors, runs what it is told to run, and moves the caret. There is no buffer here to
  * diff: the model is a list of lines.
  *
+ * A line's cue is the second thing on a row, and the only edit here that changes what *kind* of
+ * line it is: `story.setSpeaker` turns narration into dialogue and back, and the exporter's beat
+ * type follows. It is a choice off the project's cast rather than a name to type, so the column
+ * cannot mint a cue nothing in `characters/` answers to.
+ *
  * Dragging a line by its gutter is the `script.moveLine` interaction, and this surface is its first
  * consumer — the gesture was declared and tested before any of this existed. The grab asks it to
  * judge every insertion point at once; each pointer move reads that answer off by row rather than
@@ -17,8 +22,11 @@
  * that is allowed, and what `interaction.targets` tells an agent are one verdict.
  */
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { isSpeakable } from '@vn/scriptedit';
 import { api } from '../../../api';
 import {
+  cueChoices,
+  cueLabel,
   dropTarget,
   insertOf,
   keyAct,
@@ -26,7 +34,10 @@ import {
   moveStateOf,
   nextEditing,
   scriptRows,
+  setSpeakerOf,
+  type CastMember,
   type Continue,
+  type CueChoice,
   type Editing,
   type RowBox,
 } from './script.js';
@@ -55,6 +66,8 @@ export function ScriptEditor(props: {
   /** The room's scene selection, shared with `branches`. `null` until the graph is known. */
   scene: string | null;
   onScene: (sceneId: string) => void;
+  /** The project's cast, as the cue picker offers it. Empty until the index has loaded. */
+  cast: readonly CastMember[];
 }): JSX.Element {
   const [story, setStory] = useState<StoryGraph | null>(null);
   const [data, setData] = useState<SceneCoverage | null>(null);
@@ -62,6 +75,9 @@ export function ScriptEditor(props: {
   const [draft, setDraft] = useState('');
   const [notice, setNotice] = useState<Notice | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  // The line whose cue picker is open, if any. Not part of `Editing`: attribution is a different
+  // command with no draft, and opening it must not look like the row is being retyped.
+  const [attributing, setAttributing] = useState<string | null>(null);
   // Set by a key that already acted, so the blur it causes cannot commit the same draft twice.
   const settled = useRef(false);
   const page = useRef<HTMLDivElement | null>(null);
@@ -80,6 +96,7 @@ export function ScriptEditor(props: {
     if (!props.scene) return;
     setEditing(null);
     setDrag(null);
+    setAttributing(null);
     setNotice(null);
     void api.invoke('story:coverage', props.scene).then(setData);
   }, [props.scene]);
@@ -188,6 +205,7 @@ export function ScriptEditor(props: {
     // Keeps the gesture from also being a text selection or a focus change.
     e.preventDefault();
     setEditing(null);
+    setAttributing(null);
     setNotice(null);
     const judged = scriptMoveLine.targets(moveStateOf(shown), line.id);
     setDrag({
@@ -233,6 +251,61 @@ export function ScriptEditor(props: {
     drag?.target === at && drag.verdict ? (
       <div className={`sc-drop ${drag.verdict.accept ? 'accept' : 'refuse'}`} />
     ) : null;
+
+  /**
+   * Pick who says a line. `story.setSpeaker` is the one edit here that changes a line's `kind` —
+   * and with it the beat type the exporter writes — which is why it is a deliberate choice off a
+   * closed list rather than a field to type a name into.
+   */
+  const attribute = (line: CoverageLine, cue: string, choices: CueChoice[]): void => {
+    setAttributing(null);
+    // Re-picking the cue the line already carries is not an authorial act: no record, no undo
+    // point. It is also the only way to leave a narration line alone, which `setSpeaker` refuses.
+    if (choices.find((c) => c.current)?.cue === cue) return;
+    void act(null, [setSpeakerOf(line.id, cue)], { open: 'none' });
+  };
+
+  /**
+   * A line's cue slot: what it says now, and the picker it opens. Only the kinds `setSpeaker` acts
+   * on get one — its own predicate answers that, so a row can't offer an edit it would refuse.
+   */
+  const cue = (line: CoverageLine): JSX.Element | null => {
+    if (!isSpeakable(line.kind)) return null;
+    if (attributing !== line.id) {
+      return (
+        <button
+          type="button"
+          className={`who${line.speaker ? '' : ' none'}`}
+          onClick={() => {
+            setAttributing(line.id);
+            setNotice(null);
+          }}
+        >
+          {cueLabel(props.cast, line.speaker) || 'who?'}
+        </button>
+      );
+    }
+    const choices = cueChoices(props.cast, line.speaker);
+    return (
+      <select
+        className="who picking"
+        autoFocus
+        aria-label={`Who says ${line.id}`}
+        value={choices.find((c) => c.current)?.cue ?? ''}
+        onChange={(e) => attribute(line, e.target.value, choices)}
+        onBlur={() => setAttributing(null)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setAttributing(null);
+        }}
+      >
+        {choices.map((c, i) => (
+          <option key={`${i}:${c.cue}`} value={c.cue}>
+            {c.label}
+          </option>
+        ))}
+      </select>
+    );
+  };
 
   const editor = (row: Editing, label: string): JSX.Element => (
     // The sizer carries the draft as `content`, so the row grows as you type without anything
@@ -339,9 +412,7 @@ export function ScriptEditor(props: {
                     {localLineId(row.line.id)}
                   </span>
                   <div className="sc-body">
-                    {/* Not editable here: changing who says a line changes its kind, hence the
-                        exporter's beat type. That is `story.setSpeaker`, a later step. */}
-                    {row.line.speaker && <div className="who">{row.line.speaker}</div>}
+                    {cue(row.line)}
                     {editing?.row === 'line' && editing.line.id === row.line.id ? (
                       editor(editing, `Retype ${row.line.id}`)
                     ) : (
