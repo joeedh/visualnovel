@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import type { Logger, Scene } from '@vn/types';
+import type { Logger, Providers, Scene } from '@vn/types';
+import { createMockProviders, type ImageBackend } from '@vn/providers';
 import { canonicalScenes, sceneChunksFromScript } from '@vn/model';
 import { parseFountain } from '@vn/parse';
 import { AssetStore, ProjectPaths } from '@vn/store';
@@ -85,6 +86,70 @@ describe('cmdRun --mock (dry run)', () => {
       await cleanup();
     }
   });
+});
+
+describe('cmdRun — a failure is not a clean run', () => {
+  /** Mock providers wired to a real store, so refs resolve exactly as a real run's would. */
+  const providersFor = (store: AssetStore, imageBackend?: ImageBackend): Providers =>
+    createMockProviders({
+      refLoader: async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
+      ...(imageBackend ? { imageBackend } : {}),
+    });
+
+  /** An image backend that rejects every call — the provider outage, made deterministic. */
+  const brokenImages = (message: string): ImageBackend => ({
+    modelId: 'broken-image',
+    generate: () => Promise.reject(new Error(message)),
+    edit: () => Promise.reject(new Error(message)),
+  });
+
+  const runIn = (dir: string, providers: Providers) =>
+    capture(() => cmdRun({ positional: [dir], flags: {} }, silentLogger, providers));
+
+  it('exits 1, names the reason, and says the next run will retry', async () => {
+    const p = await makeProject({
+      title: 'Test',
+      script: SCRIPT,
+      characters: [{ id: 'aiko', name: 'Aiko', status: 'candidates' }],
+    });
+    try {
+      const store = (await p.reload()).store;
+      const broken = await runIn(p.dir, providersFor(store, brokenImages('the model exploded')));
+      expect(broken.code).toBe(1);
+      expect(broken.out).toContain('Failed tasks:');
+      expect(broken.out).toContain('the model exploded');
+      expect(broken.out).toContain('will be retried by the next `vngen run`');
+
+      // The next run inherits the failure, requeues it, and only then reports a clean gate halt.
+      const retried = await runIn(p.dir, providersFor((await p.reload()).store));
+      expect(retried.code).toBe(0);
+      expect(retried.out).toContain('retried from an earlier run:');
+      expect(retried.out).not.toContain('Failed tasks:');
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+
+  it('still reports a clean run as clean', async () => {
+    const p = await makeProject({
+      title: 'Test',
+      script: SCRIPT,
+      characters: [{ id: 'aiko', name: 'Aiko', status: 'candidates' }],
+    });
+    try {
+      const first = await runIn(p.dir, providersFor((await p.reload()).store));
+      expect(first.code).toBe(0);
+      expect(first.out).toContain('Halted at the character-approval gate');
+      expect(first.out).not.toContain('failed:');
+
+      await p.approveAll();
+      const second = await runIn(p.dir, providersFor((await p.reload()).store));
+      expect(second.code).toBe(0);
+      expect(second.out).toContain('Gate cleared — all reachable shots generated.');
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
 });
 
 describe('cmdImport', () => {

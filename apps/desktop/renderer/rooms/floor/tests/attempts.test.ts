@@ -11,6 +11,7 @@ import {
   mergeAttemptReviews,
   promptRepeated,
   survivingDefects,
+  triageOf,
 } from '../attempts';
 
 const BASE = 'A quiet dormitory room at dusk, wide shot.';
@@ -196,5 +197,51 @@ describe('survivingDefects', () => {
 
   it('is empty when a failed task recorded no attempts', () => {
     expect(survivingDefects(task('failed', []))).toEqual([]);
+  });
+});
+
+describe('triageOf', () => {
+  const blocked = [
+    threeAttempts[0] as TaskAttempt,
+    attempt(2, `${BASE} Corrections: warm dusk light.`, 'ccc', [
+      review('claude', defect('blocking', 'lighting', 'still noon light')),
+    ]),
+  ];
+  const errored = (error?: string): Task => ({
+    ...task('failed', []),
+    ...(error ? { error } : {}),
+  });
+
+  it('says nothing about a task that is still running or finished cleanly', () => {
+    expect(triageOf(task('done', threeAttempts))).toBeNull();
+    expect(triageOf(task('running', []))).toBeNull();
+  });
+
+  it('names the defects that survived a needs_human loop, not the reason string', () => {
+    const t = { ...task('needs_human', blocked), error: 'attempt 2 still has blocking defects' };
+    const triage = triageOf(t);
+    expect(triage?.headline).toBe('⚑ needs_human — still blocking after 2 attempts');
+    expect(triage?.defects.map((d) => d.category)).toEqual(['lighting']);
+    expect(triage?.reason).toBeNull();
+  });
+
+  // A task that threw has neither reviews nor defects, so `error` is the only account of it.
+  it('falls back to the recorded reason when nothing blocking survived', () => {
+    const triage = triageOf(errored('the model exploded'));
+    expect(triage?.headline).toBe('✕ failed — no asset produced after 0 attempts');
+    expect(triage?.defects).toEqual([]);
+    expect(triage?.reason).toBe('the model exploded');
+  });
+
+  it('admits it when no reason was recorded at all', () => {
+    expect(triageOf(errored())?.reason).toBe('No reason was recorded.');
+    expect(triageOf(task('needs_human', []))?.reason).toBe(
+      'No blocking defect was recorded on the last attempt.',
+    );
+  });
+
+  it('counts one attempt in the singular', () => {
+    const t = { ...errored('boom'), attempts: [threeAttempts[0] as TaskAttempt] };
+    expect(triageOf(t)?.headline).toBe('✕ failed — no asset produced after 1 attempt');
   });
 });

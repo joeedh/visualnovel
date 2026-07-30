@@ -1,6 +1,6 @@
 # Task failure: visibility and retry
 
-Status: **planned.** Nothing below is built. Two gaps in the scheduler, found by the end-to-end
+Status: **shipped.** See [As shipped](#as-shipped). Two gaps in the scheduler, found by the end-to-end
 acceptance test of [`script-composition-in-studio.md`](script-composition-in-studio.md) and
 recorded in that plan's step 8 rather than fixed there: a failed task does not record why, and a
 failed task is terminal while the run still reports success.
@@ -131,7 +131,7 @@ records that carry an `error`**, which only the scheduler writes.
 
 Each step is one commit and leaves `pnpm check` / `pnpm test` / `pnpm lint` green.
 
-### 1. Record the reason
+### 1. Record the reason ✅
 
 - `packages/types/src/tasks.ts`: add `error?: string` to `Task`, documented as "why the task
   reached a terminal non-`done` state (`failed` or `needs_human`)".
@@ -148,7 +148,7 @@ Each step is one commit and leaves `pnpm check` / `pnpm test` / `pnpm lint` gree
   `createMockProviders`. `run({ providers })` can already do this by hand; the option keeps the
   test to one line and keeps it on the production path.
 
-### 2. Retry a failed task on the next run, bounded
+### 2. Retry a failed task on the next run, bounded ✅
 
 - `packages/types/src/schemas.ts`: `max_task_attempts: z.number().int().positive().default(2)`
   — total run-level attempts, so the default is one retry. Orthogonal to
@@ -165,7 +165,7 @@ Each step is one commit and leaves `pnpm check` / `pnpm test` / `pnpm lint` gree
   asset in the manifest. A second test with `max_task_attempts: 1` shows no requeue. A third
   pins the orphan constraint: a `failed` node whose hash is not in the plan is left alone.
 
-### 3. Stop reporting success over a failure
+### 3. Stop reporting success over a failure ✅
 
 - `RunSummary` gains `failed: AnyTask[]` and `needsHuman: AnyTask[]`, both **intersected with
   the last planning pass's hashes** — capture that pass's `planned` inside the loop.
@@ -189,7 +189,7 @@ Each step is one commit and leaves `pnpm check` / `pnpm test` / `pnpm lint` gree
   returns `1` and prints the reason; a clean run still returns `0` and still prints the original
   sentence.
 
-### 4. Retry a transient provider error in place
+### 4. Retry a transient provider error in place ✅
 
 - `packages/providers/src/backends/gemini.ts`: classify the caught SDK error (HTTP 429 and 5xx,
   plus transport errors like `ECONNRESET`/`ETIMEDOUT`/`fetch failed`) and wrap the SDK call in
@@ -205,7 +205,7 @@ Each step is one commit and leaves `pnpm check` / `pnpm test` / `pnpm lint` gree
 - Tests (`packages/providers/src/tests/`): a fake SDK that fails twice with a 503 then succeeds
   produces one image and three calls; one that fails with a 400 produces one call and throws.
 
-### 5. Docs
+### 5. Docs ✅
 
 - `docs/pipeline-contracts.md`, `## Scheduling`: a new contract — a terminal task records why,
   a failed task is retried on the next run up to `max_task_attempts`, and a run's report is
@@ -215,6 +215,56 @@ Each step is one commit and leaves `pnpm check` / `pnpm test` / `pnpm lint` gree
 - `docs/plans/index.md`: the row exists already (added with this file); flip its status.
 - This file: tick the steps and add an `## As shipped` section, including anywhere the plan was
   wrong or silent.
+
+## As shipped
+
+All five steps landed as written. The contract is in
+[`../pipeline-contracts.md`](../pipeline-contracts.md#scheduling). What follows is where the plan
+was wrong, silent, or made a call it deferred to implementation.
+
+**Both backends are covered, and Claude's messages got longer.** Step 4 hedged on Anthropic; the
+shape matched, so both backends route their SDK calls through one `callWithRetry`. The classifier
+lives in a new `packages/providers/src/backends/transient.ts` (`isTransient` + `providerError` +
+`callWithRetry`) rather than inside `gemini.ts`, because two backends needed it. Side effect worth
+knowing: a Claude failure message now includes the cause's text, where before it carried the cause
+only as `error.cause`.
+
+**`ProviderError` kept its meaning and grew a subclass.** The plan left the choice open;
+`RetryableProviderError extends ProviderError` is what shipped, so the doc comment's claim is now
+true of the base class and every layer above the backend branches on `instanceof`.
+
+**`@vn/util`'s `retry` gained a `shouldRetry` predicate.** Not in the plan — but a retry loop that
+cannot be told an error is hopeless would have paid three times for every 400. Default behaviour is
+unchanged (retry everything up to the budget); `packages/util/src/tests/pool.test.ts` pins both.
+
+**`withStructuredRetry` now stops on any `ProviderError`.** Also not in the plan, and a real bug it
+would have introduced: with the backend retrying 3× and `withStructuredRetry` retrying 3× on top,
+one outage became nine calls. A transient error reaching the structured layer has already exhausted
+its budget; a terminal one cannot improve. Schema-mismatch retries — the reason that layer exists —
+are untouched.
+
+**The Gemini factories take an injectable client.** `createGeminiChat`/`createGeminiImage` gained a
+third parameter, `client: GeminiClient = lazyClient(apiKey)`. The plan assumed "a fake SDK" was
+reachable; it is not. The real client arrives through a dynamic `import()`, and esbuild's
+`transformSync` — what `scripts/jest-esbuild.cjs` runs — never lowers `import()` to `require` for
+any platform, so jest's CJS runtime rejects it before a `jest.mock` could take effect. (No
+`jest.mock` call exists anywhere in this repo.) Injection is the only seam; the transform file
+gained a doc comment saying so.
+
+**`cmdRun` gained a `providers` test seam.** A non-`--mock` run resolves real API keys and builds
+real backends, which a test of the _reporting_ cannot stand in for. The optional third parameter is
+the counterpart of the existing `ApproveIO`, and is documented as such.
+
+**FLOOR's triage is a helper, not a widened conditional.** `triageOf(task)` in
+`rooms/floor/attempts.ts` returns the headline, the surviving defects, and the prose shown when
+there are none — the two states read differently (`needs_human` means the reviewers kept blocking,
+so the defects _are_ the answer; a `failed` task usually threw and has neither reviews nor defects,
+leaving `task.error` as the only account of it). `Inspector.tsx` stayed thin, per the renderer rule.
+
+**Also touched, briefly.** `apps/desktop/src/shared/ipc.ts` was importing `TaskKind` only to
+re-export it, so naming it in `PipelineRunResult` was a typecheck error until it joined the
+top-level `import type` block. `pipeline.run`'s message appends `, N failed` before the gate
+clause.
 
 ## Out of scope
 

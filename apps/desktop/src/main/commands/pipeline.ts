@@ -42,8 +42,11 @@ export const pipelineRun = define({
     const what = mock
       ? `${result.preview.pendingTasks} pending task(s) previewed`
       : `${result.ran} task(s) ran`;
+    // Counted from the plan, so a failure inherited from an earlier run still shows: without
+    // this the palette reported a clean run over art that does not exist.
+    const failed = result.failed ? `, ${result.failed} failed` : '';
     return {
-      message: `${what}${result.blockedOnGate ? ', halted at the gate' : '.'}`,
+      message: `${what}${failed}${result.blockedOnGate ? ', halted at the gate' : '.'}`,
       data: result,
       ...(mock ? {} : { written: ['vngen/build/', 'vngen/state/tasks.jsonl'] }),
     };

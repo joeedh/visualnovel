@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import type { Asset, Logger } from '@vn/types';
+import type { AnyTask, Asset, Logger, Providers } from '@vn/types';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import { loadConfig, setStartScene } from '@vn/config';
 import { parseFountain } from '@vn/parse';
@@ -53,6 +53,12 @@ export function parseArgs(argv: string[]): Args {
 }
 
 const ok = (s: string): void => void process.stdout.write(s.endsWith('\n') ? s : s + '\n');
+
+/** How many failure reasons `run` and `status` spell out before summarizing the rest. */
+const FAILURES_SHOWN = 5;
+
+/** Run-level attempts already spent on a task — only the records that carry a reason. */
+const spentAttempts = (task: AnyTask): number => task.attempts.filter((a) => a.error).length;
 
 function reportDiagnostics(model: {
   diagnostics: { severity: string; code: string; message: string }[];
@@ -194,7 +200,13 @@ export async function cmdExport(args: Args): Promise<number> {
   return 0;
 }
 
-/** `vngen status [dir]` — task/asset/approval summary (report §10). */
+/**
+ * `vngen status [dir]` — task/asset/approval summary (report §10).
+ *
+ * `status` does not plan, so its counts are of every node in `tasks.jsonl`, including orphans
+ * the current plan no longer wants — a task whose prompt or references changed got a new hash
+ * and left the old node behind. `vngen run` reports against the live plan instead.
+ */
 export async function cmdStatus(args: Args): Promise<number> {
   const dir = args.positional[0] ?? '.';
   const project = await loadProject(dir);
@@ -209,6 +221,11 @@ export async function cmdStatus(args: Args): Promise<number> {
   for (const status of ['pending', 'running', 'done', 'failed', 'needs_human'] as const) {
     if (counts[status]) ok(`  ${status}: ${counts[status]}`);
   }
+  const failed = project.graph.all().filter((t) => t.status === 'failed');
+  for (const t of failed.slice(0, FAILURES_SHOWN)) {
+    ok(`    ${t.kind} ${t.hash.slice(0, 12)} — ${t.error ?? 'no reason recorded'}`);
+  }
+  if (failed.length > FAILURES_SHOWN) ok(`    … and ${failed.length - FAILURES_SHOWN} more`);
   const gate = gateStatus(project.model);
   ok(`Gate: ${gate.cleared ? 'cleared' : `awaiting approval — ${gate.pending.join(', ')}`}`);
   return 0;
@@ -243,8 +260,18 @@ export async function cmdCost(args: Args, logger: Logger): Promise<number> {
  * `vngen run [dir] [--mock]` — execute to the next gate (report §10). `--mock` is a dry run:
  * it plans, writes the story graph, and previews the work without calling any model or
  * writing assets (no API keys needed). Drop `--mock` to generate for real.
+ *
+ * Exits 1 when the current plan still wants a `failed` task: the art the command promised
+ * does not exist, whether this run is what lost it or an earlier one was.
+ *
+ * `providers` is a test seam, the counterpart of {@link ApproveIO}: a real run resolves keys
+ * and builds backends, which a test of the *reporting* has no way to stand in for.
  */
-export async function cmdRun(args: Args, logger: Logger): Promise<number> {
+export async function cmdRun(
+  args: Args,
+  logger: Logger,
+  providersOverride?: Providers,
+): Promise<number> {
   const dir = args.positional[0] ?? '.';
   const mock = Boolean(args.flags['mock']);
   const project = await loadProject(dir);
@@ -255,7 +282,7 @@ export async function cmdRun(args: Args, logger: Logger): Promise<number> {
   assertValid(project.model);
 
   await writeStoryGraph(project.paths, toMermaid(project.model));
-  const providers = await buildProviders(project, { mock, logger });
+  const providers = providersOverride ?? (await buildProviders(project, { mock, logger }));
 
   const summary = await runPipeline({
     ...project,
@@ -270,12 +297,30 @@ export async function cmdRun(args: Args, logger: Logger): Promise<number> {
     return 0;
   }
 
+  // Counted from the *plan*, not from `summary.ran`: a failure inherited from an earlier run
+  // transitions nothing this process can see, and used to report as a clean run.
+  const { failed, needsHuman } = summary;
   ok(`Ran ${summary.ran.length} task(s).`);
-  const failed = summary.ran.filter((t) => t.status === 'failed');
-  const needsHuman = summary.ran.filter((t) => t.status === 'needs_human');
+  if (summary.retried.length) ok(`  retried from an earlier run: ${summary.retried.length}`);
   if (failed.length) ok(`  failed: ${failed.length}`);
   if (needsHuman.length) ok(`  needs human: ${needsHuman.length}`);
   ok(`Assets in manifest: ${project.store.manifest().length}`);
+
+  if (failed.length) {
+    ok('');
+    ok('Failed tasks:');
+    for (const t of failed.slice(0, FAILURES_SHOWN)) {
+      ok(`  ${t.kind} ${t.hash.slice(0, 12)} — ${t.error ?? 'no reason recorded'}`);
+    }
+    if (failed.length > FAILURES_SHOWN) ok(`  … and ${failed.length - FAILURES_SHOWN} more`);
+    const budget = project.config.max_task_attempts;
+    const retriable = failed.filter((t) => spentAttempts(t) < budget).length;
+    ok(
+      retriable
+        ? `${retriable} of them will be retried by the next \`vngen run\`.`
+        : `The attempt budget (max_task_attempts: ${budget}) is spent — none will be retried.`,
+    );
+  }
 
   if (summary.blockedOnGate) {
     ok('');
@@ -284,10 +329,14 @@ export async function cmdRun(args: Args, logger: Logger): Promise<number> {
       ok(`  ${id} — review candidates in ${project.paths.candidatesDir(id)}`);
     }
     ok(`Approve them interactively with: vngen approve${dir === '.' ? '' : ` ${dir}`}`);
+  } else if (failed.length) {
+    ok(`Gate cleared, but ${failed.length} task(s) failed — art is missing.`);
   } else {
     ok('Gate cleared — all reachable shots generated.');
   }
-  return 0;
+  // A failure means the artifact the command promised does not exist. `needs_human` means it
+  // exists and wants review, which is not the command's failure.
+  return failed.length > 0 ? 1 : 0;
 }
 
 /** A line-oriented prompt seam so the interactive flow can be driven by tests. */

@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
-import { ProviderError } from '@vn/util';
 import type { ChatBackend, ChatRequest, ChatToolReply, Effort, ToolSchema } from '../backend.js';
+import { callWithRetry } from './transient.js';
 
 const MIME: Record<string, string> = {
   png: 'image/png',
@@ -68,7 +68,7 @@ export function createAnthropicChat(
         });
       }
       content.push({ type: 'text', text: req.prompt });
-      try {
+      return callWithRetry(`Claude request failed (${modelId})`, async () => {
         const res = await anthropic.messages.create({
           model: modelId,
           system: req.system,
@@ -78,10 +78,8 @@ export function createAnthropicChat(
         return (res.content ?? [])
           .filter((b: any) => b.type === 'text')
           .map((b: any) => b.text)
-          .join('\n');
-      } catch (err) {
-        throw new ProviderError(`Claude request failed (${modelId})`, { cause: err });
-      }
+          .join('\n') as string;
+      });
     },
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
       const anthropic = await client();
@@ -97,7 +95,7 @@ export function createAnthropicChat(
         });
       }
       content.push({ type: 'text', text: req.prompt });
-      try {
+      return callWithRetry(`Claude tool request failed (${modelId})`, async () => {
         const res = await anthropic.messages.create({
           model: modelId,
           system: req.system,
@@ -117,10 +115,8 @@ export function createAnthropicChat(
         const toolCalls = blocks
           .filter((b: any) => b.type === 'tool_use')
           .map((b: any) => ({ id: b.id, name: b.name, args: b.input }));
-        return { text: text || undefined, toolCalls };
-      } catch (err) {
-        throw new ProviderError(`Claude tool request failed (${modelId})`, { cause: err });
-      }
+        return { text: text || undefined, toolCalls } as ChatToolReply;
+      });
     },
   };
 }

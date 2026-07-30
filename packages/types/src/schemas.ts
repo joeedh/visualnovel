@@ -79,6 +79,12 @@ export const projectConfig = z.object({
   concurrency: z.number().int().positive().default(4),
   candidates: z.number().int().positive().default(3),
   max_refine_attempts: z.number().int().positive().default(4),
+  /**
+   * Total run-level attempts at a task before the scheduler stops requeueing it, so the
+   * default of 2 is one retry. Orthogonal to `max_refine_attempts`, which caps P7's
+   * critique→refine loop *within* a single run of one shot task.
+   */
+  max_task_attempts: z.number().int().positive().default(2),
 });
 export type ProjectConfig = z.infer<typeof projectConfig>;
 

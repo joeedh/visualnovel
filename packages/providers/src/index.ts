@@ -8,4 +8,5 @@ export * from './mock.js';
 export * from './placeholder.js';
 export * from './cache.js';
 export { createAnthropicChat, supportsEffort } from './backends/anthropic.js';
-export { createGeminiChat, createGeminiImage } from './backends/gemini.js';
+export { createGeminiChat, createGeminiImage, type GeminiClient } from './backends/gemini.js';
+export { isTransient } from './backends/transient.js';

@@ -57,10 +57,12 @@ export interface RunOptions {
    */
   providers?: Providers;
   /**
-   * Receive the scheduler's structured events. A failure's message lives only here — the
-   * scheduler logs it and does not store it on the task — so without one a wave of failed
-   * tasks is indistinguishable from a wave of successful ones in the returned summary.
+   * Replace only the image backend the mock providers sit on — the seam a test injects a
+   * throwing or flaky backend at to exercise the scheduler's failure and retry paths.
+   * Ignored when `providers` is given.
    */
+  imageBackend?: ImageBackend;
+  /** Receive the scheduler's structured events (`task.start` / `task.end`). */
   logger?: Logger;
 }
 
@@ -194,7 +196,7 @@ export class TestProject {
       createMockProviders({
         reviewResponses: opts.reviewResponses,
         refLoader: async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
-        imageBackend: await this.images(),
+        imageBackend: opts.imageBackend ?? (await this.images()),
       });
     return runPipeline({
       model,

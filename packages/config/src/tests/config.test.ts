@@ -17,6 +17,7 @@ describe('loadConfig', () => {
     expect(config.models.image).toBe('gemini-2.5-flash-image');
     expect(config.concurrency).toBe(4);
     expect(config.max_refine_attempts).toBe(4);
+    expect(config.max_task_attempts).toBe(2);
     expect(config.start).toBeUndefined();
   });
 

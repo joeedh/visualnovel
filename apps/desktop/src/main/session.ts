@@ -778,6 +778,8 @@ export class WorkspaceSession {
         imageCalls: summary.preview.imageCalls,
         reviewCalls: summary.preview.reviewCalls,
       },
+      failed: summary.failed.length,
+      failures: summary.failed.map((t) => ({ hash: t.hash, kind: t.kind, error: t.error })),
     };
   }
 }

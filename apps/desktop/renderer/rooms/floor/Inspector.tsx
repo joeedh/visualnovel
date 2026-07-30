@@ -1,20 +1,18 @@
 import { AttemptLoop } from './AttemptLoop';
-import { survivingDefects } from './attempts';
+import { triageOf, type TriageSummary } from './attempts';
 import type { Task } from '../../../src/shared/ipc';
 
 /** Why the loop gave up, named — not just that it did. */
-function Triage(props: { task: Task }): JSX.Element {
-  const survived = survivingDefects(props.task);
+function Triage(props: { triage: TriageSummary }): JSX.Element {
+  const { headline, defects, reason } = props.triage;
   return (
     <div className="triage">
-      <div className="tri-head">
-        ⚑ needs_human — still blocking after {props.task.attempts.length} attempts
-      </div>
-      {survived.length === 0 ? (
-        <p className="tri-line">No blocking defect was recorded on the last attempt.</p>
+      <div className="tri-head">{headline}</div>
+      {reason !== null ? (
+        <p className="tri-line">{reason}</p>
       ) : (
         <ul className="tri-list">
-          {survived.map((d, i) => (
+          {defects.map((d, i) => (
             <li key={i}>
               <b>{d.category}</b> — {d.description}
               <span className="who">{d.reviewers.join(' + ')}</span>
@@ -29,6 +27,7 @@ function Triage(props: { task: Task }): JSX.Element {
 /** Per-task detail: identity, dependency count, and the generate → critique → refine loop. */
 export function Inspector(props: { task: Task | null }): JSX.Element {
   const t = props.task;
+  const triage = t ? triageOf(t) : null;
   if (!t) {
     return (
       <aside className="inspector">
@@ -53,7 +52,7 @@ export function Inspector(props: { task: Task | null }): JSX.Element {
         <span>attempts</span>
         <b>{t.attempts.length}</b>
       </div>
-      {t.status === 'needs_human' && <Triage task={t} />}
+      {triage && <Triage triage={triage} />}
       <div className="strip-head">ATTEMPTS · generate → critique → refine</div>
       {t.attempts.length === 0 ? (
         <div className="insp-empty">

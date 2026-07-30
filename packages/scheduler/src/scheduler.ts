@@ -1,4 +1,4 @@
-import type { AnyTask, Logger, ProjectModel, Providers, TaskKind } from '@vn/types';
+import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } from '@vn/types';
 import type { AssetStore } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { ProjectPaths } from '@vn/store';
@@ -41,6 +41,49 @@ export interface RunSummary {
   gate: GateStatus;
   /** True when the run halted because the only remaining work is behind the gate. */
   blockedOnGate: boolean;
+  /** Hashes of `failed` tasks this run put back to `pending` before the wave loop. */
+  retried: string[];
+  /**
+   * Tasks the current plan wants that are `failed` — including failures inherited from an
+   * earlier run, which `ran` cannot see. Intersected with the last planning pass, because
+   * `tasks.jsonl` is never pruned and an orphan must not make a run report a failure forever.
+   */
+  failed: AnyTask[];
+  /** Tasks the current plan wants that are `needs_human`, on the same basis as {@link failed}. */
+  needsHuman: AnyTask[];
+}
+
+/**
+ * Put `failed` tasks back to `pending` so the next run retries them — a failure is usually a
+ * transient provider error, and without this a node is terminal for the life of the project.
+ *
+ * Two bounds keep that from being reckless. `plannedHashes` is the live set the current plan
+ * asked for: `tasks.jsonl` is never pruned, so a project whose prompts changed carries orphaned
+ * `failed` nodes forever, and requeueing one spends real money on a frame nothing wants. And
+ * the budget counts **attempt records that carry an `error`** rather than `attempts.length` — a
+ * `needs_human` shot has one attempt per P7 refine pass, which is not a retry of anything.
+ *
+ * `needs_human` is never requeued: it is a request for a human, not a fault.
+ */
+export function requeueFailed(
+  graph: TaskGraph,
+  plannedHashes: ReadonlySet<string>,
+  maxAttempts: number,
+): AnyTask[] {
+  const requeued: AnyTask[] = [];
+  for (const task of graph.all()) {
+    if (task.status !== 'failed' || !plannedHashes.has(task.hash)) continue;
+    if (task.attempts.filter((a) => a.error).length >= maxAttempts) continue;
+    graph.setStatus(task.hash, 'pending', { error: undefined });
+    requeued.push(task);
+  }
+  return requeued;
+}
+
+/** The reference hashes a task's inputs carry, if its kind has any (`prompt_refine` does not). */
+function inputRefHashes(task: AnyTask): string[] {
+  const refs = (task.inputs as { refs?: { hash: string }[] }).refs;
+  return refs ? refs.map((r) => r.hash) : [];
 }
 
 /**
@@ -60,20 +103,54 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
 
   // Always (re)plan first so the preview and gate reflect the current model state. A dry run
   // may read persisted shots but must not write a mock decomposition a real run would reuse.
-  await planTasks({ model, graph, config, providers, paths, logger, readOnlyShots: dryRun });
+  const firstPass = await planTasks({
+    model,
+    graph,
+    config,
+    providers,
+    paths,
+    logger,
+    readOnlyShots: dryRun,
+  });
+
+  // Once per run, before the loop. Requeueing inside it would re-run a task that just failed,
+  // in the same process, against the same transient condition — and could spin.
+  const requeued = requeueFailed(
+    graph,
+    new Set(firstPass.map((t) => t.hash)),
+    config.max_task_attempts,
+  );
+  const retried = requeued.map((t) => t.hash);
+  // A dry run requeues in memory so `cost` counts the retry it would perform, and writes
+  // nothing: the divergence from the log dies with the process.
+  if (!dryRun) for (const node of requeued) await logTask(paths, node);
+  if (retried.length) logger?.info('task.retry', { hashes: retried });
+
+  // The live set: what the *current* plan asked for, deduped back to canonical nodes. Every
+  // terminal-state report is derived from this rather than from what this process happened to
+  // touch, so a failure inherited from an earlier run still counts and an orphan never does.
+  const live = (planned: AnyTask[], status: TaskStatus): AnyTask[] =>
+    [...new Set(planned.map((t) => t.hash))]
+      .map((h) => graph.get(h)!)
+      .filter((t) => t.status === status);
+  let plannedNow = firstPass;
 
   if (dryRun) {
+    const gate = gateStatus(model);
     return {
       ran,
       preview: costPreview(graph, config),
-      gate: gateStatus(model),
-      blockedOnGate: !gateStatus(model).cleared,
+      gate,
+      blockedOnGate: !gate.cleared,
+      retried,
+      failed: live(plannedNow, 'failed'),
+      needsHuman: live(plannedNow, 'needs_human'),
     };
   }
 
   // Plan → run ready wave → replan, until no task is ready.
   for (;;) {
-    await planTasks({ model, graph, config, providers, paths, logger });
+    plannedNow = await planTasks({ model, graph, config, providers, paths, logger });
     const ready = graph.ready();
     if (ready.length === 0) break;
 
@@ -92,8 +169,23 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
         };
       }
 
-      graph.setStatus(task.hash, result.status, { output: result.output });
+      // `error` is passed unconditionally: on `done` it is undefined, which overwrites any
+      // stale reason from an earlier attempt and drops out of the logged JSON entirely.
+      graph.setStatus(task.hash, result.status, {
+        output: result.output,
+        error: result.error,
+      });
       const finished = graph.get(task.hash)!;
+      // A runner that threw recorded nothing, so the failure would otherwise leave no trace in
+      // the causal chain — and the cross-run retry budget counts exactly these records.
+      if (result.status === 'failed') {
+        finished.attempts.push({
+          attempt: finished.attempts.length + 1,
+          refs: inputRefHashes(finished),
+          error: result.error,
+          at: now?.(),
+        });
+      }
       await logTask(paths, finished);
       ran.push(finished);
       logger?.[result.status === 'failed' ? 'error' : 'info']('task.end', {
@@ -112,5 +204,8 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     gate,
     // The run halts at the gate when characters used by reachable scenes await approval.
     blockedOnGate: !gate.cleared,
+    retried,
+    failed: live(plannedNow, 'failed'),
+    needsHuman: live(plannedNow, 'needs_human'),
   };
 }

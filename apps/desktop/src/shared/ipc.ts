@@ -25,6 +25,7 @@ import type {
   Shot,
   Task as PipelineTask,
   TaskAttempt as PipelineTaskAttempt,
+  TaskKind,
 } from '@vn/types';
 import type {
   CommandCatalog,
@@ -162,6 +163,12 @@ export interface PipelineRunResult {
   blockedOnGate: boolean;
   gatePending: string[];
   preview: { pendingTasks: number; imageCalls: number; reviewCalls: number };
+  /**
+   * Tasks the current plan wants that are `failed`, including failures inherited from an
+   * earlier run — which `ran` cannot see, so a run that lost art used to report as clean.
+   */
+  failed: number;
+  failures: { hash: string; kind: TaskKind; error?: string }[];
 }
 
 /** A portrait candidate offered for a character at the approval gate. */

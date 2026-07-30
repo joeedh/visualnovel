@@ -25,10 +25,13 @@ export async function pool<T, R>(
   return results;
 }
 
-/** Retry an async op with exponential backoff. Throws the last error on exhaustion. */
+/**
+ * Retry an async op with exponential backoff. Throws the last error on exhaustion, and
+ * immediately when `shouldRetry` rules an error out — the default retries everything.
+ */
 export async function retry<T>(
   fn: (attempt: number) => Promise<T>,
-  opts: { attempts?: number; baseMs?: number } = {},
+  opts: { attempts?: number; baseMs?: number; shouldRetry?: (err: unknown) => boolean } = {},
 ): Promise<T> {
   const attempts = opts.attempts ?? 3;
   const baseMs = opts.baseMs ?? 250;
@@ -38,9 +41,8 @@ export async function retry<T>(
       return await fn(attempt);
     } catch (err) {
       lastErr = err;
-      if (attempt < attempts) {
-        await new Promise((resolve) => setTimeout(resolve, baseMs * 2 ** (attempt - 1)));
-      }
+      if (attempt >= attempts || !(opts.shouldRetry?.(err) ?? true)) break;
+      await new Promise((resolve) => setTimeout(resolve, baseMs * 2 ** (attempt - 1)));
     }
   }
   throw lastErr;

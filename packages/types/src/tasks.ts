@@ -71,6 +71,8 @@ export interface Task<K extends TaskKind = TaskKind> {
   status: TaskStatus;
   /** Asset hash when done. */
   output?: string;
+  /** Why the task reached a terminal non-`done` state (`failed` or `needs_human`). */
+  error?: string;
   attempts: TaskAttempt[];
 }
 

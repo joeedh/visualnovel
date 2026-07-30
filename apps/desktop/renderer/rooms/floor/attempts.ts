@@ -96,3 +96,34 @@ export function survivingDefects(task: Task): MergedDefect[] {
   if (!last) return [];
   return mergeAttemptReviews(last.reviews).defects.filter((d) => d.severity === 'blocking');
 }
+
+/** What the triage panel says about a task that stopped somewhere other than `done`. */
+export interface TriageSummary {
+  headline: string;
+  /** The blocking defects that survived the last attempt, if the reviewers recorded any. */
+  defects: MergedDefect[];
+  /** The prose shown instead, when no defect survived. Null when {@link defects} is non-empty. */
+  reason: string | null;
+}
+
+/**
+ * Why a task stopped, or null if it hasn't stopped badly. The two terminal-but-not-done states
+ * read differently: `needs_human` means the reviewers kept blocking, so the defects *are* the
+ * answer; `failed` usually means a task threw, which leaves neither reviews nor defects — there
+ * the recorded `error` is the only account of it.
+ */
+export function triageOf(task: Task): TriageSummary | null {
+  if (task.status !== 'needs_human' && task.status !== 'failed') return null;
+  const defects = survivingDefects(task);
+  const n = task.attempts.length;
+  const attempts = `${n} attempt${n === 1 ? '' : 's'}`;
+  const headline =
+    task.status === 'needs_human'
+      ? `⚑ needs_human — still blocking after ${attempts}`
+      : `✕ failed — no asset produced after ${attempts}`;
+  const nothing =
+    task.status === 'needs_human'
+      ? 'No blocking defect was recorded on the last attempt.'
+      : 'No reason was recorded.';
+  return { headline, defects, reason: defects.length ? null : (task.error ?? nothing) };
+}

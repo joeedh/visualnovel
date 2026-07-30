@@ -41,6 +41,35 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   appear after that upstream task is `done`. Consequence: `vngen cost` is a snapshot of
   _currently-plannable_ work and undercounts tasks that only become plannable after an earlier
   wave finishes.
+- **A terminal task records why, is retried once, and is reported from the live plan.** Three
+  rules, each of which was a separate defect: a `shot_image` failed, the reason existed only on a
+  logger event nobody kept, the next run planned nothing for it, and the CLI printed `Gate
+  cleared — all reachable shots generated.` over a scene with no art. (1) **The reason is
+  persisted.** `Task.error` holds why a task reached a terminal non-`done` state — the scheduler
+  passes `result.error` unconditionally, so `done` clears it and `needs_human` carries the P7
+  give-up sentence — and a failure also pushes a `TaskAttempt` bearing it, so the failure appears
+  in the causal chain FLOOR renders. The log line is a whole-node snapshot, so it carries the
+  field for free. Adding it invalidates nothing: `taskHash` covers `kind` and `inputs`, never
+  mutable node state. (2) **A failed task is retried on the next run, bounded by
+  `max_task_attempts`** (default 2 — one retry; orthogonal to `max_refine_attempts`, which caps
+  the P7 loop _within_ one run). The requeue happens **once, after the first planning pass and
+  before the wave loop** — requeueing inside the loop would re-run a task against the same
+  transient condition it just lost to, and could spin. The budget counts **attempt records that
+  carry an `error`**, never `attempts.length`, which on a `needs_human` shot is a refine counter.
+  `needs_human` is never auto-retried: it is a request for a human, not a fault. A dry run
+  requeues in memory and writes nothing, so `vngen cost` counts the retry it would perform
+  without leaving a divergent log. (3) **The report is derived from the last planning pass, not
+  from what this process happened to touch.** `RunSummary.failed`/`needsHuman` are the live plan's
+  terminal nodes, so a failure inherited from an earlier run still exits `vngen run` non-zero
+  (`needs_human` does not — that artifact exists and wants review). Both the requeue and the
+  report **must** intersect with the planned set, because `TaskGraph.prune` is called by nothing
+  in production: `tasks.jsonl` accumulates orphaned nodes whenever a prompt or reference change
+  rehashes a task, and a blind sweep would either re-buy art nothing wants or fail the exit code
+  forever. `vngen status` does not plan, so its counts _do_ include orphans. Below all of this,
+  the Gemini and Claude backends retry a transient failure in place (429/5xx/transport, 3
+  attempts) and refuse to retry anything else — an unrecognized error is terminal by default,
+  since three refusals cost three times one refusal. Plan:
+  [`plans/task-failure-visibility-and-retry.md`](plans/task-failure-visibility-and-retry.md).
 
 ## Scenes, shots, and lines
 

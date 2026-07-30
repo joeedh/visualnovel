@@ -137,6 +137,11 @@ statement of every one — with the failure it prevents — is in
   dependency: a run simply halts with nothing ready. Scenes with no cast render immediately.
 - **Incremental planning.** The planner runs once per wave, so `vngen cost` only counts
   _currently-plannable_ work and undercounts what a later wave unlocks.
+- **A terminal task records why, is retried once, and is reported from the live plan.**
+  `Task.error` persists the reason; a failed task is requeued on the next run up to
+  `max_task_attempts`; and `RunSummary.failed`/`needsHuman` come from the last planning pass, so
+  `vngen run` exits 1 over a failure it inherited. Both the requeue and the report intersect with
+  the planned set — `TaskGraph.prune` never runs in production, so `tasks.jsonl` holds orphans.
 - **Shot decompositions are persisted, not re-derived.** `work/shots/<sceneId>.json` is
   preferred forever after it exists; authored fields at top level, run output under
   `shotData`. `buildShotPrompt` ignores `coversLines`, so coverage edits rehash nothing.

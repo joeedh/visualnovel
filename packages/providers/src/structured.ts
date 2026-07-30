@@ -1,5 +1,5 @@
 import type { ZodType } from 'zod';
-import { retry, StructuredOutputError } from '@vn/util';
+import { ProviderError, retry, StructuredOutputError } from '@vn/util';
 
 /**
  * Extract a JSON object/array from a model's raw text response. Tolerates ```json
@@ -56,6 +56,9 @@ export function parseStructured<T>(raw: string, schema: ZodType<T>): T {
  * Enforce structured output (report §8, §12): call the model, parse + validate, and
  * retry on malformed output up to `attempts` times before rejecting. The retry prompt
  * is unchanged — providers may append a corrective hint via `repair`.
+ *
+ * A `ProviderError` stops the loop rather than multiplying with the backend's own retry: the
+ * backend has already retried what was transient, and what it did not retry is terminal.
  */
 export async function withStructuredRetry<T>(
   schema: ZodType<T>,
@@ -65,5 +68,6 @@ export async function withStructuredRetry<T>(
   return retry((attempt) => call(attempt).then((raw) => parseStructured(raw, schema)), {
     attempts: opts.attempts ?? 3,
     baseMs: 50,
+    shouldRetry: (err) => !(err instanceof ProviderError),
   });
 }

@@ -10,6 +10,7 @@ import type {
   ToolSchema,
 } from '../backend.js';
 import { isPlaceholderImage } from '../placeholder.js';
+import { callWithRetry } from './transient.js';
 
 const MIME: Record<string, string> = {
   png: 'image/png',
@@ -18,18 +19,14 @@ const MIME: Record<string, string> = {
   webp: 'image/webp',
 };
 
-/** Best-effort one-line description of an SDK/HTTP error for the wrapped message. */
-function causeMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'string') return err;
-  try {
-    return JSON.stringify(err);
-  } catch {
-    return String(err);
-  }
-}
+/**
+ * A lazily-constructed `@google/genai` client. Injectable because the real one arrives through
+ * a dynamic `import()`, which jest's CJS runtime refuses outright — so this is the only seam a
+ * test of the retry behaviour can stand a fake SDK up at.
+ */
+export type GeminiClient = () => Promise<any>;
 
-function lazyClient(apiKey: string): () => Promise<any> {
+function lazyClient(apiKey: string): GeminiClient {
   let clientPromise: Promise<any> | undefined;
   return () => {
     if (!clientPromise) {
@@ -95,30 +92,29 @@ function extractImage(res: any, modelId: string): ImageResult {
 }
 
 /** Gemini text/vision backend (report §8). */
-export function createGeminiChat(apiKey: string, modelId: string): ChatBackend {
-  const client = lazyClient(apiKey);
+export function createGeminiChat(
+  apiKey: string,
+  modelId: string,
+  client: GeminiClient = lazyClient(apiKey),
+): ChatBackend {
   return {
     modelId,
     async message(req: ChatRequest): Promise<string> {
       const ai = await client();
       const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
-      try {
+      return callWithRetry(`Gemini request failed (${modelId})`, async () => {
         const res = await ai.models.generateContent({
           model: modelId,
           contents: [{ role: 'user', parts }],
           config: req.system ? { systemInstruction: req.system } : undefined,
         });
-        return res.text ?? '';
-      } catch (err) {
-        throw new ProviderError(`Gemini request failed (${modelId}): ${causeMessage(err)}`, {
-          cause: err,
-        });
-      }
+        return (res.text ?? '') as string;
+      });
     },
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
       const ai = await client();
       const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
-      try {
+      return callWithRetry(`Gemini tool request failed (${modelId})`, async () => {
         const res = await ai.models.generateContent({
           model: modelId,
           contents: [{ role: 'user', parts }],
@@ -143,19 +139,18 @@ export function createGeminiChat(apiKey: string, modelId: string): ChatBackend {
         const toolCalls = replyParts
           .filter((p: any) => p.functionCall)
           .map((p: any) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} }));
-        return { text: text || undefined, toolCalls };
-      } catch (err) {
-        throw new ProviderError(`Gemini tool request failed (${modelId}): ${causeMessage(err)}`, {
-          cause: err,
-        });
-      }
+        return { text: text || undefined, toolCalls } as ChatToolReply;
+      });
     },
   };
 }
 
 /** Gemini image generation/editing backend — "nano banana" (report §8). */
-export function createGeminiImage(apiKey: string, modelId: string): ImageBackend {
-  const client = lazyClient(apiKey);
+export function createGeminiImage(
+  apiKey: string,
+  modelId: string,
+  client: GeminiClient = lazyClient(apiKey),
+): ImageBackend {
   // Builds the request parts inside the async body so input-validation failures (see
   // `imagePart`) surface as a rejected promise rather than a synchronous throw.
   const run = async (
@@ -165,7 +160,7 @@ export function createGeminiImage(apiKey: string, modelId: string): ImageBackend
   ): Promise<ImageResult> => {
     const parts = [...images.map(imagePart), { text: prompt }];
     const ai = await client();
-    try {
+    return callWithRetry(`Gemini image request failed (${modelId})`, async () => {
       const res = await ai.models.generateContent({
         model: modelId,
         contents: [{ role: 'user', parts }],
@@ -175,12 +170,7 @@ export function createGeminiImage(apiKey: string, modelId: string): ImageBackend
         },
       });
       return extractImage(res, modelId);
-    } catch (err) {
-      if (err instanceof ProviderError) throw err;
-      throw new ProviderError(`Gemini image request failed (${modelId}): ${causeMessage(err)}`, {
-        cause: err,
-      });
-    }
+    });
   };
   return {
     modelId,
