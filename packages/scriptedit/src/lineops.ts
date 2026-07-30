@@ -2,10 +2,11 @@
  * The pure half of the `story.*` prose commands: turn one authorial act ("retype this line",
  * "split the scene here") into the scenes to write whole and the chunks to remove.
  *
- * It is the sibling of `branchops.ts` one layer down — that module decides which *wires* are
- * legal, this one decides which *edits* are — and it is in `shared/` for the same reason: a
- * surface previewing a gesture runs these functions, so the refusal shown mid-drag is the
- * refusal the command would give rather than a second copy of the rules.
+ * It is the sibling of the desktop's `branchops.ts` — that module decides which *wires* are legal,
+ * this one decides which *edits* are — and it is pure for the same reason: a surface previewing a
+ * gesture runs these functions, so the refusal shown mid-drag is the refusal the command would
+ * give rather than a second copy of the rules. It is a *package* rather than app-local because
+ * `vnauthor` needs the same answers, and a package cannot import an app.
  *
  * Two things every caller has to understand, because they are the whole reason these decisions
  * are worth reading before they run:

@@ -170,6 +170,9 @@ importers:
       '@vn/scheduler':
         specifier: workspace:*
         version: link:../../packages/scheduler
+      '@vn/scriptedit':
+        specifier: workspace:*
+        version: link:../../packages/scriptedit
       '@vn/store':
         specifier: workspace:*
         version: link:../../packages/store
@@ -353,6 +356,24 @@ importers:
       '@vn/taskgraph':
         specifier: workspace:*
         version: link:../taskgraph
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../types
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../util
+
+  packages/scriptedit:
+    dependencies:
+      '@vn/model':
+        specifier: workspace:*
+        version: link:../model
+      '@vn/parse':
+        specifier: workspace:*
+        version: link:../parse
+      '@vn/store':
+        specifier: workspace:*
+        version: link:../store
       '@vn/types':
         specifier: workspace:*
         version: link:../types

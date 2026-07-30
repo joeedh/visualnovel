@@ -13,11 +13,11 @@
  * `docs/plans/interaction-model.md`.
  */
 import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
+import { moveLine, sceneIdOf, type ScriptState } from '@vn/scriptedit';
 import { removeChoice, setChoice, setNext, spliceScene } from './branchops.js';
 import type { BranchOp, SceneMap } from './branchops.js';
 import { resolveDrag, setCoverage, spansFor, type Edge } from './coverage.js';
 import type { CoverageLine, CoverageShot, PropValue, StoryEdge, StoryGraph } from './ipc.js';
-import { moveLine, sceneIdOf, type ScriptState } from './lineops.js';
 
 /** A new choice has to be called something before the author has named it. */
 export const NEW_CHOICE = 'New choice';

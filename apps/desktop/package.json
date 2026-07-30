@@ -28,6 +28,7 @@
     "@vn/pipeline": "workspace:*",
     "@vn/providers": "workspace:*",
     "@vn/scheduler": "workspace:*",
+    "@vn/scriptedit": "workspace:*",
     "@vn/store": "workspace:*",
     "@vn/taskgraph": "workspace:*",
     "@vn/types": "workspace:*",

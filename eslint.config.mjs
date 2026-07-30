@@ -21,6 +21,11 @@ const ALLOWED = {
   // Leaf exporter: manifest → playable projection. Reuses the input-side + store packages;
   // forbidden from the generative pipeline/scheduler (runner plan, Part B), like `authoring`.
   export: ['types', 'util', 'parse', 'model', 'store'],
+  // Scene-edit rules + the write path that applies them. Same allow-list as `export`, and
+  // input-side for the same reason: it decides and patches authored prose, and must be
+  // importable by BOTH the desktop app and `authoring` — which is why it cannot live in
+  // either (scene-edit-package plan).
+  scriptedit: ['types', 'util', 'parse', 'model', 'store'],
   git: ['util'],
   // The command framework: registry, prop specs, DSL, stack. Reads git HEAD for provenance,
   // knows nothing about the domain — commands themselves are defined by the host app.
@@ -84,6 +89,7 @@ const ALLOWED = {
     'model',
     'store',
     'export',
+    'scriptedit',
     'git',
     'commands',
     'taskgraph',
@@ -136,6 +142,7 @@ export default tseslint.config(
         { type: 'model', pattern: 'packages/model', mode: 'folder' },
         { type: 'store', pattern: 'packages/store', mode: 'folder' },
         { type: 'export', pattern: 'packages/export', mode: 'folder' },
+        { type: 'scriptedit', pattern: 'packages/scriptedit', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
         { type: 'commands', pattern: 'packages/commands', mode: 'folder' },
         { type: 'debug2d', pattern: 'packages/debug2d', mode: 'folder' },

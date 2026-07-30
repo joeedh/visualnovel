@@ -21,16 +21,6 @@ import {
   type CommandOutput,
 } from '@vn/commands';
 import {
-  removeChoice,
-  setChoice,
-  setNext,
-  spliceScene,
-  type BranchOp,
-  type SceneMap,
-} from '../../shared/branchops.js';
-import { setCoverage as decideCoverage } from '../../shared/coverage.js';
-import { scenesOf } from '../../shared/interactions.js';
-import {
   deleteLine,
   deleteScene,
   insertLine,
@@ -42,7 +32,17 @@ import {
   splitScene,
   type LineOp,
   type ScriptState,
-} from '../../shared/lineops.js';
+} from '@vn/scriptedit';
+import {
+  removeChoice,
+  setChoice,
+  setNext,
+  spliceScene,
+  type BranchOp,
+  type SceneMap,
+} from '../../shared/branchops.js';
+import { setCoverage as decideCoverage } from '../../shared/coverage.js';
+import { scenesOf } from '../../shared/interactions.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();

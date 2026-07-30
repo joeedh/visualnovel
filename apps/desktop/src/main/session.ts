@@ -76,6 +76,13 @@ import {
 } from '@vn/authoring';
 import { runPipeline } from '@vn/scheduler';
 import { buildPlayable, loadSceneShots } from '@vn/export';
+import {
+  scenesTouchedBy,
+  shotFallout,
+  type LineOp,
+  type ScriptState,
+  type ShotFallout,
+} from '@vn/scriptedit';
 import type { Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
 import type {
   ApproveResult,
@@ -90,9 +97,7 @@ import type {
 import { narrowTask } from './reviews.js';
 import { storyGraphOf } from './storygraph.js';
 import type { BranchOp } from '../shared/branchops.js';
-import type { LineOp, ScriptState } from '../shared/lineops.js';
 import { setCoverage } from '../shared/coverage.js';
-import { scenesTouchedBy, shotFallout, type ShotFallout } from '../shared/shotfallout.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {

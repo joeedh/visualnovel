@@ -15,6 +15,7 @@ const PACKAGES = [
   'model',
   'store',
   'export',
+  'scriptedit',
   'git',
   'commands',
   'debug2d',

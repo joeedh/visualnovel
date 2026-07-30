@@ -21,7 +21,7 @@ import { splitScenes } from '@vn/model';
 import { parseFountain } from '@vn/parse';
 import type { SceneMap } from '../branchops.js';
 import type { CoverageShot, StoryEdge } from '../ipc.js';
-import type { ScriptState } from '../lineops.js';
+import type { ScriptState } from '@vn/scriptedit';
 
 const scenes: SceneMap = new Map([
   ['greet', { id: 'greet', choices: [{ label: 'Say hello', goto: 'rooftop' }] }],

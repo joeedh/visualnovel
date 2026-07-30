@@ -6,10 +6,6 @@
 import { promises as fs } from 'node:fs';
 import { join, sep } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
-import { readShots, writeShots } from '@vn/store';
-import type { Shot } from '@vn/types';
-import { WorkspaceSession, type SessionDeps } from '../session.js';
-import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
 import {
   deleteScene,
   insertLine,
@@ -17,7 +13,11 @@ import {
   newScene,
   setLineText,
   splitScene,
-} from '../../shared/lineops.js';
+} from '@vn/scriptedit';
+import { readShots, writeShots } from '@vn/store';
+import type { Shot } from '@vn/types';
+import { WorkspaceSession, type SessionDeps } from '../session.js';
+import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
 
 const deps: SessionDeps = {
   emitEvent: () => {},
@@ -371,7 +371,7 @@ describe('WorkspaceSession — scenes authored as chunks', () => {
 /**
  * `editScene`: the one write path for prose. Every case here is about the *file* — which chunk the
  * edit landed in, what it still says, and what stopped existing — because the decision itself is
- * already pinned by `shared/tests/lineops.test.ts`.
+ * already pinned by `@vn/scriptedit`'s `lineops.test.ts`.
  */
 describe('WorkspaceSession — prose editing', () => {
   const ROOFTOP = 'scenes/rooftop.md';

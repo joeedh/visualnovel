@@ -1,6 +1,7 @@
 # A shared scene-edit package (`@vn/scriptedit`)
 
-Status: **planned**. A prerequisite carved out of
+Status: **partial** — the package exists and the pure halves (`lineops`, `shotfallout`) live in it;
+the sources helper and the write path are still in the desktop session. A prerequisite carved out of
 [`scene-editing-commands.md`](scene-editing-commands.md) step 6, which cannot be done as written:
 the rules it says to route the agent tool through live in `apps/desktop/src/shared/lineops.ts`, and
 a package may not import an app. This plan moves the scene-edit decision rules **and their write
@@ -76,12 +77,21 @@ the host's job, because `vnauthor` and the desktop report them differently.
 
 ## Steps
 
-1. **Scaffold the package** — `packages/scriptedit/{package.json,tsconfig.json,src/index.ts}`, the
-   `ALLOWED` entry and `boundaries/elements` pattern in `eslint.config.mjs`, the jest project, and
-   the root `tsconfig` path. Nothing in it yet.
-2. **Move the pure halves** — `lineops.ts` and `shotfallout.ts` with their tests, unchanged but for
-   imports. `@vn/desktop` re-points `interactions.ts`, `commands/story.ts` and `session.ts` at
+1. **Scaffold the package** ✔ — `packages/scriptedit/{package.json,src/index.ts}`, the `ALLOWED`
+   entry and `boundaries/elements` pattern in `eslint.config.mjs`, the jest project, and the root
+   `tsconfig` path.
+2. **Move the pure halves** ✔ — `lineops.ts` and `shotfallout.ts` with their tests, unchanged but
+   for imports. `@vn/desktop` re-points `interactions.ts`, `commands/story.ts` and `session.ts` at
    `@vn/scriptedit`. Green here proves the move was a move.
+
+   As shipped, 1 and 2 are **one commit**: a package with a jest project and no tests in it fails
+   `pnpm test` outright, so the scaffold is only green with the move on top of it. No per-package
+   `tsconfig.json` either — internal packages are source-only and the root `tsconfig` is what
+   type-checks them. The move is a `git mv` plus one doc-comment line (`shared/` → package, and
+   why), and the two suites keep their `../lineops.js` imports because `src/tests/` sits at the same
+   depth. Proven, rather than assumed, with a throwaway `import … from '@vn/pipeline'` in
+   `lineops.ts`: `boundaries/element-types` rejected it as `'scriptedit' → 'pipeline'`, so the new
+   element really is classified — an unresolved import would have passed silently.
 3. **Move the sources + write path** — `sources.ts` and `apply.ts`. `session.editScene` /
    `previewSceneEdit` become thin: load, delegate, relativize, reload. `editBranches` takes
    `SceneSource`/`chunkText` from the package.
