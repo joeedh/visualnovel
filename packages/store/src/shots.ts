@@ -81,6 +81,7 @@ export async function readShots(
     if (s.camera !== undefined) shot.camera = s.camera;
     if (s.shotData?.prompt !== undefined) shot.prompt = s.shotData.prompt;
     if (s.shotData?.image !== undefined) shot.image = s.shotData.image;
+    if (s.shotData?.proseHash !== undefined) shot.proseHash = s.shotData.proseHash;
     return shot;
   });
 
@@ -107,6 +108,11 @@ function serialize(sceneId: string, shots: readonly Shot[]): string {
             shotData: {
               ...(s.prompt !== undefined ? { prompt: s.prompt } : {}),
               ...(s.image !== undefined ? { image: s.image } : {}),
+              // Only ever written beside an image: on its own it would claim a frame was made
+              // from these words when no frame exists.
+              ...(s.image !== undefined && s.proseHash !== undefined
+                ? { proseHash: s.proseHash }
+                : {}),
               status: s.status,
             },
           }

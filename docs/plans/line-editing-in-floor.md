@@ -1,6 +1,6 @@
 # Line editing in FLOOR
 
-Status: **in progress** — steps 1–3 are shipped; 4–7 are not. Move five of
+Status: **in progress** — steps 1–4 are shipped; 5–7 are not. Move five of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first surface that can change prose. It consumes
 [`scene-editing-commands.md`](scene-editing-commands.md) and adds no write path of its own. Its
@@ -146,11 +146,31 @@ drag gestures follow.
    - **The refused grab needs a sentence, and it is the only sentence in this strip no command
      said** (`GRAB_BLOCKED`). The handle's `pointerdown` is prevented, so it cannot take focus off
      the editor — without a notice the click reads as the drag being broken.
-4. **Drift derivation.** Record a hash of the covered lines' text when a shot's image is written,
+4. ✔ **Drift derivation.** Record a hash of the covered lines' text when a shot's image is written,
    and compare it with the lines' hash now — a pure function in `@vn/pipeline` beside the prompt
    builder, not in the renderer, since the FLOOR task list and inspector will want the same answer.
    Surfaced through `sceneCoverage`. **Not** the task hash: prose is not in a task's `inputs`, so
    comparing task hashes compares a value to itself.
+
+   As shipped: `Shot.proseHash` (persisted under `shotData`, and only ever beside an `image`),
+   `packages/pipeline/src/drift.ts`'s `proseHash` + `driftOf`, and `drift` on `CoverageShot`.
+   Four things the step did not say:
+
+   - **The union is four-valued, and `unknown` is the load-bearing one.** `unrendered` |
+     `current` | `drifted` | `unknown`; a shot rendered before the field existed has no hash and
+     must read *unanswerable* rather than either answer. It lives in `@vn/types` beside `Shot`, not
+     in `@vn/pipeline`, so `shared/ipc.ts` names it without the desktop app's shared layer reaching
+     into the pipeline for a string union.
+   - **The stamp is written only when the bytes are new.** `refreshShotData` records the hash when
+     `shot.image` actually changes, so a rerun that reports the same image cannot re-baseline the
+     prose beneath it — otherwise `vngen run` would silently clear a drift the author has not acted
+     on, which is exactly the thing step 6 goes on to verify does not happen.
+   - **The hash walks `scene.lines`, not `coversLines`.** Coverage is a set, so reordering the array
+     is not an edit, and a covered id the scene no longer has (which `readShots` drops on load)
+     cannot move the hash either.
+   - **A coverage edit does mark drift**, though `shotFallout.drifted` counts only retypes. One
+     question is being asked — "does this frame illustrate the words it is against?" — and extending
+     a bracket over another line makes the answer no, in the same sense a retype does.
 5. **Drift rendering.** The bracket state and its `--mono` label, distinct from `COVERS NOTHING`.
 6. **Verify on `examples/mySampleRepo`.** Edit a covered line, confirm the shot marks drifted, then
    `vngen run` and confirm it **stays** drifted — nothing rehashed, so nothing re-rendered, and that

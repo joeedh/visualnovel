@@ -141,6 +141,7 @@ const drawn = (id: string, coversLines: string[]): CoverageShot => ({
   subjects: [],
   coversLines,
   status: 'accepted',
+  drift: 'current',
 });
 
 const SHOTS: CoverageShot[] = [

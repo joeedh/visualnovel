@@ -19,6 +19,7 @@ import type {
   AssetRef,
   DefectReport,
   Diagnostic,
+  Drift,
   Playable,
   SceneLine,
   Shot,
@@ -236,6 +237,12 @@ export interface CoverageShot {
   status: Shot['status'];
   /** The accepted frame, for the thumbnail. Absent until a run produced one. */
   image?: AssetRef;
+  /**
+   * Whether that frame still illustrates the lines it covers. Derived in main, because the
+   * comparison is a sha256 over line text and the renderer has no crypto — and because the task
+   * list and the inspector must give the same answer as this strip.
+   */
+  drift: Drift;
 }
 
 /**

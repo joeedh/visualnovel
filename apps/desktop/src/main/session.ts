@@ -41,7 +41,7 @@ import {
 } from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, writeFileAtomic } from '@vn/util';
-import { costPreview, gateStatus, isApproved } from '@vn/pipeline';
+import { costPreview, driftOf, gateStatus, isApproved } from '@vn/pipeline';
 import {
   createAnthropicChat,
   createGeminiChat,
@@ -620,6 +620,9 @@ export class WorkspaceSession {
         coversLines: s.coversLines,
         status: s.status,
         ...(s.image ? { image: { hash: s.image, ext: exts.get(s.image) ?? 'png' } } : {}),
+        // Against `scene` as just loaded, so an edit made anywhere — this app, the CLI, the
+        // agent, a hand-edit — shows up the next time the strip is read.
+        drift: driftOf(scene, s),
       })),
       decomposed: loaded !== null,
     };

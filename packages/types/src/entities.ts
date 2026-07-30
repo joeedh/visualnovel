@@ -114,6 +114,21 @@ export interface SceneLine {
  */
 export type HeadingPrefix = 'INT.' | 'EXT.' | 'INT./EXT.' | 'EST.' | 'I/E';
 
+/**
+ * Whether a shot's rendered frame still illustrates the words it covers. Derived on every read
+ * by `@vn/pipeline`'s `driftOf` and never persisted — a stored flag can be stale, a hash cannot.
+ * The shape lives here because the timeline, the task list and the inspector all name it.
+ */
+export type Drift =
+  /** No image yet, so there is nothing that could be stale. */
+  | 'unrendered'
+  /** The recorded prose hash matches: this frame was made from these words. */
+  | 'current'
+  /** It does not. The frame stands, and nothing will replace it unasked. */
+  | 'drifted'
+  /** Rendered before {@link Shot.proseHash} existed. Unanswerable, and not to be guessed. */
+  | 'unknown';
+
 /** A single rendered image within a scene (report §3, §P5). */
 export interface Shot {
   id: string;
@@ -130,6 +145,13 @@ export interface Shot {
   prompt?: string;
   /** Asset hash, filled in P7. */
   image?: string;
+  /**
+   * Hash of the text of the lines this shot covered at the moment {@link image} was produced.
+   * A shot is *drifted* when that disagrees with the same hash computed from the scene now —
+   * see `@vn/pipeline`'s `driftOf`. Absent on a shot rendered before the field existed, which
+   * reads as unknown and never as drifted.
+   */
+  proseHash?: string;
   status: 'pending' | 'prompted' | 'generated' | 'accepted' | 'needs_human';
 }
 

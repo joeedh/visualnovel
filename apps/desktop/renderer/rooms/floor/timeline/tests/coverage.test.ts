@@ -15,6 +15,7 @@ const shot = (id: string, coversLines: string[]): CoverageShot => ({
   subjects: [],
   coversLines,
   status: 'accepted',
+  drift: 'current',
 });
 
 /** `deterministicShots`' own shape: the plate takes the narration, each medium one speaker. */

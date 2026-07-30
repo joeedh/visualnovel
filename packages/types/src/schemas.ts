@@ -143,6 +143,13 @@ export const shotDataSchema = z.object({
   prompt: z.string().optional(),
   /** P7 output asset hash; `manifest.json` is the authority for the bytes. */
   image: z.string().optional(),
+  /**
+   * Hash of the covered lines' text when `image` was produced, so a later load can tell that the
+   * frame no longer illustrates what the scene says. Recorded with the bytes and never refreshed
+   * without them — a rerun that reports the same image must not clear a drift the author has not
+   * acted on. Absent means unknown, which is what every shot rendered before this field reads as.
+   */
+  proseHash: z.string().optional(),
   status: z.enum(['pending', 'prompted', 'generated', 'accepted', 'needs_human']),
 });
 

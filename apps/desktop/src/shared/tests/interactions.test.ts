@@ -229,6 +229,7 @@ describe('timeline.cover', () => {
     subjects: [],
     coversLines,
     status: 'accepted',
+    drift: 'current',
   });
 
   const cover: CoverState = {

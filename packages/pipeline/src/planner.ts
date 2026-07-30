@@ -20,6 +20,7 @@ import {
   imageParams,
 } from './prompts.js';
 import { decomposeScene } from './p5.js';
+import { proseHash } from './drift.js';
 import { isApproved, sceneUnblocked } from './gate.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
@@ -92,21 +93,35 @@ async function shotsFor(
  * Copy what the run produced onto the in-memory shot. The task graph is the authority, so a
  * shots file restored from an old commit cannot convince anything that work is done — the
  * stale values it loaded are overwritten here.
+ *
+ * `proseHash` is the exception, and deliberately: it is stamped only when *these* bytes are new.
+ * A rerun reporting the same image must not re-baseline the prose under it, or a drift the author
+ * has not acted on would be silently cleared by a run that did no work.
  */
-function refreshShotData(shot: Shot, task: AnyTask): void {
+function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
+  const before = shot.image;
+  const stamp = (): void => {
+    if (shot.image !== undefined && shot.image !== before) {
+      shot.proseHash = proseHash(scene, shot.coversLines);
+    }
+  };
   if (task.status === 'done' && task.output) {
     shot.status = 'accepted';
     shot.image = task.output;
+    stamp();
     return;
   }
   if (task.status === 'needs_human') {
     shot.status = 'needs_human';
     const last = task.attempts[task.attempts.length - 1]?.output;
     if (last) shot.image = last;
+    stamp();
     return;
   }
   shot.status = 'prompted';
   delete shot.image;
+  // No image, so nothing the hash could describe; `serialize` would drop it anyway.
+  delete shot.proseHash;
 }
 
 /** Find an already-produced asset for a task identity, if it ran and succeeded. */
@@ -224,7 +239,7 @@ export async function planTasks(opts: {
       );
       const node = graph.add(task);
       planned.push(node);
-      refreshShotData(shot, node);
+      refreshShotData(shot, node, scene);
     }
 
     // Once per pass, including the final one the scheduler runs after the last wave — which

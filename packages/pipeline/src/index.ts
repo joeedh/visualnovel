@@ -1,4 +1,5 @@
 export * from './prompts.js';
+export * from './drift.js';
 export * from './gate.js';
 export * from './p1.js';
 export * from './p5.js';
