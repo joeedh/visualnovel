@@ -37,7 +37,7 @@ Two batches carry extra working detail of their own, and both are now complete:
 | [`desktop-storage-and-draggable-rail.md`](desktop-storage-and-draggable-rail.md) | shipped | `.vndesktop/session.json`, `usePanelWidth`, `view.panelSize` |
 | [`sample-workspace-and-asset-cache.md`](sample-workspace-and-asset-cache.md) | shipped | `examples/mySampleRepo` seeding and the recorded asset corpus |
 | [`2d-graphics-debug-api.md`](2d-graphics-debug-api.md) | shipped | `@vn/debug2d` — fragment IR, DOM adapter, query engine, `explainPick` |
-| [`interaction-model.md`](interaction-model.md) | partial | `Interaction`/`targets`; four gestures declared, the general surface is not finished |
+| [`interaction-model.md`](interaction-model.md) | shipped | `Interaction`/`targets` and the `interaction.*` commands; five gestures declared. Its two "Next" items shipped in [`preconditions-and-timeline-interaction.md`](preconditions-and-timeline-interaction.md) |
 | [`allocated-line-ids.md`](allocated-line-ids.md) | shipped | Line ids that survive an edit, the diagnostics surface, the catalog-driven palette |
 | [`lossless-scene-serialization.md`](lossless-scene-serialization.md) | shipped | `parse(write(scene)) ≡ scene`; `Scene.body` retired, headings and three line kinds retained |
 | [`scene-chunk-files.md`](scene-chunk-files.md) | shipped | `scenes/<id>.md` replaces the one contended screenplay; `start:` names the entry, front-matter is identity only, both prose patchers retargeted (`screenplay/` still loaded when it shipped; plan 4 retired it) |

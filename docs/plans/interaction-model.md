@@ -1,6 +1,10 @@
 # Interaction model
 
-Status: **prototyped over the branch editor's rewire gestures.**
+Status: **shipped.** Every step below is done, and both items this plan left for later were
+taken by [`preconditions-and-timeline-interaction.md`](preconditions-and-timeline-interaction.md)
+— see [Next](#next-not-done-here). The layer now carries five gestures, not the three it was
+prototyped against: `branch.connect`, `branch.splice`, `branch.unwire`, `timeline.cover` and
+`script.moveLine`.
 
 <!-- toc -->
 
@@ -131,9 +135,15 @@ node scripts/vn-cdp.mjs --raw "window.vn.undo()"
 
 ## Next (not done here)
 
-- **The coverage timeline.** `previewOf`/`setCoverage` already have the same shape; declaring
-  `timeline.setCoverage` would give the second surface the same query. Left out so the
-  framework is validated against one surface before it is generalised over two.
-- **Preconditions on plain commands.** `can(command, props)` — a dry-run verdict for the
-  non-gesture commands — is the natural companion, but it needs each command to split its
-  decision from its write. `story.*` already has (`branchops`); the rest do not.
+Both of these shipped in
+[`preconditions-and-timeline-interaction.md`](preconditions-and-timeline-interaction.md), which was
+written from this section.
+
+- ~~**The coverage timeline.**~~ Shipped as `timeline.cover` (not `timeline.setCoverage` — the
+  gesture is named for what the author does, and it terminates in `story.setCoverage`). The
+  framework did generalise over the second surface: `targets` grew a per-gesture state, since a
+  timeline gesture is judged against one scene and a branch gesture against the whole graph.
+  `script.moveLine` was the third consumer and needed no new decision.
+- ~~**Preconditions on plain commands.**~~ Shipped as `stack.check(id, props)`, with three states
+  rather than a boolean: `accept` | `refuse` | `undeclared`, because absence of a check is not
+  permission. It never gates `exec`, which re-decides for itself.
