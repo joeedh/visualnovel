@@ -125,8 +125,9 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
   want~~ → **fixed** in plan 3 step 2: both deleted, so the name is free for authored chunks.
 - `vngen export` and `story.export` already mean the playable, so Fountain output needs a different
   name → plan 4 uses `vngen screenplay` / `story.screenplay`.
-- `Timeline.tsx:156` refuses to draw an undecomposed scene, which is exactly the scene you want to
-  write before paying for art → plan 6 step 2.
+- ~~`Timeline.tsx:156` refuses to draw an undecomposed scene, which is exactly the scene you want to
+  write before paying for art~~ → **fixed** in plan 6 step 2: the script column renders on its own
+  with a note, and the vermilion gap gutter waits for a decomposition rather than marking every line.
 - `write_file` (`packages/authoring/src/tools.ts:408`) is an unvalidated whole-file overwrite that
   would happily write a chunk with duplicate line ids → plan 5 step 6 makes it refuse `scenes/`.
 

@@ -1,6 +1,6 @@
 # Line editing in FLOOR
 
-Status: **in progress** — step 1 is shipped; 2–7 are not. Move five of
+Status: **in progress** — steps 1–3 are shipped; 4–7 are not. Move five of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first surface that can change prose. It consumes
 [`scene-editing-commands.md`](scene-editing-commands.md) and adds no write path of its own. Its
@@ -120,9 +120,32 @@ drag gestures follow.
    renders with no image"), and the bar would read `0 shot(s) · 6 uncovered`. Both are literally
    true and both say the scene is broken, so the gutter waits for a decomposition and the bar says
    `no shots yet`.
-3. **In-place editing in `Timeline.tsx`.** Click to edit, Enter/blur to commit, Escape to revert,
+3. ✔ **In-place editing in `Timeline.tsx`.** Click to edit, Enter/blur to commit, Escape to revert,
    commit through `story.setLineText`. The affected-shot count from the command's `check`, shown
    before the commit.
+
+   As shipped, and verified against a copy of `examples/mySampleRepo` over CDP: clicking a line's
+   text opens a textarea whose row grows with the draft (a one-cell grid where an invisible
+   `::after` sizer holds the same string — no measurement, so no frame where the layout disagrees
+   with the caret), and one Enter writes one `scenes/<id>.md` hunk with one `CommandRecord`
+   (`source: 'ui'`). Four things the step did not say:
+
+   - **The check is asked on the draft, debounced, not when the editor opens.** `setLineText`
+     reports `retyped: []` for a text that matches, so asking on open reports nothing — the
+     sentence only exists once there is a change to price. Typing over a covered line reads
+     `arrival:L2 retyped. 1 rendered shot(s) still illustrate the old prose and will not re-render
+     on their own.` **before** the commit, and the run repeats it verbatim, because both are the
+     command's.
+   - **Enter and Escape act; they do not blur.** "One exit path" was the appealing design and it is
+     broken: `blur()` on an element that is not the active element does nothing, so the first
+     Escape left the editor open with its notice still up. The keys finish the edit themselves and
+     blur is the click-away path only, with a `settled` ref so a late blur cannot commit twice.
+   - **A refused commit reopens the editor with the draft.** Closing it would throw away what the
+     author typed to make room for the reason they cannot keep it. Emptying a line now reads back
+     `A line cannot be empty — delete it instead.` with the text still in the box.
+   - **The refused grab needs a sentence, and it is the only sentence in this strip no command
+     said** (`GRAB_BLOCKED`). The handle's `pointerdown` is prevented, so it cannot take focus off
+     the editor — without a notice the click reads as the drag being broken.
 4. **Drift derivation.** Record a hash of the covered lines' text when a shot's image is written,
    and compare it with the lines' hash now — a pure function in `@vn/pipeline` beside the prompt
    builder, not in the renderer, since the FLOOR task list and inspector will want the same answer.

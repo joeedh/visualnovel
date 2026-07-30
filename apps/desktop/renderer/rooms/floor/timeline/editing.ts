@@ -77,6 +77,17 @@ export interface Notice {
 }
 
 /**
+ * Why a handle does not move while an editor is open — and the one sentence in this strip that no
+ * command said, because no command was asked. A refused grab has to say something: the handle
+ * cannot take focus away from the editor (its `pointerdown` is prevented, so no blur, so no
+ * commit), which means without this the click reads as the drag being broken.
+ */
+export const GRAB_BLOCKED: Notice = {
+  tone: 'refused',
+  text: 'Finish the line first — Enter commits it, Escape discards it.',
+};
+
+/**
  * What `story.setLineText`'s precondition says, as the author reads it before committing — the
  * count of rendered shots that will keep illustrating the old prose comes from the command's own
  * `check`, so the warning and the run's message are one sentence rather than two guesses.

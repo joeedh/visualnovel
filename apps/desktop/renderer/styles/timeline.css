@@ -145,6 +145,39 @@
   line-height: 1.4;
   color: var(--paper);
 }
+/* Clicking a line's text edits it, so it has to read as text rather than as a label. */
+.tl-line .text:hover {
+  cursor: text;
+}
+/* The auto-growing editor: a one-cell grid where an invisible sizer holds the same string the
+   textarea does, so the row's height is the text's height and the brackets beside it follow by
+   grid row. No measurement, so no frame where the layout disagrees with the caret. */
+.tl-grow {
+  display: grid;
+}
+.tl-grow::after {
+  content: attr(data-value) ' ';
+  visibility: hidden;
+}
+.tl-grow > textarea,
+.tl-grow::after {
+  grid-area: 1 / 1 / 2 / 2;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+.tl-grow > textarea {
+  resize: none;
+  overflow: hidden;
+  background: none;
+  color: var(--paper);
+  caret-color: var(--sodium);
+  outline: none;
+}
 .tl-line.narration .text,
 .tl-line.lyric .text {
   color: var(--mist);
@@ -177,6 +210,12 @@
 /* Covered twice: the exporter shows the first shot, so the second's frame is never seen. */
 .tl-line.over {
   border-left-color: var(--sodium);
+}
+/* Last, so it outranks gap and over: whatever else is true of a line, the one being retyped is
+   the one the author is looking at. Sodium, because this is the most authored act in the room. */
+.tl-line:has(.tl-grow) {
+  border-left-color: var(--sodium);
+  background: rgba(244, 162, 76, 0.06);
 }
 
 /* ---- shot brackets ---- */

@@ -16,8 +16,14 @@
  * The preview is drawn *over* the strip and never applied to it: the brackets hold their lanes
  * for the whole gesture and only the ghost moves. Geometry still comes from `resolveDrag`, since
  * a verdict says whether and why, not where — and a refused drop is drawn too.
+ *
+ * A line's text is also editable in place, which is the one thing here that costs nothing and
+ * should: no prose reaches a shot's task inputs, so retyping a covered line re-renders nothing and
+ * the frame goes on illustrating words the scene no longer contains. So the editor asks
+ * `story.setLineText`'s own precondition as the author types and shows that sentence before the
+ * commit — the count of stranded frames comes from the command, never from this file.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../../api';
 import {
   resolveDrag,
@@ -28,8 +34,16 @@ import {
 import { handleId, timelineCover } from '../../../../src/shared/interactions.js';
 import { ShotBracket } from './ShotBracket';
 import { previewOf } from './coverage.js';
+import {
+  GRAB_BLOCKED,
+  canEdit,
+  canGrab,
+  commitOf,
+  noticeForCheck,
+  type Notice,
+} from './editing.js';
 import type { Verdict } from '@vn/commands';
-import type { SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
+import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
 
 interface Drag {
   shotId: string;
@@ -42,11 +56,6 @@ interface Drag {
   verdict: Verdict | null;
 }
 
-interface Notice {
-  tone: 'ok' | 'refused' | 'preview';
-  text: string;
-}
-
 export function Timeline(): JSX.Element {
   const [story, setStory] = useState<StoryGraph | null>(null);
   const [sceneId, setSceneId] = useState<string | null>(null);
@@ -54,6 +63,13 @@ export function Timeline(): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  // Enter and Escape finish the edit themselves rather than delegating to `blur()`, which does
+  // nothing when the textarea is not the active element — so blur is the click-away path only, and
+  // this says the edit is already settled and a late blur must not commit it a second time.
+  const settled = useRef(false);
+  const mode = { editing, dragging: drag !== null };
 
   useEffect(() => {
     void api.invoke('story:graph').then((graph) => {
@@ -65,6 +81,7 @@ export function Timeline(): JSX.Element {
   useEffect(() => {
     if (!sceneId) return;
     setNotice(null);
+    setEditing(null);
     void api.invoke('story:coverage', sceneId).then(setData);
   }, [sceneId]);
 
@@ -126,6 +143,61 @@ export function Timeline(): JSX.Element {
       window.removeEventListener('pointerup', onUp);
     };
   }, [cov, drag, sceneId]);
+
+  // The precondition, asked as the author types. `story.setLineText`'s own note is where the count
+  // of frames that will go on illustrating the old prose comes from, so the warning before the
+  // commit and the message after it are one sentence rather than two guesses.
+  useEffect(() => {
+    if (editing === null) return;
+    const line = cov.rows.find((row) => row.line.id === editing)?.line;
+    const invocation = line ? commitOf(line, draft) : null;
+    if (!invocation) {
+      setNotice(null);
+      return;
+    }
+    let live = true;
+    const timer = setTimeout(() => {
+      void api.invoke('command:check', invocation).then((check) => {
+        if (live) setNotice(noticeForCheck(check));
+      });
+    }, 180);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [cov, draft, editing]);
+
+  const openEditor = (line: CoverageLine): void => {
+    if (!canEdit(mode)) return;
+    settled.current = false;
+    setEditing(line.id);
+    setDraft(line.text);
+    setNotice(null);
+  };
+
+  const commit = (line: CoverageLine): void => {
+    setEditing(null);
+    const invocation = commitOf(line, draft);
+    // A click in and a click away is not an authorial act: no record, no undo point, no notice.
+    if (!invocation) {
+      setNotice(null);
+      return;
+    }
+    void api.invoke('command:exec', { ...invocation, source: 'ui' }).then((outcome) => {
+      if (!outcome.ok) {
+        // The draft is still in state, so reopening hands back what the author typed alongside
+        // the command's own reason for refusing it — "a line cannot be empty", most often.
+        setNotice({ tone: 'refused', text: outcome.error });
+        setEditing(line.id);
+        settled.current = false;
+        return;
+      }
+      setNotice({ tone: 'ok', text: outcome.record.message ?? 'Line retyped.' });
+      // Re-read rather than patch the strip: the chunk was rewritten and a shots file may have
+      // been too, so what comes back is what the loader says. Line ids survive, so nothing re-lanes.
+      if (sceneId) void api.invoke('story:coverage', sceneId).then(setData);
+    });
+  };
 
   const scenes = story?.scenes ?? [];
 
@@ -192,8 +264,43 @@ export function Timeline(): JSX.Element {
                 className={`tl-line ${row.line.kind}${data.decomposed && row.shots.length === 0 ? ' gap' : ''}${row.shots.length > 1 ? ' over' : ''}`}
                 style={{ gridColumn: 1, gridRow: row.index + 1 }}
               >
+                {/* Not editable here: changing who says a line changes its kind, hence this
+                    row's shape and the exporter's beat type. `story.setSpeaker` is STUDIO's. */}
                 {row.line.speaker && <div className="who">{row.line.speaker}</div>}
-                <div className="text">{row.line.text}</div>
+                {editing === row.line.id ? (
+                  // The sizer carries the draft as `content`, so the row grows as you type and the
+                  // brackets follow — they are placed by grid row, not by measured pixels.
+                  <div className="text tl-grow" data-value={draft}>
+                    <textarea
+                      autoFocus
+                      value={draft}
+                      spellCheck
+                      aria-label={`Retype ${row.line.id}`}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        // A line is a string, so Enter has nothing to insert — it finishes.
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          settled.current = true;
+                          commit(row.line);
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          settled.current = true;
+                          setEditing(null);
+                          setNotice(null);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (settled.current) return;
+                        commit(row.line);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="text" onClick={() => openEditor(row.line)}>
+                    {row.line.text}
+                  </div>
+                )}
               </div>
             ))}
             {cov.spans.flatMap((span) =>
@@ -207,7 +314,13 @@ export function Timeline(): JSX.Element {
                   selected={span.shot.id === selected}
                   dragging={drag?.shotId === span.shot.id}
                   onSelect={() => setSelected(span.shot.id)}
-                  onGrab={(edge) => setDrag(grab(data, span.shot.id, edge))}
+                  onGrab={(edge) => {
+                    // The handle's pointerdown is prevented, so it never takes focus off an open
+                    // editor — which means the drag has to be refused rather than the editor
+                    // silently committed under it. See `canGrab`.
+                    if (!canGrab(mode)) return setNotice(GRAB_BLOCKED);
+                    setDrag(grab(data, span.shot.id, edge));
+                  }}
                 />
               )),
             )}
