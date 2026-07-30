@@ -7,6 +7,8 @@
  * conversion. For the exporter it is one thing — the default output is still a screenplay this
  * repo can read back, which is what makes the chunk format an escape hatch rather than lock-in.
  */
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { parseFountain, parseFrontMatter } from '@vn/parse';
 import type { Scene } from '@vn/types';
 import { SCRIPTS } from '@vn/testkit';
@@ -271,6 +273,46 @@ The city hums somewhere below.
     expect(back.scenes.map((s) => s.next)).toEqual([undefined, undefined, undefined, undefined]);
     expect(back.scenes.flatMap((s) => s.choices)).toEqual([]);
     expect(back.scenes.map((s) => s.id)).not.toContain('arrival');
+  });
+});
+
+/**
+ * `examples/sample` was converted by running `vngen import` on it, so the committed chunks are a
+ * fixed point of the pair: export them and import the result, and the same bytes come back. That
+ * is a stronger claim than "the scenes survive" — it pins the layout a user actually reads, and it
+ * fails if either projection drifts.
+ */
+describe('examples/sample is a fixed point of screenplay ↔ import', () => {
+  const root = resolve(__dirname, '../../../../examples/sample');
+  const dir = join(root, 'scenes');
+  const start = /^start:\s*(\S+)/m.exec(readFileSync(join(root, 'project.yaml'), 'utf8'))?.[1];
+
+  it('writes the committed chunk files back byte for byte', () => {
+    const ids = readdirSync(dir)
+      .filter((name) => name.endsWith('.md'))
+      .map((name) => name.slice(0, -'.md'.length));
+    expect(ids.length).toBeGreaterThan(2);
+    expect(start).toBeDefined();
+
+    const scenes = new Map(
+      ids.map((id) => {
+        const back = sceneFromDoc(
+          parseFrontMatter(readFileSync(join(dir, `${id}.md`), 'utf8')),
+          id,
+        );
+        if (!back.ok) throw new Error(back.diagnostic.message);
+        return [id, back.value.scene];
+      }),
+    );
+
+    const script = scriptFromScenes({ scenes, entry: start });
+    const result = sceneChunksFromScript(parseFountain(script), { start: start as string });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.entry).toBe(start);
+    expect(result.chunks.map((c) => c.id).sort()).toEqual([...ids].sort());
+    for (const chunk of result.chunks) {
+      expect(docToMarkdown(chunk.doc)).toBe(readFileSync(join(dir, `${chunk.id}.md`), 'utf8'));
+    }
   });
 });
 

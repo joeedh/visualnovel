@@ -246,7 +246,8 @@ She bows.
     expect(text).toBe(aliased);
   });
 
-  // The shipped sample is authored unmarked, which is exactly the input this writer exists for.
+  // Real authored prose, stripped back to what an author types: the sample ships the marks
+  // `vngen import` stamped, and un-marking them is the only way to sweep this writer over it.
   it('leaves the sample scene chunks meaning exactly what they did', () => {
     const dir = join(__dirname, '../../../../examples/sample/scenes');
     const ids = readdirSync(dir)
@@ -255,7 +256,9 @@ She bows.
     expect(ids.length).toBeGreaterThan(2);
 
     for (const id of ids) {
-      const source = splitFrontMatter(readFileSync(join(dir, `${id}.md`), 'utf8')).body;
+      const source = splitFrontMatter(readFileSync(join(dir, `${id}.md`), 'utf8'))
+        .body.replace(/^\[\[(?:line|nextline):[^\]]*\]\]\n/gm, '')
+        .replace(/\n{3,}/g, '\n\n');
       const { text, diagnostics } = assignLineIds(source);
       expect(diagnostics).toEqual([]);
       expect(text).not.toBe(source);

@@ -174,10 +174,28 @@ re-importing its output reproduces the project.
    diagnostic and the importer, not an alternative input form. Its 60-second "plans byte-identical
    work either way" test moved to the CLI suite as an imported-vs-hand-authored task-hash
    comparison, which is where `cmdImport` is actually reachable — and is the property step 7 needs.
-7. **Convert `examples/sample` by running the importer on it.** The conversion in
+7. ✔ **Convert `examples/sample` by running the importer on it.** The conversion in
    `scene-chunk-files.md` step 9 was by hand or by the writer; redoing it through `vngen import`
    is the real end-to-end proof, and the diff against the hand conversion is the test. Task hashes
-   must not move — same stop condition, same reason.
+   must not move — same stop condition, same reason. Done by rebuilding the pre-conversion project
+   out of git (`c1e0cdb^`), running the real `vngen import` on it, and diffing the result against
+   the committed chunks. Three differences, all of them the writer's canonical form: the branch
+   markers move to the top of the body, choice labels are quoted, and every line gets a `[[line:]]`
+   mark under a `[[nextline:]]` allocator. **The stop condition held** — a throwaway test ran both
+   forms through the real scheduler twice (gate, approve, gate cleared) and compared sorted
+   `kind hash`: 21 tasks each, identical sets. So the importer's output is what ships.
+   - That reverses step 9's deliberate choice to leave the template unmarked ("the minimum a chunk
+     may be"). The reason it reverses: the marked form makes the template a **fixed point** of the
+     two projections — `scriptFromScenes` then `sceneChunksFromScript` reproduces the committed
+     files byte for byte, which the unmarked form cannot claim, because an import always stamps
+     ids. That round trip is now a test in `screenplay.test.ts`, so the shipped template fails the
+     build if either projection drifts.
+   - `lineids.test.ts`'s sample sweep keeps the sample as its corpus by stripping the marks first,
+     which is the input the writer exists for either way.
+   - `vngen graph` was re-run: the committed `story.graph.mmd` had been stale since chunk loading
+     made scene order alphabetical. Same nodes, same edges, one line moved.
+   - The sample's `AICONTEXT.md` gained the rule the marks imply — art binds to line ids, so take
+     the next one the allocator names and never renumber.
 8. **Docs.** This file's As-shipped section; `CLAUDE.md`'s CLI table and project-layout section;
    `docs/vn-generator-report.md` §9.1; `docs/fountain.md` gains "what an exported screenplay looks
    like"; `docs/command-system.md`'s command table and counts.
