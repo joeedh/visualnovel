@@ -140,6 +140,10 @@ statement of every one — with the failure it prevents — is in
 - **Shot decompositions are persisted, not re-derived.** `work/shots/<sceneId>.json` is
   preferred forever after it exists; authored fields at top level, run output under
   `shotData`. `buildShotPrompt` ignores `coversLines`, so coverage edits rehash nothing.
+- **No scene edit invalidates art, so drift is reported instead.** `buildShotPrompt` never reads
+  line text either, so retyping a covered line re-renders nothing and the frame keeps illustrating
+  words that are gone. `Shot.proseHash` is stamped beside the image (only when the bytes are new)
+  and `driftOf` re-derives the comparison on every read — never a stored flag, never the task hash.
 - **Line ids are allocated and written down, and reading never writes.** `[[line: L4]]` marks
   bind art to lines; allocation is in-memory and persisting is the undoable
   `story.assignLineIds`, which re-parses its own patch and discards it unless the scenes come

@@ -45,7 +45,7 @@ current one.
 | [`fountain-import-export.md`](fountain-import-export.md) | shipped | `vngen import` / `vngen screenplay`, the desktop pair, and the retirement of `screenplay/` as an input |
 | [`scene-editing-commands.md`](scene-editing-commands.md) | shipped | Nine `story.*` prose commands over `@vn/scriptedit`, `session.editScene`, the storyboard fallout, `script.moveLine`, and `vnauthor`'s `edit_scene` — one write path for prose, no UI |
 | [`scene-edit-package.md`](scene-edit-package.md) | shipped | The scene-edit rules and write path now live in `@vn/scriptedit` (pure barrel; `@vn/scriptedit/write` for the filesystem half), where `vnauthor` can reach them |
-| [`line-editing-in-floor.md`](line-editing-in-floor.md) | partial | Correcting a line in the coverage timeline; drift marking |
+| [`line-editing-in-floor.md`](line-editing-in-floor.md) | shipped | Retyping a line in the coverage timeline, and `Shot.proseHash` → the drift mark on the shot it produced |
 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | planned | STUDIO's `script` mode — writing, splitting and merging scenes |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 
@@ -54,7 +54,7 @@ current one.
 Seven plans that together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
 The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **1 through 5 are shipped, 6 is in progress, 7 is not started.** One plan not
+one rests on. **1 through 6 are shipped; 7 is not started.** One plan not
 in the original seven has been carved out since:
 [`scene-edit-package.md`](scene-edit-package.md), a prerequisite for 5's agent tool.
 
@@ -66,7 +66,7 @@ in the original seven has been carved out since:
 | 4 | [`fountain-import-export.md`](fountain-import-export.md) ✔ | 2, 3 | Migrates existing projects in, and keeps the format from being lock-in |
 | 5 | [`scene-editing-commands.md`](scene-editing-commands.md) ✔ | 1, 3 | The only write path for prose. No UI; verified through the palette and CDP |
 | — | [`scene-edit-package.md`](scene-edit-package.md) ✔ | 5 | Not one of the seven. 5's rules lived in the desktop app, and a package cannot import an app — so the agent tool needed them moved first |
-| 6 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | 5 | Correct a line where you can see the frame it produced |
+| 6 | [`line-editing-in-floor.md`](line-editing-in-floor.md) ✔ | 5 | Correct a line where you can see the frame it produced |
 | 7 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | 5 | Write, reorder, split and merge — everything that changes which lines exist |
 
 6 and 7 are siblings and independent of each other; the division is one sentence — **FLOOR edits
@@ -88,7 +88,8 @@ Recorded here because each was settled once and every later plan assumes it.
 - **Drift is derived, never stored.** A shot is drifted when a hash of the covered lines' *text*,
   recorded when its image was written, disagrees with the hash those lines produce now — computable,
   self-healing, and correct for edits made through the CLI or by hand. Not the task hash: that is
-  precisely the hash prose cannot move.
+  precisely the hash prose cannot move. Shipped in plan 6 as `Shot.proseHash` (stamped only when the
+  image's bytes are new) and `driftOf`; a shot rendered before the field existed reads `unknown`.
 - **One authorial act, one command, one undo point.** No batch edits, no JSON-patch command, no
   buffer diffed to commands on save.
 - **Both input formats loaded during the move**, and a project with both was an error. Plan 4
@@ -138,7 +139,7 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
 - [x] 3 — scene chunk files
 - [x] 4 — Fountain import and export
 - [x] 5 — scene editing commands
-- [ ] 6 — line editing in FLOOR
+- [x] 6 — line editing in FLOOR
 - [ ] 7 — script composition in STUDIO
 
 ## Keeping this file true

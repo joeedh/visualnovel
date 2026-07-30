@@ -1,6 +1,6 @@
 # Line editing in FLOOR
 
-Status: **in progress** — steps 1–6 are shipped; the docs step (7) is not. Move five of
+Status: **shipped** — all seven steps; each carries its own as-shipped note below. Move five of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first surface that can change prose. It consumes
 [`scene-editing-commands.md`](scene-editing-commands.md) and adds no write path of its own. Its
@@ -201,11 +201,21 @@ drag gestures follow.
    run needs a Gemini key and `--mock` writes nothing, so `pipeline/src/tests/drift.test.ts` drives
    the real scheduler over mock providers and asserts the stamp survives a second run — the same
    claim, and it stays asserted.
-7. **Docs.** This file's As-shipped section; [`../desktop-app.md`](../desktop-app.md)'s
+7. ✔ **Docs.** This file's As-shipped section; [`../desktop-app.md`](../desktop-app.md)'s
    coverage-timeline section (which says "every edit here is free: nothing rehashes and no art is
    invalidated" — true, and from here on the incomplete half of the story, because the surface will
    also edit prose and that is free in exactly the way drift is the price of);
    [`../command-system.md`](../command-system.md) if the command set moves.
+
+   As shipped: the sentence above kept its truth and gained the other half of the story, plus three
+   bullets in that section (the editing gesture, the undecomposed empty state, the drift mark). Two
+   pages the step did not name needed it more. Drift is a **pipeline** contract before it is a UI
+   one — it is the answer to "no edit invalidates art", which
+   [`../pipeline-contracts.md`](../pipeline-contracts.md#scenes-shots-and-lines) already stated
+   without an answer — so the full statement lives there beside the shots-file and line-id
+   contracts, with a two-line summary in `CLAUDE.md`'s core ideas. `command-system.md` needed
+   nothing: this plan added no command, which was the point of ordering it after
+   [`scene-editing-commands.md`](scene-editing-commands.md).
 
 ## Not in this plan
 

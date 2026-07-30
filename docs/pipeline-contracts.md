@@ -77,6 +77,24 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   ids the scene no longer has are dropped with a warning, and since `buildShotPrompt`
   ignores `coversLines`, coverage edits rehash nothing. Dry runs read the file but never write
   it — a mock decomposition must not be left for a real run to reuse.
+- **No edit to a scene invalidates art — which is why drift has to be reported.**
+  `buildShotPrompt` reads neither `coversLines` nor line text (prose reaches only the P7 reviewer
+  spec, which never enters a task's `inputs`), so retyping a covered line rehashes nothing and
+  re-renders nothing: the frame goes on illustrating words the scene no longer contains, and by
+  default nothing notices. So the frame is made answerable for its words. `Shot.proseHash` records a
+  hash of the covered lines' text at the moment the image was produced — persisted under `shotData`,
+  written **only beside an image**, and stamped only when the bytes are new, so a rerun that reports
+  the same image cannot re-baseline the prose beneath it and silently clear a drift nobody acted on.
+  `driftOf` (`packages/pipeline/src/drift.ts`) re-derives the comparison on every read: `unrendered`,
+  `current`, `drifted`, or `unknown` for a shot rendered before the field existed, which must never
+  read as either answer. Derived rather than stored because `shotData` is rewritten wholesale each
+  pass — a flag can be stale, restored from an old commit, or missed by an edit that took another
+  path — and **not** the task hash, which is precisely the hash prose cannot move. The hash walks
+  `scene.lines`, so reordering `coversLines` is not an edit but extending coverage is: the question
+  is whether this frame illustrates the words it is against. Every surface that can change prose owes
+  the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it —
+  see [`desktop-app.md`](desktop-app.md#coverage-timeline-floor). Plan:
+  [`plans/line-editing-in-floor.md`](plans/line-editing-in-floor.md).
 - **Line ids are allocated and written down, and reading never writes.** `Shot.coversLines`
   binds art to `${sceneId}:L<n>`, so an id derived from position silently re-points every shot
   below an inserted line — money spent, nothing reported. `splitScenes` therefore prefers a

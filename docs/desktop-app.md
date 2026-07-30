@@ -163,8 +163,10 @@ screenplays do, and it takes the full width — the task inspector is about othe
 `.floor-body.wide` drops it. This is the only surface that edits `Shot.coversLines` directly — the
 `story.*` scene editors also move it, as fallout of a split or merge rather than as the point — and
 `buildShotPrompt` ignores it, so every edit here is free: nothing rehashes and no art is
-invalidated. Plan and as-shipped notes:
-[`plans/shot-timeline-editor.md`](plans/shot-timeline-editor.md).
+invalidated. That is also true of the **prose** it edits, and there it is the problem rather than the
+feature — hence the drift marking below. Plans and as-shipped notes:
+[`plans/shot-timeline-editor.md`](plans/shot-timeline-editor.md) and
+[`plans/line-editing-in-floor.md`](plans/line-editing-in-floor.md).
 
 - **One rule, previewed and committed.** `src/shared/coverage.ts` holds the whole gesture's
   logic — `setCoverage` (the rule), `spansFor` (the geometry) and `resolveDrag` (which lines a
@@ -204,6 +206,34 @@ invalidated. Plan and as-shipped notes:
 - **Rows are grid rows, so wrapped prose sizes itself.** The one thing measured is which row
   the pointer is over: a full-width `.tl-band` behind each row, reached by `elementFromPoint`
   once `.tl-grid.dragging` drops pointer events on the script and the brackets.
+- **Clicking a line's text retypes it, one `story.setLineText` per commit.** The editor is a
+  textarea in the row it replaces, auto-growing via a one-cell grid whose invisible `::after` sizer
+  carries the same string — nothing is measured, so no frame exists where the layout disagrees with
+  the caret, and the brackets follow because they are placed by grid row. Enter commits and Escape
+  discards, and both **act** rather than calling `blur()`, which does nothing on an element that is
+  not the active element; blur is the click-away path only. A draft that matches the line is not an
+  authorial act and produces no record. Typing over a covered line reports what it will cost
+  *before* the commit, debounced from the command's own `check` (`story.setLineText` reports
+  `retyped: []` for an unchanged text, so there is nothing to say until there is a change to price),
+  and a refused commit reopens the editor with the draft beside the reason. Editing and coverage
+  dragging are two modes over one grid: a handle's `pointerdown` is prevented and so cannot blur an
+  open editor, which means the **grab is refused with a sentence** rather than the half-typed line
+  being committed under the gesture. `timeline/editing.ts` is the pure half.
+- **An undecomposed scene renders its script.** Correcting a line is exactly what an author wants to
+  do *before* paying for art, so a scene with no `work/shots/<id>.json` draws the script column with
+  no bracket columns and a note saying where the shots come from — not a refusal. Both the vermilion
+  gap gutter and the uncovered count wait for a decomposition: before one exists every line is
+  uncovered, which is a pre-run state and not a defect.
+- **A frame that illustrates old prose is marked, not re-run.** Drift is derived in main
+  (`driftOf`, surfaced as `CoverageShot.drift` — see
+  [`pipeline-contracts.md`](pipeline-contracts.md#scenes-shots-and-lines)) and rendered as a state on
+  the bracket: dashed sodium with `OLD PROSE` in the mono head, distinct from the vermilion
+  `COVERS NOTHING`, which is a different problem with a different fix. Sodium because the authored
+  side is what moved; on the head rather than over the image because that frame is still what the
+  runner will show. A shot rendered before the hash existed reads a dim `PROSE?` — quiet, because the
+  author cannot act on it and it clears itself at the next render, which is also why the bar counts
+  only the drifted ones (`… · 1 on old prose`). Acting on drift is `pipeline.run`'s job and the
+  author's; this surface only tells the truth about it.
 
 ## The runner (PLAY)
 
