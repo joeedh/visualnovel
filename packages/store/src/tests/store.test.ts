@@ -65,45 +65,48 @@ describe('worktree IO', () => {
     const paths = new ProjectPaths(await tempRoot());
     await mkdir(join(paths.charactersDir, 'aiko'), { recursive: true });
     await writeFile(paths.characterFile('aiko'), '---\nid: aiko\nname: Aiko\n---\n\nAiko.\n');
-    await mkdir(paths.screenplayDir, { recursive: true });
-    await writeFile(join(paths.screenplayDir, 'script.fountain'), 'INT. ROOM - DAY\n\nAction.\n');
+    await writeSceneChunk(paths, 'arrival', {
+      data: { scene: 'arrival' },
+      body: 'INT. ROOM - DAY\n\nAction.\n',
+    });
 
     const inputs = await loadInputs(paths);
     expect(inputs.characterDocs).toHaveLength(1);
     expect(inputs.characterDocs[0]!.data['id']).toBe('aiko');
-    expect(inputs.scriptText).toContain('INT. ROOM');
-    expect(inputs.sceneDocs).toEqual([]);
+    expect(inputs.sceneDocs.map((c) => c.id)).toEqual(['arrival']);
+    expect(inputs.legacyScreenplay).toBeUndefined();
     expect(inputs.diagnostics).toEqual([]);
   });
 
-  it('reads scenes/ chunks, with no screenplay to fall back to', async () => {
+  it('does not read a screenplay: names it, and reports no scenes at all', async () => {
     const paths = new ProjectPaths(await tempRoot());
-    await writeSceneChunk(paths, 'arrival', {
-      data: { scene: 'arrival' },
-      body: 'INT. ROOM - DAY\n\nAction.\n',
-    });
+    await mkdir(paths.screenplayDir, { recursive: true });
+    await writeFile(join(paths.screenplayDir, 'script.fountain'), 'INT. ROOM - DAY\n\nAction.\n');
 
     const inputs = await loadInputs(paths);
-    expect(inputs.sceneDocs.map((c) => c.id)).toEqual(['arrival']);
-    expect(inputs.scriptText).toBe('');
-    expect(inputs.scriptPath).toBeUndefined();
-    expect(inputs.diagnostics).toEqual([]);
+    expect(inputs.sceneDocs).toEqual([]);
+    expect(inputs.legacyScreenplay).toContain('script.fountain');
+    expect(inputs.diagnostics).toHaveLength(1);
+    expect(inputs.diagnostics[0]!.severity).toBe('error');
+    expect(inputs.diagnostics[0]!.code).toBe('legacy_screenplay');
+    expect(inputs.diagnostics[0]!.message).toContain('vngen import');
   });
 
-  it('refuses a project holding both forms, reading neither', async () => {
+  it('warns rather than fails when a screenplay is left beside chunks', async () => {
     const paths = new ProjectPaths(await tempRoot());
     await writeSceneChunk(paths, 'arrival', {
       data: { scene: 'arrival' },
       body: 'INT. ROOM - DAY\n\nAction.\n',
     });
     await mkdir(paths.screenplayDir, { recursive: true });
-    await writeFile(join(paths.screenplayDir, 'script.fountain'), 'INT. ROOM - DAY\n\nAction.\n');
+    await writeFile(join(paths.screenplayDir, 'script.fountain'), 'INT. OLD - DAY\n\nStale.\n');
 
+    // The chunks still load — a leftover file builds nothing, so it cannot contend with them.
     const inputs = await loadInputs(paths);
-    expect(inputs.sceneDocs).toEqual([]);
-    expect(inputs.scriptText).toBe('');
+    expect(inputs.sceneDocs.map((c) => c.id)).toEqual(['arrival']);
     expect(inputs.diagnostics).toHaveLength(1);
-    expect(inputs.diagnostics[0]!.code).toBe('two_input_formats');
+    expect(inputs.diagnostics[0]!.severity).toBe('warning');
+    expect(inputs.diagnostics[0]!.code).toBe('stray_screenplay');
     expect(inputs.diagnostics[0]!.message).toContain('script.fountain');
   });
 

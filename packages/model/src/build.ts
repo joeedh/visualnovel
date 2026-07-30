@@ -1,6 +1,5 @@
 import type { Character, Diagnostic, Location, ProjectModel, Scene } from '@vn/types';
 import {
-  parseFountain,
   type FountainScript,
   type FrontMatterDoc,
   type LoadedInputs,
@@ -16,13 +15,18 @@ export interface BuildInputs {
   title: string;
   characterDocs: FrontMatterDoc[];
   locationDocs: FrontMatterDoc[];
-  /** Authored scene chunks. When any are present `script` is ignored — the forms never mix. */
+  /** Authored scene chunks — how a project on disk stores scenes, and what `loadInputs` reads. */
   sceneDocs?: SceneChunkDoc[];
-  script: FountainScript;
+  /**
+   * A whole multi-scene screenplay instead, split by its `[[scene:]]` markers. No reader produces
+   * one any more (`vngen import` converts a `screenplay/` project); it stays because Fountain is
+   * still a form scenes can be *given* in — a caller holding one string, and the tests that
+   * exercise validation over a whole story, do not have to write chunks to disk first.
+   */
+  script?: FountainScript;
   /**
    * The entry scene from `project.yaml`'s `start:`. Required with `sceneDocs`, which have no
-   * document order to fall back on; honoured for a screenplay too, where the first scene is the
-   * fallback.
+   * document order to fall back on; with `script` the first scene is the fallback.
    */
   start?: string;
   /** Diagnostics from reading the inputs, carried through so they are reported with the rest. */
@@ -35,7 +39,9 @@ function readScenes(inputs: BuildInputs): {
   mined: MinedLocation[];
   diagnostics: Diagnostic[];
 } {
-  if (!inputs.sceneDocs?.length) return splitScenes(inputs.script);
+  if (!inputs.sceneDocs?.length) {
+    return inputs.script ? splitScenes(inputs.script) : { scenes: [], mined: [], diagnostics: [] };
+  }
 
   const scenes: Scene[] = [];
   const mined: MinedLocation[] = [];
@@ -263,10 +269,9 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
 }
 
 /**
- * Build the model from documents as read off disk — the one place `parseFountain` and
- * `buildModel` are sequenced. Every caller that loads a project (CLI, desktop session,
- * authoring workspace, testkit) goes through here, so a change to how authored input becomes
- * a model is one edit rather than four. Takes the config fields it needs, not a
+ * Build the model from documents as read off disk. Every caller that loads a project (CLI,
+ * desktop session, authoring workspace, testkit) goes through here, so a change to how authored
+ * input becomes a model is one edit rather than four. Takes the config fields it needs, not a
  * `ProjectConfig`: `@vn/model` does not depend on `@vn/config`.
  */
 export function modelFromInputs(
@@ -279,7 +284,6 @@ export function modelFromInputs(
     characterDocs: inputs.characterDocs,
     locationDocs: inputs.locationDocs,
     sceneDocs: inputs.sceneDocs,
-    script: parseFountain(inputs.scriptText),
     diagnostics: inputs.diagnostics,
   });
 }

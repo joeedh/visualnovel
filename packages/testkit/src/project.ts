@@ -76,10 +76,10 @@ export interface MakeProjectOptions {
   script?: string;
   /**
    * Which on-disk form the scenes are written in. Default `'chunks'`: `script` is split into
-   * `scenes/<id>.md` through the same writer the app uses, with `start:` added to
-   * `project.yaml`. `'screenplay'` writes the one `screenplay/script.fountain` instead, and
-   * exists so the fallback stays under test. The script is the same either way — a fixture
-   * describes its story once, and the format is how it is stored.
+   * `scenes/<id>.md` through the same writer the app uses, with `start:` added to `project.yaml`.
+   * `'screenplay'` writes the one `screenplay/script.fountain` instead — **an unimported project**,
+   * which no longer loads its scenes, so it is only for testing what happens to one: the
+   * diagnostic, and `vngen import`. The script is the same either way.
    */
   format?: 'chunks' | 'screenplay';
   /** `git init` + a deterministic identity + an initial commit of the inputs. */
@@ -291,8 +291,9 @@ export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestPr
   const config = {
     title: opts.title ?? DEFAULT_TITLE,
     art_style: DEFAULT_ART_STYLE,
-    // Chunks have no document order, so the entry scene has to be named. Document order is
-    // exactly what the script still has, so name the scene the screenplay form would pick.
+    // Chunks have no document order, so the entry scene has to be named. The screenplay form
+    // leaves `start:` out on purpose — an unimported project has not written it down yet, and
+    // deriving it from document order is the importer's job.
     ...(format === 'chunks' && split.scenes[0] ? { start: split.scenes[0].id } : {}),
     ...opts.config,
   };

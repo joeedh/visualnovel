@@ -2,12 +2,12 @@ import { promises as fs } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Asset, Logger } from '@vn/types';
-import { exists, writeFileAtomic } from '@vn/util';
+import { exists, readText, writeFileAtomic } from '@vn/util';
 import { loadConfig, setStartScene } from '@vn/config';
 import { parseFountain } from '@vn/parse';
 import { sceneChunksFromScript, scriptFromScenes, toMermaid } from '@vn/model';
 import {
-  loadInputs,
+  findScreenplay,
   ProjectPaths,
   readSceneChunks,
   writeApprovedPortrait,
@@ -80,7 +80,7 @@ export async function cmdGraph(args: Args): Promise<number> {
  *
  * The screenplay is not deleted — it moves to `<name>.fountain.imported`, an extension
  * `loadInputs` does not look at. That rename is done last, because until it happens the project
- * holds both formats and does not load.
+ * still reports the screenplay on every load; it is what finishes the import.
  */
 export async function cmdImport(args: Args): Promise<number> {
   const dir = args.positional[0] ?? '.';
@@ -96,23 +96,25 @@ export async function cmdImport(args: Args): Promise<number> {
     return 1;
   }
 
-  const inputs = await loadInputs(paths);
-  if (inputs.scriptPath === undefined) {
+  // The same finder `loadInputs` uses to report the leftover, so the file complained about is
+  // the file converted — the reader and the importer cannot disagree about which one it is.
+  const scriptPath = await findScreenplay(paths);
+  if (scriptPath === undefined) {
     ok(`No screenplay to import — expected a .fountain file in ${paths.screenplayDir}.`);
     return 1;
   }
-  const asideName = `${inputs.scriptPath}.imported`;
+  const asideName = `${scriptPath}.imported`;
   if (await exists(asideName)) {
     ok(`${asideName} already exists — move or delete it first.`);
     return 1;
   }
 
   const result = sceneChunksFromScript(
-    parseFountain(inputs.scriptText),
+    parseFountain(await readText(scriptPath)),
     config.start === undefined ? {} : { start: config.start },
   );
   if (result.diagnostics.length) {
-    ok(`Reading ${inputs.scriptPath}:`);
+    ok(`Reading ${scriptPath}:`);
     reportDiagnostics(result);
   }
   if (result.diagnostics.some((d) => d.severity === 'error')) {
@@ -126,7 +128,7 @@ export async function cmdImport(args: Args): Promise<number> {
   if (result.entry !== undefined && (await setStartScene(dir, result.entry))) {
     ok(`Set start: ${result.entry} in ${paths.projectConfig}`);
   }
-  await fs.rename(inputs.scriptPath, asideName);
+  await fs.rename(scriptPath, asideName);
   ok(`Moved the screenplay aside → ${asideName} (delete it once you are satisfied).`);
   return 0;
 }
@@ -136,8 +138,8 @@ export async function cmdImport(args: Args): Promise<number> {
  * screenplay (fountain-import-export plan). The escape hatch that keeps the chunk format from
  * being lock-in: read-only, stale the moment it is written, and no claim to be a mirror.
  *
- * The default output sits at the project root, never in `screenplay/` — a `.fountain` in there
- * is a second source of truth for every scene, which is the error `loadInputs` reports. `--clean`
+ * The default output sits at the project root, never in `screenplay/` — a `.fountain` in there is
+ * the retired one-file form, which `loadInputs` reports for as long as it exists. `--clean`
  * strips the `[[…]]` markers for a human or a screenwriting tool, and takes the scene ids, the
  * branch structure and `nextLineId` with them, so that output cannot be imported back.
  */
@@ -163,8 +165,8 @@ export async function cmdScreenplay(args: Args): Promise<number> {
   // Relative to the shell for an explicit `-o`, and to the project for the default.
   const file = out ? resolve(out) : join(dir, 'screenplay.fountain');
   if (dirname(file) === resolve(project.paths.screenplayDir)) {
-    ok(`Refusing to write into ${project.paths.screenplayDir} — a screenplay there is a second`);
-    ok('source of truth for every scene, which is an error the project will not load past.');
+    ok(`Refusing to write into ${project.paths.screenplayDir} — a .fountain there is read as the`);
+    ok('retired one-file form, and the project would report it on every load from now on.');
     return 1;
   }
   await writeFileAtomic(file, text);

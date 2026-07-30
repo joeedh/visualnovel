@@ -230,8 +230,10 @@ describe('buildModel — scenes authored as chunks', () => {
   it("carries the loader's own diagnostics through to the model", () => {
     const m = buildModel({
       ...chunkInputs(CHUNKS, 'arrival'),
-      diagnostics: [{ severity: 'error', code: 'two_input_formats', message: 'both forms' }],
+      diagnostics: [
+        { severity: 'error', code: 'legacy_screenplay', message: 'run `vngen import`' },
+      ],
     });
-    expect(errors(m).map((d) => d.code)).toContain('two_input_formats');
+    expect(errors(m).map((d) => d.code)).toContain('legacy_screenplay');
   });
 });

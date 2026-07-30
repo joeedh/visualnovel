@@ -465,8 +465,8 @@ describe('applySceneBranchEdit over examples/sample scene chunks', () => {
 
 /**
  * The same sweep over a multi-scene screenplay, where the property that can actually break is
- * that no *other* scene's markers move. `SCRIPTS.branching` stands in for the sample now that
- * the sample is chunks; the `screenplay/` form outlives it until the importer retires it.
+ * that no *other* scene's markers move. Nothing *loads* a multi-scene file any more, but the
+ * patcher still takes one: `vngen screenplay` emits that shape, and it is what gets imported.
  */
 describe('applySceneBranchEdit over a whole screenplay', () => {
   const source = SCRIPTS.branching;

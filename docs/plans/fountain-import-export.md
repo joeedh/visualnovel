@@ -116,9 +116,10 @@ re-importing its output reproduces the project.
 3. ✔ **`vngen import`.** The CLI command, the `.imported` rename, refusal on an existing `scenes/`,
    and the abort-on-divergence path. Usage text updated for both exports. Shipped as `cmdImport`
    in `apps/cli/src/commands.ts`; it deliberately does not go through `loadProject`, which would
-   build a model and report the both-formats error instead of fixing it. The screenplay file is
-   found by `loadInputs` rather than a second glob, so the importer cannot disagree with the loader
-   about which file is authoritative. Writing `start:` needed a writer for `project.yaml`:
+   build a model and report the leftover screenplay instead of fixing it. The screenplay file is
+   found by the same finder the loader uses rather than a second glob (`loadInputs` at first, then
+   step 6's exported `findScreenplay`), so the importer cannot disagree with the loader about which
+   file it is. Writing `start:` needed a writer for `project.yaml`:
    `@vn/config`'s `setStartScene` splices the one line and leaves every other byte — including
    hand-written comments — alone, the same way the prose writers splice front-matter. The rename is
    **last**, because until it happens the project holds both formats and does not load.
@@ -126,8 +127,7 @@ re-importing its output reproduces the project.
    `parseArgs` grew a short-flag rule for `-o` (a listed short flag takes the next argument, an
    unlisted one is a boolean — one rule rather than a parser that guesses from what follows). It
    also **refuses an `-o` inside `screenplay/`**, not just defaulting away from it: a `.fountain`
-   there is a second source of truth for every scene. Step 6 retires the fallback and that refusal
-   with it.
+   there is a second source of truth for every scene. (Step 6 kept the refusal — see its note.)
 5. ✔ **Desktop `workspace.import` and `story.screenplay`.** Both `mutating`, both with a `check`
    (`workspace.import` refuses when `scenes/` exists or no screenplay is present;
    `story.screenplay` refuses on an empty model, like `story.export`). Neither is `undoable`:
@@ -141,9 +141,39 @@ re-importing its output reproduces the project.
    refusal has nothing to guard here. The registry test's `mutating` and `check` lists grew by
    two; `undoable` did not. `docs/command-system.md`'s table and counts (28/12/11) and
    `CLAUDE.md`'s definition count were updated with the code rather than deferred to step 8.
-6. **Retire the fallback.** `loadInputs` stops reading `screenplay/`, and a project with one and no
+6. ✔ **Retire the fallback.** `loadInputs` stops reading `screenplay/`, and a project with one and no
    `scenes/` gets an error diagnostic naming `vngen import`. The `screenplay` fixture kept by
-   `scene-chunk-files.md` step 8 converts to chunks, and its test becomes an import test.
+   `scene-chunk-files.md` step 8 converts to chunks, and its test becomes an import test. Shipped
+   with four decisions worth naming:
+   - **One decider.** `findScreenplay` is exported from `@vn/store` and is the only thing that
+     answers "which file is the screenplay" — the reader that reports it, `Workspace.index`, and the
+     importer that converts it all call it, replacing three separate globs. `LoadedInputs` carries
+     the answer as `legacyScreenplay` (an absolute path), so nothing downstream takes a second look
+     at the directory.
+   - **A leftover beside chunks is a *warning*, not the old hard error.** `two_input_formats` is
+     gone. A `screenplay/` that builds nothing cannot contend with `scenes/`, so the both-present
+     case is a `stray_screenplay` warning telling the author to delete it or rename it
+     `.fountain.imported`; screenplay-and-no-chunks is the `legacy_screenplay` **error** naming
+     `vngen import`. This is a deliberate departure from `scene-chunk-files.md` step 5, and it is
+     also what lets `vngen import` finish: the rename is no longer racing a project that fails to
+     load in between.
+   - **`cmdScreenplay` keeps its `screenplay/` refusal**, against step 4's prediction. The reason
+     changed rather than expired: a `.fountain` there is no longer a second source of truth, but it
+     is a permanent diagnostic on every load, which is not a state a command should write a project
+     into.
+   - **`SceneSource` in the desktop session collapsed** to `{ id, file, prefix, script }` and
+     `patchOptions` is gone — every scene now comes from a one-scene chunk, so the branch patcher
+     and the line-id allocator no longer need to be told which scene inside a file they are aimed
+     at. `BuildInputs.script` stayed (optional): no reader produces one, but Fountain is still a
+     form scenes can be *given* in, which is what the model's own tests use.
+
+   Fixtures converted with it: `@vn/authoring`'s `tools`/`loop` suites (both hand-built
+   `screenplay/script.fountain` projects), the desktop `session` suite's branch-editing and line-id
+   describes, and `@vn/store`'s worktree tests, which now pin the two diagnostics. `@vn/testkit`'s
+   `format: 'screenplay'` survives as "an **unimported** project" — the fixture for testing the
+   diagnostic and the importer, not an alternative input form. Its 60-second "plans byte-identical
+   work either way" test moved to the CLI suite as an imported-vs-hand-authored task-hash
+   comparison, which is where `cmdImport` is actually reachable — and is the property step 7 needs.
 7. **Convert `examples/sample` by running the importer on it.** The conversion in
    `scene-chunk-files.md` step 9 was by hand or by the writer; redoing it through `vngen import`
    is the real end-to-end proof, and the diff against the hand conversion is the test. Task hashes

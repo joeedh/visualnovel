@@ -30,6 +30,7 @@ import { parseFountain, splitFrontMatter, type LoadedInputs } from '@vn/parse';
 import {
   AssetStore,
   ProjectPaths,
+  findScreenplay,
   loadInputs,
   readSceneChunks,
   readShots,
@@ -39,7 +40,7 @@ import {
   writeShots,
 } from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
-import { exists, writeFileAtomic } from '@vn/util';
+import { exists, readText, writeFileAtomic } from '@vn/util';
 import { costPreview, gateStatus, isApproved } from '@vn/pipeline';
 import {
   createAnthropicChat,
@@ -113,13 +114,11 @@ export interface SessionDeps {
  * byte-exact so a rewire never reformats YAML the author wrote.
  */
 interface SceneSource {
+  /** The one scene this file holds — the id front-matter gives it, which its body cannot override. */
+  id: string;
   file: string;
   prefix: string;
   script: string;
-  /** The scene ids this file holds — one for a chunk, all of them for a screenplay. */
-  scenes: string[];
-  /** Set for a chunk: the id front-matter gives it, which its body cannot override. */
-  chunkId?: string;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -135,34 +134,17 @@ interface LoadedProject {
 }
 
 /**
- * The prose files behind a model, in whichever form the project authored them. Derived from the
- * same `loadInputs` result the model was built from, so a writer cannot re-decide "which file is
- * the screenplay" and drift from the rule the reader used.
+ * The prose files behind a model. Derived from the same `loadInputs` result the model was built
+ * from — not from a second look at `scenes/` — so a writer patches exactly the bytes the model
+ * was read from rather than whatever is there by the time it writes.
  */
-function sourcesOf(inputs: LoadedInputs, model: ProjectModel): SceneSource[] {
-  if (inputs.sceneDocs.length > 0) {
-    return inputs.sceneDocs.map((chunk) => ({
-      file: chunk.file,
-      prefix: splitFrontMatter(chunk.text).prefix,
-      script: chunk.doc.body,
-      scenes: [chunk.id],
-      chunkId: chunk.id,
-    }));
-  }
-  if (!inputs.scriptPath) return [];
-  return [
-    {
-      file: inputs.scriptPath,
-      prefix: '',
-      script: inputs.scriptText,
-      scenes: [...model.scenes.keys()],
-    },
-  ];
-}
-
-/** The patcher options a source needs: a chunk forces its id, a screenplay reads its markers. */
-function patchOptions(source: SceneSource): { sceneId?: string } {
-  return source.chunkId === undefined ? {} : { sceneId: source.chunkId };
+function sourcesOf(inputs: LoadedInputs): SceneSource[] {
+  return inputs.sceneDocs.map((chunk) => ({
+    id: chunk.id,
+    file: chunk.file,
+    prefix: splitFrontMatter(chunk.text).prefix,
+    script: chunk.doc.body,
+  }));
 }
 
 /** Workspace-relative and forward-slashed, which is what a `written` list reports. */
@@ -177,7 +159,7 @@ async function loadProject(dir: string): Promise<LoadedProject> {
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  return { dir, config, paths, model, store, graph, sources: sourcesOf(inputs, model) };
+  return { dir, config, paths, model, store, graph, sources: sourcesOf(inputs) };
 }
 
 async function buildProviders(project: LoadedProject, mock: boolean): Promise<Providers> {
@@ -340,7 +322,7 @@ export class WorkspaceSession {
 
     const groups = new Map<SceneSource, SceneBranchEdit[]>();
     for (const edit of op.edits) {
-      const source = project.sources.find((s) => s.scenes.includes(edit.sceneId));
+      const source = project.sources.find((s) => s.id === edit.sceneId);
       if (!source) {
         return { ok: false, message: `No file holds scene "${edit.sceneId}".`, written: [] };
       }
@@ -351,7 +333,7 @@ export class WorkspaceSession {
     // refused on the third must leave the first two exactly as they were.
     const pending: { source: SceneSource; text: string }[] = [];
     for (const [source, edits] of groups) {
-      const patched = applySceneBranchEdit(source.script, edits, patchOptions(source));
+      const patched = applySceneBranchEdit(source.script, edits, { sceneId: source.id });
       if (patched.diagnostics.length > 0) {
         return {
           ok: false,
@@ -400,19 +382,14 @@ export class WorkspaceSession {
     const fail = (message: string) => ({ ok: false, message, assigned: 0, where, pending: [] });
 
     if (project.sources.length === 0) return fail('This project has no scene files to edit.');
-    const targets = sceneId
-      ? project.sources.filter((s) => s.scenes.includes(sceneId))
-      : project.sources;
+    const targets = sceneId ? project.sources.filter((s) => s.id === sceneId) : project.sources;
     if (sceneId && targets.length === 0) return fail(`No file holds scene "${sceneId}".`);
 
     let assigned = 0;
     const pending: { source: SceneSource; text: string }[] = [];
     for (const source of targets) {
-      // A chunk is already the one scene asked for; only a screenplay needs the filter.
-      const patch = assignLineIds(
-        source.script,
-        source.chunkId === undefined ? sceneId : undefined,
-      );
+      // No scene filter: a chunk holds exactly the one scene, already selected by `targets`.
+      const patch = assignLineIds(source.script);
       if (patch.diagnostics.length > 0) {
         return fail(patch.diagnostics.map((d) => d.message).join(' '));
       }
@@ -487,22 +464,23 @@ export class WorkspaceSession {
     });
 
     // An existing chunk is either a previous import or hand-authored work, and importing over
-    // the second is the loss this refusal exists to prevent. Checked before `loadInputs`,
-    // which reports both-formats as a diagnostic rather than the thing to fix.
+    // the second is the loss this refusal exists to prevent.
     const already = await readSceneChunks(paths);
     if (already.length > 0) {
       return fail(`scenes/ already holds ${already.length} chunk(s); importing would overwrite.`);
     }
-    const inputs = await loadInputs(paths);
-    if (inputs.scriptPath === undefined) {
+    // The finder the reader uses to report the leftover, so the file complained about is the file
+    // converted rather than a second opinion about which one is the screenplay.
+    const scriptPath = await findScreenplay(paths);
+    if (scriptPath === undefined) {
       return fail('There is no screenplay/*.fountain to import.');
     }
-    const aside = `${inputs.scriptPath}.imported`;
+    const aside = `${scriptPath}.imported`;
     if (await exists(aside)) return fail(`${relPath(this.dir, aside)} already exists.`);
 
     const config = await loadConfig(this.dir);
     const result = sceneChunksFromScript(
-      parseFountain(inputs.scriptText),
+      parseFountain(await readText(scriptPath)),
       config.start === undefined ? {} : { start: config.start },
     );
     const errors = result.diagnostics.filter((d) => d.severity === 'error');
@@ -514,7 +492,7 @@ export class WorkspaceSession {
       message: `${result.chunks.length} scene(s) would move into scenes/.${warnings}`,
       chunks: result.chunks,
       entry: result.entry,
-      scriptPath: inputs.scriptPath,
+      scriptPath,
     };
   }
 
@@ -526,8 +504,8 @@ export class WorkspaceSession {
 
   /**
    * Convert a `screenplay/*.fountain` project into one chunk per scene — the `vngen import`
-   * equivalent. The screenplay is moved aside rather than deleted, and **last**: until it stops
-   * being a `.fountain`, the project holds both formats and does not load.
+   * equivalent. The screenplay is moved aside rather than deleted, and **last**: while it is still
+   * a `.fountain` the project reports it on every load, so the rename is what finishes the import.
    */
   async importScreenplay(): Promise<{ ok: boolean; message: string; written: string[] }> {
     const plan = await this.planImport();

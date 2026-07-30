@@ -5,7 +5,6 @@
  * what's there before reading anything. `load()` exposes the full model + raw docs for
  * tools that need to read or edit prose; `index()` is the lightweight summary.
  */
-import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontMatter, type FrontMatterDoc, type LoadedInputs } from '@vn/parse';
 import { modelFromInputs } from '@vn/model';
@@ -37,7 +36,7 @@ export interface SceneEntry {
   characters: string[];
   choices: number;
   reachable: boolean;
-  /** The chunk this scene lives in; absent when the scenes come from a screenplay. */
+  /** The `scenes/<id>.md` this scene lives in; absent only if the scene was built some other way. */
   file?: string;
 }
 
@@ -45,7 +44,10 @@ export interface SceneEntry {
 export interface WorkspaceIndex {
   root: string;
   title: string;
-  /** The one screenplay file, when that is the form this project authors in. */
+  /**
+   * A retired `screenplay/` script the project still holds. Not an input — its presence is why
+   * `diagnostics` names `vngen import`; the agent surfaces it so the author can convert.
+   */
   screenplay?: string;
   characters: CharacterEntry[];
   locations: LocationEntry[];
@@ -69,17 +71,6 @@ export class Workspace {
     this.paths = new ProjectPaths(root);
   }
 
-  /** Resolve the screenplay file (first `.fountain`, else first `.md`) if one exists. */
-  private async screenplayFile(): Promise<string | undefined> {
-    const dir = this.paths.screenplayDir;
-    if (!(await exists(dir))) return undefined;
-    const names = (await fs.readdir(dir)).filter((n) => /\.(fountain|md)$/i.test(n));
-    names.sort((a, b) =>
-      a.endsWith('.fountain') === b.endsWith('.fountain') ? 0 : a.endsWith('.fountain') ? -1 : 1,
-    );
-    return names[0] ? join(dir, names[0]) : undefined;
-  }
-
   /** Load all inputs and build the validated project model. */
   async load(): Promise<LoadedWorkspace> {
     const inputs = await loadInputs(this.paths);
@@ -99,10 +90,10 @@ export class Workspace {
   /** Build the lightweight index from the model. */
   async index(): Promise<WorkspaceIndex> {
     const { title, model, inputs } = await this.load();
-    // Which form the project authored in is the loader's decision, not a second guess here:
-    // chunks win, and a screenplay left beside them is not what the model was built from.
+    // Both come from the load, not from a second look at the directory: which file is the
+    // screenplay is the loader's decision, and it is the only one that reports it.
     const chunkFiles = new Map(inputs.sceneDocs.map((c) => [c.id, c.file]));
-    const screenplay = chunkFiles.size > 0 ? undefined : await this.screenplayFile();
+    const screenplay = inputs.legacyScreenplay;
 
     const characters: CharacterEntry[] = [...model.characters.values()].map((c) => ({
       id: c.id,

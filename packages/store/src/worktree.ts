@@ -6,6 +6,7 @@ import {
   type FrontMatterDoc,
   type LoadedInputs,
 } from '@vn/parse';
+import type { Diagnostic } from '@vn/types';
 import { ensureDir, exists, writeFileAtomic } from '@vn/util';
 import { ProjectPaths } from './paths.js';
 import { readSceneChunks } from './scenes.js';
@@ -25,9 +26,21 @@ async function listFiles(dir: string, ext: string): Promise<string[]> {
 }
 
 /**
+ * The retired one-file screenplay, if the project still has one: the first `.fountain` in
+ * `screenplay/`, else the first `.md`. The **only** place that decides which file that is, so
+ * the reader's diagnostic and the importer's conversion can never disagree about it.
+ */
+export async function findScreenplay(paths: ProjectPaths): Promise<string | undefined> {
+  const fountain = await listFiles(paths.screenplayDir, '.fountain');
+  if (fountain[0]) return fountain[0];
+  return (await listFiles(paths.screenplayDir, '.md'))[0];
+}
+
+/**
  * Read all authored input files for a project (report §9.1). Scenes come from `scenes/<id>.md`
- * chunks, or from the one `screenplay/` file when a project has not been converted — both forms
- * load until the importer retires the fallback, and a project holding both is refused.
+ * chunks and nothing else: a `screenplay/` script is the retired one-contended-file form, and it
+ * is reported rather than loaded — silently reading it is what let a project stay unconverted
+ * forever, and `vngen import` is one command.
  */
 export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
   const characterDocs: FrontMatterDoc[] = [];
@@ -42,31 +55,34 @@ export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
   }
 
   const sceneDocs = await readSceneChunks(paths);
-  const fountain = await listFiles(paths.screenplayDir, '.fountain');
-  const markdown = fountain.length === 0 ? await listFiles(paths.screenplayDir, '.md') : [];
-  const scriptPath = fountain[0] ?? markdown[0];
-
-  // Two sources of truth for one scene is the failure chunks exist to prevent, so a project
-  // holding both is refused outright rather than resolved by a preference — a model built from
-  // one while edits land in the other is the shape of that failure.
-  if (sceneDocs.length > 0 && scriptPath !== undefined) {
-    return {
-      characterDocs,
-      locationDocs,
-      sceneDocs: [],
-      scriptText: '',
-      diagnostics: [
-        {
-          severity: 'error',
-          code: 'two_input_formats',
-          message: `project has both scenes/ (${sceneDocs.length} chunk${sceneDocs.length === 1 ? '' : 's'}) and ${scriptPath}; keep one — a scene cannot live in two files`,
-        },
-      ],
-    };
+  const legacyScreenplay = await findScreenplay(paths);
+  const diagnostics: Diagnostic[] = [];
+  if (legacyScreenplay !== undefined) {
+    // With chunks present the leftover is inert — it builds nothing — but an author editing it
+    // would be writing into a file nothing reads, so it is still said out loud. Without chunks
+    // it is the whole story, and the project has no scenes until it is converted.
+    diagnostics.push(
+      sceneDocs.length > 0
+        ? {
+            severity: 'warning',
+            code: 'stray_screenplay',
+            message: `${legacyScreenplay} is left over from before the import and is not read; scenes/ is authoritative — delete it or rename it to <name>.fountain.imported`,
+          }
+        : {
+            severity: 'error',
+            code: 'legacy_screenplay',
+            message: `${legacyScreenplay} is the retired one-file form and is no longer read; run \`vngen import\` to convert it into scenes/<id>.md chunks`,
+          },
+    );
   }
 
-  const scriptText = scriptPath ? await fs.readFile(scriptPath, 'utf8') : '';
-  return { characterDocs, locationDocs, sceneDocs, scriptText, scriptPath, diagnostics: [] };
+  return {
+    characterDocs,
+    locationDocs,
+    sceneDocs,
+    ...(legacyScreenplay === undefined ? {} : { legacyScreenplay }),
+    diagnostics,
+  };
 }
 
 /** Persist the Mermaid story graph to `work/story.graph.mmd` (report §6). */

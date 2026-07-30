@@ -92,19 +92,21 @@ describe('cmdImport', () => {
   const scenesOf = (scenes: Map<string, Scene>): string =>
     canonicalScenes([...scenes.values()].sort((a, b) => a.id.localeCompare(b.id)));
 
-  it('converts a screenplay project to chunks the model reads back identically', async () => {
+  it('converts an unimported screenplay project into the scenes it describes', async () => {
     const p = await makeProject({ format: 'screenplay', script: SCRIPTS.branching });
     try {
+      // Before the import the project has no scenes at all — the screenplay is named, not read.
       const before = await p.reload();
-      const beforeTasks = (await p.run({ dryRun: true })).preview;
+      expect(before.model.scenes.size).toBe(0);
+      expect(before.model.diagnostics.map((d) => d.code)).toEqual(['legacy_screenplay']);
 
       const { code, out } = await capture(() => cmdImport({ positional: [p.dir], flags: {} }));
       expect(code).toBe(0);
       expect(out).toContain('Wrote 4 scene chunk(s)');
       expect(out).toContain('start: arrival');
 
-      // The screenplay is still there under a name `loadInputs` does not look at, so the
-      // project loads from the chunks alone rather than reporting two input formats.
+      // The screenplay is still there under a name `loadInputs` does not look at, so nothing is
+      // left for it to report and the project loads from the chunks alone.
       expect(await fs.readdir(join(p.dir, 'screenplay'))).toEqual(['script.fountain.imported']);
       expect(await fs.readdir(join(p.dir, 'scenes'))).toEqual([
         'arrival.md',
@@ -116,13 +118,47 @@ describe('cmdImport', () => {
       const after = await p.reload();
       expect(after.model.diagnostics).toEqual([]);
       expect(after.config.start).toBe('arrival');
-      expect(scenesOf(after.model.scenes)).toBe(scenesOf(before.model.scenes));
-      // Nothing a task hashes names a file, so the migration must not move any work.
-      expect((await p.run({ dryRun: true })).preview).toEqual(beforeTasks);
+      expect(after.model.entry).toBe('arrival');
+      expect([...after.model.scenes.keys()].sort()).toEqual([
+        'arrival',
+        'bad_end',
+        'good_end',
+        'rooftop',
+      ]);
     } finally {
       await p.cleanup();
     }
   }, 30_000);
+
+  it('plans byte-identical work to the same story authored as chunks', async () => {
+    const imported = await makeProject({ format: 'screenplay', script: SCRIPTS.branching });
+    const authored = await makeProject({ script: SCRIPTS.branching });
+    try {
+      expect((await capture(() => cmdImport({ positional: [imported.dir], flags: {} }))).code).toBe(
+        0,
+      );
+      // Task identity is sha256(kind, inputs) and names no file, so a project that was imported
+      // and one that was written as chunks by hand must key to exactly the same work.
+      const hashes = async (p: typeof authored): Promise<string[]> => {
+        await p.run();
+        await p.approveAll();
+        await p.run();
+        return (await p.reload()).graph
+          .all()
+          .map((t) => t.hash)
+          .sort();
+      };
+      const fromImport = await hashes(imported);
+      expect(fromImport.length).toBeGreaterThan(0);
+      expect(fromImport).toEqual(await hashes(authored));
+      expect(scenesOf((await imported.reload()).model.scenes)).toBe(
+        scenesOf((await authored.reload()).model.scenes),
+      );
+    } finally {
+      await imported.cleanup();
+      await authored.cleanup();
+    }
+  }, 90_000);
 
   it('refuses over an existing scenes/ rather than overwriting authored work', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
@@ -259,7 +295,7 @@ describe('cmdScreenplay', () => {
     }
   });
 
-  it('refuses to write into screenplay/, which no project loads past', async () => {
+  it('refuses to write into screenplay/, where the project would keep reporting it', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {
       const target = join(p.dir, 'screenplay', 'again.fountain');

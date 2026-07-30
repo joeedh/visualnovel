@@ -100,45 +100,22 @@ describe('makeProject — scenes as chunks', () => {
     }
   });
 
-  it('still writes the one-screenplay form on request, so the fallback stays tested', async () => {
+  it('writes the unimported screenplay form on request, scenes and all left unread', async () => {
     const p = await makeProject({ format: 'screenplay' });
     try {
+      // What a project that has not run `vngen import` yet looks like: the screenplay is on disk,
+      // `scenes/` does not exist, and the model has no scenes to show for it.
       const { config, model } = await p.reload();
       expect(config.start).toBeUndefined();
-      expect(errors(model)).toEqual([]);
-      // Document order, and the entry inferred from it rather than named.
-      expect([...model.scenes.keys()]).toEqual(['arrival', 'rooftop', 'good_end', 'bad_end']);
-      expect(model.entry).toBe('arrival');
+      expect(model.scenes.size).toBe(0);
+      expect(errors(model).map((d) => d.code)).toEqual(['legacy_screenplay']);
+      expect(errors(model)[0]!.message).toContain('vngen import');
       expect(await p.read('screenplay/script.fountain')).toContain('[[scene: arrival]]');
       await expect(fs.stat(p.paths.scenesDir)).rejects.toThrow();
     } finally {
       await p.cleanup();
     }
   });
-
-  it('plans byte-identical work either way — the format is storage, not content', async () => {
-    const chunks = await makeProject({ format: 'chunks' });
-    const screenplay = await makeProject({ format: 'screenplay' });
-    try {
-      const hashes = async (p: typeof chunks): Promise<string[]> => {
-        await p.run();
-        await p.approveAll();
-        await p.run();
-        return (await p.reload()).graph
-          .all()
-          .map((t) => t.hash)
-          .sort();
-      };
-      // Task identity is sha256(kind, inputs), and the shot prompt is built from `lines`. A
-      // scene that survives the split unchanged therefore keys to the same work.
-      const fromChunks = await hashes(chunks);
-      expect(fromChunks.length).toBeGreaterThan(0);
-      expect(fromChunks).toEqual(await hashes(screenplay));
-    } finally {
-      await chunks.cleanup();
-      await screenplay.cleanup();
-    }
-  }, 60_000);
 });
 
 describe('TestProject.run — the gate, end to end on disk', () => {

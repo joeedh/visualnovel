@@ -23,12 +23,12 @@ PROJECT LAYOUT (the input contract):
 - locations/<id>.md                 — YAML front-matter + prose description.
 - scenes/<id>.md                    — one scene per file: \`scene: <id>\` front-matter + a
                                       complete one-scene Fountain body (heading included).
-- screenplay/*.fountain             — the whole screenplay in one file, with [[scene:]] markers.
 
-A project authors its scenes in ONE of those two forms, never both — holding both is a hard
-error and neither is read. With scenes/, project.yaml's \`start:\` names the entry scene (a
-directory has no document order) and a chunk body carries no [[scene:]] marker: its id is the
-front-matter's, and the body cannot override it. Prefer scenes/ for a new project.
+scenes/ is the only form scenes are read from. project.yaml's \`start:\` names the entry scene (a
+directory has no document order), and a chunk body carries no [[scene:]] marker: its id is the
+front-matter's, and the body cannot override it. A project may still hold a retired
+screenplay/*.fountain — the whole story in one file; it is NOT read, and \`vngen import\` converts
+it into scenes/ chunks. Tell the author to run that rather than editing it.
 
 CHARACTER front-matter: id, name, status(draft|candidates|approved|locked),
 default_outfit, traits[], palette[ hex ], reference_images[], approved_portrait?.

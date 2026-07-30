@@ -28,15 +28,15 @@ export interface SceneChunkDoc {
 export interface LoadedInputs {
   characterDocs: FrontMatterDoc[];
   locationDocs: FrontMatterDoc[];
-  /** Authored scene chunks; empty when the project is still on the `screenplay/` form. */
+  /** Every scene a project has. `scenes/<id>.md` is the only form scenes are read from. */
   sceneDocs: SceneChunkDoc[];
-  scriptText: string;
   /**
-   * Absolute path `scriptText` was read from, or undefined when the project has no screenplay.
-   * Returned so a writer (the desktop branch editor) patches the same file the model was built
-   * from, instead of re-deriving "which file is the screenplay" and drifting from this rule.
+   * A retired one-file `screenplay/` script sitting in the project, if there is one. **Not an
+   * input** — the reader reports it as a diagnostic naming `vngen import` rather than building
+   * scenes from it. Carried as the absolute path so the importer converts the same file the
+   * reader complained about, instead of re-deciding which one is the screenplay.
    */
-  scriptPath?: string;
+  legacyScreenplay?: string;
   /**
    * Problems found while reading, carried into the model's diagnostics rather than thrown —
    * the reader has no way to report, and every other input problem is a diagnostic too.

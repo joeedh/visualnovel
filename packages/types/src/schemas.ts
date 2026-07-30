@@ -51,9 +51,9 @@ export const projectConfig = z.object({
   title: z.string().min(1),
   art_style: z.string().default(''),
   /**
-   * The entry scene's id. Optional here because the `screenplay/` form still gets its entry
-   * from document order; a `scenes/` project without it is an error diagnostic from the model,
-   * which can name the scene ids on offer as this schema cannot.
+   * The entry scene's id. Optional here rather than required because a project without it is an
+   * error diagnostic from the model, which can name the scene ids on offer as this schema cannot
+   * — and because a not-yet-imported project has no scene ids to name one of.
    */
   start: z.string().min(1).optional(),
   models: z

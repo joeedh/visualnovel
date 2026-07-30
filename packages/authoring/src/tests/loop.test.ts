@@ -36,29 +36,30 @@ variants: [afternoon]
 A second-floor classroom.
 `;
 
-const SCRIPT = `Title: Test
+const SCENE = `---
+scene: arrival
+---
 
 INT. CLASSROOM - AFTERNOON
-
-[[scene: arrival]]
 
 AIKO
 Hello.
 `;
 
-/** A screenplay with a dangling target → an error-severity diagnostic. */
-const BROKEN_SCRIPT = `Title: Test
+/** A scene pointing at a target that does not exist → an error-severity diagnostic. */
+const BROKEN_SCENE = `---
+scene: arrival
+---
 
 INT. CLASSROOM - AFTERNOON
 
-[[scene: arrival]]
 [[next: nowhere]]
 
 AIKO
 Hello.
 `;
 
-async function tempProject(script = SCRIPT): Promise<{
+async function tempProject(scene = SCENE): Promise<{
   ctx: ToolContext;
   dir: string;
   cleanup: () => Promise<void>;
@@ -66,11 +67,11 @@ async function tempProject(script = SCRIPT): Promise<{
   const dir = await fs.mkdtemp(join(tmpdir(), 'vn-loop-'));
   await fs.mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
   await fs.mkdir(join(dir, 'locations'), { recursive: true });
-  await fs.mkdir(join(dir, 'screenplay'), { recursive: true });
+  await fs.mkdir(join(dir, 'scenes'), { recursive: true });
   await fs.writeFile(join(dir, 'characters', 'aiko', 'character.md'), CHARACTER);
   await fs.writeFile(join(dir, 'locations', 'classroom.md'), LOCATION);
-  await fs.writeFile(join(dir, 'screenplay', 'script.fountain'), script);
-  await fs.writeFile(join(dir, 'project.yaml'), 'title: Test Project\n');
+  await fs.writeFile(join(dir, 'scenes', 'arrival.md'), scene);
+  await fs.writeFile(join(dir, 'project.yaml'), 'title: Test Project\nstart: arrival\n');
   const ctx: ToolContext = { workspace: new Workspace(dir), git: openGit(dir) };
   return { ctx, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }
@@ -268,7 +269,7 @@ describe('always-confirm gate', () => {
 
 describe('commit gate', () => {
   it('blocks git_commit while error-severity diagnostics remain', async () => {
-    const { ctx, dir, cleanup } = await tempProject(BROKEN_SCRIPT);
+    const { ctx, dir, cleanup } = await tempProject(BROKEN_SCENE);
     try {
       await openGit(dir).init();
       const agent = agentWith(
@@ -311,7 +312,7 @@ describe('commit gate', () => {
       expect(res.events.some((e) => e.type === 'blocked')).toBe(false);
 
       // Exactly one commit, containing only the edited character file — untracked siblings
-      // (locations, screenplay, project.yaml) must NOT be swept in.
+      // (locations, scenes, project.yaml) must NOT be swept in.
       const log = execFileSync('git', ['log', '--oneline'], { cwd: dir }).toString().trim();
       expect(log.split('\n')).toHaveLength(1);
       expect(log).toContain('Approve Aiko');

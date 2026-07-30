@@ -32,33 +32,24 @@ variants: [day, afternoon]
 A second-floor classroom.
 `;
 
-const SCRIPT = `Title: Test
+/** One `scenes/<id>.md` per scene — a fork, its two arms, and the rejoin they share. */
+const CHUNKS: Record<string, string> = {
+  arrival: `---
+scene: arrival
+---
 
 INT. CLASSROOM - AFTERNOON
 
-[[scene: arrival]]
 [[choice: Greet -> greet]]
 [[choice: Observe -> observe]]
 
 AIKO
 Hello.
-
-INT. CLASSROOM - AFTERNOON
-
-[[scene: greet]]
-[[next: ending]]
-
-INT. CLASSROOM - EVENING
-
-[[scene: observe]]
-[[next: ending]]
-
-INT. CLASSROOM - EVENING
-
-[[scene: ending]]
-
-The end.
-`;
+`,
+  greet: '---\nscene: greet\n---\n\nINT. CLASSROOM - AFTERNOON\n\n[[next: ending]]\n',
+  observe: '---\nscene: observe\n---\n\nINT. CLASSROOM - EVENING\n\n[[next: ending]]\n',
+  ending: '---\nscene: ending\n---\n\nINT. CLASSROOM - EVENING\n\nThe end.\n',
+};
 
 async function tempProject(): Promise<{
   ctx: ToolContext;
@@ -68,35 +59,13 @@ async function tempProject(): Promise<{
   const dir = await fs.mkdtemp(join(tmpdir(), 'vn-tools-'));
   await fs.mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
   await fs.mkdir(join(dir, 'locations'), { recursive: true });
-  await fs.mkdir(join(dir, 'screenplay'), { recursive: true });
-  await fs.writeFile(join(dir, 'characters', 'aiko', 'character.md'), CHARACTER);
-  await fs.writeFile(join(dir, 'locations', 'classroom.md'), LOCATION);
-  await fs.writeFile(join(dir, 'screenplay', 'script.fountain'), SCRIPT);
-  await fs.writeFile(join(dir, 'project.yaml'), 'title: Test Project\n');
-  const ctx: ToolContext = { workspace: new Workspace(dir), git: openGit(dir) };
-  return { ctx, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
-}
-
-/** The same project authored as chunks: one `scenes/<id>.md` per scene, no screenplay. */
-async function tempChunkProject(): Promise<{
-  ctx: ToolContext;
-  dir: string;
-  cleanup: () => Promise<void>;
-}> {
-  const dir = await fs.mkdtemp(join(tmpdir(), 'vn-tools-chunks-'));
-  await fs.mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
-  await fs.mkdir(join(dir, 'locations'), { recursive: true });
   await fs.mkdir(join(dir, 'scenes'), { recursive: true });
   await fs.writeFile(join(dir, 'characters', 'aiko', 'character.md'), CHARACTER);
   await fs.writeFile(join(dir, 'locations', 'classroom.md'), LOCATION);
-  await fs.writeFile(
-    join(dir, 'scenes', 'arrival.md'),
-    '---\nscene: arrival\n---\n\nINT. CLASSROOM - DAY\n\n[[next: ending]]\n\nAIKO\nHello.\n',
-  );
-  await fs.writeFile(
-    join(dir, 'scenes', 'ending.md'),
-    '---\nscene: ending\n---\n\nINT. CLASSROOM - EVENING\n\nThe end.\n',
-  );
+  for (const [id, text] of Object.entries(CHUNKS)) {
+    await fs.writeFile(join(dir, 'scenes', `${id}.md`), text);
+  }
+  // A directory has no document order, so the entry scene has to be named.
   await fs.writeFile(join(dir, 'project.yaml'), 'title: Test Project\nstart: arrival\n');
   const ctx: ToolContext = { workspace: new Workspace(dir), git: openGit(dir) };
   return { ctx, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
@@ -130,14 +99,34 @@ describe('workspace index', () => {
     }
   });
 
-  it('names the chunk a scene lives in, and no screenplay, for a chunk project', async () => {
-    const { ctx, cleanup } = await tempChunkProject();
+  it('names the chunk each scene lives in, and no screenplay', async () => {
+    const { ctx, cleanup } = await tempProject();
     try {
       const index = await ctx.workspace.index();
       expect(index.screenplay).toBeUndefined();
       expect(index.entry).toBe('arrival');
-      expect(index.scenes.map((s) => s.id)).toEqual(['arrival', 'ending']);
       expect(index.scenes[0]!.file).toBe(join(ctx.workspace.root, 'scenes', 'arrival.md'));
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reports a leftover screenplay without reading a scene out of it', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await fs.mkdir(join(dir, 'screenplay'), { recursive: true });
+      await fs.writeFile(join(dir, 'screenplay', 'old.fountain'), 'INT. OLD - DAY\n\nStale.\n');
+
+      const index = await ctx.workspace.index();
+      expect(index.screenplay).toBe(join(dir, 'screenplay', 'old.fountain'));
+      // The chunks still win, and the leftover only shows up as something to clean up.
+      expect(index.scenes.map((s) => s.id).sort()).toEqual([
+        'arrival',
+        'ending',
+        'greet',
+        'observe',
+      ]);
+      expect(index.diagnostics.map((d) => d.code)).toEqual(['stray_screenplay']);
     } finally {
       await cleanup();
     }
@@ -145,8 +134,8 @@ describe('workspace index', () => {
 });
 
 describe('read-only tools', () => {
-  it('search reaches scene chunks, not only the screenplay', async () => {
-    const { ctx, cleanup } = await tempChunkProject();
+  it('search reaches scene chunks', async () => {
+    const { ctx, cleanup } = await tempProject();
     try {
       const r = await run('search', { query: 'The end' }, ctx);
       expect(r.ok).toBe(true);
