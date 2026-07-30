@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Shot } from '@vn/types';
 import { ValidationError, ensureDir } from '@vn/util';
-import { ProjectPaths, readShots, writeShots } from '../index.js';
+import { ProjectPaths, deleteShots, readShots, writeShots } from '../index.js';
 
 async function tempPaths(): Promise<ProjectPaths> {
   return new ProjectPaths(await mkdtemp(join(tmpdir(), 'vn-shots-')));
@@ -80,6 +80,16 @@ describe('shots file', () => {
     expect(loaded?.shots).toHaveLength(1);
     expect(loaded?.shots[0]?.coversLines).toEqual(['arrival:L1']);
     expect(loaded?.dropped).toEqual([{ shotId: 'arrival__establishing', lineIds: ['arrival:L9'] }]);
+  });
+
+  it('deletes a file so the scene reads as undecomposed again', async () => {
+    const paths = await tempPaths();
+    await writeShots(paths, 'arrival', [shot()]);
+
+    expect(await deleteShots(paths, 'arrival')).toBe(true);
+    // Absent, not empty: an empty list would be a permanent blank storyboard.
+    expect(await readShots(paths, 'arrival')).toBeNull();
+    expect(await deleteShots(paths, 'arrival')).toBe(false);
   });
 
   it('throws on a malformed file rather than silently re-decomposing over a hand edit', async () => {

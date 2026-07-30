@@ -81,9 +81,13 @@ async function preview(
 }
 
 /**
- * The `apply`/`preview` pair again, for prose. A deleted chunk is reported in `written` beside
- * the files that were written: it is a path this command changed, which is what the provenance
- * record and undo both want from that list.
+ * The `apply`/`preview` pair again, for prose. Deleted files — the chunk the edit ended, and a
+ * storyboard that went with it — are reported in `written` beside the files that were written:
+ * they are paths this command changed, which is what provenance and undo both want from that list.
+ *
+ * The preview runs the *whole* plan rather than just the decision, because the sentence worth
+ * showing is the one about the shots: `previewSceneEdit` reads them and `editScene` rewrites them,
+ * so the note a surface refuses or warns with is the note the run reports.
  */
 async function edit(
   ctx: CommandContext<CommandHost>,
@@ -102,8 +106,8 @@ async function previewEdit(
   ctx: CommandContext<CommandHost>,
   decide: (state: ScriptState) => LineOp,
 ): Promise<CheckResult> {
-  const op = decide(await ctx.host.session.scriptState());
-  return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  const preview = await ctx.host.session.previewSceneEdit(decide);
+  return preview.ok ? { ok: true, note: preview.message } : { ok: false, reason: preview.message };
 }
 
 // The rewires whose props need shaping before `branchops` sees them build their decision here,

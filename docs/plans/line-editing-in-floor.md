@@ -26,15 +26,17 @@ changing at commit and never during a gesture.
 
 ## What it costs, said plainly
 
-A coverage edit is free; a prose edit is not. `buildShotPrompt` is built from the covered lines'
-text, so retyping a covered line changes that shot's task hash and invalidates its art. This
-surface is where that becomes visible, because it is the only one that draws the connection.
+A coverage edit is free — and so is a prose edit, which is the problem. `buildShotPrompt` never
+reads a line's text (only the P7 reviewer spec does, and that never enters a task's `inputs`), so
+retyping a covered line changes no task hash and re-renders nothing: **the frame keeps illustrating
+words the scene no longer contains, and nothing notices.** This surface is where that becomes
+visible, because it is the only one that draws the connection.
 
 Two obligations follow, and they are the substance of this plan rather than decoration:
 
-- **Say it before.** The commit affordance reports how many *accepted* shots cover the line, from
+- **Say it before.** The commit affordance reports how many *rendered* shots cover the line, from
   `story.setLineText`'s `check` — not a count the renderer computes, or the UI and the command
-  could disagree.
+  could disagree. `session.previewSceneEdit` already returns that sentence.
 - **Show it after.** A shot whose covered prose has changed since it was generated is **drifted**,
   and it is marked. This is the surface drift marking has been waiting for, which is why it lands
   here rather than in the commands plan.
@@ -46,10 +48,13 @@ temptation is to set a `drifted: true` when an edit happens, and it is wrong for
 `shotData` is rewritten wholesale each pass: a flag is a claim that can be stale, restored from an
 old commit, or missed by an edit that took another path.
 
-Derive it instead. The task graph records the hash a shot's art was produced under; the current
-lines produce a hash now. **Drift is those two disagreeing** — computable, self-healing, and
-correct even for edits made through the CLI, the agent, or by hand in the chunk file. It costs one
-prompt rebuild per shot on load, which is deterministic and cheap.
+Derive it instead — but **not** from the task hash, which is exactly the hash that does not move: it
+is blind to line text by design. Derive it from the prose itself. Record, beside the generated
+image, a hash of the covered lines' text at generation time; hash the covered lines now. **Drift is
+those two disagreeing** — computable, self-healing, and correct even for edits made through the
+CLI, the agent, or by hand in the chunk file. It costs one hash per shot on load. Where the recorded
+hash lives is this plan's first design question, since `shotData` is the only per-shot place a run
+already writes, and a shot that predates the field has to read as *unknown* rather than as drifted.
 
 It renders as a state on the bracket, not a new colour: the tokens already say
 `--sodium` is authored and `--signal` is machine, and drift is precisely the machine side falling
@@ -99,17 +104,21 @@ drag gestures follow.
 3. **In-place editing in `Timeline.tsx`.** Click to edit, Enter/blur to commit, Escape to revert,
    commit through `story.setLineText`. The affected-shot count from the command's `check`, shown
    before the commit.
-4. **Drift derivation.** The pure comparison of recorded-vs-current prompt hash, in `@vn/pipeline`
-   beside the prompt builder that already owns the hash — not in the renderer, since the FLOOR task
-   list and inspector will want the same answer. Surfaced through `sceneCoverage`.
+4. **Drift derivation.** Record a hash of the covered lines' text when a shot's image is written,
+   and compare it with the lines' hash now — a pure function in `@vn/pipeline` beside the prompt
+   builder, not in the renderer, since the FLOOR task list and inspector will want the same answer.
+   Surfaced through `sceneCoverage`. **Not** the task hash: prose is not in a task's `inputs`, so
+   comparing task hashes compares a value to itself.
 5. **Drift rendering.** The bracket state and its `--mono` label, distinct from `COVERS NOTHING`.
-6. **Verify on `examples/mySampleRepo`.** Edit a covered line, confirm the shot marks drifted,
-   re-run, confirm it clears; edit an uncovered line, confirm nothing rehashes; undo an edit, and
-   confirm the drift mark clears because the derivation is a comparison rather than a flag.
-7. **Docs.** This file's As-shipped section; `CLAUDE.md`'s coverage-timeline section (which
-   currently says "This is the only surface that edits `Shot.coversLines`, which `buildShotPrompt`
-   ignores, so every edit here is free" — the second half stops being true); `docs/command-system.md`
-   if the command set moves.
+6. **Verify on `examples/mySampleRepo`.** Edit a covered line, confirm the shot marks drifted, then
+   `vngen run` and confirm it **stays** drifted — nothing rehashed, so nothing re-rendered, and that
+   is the whole reason the mark exists. Edit an uncovered line and confirm nothing marks. Undo the
+   edit and confirm the mark clears, because the derivation is a comparison rather than a flag.
+7. **Docs.** This file's As-shipped section; [`../desktop-app.md`](../desktop-app.md)'s
+   coverage-timeline section (which says "every edit here is free: nothing rehashes and no art is
+   invalidated" — true, and from here on the incomplete half of the story, because the surface will
+   also edit prose and that is free in exactly the way drift is the price of);
+   [`../command-system.md`](../command-system.md) if the command set moves.
 
 ## Not in this plan
 

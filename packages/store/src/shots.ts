@@ -8,6 +8,7 @@
  * also what forces `shotData` to be *constructed* at write time from the run's results rather
  * than carried around and quietly trusted.
  */
+import fs from 'node:fs/promises';
 import type { Shot } from '@vn/types';
 import { shotsFileSchema } from '@vn/types';
 import { exists, readText, ValidationError, writeFileAtomic } from '@vn/util';
@@ -129,5 +130,18 @@ export async function writeShots(
   const next = serialize(sceneId, shots);
   if ((await exists(file)) && (await readText(file)) === next) return false;
   await writeFileAtomic(file, next);
+  return true;
+}
+
+/**
+ * Remove one scene's shots file. Deliberately not "write an empty list": an absent file is the
+ * only signal that means "decompose this scene", so a scene whose last shot went away has to lose
+ * the file to get a fresh storyboard instead of staying blank forever. Returns whether there was
+ * one to remove — an absent file is not an error, since the caller decided against an older load.
+ */
+export async function deleteShots(paths: ProjectPaths, sceneId: string): Promise<boolean> {
+  const file = paths.shotsFile(sceneId);
+  if (!(await exists(file))) return false;
+  await fs.rm(file);
   return true;
 }

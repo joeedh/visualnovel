@@ -259,13 +259,15 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 [`docs/command-system.md`](docs/command-system.md); plan:
 [`docs/plans/command-system.md`](docs/plans/command-system.md).
 
-- **`@vn/commands` is the framework; the desktop app owns the commands.** The 28 definitions
+- **`@vn/commands` is the framework; the desktop app owns the commands.** The 37 definitions
   live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`,
   `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
 - **Commands are the only write path.** The `story.*` branch mutators go through
-  `session.editBranches(decide)` → `applySceneBranchEdit` → reload, so the branch editor never
-  writes scene prose by another path; `story.setCoverage` is the only writer of
-  `work/shots/<sceneId>.json` outside the planner.
+  `session.editBranches(decide)` → `applySceneBranchEdit` → reload, and the nine scene editors
+  through `session.editScene(decide)`, so no surface writes scene prose by another path. Outside the
+  planner, `work/shots/<sceneId>.json` has exactly two writers: `story.setCoverage`, and
+  `editScene`, which carries a shot's coverage across a split, merge or delete rather than
+  stranding it.
 - **Props are declarative specs, not zod** (the repo is on zod 3). `coerceProps` is the single
   validation authority — defaults, coercion of loose JSON/CDP values, unknown-key rejection.
 - **DSL:** `namespace.command(a='x' b=1)`; commas optional, barewords are strings.

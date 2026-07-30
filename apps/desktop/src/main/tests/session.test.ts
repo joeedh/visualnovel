@@ -6,6 +6,8 @@
 import { promises as fs } from 'node:fs';
 import { join, sep } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
+import { readShots, writeShots } from '@vn/store';
+import type { Shot } from '@vn/types';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
 import {
@@ -497,7 +499,7 @@ describe('WorkspaceSession — prose editing', () => {
       written: ['scenes/arrival.md'],
       removed: [ROOFTOP],
     });
-    expect(result.message).toContain('stops covering it');
+    expect(result.message).toContain('3 line(s) appended');
 
     const merged = await session.sceneCoverage('arrival');
     expect(merged.lines.map((l) => l.id)).toEqual([
@@ -526,6 +528,84 @@ describe('WorkspaceSession — prose editing', () => {
     const removed = await session.editScene((s) => deleteScene(s, { scene: 'attic' }));
     expect(removed).toMatchObject({ ok: true, written: [], removed: ['scenes/attic.md'] });
     expect(removed.graph?.scenes.map((sc) => sc.id)).not.toContain('attic');
+  });
+
+  /** A hand-laid storyboard, written through the writer the planner uses. */
+  const storyboard = async (sceneId: string, coverage: Record<string, string[]>): Promise<void> => {
+    const shots: Shot[] = Object.entries(coverage).map(([id, coversLines]) => ({
+      id: `${sceneId}__${id}`,
+      sceneId,
+      framing: 'medium',
+      location: 'rooftop/sunset',
+      subjects: [],
+      coversLines,
+      image: `image-of-${id}`,
+      status: 'accepted',
+    }));
+    await writeShots(p.paths, sceneId, shots);
+  };
+
+  const shotsOf = async (sceneId: string): Promise<Record<string, string[]> | null> => {
+    const loaded = await readShots(p.paths, sceneId);
+    if (!loaded) return null;
+    return Object.fromEntries(loaded.shots.map((s) => [s.id, s.coversLines]));
+  };
+
+  it('carries a shot into the file of the scene its lines left for', async () => {
+    await storyboard('rooftop', { establishing: ['rooftop:L1'], beat1: ['rooftop:L3'] });
+    const result = await session.editScene((s) =>
+      splitScene(s, { scene: 'rooftop', at: 'rooftop:L3', into: 'reply' }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.written).toEqual([
+      ROOFTOP,
+      'scenes/reply.md',
+      'vngen/work/shots/rooftop.json',
+      'vngen/work/shots/reply.json',
+    ]);
+    // Its id is part of its task hash, so it keeps the one it was minted with; only the file and
+    // the covered ids move, which is what keeps the generated image the answer to its own task.
+    expect(await shotsOf('reply')).toEqual({ rooftop__beat1: ['reply:L3'] });
+    expect(await shotsOf('rooftop')).toEqual({ rooftop__establishing: ['rooftop:L1'] });
+    expect(result.message).toContain('1 shot(s) follow their lines into reply');
+  });
+
+  it('deletes the storyboard of a scene that stopped existing', async () => {
+    await storyboard('rooftop', { establishing: ['rooftop:L1', 'rooftop:L2', 'rooftop:L3'] });
+    const result = await session.editScene((s) =>
+      mergeScene(s, { scene: 'rooftop', into: 'arrival' }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.removed).toEqual([ROOFTOP, 'vngen/work/shots/rooftop.json']);
+    // The merge renumbered every absorbed line, and the shot followed the mapping.
+    expect(await shotsOf('arrival')).toEqual({
+      rooftop__establishing: ['arrival:L3', 'arrival:L4', 'arrival:L5'],
+    });
+    expect(await shotsOf('rooftop')).toBeNull();
+  });
+
+  it('warns that a retyped line leaves its rendered shot behind', async () => {
+    await storyboard('rooftop', { establishing: ['rooftop:L2'] });
+    const preview = await session.previewSceneEdit((s) =>
+      setLineText(s, { line: 'rooftop:L2', text: 'I got held up.' }),
+    );
+
+    expect(preview.ok).toBe(true);
+    expect(preview.message).toContain('will not re-render on their own');
+    // Saying it is all it does: the storyboard is untouched, because nothing about it changed.
+    const result = await session.editScene((s) =>
+      setLineText(s, { line: 'rooftop:L2', text: 'I got held up.' }),
+    );
+    expect(result.written).toEqual([ROOFTOP]);
+    expect(await shotsOf('rooftop')).toEqual({ rooftop__establishing: ['rooftop:L2'] });
+  });
+
+  it('refuses a preview with the sentence the run would refuse with', async () => {
+    const preview = await session.previewSceneEdit((s) => deleteScene(s, { scene: 'rooftop' }));
+    expect(preview).toMatchObject({ ok: false });
+    expect(preview.message).toContain('arrival (next)');
   });
 
   it('hands the checks the scenes as their files parse', async () => {

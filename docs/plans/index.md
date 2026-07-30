@@ -75,12 +75,16 @@ Recorded here because each was settled once and every later plan assumes it.
 - **Line ids are scene-scoped and stay that way.** `${sceneId}:L<n>` is what `Shot.coversLines`
   binds to, so no line can cross a scene boundary and keep its coverage. The batch makes the
   detachment visible (in `splitScene`/`mergeScene`) rather than introducing global ids.
-- **Coverage edits are free; prose edits are not.** `buildShotPrompt` ignores `coversLines` and is
-  built from line text, so retyping a covered line invalidates its art. Every plan that can change
-  prose owes the author a count before the commit.
-- **Drift is derived, never stored.** A shot is drifted when the prompt hash its art was made under
-  disagrees with the hash its lines produce now — computable, self-healing, and correct for edits
-  made through the CLI or by hand.
+- **No edit to a scene invalidates art — which is why drift has to be reported.** `buildShotPrompt`
+  reads neither `coversLines` nor line text (prose reaches only the P7 reviewer spec, which never
+  enters a task's `inputs`), so retyping a covered line rehashes nothing and re-renders nothing: the
+  frame goes on illustrating words the scene no longer contains. Plan 5 settled this against the
+  code, and it reversed the batch's original premise. Every plan that can change prose owes the
+  author that sentence before the commit, not a bill.
+- **Drift is derived, never stored.** A shot is drifted when a hash of the covered lines' *text*,
+  recorded when its image was written, disagrees with the hash those lines produce now — computable,
+  self-healing, and correct for edits made through the CLI or by hand. Not the task hash: that is
+  precisely the hash prose cannot move.
 - **One authorial act, one command, one undo point.** No batch edits, no JSON-patch command, no
   buffer diffed to commands on save.
 - **Both input formats loaded during the move**, and a project with both was an error. Plan 4

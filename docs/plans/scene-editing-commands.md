@@ -1,8 +1,8 @@
 # Scene editing commands
 
-Status: **partial** — the nine commands are registered and runnable; what remains is their coverage
-consequences, the drag interaction, the agent tool, and the docs. The ticks in [Steps](#steps) are
-the detail. Move four of
+Status: **partial** — the nine commands are registered and runnable and they carry the storyboard
+with them; what remains is the drag interaction, the agent tool, and the docs. The ticks in
+[Steps](#steps) are the detail. Move four of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
 [`scene-chunk-files.md`](scene-chunk-files.md) for the file layout and
@@ -33,7 +33,10 @@ the arrangement `src/shared/coverage.ts` already proved.
 
 ```
 src/shared/lineops.ts     pure: (scene, args) -> LineOp { ok, message, doc } | { ok: false, error }
-session.editScene()       load -> decide -> validate -> write one chunk -> reload
+src/shared/shotfallout.ts pure: (op, shots) -> which storyboards move, lose coverage, or drift
+session.planSceneEdit()   load -> decide -> validate -> prove the round-trip -> fallout (no writes)
+  previewSceneEdit()      the plan's message and note, thrown away — what `check` answers
+  editScene()             the plan, written: chunks, then storyboards, then reload
 story.* commands          check = the same decision, discarded; run = apply
 ```
 
@@ -78,26 +81,33 @@ by **making the detachment explicit wherever it happens**:
   move to the new `work/shots/<newId>.json` with rewritten ids; shots straddling the split point
   stay with the original and lose the lines that left. A straddling shot is exactly the sign the
   split is in the wrong place, and the check says so.
+- **So does `mergeScene`, which is a correction to the paragraph above.** The absorbed lines are
+  renumbered into the survivor's allocator rather than keeping their local part, so at first this
+  looked like pure detachment — but a renumbering is a *known mapping*, and dropping coverage the
+  code can follow would discard paid-for art for no reason. Both ops therefore report `moved`, and
+  coverage walks it. Genuine detachment is what is left: a straddle, and a deleted scene.
 - **There is no `moveLineToScene`.** A single line moving between scenes detaches its coverage with
   nothing to show for it, and "move this beat into the next scene" is better expressed as a split
   and a merge, where the coverage consequence is visible in both halves.
 
-## The second thing: an edit is not a rehash, except when it is
+## The second thing: no edit is a rehash — which is why drift has to be reported
 
-Coverage edits are free — `buildShotPrompt` ignores `coversLines`. **Prose edits are not.** A
-shot's prompt is built from the lines it covers, so retyping a covered line changes that shot's
-task hash and invalidates generated art.
+This section said the opposite while step 4 was being built, and the code disagreed. Reading
+`buildShotPrompt` settles it: it composes the style preamble, framing, location, subjects and
+camera, and **never reads a line's text**. Prose reaches only `shotDescription`, which feeds the P7
+*reviewer* spec and never enters a task's `inputs`. So a retyped line changes no task hash. Prose
+edits are as free as coverage edits, and that is what makes free editing affordable at all — the
+research doc
+([`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md#what-editing-a-chunk-does-to-everything-downstream))
+had it right.
 
-This plan does **not** hide that and does not act on it. The commands write the document; the
-planner decides what is stale, as it already does for every other input change. What the plan owes
-is that the author is not surprised, so `story.setLineText`'s `check` reports how many *accepted*
-shots cover the line it is about to change, and its `run` message says the same. Marking the drift
-visually is [`line-editing-in-floor.md`](line-editing-in-floor.md)'s job, where there is somewhere
-to draw it.
-
-One consequence worth stating plainly: an author correcting a typo in a covered line spends money.
-That is inherent — the frame illustrates prose that changed — and the right response is to report
-it, not to add a "don't rehash" flag that would let the manifest lie about what the art depicts.
+The consequence is worse than a rehash, not better: **a rendered frame goes on illustrating prose
+the author replaced, and nothing will notice.** Auto-rehashing would spend money the author did not
+authorize; saying nothing ships a frame depicting deleted dialogue. So the plan reports it —
+`retyped` line ids become a count of *rendered* shots in the `check` note and the `run` message,
+phrased so the "will not re-render on their own" part is explicit. Deriving and drawing the marker
+is [`line-editing-in-floor.md`](line-editing-in-floor.md)'s job; that plan's premise needs the same
+correction, since a drift derived from comparing prompt hashes would compare two identical hashes.
 
 ## Failure modes
 
@@ -162,9 +172,24 @@ it, not to add a "don't rehash" flag that would let the manifest lie about what 
    The detachment counts the plan promises in these messages are not here: `lineops` reports
    `retired`/`moved`/`retyped` as line ids, and turning those into shot counts means reading
    `work/shots/*.json` — step 4.
-4. **Coverage consequences.** `splitScene`'s shot carrying, and the detachment counts in every
+4. ✔ **Coverage consequences.** `splitScene`'s shot carrying, and the detachment counts in every
    affected `check` and `message`. The one part that touches `work/shots/*.json`, and it goes
-   through the same writer `story.setCoverage` uses rather than a second one.
+   through the same writer `story.setCoverage` uses rather than a second one. Landed as
+   `src/shared/shotfallout.ts` — pure, beside `lineops.ts`, taking an op's `moved`/`retired`/
+   `retyped` ids plus the shot files as they sit on disk and answering what it costs. Five things
+   the plan sketch did not say:
+   - **A merge carries too**, per the correction above: `mergeScene` reports `moved` rather than
+     `retired`, and `lineops`' merge test pins the mapping.
+   - **A carried shot keeps its id.** `shot.id` is in the `shot_image` task's `inputs`, so renaming
+     one would re-render art that is still correct. Only its file, `sceneId` and `coversLines` move.
+   - **A surviving scene left with no shots loses its file**, via the new `deleteShots` in
+     `@vn/store`. An absent file is the only signal meaning "decompose this scene", so writing an
+     empty list would be a permanent blank storyboard. A deleted scene's file goes the same way.
+   - **`editScene` is now `planSceneEdit` + `previewSceneEdit` + `editScene`**, the `planLineIds`
+     shape one room over. The check reports the fallout note the run reports, because both come from
+     the same plan; `story.ts`'s `previewEdit` calls `previewSceneEdit` instead of re-deciding.
+   - **Removed shot files join `removed`**, so `CommandOutput.written` (which is "paths this command
+     changed") covers the storyboard as well as the chunk.
 5. **The `script.moveLine` interaction.** Declared in `src/shared/interactions.ts` beside the other
    four: carries a line id, `targets` judges every insertion point in the scene. It commits
    `story.moveLine`. Declaring it here rather than in a UI plan is the point of the interaction
@@ -203,5 +228,11 @@ it, not to add a "don't rehash" flag that would let the manifest lie about what 
 - **Edit prose through `write_file` and re-parse.** Already possible, and it is precisely the
   unvalidated path step 6 closes. It cannot allocate ids, cannot refuse, and cannot report what it
   detached.
-- **Make prose edits non-rehashing by excluding line text from the shot prompt.** Cheap edits, and
-  the manifest would then claim art depicts prose it never saw. The provenance is the product.
+- **Make prose edits rehash, by putting the covered line text into `buildShotPrompt`.** Considered
+  after discovering that today's prompt excludes it. It would make a typo fix re-render every frame
+  over the line, which is money the author did not authorize, and the reason the prose was left out
+  in the first place stands: what a shot orders is framing, cast and camera, and a reviewer handed
+  the prose flags frames for things no shot was responsible for.
+- **Rename a carried shot into its new scene** (`arrival__beat1` → `climb__beat1`), so the id and
+  the file agree. `shot.id` is part of the `shot_image` task's `inputs`, so a rename rehashes and
+  re-renders art that was already correct. The id is a minting record, not an address.

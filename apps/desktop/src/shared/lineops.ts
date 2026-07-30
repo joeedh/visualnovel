@@ -12,13 +12,15 @@
  *
  * - **A line id is scene-scoped** (`arrival:L4`), so an id names its own scene and no prose op
  *   takes a scene as well. Within a scene every edit is safe: inserting allocates a fresh id,
- *   deleting retires one, reordering keeps them. Across scenes nothing is safe, which is why
- *   `splitScene` reports what coverage can follow (`moved`) and `mergeScene` reports what
- *   cannot (`retired`).
- * - **Prose edits cost money.** `buildShotPrompt` builds from the text (and speaker) of the
- *   lines a shot covers, so retyping, re-attributing or reordering a covered line invalidates
- *   its art. Nothing here hides that: the ids whose prompt contribution changed come back in
- *   `retyped` so the command can count the shots before the author commits.
+ *   deleting retires one, reordering keeps them. Across a scene boundary an id cannot survive —
+ *   but the renaming is known, so `splitScene` and `mergeScene` both hand back the mapping
+ *   (`moved`) and `shotfallout.ts` walks coverage across it rather than dropping it.
+ * - **Prose edits do not invalidate art — they let it drift.** `buildShotPrompt` never reads a
+ *   line's text; only the P7 reviewer spec does, and that never enters a task's `inputs`. So
+ *   retyping, re-attributing or reordering a covered line rehashes nothing and re-renders
+ *   nothing: the frame keeps illustrating prose the scene no longer contains. The ids whose
+ *   contribution changed come back in `retyped` so a command can *say* which rendered shots
+ *   drifted; spending money to fix one stays the author's decision.
  */
 import { headingPrefixOf, parseHeading, slug } from '@vn/model';
 import type { Scene, SceneLine } from '@vn/types';
@@ -45,14 +47,17 @@ export type LineOp =
       /** Line ids that changed scene, `[old, new]`. Coverage *can* follow these. */
       moved: [string, string][];
       /**
-       * Line ids whose contribution to a shot prompt changed — retyped, re-attributed or
-       * reordered. Art covering one was made from prose that no longer reads that way.
+       * Line ids whose prose changed — retyped, re-attributed or reordered. Art covering one
+       * was made from text that no longer reads that way, and nothing will re-render it.
        */
       retyped: string[];
     }
   | { ok: false; error: string };
 
-type Applied = Extract<LineOp, { ok: true }>;
+/** An op that is going to happen — what `shotfallout.ts` reads the coverage consequence off. */
+export type AppliedLineOp = Extract<LineOp, { ok: true }>;
+
+type Applied = AppliedLineOp;
 
 const refuse = (error: string): LineOp => ({ ok: false, error });
 
@@ -136,7 +141,7 @@ function referrers(state: ScriptState, sceneId: string): string[] {
 // The five line edits. Each is one line of one scene; ids elsewhere never move.
 // ---------------------------------------------------------------------------
 
-/** Replace one line's text. The id survives, so coverage does — the art it made does not. */
+/** Replace one line's text. The id survives, so coverage does; the art it made now drifts. */
 export function setLineText(state: ScriptState, args: { line: string; text: string }): LineOp {
   const found = locate(state, args.line);
   if (typeof found === 'string') return refuse(found);
@@ -212,8 +217,8 @@ export function deleteLine(state: ScriptState, args: { line: string }): LineOp {
 }
 
 /**
- * Reorder within a scene. Ids do not change, so nothing detaches — but a shot's prompt is its
- * covered lines *in order*, so moving a covered line still changes what its art was made from.
+ * Reorder within a scene. Ids do not change, so nothing detaches — but a shot's covered prose is
+ * read in scene order, so moving a covered line still changes what its art was made to depict.
  */
 export function moveLine(state: ScriptState, args: { line: string; after: string }): LineOp {
   const found = locate(state, args.line);
@@ -400,9 +405,9 @@ export function splitScene(
  * chunk is removed. Only a linear continuation is joinable — merging across a choice would
  * silently drop the decision — and only when nothing else points at the scene being absorbed.
  *
- * The absorbed lines are renumbered into the surviving scene's allocator, so **their coverage
- * does not follow them**: `arrival:L1` cannot stay itself inside `rooftop`. Every id it retires
- * is reported, because that detachment is the whole cost of the merge.
+ * The absorbed lines are renumbered into the surviving scene's allocator — `arrival:L1` cannot
+ * stay itself inside `rooftop` — but the renumbering is a *mapping*, so it comes back as `moved`
+ * and coverage can follow it, exactly as it does across a split.
  */
 export function mergeScene(state: ScriptState, args: { scene: string; into: string }): LineOp {
   const scene = state.scenes.get(args.scene);
@@ -429,8 +434,11 @@ export function mergeScene(state: ScriptState, args: { scene: string; into: stri
   }
 
   let next = nextIdOf(into);
-  const retired = scene.lines.map((l) => l.id);
   const absorbed = scene.lines.map((l) => ({ ...l, id: `${into.id}:L${next++}` }));
+  const moved: [string, string][] = scene.lines.map((l, i) => [
+    l.id,
+    (absorbed[i] as SceneLine).id,
+  ]);
   const merged: Scene = {
     ...unwired(into),
     lines: [...into.lines, ...absorbed],
@@ -438,11 +446,9 @@ export function mergeScene(state: ScriptState, args: { scene: string; into: stri
     choices: scene.choices.map((c) => ({ ...c })),
     ...(scene.next !== undefined ? { next: scene.next } : {}),
   };
-  const detached = retired.length
-    ? ' Its line ids are gone, so any shot covering one stops covering it.'
-    : '';
-  return done(
-    `Merged ${scene.id} into ${into.id}: ${absorbed.length} line(s) appended.${detached}`,
-    { writes: [merged], removes: [scene.id], retired },
-  );
+  return done(`Merged ${scene.id} into ${into.id}: ${absorbed.length} line(s) appended.`, {
+    writes: [merged],
+    removes: [scene.id],
+    moved,
+  });
 }

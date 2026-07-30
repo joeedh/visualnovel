@@ -271,7 +271,7 @@ export interface SceneEditResult {
   message: string;
   /** Workspace-relative paths written — empty when the edit was refused or changed nothing. */
   written: string[];
-  /** Workspace-relative chunks deleted. */
+  /** Workspace-relative files deleted: a chunk the edit ended, and any shots file with it. */
   removed: string[];
   /** The rebuilt graph; absent on refusal. Wiring moves with a split or a merge. */
   graph?: StoryGraph;

@@ -38,6 +38,7 @@ import {
   AssetStore,
   ProjectPaths,
   deleteSceneChunk,
+  deleteShots,
   findScreenplay,
   loadInputs,
   readSceneChunks,
@@ -75,7 +76,7 @@ import {
 } from '@vn/authoring';
 import { runPipeline } from '@vn/scheduler';
 import { buildPlayable, loadSceneShots } from '@vn/export';
-import type { Playable, ProjectModel, Providers, Scene } from '@vn/types';
+import type { Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
 import type {
   ApproveResult,
   BranchEditResult,
@@ -91,6 +92,7 @@ import { storyGraphOf } from './storygraph.js';
 import type { BranchOp } from '../shared/branchops.js';
 import type { LineOp, ScriptState } from '../shared/lineops.js';
 import { setCoverage } from '../shared/coverage.js';
+import { scenesTouchedBy, shotFallout, type ShotFallout } from '../shared/shotfallout.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -411,8 +413,9 @@ export class WorkspaceSession {
 
   /**
    * The scenes a prose edit is decided against: as their chunks parse, with cues still the ones
-   * the author typed. The `story.*` prose checks call this so a refusal is the same decision the
-   * write would make, one load later.
+   * the author typed — deliberately not the model's, which resolves each cue to a character id.
+   * This is what an interaction's `targets` enumerates over; a command's own `check` goes through
+   * `previewSceneEdit`, which decides against this same state and prices the storyboard too.
    */
   async scriptState(): Promise<ScriptState> {
     const project = await loadProject(this.dir);
@@ -420,27 +423,31 @@ export class WorkspaceSession {
   }
 
   /**
-   * The single write path for every prose edit, and the sibling of `editBranches`: decide against
-   * the freshly parsed scenes, re-serialize each changed scene whole, write the chunks and remove
-   * the ones the edit ended, then rebuild the model.
+   * Everything a prose edit would do, decided and not written: the chunk bytes, the chunks to
+   * delete, and what all of it does to the storyboard. Shared by `previewSceneEdit` and
+   * `editScene`, so a `check` reports the consequence the run produces rather than a description
+   * of one.
    *
-   * Two things it does that `editBranches` does not have to. It re-serializes rather than patching,
-   * because there is no surgical form of "insert a line" — which means **the first prose edit to a
-   * hand-authored chunk canonicalizes it**, line-id marks included. And every scene is validated
-   * *before* anything is written: the bytes must read back as the scene they were written from, or
-   * the whole edit is refused with nothing touched.
+   * Two things here that `editBranches` does not have to do. Scenes are **re-serialized** rather
+   * than patched, because there is no surgical form of "insert a line" — which means the first
+   * prose edit to a hand-authored chunk canonicalizes it, line-id marks included. And every scene
+   * is validated *before* anything is written: the bytes must read back as the scene they were
+   * written from, or the whole edit is refused with nothing touched.
    */
-  async editScene(decide: (state: ScriptState) => LineOp): Promise<SceneEditResult> {
+  private async planSceneEdit(decide: (state: ScriptState) => LineOp): Promise<
+    | { ok: false; message: string }
+    | {
+        ok: true;
+        message: string;
+        project: LoadedProject;
+        pending: { file: string; text: string }[];
+        chunkRemoves: string[];
+        fallout: ShotFallout;
+      }
+  > {
     const project = await loadProject(this.dir);
     const op = decide(stateOf(project));
-    if (!op.ok) return { ok: false, message: op.error, written: [], removed: [] };
-
-    const fail = (message: string): SceneEditResult => ({
-      ok: false,
-      message,
-      written: [],
-      removed: [],
-    });
+    if (!op.ok) return { ok: false, message: op.error };
 
     // Every file is serialized and proved before any is written: a split that is refused on its
     // second half must leave the first exactly as it was.
@@ -448,13 +455,16 @@ export class WorkspaceSession {
     for (const scene of op.writes) {
       const doc = sceneToDoc(scene);
       const read = sceneFromDoc(doc, scene.id);
-      if (!read.ok) return fail(read.diagnostic.message);
+      if (!read.ok) return { ok: false, message: read.diagnostic.message };
       const errors = read.value.diagnostics.filter((d) => d.severity === 'error');
-      if (errors.length > 0) return fail(errors.map((d) => d.message).join(' '));
+      if (errors.length > 0) return { ok: false, message: errors.map((d) => d.message).join(' ') };
       // The serializer is lossless, so a scene that reads back as itself writes back identically.
       // Comparing the text rather than the scenes keeps the check on the bytes being written.
       if (sceneToDoc(read.value.scene).body !== doc.body) {
-        return fail(`Writing ${scene.id} would not read back as the scene it was written from.`);
+        return {
+          ok: false,
+          message: `Writing ${scene.id} would not read back as the scene it was written from.`,
+        };
       }
 
       // An existing chunk keeps its front-matter byte-exactly — only the body is ours to rewrite;
@@ -471,31 +481,79 @@ export class WorkspaceSession {
       if (text !== source.prefix + source.script) pending.push({ file: source.file, text });
     }
 
-    for (const { file, text } of pending) await writeFileAtomic(file, text);
+    // The shots as they sit on disk, unfiltered: `readShots(knownLineIds)` would drop the very
+    // ids the edit is about to remap, which is the coverage this is here to carry.
+    const shots = new Map<string, readonly Shot[]>();
+    for (const sceneId of scenesTouchedBy(op)) {
+      const loaded = await readShots(project.paths, sceneId);
+      if (loaded) shots.set(sceneId, loaded.shots);
+    }
+
+    return {
+      ok: true,
+      message: op.message,
+      project,
+      pending,
+      chunkRemoves: op.removes,
+      fallout: shotFallout(op, shots),
+    };
+  }
+
+  /** What `editScene` would do and cost the storyboard, without doing it. */
+  async previewSceneEdit(
+    decide: (state: ScriptState) => LineOp,
+  ): Promise<{ ok: boolean; message: string }> {
+    const plan = await this.planSceneEdit(decide);
+    if (!plan.ok) return { ok: false, message: plan.message };
+    const note = plan.fallout.note;
+    return { ok: true, message: note ? `${plan.message} ${note}` : plan.message };
+  }
+
+  /**
+   * The single write path for every prose edit, and the sibling of `editBranches`: take the
+   * decided plan, write the chunks, remove the ones the edit ended, carry the storyboard through
+   * the same `writeShots` the planner uses, then rebuild the model.
+   */
+  async editScene(decide: (state: ScriptState) => LineOp): Promise<SceneEditResult> {
+    const plan = await this.planSceneEdit(decide);
+    if (!plan.ok) return { ok: false, message: plan.message, written: [], removed: [] };
+    const { project, pending, fallout } = plan;
+
+    const written: string[] = [];
+    for (const { file, text } of pending) {
+      await writeFileAtomic(file, text);
+      written.push(relPath(this.dir, file));
+    }
+    for (const [sceneId, shots] of fallout.writes) {
+      if (await writeShots(project.paths, sceneId, shots)) {
+        written.push(relPath(this.dir, project.paths.shotsFile(sceneId)));
+      }
+    }
+
     const removed: string[] = [];
-    for (const id of op.removes) {
+    for (const id of plan.chunkRemoves) {
       if (await deleteSceneChunk(project.paths, id)) {
         removed.push(relPath(this.dir, project.paths.sceneFile(id)));
       }
     }
+    for (const id of fallout.removes) {
+      if (await deleteShots(project.paths, id)) {
+        removed.push(relPath(this.dir, project.paths.shotsFile(id)));
+      }
+    }
 
-    if (pending.length === 0 && removed.length === 0) {
+    const message = fallout.note ? `${plan.message} ${fallout.note}` : plan.message;
+    if (written.length === 0 && removed.length === 0) {
       return {
         ok: true,
-        message: `${op.message} (already reads that way — nothing written)`,
+        message: `${plan.message} (already reads that way — nothing written)`,
         written: [],
         removed: [],
         graph: storyGraphOf(project.model),
       };
     }
     const reloaded = await loadProject(this.dir);
-    return {
-      ok: true,
-      message: op.message,
-      written: pending.map((p) => relPath(this.dir, p.file)),
-      removed,
-      graph: storyGraphOf(reloaded.model),
-    };
+    return { ok: true, message, written, removed, graph: storyGraphOf(reloaded.model) };
   }
 
   /**

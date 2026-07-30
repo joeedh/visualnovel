@@ -313,16 +313,20 @@ describe('splitScene', () => {
 });
 
 describe('mergeScene', () => {
-  it('appends the absorbed lines under the survivor’s allocator, and says what detached', () => {
+  it('appends the absorbed lines under the survivor’s allocator, and maps every id it renamed', () => {
     const op = mergeScene(state(), { scene: 'rooftop', into: 'arrival' });
     const merged = written(op, 'arrival');
     expect(ids(merged)).toEqual(['arrival:L1', 'arrival:L2', 'arrival:L3', 'arrival:L4']);
     expect(merged.nextLineId).toBe(5);
+    // Renumbered, not retired: the mapping is what lets a shot's coverage follow the merge.
     expect(op).toMatchObject({
       ok: true,
       removes: ['rooftop'],
-      retired: ['rooftop:L1', 'rooftop:L2'],
-      moved: [],
+      retired: [],
+      moved: [
+        ['rooftop:L1', 'arrival:L3'],
+        ['rooftop:L2', 'arrival:L4'],
+      ],
     });
   });
 

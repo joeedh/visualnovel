@@ -160,8 +160,9 @@ and each fix is a pure function tested in node:
 FLOOR's third mode, `timeline` (`view.mode(room=floor mode=timeline)`): a scene's screenplay
 down the page with the shots covering it bracketed beside it. It runs **vertically** because
 screenplays do, and it takes the full width — the task inspector is about other material, so
-`.floor-body.wide` drops it. This is the only surface that edits `Shot.coversLines`, which
-`buildShotPrompt` ignores, so every edit here is free: nothing rehashes and no art is
+`.floor-body.wide` drops it. This is the only surface that edits `Shot.coversLines` directly — the
+`story.*` scene editors also move it, as fallout of a split or merge rather than as the point — and
+`buildShotPrompt` ignores it, so every edit here is free: nothing rehashes and no art is
 invalidated. Plan and as-shipped notes:
 [`plans/shot-timeline-editor.md`](plans/shot-timeline-editor.md).
 
