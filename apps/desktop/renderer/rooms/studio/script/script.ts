@@ -356,17 +356,18 @@ export function splitBoundaries(lines: readonly CoverageLine[]): string[] {
 
 /**
  * An id for the tail of a split: the scene's own, suffixed, first one free. An already-suffixed
- * scene counts up rather than nesting — splitting `arrival-2` proposes `arrival-3`, not
- * `arrival-2-2`.
+ * scene counts up rather than nesting — splitting `arrival_2` proposes `arrival_3`, not
+ * `arrival_2_2`.
  *
- * A proposal, not a decision: `splitScene` is the authority on whether an id is a slug and
- * whether it is taken.
+ * The separator is an underscore because that is what `slug` produces, and `splitScene` refuses
+ * anything that isn't already its own slug. A proposal, not a decision — whether the id is free is
+ * still the command's answer.
  */
 export function proposeSceneId(base: string, taken: Iterable<string>): string {
   const used = new Set(taken);
-  const stem = base.replace(/-\d+$/, '');
+  const stem = base.replace(/_\d+$/, '');
   for (let n = 2; ; n++) {
-    const id = `${stem}-${n}`;
+    const id = `${stem}_${n}`;
     if (!used.has(id)) return id;
   }
 }
@@ -386,6 +387,15 @@ export function mergeTarget(story: StoryGraph, sceneId: string): string | null {
   return next?.to ?? null;
 }
 
+/**
+ * Whether a new scene may be written as this one's continuation — only from a leaf. A scene that
+ * already goes somewhere would have that wire replaced, and putting a scene *between* two others
+ * is the branch editor's splice: a gesture that exists, is judged, and says what it does.
+ */
+export function canContinue(story: StoryGraph, sceneId: string): boolean {
+  return !story.edges.some((e) => e.from === sceneId);
+}
+
 /** `story.splitScene` as the column asks for it: `at` and everything below it move into `into`. */
 export const splitOf = (scene: string, at: string, into: string): Invocation => ({
   id: 'story.splitScene',
@@ -397,3 +407,55 @@ export const mergeOf = (absorbed: string, into: string): Invocation => ({
   id: 'story.mergeScene',
   props: { scene: absorbed, into },
 });
+
+/**
+ * A structural act the author has asked for and not yet confirmed. Each of these moves lines
+ * across a scene boundary or creates a file, and each carries a cost only the command can state —
+ * so the column holds the invocation, shows that sentence, and commits on a second gesture.
+ *
+ * The editable fields live here rather than in the surface because they are *props*: what the
+ * author is choosing before confirming is the invocation itself.
+ */
+export type Pending =
+  /** Cut this scene in two at `at`; everything from there down moves into `into`. */
+  | { act: 'split'; at: string; into: string }
+  /** Absorb the scene this one continues to. */
+  | { act: 'merge'; absorbed: string }
+  /** Write a new scene and continue to it. */
+  | { act: 'scene'; scene: string; heading: string };
+
+/**
+ * The new-scene act as the column proposes it: a free id derived from this scene's, and a heading
+ * built from the current location. Both are prefills the author edits in the strip — a heading has
+ * to be *composed* rather than copied, because what the column knows is the location id.
+ */
+export function continueFrom(scene: string, location: string, taken: Iterable<string>): Pending {
+  return {
+    act: 'scene',
+    scene: proposeSceneId(scene, taken),
+    heading: `INT. ${location.toUpperCase()} - DAY`,
+  };
+}
+
+/**
+ * The commands a pending act runs, in order. A new scene is two of them — `newScene` creates
+ * something deliberately unreachable and `setNext` is what reaches it — because they are two
+ * authorial facts and undoing the wire should not also delete the prose.
+ */
+export function stepsOf(pending: Pending, scene: string): Invocation[] {
+  if (pending.act === 'split') return [splitOf(scene, pending.at, pending.into)];
+  if (pending.act === 'merge') return [mergeOf(pending.absorbed, scene)];
+  return [
+    { id: 'story.newScene', props: { scene: pending.scene, heading: pending.heading } },
+    { id: 'story.setNext', props: { scene, goto: pending.scene } },
+  ];
+}
+
+/**
+ * The invocation whose `check` is worth showing before a pending act commits — the first, which is
+ * the one that carries the cost. A second step is asked about a scene that does not exist yet, so
+ * its check could only report that.
+ */
+export function checkOf(pending: Pending, scene: string): Invocation {
+  return stepsOf(pending, scene)[0] as Invocation;
+}

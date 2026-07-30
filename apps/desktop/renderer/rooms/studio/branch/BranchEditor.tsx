@@ -8,8 +8,14 @@
  *
  * All three read their verdict from `intent.ts`, which asks the same `branchops` the command
  * will run, so the refusal shown mid-drag is the refusal that would have happened.
+ *
+ * The bar carries the two acts that change which scenes *exist*: a scene made from nothing (and
+ * left unwired, because wiring it is a separate authorial fact) and the removal of the selected
+ * one. Deleting asks `story.deleteScene`'s own `check` on hover, so what it would refuse — or how
+ * many shots go with the scene — is on screen before the click.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { api } from '../../../api';
 import { Canvas } from '../../../graph/Canvas';
 import { handleAnchor, routeEdges, type EdgeRoute } from '../../../graph/edges.js';
 import { edgeAt, nodeAt, type Pick as GraphPick } from '../../../graph/hit.js';
@@ -17,6 +23,14 @@ import { layoutGraph } from '../../../graph/layout.js';
 import { fit, toWorld, IDENTITY, type Viewport } from '../../../graph/viewport.js';
 import { SceneCard, StubCard } from './SceneCard';
 import { branchGraph, CARD, type BranchGraph } from './graph.js';
+import {
+  asInvocation,
+  deleteSceneIntent,
+  newSceneIntent,
+  proposeScene,
+  selectionAfterDelete,
+  type NewScene,
+} from './compose.js';
 import { grabAt } from './grab.js';
 import {
   branchSplice,
@@ -27,6 +41,7 @@ import {
   unwire,
 } from '../../../../src/shared/interactions.js';
 import { useAnimatedLayout, useBranch } from './useBranch.js';
+import { noticeForCheck } from '../../../../src/shared/lineedit.js';
 import type { Point, Size } from '../../../graph/types.js';
 import type { StoryEdge } from '../../../../src/shared/ipc';
 import type { SceneMap } from '../../../../src/shared/branchops';
@@ -59,6 +74,8 @@ export function BranchEditor(props: {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  // A scene asked for and not yet written. What is being edited is the command's own props.
+  const [naming, setNaming] = useState<NewScene | null>(null);
 
   const scenes = useMemo(() => (story ? scenesOf(story) : EMPTY_SCENES), [story]);
   const { graph, stubs } = useMemo(() => (story ? branchGraph(story) : EMPTY_GRAPH), [story]);
@@ -310,13 +327,84 @@ export function BranchEditor(props: {
     );
   };
 
+  /** What removing the selected scene would cost, from `deleteScene`'s own `check`. */
+  const askDelete = (scene: string): void => {
+    void api
+      .invoke('command:check', asInvocation(deleteSceneIntent(scene)))
+      .then((check) => setNotice(noticeForCheck(check)));
+  };
+
+  /**
+   * Remove the selected scene and move the selection off it — the room shares that selection with
+   * the script column, which would otherwise open a scene that no longer exists. `story` is still
+   * the pre-delete graph here, which is exactly what says what is left.
+   */
+  const remove = async (scene: string): Promise<void> => {
+    if (!(await run(deleteSceneIntent(scene)))) return;
+    const next = selectionAfterDelete(story, scene);
+    if (next) props.onScene(next);
+  };
+
+  /** Write the named scene, then select it — a scene is made in order to be written in. */
+  const write = async (): Promise<void> => {
+    if (!naming) return;
+    const asked = naming;
+    setNaming(null);
+    if (await run(newSceneIntent(asked))) props.onScene(asked.scene);
+  };
+
+  /**
+   * The strip that names a scene before it exists. In the bar rather than on the canvas: there is
+   * no position for a card that has no scene behind it yet, and position isn't semantic here.
+   */
+  const namer = (): JSX.Element => {
+    const keys = (e: React.KeyboardEvent): void => {
+      if (e.key === 'Enter') void write();
+      if (e.key === 'Escape') setNaming(null);
+    };
+    return (
+      <div className="branch-name">
+        <input
+          className="np"
+          aria-label="The new scene's id"
+          autoFocus
+          value={naming?.scene ?? ''}
+          onChange={(e) => setNaming({ ...(naming as NewScene), scene: e.target.value })}
+          onKeyDown={keys}
+        />
+        <input
+          className="np wide"
+          aria-label="The new scene's heading"
+          value={naming?.heading ?? ''}
+          onChange={(e) => setNaming({ ...(naming as NewScene), heading: e.target.value })}
+          onKeyDown={keys}
+        />
+        <button className="go" onClick={() => void write()}>
+          Write it
+        </button>
+        <button className="no" onClick={() => setNaming(null)}>
+          Cancel
+        </button>
+      </div>
+    );
+  };
+
   if (story && story.scenes.length === 0) {
     return (
       <div className="branch empty">
         <p className="invite">
-          No scenes yet. Ask vnauthor for the opening scene below, and it will appear here as a card
-          you can wire the rest of the story to.
+          No scenes yet. Ask vnauthor for the opening scene below, or make an empty one here and
+          write it in the script column — either way it appears as a card you can wire the rest of
+          the story to.
         </p>
+        {naming ? (
+          namer()
+        ) : (
+          <button className="ghost wide" onClick={() => setNaming(proposeScene(story))}>
+            + scene
+          </button>
+        )}
+        {notice && <div className={`branch-line ${notice.tone}`}>{notice.text}</div>}
       </div>
     );
   }
@@ -331,6 +419,27 @@ export function BranchEditor(props: {
           {story?.scenes.length ?? 0} scenes · {story?.edges.length ?? 0} edges
           {dead > 0 ? ` · ${dead} unreachable` : ''}
         </span>
+        {naming ? (
+          namer()
+        ) : (
+          <>
+            <button className="ghost" onClick={() => setNaming(proposeScene(story))}>
+              + scene
+            </button>
+            {props.scene && (
+              // Hover asks the command; the click runs it. So a scene something still points at
+              // says so before the pointer goes down, in the command's own words.
+              <button
+                className="ghost danger"
+                onPointerEnter={() => askDelete(props.scene as string)}
+                onFocus={() => askDelete(props.scene as string)}
+                onClick={() => void remove(props.scene as string)}
+              >
+                delete {props.scene}
+              </button>
+            )}
+          </>
+        )}
         <button className="ghost" onClick={() => refit(surface)} title="Fit to view">
           ⤢
         </button>

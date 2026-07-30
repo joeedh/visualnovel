@@ -1,7 +1,8 @@
 # Script composition in STUDIO
 
-Status: **partial** — steps 1–5 are shipped and carry their own as-shipped notes below, so the
-column already writes, reorders and attributes prose; steps 6–9 are not built. Move six of
+Status: **partial** — steps 1–6 are shipped and carry their own as-shipped notes below, so the
+column already writes, reorders and attributes prose, and both surfaces now change which scenes
+exist; steps 7–9 are not built. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -244,8 +245,54 @@ a few lines once the shared selection exists, and it turns the rail from a repor
    `arrival:L1` to Haruki (row became `dialogue`, file gained a plain `HARUKI` cue), re-picked
    `arrival:L2`'s own `AIKO` and got no record, cleared it and watched the row become narration —
    three picks, two `story.setSpeaker` records.
-6. **Split, merge, new scene, delete scene.** With the detachment counts from each command's
+6. ✔ **Split, merge, new scene, delete scene.** With the detachment counts from each command's
    `check` shown before commit, and `newScene`'s two homes.
+
+   As shipped: the four acts that change *which scenes exist* are the only ones in this column that
+   are **confirmed rather than run**. Each detaches shots from the lines they cover and only the
+   command can count them, so the first gesture opens a strip carrying that command's own `check`
+   sentence and the second gesture is the act. Split, merge and continue live in the script column
+   (`script.ts`: `splitBoundaries`, `mergeTarget`, `canContinue`, `continueFrom`, `stepsOf`,
+   `checkOf`); new-scene-from-nothing and delete live on the branch canvas (`branch/compose.ts`).
+   Five things the step did not say:
+
+   - **A prefilled id has to already be its own slug.** `slug` collapses every non-alphanumeric run
+     to `_`, and `newScene`/`splitScene` refuse `id !== slug(id)`, so the first draft's
+     `rooftop-2` was an affordance that *could only be refused* — the live `check` said so
+     verbatim (`Scene ids are slugs — "rooftop-2" would be "rooftop_2".`). `proposeSceneId` and
+     `freeSceneId` are underscored for that reason, and an already-suffixed scene counts up
+     (`arrival_2` → `arrival_3`) instead of nesting. The unit tests happily asserted the wrong
+     separator; only driving the real command found it.
+   - **Deleting the selected scene has to move the room's selection.** STUDIO shares one selection
+     between the canvas and the column, so without `selectionAfterDelete` the bar went on offering
+     `delete ending_2` and the column would have opened a scene that no longer exists. It lands on
+     the entry scene, or whatever is left, or `null` — at which point both surfaces show their
+     empty invite. It is given the graph as it was *before* the delete, which is what says what
+     survives it.
+   - **A new scene is two commands, deliberately** — `story.newScene` then `story.setNext` — so
+     undoing the wire does not delete the prose (confirmed as two records with separate
+     `undo.pre/post` pairs). `checkOf` therefore shows only the *first* step's sentence, which for a
+     new scene reads "…nothing points at it yet." while the strip's own label says the wire follows.
+     Honest about that command, slightly odd to read; the alternative is a preview that claims work
+     the first command doesn't do.
+   - **`newScene` has two homes and `deleteScene` has one.** On the canvas it makes an *unwired*
+     scene (wiring it is a separate authorial fact, and it is also the empty-project invite); in the
+     column it means "a scene after this one" and wires it. Delete is canvas-only — offering it from
+     inside the prose of the scene being deleted is an invitation to lose work.
+   - **Delete asks its `check` on hover**, via `onPointerEnter` *and* `onFocus`, so a refusal is on
+     screen before the pointer goes down. Because `check` and `run` share one edit function, the
+     accepting sentence is past-tense (`Deleted scene_1 and its 0 line(s).`) — the wording belongs
+     to `@vn/scriptedit` and is right for the record it also becomes. A new scene's `ok` notice, by
+     contrast, is *lost*: moving the selection clears it, and the empty page's own invitation is the
+     confirmation. Refusals are never lost, because a refusal never moves the selection.
+
+   Verified live over CDP against a scratch copy of `examples/mySampleRepo`: split `rooftop` at a
+   line and read the real detachment count (`1 shot(s) follow their lines into rooftop_2; 1 shot(s)
+   lose 3 line(s) of coverage, 1 already rendered.`), merged it back, wrote `ending_2` from the
+   column and watched it wire, then on the canvas wrote `scene_1`, deleted it and watched the
+   selection land on `arrival` — and hovered delete over `arrival` itself for the refusal
+   (`arrival is the entry scene — point start: in project.yaml elsewhere first.`), which the click
+   then honoured.
 7. **Clickable diagnostics.** The rail group selects a scene and switches mode.
 8. **Verify on `examples/mySampleRepo`.** Write a scene from nothing, wire it, run the pipeline
    past the gate, confirm it renders in PLAY. That end-to-end pass — authored in the app, generated,

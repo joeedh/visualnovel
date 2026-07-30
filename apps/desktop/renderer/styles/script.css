@@ -84,6 +84,7 @@
 }
 
 .sc-line {
+  position: relative;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 10px;
@@ -252,13 +253,97 @@
   padding: 6px 10px;
   cursor: pointer;
 }
-.sc-add {
-  margin: 12px 0 0 44px;
-}
 .sc-start:hover,
 .sc-add:hover {
   color: var(--sodium);
   border-color: var(--sodium);
+}
+/* Everything that adds to the scene, in one row under the page — a line, and the two acts that
+   change where the scene *ends*. */
+.sc-struct {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 0 44px;
+}
+
+/* ---- split, merge, continue ---- */
+
+/* A boundary belongs to the row it would start, so the affordance sits on that row and stays out
+   of the prose until the pointer is there. */
+.sc-cut {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  background: var(--ink-raised);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  padding: 1px 6px;
+  cursor: pointer;
+  opacity: 0;
+}
+.sc-line:hover .sc-cut {
+  opacity: 1;
+}
+.sc-cut:hover {
+  color: var(--sodium);
+  border-color: var(--sodium);
+}
+
+/* The pending act: what it would do and the props still being chosen. Sodium, because a scene
+   boundary is an authored fact — the *cost* of moving it is in the bar, in signal. */
+.sc-pend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0 6px 44px;
+  padding: 8px 10px;
+  background: rgba(244, 162, 76, 0.06);
+  border: 1px solid var(--sodium);
+  border-radius: var(--r-chrome);
+}
+.sc-pend .what {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist);
+}
+.sc-prop {
+  background: var(--ink-sunken);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 6px;
+  width: 16ch;
+  outline: none;
+}
+.sc-prop:focus {
+  border-color: var(--sodium);
+}
+.sc-prop.wide {
+  width: 30ch;
+}
+.sc-pend .go,
+.sc-pend .no {
+  background: none;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.sc-pend .go {
+  border-color: var(--sodium);
+  color: var(--sodium);
+}
+.sc-pend .no {
+  color: var(--mist-dim);
 }
 
 /* A project with no scenes has nothing to open, so it says where a scene comes from. */

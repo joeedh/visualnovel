@@ -3,7 +3,10 @@ import { TOP, scriptMoveLine } from '../../../../../src/shared/interactions.js';
 import {
   COMPOSED,
   attributionAfter,
+  canContinue,
   castFor,
+  checkOf,
+  continueFrom,
   cueChoices,
   cueFor,
   cueLabel,
@@ -19,8 +22,10 @@ import {
   scriptRows,
   setSpeakerOf,
   splitBoundaries,
+  stepsOf,
   type CastMember,
   type Draft,
+  type Pending,
 } from '../script.js';
 import type { Invocation } from '@vn/commands';
 import type {
@@ -439,15 +444,15 @@ describe('splitBoundaries', () => {
 
 describe('proposeSceneId', () => {
   it('suffixes the scene being split', () => {
-    expect(proposeSceneId('arrival', ['arrival'])).toBe('arrival-2');
+    expect(proposeSceneId('arrival', ['arrival'])).toBe('arrival_2');
   });
 
   it('counts past ids already taken', () => {
-    expect(proposeSceneId('arrival', ['arrival', 'arrival-2', 'arrival-3'])).toBe('arrival-4');
+    expect(proposeSceneId('arrival', ['arrival', 'arrival_2', 'arrival_3'])).toBe('arrival_4');
   });
 
   it('counts up from an already-suffixed scene rather than nesting', () => {
-    expect(proposeSceneId('arrival-2', ['arrival', 'arrival-2'])).toBe('arrival-3');
+    expect(proposeSceneId('arrival_2', ['arrival', 'arrival_2'])).toBe('arrival_3');
   });
 });
 
@@ -481,5 +486,68 @@ describe('mergeTarget', () => {
   it('has no boundary to remove at a leaf, or across a dangling edge', () => {
     expect(mergeTarget(graph([next('a', 'b')]), 'b')).toBeNull();
     expect(mergeTarget(graph([next('a', 'nowhere', true)]), 'a')).toBeNull();
+  });
+});
+
+describe('canContinue', () => {
+  const graph = (edges: StoryEdge[]): StoryGraph => ({ scenes: [], edges, diagnostics: [] });
+  const edge = (from: string, kind: StoryEdge['kind']): StoryEdge => ({
+    id: `${from}#${kind}`,
+    from,
+    to: 'b',
+    kind,
+    dangling: false,
+  });
+
+  it('offers a continuation only from a leaf', () => {
+    expect(canContinue(graph([]), 'a')).toBe(true);
+    expect(canContinue(graph([edge('a', 'next')]), 'a')).toBe(false);
+  });
+
+  it('counts a fork as a way out too — a choice is not a wire to replace', () => {
+    expect(canContinue(graph([edge('a', 'choice')]), 'a')).toBe(false);
+  });
+
+  it('says nothing about edges into the scene: only what leaves it is in the way', () => {
+    expect(canContinue(graph([edge('z', 'next')]), 'a')).toBe(true);
+  });
+});
+
+describe('continueFrom', () => {
+  it('proposes a free id and a heading composed from the location id', () => {
+    expect(continueFrom('arrival', 'gate', ['arrival'])).toEqual({
+      act: 'scene',
+      scene: 'arrival_2',
+      heading: 'INT. GATE - DAY',
+    });
+  });
+});
+
+describe('stepsOf', () => {
+  it('splits with one command, against the scene the column is showing', () => {
+    expect(stepsOf({ act: 'split', at: 'a:L3', into: 'a_2' }, 'a')).toEqual([
+      { id: 'story.splitScene', props: { scene: 'a', at: 'a:L3', into: 'a_2' } },
+    ]);
+  });
+
+  it('merges *into* the shown scene — the absorbed one is the argument', () => {
+    expect(stepsOf({ act: 'merge', absorbed: 'b' }, 'a')).toEqual([
+      { id: 'story.mergeScene', props: { scene: 'b', into: 'a' } },
+    ]);
+  });
+
+  it('writes a new scene and wires it as two acts, in that order', () => {
+    expect(stepsOf({ act: 'scene', scene: 'b', heading: 'INT. HALL - DAY' }, 'a')).toEqual([
+      { id: 'story.newScene', props: { scene: 'b', heading: 'INT. HALL - DAY' } },
+      { id: 'story.setNext', props: { scene: 'a', goto: 'b' } },
+    ]);
+  });
+});
+
+describe('checkOf', () => {
+  it('asks the step that carries the cost — the first one', () => {
+    const pending: Pending = { act: 'scene', scene: 'b', heading: 'INT. HALL - DAY' };
+    expect(checkOf(pending, 'a')).toEqual(stepsOf(pending, 'a')[0]);
+    expect(checkOf({ act: 'merge', absorbed: 'b' }, 'a').id).toBe('story.mergeScene');
   });
 });

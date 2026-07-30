@@ -15,6 +15,10 @@
  * type follows. It is a choice off the project's cast rather than a name to type, so the column
  * cannot mint a cue nothing in `characters/` answers to.
  *
+ * The acts that change which *scenes* exist — split, merge, continue — are confirmed rather than
+ * run, because each detaches shots from the lines they cover and only the command can say how many.
+ * So the strip that opens shows that command's own `check`, and the second gesture is the act.
+ *
  * Dragging a line by its gutter is the `script.moveLine` interaction, and this surface is its first
  * consumer — the gesture was declared and tested before any of this existed. The grab asks it to
  * judge every insertion point at once; each pointer move reads that answer off by row rather than
@@ -25,20 +29,28 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { isSpeakable } from '@vn/scriptedit';
 import { api } from '../../../api';
 import {
+  canContinue,
+  checkOf,
+  continueFrom,
   cueChoices,
   cueLabel,
   dropTarget,
   insertOf,
   keyAct,
   localLineId,
+  mergeTarget,
   moveStateOf,
   nextEditing,
+  proposeSceneId,
   scriptRows,
   setSpeakerOf,
+  splitBoundaries,
+  stepsOf,
   type CastMember,
   type Continue,
   type CueChoice,
   type Editing,
+  type Pending,
   type RowBox,
 } from './script.js';
 import { TOP, scriptMoveLine } from '../../../../src/shared/interactions.js';
@@ -78,6 +90,9 @@ export function ScriptEditor(props: {
   // The line whose cue picker is open, if any. Not part of `Editing`: attribution is a different
   // command with no draft, and opening it must not look like the row is being retyped.
   const [attributing, setAttributing] = useState<string | null>(null);
+  // A structural act, asked for and not yet confirmed. Separate from `editing` because it is not
+  // prose: what is being edited in the strip is the command's own props.
+  const [pending, setPending] = useState<Pending | null>(null);
   // Set by a key that already acted, so the blur it causes cannot commit the same draft twice.
   const settled = useRef(false);
   const page = useRef<HTMLDivElement | null>(null);
@@ -97,6 +112,7 @@ export function ScriptEditor(props: {
     setEditing(null);
     setDrag(null);
     setAttributing(null);
+    setPending(null);
     setNotice(null);
     void api.invoke('story:coverage', props.scene).then(setData);
   }, [props.scene]);
@@ -105,6 +121,11 @@ export function ScriptEditor(props: {
   // Only when it is the scene now selected: prose under another scene's heading, for the one
   // frame between the click and the read, would be prose the author might start editing.
   const shown = data && data.sceneId === props.scene ? data : null;
+  // Which structural acts this scene can be offered at all. Each is its command's own rule read
+  // ahead of time — the column doesn't put a button where the command would only refuse.
+  const cuts = new Set(shown ? splitBoundaries(shown.lines) : []);
+  const absorb = story && shown ? mergeTarget(story, shown.sceneId) : null;
+  const continuable = !!(story && shown && canContinue(story, shown.sceneId));
 
   // The precondition, asked as the author types — the count of frames that will go on illustrating
   // the old prose comes from the command's own `check`, so the warning before the commit and the
@@ -133,6 +154,24 @@ export function ScriptEditor(props: {
     };
   }, [draft, editing, shown]);
 
+  // What a structural act would cost, from the command's own `check`. This is the whole reason a
+  // split or a merge is confirmed rather than run: the shots that detach are named before the act,
+  // and re-asked as the author edits the id it would create.
+  useEffect(() => {
+    if (!pending || !props.scene) return;
+    const invocation = checkOf(pending, props.scene);
+    let live = true;
+    const timer = setTimeout(() => {
+      void api.invoke('command:check', invocation).then((check) => {
+        if (live) setNotice(noticeForCheck(check));
+      });
+    }, 180);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [pending, props.scene]);
+
   const open = (row: { editing: Editing; draft: string }): void => {
     settled.current = false;
     setEditing(row.editing);
@@ -155,7 +194,11 @@ export function ScriptEditor(props: {
    * draft comes back beside the command's own reason for turning it down — `from` is `null` for an
    * act no editor started, like a drop, which has no draft to hand back.
    */
-  const act = async (from: Editing | null, steps: Invocation[], then: Continue): Promise<void> => {
+  const act = async (
+    from: Editing | null,
+    steps: Invocation[],
+    then: Continue,
+  ): Promise<boolean> => {
     setEditing(null);
     let ran = false;
     for (const step of steps) {
@@ -166,9 +209,12 @@ export function ScriptEditor(props: {
           settled.current = false;
           setEditing(from);
         }
-        return;
+        return false;
       }
       setNotice({ tone: 'ok', text: outcome.record.message ?? 'Done.' });
+      // Every `story.*` command answers with the rebuilt graph, so the scene list and the
+      // structural affordances are never a beat behind a split that added a scene.
+      if (outcome.data) setStory(outcome.data as StoryGraph);
       ran = true;
     }
     // Re-read rather than patch: the chunk was rewritten and a shots file may have been too, so
@@ -181,6 +227,7 @@ export function ScriptEditor(props: {
     }
     const next = nextEditing(lines, from, then);
     if (next) open(next);
+    return ran;
   };
 
   const commit = (from: Editing): void => {
@@ -253,6 +300,31 @@ export function ScriptEditor(props: {
     ) : null;
 
   /**
+   * Ask for a structural act. Nothing is written: the strip opens with the command's own account of
+   * what it would cost, and the author confirms or cancels.
+   */
+  const propose = (next: Pending): void => {
+    setEditing(null);
+    setAttributing(null);
+    setNotice(null);
+    setPending(next);
+  };
+
+  const cancel = (): void => {
+    setPending(null);
+    setNotice(null);
+  };
+
+  /** Commit the pending act. A new scene is one the author asked for in order to write in it. */
+  const confirm = async (): Promise<void> => {
+    if (!pending || !props.scene) return;
+    const asked = pending;
+    setPending(null);
+    const ran = await act(null, stepsOf(asked, props.scene), { open: 'none' });
+    if (ran && asked.act === 'scene') props.onScene(asked.scene);
+  };
+
+  /**
    * Pick who says a line. `story.setSpeaker` is the one edit here that changes a line's `kind` —
    * and with it the beat type the exporter writes — which is why it is a deliberate choice off a
    * closed list rather than a field to type a name into.
@@ -304,6 +376,68 @@ export function ScriptEditor(props: {
           </option>
         ))}
       </select>
+    );
+  };
+
+  /**
+   * The pending act's strip: what it would do, the props still being chosen, and the two gestures
+   * that end it. Its sentence is in the bar, beside every other thing a command has said.
+   */
+  const strip = (): JSX.Element | null => {
+    if (!pending || !shown) return null;
+    const keys = (e: React.KeyboardEvent): void => {
+      if (e.key === 'Enter') void confirm();
+      if (e.key === 'Escape') cancel();
+    };
+    return (
+      <div className={`sc-pend ${pending.act}`}>
+        {pending.act === 'split' && (
+          <>
+            <span className="what">
+              Split at {localLineId(pending.at)} — that line and the rest become
+            </span>
+            <input
+              className="sc-prop"
+              aria-label="The new scene's id"
+              autoFocus
+              value={pending.into}
+              onChange={(e) => setPending({ ...pending, into: e.target.value })}
+              onKeyDown={keys}
+            />
+          </>
+        )}
+        {pending.act === 'merge' && (
+          <span className="what">
+            Absorb {pending.absorbed} into {shown.sceneId} — its lines are renumbered
+          </span>
+        )}
+        {pending.act === 'scene' && (
+          <>
+            <span className="what">New scene, continued to from {shown.sceneId}:</span>
+            <input
+              className="sc-prop"
+              aria-label="The new scene's id"
+              autoFocus
+              value={pending.scene}
+              onChange={(e) => setPending({ ...pending, scene: e.target.value })}
+              onKeyDown={keys}
+            />
+            <input
+              className="sc-prop wide"
+              aria-label="The new scene's heading"
+              value={pending.heading}
+              onChange={(e) => setPending({ ...pending, heading: e.target.value })}
+              onKeyDown={keys}
+            />
+          </>
+        )}
+        <button type="button" className="go" onClick={() => void confirm()}>
+          {pending.act === 'split' ? 'Split' : pending.act === 'merge' ? 'Merge' : 'Write it'}
+        </button>
+        <button type="button" className="no" onClick={cancel}>
+          Cancel
+        </button>
+      </div>
     );
   };
 
@@ -421,20 +555,70 @@ export function ScriptEditor(props: {
                       </div>
                     )}
                   </div>
+                  {/* A boundary is a property of the row below it, so the affordance lives on the
+                      row rather than between rows: "the second half starts here". */}
+                  {cuts.has(row.line.id) && pending === null && (
+                    <button
+                      type="button"
+                      className="sc-cut"
+                      onClick={() =>
+                        propose({
+                          act: 'split',
+                          at: row.line.id,
+                          into: proposeSceneId(
+                            shown.sceneId,
+                            scenes.map((s) => s.id),
+                          ),
+                        })
+                      }
+                    >
+                      split here
+                    </button>
+                  )}
                 </div>
+                {pending?.act === 'split' && pending.at === row.line.id && strip()}
                 {dropRule(row.line.id)}
               </Fragment>
             ),
           )}
-          {shown.lines.length > 0 && (
-            <button
-              type="button"
-              className="sc-add"
-              onClick={() => compose(shown.lines[shown.lines.length - 1]?.id ?? '')}
-            >
-              + line
-            </button>
-          )}
+          <div className="sc-struct">
+            {shown.lines.length > 0 && (
+              <button
+                type="button"
+                className="sc-add"
+                onClick={() => compose(shown.lines[shown.lines.length - 1]?.id ?? '')}
+              >
+                + line
+              </button>
+            )}
+            {absorb && (
+              <button
+                type="button"
+                className="sc-add"
+                onClick={() => propose({ act: 'merge', absorbed: absorb })}
+              >
+                merge {absorb} in
+              </button>
+            )}
+            {continuable && (
+              <button
+                type="button"
+                className="sc-add"
+                onClick={() =>
+                  propose(
+                    continueFrom(
+                      shown.sceneId,
+                      shown.location,
+                      scenes.map((s) => s.id),
+                    ),
+                  )
+                }
+              >
+                + scene after this one
+              </button>
+            )}
+          </div>
+          {pending && pending.act !== 'split' && strip()}
         </div>
       )}
     </div>
