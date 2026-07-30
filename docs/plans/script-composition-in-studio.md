@@ -1,8 +1,8 @@
 # Script composition in STUDIO
 
-Status: **partial** — steps 1–6 are shipped and carry their own as-shipped notes below, so the
-column already writes, reorders and attributes prose, and both surfaces now change which scenes
-exist; steps 7–9 are not built. Move six of
+Status: **partial** — steps 1–7 are shipped and carry their own as-shipped notes below, so the
+column already writes, reorders and attributes prose, both surfaces change which scenes exist, and
+the rail's diagnostics are a way into one; steps 8–9 are not built. Move six of
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
@@ -293,7 +293,31 @@ a few lines once the shared selection exists, and it turns the rail from a repor
    selection land on `arrival` — and hovered delete over `arrival` itself for the refusal
    (`arrival is the entry scene — point start: in project.yaml elsewhere first.`), which the click
    then honoured.
-7. **Clickable diagnostics.** The rail group selects a scene and switches mode.
+7. ✔ **Clickable diagnostics.** The rail group selects a scene and switches mode.
+
+   As shipped: a diagnostic whose `where` names a scene the workspace lists renders as a button
+   (`.diag.at`) that calls one `openScene` in `Studio` — the selection and `script` mode together,
+   because a diagnostic points at prose and `convo` has no prose in it. Three things the step did
+   not say:
+
+   - **`where` is an entity id, not a scene id**, and a scene diagnostic can name a scene that does
+     not exist — `start:` pointing at nothing is exactly that. So which rows are a way in is a
+     decision, small as it is, and it lives in `rooms/studio/diagnostics.ts` with a test rather
+     than inline: a character sheet's diagnostic and a `missing_start` stay plain rows.
+   - **Named `diagnostics.ts` because `rail.ts` cannot exist.** `Rail.tsx` shares the directory and
+     on a case-insensitive filesystem `./Rail` resolves to `rail.ts`, which fails the renderer
+     typecheck with "differs from file name … only in casing".
+   - **The rail had to start refreshing.** `index.diagnostics` was read once at mount and on the
+     palette's `onRan`, so following a diagnostic and fixing it left the row on screen — a report
+     you can click has to be current in a way a report you can only read does not. `App` grew a
+     `refreshIndex` that re-reads `workspace:index` *without* bumping `revision`, since a remount
+     would throw away the column's own state mid-gesture; `Studio` passes it to both editors as
+     `onEdit`, and `useBranch` takes it as an optional `afterWrite`.
+
+   Verified live over CDP: with a hand-written orphan `[[line: L1]]` in `ending`, the rail's
+   `dangling_line_id` row was a button titled `Open ending in the script column`; clicking it from
+   `convo` switched to `script` on that scene, and committing one line edit — which rewrites the
+   chunk from `Scene.lines` and so drops the orphan marker — emptied the group without a reload.
 8. **Verify on `examples/mySampleRepo`.** Write a scene from nothing, wire it, run the pipeline
    past the gate, confirm it renders in PLAY. That end-to-end pass — authored in the app, generated,
    watched — is the thing this whole direction was for, and it is the acceptance test.

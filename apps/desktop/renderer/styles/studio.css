@@ -147,6 +147,22 @@
 .diag.error {
   border-left-color: var(--vermilion);
 }
+/* Clickable because it names a scene. Sodium on hover: following one lands in authored prose. */
+.diag.at {
+  width: 100%;
+  text-align: left;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.diag.at:hover {
+  background: var(--ink-raised);
+}
+.diag.at:hover .msg {
+  color: var(--sodium);
+}
 .diag .code {
   font-family: var(--mono);
   font-size: 10px;

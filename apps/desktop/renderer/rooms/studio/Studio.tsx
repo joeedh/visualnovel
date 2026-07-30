@@ -23,6 +23,8 @@ export function Studio(props: {
   setMode: (mode: StudioMode) => void;
   openPalette: () => void;
   setRoom: (r: Room) => void;
+  /** Called after either editor writes, so the rail's diagnostics are the current ones. */
+  onEdit: () => void;
 }): JSX.Element {
   const [scene, setScene] = useState<string | null>(null);
   const rail = usePanelWidth('studio.rail', {
@@ -31,6 +33,16 @@ export function Studio(props: {
     max: 520,
     edge: 'left',
   });
+
+  /**
+   * Open a scene in the column — the selection and the mode together, because a diagnostic points
+   * at prose and `convo` has no prose in it. Its only caller is the rail's diagnostics group; the
+   * two editors already share the selection.
+   */
+  const openScene = (id: string): void => {
+    setScene(id);
+    props.setMode('script');
+  };
 
   // Drop a targeted starter into the composer and focus it, so the next agent
   // turn is scoped to the picked entity. The composer is uncontrolled (ref-driven).
@@ -50,13 +62,18 @@ export function Studio(props: {
         setRoom={props.setRoom}
         mode={props.mode}
         setMode={props.setMode}
+        openScene={openScene}
       />
       <ResizeHandle {...rail.handleProps} />
       <Convo
         agent={props.agent}
         openPalette={props.openPalette}
         {...(props.mode === 'branches'
-          ? { surface: <BranchEditor seed={seed} scene={scene} onScene={setScene} /> }
+          ? {
+              surface: (
+                <BranchEditor seed={seed} scene={scene} onScene={setScene} onEdit={props.onEdit} />
+              ),
+            }
           : props.mode === 'script'
             ? {
                 surface: (
@@ -64,6 +81,7 @@ export function Studio(props: {
                     scene={scene}
                     onScene={setScene}
                     cast={props.index?.characters ?? []}
+                    onEdit={props.onEdit}
                   />
                 ),
               }

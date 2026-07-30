@@ -80,6 +80,8 @@ export function ScriptEditor(props: {
   onScene: (sceneId: string) => void;
   /** The project's cast, as the cue picker offers it. Empty until the index has loaded. */
   cast: readonly CastMember[];
+  /** Told after every write, so the rail's diagnostics are the ones this edit left behind. */
+  onEdit: () => void;
 }): JSX.Element {
   const [story, setStory] = useState<StoryGraph | null>(null);
   const [data, setData] = useState<SceneCoverage | null>(null);
@@ -224,6 +226,7 @@ export function ScriptEditor(props: {
       const fresh = await api.invoke('story:coverage', props.scene);
       setData(fresh);
       lines = fresh.lines;
+      props.onEdit();
     }
     const next = nextEditing(lines, from, then);
     if (next) open(next);

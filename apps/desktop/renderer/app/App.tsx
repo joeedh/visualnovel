@@ -54,6 +54,13 @@ export function App(): JSX.Element {
     setRevision((n) => n + 1);
   }, [loadStatus]);
 
+  // The rail's diagnostics are a way into a scene now, so they have to be current after an edit
+  // the room made itself. Deliberately not `reload`: bumping the revision remounts the room, which
+  // would throw away the editor's own state mid-gesture.
+  const refreshIndex = useCallback(() => {
+    void api.invoke('workspace:index').then(setIndex);
+  }, []);
+
   // Load workspace index + pipeline status once.
   useEffect(() => {
     void api.invoke('workspace:index').then(setIndex);
@@ -146,6 +153,7 @@ export function App(): JSX.Element {
           setMode={setStudioMode}
           openPalette={() => setPaletteOpen(true)}
           setRoom={setRoom}
+          onEdit={refreshIndex}
         />
       ) : room === 'floor' ? (
         <Floor

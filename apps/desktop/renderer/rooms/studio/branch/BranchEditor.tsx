@@ -67,8 +67,10 @@ export function BranchEditor(props: {
   /** The room's scene selection, shared with the `script` mode. */
   scene: string | null;
   onScene: (sceneId: string) => void;
+  /** Told after every write, so the rail's diagnostics are the ones this edit left behind. */
+  onEdit: () => void;
 }): JSX.Element {
-  const { story, notice, setNotice, run } = useBranch();
+  const { story, notice, setNotice, run } = useBranch(props.onEdit);
   const [viewport, setViewport] = useState<Viewport>(IDENTITY);
   const [surface, setSurface] = useState<Size | null>(null);
   const [selected, setSelected] = useState<string | null>(null);

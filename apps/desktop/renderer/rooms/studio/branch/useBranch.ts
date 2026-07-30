@@ -27,7 +27,8 @@ export interface Branch {
   run: (intent: Intent) => Promise<boolean>;
 }
 
-export function useBranch(): Branch {
+/** `afterWrite` is the shell's, not the editor's: what a write means outside this surface. */
+export function useBranch(afterWrite?: () => void): Branch {
   const [story, setStory] = useState<StoryGraph | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -35,21 +36,25 @@ export function useBranch(): Branch {
     void api.invoke('story:graph').then(setStory);
   }, []);
 
-  const run = useCallback(async (intent: Intent): Promise<boolean> => {
-    const outcome = await api.invoke('command:exec', {
-      id: intent.id,
-      props: intent.props,
-      source: 'ui',
-    });
-    if (!outcome.ok) {
-      setNotice({ tone: 'refused', text: outcome.error });
-      return false;
-    }
-    // `story.*` commands answer with the rebuilt graph, so reachability is never a beat behind.
-    if (outcome.data) setStory(outcome.data as StoryGraph);
-    setNotice({ tone: 'ok', text: outcome.record.message ?? intent.note });
-    return true;
-  }, []);
+  const run = useCallback(
+    async (intent: Intent): Promise<boolean> => {
+      const outcome = await api.invoke('command:exec', {
+        id: intent.id,
+        props: intent.props,
+        source: 'ui',
+      });
+      if (!outcome.ok) {
+        setNotice({ tone: 'refused', text: outcome.error });
+        return false;
+      }
+      // `story.*` commands answer with the rebuilt graph, so reachability is never a beat behind.
+      if (outcome.data) setStory(outcome.data as StoryGraph);
+      setNotice({ tone: 'ok', text: outcome.record.message ?? intent.note });
+      afterWrite?.();
+      return true;
+    },
+    [afterWrite],
+  );
 
   return { story, notice, setNotice, run };
 }

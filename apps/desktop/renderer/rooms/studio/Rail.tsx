@@ -1,3 +1,4 @@
+import { diagnosticScene } from './diagnostics.js';
 import type { Room, StudioMode, WorkspaceIndex } from '../../../src/shared/ipc';
 
 const SWATCH: Record<string, string> = {
@@ -12,9 +13,11 @@ export function Rail(props: {
   setRoom: (r: Room) => void;
   mode: StudioMode;
   setMode: (mode: StudioMode) => void;
+  openScene: (scene: string) => void;
 }): JSX.Element {
   const idx = props.index;
   const diagnostics = idx?.diagnostics ?? [];
+  const sceneIds = (idx?.scenes ?? []).map((s) => s.id);
   return (
     <aside className="rail">
       {/* First, and only when there are any: an id that aliases or names no line is the kind
@@ -24,12 +27,32 @@ export function Rail(props: {
           <div className="rail-head">
             DIAGNOSTICS <span className="ct">{diagnostics.length}</span>
           </div>
-          {diagnostics.map((d, i) => (
-            <div className={`diag ${d.severity}`} key={`${d.code}:${d.where ?? ''}:${i}`}>
-              <span className="code">{d.code}</span>
-              <span className="msg">{d.message}</span>
-            </div>
-          ))}
+          {diagnostics.map((d, i) => {
+            const key = `${d.code}:${d.where ?? ''}:${i}`;
+            const at = diagnosticScene(d, sceneIds);
+            const body = (
+              <>
+                <span className="code">{d.code}</span>
+                <span className="msg">{d.message}</span>
+              </>
+            );
+            // A diagnostic that names a scene is a way into it: the report becomes navigation.
+            // One that doesn't — a character sheet, a `start:` naming nothing — stays a row.
+            return at ? (
+              <button
+                className={`diag ${d.severity} at`}
+                key={key}
+                onClick={() => props.openScene(at)}
+                title={`Open ${at} in the script column`}
+              >
+                {body}
+              </button>
+            ) : (
+              <div className={`diag ${d.severity}`} key={key}>
+                {body}
+              </div>
+            );
+          })}
         </div>
       )}
       <div className="rail-group">
