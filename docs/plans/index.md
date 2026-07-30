@@ -46,6 +46,7 @@ Two batches carry extra working detail of their own, and both are now complete:
 | [`scene-edit-package.md`](scene-edit-package.md) | shipped | The scene-edit rules and write path now live in `@vn/scriptedit` (pure barrel; `@vn/scriptedit/write` for the filesystem half), where `vnauthor` can reach them |
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | shipped | Retyping a line in the coverage timeline, and `Shot.proseHash` → the drift mark on the shot it produced |
 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | shipped | STUDIO's `script` mode — a column that writes, inserts, deletes, reorders and attributes lines, the confirmed acts that change which scenes exist, clickable diagnostics, and the end-to-end pass: a scene written in the app, generated, watched in PLAY |
+| [`task-failure-visibility-and-retry.md`](task-failure-visibility-and-retry.md) | planned | `Task.error` so a failed task records why, a bounded retry on the next run, and a run report derived from the live plan instead of claiming success over a failure |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 
 ## Scene authoring
