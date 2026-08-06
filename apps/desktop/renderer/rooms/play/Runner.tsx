@@ -157,7 +157,12 @@ export function Runner(): JSX.Element {
   const atEnd = cur.frameIndex >= frames.length;
   const frame = atEnd ? frames[frames.length - 1] : frames[cur.frameIndex];
   const bgUrl = assetUrl(frame?.bg);
-  const portraitRef = frame?.portraitWho ? play.characters[frame.portraitWho]?.portrait : undefined;
+  // A shot prompt names its own subjects, so the frame already shows the cast; staging a
+  // portrait on top of it is the project's opt-in, not the runner's default.
+  const portraitRef =
+    play.portraitOverlay && frame?.portraitWho
+      ? play.characters[frame.portraitWho]?.portrait
+      : undefined;
   const portraitUrl = assetUrl(portraitRef);
   const speakerName = frame?.speaker ? (play.characters[frame.speaker]?.name ?? frame.speaker) : '';
 

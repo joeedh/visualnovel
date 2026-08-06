@@ -74,6 +74,11 @@ export const playableSchema = z.object({
   title: z.string(),
   /** Entry scene id. */
   start: z.string().optional(),
+  /**
+   * Draw the speaking character's portrait over the shot image. Defaulted rather than optional
+   * so every consumer reads a plain boolean, and a file written before the field still parses.
+   */
+  portraitOverlay: z.boolean().default(false),
   characters: z.record(z.string(), playableCharacterSchema).default({}),
   scenes: z.record(z.string(), playableSceneSchema).default({}),
 });

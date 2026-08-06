@@ -672,14 +672,20 @@ export class WorkspaceSession {
   async playable(): Promise<Playable> {
     const project = await loadProject(this.dir);
     const shots = await loadSceneShots(project.paths, project.model);
-    return buildPlayable(project.model, project.store, shots);
+    return buildPlayable(project.model, project.store, {
+      shots,
+      portraitOverlay: project.config.portrait_overlay,
+    });
   }
 
   /** Write the playable to `vngen/build/story.play.json` — the `vngen export` equivalent. */
   async exportPlayable(): Promise<{ path: string; scenes: number }> {
     const project = await loadProject(this.dir);
     const shots = await loadSceneShots(project.paths, project.model);
-    const playable = buildPlayable(project.model, project.store, shots);
+    const playable = buildPlayable(project.model, project.store, {
+      shots,
+      portraitOverlay: project.config.portrait_overlay,
+    });
     await writeFileAtomic(project.paths.storyPlay, JSON.stringify(playable, null, 2) + '\n');
     return { path: project.paths.storyPlay, scenes: Object.keys(playable.scenes).length };
   }

@@ -297,6 +297,10 @@ The third room is the runner, in `renderer/rooms/play/Runner.tsx`:
 - **Image delivery — `vnasset://`.** A privileged custom protocol (registered in
   `src/main/index.ts`) streams `build/assets/<hash>.<ext>` for `vnasset://<hash>.<ext>`, so
   `<img src="vnasset://…">` loads content-addressed bytes. This is the app's only image path.
+- **No portrait over the shot unless the project asked.** A shot prompt names its own subjects,
+  so the frame already shows the cast; the speaker's portrait is staged over it only when
+  `story.play.json` says `portraitOverlay`, from `project.yaml`'s `portrait_overlay` —
+  [`playable-format.md`](playable-format.md#contracts).
 - **Playthrough.** State is a navigation stack (`{ sceneId, frameIndex }[]`, last = current):
   click / Space / → advances a beat; at scene end it shows choice buttons or auto-follows
   `next`; a leaf scene shows "The End". **Back** (← / Backspace) rewinds. **Save / Load /

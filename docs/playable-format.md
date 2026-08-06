@@ -17,14 +17,16 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
 ## Shape
 
 `vngen export [dir]` writes `vngen/build/story.play.json` via
-`buildPlayable(model, store, shots?)` (pure, in `@vn/export`; the optional third argument is
-covered under Contracts). Each scene flattens into ordered **beats** plus its branch edges:
+`buildPlayable(model, store, opts?)` (pure, in `@vn/export`; `opts` carries the persisted
+`shots` and `portraitOverlay`, both covered under Contracts). Each scene flattens into ordered
+**beats** plus its branch edges:
 
 ```jsonc
 {
   "version": 1,
   "title": "…",
   "start": "arrival", // entry scene id
+  "portraitOverlay": false, // project.yaml's portrait_overlay; always written
   "characters": { "aiko": { "name": "Aiko", "portrait": { "hash": "…", "ext": "png" } } },
   "scenes": {
     "arrival": {
@@ -54,6 +56,16 @@ covered under Contracts). Each scene flattens into ordered **beats** plus its br
   reader of a screenplay, not a line of the story — so a shot may cover it, and covering it
   still changes the frame above (the `show` beat is emitted), but the transition itself is not
   said or narrated. It is the one `SceneLine.kind` with no beat of its own.
+- **The shot is the whole picture, so a portrait overlay is opt-in.** `buildShotPrompt` names
+  the shot's subjects, so a frame with a cast already _is_ a picture of that cast — staging a
+  portrait over it draws the same character twice. `portraitOverlay` mirrors `project.yaml`'s
+  `portrait_overlay` (default `false`) and is written even when off, because unlike an absent
+  asset ref it is a knob and not a not-yet. The character's `portrait` ref is exported either
+  way: the flag is presentation, so turning it on is never a re-export. **If you do turn it
+  on**, be warned the P3 portrait is prompted for a "plain neutral background"
+  (`packages/pipeline/src/prompts.ts`) — an opaque plate, not a keyed cutout, so it lands as a
+  rectangle. A real sprite asset with an alpha channel is unbuilt work
+  ([`plans/portrait-overlay-opt-in.md`](plans/portrait-overlay-opt-in.md)).
 - **Asset refs are `{hash, ext}`**, resolved by the runner (never inlined). A missing asset is
   **omitted, not an error** — a partially- or un-generated project still plays (placeholder
   background/portrait).

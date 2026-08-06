@@ -85,6 +85,14 @@ export const projectConfig = z.object({
    * critique→refine loop *within* a single run of one shot task.
    */
   max_task_attempts: z.number().int().positive().default(2),
+  /**
+   * Draw the speaking character's portrait over the shot image in a runner. Off by default
+   * because a shot prompt names its own subjects, so the frame already contains them and an
+   * overlay is the same character twice. Turning it on stages the classic
+   * background-plus-sprite look — but against a P3 portrait, which is an opaque plate and not
+   * a keyed cutout (docs/plans/portrait-overlay-opt-in.md).
+   */
+  portrait_overlay: z.boolean().default(false),
 });
 export type ProjectConfig = z.infer<typeof projectConfig>;
 

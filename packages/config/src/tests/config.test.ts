@@ -18,6 +18,7 @@ describe('loadConfig', () => {
     expect(config.concurrency).toBe(4);
     expect(config.max_refine_attempts).toBe(4);
     expect(config.max_task_attempts).toBe(2);
+    expect(config.portrait_overlay).toBe(false);
     expect(config.start).toBeUndefined();
   });
 

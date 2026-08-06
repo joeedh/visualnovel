@@ -47,6 +47,7 @@ Two batches carry extra working detail of their own, and both are now complete:
 | [`line-editing-in-floor.md`](line-editing-in-floor.md) | shipped | Retyping a line in the coverage timeline, and `Shot.proseHash` → the drift mark on the shot it produced |
 | [`script-composition-in-studio.md`](script-composition-in-studio.md) | shipped | STUDIO's `script` mode — a column that writes, inserts, deletes, reorders and attributes lines, the confirmed acts that change which scenes exist, clickable diagnostics, and the end-to-end pass: a scene written in the app, generated, watched in PLAY |
 | [`task-failure-visibility-and-retry.md`](task-failure-visibility-and-retry.md) | shipped | `Task.error` so a failed task records why, a bounded retry on the next run, a run report derived from the live plan instead of claiming success over a failure, and in-place backend retry for transient provider errors |
+| [`portrait-overlay-opt-in.md`](portrait-overlay-opt-in.md) | shipped | The shot is the whole picture: `portrait_overlay` (default off) → `story.play.json`'s `portraitOverlay`, so PLAY stops staging a second copy of the speaker over a frame that already contains them |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 
 ## Scene authoring

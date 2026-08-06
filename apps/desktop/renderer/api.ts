@@ -86,6 +86,7 @@ const MOCK_PLAYABLE: Playable = {
   version: 1,
   title: 'sample',
   start: 'rooftop_intro',
+  portraitOverlay: false,
   characters: {
     aiko: { name: 'Aiko' },
     haruki: { name: 'Haruki' },

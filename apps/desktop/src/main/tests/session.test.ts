@@ -63,6 +63,9 @@ describe('WorkspaceSession — reading a project', () => {
     const play = await sessionFor(p).playable();
     expect(play.start).toBe('arrival');
     expect(play.characters['aiko']!.portrait).toBeUndefined();
+    // The session reads it off `project.yaml`; a build that forgets to is how the runner ends
+    // up staging portraits nobody asked for.
+    expect(play.portraitOverlay).toBe(false);
   });
 });
 

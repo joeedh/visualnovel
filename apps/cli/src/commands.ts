@@ -194,9 +194,15 @@ export async function cmdExport(args: Args): Promise<number> {
     reportDiagnostics(project.model);
   }
   const shots = await loadSceneShots(project.paths, project.model);
-  const playable = buildPlayable(project.model, project.store, shots);
+  const playable = buildPlayable(project.model, project.store, {
+    shots,
+    portraitOverlay: project.config.portrait_overlay,
+  });
   await writePlayable(project.paths, playable);
   ok(`Exported ${Object.keys(playable.scenes).length} scene(s) → ${project.paths.storyPlay}`);
+  if (playable.portraitOverlay) {
+    ok('Portrait overlay is on — a runner draws the speaker over the shot image.');
+  }
   return 0;
 }
 

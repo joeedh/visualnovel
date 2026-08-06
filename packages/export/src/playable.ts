@@ -145,6 +145,14 @@ function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[
   return beats;
 }
 
+/** Everything the projection needs beyond the model and the store. */
+export interface PlayableOptions {
+  /** Persisted decompositions — {@link loadSceneShots}'s result. */
+  shots?: ReadonlyMap<string, readonly Shot[]>;
+  /** `project.yaml`'s `portrait_overlay`; see {@link Playable.portraitOverlay}. */
+  portraitOverlay?: boolean;
+}
+
 /**
  * Build the in-memory {@link Playable} from a project model + its asset store. Pure; hand it
  * {@link loadSceneShots}'s result whenever the model came off disk rather than out of a run.
@@ -152,8 +160,9 @@ function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[
 export function buildPlayable(
   model: ProjectModel,
   store: AssetStore,
-  shots?: ReadonlyMap<string, readonly Shot[]>,
+  opts: PlayableOptions = {},
 ): Playable {
+  const { shots, portraitOverlay = false } = opts;
   const assets = new AssetIndex(store.manifest());
 
   const characters: Playable['characters'] = {};
@@ -175,6 +184,9 @@ export function buildPlayable(
     version: 1,
     title: model.title,
     ...(model.entry ? { start: model.entry } : {}),
+    // Written even when false. A missing asset ref means "not generated yet"; this is a knob,
+    // and an author reading story.play.json should see it is there and off.
+    portraitOverlay,
     characters,
     scenes,
   };

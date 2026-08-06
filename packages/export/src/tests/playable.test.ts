@@ -125,6 +125,19 @@ describe('buildPlayable', () => {
     const play = buildPlayable(withApproved, fakeStore());
     expect(play.characters['aiko']!.portrait).toEqual({ hash: 'approved-hash', ext: 'png' });
   });
+
+  // The flag is presentation only: the ref is exported either way, so turning the overlay on
+  // is a runner's decision to make and never a re-export.
+  it('says the portrait overlay is off unless the project asked for it', () => {
+    const store = fakeStore([
+      asset({ hash: 'por1', kind: 'portrait', satisfies: { characterId: 'aiko' } }),
+    ]);
+    expect(buildPlayable(model, store).portraitOverlay).toBe(false);
+
+    const on = buildPlayable(model, store, { portraitOverlay: true });
+    expect(on.portraitOverlay).toBe(true);
+    expect(on.characters['aiko']!.portrait).toEqual({ hash: 'por1', ext: 'png' });
+  });
 });
 
 describe('persisted decompositions', () => {
@@ -157,7 +170,7 @@ describe('persisted decompositions', () => {
     const guessed = buildPlayable(model, store).scenes['arrival']!.beats;
     expect(guessed.filter((b) => b.type === 'show' && b.image)).toHaveLength(0);
 
-    const play = buildPlayable(model, store, new Map([['arrival', llmShots()]]));
+    const play = buildPlayable(model, store, { shots: new Map([['arrival', llmShots()]]) });
     const shows = play.scenes['arrival']!.beats.filter((b) => b.type === 'show');
     // One shot covers every line, so the image is shown once and never changes.
     expect(shows).toHaveLength(1);
