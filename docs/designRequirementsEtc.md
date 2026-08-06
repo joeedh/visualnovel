@@ -1,3 +1,16 @@
+
+
+<!-- toc -->
+
+- [Authoring](#authoring)
+  * [Approval Pipeline](#approval-pipeline)
+  * [Example workflow](#example-workflow)
+  * [Scene Ordering](#scene-ordering)
+- [AI agent](#ai-agent)
+- [UX](#ux)
+
+<!-- tocstop -->
+
 This app is a full production system for visual novel production via 
 generative AI.
 Note that this also has applications for manga production and 
@@ -73,9 +86,3 @@ the story project.
 
 The UX will be a 2d subdividing dockable UX that subdivides into 'editors'.  Each editor can optionally 
 have a header (which may have menus or icons), a footer, and sidebar panels.
-
-
-
-
-
-

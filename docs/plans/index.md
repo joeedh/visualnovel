@@ -49,6 +49,7 @@ Two batches carry extra working detail of their own, and both are now complete:
 | [`task-failure-visibility-and-retry.md`](task-failure-visibility-and-retry.md) | shipped | `Task.error` so a failed task records why, a bounded retry on the next run, a run report derived from the live plan instead of claiming success over a failure, and in-place backend retry for transient provider errors |
 | [`portrait-overlay-opt-in.md`](portrait-overlay-opt-in.md) | shipped | The shot is the whole picture: `portrait_overlay` (default off) → `story.play.json`'s `portraitOverlay`, so PLAY stops staging a second copy of the speaker over a frame that already contains them |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
+| [`refactorTaskList.md`](refactorTaskList.md) | — | Not a plan; the master tracker for the [`designRequirementsEtc.md`](../designRequirementsEtc.md) refactor — the path.ux UX rewrite and the structural plans the [migration report](../research/codebase-migration-for-new-requirements.md) calls for |
 
 ## Scene authoring
 
