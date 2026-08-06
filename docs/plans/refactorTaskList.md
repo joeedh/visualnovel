@@ -28,8 +28,8 @@ scope, [`index.md`](index.md) stays the authority on status.
 | # | Item | Status | Plan / artifact |
 | --- | --- | --- | --- |
 | 0 | Codebase migration report — how the non-UX codebase gets to the new requirements | **written** | [`../research/codebase-migration-for-new-requirements.md`](../research/codebase-migration-for-new-requirements.md) |
-| 1 | Desktop app rewrite on path.ux (submodule, screen mesh, editors as Areas, keymaps, theme) | needs plan | `pathux-desktop-rewrite.md` (name reserved) |
-| 2 | Entity discovery by meta tag (character/location files found by tag, not fixed path; `LoadedInputs` carries source paths for all doc kinds) | needs plan | — |
+| 1 | Desktop app rewrite on path.ux (submodule, screen mesh, editors as Areas, keymaps, theme) | **planned** | [`pathux-desktop-rewrite.md`](pathux-desktop-rewrite.md) |
+| 2 | Entity discovery by meta tag (character/location files found by tag, not fixed path; `LoadedInputs` carries source paths for all doc kinds) | **planned** | [`entity-discovery-by-meta-tag.md`](entity-discovery-by-meta-tag.md) |
 | 3 | Story bible / `wiki/` subtree + retrieval (grep-first), agent tools over it | needs plan | — |
 | 4 | Repo map + commit-on-save policy (multi-repo: project / wiki / base assets; revisit of [`../gitUndoOptions.md`](../gitUndoOptions.md) under the new constraint) | needs plan | — |
 | 5 | Base vs project asset store split (two content-addressed roots, one provenance story) | needs plan | — |

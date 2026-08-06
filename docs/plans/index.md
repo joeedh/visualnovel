@@ -50,6 +50,8 @@ Two batches carry extra working detail of their own, and both are now complete:
 | [`portrait-overlay-opt-in.md`](portrait-overlay-opt-in.md) | shipped | The shot is the whole picture: `portrait_overlay` (default off) → `story.play.json`'s `portraitOverlay`, so PLAY stops staging a second copy of the speaker over a frame that already contains them |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 | [`refactorTaskList.md`](refactorTaskList.md) | — | Not a plan; the master tracker for the [`designRequirementsEtc.md`](../designRequirementsEtc.md) refactor — the path.ux UX rewrite and the structural plans the [migration report](../research/codebase-migration-for-new-requirements.md) calls for |
+| [`entity-discovery-by-meta-tag.md`](entity-discovery-by-meta-tag.md) | planned | Characters/locations found by front-matter `type:` tag across `characters/`, `locations/` and `wiki/**`; `EntityDoc` carries the source path so no writer re-derives one; id/filename agreement and duplicate diagnostics |
+| [`pathux-desktop-rewrite.md`](pathux-desktop-rewrite.md) | planned | The renderer rebuilt on path.ux (submodule): subdividing screen, seven editors ported cheapest-first behind a flag, one selection, per-area keymaps, the room vocabulary retired, React removed |
 
 ## Scene authoring
 
