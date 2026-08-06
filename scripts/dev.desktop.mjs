@@ -11,12 +11,14 @@
  * No extra dependencies: process orchestration is hand-rolled over `node:child_process`
  * and global `fetch`. Quitting Electron (or Ctrl-C) tears the whole tree down.
  *
- * Env: `VN_DEV_PORT` overrides the renderer port (default 5176); `VN_MOCK`/`VN_PROJECT`
- * pass straight through to the main process (mock sample project by default).
- * `VN_CDP_PORT` (default 9222 in this loop only) opens the remote-debugging port that
- * `scripts/vn-cdp.mjs` drives.
+ * Env: `VN_DEV_PORT` overrides the renderer port; `VN_MOCK`/`VN_PROJECT` pass straight through
+ * to the main process as fallbacks for its `--mock`/`--project <dir>` flags (real mode, sample
+ * workspace, by default — same as a packaged run). `VN_CDP_PORT` (default 9222 in this loop
+ * only) opens the remote-debugging port that `scripts/vn-cdp.mjs` drives. Any args after the
+ * script's own are forwarded to Electron, so `node scripts/dev.desktop.mjs --mock` works.
  *
- * Usage: `node scripts/dev.desktop.mjs`  (or `pnpm --filter @vn/desktop dev`)
+ * Usage: `node scripts/dev.desktop.mjs [--mock] [--project <dir>]`
+ *   (or `pnpm --filter @vn/desktop dev -- --mock`)
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -88,7 +90,7 @@ if (!(await waitForServer(devUrl))) {
 process.stdout.write(`dev: renderer up at ${devUrl} — launching Electron…\n`);
 // The dev loop opts into CDP so `scripts/vn-cdp.mjs` works out of the box; a packaged app
 // never opens the port unless the operator sets VN_CDP_PORT themselves.
-const electron = run('pnpm', ['exec', 'electron', '.'], {
+const electron = run('pnpm', ['exec', 'electron', '.', ...process.argv.slice(2)], {
   cwd: desktop,
   env: {
     ...process.env,

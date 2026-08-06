@@ -519,8 +519,8 @@ the hash, and the FLOOR inspector needs both halves to build a `vnasset://<hash>
   same panel is last-flush-wins. A lock left behind by a killed instance is broken after 5s.
 
 ### Switching workspaces
-- App only supports one workspace at a time, resolved once at startup: `VN_PROJECT` if set,
-  otherwise `examples/mySampleRepo`, seeded from `examples/sample` on first launch
-  (`src/main/workspace.ts`).
-- Restart the app with a different `VN_PROJECT` to switch.
+- App only supports one workspace at a time, resolved once at startup: `--project <dir>` (or
+  the `VN_PROJECT` env fallback) if given, otherwise `examples/mySampleRepo`, seeded from
+  `examples/sample` on first launch (`src/main/workspace.ts`).
+- Restart the app with a different `--project` to switch.
 

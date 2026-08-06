@@ -161,8 +161,10 @@ Start the dev loop; it wires up everything the rest of this section uses:
 pnpm --filter @vn/desktop dev     # vite HMR + esbuild watch + electron, CDP on 9222
 ```
 
-Renderer edits hot-reload; **main-process edits need an app restart**. `VN_PROJECT`,
-`VN_MOCK`, `VN_DEV_PORT`, `VN_CDP_PORT` all pass through.
+Renderer edits hot-reload; **main-process edits need an app restart**. `--mock`/`--project
+<dir>` (or their `VN_MOCK=1`/`VN_PROJECT=<dir>` env fallbacks) and `VN_DEV_PORT`, `VN_CDP_PORT`
+all pass through — the dev loop runs for real by default, same as a packaged build, so add
+`--mock` when you don't want live model calls.
 
 ### Is the running app your app?
 

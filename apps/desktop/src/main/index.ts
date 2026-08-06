@@ -4,13 +4,15 @@
  * response); main → renderer pushes (agent events, plan-approval requests) go over
  * `webContents.send`.
  *
- * Defaults are offline-safe: the workspace is a scratch repo seeded from the bundled sample
- * (see `./workspace.ts`) and the session runs in mock mode unless `VN_MOCK=0` is set (which
- * then requires a real key). Override the workspace with `VN_PROJECT=<dir>`.
+ * Runs for real by default: pass `--mock` to skip model calls (mock providers, no key
+ * required). The workspace is `--project <dir>` if given, else a scratch repo seeded from the
+ * bundled sample (see `./workspace.ts`). `VN_MOCK=1` / `VN_PROJECT=<dir>` are equivalent
+ * fallbacks for callers that pass env instead of argv (e.g. `scripts/dev.desktop.mjs`); a CLI
+ * flag wins over its env-var counterpart when both are given.
  */
 import { app, BrowserWindow, ipcMain, net, protocol } from 'electron';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ProjectPaths } from '@vn/store';
 import { openGit } from '@vn/git';
@@ -30,8 +32,30 @@ import type {
   UiEffect,
 } from '../shared/ipc.js';
 
+/** `--mock` / `--project <dir>` (also `--project=<dir>`), parsed from the app's own argv. */
+interface CliArgs {
+  mock: boolean;
+  project?: string;
+}
+
+function parseArgs(argv: string[]): CliArgs {
+  let mock = false;
+  let project: string | undefined;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === '--mock') mock = true;
+    else if (arg === '--project') project = argv[++i];
+    else if (arg.startsWith('--project=')) project = arg.slice('--project='.length);
+  }
+  return { mock, project };
+}
+
+// Electron's own argv carries an extra `appPath` ('.') entry when running unpackaged
+// (`electron .`) that a packaged executable's argv does not.
+const cliArgs = parseArgs(process.argv.slice(app.isPackaged ? 1 : 2));
+
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
-const MOCK = process.env.VN_MOCK !== '0';
+const MOCK = cliArgs.mock || process.env.VN_MOCK === '1';
 
 /**
  * Opt-in, off by default: the remote-debugging port grants full control of the renderer, so
@@ -68,15 +92,16 @@ function workspace(): string {
 }
 
 /**
- * Resolve the workspace once, before anything can ask for it. `VN_PROJECT` wins; otherwise
- * the app seeds and opens `examples/mySampleRepo` beside the template, so a run never writes
- * into the source tree. A packaged build has no repo-relative `examples/`, so the scratch
- * workspace goes under `userData` — and a missing template then fails by name rather than as
- * a bare ENOENT somewhere downstream.
+ * Resolve the workspace once, before anything can ask for it. `--project` (or `VN_PROJECT`)
+ * wins; otherwise the app seeds and opens `examples/mySampleRepo` beside the template, so a
+ * run never writes into the source tree. A packaged build has no repo-relative `examples/`, so
+ * the scratch workspace goes under `userData` — and a missing template then fails by name
+ * rather than as a bare ENOENT somewhere downstream.
  */
 async function resolveWorkspace(): Promise<void> {
-  if (process.env.VN_PROJECT) {
-    workspaceRoot = process.env.VN_PROJECT;
+  const project = cliArgs.project ?? process.env.VN_PROJECT;
+  if (project) {
+    workspaceRoot = resolvePath(project);
     return;
   }
   const examples = join(__dirname, '..', '..', '..', '..', 'examples');

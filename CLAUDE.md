@@ -267,9 +267,9 @@ Rules worth knowing before touching the renderer:
   scene) shows `stack.check`'s sentence and commits on a second gesture. No document is diffed on
   save, and there is no second write path for prose.
 
-Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start` (mock mode by
-default; `VN_PROJECT=<dir>` overrides the workspace). Live dev loop:
-`pnpm --filter @vn/desktop dev`.
+Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start -- --mock` (runs for
+real by default — pass `--mock` to skip model calls; `--project <dir>` overrides the
+workspace). Live dev loop: `pnpm --filter @vn/desktop dev -- --mock`.
 
 ## Command system
 

@@ -23,19 +23,20 @@
 ## Running it
 
 ```sh
-pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start   # mock mode by default
-pnpm --filter @vn/desktop dev                                        # live dev loop
+pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start -- --mock   # runs for real by default; --mock skips model calls
+pnpm --filter @vn/desktop dev -- --mock                                       # live dev loop
 ```
 
-`VN_PROJECT=<dir>` overrides the workspace.
+`--project <dir>` overrides the workspace (`VN_PROJECT=<dir>` is an equivalent env fallback).
 
 **Live dev loop:** `pnpm --filter @vn/desktop dev` (`scripts/dev.desktop.mjs`) runs the three
 moving parts together — esbuild `--watch` (main + preload), the Vite renderer server with HMR,
 and Electron launched against it once it's up (`VITE_DEV_SERVER_URL`, which
 `src/main/index.ts` loads instead of the built file). Quitting the window (or Ctrl-C) tears the
-whole tree down. `VN_DEV_PORT` overrides the renderer port (default 5176); `VN_MOCK`/
-`VN_PROJECT` pass through to the main process. Main-process edits need a restart (the renderer
-hot-reloads on its own). The dev loop also defaults `VN_CDP_PORT=9222` — see
+whole tree down. `VN_DEV_PORT` overrides the renderer port (default 5176); any args after the
+script's own (e.g. `--mock`, `--project <dir>`) are forwarded to Electron, and `VN_MOCK`/
+`VN_PROJECT` still pass through as env fallbacks. Main-process edits need a restart (the
+renderer hot-reloads on its own). The dev loop also defaults `VN_CDP_PORT=9222` — see
 [`command-system.md`](command-system.md).
 
 ## Renderer layout
