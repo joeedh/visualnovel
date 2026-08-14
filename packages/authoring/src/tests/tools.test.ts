@@ -7,7 +7,9 @@ import type { Shot } from '@vn/types';
 import {
   createRegistry,
   describeToolParams,
+  isGenerated,
   Workspace,
+  GENERATED_CONTEXT_FILE,
   type Tool,
   type ToolContext,
 } from '../index.js';
@@ -50,7 +52,20 @@ Hello.
 `,
   greet: '---\nscene: greet\n---\n\nINT. CLASSROOM - AFTERNOON\n\n[[next: ending]]\n',
   observe: '---\nscene: observe\n---\n\nINT. CLASSROOM - EVENING\n\n[[next: ending]]\n',
-  ending: '---\nscene: ending\n---\n\nINT. CLASSROOM - EVENING\n\nThe end.\n',
+  // Three lines, so it can hold two shots and therefore an order worth changing.
+  ending: `---
+scene: ending
+---
+
+INT. CLASSROOM - EVENING
+
+The end.
+
+AIKO
+Goodbye.
+
+She leaves.
+`,
 };
 
 async function tempProject(): Promise<{
@@ -81,6 +96,76 @@ function tool(name: string): Tool {
 }
 const run = (name: string, args: unknown, ctx: ToolContext) =>
   tool(name).run(tool(name).args.parse(args), ctx);
+
+describe('the generated project map', () => {
+  it('maps a real project, and re-running it writes the same bytes', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const first = await ctx.workspace.writeGeneratedContext();
+      expect(first.file).toBe(join(dir, GENERATED_CONTEXT_FILE));
+      expect(first.counts).toEqual({ characters: 1, locations: 1, scenes: 4, bible: 0 });
+
+      const text = await fs.readFile(first.file, 'utf8');
+      expect(isGenerated(text)).toBe(true);
+      // Paths are relative to the project, so the map is the same on anyone's machine.
+      expect(text).toContain('characters/aiko/character.md');
+      expect(text).toContain('outfits: uniform (default)');
+      expect(text).toContain('## Scenes (4) — entry: arrival');
+      expect(text).not.toContain(dir);
+
+      await ctx.workspace.writeGeneratedContext();
+      expect(await fs.readFile(first.file, 'utf8')).toBe(text);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("lists the bible's headings without a line of what a note says", async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await fs.mkdir(join(dir, 'wiki', 'history'), { recursive: true });
+      await fs.writeFile(
+        join(dir, 'wiki', 'history', 'the-war.md'),
+        '# The War\n\n## Casualties\n\nEveryone in the third district.\n',
+      );
+      const { counts } = await ctx.workspace.writeGeneratedContext();
+      expect(counts.bible).toBe(1);
+
+      const text = await fs.readFile(join(dir, GENERATED_CONTEXT_FILE), 'utf8');
+      expect(text).toContain('- history/the-war.md "The War" — The War, Casualties');
+      expect(text).not.toContain('third district');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses over a file nobody generated, and writes nothing', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const file = join(dir, GENERATED_CONTEXT_FILE);
+      await fs.writeFile(file, 'Hand-written notes I would like to keep.\n');
+      await expect(ctx.workspace.writeGeneratedContext()).rejects.toThrow(/move or delete it/);
+      expect(await fs.readFile(file, 'utf8')).toBe('Hand-written notes I would like to keep.\n');
+
+      const state = await ctx.workspace.generatedContext();
+      expect(state).toEqual({ file, exists: true, generated: false });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('is reachable as the regenerate_context tool', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const res = await run('regenerate_context', {}, ctx);
+      expect(res.ok).toBe(true);
+      expect(res.written).toEqual([GENERATED_CONTEXT_FILE]);
+      expect(await fs.readFile(join(dir, GENERATED_CONTEXT_FILE), 'utf8')).toContain('Project map');
+    } finally {
+      await cleanup();
+    }
+  });
+});
 
 describe('workspace index', () => {
   it('lists characters, locations, and scenes', async () => {
@@ -129,6 +214,138 @@ describe('workspace index', () => {
         'observe',
       ]);
       expect(index.diagnostics.map((d) => d.code)).toEqual(['stray_screenplay']);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+// An author who files a character in the bible has still written a character. Every surface
+// here — the index, the search, the editor — has to find it where it actually is.
+describe('an entity discovered in the wiki', () => {
+  const REN = `---
+id: ren
+type: character
+name: Ren
+status: draft
+default_outfit: uniform
+palette: ['#2a441a']
+traits: [wry]
+reference_images: []
+---
+
+Ren keeps the roof key.
+`;
+
+  async function withWikiRen() {
+    const t = await tempProject();
+    await fs.mkdir(join(t.dir, 'wiki', 'cast'), { recursive: true });
+    await fs.writeFile(join(t.dir, 'wiki', 'cast', 'ren.md'), REN);
+    return t;
+  }
+
+  it('is indexed at the file it lives in, not at a conventional path', async () => {
+    const { ctx, dir, cleanup } = await withWikiRen();
+    try {
+      const index = await ctx.workspace.index();
+      expect(index.characters.map((c) => c.id).sort()).toEqual(['aiko', 'ren']);
+      const ren = index.characters.find((c) => c.id === 'ren')!;
+      expect(ren.file).toBe(join(dir, 'wiki', 'cast', 'ren.md'));
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('is patched in place by edit_character', async () => {
+    const { ctx, dir, cleanup } = await withWikiRen();
+    try {
+      const r = await run('edit_character', { id: 'ren', status: 'approved' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['wiki/cast/ren.md']);
+      const text = await fs.readFile(join(dir, 'wiki', 'cast', 'ren.md'), 'utf8');
+      expect(text).toContain('status: approved');
+      expect(text).toContain('type: character');
+      expect(text).toContain('Ren keeps the roof key.');
+      // The conventional path is where a *new* sheet would go; nothing was created there.
+      await expect(fs.access(join(dir, 'characters', 'ren'))).rejects.toThrow();
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('is reported missing rather than scaffolded when no sheet claims the id', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const r = await run('edit_character', { id: 'nobody', status: 'approved' }, ctx);
+      expect(r.ok).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('is visible to discovery and to retrieval, and neither changes the other answer', async () => {
+    const { ctx, cleanup } = await withWikiRen();
+    try {
+      const before = await ctx.workspace.index();
+      const found = await run('search_bible', { query: 'roof key' }, ctx);
+      expect(found.ok).toBe(true);
+      expect(found.output).toContain('cast/ren.md');
+
+      const after = await ctx.workspace.index();
+      expect(after.characters).toEqual(before.characters);
+      expect(after.diagnostics).toEqual(before.diagnostics);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('search_bible', () => {
+  async function withBible(files: Record<string, string>) {
+    const t = await tempProject();
+    for (const [rel, text] of Object.entries(files)) {
+      const abs = join(t.dir, 'wiki', rel);
+      await fs.mkdir(join(abs, '..'), { recursive: true });
+      await fs.writeFile(abs, text);
+    }
+    return t;
+  }
+
+  it('reaches a file `search` does not', async () => {
+    const { ctx, cleanup } = await withBible({
+      'history/founding.md': '# The founding\n\nThe school was raised over a filled canal.\n',
+    });
+    try {
+      expect((await run('search', { query: 'canal' }, ctx)).data).toEqual([]);
+      const r = await run('search_bible', { query: 'canal' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('history/founding.md');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('says so plainly when nothing matches', async () => {
+    const { ctx, cleanup } = await withBible({ 'note.md': '# Note\n\nNothing of consequence.\n' });
+    try {
+      const r = await run('search_bible', { query: 'submarine' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.data).toEqual([]);
+      expect(r.output).toContain('Nothing in the bible');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('is counted — not pasted — by list_workspace', async () => {
+    const { ctx, cleanup } = await withBible({
+      'a.md': '# A\n\nOne.\n',
+      'deep/b.md': '# B\n\nA secret nobody asked for.\n',
+    });
+    try {
+      const r = await run('list_workspace', {}, ctx);
+      expect(r.output).toContain('Story bible: 2 file(s)');
+      expect(r.output).not.toContain('secret nobody asked for');
     } finally {
       await cleanup();
     }
@@ -386,6 +603,161 @@ describe('edit_scene', () => {
       const after = await readShots(paths, 'arrival');
       expect(after?.shots.map((s) => s.coversLines)).toEqual([[]]);
       expect(r.written).toContain('vngen/work/shots/arrival.json');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  /**
+   * The one act whose rule needs the storyboard rather than only costing it something. It moves
+   * prose, so it writes the chunk — and it moves whole shots, so the storyboard is untouched.
+   */
+  it('reorders a shot by moving the lines it covers, and leaves the storyboard alone', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const paths = new ProjectPaths(dir);
+      const shot = (id: string, coversLines: string[]): Shot => ({
+        id,
+        sceneId: 'ending',
+        framing: 'medium',
+        location: 'classroom',
+        subjects: [],
+        coversLines,
+        status: 'pending',
+      });
+      const shots = [
+        shot('ending__a', ['ending:L1']),
+        shot('ending__b', ['ending:L2', 'ending:L3']),
+      ];
+      await writeShots(paths, 'ending', shots);
+
+      const r = await run(
+        'edit_scene',
+        { op: 'moveShot', scene: 'ending', shot: 'ending__b' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['scenes/ending.md']);
+      expect(r.output).toContain('nothing drifts');
+
+      const text = await fs.readFile(join(dir, 'scenes', 'ending.md'), 'utf8');
+      expect(text.indexOf('Goodbye.')).toBeLessThan(text.indexOf('The end.'));
+      // The shots file is not in `written` and says exactly what it said before: a reorder moves
+      // whole shots, so no coverage changes and no line's own shot changes.
+      expect((await readShots(paths, 'ending'))?.shots).toEqual(shots);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses to reorder shots in a scene nothing has decomposed yet', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'edit_scene',
+        { op: 'moveShot', scene: 'arrival', shot: 'arrival__beat1' },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('no decomposition yet');
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+/**
+ * `set_outfit`: one sentence, two files. The rules it runs are `@vn/scriptedit`'s and are tested
+ * there, so what is asserted here is the seam — which level a `shot` argument picks, which file
+ * that level writes, and that a refusal arrives verbatim rather than reworded.
+ */
+describe('set_outfit', () => {
+  /** The wardrobe goes on through `edit_character`, which is how an author would author it. */
+  const dressAiko = (ctx: ToolContext) =>
+    run(
+      'edit_character',
+      { id: 'aiko', outfits: { uniform: 'School uniform.', track: 'Tracksuit.' } },
+      ctx,
+    );
+
+  it('marks a whole scene, splicing the marker into that chunk alone', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      expect((await dressAiko(ctx)).ok).toBe(true);
+      const r = await run(
+        'set_outfit',
+        { scene: 'arrival', character: 'aiko', outfit: 'track' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['scenes/arrival.md']);
+      const text = await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8');
+      expect(text).toContain('[[outfit: aiko=track]]');
+      expect(await fs.readFile(join(dir, 'scenes', 'greet.md'), 'utf8')).toBe(CHUNKS.greet);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('clears a marker and names the level that answers instead', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await dressAiko(ctx);
+      await run('set_outfit', { scene: 'arrival', character: 'aiko', outfit: 'track' }, ctx);
+      const r = await run('set_outfit', { scene: 'arrival', character: 'aiko', outfit: '' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('"uniform"');
+      const text = await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8');
+      expect(text).not.toContain('[[outfit:');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('overrides one shot, writing the storyboard and not the prose', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await dressAiko(ctx);
+      const paths = new ProjectPaths(dir);
+      const shot: Shot = {
+        id: 'arrival__beat1',
+        sceneId: 'arrival',
+        framing: 'medium',
+        location: 'classroom',
+        subjects: [{ characterId: 'aiko' }],
+        coversLines: ['arrival:L1'],
+        status: 'pending',
+      };
+      await writeShots(paths, 'arrival', [shot]);
+
+      const r = await run(
+        'set_outfit',
+        { scene: 'arrival', shot: 'arrival__beat1', character: 'aiko', outfit: 'track' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['vngen/work/shots/arrival.json']);
+      const after = await readShots(paths, 'arrival');
+      expect(after?.shots[0]!.subjects).toEqual([{ characterId: 'aiko', outfit: 'track' }]);
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('passes the wardrobe refusal through, listing what the sheet does author', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'set_outfit',
+        { scene: 'arrival', character: 'aiko', outfit: 'track' },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      // Nothing authored a wardrobe yet, so the only outfit is the default the sheet names.
+      expect(r.output).toBe('"aiko" has no outfit "track" — they have "uniform".');
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
     } finally {
       await cleanup();
     }

@@ -31,7 +31,7 @@ import {
   type Coverage,
   type Edge,
 } from '../../../../src/shared/coverage.js';
-import { handleId, timelineCover } from '../../../../src/shared/interactions.js';
+import { handleId, timelineCover, timelineReorder } from '../../../../src/shared/interactions.js';
 import {
   commitOf,
   noticeForCheck,
@@ -39,9 +39,11 @@ import {
   type Notice,
 } from '../../../../src/shared/lineedit.js';
 import { ShotBracket } from './ShotBracket';
-import { previewOf } from './coverage.js';
+import { OutfitStrip } from './OutfitStrip';
+import { insertionRow, previewOf, shotDropTarget } from './coverage.js';
 import { GRAB_BLOCKED, canEdit, canGrab } from './editing.js';
 import { staleCount } from './drift.js';
+import { outfitInvocation, outfitRows, type OutfitRow } from './wardrobe.js';
 import type { Verdict } from '@vn/commands';
 import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../../src/shared/ipc';
 
@@ -56,12 +58,23 @@ interface Drag {
   verdict: Verdict | null;
 }
 
+/** The other gesture over the same brackets: dragging one bodily to another position. */
+interface Reorder {
+  shotId: string;
+  /** Every insertion point's verdict, judged once on the grab. Keyed by `TOP` or a shot id. */
+  verdicts: Map<string, Verdict>;
+  /** The insertion point under the pointer, and its verdict where it is a candidate. */
+  target: string;
+  verdict: Verdict | null;
+}
+
 export function Timeline(): JSX.Element {
   const [story, setStory] = useState<StoryGraph | null>(null);
   const [sceneId, setSceneId] = useState<string | null>(null);
   const [data, setData] = useState<SceneCoverage | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [reorder, setReorder] = useState<Reorder | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -69,7 +82,7 @@ export function Timeline(): JSX.Element {
   // nothing when the textarea is not the active element — so blur is the click-away path only, and
   // this says the edit is already settled and a late blur must not commit it a second time.
   const settled = useRef(false);
-  const mode = { editing, dragging: drag !== null };
+  const mode = { editing, dragging: drag !== null || reorder !== null };
 
   useEffect(() => {
     void api.invoke('story:graph').then((graph) => {
@@ -87,6 +100,7 @@ export function Timeline(): JSX.Element {
 
   const cov = useMemo(() => spansFor(data?.lines ?? [], data?.shots ?? []), [data]);
   const stale = staleCount(data?.shots ?? []);
+  const wardrobe = useMemo(() => outfitRows(data, selected), [data, selected]);
 
   // The drop drawn over the strip, never applied to it: re-deriving coverage per pointer move
   // re-lanes shots the author never touched. The strip changes on release, like a splice.
@@ -94,6 +108,11 @@ export function Timeline(): JSX.Element {
     () => (drag?.lines ? previewOf(cov, drag.shotId, drag.lines) : null),
     [cov, drag],
   );
+
+  // The row a reorder drop would insert above; `null` unless the pointer is over a candidate.
+  const dropRow = reorder?.verdict
+    ? insertionRow(cov.spans, reorder.target, cov.rows.length)
+    : null;
 
   // Only for a drop that would be accepted: tinting rows a refused claim cannot take would
   // promise an edit that is not going to happen.
@@ -144,6 +163,48 @@ export function Timeline(): JSX.Element {
       window.removeEventListener('pointerup', onUp);
     };
   }, [cov, drag, sceneId]);
+
+  // The reorder's own window-level pass. Same shape as the coverage drag — judge on the grab, read
+  // the answer off per pointer move, commit the verdict's own invocation once on release — but the
+  // targets are the other shots, so the row under the pointer resolves to an insertion point.
+  useEffect(() => {
+    if (!reorder || !sceneId) return;
+    const onMove = (e: PointerEvent): void => {
+      const row = rowUnder(e.clientX, e.clientY);
+      if (row === null) return;
+      const target = shotDropTarget(cov.spans, row);
+      const verdict = target === reorder.shotId ? null : (reorder.verdicts.get(target) ?? null);
+      setReorder({ ...reorder, target, verdict });
+      setNotice(verdict ? noticeForVerdict(verdict) : null);
+    };
+    const onUp = (): void => {
+      const pending = reorder;
+      setReorder(null);
+      if (!pending.verdict) {
+        setNotice(null);
+        return;
+      }
+      if (!pending.verdict.accept) return;
+      void api
+        .invoke('command:exec', { ...pending.verdict.invoke, source: 'ui' })
+        .then((outcome) => {
+          if (!outcome.ok) {
+            setNotice({ tone: 'refused', text: outcome.error });
+            return;
+          }
+          setNotice({ tone: 'ok', text: outcome.record.message ?? 'Shot moved.' });
+          // The scene chunk was rewritten, so the strip is re-read rather than patched: the lines
+          // moved, and their lanes are derived from where they sit.
+          void api.invoke('story:coverage', sceneId).then(setData);
+        });
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [cov, reorder, sceneId]);
 
   // The precondition, asked as the author types. `story.setLineText`'s own note is where the count
   // of frames that will go on illustrating the old prose comes from, so the warning before the
@@ -200,6 +261,23 @@ export function Timeline(): JSX.Element {
     });
   };
 
+  /**
+   * A row's select, committed. The two levels write different files — the marker goes to the scene
+   * chunk, the override to the storyboard — so the strip is re-read rather than patched, and the
+   * command's own sentence is what the author is told either way.
+   */
+  const setOutfit = (row: OutfitRow, outfit: string): void => {
+    const invocation = outfitInvocation(row, outfit);
+    void api.invoke('command:exec', { ...invocation, source: 'ui' }).then((outcome) => {
+      if (!outcome.ok) {
+        setNotice({ tone: 'refused', text: outcome.error });
+        return;
+      }
+      setNotice({ tone: 'ok', text: outcome.record.message ?? 'Outfit set.' });
+      if (sceneId) void api.invoke('story:coverage', sceneId).then(setData);
+    });
+  };
+
   const scenes = story?.scenes ?? [];
 
   return (
@@ -241,7 +319,7 @@ export function Timeline(): JSX.Element {
             </div>
           )}
           <div
-            className={`tl-grid${drag ? ' dragging' : ''}`}
+            className={`tl-grid${mode.dragging ? ' dragging' : ''}`}
             style={{
               gridTemplateColumns: `minmax(0, 1.3fr)${cov.lanes ? ` repeat(${cov.lanes}, minmax(130px, 0.6fr))` : ''}`,
             }}
@@ -313,7 +391,7 @@ export function Timeline(): JSX.Element {
                   first={i === 0}
                   last={i === span.segments.length - 1}
                   selected={span.shot.id === selected}
-                  dragging={drag?.shotId === span.shot.id}
+                  dragging={drag?.shotId === span.shot.id || reorder?.shotId === span.shot.id}
                   onSelect={() => setSelected(span.shot.id)}
                   onGrab={(edge) => {
                     // The handle's pointerdown is prevented, so it never takes focus off an open
@@ -322,8 +400,26 @@ export function Timeline(): JSX.Element {
                     if (!canGrab(mode)) return setNotice(GRAB_BLOCKED);
                     setDrag(grab(data, span.shot.id, edge));
                   }}
+                  onReorder={() => {
+                    if (!canGrab(mode)) return setNotice(GRAB_BLOCKED);
+                    setReorder(grabShot(data, span.shot.id));
+                  }}
                 />
               )),
+            )}
+            {/* The reorder's whole preview: where the shot would land. The brackets themselves
+                hold still — a shot's position is where its lines sit, so a live preview would
+                have to move the prose too, and layout changes on commit. */}
+            {dropRow !== null && (
+              <div
+                className={`tl-drop${reorder?.verdict?.accept ? '' : ' refused'}${
+                  dropRow >= cov.rows.length ? ' end' : ''
+                }`}
+                style={{
+                  gridColumn: '1 / -1',
+                  gridRow: Math.min(dropRow, Math.max(cov.rows.length - 1, 0)) + 1,
+                }}
+              />
             )}
             {/* Drawn last and above the brackets: the ghost is what release would produce, in
                 the dragged shot's existing lane. A refused drop is still drawn — the reason is
@@ -339,6 +435,9 @@ export function Timeline(): JSX.Element {
               />
             ))}
           </div>
+          {/* Below the grid, not beside it: the wardrobe is per-scene and per-selected-shot, so it
+              has no row to sit on, and a column would compete with the brackets for width. */}
+          <OutfitStrip rows={wardrobe} shot={selected} onSet={setOutfit} />
           {cov.orphans.length > 0 && (
             <div className="tl-orphans">
               <span className="tt">COVERS NOTHING</span>
@@ -371,6 +470,24 @@ function grab(data: SceneCoverage | null, shotId: string, edge: Edge): Drag {
     edge,
     verdicts: new Map(verdicts.map((v) => [v.target, v])),
     lines: null,
+    verdict: null,
+  };
+}
+
+/**
+ * The reorder, judged in full when the bracket is picked up — `timeline.reorder`'s targets are the
+ * other shots, so this is one call for the whole gesture. The shot starts aimed at itself, which is
+ * not a target, so a click that never moves resolves to no verdict and commits nothing.
+ */
+function grabShot(data: SceneCoverage | null, shotId: string): Reorder {
+  const verdicts = timelineReorder.targets(
+    { sceneId: data?.sceneId ?? '', lines: data?.lines ?? [], shots: data?.shots ?? [] },
+    shotId,
+  );
+  return {
+    shotId,
+    verdicts: new Map(verdicts.map((v) => [v.target, v])),
+    target: shotId,
     verdict: null,
   };
 }

@@ -63,17 +63,17 @@ describe('prop form values', () => {
   });
 
   it('starts an enum at its first value, so the select is never blank', () => {
-    expect(blankValue(prop({ name: 'room', kind: 'enum', values: ['studio', 'floor'] }))).toBe(
-      'studio',
+    expect(blankValue(prop({ name: 'editor', kind: 'enum', values: ['script', 'branches'] }))).toBe(
+      'script',
     );
   });
 
   it('gives every declared prop a starting value', () => {
-    const command = entry('view.mode', 'Set mode', [
-      prop({ name: 'room', kind: 'enum', values: ['studio', 'floor'] }),
+    const command = entry('view.open', 'Show an editor', [
+      prop({ name: 'editor', kind: 'enum', values: ['script', 'branches'] }),
       prop({ name: 'mock', kind: 'boolean', default: true }),
     ]);
-    expect(blankProps(command)).toEqual({ room: 'studio', mock: true });
+    expect(blankProps(command)).toEqual({ editor: 'script', mock: true });
   });
 
   it('coerces an edited field back to its declared kind', () => {

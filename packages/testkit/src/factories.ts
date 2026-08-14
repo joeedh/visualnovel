@@ -6,7 +6,11 @@ import type { Character, Location, ProjectModel, Scene } from '@vn/types';
  * {@link makeProject} instead — these produce a model, not a run.
  */
 
-/** A character with one default outfit; `palette` is fixed so prompt assertions can pin it. */
+/**
+ * A character with one default outfit, undescribed — exactly what `characterFromDoc` synthesizes
+ * for a sheet with no `outfits:` map, so a prompt built from this says `wearing default`.
+ * `palette` is fixed so prompt assertions can pin it.
+ */
 export function character(
   id: string,
   status: Character['status'] = 'draft',
@@ -21,7 +25,7 @@ export function character(
     referenceImages: [],
     status,
     defaultOutfit: 'default',
-    outfits: [{ id: 'default', characterId: id, description: 'default outfit' }],
+    outfits: [{ id: 'default', characterId: id, description: '' }],
     approvedPortrait,
   };
 }

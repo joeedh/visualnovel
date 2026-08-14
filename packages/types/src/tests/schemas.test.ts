@@ -1,4 +1,31 @@
-import { projectConfig, sceneFrontMatter } from '../index.js';
+import {
+  characterFrontMatter,
+  ENTITY_TAG_KEY,
+  ENTITY_TAGS,
+  locationFrontMatter,
+  projectConfig,
+  sceneFrontMatter,
+} from '../index.js';
+
+describe('the entity tag', () => {
+  it('is the key the reader and the author both name', () => {
+    expect(ENTITY_TAG_KEY).toBe('type');
+    expect(ENTITY_TAGS).toEqual({ character: 'character', location: 'location' });
+  });
+
+  it('is optional — a conventional directory carries it implicitly', () => {
+    const parsed = characterFrontMatter.parse({ id: 'aiko', name: 'Aiko' });
+    expect(parsed.type).toBeUndefined();
+  });
+
+  it.each([
+    ['character', characterFrontMatter, ENTITY_TAGS.character, ENTITY_TAGS.location],
+    ['location', locationFrontMatter, ENTITY_TAGS.location, ENTITY_TAGS.character],
+  ])('lets a %s state its own tag and refuses the other one', (_kind, schema, own, other) => {
+    expect(schema.safeParse({ id: 'x', name: 'X', [ENTITY_TAG_KEY]: own }).success).toBe(true);
+    expect(schema.safeParse({ id: 'x', name: 'X', [ENTITY_TAG_KEY]: other }).success).toBe(false);
+  });
+});
 
 describe('sceneFrontMatter', () => {
   it('accepts a chunk that declares only its id', () => {

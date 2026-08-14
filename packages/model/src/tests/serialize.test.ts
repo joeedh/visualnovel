@@ -30,6 +30,37 @@ describe('character round-trip', () => {
     expect(b.value).toEqual(a.value);
   });
 
+  it('gives a sheet with no wardrobe exactly one outfit, undescribed', () => {
+    const a = characterFromDoc(charDoc);
+    if (!a.ok) throw new Error('setup');
+    expect(a.value.outfits).toEqual([{ id: 'uniform', characterId: 'ren', description: '' }]);
+    // And writing it back does not grow an `outfits:` key in every existing character sheet.
+    expect(characterToDoc(a.value).data['outfits']).toBeUndefined();
+  });
+
+  it('keeps an authored wardrobe in written order, and round-trips it', () => {
+    const doc = parseFrontMatter(
+      `---\nid: ren\nname: Ren\ndefault_outfit: uniform\noutfits:\n  uniform: grey blazer\n  track: club tracksuit\n---\n\nRen.\n`,
+    );
+    const a = characterFromDoc(doc);
+    if (!a.ok) throw new Error('expected ok');
+    expect(a.value.outfits.map((o) => o.id)).toEqual(['uniform', 'track']);
+    expect(a.value.outfits[1]?.description).toBe('club tracksuit');
+    const b = characterFromDoc(characterToDoc(a.value));
+    if (!b.ok) throw new Error('expected ok');
+    expect(b.value).toEqual(a.value);
+  });
+
+  it('synthesizes the default outfit when the wardrobe omits it, first', () => {
+    const doc = parseFrontMatter(
+      `---\nid: ren\nname: Ren\ndefault_outfit: uniform\noutfits:\n  track: club tracksuit\n---\n\nRen.\n`,
+    );
+    const a = characterFromDoc(doc);
+    if (!a.ok) throw new Error('expected ok');
+    expect(a.value.outfits.map((o) => o.id)).toEqual(['uniform', 'track']);
+    expect(a.value.outfits[0]?.description).toBe('');
+  });
+
   it('serializes to valid markdown that re-parses', () => {
     const a = characterFromDoc(charDoc);
     if (!a.ok) throw new Error('setup');
@@ -73,6 +104,12 @@ describe('applyCharacterEdit', () => {
     const res = applyCharacterEdit(doc, { status: 'approved' });
     if (!res.ok) throw new Error('expected ok');
     expect(res.value.doc.data['voice']).toBe('terse');
+  });
+
+  it('replaces the whole wardrobe map', () => {
+    const res = applyCharacterEdit(charDoc, { outfits: { uniform: 'grey blazer', swim: 'navy' } });
+    if (!res.ok) throw new Error('expected ok');
+    expect(res.value.value.outfits.map((o) => o.id)).toEqual(['uniform', 'swim']);
   });
 
   it('rejects an invalid edit with a diagnostic', () => {

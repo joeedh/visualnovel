@@ -11,6 +11,7 @@
 - [7. Cross-cutting problems](#7-cross-cutting-problems)
 - [8. Recommendation](#8-recommendation)
   * [As carried out](#as-carried-out)
+  * [Afterword: §4's rejection was reversed](#afterword-%C2%A74s-rejection-was-reversed)
 
 <!-- tocstop -->
 
@@ -237,3 +238,25 @@ Scoping the snapshot to the document class (`['.', ':(exclude)vngen/build',
 keeps the hash under a second on a 100 MB workspace, it keeps undo from rolling back generated
 work a later run would have to pay for again, and it is what makes a `pipeline.run` between two
 edits read as *not drift*.
+
+### Afterword: §4's rejection was reversed
+
+§4 was rejected as an *undo mechanism*, and that verdict stands: undo restores a tree, never a
+`git revert`. But it was also rejected as a **commit policy** — "no, unless commit ownership is
+unified first, which is a much bigger change" — and a later requirement reversed that half. The
+design requirements ask the app to commit every save, so commit ownership had to be settled
+anyway; §4's blocking objection became the work item.
+
+The unification is smaller than §4 feared, because "two components owning when to commit" turned
+out to demand only that **no single act have two owners**, not that there be one owner overall.
+`Command.commitsItself` marks the commands whose implementation already commits (`vnauthor`'s
+plan loop), the CLI wires no committer at all, and each surface keeps its own granularity. §4's
+other objection — a dirty worktree sweeping unrelated edits into a command's commit — is answered
+by the invariant instead of by scoping: the app opens on a clean worktree and every act ends with
+one, so "everything dirty" *is* "what this act did".
+
+§4 and §5 now coexist without interfering, which is the part worth writing down: a commit moves a
+branch ref and the index but changes no file in the worktree, so it cannot perturb a snapshot tree
+taken on either side of it. The two mechanisms answer different questions — §4 records *what
+changed*, §5 records *what may be rolled back* — and keep different scopes for that reason. What
+shipped is in [`repos-and-commits.md`](repos-and-commits.md); the survey above stays as written.

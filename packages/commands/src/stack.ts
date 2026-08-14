@@ -9,7 +9,8 @@
 import { formatCommand, parseCommand, DslError } from './dsl.js';
 import { coerceProps, type PropSpecMap } from './props.js';
 import type { CommandRegistry } from './registry.js';
-import type { Snapshot, UndoJournal } from './undo.js';
+import type { Committer, CommitResult } from './commit.js';
+import type { Snapshot, UndoJournal, UndoPoint } from './undo.js';
 import type { CommandContext, CommandOutcome, CommandRecord, CommandSource } from './command.js';
 
 const NO_JOURNAL =
@@ -24,6 +25,11 @@ export interface CommandStackOptions<Host> {
   now?(): string;
   /** Enables undo/redo. Absent means the stack refuses both, as it did before undo landed. */
   journal?: UndoJournal;
+  /**
+   * Enables commit-on-save. Absent means the stack moves no ref, as it did before it existed —
+   * which is what keeps a bare stack (tests, testkit, the CLI) out of the author's history.
+   */
+  committer?: Committer;
 }
 
 /** What the UI needs to render undo/redo affordances honestly. */
@@ -108,10 +114,10 @@ export class CommandStack<Host = unknown> {
         status: 'ok',
         message: output.message,
         ...(output.written ? { written: output.written } : {}),
-        ...(pre && post
-          ? { undo: { pre: pre.commit, post: post.commit, changed: pre.tree !== post.tree } }
-          : {}),
+        ...(journal && pre && post ? { undo: journal.point(pre, post) } : {}),
       };
+      const commits = await this.commit(command.mutating && !command.commitsItself, record);
+      if (commits.length > 0) record.commits = commits;
       // A fresh act invalidates every redo behind it — the branch they belonged to is gone.
       if (command.mutating) this.undone.length = 0;
       await this.record(record);
@@ -230,8 +236,9 @@ export class CommandStack<Host = unknown> {
     return this.move({
       target,
       kind: 'undo',
-      expected: target.undo.post,
-      to: target.undo.pre,
+      point: target.undo,
+      from: 'post',
+      to: 'pre',
       done: () => this.undone.push(target),
     });
   }
@@ -251,8 +258,9 @@ export class CommandStack<Host = unknown> {
     return this.move({
       target,
       kind: 'redo',
-      expected: target.undo.pre,
-      to: target.undo.post,
+      point: target.undo,
+      from: 'pre',
+      to: 'post',
       done: () => void this.undone.pop(),
     });
   }
@@ -261,19 +269,25 @@ export class CommandStack<Host = unknown> {
   private async move(opts: {
     target: CommandRecord;
     kind: 'undo' | 'redo';
-    expected: string;
-    to: string;
+    point: UndoPoint;
+    from: 'pre' | 'post';
+    to: 'pre' | 'post';
     done: () => void;
   }): Promise<CommandOutcome> {
     const journal = this.opts.journal!;
     const { target, kind } = opts;
     const startedAt = this.now();
-    let checked;
     try {
-      checked = await journal.check(opts.expected);
+      const checked = await journal.check(opts.point, opts.from);
       if (!checked.ok)
         return { ok: false, error: `cannot ${kind} ${target.invocation}: ${checked.error}` };
-      await journal.restore(checked.tree, opts.to);
+      const { moved, error } = await journal.restore(checked.trees, opts.point, opts.to);
+      if (error !== undefined) {
+        // Restore is not atomic across repos, so name the ones that moved rather than letting
+        // the failure read as a no-op the caller can retry from where it started.
+        const partial = moved.length > 0 ? ` (restored: ${moved.join(', ')})` : '';
+        return { ok: false, error: `${kind} failed: ${error}${partial}` };
+      }
     } catch (err) {
       return {
         ok: false,
@@ -298,6 +312,10 @@ export class CommandStack<Host = unknown> {
       status: 'ok',
       message: `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.invocation}.`,
     };
+    // Commit the restored tree as a *new* commit rather than moving a branch ref backwards: a
+    // reset would discard the commit that is the only record of the save being undone.
+    const commits = await this.commit(true, record);
+    if (commits.length > 0) record.commits = commits;
     await this.record(record);
     return { ok: true, record };
   }
@@ -318,6 +336,21 @@ export class CommandStack<Host = unknown> {
     } catch (err) {
       this.opts.context.log('warn', `undo snapshot (${label} ${seq}) failed: ${String(err)}`);
       return null;
+    }
+  }
+
+  /**
+   * Commit what the act left on disk, or degrade to no commit — the same rule as snapshots:
+   * provenance must not be able to fail a command that already ran and already wrote.
+   */
+  private async commit(when: boolean, record: CommandRecord): Promise<CommitResult[]> {
+    const committer = this.opts.committer;
+    if (!committer || !when) return [];
+    try {
+      return await committer.commit(record);
+    } catch (err) {
+      this.opts.context.log('warn', `commit-on-save (${record.invocation}) failed: ${String(err)}`);
+      return [];
     }
   }
 

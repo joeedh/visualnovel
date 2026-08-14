@@ -1,7 +1,7 @@
 import type { Character, Diagnostic, Location, ProjectModel, Scene } from '@vn/types';
 import {
+  type EntityDoc,
   type FountainScript,
-  type FrontMatterDoc,
   type LoadedInputs,
   type SceneChunkDoc,
 } from '@vn/parse';
@@ -13,8 +13,8 @@ import { slug } from './slug.js';
 /** Parsed input documents that the project model is assembled from (report §P0). */
 export interface BuildInputs {
   title: string;
-  characterDocs: FrontMatterDoc[];
-  locationDocs: FrontMatterDoc[];
+  characterDocs: EntityDoc[];
+  locationDocs: EntityDoc[];
   /** Authored scene chunks — how a project on disk stores scenes, and what `loadInputs` reads. */
   sceneDocs?: SceneChunkDoc[];
   /**
@@ -126,6 +126,29 @@ function mergeMinedLocations(
   return locations;
 }
 
+/**
+ * The id a file's name implies, against the id it declares. Entities are discovered by tag, so the
+ * carried file is where an editor writes and the front-matter id is what the rest of the model
+ * refers to; when they disagree, every path derived from the id points somewhere the entity is not.
+ * Reported and the entity dropped — never resolved by picking one — as `sceneFromDoc` already
+ * treats the same disagreement for scenes.
+ */
+function idAgrees(
+  kind: 'character' | 'location',
+  declared: string,
+  doc: EntityDoc,
+  diagnostics: Diagnostic[],
+): boolean {
+  if (declared === doc.id) return true;
+  diagnostics.push({
+    severity: 'error',
+    code: 'entity_id_mismatch',
+    message: `${doc.file} declares ${kind} id "${declared}" but its name says "${doc.id}"; the two must agree`,
+    where: doc.id,
+  });
+  return false;
+}
+
 /** Index character ids by their uppercased display name, for cue resolution. */
 function nameIndex(characters: Map<string, Character>): Map<string, string> {
   const byName = new Map<string, string>();
@@ -171,6 +194,43 @@ function resolveCast(
 }
 
 /**
+ * Check the scene's `[[outfit:]]` markers against the cast sheets, **dropping** any that name a
+ * character the project does not have or an outfit that character has not authored. Ignoring a
+ * marker is the safe failure: the shot falls back to the default and renders, where honouring it
+ * would put a word in the prompt that nothing describes.
+ */
+function validateSceneOutfits(scene: Scene, characters: Map<string, Character>): Diagnostic[] {
+  if (!scene.outfits) return [];
+  const diagnostics: Diagnostic[] = [];
+  const kept: Record<string, string> = {};
+  for (const [characterId, outfit] of Object.entries(scene.outfits)) {
+    const character = characters.get(characterId);
+    if (!character) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'unknown_outfit_character',
+        message: `[[outfit: ${characterId}=${outfit}]] in scene "${scene.id}" names no character; ignored`,
+        where: scene.id,
+      });
+      continue;
+    }
+    if (!character.outfits.some((o) => o.id === outfit)) {
+      const has = character.outfits.map((o) => `"${o.id}"`).join(', ');
+      diagnostics.push({
+        severity: 'warning',
+        code: 'unknown_outfit',
+        message: `scene "${scene.id}" puts "${characterId}" in "${outfit}", which they do not have (they have ${has}); ignored`,
+        where: scene.id,
+      });
+      continue;
+    }
+    kept[characterId] = outfit;
+  }
+  scene.outfits = Object.keys(kept).length > 0 ? kept : undefined;
+  return diagnostics;
+}
+
+/**
  * Build and validate the in-memory project model (report §P0, §6). Validation never
  * throws — every problem is recorded as a `Diagnostic` so the caller can report all of
  * them before any money is spent on generation.
@@ -180,11 +240,12 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
 
   const characters = new Map<string, Character>();
   for (const doc of inputs.characterDocs) {
-    const res = characterFromDoc(doc);
+    const res = characterFromDoc(doc.doc);
     if (!res.ok) {
       diagnostics.push(res.diagnostic);
       continue;
     }
+    if (!idAgrees('character', res.value.id, doc, diagnostics)) continue;
     if (characters.has(res.value.id)) {
       diagnostics.push({
         severity: 'error',
@@ -193,16 +254,30 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
         where: res.value.id,
       });
     }
-    characters.set(res.value.id, res.value);
+    // A wardrobe that does not contain the default is a typo, not a wardrobe: the outfit is still
+    // synthesized (nothing may be left with no outfit to resolve to), so this is a warning.
+    const c = res.value;
+    if (c.outfits.length > 1 && !c.outfits.some((o) => o.description && o.id === c.defaultOutfit)) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'undescribed_default_outfit',
+        message:
+          `character "${c.id}" wears "${c.defaultOutfit}" by default, which its outfits map ` +
+          `does not describe (it describes ${c.outfits.map((o) => `"${o.id}"`).join(', ')})`,
+        where: c.id,
+      });
+    }
+    characters.set(c.id, c);
   }
 
   const userLocations = new Map<string, Location>();
   for (const doc of inputs.locationDocs) {
-    const res = locationFromDoc(doc);
+    const res = locationFromDoc(doc.doc);
     if (!res.ok) {
       diagnostics.push(res.diagnostic);
       continue;
     }
+    if (!idAgrees('location', res.value.id, doc, diagnostics)) continue;
     userLocations.set(res.value.id, res.value);
   }
 
@@ -229,6 +304,7 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
       if (line.speaker) line.speaker = cueToId(line.speaker, characters, byName) ?? line.speaker;
     }
     diagnostics.push(...cast.diagnostics);
+    diagnostics.push(...validateSceneOutfits(scene, characters));
     scenes.set(scene.id, scene);
   }
 

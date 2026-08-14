@@ -10,7 +10,9 @@
       "@vn/commands": ["../../../packages/commands/src/index.ts"],
       "@vn/git": ["../../../packages/git/src/index.ts"],
       "@vn/debug2d": ["../../../packages/debug2d/src/index.ts"],
-      "@vn/types": ["../../../packages/types/src/index.ts"]
+      "@vn/types": ["../../../packages/types/src/index.ts"],
+      "pathux": ["../dist/pathux-types/pathux.d.ts"],
+      "nstructjs": ["../node_modules/nstructjs/build/structjs.d.ts"]
     }
   },
   "include": ["./**/*.ts", "./**/*.tsx"]

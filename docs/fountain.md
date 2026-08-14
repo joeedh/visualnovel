@@ -337,8 +337,16 @@ Every project marker is a **note**, so all of them are invisible to other toolin
 | `[[scene: id]]` | Names the scene this heading starts |
 | `[[choice: label -> id]]` | One branch out of the scene |
 | `[[next: id]]` | Followed when the scene offers no choices |
+| `[[outfit: aiko=track]]` | What a character wears for this whole scene — see below |
 | `[[line: L4]]` | The id of the element it leads — see below |
 | `[[nextline: 12]]` | The scene's line-id allocator; sits under the heading |
+
+`[[outfit:]]` is **one pair per marker**, repeated for a second character, and both halves are
+ids — an outfit id off the character's sheet, not a description. A value with whitespace in it
+or a missing half (`[[outfit: aiko=club tracksuit]]`, `[[outfit: aiko]]`) is left as a plain
+note rather than half-read. Position within the scene is not meaningful; the marker dresses the
+whole scene, and one frame is overridden on the shot instead. What it sits inside is the
+inheritance chain — shot override, then this, then the character's `default_outfit`.
 
 `[[line:]]` and `[[nextline:]]` exist because `Shot.coversLines` binds art to line ids.
 An id derived from position silently re-points every shot below an inserted line, so ids

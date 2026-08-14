@@ -149,7 +149,11 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
         else if (marker.kind === 'choice')
           current.choices.push({ label: marker.label, goto: marker.goto } satisfies Choice);
         else if (marker.kind === 'next') current.next = marker.goto;
-        else if (marker.kind === 'nextline') current.nextLineId = marker.value;
+        else if (marker.kind === 'outfit') {
+          // Scene-scoped wherever the marker sits, so a later one for the same character is a
+          // correction rather than a change of clothes partway down the page.
+          current.outfits = { ...current.outfits, [marker.characterId]: marker.outfit };
+        } else if (marker.kind === 'nextline') current.nextLineId = marker.value;
         else if (marker.kind === 'line') {
           // Two marks with nothing between them: the first keeps the element, the second
           // has nothing to name.

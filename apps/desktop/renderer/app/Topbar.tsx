@@ -1,5 +1,6 @@
 import { isLive } from '../api';
-import type { AgentMode, Diagnostic, Room, UndoState } from '../../src/shared/ipc';
+import type { AgentMode, Diagnostic, UndoState } from '../../src/shared/ipc';
+import type { Room } from '../rooms/rooms';
 
 /** The room nav plus the badges that say which project, model and mode are live. */
 export function Topbar(props: {

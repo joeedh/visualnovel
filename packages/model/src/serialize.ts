@@ -19,6 +19,19 @@ function compact(data: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined));
 }
 
+/**
+ * The wardrobe as front-matter, or `undefined` when there is nothing to say — a lone default with
+ * no description is what `characterFromDoc` synthesizes, so writing it back would grow a key in
+ * every character sheet on its first edit.
+ */
+function wardrobeData(character: Character): Record<string, string> | undefined {
+  const outfits = character.outfits;
+  const synthesized =
+    outfits.length === 1 && outfits[0]?.id === character.defaultOutfit && !outfits[0]?.description;
+  if (outfits.length === 0 || synthesized) return undefined;
+  return Object.fromEntries(outfits.map((o) => [o.id, o.description]));
+}
+
 /** Serialize a Character into a `character.md` doc (inverse of `characterFromDoc`). */
 export function characterToDoc(character: Character): FrontMatterDoc {
   return {
@@ -27,6 +40,7 @@ export function characterToDoc(character: Character): FrontMatterDoc {
       name: character.name,
       status: character.status,
       default_outfit: character.defaultOutfit,
+      outfits: wardrobeData(character),
       traits: character.traits,
       palette: character.palette,
       reference_images: character.referenceImages,
@@ -147,6 +161,9 @@ export function sceneToFountain(scene: Scene, opts: SceneWriteOptions = {}): str
     out.push(`[[choice: "${choice.label}" -> ${choice.goto}]]`);
   }
   if (scene.next) out.push(`[[next: ${scene.next}]]`);
+  for (const [characterId, outfit] of Object.entries(scene.outfits ?? {})) {
+    out.push(`[[outfit: ${characterId}=${outfit}]]`);
+  }
   out.push(`[[nextline: ${scene.nextLineId ?? nextLineIdOf(scene)}]]`, '');
   if (scene.synopsis) out.push(`= ${scene.synopsis}`, '');
 
@@ -208,6 +225,8 @@ export interface CharacterEdit {
   description?: string;
   status?: CharacterStatus;
   defaultOutfit?: string;
+  /** Replaces the whole wardrobe map, outfit id → description. */
+  outfits?: Record<string, string>;
   traits?: string[];
   palette?: string[];
   referenceImages?: string[];
@@ -233,6 +252,7 @@ export function applyCharacterEdit(
   if (edit.name !== undefined) data['name'] = edit.name;
   if (edit.status !== undefined) data['status'] = edit.status;
   if (edit.defaultOutfit !== undefined) data['default_outfit'] = edit.defaultOutfit;
+  if (edit.outfits !== undefined) data['outfits'] = edit.outfits;
   if (edit.traits !== undefined) data['traits'] = edit.traits;
   if (edit.palette !== undefined) data['palette'] = edit.palette;
   if (edit.referenceImages !== undefined) data['reference_images'] = edit.referenceImages;

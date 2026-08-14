@@ -6,14 +6,8 @@ import { useAgent } from './useAgent';
 import { Floor } from '../rooms/floor/Floor';
 import { Runner } from '../rooms/play/Runner';
 import { Studio } from '../rooms/studio/Studio';
-import type {
-  FloorMode,
-  PipelineStatus,
-  Room,
-  StudioMode,
-  UndoState,
-  WorkspaceIndex,
-} from '../../src/shared/ipc';
+import type { PipelineStatus, UndoState, WorkspaceIndex } from '../../src/shared/ipc';
+import type { FloorMode, Room, StudioMode } from '../rooms/rooms';
 
 const NO_UNDO: UndoState = {
   canUndo: false,
@@ -23,9 +17,10 @@ const NO_UNDO: UndoState = {
 };
 
 /**
- * The shell, and only the shell: which room is up, the palette, and the workspace-level
- * data the rooms read. Each room owns its own layout under `rooms/`; the conversation
- * lives in `useAgent`.
+ * The retired shell, kept behind `--react` for one release: which room is up, the palette, and
+ * the workspace-level data the rooms read. Each room owns its own layout under `rooms/`; the
+ * conversation lives in `useAgent`. Navigation is its own tab nav and nothing else — the `view.*`
+ * commands address **editors** now, which is a vocabulary this shell has no panes for.
  */
 export function App(): JSX.Element {
   const [room, setRoom] = useState<Room>('studio');
@@ -40,7 +35,7 @@ export function App(): JSX.Element {
   const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const agent = useAgent();
-  const { setBusy, toggleMode } = agent;
+  const { setBusy, toggleMode, clearConvo } = agent;
 
   const loadStatus = useCallback(() => {
     void api.invoke('pipeline:status').then(setStatus);
@@ -67,19 +62,23 @@ export function App(): JSX.Element {
     loadStatus();
   }, [loadStatus]);
 
-  // Apply UI effects pushed by `view.*` commands, so the palette, the menu bar and CDP all
-  // drive the shell through the one registry rather than a second renderer-side one.
+  // Apply the UI effects this shell still has a place for. `view` effects name a pane and an
+  // editor, which is the path.ux mesh's vocabulary — a room shell can only ignore them.
   useEffect(() => {
     return api.on('command:ui', (effect) => {
-      if (effect.type === 'room') setRoom(effect.name);
-      else if (effect.type === 'palette') setPaletteOpen(effect.open);
+      if (effect.type === 'palette') setPaletteOpen(effect.open);
       else if (effect.type === 'undo') {
         setUndo(effect.state);
         setRevision(effect.revision);
-      } else if (effect.room === 'studio') setStudioMode(effect.mode);
-      else setFloorMode(effect.mode);
+      } else if (effect.type === 'workspace') {
+        // A different project: everything on screen was read out of the old one, and the
+        // conversation belonged to it too.
+        setNotice(`Opened ${effect.title}`);
+        clearConvo();
+        reload();
+      }
     });
-  }, []);
+  }, [clearConvo, reload]);
 
   // A refusal is the interesting outcome here — undo declines rather than guessing when the
   // workspace moved under it, and the author needs to be told why.
@@ -97,7 +96,7 @@ export function App(): JSX.Element {
   const runPipeline = useCallback(async () => {
     setBusy(true);
     try {
-      await api.invoke('pipeline:run', { mock: !isLive || true });
+      await api.invoke('pipeline:run', { mock: !isLive });
       setStatus(await api.invoke('pipeline:status'));
     } finally {
       setBusy(false);

@@ -26,13 +26,15 @@ const asset = (partial: Partial<Asset> & Pick<Asset, 'hash' | 'kind'>): Asset =>
   sourceTask: 'task',
   refs: [],
   modelId: 'mock',
-  satisfies: {},
+  satisfies: [],
   accepted: true,
   ...partial,
 });
 
-const charDoc = (id: string, name: string) =>
-  parseFrontMatter(`---\nid: ${id}\nname: ${name}\n---\n\n${name}.\n`);
+const charDoc = (id: string, name: string) => {
+  const text = `---\nid: ${id}\nname: ${name}\n---\n\n${name}.\n`;
+  return { id, file: `/p/characters/${id}/character.md`, doc: parseFrontMatter(text), text };
+};
 
 // A small branching story that mirrors examples/sample's shape: narration + attributed
 // dialogue, a choice fork, a linear next, and a two-character scene.
@@ -103,9 +105,9 @@ describe('buildPlayable', () => {
       asset({
         hash: 'bg1',
         kind: 'shot_image',
-        satisfies: { sceneId: 'arrival', shotId: 'arrival__establishing' },
+        satisfies: [{ sceneId: 'arrival', shotId: 'arrival__establishing' }],
       }),
-      asset({ hash: 'por1', kind: 'portrait', satisfies: { characterId: 'aiko' } }),
+      asset({ hash: 'por1', kind: 'portrait', satisfies: [{ characterId: 'aiko' }] }),
     ]);
     const play = buildPlayable(model, store);
     expect(play.characters['aiko']!.portrait).toEqual({ hash: 'por1', ext: 'png' });
@@ -130,7 +132,7 @@ describe('buildPlayable', () => {
   // is a runner's decision to make and never a re-export.
   it('says the portrait overlay is off unless the project asked for it', () => {
     const store = fakeStore([
-      asset({ hash: 'por1', kind: 'portrait', satisfies: { characterId: 'aiko' } }),
+      asset({ hash: 'por1', kind: 'portrait', satisfies: [{ characterId: 'aiko' }] }),
     ]);
     expect(buildPlayable(model, store).portraitOverlay).toBe(false);
 
@@ -162,7 +164,7 @@ describe('persisted decompositions', () => {
       asset({
         hash: 'llm1',
         kind: 'shot_image',
-        satisfies: { sceneId: 'arrival', shotId: 'arrival__llm-1' },
+        satisfies: [{ sceneId: 'arrival', shotId: 'arrival__llm-1' }],
       }),
     ]);
     // Without the decomposition the exporter guesses `arrival__establishing`, which matches

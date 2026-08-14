@@ -3,7 +3,15 @@
  * deterministic and generative halves together; `@vn/types` is the single source of
  * truth for these shapes so every other package depends only on this one.
  */
-import type { Asset, AssetKind, AssetRef, Character, Location, Scene } from './entities.js';
+import type {
+  Asset,
+  AssetBinding,
+  AssetKind,
+  AssetRef,
+  Character,
+  Location,
+  Scene,
+} from './entities.js';
 import type { AnyTask, Task, TaskKind } from './tasks.js';
 import type { Providers } from './providers.js';
 
@@ -45,8 +53,27 @@ export interface AssetMeta {
   prompt?: string;
   refs?: string[];
   modelId: string;
-  satisfies?: Asset['satisfies'];
+  /** What this asset is for. One binding per write; the store merges it into the record's list. */
+  satisfies?: AssetBinding;
   accepted?: boolean;
+}
+
+/**
+ * Where the base asset root stands.
+ *
+ * `absent` (no directory) is a legacy or brand-new project and is written into freely.
+ * `unavailable` — a directory with no manifest — is the shape a missing base repo leaves
+ * behind, and must never be read as "nothing generated yet": that mistake regenerates an
+ * entire approved base library at cost.
+ */
+export type BaseAssetState = 'absent' | 'unavailable' | 'ready';
+
+/** The base asset root, as a surface (or a planner) needs to describe it. */
+export interface BaseAssets {
+  state: BaseAssetState;
+  /** Absolute path of the base subtree, whether or not it exists. */
+  root: string;
+  count: number;
 }
 
 /** Content-addressed asset store + manifest (implemented by `@vn/store`). */
@@ -60,6 +87,8 @@ export interface AssetStore {
   manifest(): readonly Asset[];
   /** Mark an asset accepted (an approved portrait or an accepted shot). */
   accept(hash: string): Promise<void>;
+  /** The base root's state; absent on a store that has only one root (test fakes). */
+  readonly base?: BaseAssets;
 }
 
 /** Append-only, content-addressed task graph (implemented by `@vn/taskgraph`). */

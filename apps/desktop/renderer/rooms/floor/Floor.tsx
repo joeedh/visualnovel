@@ -5,7 +5,8 @@ import { Inspector } from './Inspector';
 import { TaskBoard } from './TaskBoard';
 import { TaskGraphView } from './TaskGraphView';
 import { Timeline } from './timeline/Timeline';
-import type { FloorMode, PipelineStatus } from '../../../src/shared/ipc';
+import type { PipelineStatus } from '../../../src/shared/ipc';
+import type { FloorMode } from '../rooms';
 
 /**
  * The Production Floor: the tasks — as a list or as a DAG — the approval gate, and a per-task

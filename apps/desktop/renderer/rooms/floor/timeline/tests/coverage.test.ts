@@ -1,4 +1,4 @@
-import { previewOf } from '../coverage.js';
+import { insertionRow, previewOf, shotDropTarget } from '../coverage.js';
 import { resolveDrag, spansFor } from '../../../../../src/shared/coverage.js';
 import type { CoverageLine, CoverageShot } from '../../../../../src/shared/ipc';
 
@@ -13,6 +13,7 @@ const shot = (id: string, coversLines: string[]): CoverageShot => ({
   id,
   framing: 'medium',
   subjects: [],
+  outfits: {},
   coversLines,
   status: 'accepted',
   drift: 'current',
@@ -24,6 +25,44 @@ const SHOTS: CoverageShot[] = [
   shot('s__aiko', ['s:L2']),
   shot('s__ren', ['s:L3']),
 ];
+
+/** Only a shot with no holes can be reordered, so the reorder geometry is read off this set. */
+const ORDERED: CoverageShot[] = [
+  shot('s__a', ['s:L1', 's:L2']),
+  shot('s__b', ['s:L3']),
+  shot('s__c', ['s:L4']),
+];
+
+describe('the reorder geometry', () => {
+  const cov = spansFor(LINES, ORDERED);
+
+  it('names the shot a drop is after by midpoint, so every insertion point is aimable', () => {
+    // Above the first shot's midpoint is the one position no shot names: `top`, the empty `after`.
+    expect(shotDropTarget(cov.spans, 0)).toBe('top');
+    expect(shotDropTarget(cov.spans, 1)).toBe('s__a');
+    expect(shotDropTarget(cov.spans, 2)).toBe('s__b');
+    expect(shotDropTarget(cov.spans, 3)).toBe('s__c');
+  });
+
+  it('draws the marker above the row the shot would land on, and past the end for the last', () => {
+    expect(insertionRow(cov.spans, 'top', cov.rows.length)).toBe(0);
+    expect(insertionRow(cov.spans, 's__a', cov.rows.length)).toBe(2);
+    expect(insertionRow(cov.spans, 's__b', cov.rows.length)).toBe(3);
+    expect(insertionRow(cov.spans, 's__c', cov.rows.length)).toBe(4);
+  });
+
+  it('puts an unknown target at the end rather than at the top, which would be a real position', () => {
+    expect(insertionRow(cov.spans, 's__gone', cov.rows.length)).toBe(4);
+  });
+
+  /** A shot other shots draw inside has no single position — `planShotMove` refuses it — but the
+      pointer still passes over its rows, so the midpoint rule must still answer something. */
+  it('still names a target over interleaved coverage', () => {
+    const interleaved = spansFor(LINES, SHOTS);
+    expect(shotDropTarget(interleaved.spans, 0)).toBe('top');
+    expect(shotDropTarget(interleaved.spans, 3)).toBe('s__ren');
+  });
+});
 
 describe('previewOf', () => {
   const cov = spansFor(LINES, SHOTS);

@@ -6,7 +6,43 @@
  * targets with them and main answers `interaction.targets` with that same enumeration. What
  * stays here is drawing: main has no use for a ghost.
  */
-import { runsOf, range, type Coverage, type Segment } from '../../../../src/shared/coverage.js';
+import {
+  runsOf,
+  range,
+  type Coverage,
+  type Segment,
+  type ShotSpan,
+} from '../../../../src/shared/coverage.js';
+import { TOP } from '../../../../src/shared/interactions.js';
+
+/**
+ * The shot a reorder drop at `row` would sit after, named the way `timeline.reorder` names its
+ * targets: {@link TOP} above the first shot's midpoint, otherwise the last shot whose own midpoint
+ * is at or above the row.
+ *
+ * Midpoints rather than the boundaries between brackets, for the reason `dropTarget` gives in the
+ * script column: the gap between two brackets is a hairline, and an insertion point the author can
+ * only hit by accident is not one they can aim at. `spans` is in first-line order, so a single pass
+ * settles it.
+ */
+export function shotDropTarget(spans: readonly ShotSpan[], row: number): string {
+  let target = TOP;
+  for (const span of spans) {
+    if (row >= (span.first + span.last) / 2) target = span.shot.id;
+  }
+  return target;
+}
+
+/**
+ * The row a drop after `target` would insert at — the row the marker is drawn above, and
+ * `rows.length` for a drop past the last line. {@link TOP} is row 0, since that is what an empty
+ * `after` means.
+ */
+export function insertionRow(spans: readonly ShotSpan[], target: string, rows: number): number {
+  if (target === TOP) return 0;
+  const span = spans.find((s) => s.shot.id === target);
+  return span ? Math.min(span.last + 1, rows) : rows;
+}
 
 /** What a drag would produce, drawn over the committed strip rather than applied to it. */
 export interface DragPreview {

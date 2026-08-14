@@ -88,6 +88,41 @@ describe('@vn/git', () => {
     }
   });
 
+  it('writes trailers as a block below the subject', async () => {
+    const { git, dir, cleanup } = await tempRepo();
+    try {
+      await write(dir, 'a.md', 'a\n');
+      await git.commit({
+        message: 'Moved line L4 into rooftop',
+        paths: ['-A'],
+        trailers: { 'Vn-Command': 'story.moveLine', 'Vn-Seq': '12' },
+      });
+      const shown = await git.show('HEAD');
+      expect(shown).toContain('Moved line L4 into rooftop');
+      expect(shown).toContain('Vn-Command: story.moveLine');
+      expect(shown).toContain('Vn-Seq: 12');
+      // The subject stays the subject — trailers are body, not part of the one-line summary.
+      expect((await git.log(1))[0]?.subject).toBe('Moved line L4 into rooftop');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reports the work-tree root, and null outside one', async () => {
+    const { git, dir, cleanup } = await tempRepo();
+    try {
+      expect(await git.topLevel()).toBe((await fs.realpath(dir)).replace(/\\/g, '/'));
+    } finally {
+      await cleanup();
+    }
+    const bare = await fs.mkdtemp(join(tmpdir(), 'vn-nogit-'));
+    try {
+      expect(await openGit(bare).topLevel()).toBeNull();
+    } finally {
+      await fs.rm(bare, { recursive: true, force: true });
+    }
+  });
+
   it('diffs the working tree against HEAD', async () => {
     const { git, dir, cleanup } = await tempRepo();
     try {

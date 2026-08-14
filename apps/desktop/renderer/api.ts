@@ -50,6 +50,9 @@ const MOCK_INDEX: WorkspaceIndex = {
       reachable: false,
     },
   ],
+  bibleFiles: 0,
+  baseAssets: { state: 'ready', root: '~/stories/sample/assets', count: 6 },
+  repos: [{ role: 'project', root: '~/stories/sample', owned: true }],
   diagnostics: [
     { severity: 'warning', code: 'gate.pending', message: 'Haruki has no approved portrait' },
     {

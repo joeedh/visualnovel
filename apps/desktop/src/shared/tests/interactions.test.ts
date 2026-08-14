@@ -12,6 +12,7 @@ import {
   handleId,
   scriptMoveLine,
   timelineCover,
+  timelineReorder,
   TOP,
   type BranchState,
   type CoverState,
@@ -227,6 +228,7 @@ describe('timeline.cover', () => {
     id,
     framing: 'medium',
     subjects: [],
+    outfits: {},
     coversLines,
     status: 'accepted',
     drift: 'current',
@@ -278,6 +280,75 @@ describe('timeline.cover', () => {
     ]);
     expect(timelineCover.targets(cover, handleId('arrival__gone', 'end'))).toEqual([
       { target: UNRESOLVED, accept: false, reason: expect.stringContaining('arrival__gone') },
+    ]);
+  });
+});
+
+describe('timeline.reorder', () => {
+  const shot = (id: string, coversLines: string[]): CoverageShot => ({
+    id,
+    framing: 'medium',
+    subjects: [],
+    outfits: {},
+    coversLines,
+    status: 'accepted',
+    drift: 'current',
+  });
+
+  const lines = (n: number): CoverState['lines'] =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `arrival:L${i + 1}`,
+      kind: 'narration' as const,
+      text: `L${i + 1}`,
+    }));
+
+  /** Three shots over three contiguous pairs — the shape a reorder is defined on. */
+  const tidy: CoverState = {
+    sceneId: 'arrival',
+    lines: lines(6),
+    shots: [
+      shot('arrival__establishing', ['arrival:L1', 'arrival:L2']),
+      shot('arrival__aiko', ['arrival:L3', 'arrival:L4']),
+      shot('arrival__ren', ['arrival:L5', 'arrival:L6']),
+    ],
+  };
+
+  it('offers the other shots, dropping the position the shot already holds', () => {
+    // aiko sits second of three, so `top` and "after ren" move it; "after establishing" is where
+    // it already is, and is left out rather than offered as an accept that does nothing.
+    const verdicts = timelineReorder.targets(tidy, 'arrival__aiko');
+    expect(verdicts.map((v) => v.target)).toEqual([TOP, 'arrival__ren']);
+    expect(verdicts.every((v) => v.accept)).toBe(true);
+  });
+
+  it('carries the moveShot the drop would run, with top as an empty after', () => {
+    const [top] = timelineReorder.targets(tidy, 'arrival__ren');
+    expect(top?.accept && top.invoke).toEqual({
+      id: 'story.moveShot',
+      props: { scene: 'arrival', shot: 'arrival__ren', after: '' },
+    });
+    expect(top?.accept && top.note).toContain('nothing re-renders');
+  });
+
+  it('refuses every target for an interleaved shot, naming what draws inside it', () => {
+    const woven: CoverState = {
+      sceneId: 'arrival',
+      lines: lines(4),
+      shots: [
+        shot('arrival__establishing', ['arrival:L1', 'arrival:L3']),
+        shot('arrival__aiko', ['arrival:L2']),
+        shot('arrival__ren', ['arrival:L4']),
+      ],
+    };
+    const verdicts = timelineReorder.targets(woven, 'arrival__establishing');
+    expect(verdicts.map((v) => v.target)).toEqual([TOP, 'arrival__aiko', 'arrival__ren']);
+    expect(verdicts.every((v) => !v.accept)).toBe(true);
+    expect(verdicts[0]).toMatchObject({ reason: expect.stringContaining('arrival__aiko') });
+  });
+
+  it('refuses the grab, not the targets, when the carried shot is not in the scene', () => {
+    expect(timelineReorder.targets(tidy, 'arrival__gone')).toEqual([
+      { target: UNRESOLVED, accept: false, reason: 'No shot "arrival__gone" in arrival.' },
     ]);
   });
 });
@@ -348,6 +419,7 @@ describe('the registry', () => {
       'branch.unwire',
       'script.moveLine',
       'timeline.cover',
+      'timeline.reorder',
     ]);
   });
 });

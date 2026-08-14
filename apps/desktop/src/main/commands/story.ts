@@ -33,6 +33,7 @@ import {
   type LineOp,
   type ScriptState,
 } from '@vn/scriptedit';
+import type { Scene } from '@vn/types';
 import {
   removeChoice,
   setChoice,
@@ -57,10 +58,14 @@ const idsOf = (lines: string): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-/** Apply a rewire, or refuse loudly — the stack turns a throw into `{ ok: false, error }`. */
+/**
+ * Apply a rewire, or refuse loudly — the stack turns a throw into `{ ok: false, error }`. The
+ * decision sees the scenes whole: the rewires need only {@link SceneMap} and say so, but the outfit
+ * marker is decided against a field that projection does not carry.
+ */
 async function apply(
   ctx: CommandContext<CommandHost>,
-  decide: (scenes: SceneMap) => BranchOp,
+  decide: (scenes: Map<string, Scene>) => BranchOp,
 ): Promise<CommandOutput> {
   const result = await ctx.host.session.editBranches(decide);
   if (!result.ok) throw new Error(result.message);
@@ -470,6 +475,86 @@ export const storySetCoverage = define({
   async run({ scene, shot, lines }, ctx) {
     const ids = idsOf(lines);
     const result = await ctx.host.session.setCoverage(scene, shot, ids);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+export const storyMoveShot = define({
+  id: 'story.moveShot',
+  title: 'Move a shot',
+  description:
+    "Reorder a shot within its scene, which means moving the lines it covers. No shot's coverage " +
+    'changes and no covered line changes or changes order within its own shot, so nothing drifts ' +
+    'and nothing re-renders. A shot other shots draw inside is on screen in more than one place ' +
+    'and has no single position, so it is refused by name.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot: prop.string('the shot id to move, e.g. arrival__beat1'),
+    after: prop.string('the shot id to sit after; empty moves it to the top', { default: '' }),
+  },
+  async check({ scene, shot, after }, ctx) {
+    return previewEdit(ctx, await ctx.host.session.shotOrder(scene, shot, after));
+  },
+  async run({ scene, shot, after }, ctx) {
+    return edit(ctx, await ctx.host.session.shotOrder(scene, shot, after));
+  },
+});
+
+// The two outfit commands. Neither goes through `preview`: that decides against the story graph,
+// which carries edges and reachability and not a word about clothes.
+
+export const storySetSceneOutfit = define({
+  id: 'story.setSceneOutfit',
+  title: 'Dress a character for a scene',
+  description:
+    "Write a scene's [[outfit:]] marker for one character, or clear it with an empty outfit. It " +
+    'applies to the whole scene wherever the marker sits, and every shot that does not override ' +
+    'it re-renders in the new clothes.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene to dress'),
+    character: prop.string('the character id'),
+    outfit: prop.string(
+      "the outfit id; empty clears the marker and falls back to the character's",
+      {
+        default: '',
+      },
+    ),
+  },
+  async check({ scene, character, outfit }, ctx) {
+    const op = await ctx.host.session.previewSceneOutfit(scene, character, outfit);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, character, outfit }, ctx) {
+    return apply(ctx, await ctx.host.session.sceneOutfit(scene, character, outfit));
+  },
+});
+
+export const storySetOutfit = define({
+  id: 'story.setOutfit',
+  title: 'Dress a subject in a shot',
+  description:
+    "Override what one subject of one shot wears, or clear the override so the scene's marker — " +
+    "or the character's default — reaches it again. Unlike coverage this changes the shot's " +
+    'prompt, so the shot re-hashes and the next run re-renders it.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    character: prop.string("which of the shot's subjects to dress"),
+    outfit: prop.string('the outfit id; empty clears the override', { default: '' }),
+  },
+  async check({ scene, shot, character, outfit }, ctx) {
+    const op = await ctx.host.session.previewShotOutfit(scene, shot, character, outfit);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot, character, outfit }, ctx) {
+    const result = await ctx.host.session.setShotOutfit(scene, shot, character, outfit);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result.coverage, written: result.written };
   },

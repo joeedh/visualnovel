@@ -30,16 +30,14 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       sceneId: scene.id,
       framing: 'establishing',
       location: variant,
-      subjects: scene.characters.map((characterId) => ({
-        characterId,
-        outfit: model.characters.get(characterId)?.defaultOutfit ?? 'default',
-      })),
+      // No outfit: a decomposer does not choose clothes. Absent means inherit, so a later
+      // scene marker or a change of default reaches this shot instead of being shadowed.
+      subjects: scene.characters.map((characterId) => ({ characterId })),
       coversLines: establishingLines,
       status: 'pending',
     },
   ];
   scene.characters.forEach((characterId, i) => {
-    const character = model.characters.get(characterId);
     // A character's medium shot covers that character's dialogue lines.
     const coversLines = scene.lines
       .filter((l) => l.kind === 'dialogue' && l.speaker === characterId)
@@ -49,7 +47,7 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       sceneId: scene.id,
       framing: 'medium',
       location: variant,
-      subjects: [{ characterId, outfit: character?.defaultOutfit ?? 'default' }],
+      subjects: [{ characterId }],
       coversLines,
       status: 'pending',
     });
@@ -76,14 +74,14 @@ function resolveSubject(raw: string, model: ProjectModel): string | undefined {
 const DECOMP_SYSTEM = [
   'You are a visual-novel storyboard artist. Decompose a scene into a short ordered list',
   'of illustrated shots. Each shot names its framing (wide|medium|close|establishing), a',
-  'location variant id, and the subjects (characterId + outfit + optional pose/expression).',
+  'location variant id, and the subjects (characterId + optional pose/expression).',
   'Cover the scene with as few shots as tell it clearly.',
   'The scene is given to you as numbered lines, each prefixed with its id in square brackets.',
   '`coversLines` lists the ids of the lines a shot is on screen for — copy them verbatim from',
   'the prompt. Assign EVERY line to exactly one shot, in order: a shot with no lines is never',
   'displayed, and a line with no shot leaves the previous image on screen. Respond ONLY with',
   'JSON of the form {"shots":[{"id","framing","location",',
-  '"subjects":[{"characterId","outfit","pose?","expression?"}],"camera?",',
+  '"subjects":[{"characterId","pose?","expression?"}],"camera?",',
   '"coversLines":["scene:L1","scene:L2"]}]}.',
 ].join(' ');
 
@@ -130,10 +128,12 @@ export async function decomposeScene(
       sceneId: scene.id,
       framing: s.framing,
       location: variants.includes(s.location) ? s.location : (variants[0] ?? 'day'),
+      // `outfit` is dropped even if the model volunteers one: clothes are the author's, and a
+      // baked value here would shadow the scene marker the author writes later.
       subjects: s.subjects.flatMap((sub) => {
         const characterId = resolveSubject(sub.characterId, model);
         if (!characterId) return [];
-        return [{ characterId, outfit: sub.outfit, pose: sub.pose, expression: sub.expression }];
+        return [{ characterId, pose: sub.pose, expression: sub.expression }];
       }),
       camera: s.camera,
       coversLines: s.coversLines.filter((id) => realLineIds.has(id)),

@@ -3,7 +3,7 @@ import { defineCommand, defineFor, type CommandContext, type CommandRecord } fro
 import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
 import { CommandStack } from '../stack.js';
-import type { UndoJournal } from '../undo.js';
+import type { Snapshot, UndoJournal, UndoPoint } from '../undo.js';
 import type { Git } from '@vn/git';
 
 /** Just the slice of Git the stack touches, so tests need no repo on disk. */
@@ -302,6 +302,8 @@ describe('CommandStack.check', () => {
  * The workspace as one value, so the stack's bookkeeping can be tested without a repo. The
  * journal's own git behaviour is exercised against a real one in `undo.test.ts`.
  */
+const ROOT = '/ws';
+
 class FakeJournal {
   private n = 0;
   readonly trees = new Map<string, string>();
@@ -309,26 +311,37 @@ class FakeJournal {
   pruneCalls = 0;
   constructor(private readonly world: { value: string }) {}
 
-  capture(seq: number, label: string): Promise<{ commit: string; tree: string }> {
+  capture(seq: number, label: string): Promise<Snapshot> {
     const commit = `c${++this.n}`;
+    const snap = { commit, tree: this.world.value };
     this.trees.set(commit, this.world.value);
     this.captured.push(`${seq}/${label}`);
-    return Promise.resolve({ commit, tree: this.world.value });
+    return Promise.resolve({ ...snap, repos: { [ROOT]: snap } });
+  }
+  point(pre: Snapshot, post: Snapshot): UndoPoint {
+    return { pre: pre.commit, post: post.commit, changed: pre.tree !== post.tree };
   }
   currentTree(): Promise<string> {
     return Promise.resolve(this.world.value);
   }
-  check(expected: string): Promise<{ ok: true; tree: string } | { ok: false; error: string }> {
-    const tree = this.trees.get(expected)!;
+  check(
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ ok: true; trees: Record<string, string> } | { ok: false; error: string }> {
+    const tree = this.trees.get(point[side])!;
     return Promise.resolve(
       tree === this.world.value
-        ? { ok: true, tree }
+        ? { ok: true, trees: { [ROOT]: tree } }
         : { ok: false, error: 'the workspace has changed since that command ran' },
     );
   }
-  restore(_from: string, to: string): Promise<void> {
-    this.world.value = this.trees.get(to)!;
-    return Promise.resolve();
+  restore(
+    _trees: Record<string, string>,
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ moved: string[]; error?: string }> {
+    this.world.value = this.trees.get(point[side])!;
+    return Promise.resolve({ moved: [ROOT] });
   }
   prune(): Promise<void> {
     this.pruneCalls++;

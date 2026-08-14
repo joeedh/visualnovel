@@ -24,10 +24,19 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   Identical work collapses to one node → dedupe, resumability, and staleness for free. Every
   status transition is appended to `state/tasks.jsonl`; replaying it (last writer wins per
   hash) rebuilds the graph, which makes runs crash-safe and resumable.
-- **Content-addressed asset store.** Image bytes are stored once at
-  `build/assets/<hash>.<ext>`; `manifest.json` is the provenance index. Manifest writes are
-  serialized through a single-writer queue so parallel tasks don't race on the atomic rename
-  (this matters on Windows).
+- **Content-addressed asset store, in two roots.** Image bytes are stored once per root —
+  base art (portraits, model sheets, location plates) at `assets/objects/<hash>.<ext>`, shot
+  frames at `vngen/build/assets/<hash>.<ext>` — and each root's `manifest.json` is the
+  provenance index for its own bytes, so a base subtree that is its own git repo carries its
+  own meaning. Routing is by `AssetKind` and nothing else; reads consult both, base first.
+  Manifest writes are serialized through a single-writer queue so parallel tasks don't race on
+  the atomic rename (this matters on Windows). Full statement:
+  [`asset-stores.md`](asset-stores.md).
+- **A base root that exists without a manifest is `unavailable`, and stops the run.** That is
+  the shape a checkout missing the base repo leaves behind, and it is indistinguishable from
+  "nothing generated yet" to anything that only counts assets. The planner plans **nothing**
+  when it sees it — every shot references a base plate too — and the run reports one sentence
+  naming the root instead of regenerating an approved library at cost.
 
 ## Scheduling
 
@@ -73,6 +82,28 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
 
 ## Scenes, shots, and lines
 
+- **An entity is found by its tag, and the file it was found in travels with it.** A character or
+  set-location is whatever states `type: character` / `type: location` in its front-matter, across
+  exactly three surfaces: `characters/<id>/character.md`, `locations/<id>.md`, and a walk of
+  `wiki/**/*.md`. In the two conventional directories the tag is implied by the directory and may
+  be stated redundantly; stating the _other_ kind there is an `entity_tag_conflict` error rather
+  than an override, because moving the file is how a document changes kind. In the wiki the tag is
+  the whole test — an untagged file is the story bible's own business and is passed over in
+  silence, which is what keeps the walk from making every stray markdown file an input. Discovery
+  yields an `EntityDoc` (`id`, `file`, parsed `doc`, raw `text`), and **that path is the only
+  answer to "where does this entity live"**: `entityFile(docs, id)` is how `vngen approve`, the
+  desktop session, testkit and `vnauthor`'s edit tools find their target, so a sheet filed in the
+  wiki is edited and approved in the wiki. Rebuilding `characters/<id>/character.md` from an id was
+  the failure — it silently wrote a file that was not the one loaded. `id:` stays in front-matter
+  but **must agree with the file's own name** (the parent directory for a character sheet, the
+  filename stem elsewhere), an `entity_id_mismatch` error otherwise; before this, `characters/ada/`
+  declaring `id: ren` produced a character nothing on disk named. Two files claiming one id is a
+  `duplicate_entity` warning naming both, resolved conventional-over-wiki then by lexicographically
+  first path — never a guess and never silent. Unparseable front-matter is an `entity_file`
+  diagnostic (error under the conventional directories, warning under the wiki, where the file was
+  never known to be an entity) rather than a thrown load: one hand-edited sheet must not take the
+  whole project down. Plan:
+  [`plans/entity-discovery-by-meta-tag.md`](plans/entity-discovery-by-meta-tag.md).
 - **A scene is one file, and only the reader decides which files those are.** Authored scenes are
   `scenes/<id>.md`: front-matter that is `scene: <id>` and nothing else (a closed schema — a key
   the body owns, like `next` or `location`, is an error), over a body that is a complete one-scene
@@ -106,6 +137,23 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   ids the scene no longer has are dropped with a warning, and since `buildShotPrompt`
   ignores `coversLines`, coverage edits rehash nothing. Dry runs read the file but never write
   it — a mock decomposition must not be left for a real run to reuse.
+- **What a character wears is inherited, and the chain is written down once.** `outfitFor`
+  (`packages/model/src/outfits.ts`) is the only answer, in three rungs: a shot subject's own
+  `outfit`, then the scene's `[[outfit: aiko=track]]` marker, then `character.defaultOutfit`.
+  Absence is what makes a rung defer — a `ShotSubject` with no `outfit` inherits, which is why
+  `deterministicShots` casts a shot without dressing it. `ResolvedOutfit.origin` reports which rung
+  answered so a surface can say so instead of "inherited", and `outfitText` falls back to the
+  outfit **id** when nothing describes it: that fallback is what lets an author name a wardrobe
+  before writing a word of it. Unlike every other scene edit this one **does** re-render, and
+  deliberately — the outfit is part of `buildShotPrompt`, so changing it rehashes exactly the
+  shots it reaches and no others. The sheet fan-out follows from the same function: `usedOutfits`
+  in the planner is `{defaultOutfit} ∪ {scene markers} ∪ {shot overrides}` over reachable scenes,
+  which is exactly `outfitFor`'s range over the model, so authoring an outfit nothing wears costs
+  nothing and a shot can never depend on a sheet nothing planned. A subject out of its default
+  takes that outfit's **front** sheet as a reference and depends on its task — one angle, because a
+  frame needs the clothes and not a turnaround — reaching the planner a wave later than the marker
+  did, the same way a shot waits on its location plate. Plan:
+  [`plans/outfits-at-scene-and-shot-level.md`](plans/outfits-at-scene-and-shot-level.md).
 - **No edit to a scene invalidates art — which is why drift has to be reported.**
   `buildShotPrompt` reads neither `coversLines` nor line text (prose reaches only the P7 reviewer
   spec, which never enters a task's `inputs`), so retyping a covered line rehashes nothing and

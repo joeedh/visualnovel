@@ -5,11 +5,13 @@
   "type": "module",
   "main": "dist/main/index.cjs",
   "scripts": {
-    "check": "tsgo --noEmit -p renderer/tsconfig.json",
+    "check": "pnpm build:pathux-types && tsgo --noEmit -p renderer/tsconfig.json",
+    "build:pathux-types": "tsgo -p pathux-types.tsconfig.json",
     "build:main": "node ../../scripts/esbuild.desktop.mjs",
     "build:renderer": "vite build",
     "build:catalog": "node ../../scripts/gen-command-catalog.mjs",
-    "build": "pnpm build:main && pnpm build:catalog && pnpm build:renderer",
+    "doctor": "node ../../scripts/check-submodules.mjs",
+    "build": "pnpm doctor && pnpm build:main && pnpm build:catalog && pnpm build:renderer",
     "dev": "node ../../scripts/dev.desktop.mjs",
     "dev:renderer": "vite",
     "start": "electron ."
@@ -18,6 +20,7 @@
     "@anthropic-ai/sdk": "^0.32.1",
     "@google/genai": "^0.3.0",
     "@vn/authoring": "workspace:*",
+    "@vn/bible": "workspace:*",
     "@vn/commands": "workspace:*",
     "@vn/config": "workspace:*",
     "@vn/debug2d": "workspace:*",
@@ -33,6 +36,7 @@
     "@vn/taskgraph": "workspace:*",
     "@vn/types": "workspace:*",
     "@vn/util": "workspace:*",
+    "nstructjs": "^0.8.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -1,6 +1,7 @@
 # Entity discovery by meta tag
 
-Status: **planned.** Item 2 of [`refactorTaskList.md`](refactorTaskList.md); the foundation
+Status: **shipped** — see [As shipped](#as-shipped). Item 2 of
+[`refactorTaskList.md`](refactorTaskList.md); the foundation
 move of the [migration report](../research/codebase-migration-for-new-requirements.md#1-entity-discovery-by-meta-tag).
 The wiki/bible plan, the backlink index and the outfit diagnostics all sit on the shapes this
 plan introduces.
@@ -155,3 +156,35 @@ load byte-identically save for new diagnostics they may have earned.
 `pnpm check`, `pnpm test`, `pnpm lint` green; the testkit parity fixture passes; a
 conventional-only project (every example in-repo) produces an unchanged model and no new
 diagnostics.
+
+## As shipped
+
+Built as planned, in the six steps above. What the code says that the plan left open:
+
+- **Diagnostic codes**, all carried in `LoadedInputs.diagnostics` / `model.diagnostics`, never
+  thrown: `entity_id_mismatch` (error, from `buildModel`), `duplicate_entity` (warning, names
+  both files and which one is used), `entity_tag_conflict` (error, a conventional sheet
+  declaring the other kind), and one the plan did not anticipate, `entity_file` (unparseable
+  front-matter).
+- **`entity_file` has two severities**, keyed on the surface: **error** under `characters/` or
+  `locations/`, where the file is definitely meant to be an entity, and **warning** under
+  `wiki/`, where a file with no readable front-matter was never known to be one. The wiki walk
+  is what forced the rule to exist at all â€” before it, `loadInputs` simply threw.
+- **The id-agreement check lives in `buildModel`, not in `characterFromDoc`.** The pure
+  `*FromDoc` converters take a `FrontMatterDoc` and are re-used by `@vn/model`'s round-trip
+  serializers, which have no file in hand; `build.ts`'s `idAgrees` runs where the `EntityDoc`
+  is.
+- **`entityFile(docs, id)`** (exported from `@vn/store`) is the sanctioned way to answer "where
+  does this entity live". `vngen approve`, the desktop session, and testkit's `approveAll` all
+  go through it into the new `setCharacterApproval(file, hash)`.
+- **`CharacterEntry.file` / `LocationEntry.file` are optional** in the `vnauthor` index, mirroring
+  `SceneEntry.file`. A location mined from a heading has no sheet at all; falling back to the
+  conventional path would have reported a file that does not exist â€” the very bug this plan
+  removes.
+- **Fixtures place a sheet by tag** with `makeProject({ characters: [{ id, wiki: 'cast/aiko' }] })`,
+  which writes `wiki/cast/aiko.md` carrying `type: character`. A conventional fixture sheet is
+  left untagged on purpose, so the tag is never the thing being tested twice.
+
+`pnpm check`, `pnpm test` (79 suites, 1018 tests) and `pnpm lint` are green; the whole existing
+suite passing unchanged is the evidence for "a conventional-only project produces an unchanged
+model and no new diagnostics".

@@ -158,7 +158,12 @@ export interface Shot {
 /** A subject (character + outfit + pose/expression) appearing in a shot. */
 export interface ShotSubject {
   characterId: string;
-  outfit: string;
+  /**
+   * This shot's own outfit **override**, and nothing weaker. Absent means inherit — the scene's
+   * `[[outfit:]]` marker, then the character's default — so it is deliberately not filled in by
+   * the decomposer. `@vn/model`'s `outfitFor` is the only place that chain is written down.
+   */
+  outfit?: string;
   pose?: string;
   expression?: string;
 }
@@ -176,6 +181,12 @@ export interface Scene {
   /** The heading's interior/exterior prefix; absent when the heading was forced with `.`. */
   headingPrefix?: HeadingPrefix;
   characters: string[];
+  /**
+   * Outfits the scene puts its cast in, character id → outfit id, from `[[outfit: aiko=uniform]]`
+   * markers. Scene-scoped wherever the marker sits: a mid-scene change of clothes is a shot-level
+   * override or a scene split, never a position in {@link lines}.
+   */
+  outfits?: Record<string, string>;
   /** Concise beat/synopsis for the LLM. */
   synopsis?: string;
   /**
@@ -197,6 +208,16 @@ export interface Scene {
   shots: Shot[];
 }
 
+/** What an asset is *for*: the entity, scene or shot it serves. */
+export interface AssetBinding {
+  characterId?: string;
+  outfit?: string;
+  locationId?: string;
+  variant?: string;
+  sceneId?: string;
+  shotId?: string;
+}
+
 /** A stored, generated image and its provenance (report §3, §8). */
 export interface Asset {
   hash: string;
@@ -209,14 +230,20 @@ export interface Asset {
   refs: string[];
   modelId: string;
   params?: ImageParams;
-  /** Which entity this asset satisfies, for the manifest index. */
-  satisfies: {
-    characterId?: string;
-    outfit?: string;
-    locationId?: string;
-    variant?: string;
-    sceneId?: string;
-    shotId?: string;
-  };
+  /**
+   * Everything this asset satisfies, for the manifest index. A list because bytes are keyed by
+   * content: two tasks that produce the same image share one record, and the second binding
+   * must not erase the first. A manifest written with a single record reads as one element.
+   */
+  satisfies: AssetBinding[];
   accepted: boolean;
+}
+
+/**
+ * Whether `asset` serves everything `binding` names — one place to ask, so the surfaces don't
+ * each spell the list traversal differently. An empty `binding` matches any bound asset.
+ */
+export function bindsTo(asset: Asset, binding: AssetBinding): boolean {
+  const wanted = Object.entries(binding).filter(([, v]) => v !== undefined);
+  return asset.satisfies.some((b) => wanted.every(([k, v]) => b[k as keyof AssetBinding] === v));
 }

@@ -1,7 +1,15 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { composeSystem, isInside, loadContext, updateContext, SYSTEM_PROMPT } from '../index.js';
+import {
+  composeSystem,
+  isInside,
+  loadContext,
+  updateContext,
+  GENERATED_BANNER,
+  GENERATED_CONTEXT_FILE,
+  SYSTEM_PROMPT,
+} from '../index.js';
 
 async function tempDir(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
   const dir = await fs.mkdtemp(join(tmpdir(), 'vn-ctx-'));
@@ -64,6 +72,57 @@ describe('loadContext', () => {
       await cleanup();
     }
   });
+
+  it('loads the generated map as its own section, and the author overrides it', async () => {
+    const { dir, cleanup } = await tempDir();
+    try {
+      await fs.writeFile(
+        join(dir, GENERATED_CONTEXT_FILE),
+        `${GENERATED_BANNER}\n\n# Project map\n\n- aiko "Aiko" [draft]\n`,
+      );
+      await fs.writeFile(join(dir, 'AICONTEXT.md'), 'Aiko is always called Aiko-san.\n');
+      const ctx = await loadContext(dir);
+      expect(ctx.generatedContext).toContain('- aiko "Aiko" [draft]');
+      // Two sections, not one blob: the map never lands inside the author's context.
+      expect(ctx.projectContext).toBe('Aiko is always called Aiko-san.');
+      expect(ctx.files).toHaveLength(2);
+
+      const composed = composeSystem(ctx);
+      expect(composed.indexOf('PROJECT MAP')).toBeLessThan(composed.indexOf('PROJECT CONTEXT'));
+      expect(composed).toContain('AICONTEXT.md overrides it');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('ignores a file at the generated path that nobody generated', async () => {
+    const { dir, cleanup } = await tempDir();
+    try {
+      await fs.writeFile(join(dir, GENERATED_CONTEXT_FILE), 'Hand-written, no banner.\n');
+      const ctx = await loadContext(dir);
+      expect(ctx.generatedContext).toBe('');
+      expect(ctx.files).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('does not inline the generated file through an @import', async () => {
+    const { dir, cleanup } = await tempDir();
+    try {
+      await fs.writeFile(join(dir, GENERATED_CONTEXT_FILE), `${GENERATED_BANNER}\n\nTHE MAP\n`);
+      await fs.writeFile(
+        join(dir, 'AICONTEXT.md'),
+        `Tone: wistful.\n@import ./${GENERATED_CONTEXT_FILE}\n`,
+      );
+      const ctx = await loadContext(dir);
+      expect(ctx.projectContext).not.toContain('THE MAP');
+      expect(ctx.generatedContext).toContain('THE MAP');
+      expect(ctx.files).toHaveLength(2);
+    } finally {
+      await cleanup();
+    }
+  });
 });
 
 describe('updateContext', () => {
@@ -86,10 +145,12 @@ describe('composeSystem', () => {
     const composed = composeSystem({
       systemPrompt: 'SYS',
       projectContext: 'CTX',
+      generatedContext: '',
       files: [],
     });
     expect(composed).toContain('SYS');
     expect(composed).toContain('CTX');
+    expect(composed).not.toContain('PROJECT MAP');
   });
 });
 

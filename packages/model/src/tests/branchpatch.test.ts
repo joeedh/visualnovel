@@ -8,7 +8,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseFountain, splitFrontMatter } from '@vn/parse';
 import { SCRIPTS } from '@vn/testkit';
-import { applySceneBranchEdit, type SceneBranchEdit } from '../branchpatch.js';
+import { applySceneMarkerEdit, type SceneMarkerEdit } from '../branchpatch.js';
 import { splitScenes } from '../scenes.js';
 
 const SCRIPT = [
@@ -45,9 +45,9 @@ const scenesOf = (text: string, opts: { sceneId?: string } = {}) =>
 const sceneNamed = (text: string, id: string, opts: { sceneId?: string } = {}) =>
   scenesOf(text, opts).find((s) => s.id === id);
 
-describe('applySceneBranchEdit', () => {
+describe('applySceneMarkerEdit', () => {
   it('changes only the marker lines it was asked to change', () => {
-    const { text, diagnostics } = applySceneBranchEdit(SCRIPT, [
+    const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', choices: [{ label: 'Introduce yourself', goto: 'greet' }] },
     ]);
     expect(diagnostics).toEqual([]);
@@ -63,7 +63,7 @@ describe('applySceneBranchEdit', () => {
   });
 
   it('adds, relabels and removes choices', () => {
-    const added = applySceneBranchEdit(SCRIPT, [
+    const added = applySceneMarkerEdit(SCRIPT, [
       {
         sceneId: 'arrival',
         choices: [
@@ -79,29 +79,62 @@ describe('applySceneBranchEdit', () => {
       { label: 'Slip out', goto: 'greet' },
     ]);
 
-    const relabelled = applySceneBranchEdit(SCRIPT, [
+    const relabelled = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', choices: [{ label: 'Say something', goto: 'greet' }] },
     ]);
     expect(relabelled.text).toContain('[[choice: "Say something" -> greet]]');
     expect(relabelled.text).not.toContain('Introduce yourself');
 
-    const cleared = applySceneBranchEdit(SCRIPT, [{ sceneId: 'arrival', choices: [] }]);
+    const cleared = applySceneMarkerEdit(SCRIPT, [{ sceneId: 'arrival', choices: [] }]);
     expect(sceneNamed(cleared.text, 'arrival')?.choices).toEqual([]);
     expect(cleared.text).not.toContain('[[choice:');
   });
 
   it('sets and clears next', () => {
-    const set = applySceneBranchEdit(SCRIPT, [{ sceneId: 'greet', next: 'rooftop' }]);
+    const set = applySceneMarkerEdit(SCRIPT, [{ sceneId: 'greet', next: 'rooftop' }]);
     expect(set.diagnostics).toEqual([]);
     expect(sceneNamed(set.text, 'greet')?.next).toBe('rooftop');
 
-    const cleared = applySceneBranchEdit(SCRIPT, [{ sceneId: 'rooftop', next: null }]);
+    const cleared = applySceneMarkerEdit(SCRIPT, [{ sceneId: 'rooftop', next: null }]);
     expect(sceneNamed(cleared.text, 'rooftop')?.next).toBeUndefined();
     expect(cleared.text).not.toContain('[[next:');
   });
 
+  it('sets, replaces and clears the whole outfit set', () => {
+    const set = applySceneMarkerEdit(SCRIPT, [
+      { sceneId: 'arrival', outfits: { aiko: 'track', ren: 'uniform' } },
+    ]);
+    expect(set.diagnostics).toEqual([]);
+    expect(sceneNamed(set.text, 'arrival')?.outfits).toEqual({ aiko: 'track', ren: 'uniform' });
+
+    const replaced = applySceneMarkerEdit(set.text, [
+      { sceneId: 'arrival', outfits: { aiko: 'uniform' } },
+    ]);
+    expect(sceneNamed(replaced.text, 'arrival')?.outfits).toEqual({ aiko: 'uniform' });
+    expect(replaced.text).not.toContain('ren=');
+
+    const cleared = applySceneMarkerEdit(set.text, [{ sceneId: 'arrival', outfits: {} }]);
+    expect(cleared.text).not.toContain('[[outfit:');
+    expect(sceneNamed(cleared.text, 'arrival')?.outfits).toBeUndefined();
+    // Clearing the last marker leaves every other byte where it was.
+    expect(cleared.text).toBe(SCRIPT);
+  });
+
+  it('refuses an outfit pair that could not be read back', () => {
+    const cases: Record<string, string>[] = [
+      { aiko: 'club tracksuit' },
+      { '': 'track' },
+      { aiko: 'a=b' },
+    ];
+    for (const outfits of cases) {
+      const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [{ sceneId: 'arrival', outfits }]);
+      expect(text).toBe(SCRIPT);
+      expect(diagnostics.map((d) => d.code)).toEqual(['branch_patch_outfit']);
+    }
+  });
+
   it('writes new markers after the scene marker when the scene has none', () => {
-    const { text } = applySceneBranchEdit(SCRIPT, [
+    const { text } = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'greet', choices: [{ label: 'Again', goto: 'arrival' }], next: 'rooftop' },
     ]);
     const lines = text.split('\n');
@@ -114,7 +147,7 @@ describe('applySceneBranchEdit', () => {
   });
 
   it('places a fresh next after existing choices, not before them', () => {
-    const { text } = applySceneBranchEdit(SCRIPT, [{ sceneId: 'arrival', next: 'rooftop' }]);
+    const { text } = applySceneMarkerEdit(SCRIPT, [{ sceneId: 'arrival', next: 'rooftop' }]);
     const lines = text.split('\n');
     expect(lines.indexOf('[[next: rooftop]]')).toBeGreaterThan(
       lines.indexOf('[[choice: "Stay quiet" -> rooftop]]'),
@@ -126,7 +159,7 @@ describe('applySceneBranchEdit', () => {
     const id = scenesOf(bare)[0]?.id;
     expect(id).toBe('garden_1');
 
-    const { text, diagnostics } = applySceneBranchEdit(bare, [
+    const { text, diagnostics } = applySceneMarkerEdit(bare, [
       { sceneId: 'garden_1', next: 'elsewhere' },
     ]);
     expect(diagnostics).toEqual([]);
@@ -138,13 +171,13 @@ describe('applySceneBranchEdit', () => {
   // viable arrow — so quoting is enough for both. `]]` is not recoverable at any quoting.
   it('round-trips a label containing quotes and an arrow, and rejects one containing ]]', () => {
     const tricky = 'He said "go" -> then left';
-    const { text, diagnostics } = applySceneBranchEdit(SCRIPT, [
+    const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', choices: [{ label: tricky, goto: 'greet' }] },
     ]);
     expect(diagnostics).toEqual([]);
     expect(sceneNamed(text, 'arrival')?.choices).toEqual([{ label: tricky, goto: 'greet' }]);
 
-    const bad = applySceneBranchEdit(SCRIPT, [
+    const bad = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', choices: [{ label: 'oops ]] out', goto: 'greet' }] },
     ]);
     expect(bad.text).toBe(SCRIPT);
@@ -152,11 +185,11 @@ describe('applySceneBranchEdit', () => {
   });
 
   it('rejects an unusable goto and an empty label without touching the file', () => {
-    const spaced = applySceneBranchEdit(SCRIPT, [{ sceneId: 'arrival', next: 'two words' }]);
+    const spaced = applySceneMarkerEdit(SCRIPT, [{ sceneId: 'arrival', next: 'two words' }]);
     expect(spaced.text).toBe(SCRIPT);
     expect(spaced.diagnostics.map((d) => d.code)).toEqual(['branch_patch_goto']);
 
-    const empty = applySceneBranchEdit(SCRIPT, [
+    const empty = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', choices: [{ label: '   ', goto: 'greet' }] },
     ]);
     expect(empty.text).toBe(SCRIPT);
@@ -164,7 +197,7 @@ describe('applySceneBranchEdit', () => {
   });
 
   it('leaves the file byte-identical when a scene id does not exist', () => {
-    const { text, diagnostics } = applySceneBranchEdit(SCRIPT, [
+    const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'nowhere', next: 'greet' },
     ]);
     expect(text).toBe(SCRIPT);
@@ -179,7 +212,7 @@ describe('applySceneBranchEdit', () => {
   });
 
   it('rejects two edits to the same scene rather than letting one win', () => {
-    const { text, diagnostics } = applySceneBranchEdit(SCRIPT, [
+    const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', next: 'greet' },
       { sceneId: 'arrival', next: 'rooftop' },
     ]);
@@ -205,14 +238,14 @@ describe('applySceneBranchEdit', () => {
       '',
     ].join('\n');
 
-    const { text, diagnostics } = applySceneBranchEdit(shared, [{ sceneId: 'second', next: null }]);
+    const { text, diagnostics } = applySceneMarkerEdit(shared, [{ sceneId: 'second', next: null }]);
     expect(diagnostics).toEqual([]);
     expect(sceneNamed(text, 'first')?.next).toBe('second');
     expect(sceneNamed(text, 'second')?.next).toBeUndefined();
   });
 
   it('applies a two-scene edit in one pass', () => {
-    const { text, diagnostics } = applySceneBranchEdit(SCRIPT, [
+    const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', choices: [{ label: 'Introduce yourself', goto: 'rooftop' }] },
       { sceneId: 'rooftop', next: 'greet' },
     ]);
@@ -224,7 +257,7 @@ describe('applySceneBranchEdit', () => {
   });
 
   it('leaves the file byte-identical when the second scene of a pair is missing', () => {
-    const { text, diagnostics } = applySceneBranchEdit(SCRIPT, [
+    const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [
       { sceneId: 'arrival', choices: [{ label: 'Introduce yourself', goto: 'ghost' }] },
       { sceneId: 'ghost', next: 'greet' },
     ]);
@@ -253,7 +286,7 @@ describe('applySceneBranchEdit', () => {
       '',
     ].join('\r\n');
 
-    const { text, diagnostics } = applySceneBranchEdit(odd, [
+    const { text, diagnostics } = applySceneMarkerEdit(odd, [
       { sceneId: 'arrival', next: 'greet', choices: [{ label: 'Wait', goto: 'greet' }] },
     ]);
     expect(diagnostics).toEqual([]);
@@ -285,7 +318,7 @@ describe('applySceneBranchEdit', () => {
       '',
     ].join('\n');
 
-    const { text, diagnostics } = applySceneBranchEdit(marked, [
+    const { text, diagnostics } = applySceneMarkerEdit(marked, [
       { sceneId: 'arrival', next: null, choices: [{ label: 'Wait', goto: 'greet' }] },
     ]);
     expect(diagnostics).toEqual([]);
@@ -298,7 +331,7 @@ describe('applySceneBranchEdit', () => {
   });
 
   it('does nothing, successfully, for an empty edit list', () => {
-    expect(applySceneBranchEdit(SCRIPT, [])).toEqual({ text: SCRIPT, diagnostics: [] });
+    expect(applySceneMarkerEdit(SCRIPT, [])).toEqual({ text: SCRIPT, diagnostics: [] });
   });
 
   // The re-parse assertion's reason for existing: a heading needs a blank line above it, and a
@@ -319,7 +352,7 @@ describe('applySceneBranchEdit', () => {
     ].join('\n');
     expect(scenesOf(fragile)).toHaveLength(1);
 
-    const { text, diagnostics } = applySceneBranchEdit(fragile, [
+    const { text, diagnostics } = applySceneMarkerEdit(fragile, [
       { sceneId: 'arrival', next: null },
     ]);
     expect(text).toBe(fragile);
@@ -331,7 +364,7 @@ describe('applySceneBranchEdit', () => {
  * A chunk body is the same Fountain with the id supplied from outside it. Nothing about the
  * patching changes; what changes is where the id comes from, and that a chunk is one scene.
  */
-describe('applySceneBranchEdit — a scene chunk body', () => {
+describe('applySceneMarkerEdit — a scene chunk body', () => {
   const CHUNK = [
     'INT. DORM ROOM - DAY',
     '',
@@ -342,7 +375,7 @@ describe('applySceneBranchEdit — a scene chunk body', () => {
   ].join('\n');
 
   it('patches a body that never names itself, id supplied by the caller', () => {
-    const { text, diagnostics } = applySceneBranchEdit(
+    const { text, diagnostics } = applySceneMarkerEdit(
       CHUNK,
       [{ sceneId: 'arrival', next: null, choices: [{ label: 'Wait', goto: 'greet' }] }],
       { sceneId: 'arrival' },
@@ -356,7 +389,7 @@ describe('applySceneBranchEdit — a scene chunk body', () => {
   });
 
   it('refuses an edit naming a scene this chunk is not', () => {
-    const { text, diagnostics } = applySceneBranchEdit(CHUNK, [{ sceneId: 'greet', next: null }], {
+    const { text, diagnostics } = applySceneMarkerEdit(CHUNK, [{ sceneId: 'greet', next: null }], {
       sceneId: 'arrival',
     });
     expect(text).toBe(CHUNK);
@@ -372,7 +405,7 @@ describe('applySceneBranchEdit — a scene chunk body', () => {
 
   it('refuses a chunk holding two scenes — there is no single id it could be', () => {
     const two = `${CHUNK}\nINT. HALLWAY - DAY\n\nFootsteps echo.\n`;
-    const { text, diagnostics } = applySceneBranchEdit(two, [{ sceneId: 'arrival', next: null }], {
+    const { text, diagnostics } = applySceneMarkerEdit(two, [{ sceneId: 'arrival', next: null }], {
       sceneId: 'arrival',
     });
     expect(text).toBe(two);
@@ -381,7 +414,7 @@ describe('applySceneBranchEdit — a scene chunk body', () => {
   });
 
   it('refuses a body with no scene heading at all', () => {
-    const { diagnostics } = applySceneBranchEdit(
+    const { diagnostics } = applySceneMarkerEdit(
       'Just prose, no heading.\n',
       [{ sceneId: 'arrival', next: 'greet' }],
       { sceneId: 'arrival' },
@@ -391,8 +424,8 @@ describe('applySceneBranchEdit — a scene chunk body', () => {
 });
 
 /** Every rewiring worth trying against a scene list: each scene, at each arity, twice over. */
-function sweepOf(ids: string[]): SceneBranchEdit[] {
-  const edits: SceneBranchEdit[] = [];
+function sweepOf(ids: string[]): SceneMarkerEdit[] {
+  const edits: SceneMarkerEdit[] = [];
   for (const [i, sceneId] of ids.entries()) {
     const a = ids[(i + 1) % ids.length] as string;
     const b = ids[(i + 2) % ids.length] as string;
@@ -419,8 +452,8 @@ function sweepOf(ids: string[]): SceneBranchEdit[] {
  * Land one sweep edit and re-read the result: the edited scene has exactly the graph asked for,
  * every other scene in the file keeps the wiring it had, and no scene is created or lost.
  */
-function expectLands(source: string, edit: SceneBranchEdit, opts: { sceneId?: string } = {}): void {
-  const { text, diagnostics } = applySceneBranchEdit(source, [edit], opts);
+function expectLands(source: string, edit: SceneMarkerEdit, opts: { sceneId?: string } = {}): void {
+  const { text, diagnostics } = applySceneMarkerEdit(source, [edit], opts);
   // Nothing in the sweep is malformed, so a refusal here is a real bug, not a safe no-op.
   expect(diagnostics).toEqual([]);
   const scene = sceneNamed(text, edit.sceneId, opts);
@@ -447,7 +480,7 @@ function expectLands(source: string, edit: SceneBranchEdit, opts: { sceneId?: st
  * chunks, which is one file per scene with the id forced from front-matter — the form the
  * desktop branch editor patches.
  */
-describe('applySceneBranchEdit over examples/sample scene chunks', () => {
+describe('applySceneMarkerEdit over examples/sample scene chunks', () => {
   const dir = resolve(__dirname, '../../../../examples/sample/scenes');
   const ids = readdirSync(dir)
     .filter((name) => name.endsWith('.md'))
@@ -468,7 +501,7 @@ describe('applySceneBranchEdit over examples/sample scene chunks', () => {
  * that no *other* scene's markers move. Nothing *loads* a multi-scene file any more, but the
  * patcher still takes one: `vngen screenplay` emits that shape, and it is what gets imported.
  */
-describe('applySceneBranchEdit over a whole screenplay', () => {
+describe('applySceneMarkerEdit over a whole screenplay', () => {
   const source = SCRIPTS.branching;
   const ids = scenesOf(source).map((s) => s.id);
 

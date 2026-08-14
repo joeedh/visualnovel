@@ -55,7 +55,7 @@ describe('AssetStore — content addressing', () => {
     await store.accept(ref.hash);
     const asset = store.manifest()[0]!;
     expect(asset.prompt).toBe('a prompt');
-    expect(asset.satisfies.shotId).toBe('s1');
+    expect(asset.satisfies).toEqual([{ shotId: 's1' }]);
     expect(asset.accepted).toBe(true);
   });
 });
@@ -72,7 +72,9 @@ describe('worktree IO', () => {
 
     const inputs = await loadInputs(paths);
     expect(inputs.characterDocs).toHaveLength(1);
-    expect(inputs.characterDocs[0]!.data['id']).toBe('aiko');
+    expect(inputs.characterDocs[0]!.doc.data['id']).toBe('aiko');
+    expect(inputs.characterDocs[0]!.id).toBe('aiko');
+    expect(inputs.characterDocs[0]!.file).toBe(paths.characterFile('aiko'));
     expect(inputs.sceneDocs.map((c) => c.id)).toEqual(['arrival']);
     expect(inputs.legacyScreenplay).toBeUndefined();
     expect(inputs.diagnostics).toEqual([]);
@@ -118,7 +120,7 @@ describe('worktree IO', () => {
       '---\nid: aiko\nname: Aiko\nstatus: candidates\n---\n\nAiko.\n',
     );
 
-    const ok = await setCharacterApproval(paths, 'aiko', 'deadbeef');
+    const ok = await setCharacterApproval(paths.characterFile('aiko'), 'deadbeef');
     expect(ok).toBe(true);
     const doc = parseFrontMatter(await readFile(paths.characterFile('aiko'), 'utf8'));
     expect(doc.data['status']).toBe('approved');

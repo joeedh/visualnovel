@@ -1,5 +1,6 @@
 import { diagnosticScene } from './diagnostics.js';
-import type { Room, StudioMode, WorkspaceIndex } from '../../../src/shared/ipc';
+import type { WorkspaceIndex } from '../../../src/shared/ipc';
+import type { Room, StudioMode } from '../rooms';
 
 const SWATCH: Record<string, string> = {
   approved: 'linear-gradient(135deg,#d98a6b,#7a3f4e)',

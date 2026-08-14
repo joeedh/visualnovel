@@ -139,6 +139,7 @@ const drawn = (id: string, coversLines: string[]): CoverageShot => ({
   id,
   framing: 'medium',
   subjects: [],
+  outfits: {},
   coversLines,
   status: 'accepted',
   drift: 'current',

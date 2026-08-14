@@ -34,11 +34,6 @@ export function characterFromDoc(doc: FrontMatterDoc): EntityResult<Character> {
     };
   }
   const fm = parsed.data;
-  const defaultOutfit: Outfit = {
-    id: fm.default_outfit,
-    characterId: fm.id,
-    description: 'default outfit',
-  };
   const character: Character = {
     id: fm.id,
     name: fm.name,
@@ -48,10 +43,31 @@ export function characterFromDoc(doc: FrontMatterDoc): EntityResult<Character> {
     referenceImages: fm.reference_images,
     status: fm.status,
     defaultOutfit: fm.default_outfit,
-    outfits: [defaultOutfit],
+    outfits: wardrobeOf(fm.id, fm.default_outfit, fm.outfits),
     approvedPortrait: fm.approved_portrait,
   };
   return { ok: true, value: character };
+}
+
+/**
+ * The authored wardrobe as `Outfit[]`, in the order the map was written. The default is
+ * synthesized (with an empty description) when the map omits it, so a sheet that names no
+ * wardrobe at all still has the one outfit every shot resolves to.
+ */
+function wardrobeOf(
+  characterId: string,
+  defaultOutfit: string,
+  authored: Record<string, string>,
+): Outfit[] {
+  const outfits = Object.entries(authored).map(([id, description]) => ({
+    id,
+    characterId,
+    description,
+  }));
+  if (!outfits.some((o) => o.id === defaultOutfit)) {
+    outfits.unshift({ id: defaultOutfit, characterId, description: '' });
+  }
+  return outfits;
 }
 
 /** A scene chunk read back: the scene, what its heading mined, and what its marks got wrong. */

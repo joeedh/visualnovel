@@ -5,4 +5,5 @@ export * from './dsl.js';
 export * from './interaction.js';
 export * from './stack.js';
 export * from './undo.js';
+export * from './commit.js';
 export * from './catalog.js';

@@ -26,6 +26,7 @@ function projected(scene: Scene): unknown {
     lines: scene.lines,
     choices: scene.choices,
     next: scene.next,
+    outfits: scene.outfits,
   };
 }
 
@@ -167,6 +168,14 @@ describe('sceneToFountain — round trip over scene shape', () => {
       }),
     );
     survives(sceneOf('hall', [], { next: 'rooftop' }));
+  });
+
+  it('outfit markers, in the order they were written', () => {
+    survives(
+      sceneOf('club', [{ kind: 'dialogue', speaker: 'AIKO', text: 'Coming!' }], {
+        outfits: { aiko: 'track', ren: 'uniform' },
+      }),
+    );
   });
 
   it('an allocator raised past the ids in use', () => {

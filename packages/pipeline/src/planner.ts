@@ -1,7 +1,9 @@
 import type {
   AnyTask,
   AssetRef,
+  BaseAssets,
   Character,
+  ImageParams,
   Logger,
   ProjectModel,
   Scene,
@@ -10,6 +12,7 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Providers } from '@vn/types';
+import { outfitFor } from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
 import {
@@ -26,6 +29,9 @@ import { isApproved, sceneUnblocked } from './gate.js';
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
 export const MODEL_SHEET_ANGLES = ['front', 'side', 'back'] as const;
 
+/** The angle a shot references. One, not three: a frame needs the clothes, not a turnaround. */
+const SHEET_FRONT = MODEL_SHEET_ANGLES[0];
+
 const PNG = 'png';
 
 /** Characters that appear in at least one reachable scene (everyone else is dead weight). */
@@ -41,6 +47,66 @@ function usedCharacters(model: ProjectModel): Character[] {
 /** Reachable scenes only — never spend generation on unreachable branches. */
 function reachableScenes(model: ProjectModel): Scene[] {
   return [...model.scenes.values()].filter((s) => model.reachable.has(s.id));
+}
+
+/**
+ * The outfits a run actually needs, character id → outfit ids in the order they were found: the
+ * character's default first (anything with no opinion inherits it), then every `[[outfit:]]` marker
+ * and shot override over reachable scenes. Authoring a wardrobe therefore costs nothing until
+ * something puts a character in it — a sheet is three image calls per outfit.
+ *
+ * The set is exactly the range of {@link outfitFor} over this model, an id it does not author
+ * included: `outfitText` falls back to the id for the sheet prompt just as it does for the shot's,
+ * so a shot can never depend on a sheet nothing planned.
+ */
+function usedOutfits(model: ProjectModel): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  const add = (characterId: string, outfit: string | undefined): void => {
+    const set = out.get(characterId) ?? new Set<string>();
+    if (!out.has(characterId)) {
+      // The default goes in first whoever asks, so a wardrobe-less project plans what it always did.
+      const fallback = model.characters.get(characterId)?.defaultOutfit;
+      if (fallback) set.add(fallback);
+      out.set(characterId, set);
+    }
+    if (outfit) set.add(outfit);
+  };
+
+  for (const scene of reachableScenes(model)) {
+    const marks = scene.outfits ?? {};
+    // The cast, plus anyone a marker names who is not in it — a marker for someone the scene
+    // forgot to list is still an outfit something asked for.
+    for (const id of new Set([...scene.characters, ...Object.keys(marks)])) add(id, marks[id]);
+    // Shots exist only once a scene has been decomposed, so an override reaches this on a later
+    // wave than the marker does — which is what incremental planning is for.
+    for (const shot of scene.shots) {
+      for (const subject of shot.subjects) add(subject.characterId, subject.outfit);
+    }
+  }
+  return out;
+}
+
+/**
+ * One model-sheet task. Built in two places — P4 fans them out, and a shot in a non-default outfit
+ * names one as a ref — so the identity is written down once or the shot would depend on a hash
+ * nothing planned.
+ */
+function modelSheetTask(
+  character: Character,
+  outfit: string,
+  angle: string,
+  portrait: AssetRef,
+  config: ProjectConfig,
+  params: ImageParams,
+): AnyTask {
+  return makeTask('model_sheet', {
+    characterId: character.id,
+    outfit,
+    angle,
+    prompt: buildModelSheetPrompt(character, outfit, angle, config),
+    refs: [portrait],
+    params,
+  });
 }
 
 /** Locations referenced by a reachable scene, paired with the variants those scenes use. */
@@ -124,6 +190,20 @@ function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
   delete shot.proseHash;
 }
 
+/**
+ * Why planning is refused, or `undefined` to plan normally.
+ *
+ * An `unavailable` base root — the directory is there, its manifest is not — is the shape a
+ * clone without the base repo leaves behind, and the whole plan rests on it: the four base kinds
+ * would be re-generated from scratch, and every shot references a location plate and a portrait
+ * whose bytes are equally gone. So nothing is plannable, and saying that in one sentence is the
+ * point of the state existing at all.
+ */
+export function baseRefusal(base?: BaseAssets): string | undefined {
+  if (base?.state !== 'unavailable') return undefined;
+  return `base assets at ${base.root} are unavailable: the directory exists but has no readable manifest.json (a checkout without the base repo looks exactly like this). Nothing was planned — restore it rather than regenerate.`;
+}
+
 /** Find an already-produced asset for a task identity, if it ran and succeeded. */
 function doneOutput(graph: TaskGraph, hash: string): AssetRef | undefined {
   const task = graph.get(hash);
@@ -143,6 +223,8 @@ function doneOutput(graph: TaskGraph, hash: string): AssetRef | undefined {
  *
  * With `paths`, decompositions are persisted under `work/shots/` and preferred over
  * re-decomposing; without it planning is pure, which is what the unit tests want.
+ *
+ * An `unavailable` base root plans **nothing** — see {@link baseRefusal}.
  */
 export async function planTasks(opts: {
   model: ProjectModel;
@@ -152,13 +234,20 @@ export async function planTasks(opts: {
   /** Enables shot persistence. Omit to plan without touching disk. */
   paths?: ProjectPaths;
   logger?: Logger;
+  /** The store's base root, when the caller has one. Absent means "no opinion" — plan normally. */
+  base?: BaseAssets;
   /**
    * Read persisted shots but never write. A dry run plans with mock providers, and a mock
    * decomposition must not be left behind for a later real run to reuse.
    */
   readOnlyShots?: boolean;
 }): Promise<AnyTask[]> {
-  const { model, graph, config, providers, paths, logger, readOnlyShots } = opts;
+  const { model, graph, config, providers, paths, logger, base, readOnlyShots } = opts;
+  const refusal = baseRefusal(base);
+  if (refusal) {
+    logger?.error('plan.refused', { reason: refusal, root: base?.root });
+    return [];
+  }
   const params = imageParams(config);
   const planned: AnyTask[] = [];
 
@@ -173,27 +262,23 @@ export async function planTasks(opts: {
     }
   }
 
+  const wardrobe = usedOutfits(model);
+
   // P3: one portrait task per used character (the human-approval gate sits on its output).
   for (const character of usedCharacters(model)) {
     const prompt = buildPortraitPrompt(character, config);
     const task = makeTask('portrait', { characterId: character.id, prompt, refs: [], params });
     planned.push(graph.add(task));
 
-    // P4: model sheets derive from the *approved* portrait, so only after the gate.
+    // P4: model sheets derive from the *approved* portrait, so only after the gate — and only for
+    // the outfits something puts this character in, not for every one the sheet authors.
     if (isApproved(character) && character.approvedPortrait) {
       const portraitRef: AssetRef = { hash: character.approvedPortrait, ext: PNG };
-      for (const outfit of character.outfits) {
+      for (const outfit of wardrobe.get(character.id) ?? [character.defaultOutfit]) {
         for (const angle of MODEL_SHEET_ANGLES) {
-          const sheetPrompt = buildModelSheetPrompt(character, outfit.id, angle, config);
-          const sheet = makeTask('model_sheet', {
-            characterId: character.id,
-            outfit: outfit.id,
-            angle,
-            prompt: sheetPrompt,
-            refs: [portraitRef],
-            params,
-          });
-          planned.push(graph.add(sheet));
+          planned.push(
+            graph.add(modelSheetTask(character, outfit, angle, portraitRef, config, params)),
+          );
         }
       }
     }
@@ -217,25 +302,47 @@ export async function planTasks(opts: {
       const locAsset = doneOutput(graph, locTaskHash);
       if (!locAsset) continue;
 
-      // Each subject contributes its approved portrait as an identity reference.
+      // Each subject contributes its approved portrait as an identity reference — and, when it is
+      // not in the character's default, that outfit's front sheet, so the clothes are something to
+      // copy rather than words to interpret. The portrait alone shows the default.
       const subjectRefs: AssetRef[] = [];
-      let missingSubject = false;
+      const sheetDeps: string[] = [];
+      let missingRef = false;
       for (const subject of shot.subjects) {
         const character = model.characters.get(subject.characterId);
         if (!character?.approvedPortrait) {
-          missingSubject = true;
+          missingRef = true;
           break;
         }
-        subjectRefs.push({ hash: character.approvedPortrait, ext: PNG });
+        const portraitRef: AssetRef = { hash: character.approvedPortrait, ext: PNG };
+        subjectRefs.push(portraitRef);
+
+        const outfit = outfitFor(subject, scene, character);
+        if (outfit.id === character.defaultOutfit) continue;
+        const sheet = modelSheetTask(
+          character,
+          outfit.id,
+          SHEET_FRONT,
+          portraitRef,
+          config,
+          params,
+        );
+        const sheetAsset = doneOutput(graph, sheet.hash);
+        if (!sheetAsset) {
+          missingRef = true;
+          break;
+        }
+        subjectRefs.push(sheetAsset);
+        sheetDeps.push(sheet.hash);
       }
-      if (missingSubject) continue;
+      if (missingRef) continue;
 
       const prompt = buildShotPrompt(shot, scene, model, config);
       shot.prompt = prompt;
       const task = makeTask(
         'shot_image',
         { shotId: shot.id, prompt, refs: [locAsset, ...subjectRefs], params },
-        [locTaskHash],
+        [locTaskHash, ...sheetDeps],
       );
       const node = graph.add(task);
       planned.push(node);

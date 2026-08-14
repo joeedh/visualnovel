@@ -28,6 +28,16 @@ export {
   type LineOp,
   type ScriptState,
 } from './lineops.js';
+export { moveShot, planShotMove, type PositionedShot, type ShotMove } from './shotorder.js';
+export {
+  setSceneOutfit,
+  setShotOutfit,
+  wardrobesOf,
+  type SceneOutfitOp,
+  type ShotOutfitOp,
+  type Wardrobe,
+  type WardrobeMap,
+} from './outfits.js';
 export {
   scenesTouchedBy,
   shotFallout,

@@ -16,6 +16,7 @@ import type {
   WorkspaceIndex,
 } from '@vn/authoring';
 import type {
+  AssetKind,
   AssetRef,
   DefectReport,
   Diagnostic,
@@ -47,23 +48,9 @@ export type {
   UndoState,
 } from '@vn/commands';
 
-/** The rooms the shell can show; `view.room` targets one. */
-export type Room = 'studio' | 'floor' | 'play';
+import type { EditorId, OpenWhere } from './editors.js';
 
-/**
- * Which surface STUDIO shows in its main column: the vnauthor conversation, the branch editor,
- * or the script editor. A mode rather than a fourth room — the composer stays put underneath any
- * of them, so you can wire two scenes, write what goes between them, and ask the agent about it
- * without leaving the column. `branches` and `script` are two views of one selected scene.
- */
-export type StudioMode = 'convo' | 'branches' | 'script';
-
-/**
- * Which surface FLOOR shows. `list` and `graph` are the same tasks, driving the same selection
- * and the same inspector — the list is better for scanning, the graph for structure. `timeline`
- * is the coverage strip: a scene's screenplay against the shots that illustrate it.
- */
-export type FloorMode = 'list' | 'graph' | 'timeline';
+export type { EditorId, OpenWhere } from './editors.js';
 
 /** Anything the desktop session store can persist — plain JSON, nothing else. */
 export type SessionValue =
@@ -80,22 +67,29 @@ export type SessionValue =
  * rather than the renderer keeping a second registry in sync.
  */
 export type UiEffect =
-  | { type: 'room'; name: Room }
   | { type: 'palette'; open: boolean }
   /**
-   * One member per room that has modes, rather than one with a widened `mode` — the pairing is
-   * what makes `effect.room === 'studio'` narrow `effect.mode`, so the shell cannot hand FLOOR's
-   * mode to STUDIO. `view.mode` re-checks the pair before pushing, and refuses a mismatch.
+   * Where an editor goes and which pane is active. An effect names an **editor**, never a room:
+   * the shell is a mesh of panes an author arranges, so "show me the coverage strip" is a
+   * different act from "put it beside the script", and both are one command away.
    */
-  | { type: 'mode'; room: 'studio'; mode: StudioMode }
-  | { type: 'mode'; room: 'floor'; mode: FloorMode }
+  | { type: 'view'; action: 'open'; editor: EditorId; where: OpenWhere }
+  | { type: 'view'; action: 'focus'; editor: EditorId }
+  | { type: 'view'; action: 'close' }
+  | { type: 'view'; action: 'reset' }
   /**
    * Pushed after every command, so the undo/redo affordances stay honest whoever ran it — the
    * palette, a drag, or CDP. `revision` counts undo/redo moves **only**: those are the writes
    * a room did not make itself, so it is what a room remounts on. An ordinary command already
    * refreshes the surface that issued it.
    */
-  | { type: 'undo'; state: UndoState; revision: number };
+  | { type: 'undo'; state: UndoState; revision: number }
+  /**
+   * A different project is open. Everything the shell holds was read out of the old workspace,
+   * so this is a remount and not a refresh — the session, the command history and the undo
+   * stack were all torn down with the old root.
+   */
+  | { type: 'workspace'; root: string; title: string };
 
 /** Either form of invocation accepted over `command:exec`: structured, or a DSL string. */
 export interface CommandExecRequest {
@@ -120,6 +114,9 @@ export type {
   RunResult,
   WorkspaceIndex,
 } from '@vn/authoring';
+// Type-only, so the browser bundle never pulls in `@vn/bible` (which reads the filesystem):
+// `bible.search` results cross the wire as data, and this is the shape the renderer names.
+export type { BibleFile, Excerpt } from '@vn/bible';
 export type { Playable, Beat, PlayableScene, TaskKind, TaskStatus } from '@vn/types';
 export type { Defect, DefectReport, Diagnostic } from '@vn/types';
 
@@ -242,6 +239,11 @@ export interface CoverageShot {
   framing: string;
   /** Character ids in frame; empty is a background plate. */
   subjects: string[];
+  /**
+   * Per-subject outfit *overrides*, character id → outfit id. A subject absent from this map
+   * inherits — an empty map is the normal state, not an unfilled one.
+   */
+  outfits: Record<string, string>;
   coversLines: string[];
   status: Shot['status'];
   /** The accepted frame, for the thumbnail. Absent until a run produced one. */
@@ -255,6 +257,20 @@ export interface CoverageShot {
 }
 
 /**
+ * One member of a scene's cast, with the clothes they could be put in. The wardrobe travels with
+ * the coverage because the strip's outfit controls have to offer exactly what the command would
+ * accept — a select built from anything else would offer refusals.
+ */
+export interface CoverageCast {
+  id: string;
+  /** Outfit ids the sheet authors, in order; always contains {@link defaultOutfit}. */
+  outfits: string[];
+  defaultOutfit: string;
+  /** The scene's `[[outfit:]]` marker for them, when there is one. */
+  marked?: string;
+}
+
+/**
  * A scene's script and its shots, the timeline's whole input. Shots come from the persisted
  * decomposition (`work/shots/<sceneId>.json`) — a model loaded from disk carries none.
  */
@@ -263,8 +279,75 @@ export interface SceneCoverage {
   location: string;
   lines: CoverageLine[];
   shots: CoverageShot[];
+  /** Who is in the scene and what they own; the scene half of the outfit strip. */
+  cast: CoverageCast[];
   /** No decomposition on disk yet: the scene has not been planned past the gate. */
   decomposed: boolean;
+}
+
+/**
+ * What a document-tree node is. `branch` is a pure grouping (the five roots); `dir`/`file` only
+ * appear in the full file tree; `more` is the counted stand-in for children a cap dropped.
+ */
+export type DocNodeKind =
+  | 'branch'
+  | 'scene'
+  | 'shot'
+  | 'character'
+  | 'location'
+  | 'wikidir'
+  | 'wiki'
+  | 'assetkind'
+  | 'asset'
+  | 'dir'
+  | 'file'
+  | 'more';
+
+/**
+ * One node of the sidebar's tree. Identity, not content — and deliberately not an action: there
+ * is no command that selects a scene or a shot yet, so what a click does stays the shell's.
+ */
+export interface DocNode {
+  /**
+   * `<kind>:<key>` — `scene:greet`, `shot:greet/s1`, `character:aiko`. Stable across reloads (so
+   * expansion state survives) and the key {@link DocTree.backlinks} is keyed by.
+   */
+  id: string;
+  kind: DocNodeKind;
+  label: string;
+  /** Workspace-relative, `/` separators. Absent for a grouping, and for an entity with no sheet. */
+  path?: string;
+  /** One word, never a sentence: `unreachable`, `draft`, `mined`, `base`, `accepted`. */
+  badge?: string;
+  children?: DocNode[];
+}
+
+/** Everything one entity is attached to. The panel behind a click on a character or a location. */
+export interface EntityLinks {
+  /** The sheet it was discovered in, wherever that was. Absent for a mined location. */
+  sheet?: string;
+  /** That same sheet when it lives under `wiki/` — the "story bible file" link. */
+  wiki?: string;
+  assets: {
+    hash: string;
+    ext: string;
+    kind: AssetKind;
+    accepted: boolean;
+    /** Routed to the base root — see `isBaseKind`, which is the one place that is decided. */
+    base: boolean;
+  }[];
+  scenes: string[];
+  shots: { scene: string; shot: string }[];
+}
+
+/**
+ * The sidebar's default view: five branches plus the backlinks behind them. One shape because it
+ * is one walk — the scene → shot tree and "which shots is Aiko in" read the same storyboards.
+ */
+export interface DocTree {
+  roots: DocNode[];
+  /** Keyed by node id (`character:aiko`), so a panel is a lookup rather than a second convention. */
+  backlinks: Record<string, EntityLinks>;
 }
 
 /** Outcome of a `story.*` branch edit: the patched graph, or why the patch was refused. */
@@ -299,6 +382,14 @@ export interface SceneEditResult {
  */
 export interface InvokeChannels {
   'workspace:index': () => WorkspaceIndex;
+  /**
+   * The sidebar's logical tree + backlinks. Its own channel rather than a wider index: this one
+   * reads every scene's storyboard and the manifest, and `workspace:index` is fetched on every
+   * agent turn. Refetched after a write, like `story:graph`.
+   */
+  'workspace:doctree': () => DocTree;
+  /** Every file on disk, `.git` and `node_modules` excluded, capped. The tree's other mode. */
+  'workspace:filetree': () => DocNode[];
   'agent:run': (userInput: string) => RunResult;
   'agent:setMode': (mode: AgentMode) => AgentMode;
   'agent:setModel': (modelId: string) => string;
@@ -342,7 +433,7 @@ export interface EventChannels {
   'agent:event': AgentEvent;
   'permission:plan': PlanRequest;
   'command:ui': UiEffect;
-  /** A session key changed — either by this window or by a command like `view.panelSize`. */
+  /** A session key changed — either by this window or by a command that wrote one. */
   'session:changed': { key: string; value: SessionValue };
   log: { level: 'info' | 'warn' | 'error'; message: string };
 }
@@ -370,7 +461,7 @@ export interface DesktopApi {
 /**
  * The scripting surface the preload exposes on `window.vn` — the entry point for DevTools
  * and for CDP `Runtime.evaluate`. `exec` takes either a DSL string on its own
- * (`vn.exec("view.room(name='floor')")`) or an id plus a props object.
+ * (`vn.exec("view.open(editor='timeline')")`) or an id plus a props object.
  */
 export interface CommandBridge {
   exec(dslOrId: string, props?: Record<string, PropValue>): Promise<CommandOutcome>;

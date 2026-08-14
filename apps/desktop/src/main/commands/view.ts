@@ -2,86 +2,74 @@
  * UI state as commands. These run in main like every other command and push an effect the
  * renderer applies, so the palette, the menu bar and CDP all reach the same vocabulary
  * rather than the renderer maintaining a second registry to keep in sync.
+ *
+ * They address **editors**, not rooms. The shell is a mesh of panes, so what an author (or the
+ * agent driving for one) wants to say is "show me the coverage strip", optionally "beside the
+ * script" — `view.open`, `view.focus`, and the two layout verbs. The names come from
+ * `shared/editors.ts`, which is also what the renderer registers them under.
  */
 import { defineFor, prop } from '@vn/commands';
-import type { FloorMode, StudioMode } from '../../shared/ipc.js';
+import { EDITOR_IDS, editorTitle, type OpenWhere } from '../../shared/editors.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
 
-export const viewRoom = define({
-  id: 'view.room',
-  title: 'Switch room',
-  description: 'Show one of the three rooms: STUDIO, FLOOR or PLAY.',
-  mutating: false,
-  props: { name: prop.oneOf(['studio', 'floor', 'play'] as const, 'the room to show') },
-  run({ name }, ctx) {
-    ctx.host.ui({ type: 'room', name });
-    return Promise.resolve({ message: `Showing the ${name} room.` });
-  },
-});
+const WHERE: Record<OpenWhere, string> = {
+  here: 'in this pane',
+  right: 'to the right',
+  below: 'below',
+};
 
-/** What each mode shows, and — by which map it appears in — which room it belongs to. */
-const STUDIO_MODES = {
-  convo: 'the conversation',
-  branches: 'the branch editor',
-  script: 'the script editor',
-} as const;
-const FLOOR_MODES = {
-  list: 'the task list',
-  graph: 'the task graph',
-  timeline: 'the coverage timeline',
-} as const;
-
-type AnyMode = StudioMode | FloorMode;
-const isStudioMode = (mode: AnyMode): mode is StudioMode => mode in STUDIO_MODES;
-const isFloorMode = (mode: AnyMode): mode is FloorMode => mode in FLOOR_MODES;
-
-export const viewMode = define({
-  id: 'view.mode',
-  title: "Switch a room's mode",
+export const viewOpen = define({
+  id: 'view.open',
+  title: 'Show an editor',
   description:
-    "Switch STUDIO's main column (convo | branches | script) or FLOOR's " +
-    '(list | graph | timeline). PLAY has no modes.',
+    'Show an editor: in the active pane, or in a new pane split off it. Already open ' +
+    'and asked for here, it is focused rather than opened twice.',
   mutating: false,
   props: {
-    room: prop.oneOf(['studio', 'floor'] as const, 'the room whose mode changes'),
-    mode: prop.oneOf(
-      ['convo', 'branches', 'script', 'list', 'graph', 'timeline'] as const,
-      'the surface to show; must be one the room has',
-    ),
+    editor: prop.oneOf(EDITOR_IDS, 'which editor to show'),
+    where: prop.oneOf(['here', 'right', 'below'] as const, 'where to put it', { default: 'here' }),
   },
-  // The props layer can only say "one of these four"; which four belong to *this* room is a
-  // pairing, so it is checked here — and a throw is how a command refuses.
-  run({ room, mode }, ctx) {
-    if (room === 'studio') {
-      if (!isStudioMode(mode)) throw new Error(modeError(room, mode, STUDIO_MODES));
-      ctx.host.ui({ type: 'mode', room, mode });
-      return Promise.resolve({ message: `Showing ${STUDIO_MODES[mode]}.` });
-    }
-    if (!isFloorMode(mode)) throw new Error(modeError(room, mode, FLOOR_MODES));
-    ctx.host.ui({ type: 'mode', room, mode });
-    return Promise.resolve({ message: `Showing ${FLOOR_MODES[mode]}.` });
+  run({ editor, where }, ctx) {
+    ctx.host.ui({ type: 'view', action: 'open', editor, where });
+    return Promise.resolve({ message: `Showing ${editorTitle(editor)} ${WHERE[where]}.` });
   },
 });
 
-const modeError = (room: string, mode: string, modes: Record<string, string>): string =>
-  `${room.toUpperCase()} has no "${mode}" mode — try ${Object.keys(modes).join(' or ')}.`;
-
-export const viewPanelSize = define({
-  id: 'view.panelSize',
-  title: 'Resize a panel',
-  description: 'Set the saved width of a resizable panel (studio.rail, floor.inspector).',
+export const viewFocus = define({
+  id: 'view.focus',
+  title: 'Focus an editor',
+  description: 'Make the pane already showing an editor the active one, without moving anything.',
   mutating: false,
-  props: {
-    id: prop.string("the panel's save id, e.g. studio.rail"),
-    width: prop.number('width in pixels', { min: 80, max: 1200 }),
+  props: { editor: prop.oneOf(EDITOR_IDS, 'which editor to focus') },
+  run({ editor }, ctx) {
+    ctx.host.ui({ type: 'view', action: 'focus', editor });
+    return Promise.resolve({ message: `Focused ${editorTitle(editor)}.` });
   },
-  run({ id, width }, ctx) {
-    // No `UiEffect` needed: the session store broadcasts its own change, which is what the
-    // renderer's `usePanelWidth` is already listening for.
-    ctx.host.state.set(`panel.${id}.width`, width);
-    return Promise.resolve({ message: `Panel ${id} is now ${width}px wide.` });
+});
+
+export const viewClose = define({
+  id: 'view.close',
+  title: 'Close the active pane',
+  description: 'Collapse the active pane into its neighbour. The last pane is kept.',
+  mutating: false,
+  props: {},
+  run(_props, ctx) {
+    ctx.host.ui({ type: 'view', action: 'close' });
+    return Promise.resolve({ message: 'Closed the pane.' });
+  },
+});
+
+export const viewLayout = define({
+  id: 'view.layout',
+  title: 'Reset the layout',
+  description: 'Throw the remembered arrangement away and rebuild the default one.',
+  mutating: false,
+  props: {},
+  run(_props, ctx) {
+    ctx.host.ui({ type: 'view', action: 'reset' });
+    return Promise.resolve({ message: 'Layout reset.' });
   },
 });
 

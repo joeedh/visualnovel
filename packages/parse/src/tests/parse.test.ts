@@ -115,6 +115,24 @@ describe('parseBranchMarker', () => {
     expect(parseBranchMarker('next: s13')).toEqual({ kind: 'next', goto: 's13' });
     expect(parseBranchMarker('goto: s99')).toEqual({ kind: 'next', goto: 's99' });
   });
+  it('parses one character=outfit pair', () => {
+    expect(parseBranchMarker('outfit: aiko=track')).toEqual({
+      kind: 'outfit',
+      characterId: 'aiko',
+      outfit: 'track',
+    });
+    expect(parseBranchMarker('  OUTFIT:  aiko = track  ')).toEqual({
+      kind: 'outfit',
+      characterId: 'aiko',
+      outfit: 'track',
+    });
+  });
+  it('treats a half-written outfit marker as a plain note', () => {
+    expect(parseBranchMarker('outfit: aiko')).toBeNull();
+    expect(parseBranchMarker('outfit: =track')).toBeNull();
+    expect(parseBranchMarker('outfit: aiko=')).toBeNull();
+    expect(parseBranchMarker('outfit: aiko=club tracksuit')).toBeNull();
+  });
   it('parses line ids', () => {
     expect(parseBranchMarker('line: L4')).toEqual({ kind: 'line', id: 'L4' });
     expect(parseBranchMarker('  LINE:  L12  ')).toEqual({ kind: 'line', id: 'L12' });

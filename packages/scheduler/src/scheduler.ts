@@ -1,10 +1,11 @@
 import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } from '@vn/types';
-import type { AssetStore } from '@vn/types';
+import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { ProjectPaths } from '@vn/store';
 import { TaskGraph, logTask } from '@vn/taskgraph';
 import { pool } from '@vn/util';
 import {
+  baseRefusal,
   createRunners,
   costPreview,
   gateStatus,
@@ -51,6 +52,13 @@ export interface RunSummary {
   failed: AnyTask[];
   /** Tasks the current plan wants that are `needs_human`, on the same basis as {@link failed}. */
   needsHuman: AnyTask[];
+  /** The store's base asset root, when it has one — so a surface can report counts and state. */
+  base?: BaseAssets;
+  /**
+   * Set when the run planned nothing on purpose, with the sentence saying why. Today the only
+   * reason is an unavailable base root; a run reporting one did no work and could not.
+   */
+  refused?: string;
 }
 
 /**
@@ -110,8 +118,27 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     providers,
     paths,
     logger,
+    base: store.base,
     readOnlyShots: dryRun,
   });
+
+  // Refusing here rather than letting the loop find nothing ready: "nothing was planned" and
+  // "nothing is left to do" look identical from the outside, and only one of them is a problem.
+  const refused = baseRefusal(store.base);
+  if (refused) {
+    const gate = gateStatus(model);
+    return {
+      ran,
+      preview: costPreview(graph, config),
+      gate,
+      blockedOnGate: false,
+      retried: [],
+      failed: [],
+      needsHuman: [],
+      base: store.base,
+      refused,
+    };
+  }
 
   // Once per run, before the loop. Requeueing inside it would re-run a task that just failed,
   // in the same process, against the same transient condition — and could spin.
@@ -145,12 +172,21 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       retried,
       failed: live(plannedNow, 'failed'),
       needsHuman: live(plannedNow, 'needs_human'),
+      base: store.base,
     };
   }
 
   // Plan → run ready wave → replan, until no task is ready.
   for (;;) {
-    plannedNow = await planTasks({ model, graph, config, providers, paths, logger });
+    plannedNow = await planTasks({
+      model,
+      graph,
+      config,
+      providers,
+      paths,
+      logger,
+      base: store.base,
+    });
     const ready = graph.ready();
     if (ready.length === 0) break;
 
@@ -207,5 +243,6 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     retried,
     failed: live(plannedNow, 'failed'),
     needsHuman: live(plannedNow, 'needs_human'),
+    base: store.base,
   };
 }

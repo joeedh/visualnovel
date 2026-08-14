@@ -300,6 +300,7 @@ describe('moveStateOf', () => {
     location: 'gate',
     lines,
     shots: [],
+    cast: [],
     decomposed: false,
   };
 
@@ -335,6 +336,7 @@ describe('a drag, from a pointer position to an invocation', () => {
     location: 'gate',
     lines,
     shots: [],
+    cast: [],
     decomposed: false,
   };
   const boxes = lines.map((l, i) => ({ id: l.id, top: i * 20, bottom: i * 20 + 20 }));

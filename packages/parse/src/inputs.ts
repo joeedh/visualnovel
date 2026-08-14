@@ -25,9 +25,29 @@ export interface SceneChunkDoc {
   text: string;
 }
 
+/**
+ * One discovered character or location sheet, in the same shape as {@link SceneChunkDoc} and for
+ * the same reason: a consumer that holds the doc holds the file it came out of. Entities are
+ * found by their `type:` tag rather than by path, so the file is the *only* answer to "where does
+ * this live" — re-deriving one from the id names a path that may not exist.
+ */
+export interface EntityDoc {
+  /**
+   * The id the file's own name implies — its parent directory for `characters/<id>/character.md`,
+   * its filename stem everywhere else. Front-matter `id:` remains the authority and must agree
+   * with this; a mismatch is an error naming both, never one of the two silently winning.
+   */
+  id: string;
+  /** Absolute path, for diagnostics and for the writer that patches this same file. */
+  file: string;
+  doc: FrontMatterDoc;
+  /** The file's bytes as read, so a front-matter patcher can splice byte-exactly. */
+  text: string;
+}
+
 export interface LoadedInputs {
-  characterDocs: FrontMatterDoc[];
-  locationDocs: FrontMatterDoc[];
+  characterDocs: EntityDoc[];
+  locationDocs: EntityDoc[];
   /** Every scene a project has. `scenes/<id>.md` is the only form scenes are read from. */
   sceneDocs: SceneChunkDoc[];
   /**

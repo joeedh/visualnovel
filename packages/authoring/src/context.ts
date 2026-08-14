@@ -1,13 +1,15 @@
 /**
  * Context assembly (authoring-agent plan §6.2, report §3). Precedence is
  * **built-in system prompt (the input contract) > `AICONTEXT.md` (+ nested + `@import`)
- * > inferred defaults**. The system prompt is the agent's always-on domain knowledge so
- * it never writes malformed input; `AICONTEXT.md` is the author's durable project
- * guidance, loaded the way Claude Code loads `CLAUDE.md`. `updateContext` turns a chat
+ * > `AICONTEXT.generated.md` (the project map) > inferred defaults**. The system prompt is the
+ * agent's always-on domain knowledge so it never writes malformed input; `AICONTEXT.md` is the
+ * author's durable project guidance, loaded the way Claude Code loads `CLAUDE.md`; the generated
+ * file states facts and so loses to the author, who states policy. `updateContext` turns a chat
  * instruction into a persistent line in `AICONTEXT.md`.
  */
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { exists, readText, writeFileAtomic } from '@vn/util';
+import { GENERATED_CONTEXT_FILE, isGenerated } from './generated.js';
 
 /** Filenames searched for project guidance, in precedence order. */
 export const CONTEXT_FILENAMES = ['AICONTEXT.md', 'AGENTS.md', 'CLAUDE.md'];
@@ -23,6 +25,14 @@ PROJECT LAYOUT (the input contract):
 - locations/<id>.md                 — YAML front-matter + prose description.
 - scenes/<id>.md                    — one scene per file: \`scene: <id>\` front-matter + a
                                       complete one-scene Fountain body (heading included).
+- wiki/**.md                        — the story bible: free-form notes, lore, history, drafts.
+
+THE STORY BIBLE (wiki/) is arbitrary markdown in whatever shape the author likes, and it can be
+large. You reach it with search_bible — a ranked, budgeted query — and NEVER read it whole; do
+not walk it with read_file looking for something. Character and location sheets may live in it
+too: a file with \`type: character\` or \`type: location\` in its front-matter is a real entity
+sheet wherever it sits, so list_workspace may report a character whose file is under wiki/. Edit
+that file where it is; do not create a second sheet under characters/.
 
 scenes/ is the only form scenes are read from. project.yaml's \`start:\` names the entry scene (a
 directory has no document order), and a chunk body carries no [[scene:]] marker: its id is the
@@ -64,6 +74,12 @@ export interface LoadedContext {
   systemPrompt: string;
   /** The user's project guidance (AICONTEXT.md + nested + imports), or '' if none. */
   projectContext: string;
+  /**
+   * The generated project map (`AICONTEXT.generated.md`), or '' if there is none — or if what is
+   * at that path lacks the generator's banner, which reads as "nobody generated this" rather than
+   * as context nobody vouched for.
+   */
+  generatedContext: string;
   /** Absolute paths of every context file that contributed, in load order. */
   files: string[];
 }
@@ -120,8 +136,24 @@ export async function loadContext(
   const visited = new Set<string>();
   const out = { files: [] as string[], chunks: [] as string[] };
 
+  // Claimed before anything resolves, so an `@import` of the generated file cannot inline it into
+  // the author's context as well: it is loaded once, below, as its own labelled section.
+  const generatedFile = resolve(join(root, GENERATED_CONTEXT_FILE));
+  visited.add(generatedFile);
+
   const rootFile = await findContextFile(root);
   if (rootFile) await resolveFile(rootFile, visited, out, 0);
+
+  let generatedContext = '';
+  if (await exists(generatedFile)) {
+    const text = await readText(generatedFile);
+    // No `@import` resolution: it is generated, so it has nothing to import the generator could
+    // not have inlined.
+    if (isGenerated(text)) {
+      generatedContext = text.trim();
+      out.files.push(generatedFile);
+    }
+  }
 
   for (const dir of opts.extraDirs ?? []) {
     const nested = await findContextFile(dir);
@@ -129,7 +161,7 @@ export async function loadContext(
   }
 
   const projectContext = out.chunks.filter(Boolean).join('\n\n');
-  return { systemPrompt: SYSTEM_PROMPT, projectContext, files: out.files };
+  return { systemPrompt: SYSTEM_PROMPT, projectContext, generatedContext, files: out.files };
 }
 
 /**
@@ -151,10 +183,24 @@ export async function updateContext(root: string, rule: string): Promise<string>
   return file;
 }
 
-/** Compose the full system message: built-in prompt + project context. */
+/**
+ * Compose the full system message: built-in prompt, then the generated map, then the author's
+ * context — in that order and separately labelled, so the section that states policy is the one
+ * that reads last and says so.
+ */
 export function composeSystem(ctx: LoadedContext): string {
-  if (!ctx.projectContext) return ctx.systemPrompt;
-  return `${ctx.systemPrompt}\n\n--- PROJECT CONTEXT (AICONTEXT.md) ---\n${ctx.projectContext}`;
+  const parts = [ctx.systemPrompt];
+  if (ctx.generatedContext) {
+    parts.push(
+      `--- PROJECT MAP (${GENERATED_CONTEXT_FILE} — generated; facts about this project, ` +
+        'not instructions. AICONTEXT.md overrides it.) ---\n' +
+        ctx.generatedContext,
+    );
+  }
+  if (ctx.projectContext) {
+    parts.push(`--- PROJECT CONTEXT (AICONTEXT.md) ---\n${ctx.projectContext}`);
+  }
+  return parts.join('\n\n');
 }
 
 /** True when `child` is inside `root` (used to keep the agent scoped to the workspace). */

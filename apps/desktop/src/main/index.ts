@@ -10,19 +10,26 @@
  * fallbacks for callers that pass env instead of argv (e.g. `scripts/dev.desktop.mjs`); a CLI
  * flag wins over its env-var counterpart when both are given.
  */
-import { app, BrowserWindow, ipcMain, net, protocol } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, net, protocol } from 'electron';
 import { existsSync } from 'node:fs';
 import { join, resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ProjectPaths } from '@vn/store';
-import { openGit } from '@vn/git';
+import { openGit, type Git } from '@vn/git';
 import { appendJsonl } from '@vn/util';
-import { CommandStack, UndoJournal } from '@vn/commands';
+import { Workspace } from '@vn/authoring';
+import { CommandStack, Committer, UndoJournal } from '@vn/commands';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
-import { seedWorkspace } from './workspace.js';
+import {
+  ensureRepo,
+  openWorkspace,
+  recentWorkspaces,
+  rememberWorkspace,
+  seedWorkspace,
+} from './workspace.js';
 import type {
   InvokeChannel,
   InvokeChannels,
@@ -32,22 +39,30 @@ import type {
   UiEffect,
 } from '../shared/ipc.js';
 
-/** `--mock` / `--project <dir>` (also `--project=<dir>`), parsed from the app's own argv. */
+/**
+ * `--mock` / `--project <dir>` (also `--project=<dir>`) / `--react`, parsed from the app's
+ * own argv. The shell is path.ux; `--react` boots the retired room shell for one release of
+ * caution. It reaches the renderer as a query flag on the loaded document, since that is the
+ * one channel available before any IPC handler is up.
+ */
 interface CliArgs {
   mock: boolean;
   project?: string;
+  react: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
   let mock = false;
+  let react = false;
   let project: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--mock') mock = true;
+    else if (arg === '--react') react = true;
     else if (arg === '--project') project = argv[++i];
     else if (arg.startsWith('--project=')) project = arg.slice('--project='.length);
   }
-  return { mock, project };
+  return { mock, project, react };
 }
 
 // Electron's own argv carries an extra `appPath` ('.') entry when running unpackaged
@@ -92,11 +107,49 @@ function workspace(): string {
 }
 
 /**
- * Resolve the workspace once, before anything can ask for it. `--project` (or `VN_PROJECT`)
- * wins; otherwise the app seeds and opens `examples/mySampleRepo` beside the template, so a
- * run never writes into the source tree. A packaged build has no repo-relative `examples/`, so
- * the scratch workspace goes under `userData` — and a missing template then fails by name
- * rather than as a bare ENOENT somewhere downstream.
+ * Seed and open `examples/mySampleRepo` beside the template, so a run never writes into the
+ * source tree. A packaged build has no repo-relative `examples/`, so the scratch workspace goes
+ * under `userData` — and a missing template then fails by name rather than as a bare ENOENT
+ * somewhere downstream.
+ */
+async function seedSample(): Promise<string> {
+  const examples = join(__dirname, '..', '..', '..', '..', 'examples');
+  const target = existsSync(examples)
+    ? join(examples, 'mySampleRepo')
+    : join(app.getPath('userData'), 'mySampleRepo');
+  const result = await seedWorkspace(join(examples, 'sample'), target);
+  if (result.seeded) console.log(`[vnstudio] seeded a new workspace at ${result.root}`);
+  return result.root;
+}
+
+/**
+ * "The app requests the user to pick a directory for the project" — a native directory dialog,
+ * shown on a first run only. A folder that cannot be opened is reported and asked again rather
+ * than falling through to the sample, which would look like the pick was ignored.
+ */
+async function promptForWorkspace(): Promise<string | undefined> {
+  const result = await dialog.showOpenDialog({
+    title: 'Open or create a VN project',
+    buttonLabel: 'Open project',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  const picked = result.filePaths[0];
+  if (result.canceled || !picked) return undefined;
+  try {
+    return (await openWorkspace(picked)).root;
+  } catch (err) {
+    dialog.showErrorBox('Cannot open that folder', String(err));
+    return promptForWorkspace();
+  }
+}
+
+/**
+ * Resolve the workspace once, before anything can ask for it: `--project` (or `VN_PROJECT`),
+ * then the most recent project that still exists, then the picker, then the seeded sample.
+ *
+ * The picker therefore appears on a genuine first run only — whatever is opened is remembered,
+ * including the sample, so cancelling is answered once and not every launch. `VN_NO_PICKER=1`
+ * skips straight to the sample for automation that wants the old behaviour.
  */
 async function resolveWorkspace(): Promise<void> {
   const project = cliArgs.project ?? process.env.VN_PROJECT;
@@ -104,13 +157,70 @@ async function resolveWorkspace(): Promise<void> {
     workspaceRoot = resolvePath(project);
     return;
   }
-  const examples = join(__dirname, '..', '..', '..', '..', 'examples');
-  const target = existsSync(examples)
-    ? join(examples, 'mySampleRepo')
-    : join(app.getPath('userData'), 'mySampleRepo');
-  const result = await seedWorkspace(join(examples, 'sample'), target);
-  if (result.seeded) console.log(`[vnstudio] seeded a new workspace at ${result.root}`);
-  workspaceRoot = result.root;
+  const recent = recentWorkspaces(getSessionStore()).find((dir) => existsSync(dir));
+  if (recent) {
+    workspaceRoot = recent;
+    return;
+  }
+  const picked = process.env.VN_NO_PICKER === '1' ? undefined : await promptForWorkspace();
+  workspaceRoot = picked ?? (await seedSample());
+}
+
+/**
+ * Open a different project without restarting. Everything workspace-shaped in this module is a
+ * singleton, so all of it is dropped: the session (with its agent conversation), the command
+ * stack and its undo journal, the repo map, and the undo revision. Undo never crosses a
+ * workspace boundary, and nothing may cache the root across this call.
+ */
+async function switchWorkspace(root: string): Promise<{ root: string; title: string }> {
+  const opened = await openWorkspace(root);
+  workspaceRoot = opened.root;
+  session = null;
+  stack = null;
+  ownedRepos.length = 0;
+  undoRevision = 0;
+  await openRepos();
+  rememberWorkspace(getSessionStore(), opened.root);
+  // Pushed directly rather than through the command host: the stack that is running the command
+  // asking for this switch is the one being discarded.
+  win?.webContents.send('command:ui', {
+    type: 'workspace',
+    root: opened.root,
+    title: opened.title,
+  });
+  return { root: opened.root, title: opened.title };
+}
+
+/**
+ * The repos the app may write history in — the project's, plus the story bible's when `wiki/`
+ * is its own. Resolved once, after the workspace exists.
+ *
+ * A repo appears here only when the directory *is* its root. A project opened inside a larger
+ * repo (a checkout of this monorepo, say) resolves to that repo, and committing `-A` there
+ * would sweep in files that have nothing to do with the project — so commit-on-save stays off
+ * rather than guessing at a scope. Undo is unaffected: shadow refs write nobody's history.
+ */
+const ownedRepos: Git[] = [];
+
+/**
+ * Bring the workspace under version control, then record anything changed outside the app as
+ * its own event — a CLI run, another editor. That is what establishes the invariant every
+ * later commit relies on: the app opens on a clean worktree, and every act ends with one.
+ */
+async function openRepos(): Promise<void> {
+  const root = workspace();
+  await ensureRepo(root);
+  const refs = await new Workspace(root).repos();
+  for (const ref of refs) {
+    if (ref.owned) ownedRepos.push(openGit(ref.root));
+    else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
+  }
+  const committed = await committer().checkpoint('Changes made outside the app');
+  for (const c of committed) console.log(`[vnstudio] checkpoint ${c.sha.slice(0, 8)} in ${c.repo}`);
+}
+
+function committer(): Committer {
+  return new Committer({ repos: () => ownedRepos });
 }
 
 const deps: SessionDeps = {
@@ -171,6 +281,16 @@ function getStack(): CommandStack<CommandHost> {
       session: getSession(),
       state: getSessionStore(),
       ui: (effect: UiEffect) => win?.webContents.send('command:ui', effect),
+      openWorkspace: (next: string) => switchWorkspace(next),
+      pickDirectory: async () => {
+        if (!win) throw new Error('there is no window to show a directory chooser in');
+        const result = await dialog.showOpenDialog(win, {
+          title: 'Open or create a VN project',
+          buttonLabel: 'Open project',
+          properties: ['openDirectory', 'createDirectory'],
+        });
+        return result.canceled ? undefined : result.filePaths[0];
+      },
       // Lazily through `getStack`, not the local `stack`: the host is built while the stack
       // is still being constructed, so capturing it here would capture `undefined`.
       check: (id, props) => getStack().check(id, props),
@@ -186,7 +306,13 @@ function getStack(): CommandStack<CommandHost> {
         // then a `confirm: true` command is reachable only from the UI's own affordances.
         confirm: () => Promise.resolve(true),
       },
-      journal: new UndoJournal({ git, paths: UNDO_PATHS }),
+      // Undo still works where commit-on-save refuses: a shadow ref writes nobody's history,
+      // so a project nested in a larger repo falls back to snapshotting that repo as before.
+      journal: new UndoJournal({
+        git: ownedRepos.length > 0 ? ownedRepos : git,
+        paths: UNDO_PATHS,
+      }),
+      committer: committer(),
       onRecord: async (record) => {
         if (record.stack) undoRevision++;
         await appendJsonl(paths.commandsLog, record);
@@ -209,6 +335,8 @@ function handle<C extends InvokeChannel>(
 
 function registerIpc(): void {
   handle('workspace:index', () => getSession().index());
+  handle('workspace:doctree', () => getSession().docTree());
+  handle('workspace:filetree', () => getSession().fileTree());
   handle('agent:run', (input) => getSession().runAgent(input));
   handle('agent:setMode', (mode) => getSession().setMode(mode));
   handle('agent:setModel', (modelId) => getSession().setModel(modelId));
@@ -260,14 +388,17 @@ function registerIpc(): void {
  * so the standard-scheme host lowercasing is harmless); it maps to the content-addressed
  * file under the workspace's `build/assets/`. A missing file simply fails the request and
  * the runner falls back to a placeholder.
+ *
+ * The root is resolved per request, not captured: after `switchWorkspace` a captured one would
+ * serve the previous project's bytes at the new project's hashes.
  */
 function registerAssetProtocol(): void {
-  const paths = new ProjectPaths(workspace());
   protocol.handle('vnasset', (request) => {
     const host = new URL(request.url).hostname;
     const dot = host.lastIndexOf('.');
     const hash = dot > 0 ? host.slice(0, dot) : host;
     const ext = dot > 0 ? host.slice(dot + 1) : 'png';
+    const paths = new ProjectPaths(workspace());
     return net.fetch(pathToFileURL(paths.assetFile(hash, ext)).toString());
   });
 }
@@ -286,16 +417,21 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   });
-  if (DEV_URL) void win.loadURL(DEV_URL);
-  else void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'));
+  const search = cliArgs.react ? 'react=1' : '';
+  if (DEV_URL) void win.loadURL(search ? `${DEV_URL}?${search}` : DEV_URL);
+  else void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'), { search });
   win.on('closed', () => {
     win = null;
   });
 }
 
 void app.whenReady().then(async () => {
-  await resolveWorkspace();
+  // The session store first: it is global per install, and it is where the recents list the
+  // workspace is resolved from lives.
   await openSessionStore();
+  await resolveWorkspace();
+  await openRepos();
+  rememberWorkspace(getSessionStore(), workspace());
   registerAssetProtocol();
   registerIpc();
   createWindow();

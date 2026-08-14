@@ -1,0 +1,14 @@
+{
+  "name": "@vn/bible",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@vn/parse": "workspace:*",
+    "@vn/store": "workspace:*",
+    "@vn/util": "workspace:*"
+  }
+}

@@ -21,6 +21,12 @@ export const playableAssetRefSchema = z.object({
 /** Show a background / shot image for the beats that follow. */
 const showBeatSchema = z.object({
   type: z.literal('show'),
+  /**
+   * Which shot this frame is, so a runner can say where it is in the project — the one place
+   * the playable names an authored id. Optional because a file written before the field still
+   * parses; a runner that has none simply cannot jump.
+   */
+  shot: z.string().min(1).optional(),
   /** The shot image; omitted when the shot has no accepted asset yet (runner shows a placeholder). */
   image: playableAssetRefSchema.optional(),
 });

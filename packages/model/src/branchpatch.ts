@@ -1,17 +1,17 @@
 /**
- * Surgical branch-marker patching for authored Fountain — a whole `screenplay/*.fountain` or
+ * Surgical scene-marker patching for authored Fountain — a whole `screenplay/*.fountain` or
  * one `scenes/<id>.md` body (story branch editor, Wave 1).
  *
  * `sceneToFountain` is lossless (`parse(write(scene)) ≡ scene`) but not byte-exact: the author's
- * spacing, comment style and marker placement are theirs, and a rewire has no business
- * reformatting the file. So this module rewrites **only** `[[choice: …]]` and `[[next: …]]` note
- * lines, leaving every other byte exactly as authored. The serializer is for scenes the app
- * authored; this is for scenes it inherited.
+ * spacing, comment style and marker placement are theirs, and an edit has no business
+ * reformatting the file. So this module rewrites **only** `[[choice: …]]`, `[[next: …]]` and
+ * `[[outfit: …]]` note lines, leaving every other byte exactly as authored. The serializer is
+ * for scenes the app authored; this is for scenes it inherited.
  *
  * The safety net is total: after patching, the whole file is re-parsed and the resulting scene
  * list is compared against the intended one. Any divergence — a marker written into the wrong
  * scene, or a removed note line that leaves a blank above a heading the parser was previously
- * ignoring — discards the patch and returns a diagnostic. A branch edit cannot silently
+ * ignoring — discards the patch and returns a diagnostic. A marker edit cannot silently
  * corrupt a screenplay.
  */
 import type { Choice, Diagnostic, Scene } from '@vn/types';
@@ -20,23 +20,25 @@ import { canonicalScenes } from './canonical.js';
 import { splitScenes } from './scenes.js';
 
 /**
- * A branch rewire for one scene. `choices` replaces the scene's full choice set; `next` sets
- * the linear continuation, or clears it when `null`. An omitted field is left untouched.
+ * An edit to one scene's markers. `choices` replaces the scene's full choice set; `next` sets
+ * the linear continuation, or clears it when `null`; `outfits` replaces the full set of
+ * `[[outfit:]]` markers, so `{}` removes them all. An omitted field is left untouched.
  */
-export interface SceneBranchEdit {
+export interface SceneMarkerEdit {
   sceneId: string;
   choices?: Choice[];
   next?: string | null;
+  outfits?: Record<string, string>;
 }
 
 /** The patched source plus anything that went wrong. On any error the text is unchanged. */
-export interface BranchPatchResult {
+export interface MarkerPatchResult {
   text: string;
   diagnostics: Diagnostic[];
 }
 
 /** How to read the text being patched. */
-export interface BranchPatchOptions {
+export interface MarkerPatchOptions {
   /**
    * Patch a scene chunk's body: the id comes from the file's front-matter, so it is forced onto
    * the one scene the body may hold rather than taken from the heading. More than one heading
@@ -50,7 +52,7 @@ export interface BranchPatchOptions {
 const SCENE_PREFIX = /^(int\.?\/ext\.?|int\.?|ext\.?|est\.?|i\/e)[ .]/i;
 const NOTE = /\[\[([\s\S]*?)\]\]/g;
 
-type MarkerKind = 'choice' | 'next';
+type MarkerKind = 'choice' | 'next' | 'outfit';
 
 interface RawLine {
   text: string;
@@ -139,7 +141,7 @@ function markersOn(line: string, index: number): { occ: Occurrence[]; scene: boo
     // Only the wiring markers are this patcher's business; `line`/`nextline` belong to
     // `lineids.ts` and must survive a rewire untouched.
     if (marker.kind === 'scene') scene = true;
-    else if (marker.kind === 'choice' || marker.kind === 'next') {
+    else if (marker.kind === 'choice' || marker.kind === 'next' || marker.kind === 'outfit') {
       occ.push({ line: index, start: m.index, end: m.index + m[0].length, kind: marker.kind });
     }
   }
@@ -147,7 +149,7 @@ function markersOn(line: string, index: number): { occ: Occurrence[]; scene: boo
 }
 
 /** Reject anything that cannot survive `parseBranchMarker`, before a byte is written. */
-function validate(edits: SceneBranchEdit[]): Diagnostic[] {
+function validate(edits: SceneMarkerEdit[]): Diagnostic[] {
   const out: Diagnostic[] = [];
   const seen = new Set<string>();
   for (const edit of edits) {
@@ -164,6 +166,20 @@ function validate(edits: SceneBranchEdit[]): Diagnostic[] {
     for (const goto of gotos) {
       if (!goto.trim() || /\s/.test(goto) || goto.includes('[[') || goto.includes(']]')) {
         out.push(err('branch_patch_goto', `'${goto}' is not a usable scene id`, edit.sceneId));
+      }
+    }
+    for (const [characterId, outfit] of Object.entries(edit.outfits ?? {})) {
+      // Both halves are ids and the marker splits on `=`, so anything else cannot be read back.
+      const bad = (v: string): boolean =>
+        !v.trim() || /\s/.test(v) || v.includes('=') || v.includes('[[') || v.includes(']]');
+      if (bad(characterId) || bad(outfit)) {
+        out.push(
+          err(
+            'branch_patch_outfit',
+            `'${characterId}=${outfit}' is not a usable outfit marker`,
+            edit.sceneId,
+          ),
+        );
       }
     }
     for (const choice of edit.choices ?? []) {
@@ -196,12 +212,12 @@ function validate(edits: SceneBranchEdit[]): Diagnostic[] {
  * patches each file, and must compute every patch before writing any of them — a refusal on
  * the third file has to leave the first two alone.
  */
-export function applySceneBranchEdit(
+export function applySceneMarkerEdit(
   text: string,
-  edits: SceneBranchEdit[],
-  opts: BranchPatchOptions = {},
-): BranchPatchResult {
-  const unchanged = (diagnostics: Diagnostic[]): BranchPatchResult => ({ text, diagnostics });
+  edits: SceneMarkerEdit[],
+  opts: MarkerPatchOptions = {},
+): MarkerPatchResult {
+  const unchanged = (diagnostics: Diagnostic[]): MarkerPatchResult => ({ text, diagnostics });
 
   const invalid = validate(edits);
   if (invalid.length > 0) return unchanged(invalid);
@@ -263,6 +279,7 @@ export function applySceneBranchEdit(
     const kinds: MarkerKind[] = [];
     if (edit.choices !== undefined) kinds.push('choice');
     if (edit.next !== undefined) kinds.push('next');
+    if (edit.outfits !== undefined) kinds.push('outfit');
 
     const doomed = occurrences.filter((o) => kinds.includes(o.kind));
     const firstOf = (kind: MarkerKind): number | undefined =>
@@ -304,6 +321,13 @@ export function applySceneBranchEdit(
       const anchor = firstOf('next') ?? lastOf('choice') ?? fallback;
       addAfter(anchor, `${indentOf('next')}[[next: ${edit.next}]]`);
     }
+    if (edit.outfits !== undefined) {
+      const anchor = firstOf('outfit') ?? lastOf('next') ?? lastOf('choice') ?? fallback;
+      const indent = indentOf('outfit');
+      for (const [characterId, outfit] of Object.entries(edit.outfits)) {
+        addAfter(anchor, `${indent}[[outfit: ${characterId}=${outfit}]]`);
+      }
+    }
   }
 
   const out: string[] = [];
@@ -326,6 +350,7 @@ export function applySceneBranchEdit(
       ...s,
       choices: edit.choices?.map((c) => ({ label: c.label.trim(), goto: c.goto })) ?? s.choices,
       next: edit.next === undefined ? s.next : (edit.next ?? undefined),
+      outfits: edit.outfits ?? s.outfits,
     } satisfies Scene;
   });
   const actual = splitScenes(parseFountain(patched), opts).scenes;

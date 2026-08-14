@@ -16,6 +16,7 @@ const PACKAGES = [
   'store',
   'export',
   'scriptedit',
+  'bible',
   'git',
   'commands',
   'debug2d',

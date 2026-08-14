@@ -20,6 +20,7 @@ import {
   type LocationEdit,
 } from '@vn/model';
 import { docToMarkdown } from '@vn/model';
+import { formatExcerpts } from '@vn/bible';
 import {
   deleteLine,
   deleteScene,
@@ -33,7 +34,14 @@ import {
   type LineOp,
   type ScriptState,
 } from '@vn/scriptedit';
-import { applyScenePlan, planSceneEdit, scenePlanMessage } from '@vn/scriptedit/write';
+import {
+  applyMarkerPlan,
+  applyScenePlan,
+  planMarkerEdit,
+  planSceneEdit,
+  scenePlanMessage,
+} from '@vn/scriptedit/write';
+import { writeShots } from '@vn/store';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import type { Diagnostic } from '@vn/types';
 import type { Git } from '@vn/git';
@@ -209,6 +217,24 @@ const searchTool: Tool<{ query: string; regex?: boolean }> = {
   },
 };
 
+const searchBibleTool: Tool<{ query: string; limit?: number }> = {
+  name: 'search_bible',
+  description:
+    'Search the story bible (wiki/) for relevant passages; returns ranked file:line excerpts.',
+  mutating: false,
+  args: z.object({
+    query: z.string().min(1).describe('what you want to know, in words'),
+    limit: z.number().optional().describe('most excerpts to return, default 8'),
+  }),
+  async run(a, ctx) {
+    const bible = await ctx.workspace.bible();
+    const excerpts = await bible.query(a.query, a.limit === undefined ? {} : { limit: a.limit });
+    if (excerpts.length === 0)
+      return ok(`Nothing in the bible matches "${a.query}".`, { data: [] });
+    return ok(formatExcerpts(excerpts), { data: excerpts });
+  },
+};
+
 // ── Domain / validation ─────────────────────────────────────────────────────
 
 const validateInputsTool: Tool<Record<string, never>> = {
@@ -323,7 +349,16 @@ const characterEditShape = z.object({
     .optional()
     .describe('full prose body — the canonical description fed to the pipeline; replaces it whole'),
   status: z.enum(['draft', 'candidates', 'approved', 'locked']).optional(),
-  defaultOutfit: z.string().optional(),
+  defaultOutfit: z
+    .string()
+    .optional()
+    .describe('outfit id worn wherever nothing else says otherwise; must be one of `outfits`'),
+  outfits: z
+    .record(z.string())
+    .optional()
+    .describe(
+      'the whole wardrobe, outfit id → description; replaces the map, so send the ones being kept too',
+    ),
   traits: z.array(z.string()).optional(),
   palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
   referenceImages: z.array(z.string()).optional(),
@@ -335,15 +370,14 @@ const editCharacterTool: Tool<z.infer<typeof characterEditShape>> = {
   mutating: true,
   args: characterEditShape,
   async run(a, ctx) {
-    const doc = await ctx.workspace.characterDoc(a.id);
-    if (!doc) return fail(`no such character: ${a.id}`);
+    const found = await ctx.workspace.characterDoc(a.id);
+    if (!found) return fail(`no such character: ${a.id}`);
     const { id: _id, ...edit } = a;
-    const res = applyCharacterEdit(doc, edit as CharacterEdit);
+    const res = applyCharacterEdit(found.doc, edit as CharacterEdit);
     if (!res.ok) return fail(`edit rejected: ${res.diagnostic.message}`);
-    const file = ctx.workspace.paths.characterFile(a.id);
-    await writeFileAtomic(file, docToMarkdown(res.value.doc));
+    await writeFileAtomic(found.file, docToMarkdown(res.value.doc));
     return ok(`Updated character ${a.id}.`, {
-      written: [rel(ctx.workspace.root, file)],
+      written: [rel(ctx.workspace.root, found.file)],
       data: res.value.value,
     });
   },
@@ -368,15 +402,14 @@ const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
   mutating: true,
   args: locationEditShape,
   async run(a, ctx) {
-    const doc = await ctx.workspace.locationDoc(a.id);
-    if (!doc) return fail(`no such location: ${a.id}`);
+    const found = await ctx.workspace.locationDoc(a.id);
+    if (!found) return fail(`no such location: ${a.id}`);
     const { id: _id, ...edit } = a;
-    const res = applyLocationEdit(doc, edit as LocationEdit);
+    const res = applyLocationEdit(found.doc, edit as LocationEdit);
     if (!res.ok) return fail(`edit rejected: ${res.diagnostic.message}`);
-    const file = join(ctx.workspace.paths.locationsDir, `${a.id}.md`);
-    await writeFileAtomic(file, docToMarkdown(res.value.doc));
+    await writeFileAtomic(found.file, docToMarkdown(res.value.doc));
     return ok(`Updated location ${a.id}.`, {
-      written: [rel(ctx.workspace.root, file)],
+      written: [rel(ctx.workspace.root, found.file)],
       data: res.value.value,
     });
   },
@@ -408,7 +441,7 @@ const createLocationTool: Tool<{ name: string; description?: string }> = {
   async run(a, ctx) {
     const doc = newLocationDoc(a.name, a.description ?? '');
     const id = String(doc.data['id']);
-    const file = join(ctx.workspace.paths.locationsDir, `${id}.md`);
+    const file = ctx.workspace.paths.locationFile(id);
     if (await exists(file)) return fail(`location ${id} already exists`);
     await writeFileAtomic(file, docToMarkdown(doc));
     return ok(`Created location ${id}.`, {
@@ -421,7 +454,7 @@ const createLocationTool: Tool<{ name: string; description?: string }> = {
 // ── Scene prose (execute mode) ──────────────────────────────────────────────
 
 /**
- * The nine acts, named exactly as the desktop's `story.*` commands are, because they *are* those
+ * The ten acts, named exactly as the desktop's `story.*` commands are, because they *are* those
  * commands' decisions: an agent transcript and a command history should read as the same vocabulary.
  */
 const SCENE_OPS = [
@@ -429,6 +462,7 @@ const SCENE_OPS = [
   'insertLine',
   'deleteLine',
   'moveLine',
+  'moveShot',
   'setSpeaker',
   'newScene',
   'deleteScene',
@@ -452,13 +486,17 @@ const sceneEditShape = z.object({
   scene: z
     .string()
     .optional()
-    .describe('insertLine, newScene, deleteScene, splitScene, mergeScene'),
+    .describe('insertLine, moveShot, newScene, deleteScene, splitScene, mergeScene'),
   line: z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
+  shot: z.string().optional().describe('moveShot: the shot id to move, e.g. arrival__beat1'),
   text: z.string().optional().describe('setLineText, insertLine'),
   after: z
     .string()
     .optional()
-    .describe('insertLine, moveLine: the line to sit after; omit for the top of the scene'),
+    .describe(
+      'insertLine, moveLine: the line to sit after; moveShot: the shot to sit after; ' +
+        'omit for the top of the scene',
+    ),
   kind: z.enum(LINE_KINDS).optional().describe('insertLine; defaults to dialogue'),
   speaker: z
     .string()
@@ -481,6 +519,7 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   insertLine: ['scene', 'text'],
   deleteLine: ['line'],
   moveLine: ['line'],
+  moveShot: ['scene', 'shot'],
   setSpeaker: ['line'],
   newScene: ['scene', 'heading'],
   deleteScene: ['scene'],
@@ -488,8 +527,15 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   mergeScene: ['scene', 'into'],
 };
 
-/** The one `@vn/scriptedit` decision an op names, with the tool's defaults filled in. */
-function sceneDecider(a: SceneEditArgs): (state: ScriptState) => LineOp {
+/**
+ * The one `@vn/scriptedit` decision an op names, with the tool's defaults filled in. Async only
+ * because `moveShot`'s rule needs the scene's storyboard, which is read off disk; the other nine
+ * are pure and resolve immediately.
+ */
+async function sceneDecider(
+  a: SceneEditArgs,
+  workspace: Workspace,
+): Promise<(state: ScriptState) => LineOp> {
   const scene = a.scene ?? '';
   const line = a.line ?? '';
   const text = a.text ?? '';
@@ -505,6 +551,8 @@ function sceneDecider(a: SceneEditArgs): (state: ScriptState) => LineOp {
       return (s) => deleteLine(s, { line });
     case 'moveLine':
       return (s) => moveLine(s, { line, after });
+    case 'moveShot':
+      return workspace.shotOrder(scene, a.shot ?? '', after);
     case 'setSpeaker':
       return (s) => setSpeaker(s, { line, speaker });
     case 'newScene':
@@ -527,8 +575,9 @@ const editSceneTool: Tool<SceneEditArgs> = {
   name: 'edit_scene',
   description:
     'Edit scene prose: retype, insert, delete, move or re-attribute a line; create, delete, ' +
-    'split or merge a scene. The only way to change a scenes/<id>.md — write_file refuses them. ' +
-    'Reports what the edit costs the storyboard.',
+    'split or merge a scene; reorder a shot, which moves the lines it covers. The only way to ' +
+    'change a scenes/<id>.md — write_file refuses them. Reports what the edit costs the ' +
+    'storyboard; moveShot costs it nothing, since no coverage and no covered prose changes.',
   mutating: true,
   args: sceneEditShape,
   async run(a, ctx) {
@@ -536,12 +585,64 @@ const editSceneTool: Tool<SceneEditArgs> = {
     if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
 
     const input = await ctx.workspace.sceneEditInput();
-    const plan = await planSceneEdit(input, sceneDecider(a));
+    const plan = await planSceneEdit(input, await sceneDecider(a, ctx.workspace));
     if (!plan.ok) return fail(plan.message);
 
     const { written, removed } = await applyScenePlan(input, plan);
     const paths = [...written, ...removed].map((file) => rel(ctx.workspace.root, file));
     return ok(scenePlanMessage(plan), { written: paths, data: { paths, fallout: plan.fallout } });
+  },
+};
+
+const outfitShape = z.object({
+  scene: z.string().min(1).describe('the scene the change applies to'),
+  character: z.string().min(1).describe('who is being dressed'),
+  outfit: z
+    .string()
+    .describe('an outfit id from the character sheet, or "" to clear and inherit the level below'),
+  shot: z
+    .string()
+    .optional()
+    .describe('omit to mark the whole scene; name a shot to override that shot alone'),
+});
+
+/**
+ * Both levels of the outfit chain in one tool, because they are one authorial sentence — "put Aiko
+ * in her tracksuit for the club scene" and "...for this one frame" differ by a word, and the file
+ * each lands in is a consequence, not a choice the author makes. `shot` picks the level: absent, a
+ * `[[outfit:]]` marker is spliced into the scene chunk; present, the subject's override is written
+ * to the storyboard, which re-hashes that shot.
+ *
+ * Both rules come from `@vn/scriptedit`, so a refusal here is verbatim the one `story.setOutfit` or
+ * `story.setSceneOutfit` would give in the app.
+ */
+const setOutfitTool: Tool<z.infer<typeof outfitShape>> = {
+  name: 'set_outfit',
+  description:
+    'Say what a character wears: for a whole scene (a [[outfit:]] marker) or for one shot of it ' +
+    '(a subject override, which re-renders that frame). Pass outfit="" to clear either and let ' +
+    'the level below answer. The wardrobe itself is authored on the character sheet.',
+  mutating: true,
+  args: outfitShape,
+  async run(a, ctx) {
+    if (a.shot !== undefined) {
+      const op = await ctx.workspace.shotOutfit(a.scene, a.shot, a.character, a.outfit);
+      if (!op.ok) return fail(op.error);
+      await writeShots(ctx.workspace.paths, a.scene, op.shots);
+      const shotsFile = `vngen/work/shots/${a.scene}.json`;
+      return ok(op.message, { written: [shotsFile], data: { paths: [shotsFile] } });
+    }
+
+    const { op, sources } = await ctx.workspace.sceneOutfit(a.scene, a.character, a.outfit);
+    if (!op.ok) return fail(op.error);
+
+    const plan = planMarkerEdit(sources, op.edits);
+    if (!plan.ok) return fail(plan.message);
+    if (plan.patches.length === 0) return ok(`${op.message} (already so — nothing written)`);
+
+    const files = await applyMarkerPlan(plan.patches);
+    const paths = files.map((file) => rel(ctx.workspace.root, file));
+    return ok(op.message, { written: paths, data: { paths } });
   },
 };
 
@@ -567,6 +668,25 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     if (owner) return fail(`${a.path} is written by ${owner}, not write_file`);
     await writeFileAtomic(abs, a.content);
     return ok(`Wrote ${a.path}.`, { written: [rel(ctx.workspace.root, abs)] });
+  },
+};
+
+const regenerateContextTool: Tool<Record<string, never>> = {
+  name: 'regenerate_context',
+  description:
+    'Rebuild AICONTEXT.generated.md — the project map: the cast, the locations, the story graph, ' +
+    "and the story bible's table of contents. Facts only; it never copies what a file says.",
+  mutating: true,
+  args: z.object({}).strict(),
+  async run(_a, ctx) {
+    const { file, counts } = await ctx.workspace.writeGeneratedContext();
+    const summary =
+      `${counts.characters} character(s), ${counts.locations} location(s), ` +
+      `${counts.scenes} scene(s), ${counts.bible} bible note(s)`;
+    return ok(`Regenerated the project map from ${summary}.`, {
+      written: [rel(ctx.workspace.root, file)],
+      data: counts,
+    });
   },
 };
 
@@ -731,6 +851,7 @@ export const ALL_TOOLS: Tool[] = [
   readFileTool,
   listWorkspaceTool,
   searchTool,
+  searchBibleTool,
   validateInputsTool,
   parseFountainTool,
   storyGraphTool,
@@ -740,8 +861,10 @@ export const ALL_TOOLS: Tool[] = [
   createCharacterTool,
   createLocationTool,
   editSceneTool,
+  setOutfitTool,
   writeFileTool,
   updateContextTool,
+  regenerateContextTool,
   discoverSkillsTool,
   runSkillTool,
   gitStatusTool,

@@ -3,6 +3,9 @@ id: aiko
 name: Aiko
 status: draft
 default_outfit: uniform
+outfits:
+  uniform: navy winter school uniform, pleated skirt, worn satchel of enamel pins
+  track: faded club tracksuit, sleeves pushed up, hair tied back
 palette:
   - "#a02828"
   - "#e8c8b0"

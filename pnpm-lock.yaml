@@ -140,6 +140,9 @@ importers:
       '@vn/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring
+      '@vn/bible':
+        specifier: workspace:*
+        version: link:../../packages/bible
       '@vn/commands':
         specifier: workspace:*
         version: link:../../packages/commands
@@ -185,6 +188,9 @@ importers:
       '@vn/util':
         specifier: workspace:*
         version: link:../../packages/util
+      nstructjs:
+        specifier: ^0.8.7
+        version: 0.8.7
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -210,6 +216,9 @@ importers:
 
   packages/authoring:
     dependencies:
+      '@vn/bible':
+        specifier: workspace:*
+        version: link:../bible
       '@vn/config':
         specifier: workspace:*
         version: link:../config
@@ -240,6 +249,18 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.25.76
+
+  packages/bible:
+    dependencies:
+      '@vn/parse':
+        specifier: workspace:*
+        version: link:../parse
+      '@vn/store':
+        specifier: workspace:*
+        version: link:../store
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../util
 
   packages/commands:
     dependencies:
@@ -1637,6 +1658,15 @@ packages:
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
 
+  acorn-walk@7.2.0:
+    resolution: {integrity: sha512-OPdCF6GsMIP+Az+aWfAAOEt2/+iVDKE7oy6lJ098aoe59oAmK76qV6Gw60SbZ8jHuG2wH058GF4pLFbYamYrVA==}
+    engines: {node: '>=0.4.0'}
+
+  acorn@7.4.1:
+    resolution: {integrity: sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==}
+    engines: {node: '>=0.4.0'}
+    hasBin: true
+
   acorn@8.17.0:
     resolution: {integrity: sha512-xRQbDb9BnwDafYNn6Vwl839DYVjqXYb1XVGtWAZ1kcDc6iwAL4hg3B1dZlRiuENFeO2H53gFG3in621AdERVAg==}
     engines: {node: '>=0.4.0'}
@@ -1652,6 +1682,10 @@ packages:
 
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
+
+  almond@0.3.3:
+    resolution: {integrity: sha512-Eh5QhyxrKnTI0OuGpwTRvzRrnu1NF3F2kbQJRwpXj/uMy0uycwqw2/RhdDrD1cBTD1JFFHFrxGIU8HQztowR0g==}
+    engines: {node: '>=0.4.0'}
 
   ansi-escapes@4.3.2:
     resolution: {integrity: sha512-gKXj5ALrKWQLsYG9jlTRmR/xKluxHV+Z9QEwNIgCfM1/uwPMCuzVVnh5mwTd+OuBZcwSIMbqssNWRm1lE51QaQ==}
@@ -3081,6 +3115,9 @@ packages:
   npm-run-path@4.0.1:
     resolution: {integrity: sha512-S48WzZW777zhNIrn7gxOlISNAqi9ZC/uQFnRdbeIHhZhCA6UqpkOT8T1G7BvfdgP4Er8gF4sUbaS0i7QvIfCWw==}
     engines: {node: '>=8'}
+
+  nstructjs@0.8.7:
+    resolution: {integrity: sha512-7ctMcZ1bX08CbfPCpUC9aFV52s8V3ZLW1RVedAMs0RESDLlbynv5sBBa8Z9tbzRaKrgQ9Aa2iMsoKyZAT7OCHQ==}
 
   object-inspect@1.13.4:
     resolution: {integrity: sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==}
@@ -4913,6 +4950,10 @@ snapshots:
     dependencies:
       acorn: 8.17.0
 
+  acorn-walk@7.2.0: {}
+
+  acorn@7.4.1: {}
+
   acorn@8.17.0: {}
 
   agent-base@7.1.4: {}
@@ -4927,6 +4968,8 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
+
+  almond@0.3.3: {}
 
   ansi-escapes@4.3.2:
     dependencies:
@@ -6744,6 +6787,12 @@ snapshots:
   npm-run-path@4.0.1:
     dependencies:
       path-key: 3.1.1
+
+  nstructjs@0.8.7:
+    dependencies:
+      acorn: 7.4.1
+      acorn-walk: 7.2.0
+      almond: 0.3.3
 
   object-inspect@1.13.4: {}
 

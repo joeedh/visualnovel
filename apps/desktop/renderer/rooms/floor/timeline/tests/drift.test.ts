@@ -6,6 +6,7 @@ const shot = (id: string, drift: Drift): CoverageShot => ({
   id,
   framing: 'medium',
   subjects: [],
+  outfits: {},
   coversLines: [],
   status: 'accepted',
   drift,

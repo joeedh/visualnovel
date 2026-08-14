@@ -199,7 +199,7 @@ The dev loop always opens Chrome's remote-debugging port on `127.0.0.1:9222`, an
 `scripts/vn-cdp.mjs` is the ergonomic client:
 
 ```sh
-node scripts/vn-cdp.mjs "view.room(name=floor)"    # any command DSL string
+node scripts/vn-cdp.mjs "view.open(editor=timeline)"  # any command DSL string
 node scripts/vn-cdp.mjs --catalog                  # the LIVE registry (never the file)
 node scripts/vn-cdp.mjs --history 5                # last commands + git provenance
 node scripts/vn-cdp.mjs --raw "<js expression>"    # evaluate anything in the renderer

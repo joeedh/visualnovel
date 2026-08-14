@@ -7,12 +7,32 @@ import { z } from 'zod';
 
 const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'expected hex color');
 
-/** Front-matter of `characters/<id>/character.md`. */
+/**
+ * The front-matter key that says what an authored document *is*, so an entity can be found by
+ * content rather than by where it was filed. Named once here and imported everywhere: a string
+ * literal at a call site is how the reader and the writer come to disagree about the key.
+ */
+export const ENTITY_TAG_KEY = 'type';
+
+/** The document kinds the tag can name. A file in `characters/`/`locations/` carries its tag
+ * implicitly from its location; stating a different one there is a conflict, not an override. */
+export const ENTITY_TAGS = { character: 'character', location: 'location' } as const;
+export type EntityTag = (typeof ENTITY_TAGS)[keyof typeof ENTITY_TAGS];
+
+/** Front-matter of a character sheet — `characters/<id>/character.md`, or any `type: character`. */
 export const characterFrontMatter = z.object({
   id: z.string().min(1),
+  /** Optional in the conventional directory, which carries the tag implicitly. */
+  type: z.literal(ENTITY_TAGS.character).optional(),
   name: z.string().min(1),
   status: z.enum(['draft', 'candidates', 'approved', 'locked']).default('draft'),
   default_outfit: z.string().default('default'),
+  /**
+   * The character's wardrobe, outfit id → description, in the order written. The description is
+   * what a prompt says the character is wearing; an id with no entry falls back to saying the id.
+   * `default_outfit` need not appear — it is synthesized when the map omits it.
+   */
+  outfits: z.record(z.string()).default({}),
   palette: z.array(hexColor).default([]),
   traits: z.array(z.string()).default([]),
   reference_images: z.array(z.string()).default([]),
@@ -20,9 +40,11 @@ export const characterFrontMatter = z.object({
 });
 export type CharacterFrontMatter = z.infer<typeof characterFrontMatter>;
 
-/** Front-matter of `locations/<id>.md` (user-authored). */
+/** Front-matter of a set-location sheet — `locations/<id>.md`, or any `type: location`. */
 export const locationFrontMatter = z.object({
   id: z.string().min(1),
+  /** Optional in the conventional directory, which carries the tag implicitly. */
+  type: z.literal(ENTITY_TAGS.location).optional(),
   name: z.string().min(1),
   mood: z.string().optional(),
   lighting: z.string().optional(),
@@ -128,7 +150,8 @@ const shotFraming = z.enum(['wide', 'medium', 'close', 'establishing']);
 
 const shotSubject = z.object({
   characterId: z.string(),
-  outfit: z.string().default('default'),
+  /** Absent means inherit — see {@link ShotSubject.outfit}. Never defaulted, or it would not. */
+  outfit: z.string().optional(),
   pose: z.string().optional(),
   expression: z.string().optional(),
 });

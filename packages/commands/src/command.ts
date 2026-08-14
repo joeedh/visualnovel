@@ -8,6 +8,7 @@
  */
 import type { Git } from '@vn/git';
 import type { PropSpecMap, PropValue, PropsOf } from './props.js';
+import type { UndoPoint } from './undo.js';
 
 /** Where an invocation came from. Recorded on every `CommandRecord`. */
 export type CommandSource = 'ui' | 'menu' | 'dsl' | 'cdp' | 'agent';
@@ -58,6 +59,12 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
    * undo's (`docs/gitUndoOptions.md` §6).
    */
   undoable?: boolean;
+  /**
+   * Set when the command's implementation owns its own commits — the agent loop commits once
+   * per approved plan, and that plan is the authorial event. Commit-on-save then leaves it
+   * alone rather than committing the same work twice under a second subject.
+   */
+  commitsItself?: boolean;
   /**
    * Would this run, and if not why? A report about *now* — never a gate on `run`, which
    * re-decides against the state it actually finds. A check that passed and a run that then
@@ -128,13 +135,15 @@ export interface CommandRecord {
   /**
    * Shadow snapshots taken either side of an undoable command — commit shas parked under
    * `refs/vn/undo/<seq>/`. Absent means the record is not an undo point, which is how history
-   * written before undo existed stays readable.
-   *
-   * `changed` is the two trees compared, not what the command claimed it wrote: false means
-   * the workspace is provably identical either side, so undo walks past it rather than
-   * reporting that it reversed something the author would see no trace of.
+   * written before undo existed stays readable. A record with `changed: false` is walked past
+   * rather than reported as reversing something the author would see no trace of.
    */
-  undo?: { pre: string; post: string; changed: boolean };
+  undo?: UndoPoint;
+  /**
+   * Commits this act produced under commit-on-save, one per repo that had something to commit.
+   * Absent on a record from a stack with no committer, and on one that changed nothing.
+   */
+  commits?: { repo: string; sha: string }[];
   /**
    * Set on the stack's own undo/redo entries. They mutate the worktree, so they are recorded,
    * but they are history rather than undo points and are skipped when choosing a candidate.

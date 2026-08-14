@@ -10,6 +10,7 @@
 - [The stack](#the-stack)
   * [`CommandRecord`](#commandrecord)
   * [Undo is opt-in, and rests on shadow snapshots](#undo-is-opt-in-and-rests-on-shadow-snapshots)
+  * [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
 - [The registered commands](#the-registered-commands)
   * [Interactions: the gesture surface](#interactions-the-gesture-surface)
   * [Preconditions: asking before acting](#preconditions-asking-before-acting)
@@ -191,6 +192,7 @@ interface CommandRecord {
   error?: string;
   undo?: { pre: string; post: string; changed: boolean }; // shadow snapshots; absent ⇒ not an undo point
   stack?: 'undo' | 'redo'; // set on the stack's own entries, which are history, not undo points
+  commits?: { repo: string; sha: string }[]; // what commit-on-save wrote; absent ⇒ nothing was
 }
 ```
 
@@ -208,8 +210,8 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
 [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
-  the fifteen `story.*` document mutators set it — the six branch/coverage ones it shipped for, plus
-  the nine prose edits. A command whose writes are generated output, or that straddles both classes,
+  the eighteen `story.*` document mutators set it — the six branch/coverage ones it shipped for, the
+  nine prose edits, and the three that followed (`moveShot` and the two outfit commands). A command whose writes are generated output, or that straddles both classes,
   stays out — see the table below.
 - **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of
   an undoable command into detached commits parked under `refs/vn/undo/<seq>/{pre,post}`. HEAD
@@ -228,15 +230,31 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
 Undo and redo each append their own `CommandRecord` tagged `stack`, so `commands.jsonl` does
 not lie about what touched the worktree.
 
+### Commit-on-save is the journal's sibling
+
+`Committer` is wired into the stack the same way `UndoJournal` is — a constructor option, absent
+by default, so a stack without one moves no ref at all. With one, every mutating command that
+left something on disk becomes a commit in each repo it touched, subject named by
+`CommandRecord.message` and provenance carried in `Vn-*` trailers. The resulting shas land on
+`record.commits`.
+
+The two are independent: a commit changes no file in the worktree, so it cannot perturb a
+snapshot tree taken either side of it, and they keep different scopes on purpose — the committer
+takes the whole worktree (`git add -A`), the journal only the document class. A command whose
+implementation already commits declares `commitsItself: true` and the committer leaves it alone;
+that is how `vnauthor`'s one-commit-per-approved-plan survives. Which repos, what the message
+looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-commits.md).
+
 ---
 
 ## The registered commands
 
-Thirty-seven, in eight namespaces. Twenty-one are `mutating`; twenty declare a precondition;
-fifteen are undoable; one asks for confirmation.
+Forty-seven, in nine namespaces. Twenty-seven are `mutating`; twenty-six declare a precondition;
+eighteen are undoable; one asks for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
+| `bible.search`                 | `query`, `limit` (default `8`)    | Ranked excerpts from `wiki/`. There is no `bible.read`: [`@vn/bible`](story-bible.md) has no whole-file API. |
 | `command.check`                | `invocation`                      | Would that invocation run? See [Preconditions](#preconditions-asking-before-acting). |
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
 | `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
@@ -252,6 +270,9 @@ fifteen are undoable; one asks for confirmation.
 | `story.setNext` ✍ ↺ ✓          | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
 | `story.spliceScene` ✍ ↺ ✓      | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
 | `story.setCoverage` ✍ ↺ ✓      | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
+| `story.moveShot` ✍ ↺ ✓         | `scene`, `shot`, `after` (default `''`) | Reorder a shot by moving the lines it covers; empty `after` means the top. A shot other shots draw inside is refused by name. |
+| `story.setSceneOutfit` ✍ ↺ ✓   | `scene`, `character`, `outfit` (default `''`) | Writes the scene's `[[outfit:]]` marker; empty clears it. Every shot that does not override it re-renders. |
+| `story.setOutfit` ✍ ↺ ✓        | `scene`, `shot`, `character`, `outfit` (default `''`) | One subject of one shot; empty clears the override. Unlike coverage this re-hashes the shot. |
 | `story.assignLineIds` ✍ ↺ ✓    | `scene` (default `''`)            | Writes allocated ids down as `[[line:]]` marks; empty `scene` means all. |
 | `story.setLineText` ✍ ↺ ✓      | `line`, `text`                    | Retype one line. Says how many rendered shots now illustrate the old prose. |
 | `story.insertLine` ✍ ↺ ✓       | `scene`, `text`, `after` (default `''`), `kind` (default `dialogue`), `speaker` (default `''`) | Empty `after` means the top of the scene; the id is allocated, not positional. |
@@ -269,11 +290,18 @@ fifteen are undoable; one asks for confirmation.
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
 | `interaction.targets`          | `interaction`, `carried`, `scene`        | Every target of a gesture, accepted or refused with why.   |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
+| `workspace.doctree`            | —                                 | The sidebar tree (story → scenes → shots, characters, locations, wiki, assets by kind) plus per-entity backlinks — see [`document-tree.md`](document-tree.md). |
+| `workspace.filetree`           | —                                 | Every file in the workspace as a tree, `.git` and `node_modules` excluded. |
 | `workspace.import` ✍ ✓         | —                                 | Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
-| `view.room`                    | `name` (`studio`\|`floor`\|`play`) | Switches the shell's room.                                |
-| `view.mode`                    | `room`, `mode`                    | A mode within a room — STUDIO `convo`\|`branches`\|`script`, FLOOR `list`\|`graph`\|`timeline`. |
+| `workspace.reindex` ✍ ✓        | —                                 | Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write. |
+| `workspace.open` ✍ ✓           | `path`                            | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open). |
+| `workspace.pick` ✍ ✓           | —                                 | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
+| `workspace.recent`             | —                                 | The open project and the ones opened before it, most recent first. |
+| `view.open`                    | `editor`, `where` (`here`\|`right`\|`below`, default `here`) | Shows an editor, in the active pane or in a new pane split off it. |
+| `view.focus`                   | `editor`                          | Makes the pane already showing an editor the active one.   |
+| `view.close`                   | —                                 | Collapses the active pane into its neighbour; the last pane is kept. |
+| `view.layout`                  | —                                 | Throws the remembered arrangement away and rebuilds the default one. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
-| `view.panelSize`               | `id`, `width` (80–1200)           | Saved width of a resizable panel; persisted, not an effect. |
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
@@ -282,28 +310,35 @@ document tree. `gate.approve` straddles both data classes — undoing `character
 `manifest.json` still marking the asset `accepted` — `story.export`, `story.screenplay` and
 `pipeline.run` write only generated output, and `agent.run` owns its own commits, one per approved
 plan. `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst
-at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can perform. The
-reasoning is in [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
+at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can perform;
+`workspace.reindex` writes one derived file, and undoing it means running it again; and
+`workspace.open`/`workspace.pick` write into a *different* tree than the one a snapshot covers, so
+a shadow ref in the old repo could not restore it anyway. The reasoning is in
+[`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer
-applies (`setRoom`, `setPaletteOpen`, `setStudioMode`, `setFloorMode`). The alternative — a
-second, renderer-side registry — would be one more thing to keep in sync, and CDP could not
-reach it.
+applies (`applyView` moves the panes; `openPalette`/`closePalette` for the palette). The
+alternative — a second, renderer-side registry — would be one more thing to keep in sync, and
+CDP could not reach it.
 
-`Room` stays a three-value union rather than growing into a mixed list of rooms and modes:
-an editor is a mode *within* a room, so it gets `view.mode(room, mode)` and a
-`{ type: 'mode' }` effect. Which modes a room *has* is a pairing of two props, which the spec
-layer can't express — `prop.oneOf` can only say "one of these six" — so `run` checks the pair
-and **refuses by throwing** (`STUDIO has no "graph" mode — try convo or branches or script.`), and the
-`UiEffect` mode member is split per room so the renderer's handler is exhaustive over the right
-set. The `story.*` mutators are the same discipline one level down —
-each is one authorial act, so a drag in the branch editor or the coverage timeline is one
-command and one `CommandRecord`, never a stream of them.
+**An effect names an editor, never a room.** The shell is a mesh of panes, so the whole
+vocabulary is one flat list of editors (`apps/desktop/src/shared/editors.ts`, browser-safe and
+imported by both halves): `prop.oneOf(EDITOR_IDS, …)` builds the props, the header's View menu
+builds its items from the same array, and a stored layout names an area by the same id.
+`checkEditorNames()` warns at boot if the renderer has not registered something the command
+offers — main cannot see the editor registry, so without it a command would fail only when
+someone picked it.
 
-`view.panelSize` is the exception that needs no effect: it writes to the desktop session
-store, and the store broadcasts its own `session:changed`, which is what the renderer's
-`usePanelWidth` already listens for. Dragging a panel writes through the same store but
-_not_ through the command stack, so `commands.jsonl` doesn't collect a record per drag.
+**Main is optimistic and the mesh corrects it.** `view.*` returns its sentence
+(`Showing Coverage below.`) without waiting: only the renderer knows how many panes there are.
+`applyView` returns a sentence **instead** when the mesh disagrees — `No pane is showing
+Inspector.`, `This is the only pane — closing it would leave nothing.` — and the bridge says
+that one as an error. The `CommandRecord` still reads `ok`, because nothing was refused; the
+command asked for something the layout had no room for.
+
+The `story.*` mutators are the same discipline one level down — each is one authorial act, so a
+drag in the branch editor or the coverage timeline is one command and one `CommandRecord`, never
+a stream of them.
 
 ### Interactions: the gesture surface
 
@@ -474,7 +509,7 @@ The preload exposes a second bridge, `window.vn`, over that same IPC:
 
 ```js
 await vn.catalog();
-await vn.exec("view.room(name='floor')"); // DSL form
+await vn.exec("view.open(editor='timeline' where='below')"); // DSL form
 await vn.exec('gate.approve', { characterId: 'aiko', hash: '9e0a1b' }); // id + props form
 await vn.check('gate.approve', { characterId: 'aiko', hash: '9e0a1b' }); // would it run?
 await vn.history(5);
@@ -494,7 +529,7 @@ evaluates against `window.vn`:
 
 ```sh
 node scripts/vn-cdp.mjs "workspace.index()"
-node scripts/vn-cdp.mjs "view.room(name='play')"   # visibly switches rooms
+node scripts/vn-cdp.mjs "view.open(editor=play)"   # visibly opens a pane
 node scripts/vn-cdp.mjs --catalog
 node scripts/vn-cdp.mjs --history 5
 node scripts/vn-cdp.mjs --undo                     # and --redo
@@ -511,6 +546,10 @@ What _is_ shipped is the thing that matters more: the agent and the commands sha
 rather than the transport. `vnauthor`'s `edit_scene` tool takes an `op` named after the `story.*`
 command it mirrors and calls the same `@vn/scriptedit` rule, so a refusal the author reads mid-drag
 is the sentence the agent gets back, and the storyboard fallout is accounted for once, in one place.
+`set_outfit` is the same arrangement over `story.setSceneOutfit` / `story.setOutfit` — one tool
+because the two differ by a word in the author's sentence, and the same rules underneath, which is
+also why the marker write path moved out of `session.editBranches` and into `@vn/scriptedit`'s
+`planMarkerEdit` / `applyMarkerPlan`: the agent may not import an app.
 Routing the tool loop through the registry later would buy provenance in `commands.jsonl` — not
 different behaviour. See [`vnauthor.md`](vnauthor.md#tools).
 
@@ -528,18 +567,18 @@ and a **JSON Schema** for the props object.
 
 ```jsonc
 {
-  "id": "view.room",
-  "title": "Switch room",
+  "id": "view.focus",
+  "title": "Focus an editor",
   "mutating": false,
   "confirm": false,
   "undoable": false,
   "checkable": false,
-  "props": [{ "name": "name", "kind": "enum", "required": true, "values": ["studio", "floor", "play"] }],
-  "usage": "view.room(name='studio')",
+  "props": [{ "name": "editor", "kind": "enum", "required": true, "values": ["branches", "script", "…"] }],
+  "usage": "view.focus(editor='branches')",
   "schema": {
     "type": "object",
-    "properties": { "name": { "type": "string", "enum": ["studio", "floor", "play"], "description": "…" } },
-    "required": ["name"],
+    "properties": { "editor": { "type": "string", "enum": ["branches", "script", "…"], "description": "…" } },
+    "required": ["editor"],
     "additionalProperties": false,
   },
 }

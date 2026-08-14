@@ -15,6 +15,12 @@ export class ProjectPaths {
   get charactersDir(): string {
     return join(this.root, 'characters');
   }
+  /**
+   * Where a *new* character sheet is created — never where an existing one is looked up.
+   * Characters are discovered by their `type:` tag, so an existing one lives wherever the file
+   * carrying that tag lives; `loadInputs` reports the real path on the `EntityDoc` and every
+   * reader and writer takes it from there.
+   */
   characterFile(id: string): string {
     return join(this.charactersDir, id, 'character.md');
   }
@@ -23,6 +29,36 @@ export class ProjectPaths {
   }
   get locationsDir(): string {
     return join(this.root, 'locations');
+  }
+  /** Where a *new* set-location sheet is created; see {@link characterFile} on lookup. */
+  locationFile(id: string): string {
+    return join(this.locationsDir, `${id}.md`);
+  }
+  /**
+   * The story bible. Walked for `type:`-tagged entity sheets; everything else in it is not an
+   * input and `loadInputs` ignores it.
+   */
+  get wikiDir(): string {
+    return join(this.root, 'wiki');
+  }
+  /**
+   * Base assets — generated art every later prompt references (portraits, model sheets,
+   * location refs). Beside the authored inputs rather than under `vngen/`, because it is its
+   * own subtree and may be its own git repo: `vngen/build/assets/` could not be either without
+   * dragging the build tree along. See `docs/asset-stores.md`.
+   */
+  get baseAssets(): string {
+    return join(this.root, 'assets');
+  }
+  get baseObjects(): string {
+    return join(this.baseAssets, 'objects');
+  }
+  baseAssetFile(hash: string, ext: string): string {
+    return join(this.baseObjects, `${hash}.${ext}`);
+  }
+  /** The base manifest. Provenance travels with the bytes, so it lives in that subtree. */
+  get baseManifest(): string {
+    return join(this.baseAssets, 'manifest.json');
   }
   get screenplayDir(): string {
     return join(this.root, 'screenplay');

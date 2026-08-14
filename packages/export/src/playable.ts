@@ -22,6 +22,7 @@ import type {
   SceneLine,
   Shot,
 } from '@vn/types';
+import { bindsTo } from '@vn/types';
 import { ProjectPaths, readShots } from '@vn/store';
 import { writeFileAtomic } from '@vn/util';
 
@@ -99,9 +100,7 @@ class AssetIndex {
   /** The accepted shot image for a shot id, if one was generated. */
   shotImage(shotId: string): AssetRef | undefined {
     return this.ref(
-      this.assets.find(
-        (a) => a.kind === 'shot_image' && a.satisfies.shotId === shotId && a.accepted,
-      ),
+      this.assets.find((a) => a.kind === 'shot_image' && bindsTo(a, { shotId }) && a.accepted),
     );
   }
 
@@ -113,9 +112,7 @@ class AssetIndex {
       return byHash ? this.ref(byHash) : { hash: approvedHash, ext: 'png' };
     }
     return this.ref(
-      this.assets.find(
-        (a) => a.kind === 'portrait' && a.satisfies.characterId === characterId && a.accepted,
-      ),
+      this.assets.find((a) => a.kind === 'portrait' && bindsTo(a, { characterId }) && a.accepted),
     );
   }
 }
@@ -131,7 +128,7 @@ function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[
     if (shot && shot.id !== currentShotId) {
       currentShotId = shot.id;
       const image = assets.shotImage(shot.id);
-      beats.push(image ? { type: 'show', image } : { type: 'show' });
+      beats.push(image ? { type: 'show', shot: shot.id, image } : { type: 'show', shot: shot.id });
     }
     // A transition is coverable but is not shown: `CUT TO:` is an instruction to the reader
     // of a screenplay, not a line of the story. It still changes the frame above.

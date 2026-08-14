@@ -4,8 +4,8 @@
  * The one contract here is the one every prose writer rests on: a source list is derived from the
  * *same* `loadInputs` result the model was built from, never from a second look at `scenes/`. So a
  * writer patches exactly the bytes the model was read from rather than whatever is on disk by the
- * time it writes. Both write paths — prose edits here, branch rewires in the desktop app — take
- * their targets from this one function for that reason.
+ * time it writes. Both write paths — prose edits (`apply.ts`) and marker edits (`markers.ts`) —
+ * take their targets from this one function for that reason.
  */
 import { sceneFromDoc } from '@vn/model';
 import { splitFrontMatter, type LoadedInputs } from '@vn/parse';

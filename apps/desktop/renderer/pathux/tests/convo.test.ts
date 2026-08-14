@@ -1,0 +1,85 @@
+import { answered, asked, cleared, decided, emptyConvo, proposed, received } from '../convo.js';
+import type { AgentEvent, PlanRequest } from '../../../src/shared/ipc';
+
+const opening = 'Workspace loaded.';
+
+const ranTool = (tool: string): AgentEvent => ({
+  type: 'tool',
+  tool,
+  args: {},
+  result: { ok: true, output: 'done' },
+});
+
+const plan: PlanRequest = {
+  id: 3,
+  plan: { summary: 'Give Aiko a jacket', steps: ['edit characters/aiko'], files: [] },
+};
+
+describe('what an event does to the conversation', () => {
+  test('a tool call is transcript, not dialogue', () => {
+    const convo = received(emptyConvo(opening), ranTool('read_file'));
+    expect(convo.feed).toEqual([{ id: 1, role: 'tool', text: 'read_file' }]);
+    expect(convo.line).toBe(opening);
+  });
+
+  test('what the agent says replaces the dialogue box and appends nothing', () => {
+    const convo = received(emptyConvo(opening), { type: 'final', text: 'Done — one file.' });
+    expect(convo.line).toBe('Done — one file.');
+    expect(convo.feed).toEqual([]);
+  });
+
+  test('a blocked tool reads as one sentence, with the reason', () => {
+    const convo = received(emptyConvo(opening), {
+      type: 'blocked',
+      tool: 'write_file',
+      reason: 'plan mode is read-only',
+    });
+    expect(convo.feed[0]).toEqual({
+      id: 1,
+      role: 'blocked',
+      text: 'write_file blocked — plan mode is read-only',
+    });
+  });
+
+  test('the mode is the shell’s, so the conversation is untouched by it', () => {
+    const before = emptyConvo(opening);
+    expect(received(before, { type: 'mode', mode: 'execute' })).toBe(before);
+  });
+});
+
+describe('a turn', () => {
+  test('shows the author’s own words before the agent has read them', () => {
+    const convo = asked(emptyConvo(opening), 'give Aiko a jacket');
+    expect(convo.feed).toEqual([{ id: 1, role: 'user', text: 'give Aiko a jacket' }]);
+    expect(convo.busy).toBe(true);
+  });
+
+  test('coming back opens the composer and speaks', () => {
+    const convo = answered(asked(emptyConvo(opening), 'hi'), 'Aiko now owns a jacket.');
+    expect(convo.busy).toBe(false);
+    expect(convo.line).toBe('Aiko now owns a jacket.');
+  });
+
+  test('a turn that says nothing leaves the last thing said standing', () => {
+    const convo = answered(asked(emptyConvo(opening), 'hi'), null);
+    expect(convo.busy).toBe(false);
+    expect(convo.line).toBe(opening);
+  });
+});
+
+describe('the plan card', () => {
+  test('arrives as a request and leaves on a decision', () => {
+    const asking = proposed(emptyConvo(opening), plan);
+    expect(asking.plan).toBe(plan);
+    expect(decided(asking).plan).toBeNull();
+  });
+});
+
+describe('clearing', () => {
+  test('empties the transcript but keeps issuing fresh ids', () => {
+    const convo = received(received(emptyConvo(opening), ranTool('a')), ranTool('b'));
+    const after = received(cleared(convo, 'Conversation cleared.'), ranTool('c'));
+    expect(after.line).toBe('Conversation cleared.');
+    expect(after.feed).toEqual([{ id: 3, role: 'tool', text: 'c' }]);
+  });
+});

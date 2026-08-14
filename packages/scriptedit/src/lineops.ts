@@ -83,8 +83,12 @@ export function sceneIdOf(lineId: string): string {
 /** The local half — what a `[[line:]]` mark carries, and what survives a scene rename. */
 const localOf = (lineId: string): string => lineId.slice(lineId.lastIndexOf(':') + 1);
 
-/** The scene's allocator, derived past every id in use when the scene carries none. */
-function nextIdOf(scene: Scene): number {
+/**
+ * The scene's allocator, derived past every id in use when the scene carries none. Exported for
+ * `shotorder.ts`, which rewrites a scene's line order and must stamp the same high-water mark
+ * every edit here does.
+ */
+export function nextIdOf(scene: Scene): number {
   let max = 0;
   for (const line of scene.lines) {
     const m = /^L(\d+)$/.exec(localOf(line.id));

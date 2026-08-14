@@ -1,6 +1,6 @@
 /**
  * The pure half of the `story.*` mutating commands: turn a gesture ("connect these two",
- * "splice C into A→B") into the `SceneBranchEdit[]` that `applySceneBranchEdit` applies as one
+ * "splice C into A→B") into the `SceneMarkerEdit[]` that `applySceneMarkerEdit` applies as one
  * atomic patch.
  *
  * It lives apart from the command definitions because this is where the semantics are — which
@@ -13,13 +13,13 @@
  * rules that could disagree with it.
  */
 import type { Choice, Scene } from '@vn/types';
-import type { SceneBranchEdit } from '@vn/model';
+import type { SceneMarkerEdit } from '@vn/model';
 
 /** Just enough of a `Scene` to decide a rewire. Keyed by scene id. */
 export type SceneMap = ReadonlyMap<string, Pick<Scene, 'id' | 'choices' | 'next'>>;
 
 export type BranchOp =
-  | { ok: true; edits: SceneBranchEdit[]; message: string }
+  | { ok: true; edits: SceneMarkerEdit[]; message: string }
   | { ok: false; error: string };
 
 const refuse = (error: string): BranchOp => ({ ok: false, error });
@@ -145,7 +145,7 @@ export function spliceScene(
     );
   }
 
-  const edits: SceneBranchEdit[] =
+  const edits: SceneMarkerEdit[] =
     edge === undefined
       ? [
           { sceneId: source.id, next: middle.id },

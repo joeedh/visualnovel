@@ -2,11 +2,13 @@ import { promises as fs } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { AnyTask, Asset, Logger, Providers } from '@vn/types';
+import { bindsTo } from '@vn/types';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import { loadConfig, setStartScene } from '@vn/config';
 import { parseFountain } from '@vn/parse';
 import { sceneChunksFromScript, scriptFromScenes, toMermaid } from '@vn/model';
 import {
+  entityFile,
   findScreenplay,
   ProjectPaths,
   readSceneChunks,
@@ -222,7 +224,19 @@ export async function cmdStatus(args: Args): Promise<number> {
   ok(`Project: ${project.config.title}`);
   ok(`Scenes: ${project.model.scenes.size} (${project.model.reachable.size} reachable)`);
   ok(`Characters: ${project.model.characters.size}  Locations: ${project.model.locations.size}`);
-  ok(`Assets: ${project.store.manifest().length}`);
+  const assets = project.store.manifest().length;
+  const base = project.store.base;
+  ok(`Assets: ${assets}`);
+  if (base) {
+    // Base first because it is what everything else references, and `project` is the remainder
+    // by construction: `manifest()` is the union with base winning any hash both roots hold.
+    ok(`  base: ${base.count}  project: ${assets - base.count}`);
+    if (base.state === 'unavailable') {
+      ok(`  base root UNAVAILABLE — ${base.root} has no readable manifest.json.`);
+    } else if (base.state === 'absent') {
+      ok(`  base root not created yet (${base.root}); the first base asset written creates it.`);
+    }
+  }
   ok('Tasks:');
   for (const status of ['pending', 'running', 'done', 'failed', 'needs_human'] as const) {
     if (counts[status]) ok(`  ${status}: ${counts[status]}`);
@@ -237,8 +251,20 @@ export async function cmdStatus(args: Args): Promise<number> {
   return 0;
 }
 
+/**
+ * The refusal, if the run declined to plan. Printed instead of a preview or a task count: a
+ * zero-work summary is otherwise indistinguishable from a finished project.
+ */
+function printRefusal(summary: RunSummary): boolean {
+  if (!summary.refused) return false;
+  ok('Refused to plan:');
+  ok(`  ${summary.refused}`);
+  return true;
+}
+
 /** Print the planned-work preview from a dry-run summary (shared by `cost` and `run --mock`). */
 function printPreview(summary: RunSummary, header: string): void {
+  if (printRefusal(summary)) return;
   const { preview } = summary;
   ok(header);
   ok(`  pending tasks: ${preview.pendingTasks}`);
@@ -259,7 +285,7 @@ export async function cmdCost(args: Args, logger: Logger): Promise<number> {
   const providers = await buildProviders(project, { mock: true, logger });
   const summary = await runPipeline({ ...project, providers, dryRun: true, logger });
   printPreview(summary, 'Cost preview (upper bound):');
-  return 0;
+  return summary.refused ? 1 : 0;
 }
 
 /**
@@ -300,8 +326,9 @@ export async function cmdRun(
 
   if (mock) {
     printPreview(summary, 'Dry run (--mock) — planned work, nothing generated:');
-    return 0;
+    return summary.refused ? 1 : 0;
   }
+  if (printRefusal(summary)) return 1;
 
   // Counted from the *plan*, not from `summary.ran`: a failure inherited from an earlier run
   // transitions nothing this process can see, and used to report as a clean run.
@@ -372,7 +399,7 @@ function answeredYes(answer: string, dflt: boolean): boolean {
 function portraitsFor(project: LoadedProject, characterId: string): Asset[] {
   return project.store
     .manifest()
-    .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId);
+    .filter((a) => a.kind === 'portrait' && bindsTo(a, { characterId }));
 }
 
 /** Flip the character to approved with `hash`, copy the visible portrait, accept the asset. */
@@ -381,8 +408,10 @@ async function approveCharacter(
   characterId: string,
   hash: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const flipped = await setCharacterApproval(project.paths, characterId, hash);
-  if (!flipped) return { ok: false, message: `No character file for "${characterId}".` };
+  const file = entityFile(project.inputs.characterDocs, characterId);
+  if (!file || !(await setCharacterApproval(file, hash))) {
+    return { ok: false, message: `No character file for "${characterId}".` };
+  }
   const bytes = await project.store.read({ hash, ext: 'png' });
   await writeApprovedPortrait(project.paths, characterId, bytes);
   await project.store.accept(hash);

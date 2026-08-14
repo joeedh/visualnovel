@@ -1,5 +1,9 @@
 **/dist/**
 **/node_modules/**
+
+# Submodules. path.ux has its own prettier config and its own repo; formatting it from here
+# shows the gitlink as dirty and would fight its style on every pass.
+vendor/**
 # Machine-written desktop session state (see apps/desktop/src/main/sessionstore.ts).
 # Prettier 3 doesn't read .gitignore, so it needs saying twice.
 **/.vndesktop/**

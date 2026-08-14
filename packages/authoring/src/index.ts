@@ -1,4 +1,5 @@
 export * from './workspace.js';
+export * from './generated.js';
 export * from './context.js';
 export * from './tools.js';
 export * from './skills.js';

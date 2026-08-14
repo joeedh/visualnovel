@@ -13,7 +13,7 @@
  * `docs/plans/interaction-model.md`.
  */
 import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
-import { moveLine, sceneIdOf, type ScriptState } from '@vn/scriptedit';
+import { moveLine, planShotMove, sceneIdOf, type ScriptState } from '@vn/scriptedit';
 import { removeChoice, setChoice, setNext, spliceScene } from './branchops.js';
 import type { BranchOp, SceneMap } from './branchops.js';
 import { resolveDrag, setCoverage, spansFor, type Edge } from './coverage.js';
@@ -24,6 +24,13 @@ export const NEW_CHOICE = 'New choice';
 
 /** `branch.unwire`'s only target — named so a caller can address it. */
 export const CANVAS = 'canvas';
+
+/**
+ * The insertion point above a scene's first line — the empty `after` of `story.moveLine` and
+ * `story.moveShot`, which is not addressable as a target. Safe as a name because every line id is
+ * `<scene>:L<n>` and every shot id is `<scene>__<raw>`.
+ */
+export const TOP = 'top';
 
 export interface Intent {
   id: string;
@@ -226,7 +233,7 @@ export const branchUnwire = defineInteraction<BranchState>({
 });
 
 // ---------------------------------------------------------------------------
-// The timeline's one gesture.
+// The timeline's two gestures: one moves a bracket's edge, the other moves the bracket.
 // ---------------------------------------------------------------------------
 
 /** Everything `timeline.cover` is judged against: exactly `SceneCoverage` minus `decomposed`. */
@@ -311,16 +318,65 @@ export const timelineCover = defineInteraction<CoverState>({
   },
 });
 
+/**
+ * Dragging a whole bracket onto another one. The targets are the *other shots* rather than the
+ * lines, because that is what the act is about: a shot's position is where its covered lines sit,
+ * so "put this shot after that one" is the only way to say it without the author computing rows.
+ * {@link TOP} is a target too — the same insertion point `script.moveLine` offers.
+ *
+ * The refusal that matters is the interleaved shot: it is on screen in more than one place and has
+ * no single position, and here it comes back as a refusal on every target rather than a gesture
+ * that quietly does something else.
+ */
+export const timelineReorder = defineInteraction<CoverState>({
+  id: 'timeline.reorder',
+  title: 'Reorder a shot',
+  description:
+    'Drag a shot bracket onto another one to put it after that shot, taking the lines it covers ' +
+    'with it. Coverage does not change and no covered prose changes, so nothing drifts and ' +
+    'nothing re-renders.',
+  grab: 'a shot bracket, anywhere but its start and end handles',
+  carries: 'the shot being moved',
+  accepts: 'another shot of the same scene, or `top`',
+  commands: ['story.moveShot'],
+  cancellable: true,
+  targets: (state, carried) => {
+    if (!state.shots.some((s) => s.id === carried)) {
+      return [
+        { target: UNRESOLVED, accept: false, reason: `No shot "${carried}" in ${state.sceneId}.` },
+      ];
+    }
+    const scene = { id: state.sceneId, lineOrder: state.lines.map((l) => l.id) };
+    const verdicts: Verdict[] = [];
+    for (const target of [TOP, ...state.shots.map((s) => s.id)]) {
+      if (target === carried) continue;
+      const after = target === TOP ? '' : target;
+      const move = planShotMove(scene, state.shots, { shot: carried, after });
+      // A drop that would reorder nothing is left out entirely, the same distinction
+      // `timeline.cover` and `script.moveLine` draw: no target, rather than a pointless accept.
+      if (!move.ok && move.noop) continue;
+      verdicts.push(
+        move.ok
+          ? {
+              target,
+              accept: true,
+              note: move.message,
+              invoke: {
+                id: 'story.moveShot',
+                props: { scene: state.sceneId, shot: carried, after },
+              },
+            }
+          : { target, accept: false, reason: move.error },
+      );
+    }
+    return verdicts;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // The script's one gesture. It was declared and tested here before any surface ran it, which is
 // the point of the layer; STUDIO's script column is now its first consumer.
 // ---------------------------------------------------------------------------
-
-/**
- * The insertion point above a scene's first line — `story.moveLine`'s empty `after`, which is
- * not addressable as a target. Safe as a name because every line id is `<scene>:L<n>`.
- */
-export const TOP = 'top';
 
 /**
  * Dragging a line to another position in its own scene. The targets are *insertion points*, so
@@ -387,6 +443,7 @@ export const INTERACTION_IDS = [
   'branch.unwire',
   'script.moveLine',
   'timeline.cover',
+  'timeline.reorder',
 ] as const;
 
 /**
@@ -395,6 +452,13 @@ export const INTERACTION_IDS = [
  */
 export function createDesktopInteractions(): InteractionRegistry {
   const registry = new InteractionRegistry();
-  registry.registerAll([branchConnect, branchSplice, branchUnwire, timelineCover, scriptMoveLine]);
+  registry.registerAll([
+    branchConnect,
+    branchSplice,
+    branchUnwire,
+    timelineCover,
+    timelineReorder,
+    scriptMoveLine,
+  ]);
   return registry;
 }

@@ -7,6 +7,7 @@
  */
 import { CommandRegistry } from '@vn/commands';
 import { agentClear, agentRun, agentSetMode, agentSetModel } from './agent.js';
+import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { interactionList, interactionTargets } from './interaction.js';
@@ -21,6 +22,7 @@ import {
   storyInsertLine,
   storyMergeScene,
   storyMoveLine,
+  storyMoveShot,
   storyNewScene,
   storyPlay,
   storyRemoveChoice,
@@ -29,12 +31,23 @@ import {
   storySetCoverage,
   storySetLineText,
   storySetNext,
+  storySetOutfit,
+  storySetSceneOutfit,
   storySetSpeaker,
   storySpliceScene,
   storySplitScene,
 } from './story.js';
-import { viewMode, viewPalette, viewPanelSize, viewRoom } from './view.js';
-import { workspaceImport, workspaceIndex } from './workspace.js';
+import { viewClose, viewFocus, viewLayout, viewOpen, viewPalette } from './view.js';
+import {
+  workspaceDoctree,
+  workspaceFiletree,
+  workspaceImport,
+  workspaceIndex,
+  workspaceOpen,
+  workspacePick,
+  workspaceRecent,
+  workspaceReindex,
+} from './workspace.js';
 import type { CommandHost } from './host.js';
 
 export type { CommandHost } from './host.js';
@@ -46,6 +59,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     agentRun,
     agentSetMode,
     agentSetModel,
+    bibleSearch,
     commandCheck,
     gateApprove,
     gateCandidates,
@@ -62,6 +76,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storyInsertLine,
     storyMergeScene,
     storyMoveLine,
+    storyMoveShot,
     storyNewScene,
     storyPlay,
     storyRemoveChoice,
@@ -70,15 +85,24 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storySetCoverage,
     storySetLineText,
     storySetNext,
+    storySetOutfit,
+    storySetSceneOutfit,
     storySetSpeaker,
     storySpliceScene,
     storySplitScene,
-    viewMode,
+    viewClose,
+    viewFocus,
+    viewLayout,
+    viewOpen,
     viewPalette,
-    viewPanelSize,
-    viewRoom,
+    workspaceDoctree,
+    workspaceFiletree,
     workspaceImport,
     workspaceIndex,
+    workspaceOpen,
+    workspacePick,
+    workspaceRecent,
+    workspaceReindex,
   ]);
   return registry;
 }

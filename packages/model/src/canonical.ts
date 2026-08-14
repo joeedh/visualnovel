@@ -29,6 +29,9 @@ export function canonicalScenes(scenes: Scene[]): string {
       })),
       choices: s.choices.map((c) => ({ label: c.label, goto: c.goto })),
       next: s.next ?? null,
+      // Normalized so "no markers" and "every marker removed" compare equal — a patch that
+      // clears the last one has to be able to reproduce the scene it intended.
+      outfits: s.outfits && Object.keys(s.outfits).length > 0 ? s.outfits : null,
     })),
   );
 }

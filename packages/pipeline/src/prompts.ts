@@ -1,5 +1,6 @@
 import type { Character, ImageParams, Location, ProjectModel, Scene, Shot } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import { outfitFor, outfitText } from '@vn/model';
 
 /** Image params derived from project config + the configured image model id. */
 export function imageParams(config: ProjectConfig): ImageParams {
@@ -65,7 +66,7 @@ export function buildModelSheetPrompt(
 ): string {
   return [
     stylePreamble(config),
-    `Full-body ${angle} view of ${character.name} wearing ${outfit}.`,
+    `Full-body ${angle} view of ${character.name} wearing ${outfitText(character, outfit)}.`,
     'Preserve the exact face and look from the reference image.',
     character.description,
     paletteClause(character.palette),
@@ -88,7 +89,7 @@ export function buildShotPrompt(
   const subjects = shot.subjects.map((s) => {
     const character = model.characters.get(s.characterId);
     const name = character?.name ?? s.characterId;
-    const bits = [name, `wearing ${s.outfit}`];
+    const bits = [name, `wearing ${outfitText(character, outfitFor(s, scene, character).id)}`];
     if (s.pose) bits.push(`pose: ${s.pose}`);
     if (s.expression) bits.push(`expression: ${s.expression}`);
     return bits.join(', ');
@@ -135,10 +136,14 @@ function shotDescription(shot: Shot, scene: Scene): string {
     .trim();
 }
 
-/** A reviewer-facing spec for a shot (report §P7). */
+/**
+ * A reviewer-facing spec for a shot (report §P7). `model` is what lets the outfit resolve all the
+ * way down to the character's default; without it only the two authored levels can answer.
+ */
 export function shotSpec(
   shot: Shot,
   scene: Scene,
+  model?: ProjectModel,
 ): {
   description: string;
   characters: string[];
@@ -147,10 +152,11 @@ export function shotSpec(
   expression?: string;
   framing?: string;
 } {
+  const lead = shot.subjects[0];
   return {
     description: shotDescription(shot, scene),
     characters: shot.subjects.map((s) => s.characterId),
-    outfit: shot.subjects[0]?.outfit,
+    outfit: lead && outfitFor(lead, scene, model?.characters.get(lead.characterId)).id,
     location: shot.location,
     expression: shot.subjects[0]?.expression,
     framing: shot.framing,

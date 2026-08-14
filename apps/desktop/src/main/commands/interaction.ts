@@ -44,7 +44,8 @@ export const interactionTargets = define({
     interaction: prop.oneOf(INTERACTION_IDS, 'which gesture to judge'),
     carried: prop.string(
       'what is being carried — a scene id, an edge id for branch.unwire, a ' +
-        '`<shotId>#start`/`#end` handle for timeline.cover, or a line id for script.moveLine',
+        '`<shotId>#start`/`#end` handle for timeline.cover, a shot id for timeline.reorder, ' +
+        'or a line id for script.moveLine',
     ),
     scene: prop.string('which scene, for a gesture judged against one scene', { default: '' }),
   },

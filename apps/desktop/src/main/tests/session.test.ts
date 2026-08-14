@@ -59,6 +59,17 @@ describe('WorkspaceSession — reading a project', () => {
     expect((await p.reload()).store.manifest()).toHaveLength(0);
   });
 
+  // What `workspace.open` refuses on: a session with work in flight is one nobody may replace.
+  it('names the work in flight from the call, not from when the scheduler starts', async () => {
+    const session = sessionFor(p);
+    expect(session.busy()).toBeUndefined();
+
+    const running = session.runPipeline(true);
+    expect(session.busy()).toBe('a pipeline run');
+    await running;
+    expect(session.busy()).toBeUndefined();
+  });
+
   it('builds a playable with no asset refs while nothing is generated', async () => {
     const play = await sessionFor(p).playable();
     expect(play.start).toBe('arrival');
@@ -464,6 +475,17 @@ describe('WorkspaceSession — prose editing', () => {
     expect(await p.read(ROOFTOP)).toBe(before);
   });
 
+  it('refuses to reorder shots in a scene nothing has decomposed yet', async () => {
+    const before = await p.read(ROOFTOP);
+    const result = await session.editScene(
+      await session.shotOrder('rooftop', 'rooftop__beat1', ''),
+    );
+
+    expect(result).toMatchObject({ ok: false, written: [], removed: [] });
+    expect(result.message).toContain('no decomposition yet');
+    expect(await p.read(ROOFTOP)).toBe(before);
+  });
+
   it('refuses an edit without touching a file', async () => {
     const before = await p.read(ROOFTOP);
     const result = await session.editScene((s) => deleteScene(s, { scene: 'rooftop' }));
@@ -620,6 +642,113 @@ describe('WorkspaceSession — prose editing', () => {
 });
 
 /**
+ * The two outfit write paths. They deliberately go to different files — the scene marker to the
+ * scene chunk, the shot override to the storyboard — so each is asserted by reading the file it
+ * owns back, not by the sentence the session returned.
+ */
+describe('WorkspaceSession — outfits', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeEach(async () => {
+    p = await makeProject({
+      title: 'Outfits',
+      script: SCRIPTS.linear,
+      characters: [{ id: 'aiko', outfits: { uniform: 'navy blazer', track: 'club tracksuit' } }],
+    });
+    session = sessionFor(p);
+    await writeShots(p.paths, 'arrival', [
+      {
+        id: 'arrival__beat1',
+        sceneId: 'arrival',
+        framing: 'medium',
+        location: 'classroom/day',
+        subjects: [{ characterId: 'aiko' }],
+        coversLines: ['arrival:L2'],
+        status: 'pending',
+      },
+    ]);
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  it('patches the scene marker, and refuses the same request a second time', async () => {
+    expect(await session.previewSceneOutfit('arrival', 'aiko', 'track')).toMatchObject({
+      ok: true,
+    });
+
+    const result = await session.editBranches(
+      await session.sceneOutfit('arrival', 'aiko', 'track'),
+    );
+    expect(result).toMatchObject({ ok: true, written: ['scenes/arrival.md'] });
+    expect(await p.read('scenes/arrival.md')).toContain('[[outfit: aiko=track]]');
+
+    // A noop rather than a plain refusal: the control offering it is dropped, not disabled.
+    expect(await session.previewSceneOutfit('arrival', 'aiko', 'track')).toMatchObject({
+      ok: false,
+      noop: true,
+    });
+  });
+
+  it('overrides one subject of one shot, and clears the override back to absent', async () => {
+    const set = await session.setShotOutfit('arrival', 'arrival__beat1', 'aiko', 'track');
+    expect(set).toMatchObject({ ok: true, written: ['vngen/work/shots/arrival.json'] });
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]!.subjects).toEqual([
+      { characterId: 'aiko', outfit: 'track' },
+    ]);
+
+    const cleared = await session.setShotOutfit('arrival', 'arrival__beat1', 'aiko', '');
+    expect(cleared.ok).toBe(true);
+    expect(cleared.message).toContain('character sheet');
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]!.subjects).toEqual([
+      { characterId: 'aiko' },
+    ]);
+  });
+
+  it('refuses an outfit the sheet never authored, naming the ones it did, and writes nothing', async () => {
+    const preview = await session.previewShotOutfit(
+      'arrival',
+      'arrival__beat1',
+      'aiko',
+      'swimsuit',
+    );
+    expect(preview).toMatchObject({ ok: false });
+    if (preview.ok) throw new Error('expected a refusal');
+    expect(preview.error).toContain('"uniform", "track"');
+
+    const run = await session.setShotOutfit('arrival', 'arrival__beat1', 'aiko', 'swimsuit');
+    expect(run).toMatchObject({ ok: false, written: [] });
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]!.subjects).toEqual([
+      { characterId: 'aiko' },
+    ]);
+  });
+
+  /**
+   * The timeline's outfit strip is built entirely from `story:coverage`, so what it can offer and
+   * what it says is in force are both this payload. A subject that inherits carries nothing — the
+   * strip resolves it, and a map that pre-filled the answer would erase the distinction.
+   */
+  it('carries the wardrobe and the overrides in the coverage the strip is built from', async () => {
+    const before = await session.sceneCoverage('arrival');
+    expect(before.cast).toContainEqual({
+      id: 'aiko',
+      outfits: ['uniform', 'track'],
+      defaultOutfit: 'uniform',
+    });
+    expect(before.shots[0]!.outfits).toEqual({});
+
+    await session.editBranches(await session.sceneOutfit('arrival', 'aiko', 'track'));
+    await session.setShotOutfit('arrival', 'arrival__beat1', 'aiko', 'uniform');
+
+    const after = await session.sceneCoverage('arrival');
+    expect(after.cast.find((c) => c.id === 'aiko')?.marked).toBe('track');
+    expect(after.shots[0]!.outfits).toEqual({ aiko: 'uniform' });
+  });
+});
+
+/**
  * `workspace.import` and `story.screenplay`: the migration into the chunk form, and the way back
  * out of it. The import is asserted by what the *model* says afterwards — a conversion that lost
  * or renamed a scene would detach its shots, so "same graph" is the contract, not "same bytes".
@@ -717,6 +846,44 @@ describe('WorkspaceSession — Fountain in and out', () => {
   });
 });
 
+describe('WorkspaceSession — the story bible', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({
+      title: 'Bible',
+      script: SCRIPTS.linear,
+      files: {
+        'wiki/history/canal.md': '# The canal\n\nThe school was raised over a filled canal.\n',
+        'wiki/cast/notes.md': '# Notes\n\nAiko has never seen the canal drained.\n',
+      },
+    });
+    session = sessionFor(p);
+  });
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  it('ranks passages by query, reporting the file each came from', async () => {
+    const hits = await session.searchBible('canal');
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.map((h) => h.file)).toContain('history/canal.md');
+    expect(hits[0]!.text).toContain('canal');
+  });
+
+  it('honours a limit and returns nothing for a query that matches nothing', async () => {
+    expect(await session.searchBible('canal', 1)).toHaveLength(1);
+    expect(await session.searchBible('submarine')).toEqual([]);
+  });
+
+  it('sees a file written after the session was built', async () => {
+    await fs.writeFile(join(p.dir, 'wiki', 'later.md'), '# Later\n\nA submarine, improbably.\n');
+    expect((await session.searchBible('submarine')).map((h) => h.file)).toEqual(['later.md']);
+  });
+});
+
 describe('WorkspaceSession — over a generated project', () => {
   let p: TestProject;
   let session: WorkspaceSession;
@@ -760,5 +927,30 @@ describe('WorkspaceSession — over a generated project', () => {
     const { path, scenes } = await session.exportPlayable();
     expect(scenes).toBe(2);
     expect(JSON.parse(await fs.readFile(path, 'utf8'))).toEqual(play);
+  });
+
+  /**
+   * The whole claim of `story.moveShot` in one assertion: the order of `show` beats changes,
+   * and both frames still resolve to the images the run already paid for.
+   */
+  it('reorders a shot by moving its lines, and the playable follows without re-rendering', async () => {
+    const before = (await session.playable()).scenes['arrival']!.beats;
+    expect(before.map((b) => b.type)).toEqual(['show', 'narrate', 'show', 'say']);
+
+    const result = await session.editScene(
+      await session.shotOrder('arrival', 'arrival__beat1', ''),
+    );
+    expect(result).toMatchObject({ ok: true, written: ['scenes/arrival.md'] });
+    expect(result.message).toContain('nothing drifts');
+
+    const after = (await session.playable()).scenes['arrival']!.beats;
+    expect(after.map((b) => b.type)).toEqual(['show', 'say', 'show', 'narrate']);
+    expect(after.filter((b) => b.type === 'show')).toEqual(
+      [...before.filter((b) => b.type === 'show')].reverse(),
+    );
+    expect((await session.sceneCoverage('arrival')).shots.map((s) => s.drift)).toEqual([
+      'current',
+      'current',
+    ]);
   });
 });

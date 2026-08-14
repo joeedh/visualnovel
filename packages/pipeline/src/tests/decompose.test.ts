@@ -112,7 +112,7 @@ describe('decomposeScene subjects', () => {
     expect(shots[0]!.subjects.map((s) => s.characterId)).toEqual(['aiko']);
   });
 
-  it('carries pose and expression through the resolution', async () => {
+  it('carries pose and expression through the resolution, but never an outfit', async () => {
     const shots = await decomposeScene(
       SCENE,
       MODEL,
@@ -127,9 +127,10 @@ describe('decomposeScene subjects', () => {
         ]),
       ]),
     );
+    // The outfit is dropped even though the model volunteered one — baking it here would shadow
+    // the `[[outfit:]]` marker the author writes later.
     expect(shots[0]!.subjects[0]).toEqual({
       characterId: 'aiko',
-      outfit: 'uniform',
       pose: 'pausing at the doorway',
       expression: 'gentle smile',
     });

@@ -18,6 +18,7 @@ describe('the desktop registry', () => {
   it('registers every namespace the UI reaches', () => {
     expect(createDesktopRegistry().namespaces()).toEqual([
       'agent',
+      'bible',
       'command',
       'gate',
       'interaction',
@@ -58,6 +59,7 @@ describe('the desktop registry', () => {
       'story.insertLine',
       'story.mergeScene',
       'story.moveLine',
+      'story.moveShot',
       'story.newScene',
       'story.removeChoice',
       'story.screenplay',
@@ -65,18 +67,25 @@ describe('the desktop registry', () => {
       'story.setCoverage',
       'story.setLineText',
       'story.setNext',
+      'story.setOutfit',
+      'story.setSceneOutfit',
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
       'workspace.import',
+      'workspace.open',
+      'workspace.pick',
+      'workspace.reindex',
     ]);
   });
 
   /**
    * Undo restores a snapshot of the *document* tree, so only commands whose writes are
-   * documents may opt in. The rest write generated output (`story.export`, `story.screenplay`),
-   * append to a log (`pipeline.run`), restructure the whole worktree (`workspace.import`, whose
-   * own `.imported` rename is the reversal), or straddle both classes (`gate.approve` flips
+   * documents may opt in. The rest write generated output (`story.export`, `story.screenplay`,
+   * `workspace.reindex`), append to a log (`pipeline.run`), restructure the whole worktree
+   * (`workspace.import`, whose own `.imported` rename is the reversal), write into a *different*
+   * tree than the one a snapshot covers (`workspace.open`, `workspace.pick`), or straddle both
+   * classes (`gate.approve` flips
    * `character.md` **and** marks the asset accepted in `manifest.json`) — see
    * `docs/plans/command-undo-redo.md`.
    */
@@ -88,12 +97,15 @@ describe('the desktop registry', () => {
       'story.insertLine',
       'story.mergeScene',
       'story.moveLine',
+      'story.moveShot',
       'story.newScene',
       'story.removeChoice',
       'story.setChoice',
       'story.setCoverage',
       'story.setLineText',
       'story.setNext',
+      'story.setOutfit',
+      'story.setSceneOutfit',
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
@@ -118,6 +130,7 @@ describe('the desktop registry', () => {
       'story.insertLine',
       'story.mergeScene',
       'story.moveLine',
+      'story.moveShot',
       'story.newScene',
       'story.removeChoice',
       'story.screenplay',
@@ -125,10 +138,15 @@ describe('the desktop registry', () => {
       'story.setCoverage',
       'story.setLineText',
       'story.setNext',
+      'story.setOutfit',
+      'story.setSceneOutfit',
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
       'workspace.import',
+      'workspace.open',
+      'workspace.pick',
+      'workspace.reindex',
     ]);
     expect(commands.filter((c) => c.check && !c.mutating)).toEqual([]);
   });
@@ -154,6 +172,7 @@ describe('the desktop registry', () => {
       'branch.unwire',
       'script.moveLine',
       'timeline.cover',
+      'timeline.reorder',
     ]);
   });
 });

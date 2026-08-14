@@ -1,21 +1,11 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import {
-  parseFrontMatter,
-  stringifyFrontMatter,
-  type FrontMatterDoc,
-  type LoadedInputs,
-} from '@vn/parse';
+import { parseFrontMatter, stringifyFrontMatter, type LoadedInputs } from '@vn/parse';
 import type { Diagnostic } from '@vn/types';
 import { ensureDir, exists, writeFileAtomic } from '@vn/util';
+import { discoverEntities } from './entities.js';
 import { ProjectPaths } from './paths.js';
 import { readSceneChunks } from './scenes.js';
-
-async function listDirs(dir: string): Promise<string[]> {
-  if (!(await exists(dir))) return [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  return entries.filter((e) => e.isDirectory()).map((e) => e.name);
-}
 
 async function listFiles(dir: string, ext: string): Promise<string[]> {
   if (!(await exists(dir))) return [];
@@ -37,26 +27,19 @@ export async function findScreenplay(paths: ProjectPaths): Promise<string | unde
 }
 
 /**
- * Read all authored input files for a project (report §9.1). Scenes come from `scenes/<id>.md`
+ * Read all authored input files for a project (report §9.1). Characters and set-locations are
+ * found by their `type:` tag across three surfaces (`discoverEntities`), so each doc carries the
+ * file it came out of and nothing downstream re-derives one. Scenes come from `scenes/<id>.md`
  * chunks and nothing else: a `screenplay/` script is the retired one-contended-file form, and it
  * is reported rather than loaded — silently reading it is what let a project stay unconverted
  * forever, and `vngen import` is one command.
  */
 export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
-  const characterDocs: FrontMatterDoc[] = [];
-  for (const id of await listDirs(paths.charactersDir)) {
-    const file = paths.characterFile(id);
-    if (await exists(file)) characterDocs.push(parseFrontMatter(await fs.readFile(file, 'utf8')));
-  }
-
-  const locationDocs: FrontMatterDoc[] = [];
-  for (const file of await listFiles(paths.locationsDir, '.md')) {
-    locationDocs.push(parseFrontMatter(await fs.readFile(file, 'utf8')));
-  }
+  const diagnostics: Diagnostic[] = [];
+  const { characterDocs, locationDocs } = await discoverEntities(paths, diagnostics);
 
   const sceneDocs = await readSceneChunks(paths);
   const legacyScreenplay = await findScreenplay(paths);
-  const diagnostics: Diagnostic[] = [];
   if (legacyScreenplay !== undefined) {
     // With chunks present the leftover is inert — it builds nothing — but an author editing it
     // would be writing into a file nothing reads, so it is still said out loud. Without chunks
@@ -122,15 +105,12 @@ export async function writeApprovedPortrait(
 }
 
 /**
- * Flip a character's `character.md` front-matter to approved with the chosen portrait
- * hash (report §P3). Returns false if the character file does not exist.
+ * Flip a character sheet's front-matter to approved with the chosen portrait hash (report §P3).
+ * Takes the sheet's `file` — resolved by the caller from the same `loadInputs` its decision was
+ * made against — because a character discovered by tag lives wherever its file lives, and a path
+ * re-derived from the id would approve a file that may not exist. Returns false if it doesn't.
  */
-export async function setCharacterApproval(
-  paths: ProjectPaths,
-  characterId: string,
-  portraitHash: string,
-): Promise<boolean> {
-  const file = paths.characterFile(characterId);
+export async function setCharacterApproval(file: string, portraitHash: string): Promise<boolean> {
   if (!(await exists(file))) return false;
   const doc = parseFrontMatter(await fs.readFile(file, 'utf8'));
   doc.data['status'] = 'approved';

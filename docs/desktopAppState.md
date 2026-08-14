@@ -5,21 +5,21 @@
 - [State Categories](#state-categories)
   * [1. Playthrough State (Persistent via localStorage)](#1-playthrough-state-persistent-via-localstorage)
   * [2. Remembered UI State (Persistent via the desktop session store)](#2-remembered-ui-state-persistent-via-the-desktop-session-store)
-  * [3. UI State (Ephemeral, React)](#3-ui-state-ephemeral-react)
+  * [3. UI State (Ephemeral, in the shell)](#3-ui-state-ephemeral-in-the-shell)
   * [4. Backend State (Main Process, Ephemeral)](#4-backend-state-main-process-ephemeral)
   * [5. Project Files (Persistent on Disk)](#5-project-files-persistent-on-disk)
 - [Data Flow](#data-flow)
   * [1. Initial App Load](#1-initial-app-load)
-  * [2. User Types in Studio](#2-user-types-in-studio)
+  * [2. User Types in the Convo Editor](#2-user-types-in-the-convo-editor)
   * [3. Plan Approval Gate](#3-plan-approval-gate)
-  * [4. Playthrough (Play Room)](#4-playthrough-play-room)
-  * [5. Pipeline Execution (Floor Room)](#5-pipeline-execution-floor-room)
+  * [4. Playthrough (Play editor)](#4-playthrough-play-editor)
+  * [5. Pipeline Execution](#5-pipeline-execution)
 - [Persistence Summary](#persistence-summary)
 - [Rebuilding After Restart](#rebuilding-after-restart)
 - [IPC Contract](#ipc-contract)
 - [Design Rationale](#design-rationale)
   * [Why so little persistent UI state?](#why-so-little-persistent-ui-state)
-  * [Why a main-process file, not localStorage, for panel widths?](#why-a-main-process-file-not-localstorage-for-panel-widths)
+  * [Why a main-process file, not localStorage, for the layout?](#why-a-main-process-file-not-localstorage-for-the-layout)
   * [Why re-read project files on each call?](#why-re-read-project-files-on-each-call)
   * [Why localStorage for playthrough?](#why-localstorage-for-playthrough)
   * [Why build the playable on-demand?](#why-build-the-playable-on-demand)
@@ -37,7 +37,7 @@ The desktop app (`apps/desktop`) uses a **minimal, file-based state model** wher
 
 ### 1. Playthrough State (Persistent via localStorage)
 
-**What:** The player's current position and save files in the PLAY room.
+**What:** The player's current position and save files in the Play editor.
 
 **Storage:** `localStorage` with key `vn.runner.save.${playable.title}`
 
@@ -61,92 +61,97 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 - **Survives:** Page reload, app restart
 - **Lost when:** Browser storage is cleared, user uses incognito/private browsing
 
-**Code:** `renderer/rooms/play/Runner.tsx` (`saveKey`, `save()`, `load()`)
+**Code:** `renderer/pathux/play/playback.ts` (`saveKey`, the save blob — the pure half, tested) and
+`renderer/pathux/editors/play.ts` (the `localStorage` calls themselves)
 
 ---
 
 ### 2. Remembered UI State (Persistent via the desktop session store)
 
-**What:** Shell layout the user has adjusted and expects back — currently the two panel widths.
+**What:** The arrangement of panes the user built, and the selection they left in it.
 
 **Storage:** `.vndesktop/session.json` next to `apps/desktop/` (override with `VN_DESKTOP_HOME`;
 one line from `~/.vndesktop` once the app ships installed). Gitignored. **Global per install,
-not per workspace** — a rail width is about the window, not the project.
+not per workspace** — a layout is about the window, not the project.
 
-**Shape:** a flat `Record<string, SessionValue>` with dotted keys.
+**Shape:** a flat `Record<string, SessionValue>` with dotted keys. Two of them matter:
 
 ```jsonc
 {
+  "pathux.layout": { /* nstructjs-serialized screen, magic "VNSC" */ },
+  "pathux.selection": { "sceneId": "arrival", "shotId": "", "characterId": "aiko" },
+  // written only by the retired --react shell, and retiring with it:
   "panel.studio.rail.width": 260,
-  "panel.floor.inspector.width": 380,
 }
 ```
 
 **Lifecycle:**
 - Main opens the store during `app.whenReady()`, before any window exists
 - The preload reads the whole snapshot **synchronously** (`session:snapshot:sync`) so the
-  renderer's first paint already uses the saved widths — an async fetch would render the
+  renderer's first paint is already the remembered layout — an async fetch would render the
   default and then jump
-- `useSessionValue(key, fallback)` seeds `useState` from that snapshot, writes via
-  `session:set`, and re-reads on the `session:changed` broadcast
-- A drag keeps the width in local state and persists **once** on pointer-up; `set()` also
-  debounces ~200 ms, and `before-quit` flushes
+- `pathux/persist.ts` writes both keys, debounced 400 ms, and again on `beforeunload` — a quit
+  does not run the debounce. The layout reports through `VnScreen.onLayoutChange` (every split,
+  join, border drag and window resize); the selection through `DataPathWatcher`s on `ui.sceneId`
+  / `ui.shotId` / `ui.characterId`, which is the same push the widgets get
+- `ui.taskHash` is deliberately **not** written: it is a content hash that re-keys whenever a
+  prompt changes, so one remembered across a re-plan names nothing
+- The layout is nstructjs through path.ux's own `simple.saveFile`/`loadFile`, which stamp the
+  struct schema into the blob, so a layout written before path.ux changed a `STRUCT` still reads
+  back. Nothing here may block boot: a layout that will not load — corrupt, or naming an editor
+  this build has not got — is discarded and the default screen takes its place
 - Writes are merged **per key** under a `mkdir` lock, so two running instances don't clobber
   each other's keys (same key is last-flush-wins)
 - **Survives:** app restart. **Lost when:** the file is deleted
 
-**Code:** `src/main/sessionstore.ts`, `renderer/session.ts`, `renderer/ui/Resizable.tsx`
+**Code:** `src/main/sessionstore.ts`, `renderer/pathux/persist.ts` (and `renderer/session.ts` +
+`renderer/ui/Resizable.tsx`, which serve the `--react` shell only)
 
 ---
 
-### 3. UI State (Ephemeral, React)
+### 3. UI State (Ephemeral, in the shell)
 
-**What:** Everything the user sees and interacts with in the STUDIO and FLOOR views—conversation, mode, pipeline status, open dialogs.
+**What:** Everything the author sees and interacts with that is not a project file — the
+selection, the conversation, the pipeline status, what the header says.
 
-**Storage:** React component state (memory only)
+**Storage:** renderer memory, in two modules and whatever an editor keeps for its own gesture.
 
-**Key pieces** (split across `renderer/app/App.tsx` — the shell — and `renderer/app/useAgent.ts`
-— the conversation):
-| State | Type | Lifetime |
-|-------|------|----------|
-| `room` | `'studio' \| 'floor' \| 'play'` | Session only |
-| `studioMode` | `'convo' \| 'branches' \| 'script'` — the editor within STUDIO | Session only |
-| `scene` | `string \| null` — the scene `branches` and `script` share; lives in `Studio.tsx`, not the shell | Until the room changes (STUDIO unmounts) |
-| `floorMode` | `'list' \| 'graph' \| 'timeline'` — the editor within FLOOR | Session only |
-| `mode` | `'plan' \| 'execute'` | Session only |
-| `feed` | `FeedItem[]` (conversation history) | Session only |
-| `dboxLine` | Current agent message | Session only |
-| `status` | Pipeline task list + gate pending | Session only (reloaded via `pipeline:status` IPC) |
-| `index` | Workspace index (characters, scenes, locations, diagnostics) | Session only (via `workspace:index` IPC: on mount, and re-read after any edit a room made itself) |
-| `undo` | `UndoState` — `canUndo`/`canRedo` plus the two tooltip labels | Session only (pushed on the `command:ui` `undo` effect) |
-| `revision` | Counter bumped by an undo/redo or a palette-run mutating command; used as each room's React `key` so it remounts | Session only |
-| `notice` | Transient banner — a command's result message or its refusal; self-clears after 4s | Session only |
-| `planReq` | Pending plan approval request | Session only |
-| `model` | Text model id for display | Session only |
-| `busy` | Async operation in flight | Session only |
-| `paletteOpen` | Palette menu visibility | Session only |
+**`ShellState` (`renderer/pathux/state.ts`)** is the root of the path.ux DataAPI and the only
+thing a widget may bind to. Document state never lands here: `@vn/commands` is the write path, so
+a widget that would change the project dispatches a command instead.
 
-`room`, `studioMode` and `floorMode` are not set directly by the components: the `view.*`
-commands run in **main** and push a `command:ui` effect, so there is no second renderer-side
-registry — see [`command-system.md`](command-system.md).
+| Field | Type | Notes |
+|-------|------|-------|
+| `sceneId` / `shotId` / `characterId` | `string` (`''` = nothing) | The one authored selection every editor observes, and any editor may publish. **Persisted** (category 2) |
+| `taskHash` | `string` | Which task the inspector is open on. Machine identity, so deliberately not persisted |
+| `projectTitle` | `string` | Pushed from `workspace:index` |
+| `model` | `string` | Text model id, for the header badge |
+| `agentMode` | `'plan' \| 'execute'` | Mirrored from `agent.setMode`'s outcome and from `agent:event` |
+| `errors` / `warnings` | `number` | Diagnostics counted apart; errors displace warnings in the badge |
+| `canUndo` / `canRedo` / `undoLabel` / `redoLabel` | `boolean` / `string` | Pushed on the `command:ui` `undo` effect |
 
-Panel widths are the one exception to the ephemerality: they live in `usePanelWidth` rather
-than in either file, and are persisted (category 2 above).
+**The conversation (`renderer/pathux/agent.ts` + `convo.ts`)** is a second module, subscribed at
+boot whether or not a convo pane is open — the agent streams regardless, and a pane opened later
+has to show what was already said. The value is `{ feed, line, plan, busy, seq }` and every
+`agent:event` folds into it through the pure `received`/`asked`/`answered`/`proposed`/`decided`
+functions; a pane notices by comparing a revision counter, since `update()` runs every frame.
+`busy` is raised by a pipeline run too, not only by a turn.
 
-`index` is re-read rather than remounted. The STUDIO rail's diagnostics are clickable — a
-diagnostic that names a scene opens it — so they have to be current after an edit the room made
-itself, and `App.refreshIndex` (passed to both STUDIO editors as `onEdit`) re-reads the index
-*without* bumping `revision`: a remount would throw away the editor's own state mid-gesture.
+- **Nothing here decides which editor is on screen.** The `view.*` commands run in **main** and
+  push a `command:ui` effect; the mesh applies it and answers with a correction only when it
+  disagrees — see [`command-system.md`](command-system.md). The screen itself *is* the state, and
+  it is persisted as one blob rather than as fields.
+- **Per-editor state stays in the editor**, and is what a redraw key excludes on purpose: a draft
+  being typed, a live gesture, a scroll position. path.ux calls `update()` every frame, so keying a
+  rebuild on what is being typed would replace the field under the caret.
+- **The workspace index is re-read, never remounted.** An edit an editor made itself re-reads
+  `workspace:index` so diagnostics and the cast are current; there is no revision counter
+  remounting a pane mid-gesture.
+- **Lost on:** page reload, app restart (no persistence) — except the selection, which is category 2.
 
-**Lifecycle:**
-- Loaded once on mount (useEffect): `workspace:index` → `setIndex`, `pipeline:status` → `setStatus`
-- Agent events pushed from main via IPC (`'agent:event'`) → `pushFeed`, `setDboxLine`, etc.
-- Plan approval requests pushed via IPC (`'permission:plan'`) → `setPlanReq`
-- **Lost on:** Page reload, app restart (no persistence)
-
-**Code:** `renderer/app/App.tsx` (room, `studioMode`, `floorMode`, palette, index, status,
-undo, revision, notice, and the `command:ui` handler) and `renderer/app/useAgent.ts` (mode,
-feed, `dboxLine`, `planReq`, model, busy)
+The retired `--react` shell keeps the same material in `renderer/app/App.tsx` hooks plus
+`useAgent.ts`, with its own `room`/`studioMode`/`floorMode`/`revision` and its per-room scene
+selections. That vocabulary is local to it (`renderer/rooms/rooms.ts`) and goes when it does.
 
 ---
 
@@ -267,7 +272,7 @@ and only *reports* a leftover `screenplay/`.
 ```
 Renderer                         Main                     Files
 ────────────────────────────────────────────────────────────
-  useEffect (mount)
+  installBridge (shell boot)
        │
        ├─ invoke('workspace:index')
        │    └─────────────────────→ ensureAgent()
@@ -278,16 +283,16 @@ Renderer                         Main                     Files
        │                             └─ loadGraph()   ──→ tasks.jsonl
        │    ←──────────────────── return WorkspaceIndex
        │
-       └─ setIndex(result)
+       └─ ui.projectTitle / ui.errors / ui.warnings → notifyChange()
 ```
 
-### 2. User Types in Studio
+### 2. User Types in the Convo Editor
 ```
 User types message
   ↓
-send() calls invoke('agent:run', text)
-  ├─ pushFeed('user', text)
-  └─ setBusy(true)
+ask() runs the `agent.run` command through the bridge
+  ├─ asked(convo, text)   → transcript shows it, busy = true
+  └─ exec('agent.run', { input })
        ↓
        Main: runAgent(text)
          ├─ ensureAgent() [cached if already running]
@@ -296,14 +301,12 @@ send() calls invoke('agent:run', text)
          │   ├─ Tool execution (read/edit files)
          │   └─ Emit AgentEvent for each step
          │
-       ←─ Renderer receives AgentEvents via 'agent:event' IPC
-         ├─ pushFeed('tool', eventText)
-         ├─ pushFeed('agent', eventText)
-         └─ setDboxLine(eventText)
+       ←─ agent.ts receives AgentEvents via 'agent:event' IPC
+         └─ received(convo, event) → feed / line, revision++
        ↓
-       setBusy(false)
+       answered(convo, outcome.record.message) → busy = false
   ↓
-Feed updated in real-time; user sees agent reasoning
+Every open convo pane redraws; the turn is one CommandRecord
 ```
 
 ### 3. Plan Approval Gate
@@ -316,8 +319,8 @@ agent.run() encounters a mutating tool
        Sends IPC: 'permission:plan'
        ↓
        Renderer receives plan
-         ├─ setPlanReq(plan)
-         └─ Show PlanCard with Approve/Reject buttons
+         ├─ proposed(convo, request)
+         └─ Convo pane draws the plan card with Approve/Reject
        ↓
        User clicks Approve
          ├─ invoke('plan:decision', { id, decision: { approved: true } })
@@ -328,11 +331,11 @@ agent.run() encounters a mutating tool
        If Rejected: agent.run() cancels that tool
 ```
 
-### 4. Playthrough (Play Room)
+### 4. Playthrough (Play editor)
 ```
-User navigates to PLAY room
+A pane switches to the Play editor
   ↓
-Runner useEffect mounts
+PlayEditor.init()
   ├─ invoke('story:play')
   │    └─→ loadProject()
   │        ├─ Read project.yaml, characters, scenes
@@ -340,27 +343,24 @@ Runner useEffect mounts
   │        ├─ Read manifest.json + assets/
   │        └─ buildPlayable(model, store) → Playable JSON
   │
-  └─ setPlay(result)
-       ├─ setHistory([{ sceneId: start, frameIndex: 0 }])
-       └─ useMemo(() => framesOf(scene), [scene])
+  └─ history = [{ sceneId: start, frameIndex: 0 }]
+       └─ framesOf(scene) (pure, playback.ts)
 
 User clicks to advance
   ├─ frameIndex++
-  └─ Derived beat folding in framesOf() (in-memory, no I/O)
+  ├─ Derived beat folding in framesOf() (in-memory, no I/O)
+  └─ ui.sceneId / ui.shotId published → every other pane follows
 
 User clicks Save
-  ├─ localStorage.setItem('vn.runner.save.' + title, JSON.stringify(history))
-  └─ setNotice('Saved.')
+  └─ localStorage.setItem('vn.runner.save.' + title, JSON.stringify(history))
 
 User clicks Load
-  ├─ JSON.parse(localStorage.getItem(...))
-  ├─ setHistory(parsed)
-  └─ setNotice('Loaded.')
+  └─ history = JSON.parse(localStorage.getItem(...))
 ```
 
-### 5. Pipeline Execution (Floor Room)
+### 5. Pipeline Execution
 ```
-User clicks "Run Pipeline"
+"Run Pipeline…" (header menu or palette) → pipeline.run, confirmed
   ↓
 invoke('pipeline:run', { mock })
   ├─ loadProject()
@@ -372,8 +372,8 @@ invoke('pipeline:run', { mock })
   │   └─ Check gate; stop if blocked
   │
   └─ return PipelineRunResult
-       ├─ setStatus(result) ← updates task list UI
-       └─ setNotice(summary)
+       ├─ the Tasks / Task Graph / Inspector editors re-read `pipeline:status`
+       └─ the command's message lands in the screen's note frame
 ```
 
 ---
@@ -383,9 +383,11 @@ invoke('pipeline:run', { mock })
 | Data | Where | Persists? | Who Reads | Who Writes |
 |------|-------|-----------|-----------|-----------|
 | Playthrough position | `localStorage` | ✓ Survives restart | Runner component | Save button |
-| Panel widths | `.vndesktop/session.json` | ✓ Survives restart | `usePanelWidth` | Drag release, `view.panelSize` |
-| Conversation history | React state | ✗ Lost on restart | Studio component | Agent events |
-| UI state (room, mode, etc.) | React state | ✗ Lost on restart | Components | User clicks + IPC events |
+| Pane layout | `.vndesktop/session.json` (`pathux.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
+| Selected scene/shot/character | `.vndesktop/session.json` (`pathux.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
+| Panel widths (`--react` shell only) | `.vndesktop/session.json` | ✓ Survives restart | `usePanelWidth` | Drag release |
+| Conversation history | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
+| Header facts, `taskHash`, per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |
 | Project config | Files | ✓ On disk | Main (lazy load) | Author / editor |
 | Story model | Files | ✓ On disk | Main (lazy load) | Pipeline + authoring agent |
@@ -393,7 +395,7 @@ invoke('pipeline:run', { mock })
 | Manifest | `vngen/build/manifest.json` | ✓ On disk | AssetStore | Pipeline tasks |
 | Task graph | `vngen/state/tasks.jsonl` | ✓ On disk | TaskGraph loader | Pipeline runner |
 | Command history | `vngen/state/commands.jsonl` | ✓ On disk | `CommandStack` (`command:history`) | Every command execution, via `onRecord` |
-| Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | The six undoable `story.*` commands |
+| Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | The eighteen undoable `story.*` commands |
 
 ---
 
@@ -401,15 +403,18 @@ invoke('pipeline:run', { mock })
 
 When the app restarts:
 
-1. **React state → all cleared.** UI returns to empty Studio view.
-2. **localStorage → playthrough saved.** If user was in Play room, click Load to restore position.
-3. **`.vndesktop/session.json` → panel widths restored**, synchronously, before the first paint.
+1. **Renderer memory → all cleared.** The transcript, the header facts and every draft are gone.
+2. **localStorage → playthrough saved.** If the author was in the Play editor, click Load to
+   restore position.
+3. **`.vndesktop/session.json` → the pane layout and the selection are restored**, synchronously,
+   before the first paint. A layout that will not load falls back to the default arrangement
+   (Branches beside Convo) rather than failing.
 4. **Project files → unchanged.** Workspace loads with latest committed state.
 5. **Main process → rebuilds on first use.**
    - First IPC call (e.g., `workspace:index`) → lazy-loads project, creates Agent
    - Subsequent calls → may rebuild project (no cache) but reuse Agent
 
-The **conversation history is not recovered** because it's React state only. Each session starts a fresh Agent conversation, though the Agent loads `AICONTEXT.md` to restore plan-mode context (via `@vn/authoring`'s persistent system prompt).
+The **conversation history is not recovered** because it lives only in the renderer. Each session starts a fresh Agent conversation, though the Agent loads `AICONTEXT.md` to restore plan-mode context (via `@vn/authoring`'s persistent system prompt).
 
 ---
 
@@ -446,14 +451,14 @@ a read channel feeds the view, and every edit is a `story.*` command with a `Com
 See [`command-system.md`](command-system.md).
 
 `session:snapshot:sync` is the odd one out: a **synchronous** `ipcMain.on` channel the preload
-calls once, before first paint, so the renderer never renders a default width and then jumps.
+calls once, before first paint, so the renderer never renders a default layout and then jumps.
 
 `pipeline:status` returns tasks **narrowed at the boundary** (`src/main/reviews.ts`), not raw
 pipeline tasks. `TaskAttempt.reviews` is `unknown[]` in `@vn/types` because it is read back from
 `tasks.jsonl` as JSON; main parses each entry with `defectReportSchema` and drops the ones that
 fail, so the renderer's `Task` can promise `reviews: DefectReport[]`. Main also stamps
 `outputExt` by looking the attempt's output hash up in the manifest — an attempt records only
-the hash, and the FLOOR inspector needs both halves to build a `vnasset://<hash>.<ext>` url.
+the hash, and the Inspector editor needs both halves to build a `vnasset://<hash>.<ext>` url.
 
 **Main pushes these to renderer:**
 
@@ -461,7 +466,7 @@ the hash, and the FLOOR inspector needs both halves to build a `vnasset://<hash>
 |---------|---------|------|
 | `agent:event` | AgentEvent | During agent:run (each step) |
 | `permission:plan` | PlanRequest | Agent needs approval |
-| `command:ui` | UiEffect | A `view.*` command changed room/mode, or undo state moved |
+| `command:ui` | UiEffect | A `view.*` command named an editor or a pane, the palette opened, undo state moved, or a workspace opened |
 | `session:changed` | `{ key, value }` | Any session write, whoever made it |
 | `log` | `{ level, message }` | Diagnostic logging |
 
@@ -473,12 +478,12 @@ the hash, and the FLOOR inspector needs both halves to build a `vnasset://<hash>
 - The desktop app is a **client for a workspace**, not a REPL session with long-lived conversation.
 - Restarting should feel like opening a fresh terminal in the project directory.
 - The authoring workflow is **step-and-approve** (user proposes → agent plans → user approves → agent executes), so losing mid-turn state is acceptable.
-- What does persist is only what the user *adjusted by hand* and would be annoyed to redo — a
-  dragged panel width. Derived or transient state stays ephemeral.
+- What does persist is only what the user *arranged by hand* and would be annoyed to redo — the
+  pane layout, and the selection it was left on. Derived or transient state stays ephemeral.
 
-### Why a main-process file, not localStorage, for panel widths?
-- The widths are about the **install**, not a workspace or an origin; a command
-  (`view.panelSize`) and a future preferences pane both need to write them from main.
+### Why a main-process file, not localStorage, for the layout?
+- It is about the **install**, not a workspace or an origin; a future preferences pane needs to
+  write it from main.
 - The preload can read a main-process file **synchronously** before first paint. Two Electron
   instances would also clobber each other in `localStorage`; per-key merge under a lock does not.
 
@@ -515,12 +520,19 @@ the hash, and the FLOOR inspector needs both halves to build a `vnasset://<hash>
 - **localStorage:** Shared by origin, so playthrough saves will clobber each other (last window wins).
 - **Main process:** Separate app instance per window (Electron), so one WorkspaceSession per window.
 - **Session store:** Each instance has its own `SessionStore` over the same file. Writes merge
-  per key under a `mkdir` lock, so two instances editing *different* panels both survive; the
-  same panel is last-flush-wins. A lock left behind by a killed instance is broken after 5s.
+  per key under a `mkdir` lock, so two instances writing *different* keys both survive; the same
+  key is last-flush-wins — two windows arranging their panes differently means the last one to
+  flush owns `pathux.layout`. A lock left behind by a killed instance is broken after 5s.
 
 ### Switching workspaces
-- App only supports one workspace at a time, resolved once at startup: `--project <dir>` (or
-  the `VN_PROJECT` env fallback) if given, otherwise `examples/mySampleRepo`, seeded from
-  `examples/sample` on first launch (`src/main/workspace.ts`).
-- Restart the app with a different `--project` to switch.
+- One workspace at a time, but no longer for the life of the process: `workspace.pick` (the
+  dialog) and `workspace.open(path='…')` switch in place, and the launch precedence is
+  `--project`/`VN_PROJECT` → the most recent remembered project → the picker → the seeded sample.
+- **A switch is a teardown.** The session, the command stack, the undo journal, the repo map and
+  the undo revision are all rebuilt against the new root, so undo never crosses a project
+  boundary, and nothing may cache the root — `vnasset://` resolves `ProjectPaths` per request.
+  The renderer gets a `{ type: 'workspace' }` effect and treats it as a remount.
+- The layout and the selection are **per install**, not per workspace, so they survive the switch —
+  a remembered `sceneId` that the new project does not have simply selects nothing.
+- Full write-up: [`desktop-app.md`](desktop-app.md#which-project-is-open).
 

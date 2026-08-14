@@ -1,0 +1,425 @@
+import { HotKey, KeyMap, type Container } from 'pathux';
+import { api } from '../../api.js';
+import type { Playable, PlayableScene } from '../../../src/shared/ipc.js';
+import { say } from '../bridge.js';
+import { centered } from '../dom.js';
+import { VnEditor, registerEditor } from '../editor.js';
+import {
+  advance,
+  assetUrl,
+  back,
+  choose,
+  framesOf,
+  parseSave,
+  saveKeyOf,
+  startOf,
+  type Frame,
+  type Pos,
+} from '../play/playback.js';
+import { TOKENS, alpha } from '../tokens.js';
+
+/**
+ * The playthrough editor: the React `Runner` with its rules lifted out to `play/playback.ts`
+ * and its markup rebuilt as plain DOM inside a path.ux area.
+ *
+ * The stage is raw DOM rather than widgets on purpose — it is one image, one text box and a
+ * few buttons, and path.ux guards non-widget children throughout `ui_base`, so a `<div>` in a
+ * Container is a supported thing to do. The chrome (Back/Save/Load/Reset) *is* widgets, so it
+ * themes and lays out with every other header in the shell.
+ *
+ * What is new here: the frame carries the shot it came from, so watching the story moves
+ * `ui.sceneId`/`ui.shotId` and every other editor follows along. That closes the "PLAY is a
+ * dead end" item — the React runner could show you a frame but never say where it was.
+ */
+export class PlayEditor extends VnEditor {
+  private bar!: Container;
+  private stage!: HTMLDivElement;
+
+  private play: Playable | undefined;
+  /** Why there is no playable, when there is none — a project without one is the normal case. */
+  private failure = '';
+  /** The whole navigation stack; the last entry is where we are, and Back pops it. */
+  private history: Pos[] = [];
+  private notice = '';
+  /** What the bar and stage last drew, so a redraw happens on a change and not on a tick. */
+  private drawn = '';
+
+  static override define() {
+    return {
+      tagname: 'vn-play-editor-x',
+      areaname: 'play',
+      uiname: 'Play',
+      icon: -1,
+    };
+  }
+
+  override init() {
+    super.init();
+
+    this.bar = (this.header as Container).row();
+
+    this.stage = document.createElement('div');
+    Object.assign(this.stage.style, {
+      position: 'relative',
+      overflow: 'hidden',
+      background: TOKENS.inkSunken,
+      cursor: 'pointer',
+      fontFamily: TOKENS.sans,
+      color: TOKENS.paper,
+    });
+    this.stage.addEventListener('click', () => this.stepForward());
+    this.appendSurface(this.stage);
+
+    // Ahead of the screen keymap, and path.ux already declines to route a keystroke that
+    // landed in a textbox, so the React runner's tag-sniffing has nothing left to do.
+    this.keymap = new KeyMap([
+      new HotKey('Space', [], () => this.stepForward(), 'Advance'),
+      new HotKey('Enter', [], () => this.stepForward(), 'Advance'),
+      new HotKey('Right', [], () => this.stepForward(), 'Advance'),
+      new HotKey('Left', [], () => this.go(back(this.history)), 'Back'),
+      new HotKey('Backspace', [], () => this.go(back(this.history)), 'Back'),
+    ]);
+
+    void this.loadPlayable();
+  }
+
+  override update() {
+    super.update();
+
+    if (this.stateKey() !== this.drawn) this.rebuild();
+  }
+
+  /**
+   * A project with no `story.play.json` — or none open at all — is an ordinary state, not a
+   * crash, so the reason goes on the stage where an author reading it can act on it.
+   */
+  private async loadPlayable(): Promise<void> {
+    try {
+      this.play = await api.invoke('story:play');
+      this.history = startOf(this.play);
+    } catch (err) {
+      this.failure = err instanceof Error ? err.message : String(err);
+    }
+    this.rebuild();
+  }
+
+  /** Everything both halves draw, in one string. */
+  private stateKey(): string {
+    const cur = this.history[this.history.length - 1];
+    return [
+      this.play?.title ?? '',
+      this.failure,
+      this.history.length,
+      cur?.sceneId ?? '',
+      cur?.frameIndex ?? -1,
+      this.notice,
+    ].join('|');
+  }
+
+  /** One frame on, or off the end of the scene onto whatever follows it. */
+  private stepForward(): void {
+    if (this.play) this.go(advance(this.play, this.history));
+  }
+
+  /**
+   * Move to a new position. `advance`/`back` hand back the same array when there is nowhere to
+   * go, so identity is the test for "nothing happened" and a redraw is skipped.
+   */
+  private go(next: Pos[]): void {
+    if (!this.play || next === this.history) return;
+    this.history = next;
+    this.notice = '';
+    this.rebuild();
+  }
+
+  private rebuild(): void {
+    this.drawn = this.stateKey();
+    this.rebuildBar();
+    this.rebuildStage();
+    this.publishSelection();
+  }
+
+  /**
+   * The playthrough position, as the shell's one selection. Only pushed when it changes: a
+   * `notifyChange` per frame would rebuild every other editor for nothing.
+   */
+  private publishSelection(): void {
+    const cur = this.history[this.history.length - 1];
+    const sceneId = cur?.sceneId ?? '';
+    const shotId = this.currentFrame()?.shotId ?? '';
+    if (this.ui.sceneId === sceneId && this.ui.shotId === shotId) return;
+
+    this.ui.sceneId = sceneId;
+    this.ui.shotId = shotId;
+    this.announce();
+  }
+
+  private scene(): PlayableScene | undefined {
+    const cur = this.history[this.history.length - 1];
+    return this.play && cur ? this.play.scenes[cur.sceneId] : undefined;
+  }
+
+  /** The frame on stage — at the scene-end panel the last one stays up behind it. */
+  private currentFrame(): Frame | undefined {
+    const cur = this.history[this.history.length - 1];
+    if (!cur) return undefined;
+    const frames = framesOf(this.scene());
+    return cur.frameIndex >= frames.length ? frames[frames.length - 1] : frames[cur.frameIndex];
+  }
+
+  private rebuildBar(): void {
+    const cur = this.history[this.history.length - 1];
+
+    this.bar.clear();
+    this.bar.label(this.play?.title ?? 'Loading…').style['padding'] = '0px 8px';
+    if (cur) this.bar.label(cur.sceneId).style['padding'] = '0px 8px';
+    if (this.notice) this.bar.label(this.notice).style['padding'] = '0px 8px';
+
+    const backBtn = this.bar.button('◂ Back', () => this.go(back(this.history)));
+    backBtn.disabled = this.history.length < 2;
+
+    this.bar.button('Save', () => this.save());
+    this.bar.button('Load', () => this.load());
+    this.bar.button('Reset', () => {
+      if (!this.play) return;
+      this.history = startOf(this.play);
+      this.notice = 'Restarted from the beginning.';
+      this.rebuild();
+    });
+
+    this.bar.flushUpdate();
+  }
+
+  private save(): void {
+    try {
+      localStorage.setItem(saveKeyOf(this.play), JSON.stringify(this.history));
+      this.notice = 'Saved.';
+    } catch {
+      this.notice = 'Could not save.';
+    }
+    this.rebuild();
+  }
+
+  private load(): void {
+    const saved = parseSave(localStorage.getItem(saveKeyOf(this.play)));
+    if (!saved) {
+      say('No save found for this project.', true);
+      return;
+    }
+    this.history = saved;
+    this.notice = 'Loaded.';
+    this.rebuild();
+  }
+
+  private rebuildStage(): void {
+    this.stage.textContent = '';
+
+    if (this.failure) return void this.stage.appendChild(centered(this.failure));
+    if (!this.play) return void this.stage.appendChild(centered('Loading the playable…'));
+
+    const cur = this.history[this.history.length - 1];
+    if (!cur) {
+      return void this.stage.appendChild(
+        centered('No entry scene — this project has no playable story.'),
+      );
+    }
+
+    const scene = this.scene();
+    if (!scene) {
+      return void this.stage.appendChild(
+        centered(
+          `Missing scene ${cur.sceneId} — the story graph points somewhere that isn't there.`,
+        ),
+      );
+    }
+
+    const frames = framesOf(scene);
+    const atEnd = cur.frameIndex >= frames.length;
+    const frame = this.currentFrame();
+
+    this.stage.appendChild(this.scenery(frame));
+    if (!atEnd && frame) this.stage.appendChild(this.dialogue(frame));
+    if (atEnd) this.stage.appendChild(this.sceneEnd(scene));
+  }
+
+  /** The background, and the portrait over it when the project opted in. */
+  private scenery(frame: Frame | undefined): HTMLElement {
+    const wrap = document.createElement('div');
+    Object.assign(wrap.style, {
+      position: 'absolute',
+      inset: '0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+
+    const bgUrl = assetUrl(frame?.bg);
+    if (bgUrl) {
+      const img = document.createElement('img');
+      img.src = bgUrl;
+      img.draggable = false;
+      Object.assign(img.style, { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' });
+      wrap.appendChild(img);
+    } else {
+      const empty = document.createElement('div');
+      empty.textContent = 'no background yet';
+      Object.assign(empty.style, { color: TOKENS.mistDim, fontFamily: TOKENS.mono });
+      wrap.appendChild(empty);
+    }
+
+    // A shot prompt names its own subjects, so the frame already shows the cast; staging a
+    // portrait on top of it is the project's opt-in, not the runner's default.
+    const portrait =
+      this.play?.portraitOverlay && frame?.portraitWho
+        ? this.play.characters[frame.portraitWho]?.portrait
+        : undefined;
+    const portraitUrl = assetUrl(portrait);
+    if (portraitUrl) {
+      const img = document.createElement('img');
+      img.src = portraitUrl;
+      img.draggable = false;
+      Object.assign(img.style, {
+        position: 'absolute',
+        bottom: '0',
+        left: '4%',
+        maxHeight: '78%',
+        objectFit: 'contain',
+      });
+      wrap.appendChild(img);
+    }
+
+    return wrap;
+  }
+
+  private dialogue(frame: Frame): HTMLElement {
+    const box = document.createElement('div');
+    Object.assign(box.style, {
+      position: 'absolute',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      padding: '14px 18px 10px',
+      background: alpha(TOKENS.ink, 0.86),
+      borderTop: `1px solid ${TOKENS.inkLine}`,
+    });
+
+    if (frame.speaker) {
+      const who = document.createElement('div');
+      who.textContent = this.play?.characters[frame.speaker]?.name ?? frame.speaker;
+      Object.assign(who.style, {
+        color: TOKENS.sodium,
+        fontFamily: TOKENS.disp,
+        fontSize: '13px',
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+        marginBottom: '4px',
+      });
+      box.appendChild(who);
+    }
+
+    const line = document.createElement('div');
+    line.textContent = frame.text;
+    Object.assign(line.style, {
+      fontFamily: TOKENS.prose,
+      fontSize: '18px',
+      lineHeight: '1.5',
+      color: frame.speaker ? TOKENS.paper : TOKENS.mist,
+      fontStyle: frame.speaker ? 'normal' : 'italic',
+    });
+    box.appendChild(line);
+
+    const hint = document.createElement('div');
+    hint.textContent = 'click or press space ▸';
+    Object.assign(hint.style, {
+      marginTop: '6px',
+      textAlign: 'right',
+      color: TOKENS.mistDim,
+      fontFamily: TOKENS.mono,
+      fontSize: '11px',
+    });
+    box.appendChild(hint);
+
+    return box;
+  }
+
+  /** The end-of-scene panel: the choices, the linear continuation, or the end of the story. */
+  private sceneEnd(scene: PlayableScene): HTMLElement {
+    const panel = document.createElement('div');
+    Object.assign(panel.style, {
+      position: 'absolute',
+      inset: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '10px',
+      background: alpha(TOKENS.ink, 0.72),
+    });
+
+    if (scene.choices.length) {
+      // The panel eats the click so a choice is the only way on; the stage behind it advances.
+      panel.addEventListener('click', (e) => e.stopPropagation());
+      const prompt = document.createElement('div');
+      prompt.textContent = 'What do you do?';
+      Object.assign(prompt.style, {
+        color: TOKENS.mist,
+        fontFamily: TOKENS.disp,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        fontSize: '12px',
+      });
+      panel.appendChild(prompt);
+
+      for (const choice of scene.choices) {
+        panel.appendChild(
+          this.choiceButton(choice.label, () => this.go(choose(this.history, choice.goto))),
+        );
+      }
+      return panel;
+    }
+
+    if (scene.next) {
+      panel.appendChild(
+        this.choiceButton('Continue ▸', () =>
+          this.go(advance(this.play as Playable, this.history)),
+        ),
+      );
+      return panel;
+    }
+
+    panel.addEventListener('click', (e) => e.stopPropagation());
+    const end = document.createElement('div');
+    end.textContent = 'The End';
+    Object.assign(end.style, {
+      fontFamily: TOKENS.disp,
+      fontSize: '28px',
+      letterSpacing: '0.14em',
+      color: TOKENS.sodium,
+    });
+    panel.appendChild(end);
+    return panel;
+  }
+
+  private choiceButton(label: string, onClick: () => void): HTMLElement {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    Object.assign(btn.style, {
+      padding: '8px 18px',
+      minWidth: '180px',
+      cursor: 'pointer',
+      color: TOKENS.paper,
+      background: TOKENS.inkRaised,
+      border: `1px solid ${TOKENS.inkLine}`,
+      borderRadius: `${TOKENS.radiusChrome}px`,
+      fontFamily: TOKENS.sans,
+      fontSize: '14px',
+    });
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
+}
+
+registerEditor(PlayEditor, 'vn.PlayEditor');

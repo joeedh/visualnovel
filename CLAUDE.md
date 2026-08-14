@@ -70,7 +70,7 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store ──── export  scriptedit    git ──── commands
+  │   model store ─ export scriptedit bible   git ──── commands
   │     │   │  │  ╲     │
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
@@ -90,7 +90,9 @@ reuses the input-side packages (types, util, config, parse, model, store, provid
 and is likewise forbidden from the generative pipeline/scheduler. `@vn/scriptedit` shares that
 allow-list and exists for a sharper reason: it holds the scene-edit rules and write path, and both
 the desktop app's `story.*` commands _and_ `vnauthor` must run the same ones — so they cannot live
-in either (`docs/plans/scene-edit-package.md`).
+in either (`docs/plans/scene-edit-package.md`). `@vn/bible` is the third such leaf, for the same
+reason: both the agent and the desktop app search the story bible, so the ranking policy belongs
+to neither ([`docs/story-bible.md`](docs/story-bible.md)).
 
 Two packages sit **outside the graph entirely** (neither is drawn above). `@vn/debug2d`
 imports nothing from `packages/` and is imported only by the desktop renderer's dev-only
@@ -99,27 +101,28 @@ builds — see [2D debug layer](#2d-debug-layer-vndebug2d). `@vn/testkit` is the
 it may import _every_ layer, and **nothing may import it** — see
 [Test fixtures](#test-fixtures-vntestkit).
 
-| Package             | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                                                                                                                                                                                                                                        |
-| `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                                                                                                                                                                  |
-| `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                                                                                                                                                                     |
-| `@vn/parse`         | Fountain parser + note markers: `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` for branching, `[[line: L4]]` / `[[nextline: 12]]` for allocated line ids; markdown front-matter, including the byte-exact `splitFrontMatter` a prose patcher splices under. Also the `LoadedInputs` / `SceneChunkDoc` shapes the reader and the model builder both name. Pure, no I/O policy. Shared with the authoring agent.               |
-| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`. Also the **writers**: `sceneToFountain` (lossless — `parse(write(scene)) ≡ scene`), the surgical `branchpatch`/`lineids` patchers, the `*ToDoc` serializers, and the two pure halves of import/export: `sceneChunksFromScript` and `scriptFromScenes`.                      |
-| `@vn/store`         | The only reader of a project's files: `loadInputs` (authored `scenes/<id>.md` chunks; a leftover `screenplay/` is reported by `findScreenplay`, never read), the content-addressed asset store (`build/assets/<sha256>.<ext>`), `manifest.json` provenance, and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped.             |
-| `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                                                                                                                                                                 |
-| `@vn/scriptedit`    | The scene-edit rules (`lineops`: nine pure decisions over a scene set) + their consequences (`shotfallout`) + the write path (`sourcesOf` → `planSceneEdit` → `applyScenePlan`). Shared by the desktop's `story.*` commands and `vnauthor`, so one authorial act has one answer. **Two entries**: the barrel is pure and browser-safe (the renderer runs `moveLine` to preview a drag); the filesystem half is `@vn/scriptedit/write`. |
-| `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection, and the `UndoJournal` behind opt-in undo/redo. Domain-agnostic — the commands themselves are defined by the host app.                                                                                                                                                             |
-| `@vn/debug2d`       | Source-agnostic 2D graphics debugging: fragment IR, space registry, DOM adapter (stacking-order z with culprit retention), query engine, `explainPick` rejection logs. Zero deps, outside the layering graph; dev-only in the desktop renderer. See [2D debug layer](#2d-debug-layer-vndebug2d).                                                                                                                                       |
-| `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                                                                                                                                                                                                                                  |
-| `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here, as does the record/replay `AssetCache` + `CachedImageBackend`.                                                                                                                                                         |
-| `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                                                                                                                                                                                                                                            |
-| `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                                                                                                                                                                                                                                   |
-| `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost \| import \| screenplay`. Bundled by esbuild.                                                                                                                                                                                                                                                                                                                               |
-| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`/`config`), plus the plumbing undo rests on (`writeTree`/`commitTree`/`treeOf`/`applyTree`/`updateRef`/`deleteRef`/`listRefs`, all against a scratch index so HEAD and the real index are untouched). Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.              |
-| `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader, tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                                                                                                                                                                                                                                     |
-| `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                                                                                                                                                                                                                                               |
-| `@vn/testkit`       | **Test-only** fixtures: `makeProject` (real inputs on disk → real run with mock providers), `synthProject` (deterministic scale), `SCRIPTS`, in-memory entity factories, and the recorded-art corpus at `assets/`. Imports every layer; nothing may import it. See [Test fixtures](#test-fixtures-vntestkit).                                                                                                                          |
+| Package             | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@vn/types`         | All entity/task/provider types + **zod schemas** for files and structured LLM output. Single source of truth for shapes. Depends only on `zod`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `@vn/util`          | `sha256`/canonical-JSON hashing, atomic fs writes, JSONL append/read, structured logger, bounded async `pool`, `retry`, typed errors.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `@vn/config`        | Load/validate `project.yaml`; resolve API keys from env then secret files. **Never logs key values**; errors name only the source.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `@vn/parse`         | Fountain parser + note markers: `[[choice: … -> id]]` / `[[scene: id]]` / `[[next: id]]` for branching, `[[outfit: aiko=track]]` for scene-level wardrobe, `[[line: L4]]` / `[[nextline: 12]]` for allocated line ids; markdown front-matter, including the byte-exact `splitFrontMatter` a prose patcher splices under. Also the `LoadedInputs` / `SceneChunkDoc` shapes the reader and the model builder both name. Pure, no I/O policy. Shared with the authoring agent.                                                                                                                                                                         |
+| `@vn/model`         | Build + validate the in-memory project model (refs resolve, every `goto` targets a real scene, reachability/dead-scene detection); emit `story.graph.mmd`. Also the **writers**: `sceneToFountain` (lossless — `parse(write(scene)) ≡ scene`), the surgical `branchpatch`/`lineids` patchers, the `*ToDoc` serializers, and the two pure halves of import/export: `sceneChunksFromScript` and `scriptFromScenes`. And `outfitFor`/`outfitText` — the outfit inheritance chain, written down once.                                                                                                                                                   |
+| `@vn/store`         | The only reader of a project's files: `loadInputs` (authored `scenes/<id>.md` chunks; entities discovered by `type:` tag across three surfaces; a leftover `screenplay/` is reported by `findScreenplay`, never read), the content-addressed asset store across **two roots** — base art in `assets/` and shot frames in `build/assets/`, each with its own `manifest.json`, behind one `AssetStore` facade (`AssetRoot` is one root; `baseAssetsOf` describes the base one alone) — and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped. |
+| `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `@vn/scriptedit`    | The scene-edit rules (`lineops`: nine pure decisions over a scene set; `shotorder`: the tenth, which reorders a shot by moving the lines it covers; `outfits`: what a character wears, at either level) + their consequences (`shotfallout`) + the write paths (`sourcesOf` → `planSceneEdit` → `applyScenePlan` for prose, `planMarkerEdit` → `applyMarkerPlan` for `[[…]]` markers). Shared by the desktop's `story.*` commands and `vnauthor`, so one authorial act has one answer. **Two entries**: the barrel is pure and browser-safe (the renderer runs `moveLine` to preview a drag); the filesystem half is `@vn/scriptedit/write`.        |
+| `@vn/bible`         | Retrieval over the story bible (`wiki/`): index a markdown tree, `query(text, {limit, budget}) → ranked excerpts`. **No whole-file API** — that absence is what keeps the bible out of the context window. Grep ranking today, swappable for embeddings behind the same function. See [Story bible](#story-bible-vnbible).                                                                                                                                                                                                                                                                                                                          |
+| `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection, the `UndoJournal` behind opt-in undo/redo, and the `Committer` behind opt-in commit-on-save. Domain-agnostic — the commands themselves are defined by the host app.                                                                                                                                                                                                                                                                                                                            |
+| `@vn/debug2d`       | Source-agnostic 2D graphics debugging: fragment IR, space registry, DOM adapter (stacking-order z with culprit retention), query engine, `explainPick` rejection logs. Zero deps, outside the layering graph; dev-only in the desktop renderer. See [2D debug layer](#2d-debug-layer-vndebug2d).                                                                                                                                                                                                                                                                                                                                                    |
+| `@vn/taskgraph`     | `Task` node model, content-addressed dedupe key, DAG + topological order, `tasks.jsonl` status log, staleness/resume.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `@vn/providers`     | Provider-agnostic `ImageProvider` / `VisionReviewer` / `TextLLM` over a low-level `ChatBackend`/`ImageBackend` seam. Gemini + Claude backends (lazy-imported). Structured-output enforcement + retry live here, as does the record/replay `AssetCache` + `CachedImageBackend`.                                                                                                                                                                                                                                                                                                                                                                      |
+| `@vn/pipeline`      | The phases P1–P7 as deterministic prompt builders, an incremental task **planner**, per-kind **runners**, the approval **gate**, and a cost-preview facade.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `@vn/scheduler`     | Plan → run-ready-wave → replan loop under a concurrency cap; gates as barriers; crash-safe via the status log; dry-run cost preview.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `@vn/cli`           | `vngen run \| approve \| status \| graph \| export \| cost \| import \| screenplay`. Bundled by esbuild.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `@vn/git`           | Thin promisified wrapper over the `git` CLI (`isRepo`/`status`/`commit`/`log`/`show`/`diff`/`revert`/`restore`/`init`/`config`), plus the plumbing undo rests on (`writeTree`/`commitTree`/`treeOf`/`applyTree`/`updateRef`/`deleteRef`/`listRefs`, all against a scratch index so HEAD and the real index are untouched), and `RepoResolver`, which answers which repo owns a path (`git rev-parse --show-toplevel`, cached) so a project spanning several repos needs no new plumbing. Spawns via `node:child_process`, never interactive. **No policy** — gating lives in the agent.                                                             |
+| `@vn/authoring`     | The `vnauthor` agent core: workspace index, `AICONTEXT.md` loader + the generated project map (`AICONTEXT.generated.md`), tool registry, ReAct/native agent loop, plan-mode + permission gate, skills. Input-side only; cannot import pipeline/scheduler.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `@vn/authoring-app` | `vnauthor` interactive REPL: renders plan diffs, prompts for approval, streams turns, `/status` and `/skills` commands. Bundled by esbuild like `vngen`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `@vn/testkit`       | **Test-only** fixtures: `makeProject` (real inputs on disk → real run with mock providers), `synthProject` (deterministic scale), `SCRIPTS`, in-memory entity factories, and the recorded-art corpus at `assets/`. Imports every layer; nothing may import it. See [Test fixtures](#test-fixtures-vntestkit).                                                                                                                                                                                                                                                                                                                                       |
 
 ### Core ideas
 
@@ -131,8 +134,15 @@ statement of every one — with the failure it prevents — is in
   prompt, ordered ref hashes, model id, params), so identical work collapses to one node.
   Every status transition appends to `state/tasks.jsonl`; replaying it rebuilds the graph,
   which is what makes runs resumable and crash-safe.
-- **Content-addressed asset store.** Bytes live once at `build/assets/<hash>.<ext>`;
-  `manifest.json` is the provenance index, written through a single-writer queue.
+- **Content-addressed asset store, in two roots.** Base art (portraits, model sheets, location
+  plates) lives at `assets/objects/<hash>.<ext>` beside the authored inputs — its own subtree, and
+  optionally its own git repo — while shot frames stay at `vngen/build/assets/`. Each root has its
+  own `manifest.json` (provenance travels with the bytes), written through a single-writer queue.
+  Routing is by `AssetKind` and nothing else; reads consult both, base first; **nothing on disk
+  moves**, so a pre-split project keeps resolving. A base root that exists with no readable
+  manifest is `unavailable` — the shape a checkout missing the base repo leaves behind — and the
+  planner plans **nothing** rather than regenerate an approved library. Full statement:
+  [`docs/asset-stores.md`](docs/asset-stores.md).
 - **Gate-as-barrier.** The P3 character-approval gate is a planner predicate, not a task
   dependency: a run simply halts with nothing ready. Scenes with no cast render immediately.
 - **Incremental planning.** The planner runs once per wave, so `vngen cost` only counts
@@ -145,6 +155,22 @@ statement of every one — with the failure it prevents — is in
 - **Shot decompositions are persisted, not re-derived.** `work/shots/<sceneId>.json` is
   preferred forever after it exists; authored fields at top level, run output under
   `shotData`. `buildShotPrompt` ignores `coversLines`, so coverage edits rehash nothing.
+- **A shot's order is where its lines sit, so reordering one is a prose edit.** `Shot` has no
+  position field — `sceneBeats` emits a `show` whenever the covering shot changes down
+  `scene.lines` — so `story.moveShot` moves the block of lines the shot covers. Only a **contiguous**
+  shot has a single position; one that other shots draw inside is refused by name. Nothing about the
+  move reaches a hash: no id changes, no coverage changes, and every shot's covered lines keep their
+  relative order, so nothing drifts and nothing re-renders.
+  ([`docs/plans/shot-ordering-in-scenes.md`](docs/plans/shot-ordering-in-scenes.md))
+- **What a character wears is inherited, and the chain is written down once.** `outfitFor` in
+  `@vn/model` is the only answer: shot-subject override → the scene's `[[outfit:]]` marker →
+  `character.defaultOutfit`, and `ResolvedOutfit.origin` says which rung answered so a surface can
+  show it. `outfitText` falls back to the outfit **id** when nothing describes it, which is what
+  lets a wardrobe cost nothing to author. Unlike every other scene edit this one **does** re-render:
+  the outfit is in `buildShotPrompt`, so changing it rehashes exactly the shots it reaches. Sheets
+  are planned only for outfits something actually wears, and a shot out of its default references
+  that outfit's **front** sheet.
+  ([`docs/plans/outfits-at-scene-and-shot-level.md`](docs/plans/outfits-at-scene-and-shot-level.md))
 - **No scene edit invalidates art, so drift is reported instead.** `buildShotPrompt` never reads
   line text either, so retyping a covered line re-renders nothing and the frame keeps illustrating
   words that are gone. `Shot.proseHash` is stamped beside the image (only when the bytes are new)
@@ -162,6 +188,18 @@ statement of every one — with the failure it prevents — is in
   re-decides which file is authoritative; a patch spanning several chunks is computed in full
   before any of it is written, and front-matter is spliced byte-exactly rather than
   re-serialized, so hand-written YAML comments survive.
+- **An entity is found by its tag, and the file it was found in travels with it.** Characters and
+  locations are discovered across `characters/`, `locations/` and a walk of `wiki/**` by the
+  front-matter `type:` tag, so filing a character in the story bible still authors a character.
+  Every discovered sheet is an `EntityDoc` carrying its own path — no writer re-derives one, and
+  `entityFile(docs, id)` is the only way to ask where an entity lives. `id:` must agree with the
+  file's own name; two files claiming one id, a mistagged conventional sheet, and unparseable
+  front-matter are all diagnostics, never a throw. Full statement:
+  [`docs/plans/entity-discovery-by-meta-tag.md`](docs/plans/entity-discovery-by-meta-tag.md).
+- **The story bible is reached by query, never pasted.** `wiki/` is arbitrary markdown and can be
+  large; `@vn/bible` exposes `files()` (metadata) and `query()` (ranked, budgeted excerpts) and
+  **nothing that returns a whole file**. That absence is the guarantee, not a convention — see
+  [`docs/story-bible.md`](docs/story-bible.md).
 - **P7 generate→critique→refine is folded into the `shot_image` runner**, capped by
   `config.max_refine_attempts`, stopping early when a refinement changes nothing, and flagging
   `needs_human` rather than looping. The reviewer is told what the _shot_ ordered, never the
@@ -200,12 +238,17 @@ real backend refuses as references — see [Test fixtures](#test-fixtures-vntest
 ### Project layout on disk
 
 Authored input lives at the project root (`project.yaml`, `characters/<id>/character.md`,
-`locations/<id>.md`, `scenes/<id>.md`). Everything generated lives under `vngen/`:
-`work/` (human-editable: story graph, candidates, `approved.png`, `shots/<sceneId>.json`),
-`build/` (machine: `assets/`, `manifest.json`), `state/` (`tasks.jsonl`, reviews). In a user's
-own project `vngen/` is **committed** — it is the reproducible output of a run, not
-gitignored. `examples/sample` is the one exception: it is a template this repo ships, so it
-stays inputs-only (see below).
+`locations/<id>.md`, `scenes/<id>.md`) — the conventional homes, and where a _new_ sheet is
+created; a character or location tagged `type:` under `wiki/**` is discovered there too.
+**Base art is the one generated thing that is not under `vngen/`**: `assets/` (`manifest.json`
+
+- `objects/<hash>.<ext>`) sits at the project root because it is its own subtree and may be its
+  own repo — [`docs/asset-stores.md`](docs/asset-stores.md). Everything else generated lives under
+  `vngen/`: `work/` (human-editable: story graph, candidates, `approved.png`,
+  `shots/<sceneId>.json`), `build/` (machine: shot `assets/`, `manifest.json`), `state/`
+  (`tasks.jsonl`, reviews). In a user's own project `vngen/` is **committed** — it is the
+  reproducible output of a run, not gitignored. `examples/sample` is the one exception: it is a template this repo ships, so it
+  stays inputs-only (see below).
 
 **A scene is one file, and it is the only form scenes load from.** `scenes/<id>.md` holds
 `scene: <id>` front-matter — identity and nothing else, matching the filename — over a body
@@ -245,27 +288,51 @@ the existing `Scene`/`Shot`/`Asset` types.
 
 - Playable format and its contracts: [`docs/playable-format.md`](docs/playable-format.md)
   (plan: [`docs/plans/runner.md`](docs/plans/runner.md)).
-- The app — renderer layout, the shared graph canvas, the STUDIO branch editor and script column,
-  FLOOR's task DAG and coverage timeline, the PLAY runner, the session store, and the seeded
-  workspace: [`docs/desktop-app.md`](docs/desktop-app.md).
+- The app — the path.ux shell, the shared graph canvas, and one section per editor (Branches,
+  Script, Convo, Coverage, Tasks/Task Graph/Inspector, Play), plus the session store, which
+  project is open, and the seeded workspace: [`docs/desktop-app.md`](docs/desktop-app.md).
+- **One workspace at a time, and opening another is a teardown.** A picked directory becomes a
+  project (`openWorkspace` writes a one-line `project.yaml`, then `ensureRepo` commits what is
+  there); `workspace.open`/`pick` rebuild the session, the command stack and the undo journal
+  against the new root, so undo never crosses a project boundary and nothing may cache the root.
 - What persists where: [`docs/desktopAppState.md`](docs/desktopAppState.md).
+- The sidebar's document tree + per-entity backlinks (`workspace:doctree`, and the file-tree mode
+  beside it): [`docs/document-tree.md`](docs/document-tree.md).
 
-Rules worth knowing before touching the renderer:
+The renderer is a **path.ux screen mesh**: the window subdivides into panes and each pane shows
+one editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs
+`git submodule update --init --recursive`, and `pnpm doctor` says so by name. `--react` still
+boots the retired three-room React shell for one release. Rules worth knowing before touching it:
 
-- **Pure logic goes in `.ts` with a `tests/` sibling; `.tsx` stays thin rendering.** The jest
-  desktop project is node-only — no jsdom, no React Testing Library, components untested.
+- **A pane shows an editor, and the eight editors are named in one place**
+  (`apps/desktop/src/shared/editors.ts`): `view.*` runs in main and builds its props from that
+  list, the renderer registers each class under the matching area name, and the shell warns at boot
+  if the two disagree. There is no room vocabulary.
+- **Pure logic goes in `.ts` with a `tests/` sibling; the editor stays thin rendering.** The jest
+  desktop project is node-only — no jsdom, so surfaces are verified live over CDP instead.
 - **`src/shared/` is in the browser bundle**, so whatever it imports must be node-free — which is
   why `@vn/scriptedit`'s barrel is pure and its filesystem half is `@vn/scriptedit/write`. Neither
   `tsgo` pass catches a violation; only `vite build` does.
-- **`styles/index.css` import order IS cascade order** — add a new sheet at the end.
+- **Register an editor with `registerEditor(cls, 'vn.Name')`, never by hand.** nstructjs names a
+  struct after `cls.name`, esbuild minifies it, and `loadSTRUCT` answers an unknown struct _or_
+  area name by silently falling back to the first registered class — every remembered pane comes
+  back as the same editor.
+- **A raw DOM surface goes in the shadow root, via `VnEditor.appendSurface`**, and carries its own
+  sheet via `adoptStyle`: document CSS does not cross that boundary, and `Container.appendChild`
+  drops a non-widget into the light DOM where it is findable, clickable and never drawn.
+- **`styles/index.css` import order IS cascade order** — add a new sheet at the end. It loads at
+  document level because custom properties are the one thing that crosses a shadow boundary.
 - **`tokens.css` is the design contract**: `--sodium` (warm) is the authored/human side,
   `--signal` (cool) the machine/pipeline side. Don't add new accent hues.
-- **A mid-gesture verdict must be the verdict that would happen** — the drag overlays call the
-  same pure rule the command runs. Layout changes on commit, never during a gesture.
-- **The script column edits a list of lines, not a buffer.** A keystroke either belongs to the open
+- **A mid-gesture verdict must be the verdict that would happen** — a grab captures every
+  candidate's verdict from the same pure rule the command runs, and every pointer move is a lookup.
+  Layout changes on commit, never during a gesture.
+- **The script editor edits a list of lines, not a buffer.** A keystroke either belongs to the open
   row or names one command; an act that moves lines across a scene boundary (split, merge, new
   scene) shows `stack.check`'s sentence and commits on a second gesture. No document is diffed on
   save, and there is no second write path for prose.
+- **An editor with an open text row stops its own keydown.** The screen keymap is a bubble-phase
+  window listener, so otherwise `/` opens the palette in the middle of a sentence.
 
 Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start -- --mock` (runs for
 real by default — pass `--mock` to skip model calls; `--project <dir>` overrides the
@@ -279,24 +346,32 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 [`docs/command-system.md`](docs/command-system.md); plan:
 [`docs/plans/command-system.md`](docs/plans/command-system.md).
 
-- **`@vn/commands` is the framework; the desktop app owns the commands.** The 37 definitions
+- **`@vn/commands` is the framework; the desktop app owns the commands.** The 48 definitions
   live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`,
-  `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
+  `bible`, `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
 - **Commands are the only write path.** The `story.*` branch mutators go through
-  `session.editBranches(decide)` → `applySceneBranchEdit` → reload, and the nine scene editors
-  through `session.editScene(decide)`, so no surface writes scene prose by another path. Outside the
-  planner, `work/shots/<sceneId>.json` has exactly two writers: `story.setCoverage`, and
-  `editScene`, which carries a shot's coverage across a split, merge or delete rather than
-  stranding it.
+  `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the ten scene
+  editors through `session.editScene(decide)`, so no surface writes scene prose by another path.
+  Outside the planner, `work/shots/<sceneId>.json` has exactly three writers: `story.setCoverage`,
+  `story.setOutfit`, and `editScene`, which carries a shot's coverage across a split, merge or
+  delete rather than stranding it. `vnauthor`'s `set_outfit` is not a fourth — it runs the same
+  `@vn/scriptedit` rules and gets the same refusals.
 - **Props are declarative specs, not zod** (the repo is on zod 3). `coerceProps` is the single
   validation authority — defaults, coercion of loose JSON/CDP values, unknown-key rejection.
 - **DSL:** `namespace.command(a='x' b=1)`; commas optional, barewords are strings.
   `formatCommand` is the inverse and a round-trip test pins them together.
 - **Provenance and undo.** Each execution appends a `CommandRecord` to
-  `vngen/state/commands.jsonl`. Undo is **opt-in** (the fifteen `story.*` document mutators only)
+  `vngen/state/commands.jsonl`. Undo is **opt-in** (the eighteen `story.*` document mutators only)
   and restores a shadow snapshot of the document tree under `refs/vn/undo/<seq>/{pre,post}` —
   HEAD and the index are never touched, `vngen/build` and `vngen/state` are excluded, and undo
   **refuses rather than guesses** when the worktree has drifted.
+- **Every act that changed something becomes a commit — in each repo it touched.** The `Committer`
+  is opt-in like the journal (the CLI wires none), takes the **whole worktree** per repo rather
+  than the `written` list, and skips a command declaring `commitsItself: true` so `vnauthor` keeps
+  its one-commit-per-plan. The repo map is **discovered** (`RepoResolver`), and a project merely
+  sitting _inside_ a larger repo is reported and **not committed in**. Session open establishes the
+  clean-worktree invariant with a checkpoint commit. Full statement:
+  [`docs/repos-and-commits.md`](docs/repos-and-commits.md).
 - **Interactions declare the gestures** (`packages/commands/src/interaction.ts`): a carried
   string token plus `targets(state, carried)`, a pure synchronous query returning every
   candidate marked accept (with the invocation a drop would run) or refuse (with the sentence
@@ -305,8 +380,11 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   `accept` | `refuse` | `undeclared` — absence of a check is not permission. It never gates
   `exec`, which re-decides for itself.
 - **`view.*` commands run in main** and push a `command:ui` effect; there is no second,
-  renderer-side registry. `Room` stays a three-value union — an editor is a **mode within a
-  room** (STUDIO: `convo` | `branches` | `script`; FLOOR: `list` | `graph` | `timeline`).
+  renderer-side registry. An effect names an **editor** (`view.open`/`view.focus`, plus
+  `view.close`/`view.layout`), never a room — the shell is a mesh of panes, so the vocabulary is
+  the one flat list in `apps/desktop/src/shared/editors.ts`, which both the command's props and
+  the renderer's registry are built from. Main answers optimistically; only the mesh knows how
+  many panes there are, so `applyView` returns a **correction** the bridge says instead.
 - **The catalog is generated, and the palette is a view of it.** `pnpm build` writes
   `apps/desktop/dist/commands.json` for external tooling; the `command:catalog` IPC channel
   serves the **live** registry. Both go through one projection, `catalogOf` — two `toCatalog` call
@@ -397,7 +475,31 @@ vnauthor [dir] [--mock] [--native]
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `apply*Edit` serializers
   (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter.
 - **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested files and
-  `@import`s; `AGENTS.md`/`CLAUDE.md` as fallbacks) > inferred defaults.
+  `@import`s; `AGENTS.md`/`CLAUDE.md` as fallbacks) > `AICONTEXT.generated.md` > inferred defaults.
+- **The generated half is a map, not content.** `regenerate_context` (agent) and
+  `workspace.reindex` (desktop) write `AICONTEXT.generated.md`: the cast and wardrobes, the
+  locations, the story graph, and the story bible's **table of contents** — never a line of what any
+  file says. It is budgeted, and a section it could not print in full says how many rows it dropped
+  and which tool answers the rest. A fixed banner marks it: the writer refuses to overwrite a file
+  at that path without one, and the loader ignores one. See
+  [`docs/plans/agent-context-regeneration.md`](docs/plans/agent-context-regeneration.md).
+
+## Story bible (`@vn/bible`)
+
+`wiki/` is the author's free-form notes — lore, history, drafts — in whatever shape they like.
+It is not an input; `loadInputs` walks it only for `type:`-tagged entity sheets. Full write-up:
+[`docs/story-bible.md`](docs/story-bible.md); plan:
+[`docs/plans/story-bible-and-retrieval.md`](docs/plans/story-bible-and-retrieval.md).
+
+- **`openBible(dir)` takes a directory, not a `ProjectPaths`** — the bible may one day live in
+  its own repo, and nothing may assume it shares the project's.
+- **`query` is the only door, and it is budgeted.** Excerpts never total more than `budget`
+  characters (default 4000, the last one truncated) or `limit` of them (default 8). There is no
+  `read()` — a surface wanting a whole file opens it itself.
+- **A missing `wiki/` is an empty bible, not an error.**
+- **Reached by `search_bible` (agent) and `bible.search` (desktop).** `search`'s `INPUT_GLOBS`
+  deliberately excludes `wiki/`: `search` has no budget and the bible needs one. The workspace
+  index reports `bibleFiles`, a count — so the agent knows one exists before it searches.
 
 ## Conventions
 

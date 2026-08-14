@@ -5,7 +5,8 @@ import { Rail } from './Rail';
 import { BranchEditor } from './branch/BranchEditor';
 import { ScriptEditor } from './script/ScriptEditor';
 import type { Agent } from '../../app/useAgent';
-import type { Room, StudioMode, WorkspaceIndex } from '../../../src/shared/ipc';
+import type { WorkspaceIndex } from '../../../src/shared/ipc';
+import type { Room, StudioMode } from '../rooms';
 
 /**
  * STUDIO: the authored side — a workspace rail beside the vnauthor conversation, the branch

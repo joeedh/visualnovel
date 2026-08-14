@@ -1,6 +1,7 @@
 export * from './slug.js';
 export * from './canonical.js';
 export * from './entities.js';
+export * from './outfits.js';
 export * from './scenes.js';
 export * from './serialize.js';
 export * from './screenplay.js';

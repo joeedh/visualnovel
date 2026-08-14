@@ -103,7 +103,7 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
   return async (task, deps) => {
     const found = findShot(deps, task.inputs.shotId);
     const spec: ShotSpec = found
-      ? shotSpec(found.shot, found.scene)
+      ? shotSpec(found.shot, found.scene, deps.model)
       : { description: task.inputs.prompt, characters: [], location: '' };
     const refs = task.inputs.refs;
     const maxAttempts = Math.max(1, config.max_refine_attempts);

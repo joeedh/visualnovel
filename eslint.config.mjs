@@ -26,6 +26,10 @@ const ALLOWED = {
   // importable by BOTH the desktop app and `authoring` — which is why it cannot live in
   // either (scene-edit-package plan).
   scriptedit: ['types', 'util', 'parse', 'model', 'store'],
+  // Retrieval over the story bible. Input-side leaf like `export`/`scriptedit` — the desktop
+  // app and `authoring` both search the wiki, so the ranking policy lives in neither, and it
+  // is forbidden from the generative pipeline/scheduler (story-bible-and-retrieval plan).
+  bible: ['types', 'util', 'parse', 'store'],
   git: ['util'],
   // The command framework: registry, prop specs, DSL, stack. Reads git HEAD for provenance,
   // knows nothing about the domain — commands themselves are defined by the host app.
@@ -68,6 +72,7 @@ const ALLOWED = {
     'model',
     'store',
     'scriptedit',
+    'bible',
     'providers',
     'git',
   ],
@@ -100,6 +105,7 @@ const ALLOWED = {
     'store',
     'export',
     'scriptedit',
+    'bible',
     'git',
     'commands',
     'taskgraph',
@@ -118,7 +124,15 @@ const boundaryRules = Object.entries(ALLOWED).map(([from, allow]) => ({
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/*.tmp-*', 'apps/*/dist/**', 'coverage/**'],
+    // `vendor/**` is submodules — path.ux lints in its own repo, under its own rules.
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/*.tmp-*',
+      'apps/*/dist/**',
+      'coverage/**',
+      'vendor/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -153,6 +167,7 @@ export default tseslint.config(
         { type: 'store', pattern: 'packages/store', mode: 'folder' },
         { type: 'export', pattern: 'packages/export', mode: 'folder' },
         { type: 'scriptedit', pattern: 'packages/scriptedit', mode: 'folder' },
+        { type: 'bible', pattern: 'packages/bible', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
         { type: 'commands', pattern: 'packages/commands', mode: 'folder' },
         { type: 'debug2d', pattern: 'packages/debug2d', mode: 'folder' },

@@ -118,6 +118,46 @@ describe('makeProject — scenes as chunks', () => {
   });
 });
 
+// `wiki:` files the sheet in the story bible under an entity tag instead of `characters/`.
+// Where a sheet lives is the author's filing decision and must not reach the model.
+describe('makeProject — a sheet filed in the wiki', () => {
+  it('builds the same model as the conventional layout', async () => {
+    const conventional = await makeProject({ script: SCRIPTS.linear });
+    const wiki = await makeProject({
+      script: SCRIPTS.linear,
+      characters: [{ id: 'aiko', wiki: 'cast/aiko' }],
+    });
+    try {
+      const a = await conventional.reload();
+      const b = await wiki.reload();
+      expect(await wiki.read('wiki/cast/aiko.md')).toContain('type: character');
+      expect(b.model.diagnostics).toEqual(a.model.diagnostics);
+      expect([...b.model.characters]).toEqual([...a.model.characters]);
+    } finally {
+      await conventional.cleanup();
+      await wiki.cleanup();
+    }
+  });
+
+  it('is the file approval writes back to', async () => {
+    const p = await makeProject({
+      script: SCRIPTS.linear,
+      characters: [{ id: 'aiko', wiki: 'cast/aiko' }],
+    });
+    try {
+      expect((await p.run()).gate.pending).toEqual(['aiko']);
+      expect(await p.approveAll()).toEqual(['aiko']);
+
+      expect(await p.read('wiki/cast/aiko.md')).toContain('status: approved');
+      await expect(fs.stat(p.paths.characterFile('aiko'))).rejects.toThrow();
+      const { model } = await p.reload();
+      expect(model.characters.get('aiko')!.status).toBe('approved');
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+});
+
 describe('TestProject.run — the gate, end to end on disk', () => {
   it('halts at the character gate, then clears it after approve', async () => {
     const p = await makeProject({ title: 'Gate' });
@@ -149,6 +189,17 @@ describe('TestProject.run — the gate, end to end on disk', () => {
       );
       expect(graph.all().every((t) => t.status === 'done')).toBe(true);
       await expect(fs.stat(p.paths.approvedPortrait('aiko'))).resolves.toBeDefined();
+
+      // The split, through the real scheduler: base kinds landed in `assets/`, shot frames in
+      // `vngen/build/`, and one facade still reports the union.
+      const base = store.manifest().filter((a) => a.kind !== 'shot_image');
+      const shots = store.manifest().filter((a) => a.kind === 'shot_image');
+      expect(store.base).toMatchObject({ state: 'ready', count: base.length });
+      for (const a of base) {
+        expect(store.pathOf(a)).toBe(p.paths.baseAssetFile(a.hash, a.ext));
+      }
+      for (const a of shots) expect(store.pathOf(a)).toBe(p.paths.assetFile(a.hash, a.ext));
+      await expect(fs.stat(p.paths.baseManifest)).resolves.toBeDefined();
     } finally {
       await p.cleanup();
     }

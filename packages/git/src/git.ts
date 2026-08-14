@@ -108,6 +108,17 @@ export class Git {
     return r.code === 0 && r.stdout.trim() === 'true';
   }
 
+  /**
+   * The work-tree root containing `root`, or null when there is none. Unlike `isRepo` this
+   * answers *which* repo — a `root` inside a nested repository reports the inner one, which is
+   * what git itself would operate on.
+   */
+  async topLevel(): Promise<string | null> {
+    const r = await this.run(['rev-parse', '--show-toplevel']);
+    const out = r.stdout.trim();
+    return r.code === 0 && out.length > 0 ? out : null;
+  }
+
   /** Initialize a new repository at `root`. */
   async init(): Promise<void> {
     await this.ok(['init']);
@@ -166,11 +177,24 @@ export class Git {
    * Commit staged changes. If `paths` is given, stage exactly those first so unrelated
    * dirty files are not swept in. Returns the new commit hash, or null when there was
    * nothing to commit.
+   *
+   * `trailers` are appended as a `Key: value` block after a blank line — the provenance seam
+   * commit-on-save writes a command's seq and invocation into. Mechanical, like everything
+   * else here: which trailers mean what is the caller's business.
    */
-  async commit(opts: { message: string; paths?: string[] }): Promise<string | null> {
+  async commit(opts: {
+    message: string;
+    paths?: string[];
+    trailers?: Record<string, string>;
+  }): Promise<string | null> {
     if (opts.paths && opts.paths.length > 0) await this.add(opts.paths);
     const before = await this.head();
-    const r = await this.run(['commit', '-m', opts.message]);
+    const entries = Object.entries(opts.trailers ?? {});
+    const message =
+      entries.length > 0
+        ? `${opts.message}\n\n${entries.map(([k, v]) => `${k}: ${v}`).join('\n')}`
+        : opts.message;
+    const r = await this.run(['commit', '-m', message]);
     if (r.code !== 0) {
       // Git phrases an empty commit as "nothing to commit" or "no changes added to commit"
       // depending on whether the tree is clean or just has nothing staged.

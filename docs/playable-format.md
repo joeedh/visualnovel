@@ -31,7 +31,7 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
   "scenes": {
     "arrival": {
       "beats": [
-        { "type": "show", "image": { "hash": "…", "ext": "png" } }, // bg/shot (image omitted if none)
+        { "type": "show", "shot": "arrival__establishing", "image": { "hash": "…", "ext": "png" } }, // bg/shot (image omitted if none)
         { "type": "say", "who": "aiko", "text": "Um… hello." }, // attributed dialogue/parenthetical
         { "type": "narrate", "text": "She bows, a little too deeply." }, // narration/action
       ],
@@ -52,6 +52,11 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
   `buildPlayable`; only with no file at all does it reconstruct the deterministic shot
   grouping. Reconstructing over an LLM decomposition names shot ids no run produced, and every
   `show` then comes out image-less.
+- **A `show` beat names its shot, so a runner can say where it is.** `shot` is the shot's id,
+  written whether or not the frame has an image — a runner that knows the shot can publish the
+  playthrough position into a shell's selection, which is what turns watching into a place to
+  jump from. It is optional in the schema because a playable written before this existed still
+  reads; it is written by every export since.
 - **A `transition` line is coverable but produces no beat.** `CUT TO:` is an instruction to the
   reader of a screenplay, not a line of the story — so a shot may cover it, and covering it
   still changes the frame above (the `show` beat is emitted), but the transition itself is not

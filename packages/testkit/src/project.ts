@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger, ProjectModel, Providers } from '@vn/types';
+import { bindsTo } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
 import type { ProjectConfig } from '@vn/config';
 import { loadConfig } from '@vn/config';
@@ -10,6 +11,7 @@ import { modelFromInputs, sceneToDoc, slug, splitScenes } from '@vn/model';
 import {
   AssetStore,
   ProjectPaths,
+  entityFile,
   loadInputs,
   setCharacterApproval,
   writeApprovedPortrait,
@@ -220,8 +222,9 @@ export class TestProject {
     if (!chosen) {
       throw new Error(`no portrait asset for character "${characterId}" — run() first`);
     }
-    if (!(await setCharacterApproval(this.paths, characterId, chosen))) {
-      throw new Error(`no character.md for "${characterId}"`);
+    const file = entityFile((await loadInputs(this.paths)).characterDocs, characterId);
+    if (!file || !(await setCharacterApproval(file, chosen))) {
+      throw new Error(`no character sheet for "${characterId}"`);
     }
     await writeApprovedPortrait(
       this.paths,
@@ -276,10 +279,13 @@ export class TestProject {
   }
 
   private portraitsFor(store: AssetStore, characterId: string) {
-    return store
-      .manifest()
-      .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId);
+    return store.manifest().filter((a) => a.kind === 'portrait' && bindsTo(a, { characterId }));
   }
+}
+
+/** Where a fixture sheet is written: the wiki path when the spec asks to be found by tag. */
+function sheetFile(paths: ProjectPaths, spec: { wiki?: string }, conventional: string): string {
+  return spec.wiki ? join(paths.wikiDir, `${spec.wiki}.md`) : conventional;
 }
 
 /** Build a real project on disk from authored inputs. Always `cleanup()` in a `finally`. */
@@ -304,10 +310,10 @@ export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestPr
   const paths = new ProjectPaths(dir);
   await writeFileAtomic(paths.projectConfig, projectYaml(config));
   for (const spec of characters) {
-    await writeFileAtomic(paths.characterFile(spec.id), characterDoc(spec));
+    await writeFileAtomic(sheetFile(paths, spec, paths.characterFile(spec.id)), characterDoc(spec));
   }
   for (const spec of locations) {
-    await writeFileAtomic(join(paths.locationsDir, `${spec.id}.md`), locationDoc(spec));
+    await writeFileAtomic(sheetFile(paths, spec, paths.locationFile(spec.id)), locationDoc(spec));
   }
   if (format === 'chunks') {
     for (const scene of split.scenes) await writeSceneChunk(paths, scene.id, sceneToDoc(scene));

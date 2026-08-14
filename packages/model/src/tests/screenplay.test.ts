@@ -227,6 +227,28 @@ The city hums somewhere below.
     );
   });
 
+  // The reason the scene-level outfit is a marker and not front-matter: this pair round-trips
+  // markers for free, and would have dropped a front-matter field in silence.
+  it('carries outfit markers out to a screenplay and back through the importer', () => {
+    const script = `INT. CLUB ROOM - AFTERNOON
+
+[[scene: club]]
+[[outfit: aiko=track]]
+[[outfit: ren=uniform]]
+
+AIKO
+Coming!
+`;
+    const out = scriptFromScenes(graphOf(script, 'club'));
+    expect(out).toContain('[[outfit: aiko=track]]');
+    const result = sceneChunksFromScript(parseFountain(out), { start: 'club' });
+    expect(result.diagnostics).toEqual([]);
+    const back = sceneFromDoc(parseFrontMatter(docToMarkdown(result.chunks[0]!.doc)), 'club');
+    expect(back.ok).toBe(true);
+    if (!back.ok) return;
+    expect(back.value.scene.outfits).toEqual({ aiko: 'track', ren: 'uniform' });
+  });
+
   it('orders breadth-first from the entry, next before choices', () => {
     const out = scriptFromScenes(graphOf(SCRIPTS.branching));
     expect(splitScenes(parseFountain(out)).scenes.map((s) => s.id)).toEqual([

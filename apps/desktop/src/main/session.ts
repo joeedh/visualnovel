@@ -14,22 +14,21 @@ import {
   type ProjectConfig,
   type ResolvedKeys,
 } from '@vn/config';
-import { rename } from 'node:fs/promises';
+import { readdir, rename } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
-  applySceneBranchEdit,
   assignLineIds,
   modelFromInputs,
   sceneChunksFromScript,
   scriptFromScenes,
-  type SceneBranchEdit,
   type SceneChunk,
 } from '@vn/model';
-import { parseFountain } from '@vn/parse';
+import { parseFountain, type LoadedInputs } from '@vn/parse';
 import {
   AssetStore,
   ProjectPaths,
+  entityFile,
   findScreenplay,
   loadInputs,
   readSceneChunks,
@@ -58,6 +57,8 @@ import {
   type AgentBackend,
   type AgentEvent,
   type AgentMode,
+  type GeneratedContextState,
+  type GeneratedCounts,
   type Permission,
   type Plan,
   type PlanDecision,
@@ -65,11 +66,23 @@ import {
   type ToolContext,
   type WorkspaceIndex,
 } from '@vn/authoring';
+import type { Excerpt } from '@vn/bible';
 import { runPipeline } from '@vn/scheduler';
 import { buildPlayable, loadSceneShots } from '@vn/export';
-import type { LineOp, ScriptState } from '@vn/scriptedit';
 import {
+  moveShot,
+  setSceneOutfit,
+  setShotOutfit,
+  wardrobesOf,
+  type LineOp,
+  type SceneOutfitOp,
+  type ScriptState,
+  type ShotOutfitOp,
+} from '@vn/scriptedit';
+import {
+  applyMarkerPlan,
   applyScenePlan,
+  planMarkerEdit,
   planSceneEdit,
   scenePlanMessage,
   scriptStateOf,
@@ -78,10 +91,13 @@ import {
   type ScenePlan,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import type { Playable, ProjectModel, Providers, Scene } from '@vn/types';
+import type { Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
+import { bindsTo } from '@vn/types';
 import type {
   ApproveResult,
   BranchEditResult,
+  DocNode,
+  DocTree,
   GateCandidate,
   PipelineRunResult,
   PipelineStatus,
@@ -90,6 +106,7 @@ import type {
   StoryGraph,
 } from '../shared/ipc.js';
 import { narrowTask } from './reviews.js';
+import { buildDocTree, fileTree } from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
 import type { BranchOp } from '../shared/branchops.js';
 import { setCoverage } from '../shared/coverage.js';
@@ -130,6 +147,9 @@ interface LoadedProject {
   graph: TaskGraph;
   /** The files this model's scenes were built from — the files a prose edit patches. */
   sources: SceneSource[];
+  /** Every discovered sheet and scene chunk, each carrying the file it was found in; entities are
+   * tagged, not filed, so this is the only answer to where one lives. */
+  inputs: LoadedInputs;
 }
 
 /** The three things `@vn/scriptedit` decides and writes against, off one load. */
@@ -144,6 +164,31 @@ function relPath(dir: string, file: string): string {
   return relative(dir, file).split(sep).join('/');
 }
 
+/** Directories no file tree of a project should ever show, and the walk's cap. */
+const TREE_SKIP = new Set(['.git', 'node_modules']);
+const TREE_MAX_FILES = 5000;
+
+/**
+ * Every file under `dir` as workspace-relative `/` paths. Bounded rather than exhaustive: a
+ * project holding a copied asset library should slow the sidebar down, not the main process.
+ */
+async function walkFiles(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  const visit = async (abs: string, prefix: string): Promise<void> => {
+    if (out.length >= TREE_MAX_FILES) return;
+    const entries = await readdir(abs, { withFileTypes: true });
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (out.length >= TREE_MAX_FILES) return;
+      if (TREE_SKIP.has(entry.name)) continue;
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await visit(join(abs, entry.name), rel);
+      else if (entry.isFile()) out.push(rel);
+    }
+  };
+  await visit(dir, '');
+  return out;
+}
+
 async function loadProject(dir: string): Promise<LoadedProject> {
   const config = await loadConfig(dir);
   const paths = new ProjectPaths(dir);
@@ -151,7 +196,16 @@ async function loadProject(dir: string): Promise<LoadedProject> {
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  return { dir, config, paths, model, store, graph, sources: sourcesOf(inputs) };
+  return {
+    dir,
+    config,
+    paths,
+    model,
+    store,
+    graph,
+    sources: sourcesOf(inputs),
+    inputs,
+  };
 }
 
 async function buildProviders(project: LoadedProject, mock: boolean): Promise<Providers> {
@@ -170,14 +224,36 @@ async function buildProviders(project: LoadedProject, mock: boolean): Promise<Pr
 /** Backend state for a single workspace, addressed by the IPC handlers in `index.ts`. */
 export class WorkspaceSession {
   private agent: Agent | undefined;
+  private bibleWorkspace: Workspace | undefined;
   /** The text model the agent is bound to (what a future `/model` would report). */
   model = '';
+
+  /** What long-running work is in flight, by name; empty when the session is idle. */
+  private readonly inFlight = new Set<string>();
 
   constructor(
     readonly dir: string,
     readonly mock: boolean,
     private readonly deps: SessionDeps,
   ) {}
+
+  /**
+   * The work a caller must wait out before tearing this session down — a pipeline run or an
+   * agent turn, named so a refusal can say which. Reported rather than enforced: nothing here
+   * cancels, and a session that is busy is simply one nobody should replace yet.
+   */
+  busy(): string | undefined {
+    return [...this.inFlight][0];
+  }
+
+  private async while<T>(what: string, run: () => Promise<T>): Promise<T> {
+    this.inFlight.add(what);
+    try {
+      return await run();
+    } finally {
+      this.inFlight.delete(what);
+    }
+  }
 
   /** Plan approval routes to the renderer; tool confirmation auto-allows for now (scaffold). */
   private permission(): Permission {
@@ -223,8 +299,29 @@ export class WorkspaceSession {
     return new Workspace(this.dir).index();
   }
 
+  /** Where the agent's generated project map lives, and whether it is ours to replace. */
+  generatedContext(): Promise<GeneratedContextState> {
+    return new Workspace(this.dir).generatedContext();
+  }
+
+  /** Rebuild that map. Throws over a file at that path the generator did not write. */
+  writeGeneratedContext(): Promise<{ file: string; counts: GeneratedCounts }> {
+    return new Workspace(this.dir).writeGeneratedContext();
+  }
+
+  /**
+   * Ranked passages from the story bible. Held on one `Workspace` so the index survives between
+   * searches — every other method here rebuilds, because every other method reads authored input
+   * that a command may just have written.
+   */
+  async searchBible(query: string, limit?: number): Promise<Excerpt[]> {
+    this.bibleWorkspace ??= new Workspace(this.dir);
+    const bible = await this.bibleWorkspace.bible();
+    return bible.query(query, limit === undefined ? {} : { limit });
+  }
+
   async runAgent(input: string): Promise<RunResult> {
-    return (await this.ensureAgent()).run(input);
+    return this.while('an agent turn', async () => (await this.ensureAgent()).run(input));
   }
 
   async setMode(mode: AgentMode): Promise<AgentMode> {
@@ -251,7 +348,7 @@ export class WorkspaceSession {
     const project = await loadProject(this.dir);
     return project.store
       .manifest()
-      .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId)
+      .filter((a) => a.kind === 'portrait' && bindsTo(a, { characterId }))
       .map((a) => ({ hash: a.hash, accepted: a.accepted }));
   }
 
@@ -267,7 +364,7 @@ export class WorkspaceSession {
     const character = project.model.characters.get(characterId);
     const candidates = project.store
       .manifest()
-      .filter((a) => a.kind === 'portrait' && a.satisfies.characterId === characterId);
+      .filter((a) => a.kind === 'portrait' && bindsTo(a, { characterId }));
     return {
       character: Boolean(character),
       candidate: candidates.some((a) => a.hash === hash),
@@ -280,12 +377,53 @@ export class WorkspaceSession {
   async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
     const project = await loadProject(this.dir);
     if (!project.store.has(hash)) return { ok: false, message: `No asset "${hash}" in the store.` };
-    const flipped = await setCharacterApproval(project.paths, characterId, hash);
-    if (!flipped) return { ok: false, message: `No character file for "${characterId}".` };
+    const file = entityFile(project.inputs.characterDocs, characterId);
+    if (!file || !(await setCharacterApproval(file, hash))) {
+      return { ok: false, message: `No character file for "${characterId}".` };
+    }
     const bytes = await project.store.read({ hash, ext: 'png' });
     await writeApprovedPortrait(project.paths, characterId, bytes);
     await project.store.accept(hash);
     return { ok: true, message: `Approved ${characterId} → ${hash}.` };
+  }
+
+  /**
+   * The sidebar's logical tree plus per-entity backlinks. One load, one manifest, one storyboard
+   * read per scene — which is exactly why this is not folded into `workspace:index`, the shape
+   * the agent refetches every turn.
+   */
+  async docTree(): Promise<DocTree> {
+    const project = await loadProject(this.dir);
+    this.bibleWorkspace ??= new Workspace(this.dir);
+    const bible = await this.bibleWorkspace.bible();
+    await bible.refresh();
+
+    const shots = new Map<string, Shot[] | null>();
+    for (const scene of project.model.scenes.values()) {
+      const ids = new Set(scene.lines.map((l) => l.id));
+      // A storyboard that will not parse is one scene's problem, and the tree says so on that
+      // scene rather than failing the whole sidebar.
+      try {
+        const loaded = await readShots(project.paths, scene.id, ids);
+        if (loaded) shots.set(scene.id, loaded.shots);
+      } catch {
+        shots.set(scene.id, null);
+      }
+    }
+    return buildDocTree({
+      root: this.dir,
+      model: project.model,
+      inputs: project.inputs,
+      manifest: project.store.manifest(),
+      shots,
+      bible: bible.files(),
+      wikiDir: relPath(this.dir, project.paths.wikiDir),
+    });
+  }
+
+  /** The tree's other mode: what is actually on disk, `.git` and `node_modules` excluded. */
+  async fileTree(): Promise<DocNode[]> {
+    return fileTree(await walkFiles(this.dir));
   }
 
   /** Scenes + branch edges for the STUDIO branch editor, derived from the validated model. */
@@ -308,35 +446,11 @@ export class WorkspaceSession {
     const project = await loadProject(this.dir);
     const op = decide(project.model.scenes);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
-    if (project.sources.length === 0) {
-      return { ok: false, message: 'This project has no scene files to edit.', written: [] };
-    }
 
-    const groups = new Map<SceneSource, SceneBranchEdit[]>();
-    for (const edit of op.edits) {
-      const source = project.sources.find((s) => s.id === edit.sceneId);
-      if (!source) {
-        return { ok: false, message: `No file holds scene "${edit.sceneId}".`, written: [] };
-      }
-      groups.set(source, [...(groups.get(source) ?? []), edit]);
-    }
+    const plan = planMarkerEdit(project.sources, op.edits);
+    if (!plan.ok) return { ok: false, message: plan.message, written: [] };
 
-    // Every patch is computed before any is written: a splice spanning three chunks that is
-    // refused on the third must leave the first two exactly as they were.
-    const pending: { source: SceneSource; text: string }[] = [];
-    for (const [source, edits] of groups) {
-      const patched = applySceneBranchEdit(source.script, edits, { sceneId: source.id });
-      if (patched.diagnostics.length > 0) {
-        return {
-          ok: false,
-          message: patched.diagnostics.map((d) => d.message).join(' '),
-          written: [],
-        };
-      }
-      if (patched.text !== source.script) pending.push({ source, text: patched.text });
-    }
-
-    if (pending.length === 0) {
+    if (plan.patches.length === 0) {
       return {
         ok: true,
         message: `${op.message} (already wired that way — nothing written)`,
@@ -345,14 +459,12 @@ export class WorkspaceSession {
       };
     }
 
-    for (const { source, text } of pending) {
-      await writeFileAtomic(source.file, source.prefix + text);
-    }
+    const files = await applyMarkerPlan(plan.patches);
     const reloaded = await loadProject(this.dir);
     return {
       ok: true,
       message: op.message,
-      written: pending.map((p) => relPath(this.dir, p.source.file)),
+      written: files.map((file) => relPath(this.dir, file)),
       graph: storyGraphOf(reloaded.model),
     };
   }
@@ -420,6 +532,31 @@ export class WorkspaceSession {
       removed,
       graph: storyGraphOf(reloaded.model),
     };
+  }
+
+  /**
+   * The decision behind `story.moveShot`, which is the one scene edit whose *rule* needs the
+   * storyboard: `planSceneEdit` hands its callback the script state and nothing else, so the shots
+   * are read here and curried in. The result is an ordinary `(state) => LineOp`, so `check` and
+   * `run` go through `previewSceneEdit`/`editScene` like every other prose edit.
+   */
+  async shotOrder(
+    sceneId: string,
+    shot: string,
+    after: string,
+  ): Promise<(state: ScriptState) => LineOp> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return () => ({ ok: false, error: `No scene "${sceneId}".` });
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return () => ({
+        ok: false,
+        error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+      });
+    }
+    return moveShot(loaded.shots, { shot, after });
   }
 
   /**
@@ -604,6 +741,13 @@ export class WorkspaceSession {
 
     const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
     const exts = new Map(project.store.manifest().map((a) => [a.hash, a.ext]));
+    const wardrobes = wardrobesOf(project.model.characters);
+    // Whoever the scene declares, plus anyone a shot actually frames — a subject the scene's
+    // `characters` list forgot is still someone the strip has to be able to dress.
+    const cast = new Set([
+      ...scene.characters,
+      ...(loaded?.shots ?? []).flatMap((s) => s.subjects.map((sub) => sub.characterId)),
+    ]);
     return {
       sceneId,
       location: scene.location,
@@ -617,6 +761,11 @@ export class WorkspaceSession {
         id: s.id,
         framing: s.framing,
         subjects: s.subjects.map((sub) => sub.characterId),
+        // Only the subjects that state one: the strip resolves the rest through `outfitFor`,
+        // and a map that pre-filled the inherited answer would erase the distinction.
+        outfits: Object.fromEntries(
+          s.subjects.filter((sub) => sub.outfit).map((sub) => [sub.characterId, sub.outfit!]),
+        ),
         coversLines: s.coversLines,
         status: s.status,
         ...(s.image ? { image: { hash: s.image, ext: exts.get(s.image) ?? 'png' } } : {}),
@@ -624,6 +773,14 @@ export class WorkspaceSession {
         // agent, a hand-edit — shows up the next time the strip is read.
         drift: driftOf(scene, s),
       })),
+      // A character with no sheet has no wardrobe to offer, so it gets no row rather than a
+      // control whose every option the command would refuse.
+      cast: [...cast].flatMap((id) => {
+        const wardrobe = wardrobes.get(id);
+        if (!wardrobe) return [];
+        const marked = scene.outfits?.[id];
+        return [{ id, ...wardrobe, ...(marked ? { marked } : {}) }];
+      }),
       decomposed: loaded !== null,
     };
   }
@@ -663,6 +820,111 @@ export class WorkspaceSession {
     return {
       ok: true,
       message: op.message + gaps,
+      written: [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.sceneCoverage(sceneId),
+    };
+  }
+
+  /**
+   * The scene-marker outfit rule against a fresh load: the wardrobes it is checked against and the
+   * scenes it would be decided over, from the same read. `decide` is handed to `editBranches`
+   * rather than run here, so the patch sees the scenes the rule saw.
+   */
+  private async sceneOutfitRule(
+    sceneId: string,
+    character: string,
+    outfit: string,
+  ): Promise<{
+    project: LoadedProject;
+    decide: (scenes: Map<string, Scene>) => SceneOutfitOp;
+  }> {
+    const project = await loadProject(this.dir);
+    const wardrobes = wardrobesOf(project.model.characters);
+    return {
+      project,
+      decide: (scenes) => setSceneOutfit(scenes, wardrobes, { scene: sceneId, character, outfit }),
+    };
+  }
+
+  /** The decision behind `story.setSceneOutfit`, curried for `editBranches` like `shotOrder`. */
+  async sceneOutfit(
+    sceneId: string,
+    character: string,
+    outfit: string,
+  ): Promise<(scenes: Map<string, Scene>) => SceneOutfitOp> {
+    return (await this.sceneOutfitRule(sceneId, character, outfit)).decide;
+  }
+
+  /**
+   * What `story.setSceneOutfit` would do, discarded. It does not go through the story graph the
+   * other branch checks preview against: that projection carries edges and reachability, and the
+   * marker set it would have to answer about is not in it.
+   */
+  async previewSceneOutfit(
+    sceneId: string,
+    character: string,
+    outfit: string,
+  ): Promise<SceneOutfitOp> {
+    const { project, decide } = await this.sceneOutfitRule(sceneId, character, outfit);
+    return decide(project.model.scenes);
+  }
+
+  /** The shot-override rule against a fresh load, shared by the preview and the write. */
+  private async shotOutfitRule(
+    sceneId: string,
+    shotId: string,
+    character: string,
+    outfit: string,
+  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return { project, op: { ok: false, error: `No scene "${sceneId}".` } };
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return {
+        project,
+        op: {
+          ok: false,
+          error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+        },
+      };
+    }
+    const wardrobes = wardrobesOf(project.model.characters);
+    return {
+      project,
+      op: setShotOutfit(loaded.shots, scene, wardrobes, { shot: shotId, character, outfit }),
+    };
+  }
+
+  /** What `story.setOutfit` would do, without writing it. */
+  async previewShotOutfit(
+    sceneId: string,
+    shotId: string,
+    character: string,
+    outfit: string,
+  ): Promise<ShotOutfitOp> {
+    return (await this.shotOutfitRule(sceneId, shotId, character, outfit)).op;
+  }
+
+  /**
+   * Override what one subject of one shot wears, or clear the override. The third writer of
+   * `work/shots/<sceneId>.json`, beside `setCoverage` and `editScene` — and unlike either of them
+   * this changes the shot's prompt, so the shot re-hashes and the next run re-renders it.
+   */
+  async setShotOutfit(
+    sceneId: string,
+    shotId: string,
+    character: string,
+    outfit: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.shotOutfitRule(sceneId, shotId, character, outfit);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok: true,
+      message: op.message,
       written: [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
@@ -763,17 +1025,21 @@ export class WorkspaceSession {
   }
 
   async runPipeline(mock: boolean): Promise<PipelineRunResult> {
-    const project = await loadProject(this.dir);
-    const providers = await buildProviders(project, mock);
-    const summary = await runPipeline({
-      model: project.model,
-      graph: project.graph,
-      store: project.store,
-      providers,
-      config: project.config,
-      paths: project.paths,
-      dryRun: mock,
-      now: () => new Date().toISOString(),
+    // The whole method, loads included: `busy()` has to be true from the call, not from the
+    // moment the scheduler starts, or a switch could land in the gap.
+    const summary = await this.while('a pipeline run', async () => {
+      const project = await loadProject(this.dir);
+      const providers = await buildProviders(project, mock);
+      return runPipeline({
+        model: project.model,
+        graph: project.graph,
+        store: project.store,
+        providers,
+        config: project.config,
+        paths: project.paths,
+        dryRun: mock,
+        now: () => new Date().toISOString(),
+      });
     });
     return {
       ran: summary.ran.length,

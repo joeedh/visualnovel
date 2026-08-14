@@ -6,6 +6,10 @@ import { driftTag } from './drift.js';
  * outermost two carry drag handles, because the edge being dragged is the *shot's* first or
  * last line — an interior hole belongs to whichever shot interleaves with this one, and the
  * author did not point at it.
+ *
+ * The two gestures share the bracket: a handle drags the shot's edge (`timeline.cover`), the body
+ * drags the shot itself (`timeline.reorder`). The handles stop the pointer event, so the body
+ * never has to know about them.
  */
 export function ShotBracket(props: {
   span: ShotSpan;
@@ -16,6 +20,7 @@ export function ShotBracket(props: {
   dragging: boolean;
   onSelect: () => void;
   onGrab: (edge: Edge) => void;
+  onReorder: () => void;
 }): JSX.Element {
   const { shot } = props.span;
   const src = shot.image ? `vnasset://${shot.image.hash}.${shot.image.ext}` : null;
@@ -30,6 +35,9 @@ export function ShotBracket(props: {
         gridRow: `${props.segment.from + 1} / ${props.segment.to + 2}`,
       }}
       onClick={props.onSelect}
+      // Not prevented, unlike the handles': a bracket is also the click target that selects a
+      // shot, and a grab that never moves must still read as that click.
+      onPointerDown={props.onReorder}
     >
       {props.first ? (
         <>

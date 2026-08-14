@@ -1,4 +1,5 @@
 import type { ProjectConfig, ResolvedKeys } from '@vn/config';
+import type { LoadedInputs } from '@vn/parse';
 import type { Logger, ProjectModel, Providers } from '@vn/types';
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { errors as modelErrors, modelFromInputs } from '@vn/model';
@@ -14,6 +15,12 @@ export interface LoadedProject {
   model: ProjectModel;
   store: AssetStore;
   graph: TaskGraph;
+  /**
+   * The documents this model was built from, kept so a writer patches the files the decision was
+   * made against. Entities are discovered by tag, so this is also the only answer to which file a
+   * given character or location lives in.
+   */
+  inputs: LoadedInputs;
 }
 
 /**
@@ -29,7 +36,7 @@ export async function loadProject(dir: string): Promise<LoadedProject> {
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  return { dir, config, paths, model, store, graph };
+  return { dir, config, paths, model, store, graph, inputs };
 }
 
 /** Throw a readable error if the model has any error-severity diagnostics (report §P0). */

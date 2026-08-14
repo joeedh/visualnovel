@@ -94,6 +94,11 @@
 .tl-grid.dragging .tl-shot {
   pointer-events: none;
 }
+/* A bracket's own pointerdown is not prevented — it doubles as the click that selects a shot —
+   so this is what keeps a reorder from sweeping a text selection across the script. */
+.tl-grid.dragging {
+  user-select: none;
+}
 .tl-band {
   grid-row: auto;
   border-radius: var(--r-chrome);
@@ -124,6 +129,24 @@
 .tl-ghost.refused {
   border-color: var(--vermilion);
   background: rgba(229, 83, 75, 0.08);
+}
+
+/* Where a reorder would drop the shot — a rule at the row's top edge rather than a ghost bracket,
+   because a shot's position *is* where its lines sit and previewing that would mean moving the
+   prose. `end` is the drop past the last line, drawn on the bottom edge of the row it shares. */
+.tl-drop {
+  align-self: start;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--signal);
+  pointer-events: none;
+  z-index: 3;
+}
+.tl-drop.end {
+  align-self: end;
+}
+.tl-drop.refused {
+  background: var(--vermilion);
 }
 
 /* ---- the script column ---- */
@@ -338,6 +361,72 @@
 }
 .tl-edge.end {
   bottom: -4px;
+}
+
+/* The wardrobe. Sodium, not signal: an outfit is an authorial decision — the strip above it is
+   where the machine's answer lives, and these two controls are what change it. */
+.tl-wardrobe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ink-line);
+}
+.wd-section {
+  display: grid;
+  gap: 6px;
+  min-width: 300px;
+}
+.wd-head {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.wd-head .tt {
+  font-family: var(--disp);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  color: var(--sodium);
+}
+.wd-head .ct {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist-dim);
+}
+.wd-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wd-row .who {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--mist);
+  min-width: 76px;
+}
+.wd-pick {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  max-width: 240px;
+}
+.wd-from {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist-dim);
+}
+/* Not a fault — an override may be exactly what the author meant — but it is the one state where
+   a scene marker looks like it did nothing, so it says what clearing the row would do. */
+.wd-shadow {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--sodium);
 }
 
 .tl-orphans {

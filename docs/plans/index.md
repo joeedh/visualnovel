@@ -50,8 +50,16 @@ Two batches carry extra working detail of their own, and both are now complete:
 | [`portrait-overlay-opt-in.md`](portrait-overlay-opt-in.md) | shipped | The shot is the whole picture: `portrait_overlay` (default off) → `story.play.json`'s `portraitOverlay`, so PLAY stops staging a second copy of the speaker over a frame that already contains them |
 | [`desktop-editors-tracking.md`](desktop-editors-tracking.md) | — | Not a plan; the tracker for the six desktop-editor plans above |
 | [`refactorTaskList.md`](refactorTaskList.md) | — | Not a plan; the master tracker for the [`designRequirementsEtc.md`](../designRequirementsEtc.md) refactor — the path.ux UX rewrite and the structural plans the [migration report](../research/codebase-migration-for-new-requirements.md) calls for |
-| [`entity-discovery-by-meta-tag.md`](entity-discovery-by-meta-tag.md) | planned | Characters/locations found by front-matter `type:` tag across `characters/`, `locations/` and `wiki/**`; `EntityDoc` carries the source path so no writer re-derives one; id/filename agreement and duplicate diagnostics |
-| [`pathux-desktop-rewrite.md`](pathux-desktop-rewrite.md) | planned | The renderer rebuilt on path.ux (submodule): subdividing screen, seven editors ported cheapest-first behind a flag, one selection, per-area keymaps, the room vocabulary retired, React removed |
+| [`entity-discovery-by-meta-tag.md`](entity-discovery-by-meta-tag.md) | shipped | Characters/locations found by front-matter `type:` tag across `characters/`, `locations/` and `wiki/**`; `EntityDoc` carries the source path so no writer re-derives one; id/filename agreement and duplicate diagnostics |
+| [`story-bible-and-retrieval.md`](story-bible-and-retrieval.md) | shipped | The `wiki/` tree read as prose and reached by retrieval: a new `@vn/bible` between store and authoring, `query(text) → ranked excerpts` under a hard budget, `search_bible` and `bible.search` — grep now, embeddings behind the same seam |
+| [`repo-map-and-commit-on-save.md`](repo-map-and-commit-on-save.md) | shipped | Which repo owns a path (`RepoResolver`, discovered not declared), every act committing to each repo it touched, undo restoring as a *new* commit rather than a reset, and the `git init` + commit-existing half of project bootstrap |
+| [`base-and-project-asset-stores.md`](base-and-project-asset-stores.md) | shipped | Base art (portraits, model sheets, location refs) split into its own content-addressed root at `assets/` — own subtree, own manifest, optionally its own repo — with reads unioned across both roots, an `unavailable` base that refuses to plan rather than regenerating, and `Asset.satisfies` grown to a list of bindings |
+| [`shot-ordering-in-scenes.md`](shot-ordering-in-scenes.md) | shipped | Reordering shots inside a scene as what it actually is — moving the shot's covered lines — with the refusal that makes it definable (a shot with interleaved coverage has no single position), `moveShot` in `@vn/scriptedit`, `story.moveShot`, the `timeline.reorder` gesture that previews it, and `edit_scene`'s tenth op |
+| [`outfits-at-scene-and-shot-level.md`](outfits-at-scene-and-shot-level.md) | shipped | An authorable wardrobe (`outfits:` on the character sheet) and an inheritance chain — shot override → `[[outfit: aiko=uniform]]` scene marker → character default — resolved by one `outfitFor`, with a non-default outfit rendered against its own model sheet and P4's fan-out narrowed to the outfits a reachable scene actually asks for |
+| [`agent-context-regeneration.md`](agent-context-regeneration.md) | shipped | One generated `AICONTEXT.generated.md` — the cast, the locations, the story graph and the bible's *table of contents* — written by `workspace.reindex` off the two walks that already exist, read one rung below the author's own `AICONTEXT.md`, budgeted, and refusing to overwrite a file it did not write |
+| [`document-tree-and-backlinks.md`](document-tree-and-backlinks.md) | shipped | The sidebar's two shapes, joined from edges that already exist: a document tree (story → scenes → shots, characters, locations, the wiki tree, assets by kind) plus per-entity backlinks (sheet, base art, scenes, shots), on their own channel so the hot workspace index stays cheap |
+| [`project-bootstrap-and-workspace-picker.md`](project-bootstrap-and-workspace-picker.md) | shipped | The other half of project bootstrap: a picked directory becomes a project (`openWorkspace` writes a one-line `project.yaml`, then `ensureRepo`), `workspace.open`/`pick`/`recent`, an in-place switch that tears the session and undo stack down with the old root, and a startup precedence that remembers the last project |
+| [`pathux-desktop-rewrite.md`](pathux-desktop-rewrite.md) | all six steps shipped; React shell awaiting deletion | The renderer rebuilt on path.ux (submodule): subdividing screen, seven editors ported cheapest-first, one selection, per-area keymaps, `view.*` addressing editors instead of rooms, and the docs reorganized by editor. `--react` still boots the retired room shell for one release |
 
 ## Scene authoring
 
@@ -104,9 +112,14 @@ Recorded here because each was settled once and every later plan assumes it.
   filename, on a closed schema. Heading, location, synopsis, `choices`, `next` and line ids stay
   `[[…]]` markers and Fountain elements in the body, because `splitScenes` already reads them there
   and `sceneToFountain` already writes them back losslessly. It was marked for revisit once 4–7 had
-  shipped, against working editors rather than ahead of them, so **that revisit is now due** —
-  nothing built since has wanted a field there, which is itself the evidence.
+  shipped, against working editors rather than ahead of them.
   [`scene-chunk-files.md`](scene-chunk-files.md#the-shape) records the argument on both sides.
+  **The revisit has happened and came out the same way**: scene-level outfits were the first field
+  to want in, and
+  [`outfits-at-scene-and-shot-level.md`](outfits-at-scene-and-shot-level.md#the-decision-the-report-left-open)
+  took the `[[outfit:]]` marker, because `vngen screenplay`/`vngen import` round-trip markers for
+  free and would silently drop a front-matter field. What would change the answer is recorded
+  there.
 
 ### Blockers found while planning
 

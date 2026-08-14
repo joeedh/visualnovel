@@ -1,8 +1,11 @@
-import { parseFountain, parseFrontMatter, type SceneChunkDoc } from '@vn/parse';
+import { parseFountain, parseFrontMatter, type EntityDoc, type SceneChunkDoc } from '@vn/parse';
 import { buildModel, errors, isValid, toMermaid, type BuildInputs } from '../index.js';
 
-const charDoc = (id: string, name: string) =>
-  parseFrontMatter(`---\nid: ${id}\nname: ${name}\n---\n\n${name} is a person.\n`);
+/** A discovered character sheet, as `loadInputs` would hand one over. */
+const charDoc = (id: string, name: string, declaredId = id): EntityDoc => {
+  const text = `---\nid: ${declaredId}\nname: ${name}\n---\n\n${name} is a person.\n`;
+  return { id, file: `/p/characters/${id}/character.md`, doc: parseFrontMatter(text), text };
+};
 
 function inputs(script: string, withChars = true): BuildInputs {
   return {
@@ -153,6 +156,80 @@ describe('buildModel — validation', () => {
   });
 });
 
+// Before discovery carried the file, `id:` was the only id there was, so `characters/ada/` holding
+// `id: ren` silently produced a character named by neither — and every path built from that id
+// pointed at a sheet that was not the one loaded.
+describe('buildModel — an entity id must agree with the file that holds it', () => {
+  const build = (docs: EntityDoc[]) =>
+    buildModel({ title: 'Test', characterDocs: docs, locationDocs: [], script: parseFountain('') });
+
+  it('rejects a sheet whose declared id is not the one its file names', () => {
+    const model = build([charDoc('ada', 'Ada', 'ren')]);
+    expect([...model.characters.keys()]).toEqual([]);
+    const mismatch = errors(model).filter((d) => d.code === 'entity_id_mismatch');
+    expect(mismatch).toHaveLength(1);
+    expect(mismatch[0]!.where).toBe('ada');
+    expect(mismatch[0]!.message).toContain('/p/characters/ada/character.md');
+    expect(mismatch[0]!.message).toContain('ren');
+  });
+
+  it('keeps the sheets that do agree', () => {
+    const model = build([charDoc('ada', 'Ada', 'ren'), charDoc('aiko', 'Aiko')]);
+    expect([...model.characters.keys()]).toEqual(['aiko']);
+  });
+
+  it('says nothing when a location agrees', () => {
+    const doc: EntityDoc = {
+      id: 'pier',
+      file: '/p/wiki/sets/pier.md',
+      doc: parseFrontMatter('---\nid: pier\ntype: location\nname: Pier\n---\n\nA pier.\n'),
+      text: '',
+    };
+    const model = buildModel({
+      title: 'Test',
+      characterDocs: [],
+      locationDocs: [doc],
+      script: parseFountain(''),
+    });
+    expect([...model.locations.keys()]).toEqual(['pier']);
+    expect(model.diagnostics.some((d) => d.code === 'entity_id_mismatch')).toBe(false);
+  });
+});
+
+describe('buildModel — the wardrobe', () => {
+  const sheet = (frontMatter: string): EntityDoc => ({
+    id: 'ada',
+    file: '/p/characters/ada/character.md',
+    doc: parseFrontMatter(`---\nid: ada\nname: Ada\n${frontMatter}---\n\nAda.\n`),
+    text: '',
+  });
+  const build = (fm: string) =>
+    buildModel({
+      title: 'Test',
+      characterDocs: [sheet(fm)],
+      locationDocs: [],
+      script: parseFountain(''),
+    });
+
+  it('warns when the default outfit is the one the wardrobe does not describe', () => {
+    const model = build('default_outfit: uniform\noutfits:\n  track: club tracksuit\n');
+    const d = model.diagnostics.filter((x) => x.code === 'undescribed_default_outfit');
+    expect(d).toHaveLength(1);
+    expect(d[0]!.severity).toBe('warning');
+    expect(d[0]!.message).toContain('"track"');
+    // A warning, not an error: the outfit is still synthesized, so nothing is left unresolvable.
+    expect(model.characters.get('ada')!.outfits.map((o) => o.id)).toEqual(['uniform', 'track']);
+  });
+
+  it('says nothing about a sheet with no wardrobe, or one that describes its default', () => {
+    expect(build('').diagnostics).toEqual([]);
+    expect(
+      build('default_outfit: uniform\noutfits:\n  uniform: grey blazer\n  track: tracksuit\n')
+        .diagnostics,
+    ).toEqual([]);
+  });
+});
+
 const chunk = (id: string, body: string): SceneChunkDoc => {
   const text = `---\nscene: ${id}\n---\n\n${body}`;
   return { id, file: `scenes/${id}.md`, doc: parseFrontMatter(text), text };
@@ -182,6 +259,46 @@ const ROOFTOP_CHUNK = `INT. ROOFTOP - SUNSET
 REN
 Yo.
 `;
+
+describe('buildModel — the scene outfit marker', () => {
+  const dressed: EntityDoc = {
+    id: 'aiko',
+    file: '/p/characters/aiko/character.md',
+    doc: parseFrontMatter(
+      '---\nid: aiko\nname: Aiko\ndefault_outfit: uniform\noutfits:\n  uniform: grey blazer\n  track: club tracksuit\n---\n\nAiko.\n',
+    ),
+    text: '',
+  };
+  const build = (markers: string) =>
+    buildModel({
+      ...chunkInputs([chunk('arrival', `INT. CLASSROOM - DAY\n\n${markers}\nAIKO\nHi.\n`)]),
+      characterDocs: [dressed],
+      start: 'arrival',
+    });
+
+  it('keeps a marker naming an outfit the character has', () => {
+    const m = build('[[outfit: aiko=track]]\n');
+    expect(m.scenes.get('arrival')!.outfits).toEqual({ aiko: 'track' });
+    expect(m.diagnostics).toEqual([]);
+  });
+
+  // Ignored rather than honoured: the shot falls back to the default and renders, where obeying
+  // would put a word in the prompt that nothing describes.
+  it('warns about an outfit the character never authored, listing the ones they have', () => {
+    const m = build('[[outfit: aiko=swim]]\n');
+    expect(m.scenes.get('arrival')!.outfits).toBeUndefined();
+    const d = m.diagnostics.filter((x) => x.code === 'unknown_outfit');
+    expect(d).toHaveLength(1);
+    expect(d[0]!.severity).toBe('warning');
+    expect(d[0]!.message).toContain('"uniform", "track"');
+  });
+
+  it('warns about a marker that names no character, and keeps the rest', () => {
+    const m = build('[[outfit: nobody=track]]\n[[outfit: aiko=uniform]]\n');
+    expect(m.scenes.get('arrival')!.outfits).toEqual({ aiko: 'uniform' });
+    expect(m.diagnostics.map((x) => x.code)).toEqual(['unknown_outfit_character']);
+  });
+});
 
 describe('buildModel — scenes authored as chunks', () => {
   const CHUNKS = [chunk('arrival', ARRIVAL_CHUNK), chunk('rooftop', ROOFTOP_CHUNK)];

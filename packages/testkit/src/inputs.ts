@@ -1,13 +1,26 @@
 import { stringify as stringifyYaml } from 'yaml';
-import type { Character } from '@vn/types';
+import { ENTITY_TAG_KEY, ENTITY_TAGS, type Character } from '@vn/types';
 import { stringifyFrontMatter } from '@vn/parse';
 
-/** Overrides for a generated `characters/<id>/character.md`. Only `id` is required. */
-export interface CharacterSpec {
+/**
+ * Write this sheet at `wiki/<wiki>.md`, tagged, instead of in its conventional directory — how a
+ * fixture exercises discovery by tag. The path's filename stem still has to agree with `id`.
+ */
+interface WikiPlacement {
+  wiki?: string;
+}
+
+/** Overrides for a generated character sheet. Only `id` is required. */
+export interface CharacterSpec extends WikiPlacement {
   id: string;
   name?: string;
   status?: Character['status'];
   defaultOutfit?: string;
+  /**
+   * The wardrobe, outfit id → description. Omitted by default, which is the sheet every project
+   * had before outfits were authorable: `characterFromDoc` synthesizes the default alone.
+   */
+  outfits?: Record<string, string>;
   traits?: string[];
   palette?: string[];
   referenceImages?: string[];
@@ -16,8 +29,8 @@ export interface CharacterSpec {
   description?: string;
 }
 
-/** Overrides for a generated `locations/<id>.md`. Only `id` is required. */
-export interface LocationSpec {
+/** Overrides for a generated set-location sheet. Only `id` is required. */
+export interface LocationSpec extends WikiPlacement {
   id: string;
   name?: string;
   mood?: string;
@@ -42,14 +55,18 @@ export function toSpec<T extends { id: string }>(value: string | T): T {
   return typeof value === 'string' ? ({ id: value } as T) : value;
 }
 
-/** Render `characters/<id>/character.md` for a spec, filling in fixture defaults. */
+/** Render a character sheet for a spec, filling in fixture defaults. */
 export function characterDoc(spec: CharacterSpec): string {
   const name = spec.name ?? titleCase(spec.id);
   const data: Record<string, unknown> = {
     id: spec.id,
+    // Only a wiki sheet states its kind; a conventional one carries the tag from its directory,
+    // so writing it there too would test a spelling the fixture never has to use.
+    ...(spec.wiki ? { [ENTITY_TAG_KEY]: ENTITY_TAGS.character } : {}),
     name,
     status: spec.status ?? 'draft',
     default_outfit: spec.defaultOutfit ?? 'uniform',
+    ...(spec.outfits ? { outfits: spec.outfits } : {}),
     palette: spec.palette ?? ['#a02828', '#e8c8b0'],
     traits: spec.traits ?? ['curious', 'soft-spoken'],
     reference_images: spec.referenceImages ?? [],
@@ -58,11 +75,12 @@ export function characterDoc(spec: CharacterSpec): string {
   return stringifyFrontMatter(data, `${spec.description ?? `${name}, a fixture character.`}\n`);
 }
 
-/** Render `locations/<id>.md` for a spec, filling in fixture defaults. */
+/** Render a set-location sheet for a spec, filling in fixture defaults. */
 export function locationDoc(spec: LocationSpec): string {
   const name = spec.name ?? titleCase(spec.id);
   const data: Record<string, unknown> = {
     id: spec.id,
+    ...(spec.wiki ? { [ENTITY_TAG_KEY]: ENTITY_TAGS.location } : {}),
     name,
     mood: spec.mood ?? 'quiet',
     lighting: spec.lighting ?? 'flat afternoon light',
