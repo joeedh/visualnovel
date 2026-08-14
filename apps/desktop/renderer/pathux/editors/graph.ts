@@ -7,7 +7,7 @@ import {
   taskGraphOf,
   type TaskGraphModel,
   type TaskNodeView,
-} from '../../rooms/floor/taskGraph.js';
+} from '../../rules/taskGraph.js';
 import { card, dot, mono, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
@@ -20,7 +20,7 @@ import type { LaidOutNode } from '../../graph/types.js';
 import type { PipelineStatus, StoryGraph } from '../../../src/shared/ipc.js';
 
 /**
- * The pipeline as a DAG. The derivation is untouched — `rooms/floor/taskGraph.ts` still says
+ * The pipeline as a DAG. The derivation is untouched — `rules/taskGraph.ts` still says
  * what the gate barrier, the ref edges and the ghost clusters are, and its tests still pin
  * them — so this editor is the React `TaskGraphView`'s markup rebuilt on `GraphCanvas` and
  * nothing more.

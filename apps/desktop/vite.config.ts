@@ -1,6 +1,5 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
 /**
  * Renderer-only Vite build. The renderer lives at `apps/desktop/renderer` (outside the
@@ -13,7 +12,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   root: resolve(__dirname, 'renderer'),
   base: './',
-  plugins: [react()],
   resolve: {
     alias: {
       // path.ux is a git submodule compiled from source, not a pnpm workspace member —

@@ -1,6 +1,6 @@
 import type { Container } from 'pathux';
 import { api } from '../../api.js';
-import { subjectOf } from '../../rooms/floor/taskGraph.js';
+import { subjectOf } from '../../rules/taskGraph.js';
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';

@@ -25,7 +25,6 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Remembered UI state (`.vndesktop/session.json`)](#remembered-ui-state-vndesktopsessionjson)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
-- [The retired React shell (`--react`)](#the-retired-react-shell---react)
 
 <!-- tocstop -->
 
@@ -37,7 +36,6 @@ pnpm --filter @vn/desktop dev -- --mock                                       # 
 ```
 
 `--project <dir>` overrides the workspace (`VN_PROJECT=<dir>` is an equivalent env fallback).
-`--react` boots the retired React room shell instead (see [the retired shell](#the-retired-react-shell---react)).
 
 **Live dev loop:** `pnpm --filter @vn/desktop dev` (`scripts/dev.desktop.mjs`) runs the three
 moving parts together — esbuild `--watch` (main + preload), the Vite renderer server with HMR,
@@ -61,17 +59,15 @@ formatting the submodule under our config shows its gitlink dirty.
 ## Renderer layout
 
 `renderer/pathux/` is the shell and its editors; `renderer/graph/` is the shared canvas geometry;
-`renderer/rooms/` is the retired React shell **and** the pure rule modules the new editors still
-import. That last point is the one to hold on to: the ports rewrote markup and gesture glue only,
-so `script.ts`, `coverage.ts`, `taskGraph.ts`, `attempts.ts`, `grab.ts` and their kin are
-unchanged under `rooms/` with their tests beside them. Deleting the React shell means **moving**
-those modules, not deleting them.
+`renderer/rules/` is the pure rule modules the editors import. That last directory is what the
+React shell left behind: the ports rewrote markup and gesture glue only, so `script.ts`,
+`coverage.ts`, `taskGraph.ts`, `attempts.ts`, `grab.ts` and their kin are unchanged — they were
+**moved** out of `rooms/`, not rewritten, and their tests moved with them.
 
 ```
 renderer/
-  main.tsx              entry; picks a shell (`?react`), imports styles/index.css, installs @vn/debug2d in DEV
+  main.ts               entry; imports styles/index.css, installs @vn/debug2d in DEV, boots the shell
   api.ts                typed access to main; falls back to mock data outside Electron
-  session.ts            `useSessionValue` — React-only; retires with the room shell
   global.d.ts           ambient declarations for what the preload injects
   debug/install.ts      dev-only @vn/debug2d glue; vite build drops it entirely
   pathux/               shell.ts (boot) · screen.ts · context.ts · state.ts · api.ts (DataAPI)
@@ -81,14 +77,14 @@ renderer/
                         branch.ts · script.ts · timeline.ts · convo.ts (pure gesture/state cores)
                         graph/canvas.ts · play/playback.ts
        …/editors/       header · branch · script · convo · timeline · tasks · graph · inspector · play
-  graph/                layout · edges · hit · viewport · types (pure) + Canvas.tsx (React-only)
-  rooms/                the retired React shell — and the pure cores the editors above import:
-       …/studio/        branch/{graph,grab,compose,tween}.ts · script/script.ts · diagnostics.ts
-       …/floor/         taskGraph.ts · attempts.ts · timeline/{coverage,drift,editing,wardrobe}.ts
-       …/rooms.ts       Room/StudioMode/FloorMode — local to the retired shell, and go with it
-  ui/                   Resizable.tsx — React-only; the flat `panel.*.width` keys retire with it
-  styles/               index.css @imports tokens · shell · studio · floor · play · graph ·
-                        branch · taskgraph · timeline · script
+  graph/                layout · edges · hit · viewport · types (pure)
+  rules/                the pure cores the editors import, each with a `tests/` sibling:
+                        catalog.ts · script.ts · diagnostics.ts · taskGraph.ts · attempts.ts
+       …/branch/        graph · grab · compose · tween
+       …/timeline/      coverage · drift · editing · wardrobe
+  styles/               index.css @imports tokens (document level; the palette crosses shadow
+                        roots). branch · studio · timeline · script are adopted `?inline` by the
+                        editor that owns each
 ```
 
 - **Pure logic goes in `.ts` with a `tests/` sibling; the editor stays thin rendering.** Jest's
@@ -541,8 +537,6 @@ from `~/.vndesktop` once the app is installed rather than run from the repo. Ful
   flush takes a `mkdir` lock (stale ones, >5s, are broken), re-reads the file _inside_ the lock,
   and applies **only its dirty keys** over what it finds. Different keys from different
   instances both survive; the same key is last-flush-wins.
-- The flat `panel.<id>.width` keys are still written by `renderer/ui/Resizable.tsx`, which is React
-  and frozen. They retire when it does.
 
 ## Which project is open
 
@@ -600,17 +594,3 @@ With nothing remembered and no `VN_PROJECT`, the app seeds **`examples/mySampleR
   the directory to get the current template.
 - Packaged builds have no repo-relative `examples/`, so the scratch workspace falls back to
   `app.getPath('userData')/mySampleRepo`; a missing template then fails by name.
-
-## The retired React shell (`--react`)
-
-`--react` still boots the three-room renderer — STUDIO · FLOOR · PLAY, `renderer/react-shell.tsx`
-into `#root` — for one release of caution. It is frozen: no port lands there, and the two shells are
-imported lazily so the default one does not pay for React's bundle.
-
-- It **ignores `view` effects**. Those name an editor and a pane, which is the mesh's vocabulary;
-  a room shell can only shrug. Palette, undo and workspace effects still work.
-- The `Room` / `StudioMode` / `FloorMode` unions are local to it (`renderer/rooms/rooms.ts`) and go
-  when it does. Nothing in the main process names a room.
-- When it deletes, so do `react`/`react-dom`, every `.tsx` under `renderer/`, `session.ts`,
-  `ui/Resizable.tsx` and the flat `panel.*.width` keys — and the pure modules still under
-  `rooms/` **move** rather than going with them, because the path.ux editors import them.

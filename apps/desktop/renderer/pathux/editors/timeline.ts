@@ -2,9 +2,9 @@ import type { Container, MenuTemplate } from 'pathux';
 import { api } from '../../api.js';
 import { spansFor, type Coverage, type Edge, type ShotSpan } from '../../../src/shared/coverage.js';
 import { commitOf, noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
-import { insertionRow, previewOf } from '../../rooms/floor/timeline/coverage.js';
-import { driftTag, staleCount } from '../../rooms/floor/timeline/drift.js';
-import { GRAB_BLOCKED, canEdit, canGrab } from '../../rooms/floor/timeline/editing.js';
+import { insertionRow, previewOf } from '../../rules/timeline/coverage.js';
+import { driftTag, staleCount } from '../../rules/timeline/drift.js';
+import { GRAB_BLOCKED, canEdit, canGrab } from '../../rules/timeline/editing.js';
 import {
   INHERIT,
   outfitInvocation,
@@ -12,7 +12,7 @@ import {
   shadowedMarker,
   sourceLabel,
   type OutfitRow,
-} from '../../rooms/floor/timeline/wardrobe.js';
+} from '../../rules/timeline/wardrobe.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import {
   aimDrag,

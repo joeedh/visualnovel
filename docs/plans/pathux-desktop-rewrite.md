@@ -1,11 +1,10 @@
 # Desktop app rewrite on path.ux
 
-Status: **all six steps shipped** — the submodule and build wiring, the shell, ports 1–7, the
-flag flip (the app boots path.ux; `--react` boots the room shell), the room vocabulary's
-retirement, and the docs. What is left is the deletion itself: the retired React shell, the
-`--react` flag, `react`/`react-dom` from `apps/desktop`'s dependencies, and the move of the pure
-rule modules out of `renderer/rooms/` — deliberately held for one release of caution, and the one
-acceptance criterion below still outstanding. Item 1 of
+Status: **shipped** — the submodule and build wiring, the shell, ports 1–7, the flag flip, the
+room vocabulary's retirement, the docs, and the deletion: the React shell, the `--react` flag and
+`react`/`react-dom` are gone, and the pure rule modules moved from `renderer/rooms/` to
+`renderer/rules/` with their tests (see [The deletion, as it went](#the-deletion-as-it-went)).
+Item 1 of
 [`refactorTaskList.md`](refactorTaskList.md). Replaces the
 three-room React renderer with path.ux's subdividing screen — the §UX requirement of
 [`../designRequirementsEtc.md`](../designRequirementsEtc.md) — while keeping the main
@@ -575,7 +574,7 @@ open, the seeded workspace, and a closing section on the retired `--react` shell
 - **Component-level tests remain absent** (jest stays node-only). Same posture as today; the
   pure-core rule is what makes it tolerable, so it is enforced for new editor code too.
 - **Two shells during steps 3–4** cost double maintenance on anything touching the renderer.
-  Mitigation: the old shell is frozen — bug fixes only (item 11 being the one known).
+  Mitigation: the old shell was frozen — bug fixes only (item 11 being the one known).
 - **Sizing model friction:** path.ux drives Area geometry imperatively (`setCSS()` writing
   pixel sizes); editor content must be honest `height:100%`/`min-height:0` flex/grid inside
   its Area. The existing stylesheets already are (only 11 room-scoped selectors, one `100vh`
@@ -589,3 +588,27 @@ watch in PLAY, undo a story edit with the refusal sentence intact — plus the p
 wins: split any two editors side by side, persist and restore the arrangement, and drive
 `view.open` from the palette, the agent and CDP. `pnpm check`, `pnpm test`, `pnpm lint`,
 `pnpm build` green with React absent from `apps/desktop`'s dependency tree.
+
+## The deletion, as it went
+
+Four things the deletion decided that the plan above did not:
+
+1. **The rule modules moved to `renderer/rules/`, not to `renderer/pathux/`.** They are pure and
+   shell-agnostic — that is why they survived the port untouched — so filing them under the shell
+   that currently imports them would have re-made the mistake the port just undid. Twenty-six
+   files moved with their `tests/` siblings; not one line of rule code changed, only the depth of
+   its imports.
+2. **`styles/index.css` is now one `@import`.** Only `tokens.css` belongs at document level:
+   an editor's surface lives in a shadow root, and custom properties are the one thing that
+   crosses it. `branch.css`, `studio.css`, `script.css` and `timeline.css` are already adopted
+   `?inline` by the editors that own them, so `shell.css`, `floor.css`, `play.css`, `graph.css`
+   and `taskgraph.css` went with the markup they styled — the emitted stylesheet fell from
+   ~30 kB to 1.0 kB.
+3. **The clickable diagnostics list did not survive the port**, and the deletion is what
+   surfaced it. `Rail.tsx` listed each diagnostic and selected the scene it named; the path.ux
+   header only *counts* them (`pathux/bridge.ts`). The rule it used — `diagnosticScene`, tested —
+   was kept and moved to `rules/diagnostics.ts`, so what is missing is a surface, not a rule.
+   Recorded here rather than quietly dropped.
+4. **`renderer/session.ts` (`useSessionValue`) went entirely**, with no successor: the path.ux
+   shell persists through `pathux/persist.ts`, and the flat `panel.*.width` keys it wrote have
+   no reader left. A session file still holding them is ignored, not migrated.

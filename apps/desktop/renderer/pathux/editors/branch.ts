@@ -12,10 +12,10 @@ import {
   proposeScene,
   selectionAfterDelete,
   type NewScene,
-} from '../../rooms/studio/branch/compose.js';
-import { grabAt } from '../../rooms/studio/branch/grab.js';
-import { CARD, branchGraph, type BranchGraph } from '../../rooms/studio/branch/graph.js';
-import { DURATION, tweenLayout } from '../../rooms/studio/branch/tween.js';
+} from '../../rules/branch/compose.js';
+import { grabAt } from '../../rules/branch/grab.js';
+import { CARD, branchGraph, type BranchGraph } from '../../rules/branch/graph.js';
+import { DURATION, tweenLayout } from '../../rules/branch/tween.js';
 import { branchState, relabel, type BranchState } from '../../../src/shared/interactions.js';
 import { noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
 import {
@@ -437,7 +437,7 @@ export class BranchEditor extends VnEditor {
     const scale = this.canvas.viewport.scale;
 
     // The two small targets are resolved from their own discs, before `pick`'s answer — see
-    // `rooms/studio/branch/grab.ts` for why neither can be reached through it.
+    // `rules/branch/grab.ts` for why neither can be reached through it.
     const grabbed = grabAt(this.layout.nodes, this.edges, world, GRAB / scale, this.stubs);
     if (grabbed?.kind === 'connect') {
       event.preventDefault();

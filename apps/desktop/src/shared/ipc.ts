@@ -1,6 +1,6 @@
 /**
  * The single source of truth for the renderer ↔ main IPC contract. Both the preload bridge
- * and the React renderer import these names + payload shapes, so a channel can't drift
+ * and the renderer import these names + payload shapes, so a channel can't drift
  * between the two sides without a type error.
  *
  * Shapes are re-exported from the real `@vn/*` packages (type-only) rather than redefined,

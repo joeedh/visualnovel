@@ -39,30 +39,22 @@ import type {
   UiEffect,
 } from '../shared/ipc.js';
 
-/**
- * `--mock` / `--project <dir>` (also `--project=<dir>`) / `--react`, parsed from the app's
- * own argv. The shell is path.ux; `--react` boots the retired room shell for one release of
- * caution. It reaches the renderer as a query flag on the loaded document, since that is the
- * one channel available before any IPC handler is up.
- */
+/** `--mock` / `--project <dir>` (also `--project=<dir>`), parsed from the app's own argv. */
 interface CliArgs {
   mock: boolean;
   project?: string;
-  react: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
   let mock = false;
-  let react = false;
   let project: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--mock') mock = true;
-    else if (arg === '--react') react = true;
     else if (arg === '--project') project = argv[++i];
     else if (arg.startsWith('--project=')) project = arg.slice('--project='.length);
   }
-  return { mock, project, react };
+  return { mock, project };
 }
 
 // Electron's own argv carries an extra `appPath` ('.') entry when running unpackaged
@@ -417,9 +409,8 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   });
-  const search = cliArgs.react ? 'react=1' : '';
-  if (DEV_URL) void win.loadURL(search ? `${DEV_URL}?${search}` : DEV_URL);
-  else void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'), { search });
+  if (DEV_URL) void win.loadURL(DEV_URL);
+  else void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'));
   win.on('closed', () => {
     win = null;
   });

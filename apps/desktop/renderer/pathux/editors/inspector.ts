@@ -9,8 +9,8 @@ import {
   type AttemptOutcome,
   type MergedDefect,
   type TriageSummary,
-} from '../../rooms/floor/attempts.js';
-import { subjectOf } from '../../rooms/floor/taskGraph.js';
+} from '../../rules/attempts.js';
+import { subjectOf } from '../../rules/taskGraph.js';
 import { card, centered, dot, mono, note, row, stamp, statusColour } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { TOKENS, alpha } from '../tokens.js';
@@ -38,7 +38,7 @@ const SEVERITY_COLOUR: Record<string, string> = {
 
 /**
  * Per-task detail: identity, why it stopped if it stopped badly, and P7's generate → critique →
- * refine loop as a vertical spine. The rules are `rooms/floor/attempts.ts` untouched — the merge,
+ * refine loop as a vertical spine. The rules are `rules/attempts.ts` untouched — the merge,
  * the `Corrections:` delta, the outcome and the triage all still have their own tests — so this
  * is the React `Inspector` + `AttemptLoop` markup and nothing else.
  *

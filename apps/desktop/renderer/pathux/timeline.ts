@@ -19,7 +19,7 @@ import {
   type CoverState,
 } from '../../src/shared/interactions.js';
 import { noticeForVerdict, type Notice } from '../../src/shared/lineedit.js';
-import { shotDropTarget } from '../rooms/floor/timeline/coverage.js';
+import { shotDropTarget } from '../rules/timeline/coverage.js';
 import type { Verdict } from '@vn/commands';
 import type { SceneCoverage } from '../../src/shared/ipc.js';
 

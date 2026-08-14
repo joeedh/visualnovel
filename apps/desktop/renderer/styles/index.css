@@ -1,17 +1,9 @@
 /**
- * The one stylesheet, assembled. Import order IS cascade order — it reproduces the
- * top-to-bottom order of the single sheet this was split from, so a room's breakpoint
- * still overrides the base rule it narrows. Add a new sheet at the end, not the middle.
+ * Loaded at document level, and deliberately thin: an editor's surface lives in a shadow
+ * root, where document CSS does not reach. Custom properties are the one thing that
+ * crosses that boundary, so what belongs here is the palette and nothing else.
  *
- * Vite inlines these at build time, so the app still ships one emitted stylesheet.
+ * A pane's own sheet is imported `?inline` by the editor that owns it and adopted via
+ * `adoptStyle` — see `pathux/editors/{branch,convo,script,timeline}.ts`.
  */
 @import './tokens.css';
-@import './shell.css';
-@import './studio.css';
-@import './floor.css';
-@import './play.css';
-@import './graph.css';
-@import './branch.css';
-@import './taskgraph.css';
-@import './timeline.css';
-@import './script.css';

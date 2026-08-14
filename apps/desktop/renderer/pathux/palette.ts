@@ -11,7 +11,7 @@
  */
 import { UIBase, type Container, type MenuTemplateCustom } from 'pathux';
 import { api } from '../api.js';
-import { blankProps, fieldText, fieldValue, filterCommands } from '../app/catalog.js';
+import { blankProps, fieldText, fieldValue, filterCommands } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
 import { exec, say, shell } from './bridge.js';
 

@@ -8,7 +8,7 @@
  * attempts in the inspector and watching it in the runner are the same act.
  */
 import type { Task } from '../../src/shared/ipc.js';
-import type { TaskNodeView } from '../rooms/floor/taskGraph.js';
+import type { TaskNodeView } from '../rules/taskGraph.js';
 
 export interface Selection {
   sceneId: string;

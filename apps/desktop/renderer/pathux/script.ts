@@ -16,7 +16,7 @@
  */
 import { scriptMoveLine } from '../../src/shared/interactions.js';
 import { noticeForVerdict, type Notice } from '../../src/shared/lineedit.js';
-import { moveStateOf } from '../rooms/studio/script/script.js';
+import { moveStateOf } from '../rules/script.js';
 import type { Invocation, Verdict } from '@vn/commands';
 import type { SceneCoverage } from '../../src/shared/ipc.js';
 

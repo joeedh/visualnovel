@@ -301,8 +301,8 @@ the existing `Scene`/`Shot`/`Asset` types.
 
 The renderer is a **path.ux screen mesh**: the window subdivides into panes and each pane shows
 one editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs
-`git submodule update --init --recursive`, and `pnpm doctor` says so by name. `--react` still
-boots the retired three-room React shell for one release. Rules worth knowing before touching it:
+`git submodule update --init --recursive`, and `pnpm doctor` says so by name. The React room shell
+it replaced is gone, and so is React. Rules worth knowing before touching it:
 
 - **A pane shows an editor, and the eight editors are named in one place**
   (`apps/desktop/src/shared/editors.ts`): `view.*` runs in main and builds its props from that

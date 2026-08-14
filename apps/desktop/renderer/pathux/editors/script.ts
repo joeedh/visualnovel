@@ -26,7 +26,7 @@ import {
   type Editing,
   type Pending,
   type RowBox,
-} from '../../rooms/studio/script/script.js';
+} from '../../rules/script.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { aim, dropOf, grabLine, noticeOf, type Drag } from '../script.js';
 import { refreshWorkspace } from '../bridge.js';

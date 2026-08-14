@@ -74,14 +74,12 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 one line from `~/.vndesktop` once the app ships installed). Gitignored. **Global per install,
 not per workspace** — a layout is about the window, not the project.
 
-**Shape:** a flat `Record<string, SessionValue>` with dotted keys. Two of them matter:
+**Shape:** a flat `Record<string, SessionValue>` with dotted keys. Two are written today:
 
 ```jsonc
 {
   "pathux.layout": { /* nstructjs-serialized screen, magic "VNSC" */ },
   "pathux.selection": { "sceneId": "arrival", "shotId": "", "characterId": "aiko" },
-  // written only by the retired --react shell, and retiring with it:
-  "panel.studio.rail.width": 260,
 }
 ```
 
@@ -104,8 +102,7 @@ not per workspace** — a layout is about the window, not the project.
   each other's keys (same key is last-flush-wins)
 - **Survives:** app restart. **Lost when:** the file is deleted
 
-**Code:** `src/main/sessionstore.ts`, `renderer/pathux/persist.ts` (and `renderer/session.ts` +
-`renderer/ui/Resizable.tsx`, which serve the `--react` shell only)
+**Code:** `src/main/sessionstore.ts`, `renderer/pathux/persist.ts`
 
 ---
 
@@ -148,10 +145,6 @@ functions; a pane notices by comparing a revision counter, since `update()` runs
   `workspace:index` so diagnostics and the cast are current; there is no revision counter
   remounting a pane mid-gesture.
 - **Lost on:** page reload, app restart (no persistence) — except the selection, which is category 2.
-
-The retired `--react` shell keeps the same material in `renderer/app/App.tsx` hooks plus
-`useAgent.ts`, with its own `room`/`studioMode`/`floorMode`/`revision` and its per-room scene
-selections. That vocabulary is local to it (`renderer/rooms/rooms.ts`) and goes when it does.
 
 ---
 
@@ -385,7 +378,6 @@ invoke('pipeline:run', { mock })
 | Playthrough position | `localStorage` | ✓ Survives restart | Runner component | Save button |
 | Pane layout | `.vndesktop/session.json` (`pathux.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
 | Selected scene/shot/character | `.vndesktop/session.json` (`pathux.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
-| Panel widths (`--react` shell only) | `.vndesktop/session.json` | ✓ Survives restart | `usePanelWidth` | Drag release |
 | Conversation history | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
 | Header facts, `taskHash`, per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |
