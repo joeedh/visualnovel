@@ -106,6 +106,11 @@ approval flow — replacing the four partial ones. Future editors (wiki/bible, d
 sidebar, backlink panel, project picker) are named here so they have a declared home, but
 they belong to their backend items (3, 9, 10 in the task list) and are out of scope.
 
+**As shipped, only the project picker landed** (`Open Project…` in the app menu). Deferring the
+other three here while items 3 and 9 deferred the panes back to this plan left them owned by
+nobody: the backends are built and tested and nothing draws them. They are now item 12,
+[`wiki-and-document-tree-editors.md`](wiki-and-document-tree-editors.md).
+
 ## Steps
 
 ### 1. Submodule and build wiring — **shipped**

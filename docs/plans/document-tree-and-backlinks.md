@@ -219,8 +219,9 @@ label and the write routing cannot disagree.
 
 ## Out of scope
 
-- **The sidebar itself.** This item ships the shape and the channels; the pane that draws them
-  belongs to item 1, which names a document-tree sidebar as a future editor with a declared home.
+- **The sidebar itself.** This item ships the shape and the channels; the pane that draws them is
+  [`wiki-and-document-tree-editors.md`](wiki-and-document-tree-editors.md), item 12. It was
+  originally deferred to item 1, which deferred it back here — so it now has a row of its own.
 - **An agent backlink tool.** `vnauthor` authors *inputs* and stops at them; shots and assets are
   pipeline output, and a tool that reports them would invite the agent to reason about art it
   cannot make. If that changes, decision 2 says what moves.

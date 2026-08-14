@@ -39,12 +39,20 @@ scope, [`index.md`](index.md) stays the authority on status.
 | 9 | Backlink / document-tree index (character → bible file, base assets, scenes and shots; backs the sidebar tree) | **shipped** | [`document-tree-and-backlinks.md`](document-tree-and-backlinks.md) → [`../document-tree.md`](../document-tree.md) |
 | 10 | Project bootstrap (directory picker, `git init`, auto-commit of existing files) | **shipped** | [`project-bootstrap-and-workspace-picker.md`](project-bootstrap-and-workspace-picker.md) — `openWorkspace`, `workspace.open`/`pick`/`recent`, an in-place switch, and a launch precedence that remembers the last project; the `git init` + auto-commit half had already shipped as `ensureRepo` in [`repo-map-and-commit-on-save.md`](repo-map-and-commit-on-save.md) |
 | 11 | Bug: `App.tsx:100` `{ mock: !isLive \|\| true }` makes the FLOOR run button always a dry run | **fixed** | `apps/desktop/renderer/app/App.tsx` now passes `{ mock: !isLive }` |
+| 12 | Wiki and document-tree editors — the panes for 3 and 9, plus the `doc.*` read/write commands they need | **needs building** (planned) | [`wiki-and-document-tree-editors.md`](wiki-and-document-tree-editors.md) |
 
 Ordering constraints, and the design decisions each plan must settle first, are in the
 migration report (item 0) — it is the input to writing plans 2–10. Item 1 is independent of
 2–10 in code (it replaces the renderer; the main process, IPC shapes and command registry
 carry over) but every new backend capability lands as commands + index shapes that the new
 editors then present, so plans should state which side of that seam they are on.
+
+**Item 12 is what that seam dropped.** Item 1 put the wiki editor, the document-tree sidebar
+and the backlink panel out of scope as belonging to items 3, 9 and 10; items 3 and 9 put the
+panes that draw them out of scope as belonging to item 1. Both were right about their own
+scope and the UI ended up owned by nobody, so it gets a row of its own rather than a line in
+someone else's Out of scope. When a plan defers work to another item, the other item needs a
+row that names it — a pointer to a plan whose scope excludes it is not a home.
 
 ## Sequencing sketch (from the report)
 
