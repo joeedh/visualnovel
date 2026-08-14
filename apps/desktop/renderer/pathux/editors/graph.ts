@@ -117,10 +117,15 @@ export class TaskGraphEditor extends VnEditor {
     this.canvas.fitToContent();
   }
 
-  /** The three shared ids alone — `ShellState` carries header facts a graph has no use for. */
+  /** The shared selection alone — `ShellState` carries header facts a graph has no use for. */
   private selection(): Selection {
     const ui = this.ui;
-    return { sceneId: ui.sceneId, shotId: ui.shotId, characterId: ui.characterId };
+    return {
+      sceneId: ui.sceneId,
+      shotId: ui.shotId,
+      characterId: ui.characterId,
+      docPath: ui.docPath,
+    };
   }
 
   private stateKey(): string {

@@ -53,7 +53,7 @@ class VnOverlay extends ContextOverlay {
   }
 
   get screen() {
-    return (this.state as ShellApp).screen;
+    return (this.state as ShellApp).screen!;
   }
 
   // path.ux's last-tool widget resolves through this; `api.ts` declares the matching struct.
@@ -68,13 +68,7 @@ Context.register(VnOverlay);
  * The context handed to the screen. The overlay supplies the members at runtime; the
  * `declare`s here are what let this satisfy path.ux's `ContextLike` contract.
  */
-export class ShellContext extends Context {
-  declare state: ShellApp;
-  declare api: DataAPI;
-  declare toolstack: ToolStack;
-  declare screen: VnScreen;
-  declare ui: ShellState;
-
+export class ShellContext extends Context<VnOverlay> {
   constructor(app: ShellApp) {
     super(app);
     this.pushOverlay(new VnOverlay(app));

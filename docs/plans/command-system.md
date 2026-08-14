@@ -308,7 +308,9 @@ Playwright/Puppeteer/`curl` out of the box.
   call `app.commandLine.appendSwitch('remote-debugging-port', port)` and
   `appendSwitch('remote-debugging-address', '127.0.0.1')`. **Opt-in and off by default** —
   the port grants full control of the renderer. Document that in `CLAUDE.md`.
-- **`scripts/dev.desktop.mjs`**: default `VN_CDP_PORT=9222` in the dev loop only.
+- **`scripts/dev.desktop.mjs`**: default `VN_CDP_PORT=9222` in the dev loop only. (Since
+  shipped, `scripts/vndesktop.mjs` defaults it too — the launchers are what a developer runs,
+  and neither is in a packaged build.)
 - **`src/preload/index.ts`**: a second `contextBridge.exposeInMainWorld('vn', …)` with
   `exec(dslOrId, props?)`, `catalog()`, `history(n?)`, `undo()`, `redo()`. Living in the
   preload (not React) means it exists before the app mounts, which matters for scripting.

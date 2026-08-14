@@ -1,0 +1,104 @@
+/*
+ * The wiki editor's surface. Adopted into the pane's shadow root by `editors/wiki.ts`, never
+ * imported by `index.css` — document rules do not cross that boundary, so the reset is here too.
+ *
+ * Warm throughout: this is authored prose, which is the `--sodium` side of `tokens.css`.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.wk-surface {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* The whole document, monospaced: this is markdown with front-matter in it, and column
+   alignment is the only thing standing in for a preview. */
+.wk-text {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 14px 16px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+.wk-text:disabled {
+  color: var(--mist-dim);
+}
+
+.wk-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--mist-dim);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* One line under the document: the path, the dirty mark, and whatever the last save said. */
+.wk-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist);
+}
+
+.wk-path {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wk-badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: var(--r-chrome);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(244, 162, 76, 0.16);
+  color: var(--sodium);
+}
+
+/* A diagnostic is not an error here — the file saved, and the model merely cannot place it
+   yet — so it reads as a warning beside the path rather than displacing it. */
+.wk-note {
+  flex: 0 0 auto;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sodium);
+}
+
+.wk-note.bad {
+  color: var(--vermilion);
+}

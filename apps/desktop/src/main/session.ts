@@ -19,24 +19,38 @@ import { join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
   assignLineIds,
+  characterFromDoc,
+  docToMarkdown,
+  locationFromDoc,
   modelFromInputs,
+  newCharacterDoc,
+  newLocationDoc,
   sceneChunksFromScript,
   scriptFromScenes,
+  slug,
   type SceneChunk,
 } from '@vn/model';
-import { parseFountain, type LoadedInputs } from '@vn/parse';
+import { parseFountain, type FrontMatterDoc, type LoadedInputs } from '@vn/parse';
 import {
   AssetStore,
   ProjectPaths,
+  checkDocWrite,
+  conventionalKind,
   entityFile,
   findScreenplay,
   loadInputs,
+  readDocFile,
   readSceneChunks,
   readShots,
   setCharacterApproval,
+  taggedKind,
   writeApprovedPortrait,
+  writeDocFile,
   writeSceneChunk,
   writeShots,
+  type DocFile,
+  type DocResult,
+  type DocWritePlan,
 } from '@vn/store';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, writeFileAtomic } from '@vn/util';
@@ -91,12 +105,13 @@ import {
   type ScenePlan,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import type { Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
+import type { Effort, Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
 import { bindsTo } from '@vn/types';
 import type {
   ApproveResult,
   BranchEditResult,
   DocNode,
+  DocSaveResult,
   DocTree,
   GateCandidate,
   PipelineRunResult,
@@ -123,10 +138,10 @@ class MockAgentBackend implements AgentBackend {
 }
 
 /** Pick the vendor chat backend for a text model id (mirrors @vn/providers' private picker). */
-function chatBackendFor(modelId: string, keys: ResolvedKeys): ChatBackend {
+function chatBackendFor(modelId: string, keys: ResolvedKeys, effort?: Effort): ChatBackend {
   const id = modelId.toLowerCase();
   if (id.startsWith('claude') || id.startsWith('anthropic')) {
-    return createAnthropicChat(keys.anthropic, modelId);
+    return createAnthropicChat(keys.anthropic, modelId, { effort });
   }
   return createGeminiChat(keys.gemini, modelId);
 }
@@ -166,6 +181,24 @@ function relPath(dir: string, file: string): string {
 
 /** Directories no file tree of a project should ever show, and the walk's cap. */
 const TREE_SKIP = new Set(['.git', 'node_modules']);
+
+/** Who owns `scenes/**` from this side of the app — the sentence a refused whole-file save gets. */
+const SCENE_WRITER = 'story.*';
+
+/** The three things `doc.create` scaffolds. A note is a title and nothing else. */
+export type NewDocKind = 'character' | 'location' | 'note';
+
+/**
+ * What the model will make of a document that has already been saved — a sentence, or nothing.
+ * Dispatch is by the tag the incoming text carries, falling back to the conventional home, which
+ * is how discovery decides; a file that claims to be neither is a note and is not checked.
+ */
+function entityDiagnostic(path: string, doc: FrontMatterDoc): string | undefined {
+  const kind = taggedKind(doc.data) ?? conventionalKind(path);
+  if (kind === undefined) return undefined;
+  const res = kind === 'character' ? characterFromDoc(doc) : locationFromDoc(doc);
+  return res.ok ? undefined : res.diagnostic.message;
+}
 const TREE_MAX_FILES = 5000;
 
 /**
@@ -227,6 +260,8 @@ export class WorkspaceSession {
   private bibleWorkspace: Workspace | undefined;
   /** The text model the agent is bound to (what a future `/model` would report). */
   model = '';
+  /** The reasoning effort the backend is built with; `undefined` is the vendor default. */
+  effort: Effort | undefined;
 
   /** What long-running work is in flight, by name; empty when the session is idle. */
   private readonly inFlight = new Set<string>();
@@ -274,7 +309,7 @@ export class WorkspaceSession {
       secretsDirs: await secretDirsFor(this.dir),
       require: [vendor],
     });
-    return new StructuredAgentBackend(chatBackendFor(modelId, keys));
+    return new StructuredAgentBackend(chatBackendFor(modelId, keys, this.effort));
   }
 
   private async ensureAgent(): Promise<Agent> {
@@ -337,6 +372,19 @@ export class WorkspaceSession {
     const agent = await this.ensureAgent();
     agent.setBackend(await this.buildBackend(await loadConfig(this.dir), modelId));
     return modelId;
+  }
+
+  /**
+   * Hot-swap the reasoning effort the same way. A model that does not honour one keeps the
+   * setting anyway — `supportsEffort` is what a surface greys out on, and the backend simply
+   * omits the knob — so switching back to a model that does needs no second gesture.
+   */
+  async setEffort(effort: Effort | undefined): Promise<Effort | undefined> {
+    this.effort = effort;
+    if (this.mock) return effort;
+    const agent = await this.ensureAgent();
+    agent.setBackend(await this.buildBackend(await loadConfig(this.dir), this.model || undefined));
+    return effort;
   }
 
   async clearAgent(): Promise<void> {
@@ -424,6 +472,95 @@ export class WorkspaceSession {
   /** The tree's other mode: what is actually on disk, `.git` and `node_modules` excluded. */
   async fileTree(): Promise<DocNode[]> {
     return fileTree(await walkFiles(this.dir));
+  }
+
+  /**
+   * One authored document as text, with the hash it was read at. Deliberately not through
+   * `@vn/bible`: that interface has no whole-file API and that absence is what keeps the bible
+   * out of an agent's context window — a human reading their own note on screen is a different
+   * act, and it reads the workspace directly.
+   */
+  readDoc(path: string): Promise<DocResult<{ file: DocFile }>> {
+    return readDocFile(this.dir, path);
+  }
+
+  /** What a save would do, decided without writing — what `doc.write`'s precondition reports. */
+  previewDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocWritePlan>> {
+    return checkDocWrite(this.dir, path, text, seenHash, SCENE_WRITER);
+  }
+
+  /**
+   * Save one document whole, and say what the model will make of it. The refusals are
+   * `checkDocWrite`'s; the schema check is here because it needs `@vn/model`, which `@vn/store`
+   * may not import — and because a failure there is a diagnostic beside a saved file rather than
+   * a refusal, exactly the split `loadInputs` already draws.
+   */
+  async saveDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocSaveResult>> {
+    const plan = await writeDocFile(this.dir, path, text, seenHash, SCENE_WRITER);
+    if (!plan.ok) return plan;
+    const diagnostic = entityDiagnostic(plan.path, plan.doc);
+    return {
+      ok: true,
+      path: plan.path,
+      hash: plan.hash,
+      bytes: plan.bytes,
+      ...(diagnostic ? { diagnostic } : {}),
+    };
+  }
+
+  /**
+   * Where a scaffolded document would land and what it would say. The character and location
+   * templates are the same `newCharacterDoc` / `newLocationDoc` the agent's `create_character`
+   * calls, so one authorial act has one answer and the id is derived in exactly one place. The
+   * path is conventional; filing a sheet elsewhere is a move, not a different scaffolder.
+   */
+  private newDoc(
+    kind: NewDocKind,
+    name: string,
+  ): { id: string; path: string; text: string } | null {
+    const paths = new ProjectPaths(this.dir);
+    // A note is a heading and nothing else: `wiki/` is free-form, and an empty front-matter
+    // block at the top of every new note would be a shape the author has to delete.
+    if (kind === 'note') {
+      const id = slug(name);
+      return id
+        ? { id, path: relPath(this.dir, join(paths.wikiDir, `${id}.md`)), text: `# ${name}\n` }
+        : null;
+    }
+    const doc = kind === 'character' ? newCharacterDoc(name) : newLocationDoc(name);
+    const id = String(doc.data['id'] ?? '');
+    if (!id) return null;
+    const file = kind === 'character' ? paths.characterFile(id) : paths.locationFile(id);
+    return { id, path: relPath(this.dir, file), text: docToMarkdown(doc) };
+  }
+
+  /** Would the scaffold land? Mostly: is that name already taken. */
+  async previewCreate(kind: NewDocKind, name: string): Promise<DocResult<DocWritePlan>> {
+    const scaffold = this.newDoc(kind, name);
+    if (!scaffold) return { ok: false, reason: `"${name}" does not name a ${kind}` };
+    return checkDocWrite(this.dir, scaffold.path, scaffold.text, '', SCENE_WRITER);
+  }
+
+  /**
+   * Scaffold a character, a location or a wiki note from a **name**. The empty `seenHash` is what
+   * makes this a creation: the write refuses over a file already there rather than overwriting
+   * whatever the author had under that name.
+   */
+  async createDoc(
+    kind: NewDocKind,
+    name: string,
+  ): Promise<DocResult<DocSaveResult & { id: string }>> {
+    const scaffold = this.newDoc(kind, name);
+    if (!scaffold) return { ok: false, reason: `"${name}" does not name a ${kind}` };
+    const written = await writeDocFile(this.dir, scaffold.path, scaffold.text, '', SCENE_WRITER);
+    if (!written.ok) return written;
+    return {
+      ok: true,
+      id: scaffold.id,
+      path: written.path,
+      hash: written.hash,
+      bytes: written.bytes,
+    };
   }
 
   /** Scenes + branch edges for the STUDIO branch editor, derived from the validated model. */

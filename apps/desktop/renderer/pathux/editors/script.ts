@@ -29,7 +29,8 @@ import {
 } from '../../rules/script.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { aim, dropOf, grabLine, noticeOf, type Drag } from '../script.js';
-import { refreshWorkspace } from '../bridge.js';
+import { onWrote, refreshWorkspace } from '../bridge.js';
+import { touchesScene } from '../../../src/shared/writes.js';
 import SCRIPT_CSS from '../../styles/script.css?inline';
 import type { Invocation } from '@vn/commands';
 import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../src/shared/ipc.js';
@@ -112,6 +113,7 @@ export class ScriptEditor extends VnEditor {
   // prose: what is being edited in the strip is the command's own props.
   private pending: Pending | null = null;
   private notice: Notice | null = null;
+  private unwatch: (() => void) | undefined;
 
   static override define() {
     return {
@@ -131,7 +133,22 @@ export class ScriptEditor extends VnEditor {
     this.surface = el('div', 'script sc-surface') as HTMLDivElement;
     this.appendSurface(this.surface);
 
+    // The scene on screen can be rewritten by something that is not this pane — the agent in
+    // execute mode is the usual one. A page nobody is in the middle of follows; one with an open
+    // row or a held line does not, because re-reading would take the draft with it. That is what
+    // `⟳` is for.
+    this.unwatch = onWrote((paths) => {
+      if (this.editing || this.pending || this.drag) return;
+      if (touchesScene(paths, this.ui.sceneId)) void this.loadScene();
+    });
+
     void this.load();
+  }
+
+  override on_remove() {
+    this.unwatch?.();
+    this.unwatch = undefined;
+    super.on_remove();
   }
 
   override update() {
@@ -244,7 +261,8 @@ export class ScriptEditor extends VnEditor {
     this.bar.label(this.failure || (shown ? `${shown.lines.length} line(s)` : '')).style[
       'padding'
     ] = '0px 8px';
-    this.bar.button('Refresh', () => void this.load());
+    const reload = this.bar.button('⟳', () => void this.load());
+    reload.description = 'Re-read this scene from disk';
     this.bar.flushUpdate();
   }
 

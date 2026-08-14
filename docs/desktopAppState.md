@@ -79,7 +79,12 @@ not per workspace** — a layout is about the window, not the project.
 ```jsonc
 {
   "pathux.layout": { /* nstructjs-serialized screen, magic "VNSC" */ },
-  "pathux.selection": { "sceneId": "arrival", "shotId": "", "characterId": "aiko" },
+  "pathux.selection": {
+    "sceneId": "arrival",
+    "shotId": "",
+    "characterId": "aiko",
+    "docPath": "characters/aiko/character.md",
+  },
 }
 ```
 
@@ -91,9 +96,14 @@ not per workspace** — a layout is about the window, not the project.
 - `pathux/persist.ts` writes both keys, debounced 400 ms, and again on `beforeunload` — a quit
   does not run the debounce. The layout reports through `VnScreen.onLayoutChange` (every split,
   join, border drag and window resize); the selection through `DataPathWatcher`s on `ui.sceneId`
-  / `ui.shotId` / `ui.characterId`, which is the same push the widgets get
+  / `ui.shotId` / `ui.characterId` / `ui.docPath`, which is the same push the widgets get
 - `ui.taskHash` is deliberately **not** written: it is a content hash that re-keys whenever a
   prompt changes, so one remembered across a re-plan names nothing
+- **A field a pane remembers rides in the layout blob**, not beside it: `registerEditor` takes an
+  optional `fields` list and nstructjs writes those properties into the pane's own struct, so the
+  documents editor's tree/file mode survives a restart *and* survives being torn into a new pane.
+  Nothing about the screen's shape moves when one changes, so the editor calls `layoutChanged()`
+  itself — `onLayoutChange` cannot see inside a pane
 - The layout is nstructjs through path.ux's own `simple.saveFile`/`loadFile`, which stamp the
   struct schema into the blob, so a layout written before path.ux changed a `STRUCT` still reads
   back. Nothing here may block boot: a layout that will not load — corrupt, or naming an editor
@@ -120,6 +130,7 @@ a widget that would change the project dispatches a command instead.
 | Field | Type | Notes |
 |-------|------|-------|
 | `sceneId` / `shotId` / `characterId` | `string` (`''` = nothing) | The one authored selection every editor observes, and any editor may publish. **Persisted** (category 2) |
+| `docPath` | `string` (`''` = nothing) | Which document the wiki editor is on — the fourth selection field, and the one that names a **path** rather than an id, because a free-form note under `wiki/` has no id. `view.open`/`view.focus` publish it from their `subject` prop. **Persisted** (category 2) |
 | `taskHash` | `string` | Which task the inspector is open on. Machine identity, so deliberately not persisted |
 | `projectTitle` | `string` | Pushed from `workspace:index` |
 | `model` | `string` | Text model id, for the header badge |
@@ -377,7 +388,8 @@ invoke('pipeline:run', { mock })
 |------|-------|-----------|-----------|-----------|
 | Playthrough position | `localStorage` | ✓ Survives restart | Runner component | Save button |
 | Pane layout | `.vndesktop/session.json` (`pathux.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
-| Selected scene/shot/character | `.vndesktop/session.json` (`pathux.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
+| Selected scene/shot/character/document | `.vndesktop/session.json` (`pathux.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
+| A field a pane remembers (the documents editor's mode) | `.vndesktop/session.json` (inside `pathux.layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
 | Conversation history | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
 | Header facts, `taskHash`, per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |

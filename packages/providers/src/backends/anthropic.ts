@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
-import type { ChatBackend, ChatRequest, ChatToolReply, Effort, ToolSchema } from '../backend.js';
+import { supportsEffort, type Effort } from '@vn/types';
+import type { ChatBackend, ChatRequest, ChatToolReply, ToolSchema } from '../backend.js';
 import { callWithRetry } from './transient.js';
 
 const MIME: Record<string, string> = {
@@ -8,15 +9,6 @@ const MIME: Record<string, string> = {
   jpeg: 'image/jpeg',
   webp: 'image/webp',
 };
-
-/**
- * Whether a Claude model accepts `output_config.effort`. Supported on Opus 4.5+, Sonnet 4.6,
- * and Fable/Mythos 5; it 400s on Sonnet 4.5 / Haiku 4.5 and earlier, so we omit it there.
- */
-export function supportsEffort(modelId: string): boolean {
-  const id = modelId.toLowerCase();
-  return /opus-4-[5-9]/.test(id) || id.includes('sonnet-4-6') || /(fable|mythos)-5/.test(id);
-}
 
 /**
  * Claude vision/text backend (report §8). The SDK is imported lazily so the package is

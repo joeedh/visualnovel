@@ -1,6 +1,7 @@
-import type { Container } from 'pathux';
+import type { Container, MenuTemplate } from 'pathux';
+import { EFFORT_LEVELS, TEXT_MODELS, supportsEffort } from '@vn/types';
 import { ask, convo, decide, revision, takeSeed } from '../agent.js';
-import { exec } from '../bridge.js';
+import { exec, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 import STUDIO_CSS from '../../styles/studio.css?inline';
@@ -52,7 +53,11 @@ export class ConvoEditor extends VnEditor {
    */
   private input!: HTMLInputElement;
   private sendBtn!: HTMLButtonElement;
+  /** The one word said while a turn is in flight; a CSS animation does the rest. */
+  private workingEl!: HTMLDivElement;
   private drawn = -1;
+  /** The three bar facts that live in `ShellState` rather than in the conversation. */
+  private barKey = '';
 
   static override define() {
     return {
@@ -83,13 +88,49 @@ export class ConvoEditor extends VnEditor {
     super.update();
 
     if (revision() !== this.drawn) this.rebuild();
+    if (this.stateKey() !== this.barKey) this.rebuildBar();
   }
 
+  /** What the bar draws from. Three session facts, none of them the conversation's. */
+  private stateKey(): string {
+    const ui = this.ui;
+    return `${ui.agentMode}|${ui.model}|${ui.effort}`;
+  }
+
+  /**
+   * The bar the author reads before typing. The header carries the same mode toggle, but this is
+   * the pane a turn is entered into, so it is the pane that has to say whether typing edits files.
+   */
   private rebuildBar(): void {
+    this.barKey = this.stateKey();
+    const ui = this.ui;
+
     this.bar.clear();
     this.bar.label('VNAUTHOR').style['padding'] = '0px 8px';
-    // Both through the registry: the transcript follows `agent.clear` itself, so clearing from
-    // here and clearing from the palette are one act with one record.
+    this.bar.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => void toggleMode());
+
+    const models: MenuTemplate = TEXT_MODELS.map((id) => [
+      id,
+      () => void setModel(id),
+      undefined,
+    ]) as MenuTemplate;
+    this.bar.menu(ui.model || 'model…', models);
+
+    const efforts: MenuTemplate = ['default', ...EFFORT_LEVELS].map((level) => [
+      level,
+      () => void setEffort(level),
+      undefined,
+    ]) as MenuTemplate;
+    const effort = this.bar.menu(`effort: ${ui.effort}`, efforts);
+    // A model with no thinking knob gets the menu greyed rather than hidden — the setting is kept
+    // across a model switch, so what the author picked is still true, it is just not in use.
+    if (!supportsEffort(ui.model)) {
+      effort.disabled = true;
+      effort.description = `${ui.model || 'this model'} has no reasoning-effort setting.`;
+    }
+
+    // Through the registry: the transcript follows `agent.clear` itself, so clearing from here
+    // and clearing from the palette are one act with one record.
     this.bar.button('Clear', () => void exec('agent.clear'));
     this.bar.flushUpdate();
   }
@@ -102,6 +143,10 @@ export class ConvoEditor extends VnEditor {
     dbox.appendChild(el('div', 'nameplate', 'VNAUTHOR'));
     this.lineEl = el('div', 'line') as HTMLDivElement;
     dbox.appendChild(this.lineEl);
+    // Built once, shown while busy: a turn that says nothing for thirty seconds is otherwise
+    // indistinguishable from one that never started. One word, and `@keyframes` moves it.
+    this.workingEl = el('div', 'working', 'working') as HTMLDivElement;
+    dbox.appendChild(this.workingEl);
     stage.appendChild(dbox);
 
     const composer = el('div', 'composer');
@@ -151,6 +196,7 @@ export class ConvoEditor extends VnEditor {
 
     this.lineEl.textContent = state.line;
     this.sendBtn.disabled = state.busy;
+    this.workingEl.style.display = state.busy ? 'block' : 'none';
 
     this.transcript.textContent = '';
     if (state.feed.length === 0 && !state.plan) {

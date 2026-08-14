@@ -13,18 +13,20 @@ import {
 import { installAgent } from './agent.js';
 import { defineShellApi } from './api.js';
 import { installBridge } from './bridge.js';
-import { EDITOR_IDS } from '../../src/shared/editors.js';
+import { editorNameProblems } from '../../src/shared/editors.js';
 import { ShellContext, type ShellApp } from './context.js';
-import { editorClass, knownAreaNames } from './editor.js';
+import { editorClass, switchableAreaNames } from './editor.js';
 // Importing an editor is what registers it, and registration is what puts it in the area
 // switcher — so every ported editor is listed here whether or not a default screen uses it.
 import './editors/branch.js';
 import './editors/convo.js';
+import './editors/documents.js';
 import './editors/graph.js';
 import './editors/inspector.js';
 import './editors/script.js';
 import './editors/tasks.js';
 import './editors/timeline.js';
+import './editors/wiki.js';
 import { HEADER_HEIGHT, VnHeaderEditor } from './editors/header.js';
 import { PlayEditor } from './editors/play.js';
 import { installKeymap } from './keymap.js';
@@ -131,7 +133,7 @@ class Shell implements ShellApp {
 
     screen.regenScreenMesh();
     screen.snapScreenVerts();
-    bar.switch_editor(VnHeaderEditor);
+    bar.switchEditor(VnHeaderEditor, { deleteExisting: true });
     screen.solveAreaConstraints();
   }
 
@@ -145,7 +147,8 @@ class Shell implements ShellApp {
     screen.ctx = this.ctx as unknown as ContextLike;
 
     const sarea = screen.newScreenArea();
-    sarea.switch_editor(editorClass('branches') ?? PlayEditor);
+    sarea.switchEditor(editorClass('script') ?? PlayEditor, { deleteExisting: true });
+    sarea.switchEditor(editorClass('branches') ?? PlayEditor, { deleteExisting: false });
     screen.add(sarea);
 
     screen.solveAreaConstraints();
@@ -159,7 +162,10 @@ class Shell implements ShellApp {
     // After the screen is in the document: `splitArea` copies the area it divides, and a copy
     // made before the first layout carries no size to divide.
     const right = screen.splitArea(sarea, 0.6, false);
-    right.switch_editor(editorClass('convo') ?? PlayEditor);
+    right.switchEditor(editorClass('convo') ?? PlayEditor, { deleteExisting: true });
+
+    screen.splitArea(sarea, 0.3, false);
+    sarea.switchEditor(editorClass('documents') ?? PlayEditor, { deleteExisting: true });
   }
 }
 
@@ -182,15 +188,21 @@ function installIcons(): void {
 }
 
 /**
- * Check that main and the renderer name the same editors. `view.open`'s props are built from
- * `shared/editors.ts` in the main process, which cannot see this registry — so a command that
- * offers an editor nothing registers would fail only when someone picked it.
+ * Check that main and the renderer name the same editors, in **both** directions. `view.open`'s
+ * props are built from `shared/editors.ts` in the main process, which cannot see this registry,
+ * so an editor it offers that nothing registered fails only when someone picks it — and the
+ * reverse, an editor registered here and named in no list, is worse: `view.*` cannot reach it at
+ * all, yet path.ux's own area switcher offers it from the pane menu.
  */
 function checkEditorNames(): void {
-  const known = knownAreaNames();
-  const missing = EDITOR_IDS.filter((id) => !known.has(id));
-  if (missing.length > 0) {
-    console.warn(`view.* offers editors this build has not registered: ${missing.join(', ')}`);
+  const { unregistered, unnamed } = editorNameProblems(switchableAreaNames());
+  if (unregistered.length > 0) {
+    console.warn(`view.* offers editors this build has not registered: ${unregistered.join(', ')}`);
+  }
+  if (unnamed.length > 0) {
+    console.warn(
+      `editors registered but missing from EDITORS, so view.* cannot reach them: ${unnamed.join(', ')}`,
+    );
   }
 }
 

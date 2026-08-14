@@ -1,6 +1,7 @@
-import { Area, ColumnFrame, UIBase, contextWrangler, nstructjs } from 'pathux';
+import { Area, AreaFlags, ColumnFrame, UIBase, contextWrangler, nstructjs } from 'pathux';
 import type { VnContext } from './context.js';
 import type { ShellState } from './state.js';
+import { closeStruct, type StructField } from './structfields.js';
 
 /**
  * Base class for every editor in the shell: a column container inside the area's shadow
@@ -87,6 +88,17 @@ export function knownAreaNames(): ReadonlySet<string> {
 }
 
 /**
+ * The area names an author can actually switch a pane to — everything above except chrome.
+ * `AreaFlags.HIDDEN` is the flag path.ux's own area-switcher skips, so it is the same line the
+ * boot check has to draw: the header bar is registered like any editor and named in no list.
+ */
+export function switchableAreaNames(): string[] {
+  return [...editors]
+    .filter(([, cls]) => !(((cls.define() as { flag?: number }).flag ?? 0) & AreaFlags.HIDDEN))
+    .map(([name]) => name);
+}
+
+/**
  * The class registered under an area name. `view.open` names an editor in the vocabulary
  * `shared/editors.ts` writes down, and this is where that name becomes something to switch to.
  */
@@ -101,13 +113,22 @@ export function editorClass(areaname: string): typeof VnEditor | undefined {
  * two that changes with the build. A layout saved by one build then names a struct the next
  * build does not have, and `ScreenArea.loadSTRUCT` does not fail loudly: it falls back to the
  * *first registered* area class, so every remembered pane comes back as the same editor.
+ *
+ * `fields` is what a pane remembers of its own — one declaration per line of nstructjs, spliced
+ * inside the struct the parent's fields already fill. Anything declared here must exist on the
+ * instance before a save, so give it a class-field default; `Area.loadSTRUCT` reads the whole
+ * struct with one `reader(this)`, so nothing else is needed to get it back.
  */
-export function registerEditor(cls: typeof VnEditor, structName: string): void {
+export function registerEditor(
+  cls: typeof VnEditor,
+  structName: string,
+  fields: readonly StructField[] = [],
+): void {
   VnEditor.register(cls);
-  cls.STRUCT = nstructjs.STRUCT.inherit(cls, VnEditor, structName) + '\n}';
+  cls.STRUCT = closeStruct(nstructjs.STRUCT.inherit(cls, VnEditor, structName), fields);
   nstructjs.register(cls);
   editors.set((cls.define() as { areaname: string }).areaname, cls);
 }
 
-VnEditor.STRUCT = nstructjs.STRUCT.inherit(VnEditor, Area, 'vn.VnEditor') + '\n}';
+VnEditor.STRUCT = closeStruct(nstructjs.STRUCT.inherit(VnEditor, Area, 'vn.VnEditor'));
 nstructjs.register(VnEditor);

@@ -17,6 +17,8 @@ export const EDITORS = [
   { id: 'taskgraph', title: 'Task Graph', what: 'the pipeline task graph' },
   { id: 'inspector', title: 'Inspector', what: 'what is selected, in detail' },
   { id: 'play', title: 'Play', what: 'the runner' },
+  { id: 'wiki', title: 'Wiki', what: 'one markdown document' },
+  { id: 'documents', title: 'Documents', what: "the project's documents and what links to them" },
 ] as const;
 
 /** An editor's area name — the value `view.open`, `view.focus` and a stored layout all use. */
@@ -29,4 +31,28 @@ export function editorTitle(id: EditorId): string {
 }
 
 /** Where `view.open` puts an editor: in the pane you are in, or in a new one beside it. */
-export type OpenWhere = 'here' | 'right' | 'below';
+export type OpenWhere = 'here' | 'left' | 'right' | 'above' | 'below';
+
+export const OPEN_WHERE = ['here', 'left', 'right', 'above', 'below'] as const;
+
+/**
+ * Where this build's registry and this list disagree. Both directions matter and only one of
+ * them is visible without asking: an id in `EDITORS` that nothing registered fails at the moment
+ * someone picks it out of the palette, while a registered editor missing from here never reaches
+ * `view.*` at all — yet still shows up in path.ux's own area-switcher menu, which enumerates the
+ * area classes and knows nothing about this file.
+ *
+ * Pure so the shell's boot check can be tested. The shell supplies the registry's names, minus
+ * chrome — the header is an editor by construction and deliberately absent from this list.
+ */
+export function editorNameProblems(registered: Iterable<string>): {
+  unregistered: EditorId[];
+  unnamed: string[];
+} {
+  const known = new Set(registered);
+  const ids = new Set<string>(EDITOR_IDS);
+  return {
+    unregistered: EDITOR_IDS.filter((id) => !known.has(id)),
+    unnamed: [...known].filter((name) => !ids.has(name)).sort(),
+  };
+}

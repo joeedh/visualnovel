@@ -15,6 +15,7 @@ import { basename, join } from 'node:path';
 import { parseFrontMatter, type EntityDoc } from '@vn/parse';
 import { ENTITY_TAG_KEY, ENTITY_TAGS, type Diagnostic, type EntityTag } from '@vn/types';
 import { exists, readText } from '@vn/util';
+import { taggedKind } from './docfile.js';
 import type { ProjectPaths } from './paths.js';
 import { listWikiFiles } from './tree.js';
 
@@ -24,12 +25,6 @@ interface Candidate {
   doc: EntityDoc;
   /** True for `characters/`/`locations/`, which win over the wiki when both claim an id. */
   conventional: boolean;
-}
-
-/** The tag a file states, or undefined when it states none. Any other value is not an entity. */
-function taggedKind(data: Record<string, unknown>): EntityTag | undefined {
-  const tag = data[ENTITY_TAG_KEY];
-  return tag === ENTITY_TAGS.character || tag === ENTITY_TAGS.location ? tag : undefined;
 }
 
 /**

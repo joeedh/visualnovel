@@ -52,6 +52,13 @@ never pasted into a model's context: there is no door through which the whole tr
 A surface that genuinely wants a file open — an editor — reads it from disk itself, at which
 point a human is looking at it and no context window is paying for it.
 
+That is exactly what the desktop app's `doc.read` is, and why it is not a `bible.read`: the wiki
+editor takes a path and answers the whole document, because a person about to _edit_ a note needs
+all of it and needs the hash their save will present back. Routing that through `@vn/bible` would
+have put the whole-file door back in the one place the design says it must not be — an agent
+holding the same registry would then be one `bible.read` away from pasting the tree. The two acts
+are different, so they are two functions: `query` for the machine, `doc.read` for the human.
+
 `files()` has three readers, and all of them stay on the metadata side of that line. The workspace
 index reports its **length** — a count, so the agent knows a bible exists before it searches; the
 generated project map (`AICONTEXT.generated.md`) renders it as a **table of contents**: path,

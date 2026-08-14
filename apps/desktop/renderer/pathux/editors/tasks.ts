@@ -73,7 +73,12 @@ export class TaskListEditor extends VnEditor {
 
   private selection(): Selection {
     const ui = this.ui;
-    return { sceneId: ui.sceneId, shotId: ui.shotId, characterId: ui.characterId };
+    return {
+      sceneId: ui.sceneId,
+      shotId: ui.shotId,
+      characterId: ui.characterId,
+      docPath: ui.docPath,
+    };
   }
 
   private stateKey(): string {

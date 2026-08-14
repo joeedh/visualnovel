@@ -1,7 +1,7 @@
 import { AreaFlags, Menu, type Container, type MenuTemplate } from 'pathux';
 import { isLive } from '../../api.js';
 import { EDITORS } from '../../../src/shared/editors.js';
-import { exec, move, toggleMode } from '../bridge.js';
+import { exec, move, quit, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 
@@ -125,6 +125,8 @@ export class VnHeaderEditor extends VnEditor {
       Menu.SEP,
       ['Plan ⇄ Execute', () => void toggleMode(), 'Shift+Tab'],
       ['Split Area', () => this.ctx.screen.splitTool(), undefined],
+      Menu.SEP,
+      ['Quit', () => quit(), 'Ctrl+Q'],
     ] as MenuTemplate;
   }
 

@@ -47,6 +47,7 @@ Run from the repo root.
 | Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)          |
 | Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)               |
 | Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`) |
+| Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                      |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 
@@ -289,22 +290,29 @@ the existing `Scene`/`Shot`/`Asset` types.
 - Playable format and its contracts: [`docs/playable-format.md`](docs/playable-format.md)
   (plan: [`docs/plans/runner.md`](docs/plans/runner.md)).
 - The app — the path.ux shell, the shared graph canvas, and one section per editor (Branches,
-  Script, Convo, Coverage, Tasks/Task Graph/Inspector, Play), plus the session store, which
-  project is open, and the seeded workspace: [`docs/desktop-app.md`](docs/desktop-app.md).
+  Script, Convo, Coverage, Tasks/Task Graph/Inspector, Play, Wiki, Documents), plus the session
+  store, which project is open, and the seeded workspace:
+  [`docs/desktop-app.md`](docs/desktop-app.md).
 - **One workspace at a time, and opening another is a teardown.** A picked directory becomes a
   project (`openWorkspace` writes a one-line `project.yaml`, then `ensureRepo` commits what is
   there); `workspace.open`/`pick` rebuild the session, the command stack and the undo journal
   against the new root, so undo never crosses a project boundary and nothing may cache the root.
 - What persists where: [`docs/desktopAppState.md`](docs/desktopAppState.md).
 - The sidebar's document tree + per-entity backlinks (`workspace:doctree`, and the file-tree mode
-  beside it): [`docs/document-tree.md`](docs/document-tree.md).
+  beside it): [`docs/document-tree.md`](docs/document-tree.md). The `documents` pane draws it and
+  the `wiki` pane edits what it names.
+- **A document that is not a scene is written as text, and only by `doc.*`.** A sheet or a note has
+  no structure to edit through, so `doc.read`/`doc.write` move its bytes; a save presents the hash
+  it read at and is refused by **content**, never mtime, so an identical rewrite still saves. The
+  whole document is logged as a digest, and `scenes/**` is refused outright — prose has one write
+  path and it is `story.*`.
 
 The renderer is a **path.ux screen mesh**: the window subdivides into panes and each pane shows
 one editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs
 `git submodule update --init --recursive`, and `pnpm doctor` says so by name. The React room shell
 it replaced is gone, and so is React. Rules worth knowing before touching it:
 
-- **A pane shows an editor, and the eight editors are named in one place**
+- **A pane shows an editor, and the ten editors are named in one place**
   (`apps/desktop/src/shared/editors.ts`): `view.*` runs in main and builds its props from that
   list, the renderer registers each class under the matching area name, and the shell warns at boot
   if the two disagree. There is no room vocabulary.
@@ -334,9 +342,10 @@ it replaced is gone, and so is React. Rules worth knowing before touching it:
 - **An editor with an open text row stops its own keydown.** The screen keymap is a bubble-phase
   window listener, so otherwise `/` opens the palette in the middle of a sentence.
 
-Try it: `pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start -- --mock` (runs for
-real by default — pass `--mock` to skip model calls; `--project <dir>` overrides the
-workspace). Live dev loop: `pnpm --filter @vn/desktop dev -- --mock`.
+Try it: `pnpm build:desktop && pnpm vndesktop --mock` (runs for real by default — pass `--mock`
+to skip model calls; `--project <dir>` overrides the workspace). Live dev loop:
+`pnpm --filter @vn/desktop dev -- --mock`. Both developer entry points open CDP on 9222; a
+packaged app opens nothing.
 
 ## Command system
 
@@ -346,9 +355,9 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 [`docs/command-system.md`](docs/command-system.md); plan:
 [`docs/plans/command-system.md`](docs/plans/command-system.md).
 
-- **`@vn/commands` is the framework; the desktop app owns the commands.** The 48 definitions
-  live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `agent`, `workspace`,
-  `bible`, `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
+- **`@vn/commands` is the framework; the desktop app owns the commands.** The 52 definitions
+  live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `doc`, `agent`,
+  `workspace`, `bible`, `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
 - **Commands are the only write path.** The `story.*` branch mutators go through
   `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the ten scene
   editors through `session.editScene(decide)`, so no surface writes scene prose by another path.
@@ -389,9 +398,12 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
   `apps/desktop/dist/commands.json` for external tooling; the `command:catalog` IPC channel
   serves the **live** registry. Both go through one projection, `catalogOf` — two `toCatalog` call
   sites drifted once, and the channel served a catalog with no interactions in it.
-- **CDP is opt-in** via `VN_CDP_PORT` (bound to `127.0.0.1`; the port grants full control of
-  the renderer). `window.vn` (`exec`/`check`/`catalog`/`history`/`undo`/`redo`) is the one
-  entry point DevTools and CDP share:
+- **CDP is opt-in in the app and on by default in the developer launchers.** `src/main/index.ts`
+  opens a port only when `VN_CDP_PORT` is set (bound to `127.0.0.1`; it grants full control of the
+  renderer), so a packaged app opens nothing — but `pnpm vndesktop` and `pnpm --filter @vn/desktop
+dev` both default it to `9222` and say so on stdout, since it can only be set before
+  `app.whenReady()`. `VN_CDP_PORT=` (empty) opts out. `window.vn`
+  (`exec`/`check`/`catalog`/`history`/`undo`/`redo`) is the one entry point DevTools and CDP share:
 
   ```sh
   node scripts/vn-cdp.mjs "workspace.index()"
@@ -533,6 +545,11 @@ It is not an input; `loadInputs` walks it only for `type:`-tagged entity sheets.
   `docs/plans/<descriptive-name>.md` before the work starts, and is kept up to date as the
   work proceeds — not left only in the conversation. the plan should have a properly
   descriptive name.
+- **`todos.md` at the repo root is the author's running list, and a finished item gets its
+  checkbox checked** — `[ ]:` becomes `[x]:` as part of finishing the work, not later. Leave
+  the wording, ordering and whitespace of the entry alone: it is hand-written, it is
+  deliberately outside prettier's idea of markdown, and reformatting it loses the author's
+  own shorthand.
 
 ### Research
 

@@ -24,12 +24,21 @@ const FILE_ARGS = { magic: MAGIC, doScreen: true, useJSON: true, resetOnLoad: fa
 
 const DEBOUNCE_MS = 400;
 
-/** Selection is three ids and nothing else — a widget binds to `ui.*`, never to a document. */
+/**
+ * Selection is what the author is looking at, and nothing that changes it — a widget binds to
+ * `ui.*` and dispatches a command, never writing a document through the shell.
+ *
+ * `docPath` is a path rather than an id and is the one entry here that names a file. It has to
+ * be: `DocNode.path` and `EntityLinks.sheet` are paths, and a free-form note under `wiki/` has no
+ * id at all. It is still a selection — the tree publishes it, an editor reads it — not a buffer.
+ * `taskHash` stays out, as machine identity that re-keys whenever a prompt changes.
+ */
 interface StoredSelection {
   [k: string]: string;
   sceneId: string;
   shotId: string;
   characterId: string;
+  docPath: string;
 }
 
 /**
@@ -40,6 +49,18 @@ interface StoredSelection {
 const watchers: DataPathWatcher[] = [];
 
 let timer: ReturnType<typeof setTimeout> | undefined;
+
+/** The shell persistence was installed against, so a pane can report a change of its own. */
+let host: ShellApp | undefined;
+
+/**
+ * Report that a pane changed a field it remembers — the documents editor's mode, for one.
+ * `onLayoutChange` cannot see it: nothing about the screen's shape moved, only what is inside
+ * a pane, and the field is part of the same saved blob.
+ */
+export function layoutChanged(): void {
+  if (host) schedule(host);
+}
 
 /** Coalesce the writes a drag or a resize produces into one flush. */
 function schedule(shell: ShellApp): void {
@@ -121,6 +142,7 @@ export function saveSelection(ui: ShellState): void {
     sceneId: ui.sceneId,
     shotId: ui.shotId,
     characterId: ui.characterId,
+    docPath: ui.docPath,
   };
   api.session.set(SELECTION_KEY, selection);
 }
@@ -140,17 +162,19 @@ export function restoreSelection(ui: ShellState): void {
   ui.sceneId = selection.sceneId ?? '';
   ui.shotId = selection.shotId ?? '';
   ui.characterId = selection.characterId ?? '';
+  ui.docPath = selection.docPath ?? '';
 }
 
 /**
  * Start persisting. The mesh reports through `VnScreen.onLayoutChange` (every split, join,
- * border drag and window resize passes through `regenBorders`); the three selection ids
- * report through the datapath watchers, which is the same push the widgets get.
+ * border drag and window resize passes through `regenBorders`); the selection reports through
+ * the datapath watchers, which is the same push the widgets get.
  */
 export function installPersistence(shell: ShellApp): void {
+  host = shell;
   watchLayout(shell);
 
-  for (const path of ['ui.sceneId', 'ui.shotId', 'ui.characterId']) {
+  for (const path of ['ui.sceneId', 'ui.shotId', 'ui.characterId', 'ui.docPath']) {
     watchers.push(
       new DataPathWatcher(shell.api, shell.ctx as unknown as ContextLike, path, () =>
         schedule(shell),

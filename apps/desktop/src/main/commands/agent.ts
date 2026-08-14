@@ -4,9 +4,13 @@
  * bypass: the command is just another way to hand it a turn.
  */
 import { defineFor, prop } from '@vn/commands';
+import { EFFORT_LEVELS, type Effort } from '@vn/types';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
+
+// `default` is the absence of the knob, not a level — a prop has to name it to be able to say it.
+const EFFORT_CHOICES = ['default', ...EFFORT_LEVELS] as const;
 
 export const agentRun = define({
   id: 'agent.run',
@@ -40,6 +44,19 @@ export const agentSetModel = define({
   props: { modelId: prop.string('the model id to bind') },
   async run({ modelId }, ctx) {
     return { message: `Agent model is now ${await ctx.host.session.setModel(modelId)}.` };
+  },
+});
+
+export const agentSetEffort = define({
+  id: 'agent.setEffort',
+  title: 'Set agent effort',
+  description: 'Set how hard the model thinks, or `default` to leave the knob off.',
+  mutating: false,
+  props: { effort: prop.oneOf(EFFORT_CHOICES, 'the reasoning effort to bind') },
+  async run({ effort }, ctx) {
+    const level = effort === 'default' ? undefined : (effort as Effort);
+    await ctx.host.session.setEffort(level);
+    return { message: `Agent effort is now ${level ?? 'default'}.` };
   },
 });
 

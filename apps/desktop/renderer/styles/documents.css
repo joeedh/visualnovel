@@ -1,0 +1,227 @@
+/*
+ * The documents editor's surface. Adopted into the pane's shadow root by `editors/documents.ts`,
+ * never imported by `index.css` — document rules do not cross that boundary, so the reset is here.
+ *
+ * Warm, like the wiki editor: a tree of authored documents is the `--sodium` side of `tokens.css`.
+ * The one cool mark is the selection tint, which is the shared selection every editor draws with.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.dt-surface {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.dt-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.dt-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+.dt-row:hover {
+  background: var(--ink-raised);
+}
+
+.dt-row.sel {
+  background: rgba(69, 200, 214, 0.1);
+  border-left-color: var(--signal);
+}
+
+/* A grouping is a heading, not a place — it reads as chrome so the documents under it do not
+   have to compete with it. */
+.dt-row.group .dt-label {
+  color: var(--mist);
+  letter-spacing: 0.04em;
+}
+
+/* The counted stand-in for children a cap dropped: inert, and visibly so. */
+.dt-row.inert {
+  cursor: default;
+  color: var(--mist-dim);
+  font-style: italic;
+}
+
+.dt-row.inert:hover {
+  background: none;
+}
+
+.dt-twisty {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  color: var(--mist-dim);
+  font-size: 9px;
+  user-select: none;
+}
+
+.dt-label {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dt-badge {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border-radius: var(--r-chrome);
+  background: rgba(244, 162, 76, 0.14);
+  color: var(--sodium);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+/* Two badges the tree must not make look like the others: one is a fact about the disk. */
+.dt-badge.bad {
+  background: rgba(229, 83, 75, 0.16);
+  color: var(--vermilion);
+}
+
+.dt-note {
+  padding: 10px 12px;
+  color: var(--mist-dim);
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------------ new document */
+
+.dt-new {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+}
+
+.dt-new-kind,
+.dt-new-name {
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.dt-new-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dt-new-name:focus {
+  outline: 1px solid var(--sodium);
+}
+
+/* ------------------------------------------------------------------ backlinks */
+
+/* Under the tree, and bounded: what points at the selected entity is a second question, and it
+   must never grow until the tree it belongs to has nowhere left to draw. */
+.dt-panel {
+  flex: 0 0 auto;
+  max-height: 45%;
+  overflow: auto;
+  border-top: 1px solid var(--ink-line);
+  background: var(--ink);
+}
+
+.dt-panel:empty {
+  display: none;
+}
+
+.dt-subject {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 8px;
+  color: var(--sodium);
+  letter-spacing: 0.04em;
+}
+
+.dt-kind {
+  color: var(--mist-dim);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.dt-section {
+  padding: 4px 8px 2px;
+  color: var(--mist-dim);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.dt-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--paper);
+}
+
+.dt-link:hover {
+  background: var(--ink-raised);
+  color: var(--signal);
+}
+
+.dt-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 8px 6px 14px;
+}
+
+.dt-thumb {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--ink-sunken);
+}
+
+/* Grown in place, because there is nowhere else to open an image: no editor shows one on its
+   own, and a second window for a portrait is a worse answer than a bigger tile. */
+.dt-thumb.big {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.dt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The accepted one is the approved portrait — the gate's own verdict, so it carries the gate's
+   colour rather than another badge to read. */
+.dt-thumb.accepted {
+  border-color: var(--jade);
+}

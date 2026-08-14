@@ -12,6 +12,7 @@
   * [Undo is opt-in, and rests on shadow snapshots](#undo-is-opt-in-and-rests-on-shadow-snapshots)
   * [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
 - [The registered commands](#the-registered-commands)
+  * [The `doc.` namespace](#the-doc-namespace)
   * [Interactions: the gesture surface](#interactions-the-gesture-surface)
   * [Preconditions: asking before acting](#preconditions-asking-before-acting)
 - [Reaching the commands](#reaching-the-commands)
@@ -210,8 +211,10 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
 [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
-  the eighteen `story.*` document mutators set it — the six branch/coverage ones it shipped for, the
-  nine prose edits, and the three that followed (`moveShot` and the two outfit commands). A command whose writes are generated output, or that straddles both classes,
+  the twenty document mutators set it — the eighteen `story.*` ones (the six branch/coverage
+  commands it shipped for, the nine prose edits, and the three that followed: `moveShot` and the
+  two outfit commands) plus `doc.write` and `doc.create`, which write documents by the same right.
+  A command whose writes are generated output, or that straddles both classes,
   stays out — see the table below.
 - **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of
   an undoable command into detached commits parked under `refs/vn/undo/<seq>/{pre,post}`. HEAD
@@ -249,13 +252,16 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Forty-seven, in nine namespaces. Twenty-seven are `mutating`; twenty-six declare a precondition;
-eighteen are undoable; one asks for confirmation.
+Fifty-two, in ten namespaces. Twenty-nine are `mutating`; twenty-eight declare a precondition;
+twenty are undoable; one asks for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
 | `bible.search`                 | `query`, `limit` (default `8`)    | Ranked excerpts from `wiki/`. There is no `bible.read`: [`@vn/bible`](story-bible.md) has no whole-file API. |
 | `command.check`                | `invocation`                      | Would that invocation run? See [Preconditions](#preconditions-asking-before-acting). |
+| `doc.read`                     | `path`                            | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
+| `doc.write` ✍ ↺ ✓              | `path`, `text` (digested), `seenHash` (default `''`) | Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
+| `doc.create` ✍ ↺ ✓             | `kind` (`character`\|`location`\|`note`), `name` | Scaffold a sheet or a note in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
 | `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
 | `pipeline.status`              | —                                 | Task counts, gate-pending characters, gate-blocked state.  |
@@ -286,6 +292,7 @@ eighteen are undoable; one asks for confirmation.
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
+| `agent.setEffort`              | `effort` (`default`\|`low`\|`medium`\|`high`\|`xhigh`\|`max`) | How hard the model thinks. `default` leaves the knob off; a model with no such knob keeps the setting and ignores it (`supportsEffort`). |
 | `agent.clear`                  | —                                 | Resets the conversation, back to plan mode.                |
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
 | `interaction.targets`          | `interaction`, `carried`, `scene`        | Every target of a gesture, accepted or refused with why.   |
@@ -297,15 +304,16 @@ eighteen are undoable; one asks for confirmation.
 | `workspace.open` ✍ ✓           | `path`                            | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open). |
 | `workspace.pick` ✍ ✓           | —                                 | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
 | `workspace.recent`             | —                                 | The open project and the ones opened before it, most recent first. |
-| `view.open`                    | `editor`, `where` (`here`\|`right`\|`below`, default `here`) | Shows an editor, in the active pane or in a new pane split off it. |
-| `view.focus`                   | `editor`                          | Makes the pane already showing an editor the active one.   |
+| `view.open`                    | `editor`, `where` (`here`\|`left`\|`right`\|`above`\|`below`, default `here`), `subject` | Shows an editor, in the active pane or in a new pane split off it. |
+| `view.focus`                   | `editor`, `subject`               | Makes the pane already showing an editor the active one.   |
 | `view.close`                   | —                                 | Collapses the active pane into its neighbour; the last pane is kept. |
 | `view.layout`                  | —                                 | Throws the remembered arrangement away and rebuilds the default one. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
-**Only the `story.*` document mutators are undoable**, because undo restores a snapshot of the
+**Only the document mutators are undoable** — the eighteen `story.*` ones plus `doc.write` and
+`doc.create` — because undo restores a snapshot of the
 document tree. `gate.approve` straddles both data classes — undoing `character.md` would leave
 `manifest.json` still marking the asset `accepted` — `story.export`, `story.screenplay` and
 `pipeline.run` write only generated output, and `agent.run` owns its own commits, one per approved
@@ -336,9 +344,49 @@ Inspector.`, `This is the only pane — closing it would leave nothing.` — and
 that one as an error. The `CommandRecord` still reads `ok`, because nothing was refused; the
 command asked for something the layout had no room for.
 
+**`subject` is the document the editor should be showing.** `view.open`/`view.focus` take it and
+publish it as `ui.docPath` — but only when the mesh could show the editor at all, because a
+subject set on a pane that never opened would move every _other_ document editor instead. It is
+one optional prop rather than a second command, so "show me her sheet" stays one act.
+
 The `story.*` mutators are the same discipline one level down — each is one authorial act, so a
 drag in the branch editor or the coverage timeline is one command and one `CommandRecord`, never
 a stream of them.
+
+### The `doc.` namespace
+
+`doc.*` is how a surface reads and writes a workspace document as **text**. The story editors
+speak in scenes, lines and shots; a character sheet or a wiki note has no such structure, so the
+one honest interface to it is its bytes. Full write-up of the editors on top:
+[`desktop-app.md`](desktop-app.md#wiki).
+
+- **Reads are bounded and text-only.** `doc.read` answers `{ path, text, hash, bytes }` for a
+  file under the workspace, refusing what is outside it, what is too large, and what is not text.
+  It is deliberately **not** `@vn/bible`'s `query` — the bible is reached by ranked excerpt so it
+  never floods a context window, and a human editor needs the opposite: the whole file, once.
+- **A save is refused by content, never by clock.** `doc.write` takes `seenHash`, the hash
+  `doc.read` answered with, and refuses when the file on disk no longer hashes to it. mtime would
+  refuse a file that was merely rewritten identically — undo, then save — and would miss a write
+  that landed inside the same second. An empty `seenHash` means "I did not read it first", which
+  is only allowed when nothing is there.
+- **`scenes/**` is refused outright.** A scene has exactly one write path, `session.editScene`,
+  and a text overwrite would route around every rule in `@vn/scriptedit`.
+- **The document is logged as a digest.** `prop.string(…, { digest: true })` marks a value the
+  `CommandRecord` must not carry verbatim: `formatCommand` and the record store
+  `<sha256:bcded73b562b+566>` — twelve hex digits and the byte length — so `commands.jsonl` stays
+  a log of _acts_ rather than a second copy of the author's prose. The value the command _runs_
+  with is untouched. A digested invocation is not re-executable, which is honest: replaying a
+  whole-file overwrite out of a log is not something the record should imply it can do.
+- **Front-matter is the one thing a save reads.** Front-matter that will not parse is refused, and
+  so is a save dropping a `type:` tag the file had — that deletes an entity. Front-matter that
+  parses but fails the entity schema **saves**, with the diagnostic beside it: an author
+  mid-thought must not be trapped by a half-typed field.
+- **`doc.create` scaffolds, it does not compose.** A kind and a name become a sheet in its
+  conventional home — `characters/<id>/character.md` and `locations/<id>.md` from
+  `newCharacterDoc`/`newLocationDoc`, the same scaffolds `vnauthor`'s create tools use; a note is
+  `wiki/<id>.md` holding a heading and nothing else, because `wiki/` is free-form and an empty
+  front-matter block would be a shape the author has to delete. It refuses over an existing path
+  rather than merging into one.
 
 ### Interactions: the gesture surface
 
@@ -518,10 +566,16 @@ await vn.history(5);
 It lives in the preload rather than in React so that it exists before the app mounts, which
 matters for scripting.
 
-**CDP is opt-in and off by default.** Setting `VN_CDP_PORT` makes the app open Chrome's own
-remote-debugging port, bound to `127.0.0.1`. The port grants full control of the renderer, so
-it is never on unless asked for; `scripts/dev.desktop.mjs` defaults it to `9222` **for the dev
-loop only**. Using Chrome's debugger rather than a new socket means there is no second, less
+**CDP is opt-in in the app, and on by default in the developer launchers.** Setting
+`VN_CDP_PORT` makes the app open Chrome's own remote-debugging port, bound to `127.0.0.1`. The
+port grants full control of the renderer, so `src/main/index.ts` never opens one unless asked
+— and a packaged app is asked by nobody. The two ways a developer starts the app default it to
+`9222` instead: `scripts/dev.desktop.mjs` for the live loop, and `scripts/vndesktop.mjs`
+(`pnpm vndesktop`) for the built app. The switch can only be appended before
+`app.whenReady()`, so a port not opened at launch cannot be opened later — which is why the
+entry point you reach for when you intend to drive the app from `vn-cdp.mjs` opens it up front.
+Both announce the port on stdout rather than opening it in silence, and `VN_CDP_PORT=` (empty)
+is the opt-out. Using Chrome's debugger rather than a new socket means there is no second, less
 guarded entry point to secure, and Playwright/Puppeteer/`curl` work out of the box.
 
 `scripts/vn-cdp.mjs` is the driver — it fetches `/json/list`, picks the page target, and

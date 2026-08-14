@@ -20,6 +20,7 @@ describe('the desktop registry', () => {
       'agent',
       'bible',
       'command',
+      'doc',
       'gate',
       'interaction',
       'pipeline',
@@ -50,6 +51,8 @@ describe('the desktop registry', () => {
     const mutating = commands.filter((c) => c.mutating).map((c) => c.id);
     expect(mutating).toEqual([
       'agent.run',
+      'doc.create',
+      'doc.write',
       'gate.approve',
       'pipeline.run',
       'story.assignLineIds',
@@ -91,6 +94,8 @@ describe('the desktop registry', () => {
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
+      'doc.create',
+      'doc.write',
       'story.assignLineIds',
       'story.deleteLine',
       'story.deleteScene',
@@ -121,6 +126,8 @@ describe('the desktop registry', () => {
    */
   it('declares a precondition on the mutators, and only on mutators', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
+      'doc.create',
+      'doc.write',
       'gate.approve',
       'pipeline.run',
       'story.assignLineIds',

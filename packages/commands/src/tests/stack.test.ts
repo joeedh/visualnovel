@@ -1,3 +1,4 @@
+import { sha256 } from '@vn/util';
 import { toCatalog } from '../catalog.js';
 import { defineCommand, defineFor, type CommandContext, type CommandRecord } from '../command.js';
 import { prop } from '../props.js';
@@ -35,6 +36,19 @@ const greet = define({
       data: { who: props.who },
       written: ['a.md'],
     });
+  },
+});
+
+/** A whole document as a prop: the command wants the text, the history must not keep it. */
+const save = define({
+  id: 'demo.save',
+  title: 'Save',
+  description: 'Writes a document.',
+  mutating: true,
+  props: { path: prop.string('where'), text: prop.string('the whole file', { digest: true }) },
+  run(props, ctx) {
+    ctx.host.seen.push(props.text);
+    return Promise.resolve({ message: `wrote ${props.path}` });
   },
 });
 
@@ -96,7 +110,7 @@ const brokenCheck = define({
 
 function setup(over: Partial<CommandContext<Host>> = {}) {
   const registry = new CommandRegistry<Host>();
-  registry.registerAll([greet, explode, guarded, checked, brokenCheck]);
+  registry.registerAll([greet, save, explode, guarded, checked, brokenCheck]);
   const host: Host = { seen: [] };
   const persisted: CommandRecord[] = [];
   const logs: string[] = [];
@@ -136,6 +150,23 @@ describe('CommandStack.exec', () => {
       message: 'hello aiko',
       written: ['a.md'],
     });
+  });
+
+  /**
+   * The bytes are in the file and in the undo snapshot; `commands.jsonl` keeps a fingerprint.
+   * The half that matters most is the second assertion — the command itself is not digested.
+   */
+  it('records a digest of a bulk prop, and still hands the command the real text', async () => {
+    const { stack, host, persisted } = setup();
+    const text = '# Ada\n\n' + 'lore '.repeat(1000);
+    const outcome = await stack.exec('demo.save', { path: 'wiki/ada.md', text }, 'ui');
+
+    expect(outcome.ok).toBe(true);
+    expect(host.seen).toEqual([text]);
+    // Pinned against `@vn/util`'s node-crypto sha256, which this deliberately does not import.
+    const digest = `<sha256:${sha256(text).slice(0, 12)}+5007>`;
+    expect(persisted[0]?.props).toEqual({ path: 'wiki/ada.md', text: digest });
+    expect(persisted[0]?.invocation).toBe(`demo.save(path='wiki/ada.md' text='${digest}')`);
   });
 
   it('numbers records monotonically regardless of outcome', async () => {
@@ -684,6 +715,7 @@ describe('registry', () => {
       'demo.explode',
       'demo.greet',
       'demo.guarded',
+      'demo.save',
     ]);
     expect(registry.namespaces()).toEqual(['demo']);
   });

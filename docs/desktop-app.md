@@ -22,6 +22,8 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Coverage](#coverage)
 - [Tasks, Task Graph and Inspector](#tasks-task-graph-and-inspector)
 - [Play](#play)
+- [Wiki](#wiki)
+- [Documents](#documents)
 - [Remembered UI state (`.vndesktop/session.json`)](#remembered-ui-state-vndesktopsessionjson)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
@@ -31,11 +33,28 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 ## Running it
 
 ```sh
-pnpm --filter @vn/desktop build && pnpm --filter @vn/desktop start -- --mock   # runs for real by default; --mock skips model calls
-pnpm --filter @vn/desktop dev -- --mock                                       # live dev loop
+pnpm build:desktop && pnpm vndesktop --mock     # runs for real by default; --mock skips model calls
+pnpm --filter @vn/desktop dev -- --mock         # live dev loop
 ```
 
 `--project <dir>` overrides the workspace (`VN_PROJECT=<dir>` is an equivalent env fallback).
+
+**`pnpm vndesktop` opens CDP on 9222**, like the dev loop — `scripts/vndesktop.mjs` sets
+`VN_CDP_PORT` before launching Electron, because the switch can only be appended before
+`app.whenReady()` and this is the entry point you reach for when you mean to drive the app from
+`scripts/vn-cdp.mjs`. It announces the port on stdout; `VN_CDP_PORT=<n>` picks another and
+`VN_CDP_PORT=` (empty) opts out. `pnpm --filter @vn/desktop start` still starts the same built
+app with **no** port, as does a packaged build — see
+[`command-system.md`](command-system.md#from-devtools-or-cdp).
+
+**There is no stock menu.** `Menu.setApplicationMenu(null)` runs at `app.whenReady()` — the
+File/Edit/View scaffolding named things this app has not got, and the shell has its own bar. Two of
+the accelerators it took away are worth keeping, so both come back: **F12** opens DevTools, caught
+in main on `before-input-event` because the renderer cannot open its own, and **Ctrl+Q** quits, in
+the shell keymap and in the VN STUDIO menu. Quitting runs `window.close()`, so the wiki pane's
+unsaved-draft guard still gets its say — main answers that guard's `will-prevent-unload` with a
+modal, and `before-quit` holds the app open for the session store's last debounced write, bounded
+at two seconds so a flush that never settles cannot wedge the quit.
 
 **Live dev loop:** `pnpm --filter @vn/desktop dev` (`scripts/dev.desktop.mjs`) runs the three
 moving parts together — esbuild `--watch` (main + preload), the Vite renderer server with HMR,
@@ -44,8 +63,8 @@ and Electron launched against it once it's up (`VITE_DEV_SERVER_URL`, which
 whole tree down. `VN_DEV_PORT` overrides the renderer port (default 5176); any args after the
 script's own (e.g. `--mock`, `--project <dir>`) are forwarded to Electron, and `VN_MOCK`/
 `VN_PROJECT` still pass through as env fallbacks. Main-process edits need a restart (the
-renderer hot-reloads on its own). The dev loop also defaults `VN_CDP_PORT=9222` — see
-[`command-system.md`](command-system.md).
+renderer hot-reloads on its own). The dev loop defaults `VN_CDP_PORT=9222` for the same reason
+`pnpm vndesktop` does — see [`command-system.md`](command-system.md#from-devtools-or-cdp).
 
 **path.ux is a git submodule** at `vendor/path.ux` and carries a nested one of its own, so a
 fresh clone needs `git submodule update --init --recursive`. `pnpm doctor`
@@ -119,15 +138,19 @@ default screen), put the header back, solve and paint, then install the keymap, 
 agent subscription and persistence.
 
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all eight (`branches`, `script`, `convo`, `timeline`,
-  `tasklist`, `taskgraph`, `inspector`, `play`) with their titles. It is in `src/shared/` because
+  `apps/desktop/src/shared/editors.ts` holds all ten (`branches`, `script`, `convo`, `timeline`,
+  `tasklist`, `taskgraph`, `inspector`, `play`, `wiki`, `documents`) with their titles. It is in
+  `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
   boot if the two ever disagree. The header bar is deliberately absent from the list — it is chrome,
   not somewhere the author navigates to.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows an editor
-  in the active pane or in a new pane split off it (`here` | `right` | `below`); asking for one
-  already open `here` is a focus, not a second copy. `view.focus`, `view.close` (collapse into a
+  in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below`);
+  asking for one already open `here` is a focus, not a second copy. Both `view.open` and
+  `view.focus` take an optional `subject` — a workspace-relative path published as `ui.docPath`, so
+  "open the wiki editor on `wiki/history.md`" is one invocation rather than two racing acts; it is
+  published only if the mesh could show the editor at all. `view.close` (collapse into a
   neighbour; the last pane is kept) and `view.layout` (throw the arrangement away) complete the set.
   Main answers optimistically because only the renderer knows how many panes there are, so
   `pathux/view.ts` returns a **correction** sentence the bridge says instead — "No pane is showing
@@ -148,17 +171,25 @@ agent subscription and persistence.
   editor or the agent ran it. `say()` puts a sentence in the screen's note frame — every editor gets
   one, because `VnEditor` builds its header with a note area. `onExec` lets a surface follow the
   *command* rather than the button on it (which is how `agent.clear` empties the transcript from
-  either place).
-- **One selection, in `ShellState`.** `ui.sceneId` / `ui.shotId` / `ui.characterId` are the shared
-  authored selection every editor observes and any editor may publish — the three independent
-  `useState` selections of the room shell are gone. `ui.taskHash` is a fourth, machine identity
+  either place). `onWrote(paths)` is the third feed and the only one that answers **which files
+  moved**: it carries `written` from every successful command *and* from the agent's tool results,
+  whose writes are not commands and would otherwise be invisible. The document editors subscribe to
+  it, so a file the agent rewrites under an open pane is re-read. Which paths concern which pane is
+  `src/shared/writes.ts` (`touches` / `touchesScene`), tested in node — the script pane has no path
+  of its own, only a scene id.
+- **One selection, in `ShellState`.** `ui.sceneId` / `ui.shotId` / `ui.characterId` / `ui.docPath`
+  are the shared authored selection every editor observes and any editor may publish — the three
+  independent `useState` selections of the room shell are gone. `ui.docPath` is the one that names a
+  **file** rather than an id, because `DocNode.path` and `EntityLinks.sheet` are paths and a
+  free-form note under `wiki/` has no id at all; it is still a selection — the tree publishes it, the
+  Wiki editor reads it — not a buffer. `ui.taskHash` is a fifth, machine identity
   rather than authored, which is why it is **not** persisted: a content hash re-keys whenever a
   prompt changes, so one remembered across a re-plan names nothing. `ShellState` is the root of the
   path.ux DataAPI and the only thing a widget may bind to directly — document state never lands
   here, because `@vn/commands` is the write path.
 - **Keyboard is per-area first.** path.ux routes a keystroke to the focused area's keymaps and
   falls through to the screen's, so the shell claims only `/` (palette), Ctrl+Z / Ctrl+Shift+Z /
-  Ctrl+Y and Shift+Tab. Escape is nobody's: a popup installs its own while it is up. An editor that
+  Ctrl+Y, Shift+Tab and Ctrl+Q (quit — it came with the stock menu, which main deletes). Escape is nobody's: a popup installs its own while it is up. An editor that
   wants a key for itself simply takes it, which the room shell's single window-level `keydown`
   could not allow — and an editor with an **open text row stops its own keydown**, or `/` opens the
   palette in the middle of a sentence.
@@ -294,7 +325,9 @@ unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` wi
   act, so what the command said about it is still the last thing that happened; only a row the
   *author* opens is a new act and clears it.
 - **The scene is the shell's, not the editor's.** `ui.sceneId` changing from anywhere is a
-  *reload*, not a redraw.
+  *reload*, not a redraw. So is a write that touched the scene's file, wherever it came from
+  (`bridge.onWrote` + `touchesScene`) — but never with a row open, a structural act pending or a
+  line held: re-reading would take the draft with it, and `⟳` in the bar is the deliberate version.
 
 ## Convo
 
@@ -320,7 +353,21 @@ each event does to it.
 - **This pane unnests.** In the room shell the branch and script editors were rendered *inside*
   `Convo`, which is why only one of them could be open. Here the conversation is a pane like any
   other and the author decides whether it shares the window with the page it is about.
-- **`busy` is shell-wide, not agent-only**: a pipeline run disables the composer too.
+- **`busy` is shell-wide, not agent-only**: a pipeline run disables the composer too. While it is
+  set the dialogue box says `working` — one word, pulsing through `@keyframes`, built once with the
+  stage. No verb list and no timer: a turn that says nothing for thirty seconds is otherwise
+  indistinguishable from one that never started.
+- **The bar carries the three session facts the turn depends on.** The header has the same
+  PLAN ⇄ EXECUTE toggle, but this is the pane a turn is typed into, so this is the pane that has to
+  say whether typing edits files. Beside it are the model menu (`agent.setModel`) and the effort
+  menu (`agent.setEffort`), both from the one list in `@vn/types` — `TEXT_MODELS`, `EFFORT_LEVELS`
+  and `supportsEffort`, which the `vnauthor` REPL's `/model` and `/effort` read too. A model with no
+  reasoning-effort knob greys the effort menu and says why; the setting is **kept** rather than
+  cleared, so switching back to a model that honours it needs no second gesture.
+- **The dialogue box is bounded and the transcript is what grows.** `.convo` is
+  `grid-template-rows: 1fr auto`, so an unbounded line takes the pane and the transcript gets what
+  is left — a long narration turn once cut it to a couple of hundred pixels and put the plan card
+  off screen. `.dbox .line` is capped in `em` (so it tracks the prose size) and scrolls itself.
 
 ## Coverage
 
@@ -494,8 +541,11 @@ box, none of which is a control.
 - **Live, no file needed.** The renderer calls the `story:play` IPC channel; the main process
   builds the playable in-process from the loaded model + store (`session.playable()`).
 - **Image delivery — `vnasset://`.** A privileged custom protocol (registered in
-  `src/main/index.ts`) streams `build/assets/<hash>.<ext>` for `vnasset://<hash>.<ext>`, so
-  `<img src="vnasset://…">` loads content-addressed bytes. This is the app's only image path.
+  `src/main/index.ts`) resolves `vnasset://<hash>.<ext>` against **both** asset roots, in the order
+  `AssetStore` reads them: base art (`assets/objects/`) first, then shot frames
+  (`vngen/build/assets/`) — [`asset-stores.md`](asset-stores.md). So `<img src="vnasset://…">`
+  loads content-addressed bytes wherever they live, which is what lets Documents draw a portrait
+  and Play draw a frame through one path. This is the app's only image path.
 - **The frame carries its shot, so Play stops being a dead end.** `show` beats gained an optional
   `shot` field (`@vn/types`, `@vn/export`), `framesOf` carries it down the frames between shot
   changes, and the editor publishes `ui.sceneId`/`ui.shotId` as the playthrough moves — so every
@@ -513,6 +563,69 @@ box, none of which is a control.
   has nothing left to do.
 - **A missing playable is a sentence on the stage, not a crash.** No project open, or one with no
   generated art, is an ordinary state for an author to read and act on.
+
+## Wiki
+
+`editors/wiki.ts` — one markdown document as text: a story-bible note, a character sheet, a
+location sheet, whatever `ui.docPath` names. Read through `doc.read`, saved through `doc.write`,
+which is what makes "the author saves it, and saving commits to git" true with no machinery of its
+own ([`command-system.md`](command-system.md#the-doc-namespace)).
+
+- **It is not a form over `Character`.** The requirement is that the author edits the markdown, so
+  the front-matter sits in the box with the prose and the model's opinion of it arrives afterwards
+  on the footer line. A sheet whose fields are half-typed **saves** and says so; only a save that
+  would destroy identity — unparseable front-matter, or a dropped `type:` tag — is refused. All
+  three rules live in the command, and the editor re-decides none of them.
+- **Ctrl+S, never a timer.** Every `doc.write` is undoable, so it snapshots pre and post trees in
+  every owned repo and the `Committer` then commits; save-on-blur would spend that on a focus
+  change. A dirty badge shows the unsaved state, and the editor stops its own keydown — the screen
+  keymap is a bubble-phase window listener, so otherwise `/` opens the palette mid-sentence.
+- **The buffer is not authoritative.** `doc.read` returns the content hash it read at; `doc.write`
+  carries it back as `seenHash` and a file something else rewrote underneath — `gate.approve`, the
+  agent, an undo — is refused by **content** with a sentence, never overwritten. A file rewritten
+  *identically* is not a conflict, which is why this is not an mtime check.
+- **Unsaved text outlives the pane.** Drafts are held per path in a module-level map, so a pane
+  that switched editors and came back keeps the edit; `on_remove` cannot veto its own removal, so
+  the one remaining way to lose one — quitting — is caught by a `beforeunload` prompt. That guard
+  needs main's `will-prevent-unload` listener to be worth anything: a `webContents` with none
+  **cancels** the close silently, which is why the window once could not be closed at all.
+- **A file rewritten underneath follows, unless it is being typed into.** `bridge.onWrote` reports
+  every path a command or an agent tool wrote; a clean buffer re-reads, a dirty one does not, and
+  its next save earns the changed-underneath refusal above. `⟳` in the bar is the manual half — it
+  re-reads whatever the state, **discarding** an unsaved draft and saying so in the footer, because
+  refusing would leave the author with no way back to what is on disk.
+- **It does not read through `@vn/bible`.** That interface has no whole-file call and the absence
+  *is* the guarantee ([`story-bible.md`](story-bible.md)); a human reading their own note on screen
+  is not the agent's context window.
+
+## Documents
+
+`editors/documents.ts` — the sidebar, as a pane rather than as fixed chrome, so it can be torn out,
+put on either side, or opened twice. The shape it draws is built in main
+([`document-tree.md`](document-tree.md)); the rules on top of it — flatten to rows, toggle, which
+selection field a node names, which entity the panel is about — are pure in `pathux/doctree.ts`
+with tests beside them.
+
+- **Two trees, one flattener.** Document mode draws `workspace:doctree` — Story → scenes → shots,
+  Characters, Locations, Wiki, Assets by kind; file mode draws `workspace:filetree`, every file on
+  disk. A file tree is a different **source**, not a different kind of tree, so the header toggle
+  buys a second fetch and no second renderer. The mode is a per-pane field declared through
+  `registerEditor(cls, name, fields)`, so two sidebars can differ and each remembers its own.
+- **It owns no selection.** A click publishes `ui.sceneId` / `ui.shotId` / `ui.characterId` /
+  `ui.docPath`, which every other editor already observes — so the tree steers the app without
+  knowing what is open, and a scene picked in Branches lights here without either editor knowing
+  the other exists. A node that names nothing (a grouping, a truncated `more`) returns the very
+  same selection, so opening a branch never costs the author their place.
+- **Backlinks under the tree**, from `DocTree.backlinks[nodeId]`: the sheet (said as "in the story
+  bible" when it lives under `wiki/`), base art by kind with the gate's accepted mark, and the
+  scenes and shots the entity is in. Every row navigates — a scene row publishes the selection, the
+  sheet row opens Wiki on it, a thumbnail grows in place. It is here rather than in the Inspector
+  because the Inspector's subject is `ui.taskHash`, machine identity on a different axis.
+- **New… scaffolds a document and opens it.** Kind plus a name, straight into `doc.create`, which
+  shares `newCharacterDoc`/`newLocationDoc` with the agent's create tools — one authorial act, one
+  answer. The tree refetches on any successful mutating command (`onExec`) and on undo, so the new
+  file is there without a remount. That refetch is deliberately coarse: a tree is one cached
+  `loadProject` away, and a stale tree is worse than a redundant fetch.
 
 ## Remembered UI state (`.vndesktop/session.json`)
 

@@ -190,8 +190,19 @@
   padding: 26px 34px 10px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   gap: 16px;
+}
+/* Bottom-aligned by an auto margin, not `justify-content: flex-end`: flex alignment adds no
+   scrollable overflow at the start edge, so a transcript taller than the pane loses its oldest
+   turns off the top with nothing to scroll back to. An auto margin resolves to 0 once it does. */
+.transcript > :first-child {
+  margin-top: auto;
+}
+/* A flex item only gets an automatic minimum size while its overflow is visible, and `.plan`
+   clips for its rounded corners — so the plan card alone collapsed to ~0 and took the
+   Approve/Reject row out of the pane with it. */
+.transcript > * {
+  flex-shrink: 0;
 }
 .turn-user {
   align-self: flex-end;
@@ -262,10 +273,39 @@
   padding: 5px 13px;
   border-radius: 5px;
 }
+/* Bounded, and in `em` so it tracks the prose size: `.convo` is `grid-template-rows: 1fr auto`,
+   so an unbounded line takes the pane and the transcript gets whatever is left. Roughly eight
+   lines, then it scrolls itself. */
 .dbox .line {
   font-family: var(--prose);
   font-size: 18px;
   line-height: 1.62;
+  max-height: 13em;
+  overflow-y: auto;
+}
+.working {
+  margin-top: 10px;
+  font-family: var(--disp);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sodium);
+  animation: vn-working 1.4s ease-in-out infinite;
+}
+@keyframes vn-working {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .working {
+    animation: none;
+    opacity: 0.8;
+  }
 }
 .composer {
   display: flex;

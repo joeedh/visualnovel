@@ -10,7 +10,7 @@
  * fallbacks for callers that pass env instead of argv (e.g. `scripts/dev.desktop.mjs`); a CLI
  * flag wins over its env-var counterpart when both are given.
  */
-import { app, BrowserWindow, dialog, ipcMain, net, protocol } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol } from 'electron';
 import { existsSync } from 'node:fs';
 import { join, resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -377,9 +377,13 @@ function registerIpc(): void {
 /**
  * Serve stored asset bytes to the renderer over `vnasset://<hash>.<ext>` — the app's only
  * image-loading path. The url host carries `<hash>.<ext>` (sha256 hashes are lowercase hex,
- * so the standard-scheme host lowercasing is harmless); it maps to the content-addressed
- * file under the workspace's `build/assets/`. A missing file simply fails the request and
- * the runner falls back to a placeholder.
+ * so the standard-scheme host lowercasing is harmless). A missing file simply fails the
+ * request and the caller falls back to a placeholder.
+ *
+ * **Both roots**, in the order `AssetStore` reads them: base art — portraits, model sheets,
+ * location plates — lives beside the inputs at `assets/objects/`, and only shot frames are
+ * under `vngen/build/assets/`. A url says nothing about which root it came from, and the
+ * backlink panel's images are entirely the base kind (`docs/asset-stores.md`).
  *
  * The root is resolved per request, not captured: after `switchWorkspace` a captured one would
  * serve the previous project's bytes at the new project's hashes.
@@ -391,7 +395,9 @@ function registerAssetProtocol(): void {
     const hash = dot > 0 ? host.slice(0, dot) : host;
     const ext = dot > 0 ? host.slice(dot + 1) : 'png';
     const paths = new ProjectPaths(workspace());
-    return net.fetch(pathToFileURL(paths.assetFile(hash, ext)).toString());
+    const base = paths.baseAssetFile(hash, ext);
+    const file = existsSync(base) ? base : paths.assetFile(hash, ext);
+    return net.fetch(pathToFileURL(file).toString());
   });
 }
 
@@ -414,9 +420,35 @@ function createWindow(): void {
   win.on('closed', () => {
     win = null;
   });
+
+  // The stock menu is gone (see `app.whenReady`), and with it F12. The renderer cannot open its
+  // own devtools, so the accelerator is caught here instead of being lost with the menu.
+  win.webContents.on('before-input-event', (_event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F12') win?.webContents.toggleDevTools();
+  });
+
+  // The wiki pane's `beforeunload` guard refuses to unload while a draft is unsaved. Electron
+  // *cancels* such a close outright unless somebody answers this event — which is why the window
+  // could not be closed at all — and `preventDefault` here means "unload anyway".
+  win.webContents.on('will-prevent-unload', (event) => {
+    const leave = dialog.showMessageBoxSync(win!, {
+      type: 'warning',
+      buttons: ['Cancel', 'Discard and close'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Unsaved changes',
+      message: 'A document has unsaved changes.',
+      detail: 'Closing now discards them.',
+    });
+    if (leave === 1) event.preventDefault();
+  });
 }
 
 void app.whenReady().then(async () => {
+  // No stock menu: this shell has its own bar, and the File/Edit/View scaffolding named things
+  // it does not have. Quit and DevTools are the two accelerators worth keeping — they come back
+  // as `Ctrl+Q` in the renderer's keymap and F12 in `createWindow`.
+  Menu.setApplicationMenu(null);
   // The session store first: it is global per install, and it is where the recents list the
   // workspace is resolved from lives.
   await openSessionStore();
@@ -435,11 +467,14 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Quitting is synchronous, so hold it open for the one flush that may still be debounced.
+// Quitting is synchronous, so hold it open for the one flush that may still be debounced — but
+// bounded: losing a remembered panel width is a smaller failure than a quit that never lands.
+const QUIT_FLUSH_MS = 2000;
 let flushingOnQuit = false;
 app.on('before-quit', (event) => {
   if (flushingOnQuit || !sessionStore) return;
   flushingOnQuit = true;
   event.preventDefault();
-  void sessionStore.close().finally(() => app.quit());
+  const deadline = new Promise<void>((resolve) => setTimeout(resolve, QUIT_FLUSH_MS).unref?.());
+  void Promise.race([sessionStore.close().catch(() => {}), deadline]).finally(() => app.quit());
 });

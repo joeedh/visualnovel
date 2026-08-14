@@ -6,6 +6,7 @@
  * move the working copy between them. Without one, the stack behaves exactly as it did before
  * undo existed and refuses both.
  */
+import { digestProps } from './digest.js';
 import { formatCommand, parseCommand, DslError } from './dsl.js';
 import { coerceProps, type PropSpecMap } from './props.js';
 import type { CommandRegistry } from './registry.js';
@@ -88,11 +89,13 @@ export class CommandStack<Host = unknown> {
     const startedAt = this.now();
     const { head, dirty } = await this.gitState();
     const seq = ++this.seq;
+    // The record holds the digested props; `run` below still gets the real ones.
+    const recorded = await digestProps(command.props as PropSpecMap, props);
     const base = {
       seq,
       id,
-      props,
-      invocation: formatCommand(id, props),
+      props: recorded,
+      invocation: formatCommand(id, recorded),
       source,
       mutating: command.mutating,
       gitHead: head,

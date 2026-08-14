@@ -5,7 +5,9 @@ per-entity **backlinks** answering "what is this character attached to". Both co
 `workspace:doctree`; a second channel, `workspace:filetree`, serves the tree's other mode — every
 file actually on disk.
 
-Plan and the reasoning behind each decision:
+The pane that draws them is the `documents` editor
+([`desktop-app.md`](desktop-app.md#documents)); this page is the shape underneath it. Plan and the
+reasoning behind each decision:
 [`plans/document-tree-and-backlinks.md`](plans/document-tree-and-backlinks.md).
 
 <!-- toc -->
@@ -63,9 +65,9 @@ Assets         assetkind:<kind>      → asset:<hash>
   against these ids, which is why `character:aiko` must not become a path when the sheet moves.
 - **A node carries identity, never a click action.** It would be tidy to ship the command
   invocation a click runs, the way an interaction target does — but there is no such command:
-  `view.*` switches rooms and modes, and nothing selects a scene or a shot. Inventing a selection
-  vocabulary here would bind the tree to a shell the [path.ux rewrite](plans/pathux-desktop-rewrite.md)
-  replaces. What a click does stays the shell's business.
+  selection is renderer state (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`), not
+  something main decides. So the pane maps a node to a selection itself, and the tree stays a
+  shape any surface can draw. What a click does stays the shell's business.
 - **Paths are workspace-relative with `/` separators**, like the generated project map's — they are
   shown to a human, and an absolute path in a serialized shape is unportable.
 - **A cap is a number in the shape.** A branch over its cap (50 by default) ends in one `more` node
@@ -99,14 +101,14 @@ not what "view every file" asks for.
 It sits in the desktop's main process rather than `@vn/authoring` because the walk needs
 `AssetStore` and the persisted storyboards, neither of which `Workspace` opens, and exactly one
 surface consumes the result. The commands exist so the palette and `scripts/vn-cdp.mjs` can read
-the tree the sidebar reads — which is how the shape gets debugged before any sidebar exists.
+the same tree the sidebar draws — which is how the shape got debugged before the sidebar existed,
+and how it is still checked without one open.
 
 ## Deliberately absent
 
-- **The sidebar itself** — this ships the shape and the channels; the pane belongs to the
-  [desktop rewrite](plans/pathux-desktop-rewrite.md).
 - **An agent backlink tool** — `vnauthor` authors inputs and stops at them; shots and assets are
   pipeline output.
 - **Filesystem watching** — both trees are reads, refetched after a write like `story:graph`.
 - **Editing through the tree** — rename, move and delete are `story.*` commands with their own
-  refusals; a drag in a sidebar would dispatch those, not open a new write path.
+  refusals; a drag in a sidebar would dispatch those, not open a new write path. The pane's one
+  authored act is creation, and it is the existing `doc.create` rather than a tree-shaped write.

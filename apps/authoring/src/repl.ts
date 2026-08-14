@@ -135,7 +135,7 @@ const HELP = [
 async function chooseFromMenu(
   channel: Channel,
   title: string,
-  options: string[],
+  options: readonly string[],
   current: string,
 ): Promise<string | null> {
   channel.write(bold(title));

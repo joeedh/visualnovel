@@ -1,4 +1,5 @@
 export * from './props.js';
+export * from './digest.js';
 export * from './command.js';
 export * from './registry.js';
 export * from './dsl.js';

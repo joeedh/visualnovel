@@ -14,20 +14,9 @@ import {
   type Effort,
 } from '@vn/providers';
 
-export { supportsEffort, type Effort } from '@vn/providers';
-
-/** Curated text models offered by the `/model` menu; any id is also accepted directly. */
-export const TEXT_MODELS = [
-  'claude-opus-4-8',
-  'claude-sonnet-4-6',
-  'claude-haiku-4-5',
-  'claude-fable-5',
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
-];
-
-/** Reasoning-effort levels offered by the `/effort` menu (Claude models that support it). */
-export const EFFORT_LEVELS: Effort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+// The curated model list, the effort levels, and which models honour one all live in `@vn/types`:
+// the desktop app offers the same three menus and cannot import a package that loads a vendor SDK.
+export { EFFORT_LEVELS, TEXT_MODELS, supportsEffort, type Effort } from '@vn/providers';
 import {
   Agent,
   NativeAgentBackend,

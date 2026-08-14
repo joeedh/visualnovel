@@ -884,6 +884,116 @@ describe('WorkspaceSession — the story bible', () => {
   });
 });
 
+/**
+ * The whole-document read and write behind `doc.*`. The refusals are where the risk is: a save
+ * that overwrites someone else's edit, a save that quietly deletes an entity, and prose written
+ * by the one path that does not validate it.
+ */
+describe('WorkspaceSession — documents', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeEach(async () => {
+    p = await makeProject({
+      title: 'Docs',
+      script: SCRIPTS.linear,
+      files: { 'wiki/history.md': '# History\n\nThe canal was filled in 1911.\n' },
+    });
+    session = sessionFor(p);
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  /** The read, the edit, the save, and the hash the next save will carry. */
+  async function roundTrip(path: string, text: string) {
+    const read = await session.readDoc(path);
+    if (!read.ok) throw new Error(read.reason);
+    return session.saveDoc(path, text, read.file.hash);
+  }
+
+  it('reads a note and saves it back, reporting the new hash', async () => {
+    const saved = await roundTrip('wiki/history.md', '# History\n\nRewritten.\n');
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.path).toBe('wiki/history.md');
+    expect(await fs.readFile(join(p.dir, 'wiki', 'history.md'), 'utf8')).toBe(
+      '# History\n\nRewritten.\n',
+    );
+    const reread = await session.readDoc('wiki/history.md');
+    expect(reread.ok && reread.file.hash).toBe(saved.hash);
+  });
+
+  it('refuses a save over a file that changed underneath, naming both hashes', async () => {
+    const read = await session.readDoc('wiki/history.md');
+    if (!read.ok) throw new Error(read.reason);
+    await fs.writeFile(join(p.dir, 'wiki', 'history.md'), '# History\n\nSomebody else.\n');
+    const saved = await session.saveDoc('wiki/history.md', 'mine\n', read.file.hash);
+    expect(saved.ok).toBe(false);
+    expect(saved.ok ? '' : saved.reason).toMatch(/changed underneath this edit/);
+  });
+
+  it('refuses scenes/, outside the workspace, and unparseable front-matter', async () => {
+    const scene = await session.saveDoc('scenes/arrival.md', 'INT. ANYWHERE - DAY\n', '');
+    expect(scene.ok ? '' : scene.reason).toBe('scenes/arrival.md is written by story.*, not whole');
+    const outside = await session.saveDoc('../escape.md', 'x', '');
+    expect(outside.ok ? '' : outside.reason).toMatch(/outside the workspace/);
+    const broken = await roundTrip('wiki/history.md', '---\nid: [unclosed\n---\n\nbody\n');
+    expect(broken.ok ? '' : broken.reason).toMatch(/front-matter will not parse/);
+  });
+
+  it('saves a half-typed character sheet, with the schema failure beside it', async () => {
+    const sheet = 'characters/aiko/character.md';
+    const saved = await roundTrip(sheet, '---\nid: aiko\nname:\n---\n\nStill thinking.\n');
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.diagnostic).toBeTruthy();
+    expect(await fs.readFile(join(p.dir, ...sheet.split('/')), 'utf8')).toContain('Still thinking');
+  });
+
+  it('refuses a save that drops a type: tag, because that deletes the entity', async () => {
+    const path = 'wiki/cast/ada.md';
+    await fs.mkdir(join(p.dir, 'wiki', 'cast'), { recursive: true });
+    await fs.writeFile(
+      join(p.dir, ...path.split('/')),
+      '---\nid: ada\ntype: character\n---\n\nx\n',
+    );
+    const dropped = await roundTrip(path, '---\nid: ada\n---\n\nx\n');
+    expect(dropped.ok ? '' : dropped.reason).toMatch(/drops it — that deletes the character/);
+  });
+
+  it('scaffolds each kind in its conventional home, deriving the id from the name', async () => {
+    const character = await session.createDoc('character', 'Ada Lovelace');
+    expect(character.ok && character).toMatchObject({
+      id: 'ada_lovelace',
+      path: 'characters/ada_lovelace/character.md',
+    });
+    expect((await session.createDoc('location', 'The Roof')).ok && true).toBe(true);
+    expect((await session.createDoc('note', 'Canal History')).ok).toBe(true);
+    expect(await fs.readFile(join(p.dir, 'wiki', 'canal_history.md'), 'utf8')).toBe(
+      '# Canal History\n',
+    );
+    // The new sheet is a real character, not a file nothing reads.
+    expect((await session.index()).characters.map((c) => c.id)).toContain('ada_lovelace');
+  });
+
+  it('refuses to scaffold over a document already there', async () => {
+    expect((await session.createDoc('character', 'Aiko')).ok).toBe(false);
+    const again = await session.createDoc('character', 'Aiko');
+    expect(again.ok ? '' : again.reason).toBe('characters/aiko/character.md already exists');
+  });
+
+  it('says what a save would do without doing it', async () => {
+    const read = await session.readDoc('wiki/history.md');
+    if (!read.ok) throw new Error(read.reason);
+    const preview = await session.previewDoc('wiki/history.md', 'shorter\n', read.file.hash);
+    expect(preview.ok && preview.note).toMatch(/^Overwrites wiki\/history\.md \(8 bytes\)\.$/);
+    expect((await session.readDoc('wiki/history.md')).ok && true).toBe(true);
+    expect(await fs.readFile(join(p.dir, 'wiki', 'history.md'), 'utf8')).toContain('1911');
+  });
+});
+
 describe('WorkspaceSession — over a generated project', () => {
   let p: TestProject;
   let session: WorkspaceSession;

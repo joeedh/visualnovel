@@ -73,6 +73,12 @@ module.exports = {
       displayName: '@vn/desktop',
       rootDir: __dirname,
       testMatch: ['**/apps/desktop/**/tests/*.test.ts'],
+      moduleNameMapper: {
+        ...shared.moduleNameMapper,
+        // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
+        // same build ships beside it in CommonJS. Only the desktop app depends on it.
+        '^nstructjs$': '<rootDir>/apps/desktop/node_modules/nstructjs/build/_nstructjs.js',
+      },
     },
   ],
 };

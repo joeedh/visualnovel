@@ -9,16 +9,25 @@
  * `shared/editors.ts`, which is also what the renderer registers them under.
  */
 import { defineFor, prop } from '@vn/commands';
-import { EDITOR_IDS, editorTitle, type OpenWhere } from '../../shared/editors.js';
+import { EDITOR_IDS, OPEN_WHERE, editorTitle, type OpenWhere } from '../../shared/editors.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
 
 const WHERE: Record<OpenWhere, string> = {
   here: 'in this pane',
+  left: 'to the left',
   right: 'to the right',
+  above: 'above',
   below: 'below',
 };
+
+/** What the optional subject is, said once — both `view.*` verbs take it and mean the same. */
+const SUBJECT =
+  'the document to show once it is there, workspace-relative; only the Wiki editor has one today';
+
+/** ` on wiki/history.md`, or nothing — the half of the sentence a subject adds. */
+const onSubject = (subject: string): string => (subject ? ` on ${subject}` : '');
 
 export const viewOpen = define({
   id: 'view.open',
@@ -29,11 +38,14 @@ export const viewOpen = define({
   mutating: false,
   props: {
     editor: prop.oneOf(EDITOR_IDS, 'which editor to show'),
-    where: prop.oneOf(['here', 'right', 'below'] as const, 'where to put it', { default: 'here' }),
+    where: prop.oneOf(OPEN_WHERE, 'where to put it', { default: 'here' }),
+    subject: prop.string(SUBJECT, { default: '' }),
   },
-  run({ editor, where }, ctx) {
-    ctx.host.ui({ type: 'view', action: 'open', editor, where });
-    return Promise.resolve({ message: `Showing ${editorTitle(editor)} ${WHERE[where]}.` });
+  run({ editor, where, subject }, ctx) {
+    ctx.host.ui({ type: 'view', action: 'open', editor, where, subject });
+    return Promise.resolve({
+      message: `Showing ${editorTitle(editor)}${onSubject(subject)} ${WHERE[where]}.`,
+    });
   },
 });
 
@@ -42,10 +54,13 @@ export const viewFocus = define({
   title: 'Focus an editor',
   description: 'Make the pane already showing an editor the active one, without moving anything.',
   mutating: false,
-  props: { editor: prop.oneOf(EDITOR_IDS, 'which editor to focus') },
-  run({ editor }, ctx) {
-    ctx.host.ui({ type: 'view', action: 'focus', editor });
-    return Promise.resolve({ message: `Focused ${editorTitle(editor)}.` });
+  props: {
+    editor: prop.oneOf(EDITOR_IDS, 'which editor to focus'),
+    subject: prop.string(SUBJECT, { default: '' }),
+  },
+  run({ editor, subject }, ctx) {
+    ctx.host.ui({ type: 'view', action: 'focus', editor, subject });
+    return Promise.resolve({ message: `Focused ${editorTitle(editor)}${onSubject(subject)}.` });
   },
 });
 

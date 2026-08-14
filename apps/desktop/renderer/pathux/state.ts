@@ -7,12 +7,20 @@ import type { AgentMode } from '../../src/shared/ipc.js';
 
 export class ShellState {
   /**
-   * The one selection every editor observes, replacing the rooms' three independent ones.
-   * Empty string means nothing selected.
+   * The one selection every editor observes, replacing the rooms' independent ones. Empty
+   * string means nothing selected.
    */
   sceneId = '';
   shotId = '';
   characterId = '';
+
+  /**
+   * The document a document editor is on: a workspace-relative path, not an id. That is what
+   * `DocNode.path` and `EntityLinks.sheet` already carry, and a note under `wiki/` has no id to
+   * name it by. It is a selection like the three above — the tree publishes it, the wiki editor
+   * observes it — and it persists with them.
+   */
+  docPath = '';
 
   /**
    * The task the inspector is looking at. Unlike the three ids above this is machine identity —
@@ -28,6 +36,8 @@ export class ShellState {
    */
   projectTitle = '';
   model = 'claude-opus-4-8';
+  /** How hard the model is asked to think; `default` is the knob left off, not a level. */
+  effort = 'default';
   agentMode: AgentMode = 'plan';
   errors = 0;
   warnings = 0;

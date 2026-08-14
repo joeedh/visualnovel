@@ -5,7 +5,7 @@
  * `mutating` (writes files / history) and whether it always needs explicit confirmation;
  * the loop's plan-mode gate (M3) reads those flags. Tools never decide policy themselves.
  */
-import { join, relative, resolve } from 'node:path';
+import { join, relative } from 'node:path';
 import { promises as nodeFs } from 'node:fs';
 import { z, type ZodType } from 'zod';
 import {
@@ -41,11 +41,11 @@ import {
   planSceneEdit,
   scenePlanMessage,
 } from '@vn/scriptedit/write';
-import { writeShots } from '@vn/store';
+import { guardedDir, readDocFile, resolveInWorkspace, writeShots } from '@vn/store';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import type { Diagnostic } from '@vn/types';
 import type { Git } from '@vn/git';
-import { updateContext, isInside } from './context.js';
+import { updateContext } from './context.js';
 import { formatIndex, Workspace } from './workspace.js';
 import { discoverSkills, runSkill, skillRoots } from './skills.js';
 
@@ -92,12 +92,6 @@ const ok = (output: string, extra: Partial<ToolResult> = {}): ToolResult => ({
   ...extra,
 });
 const fail = (output: string): ToolResult => ({ ok: false, output });
-
-/** Resolve a workspace-relative or absolute path, rejecting escapes outside the root. */
-function resolveInWorkspace(root: string, p: string): string | null {
-  const abs = resolve(root, p);
-  return isInside(root, abs) ? abs : null;
-}
 
 const rel = (root: string, abs: string): string => relative(root, abs).replace(/\\/g, '/');
 
@@ -146,10 +140,11 @@ const readFileTool: Tool<{ path: string; offset?: number; limit?: number }> = {
   mutating: false,
   args: z.object({ path: z.string(), offset: z.number().optional(), limit: z.number().optional() }),
   async run(a, ctx) {
-    const abs = resolveInWorkspace(ctx.workspace.root, a.path);
-    if (!abs) return fail(`path "${a.path}" is outside the workspace`);
-    if (!(await exists(abs))) return fail(`no such file: ${a.path}`);
-    const text = await readText(abs);
+    // Bounded, text-only, outside-the-workspace refused: the same read `doc.read` performs, so a
+    // file too large to hand a human is also one the agent does not paste into its context.
+    const read = await readDocFile(ctx.workspace.root, a.path);
+    if (!read.ok) return fail(read.reason);
+    const text = read.file.text;
     if (a.offset === undefined && a.limit === undefined) return ok(text, { data: text });
     const lines = text.split('\n');
     const start = Math.max(0, a.offset ?? 0);
@@ -646,12 +641,6 @@ const setOutfitTool: Tool<z.infer<typeof outfitShape>> = {
   },
 };
 
-/** A path a validated tool owns, which `write_file` therefore must not overwrite blind. */
-function guardedBy(path: string): string | null {
-  const first = path.replace(/\\/g, '/').split('/')[0];
-  return first === 'scenes' ? 'edit_scene' : null;
-}
-
 const writeFileTool: Tool<{ path: string; content: string }> = {
   name: 'write_file',
   description:
@@ -662,10 +651,9 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
   async run(a, ctx) {
     const abs = resolveInWorkspace(ctx.workspace.root, a.path);
     if (!abs) return fail(`path "${a.path}" is outside the workspace`);
-    // A chunk written whole is unvalidated: duplicate line ids, a lost heading, a scene id that
-    // no longer matches the filename. `edit_scene` proves each of those before it writes.
-    const owner = guardedBy(rel(ctx.workspace.root, abs));
-    if (owner) return fail(`${a.path} is written by ${owner}, not write_file`);
+    if (guardedDir(rel(ctx.workspace.root, abs))) {
+      return fail(`${a.path} is written by edit_scene, not write_file`);
+    }
     await writeFileAtomic(abs, a.content);
     return ok(`Wrote ${a.path}.`, { written: [rel(ctx.workspace.root, abs)] });
   },

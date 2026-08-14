@@ -8,7 +8,7 @@
  * the shell claims it.
  */
 import { HotKey, KeyMap } from 'pathux';
-import { move, toggleMode } from './bridge.js';
+import { move, quit, toggleMode } from './bridge.js';
 import type { ShellApp } from './context.js';
 import { openPalette } from './palette.js';
 
@@ -21,5 +21,7 @@ export function installKeymap(app: ShellApp): void {
     new HotKey('Z', ['ctrl', 'shift'], () => void move('redo'), 'Redo'),
     new HotKey('Y', ['ctrl'], () => void move('redo'), 'Redo'),
     new HotKey('Tab', ['shift'], () => void toggleMode(), 'Plan ⇄ Execute'),
+    // Ctrl+Q came with the stock menu, which this app deletes; it belongs to the shell now.
+    new HotKey('Q', ['ctrl'], () => quit(), 'Quit'),
   ]);
 }

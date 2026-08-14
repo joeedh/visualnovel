@@ -72,9 +72,13 @@ export type UiEffect =
    * Where an editor goes and which pane is active. An effect names an **editor**, never a room:
    * the shell is a mesh of panes an author arranges, so "show me the coverage strip" is a
    * different act from "put it beside the script", and both are one command away.
+   *
+   * `subject` is the document to show once it is there — a workspace-relative path, published as
+   * `ui.docPath`. Optional because most editors read their subject off the selection they already
+   * observe; without it, opening a document editor on a file would be two acts that race.
    */
-  | { type: 'view'; action: 'open'; editor: EditorId; where: OpenWhere }
-  | { type: 'view'; action: 'focus'; editor: EditorId }
+  | { type: 'view'; action: 'open'; editor: EditorId; where: OpenWhere; subject?: string }
+  | { type: 'view'; action: 'focus'; editor: EditorId; subject?: string }
   | { type: 'view'; action: 'close' }
   | { type: 'view'; action: 'reset' }
   /**
@@ -348,6 +352,27 @@ export interface DocTree {
   roots: DocNode[];
   /** Keyed by node id (`character:aiko`), so a panel is a lookup rather than a second convention. */
   backlinks: Record<string, EntityLinks>;
+}
+
+/**
+ * What `doc.read` hands back. Re-exported rather than restated: the reader owns the shape, and a
+ * surface holding a second copy of it is how a hash stops meaning the same thing at both ends.
+ */
+export type { DocFile } from '@vn/store';
+
+/**
+ * Outcome of a whole-document save. `diagnostic` is the one thing here that is not an error: the
+ * file is on disk and the front-matter parsed, but it does not satisfy the entity schema — an
+ * author mid-thought must not be trapped by a half-typed field, so the editor shows the sentence
+ * and the save stands.
+ */
+export interface DocSaveResult {
+  /** Workspace-relative, `/` separators. */
+  path: string;
+  /** The hash the editor now holds, and presents on its next save. */
+  hash: string;
+  bytes: number;
+  diagnostic?: string;
 }
 
 /** Outcome of a `story.*` branch edit: the patched graph, or why the patch was refused. */

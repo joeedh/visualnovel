@@ -15,12 +15,14 @@ export function defineShellApi(): DataAPI {
   ui.string('sceneId', 'sceneId', 'Scene');
   ui.string('shotId', 'shotId', 'Shot');
   ui.string('characterId', 'characterId', 'Character');
+  ui.string('docPath', 'docPath', 'Document');
   ui.string('taskHash', 'taskHash', 'Task');
 
   // The header's facts. Described here rather than read off `ctx.ui` directly so a later
   // widget can bind to them the way any other value in the shell is bound.
   ui.string('projectTitle', 'projectTitle', 'Project');
   ui.string('model', 'model', 'Model');
+  ui.string('effort', 'effort', 'Effort');
   ui.string('agentMode', 'agentMode', 'Agent Mode');
   ui.int('errors', 'errors', 'Errors');
   ui.int('warnings', 'warnings', 'Warnings');

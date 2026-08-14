@@ -3,7 +3,7 @@ import type { ImageParams } from '@vn/types';
 import type { Task } from '../../../src/shared/ipc';
 
 const PARAMS: ImageParams = { modelId: 'mock-image' };
-const NONE: Selection = { sceneId: '', shotId: '', characterId: '' };
+const NONE: Selection = { sceneId: '', shotId: '', characterId: '', docPath: '' };
 
 const task = (over: Partial<Task> & Pick<Task, 'hash' | 'kind' | 'inputs'>): Task => ({
   deps: [],
@@ -60,11 +60,12 @@ describe('selectionForTask', () => {
       sceneId: 'arrival',
       shotId: 'arrival__beat1',
       characterId: '',
+      docPath: '',
     });
   });
 
   it('keeps the rest of the selection when it names a shot', () => {
-    const current: Selection = { sceneId: 'x', shotId: 'x__1', characterId: 'aiko' };
+    const current: Selection = { sceneId: 'x', shotId: 'x__1', characterId: 'aiko', docPath: '' };
     expect(selectionForTask(shot('greet__establishing'), current).characterId).toBe('aiko');
   });
 
@@ -73,23 +74,39 @@ describe('selectionForTask', () => {
   });
 
   it('names a character, leaving the scene and shot alone', () => {
-    const current: Selection = { sceneId: 'arrival', shotId: 'arrival__1', characterId: '' };
+    const current: Selection = {
+      sceneId: 'arrival',
+      shotId: 'arrival__1',
+      characterId: '',
+      docPath: '',
+    };
     expect(selectionForTask(portrait('aiko'), current)).toEqual({
       sceneId: 'arrival',
       shotId: 'arrival__1',
       characterId: 'aiko',
+      docPath: '',
     });
   });
 
   it('returns the same object for a task that names neither, so nothing is lost', () => {
-    const current: Selection = { sceneId: 'arrival', shotId: 'arrival__1', characterId: 'aiko' };
+    const current: Selection = {
+      sceneId: 'arrival',
+      shotId: 'arrival__1',
+      characterId: 'aiko',
+      docPath: '',
+    };
     expect(selectionForTask(plate('school'), current)).toBe(current);
   });
 });
 
 describe('taskIsSelected', () => {
   it('answers for a bare task, which is what a list has', () => {
-    const sel: Selection = { sceneId: 'arrival', shotId: 'arrival__beat1', characterId: 'aiko' };
+    const sel: Selection = {
+      sceneId: 'arrival',
+      shotId: 'arrival__beat1',
+      characterId: 'aiko',
+      docPath: '',
+    };
     expect(taskIsSelected(shot('arrival__beat1'), sel)).toBe(true);
     expect(taskIsSelected(sheet('aiko'), sel)).toBe(true);
     expect(taskIsSelected(plate('school'), sel)).toBe(false);
@@ -98,7 +115,12 @@ describe('taskIsSelected', () => {
 
 describe('isSelected', () => {
   it('matches a shot task against the selected shot', () => {
-    const sel: Selection = { sceneId: 'arrival', shotId: 'arrival__beat1', characterId: '' };
+    const sel: Selection = {
+      sceneId: 'arrival',
+      shotId: 'arrival__beat1',
+      characterId: '',
+      docPath: '',
+    };
     expect(isSelected(view(shot('arrival__beat1')), sel)).toBe(true);
     expect(isSelected(view(shot('arrival__beat2')), sel)).toBe(false);
   });
@@ -126,7 +148,12 @@ describe('isSelected', () => {
       ghost: { id: 'ghost:shots:arrival', label: '', after: [], gated: true },
     };
     const barrier = { kind: 'barrier' as const, id: 'gate:barrier', pending: ['aiko'] };
-    const sel: Selection = { sceneId: 'arrival', shotId: 'arrival__1', characterId: 'aiko' };
+    const sel: Selection = {
+      sceneId: 'arrival',
+      shotId: 'arrival__1',
+      characterId: 'aiko',
+      docPath: '',
+    };
     expect(isSelected(ghost, sel)).toBe(false);
     expect(isSelected(barrier, sel)).toBe(false);
   });

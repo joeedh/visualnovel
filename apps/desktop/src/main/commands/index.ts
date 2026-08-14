@@ -6,9 +6,10 @@
  * where backend logic lives, and commands only add naming, typed props, and provenance.
  */
 import { CommandRegistry } from '@vn/commands';
-import { agentClear, agentRun, agentSetMode, agentSetModel } from './agent.js';
+import { agentClear, agentRun, agentSetEffort, agentSetMode, agentSetModel } from './agent.js';
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
+import { docCreate, docRead, docWrite } from './doc.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { interactionList, interactionTargets } from './interaction.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
@@ -57,10 +58,14 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
   registry.registerAll([
     agentClear,
     agentRun,
+    agentSetEffort,
     agentSetMode,
     agentSetModel,
     bibleSearch,
     commandCheck,
+    docCreate,
+    docRead,
+    docWrite,
     gateApprove,
     gateCandidates,
     interactionList,

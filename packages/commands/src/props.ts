@@ -21,6 +21,11 @@ export interface Prop<T extends PropValue = PropValue, Req extends boolean = boo
   /** Inclusive bounds; `kind: 'number'` only. */
   min?: number;
   max?: number;
+  /**
+   * This property carries bulk content — a whole document — so the history records a digest of
+   * it instead of the value (`digest.ts`). The command still receives the real thing.
+   */
+  digest?: boolean;
 }
 
 export type PropSpecMap = Record<string, Prop<PropValue, boolean>>;
@@ -39,6 +44,7 @@ interface Opts<T extends PropValue> {
   min?: number;
   max?: number;
   default?: T;
+  digest?: boolean;
 }
 
 /**
@@ -48,6 +54,7 @@ interface Opts<T extends PropValue> {
  */
 interface PropBuilders {
   string(description: string): Prop<string, true>;
+  string(description: string, opts: { digest: true }): Prop<string, true>;
   string(description: string, opts: Opts<string> & { default: string }): Prop<string, false>;
 
   number(description: string, opts?: Omit<Opts<number>, 'default'>): Prop<number, true>;
@@ -79,6 +86,7 @@ function make(
   if (values) spec.values = values;
   if (opts?.min !== undefined) spec.min = opts.min;
   if (opts?.max !== undefined) spec.max = opts.max;
+  if (opts?.digest) spec.digest = true;
   return spec;
 }
 

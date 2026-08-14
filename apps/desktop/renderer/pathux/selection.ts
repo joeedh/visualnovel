@@ -14,6 +14,8 @@ export interface Selection {
   sceneId: string;
   shotId: string;
   characterId: string;
+  /** The authored document. No task names one, so every rule here carries it through untouched. */
+  docPath: string;
 }
 
 /** Shot ids are namespaced `<sceneId>__<raw>`, which is a shot task's only link to a scene. */

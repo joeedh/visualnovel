@@ -166,20 +166,26 @@ Renderer edits hot-reload; **main-process edits need an app restart**. `--mock`/
 all pass through — the dev loop runs for real by default, same as a packaged build, so add
 `--mock` when you don't want live model calls.
 
+To drive the **built** app instead — a main-process bug, a bundling question, anything where
+Vite's copy is the wrong thing to look at — `pnpm build:desktop && pnpm vndesktop` opens 9222
+too. `pnpm --filter @vn/desktop start` is the same app with no port, so an app you can't reach
+over CDP was probably started that way.
+
 ### Is the running app your app?
 
-Two rounds of "the pointerdown isn't reaching React" were once spent on an app started with
-`pnpm --filter @vn/desktop start`, which serves the **built** renderer — every source edit was
-invisible. The symptom to recognize: **a fix that changes behaviour not at all, twice, with no
-error.** Before diagnosing further, confirm the running app contains the change.
+Two rounds of "the pointerdown isn't reaching the renderer" were once spent on an app started
+with `pnpm --filter @vn/desktop start`, which serves the **built** renderer — every source edit
+was invisible. The symptom to recognize: **a fix that changes behaviour not at all, twice, with
+no error.** Before diagnosing further, confirm the running app contains the change.
 
 The same symptom comes from a stale Electron holding CDP 9222 from a previous session, in
-which case you are driving an app you didn't start. Killing the dev loop from outside is not
-Ctrl-C, so its tree survives:
+which case you are driving an app you didn't start — and now that `pnpm vndesktop` opens the
+same port, the stale one is as likely to be a built app as a dev loop. Killing either from
+outside is not Ctrl-C, so its tree survives:
 
 ```powershell
 Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
-  Where-Object { $_.CommandLine -like '*dev.desktop.mjs*' } |
+  Where-Object { $_.CommandLine -like '*dev.desktop.mjs*' -or $_.CommandLine -like '*vndesktop.mjs*' } |
   ForEach-Object { taskkill /PID $_.ProcessId /T /F }
 
 # or, by the ports themselves (5176 = Vite, 9222 = CDP):

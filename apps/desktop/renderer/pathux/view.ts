@@ -8,7 +8,7 @@
  * import cycle.
  */
 import { AreaFlags, type ScreenArea } from 'pathux';
-import { editorTitle } from '../../src/shared/editors.js';
+import { editorTitle, type OpenWhere } from '../../src/shared/editors.js';
 import type { EditorId, UiEffect } from '../../src/shared/ipc.js';
 import type { ShellApp } from './context.js';
 import { editorClass } from './editor.js';
@@ -23,9 +23,9 @@ export function applyView(app: ShellApp, effect: ViewEffect): string | null {
 
   switch (effect.action) {
     case 'open':
-      return open(screen, effect.editor, effect.where);
+      return withSubject(app, effect.subject, open(screen, effect.editor, effect.where));
     case 'focus':
-      return focus(screen, effect.editor);
+      return withSubject(app, effect.subject, focus(screen, effect.editor));
     case 'close':
       return close(screen);
     case 'reset':
@@ -34,11 +34,29 @@ export function applyView(app: ShellApp, effect: ViewEffect): string | null {
   }
 }
 
-function open(
-  screen: VnScreen,
-  editor: EditorId,
-  where: 'here' | 'right' | 'below',
+/**
+ * Publish the subject, unless the mesh could not show the editor at all. A document set on a
+ * pane that never opened would move every *other* document editor instead, which is the one way
+ * this could be worse than doing nothing. The correction passes straight through.
+ */
+function withSubject(
+  app: ShellApp,
+  subject: string | undefined,
+  correction: string | null,
 ): string | null {
+  if (subject && !correction) app.ui.docPath = subject;
+  return correction;
+}
+
+/** Which way `splitArea` divides, and whether the *new* half is the one that gets the editor. */
+const SPLIT: Record<Exclude<OpenWhere, 'here'>, { horiz: boolean; intoNew: boolean }> = {
+  left: { horiz: false, intoNew: false },
+  right: { horiz: false, intoNew: true },
+  above: { horiz: true, intoNew: false },
+  below: { horiz: true, intoNew: true },
+};
+
+function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | null {
   const cls = editorClass(editor);
   if (!cls) return `This build has no ${editorTitle(editor)} editor.`;
 
@@ -54,13 +72,28 @@ function open(
   if (index === NO_PANE) return 'There is no pane to show it in.';
   const target = areas[index] as ScreenArea;
 
-  // `horiz` splits top/bottom; the new half is the one that gets the editor, so the pane the
-  // author was in keeps what it held.
-  const sarea = where === 'here' ? target : screen.splitArea(target, 0.5, where === 'below');
+  // `splitArea` keeps the target as the first half and returns a *copy* of it as the second, so
+  // whichever half does not get the new editor still holds what the author was looking at. Which
+  // half that is, is the whole difference between `left` and `right`.
+  let sarea = target;
+  if (where !== 'here') {
+    const split = SPLIT[where];
+    const made = screen.splitArea(target, 0.5, split.horiz);
+    sarea = split.intoNew ? made : target;
+  }
   sarea.switch_editor(cls as unknown as Parameters<ScreenArea['switch_editor']>[0]);
   activate(screen, sarea);
   settle(screen);
   return null;
+}
+
+/**
+ * Whether some pane is already showing an editor. Exported for a surface that is about to ask
+ * for one: `view.open(where='here')` focuses an editor that is up and otherwise takes the asking
+ * pane over, which for the sidebar means replacing itself with what it was trying to open.
+ */
+export function isShowing(screen: VnScreen, editor: EditorId): boolean {
+  return paneShowing(panesOf(screen), editor) !== NO_PANE;
 }
 
 function focus(screen: VnScreen, editor: EditorId): string | null {

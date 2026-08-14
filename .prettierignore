@@ -13,6 +13,10 @@ keys/**
 docs/**
 Readme.MD
 
+# The author's running list. Hand-written shorthand, deliberately not markdown checkboxes —
+# reformatting it loses the shape it is kept in. See CLAUDE.md's Plans conventions.
+todos.md
+
 # Standalone, hand-authored design reference (compact single-line HTML/CSS kept on purpose).
 # It's an artifact, not source — don't let prettier reflow it into thousands of lines.
 apps/desktop/prototype.html

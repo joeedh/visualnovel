@@ -6,6 +6,8 @@
 import type {
   AgentEvent,
   DesktopApi,
+  DocNode,
+  DocTree,
   EventChannels,
   PipelineStatus,
   Playable,
@@ -173,6 +175,125 @@ const MOCK_GRAPH: StoryGraph = {
 };
 
 /**
+ * The same story as a document tree. Only the four authored branches: the assets branch is a
+ * projection of a manifest a preview has not got, and an empty one would misrepresent the shape.
+ */
+const MOCK_DOCTREE: DocTree = {
+  roots: [
+    {
+      id: 'branch:story',
+      kind: 'branch',
+      label: 'Story',
+      children: [
+        {
+          id: 'scene:rooftop_intro',
+          kind: 'scene',
+          label: 'rooftop_intro',
+          path: 'scenes/rooftop_intro.md',
+          children: [
+            {
+              id: 'shot:rooftop_intro/rooftop_intro__s1',
+              kind: 'shot',
+              label: 'rooftop_intro__s1',
+              badge: 'wide',
+            },
+          ],
+        },
+        {
+          id: 'scene:aiko_confession',
+          kind: 'scene',
+          label: 'aiko_confession',
+          path: 'scenes/aiko_confession.md',
+        },
+        {
+          id: 'scene:haruki_route',
+          kind: 'scene',
+          label: 'haruki_route',
+          path: 'scenes/haruki_route.md',
+          badge: 'unreachable',
+        },
+      ],
+    },
+    {
+      id: 'branch:characters',
+      kind: 'branch',
+      label: 'Characters',
+      children: [
+        {
+          id: 'character:aiko',
+          kind: 'character',
+          label: 'Aiko',
+          path: 'characters/aiko/character.md',
+          badge: 'approved',
+        },
+        {
+          id: 'character:haruki',
+          kind: 'character',
+          label: 'Haruki',
+          path: 'characters/haruki/character.md',
+          badge: 'candidates',
+        },
+      ],
+    },
+    {
+      id: 'branch:locations',
+      kind: 'branch',
+      label: 'Locations',
+      children: [
+        {
+          id: 'location:rooftop',
+          kind: 'location',
+          label: 'Rooftop',
+          path: 'locations/rooftop.md',
+        },
+      ],
+    },
+    {
+      id: 'branch:wiki',
+      kind: 'branch',
+      label: 'Wiki',
+      children: [
+        { id: 'wiki:history.md', kind: 'wiki', label: 'History', path: 'wiki/history.md' },
+      ],
+    },
+  ],
+  backlinks: {},
+};
+
+/** The same workspace as files on disk, for the sidebar's other mode. */
+const MOCK_FILETREE: DocNode[] = [
+  {
+    id: 'dir:characters',
+    kind: 'dir',
+    label: 'characters',
+    path: 'characters',
+    children: [
+      {
+        id: 'file:characters/aiko/character.md',
+        kind: 'file',
+        label: 'character.md',
+        path: 'characters/aiko/character.md',
+      },
+    ],
+  },
+  {
+    id: 'dir:scenes',
+    kind: 'dir',
+    label: 'scenes',
+    path: 'scenes',
+    children: [
+      {
+        id: 'file:scenes/rooftop_intro.md',
+        kind: 'file',
+        label: 'rooftop_intro.md',
+        path: 'scenes/rooftop_intro.md',
+      },
+    ],
+  },
+  { id: 'file:project.yaml', kind: 'file', label: 'project.yaml', path: 'project.yaml' },
+];
+
+/**
  * The browser preview has no main process to persist to, so the session store's role is
  * played by `localStorage` — enough that the resizable panels behave identically there.
  */
@@ -195,6 +316,10 @@ const fallback: DesktopApi = {
     switch (channel) {
       case 'workspace:index':
         return Promise.resolve(MOCK_INDEX);
+      case 'workspace:doctree':
+        return Promise.resolve(MOCK_DOCTREE);
+      case 'workspace:filetree':
+        return Promise.resolve(MOCK_FILETREE);
       case 'pipeline:status':
         return Promise.resolve(MOCK_STATUS);
       case 'agent:setMode':

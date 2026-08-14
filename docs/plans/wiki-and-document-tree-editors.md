@@ -1,10 +1,10 @@
 # Wiki and document-tree editors
 
-Status: **planned**, and pressure-tested against the code — see [What the audit
-changed](#what-the-audit-changed). Item 12 of [`refactorTaskList.md`](refactorTaskList.md). The
+Status: **shipped** — see [What shipped, and where it deviated](#what-shipped-and-where-it-deviated).
+Item 12 of [`refactorTaskList.md`](refactorTaskList.md). The
 panes for the backends that items 3 and 9 shipped — a sidebar that draws the document tree and the
 file tree, a backlink panel behind a character, and a markdown editor for the story bible — plus the
-read and write commands they need, which do not exist yet.
+read and write commands they need, which did not exist.
 
 <!-- toc -->
 
@@ -87,7 +87,7 @@ each is a place where a step named a mechanism the code does not have.
 
 | # | Decision | Leaning |
 | --- | --- | --- |
-| 1 | Sidebar as a pane, or as path.ux sidebar panels on every editor | **A pane** — a ninth editor, `documents` |
+| 1 | Sidebar as a pane, or as path.ux sidebar panels on every editor | **A pane** — a tenth editor, `documents`, beside the ninth, `wiki` |
 | 2 | Does the wiki editor read through `@vn/bible` | **No.** A new `doc.read`; `Bible` never grows a whole-file API |
 | 3 | Character sheets: raw markdown or a structured form | **Raw markdown**, re-parsed on save, dispatched by `type:` tag |
 | 4 | Which namespace writes a document | **A new `doc.*`**, over the agent tools' guards — it spans `wiki/`, `characters/`, `locations/` |
@@ -429,6 +429,31 @@ the new file is in the tree without a remount; `bible.search` from the palette f
 into a new note. Save over a file changed underneath refuses with a sentence — and save over a file
 merely _rewritten identically_ (undo, then save) succeeds. `commands.jsonl` shows the save as a
 digest, not as the document. `pnpm check`, `pnpm test`, `pnpm lint`, `pnpm build` green.
+
+## What shipped, and where it deviated
+
+All seven steps landed, and Acceptance was run live against `examples/mySampleRepo` in full: the
+pane on the left, the five branches, Aiko's panel with her sheet, model sheets and portrait, the
+sheet row opening the `wiki` editor, Ctrl+S taking a commit, the changed-underneath refusal, the
+identical-rewrite save succeeding, the FILES/DOCUMENTS toggle surviving a tear-out, a created
+character appearing in the tree with no remount, and `bible.search` finding a phrase typed into a
+new note. `commands.jsonl` records the save as `<sha256:bcded73b562b+566>`.
+
+Three things are not what the steps said:
+
+- **Decision 10's "closing a dirty pane prompts" became a module-level `drafts` map** keyed by path,
+  plus a `beforeunload` guard. `UIBase.on_remove()` cannot veto its own removal — path.ux has already
+  decided by the time it runs — so a prompt there could only have been a prompt *after* the pane was
+  gone. Keeping the draft is the better answer anyway: a pane torn out and reopened comes back to the
+  unsaved text, and the only thing that can lose it is a reload, which `beforeunload` warns about.
+- **Step 6's "an asset row opens it" became an in-place enlargement.** No editor shows a bare image,
+  and a second window for a portrait is a worse answer than a bigger tile — so a thumbnail clicked
+  grows to the panel's width (`.dt-thumb.big`) and clicked again shrinks back.
+- **A New… row landed in the documents editor that no step names.** Acceptance requires creating a
+  character from the tree, and `doc.create` shipped in step 2 with no surface — the steps simply
+  never said which pane calls it. path.ux has no prompt or dialog helper, so it is a kind select and
+  a name box in the pane's own shadow root, opened from the header, committing on Enter and opening
+  what it wrote. A refusal leaves the row up over the name that earned it.
 
 ## What the audit changed
 
