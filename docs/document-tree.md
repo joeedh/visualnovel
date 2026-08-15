@@ -82,11 +82,13 @@ Assets         assetkind:<kind>      → asset:<hash>
   and a `path` is what the pane routes to the `wiki` editor, which would then `doc.read` a PNG.
   Clicking one names `ui.assetHash` instead and opens the `asset` editor.
 - **A node carries identity, never a click action.** It would be tidy to ship the command
-  invocation a click runs, the way an interaction target does — but there is no such command:
-  selection is renderer state (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`,
-  `ui.assetHash`), not
-  something main decides. So the pane maps a node to a selection itself, and the tree stays a
-  shape any surface can draw. What a click does stays the shell's business.
+  invocation a click runs, the way an interaction target does — but selection is renderer state
+  (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`, `ui.assetHash`), not something main
+  decides, and *which editor is open* is something only the mesh knows. So the pane maps a node to
+  a selection itself (`selectionForNode`) and then to an editor (`routeFor` in
+  `pathux/route.ts`, over the `claims` each editor declares beside its name), and the tree stays a
+  shape any surface can draw. The claim table is in
+  [`desktop-app.md`](desktop-app.md#documents); what a click does stays the shell's business.
 - **Paths are workspace-relative with `/` separators**, like the generated project map's — they are
   shown to a human, and an absolute path in a serialized shape is unportable.
 - **A cap is a number in the shape.** A branch over its cap (50 by default) ends in one `more` node

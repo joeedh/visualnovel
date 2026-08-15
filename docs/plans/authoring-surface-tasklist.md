@@ -43,14 +43,14 @@ nothing. Wave C is the two features that consume the rest.
 
 ### 1 — Editor routing by relevance
 
-- [ ] Claims declared beside the names in `apps/desktop/src/shared/editors.ts`, as predicates over
+- [x] Claims declared beside the names in `apps/desktop/src/shared/editors.ts`, as predicates over
       a node rather than a `DocNodeKind` map
-- [ ] Pure `routeFor()` in `apps/desktop/renderer/pathux/route.ts`, sorting on
+- [x] Pure `routeFor()` in `apps/desktop/renderer/pathux/route.ts`, sorting on
       `(visible, tier, EDITORS order)`
-- [ ] `pathux/tests/route.test.ts`
-- [ ] Selection published **before** the open, so a two-field subject (a shot) arrives whole
-- [ ] `documents.ts` row click routes through it; `where: 'elsewhere'` covers the no-pane case
-- [ ] Docs: `docs/document-tree.md`, `docs/desktop-app.md`
+- [x] `pathux/tests/route.test.ts`
+- [x] Selection published **before** the open, so a two-field subject (a shot) arrives whole
+- [x] `documents.ts` row click routes through it; `where: 'elsewhere'` covers the no-pane case
+- [x] Docs: `docs/document-tree.md`, `docs/desktop-app.md`
 
 ### 2 — Asset cross-references
 

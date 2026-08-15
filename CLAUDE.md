@@ -175,7 +175,7 @@ model + manifest into a small in-house **playable** (`story.play.json`), and the
 plays it. This is deliberately **not** an external DSL export.
 
 - Playable format: [`docs/playable-format.md`](docs/playable-format.md).
-- The app — shell, canvas, the eleven editors, the session store, the seeded workspace:
+- The app — shell, canvas, the twelve editors, the session store, the seeded workspace:
   [`docs/desktop-app.md`](docs/desktop-app.md). What persists where:
   [`docs/desktopAppState.md`](docs/desktopAppState.md). The sidebar's document tree:
   [`docs/document-tree.md`](docs/document-tree.md).
@@ -196,9 +196,13 @@ editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs
 and no room vocabulary. The rules are stated in full in
 [`docs/desktop-app.md`](docs/desktop-app.md); the ones that bite hardest:
 
-- **The eleven editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
+- **The twelve editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
   **`registerEditor(cls, 'vn.Name')`** is the only way to register one — a hand-written name is
   minified and every remembered pane comes back as the same editor.
+- **That same list says what each editor will show for a clicked document**, as a `claims`
+  predicate over the node; the ranking — visible before primary, `EDITORS` order last — is pure in
+  `renderer/pathux/route.ts` beside the pane arithmetic. A visible _secondary_ beats a hidden
+  _primary_, deliberately.
 - **`src/shared/` is in the browser bundle**, so whatever it imports must be node-free; neither
   `tsgo` pass catches a violation, only `vite build`.
 - **A raw DOM surface goes in the shadow root via `VnEditor.appendSurface`** and carries its own

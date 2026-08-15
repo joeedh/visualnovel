@@ -1,4 +1,4 @@
-[ ]: create a system for clicking on document tree items to automatically show the associated editor.
+[x]: create a system for clicking on document tree items to automatically show the associated editor.
      give each editor class a static method to test if a document reference is valid for it, it should return
 	 a relevence score (e.g. for wiki pages the wiki editor gives the highest score).  
 	 all instantiated editor tabs should be searched, and the (valid) one with the higher relevence score 

@@ -1,6 +1,6 @@
 # Clicking a document opens the editor that answers for it
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -200,3 +200,42 @@ once the rule exists, and it removes the "why did that open a third Asset pane" 
   documents pane; clicking it again with Script open focuses that pane instead of splitting again.
 - Clicking a `wikidir` still only expands it.
 - Clicking a `.png` in file-tree mode does not open the wiki editor on binary bytes.
+
+## Shipped deviations
+
+Differences between this plan as written and the code as shipped, all deliberate:
+
+- **The Inspector claims nothing.** The plan gave it `secondary` on `shot`, `character`, `location`
+  and `asset`, as the thing that would make the literal visibility rule pay. Reading the editor
+  killed it: its subject is `ui.taskHash` and it draws per-*task* detail, while no document-tree
+  node names a task — so a click routed there would land on an empty pane. `scene` still has three
+  claimants (Script primary; Branches and Coverage secondary), which is what the visibility tests
+  are written over.
+- **`RouteRequest` has no `from`.** The plan carried the asking pane "so the fallback never lands
+  back in it", but the fallback is `where: 'elsewhere'` and `paneElsewhere` already answers
+  *the biggest pane that is not the asking one* off the active pane. A second, redundant notion of
+  which pane asked would have been a field nothing read.
+- **`Route` has no `toggle`.** Whether a click expands a node depends on `DocRow.expandable` and on
+  `selectionForNode` returning the selection identically — neither of which `routeFor` is given.
+  The identity check in `pick` stays the branch that decides toggle-vs-route, exactly as Stage 3
+  describes, and `routeFor` answers only `select` or `open`.
+- **`VISIBILITY_FIRST` is not a constant.** The comparator states the two keys in order with the
+  reasoning above it; swapping the two comparisons is the same two-line change, without a boolean
+  that is never false.
+- **`SUBJECT_OF` moved rather than being read in place.** It lived in `view.ts`, which imports
+  path.ux and so cannot be reached from a node-only test; it is now exported from `route.ts` and
+  imported back by `view.ts`. `isShowing` was deleted in the same edit — `routeFor` is the surface
+  it existed for — and `panesOf` is exported in its place.
+- **The claim table is `CLAIMS`**, derived from `EDITORS` in the same file, because an entry
+  without a `claims` key makes the union unnarrowable at the call site. The declarations still sit
+  on the entries; only the iteration order is materialized.
+- **`openDoc` now opens `elsewhere` rather than `right`** when no wiki pane is up, because that is
+  what `routeFor` answers for every other document. It is the better of the two — the biggest pane
+  that is not the sidebar, splitting only when there is none.
+- **`.yml` joined the text suffixes.** Five extensions were named; a `.yml` that opened nothing
+  while `.yaml` opened would be a distinction no author drew.
+
+Verified live over CDP against `examples/sample` in mock mode: clicking `greet` with no Script
+pane open turned the biggest non-sidebar pane into Script; clicking it again focused rather than
+split; clicking `Aiko` and then `Classroom 2-B` focused the already-open Wiki pane on each sheet;
+clicking the childless `Assets` grouping did nothing at all.

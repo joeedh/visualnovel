@@ -13,6 +13,7 @@ import type { EditorId, UiEffect } from '../../src/shared/ipc.js';
 import type { ShellApp } from './context.js';
 import { editorClass } from './editor.js';
 import { NO_PANE, paneElsewhere, paneShowing, paneToClose, paneToUse, type Pane } from './panes.js';
+import { SUBJECT_OF } from './route.js';
 import type { VnScreen } from './screen.js';
 
 type ViewEffect = Extract<UiEffect, { type: 'view' }>;
@@ -38,17 +39,6 @@ export function applyView(app: ShellApp, effect: ViewEffect): string | null {
       return null;
   }
 }
-
-/**
- * Which selection field an editor's subject *is*. A path and a hash are not interchangeable —
- * pointing `docPath` at a `.png` would have the wiki editor `doc.read` a binary — so an editor
- * with no entry here simply has no subject, and the field it does not name is left alone.
- */
-const SUBJECT_OF: Partial<Record<EditorId, 'docPath' | 'assetHash'>> = {
-  wiki: 'docPath',
-  documents: 'docPath',
-  asset: 'assetHash',
-};
 
 /**
  * Publish the subject, unless the mesh could not show the editor at all. A document set on a
@@ -121,15 +111,6 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
   return null;
 }
 
-/**
- * Whether some pane is already showing an editor. Exported for a surface that is about to ask
- * for one: `view.open(where='here')` focuses an editor that is up and otherwise takes the asking
- * pane over, which for the sidebar means replacing itself with what it was trying to open.
- */
-export function isShowing(screen: VnScreen, editor: EditorId): boolean {
-  return paneShowing(panesOf(screen), editor) !== NO_PANE;
-}
-
 function focus(screen: VnScreen, editor: EditorId): string | null {
   const index = paneShowing(panesOf(screen), editor);
   if (index === NO_PANE) return `No pane is showing ${editorTitle(editor)}.`;
@@ -145,8 +126,11 @@ function close(screen: VnScreen): string | null {
   return null;
 }
 
-/** The mesh as the pure rules see it. */
-function panesOf(screen: VnScreen): Pane[] {
+/**
+ * The mesh as the pure rules see it. Exported for a surface about to route a click of its own:
+ * `routeFor` needs the panes, and only this knows how to read them off the screen.
+ */
+export function panesOf(screen: VnScreen): Pane[] {
   return (screen.sareas as ScreenArea[]).map((sarea) => ({
     editor: areaNameOf(sarea),
     chrome: Boolean(sarea.area && sarea.area.flag & AreaFlags.HIDDEN),

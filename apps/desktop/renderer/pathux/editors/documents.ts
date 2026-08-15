@@ -14,9 +14,10 @@ import {
 } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { layoutChanged } from '../persist.js';
+import { routeFor } from '../route.js';
 import type { VnScreen } from '../screen.js';
 import type { Selection } from '../selection.js';
-import { isShowing } from '../view.js';
+import { panesOf } from '../view.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
 import type { DocNode, DocTree, EntityLinks } from '../../../src/shared/ipc.js';
 
@@ -428,17 +429,26 @@ export class DocumentsEditor extends VnEditor {
       return;
     }
 
+    // Selection first, always: a shot needs two fields to name it and `view.open` carries one
+    // string, so an editor whose subject cannot travel opens on the selection it already sees.
     this.publish(next);
-    if (row.node.kind === 'asset') this.openAsset(next.assetHash);
+    this.route(row.node);
   }
 
   /**
-   * Show a generated asset in the Asset editor, anywhere but here. `elsewhere` is the whole
-   * answer: it focuses one that is already up, takes the biggest *other* pane when it is not,
-   * and splits only in a window that has no other pane to take.
+   * Show the editor that answers for a node. Which one, and where, is `routeFor`'s — the pane
+   * arithmetic behind `elsewhere` already means "anywhere but the one asking", so opening an
+   * asset can never replace the tree it was clicked in.
    */
-  private openAsset(hash: string): void {
-    void exec('view.open', { editor: 'asset', where: 'elsewhere', subject: hash });
+  private route(node: DocNode): void {
+    const screen = this.ctx?.screen as VnScreen | undefined;
+    const route = routeFor({ node, panes: screen ? panesOf(screen) : [] });
+    if (route.action !== 'open') return;
+    void exec('view.open', {
+      editor: route.editor,
+      where: route.where,
+      subject: route.subject,
+    });
   }
 
   private publish(next: Selection): void {
@@ -453,15 +463,13 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Show a document in the Wiki editor. `here` is what focuses one that is already up; only when
-   * none is does the pane split, because `here` would otherwise replace *this* pane — the sidebar
-   * swapping itself for the thing it was asked to open.
+   * Show a document by path — what the backlink rows and the New… row have instead of a node.
+   * Routed like everything else, over a node standing in for the path, so there is exactly one
+   * place that decides where a document opens.
    */
   private openDoc(path: string): void {
     this.publish({ ...this.selection(), docPath: path });
-    const screen = this.ctx?.screen as VnScreen | undefined;
-    const where = screen && isShowing(screen, 'wiki') ? 'here' : 'right';
-    void exec('view.open', { editor: 'wiki', where, subject: path });
+    this.route({ id: `wiki:${path}`, kind: 'wiki', label: path, path });
   }
 }
 

@@ -94,6 +94,7 @@ renderer/
   pathux/               shell.ts (boot) · screen.ts · context.ts · state.ts · api.ts (DataAPI)
                         theme.ts · tokens.ts · keymap.ts · palette.ts · bridge.ts · persist.ts
                         editor.ts (VnEditor + registerEditor) · view.ts · panes.ts (pure)
+                        route.ts (which editor a clicked node opens; pure)
                         dom.ts (raw-DOM vocabulary) · selection.ts · agent.ts
                         branch.ts · script.ts · timeline.ts · convo.ts (pure gesture/state cores)
                         graph/canvas.ts · play/playback.ts
@@ -148,7 +149,10 @@ agent subscription and persistence.
   `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
-  boot if the two ever disagree. The header bar is deliberately absent from the list — it is chrome,
+  boot if the two ever disagree. Each entry also declares what it will show for a clicked
+  document-tree node (see [Documents](#documents)), so a thirteenth editor that forgets to is
+  visibly claim-less in the same file that names it rather than silently unreachable from the tree.
+  The header bar is deliberately absent from the list — it is chrome,
   not somewhere the author navigates to.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows an editor
   in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below` |
@@ -656,11 +660,32 @@ with tests beside them.
   scenes and shots the entity is in. Every row navigates — a scene row publishes the selection, the
   sheet row opens Wiki on it, a thumbnail grows in place. It is here rather than in the Inspector
   because the Inspector's subject is `ui.taskHash`, machine identity on a different axis.
-- **An asset leaf is named, and clicking it opens the Asset pane `elsewhere`.** Names come from
-  main ([`document-tree.md`](document-tree.md)); the click publishes `ui.assetHash` and asks for the
-  pane somewhere other than this one, because a sidebar that replaced itself with the thing it named
-  would leave the author nothing to click next. An asset node carries no `path` on purpose — a path
-  is what routes to Wiki, which would then `doc.read` a PNG.
+- **Clicking a node shows the editor that answers for it**, and which one is a table lookup rather
+  than a score. Each entry in `src/shared/editors.ts` declares a `claims` predicate over the node —
+  `primary` or `secondary` or nothing — and `pathux/route.ts` ranks the claimants by **visibility
+  first, tier second**, breaking a tie on `EDITORS` order. The consequence is deliberate: a visible
+  *secondary* beats a hidden *primary*, so clicking a scene with Coverage open and Script closed
+  lands in Coverage, which is where the author is already looking.
+
+  | node | primary | secondary |
+  | --- | --- | --- |
+  | `scene` | Script | Branches, Coverage |
+  | `shot` | Coverage | — |
+  | `character`, `location` | Wiki — *only if the entity has a sheet* | — |
+  | `wiki` | Wiki | — |
+  | `file` | Wiki, when the path reads as text | — |
+  | `asset` | Asset | — |
+  | `branch`, `assetkind`, `wikidir`, `dir`, `more` | — | — |
+
+  A claim is a predicate over the **node**, not a map from its kind, for two reasons the table
+  shows: an entity with no sheet has nothing for Wiki to open, and in file mode a `.png` is a
+  `file` like any other — pointing Wiki at one would have it `doc.read` a binary. The Inspector
+  claims nothing on purpose: its subject is `ui.taskHash`, and no tree node names a task.
+  A winner already up is asked for `here` (a focus); one that is not gets `elsewhere`, which is
+  what keeps the sidebar from replacing itself with the thing it named. Selection is published
+  **before** the open, always — a shot needs two fields to name it and `view.open` carries one
+  string, so an editor whose subject cannot travel opens on the selection it already sees.
+  A node that claims nothing keeps today's behaviour: the click selects, and a grouping expands.
 - **New… scaffolds a document and opens it.** Kind plus a name, straight into `doc.create`, which
   shares `newCharacterDoc`/`newLocationDoc` with the agent's create tools — one authorial act, one
   answer. The tree refetches on any successful mutating command (`onExec`) and on undo, so the new
