@@ -137,6 +137,10 @@ an authorial act the author performs; the tools follow it, they do not initiate 
   bible is a place the agent goes and looks. `loadContext` does not touch it.
 - **Not an input.** Nothing in it reaches the task graph except through a `type:`-tagged sheet,
   which is an entity, not bible content.
+- **Not the archive.** `archive/` holds the author's own uploaded documents verbatim, outside every
+  directory anything sweeps: `query` does not reach it, `search` does not either, and it is read
+  only when someone names a path in it. The bible is retrievable; the archive is kept. See
+  [`vnauthor.md`](vnauthor.md#the-archive).
 - **Not versioned separately — yet.** A `wiki/` with its own `.git` is
   [`plans/refactorTaskList.md`](plans/refactorTaskList.md) item 4. This design only refrains
   from making it harder.

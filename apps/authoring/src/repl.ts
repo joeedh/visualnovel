@@ -8,10 +8,13 @@
 import { relative } from 'node:path';
 import { createInterface, emitKeypressEvents, type Interface } from 'node:readline';
 import {
+  archiveUpload,
+  describeUpload,
   discoverSkills,
   formatIndex,
   formatSubject,
   skillRoots,
+  uploadSuggestions,
   type Permission,
   type Plan,
 } from '@vn/authoring';
@@ -129,6 +132,7 @@ const HELP = [
   '  /status          list characters, locations, and scenes',
   '  /skills          list available authoring skills',
   '  /makeimage <what>  draw a concept image of it (costs one generation)',
+  '  /upload <file...>  archive documents, then ask what to do with them',
   '  /exit, /quit     leave vnauthor',
   '',
   'Shift-Tab cycles between plan and execute mode.',
@@ -320,6 +324,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
         await makeImage(session, channel, line.slice('/makeimage'.length).trim());
         continue;
       }
+      if (line === '/upload' || line.startsWith('/upload ')) {
+        await upload(session, channel, line.slice('/upload'.length).trim());
+        continue;
+      }
       if (line.startsWith('/')) {
         channel.write(yellow(`unknown command "${line}". Try /help.`));
         continue;
@@ -372,6 +380,50 @@ async function makeImage(
   } catch (err) {
     channel.write(yellow(`could not draw it: ${err instanceof Error ? err.message : err}`));
   }
+}
+
+/**
+ * `/upload <file...>` — copy the author's own documents into `archive/`, then ask about them.
+ *
+ * The same `archiveUpload` the desktop's `upload.pick` runs, so a file uploaded from either place
+ * lands in the same layout. It is not a turn: the model is told nothing here, and what it is told
+ * next is whichever suggestion the author picks. Plan mode afterwards for that reason — the answer
+ * to "what should I do with these" is a plan, not an edit.
+ */
+async function upload(session: AuthoringSession, channel: Channel, rest: string): Promise<void> {
+  const paths = splitPaths(rest);
+  if (paths.length === 0) {
+    channel.write(yellow('Usage: /upload <file> [file...]   (quote paths containing spaces)'));
+    return;
+  }
+  let batch;
+  try {
+    batch = await archiveUpload(session.ctx.workspace, paths);
+  } catch (err) {
+    channel.write(yellow(`could not upload: ${err instanceof Error ? err.message : err}`));
+    return;
+  }
+  channel.write('');
+  channel.write(describeUpload(batch));
+  if (batch.files.length === 0) return;
+
+  const suggestions = uploadSuggestions(batch);
+  channel.write('');
+  channel.write(dim('What next? For example:'));
+  suggestions.forEach((s, i) => channel.write(`  ${i + 1}. ${s}`));
+  channel.write('');
+  session.agent.setMode('plan');
+}
+
+/** Split a command line into paths, honouring quotes so a Windows path with spaces survives. */
+function splitPaths(rest: string): string[] {
+  const out: string[] = [];
+  const pattern = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  for (const m of rest.matchAll(pattern)) {
+    const path = m[1] ?? m[2] ?? m[3] ?? '';
+    if (path !== '') out.push(path);
+  }
+  return out;
 }
 
 async function printStatus(session: AuthoringSession, channel: Channel): Promise<void> {

@@ -411,6 +411,24 @@ the same events** to write the transcript — see the threads bullet below.
   them there.
 - **The composer is built once and never rebuilt.** It is what the author is typing into and where a
   seed lands, so it outlives every redraw of the transcript above it — and it stops its own keydown.
+- **An upload opens a conversation, and it opens on a question.** **Upload Files…** in the app menu
+  runs `upload.pick`; once bytes have landed it puts the session in plan mode, closes the open
+  thread and opens this pane with the command's own sentence in the dialogue box — *"Archived 3
+  files to `archive/…`. What should I do with them?"* — and the openers under it as **chips**.
+  A chip **fills** the composer and does not send: the point is to teach the shape of a useful
+  prompt, and sending it removes the moment where the author edits it into what they meant. Nothing
+  here is a feed item, so no thread file is written until the author actually says something, and
+  `asked` drops the chips the instant one is. A cancelled dialog and a batch where every file was
+  refused both leave the conversation in progress alone — the renderer keys on the `seed` the
+  command emits only when something was written. See
+  [`plans/upload-and-archive.md`](plans/upload-and-archive.md) and
+  [`vnauthor.md`](vnauthor.md#the-archive).
+- **A pane the author did not click is flashed, once.** `UiEffect`'s `view` carries `flash`, and
+  `applyView` outlines the pane it landed in for 600ms after the mesh has settled. It is an overlay
+  positioned over the pane's rectangle rather than a class on the `ScreenArea`: pane children paint
+  over their own element's border, and the sheet that would style it lives in a shadow root this
+  code does not own. A pane that was already open and already focused still flashes — that is the
+  case the flag exists for, since nothing else about the pane would move.
 - **This pane unnests.** In the room shell the branch and script editors were rendered *inside*
   `Convo`, which is why only one of them could be open. Here the conversation is a pane like any
   other and the author decides whether it shares the window with the page it is about.

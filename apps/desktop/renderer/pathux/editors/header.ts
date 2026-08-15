@@ -161,6 +161,10 @@ export class VnHeaderEditor extends VnEditor {
       this.recentMenu(),
       ['Reindex Project', () => openPalette('workspace.reindex'), undefined],
       Menu.SEP,
+      // The palette, not the dialog directly: `upload.pick` is `confirm`, and the palette is where
+      // a command says what it is about to do before the OS chooser takes over the screen.
+      ['Upload Files…', () => openPalette('upload.pick'), undefined],
+      Menu.SEP,
       ['Plan ⇄ Execute', () => void toggleMode(), 'Shift+Tab'],
       ['Split Area', () => this.ctx.screen.splitTool(), undefined],
       Menu.SEP,

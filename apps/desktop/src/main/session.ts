@@ -111,6 +111,7 @@ import {
   Agent,
   StructuredAgentBackend,
   Workspace,
+  archiveUpload,
   composeSystem,
   loadContext,
   workspaceArtGen,
@@ -124,6 +125,7 @@ import {
   type PlanDecision,
   type RunResult,
   type ToolContext,
+  type UploadBatch,
   type WorkspaceIndex,
 } from '@vn/authoring';
 import type { Excerpt } from '@vn/bible';
@@ -758,6 +760,14 @@ export class WorkspaceSession {
     await this.writes;
     this.thread = undefined;
     this.convo = emptyConvo('');
+  }
+
+  /**
+   * Copy the author's own documents into `archive/`, verbatim. The rule lives in `@vn/authoring`
+   * so the REPL's `/upload` and this land in the same place; the session only supplies the root.
+   */
+  async uploadFiles(files: string[]): Promise<UploadBatch> {
+    return archiveUpload(new Workspace(this.dir), files);
   }
 
   /** Every saved conversation in this project, newest first, and which one is being written to. */

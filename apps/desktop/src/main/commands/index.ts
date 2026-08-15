@@ -63,6 +63,7 @@ import {
   storySpliceScene,
   storySplitScene,
 } from './story.js';
+import { uploadFiles, uploadPick } from './upload.js';
 import { viewClose, viewFocus, viewLayout, viewOpen, viewPalette } from './view.js';
 import {
   workspaceCreate,
@@ -146,6 +147,8 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storySetSpeaker,
     storySpliceScene,
     storySplitScene,
+    uploadFiles,
+    uploadPick,
     viewClose,
     viewFocus,
     viewLayout,

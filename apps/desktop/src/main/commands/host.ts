@@ -20,6 +20,8 @@ export interface CommandHost {
   openWorkspace(root: string): Promise<{ root: string; title: string }>;
   /** The native directory chooser. `undefined` when the user cancelled; throws with no window. */
   pickDirectory(): Promise<string | undefined>;
+  /** The native file chooser, multi-select. Empty when the user cancelled; throws with no window. */
+  pickFiles(): Promise<string[]>;
   /**
    * Ask another command's precondition — the stack's own `check`, reached through the host
    * because a command cannot import the stack that runs it.

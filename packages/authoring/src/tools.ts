@@ -47,6 +47,7 @@ import type { Diagnostic } from '@vn/types';
 import type { Git } from '@vn/git';
 import { formatSubject, parseSubject } from '@vn/artgen';
 import type { ArtGen } from './art.js';
+import { listArchive } from './archive.js';
 import { updateContext } from './context.js';
 import { formatIndex, Workspace } from './workspace.js';
 import { discoverSkills, runSkill, skillRoots } from './skills.js';
@@ -217,6 +218,23 @@ const searchTool: Tool<{ query: string; regex?: boolean }> = {
     if (matches.length === 0) return ok(`No matches for "${a.query}".`, { data: [] });
     const body = matches.map((m) => `${m.file}:${m.line}: ${m.text}`).join('\n');
     return ok(body, { data: matches });
+  },
+};
+
+const listArchiveTool: Tool<Record<string, never>> = {
+  name: 'list_archive',
+  description:
+    'List documents the author uploaded to archive/. They are not in search or the bible — ' +
+    'read one with read_file once you know its path.',
+  mutating: false,
+  args: z.object({}).strict(),
+  async run(_a, ctx) {
+    const batches = await listArchive(ctx.workspace);
+    if (batches.length === 0) return ok('The archive is empty.', { data: [] });
+    const body = batches
+      .map((b) => [`${b.dir}/`, ...b.files.map((f) => `  ${f.path} (${f.bytes} bytes)`)].join('\n'))
+      .join('\n');
+    return ok(body, { data: batches });
   },
 };
 
@@ -1005,6 +1023,7 @@ export const ALL_TOOLS: Tool[] = [
   readFileTool,
   listWorkspaceTool,
   searchTool,
+  listArchiveTool,
   searchBibleTool,
   validateInputsTool,
   parseFountainTool,

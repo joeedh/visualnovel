@@ -77,9 +77,20 @@ export type UiEffect =
    * `subject` is the document to show once it is there — a workspace-relative path, published as
    * `ui.docPath`. Optional because most editors read their subject off the selection they already
    * observe; without it, opening a document editor on a file would be two acts that race.
+   *
+   * `flash` outlines the pane once when it lands. For a command that moved the author somewhere
+   * they did not click — `upload.pick` opening a conversation — where a pane that was already
+   * open and already focused is the case it exists for, since nothing else about it would move.
    */
-  | { type: 'view'; action: 'open'; editor: EditorId; where: OpenWhere; subject?: string }
-  | { type: 'view'; action: 'focus'; editor: EditorId; subject?: string }
+  | {
+      type: 'view';
+      action: 'open';
+      editor: EditorId;
+      where: OpenWhere;
+      subject?: string;
+      flash?: boolean;
+    }
+  | { type: 'view'; action: 'focus'; editor: EditorId; subject?: string; flash?: boolean }
   | { type: 'view'; action: 'close' }
   | { type: 'view'; action: 'reset' }
   /**

@@ -254,8 +254,8 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Seventy-eight, in fourteen namespaces. Forty-seven are `mutating`; forty-six declare a
-precondition; thirty are undoable; seven ask for confirmation.
+Eighty, in fifteen namespaces. Forty-nine are `mutating`; forty-eight declare a
+precondition; thirty are undoable; nine ask for confirmation.
 
 **Commands are the only write path.** The `story.*` branch mutators go through
 `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the scene
@@ -330,6 +330,8 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `agent.newThread`              | —                                 | End the open conversation and start again. The next turn opens a new thread file. |
 | `agent.openThread`             | `id`                              | Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread. Returns the whole record as `data`. |
 | `agent.renameThread` ✍ ✓       | `id` (default `''`), `title`      | Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins. |
+| `upload.files` ✍ ⚠ ✓           | `paths`                           | Copy the author's own documents into `archive/` verbatim, then open a fresh conversation in plan mode asking what to do with them. The archive is outside every directory the agent sweeps, so nothing here reaches `search` or the bible — it is read by name. |
+| `upload.pick` ✍ ⚠ ✓            | —                                 | `upload.files` with the native multi-select file chooser in front. Cancelling changes nothing, and the dialog is not a permission: what the command refuses is refused after it too. |
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
 | `interaction.targets`          | `interaction`, `carried`, `scene`, `asset` | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
@@ -365,7 +367,9 @@ of offering undo. `gate.approve` straddles both data classes — undoing `charac
 `pipeline.run` write only generated output, and `agent.run` owns its own commits, one per approved
 plan. `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst
 at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can perform;
-`workspace.reindex` writes one derived file, and undoing it means running it again; and
+`workspace.reindex` writes one derived file, and undoing it means running it again;
+`upload.files`/`upload.pick` copy bytes in from outside the tree *and* close the conversation that
+was open, which `vngen/state` being outside the snapshot means undo could not put back; and
 `workspace.open`/`workspace.pick`/`workspace.create` write into a *different* tree than the one a
 snapshot covers, so a shadow ref in the old repo could not restore it anyway. The reasoning is in
 [`plans/command-undo-redo.md`](plans/command-undo-redo.md).

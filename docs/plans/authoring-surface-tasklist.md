@@ -89,16 +89,16 @@ nothing. Wave C is the two features that consume the rest.
 
 *Depends on 4.*
 
-- [ ] `packages/authoring/src/archive.ts`: `archiveUpload`, `uploadSuggestions`, `ARCHIVE_DIR`
-- [ ] `list_archive` tool; `INPUT_GLOBS` left exactly as it is
-- [ ] `archive.test.ts`, including the test that `search` finds nothing an archived file contains
+- [x] `packages/authoring/src/archive.ts`: `archiveUpload`, `uploadSuggestions`, `ARCHIVE_DIR`
+- [x] `list_archive` tool; `INPUT_GLOBS` left exactly as it is
+- [x] `archive.test.ts`, including the test that `search` finds nothing an archived file contains
       while `read_file` reads it
-- [ ] `upload.files` / `upload.pick` commands, `confirm: true`; forced plan mode, new thread,
+- [x] `upload.files` / `upload.pick` commands, `confirm: true`; forced plan mode, new thread,
       seeded message
-- [ ] Suggestion chips that **fill** the composer; the 600ms border flash
-- [ ] Menu: Upload Files…
-- [ ] REPL `/upload <paths…>`
-- [ ] Docs: `docs/vnauthor.md`, `docs/desktop-app.md`, `docs/story-bible.md`, `CLAUDE.md`
+- [x] Suggestion chips that **fill** the composer; the 600ms border flash
+- [x] Menu: Upload Files…
+- [x] REPL `/upload <paths…>`
+- [x] Docs: `docs/vnauthor.md`, `docs/desktop-app.md`, `docs/story-bible.md`, `CLAUDE.md`
 
 ### 6 — Adopting an uploaded picture
 

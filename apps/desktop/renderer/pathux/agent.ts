@@ -18,6 +18,7 @@ import {
   confirmDecided,
   decided,
   emptyConvo,
+  offered,
   proposed,
   queried,
   received,
@@ -147,6 +148,15 @@ export function installAgent(): void {
     } else if (id === 'agent.openThread') {
       const record = outcome.data as ThreadRecord | undefined;
       if (record) set(replayed(state, record.items, REOPENED));
+      setMode('plan');
+    } else if (id === 'upload.files' || id === 'upload.pick') {
+      // The seeded turn is the command's sentence, not the model's — nothing has been asked yet,
+      // which is the point: the conversation opens on the author's question, not on an answer.
+      // `seed` is present only when bytes actually landed, so a cancelled dialog and an upload
+      // where every file was refused both leave the conversation the author was having alone.
+      const upload = outcome.data as { seed?: string; suggestions?: string[] } | undefined;
+      if (!upload?.seed) return;
+      set(offered(state, upload.seed, upload.suggestions ?? []));
       setMode('plan');
     }
   });

@@ -7,6 +7,7 @@ import {
   confirmDecided,
   decided,
   emptyConvo,
+  offered,
   proposed,
   queried,
   received,
@@ -138,6 +139,25 @@ describe('clearing', () => {
     const after = received(cleared(convo, 'Conversation cleared.'), ranTool('c'));
     expect(after.line).toBe('Conversation cleared.');
     expect(after.feed).toEqual([{ id: 3, role: 'tool', text: 'c' }]);
+  });
+});
+
+describe('a conversation something else opened', () => {
+  const openers = ['Summarize these and file them under `wiki/`.', 'Turn these into characters.'];
+
+  test('clears what came before and holds the openers as chips', () => {
+    const convo = received(emptyConvo(opening), ranTool('a'));
+    const after = offered(convo, 'Archived 2 files.', openers);
+    expect(after.feed).toEqual([]);
+    expect(after.line).toBe('Archived 2 files.');
+    expect(after.suggestions).toEqual(openers);
+    expect(after.seq).toBe(convo.seq);
+  });
+
+  test('the chips go once a turn is sent — they offer to start what is already under way', () => {
+    const after = asked(offered(emptyConvo(opening), 'Archived 2 files.', openers), 'do the first');
+    expect(after.suggestions).toEqual([]);
+    expect(after.busy).toBe(true);
   });
 });
 

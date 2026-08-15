@@ -54,6 +54,29 @@ const SURFACE_CSS = `
   outline: none;
   border-color: var(--sodium);
 }
+
+/* Openers offered by whatever started this conversation. Between the dialogue box and the
+   composer, because that is the gap the eye crosses on the way to typing — and they *fill* the
+   composer, so they read as drafts rather than as buttons that do something. */
+.cv-surface .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cv-surface .chips button {
+  border: 1px solid var(--ink-line);
+  border-radius: 999px;
+  background: var(--ink-raised);
+  color: var(--mist);
+  font-size: 12.5px;
+  padding: 6px 13px;
+  text-align: left;
+}
+.cv-surface .chips button:hover {
+  color: var(--paper);
+  border-color: var(--sodium);
+}
 `;
 
 /**
@@ -83,6 +106,8 @@ export class ConvoEditor extends VnEditor {
   private sendBtn!: HTMLButtonElement;
   /** The one word said while a turn is in flight; a CSS animation does the rest. */
   private workingEl!: HTMLDivElement;
+  /** Where `Convo.suggestions` are drawn. Empty for every conversation nobody seeded. */
+  private chipsEl!: HTMLDivElement;
   /** Kept because the thread menu opens under it, and only the button knows where that is. */
   private threadsBtn!: Button;
   private drawn = -1;
@@ -233,6 +258,9 @@ export class ConvoEditor extends VnEditor {
     dbox.appendChild(this.workingEl);
     stage.appendChild(dbox);
 
+    this.chipsEl = el('div', 'chips') as HTMLDivElement;
+    stage.appendChild(this.chipsEl);
+
     const composer = el('div', 'composer');
     this.input = document.createElement('input');
     this.input.name = 'composer';
@@ -281,6 +309,7 @@ export class ConvoEditor extends VnEditor {
     this.lineEl.textContent = state.line;
     this.sendBtn.disabled = state.busy;
     this.workingEl.style.display = state.busy ? 'block' : 'none';
+    this.drawChips(state.suggestions);
 
     this.transcript.textContent = '';
     if (state.feed.length === 0 && !state.plan && !state.question && !state.confirm) {
@@ -300,6 +329,25 @@ export class ConvoEditor extends VnEditor {
       this.input.value = seeded;
       this.input.focus();
       this.input.setSelectionRange(seeded.length, seeded.length);
+    }
+  }
+
+  /**
+   * The openers, as chips. Clicking one **fills** the composer and focuses it — it does not send.
+   * The chip is there to teach the shape of a useful prompt, and sending it would remove the one
+   * moment where the author edits it into what they actually meant.
+   */
+  private drawChips(suggestions: readonly string[]): void {
+    this.chipsEl.textContent = '';
+    for (const text of suggestions) {
+      const chip = document.createElement('button');
+      chip.textContent = text;
+      chip.addEventListener('click', () => {
+        this.input.value = text;
+        this.input.focus();
+        this.input.setSelectionRange(text.length, text.length);
+      });
+      this.chipsEl.appendChild(chip);
     }
   }
 

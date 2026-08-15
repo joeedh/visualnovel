@@ -1,3 +1,6 @@
+import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { makeProject } from '@vn/testkit';
 import { renderDiff, renderEvent, renderPlan } from '../render.js';
 import { runRepl, terminalPermission, type Channel } from '../repl.js';
@@ -138,6 +141,33 @@ describe('runRepl (offline)', () => {
       expect(text).toContain('the classroom at dusk');
       expect(text).toContain('Plan mode');
       expect(text).not.toContain('wrote ');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('archives /upload files and offers openers without asking the model anything', async () => {
+    const { dir, cleanup } = await tempProject();
+    const source = join(await fs.mkdtemp(join(tmpdir(), 'vn-upload-')), 'field notes.md');
+    await fs.writeFile(source, '# Field notes\n\nThe third district burned.\n');
+    try {
+      const { channel, out } = scriptChannel(['/upload', `/upload "${source}"`, '/exit']);
+      const code = await runRepl({ dir, mock: true, channel });
+      const text = out.join('\n');
+      expect(code).toBe(0);
+      expect(text).not.toContain('unknown command');
+      expect(text).toContain('Usage: /upload');
+      // A quoted path with a space survives the split, and the name is kept verbatim.
+      expect(text).toContain('field notes.md');
+      expect(text).toContain('What next?');
+      expect(text).toContain('1. ');
+
+      const batches = await fs.readdir(join(dir, 'archive'));
+      expect(batches).toHaveLength(1);
+      const stored = join(dir, 'archive', batches[0] as string, 'field notes.md');
+      expect(await fs.readFile(stored, 'utf8')).toBe(
+        '# Field notes\n\nThe third district burned.\n',
+      );
     } finally {
       await cleanup();
     }

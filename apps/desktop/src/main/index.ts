@@ -339,6 +339,15 @@ function getStack(): CommandStack<CommandHost> {
         });
         return result.canceled ? undefined : result.filePaths[0];
       },
+      pickFiles: async () => {
+        if (!win) throw new Error('there is no window to show a file chooser in');
+        const result = await dialog.showOpenDialog(win, {
+          title: 'Upload documents',
+          buttonLabel: 'Upload',
+          properties: ['openFile', 'multiSelections'],
+        });
+        return result.canceled ? [] : result.filePaths;
+      },
       // Lazily through `getStack`, not the local `stack`: the host is built while the stack
       // is still being constructed, so capturing it here would capture `undefined`.
       check: (id, props) => getStack().check(id, props),

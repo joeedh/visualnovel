@@ -203,6 +203,12 @@ plays it. This is deliberately **not** an external DSL export.
   convention for a pane that holds only a path, and `renderAssetStrip` is the read-only strip
   Documents, Wiki and Script all draw. Nothing binds to a lore note, and the strip says so.
   ([`docs/plans/asset-cross-references.md`](docs/plans/asset-cross-references.md))
+- **An uploaded document is archived verbatim and read only by name** — `archive/<stamp>-<slug>/`
+  at the project root, invisible to `search`, to the bible and to entity discovery because all
+  three walk allow-lists it is not on, and served by `read_file`/`doc.read` when someone names it.
+  One `archiveUpload` behind both `/upload` and `upload.*`; a format with no converter is still
+  archived, and said so.
+  ([`docs/plans/upload-and-archive.md`](docs/plans/upload-and-archive.md))
 
 The renderer is a **path.ux screen mesh**: the window subdivides into panes, each pane shows one
 editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs

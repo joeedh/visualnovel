@@ -1,6 +1,6 @@
 # `/upload`: bringing an author's own documents in
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -162,3 +162,32 @@ rather than the desktop.
   path returns it.
 - A `.docx` is archived and reported as not yet readable; nothing throws.
 - `/upload` in the REPL produces the same archive layout as the desktop command.
+
+## Shipped deviations
+
+- **`readable` is decided against the bytes, not an extension allow-list.** The plan listed the
+  extensions `read_file` serves; the code asks the two questions `readDocFile` actually asks —
+  strict UTF-8 and `MAX_DOC_BYTES` — so `readable` cannot promise something the reader will then
+  refuse for a file whose extension says nothing. The extension table survives only as
+  `NO_CONVERTER`, which exists to *name the format* in the refusal (`no converter for Word
+  document`) rather than to gate anything.
+- **`MAX_UPLOAD_BYTES` is its own cap (25 MB), separate from `MAX_DOC_BYTES`.** The cap on reading
+  is about a context window; the cap on uploading is about not copying a disc image into a git
+  repo. Sharing one number would have made either bound wrong.
+- **`describeUpload` lives in `@vn/authoring` beside `archiveUpload`.** The plan let each host word
+  the summary. A file that was archived but cannot be read is the fact an author most needs told,
+  and telling them differently on each surface is how one surface ends up not telling them.
+- **The flash is a `flash?: boolean` on the existing `view` effect**, not a new action, and it is
+  drawn as a throwaway `document.body` overlay animated by WAAPI (`renderer/pathux/flash.ts`)
+  rather than a class in `styles/`. A pane is a path.ux `ScreenArea` whose children paint over its
+  own border and whose sheet is in a shadow root; an absolutely positioned sibling is answerable to
+  neither. The renderer keys on `data.seed` so a repeated effect flashes again. A `setTimeout`
+  backstop removes the overlay even when the window is not being painted and `finish` never fires.
+- **The chips ride on `Convo.suggestions`**, set by the new `offered()` reducer, which also clears
+  the feed — the conversation an upload opens is not a continuation of the one that was there.
+  They are dropped by the next `asked()`: an opener that offers to start what is already under way
+  is noise.
+- **"Start a new thread" is `session.clearAgent()`** — the same call `agent.newThread` makes. There
+  is no `session.newThread()`; the thread file is created by the first real turn.
+- **The DSL takes `paths=['a', 'b']`.** The plan's table sketched `paths='a;b'`; the array literal
+  is the list syntax `@vn/commands` already has, so no separator convention was invented.

@@ -12,6 +12,7 @@ import { editorTitle, type OpenWhere } from '../../src/shared/editors.js';
 import type { EditorId, UiEffect } from '../../src/shared/ipc.js';
 import type { ShellApp } from './context.js';
 import { editorClass } from './editor.js';
+import { flashRect } from './flash.js';
 import { NO_PANE, paneElsewhere, paneShowing, paneToClose, paneToUse, type Pane } from './panes.js';
 import { SUBJECT_OF } from './route.js';
 import type { VnScreen } from './screen.js';
@@ -24,14 +25,17 @@ export function applyView(app: ShellApp, effect: ViewEffect): string | null {
 
   switch (effect.action) {
     case 'open':
-      return withSubject(
-        app,
-        effect.editor,
-        effect.subject,
-        open(screen, effect.editor, effect.where),
+      return flashed(
+        screen,
+        effect,
+        withSubject(app, effect.editor, effect.subject, open(screen, effect.editor, effect.where)),
       );
     case 'focus':
-      return withSubject(app, effect.editor, effect.subject, focus(screen, effect.editor));
+      return flashed(
+        screen,
+        effect,
+        withSubject(app, effect.editor, effect.subject, focus(screen, effect.editor)),
+      );
     case 'close':
       return close(screen);
     case 'reset':
@@ -53,6 +57,21 @@ function withSubject(
 ): string | null {
   const field = SUBJECT_OF[editor];
   if (subject && field && !correction) app.ui[field] = subject;
+  return correction;
+}
+
+/**
+ * Outline the pane the effect landed in, when it asked to be noticed. After the mesh has settled,
+ * so the rectangle measured is the one the author will see; skipped when the mesh disagreed with
+ * the effect, since there is then no pane the correction is about.
+ */
+function flashed(screen: VnScreen, effect: ViewEffect, correction: string | null): string | null {
+  const wants = effect.action !== 'close' && effect.action !== 'reset' && effect.flash;
+  if (correction || !wants) return correction;
+  const index = paneShowing(panesOf(screen), effect.editor);
+  if (index === NO_PANE) return correction;
+  const sarea = (screen.sareas as ScreenArea[])[index] as unknown as HTMLElement;
+  flashRect(sarea.getBoundingClientRect());
   return correction;
 }
 

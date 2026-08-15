@@ -12,6 +12,7 @@ validated input files in a clean commit. Design:
 - [How it works](#how-it-works)
 - [Tools](#tools)
   * [Concept images](#concept-images)
+- [The archive](#the-archive)
 - [Skills](#skills)
 
 <!-- tocstop -->
@@ -35,7 +36,8 @@ REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the te
 `output_config.effort` + adaptive thinking, ignored on models that don't support it; no arg →
 interactive menu), `/clear` (reset the conversation context, back to plan mode), `/status`
 (project index), `/skills` (available skills), `/makeimage <what to draw>` (a concept image,
-directly — see [Concept images](#concept-images)), `/exit` (or `/quit`). **Shift-Tab** cycles
+directly — see [Concept images](#concept-images)), `/upload <file…>` (archive documents and ask
+what to do with them — see [The archive](#the-archive)), `/exit` (or `/quit`). **Shift-Tab** cycles
 between plan and execute mode. `/model` and `/effort` rebuild the backend and hot-swap it into
 the running agent, preserving conversation state.
 
@@ -84,13 +86,13 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 30 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 31 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
 | Group | Tools |
 | ----- | ----- |
-| Read & search | `read_file`, `list_workspace`, `search`, `search_bible` |
+| Read & search | `read_file`, `list_workspace`, `search`, `search_bible`, `list_archive` |
 | Domain & validation | `validate_inputs`, `parse_fountain`, `story_graph`, `extract_entities` |
 | Entity editing | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M** |
 | Scene prose | `edit_scene` **M** |
@@ -174,6 +176,38 @@ a bounded set, so it can afford to be exhaustive and unranked. `search_bible` qu
 which is unbounded, so it is ranked and capped at a character budget; there is no tool that
 returns a bible file whole. `list_workspace` reports the bible only as a file count, so the
 agent learns one exists without paying for it. See [`story-bible.md`](story-bible.md).
+
+## The archive
+
+An author's own documents — a worldbuilding dump, a cast list, an outline someone else wrote —
+come in through **`/upload <file…>`** in the REPL, or **Upload Files…** in the desktop app. Both
+run `archiveUpload` in `packages/authoring/src/archive.ts`, so there is one archive and one layout.
+Plan: [`plans/upload-and-archive.md`](plans/upload-and-archive.md).
+
+- **The originals are copied verbatim to `archive/<yyyymmdd-hhmmss>-<slug>/<original filename>`**,
+  one directory per batch, at the project root. Not under `wiki/` and not under `vngen/`: the first
+  is retrievable, the second is generated output, and an uploaded document is neither.
+- **The archive is invisible to every sweep, and that costs no code.** `search` walks an allow-list
+  (`characters/ locations/ scenes/ screenplay/` plus `AICONTEXT.md` and `project.yaml`), entity
+  discovery walks `characters/ locations/ wiki/**`, and the bible reads `wiki/` — so a top-level
+  `archive/` is reached by none of them. That is the whole "not indexable or searchable" policy, and
+  it holds exactly as long as nothing adds `archive` to those lists.
+- **It is readable when the author names it.** `read_file` serves any workspace path, so an archived
+  note is read on request and never by accident. `list_archive` prints the batches and their files
+  so the agent can see what arrived without a walk it is not allowed to do.
+- **An upload refuses before it copies**: a file already inside the workspace, a path that is not a
+  regular file, one over 25 MB, or a second file with a name already taken in the same batch. A
+  batch where everything was refused writes no directory at all.
+- **A format with no converter is archived anyway, and said so.** `.docx`, `.odt`, `.zip` and the
+  rest are copied unchanged and reported as *"archived, not yet readable: no converter for …"* —
+  the bytes are safe now, and the converter that writes a text sidecar beside the original is a
+  later step that needs no change to this layout. `readable` means what `read_file` would actually
+  serve today: strict UTF-8, under its own size bound.
+- **Uploading ends in plan mode with a question, not an edit.** The REPL prints the batch and a
+  short numbered list of ways to phrase the next prompt; the desktop opens a fresh conversation on
+  the same sentence with the same openers as chips. The suggestions are built from the file list
+  alone — count, extensions, whether names look like scenes — never from the contents, because
+  reading them to propose a sentence the author will rewrite costs a model call for nothing.
 
 ## Skills
 

@@ -54,12 +54,28 @@ export interface Convo {
   confirm: ConfirmRequest | null;
   /** A turn is in flight, so the composer is closed. Also raised by a pipeline run. */
   busy: boolean;
+  /**
+   * Ways to phrase the next turn, offered by whatever opened the conversation. They are chips
+   * that *fill* the composer rather than messages that are sent — the point is to teach the shape
+   * of a good prompt, and sending one removes the moment where the author edits it into what they
+   * actually meant. Nothing writes them to a thread: a suggestion is not something anyone said.
+   */
+  suggestions: readonly string[];
   /** Feed ids issued so far. */
   seq: number;
 }
 
 export function emptyConvo(line: string): Convo {
-  return { feed: [], line, plan: null, question: null, confirm: null, busy: false, seq: 0 };
+  return {
+    feed: [],
+    line,
+    plan: null,
+    question: null,
+    confirm: null,
+    busy: false,
+    suggestions: [],
+    seq: 0,
+  };
 }
 
 function push(convo: Convo, role: FeedItem['role'], text: string): Convo {
@@ -69,7 +85,9 @@ function push(convo: Convo, role: FeedItem['role'], text: string): Convo {
 
 /** The author's turn, the moment it is sent — the transcript shows it before the agent reads it. */
 export function asked(convo: Convo, text: string): Convo {
-  return { ...push(convo, 'user', text), busy: true };
+  // Whatever was suggested has been answered, taken or ignored; leaving the chips up would offer
+  // to start a conversation that is already under way.
+  return { ...push(convo, 'user', text), busy: true, suggestions: [] };
 }
 
 /**
@@ -141,6 +159,15 @@ export function confirmDecided(convo: Convo, allowed: boolean): Convo {
 /** Start over, keeping the id counter so no two feed items ever share an id in one session. */
 export function cleared(convo: Convo, line: string): Convo {
   return { ...emptyConvo(line), seq: convo.seq };
+}
+
+/**
+ * A fresh conversation somebody else opened — an upload, today — with the question it arrived
+ * with in the dialogue box and the chips under it. `cleared` plus the openers, deliberately: what
+ * came before belongs to the thread that was just saved, not to the one being asked about.
+ */
+export function offered(convo: Convo, line: string, suggestions: readonly string[]): Convo {
+  return { ...cleared(convo, line), suggestions: [...suggestions] };
 }
 
 /**

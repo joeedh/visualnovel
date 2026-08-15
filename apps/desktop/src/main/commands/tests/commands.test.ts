@@ -29,6 +29,7 @@ describe('the desktop registry', () => {
       'project',
       'prompt',
       'story',
+      'upload',
       'view',
       'workspace',
     ]);
@@ -96,6 +97,8 @@ describe('the desktop registry', () => {
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
+      'upload.files',
+      'upload.pick',
       'workspace.create',
       'workspace.import',
       'workspace.open',
@@ -112,7 +115,8 @@ describe('the desktop registry', () => {
    * `asset.regenerate`), straddle a sheet, the manifest and the task log at once
    * (`art.promote`), restructure the whole worktree
    * (`workspace.import`, whose own `.imported` rename is the reversal), write into a *different*
-   * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), write under
+   * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), copy bytes in from
+   * outside the tree *and* close the conversation a snapshot cannot restore (`upload.*`), write under
    * `vngen/state`, which the snapshot deliberately excludes (`agent.renameThread` — a transcript
    * must survive undoing the edits it produced), or straddle both
    * classes (`gate.approve` flips
@@ -204,6 +208,8 @@ describe('the desktop registry', () => {
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
+      'upload.files',
+      'upload.pick',
       'workspace.create',
       'workspace.import',
       'workspace.open',
