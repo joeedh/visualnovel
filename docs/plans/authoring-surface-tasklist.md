@@ -54,14 +54,14 @@ nothing. Wave C is the two features that consume the rest.
 
 ### 2 — Asset cross-references
 
-- [ ] `DocTree` gains `pathIndex` and `scene:<id>` backlink keys; `linksFor`/`bindsTo` gain the
+- [x] `DocTree` gains `pathIndex` and `scene:<id>` backlink keys; `linksFor`/`bindsTo` gain the
       `{sceneId}` case
-- [ ] Extract `assetGroups` + the thumbnail cell into `renderer/pathux/assetstrip.ts`, over generic
+- [x] Extract `assetGroups` + the thumbnail cell into `renderer/pathux/assetstrip.ts`, over generic
       groups
-- [ ] Wiki editor consumes it
-- [ ] Script editor consumes it — the second consumer is what proves the widget is generic
-- [ ] Honest empty state: no asset binds to a plain lore note today, and the sentence says so
-- [ ] Docs: `docs/document-tree.md`, `docs/desktop-app.md`
+- [x] Wiki editor consumes it
+- [x] Script editor consumes it — the second consumer is what proves the widget is generic
+- [x] Honest empty state: no asset binds to a plain lore note today, and the sentence says so
+- [x] Docs: `docs/document-tree.md`, `docs/desktop-app.md`
 
 ### 3 — New, Open and Recent project
 

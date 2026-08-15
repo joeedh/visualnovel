@@ -187,41 +187,8 @@
   color: var(--signal);
 }
 
-.dt-shots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 2px 8px 6px 14px;
-}
-
-.dt-thumb {
-  position: relative;
-  width: 54px;
-  height: 54px;
-  border: 1px solid var(--ink-line);
-  border-radius: var(--r-chrome);
-  overflow: hidden;
-  cursor: pointer;
-  background: var(--ink-sunken);
-}
-
-/* Grown in place, because there is nowhere else to open an image: no editor shows one on its
-   own, and a second window for a portrait is a worse answer than a bigger tile. */
-.dt-thumb.big {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1 / 1;
-}
-
-.dt-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* The accepted one is the approved portrait — the gate's own verdict, so it carries the gate's
-   colour rather than another badge to read. */
-.dt-thumb.accepted {
-  border-color: var(--jade);
+/* The art itself is `assetstrip.css`, adopted beside this sheet — the same widget the wiki and
+   script panes draw. All this owns is where it sits in the panel. */
+.dt-strip {
+  padding-top: 2px;
 }

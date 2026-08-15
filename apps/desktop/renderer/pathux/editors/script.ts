@@ -27,13 +27,17 @@ import {
   type Pending,
   type RowBox,
 } from '../../rules/script.js';
+import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
+import { shotGroups } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { assetNode, openNode } from '../open.js';
+import type { VnScreen } from '../screen.js';
 import { aim, dropOf, grabLine, noticeOf, type Drag } from '../script.js';
-import { onWrote, refreshWorkspace } from '../bridge.js';
+import { onInvalidate, onWrote, refreshWorkspace } from '../bridge.js';
 import { touchesScene } from '../../../src/shared/writes.js';
 import SCRIPT_CSS from '../../styles/script.css?inline';
 import type { Invocation } from '@vn/commands';
-import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../src/shared/ipc.js';
+import type { CoverageLine, DocTree, SceneCoverage, StoryGraph } from '../../../src/shared/ipc.js';
 
 /**
  * What the room supplied and the pane does not. `script.css` is imported as-is — it is still the
@@ -60,12 +64,25 @@ const SURFACE_CSS = `
 }
 .sc-surface > .sc-page { flex: 1 1 auto; }
 .sc-surface > .sc-note { flex: none; }
+.sc-surface > .sc-frames {
+  flex: none;
+  max-height: 26%;
+  overflow: auto;
+  border-top: 1px solid var(--ink-line);
+  background: var(--ink-sunken);
+}
 .sc-surface.empty { align-items: center; justify-content: center; padding: 40px; }
 `;
 
 const INVITE =
   'No scenes yet. Make one in the branch editor, or ask vnauthor for the opening scene — ' +
   'this pane is where you write it.';
+
+/**
+ * A scene with no art is the ordinary state of a scene being written, so this says so rather than
+ * leaving a blank band under the page that reads as something failing to load.
+ */
+const EMPTY = 'No frames for this scene yet.';
 
 /**
  * The script pane: a scene as a screenplay page, and the surface where prose gets written. The
@@ -81,12 +98,23 @@ const INVITE =
  * a line moved here is the coverage the timeline pane redraws. And an open row has to stop its own
  * keystrokes: the shell keymap is a window listener, so without that `/` opens the palette in the
  * middle of a sentence.
+ *
+ * Under the page sits what has been drawn *from* it, gathered by shot rather than by kind: the
+ * frames beside the prose they illustrate, so an author writing a line can see what the block it
+ * sits in already looks like. It is the same widget the wiki pane draws, and like there it is
+ * read-only — a picture is picked, never accepted or regenerated, from here.
  */
 export class ScriptEditor extends VnEditor {
   private bar!: Container;
   private surface!: HTMLDivElement;
   private page: HTMLDivElement | undefined;
   private noticeEl: HTMLElement | undefined;
+  /** The frames drawn from this scene. Not `strip` — that word is already the pending act's. */
+  private frames!: HTMLDivElement;
+
+  /** The tree the frames are read out of. One fetch per invalidation, not one per scene. */
+  private tree: DocTree | undefined;
+  private unwatchTree: (() => void) | undefined;
 
   private story: StoryGraph | undefined;
   private data: SceneCoverage | undefined;
@@ -130,8 +158,13 @@ export class ScriptEditor extends VnEditor {
     this.bar = (this.header as Container).row();
 
     this.adoptStyle(SCRIPT_CSS + SURFACE_CSS);
+    this.adoptStyle(ASSETSTRIP_CSS);
     this.surface = el('div', 'script sc-surface') as HTMLDivElement;
     this.appendSurface(this.surface);
+
+    // Outlives the page it sits under: `rebuildSurface` empties the surface on every redraw, and
+    // frames rebuilt with it would flicker for a keystroke that only moved the caret.
+    this.frames = el('div', 'sc-frames') as HTMLDivElement;
 
     // The scene on screen can be rewritten by something that is not this pane — the agent in
     // execute mode is the usual one. A page nobody is in the middle of follows; one with an open
@@ -142,12 +175,19 @@ export class ScriptEditor extends VnEditor {
       if (touchesScene(paths, this.ui.sceneId)) void this.loadScene();
     });
 
+    // Rendering a shot is not a write to the scene file, so the frames follow the coarser signal:
+    // a frame generated while its scene is open should appear under the prose that ordered it.
+    this.unwatchTree = onInvalidate(() => void this.loadTree());
+    void this.loadTree();
+
     void this.load();
   }
 
   override on_remove() {
     this.unwatch?.();
     this.unwatch = undefined;
+    this.unwatchTree?.();
+    this.unwatchTree = undefined;
     super.on_remove();
   }
 
@@ -226,6 +266,19 @@ export class ScriptEditor extends VnEditor {
     this.pending = null;
     this.revision += 1;
     this.rebuild();
+  }
+
+  /**
+   * Refetch the tree the frames are read out of. A failure is silence: the pane's job is the prose,
+   * and a backlink panel that could not be built is not news an author can act on mid-sentence.
+   */
+  private async loadTree(): Promise<void> {
+    try {
+      this.tree = await api.invoke('workspace:doctree');
+    } catch {
+      this.tree = undefined;
+    }
+    this.paintFrames();
   }
 
   /** The scene now being written, or `null` while a fetch for another one is in flight. */
@@ -348,6 +401,33 @@ export class ScriptEditor extends VnEditor {
     if (this.pending && this.pending.act !== 'split') {
       page.appendChild(this.strip(shown, this.pending));
     }
+
+    // Below the page rather than inside it: the frames are about the whole scene, and art that
+    // scrolled away with the prose would be gone exactly when a long scene needs it most.
+    this.surface.appendChild(this.frames);
+    this.paintFrames();
+  }
+
+  /**
+   * What has been drawn from the open scene, gathered by the shot each frame illustrates. The
+   * backlink key is the scene's own id — `pathIndex` is for a pane that holds a path, and this one
+   * holds a scene.
+   */
+  private paintFrames(): void {
+    // A surface showing a failure, a loading note or the invite has no page to hang art under, and
+    // `rebuildSurface` is what puts the row back when there is one again.
+    if (this.frames.parentNode !== this.surface) return;
+    const links = this.tree?.backlinks[`scene:${this.ui.sceneId}`];
+    renderAssetStrip(this.frames, links ? shotGroups(links, this.ui.sceneId) : [], EMPTY, {
+      onPick: (hash) => this.openAsset(hash),
+    });
+  }
+
+  /** Pick a frame: the shell's selection moves to it, and the routing rule says where it opens. */
+  private openAsset(hash: string): void {
+    this.ui.assetHash = hash;
+    this.announce();
+    openNode(this.ctx?.screen as VnScreen | undefined, assetNode(hash));
   }
 
   private lineRow(scene: SceneCoverage, line: CoverageLine, cut: boolean): HTMLElement {

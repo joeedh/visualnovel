@@ -1,0 +1,59 @@
+/*
+ * The cross-reference asset strip, adopted by every editor that hosts one — the documents pane's
+ * backlink panel, the wiki editor, the script editor. One sheet rather than three, because a strip
+ * that looks like a different widget in each pane is not the same widget.
+ *
+ * Class names are `as-` and nothing else: it is adopted *beside* the host's own sheet, so a name
+ * the host already uses would be styled twice.
+ */
+
+.as-section {
+  padding: 4px 8px 2px;
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.as-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 8px 6px 14px;
+}
+
+.as-empty {
+  padding: 8px 12px;
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.as-cell {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--ink-sunken);
+}
+
+.as-cell:hover {
+  border-color: var(--signal);
+}
+
+.as-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The accepted one is the approved portrait — the gate's own verdict, so it carries the gate's
+   colour rather than another badge to read. */
+.as-cell.accepted {
+  border-color: var(--jade);
+}

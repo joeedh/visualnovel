@@ -7,6 +7,7 @@ import {
   nodeIsSelected,
   nodeKey,
   selectionForNode,
+  shotGroups,
   toggleExpanded,
   type DocRow,
 } from '../doctree.js';
@@ -221,8 +222,15 @@ describe('assetGroups', () => {
     scenes: [],
     shots: [],
   });
-  const asset = (hash: string, kind: string) =>
-    ({ hash, ext: 'png', kind, accepted: false, base: true }) as EntityLinks['assets'][number];
+  const asset = (hash: string, kind: string, shotId?: string) =>
+    ({
+      hash,
+      ext: 'png',
+      kind,
+      accepted: false,
+      base: true,
+      ...(shotId !== undefined ? { shotId } : {}),
+    }) as EntityLinks['assets'][number];
 
   it('gathers by kind, in the order the manifest gave them', () => {
     const groups = assetGroups(
@@ -233,13 +241,27 @@ describe('assetGroups', () => {
         asset('d', 'model_sheet'),
       ]),
     );
-    expect(groups.map((g) => g.kind)).toEqual(['portrait', 'model_sheet']);
+    expect(groups.map((g) => g.title)).toEqual(['PORTRAIT', 'MODEL SHEET']);
     expect(groups[0]!.assets.map((a) => a.hash)).toEqual(['a', 'c']);
     expect(groups[1]!.assets.map((a) => a.hash)).toEqual(['b', 'd']);
   });
 
   it('is empty for an entity nothing has been generated for', () => {
     expect(assetGroups(links([]))).toEqual([]);
+  });
+
+  it('gathers a scene by shot instead, and files an unshotted asset under the scene', () => {
+    const groups = shotGroups(
+      links([
+        asset('a', 'shot_image', 'greet__s1'),
+        asset('b', 'concept'),
+        asset('c', 'shot_image', 'greet__s1'),
+      ]),
+      'greet',
+    );
+    expect(groups.map((g) => g.title)).toEqual(['greet__s1', 'greet']);
+    expect(groups[0]!.assets.map((a) => a.hash)).toEqual(['a', 'c']);
+    expect(groups[1]!.assets.map((a) => a.hash)).toEqual(['b']);
   });
 });
 

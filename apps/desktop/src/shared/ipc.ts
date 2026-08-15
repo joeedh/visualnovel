@@ -343,7 +343,10 @@ export interface DocNode {
   children?: DocNode[];
 }
 
-/** Everything one entity is attached to. The panel behind a click on a character or a location. */
+/**
+ * Everything one subject is attached to — a character, a location, or a scene. The panel behind a
+ * click in the tree, and the strip a document editor draws under itself.
+ */
 export interface EntityLinks {
   /** The sheet it was discovered in, wherever that was. Absent for a mined location. */
   sheet?: string;
@@ -358,6 +361,11 @@ export interface EntityLinks {
     accepted: boolean;
     /** Routed to the base root — see `isBaseKind`, which is the one place that is decided. */
     base: boolean;
+    /**
+     * The shot this asset frames, when the binding that matched named one. Present only for a
+     * scene's links, where it is what lets a strip group frames by the shot they illustrate.
+     */
+    shotId?: string;
   }[];
   scenes: string[];
   shots: { scene: string; shot: string }[];
@@ -444,8 +452,17 @@ export interface ProjectView {
  */
 export interface DocTree {
   roots: DocNode[];
-  /** Keyed by node id (`character:aiko`), so a panel is a lookup rather than a second convention. */
+  /**
+   * Keyed by node id (`character:aiko`, `location:gate`, `scene:arrival`), so a panel is a lookup
+   * rather than a second convention.
+   */
   backlinks: Record<string, EntityLinks>;
+  /**
+   * Workspace-relative document path → the backlink key for whatever that file *is*. The inverse
+   * of the key convention, so a surface holding only a path — an open editor knows its document
+   * and nothing else — need not re-derive one. A file that is not a subject is simply absent.
+   */
+  pathIndex: Record<string, string>;
 }
 
 /**

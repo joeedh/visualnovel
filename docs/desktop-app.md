@@ -95,6 +95,8 @@ renderer/
                         theme.ts · tokens.ts · keymap.ts · palette.ts · bridge.ts · persist.ts
                         editor.ts (VnEditor + registerEditor) · view.ts · panes.ts (pure)
                         route.ts (which editor a clicked node opens; pure)
+                        open.ts (the one line of glue that runs that route)
+                        assetstrip.ts (the cross-reference strip; owns its own sheet)
                         dom.ts (raw-DOM vocabulary) · selection.ts · agent.ts
                         branch.ts · script.ts · timeline.ts · convo.ts (pure gesture/state cores)
                         graph/canvas.ts · play/playback.ts
@@ -108,7 +110,8 @@ renderer/
        …/timeline/      coverage · drift · editing · wardrobe
   styles/               index.css @imports tokens (document level; the palette crosses shadow
                         roots). branch · studio · timeline · script · wiki · documents · asset
-                        are adopted `?inline` by the editor that owns each
+                        are adopted `?inline` by the editor that owns each, and assetstrip
+                        is adopted *beside* whichever of them hosts the strip
 ```
 
 - **Pure logic goes in `.ts` with a `tests/` sibling; the editor stays thin rendering.** Jest's
@@ -354,6 +357,13 @@ unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` wi
   *reload*, not a redraw. So is a write that touched the scene's file, wherever it came from
   (`bridge.onWrote` + `touchesScene`) — but never with a row open, a structural act pending or a
   line held: re-reading would take the draft with it, and `⟳` in the bar is the deliberate version.
+- **Under the page: the frames drawn from the scene**, the same `renderAssetStrip` Wiki and
+  Documents draw, over `backlinks['scene:<id>']` and gathered by the **shot** each frame illustrates
+  rather than by kind — so an author writing a line can see what the block it sits in already looks
+  like. It sits below the page rather than inside it: art that scrolled away with the prose would be
+  gone exactly when a long scene needs it most. Like the frames' own signal in Wiki it follows
+  `onInvalidate`, since rendering a shot is not a write to the scene file, and a scene with no art
+  says so — that is the ordinary state of a scene being written.
 
 ## Convo
 
@@ -636,6 +646,14 @@ own ([`command-system.md`](command-system.md#the-doc-namespace)).
 - **It does not read through `@vn/bible`.** That interface has no whole-file call and the absence
   *is* the guarantee ([`story-bible.md`](story-bible.md)); a human reading their own note on screen
   is not the agent's context window.
+- **Under the text: what was drawn *from* this document.** The same `renderAssetStrip` the Documents
+  panel uses, over `backlinks[pathIndex[docPath]]` — so the pane needs no convention of its own for
+  turning the one thing it knows into a key. It follows `bridge.onInvalidate` rather than `onWrote`,
+  because generating a portrait while a character sheet is open should make the portrait appear and
+  generating is not a write to *this* file. It is bounded and never flexible: the document is what
+  the pane is for. A page that is nothing's subject — a lore note, a `README.md` — gets the sentence
+  saying so, which is the feature; **which** notes merely *mention* the subject is `bible.search`,
+  ranked and budgeted, and is deliberately a different question.
 
 ## Documents
 
@@ -656,10 +674,11 @@ with tests beside them.
   the other exists. A node that names nothing (a grouping, a truncated `more`) returns the very
   same selection, so opening a branch never costs the author their place.
 - **Backlinks under the tree**, from `DocTree.backlinks[nodeId]`: the sheet (said as "in the story
-  bible" when it lives under `wiki/`), base art by kind with the gate's accepted mark, and the
-  scenes and shots the entity is in. Every row navigates — a scene row publishes the selection, the
-  sheet row opens Wiki on it, a thumbnail grows in place. It is here rather than in the Inspector
-  because the Inspector's subject is `ui.taskHash`, machine identity on a different axis.
+  bible" when it lives under `wiki/`), the art as a `renderAssetStrip` grouped by kind with the
+  gate's accepted mark, and the scenes and shots the entity is in. Every row navigates — a scene row
+  publishes the selection, the sheet row opens Wiki on it, a thumbnail routes to Asset through the
+  same rule a tree click uses. It is here rather than in the Inspector because the Inspector's
+  subject is `ui.taskHash`, machine identity on a different axis.
 - **Clicking a node shows the editor that answers for it**, and which one is a table lookup rather
   than a score. Each entry in `src/shared/editors.ts` declares a `claims` predicate over the node —
   `primary` or `secondary` or nothing — and `pathux/route.ts` ranks the claimants by **visibility

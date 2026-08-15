@@ -258,6 +258,7 @@ const MOCK_DOCTREE: DocTree = {
     },
   ],
   backlinks: {},
+  pathIndex: {},
 };
 
 /** The same workspace as files on disk, for the sidebar's other mode. */

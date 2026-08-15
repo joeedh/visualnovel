@@ -5,7 +5,7 @@
 	 selected.  note that visible editors always have higher relevence then inactive ones.
 	 if no editor is found the largest screen area that's not where the user clicked on should be selected 
 	 and the editor with the highest relevence score created.
-[ ]: the wiki editor for a page should show assets that reference it.  we may need a generic cross-reference 
+[x]: the wiki editor for a page should show assets that reference it.  we may need a generic cross-reference 
      asset viewer widget, that way we can reuse it in other places like the script editor.
 [ ]: create main menu entries to open a project repo, as well as a command to create a new repo.  creating
      a new repo should also open it.

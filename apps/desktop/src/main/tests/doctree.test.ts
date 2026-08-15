@@ -214,6 +214,45 @@ describe('backlinks', () => {
     const characters = branch(buildDocTree(makeInput()).roots, 'branch:characters').children!;
     expect(Object.keys(backlinks)).toContain(characters[0]!.id);
   });
+
+  // A scene is a subject too — the frames drawn from it are what a pane showing its prose puts
+  // underneath, and the shot each one illustrates travels with it so they can be gathered by it.
+  it('join a scene to the frames drawn from it, naming the shot each one is for', () => {
+    expect(backlinks['scene:arrival']).toEqual({
+      sheet: 'scenes/arrival.md',
+      assets: [
+        {
+          hash: 'b'.repeat(64),
+          ext: 'png',
+          kind: 'shot_image',
+          label: 'bbbbbbbb.png',
+          accepted: false,
+          base: false,
+          shotId: 'arrival-s1',
+        },
+      ],
+      scenes: ['arrival'],
+      shots: [{ scene: 'arrival', shot: 'arrival-s1' }],
+    });
+    expect(backlinks['scene:orphan']!.assets).toEqual([]);
+  });
+});
+
+describe('pathIndex', () => {
+  const { pathIndex } = buildDocTree(makeInput());
+
+  it('turns the path a pane holds into the key the backlinks are under', () => {
+    expect(pathIndex['wiki/cast/aiko.md']).toBe('character:aiko');
+    expect(pathIndex['locations/gate.md']).toBe('location:gate');
+    expect(pathIndex['scenes/arrival.md']).toBe('scene:arrival');
+  });
+
+  // The honest empty answer: no asset binds to a lore note, so it is in neither map and the pane
+  // showing it says as much rather than drawing somebody else's art.
+  it('leaves a lore note out, it being nothing’s subject', () => {
+    expect(pathIndex['wiki/history/canal.md']).toBeUndefined();
+    expect(Object.keys(buildDocTree(makeInput()).backlinks)).not.toContain('wiki:history/canal.md');
+  });
 });
 
 describe('fileTree', () => {

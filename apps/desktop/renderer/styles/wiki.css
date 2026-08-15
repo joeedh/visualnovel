@@ -57,6 +57,17 @@
   text-align: center;
 }
 
+/* What was drawn from this page, between the text and the footer. Bounded and never flexible:
+   the document is what the pane is for, and the art under it must not push prose off screen.
+   The cells themselves are `assetstrip.css`, adopted beside this sheet. */
+.wk-strip {
+  flex: 0 0 auto;
+  max-height: 30%;
+  overflow: auto;
+  border-top: 1px solid var(--ink-line);
+  background: var(--ink);
+}
+
 /* One line under the document: the path, the dirty mark, and whatever the last save said. */
 .wk-foot {
   flex: 0 0 auto;

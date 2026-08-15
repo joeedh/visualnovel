@@ -1,6 +1,6 @@
 # The assets that reference a document, as one reusable strip
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -136,6 +136,32 @@ column — the first three stages stand on their own.
 - `docs/desktop-app.md`: one paragraph per consumer under Wiki and Script.
 - `CLAUDE.md`: the document-tree bullet gains the sentence that backlinks are also keyed by scene
   and reachable by path.
+
+## Shipped deviations
+
+- **`bindsTo` needed no change.** It is already generic over `AssetBinding`, and that union already
+  carries `sceneId`/`shotId` — the scene case was there the whole time and nothing asked it. Only
+  `linksFor`'s parameter widened, to a named `Subject` union.
+- **The strip's sheet is adopted, not appended to `index.css`.** The plan's "import order is cascade
+  order" instruction is stale: `styles/index.css` imports `tokens.css` and nothing else, because
+  document CSS does not cross a shadow boundary. `assetstrip.ts` re-exports its sheet as
+  `ASSETSTRIP_CSS` and each host adopts it **beside** its own — `VnEditor.adoptStyle` appends, so
+  two calls per editor is the supported shape. Every class is prefixed `as-` for that reason.
+- **`renderAssetStrip(root, groups, empty, handlers)`**, not `(groups, handlers)`. The host supplies
+  the empty sentence, and `''` means *draw nothing* — which is how the Documents panel stayed
+  byte-for-byte the pane it was while Wiki and Script each got their own sentence.
+- **Two group builders, not one.** `assetGroups` (by kind) and `shotGroups(links, sceneId)` (by the
+  shot each frame illustrates, unshotted art under the scene) both live in `pathux/doctree.ts`,
+  which is already jest-tested; `assetstrip.ts` owns the `?inline` import and the DOM and is
+  therefore unreachable from the node-only desktop jest project.
+- **`pathux/open.ts` is new.** `openNode`/`assetNode` could not be methods on `VnEditor`: `view.ts`
+  imports the base class, so reaching back for `panesOf` would close an import cycle. Three surfaces
+  now share the one line of glue.
+- **A thumbnail in Documents routes instead of growing.** The old `.dt-thumb.big` grow-in-place
+  toggle predates the asset editor; per "a click routes, it does not hardcode" it now opens Asset
+  through `routeFor`, like every other click.
+- **The script pane's field is `frames`, not `strip`** — `strip` was already that editor's word for
+  the pending structural act's confirmation row.
 
 ## Acceptance
 

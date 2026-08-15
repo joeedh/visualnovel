@@ -189,6 +189,11 @@ plays it. This is deliberately **not** an external DSL export.
 - **An asset is named, and one pane answers for it** — the document tree labels assets by what
   they are, and the asset editor shows the derived prompt read-only beside editable art notes.
   ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
+- **What was drawn from a document is one widget, and a scene is a subject like any other** —
+  backlinks are keyed by `scene:<id>` as well as by entity, `DocTree.pathIndex` inverts the key
+  convention for a pane that holds only a path, and `renderAssetStrip` is the read-only strip
+  Documents, Wiki and Script all draw. Nothing binds to a lore note, and the strip says so.
+  ([`docs/plans/asset-cross-references.md`](docs/plans/asset-cross-references.md))
 
 The renderer is a **path.ux screen mesh**: the window subdivides into panes, each pane shows one
 editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs

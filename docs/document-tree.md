@@ -96,6 +96,18 @@ Assets         assetkind:<kind>      → asset:<hash>
 - **Backlinks come from the same walk.** `EntityLinks` gives an entity's sheet, its `wiki` path when
   that sheet lives under `wiki/`, its assets (with `accepted` and `base`), its scenes and its shots.
   An entity with no art gets an empty list, never a missing key.
+- **A scene is a subject too, under `scene:<id>`.** Same shape, same walk: what illustrates a scene
+  is the same question asked of a different key, and it is what lets a pane showing prose show the
+  frames drawn from it. Only a scene's assets carry `shotId` — the shot the matched binding named —
+  because for a character one frame can satisfy several, and the strip that groups by shot is the
+  scene's.
+- **`pathIndex` is the inverse of the key convention.** Workspace-relative document path → backlink
+  key, one entry per entity sheet and per scene file, written by the loop that already knows both.
+  A surface holding only a path — an open editor knows its document and nothing else — looks the
+  key up rather than re-deriving one. A file that is not a subject is simply absent, and absence is
+  the honest answer: no asset binds to a lore note. A path is claimed by the first subject
+  discovered in it, because two `type:` tags in one file is a conflict the model already reports as
+  a diagnostic and the index must not silently pick a winner.
 - **"Which wiki notes mention Aiko" is a search, not a backlink.** The panel links the character's
   *own* sheet, because the tag index already knows that. Every other note that says her name is what
   `bible.search` finds — ranked and budgeted. Precomputing it would be a second, unbudgeted index

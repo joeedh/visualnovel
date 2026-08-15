@@ -1,5 +1,6 @@
 import type { Container } from 'pathux';
 import { api } from '../../api.js';
+import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
 import { exec, onInvalidate } from '../bridge.js';
 import {
   assetGroups,
@@ -13,13 +14,12 @@ import {
   type DocRow,
 } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { assetNode, openNode } from '../open.js';
 import { layoutChanged } from '../persist.js';
-import { routeFor } from '../route.js';
 import type { VnScreen } from '../screen.js';
 import type { Selection } from '../selection.js';
-import { panesOf } from '../view.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
-import type { DocNode, DocTree, EntityLinks } from '../../../src/shared/ipc.js';
+import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
 
 /** Which tree the pane is drawing. Remembered per pane, so two of them can differ. */
 type DocMode = 'documents' | 'files';
@@ -82,6 +82,7 @@ export class DocumentsEditor extends VnEditor {
     this.bar = (this.header as Container).row();
 
     this.adoptStyle(DOCUMENTS_CSS);
+    this.adoptStyle(ASSETSTRIP_CSS);
     this.surface = el('div', 'dt-surface') as HTMLDivElement;
     this.rows = el('div', 'dt-rows') as HTMLDivElement;
     this.panel = el('div', 'dt-panel') as HTMLDivElement;
@@ -352,12 +353,11 @@ export class DocumentsEditor extends VnEditor {
       );
     }
 
-    for (const group of assetGroups(links)) {
-      this.panel.appendChild(el('div', 'dt-section', group.kind.replace(/_/g, ' ').toUpperCase()));
-      const strip = el('div', 'dt-shots');
-      for (const asset of group.assets) strip.appendChild(this.thumb(asset));
-      this.panel.appendChild(strip);
-    }
+    // No sentence here: the panel already says what it is about, and the rows under it — scenes,
+    // shots — are the rest of the answer. Emptiness is worth saying in a pane showing one document.
+    const strip = el('div', 'dt-strip');
+    renderAssetStrip(strip, assetGroups(links), '', { onPick: (hash) => this.openAsset(hash) });
+    this.panel.appendChild(strip);
 
     if (links.scenes.length > 0) {
       this.panel.appendChild(el('div', 'dt-section', 'SCENES'));
@@ -387,21 +387,6 @@ export class DocumentsEditor extends VnEditor {
     row.title = text;
     row.addEventListener('click', onClick);
     return row;
-  }
-
-  /**
-   * One stored image, by hash. Portraits and model sheets are base art, which is why the
-   * `vnasset://` handler consults both roots — before that this strip drew empty frames.
-   */
-  private thumb(asset: EntityLinks['assets'][number]): HTMLElement {
-    const cell = el('div', `dt-thumb${asset.accepted ? ' accepted' : ''}`);
-    cell.title = `${asset.label}${asset.accepted ? ' · accepted' : ''}`;
-    const img = document.createElement('img');
-    img.src = `vnasset://${asset.hash}.${asset.ext}`;
-    img.alt = asset.kind;
-    cell.appendChild(img);
-    cell.addEventListener('click', () => cell.classList.toggle('big'));
-    return cell;
   }
 
   // -------------------------------------------------------------------------
@@ -436,19 +421,12 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Show the editor that answers for a node. Which one, and where, is `routeFor`'s — the pane
+   * Show the editor that answers for a node. Which one, and where, is `openNode`'s — the pane
    * arithmetic behind `elsewhere` already means "anywhere but the one asking", so opening an
    * asset can never replace the tree it was clicked in.
    */
   private route(node: DocNode): void {
-    const screen = this.ctx?.screen as VnScreen | undefined;
-    const route = routeFor({ node, panes: screen ? panesOf(screen) : [] });
-    if (route.action !== 'open') return;
-    void exec('view.open', {
-      editor: route.editor,
-      where: route.where,
-      subject: route.subject,
-    });
+    openNode(this.ctx?.screen as VnScreen | undefined, node);
   }
 
   private publish(next: Selection): void {
@@ -470,6 +448,12 @@ export class DocumentsEditor extends VnEditor {
   private openDoc(path: string): void {
     this.publish({ ...this.selection(), docPath: path });
     this.route({ id: `wiki:${path}`, kind: 'wiki', label: path, path });
+  }
+
+  /** The same, for a picture: the strip has a hash and the tree has a node, and both route. */
+  private openAsset(hash: string): void {
+    this.publish({ ...this.selection(), assetHash: hash });
+    this.route(assetNode(hash));
   }
 }
 

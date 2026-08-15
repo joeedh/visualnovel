@@ -1,9 +1,14 @@
 import type { Button, Container } from 'pathux';
-import { exec, onWrote, say } from '../bridge.js';
+import { api } from '../../api.js';
+import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
+import { exec, onInvalidate, onWrote, say } from '../bridge.js';
+import { assetGroups } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { assetNode, openNode } from '../open.js';
+import type { VnScreen } from '../screen.js';
 import { touches } from '../../../src/shared/writes.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
-import type { DocFile, DocSaveResult } from '../../../src/shared/ipc.js';
+import type { DocFile, DocSaveResult, DocTree } from '../../../src/shared/ipc.js';
 
 /**
  * One markdown document, as text. The story bible, a character sheet, a location sheet — whatever
@@ -18,15 +23,26 @@ import type { DocFile, DocSaveResult } from '../../../src/shared/ipc.js';
  *
  * It does not read through `@vn/bible` either. That interface has no whole-file call and the
  * absence is the guarantee — a human reading their own note on screen is not the context window.
+ *
+ * Under the text sits what was *drawn from* this document — the assets bound to whatever subject
+ * the file is, found by `DocTree.pathIndex`. For a lore note that is honestly nothing, and the
+ * sentence saying so is the feature: it is how an author sees that a page no art comes from is
+ * exactly that. Which notes merely *mention* the subject is `bible.search` — ranked, budgeted, a
+ * different question — and is deliberately not asked here.
  */
 export class WikiEditor extends VnEditor {
   private surface!: HTMLDivElement;
   private text!: HTMLTextAreaElement;
   private empty!: HTMLDivElement;
+  private strip!: HTMLDivElement;
   private pathEl!: HTMLSpanElement;
   private badge!: HTMLSpanElement;
   private noteEl!: HTMLSpanElement;
   private saveBtn!: Button;
+
+  /** The tree the strip is read out of. One fetch per invalidation, not one per document. */
+  private tree: DocTree | undefined;
+  private unwatchTree: (() => void) | undefined;
 
   /** The document in the box, which trails `ui.docPath` by one async read. */
   private shown = '';
@@ -56,6 +72,7 @@ export class WikiEditor extends VnEditor {
     bar.flushUpdate();
 
     this.adoptStyle(WIKI_CSS);
+    this.adoptStyle(ASSETSTRIP_CSS);
     this.surface = el('div', 'wk-surface') as HTMLDivElement;
 
     this.empty = el(
@@ -82,6 +99,11 @@ export class WikiEditor extends VnEditor {
     });
     this.surface.appendChild(this.text);
 
+    // Bounded and below: what was drawn from a page must never grow until the page has nowhere
+    // left to be read.
+    this.strip = el('div', 'wk-strip') as HTMLDivElement;
+    this.surface.appendChild(this.strip);
+
     const foot = el('div', 'wk-foot');
     this.pathEl = el('span', 'wk-path') as HTMLSpanElement;
     this.badge = el('span', 'wk-badge', 'unsaved') as HTMLSpanElement;
@@ -99,12 +121,19 @@ export class WikiEditor extends VnEditor {
       if (!this.dirty && this.shown && touches(paths, this.shown)) void this.load(this.shown);
     });
 
+    // Generating a portrait while the character's sheet is open should make the portrait appear,
+    // and generation is not a write to *this* file — so the strip follows the coarser signal.
+    this.unwatchTree = onInvalidate(() => void this.loadTree());
+    void this.loadTree();
+
     this.paint();
   }
 
   override on_remove() {
     this.unwatch?.();
     this.unwatch = undefined;
+    this.unwatchTree?.();
+    this.unwatchTree = undefined;
     super.on_remove();
   }
 
@@ -227,6 +256,27 @@ export class WikiEditor extends VnEditor {
   // Drawing
   // -------------------------------------------------------------------------
 
+  /**
+   * Refetch the tree the strip reads. A failure is silence rather than a message: the pane's job
+   * is the document in the box, and a backlink panel that could not be built is not news the
+   * author can act on while typing.
+   */
+  private async loadTree(): Promise<void> {
+    try {
+      this.tree = await api.invoke('workspace:doctree');
+    } catch {
+      this.tree = undefined;
+    }
+    this.paintStrip();
+  }
+
+  /** The picture, for a strip that has a hash where the tree has a row. */
+  private openAsset(hash: string): void {
+    this.ui.assetHash = hash;
+    this.announce();
+    openNode(this.ctx?.screen as VnScreen | undefined, assetNode(hash));
+  }
+
   private note(text: string, bad = false): void {
     this.noteEl.textContent = text;
     this.noteEl.className = bad ? 'wk-note bad' : 'wk-note';
@@ -241,6 +291,25 @@ export class WikiEditor extends VnEditor {
     this.pathEl.title = this.pathEl.textContent;
     this.badge.style.display = this.dirty ? 'inline-block' : 'none';
     this.saveBtn.disabled = !this.dirty;
+    this.paintStrip();
+  }
+
+  /**
+   * What was drawn from the open document. `pathIndex` turns the one thing this pane knows — a
+   * path — into the backlink key, so the editor needs no convention of its own; a file that is not
+   * a subject has no key, and gets the sentence.
+   */
+  private paintStrip(): void {
+    if (this.shown === '') {
+      this.strip.style.display = 'none';
+      return;
+    }
+    this.strip.style.display = 'block';
+    const key = this.tree?.pathIndex[this.shown];
+    const links = key === undefined ? undefined : this.tree?.backlinks[key];
+    renderAssetStrip(this.strip, links ? assetGroups(links) : [], EMPTY, {
+      onPick: (hash) => this.openAsset(hash),
+    });
   }
 }
 
@@ -250,6 +319,13 @@ export class WikiEditor extends VnEditor {
  * switch would make the explicit act a trap rather than a choice.
  */
 const drafts = new Map<string, { text: string; seenHash: string }>();
+
+/**
+ * No asset binds to a plain lore note, and none ever will: every binding in the manifest names a
+ * character, a location, a scene or a shot. So this is the honest answer for most of the bible,
+ * and saying it is better than a strip that is sometimes missing for no stated reason.
+ */
+const EMPTY = 'Nothing has been drawn from this page.';
 
 // The one place a draft can still be lost: quitting. `on_remove` cannot refuse, but this can —
 // `preventDefault` alone is the prompt in Chromium 119+, which Electron 33 is well past.

@@ -123,25 +123,44 @@ export function findNode(roots: readonly DocNode[], id: string): DocNode | undef
   return undefined;
 }
 
-/** One row of the panel's asset section: a kind, and everything an entity has of it. */
+/** One headed row of an asset strip: what the group is called, and what is in it. */
 export interface AssetGroup {
-  kind: string;
+  title: string;
   assets: EntityLinks['assets'];
 }
 
+/** Group by a key each asset answers for, in the order the keys first appear. */
+function gather(
+  assets: EntityLinks['assets'],
+  keyOf: (asset: EntityLinks['assets'][number]) => string,
+): AssetGroup[] {
+  const groups = new Map<string, AssetGroup>();
+  for (const asset of assets) {
+    const key = keyOf(asset);
+    let group = groups.get(key);
+    if (!group) groups.set(key, (group = { title: key, assets: [] }));
+    group.assets.push(asset);
+  }
+  return [...groups.values()];
+}
+
 /**
- * An entity's assets, gathered by kind in the order they arrive. A character has a portrait and
+ * A subject's assets, gathered by kind in the order they arrive. A character has a portrait and
  * some model sheets and the difference is what the author is looking for; the manifest's own
  * order is provenance, so it is kept within each kind rather than sorted into something tidier.
  */
 export function assetGroups(links: EntityLinks): AssetGroup[] {
-  const groups = new Map<string, AssetGroup>();
-  for (const asset of links.assets) {
-    let group = groups.get(asset.kind);
-    if (!group) groups.set(asset.kind, (group = { kind: asset.kind, assets: [] }));
-    group.assets.push(asset);
-  }
-  return [...groups.values()];
+  return gather(links.assets, (a) => a.kind.replace(/_/g, ' ').toUpperCase());
+}
+
+/**
+ * A scene's assets, gathered by the shot each one frames. The other axis on the same list: for a
+ * scene every frame is a `shot_image`, so grouping by kind would draw one heading over everything,
+ * whereas which shot a frame belongs to is the question an author writing the scene is asking.
+ * Anything the scene binds without naming a shot goes under the scene itself.
+ */
+export function shotGroups(links: EntityLinks, sceneId: string): AssetGroup[] {
+  return gather(links.assets, (a) => a.shotId ?? sceneId);
 }
 
 /** Whether the shared selection names this node — the highlight, for both modes at once. */

@@ -193,40 +193,58 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   return node('branch:assets', 'branch', 'Assets', { children: groups });
 }
 
+/** What a backlink entry is *about*. One of the three things a document in this project can be. */
+type Subject = { characterId: string } | { locationId: string } | { sceneId: string };
+
+/** Whether a scene names this subject at all — its cast, its setting, or its own id. */
+function inScene(
+  scene: { id: string; characters: string[]; location?: string },
+  s: Subject,
+): boolean {
+  if ('characterId' in s) return scene.characters.includes(s.characterId);
+  if ('locationId' in s) return scene.location === s.locationId;
+  return scene.id === s.sceneId;
+}
+
 /**
- * What one entity is attached to. The shot half comes from the same storyboards the story branch
+ * What one subject is attached to. The shot half comes from the same storyboards the story branch
  * walked, which is why the tree and the panel are one call and not two.
  */
-function linksFor(
-  input: DocTreeInput,
-  binding: { characterId: string } | { locationId: string },
-  sheet: string | undefined,
-): EntityLinks {
-  const id = 'characterId' in binding ? binding.characterId : binding.locationId;
+function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefined): EntityLinks {
   const scenes: string[] = [];
   const shots: { scene: string; shot: string }[] = [];
   for (const scene of input.model.scenes.values()) {
-    const inScene =
-      'characterId' in binding ? scene.characters.includes(id) : scene.location === id;
-    if (inScene) scenes.push(scene.id);
+    const named = inScene(scene, binding);
+    if (named) scenes.push(scene.id);
     for (const shot of input.shots.get(scene.id) ?? []) {
+      // A character is framed shot by shot; a location or a scene is framed by the whole scene
+      // being the one it names, so every shot in it counts.
       const framed =
         'characterId' in binding
-          ? shot.subjects.some((s) => s.characterId === id)
-          : scene.location === id;
+          ? shot.subjects.some((s) => s.characterId === binding.characterId)
+          : named;
       if (framed) shots.push({ scene: scene.id, shot: shot.id });
     }
   }
   const assets = input.manifest
     .filter((a) => bindsTo(a, binding))
-    .map((a) => ({
-      hash: a.hash,
-      ext: a.ext,
-      kind: a.kind,
-      label: assetLabelOf(input, a),
-      accepted: a.accepted,
-      base: isBaseKind(a.kind),
-    }));
+    .map((a) => {
+      // Only a scene asks which shot: for a character the same frame can satisfy several, and the
+      // strip that groups by shot is the scene's.
+      const shotId =
+        'sceneId' in binding
+          ? a.satisfies.find((b) => b.sceneId === binding.sceneId)?.shotId
+          : undefined;
+      return {
+        hash: a.hash,
+        ext: a.ext,
+        kind: a.kind,
+        label: assetLabelOf(input, a),
+        accepted: a.accepted,
+        base: isBaseKind(a.kind),
+        ...(shotId !== undefined ? { shotId } : {}),
+      };
+    });
   // The bible link is the sheet's own path when the sheet lives under wiki/. Which *other* notes
   // mention it is `bible.search` — ranked and budgeted — not a precomputed index.
   const wiki = sheet?.startsWith(`${input.wikiDir}/`) ? sheet : undefined;
@@ -250,23 +268,41 @@ export function buildDocTree(input: DocTreeInput): DocTree {
   ];
 
   const backlinks: Record<string, EntityLinks> = {};
+  const pathIndex: Record<string, string> = {};
+  // A path is claimed by the first subject discovered in it. Two `type:` tags in one file is a
+  // conflict the model already reports as a diagnostic; the index must not silently pick a winner.
+  const claim = (path: string | undefined, key: string): void => {
+    if (path !== undefined && pathIndex[path] === undefined) pathIndex[path] = key;
+  };
+
   const characterFiles = new Map(
     input.inputs.characterDocs.map((d) => [d.id, relPath(input.root, d.file)]),
   );
   const locationFiles = new Map(
     input.inputs.locationDocs.map((d) => [d.id, relPath(input.root, d.file)]),
   );
+  const sceneFiles = new Map(
+    input.inputs.sceneDocs.map((d) => [d.id, relPath(input.root, d.file)]),
+  );
+
   for (const c of input.model.characters.values()) {
-    backlinks[`character:${c.id}`] = linksFor(
-      input,
-      { characterId: c.id },
-      characterFiles.get(c.id),
-    );
+    const sheet = characterFiles.get(c.id);
+    backlinks[`character:${c.id}`] = linksFor(input, { characterId: c.id }, sheet);
+    claim(sheet, `character:${c.id}`);
   }
   for (const l of input.model.locations.values()) {
-    backlinks[`location:${l.id}`] = linksFor(input, { locationId: l.id }, locationFiles.get(l.id));
+    const sheet = locationFiles.get(l.id);
+    backlinks[`location:${l.id}`] = linksFor(input, { locationId: l.id }, sheet);
+    claim(sheet, `location:${l.id}`);
   }
-  return { roots, backlinks };
+  // A scene is a subject too: what illustrates it is the same question asked of a different key,
+  // and it is the one that lets a pane showing prose show the frames drawn from it.
+  for (const s of input.model.scenes.values()) {
+    const sheet = sceneFiles.get(s.id);
+    backlinks[`scene:${s.id}`] = linksFor(input, { sceneId: s.id }, sheet);
+    claim(sheet, `scene:${s.id}`);
+  }
+  return { roots, backlinks, pathIndex };
 }
 
 /**
