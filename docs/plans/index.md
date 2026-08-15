@@ -10,9 +10,11 @@ Status values:
 - **partial** — some of it is built and the plan still describes unbuilt work.
 - **planned** — nothing built yet.
 
-Two batches carry extra working detail of their own, and both are now complete:
+Three batches carry extra working detail of their own. Two are complete:
 [`desktop-editors-tracking.md`](desktop-editors-tracking.md) for the desktop editors, and the
-[scene authoring](#scene-authoring) section below.
+[scene authoring](#scene-authoring) section below. The third is the eight open plans of the
+authoring surface, whose running order and checkboxes are in
+[`authoring-surface-tasklist.md`](authoring-surface-tasklist.md).
 
 <!-- toc -->
 
@@ -66,6 +68,15 @@ Two batches carry extra working detail of their own, and both are now complete:
 | [`on-demand-concept-images.md`](on-demand-concept-images.md) | shipped | A picture the pipeline never asked for: `@vn/artgen` (prompt composition moved out of `@vn/pipeline` so the agent can reach it), a `concept` asset kind that is bound but never consumed, `generate_image` + `/makeimage` in `vnauthor` and `art.generate` in the desktop, and `art.promote` — which writes the variant onto the location sheet and records the planner's own task as `done`, so the next run adopts the sketch instead of rendering over it |
 | [`desktop-agent-permissions.md`](desktop-agent-permissions.md) | shipped | The desktop answering the agent's other two permission doors: `ask_user` and every always-confirm tool were scaffolded to `''` and `true`, so the app answered for the author — a question card and a confirm card in the convo pane, over the plan card's own request/reply shape, with an English sentence built in main rather than the raw arguments, and teardown resolving every parked door instead of hanging the turn |
 | [`chunked-prompts.md`](chunked-prompts.md) | shipped | The prompt as an addressable list of clauses rather than a flat string: `PromptChunk[]` behind every builder (collapsing byte-identically, so no task hash moves), per-chunk replace/append/mute/reorder, a verbatim user prompt and an agent-condensed one that is *held* rather than re-rendered when its chunks move, a `prompt.*` namespace and a rebuilt asset pane — plus Part II, where a chunk carries reference images: a linked asset pinned by hash and remembering the slot it came from, derived viral suspension when that slot moves, an acyclic reference graph enforced over bindings at write time, custom uploads as a new `reference` kind, and the retirement of the never-read `Character.referenceImages` |
+| [`authoring-surface-tasklist.md`](authoring-surface-tasklist.md) | planned | The running order and checkbox list for the eight plans below, with the only two hard dependency edges named |
+| [`editor-routing-by-relevance.md`](editor-routing-by-relevance.md) | planned | Clicking a document tree item shows the editor that can best answer for it: claims declared beside the names in `editors.ts` as predicates over the node, a pure `routeFor()` sorting on `(visible, tier, EDITORS order)`, selection published before the open, and `where: 'elsewhere'` as the fallback that already exists |
+| [`asset-cross-references.md`](asset-cross-references.md) | planned | A page showing the art that references it: `scene:<id>` backlink keys and a path index on `DocTree`, and the asset strip extracted into a generic widget with two consumers — the wiki editor and the script editor — plus the honest finding that no asset binds to a plain lore note today |
+| [`new-and-open-project.md`](new-and-open-project.md) | planned | `workspace.create` beside `open`/`pick`/`recent`: a three-file skeleton so a new project loads a model with zero error diagnostics, a refusal on a non-empty directory, a warning when the target sits inside an existing repo, and the New/Open/Recents menu set |
+| [`conversation-threads.md`](conversation-threads.md) | planned | Conversations saved as append-only JSONL under `vngen/state/threads/` — outside the undo snapshot by design — with the reducer moved to `src/shared/` so main and the renderer agree, a searchable dropdown, and reopening that replays read-only rather than pretending the model remembers |
+| [`upload-and-archive.md`](upload-and-archive.md) | planned | `/upload`: an author's documents archived verbatim under `archive/`, invisible to `search` and to entity discovery because both walk allow-lists and readable by name, with content-blind suggestion chips, a seeded thread in plan mode, and one `archiveUpload` behind both the desktop command and the REPL |
+| [`adopting-an-uploaded-asset.md`](adopting-an-uploaded-asset.md) | planned | Uploaded artwork becoming a slot's actual output rather than a reference: `adoptSlot` generalized out of `promoteConcept`, addressed by the existing `plate:`/`sheet:`/`shot:` slot vocabulary, with the planner's input builders extracted so hashes cannot drift, a portrait refused because the P3 gate owns it, and superseding a real render as a declared act |
+| [`agent-art-revision.md`](agent-art-revision.md) | planned | The agent reaching planned art: the art-notes rungs moved to `@vn/artgen` so one parser serves both hosts, regeneration as an injected `pipeline?` capability rather than an argument with the boundaries rule, a general `describeAsset` over the `ChatBackend` seam instead of a widened `VisionReviewer`, and five tools that propose notes rather than silently iterating |
+| [`document-tree-context-menus.md`](document-tree-context-menus.md) | planned | The first context menus in the app, built from the catalog: entries are invocations resolved through `check` then `exec`, a refused entry shown with the command's own sentence rather than hidden, `undeclared` explicitly not permission, and one table per node kind including the kinds that offer nothing |
 
 ## Scene authoring
 
