@@ -44,6 +44,10 @@ wired that way" companion.
   (`scripts/jest-esbuild.cjs`). Internal
   packages are **source-only** — no per-package `dist`; consumers import `src/index.ts`
   directly.
+- **Relative imports carry an explicit `.js` extension.** The repo is ESM with
+  `verbatimModuleSyntax`, so `./foo.js` is what a relative import of `foo.ts` is written as —
+  esbuild and `tsgo` both resolve it, and jest's `moduleNameMapper` strips it back off. A
+  bare `./foo` typechecks under the bundler resolver and then fails at runtime in the built app.
 - **`turbo` orchestrates the bundles.** Each app owns a `build` script (`apps/cli`,
   `apps/authoring`, `apps/desktop`); `pnpm build` is `turbo run build` (all three), and
   `build:cli` / `build:authoring` / `build:desktop` are thin `--filter=…` wrappers for one app

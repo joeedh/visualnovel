@@ -212,11 +212,12 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
 [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
-  the twenty document mutators set it — the eighteen `story.*` ones (the six branch/coverage
-  commands it shipped for, the nine prose edits, and the three that followed: `moveShot` and the
-  two outfit commands) plus `doc.write` and `doc.create`, which write documents by the same right.
-  A command whose writes are generated output, or that straddles both classes,
-  stays out — see the table below.
+  document mutators set it — every `story.*` one (the branch/coverage commands it shipped for, the
+  prose edits, `moveShot` and the two outfit commands), `doc.write` and `doc.create`, which write
+  documents by the same right, and the authored-input writers that followed: `art.setNotes`,
+  `project.setArtStyle` and the `prompt.*` chunk editors. A command whose writes are generated
+  output, or that straddles both classes, stays out. The `↺` column in the table below is the
+  list — read it there rather than counting here, because the set grows.
 - **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of
   an undoable command into detached commits parked under `refs/vn/undo/<seq>/{pre,post}`. HEAD
   never moves and the index is never touched. Snapshots are scoped to the document class
@@ -253,8 +254,17 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Sixty-eight, in fourteen namespaces. Forty-one are `mutating`; forty declare a precondition;
-twenty-seven are undoable; six ask for confirmation.
+Seventy-three, in fourteen namespaces. Forty-five are `mutating`; forty-four declare a
+precondition; thirty are undoable; seven ask for confirmation.
+
+**Commands are the only write path.** The `story.*` branch mutators go through
+`session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the scene
+editors through `session.editScene(decide)`, so no surface writes scene prose by another route.
+The same holds for the shot decompositions: outside the planner, `work/shots/<sceneId>.json` is
+written by `story.setCoverage`, `story.setOutfit`, `art.setNotes` (a shot rung), the `prompt.*`
+chunk editors, and `editScene` — which carries a shot's coverage across a split, merge or delete
+rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs the same
+`@vn/scriptedit` rules and gets the same refusals.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |

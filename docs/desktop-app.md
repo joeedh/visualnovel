@@ -211,6 +211,14 @@ agent subscription and persistence.
   values, field coercion — is imported unchanged by both shells, because two palettes disagreeing
   about which command a query names would be a bug in both. `openPalette(id, props)` is also how
   surfaces hand off a command that needs confirmation (`pipeline.run`, `gate.approve`).
+- **A mid-gesture verdict must be the verdict that would happen.** Wherever a drag decides
+  something, the grab captures every candidate's verdict up front — from the same pure rule the
+  command itself runs, through the interaction layer's `targets` query
+  ([`command-system.md`](command-system.md#interactions-the-gesture-surface)) — and every pointer
+  move is a lookup, never a fresh decision. A drop that the command would refuse must read as
+  refused while the pointer is still over it. The corollary: **layout changes on commit, never
+  during a gesture**, so nothing moves out from under the cursor mid-drag. Branches (below) and
+  Script state their own version of this rule; it applies to any surface that grabs.
 - **Every editor registers through `registerEditor(cls, 'vn.Name')`.** nstructjs defaults a
   struct's name to `cls.name`, which esbuild minifies, and `ScreenArea.loadSTRUCT` answers an
   unknown struct name — or an unknown **area** name — by silently falling back to the first

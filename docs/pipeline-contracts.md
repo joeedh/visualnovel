@@ -5,7 +5,8 @@ corrupt provenance when they are broken. Each is stated with the failure it prev
 most of them were written down after that failure happened.
 
 The system design these implement is [`vn-generator-report.md`](vn-generator-report.md); the
-package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
+package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package by package in
+[`packages.md`](packages.md).
 
 <!-- toc -->
 
@@ -152,6 +153,17 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   ids the scene no longer has are dropped with a warning, and since `buildShotPrompt`
   ignores `coversLines`, coverage edits rehash nothing. Dry runs read the file but never write
   it — a mock decomposition must not be left for a real run to reuse.
+- **A shot's order is where its lines sit, so reordering one is a prose edit.** `Shot` has no
+  position field — `sceneBeats` emits a `show` whenever the covering shot changes down
+  `scene.lines` — so there is nothing to renumber and no second ordering to keep in step with the
+  prose. `story.moveShot` therefore moves the **block of lines the shot covers**, through the same
+  `@vn/scriptedit` write path every other line edit takes. Only a **contiguous** shot has a single
+  position: one whose covered lines other shots draw inside is refused by name rather than
+  silently interleaved. Nothing about the move reaches a hash — no id changes, no coverage
+  changes, and every shot's covered lines keep their relative order — so nothing drifts
+  (`proseHash` walks `scene.lines` in order, and that order is preserved within each shot) and
+  nothing re-renders. Plan:
+  [`plans/shot-ordering-in-scenes.md`](plans/shot-ordering-in-scenes.md).
 - **What a character wears is inherited, and the chain is written down once.** `outfitFor`
   (`packages/model/src/outfits.ts`) is the only answer, in three rungs: a shot subject's own
   `outfit`, then the scene's `[[outfit: aiko=track]]` marker, then `character.defaultOutfit`.
