@@ -30,6 +30,13 @@ export class ShellState {
   taskHash = '';
 
   /**
+   * The asset the asset editor is looking at, by content hash. Machine identity like `taskHash`
+   * and **not** persisted for the same reason: an asset regenerated between launches has
+   * different bytes, so the hash remembered from last time names nothing.
+   */
+  assetHash = '';
+
+  /**
    * What the header shows. All of it is pushed in by `bridge.ts` from the workspace index,
    * the agent's event stream and `command:ui` — nothing here is authored by a widget, and
    * none of it is persisted, because all of it is re-read at boot.

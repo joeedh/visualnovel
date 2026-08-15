@@ -12,6 +12,7 @@
     "@vn/config": "workspace:*",
     "@vn/model": "workspace:*",
     "@vn/store": "workspace:*",
+    "@vn/artgen": "workspace:*",
     "@vn/taskgraph": "workspace:*",
     "@vn/providers": "workspace:*"
   }

@@ -79,6 +79,7 @@ export async function readShots(
       status: s.shotData?.status ?? 'pending',
     };
     if (s.camera !== undefined) shot.camera = s.camera;
+    if (s.artNotes !== undefined) shot.artNotes = s.artNotes;
     if (s.shotData?.prompt !== undefined) shot.prompt = s.shotData.prompt;
     if (s.shotData?.image !== undefined) shot.image = s.shotData.image;
     if (s.shotData?.proseHash !== undefined) shot.proseHash = s.shotData.proseHash;
@@ -100,6 +101,7 @@ function serialize(sceneId: string, shots: readonly Shot[]): string {
       location: s.location,
       subjects: s.subjects,
       ...(s.camera !== undefined ? { camera: s.camera } : {}),
+      ...(s.artNotes !== undefined ? { artNotes: s.artNotes } : {}),
       coversLines: s.coversLines,
       // Omitted entirely until a run has produced something, so a freshly decomposed file is
       // purely authored material and reads as one.

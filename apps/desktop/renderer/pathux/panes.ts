@@ -42,6 +42,17 @@ export function paneToUse(panes: readonly Pane[]): number {
 }
 
 /**
+ * The pane an `open(where='elsewhere')` lands in: the biggest non-chrome pane that is not the one
+ * asking. `NO_PANE` when there is no other — a window with one pane has nowhere else, and the
+ * caller splits instead. Never chrome, so a two-pane window with a header still has an answer.
+ */
+export function paneElsewhere(panes: readonly Pane[], from: number): number {
+  const others = panes.filter((pane, index) => !pane.chrome && index !== from);
+  if (others.length === 0) return NO_PANE;
+  return panes.indexOf(others.reduce((a, b) => (area(b) > area(a) ? b : a)));
+}
+
+/**
  * The pane a `close` collapses. The last non-chrome pane is kept: a mesh of nothing but the
  * header is a window with no way back, and refusing is friendlier than emptying the screen.
  */

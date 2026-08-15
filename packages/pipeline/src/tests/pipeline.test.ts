@@ -8,6 +8,8 @@ import {
   decomposeScene,
   deterministicShots,
   gateStatus,
+  buildLocationPrompt,
+  buildModelSheetPrompt,
   buildPortraitPrompt,
   buildShotPrompt,
   planTasks,
@@ -28,6 +30,82 @@ describe('prompts', () => {
     expect(prompt).toContain('watercolor');
     expect(prompt).toContain('AIKO');
     expect(prompt).toContain('#112233');
+  });
+});
+
+describe('art notes', () => {
+  // The acceptance test for the whole feature. Every builder folds its notes in through
+  // `artClause`, which contributes nothing when none are authored — so a project that never
+  // writes an `art_notes:` keeps every task hash it had, and re-renders nothing.
+  it('adds not one character to a prompt when nothing is authored', () => {
+    const c = character('aiko', 'approved', 'h1');
+    const l = location('cafe');
+    const s: Shot = {
+      id: 's1__a',
+      sceneId: 's1',
+      framing: 'medium',
+      location: 'day',
+      subjects: [{ characterId: 'aiko' }],
+      coversLines: [],
+      status: 'pending',
+    };
+    const sc = scene('s1', ['aiko'], 'cafe');
+    expect(buildPortraitPrompt(c, config)).toBe(
+      'Art style: watercolor. Character portrait of AIKO. aiko description Palette: #112233. Neutral pose and expression, plain neutral background, head-and-shoulders framing.',
+    );
+    expect(buildLocationPrompt(l, 'day', config)).toBe(
+      'Art style: watercolor. Establishing shot of cafe. cafe desc Time of day / condition: day. No characters, no text.',
+    );
+    expect(buildModelSheetPrompt(c, 'default', 'front', config)).toBe(
+      'Art style: watercolor. Full-body front view of AIKO wearing default. Preserve the exact face and look from the reference image. aiko description Palette: #112233. Neutral background, consistent lighting, turnaround model-sheet style.',
+    );
+    expect(buildShotPrompt(s, sc, model([c], [sc], [l]), config)).toBe(
+      'Art style: watercolor. medium shot in cafe (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.',
+    );
+  });
+
+  it('speaks the entity rung and the narrow rung, widest first', () => {
+    const c = character('aiko');
+    c.artNotes = 'ink-wash linework';
+    c.outfits = [{ id: 'default', characterId: 'aiko', description: '', artNotes: 'satin sheen' }];
+    expect(buildPortraitPrompt(c, config)).toContain('Art direction: ink-wash linework');
+    expect(buildModelSheetPrompt(c, 'default', 'front', config)).toContain(
+      'Art direction: ink-wash linework satin sheen',
+    );
+  });
+
+  it("says a variant's own description and notes, and only for that variant", () => {
+    const l = location('cafe');
+    l.artNotes = 'heavy formwork';
+    l.variants = [
+      { id: 'day', description: '' },
+      { id: 'night', description: 'after close, chairs up', artNotes: 'sodium streetlight' },
+    ];
+    const night = buildLocationPrompt(l, 'night', config);
+    expect(night).toContain('after close, chairs up');
+    expect(night).toContain('Art direction: heavy formwork sodium streetlight');
+    expect(buildLocationPrompt(l, 'day', config)).toBe(
+      'Art style: watercolor. Establishing shot of cafe. cafe desc Time of day / condition: day. Art direction: heavy formwork No characters, no text.',
+    );
+  });
+
+  it('gives a shot only its own notes', () => {
+    const c = character('aiko');
+    c.artNotes = 'ink-wash linework';
+    const sc = scene('s1', ['aiko'], 'cafe');
+    const s: Shot = {
+      id: 's1__a',
+      sceneId: 's1',
+      framing: 'medium',
+      location: 'day',
+      subjects: [{ characterId: 'aiko' }],
+      coversLines: [],
+      status: 'pending',
+      artNotes: 'low angle, long lens',
+    };
+    const prompt = buildShotPrompt(s, sc, model([c], [sc], [location('cafe')]), config);
+    expect(prompt).toContain('Art direction: low angle, long lens');
+    expect(prompt).not.toContain('ink-wash');
   });
 });
 

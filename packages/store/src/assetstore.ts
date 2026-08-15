@@ -44,8 +44,18 @@ function mergeBindings(existing: AssetBinding[] | undefined, next?: AssetBinding
   return list.some((b) => key(b) === key(next)) ? list : [...list, next];
 }
 
-/** The kinds every later prompt references, and the ones the base root holds. */
-const BASE_KINDS = new Set<AssetKind>(['location_ref', 'portrait', 'model_sheet', 'outfit_sheet']);
+/**
+ * The kinds every later prompt references, and the ones the base root holds. `concept` is here
+ * because it is authored-side art — a sketch of a place belongs beside that place's plates, and
+ * promoting one to a plate must not have to move bytes between roots.
+ */
+const BASE_KINDS = new Set<AssetKind>([
+  'location_ref',
+  'portrait',
+  'model_sheet',
+  'outfit_sheet',
+  'concept',
+]);
 
 /**
  * Whether a kind routes to the base root. Exported because routing is by kind and nothing else,
@@ -133,6 +143,9 @@ export class AssetRoot {
       // One byte-stream can serve several things; the second writer must not erase the first.
       satisfies: mergeBindings(existing?.satisfies, meta.satisfies),
       accepted: meta.accepted ?? existing?.accepted ?? false,
+      // A name a human gave outlives a write that has none to offer — promoting a concept must
+      // not erase what it was asked for.
+      ...((meta.title ?? existing?.title) ? { title: meta.title ?? existing?.title } : {}),
     });
     await this.persist();
     return ref;

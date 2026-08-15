@@ -24,6 +24,7 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Play](#play)
 - [Wiki](#wiki)
 - [Documents](#documents)
+- [Asset](#asset)
 - [Remembered UI state (`.vndesktop/session.json`)](#remembered-ui-state-vndesktopsessionjson)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
@@ -95,15 +96,17 @@ renderer/
                         dom.ts (raw-DOM vocabulary) · selection.ts · agent.ts
                         branch.ts · script.ts · timeline.ts · convo.ts (pure gesture/state cores)
                         graph/canvas.ts · play/playback.ts
-       …/editors/       header · branch · script · convo · timeline · tasks · graph · inspector · play
+       …/editors/       header · branch · script · convo · timeline · tasks · graph · inspector
+                        play · wiki · documents · asset
   graph/                layout · edges · hit · viewport · types (pure)
   rules/                the pure cores the editors import, each with a `tests/` sibling:
                         catalog.ts · script.ts · diagnostics.ts · taskGraph.ts · attempts.ts
+                        assetview.ts
        …/branch/        graph · grab · compose · tween
        …/timeline/      coverage · drift · editing · wardrobe
   styles/               index.css @imports tokens (document level; the palette crosses shadow
-                        roots). branch · studio · timeline · script are adopted `?inline` by the
-                        editor that owns each
+                        roots). branch · studio · timeline · script · wiki · documents · asset
+                        are adopted `?inline` by the editor that owns each
 ```
 
 - **Pure logic goes in `.ts` with a `tests/` sibling; the editor stays thin rendering.** Jest's
@@ -138,19 +141,26 @@ default screen), put the header back, solve and paint, then install the keymap, 
 agent subscription and persistence.
 
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all ten (`branches`, `script`, `convo`, `timeline`,
-  `tasklist`, `taskgraph`, `inspector`, `play`, `wiki`, `documents`) with their titles. It is in
+  `apps/desktop/src/shared/editors.ts` holds all eleven (`branches`, `script`, `convo`, `timeline`,
+  `tasklist`, `taskgraph`, `inspector`, `play`, `wiki`, `documents`, `asset`) with their titles. It is in
   `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
   boot if the two ever disagree. The header bar is deliberately absent from the list — it is chrome,
   not somewhere the author navigates to.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows an editor
-  in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below`);
-  asking for one already open `here` is a focus, not a second copy. Both `view.open` and
-  `view.focus` take an optional `subject` — a workspace-relative path published as `ui.docPath`, so
-  "open the wiki editor on `wiki/history.md`" is one invocation rather than two racing acts; it is
-  published only if the mesh could show the editor at all. `view.close` (collapse into a
+  in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below` |
+  `elsewhere`); asking for one already open `here` is a focus, not a second copy. `elsewhere` is the
+  one that means *not on top of what I am looking at* — a pane already showing that editor is
+  focused, otherwise the biggest non-chrome pane that is **not** the asking pane takes it, and only
+  a mesh with nowhere else to put it splits the asking pane right. It is what a click in the
+  documents tree asks for, so opening an asset never replaces the tree that named it
+  (`paneElsewhere` in `panes.ts`, pure and tested). Both `view.open` and
+  `view.focus` take an optional `subject`, published into the selection field **that editor's**
+  subject is — `ui.docPath` for `wiki`/`documents`, `ui.assetHash` for `asset` — so "open the wiki
+  editor on `wiki/history.md`" is one invocation rather than two racing acts; it is
+  published only if the mesh could show the editor at all. Routing it per editor is not tidiness:
+  pointing `docPath` at a `.png` would make the wiki pane `doc.read` a binary. `view.close` (collapse into a
   neighbour; the last pane is kept) and `view.layout` (throw the arrangement away) complete the set.
   Main answers optimistically because only the renderer knows how many panes there are, so
   `pathux/view.ts` returns a **correction** sentence the bridge says instead — "No pane is showing
@@ -182,9 +192,11 @@ agent subscription and persistence.
   independent `useState` selections of the room shell are gone. `ui.docPath` is the one that names a
   **file** rather than an id, because `DocNode.path` and `EntityLinks.sheet` are paths and a
   free-form note under `wiki/` has no id at all; it is still a selection — the tree publishes it, the
-  Wiki editor reads it — not a buffer. `ui.taskHash` is a fifth, machine identity
-  rather than authored, which is why it is **not** persisted: a content hash re-keys whenever a
-  prompt changes, so one remembered across a re-plan names nothing. `ShellState` is the root of the
+  Wiki editor reads it — not a buffer. `ui.taskHash` and `ui.assetHash` are the fifth and sixth,
+  machine identity rather than authored, which is why neither is persisted: a content hash re-keys
+  whenever a prompt changes, so one remembered across a re-plan names nothing. They are two fields
+  rather than one because an art-notes edit re-keys the **task** while the asset it produced keeps
+  its hash — a pane on one must not be dragged off its subject by the other. `ShellState` is the root of the
   path.ux DataAPI and the only thing a widget may bind to directly — document state never lands
   here, because `@vn/commands` is the write path.
 - **Keyboard is per-area first.** path.ux routes a keystroke to the focused area's keymaps and
@@ -331,9 +343,9 @@ unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` wi
 
 ## Convo
 
-`editors/convo.ts` — the vnauthor pane: the transcript, the plan card, the dialogue box and the
-composer. The conversation itself is a **value**, `pathux/convo.ts`, reduced from the same
-`AgentEvent` stream `useAgent` reduced untestably inside a `useEffect`, with nine tests over what
+`editors/convo.ts` — the vnauthor pane: the transcript, the three permission cards, the dialogue
+box and the composer. The conversation itself is a **value**, `pathux/convo.ts`, reduced from the
+same `AgentEvent` stream `useAgent` reduced untestably inside a `useEffect`, with tests over what
 each event does to it.
 
 - **The live conversation is a module subscribed at boot** (`pathux/agent.ts`, installed by
@@ -344,6 +356,19 @@ each event does to it.
   so a turn the author types and a turn the palette runs are one act with one record.
   `plan:decision` stays a channel on purpose: it is the reply to a request main is already blocked
   on, not an act of its own.
+- **The agent's permission gate has three doors, and the pane answers all three.** Beside the plan
+  card are a **question card** (`ask_user`: the question, a one-line box focused on arrival, Enter
+  answers — an empty answer is allowed, because "nothing to add" is a real answer) and a **confirm
+  card** for an always-confirm tool (`generate_image`, `edit_image`, `git_revert`, `git_restore`,
+  a script-bearing skill's first run), with `Deny` first and unaccented. Both are the plan card's
+  request/reply shape — `permission:ask` / `ask:answer`, `permission:confirm` /
+  `confirm:decision` — over a promise main is parked on. Two scaffolds used to answer *for* the
+  author: `ask` resolved to `''` (so the model was told `User answered:` and proceeded on a guess)
+  and `confirmAction` to `true` (so every billed image call was auto-allowed). What the confirm
+  card reads is an English sentence built in main by `toolconfirm.ts`, never the raw arguments.
+  Teardown — the window closing, or `workspace.open` replacing the session mid-turn — resolves
+  every parked door with its safe default rather than leaving the turn hung: no plan, no answer,
+  no.
 - **Clearing follows the command, not the button.** The store watches the registry through
   `bridge.onExec`, so `agent.clear` from the pane and from the palette empty the transcript
   identically. Named gap: `window.vn`/CDP goes straight to main and `agent.clear` emits no event, so
@@ -612,7 +637,7 @@ with tests beside them.
   buys a second fetch and no second renderer. The mode is a per-pane field declared through
   `registerEditor(cls, name, fields)`, so two sidebars can differ and each remembers its own.
 - **It owns no selection.** A click publishes `ui.sceneId` / `ui.shotId` / `ui.characterId` /
-  `ui.docPath`, which every other editor already observes — so the tree steers the app without
+  `ui.docPath` / `ui.assetHash`, which every other editor already observes — so the tree steers the app without
   knowing what is open, and a scene picked in Branches lights here without either editor knowing
   the other exists. A node that names nothing (a grouping, a truncated `more`) returns the very
   same selection, so opening a branch never costs the author their place.
@@ -621,11 +646,68 @@ with tests beside them.
   scenes and shots the entity is in. Every row navigates — a scene row publishes the selection, the
   sheet row opens Wiki on it, a thumbnail grows in place. It is here rather than in the Inspector
   because the Inspector's subject is `ui.taskHash`, machine identity on a different axis.
+- **An asset leaf is named, and clicking it opens the Asset pane `elsewhere`.** Names come from
+  main ([`document-tree.md`](document-tree.md)); the click publishes `ui.assetHash` and asks for the
+  pane somewhere other than this one, because a sidebar that replaced itself with the thing it named
+  would leave the author nothing to click next. An asset node carries no `path` on purpose — a path
+  is what routes to Wiki, which would then `doc.read` a PNG.
 - **New… scaffolds a document and opens it.** Kind plus a name, straight into `doc.create`, which
   shares `newCharacterDoc`/`newLocationDoc` with the agent's create tools — one authorial act, one
   answer. The tree refetches on any successful mutating command (`onExec`) and on undo, so the new
   file is there without a remount. That refetch is deliberately coarse: a tree is one cached
   `loadProject` away, and a stale tree is worse than a redundant fetch.
+
+## Asset
+
+`editors/asset.ts` — one generated asset: the bytes, the prompt that made them, and the art notes
+that would make them differently. Its subject is `ui.assetHash`, which the documents tree publishes
+when an asset leaf is clicked; the rules on top of it (which approve command applies, the badges,
+the drift note, which prompt to show) are pure in `renderer/rules/assetview.ts` with tests beside
+them. Plans: [`plans/asset-names-and-the-asset-editor.md`](plans/asset-names-and-the-asset-editor.md)
+and [`plans/on-demand-concept-images.md`](plans/on-demand-concept-images.md).
+
+`art.generate(sentence=…)` is the other way in: it draws a concept and, unless told not to, opens
+it here — so asking for a picture ends looking at it. `art.redraw` does the same with the sketch
+it produces.
+
+- **The prompt is read-only for every kind but one, and the art notes are the editable half.** A
+  prompt is a derivation folded into the task's content hash and rewritten on every planning pass,
+  so an editable one would freeze this asset against every later improvement to the builders.
+  `artNotes` is authored input, appended to the derivation, and setting one re-keys the task — so
+  "regenerate" is the pipeline that already exists rather than a second path to the image model.
+- **The exception is a concept, whose prompt is *authored*.** Nothing derives it, nothing rewrites
+  it, and no task hash contains it — it is a root asset, so the pane gives it a Redraw box holding
+  the recorded prompt whole (the style preamble and the framing sentence survive an edit by
+  default) and `art.redraw` draws it again as a **new** sketch beside the original. The header bar
+  carries **Redraw** in place of Approve and Regenerate rather than greying them out: a concept is
+  approved by nothing and planned by nothing, so neither could ever act on one, and a dead pair
+  beside a working button reads as breakage.
+  `promptEditable` in `renderer/rules/assetview.ts` is the one rule both halves read, and its
+  refusal for a derived kind names art notes as the way to move that prompt instead.
+- **One box per rung that actually applies**, widest first: the character or location, then the
+  outfit or variant, then the shot. Each commits on Ctrl+S or on leaving the box, through
+  `art.setNotes` with the tree's own `kind:key` target vocabulary — so the same edit is reachable
+  from the palette, from CDP and (for the entity rungs) from `vnauthor`.
+- **It shows what is derived today, not only what was recorded.** `asset.info` re-derives the prompt
+  for the same binding and compares it with the one the bytes carry; a difference is the `stale`
+  badge and a banner, which is exactly the state an art-notes edit leaves behind until the next run.
+- **Approve says which command it would run.** A portrait goes to `gate.approve`, because that is
+  the command that also writes `character.md` and `approved.png`; everything else is the generic
+  `asset.accept` across both roots. A portrait whose character the project has lost is **refused by
+  name** rather than accepted through the generic door, and so is a concept: nothing downstream
+  consumes one, so there is no question for accepting it to answer.
+- **A concept gets a Promote strip instead, and only a concept does.** It names the location the
+  sketch is bound to, takes a variant id, and runs `art.promote` — the variant joins that location's
+  sheet if it is new, the bytes become the plate, and the next run adopts them. `promoteAction`
+  decides whether the strip is drawn at all, so a character concept never offers a control that
+  would walk around the approval gate. What is half-typed there survives a background refetch of the
+  same asset and is dropped when the pane moves to another one.
+- **Show task hands off rather than duplicating.** `ui.taskHash` is published and the inspector is
+  opened `elsewhere` — attempts, the refine loop and the reviewer's verdict are its subject, and
+  this pane does not re-render them.
+- **A write anywhere re-reads, unless a box is dirty.** `onInvalidate` covers this pane's own edit,
+  the agent's, and an undo of either; a refetch under a half-typed note would eat it, so an
+  in-progress rung suppresses it until it commits.
 
 ## Remembered UI state (`.vndesktop/session.json`)
 

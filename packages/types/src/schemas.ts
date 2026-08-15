@@ -19,6 +19,22 @@ export const ENTITY_TAG_KEY = 'type';
 export const ENTITY_TAGS = { character: 'character', location: 'location' } as const;
 export type EntityTag = (typeof ENTITY_TAGS)[keyof typeof ENTITY_TAGS];
 
+/**
+ * The long form of a wardrobe entry or a location variant: what it is, plus how it should look.
+ * `.strict()` because a misspelled key here would silently drop art direction from a prompt.
+ */
+const outfitEntry = z
+  .object({ description: z.string().default(''), art_notes: z.string().optional() })
+  .strict();
+
+const variantEntry = z
+  .object({
+    id: z.string().min(1),
+    description: z.string().default(''),
+    art_notes: z.string().optional(),
+  })
+  .strict();
+
 /** Front-matter of a character sheet — `characters/<id>/character.md`, or any `type: character`. */
 export const characterFrontMatter = z.object({
   id: z.string().min(1),
@@ -31,11 +47,16 @@ export const characterFrontMatter = z.object({
    * The character's wardrobe, outfit id → description, in the order written. The description is
    * what a prompt says the character is wearing; an id with no entry falls back to saying the id.
    * `default_outfit` need not appear — it is synthesized when the map omits it.
+   *
+   * An outfit that carries art direction of its own is written as an object instead; the string
+   * form is kept because it is what nearly every wardrobe needs and what every sheet already has.
    */
-  outfits: z.record(z.string()).default({}),
+  outfits: z.record(z.union([z.string(), outfitEntry])).default({}),
   palette: z.array(hexColor).default([]),
   traits: z.array(z.string()).default([]),
   reference_images: z.array(z.string()).default([]),
+  /** Free-form art direction appended to every prompt this character reaches. */
+  art_notes: z.string().optional(),
   approved_portrait: z.string().optional(),
 });
 export type CharacterFrontMatter = z.infer<typeof characterFrontMatter>;
@@ -49,7 +70,13 @@ export const locationFrontMatter = z.object({
   mood: z.string().optional(),
   lighting: z.string().optional(),
   palette: z.array(hexColor).default([]),
-  variants: z.array(z.string()).default(['day']),
+  /**
+   * The variants plates are generated for, in the order written. A bare string is the id alone;
+   * a variant that describes itself or carries art direction is written as an object.
+   */
+  variants: z.array(z.union([z.string(), variantEntry])).default(['day']),
+  /** Free-form art direction appended to every plate of this location. */
+  art_notes: z.string().optional(),
 });
 export type LocationFrontMatter = z.infer<typeof locationFrontMatter>;
 
@@ -209,6 +236,8 @@ export const shotsFileSchema = z.object({
         location: z.string().min(1),
         subjects: z.array(shotSubject).default([]),
         camera: z.string().optional(),
+        /** Authored art direction for this frame; in the prompt, so editing it re-renders it. */
+        artNotes: z.string().optional(),
         coversLines: z.array(z.string()).default([]),
         shotData: shotDataSchema.optional(),
       }),

@@ -12,7 +12,7 @@ import { editorTitle, type OpenWhere } from '../../src/shared/editors.js';
 import type { EditorId, UiEffect } from '../../src/shared/ipc.js';
 import type { ShellApp } from './context.js';
 import { editorClass } from './editor.js';
-import { NO_PANE, paneShowing, paneToClose, paneToUse, type Pane } from './panes.js';
+import { NO_PANE, paneElsewhere, paneShowing, paneToClose, paneToUse, type Pane } from './panes.js';
 import type { VnScreen } from './screen.js';
 
 type ViewEffect = Extract<UiEffect, { type: 'view' }>;
@@ -23,9 +23,14 @@ export function applyView(app: ShellApp, effect: ViewEffect): string | null {
 
   switch (effect.action) {
     case 'open':
-      return withSubject(app, effect.subject, open(screen, effect.editor, effect.where));
+      return withSubject(
+        app,
+        effect.editor,
+        effect.subject,
+        open(screen, effect.editor, effect.where),
+      );
     case 'focus':
-      return withSubject(app, effect.subject, focus(screen, effect.editor));
+      return withSubject(app, effect.editor, effect.subject, focus(screen, effect.editor));
     case 'close':
       return close(screen);
     case 'reset':
@@ -35,21 +40,36 @@ export function applyView(app: ShellApp, effect: ViewEffect): string | null {
 }
 
 /**
+ * Which selection field an editor's subject *is*. A path and a hash are not interchangeable —
+ * pointing `docPath` at a `.png` would have the wiki editor `doc.read` a binary — so an editor
+ * with no entry here simply has no subject, and the field it does not name is left alone.
+ */
+const SUBJECT_OF: Partial<Record<EditorId, 'docPath' | 'assetHash'>> = {
+  wiki: 'docPath',
+  documents: 'docPath',
+  asset: 'assetHash',
+};
+
+/**
  * Publish the subject, unless the mesh could not show the editor at all. A document set on a
  * pane that never opened would move every *other* document editor instead, which is the one way
  * this could be worse than doing nothing. The correction passes straight through.
  */
 function withSubject(
   app: ShellApp,
+  editor: EditorId,
   subject: string | undefined,
   correction: string | null,
 ): string | null {
-  if (subject && !correction) app.ui.docPath = subject;
+  const field = SUBJECT_OF[editor];
+  if (subject && field && !correction) app.ui[field] = subject;
   return correction;
 }
 
+type Split = { horiz: boolean; intoNew: boolean };
+
 /** Which way `splitArea` divides, and whether the *new* half is the one that gets the editor. */
-const SPLIT: Record<Exclude<OpenWhere, 'here'>, { horiz: boolean; intoNew: boolean }> = {
+const SPLIT: Record<Exclude<OpenWhere, 'here' | 'elsewhere'>, Split> = {
   left: { horiz: false, intoNew: false },
   right: { horiz: false, intoNew: true },
   above: { horiz: true, intoNew: false },
@@ -61,23 +81,37 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
   if (!cls) return `This build has no ${editorTitle(editor)} editor.`;
 
   const areas = screen.sareas as ScreenArea[];
-  // Already open and asked for *here* is a focus: an author who says "show me the script" while
-  // looking at it means "put me back in it", not "show it twice".
-  if (where === 'here') {
+  // Already open and asked for a pane rather than a split is a focus: an author who says "show me
+  // the script" while looking at it means "put me back in it", not "show it twice".
+  if (where === 'here' || where === 'elsewhere') {
     const showing = paneShowing(panesOf(screen), editor);
     if (showing !== NO_PANE) return focus(screen, editor);
   }
 
-  const index = paneToUse(panesOf(screen));
-  if (index === NO_PANE) return 'There is no pane to show it in.';
+  const panes = panesOf(screen);
+  const from = paneToUse(panes);
+  if (from === NO_PANE) return 'There is no pane to show it in.';
+
+  let index = from;
+  let split: Split | undefined;
+  if (where === 'elsewhere') {
+    // Anywhere but the pane doing the asking — the documents tree opening an asset into itself
+    // would replace the tree. A window with only one pane has nowhere else, so it splits.
+    index = paneElsewhere(panes, from);
+    if (index === NO_PANE) {
+      index = from;
+      split = SPLIT.right;
+    }
+  } else if (where !== 'here') {
+    split = SPLIT[where];
+  }
   const target = areas[index] as ScreenArea;
 
   // `splitArea` keeps the target as the first half and returns a *copy* of it as the second, so
   // whichever half does not get the new editor still holds what the author was looking at. Which
   // half that is, is the whole difference between `left` and `right`.
   let sarea = target;
-  if (where !== 'here') {
-    const split = SPLIT[where];
+  if (split) {
     const made = screen.splitArea(target, 0.5, split.horiz);
     sarea = split.intoNew ? made : target;
   }

@@ -165,6 +165,7 @@ export class DocumentsEditor extends VnEditor {
       shotId: ui.shotId,
       characterId: ui.characterId,
       docPath: ui.docPath,
+      assetHash: ui.assetHash,
     };
   }
 
@@ -181,6 +182,7 @@ export class DocumentsEditor extends VnEditor {
       ui.shotId,
       ui.characterId,
       ui.docPath,
+      ui.assetHash,
     ].join('|');
   }
 
@@ -392,7 +394,7 @@ export class DocumentsEditor extends VnEditor {
    */
   private thumb(asset: EntityLinks['assets'][number]): HTMLElement {
     const cell = el('div', `dt-thumb${asset.accepted ? ' accepted' : ''}`);
-    cell.title = `${asset.hash.slice(0, 12)}${asset.accepted ? ' · accepted' : ''}`;
+    cell.title = `${asset.label}${asset.accepted ? ' · accepted' : ''}`;
     const img = document.createElement('img');
     img.src = `vnasset://${asset.hash}.${asset.ext}`;
     img.alt = asset.kind;
@@ -427,6 +429,16 @@ export class DocumentsEditor extends VnEditor {
     }
 
     this.publish(next);
+    if (row.node.kind === 'asset') this.openAsset(next.assetHash);
+  }
+
+  /**
+   * Show a generated asset in the Asset editor, anywhere but here. `elsewhere` is the whole
+   * answer: it focuses one that is already up, takes the biggest *other* pane when it is not,
+   * and splits only in a window that has no other pane to take.
+   */
+  private openAsset(hash: string): void {
+    void exec('view.open', { editor: 'asset', where: 'elsewhere', subject: hash });
   }
 
   private publish(next: Selection): void {
@@ -435,6 +447,7 @@ export class DocumentsEditor extends VnEditor {
     ui.shotId = next.shotId;
     ui.characterId = next.characterId;
     ui.docPath = next.docPath;
+    ui.assetHash = next.assetHash;
     this.announce();
     this.rebuild();
   }

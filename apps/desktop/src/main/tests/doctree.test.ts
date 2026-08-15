@@ -12,6 +12,8 @@ import { WorkspaceSession, type SessionDeps } from '../session.js';
 const deps: SessionDeps = {
   emitEvent: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
+  requestAnswer: () => Promise.resolve(''),
+  requestConfirm: () => Promise.resolve(false),
 };
 
 const ROOT = process.platform === 'win32' ? 'C:\\proj' : '/proj';
@@ -161,6 +163,15 @@ describe('buildDocTree', () => {
     ]);
   });
 
+  it('names an asset from the labels it was given, and falls back to hash8.ext', () => {
+    const named = buildDocTree(makeInput({ assetLabels: new Map([['a'.repeat(64), 'Aiko']]) }));
+    const kinds = branch(named.roots, 'branch:assets').children!;
+    expect(kinds[0]!.children!.map((n) => n.label)).toEqual(['Aiko']);
+    expect(kinds[1]!.children!.map((n) => n.label)).toEqual(['bbbbbbbb.png']);
+    // An asset is addressed by hash, so no click can route it down the document-opening path.
+    expect(kinds[0]!.children![0]!.path).toBeUndefined();
+  });
+
   it('counts what a cap dropped instead of quietly shortening the branch', () => {
     const many = new Map<string, Shot[] | null>([
       ['arrival', Array.from({ length: 5 }, (_, i) => scene('arrival', { id: `s${i}` }))],
@@ -179,7 +190,16 @@ describe('backlinks', () => {
     expect(backlinks['character:aiko']).toEqual({
       sheet: 'wiki/cast/aiko.md',
       wiki: 'wiki/cast/aiko.md',
-      assets: [{ hash: 'a'.repeat(64), ext: 'png', kind: 'portrait', accepted: true, base: true }],
+      assets: [
+        {
+          hash: 'a'.repeat(64),
+          ext: 'png',
+          kind: 'portrait',
+          label: 'aaaaaaaa.png',
+          accepted: true,
+          base: true,
+        },
+      ],
       scenes: ['arrival'],
       shots: [{ scene: 'arrival', shot: 'arrival-s1' }],
     });

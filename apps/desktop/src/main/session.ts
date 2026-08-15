@@ -18,6 +18,8 @@ import { readdir, rename } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
+  applyCharacterEdit,
+  applyLocationEdit,
   assignLineIds,
   characterFromDoc,
   docToMarkdown,
@@ -28,6 +30,8 @@ import {
   sceneChunksFromScript,
   scriptFromScenes,
   slug,
+  type CharacterEdit,
+  type LocationEdit,
   type SceneChunk,
 } from '@vn/model';
 import { parseFountain, type FrontMatterDoc, type LoadedInputs } from '@vn/parse';
@@ -36,8 +40,10 @@ import {
   ProjectPaths,
   checkDocWrite,
   conventionalKind,
+  entityDoc,
   entityFile,
   findScreenplay,
+  isBaseKind,
   loadInputs,
   readDocFile,
   readSceneChunks,
@@ -52,9 +58,21 @@ import {
   type DocResult,
   type DocWritePlan,
 } from '@vn/store';
-import { loadGraph, type TaskGraph } from '@vn/taskgraph';
+import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, writeFileAtomic } from '@vn/util';
-import { costPreview, driftOf, gateStatus, isApproved } from '@vn/pipeline';
+import { baseRefusal, costPreview, driftOf, gateStatus, isApproved } from '@vn/pipeline';
+import {
+  formatSubject,
+  generateConcept,
+  matchSubject,
+  parseSubject,
+  promoteConcept,
+  promotionOf,
+  redrawConcept,
+  redrawOf,
+  subjectEntity,
+  type ConceptRequest,
+} from '@vn/artgen';
 import {
   createAnthropicChat,
   createGeminiChat,
@@ -68,6 +86,7 @@ import {
   Workspace,
   composeSystem,
   loadContext,
+  workspaceArtGen,
   type AgentBackend,
   type AgentEvent,
   type AgentMode,
@@ -105,10 +124,11 @@ import {
   type ScenePlan,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import type { Effort, Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
+import type { AnyTask, Effort, Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
 import { bindsTo } from '@vn/types';
 import type {
   ApproveResult,
+  AssetInfo,
   BranchEditResult,
   DocNode,
   DocSaveResult,
@@ -121,8 +141,12 @@ import type {
   StoryGraph,
 } from '../shared/ipc.js';
 import { narrowTask } from './reviews.js';
+import { parseArtTarget, rungAt, rungsFor, type ArtTarget } from './artnotes.js';
+import { labelAssets, labelContext } from './assetlabel.js';
+import { derivePrompt } from './assetprompt.js';
 import { buildDocTree, fileTree } from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
+import { confirmDetail } from './toolconfirm.js';
 import type { BranchOp } from '../shared/branchops.js';
 import { setCoverage } from '../shared/coverage.js';
 
@@ -146,10 +170,14 @@ function chatBackendFor(modelId: string, keys: ResolvedKeys, effort?: Effort): C
   return createGeminiChat(keys.gemini, modelId);
 }
 
-/** Hooks the session uses to reach the renderer (events out, plan approval round-trip). */
+/** Hooks the session uses to reach the renderer: events out, and the three permission doors. */
 export interface SessionDeps {
   emitEvent(event: AgentEvent): void;
   requestPlan(plan: Plan): Promise<PlanDecision>;
+  /** The author's answer to a clarifying question. Empty is an answer — silence, said out loud. */
+  requestAnswer(question: string): Promise<string>;
+  /** Yes or no to an always-confirm tool. `detail` is the English sentence the card reads out. */
+  requestConfirm(tool: string, detail: string): Promise<boolean>;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -177,6 +205,84 @@ const editInputOf = (project: LoadedProject): SceneEditInput => ({
 /** Workspace-relative and forward-slashed, which is what a `written` list reports. */
 function relPath(dir: string, file: string): string {
   return relative(dir, file).split(sep).join('/');
+}
+
+/**
+ * Every scene's persisted storyboard, by scene id. A storyboard that will not parse is one
+ * scene's problem: with `reportBroken` it becomes a `null` the tree draws a badge for, and
+ * without it the scene is simply absent, which is what every other reader wants.
+ */
+async function readAllShots(
+  project: LoadedProject,
+  opts: { reportBroken?: boolean } = {},
+): Promise<Map<string, Shot[] | null>> {
+  const shots = new Map<string, Shot[] | null>();
+  for (const scene of project.model.scenes.values()) {
+    const ids = new Set(scene.lines.map((l) => l.id));
+    try {
+      const loaded = await readShots(project.paths, scene.id, ids);
+      if (loaded) shots.set(scene.id, loaded.shots);
+    } catch {
+      if (opts.reportBroken) shots.set(scene.id, null);
+    }
+  }
+  return shots;
+}
+
+/** A shot with its art notes set, or removed when the text is blank. `Shot` is flat, so this is it. */
+function withArtNotes(shot: Shot, notes: string): Shot {
+  const { artNotes: _drop, ...rest } = shot;
+  return notes.trim() ? { ...rest, artNotes: notes.trim() } : rest;
+}
+
+/**
+ * The character edit one rung's worth of notes amounts to. An outfit rung has to resend the whole
+ * wardrobe — `applyCharacterEdit` replaces the map — so it is rebuilt from what the model already
+ * normalized, with the one entry changed.
+ */
+function characterNotesEdit(
+  project: LoadedProject,
+  target: Extract<ArtTarget, { kind: 'character' }>,
+  notes: string,
+): CharacterEdit {
+  if (!target.outfit) return { artNotes: notes.trim() };
+  const character = project.model.characters.get(target.id)!;
+  return {
+    outfits: Object.fromEntries(
+      character.outfits.map((o) => {
+        const art = o.id === target.outfit ? notes.trim() : (o.artNotes ?? '');
+        // Empty keys are left out rather than written blank, matching `wardrobeData`.
+        return [
+          o.id,
+          art
+            ? { ...(o.description ? { description: o.description } : {}), art_notes: art }
+            : o.description,
+        ];
+      }),
+    ),
+  };
+}
+
+/** The same for a location; a variant rung resends the whole list for the same reason. */
+function locationNotesEdit(
+  project: LoadedProject,
+  target: Extract<ArtTarget, { kind: 'location' }>,
+  notes: string,
+): LocationEdit {
+  if (!target.variant) return { artNotes: notes.trim() };
+  const location = project.model.locations.get(target.id)!;
+  return {
+    variants: location.variants.map((v) => {
+      const art = v.id === target.variant ? notes.trim() : (v.artNotes ?? '');
+      return v.description || art
+        ? {
+            id: v.id,
+            ...(v.description ? { description: v.description } : {}),
+            ...(art ? { art_notes: art } : {}),
+          }
+        : v.id;
+    }),
+  };
 }
 
 /** Directories no file tree of a project should ever show, and the walk's cap. */
@@ -290,14 +396,17 @@ export class WorkspaceSession {
     }
   }
 
-  /** Plan approval routes to the renderer; tool confirmation auto-allows for now (scaffold). */
+  /**
+   * All three doors route to the renderer. None of them may answer for the author: an
+   * auto-allowed `confirmAction` spends an image call the author never agreed to, and an `ask`
+   * that resolves to nothing still reports `User answered:` to the model, which then proceeds on
+   * whatever it guessed — silence that reads as consent, twice over.
+   */
   private permission(): Permission {
     return {
       approvePlan: (plan) => this.deps.requestPlan(plan),
-      // TODO(desktop): route confirmAction / ask through the renderer too once the
-      // corresponding UI (skill-run confirm, free-form prompts) is built.
-      confirmAction: () => Promise.resolve(true),
-      ask: () => Promise.resolve(''),
+      confirmAction: (tool, args) => this.deps.requestConfirm(tool, confirmDetail(tool, args)),
+      ask: (question) => this.deps.requestAnswer(question),
     };
   }
 
@@ -314,7 +423,14 @@ export class WorkspaceSession {
 
   private async ensureAgent(): Promise<Agent> {
     if (this.agent) return this.agent;
-    const ctx: ToolContext = { workspace: new Workspace(this.dir), git: openGit(this.dir) };
+    const workspace = new Workspace(this.dir);
+    const ctx: ToolContext = {
+      workspace,
+      git: openGit(this.dir),
+      // The agent's `generate_image` and the palette's `art.generate` draw the same picture; the
+      // session's own `mock` is the only policy about whether it is real art.
+      art: workspaceArtGen(workspace, { mock: this.mock }),
+    };
     const context = await loadContext(this.dir);
     const config = await loadConfig(this.dir);
     this.model = config.models.text;
@@ -436,6 +552,446 @@ export class WorkspaceSession {
   }
 
   /**
+   * Everything the asset editor draws for one asset: what the bytes are, the prompt they were
+   * made from, the prompt the builders would write now, and the art-notes rungs that reach it.
+   * `null` when the manifest has never heard of the hash.
+   */
+  async assetInfo(hash: string): Promise<AssetInfo | null> {
+    const project = await loadProject(this.dir);
+    const manifest = project.store.manifest();
+    const asset = manifest.find((a) => a.hash === hash);
+    if (!asset) return null;
+
+    const shots = await readAllShots(project);
+    const task = project.graph.get(asset.sourceTask);
+    const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
+    const derived = derivePrompt(asset, ctx);
+    return {
+      hash: asset.hash,
+      ext: asset.ext,
+      kind: asset.kind,
+      label: labelAssets(manifest, labelContext(project.model, project.graph)).get(hash) ?? hash,
+      base: isBaseKind(asset.kind),
+      accepted: asset.accepted,
+      sourceTask: asset.sourceTask,
+      ...(asset.prompt === undefined ? {} : { prompt: asset.prompt }),
+      ...(asset.title === undefined ? {} : { title: asset.title }),
+      ...(derived === undefined ? {} : { derived }),
+      // An unknown derivation is not evidence of drift — it means the project no longer describes
+      // this asset, which the editor says a different way.
+      stale: derived !== undefined && asset.prompt !== undefined && derived !== asset.prompt,
+      rungs: rungsFor(asset, { model: project.model, shots }),
+    };
+  }
+
+  /**
+   * Whether accepting this asset is a question worth answering. Two kinds are refused by name:
+   * a portrait, because approving one also writes `character.md` and `approved.png` and that is
+   * `gate.approve`; and a concept, because nothing downstream consumes one, so `accepted` would
+   * mean nothing. Already accepted is not a refusal — re-accepting is how an author changes
+   * their mind.
+   */
+  async previewAccept(hash: string): Promise<{ ok: boolean; message: string }> {
+    const info = await this.assetInfo(hash);
+    if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.` };
+    if (info.kind === 'portrait') {
+      // The character rung is the widest one a portrait has, so its target names the character
+      // without asking for the binding a second time.
+      const who = info.rungs[0]?.target.split(':')[1];
+      const call = who ? `(characterId='${who}' hash='${hash}')` : '';
+      return {
+        ok: false,
+        message: `${info.label} is a portrait; use gate.approve${call}, which also writes character.md and approved.png.`,
+      };
+    }
+    if (info.kind === 'concept') {
+      return {
+        ok: false,
+        message: `${info.label} is a concept; nothing downstream consumes one. Use art.promote(hash='${hash}' variant=…) to make it a location plate.`,
+      };
+    }
+    return {
+      ok: true,
+      message: info.accepted
+        ? `${info.label} is already accepted; would re-accept it.`
+        : `Would accept ${info.label}.`,
+    };
+  }
+
+  /**
+   * Mark an asset as the accepted one for what it satisfies. Generic across both roots, and it
+   * asks {@link previewAccept} first rather than trusting that a check ran — a precondition is a
+   * sentence a surface may show, never a gate the command may lean on.
+   */
+  async acceptAsset(hash: string): Promise<{ ok: boolean; message: string }> {
+    const allowed = await this.previewAccept(hash);
+    if (!allowed.ok) return allowed;
+    const project = await loadProject(this.dir);
+    if (!project.store.has(hash)) return { ok: false, message: `No asset "${hash}" in the store.` };
+    await project.store.accept(hash);
+    return { ok: true, message: `Accepted ${hash.slice(0, 8)}.` };
+  }
+
+  /**
+   * Whether a regeneration would land, and the task it would requeue. Shared by the check and the
+   * write so the refusal a surface shows is the refusal the command gives.
+   *
+   * A `stale` asset is refused on purpose: its task is an orphan (the prompt moved on, so the
+   * planner now wants a different hash), and requeueing it would spend a real image call
+   * reproducing the picture the author just edited away from. `tasks.jsonl` is never pruned, so
+   * without this the log's dead nodes stay re-runnable forever.
+   */
+  private async regeneration(
+    hash: string,
+  ): Promise<{ ok: false; reason: string } | { ok: true; task: AnyTask; note: string }> {
+    const info = await this.assetInfo(hash);
+    if (!info) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
+    const project = await loadProject(this.dir);
+    if (project.store.base.state === 'unavailable') {
+      return {
+        ok: false,
+        reason: baseRefusal(project.store.base) ?? 'Base assets are unavailable.',
+      };
+    }
+    // A concept's `sourceTask` is a hash of the request and deliberately not a node, so the
+    // generic "no task" refusal below would be true and useless. Redrawing one is its own act.
+    if (info.kind === 'concept') {
+      return {
+        ok: false,
+        reason: `${info.label} is a concept: the planner never made it, so there is no task to re-run. Draw it again with art.redraw(hash='${hash}'), which takes an edited prompt.`,
+      };
+    }
+    const task = info.sourceTask ? project.graph.get(info.sourceTask) : undefined;
+    if (!task) {
+      return {
+        ok: false,
+        reason: `${info.label} records no task in the graph, so there is nothing to re-run.`,
+      };
+    }
+    if (info.stale) {
+      return {
+        ok: false,
+        reason: `${info.label} was rendered from a prompt the project has since changed, so its task is an orphan. Run the pipeline — a fresh task is already planned for it.`,
+      };
+    }
+    // With a fixed seed the same prompt and the same references give back the same bytes, so
+    // say so rather than letting an author spend a call finding out.
+    const seeded = project.config.image_params.seed !== undefined;
+    return {
+      ok: true,
+      task,
+      note: seeded
+        ? `Would re-run ${task.kind} for ${info.label} — image_params.seed is fixed, so expect the same picture. Art notes are how the picture changes.`
+        : `Would re-run ${task.kind} for ${info.label}.`,
+    };
+  }
+
+  /** What `asset.regenerate` would do, without doing it. */
+  async previewRegenerate(hash: string): Promise<{ ok: boolean; message: string }> {
+    const decided = await this.regeneration(hash);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Put an asset's task back to `pending` so the next run re-renders it. Appending a `pending`
+   * snapshot to `tasks.jsonl` *is* the requeue — `loadGraph` replays last-writer-wins, which is
+   * how `requeueFailed` already works — so this needs no new scheduler machinery.
+   */
+  async regenerateAsset(
+    hash: string,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const decided = await this.regeneration(hash);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const project = await loadProject(this.dir);
+    await logTask(project.paths, {
+      ...decided.task,
+      status: 'pending',
+      output: undefined,
+      error: undefined,
+    });
+    return {
+      ok: true,
+      message: `Queued ${decided.task.kind} ${decided.task.hash.slice(0, 8)} for re-run.`,
+      written: [relPath(this.dir, project.paths.tasksLog)],
+    };
+  }
+
+  /** What `art.setNotes` would do, without writing it. */
+  async previewArtNotes(target: string, notes: string): Promise<{ ok: boolean; message: string }> {
+    const project = await loadProject(this.dir);
+    const decided = await this.artNotesPlan(project, target, notes);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Write one art-notes rung. An entity rung goes through `@vn/model`'s `apply*Edit` into the
+   * sheet the model was built from — the same path `vnauthor`'s `edit_character` takes, so one
+   * authorial act has one answer — and a shot rung goes into `work/shots/<sceneId>.json`.
+   */
+  async setArtNotes(
+    target: string,
+    notes: string,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const project = await loadProject(this.dir);
+    const decided = await this.artNotesPlan(project, target, notes);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    await decided.write();
+    return { ok: true, message: decided.note, written: [relPath(this.dir, decided.file)] };
+  }
+
+  /**
+   * The rule behind both, decided once against a fresh load: does the rung exist, and what would
+   * writing it do. Never creates an outfit, a variant or a shot — a note on something that does
+   * not exist is a typo, and inventing the thing would hide it.
+   */
+  private async artNotesPlan(
+    project: LoadedProject,
+    target: string,
+    notes: string,
+  ): Promise<
+    | { ok: false; reason: string }
+    | { ok: true; note: string; file: string; write: () => Promise<void> }
+  > {
+    const parsed = parseArtTarget(target);
+    if (!parsed) {
+      return {
+        ok: false,
+        reason: `"${target}" names no art-notes rung; expected character:<id>[/<outfit>], location:<id>[/<variant>] or shot:<sceneId>/<shotId>.`,
+      };
+    }
+    const shots = await readAllShots(project);
+    const rung = rungAt(parsed, { model: project.model, shots });
+    if (!rung) return { ok: false, reason: `No such art-notes rung: ${target}.` };
+    const said = notes.trim()
+      ? `Set art notes on ${rung.label}.`
+      : `Cleared art notes on ${rung.label}.`;
+
+    if (parsed.kind === 'shot') {
+      const scene = project.model.scenes.get(parsed.sceneId)!;
+      const file = project.paths.shotsFile(parsed.sceneId);
+      return {
+        ok: true,
+        note: said,
+        file,
+        write: async () => {
+          const loaded = await readShots(
+            project.paths,
+            scene.id,
+            new Set(scene.lines.map((l) => l.id)),
+          );
+          if (!loaded) throw new Error(`Scene "${scene.id}" has no storyboard to write to.`);
+          const next = loaded.shots.map((s) =>
+            s.id === parsed.shotId ? withArtNotes(s, notes) : s,
+          );
+          await writeShots(project.paths, scene.id, next);
+        },
+      };
+    }
+
+    const docs =
+      parsed.kind === 'character' ? project.inputs.characterDocs : project.inputs.locationDocs;
+    const found = entityDoc(docs, parsed.id);
+    if (!found) return { ok: false, reason: `No sheet on disk for ${parsed.kind} "${parsed.id}".` };
+    return {
+      ok: true,
+      note: said,
+      file: found.file,
+      write: async () => {
+        const edited =
+          parsed.kind === 'character'
+            ? applyCharacterEdit(found.doc, characterNotesEdit(project, parsed, notes))
+            : applyLocationEdit(found.doc, locationNotesEdit(project, parsed, notes));
+        if (!edited.ok) throw new Error(`Edit rejected: ${edited.diagnostic.message}`);
+        await writeFileAtomic(found.file, docToMarkdown(edited.value.doc));
+      },
+    };
+  }
+
+  /**
+   * The rule behind both concept halves, decided once against a fresh load: is there something to
+   * draw, is there a root to write it into, and what would the prompt say.
+   */
+  private async conceptPlan(
+    sentence: string,
+    subject: string,
+  ): Promise<
+    | { ok: false; reason: string }
+    | { ok: true; note: string; project: LoadedProject; req: ConceptRequest }
+  > {
+    const said = sentence.trim();
+    if (!said) return { ok: false, reason: 'Nothing to draw: the description is empty.' };
+    const named = subject ? parseSubject(subject) : undefined;
+    if (subject && !named) {
+      return {
+        ok: false,
+        reason: `"${subject}" names no subject; expected location:<id> or character:<id>.`,
+      };
+    }
+    const project = await loadProject(this.dir);
+    const refusal = baseRefusal(project.store.base);
+    if (refusal) return { ok: false, reason: refusal };
+    const bound = named ?? matchSubject(project.model, said);
+    if (bound && !subjectEntity(project.model, bound)) {
+      return { ok: false, reason: `No ${bound.kind} "${bound.id}" in this project.` };
+    }
+    const of = bound ? `of ${formatSubject(bound)}` : 'bound to nothing in the project';
+    return {
+      ok: true,
+      note: `Would draw a concept ${of}. It is a sketch — nothing in the pipeline plans or renders it.`,
+      project,
+      req: { sentence: said, ...(bound ? { subject: bound } : {}) },
+    };
+  }
+
+  /** What `art.generate` would draw, without spending the call. */
+  async previewConcept(
+    sentence: string,
+    subject: string,
+  ): Promise<{ ok: boolean; message: string }> {
+    const decided = await this.conceptPlan(sentence, subject);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Draw one concept image. The door the planner deliberately does not have — a sentence in, an
+   * asset out, with no task node and no place in any plan. Providers come from the session's own
+   * `mock`, so there is no second policy about whether this run makes real art.
+   */
+  async drawConcept(
+    sentence: string,
+    subject: string,
+  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
+    const decided = await this.conceptPlan(sentence, subject);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const { project, req } = decided;
+    const result = await this.while('a concept image', async () => {
+      const providers = await buildProviders(project, this.mock);
+      return generateConcept(
+        {
+          config: project.config,
+          model: project.model,
+          store: project.store,
+          image: providers.image,
+        },
+        req,
+      );
+    });
+    const of = result.subject ? ` of ${formatSubject(result.subject)}` : '';
+    return {
+      ok: true,
+      message: `Drew a concept${of}: ${result.ref.hash.slice(0, 8)}.`,
+      hash: result.ref.hash,
+      written: [relPath(this.dir, result.file), relPath(this.dir, project.paths.baseManifest)],
+    };
+  }
+
+  /** What `art.redraw` would draw, decided from the manifest without spending the call. */
+  async previewRedraw(
+    hash: string,
+    prompt: string,
+    title: string,
+  ): Promise<{ ok: boolean; message: string }> {
+    const project = await loadProject(this.dir);
+    const decided = redrawOf(
+      project.store,
+      { hash, prompt, title },
+      { seeded: this.seeded(project) },
+    );
+    return decided.ok
+      ? { ok: true, message: decided.plan.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Draw a concept again, from an edited prompt or the same one. A concept is the one asset whose
+   * prompt is authored rather than derived, so it is the one asset an author can rewrite; the
+   * result is a new sketch beside the old one, because bytes are content-addressed.
+   */
+  async redrawAsset(
+    hash: string,
+    prompt: string,
+    title: string,
+  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
+    const project = await loadProject(this.dir);
+    const decided = redrawOf(
+      project.store,
+      { hash, prompt, title },
+      { seeded: this.seeded(project) },
+    );
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const result = await this.while('a concept image', async () => {
+      const providers = await buildProviders(project, this.mock);
+      return redrawConcept(
+        {
+          config: project.config,
+          model: project.model,
+          store: project.store,
+          image: providers.image,
+        },
+        { hash, prompt, title },
+      );
+    });
+    const same = result.unchanged
+      ? ' The same prompt and a fixed seed gave back the same picture, so nothing new was written.'
+      : ` ${hash.slice(0, 8)} is still there.`;
+    return {
+      ok: true,
+      message: `Redrew ${hash.slice(0, 8)} as ${result.ref.hash.slice(0, 8)}.${same}`,
+      hash: result.ref.hash,
+      written: [relPath(this.dir, result.file), relPath(this.dir, project.paths.baseManifest)],
+    };
+  }
+
+  /** Whether a re-roll would come back identical — one fixed seed, one prompt, one picture. */
+  private seeded(project: LoadedProject): boolean {
+    return project.config.image_params.seed !== undefined;
+  }
+
+  /** What `art.promote` would do, decided from the manifest without writing anything. */
+  async previewPromote(hash: string, variant: string): Promise<{ ok: boolean; message: string }> {
+    const project = await loadProject(this.dir);
+    const decided = promotionOf(project.store, { hash, variant });
+    return decided.ok
+      ? { ok: true, message: decided.plan.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Promote a concept to the location plate the planner would have rendered: the variant goes onto
+   * the sheet, the bytes are re-recorded as a `location_ref`, and that plate's task is logged
+   * `done` so the next run adopts the sketch rather than rendering over it.
+   */
+  async promoteAsset(
+    hash: string,
+    variant: string,
+    description: string,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const project = await loadProject(this.dir);
+    const decided = promotionOf(project.store, { hash, variant });
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const result = await promoteConcept(
+      { config: project.config, paths: project.paths, store: project.store },
+      { hash, variant, ...(description.trim() ? { description: description.trim() } : {}) },
+    );
+    const added = result.addedVariant ? ` "${result.variant}" is new on its sheet.` : '';
+    return {
+      ok: true,
+      message: `Promoted ${hash.slice(0, 8)} to the ${result.variant} plate for ${result.locationId}.${added}`,
+      written: [
+        ...(result.file ? [relPath(this.dir, result.file)] : []),
+        relPath(this.dir, project.paths.baseManifest),
+        relPath(this.dir, project.paths.tasksLog),
+      ],
+    };
+  }
+
+  /**
    * The sidebar's logical tree plus per-entity backlinks. One load, one manifest, one storyboard
    * read per scene — which is exactly why this is not folded into `workspace:index`, the shape
    * the agent refetches every turn.
@@ -446,26 +1002,17 @@ export class WorkspaceSession {
     const bible = await this.bibleWorkspace.bible();
     await bible.refresh();
 
-    const shots = new Map<string, Shot[] | null>();
-    for (const scene of project.model.scenes.values()) {
-      const ids = new Set(scene.lines.map((l) => l.id));
-      // A storyboard that will not parse is one scene's problem, and the tree says so on that
-      // scene rather than failing the whole sidebar.
-      try {
-        const loaded = await readShots(project.paths, scene.id, ids);
-        if (loaded) shots.set(scene.id, loaded.shots);
-      } catch {
-        shots.set(scene.id, null);
-      }
-    }
+    const shots = await readAllShots(project, { reportBroken: true });
+    const manifest = project.store.manifest();
     return buildDocTree({
       root: this.dir,
       model: project.model,
       inputs: project.inputs,
-      manifest: project.store.manifest(),
+      manifest,
       shots,
       bible: bible.files(),
       wikiDir: relPath(this.dir, project.paths.wikiDir),
+      assetLabels: labelAssets(manifest, labelContext(project.model, project.graph)),
     });
   }
 

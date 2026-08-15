@@ -11,15 +11,19 @@ import { api, isLive, onAgentEvent } from '../api.js';
 import { exec, onExec, shell } from './bridge.js';
 import {
   answered,
+  answeredQuestion,
   asked,
   cleared,
+  confirmAsked,
+  confirmDecided,
   decided,
   emptyConvo,
   proposed,
+  queried,
   received,
   type Convo,
 } from './convo.js';
-import type { PlanRequest } from '../../src/shared/ipc.js';
+import type { AskRequest, ConfirmRequest, PlanRequest } from '../../src/shared/ipc.js';
 
 const OPENING = isLive
   ? 'Workspace loaded. Tell me what to change — I plan first, you approve, then I edit and commit.'
@@ -71,6 +75,26 @@ export async function decide(approved: boolean): Promise<void> {
   if (approved) setMode('execute');
 }
 
+/**
+ * Answer the question card. Like `decide`, a reply rather than a command: main is parked inside
+ * the agent's turn, so nothing about this is undoable and there is no provenance to record.
+ * The empty string is allowed through — "nothing to add" is what the tool exists to hear.
+ */
+export function answer(text: string): void {
+  const request = state.question;
+  if (!request) return;
+  set(answeredQuestion(state, text));
+  void api.invoke('ask:answer', { id: request.id, answer: text.trim() });
+}
+
+/** Answer the confirm card. A denial is a refusal the tool reports; nothing else happens. */
+export function allow(allowed: boolean): void {
+  const request = state.confirm;
+  if (!request) return;
+  set(confirmDecided(state, allowed));
+  void api.invoke('confirm:decision', { id: request.id, allowed });
+}
+
 function setMode(mode: 'plan' | 'execute'): void {
   shell().ui.agentMode = mode;
   shell().api.notifyChange();
@@ -93,10 +117,12 @@ export function takeSeed(): string | null {
   return text;
 }
 
-/** Subscribe to the agent's stream and to plan requests. Called once, from the shell's boot. */
+/** Subscribe to the agent's stream and its three permission doors. Called once, at boot. */
 export function installAgent(): void {
   onAgentEvent((event) => set(received(state, event)));
   api.on('permission:plan', (request: PlanRequest) => set(proposed(state, request)));
+  api.on('permission:ask', (request: AskRequest) => set(queried(state, request)));
+  api.on('permission:confirm', (request: ConfirmRequest) => set(confirmAsked(state, request)));
 
   // Clearing is a command, so the transcript follows the command rather than the button on the
   // pane: the palette running `agent.clear` empties this the same way. One reaches it and this

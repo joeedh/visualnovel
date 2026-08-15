@@ -6,8 +6,18 @@
 /** Lifecycle of a character's "look" through the approval gate (report §P3). */
 export type CharacterStatus = 'draft' | 'candidates' | 'approved' | 'locked';
 
-/** Kinds of generated image assets (report §3, §7). */
-export type AssetKind = 'location_ref' | 'portrait' | 'model_sheet' | 'outfit_sheet' | 'shot_image';
+/**
+ * Kinds of generated image assets (report §3, §7). All but `concept` are the output of a planned
+ * task; a `concept` is drawn on demand from a sentence, bound to what it sketches and consumed by
+ * nothing — see `docs/plans/on-demand-concept-images.md`.
+ */
+export type AssetKind =
+  | 'location_ref'
+  | 'portrait'
+  | 'model_sheet'
+  | 'outfit_sheet'
+  | 'shot_image'
+  | 'concept';
 
 /** A reference to a stored asset by its content hash. */
 export interface AssetRef {
@@ -32,6 +42,8 @@ export interface Outfit {
   /** Owning character id. */
   characterId: string;
   description: string;
+  /** Art direction for this outfit alone — see {@link Character.artNotes}. */
+  artNotes?: string;
   /** Model-sheet angle/expression images for this outfit, by label. */
   sheet?: Record<string, AssetRef>;
 }
@@ -51,6 +63,13 @@ export interface Character {
   /** Outfit id used when a shot does not specify one. */
   defaultOutfit: string;
   outfits: Outfit[];
+  /**
+   * Free-form art direction appended to every prompt this character reaches — how the picture
+   * should look, as opposed to {@link description}, which is who the character is. Authored, so
+   * an agent can set it; part of the prompt, so changing it re-keys the tasks it reaches and the
+   * next run re-renders exactly those.
+   */
+  artNotes?: string;
   /** Asset hash of the user-approved portrait, once the gate is passed. */
   approvedPortrait?: string;
 }
@@ -60,6 +79,8 @@ export interface LocationVariant {
   /** e.g. `day`, `afternoon`, `night`, `rain`. */
   id: string;
   description: string;
+  /** Art direction for this variant alone — see {@link Character.artNotes}. */
+  artNotes?: string;
   /** Establishing/reference image once generated. */
   ref?: AssetRef;
 }
@@ -73,6 +94,8 @@ export interface Location {
   lighting?: string;
   palette: string[];
   variants: LocationVariant[];
+  /** Art direction for every plate of this location — see {@link Character.artNotes}. */
+  artNotes?: string;
   /** True when mined from the screenplay rather than user-authored. */
   mined: boolean;
 }
@@ -139,6 +162,9 @@ export interface Shot {
   location: string;
   subjects: ShotSubject[];
   camera?: string;
+  /** Art direction for this frame alone — see {@link Character.artNotes}. Authored, like
+   * {@link camera}, and in the prompt, so editing it re-renders this shot and nothing else. */
+  artNotes?: string;
   /** Dialogue line ids this shot covers. */
   coversLines: string[];
   /** Filled in P6. */
@@ -237,6 +263,12 @@ export interface Asset {
    */
   satisfies: AssetBinding[];
   accepted: boolean;
+  /**
+   * A short human name, for an asset whose name cannot be derived from what it serves. A plate is
+   * "Café Mori — night" because its binding says so; a concept was asked for in a sentence, and
+   * the sentence is the only name it has.
+   */
+  title?: string;
 }
 
 /**

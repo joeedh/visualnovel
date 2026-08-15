@@ -5,8 +5,16 @@
  * is read. Agent events stream as they happen via the `onEvent` sink; the final message is
  * printed as the assistant's reply.
  */
+import { relative } from 'node:path';
 import { createInterface, emitKeypressEvents, type Interface } from 'node:readline';
-import { discoverSkills, formatIndex, skillRoots, type Permission, type Plan } from '@vn/authoring';
+import {
+  discoverSkills,
+  formatIndex,
+  formatSubject,
+  skillRoots,
+  type Permission,
+  type Plan,
+} from '@vn/authoring';
 import {
   buildAgentBackend,
   createAuthoringAgent,
@@ -120,6 +128,7 @@ const HELP = [
   '  /clear           clear the conversation context (back to plan mode)',
   '  /status          list characters, locations, and scenes',
   '  /skills          list available authoring skills',
+  '  /makeimage <what>  draw a concept image of it (costs one generation)',
   '  /exit, /quit     leave vnauthor',
   '',
   'Shift-Tab cycles between plan and execute mode.',
@@ -307,6 +316,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
         await printSkills(session, channel);
         continue;
       }
+      if (line === '/makeimage' || line.startsWith('/makeimage ')) {
+        await makeImage(session, channel, line.slice('/makeimage'.length).trim());
+        continue;
+      }
       if (line.startsWith('/')) {
         channel.write(yellow(`unknown command "${line}". Try /help.`));
         continue;
@@ -321,6 +334,44 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
     channel.close();
   }
   return 0;
+}
+
+/**
+ * `/makeimage <sentence>` — draw a concept image, directly.
+ *
+ * Not a turn through the model: a one-line request should cost one generation and no tokens. It
+ * obeys plan mode like every other mutating act, and there it still composes and prints the prompt,
+ * which is the part worth reading before spending anything.
+ */
+async function makeImage(
+  session: AuthoringSession,
+  channel: Channel,
+  sentence: string,
+): Promise<void> {
+  if (!sentence) {
+    channel.write(yellow('Usage: /makeimage <what to draw>'));
+    return;
+  }
+  const art = session.ctx.art;
+  if (!art) {
+    channel.write(yellow('Image generation is not wired up in this session.'));
+    return;
+  }
+  const planning = session.agent.currentMode !== 'execute';
+  try {
+    const preview = await art.preview({ sentence });
+    channel.write(dim(`subject: ${preview.subject ? formatSubject(preview.subject) : 'none'}`));
+    channel.write(dim(`prompt: ${preview.prompt}`));
+    if (planning) {
+      channel.write(yellow('Plan mode — nothing generated. Shift-Tab to execute, then re-run.'));
+      return;
+    }
+    const result = await art.generate({ sentence });
+    channel.write(green(`wrote ${relative(session.ctx.workspace.root, result.file)}`));
+    channel.write(dim(`  ${result.ref.hash}.${result.ref.ext}`));
+  } catch (err) {
+    channel.write(yellow(`could not draw it: ${err instanceof Error ? err.message : err}`));
+  }
 }
 
 async function printStatus(session: AuthoringSession, channel: Channel): Promise<void> {

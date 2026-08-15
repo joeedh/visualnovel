@@ -1,4 +1,11 @@
-import { NO_PANE, paneShowing, paneToClose, paneToUse, type Pane } from '../panes.js';
+import {
+  NO_PANE,
+  paneElsewhere,
+  paneShowing,
+  paneToClose,
+  paneToUse,
+  type Pane,
+} from '../panes.js';
 
 const pane = (editor: string, over: Partial<Pane> = {}): Pane => ({
   editor,
@@ -42,6 +49,26 @@ describe('which pane an open lands in', () => {
 
   test('nowhere at all when the mesh is only chrome', () => {
     expect(paneToUse([header])).toBe(NO_PANE);
+  });
+});
+
+describe('which pane an open lands in when it must not land here', () => {
+  test('the biggest other one', () => {
+    const panes = [header, pane('documents', { width: 260 }), pane('script', { width: 900 })];
+    expect(paneElsewhere(panes, 1)).toBe(2);
+  });
+
+  test('never the asking pane, even when it is the biggest', () => {
+    const panes = [header, pane('documents', { width: 900 }), pane('script', { width: 300 })];
+    expect(paneElsewhere(panes, 1)).toBe(2);
+  });
+
+  test('never chrome, so a header does not count as somewhere else', () => {
+    expect(paneElsewhere([header, pane('documents')], 1)).toBe(NO_PANE);
+  });
+
+  test('nowhere when the asking pane is the only one — the caller splits instead', () => {
+    expect(paneElsewhere([pane('documents')], 0)).toBe(NO_PANE);
   });
 });
 

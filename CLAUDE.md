@@ -71,7 +71,7 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store ─ export scriptedit bible   git ──── commands
+  │   model store ─ export scriptedit bible artgen   git ──── commands
   │     │   │  │  ╲     │
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
@@ -93,7 +93,11 @@ allow-list and exists for a sharper reason: it holds the scene-edit rules and wr
 the desktop app's `story.*` commands _and_ `vnauthor` must run the same ones — so they cannot live
 in either (`docs/plans/scene-edit-package.md`). `@vn/bible` is the third such leaf, for the same
 reason: both the agent and the desktop app search the story bible, so the ranking policy belongs
-to neither ([`docs/story-bible.md`](docs/story-bible.md)).
+to neither ([`docs/story-bible.md`](docs/story-bible.md)). `@vn/artgen` is the fourth, and the one
+that reaches furthest down: it holds prompt composition (moved out of `@vn/pipeline`, which
+re-exports it) and on-demand generation, so it imports `providers` and `taskgraph` as well.
+`@vn/authoring` importing it is **not** a way around the pipeline ban — the boundaries rule is per
+import statement, not transitive ([`docs/plans/on-demand-concept-images.md`](docs/plans/on-demand-concept-images.md)).
 
 Two packages sit **outside the graph entirely** (neither is drawn above). `@vn/debug2d`
 imports nothing from `packages/` and is imported only by the desktop renderer's dev-only
@@ -112,6 +116,7 @@ it may import _every_ layer, and **nothing may import it** — see
 | `@vn/store`         | The only reader of a project's files: `loadInputs` (authored `scenes/<id>.md` chunks; entities discovered by `type:` tag across three surfaces; a leftover `screenplay/` is reported by `findScreenplay`, never read), the content-addressed asset store across **two roots** — base art in `assets/` and shot frames in `build/assets/`, each with its own `manifest.json`, behind one `AssetStore` facade (`AssetRoot` is one root; `baseAssetsOf` describes the base one alone) — and the `work/` tree — including `shots/<sceneId>.json`, whose reader/writer is the only place the flat in-memory `Shot` and its nested `shotData` are mapped. |
 | `@vn/export`        | Leaf projector: `buildPlayable(model, store)` → `story.play.json` (flattened ordered beats + branch edges; asset refs by `{hash,ext}`). Input-side only — forbidden from `pipeline`/`scheduler` (boundaries-enforced).                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `@vn/scriptedit`    | The scene-edit rules (`lineops`: nine pure decisions over a scene set; `shotorder`: the tenth, which reorders a shot by moving the lines it covers; `outfits`: what a character wears, at either level) + their consequences (`shotfallout`) + the write paths (`sourcesOf` → `planSceneEdit` → `applyScenePlan` for prose, `planMarkerEdit` → `applyMarkerPlan` for `[[…]]` markers). Shared by the desktop's `story.*` commands and `vnauthor`, so one authorial act has one answer. **Two entries**: the barrel is pure and browser-safe (the renderer runs `moveLine` to preview a drag); the filesystem half is `@vn/scriptedit/write`.        |
+| `@vn/artgen`        | Art generation policy, shared by the pipeline, the desktop and `vnauthor`. **Prompt composition** — every builder a planned image derives from, moved here so the input side can reach it — plus **on-demand generation**: `generateConcept` (one sentence → one `concept` asset, bound to what it sketches, planned by nothing) and `promoteConcept` (a sketch becomes the location plate the planner would have rendered). Node-side; never in `apps/desktop/src/shared/`.                                                                                                                                                                        |
 | `@vn/bible`         | Retrieval over the story bible (`wiki/`): index a markdown tree, `query(text, {limit, budget}) → ranked excerpts`. **No whole-file API** — that absence is what keeps the bible out of the context window. Grep ranking today, swappable for embeddings behind the same function. See [Story bible](#story-bible-vnbible).                                                                                                                                                                                                                                                                                                                          |
 | `@vn/commands`      | The command framework: typed prop specs, registry, `namespace.command(a='x' b=1)` DSL, execution stack with git provenance, JSON catalog projection, the `UndoJournal` behind opt-in undo/redo, and the `Committer` behind opt-in commit-on-save. Domain-agnostic — the commands themselves are defined by the host app.                                                                                                                                                                                                                                                                                                                            |
 | `@vn/debug2d`       | Source-agnostic 2D graphics debugging: fragment IR, space registry, DOM adapter (stacking-order z with culprit retention), query engine, `explainPick` rejection logs. Zero deps, outside the layering graph; dev-only in the desktop renderer. See [2D debug layer](#2d-debug-layer-vndebug2d).                                                                                                                                                                                                                                                                                                                                                    |
@@ -172,6 +177,35 @@ statement of every one — with the failure it prevents — is in
   are planned only for outfits something actually wears, and a shot out of its default references
   that outfit's **front** sheet.
   ([`docs/plans/outfits-at-scene-and-shot-level.md`](docs/plans/outfits-at-scene-and-shot-level.md))
+- **Art direction is an authored field, and it deliberately re-renders.** A prompt is derived and
+  rewritten every planning pass, so there is nothing there to edit; `artNotes` is the editable half —
+  optional free text at five rungs (`Character`, `Location`, `Shot`, each `Outfit`, each
+  `LocationVariant`) that the builders **append** to what they derived, so the scaffolding survives.
+  Like the outfit, setting one re-keys exactly the tasks that rung reaches. `buildShotPrompt` takes
+  `shot.artNotes` only — an entity note already reached the plates and sheets a shot references. A
+  project authoring none produces byte-identical prompts, which is the test that matters. Reached by
+  `art.setNotes`, by `vnauthor`'s `edit_character`/`edit_location`, and by the `asset` editor.
+  ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
+- **A concept is a picture the pipeline never asked for, and nothing downstream sees it.**
+  `generateConcept` is the door the planner deliberately does not have: one sentence in, one
+  `concept` asset out, bound to the location or character it names but **never planned, never
+  consumed, never exported**. Its `sourceTask` is a hash of the request, not a node in the graph, so
+  a project holding one plans exactly what it planned before. It is never `accepted` either —
+  `accepted` means a human approved this for use downstream, and there is no downstream. Reached by
+  `art.generate`, by `vnauthor`'s `generate_image`, and by `/makeimage`.
+- **A concept's prompt is authored, so it is the one prompt an author may edit.** Every other kind's
+  prompt is derived on each planning pass and folded into a task hash — art notes are how those
+  move. A concept has no builder behind it, so `art.redraw` (and `vnauthor`'s `edit_image`) takes a
+  rewritten prompt and files the result as a **new** sketch; the original stays where it is, because
+  bytes are content-addressed and nothing is ever overwritten. For the same reason `asset.regenerate`
+  refuses a concept by name: the planner never made it, so there is no task to requeue.
+- **Promotion is the one `done` record written outside the scheduler, and it adopts rather than
+  regenerates.** `promoteConcept` writes the variant onto the location sheet, re-records the bytes
+  as a `location_ref`, and logs the plate's own task `done` with this asset as its output — so the
+  next `vngen run` skips it. It cannot forge work that never happened: the task identity is
+  computed from the sheet the same call just wrote. Only a location concept promotes; a character's
+  look goes through the P3 gate, which owns `character.md` and `approved.png`.
+  ([`docs/plans/on-demand-concept-images.md`](docs/plans/on-demand-concept-images.md))
 - **No scene edit invalidates art, so drift is reported instead.** `buildShotPrompt` never reads
   line text either, so retyping a covered line re-renders nothing and the frame keeps illustrating
   words that are gone. `Shot.proseHash` is stamped beside the image (only when the bytes are new)
@@ -290,8 +324,8 @@ the existing `Scene`/`Shot`/`Asset` types.
 - Playable format and its contracts: [`docs/playable-format.md`](docs/playable-format.md)
   (plan: [`docs/plans/runner.md`](docs/plans/runner.md)).
 - The app — the path.ux shell, the shared graph canvas, and one section per editor (Branches,
-  Script, Convo, Coverage, Tasks/Task Graph/Inspector, Play, Wiki, Documents), plus the session
-  store, which project is open, and the seeded workspace:
+  Script, Convo, Coverage, Tasks/Task Graph/Inspector, Play, Wiki, Documents, Asset), plus the
+  session store, which project is open, and the seeded workspace:
   [`docs/desktop-app.md`](docs/desktop-app.md).
 - **One workspace at a time, and opening another is a teardown.** A picked directory becomes a
   project (`openWorkspace` writes a one-line `project.yaml`, then `ensureRepo` commits what is
@@ -305,14 +339,24 @@ the existing `Scene`/`Shot`/`Asset` types.
   no structure to edit through, so `doc.read`/`doc.write` move its bytes; a save presents the hash
   it read at and is refused by **content**, never mtime, so an identical rewrite still saves. The
   whole document is logged as a digest, and `scenes/**` is refused outright — prose has one write
-  path and it is `story.*`.
+  path and it is `story.*`. The rule is about **bytes**: a _named field_ inside a sheet may also be
+  set by a command that round-trips through `@vn/model`'s `apply*Edit` (today `art.setNotes` and
+  `art.promote`, which adds a variant), which rewrites one key and leaves the author's comments
+  where they are.
+- **An asset is named, and one pane answers for it.** The document tree labels assets by what they
+  are (`Aiko — uniform / front`, `Café Mori — night`), with a `(hash8)` suffix only on collision; the
+  eleventh editor shows one, keyed on `ui.assetHash`, with the derived prompt read-only, the art
+  notes editable, and Approve/Regenerate routed to `gate.approve` or `asset.accept` and
+  `asset.regenerate`. On a concept it shows a Promote strip instead — name a variant and
+  `art.promote` makes it that plate — and Approve refuses by name. A click in the tree opens it
+  `where=elsewhere` — anywhere but the pane that named it. ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
 
 The renderer is a **path.ux screen mesh**: the window subdivides into panes and each pane shows
 one editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs
 `git submodule update --init --recursive`, and `pnpm doctor` says so by name. The React room shell
 it replaced is gone, and so is React. Rules worth knowing before touching it:
 
-- **A pane shows an editor, and the ten editors are named in one place**
+- **A pane shows an editor, and the eleven editors are named in one place**
   (`apps/desktop/src/shared/editors.ts`): `view.*` runs in main and builds its props from that
   list, the renderer registers each class under the matching area name, and the shell warns at boot
   if the two disagree. There is no room vocabulary.
@@ -355,22 +399,24 @@ the menus, the agent, and an external CDP client all reach the same registry. Fu
 [`docs/command-system.md`](docs/command-system.md); plan:
 [`docs/plans/command-system.md`](docs/plans/command-system.md).
 
-- **`@vn/commands` is the framework; the desktop app owns the commands.** The 52 definitions
-  live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `doc`, `agent`,
-  `workspace`, `bible`, `view`, `interaction`, `command`) as thin wrappers over `WorkspaceSession`.
+- **`@vn/commands` is the framework; the desktop app owns the commands.** The 59 definitions
+  live in `apps/desktop/src/main/commands/` (`gate`, `pipeline`, `story`, `doc`, `asset`, `art`,
+  `agent`, `workspace`, `bible`, `view`, `interaction`, `command`) as thin wrappers over
+  `WorkspaceSession`.
 - **Commands are the only write path.** The `story.*` branch mutators go through
   `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the ten scene
   editors through `session.editScene(decide)`, so no surface writes scene prose by another path.
-  Outside the planner, `work/shots/<sceneId>.json` has exactly three writers: `story.setCoverage`,
-  `story.setOutfit`, and `editScene`, which carries a shot's coverage across a split, merge or
-  delete rather than stranding it. `vnauthor`'s `set_outfit` is not a fourth — it runs the same
-  `@vn/scriptedit` rules and gets the same refusals.
+  Outside the planner, `work/shots/<sceneId>.json` has exactly four writers: `story.setCoverage`,
+  `story.setOutfit`, `art.setNotes` (a shot rung), and `editScene`, which carries a shot's coverage
+  across a split, merge or delete rather than stranding it. `vnauthor`'s `set_outfit` is not a
+  fifth — it runs the same `@vn/scriptedit` rules and gets the same refusals.
 - **Props are declarative specs, not zod** (the repo is on zod 3). `coerceProps` is the single
   validation authority — defaults, coercion of loose JSON/CDP values, unknown-key rejection.
 - **DSL:** `namespace.command(a='x' b=1)`; commas optional, barewords are strings.
   `formatCommand` is the inverse and a round-trip test pins them together.
 - **Provenance and undo.** Each execution appends a `CommandRecord` to
-  `vngen/state/commands.jsonl`. Undo is **opt-in** (the eighteen `story.*` document mutators only)
+  `vngen/state/commands.jsonl`. Undo is **opt-in** (the eighteen `story.*` document mutators, the
+  two `doc.*` writers, and `art.setNotes`)
   and restores a shadow snapshot of the document tree under `refs/vn/undo/<seq>/{pre,post}` —
   HEAD and the index are never touched, `vngen/build` and `vngen/state` are excluded, and undo
   **refuses rather than guesses** when the worktree has drifted.

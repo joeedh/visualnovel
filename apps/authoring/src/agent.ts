@@ -24,6 +24,7 @@ import {
   Workspace,
   composeSystem,
   loadContext,
+  workspaceArtGen,
   type AgentBackend,
   type AgentEvent,
   type Permission,
@@ -95,7 +96,12 @@ export async function createAuthoringAgent(
     onEvent?: (e: AgentEvent) => void;
   } = {},
 ): Promise<AuthoringSession> {
-  const ctx: ToolContext = { workspace: new Workspace(dir), git: openGit(dir) };
+  const workspace = new Workspace(dir);
+  const ctx: ToolContext = {
+    workspace,
+    git: openGit(dir),
+    art: workspaceArtGen(workspace, { mock: opts.mock }),
+  };
   const context = await loadContext(dir);
   const model = (await loadConfig(dir)).models.text;
   const backend = await buildAgentBackend(dir, { mock: opts.mock, native: opts.native, model });

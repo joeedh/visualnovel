@@ -17,6 +17,7 @@ export function defineShellApi(): DataAPI {
   ui.string('characterId', 'characterId', 'Character');
   ui.string('docPath', 'docPath', 'Document');
   ui.string('taskHash', 'taskHash', 'Task');
+  ui.string('assetHash', 'assetHash', 'Asset');
 
   // The header's facts. Described here rather than read off `ctx.ui` directly so a later
   // widget can bind to them the way any other value in the shell is bound.

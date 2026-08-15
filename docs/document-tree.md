@@ -55,7 +55,9 @@ Assets         assetkind:<kind>      → asset:<hash>
 - **Assets** groups `AssetStore.manifest()` by `AssetKind`, each group labelled `base` or `project`
   by the same routing rule the store writes with (`isBaseKind`). The label describes what the asset
   *is*, so a legacy project whose base art is still indexed in the project manifest still groups
-  correctly.
+  correctly. A leaf is named, not hashed — see below. **Concepts** is one of those groups, and the
+  only one the pipeline never plans: an `art.generate` sketch has no task in the graph, and the tree
+  is the one place it is visible at all.
 
 ## Contracts
 
@@ -63,9 +65,26 @@ Assets         assetkind:<kind>      → asset:<hash>
   `character:aiko`, `wiki:history/the-war.md`, `asset:<hash>`. The backlink map is keyed by the same
   string, so a panel is a lookup rather than a second convention — and expansion state persists
   against these ids, which is why `character:aiko` must not become a path when the sheet moves.
+- **An asset is named, and the hash is what a collision costs.** `labelAssets`
+  (`apps/desktop/src/main/assetlabel.ts`, pure) turns the manifest's bindings into display names —
+  `Aiko`, `Aiko — uniform / front`, `Café Mori — night`, `greet · s2`. The angle on a model sheet
+  comes from the **task**, not the binding (`satisfies` binds only `{characterId, outfit}`, which
+  four sheets share). Two assets landing on the same words *both* keep a `(hash8)` suffix, so a
+  label is never quietly ambiguous, and one nothing in the model claims falls back to `hash8.ext`
+  rather than inventing a name for bytes whose character has been deleted.
+- **A concept is named by what was asked for.** It is the one kind whose name was *authored* rather
+  than derived — the sentence itself, cut at a word boundary, after the subject it bound to:
+  `Kōsei High — an aerial shot of the high school`. It is also the one kind that may legitimately
+  bind to nothing, so it answers before a binding is required: unbound it is the title alone,
+  titleless it is the entity it names, and with neither it falls back to the hash like any other
+  orphan.
+- **An asset node carries no `path`.** It is bytes in a content-addressed store, not a document —
+  and a `path` is what the pane routes to the `wiki` editor, which would then `doc.read` a PNG.
+  Clicking one names `ui.assetHash` instead and opens the `asset` editor.
 - **A node carries identity, never a click action.** It would be tidy to ship the command
   invocation a click runs, the way an interaction target does — but there is no such command:
-  selection is renderer state (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`), not
+  selection is renderer state (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`,
+  `ui.assetHash`), not
   something main decides. So the pane maps a node to a selection itself, and the tree stays a
   shape any surface can draw. What a click does stays the shell's business.
 - **Paths are workspace-relative with `/` separators**, like the generated project map's — they are
@@ -94,6 +113,7 @@ not what "view every file" asks for.
 | ----- | ----- |
 | Shapes (`DocNode`, `EntityLinks`, `DocTree`) | `apps/desktop/src/shared/ipc.ts` |
 | The projection (`buildDocTree`, `fileTree`) — pure | `apps/desktop/src/main/doctree.ts` |
+| Asset display names (`assetLabel`, `labelAssets`) — pure | `apps/desktop/src/main/assetlabel.ts` |
 | The reads (one `loadProject`, one `readShots` per scene, `bible.files()`) | `WorkspaceSession.docTree()` / `.fileTree()` |
 | Channels | `workspace:doctree`, `workspace:filetree` |
 | Commands | `workspace.doctree`, `workspace.filetree` (non-mutating, no props) |

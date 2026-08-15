@@ -11,6 +11,7 @@ validated input files in a clean commit. Design:
 - [Running it](#running-it)
 - [How it works](#how-it-works)
 - [Tools](#tools)
+  * [Concept images](#concept-images)
 - [Skills](#skills)
 
 <!-- tocstop -->
@@ -33,7 +34,8 @@ REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the te
 → interactive menu), `/effort [level]` (set reasoning effort — `low`…`max` map to Anthropic
 `output_config.effort` + adaptive thinking, ignored on models that don't support it; no arg →
 interactive menu), `/clear` (reset the conversation context, back to plan mode), `/status`
-(project index), `/skills` (available skills), `/exit` (or `/quit`). **Shift-Tab** cycles
+(project index), `/skills` (available skills), `/makeimage <what to draw>` (a concept image,
+directly — see [Concept images](#concept-images)), `/exit` (or `/quit`). **Shift-Tab** cycles
 between plan and execute mode. `/model` and `/effort` rebuild the backend and hot-swap it into
 the running agent, preserving conversation state.
 
@@ -77,7 +79,7 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 25 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 30 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -88,6 +90,7 @@ whatever the mode).
 | Entity editing | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M** |
 | Scene prose | `edit_scene` **M** |
 | Wardrobe | `set_outfit` **M** |
+| Art | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Raw write | `write_file` **M** |
 | Context | `update_context` **M**, `regenerate_context` **M** |
 | Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
@@ -115,6 +118,41 @@ chunk; present, the subject's override is written to `work/shots/<sceneId>.json`
 that shot. `outfit=""` clears either and lets the level below answer. The wardrobe itself is
 authored on the character sheet (`edit_character`'s `outfits` / `defaultOutfit`), so the set
 `set_outfit` will accept is the set the sheet declares.
+
+### Concept images
+
+`generate_image` and `/makeimage` are the same act reached two ways: a sentence in, a picture out,
+without a task in the graph. Both run `@vn/artgen`'s `generateConcept`, which is also what the
+desktop's `art.generate` runs.
+
+- **The agent core never constructs a provider.** `ToolContext.art` is an `ArtGen` seam — `generate`
+  `preview`, `redraw` and `list` — wired by the host, which is the half that knows whether this run is `--mock` and
+  where the keys are. A bare context has no `art`, and the tool refuses rather than assume an API
+  key exists to spend. This is the same shape as `confirm`: the core decides *what*, the host
+  decides *whether*.
+- **It is `confirm: true`, because it costs money.** Every generation is one image billed, so it
+  goes through the permission gate whatever the mode, exactly like `git_revert`.
+- **`/makeimage` is not a turn through the model.** A one-line request should cost one generation
+  and no tokens, so the REPL calls the seam directly. It still obeys plan mode — and there it prints
+  the resolved subject and the composed prompt anyway, which is the part worth reading before
+  spending anything.
+- **The subject is matched from the sentence, or named.** `location:<id>` / `character:<id>`
+  overrides it; a tie goes to the location, since a place is what gets asked for and a character
+  already has a portrait pipeline. Existing plates of that location (or the approved portrait) are
+  fed back as references, so "an aerial shot of the high school" is a shot of *that* high school.
+- **A concept stays a sketch.** The pipeline never plans one, no scene renders one, and
+  `vngen export` ignores it. Turning one into a real location plate is `art.promote` — a separate,
+  human decision, and deliberately not a tool the agent has.
+- **A concept is the one asset the agent can edit, because it is the one whose prompt is
+  authored.** Every other prompt is derived on each planning pass and folded into a task hash, so
+  the agent moves those with art notes (`edit_character` / `edit_location`) and the pipeline
+  re-renders. A concept has no builder behind it: `edit_image` redraws one from a rewritten
+  prompt and files the result as a **new** sketch, leaving the original where it is. It is
+  `confirm: true` for the same reason `generate_image` is — one image, billed.
+- **A hash is not memorable, so `list_images` exists.** It is the only non-mutating art tool: it
+  prints every concept with its short hash, name, subject and prompt, and `edit_image` accepts a
+  hash *prefix*, refusing an unknown or ambiguous one by name rather than guessing which picture
+  the author meant.
 
 `regenerate_context` writes the **project map**, `AICONTEXT.generated.md`: the cast with each
 sheet's path and wardrobe, the locations and their variants, the story graph, and the story

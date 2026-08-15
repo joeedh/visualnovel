@@ -3,6 +3,7 @@ import {
   locationFrontMatter,
   sceneFrontMatter,
   type Character,
+  type CharacterFrontMatter,
   type Diagnostic,
   type Location,
   type Outfit,
@@ -44,26 +45,28 @@ export function characterFromDoc(doc: FrontMatterDoc): EntityResult<Character> {
     status: fm.status,
     defaultOutfit: fm.default_outfit,
     outfits: wardrobeOf(fm.id, fm.default_outfit, fm.outfits),
+    artNotes: fm.art_notes,
     approvedPortrait: fm.approved_portrait,
   };
   return { ok: true, value: character };
 }
 
 /**
- * The authored wardrobe as `Outfit[]`, in the order the map was written. The default is
- * synthesized (with an empty description) when the map omits it, so a sheet that names no
- * wardrobe at all still has the one outfit every shot resolves to.
+ * The authored wardrobe as `Outfit[]`, in the order the map was written. Either authored form —
+ * a bare description, or an object that also carries art direction — normalizes to the same
+ * `Outfit`. The default is synthesized (with an empty description) when the map omits it, so a
+ * sheet that names no wardrobe at all still has the one outfit every shot resolves to.
  */
 function wardrobeOf(
   characterId: string,
   defaultOutfit: string,
-  authored: Record<string, string>,
+  authored: CharacterFrontMatter['outfits'],
 ): Outfit[] {
-  const outfits = Object.entries(authored).map(([id, description]) => ({
-    id,
-    characterId,
-    description,
-  }));
+  const outfits = Object.entries(authored).map(([id, entry]) =>
+    typeof entry === 'string'
+      ? { id, characterId, description: entry }
+      : { id, characterId, description: entry.description, artNotes: entry.art_notes },
+  );
   if (!outfits.some((o) => o.id === defaultOutfit)) {
     outfits.unshift({ id: defaultOutfit, characterId, description: '' });
   }
@@ -150,7 +153,12 @@ export function locationFromDoc(doc: FrontMatterDoc): EntityResult<Location> {
     mood: fm.mood,
     lighting: fm.lighting,
     palette: fm.palette,
-    variants: fm.variants.map((id) => ({ id, description: '' })),
+    variants: fm.variants.map((v) =>
+      typeof v === 'string'
+        ? { id: v, description: '' }
+        : { id: v.id, description: v.description, artNotes: v.art_notes },
+    ),
+    artNotes: fm.art_notes,
     mined: false,
   };
   return { ok: true, value: location };

@@ -17,6 +17,8 @@ const TEMPLATE = resolve(__dirname, '../../../../../examples/sample');
 const deps: SessionDeps = {
   emitEvent: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
+  requestAnswer: () => Promise.resolve(''),
+  requestConfirm: () => Promise.resolve(false),
 };
 
 describe('examples/sample, seeded and opened', () => {

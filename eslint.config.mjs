@@ -30,6 +30,12 @@ const ALLOWED = {
   // app and `authoring` both search the wiki, so the ranking policy lives in neither, and it
   // is forbidden from the generative pipeline/scheduler (story-bible-and-retrieval plan).
   bible: ['types', 'util', 'parse', 'store'],
+  // Art-generation policy: the prompt builders every planned image derives from, plus the
+  // on-demand `concept` door and its promotion to a plate. A leaf for the same reason as the
+  // three above — the pipeline, the desktop app and `authoring` all need it, and `authoring`
+  // cannot import the pipeline. `taskgraph` is here so promotion can mint the planner's own task
+  // identity; that reach stays inside this package, since boundaries are per-import.
+  artgen: ['types', 'util', 'config', 'parse', 'model', 'store', 'taskgraph', 'providers'],
   git: ['util'],
   // The command framework: registry, prop specs, DSL, stack. Reads git HEAD for provenance,
   // knows nothing about the domain — commands themselves are defined by the host app.
@@ -39,7 +45,7 @@ const ALLOWED = {
   debug2d: [],
   taskgraph: ['types', 'util', 'store'],
   providers: ['types', 'util', 'config'],
-  pipeline: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'providers'],
+  pipeline: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'providers', 'artgen'],
   // `config` and `store` are pass-through only: the scheduler takes a `ProjectConfig` and a
   // `ProjectPaths` in `RunOptions` and hands them to `@vn/pipeline`, which owns both.
   scheduler: ['types', 'util', 'config', 'store', 'taskgraph', 'pipeline'],
@@ -73,12 +79,13 @@ const ALLOWED = {
     'store',
     'scriptedit',
     'bible',
+    'artgen',
     'providers',
     'git',
   ],
   // The interactive REPL: input-side only. Forbidden from the generative pipeline/scheduler
   // (authoring-agent plan §4, §M4) — enforced here, not just documented.
-  'authoring-app': ['types', 'util', 'config', 'store', 'providers', 'git', 'authoring'],
+  'authoring-app': ['types', 'util', 'config', 'store', 'artgen', 'providers', 'git', 'authoring'],
   cli: [
     'types',
     'util',
@@ -106,6 +113,7 @@ const ALLOWED = {
     'export',
     'scriptedit',
     'bible',
+    'artgen',
     'git',
     'commands',
     'taskgraph',
@@ -168,6 +176,7 @@ export default tseslint.config(
         { type: 'export', pattern: 'packages/export', mode: 'folder' },
         { type: 'scriptedit', pattern: 'packages/scriptedit', mode: 'folder' },
         { type: 'bible', pattern: 'packages/bible', mode: 'folder' },
+        { type: 'artgen', pattern: 'packages/artgen', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
         { type: 'commands', pattern: 'packages/commands', mode: 'folder' },
         { type: 'debug2d', pattern: 'packages/debug2d', mode: 'folder' },

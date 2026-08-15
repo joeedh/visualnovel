@@ -9,7 +9,7 @@
  * front-matter keys and prose — and re-validates the result through the `@vn/types`
  * schemas before returning, so a bad edit fails loudly instead of being written.
  */
-import type { Character, CharacterStatus, Location, Scene } from '@vn/types';
+import type { Character, CharacterStatus, Location, LocationVariant, Scene } from '@vn/types';
 import { stringifyFrontMatter, type FrontMatterDoc } from '@vn/parse';
 import { characterFromDoc, locationFromDoc, type EntityResult } from './entities.js';
 import { slug } from './slug.js';
@@ -24,12 +24,34 @@ function compact(data: Record<string, unknown>): Record<string, unknown> {
  * no description is what `characterFromDoc` synthesizes, so writing it back would grow a key in
  * every character sheet on its first edit.
  */
-function wardrobeData(character: Character): Record<string, string> | undefined {
+function wardrobeData(character: Character): Record<string, unknown> | undefined {
   const outfits = character.outfits;
   const synthesized =
-    outfits.length === 1 && outfits[0]?.id === character.defaultOutfit && !outfits[0]?.description;
+    outfits.length === 1 &&
+    outfits[0]?.id === character.defaultOutfit &&
+    !outfits[0]?.description &&
+    !outfits[0]?.artNotes;
   if (outfits.length === 0 || synthesized) return undefined;
-  return Object.fromEntries(outfits.map((o) => [o.id, o.description]));
+  // The long form only when there is art direction to carry: a wardrobe that is descriptions
+  // alone stays the one-line-per-outfit map it was authored as.
+  return Object.fromEntries(
+    outfits.map((o) => [
+      o.id,
+      o.artNotes === undefined
+        ? o.description
+        : compact({ description: o.description, art_notes: o.artNotes }),
+    ]),
+  );
+}
+
+/** A variant as front-matter: the bare id unless it has something more to say. */
+function variantData(variant: LocationVariant): unknown {
+  if (!variant.description && variant.artNotes === undefined) return variant.id;
+  return compact({
+    id: variant.id,
+    description: variant.description || undefined,
+    art_notes: variant.artNotes,
+  });
 }
 
 /** Serialize a Character into a `character.md` doc (inverse of `characterFromDoc`). */
@@ -44,6 +66,7 @@ export function characterToDoc(character: Character): FrontMatterDoc {
       traits: character.traits,
       palette: character.palette,
       reference_images: character.referenceImages,
+      art_notes: character.artNotes,
       approved_portrait: character.approvedPortrait,
     }),
     body: character.description,
@@ -59,7 +82,8 @@ export function locationToDoc(location: Location): FrontMatterDoc {
       mood: location.mood,
       lighting: location.lighting,
       palette: location.palette,
-      variants: location.variants.map((v) => v.id),
+      variants: location.variants.map(variantData),
+      art_notes: location.artNotes,
     }),
     body: location.description,
   };
@@ -225,12 +249,23 @@ export interface CharacterEdit {
   description?: string;
   status?: CharacterStatus;
   defaultOutfit?: string;
-  /** Replaces the whole wardrobe map, outfit id → description. */
-  outfits?: Record<string, string>;
+  /**
+   * Replaces the whole wardrobe map, outfit id → description, or → `{description, art_notes}`
+   * for an outfit with art direction of its own.
+   */
+  outfits?: Record<string, string | { description?: string; art_notes?: string }>;
   traits?: string[];
   palette?: string[];
   referenceImages?: string[];
+  /** Art direction for every prompt this character reaches; `''` clears it. */
+  artNotes?: string;
   approvedPortrait?: string;
+}
+
+/** Write an optional string field, or remove the key when the edit clears it to empty. */
+function setOrClear(data: Record<string, unknown>, key: string, value: string): void {
+  if (value) data[key] = value;
+  else delete data[key];
 }
 
 /** A patched doc plus the entity it re-validated to. */
@@ -256,6 +291,7 @@ export function applyCharacterEdit(
   if (edit.traits !== undefined) data['traits'] = edit.traits;
   if (edit.palette !== undefined) data['palette'] = edit.palette;
   if (edit.referenceImages !== undefined) data['reference_images'] = edit.referenceImages;
+  if (edit.artNotes !== undefined) setOrClear(data, 'art_notes', edit.artNotes);
   if (edit.approvedPortrait !== undefined) data['approved_portrait'] = edit.approvedPortrait;
   const body = edit.description !== undefined ? edit.description : doc.body;
   const next: FrontMatterDoc = { data, body };
@@ -271,7 +307,10 @@ export interface LocationEdit {
   mood?: string;
   lighting?: string;
   palette?: string[];
-  variants?: string[];
+  /** Replaces the whole variant list; an entry may be a bare id or the long form. */
+  variants?: (string | { id: string; description?: string; art_notes?: string })[];
+  /** Art direction for every plate of this location; `''` clears it. */
+  artNotes?: string;
 }
 
 /** Apply a partial edit to an existing `locations/<id>.md` doc, re-validating the result. */
@@ -285,6 +324,7 @@ export function applyLocationEdit(
   if (edit.lighting !== undefined) data['lighting'] = edit.lighting;
   if (edit.palette !== undefined) data['palette'] = edit.palette;
   if (edit.variants !== undefined) data['variants'] = edit.variants;
+  if (edit.artNotes !== undefined) setOrClear(data, 'art_notes', edit.artNotes);
   const body = edit.description !== undefined ? edit.description : doc.body;
   const next: FrontMatterDoc = { data, body };
   const res = locationFromDoc(next);

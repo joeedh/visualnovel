@@ -56,6 +56,8 @@ export interface AssetMeta {
   /** What this asset is for. One binding per write; the store merges it into the record's list. */
   satisfies?: AssetBinding;
   accepted?: boolean;
+  /** See {@link Asset.title}. */
+  title?: string;
 }
 
 /**

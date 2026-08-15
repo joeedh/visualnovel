@@ -83,6 +83,92 @@ describe('location round-trip', () => {
   });
 });
 
+describe('art notes', () => {
+  const richChar = parseFrontMatter(
+    `---\nid: ren\nname: Ren\ndefault_outfit: uniform\nart_notes: ink-wash linework\noutfits:\n  uniform: grey blazer\n  gala:\n    description: floor-length navy dress\n    art_notes: satin sheen, rim light\n---\n\nRen.\n`,
+  );
+  const richLoc = parseFrontMatter(
+    `---\nid: cafe\nname: Café Mori\nart_notes: heavy formwork\nvariants:\n  - day\n  - id: night\n    description: after close, chairs up\n    art_notes: sodium streetlight\n---\n\nA corner café.\n`,
+  );
+
+  it('reads both authored forms of an outfit, and round-trips each as it was written', () => {
+    const a = characterFromDoc(richChar);
+    if (!a.ok) throw new Error('expected ok');
+    expect(a.value.artNotes).toBe('ink-wash linework');
+    expect(a.value.outfits).toEqual([
+      { id: 'uniform', characterId: 'ren', description: 'grey blazer' },
+      {
+        id: 'gala',
+        characterId: 'ren',
+        description: 'floor-length navy dress',
+        artNotes: 'satin sheen, rim light',
+      },
+    ]);
+    // The short form stays short: only the outfit carrying direction grows an object.
+    const outfits = characterToDoc(a.value).data['outfits'] as Record<string, unknown>;
+    expect(outfits['uniform']).toBe('grey blazer');
+    expect(outfits['gala']).toEqual({
+      description: 'floor-length navy dress',
+      art_notes: 'satin sheen, rim light',
+    });
+    const b = characterFromDoc(characterToDoc(a.value));
+    if (!b.ok) throw new Error('expected ok');
+    expect(b.value).toEqual(a.value);
+  });
+
+  it('reads both authored forms of a variant, and keeps a bare one bare', () => {
+    const a = locationFromDoc(richLoc);
+    if (!a.ok) throw new Error('expected ok');
+    expect(a.value.artNotes).toBe('heavy formwork');
+    expect(a.value.variants).toEqual([
+      { id: 'day', description: '' },
+      { id: 'night', description: 'after close, chairs up', artNotes: 'sodium streetlight' },
+    ]);
+    expect(locationToDoc(a.value).data['variants']).toEqual([
+      'day',
+      {
+        id: 'night',
+        description: 'after close, chairs up',
+        art_notes: 'sodium streetlight',
+      },
+    ]);
+    const b = locationFromDoc(locationToDoc(a.value));
+    if (!b.ok) throw new Error('expected ok');
+    expect(b.value).toEqual(a.value);
+  });
+
+  it('never grows an art_notes key on a sheet that authored none', () => {
+    const a = characterFromDoc(charDoc);
+    const l = locationFromDoc(locDoc);
+    if (!a.ok || !l.ok) throw new Error('setup');
+    expect(characterToDoc(a.value).data['art_notes']).toBeUndefined();
+    expect(locationToDoc(l.value).data['art_notes']).toBeUndefined();
+    expect(locationToDoc(l.value).data['variants']).toEqual(['day', 'sunset']);
+  });
+
+  it('sets art notes through an edit, and an empty string removes the key', () => {
+    const set = applyCharacterEdit(charDoc, { artNotes: 'ink-wash linework' });
+    if (!set.ok) throw new Error('expected ok');
+    expect(set.value.value.artNotes).toBe('ink-wash linework');
+    const cleared = applyCharacterEdit(set.value.doc, { artNotes: '' });
+    if (!cleared.ok) throw new Error('expected ok');
+    expect(cleared.value.doc.data['art_notes']).toBeUndefined();
+    expect(cleared.value.value.artNotes).toBeUndefined();
+  });
+
+  it('sets a variant-level note through an edit', () => {
+    const res = applyLocationEdit(locDoc, {
+      variants: ['day', { id: 'sunset', art_notes: 'long shadows' }],
+    });
+    if (!res.ok) throw new Error('expected ok');
+    expect(res.value.value.variants[1]).toEqual({
+      id: 'sunset',
+      description: '',
+      artNotes: 'long shadows',
+    });
+  });
+});
+
 describe('applyCharacterEdit', () => {
   it('patches one field, preserves the rest and the body', () => {
     const res = applyCharacterEdit(charDoc, { status: 'approved' });

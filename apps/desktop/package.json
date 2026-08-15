@@ -19,6 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@google/genai": "^0.3.0",
+    "@vn/artgen": "workspace:*",
     "@vn/authoring": "workspace:*",
     "@vn/bible": "workspace:*",
     "@vn/commands": "workspace:*",

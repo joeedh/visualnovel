@@ -10,7 +10,7 @@
  * Ids come from `Convo.seq` rather than a module counter, which is what keeps `received` pure;
  * clearing carries the counter over, so a cleared conversation never reuses an id.
  */
-import type { AgentEvent, PlanRequest } from '../../src/shared/ipc.js';
+import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from '../../src/shared/ipc.js';
 
 /** A rendered line in the transcript. */
 export interface FeedItem {
@@ -25,6 +25,10 @@ export interface Convo {
   line: string;
   /** A plan awaiting approval — the gate between plan mode and execute mode. */
   plan: PlanRequest | null;
+  /** A question the agent asked and is parked on. */
+  question: AskRequest | null;
+  /** An always-confirm tool parked on a yes. */
+  confirm: ConfirmRequest | null;
   /** A turn is in flight, so the composer is closed. Also raised by a pipeline run. */
   busy: boolean;
   /** Feed ids issued so far. */
@@ -32,7 +36,7 @@ export interface Convo {
 }
 
 export function emptyConvo(line: string): Convo {
-  return { feed: [], line, plan: null, busy: false, seq: 0 };
+  return { feed: [], line, plan: null, question: null, confirm: null, busy: false, seq: 0 };
 }
 
 function push(convo: Convo, role: FeedItem['role'], text: string): Convo {
@@ -79,6 +83,31 @@ export function proposed(convo: Convo, request: PlanRequest): Convo {
 /** The plan card is answered and gone; what the decision *means* is the agent's to say. */
 export function decided(convo: Convo): Convo {
   return { ...convo, plan: null };
+}
+
+export function queried(convo: Convo, request: AskRequest): Convo {
+  return { ...convo, question: request };
+}
+
+/**
+ * The answer is the author's own turn, so it goes into the transcript as one. A card that
+ * vanished leaving only the question behind reads as unanswered, and the agent's next sentence
+ * then makes no sense. An empty answer is a real answer — "nothing to add" — and says so.
+ */
+export function answeredQuestion(convo: Convo, answer: string): Convo {
+  const said = answer.trim() === '' ? '(no answer)' : answer;
+  return { ...push(convo, 'user', said), question: null };
+}
+
+export function confirmAsked(convo: Convo, request: ConfirmRequest): Convo {
+  return { ...convo, confirm: request };
+}
+
+/** A refusal is worth a line — the agent reports an allow itself, but a deny it may not mention. */
+export function confirmDecided(convo: Convo, allowed: boolean): Convo {
+  const tool = convo.confirm?.tool ?? '';
+  const next: Convo = { ...convo, confirm: null };
+  return allowed ? next : push(next, 'blocked', `${tool} denied — you said no`);
 }
 
 /** Start over, keeping the id counter so no two feed items ever share an id in one session. */

@@ -19,6 +19,7 @@ export const EDITORS = [
   { id: 'play', title: 'Play', what: 'the runner' },
   { id: 'wiki', title: 'Wiki', what: 'one markdown document' },
   { id: 'documents', title: 'Documents', what: "the project's documents and what links to them" },
+  { id: 'asset', title: 'Asset', what: 'one generated asset, and the art notes behind it' },
 ] as const;
 
 /** An editor's area name — the value `view.open`, `view.focus` and a stored layout all use. */
@@ -30,10 +31,14 @@ export function editorTitle(id: EditorId): string {
   return EDITORS.find((editor) => editor.id === id)?.title ?? id;
 }
 
-/** Where `view.open` puts an editor: in the pane you are in, or in a new one beside it. */
-export type OpenWhere = 'here' | 'left' | 'right' | 'above' | 'below';
+/**
+ * Where `view.open` puts an editor: in the pane you are in, in a new one beside it, or
+ * `elsewhere` — the biggest pane that is *not* the one asking, splitting only when there is no
+ * other. That last one is what a sidebar wants: opening into itself would replace the sidebar.
+ */
+export type OpenWhere = 'here' | 'left' | 'right' | 'above' | 'below' | 'elsewhere';
 
-export const OPEN_WHERE = ['here', 'left', 'right', 'above', 'below'] as const;
+export const OPEN_WHERE = ['here', 'left', 'right', 'above', 'below', 'elsewhere'] as const;
 
 /**
  * Where this build's registry and this list disagree. Both directions matter and only one of

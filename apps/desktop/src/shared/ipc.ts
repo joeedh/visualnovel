@@ -150,6 +150,22 @@ export interface PlanRequest {
   plan: Plan;
 }
 
+/** A question the agent asked the author, waiting on an answer main is blocked for. */
+export interface AskRequest {
+  id: number;
+  question: string;
+}
+
+/**
+ * An always-confirm tool waiting for a yes. `detail` is an English sentence rather than the raw
+ * arguments: what a tool's arguments *mean* is main's business, and the card only reads it out.
+ */
+export interface ConfirmRequest {
+  id: number;
+  tool: string;
+  detail: string;
+}
+
 /** A snapshot of pipeline state for the Floor view. */
 export interface PipelineStatus {
   tasks: Task[];
@@ -336,12 +352,53 @@ export interface EntityLinks {
     hash: string;
     ext: string;
     kind: AssetKind;
+    /** Display name — `Aiko — uniform / front`, or `hash8.ext` when nothing claims it. */
+    label: string;
     accepted: boolean;
     /** Routed to the base root — see `isBaseKind`, which is the one place that is decided. */
     base: boolean;
   }[];
   scenes: string[];
   shots: { scene: string; shot: string }[];
+}
+
+/** One rung of the art-notes chain as a surface shows it — see `main/artnotes.ts`. */
+export interface ArtRungInfo {
+  /** `art.setNotes`'s address for this rung: `character:aiko/gala`, `location:cafe/night`. */
+  target: string;
+  label: string;
+  notes?: string;
+}
+
+/** Everything the asset editor draws: what the bytes are, what made them, and what to edit. */
+export interface AssetInfo {
+  hash: string;
+  ext: string;
+  kind: AssetKind;
+  /** Display name from `labelAssets` — the same words the document tree shows. */
+  label: string;
+  /** Routed to the base root — see `isBaseKind`, which is the one place that is decided. */
+  base: boolean;
+  accepted: boolean;
+  /** The task that produced it; empty when the manifest records none. */
+  sourceTask: string;
+  /** The prompt recorded with the bytes, if the manifest kept one. */
+  prompt?: string;
+  /**
+   * The authored name, for the one kind that has one. A concept was asked for in a sentence and
+   * carries it; every other kind is named by what it serves, so its label is derived and this
+   * is absent.
+   */
+  title?: string;
+  /** The prompt the builders would write today; absent when the project no longer describes it. */
+  derived?: string;
+  /**
+   * The bytes were rendered from words the project has since changed — what an art-notes edit
+   * produces. False when `derived` is unknown: a missing derivation is not evidence of drift.
+   */
+  stale: boolean;
+  /** The art-notes rungs that reach this asset, widest first. */
+  rungs: ArtRungInfo[];
 }
 
 /**
@@ -420,6 +477,10 @@ export interface InvokeChannels {
   'agent:setModel': (modelId: string) => string;
   'agent:clear': () => void;
   'plan:decision': (payload: { id: number; decision: PlanDecision }) => void;
+  /** The author's answer to `permission:ask`. Empty is an answer, not an absence of one. */
+  'ask:answer': (payload: { id: number; answer: string }) => void;
+  /** Yes or no to `permission:confirm`. A window that closes denies rather than hangs. */
+  'confirm:decision': (payload: { id: number; allowed: boolean }) => void;
   'pipeline:status': () => PipelineStatus;
   'pipeline:run': (opts: { mock: boolean }) => PipelineRunResult;
   'gate:candidates': (characterId: string) => GateCandidate[];
@@ -457,6 +518,8 @@ export interface InvokeChannels {
 export interface EventChannels {
   'agent:event': AgentEvent;
   'permission:plan': PlanRequest;
+  'permission:ask': AskRequest;
+  'permission:confirm': ConfirmRequest;
   'command:ui': UiEffect;
   /** A session key changed — either by this window or by a command that wrote one. */
   'session:changed': { key: string; value: SessionValue };

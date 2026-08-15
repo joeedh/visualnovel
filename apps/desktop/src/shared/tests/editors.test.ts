@@ -18,7 +18,14 @@ describe('the editor vocabulary', () => {
   // `where` is a `oneOf` prop built from this, so a direction missing here is a direction no
   // command can express — the reason it is a list rather than a union spelled twice.
   it('offers a direction and its opposite', () => {
-    expect([...OPEN_WHERE].sort()).toEqual(['above', 'below', 'here', 'left', 'right']);
+    expect([...OPEN_WHERE].sort()).toEqual([
+      'above',
+      'below',
+      'elsewhere',
+      'here',
+      'left',
+      'right',
+    ]);
   });
 });
 

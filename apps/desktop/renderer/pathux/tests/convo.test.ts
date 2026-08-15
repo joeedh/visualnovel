@@ -1,5 +1,17 @@
-import { answered, asked, cleared, decided, emptyConvo, proposed, received } from '../convo.js';
-import type { AgentEvent, PlanRequest } from '../../../src/shared/ipc';
+import {
+  answered,
+  answeredQuestion,
+  asked,
+  cleared,
+  confirmAsked,
+  confirmDecided,
+  decided,
+  emptyConvo,
+  proposed,
+  queried,
+  received,
+} from '../convo.js';
+import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from '../../../src/shared/ipc';
 
 const opening = 'Workspace loaded.';
 
@@ -72,6 +84,49 @@ describe('the plan card', () => {
     const asking = proposed(emptyConvo(opening), plan);
     expect(asking.plan).toBe(plan);
     expect(decided(asking).plan).toBeNull();
+  });
+});
+
+describe('a question the agent asked', () => {
+  const question: AskRequest = { id: 7, question: 'Which café — Mori or the station one?' };
+
+  test('arrives as a card', () => {
+    expect(queried(emptyConvo(opening), question).question).toBe(question);
+  });
+
+  test('answering files the answer as the author’s own turn', () => {
+    const convo = answeredQuestion(queried(emptyConvo(opening), question), 'Mori');
+    expect(convo.question).toBeNull();
+    expect(convo.feed).toEqual([{ id: 1, role: 'user', text: 'Mori' }]);
+  });
+
+  test('an empty answer is still an answer, and says so', () => {
+    const convo = answeredQuestion(queried(emptyConvo(opening), question), '   ');
+    expect(convo.feed).toEqual([{ id: 1, role: 'user', text: '(no answer)' }]);
+  });
+});
+
+describe('an always-confirm tool', () => {
+  const confirm: ConfirmRequest = {
+    id: 2,
+    tool: 'generate_image',
+    detail: 'Draw a concept sketch: “an aerial shot”. Costs one image generation.',
+  };
+
+  test('arrives as a card and leaves on an allow, saying nothing', () => {
+    const asking = confirmAsked(emptyConvo(opening), confirm);
+    expect(asking.confirm).toBe(confirm);
+    const after = confirmDecided(asking, true);
+    expect(after.confirm).toBeNull();
+    expect(after.feed).toEqual([]);
+  });
+
+  test('a denial is recorded, because the agent may never mention it', () => {
+    const after = confirmDecided(confirmAsked(emptyConvo(opening), confirm), false);
+    expect(after.confirm).toBeNull();
+    expect(after.feed).toEqual([
+      { id: 1, role: 'blocked', text: 'generate_image denied — you said no' },
+    ]);
   });
 });
 

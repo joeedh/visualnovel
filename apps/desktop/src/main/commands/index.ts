@@ -7,6 +7,8 @@
  */
 import { CommandRegistry } from '@vn/commands';
 import { agentClear, agentRun, agentSetEffort, agentSetMode, agentSetModel } from './agent.js';
+import { artGenerate, artPromote, artRedraw, artSetNotes } from './art.js';
+import { assetAccept, assetInfo, assetRegenerate } from './asset.js';
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
 import { docCreate, docRead, docWrite } from './doc.js';
@@ -61,6 +63,13 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     agentSetEffort,
     agentSetMode,
     agentSetModel,
+    artGenerate,
+    artPromote,
+    artRedraw,
+    artSetNotes,
+    assetAccept,
+    assetInfo,
+    assetRegenerate,
     bibleSearch,
     commandCheck,
     docCreate,

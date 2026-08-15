@@ -16,6 +16,11 @@ export interface Selection {
   characterId: string;
   /** The authored document. No task names one, so every rule here carries it through untouched. */
   docPath: string;
+  /**
+   * The generated asset, by hash. A task *makes* one but does not name one — an asset's hash is
+   * its bytes, not its recipe — so like `docPath` it is carried through untouched here.
+   */
+  assetHash: string;
 }
 
 /** Shot ids are namespaced `<sceneId>__<raw>`, which is a shot task's only link to a scene. */

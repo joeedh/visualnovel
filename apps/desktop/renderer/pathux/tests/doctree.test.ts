@@ -13,7 +13,7 @@ import {
 import type { Selection } from '../selection.js';
 import type { DocNode, EntityLinks } from '../../../src/shared/ipc.js';
 
-const NONE: Selection = { sceneId: '', shotId: '', characterId: '', docPath: '' };
+const NONE: Selection = { sceneId: '', shotId: '', characterId: '', docPath: '', assetHash: '' };
 
 const node = (id: string, kind: DocNode['kind'], over: Partial<DocNode> = {}): DocNode => ({
   id,
@@ -95,9 +95,8 @@ describe('defaultExpanded', () => {
 describe('selectionForNode', () => {
   it('names the scene and its sheet', () => {
     expect(selectionForNode(TREE[0]!.children![0]!, NONE)).toEqual({
+      ...NONE,
       sceneId: 'greet',
-      shotId: '',
-      characterId: '',
       docPath: 'scenes/greet.md',
     });
   });
@@ -118,8 +117,7 @@ describe('selectionForNode', () => {
 
   it('names a character and opens its sheet', () => {
     expect(selectionForNode(TREE[1]!.children![0]!, NONE)).toEqual({
-      sceneId: '',
-      shotId: '',
+      ...NONE,
       characterId: 'aiko',
       docPath: 'characters/aiko/character.md',
     });
@@ -131,14 +129,30 @@ describe('selectionForNode', () => {
   });
 
   /**
-   * The clicks that must cost nothing. A branch and a `wikidir` are opened, an asset has no
-   * authored identity, and `more` stands for rows that were dropped — none of them is a place.
+   * The clicks that must cost nothing. A branch and a `wikidir` are opened, and `more` stands for
+   * rows that were dropped — none of them is a place. An asset used to be in this list; it names
+   * `assetHash` now, which is the whole of the asset editor's subject.
    */
   it('returns the very same selection for a node that names nothing', () => {
-    for (const kind of ['branch', 'wikidir', 'dir', 'assetkind', 'asset', 'more'] as const) {
+    for (const kind of ['branch', 'wikidir', 'dir', 'assetkind', 'more'] as const) {
       const current: Selection = { ...NONE, sceneId: 'greet', docPath: 'wiki/a.md' };
       expect(selectionForNode(node(`${kind}:x`, kind), current)).toBe(current);
     }
+  });
+
+  /**
+   * An asset carries no `path` — it is bytes in the store, not a document — so its hash *is* the
+   * selection, and the document the author was reading is left alone underneath it.
+   */
+  it('names an asset by hash, leaving the open document where it was', () => {
+    const asset = node('asset:a1b2c3d4', 'asset');
+    expect(selectionForNode(asset, { ...NONE, docPath: 'wiki/a.md' })).toEqual({
+      ...NONE,
+      docPath: 'wiki/a.md',
+      assetHash: 'a1b2c3d4',
+    });
+    expect(nodeIsSelected(asset, { ...NONE, assetHash: 'a1b2c3d4' })).toBe(true);
+    expect(nodeIsSelected(asset, NONE)).toBe(false);
   });
 
   it('leaves an entity with no sheet on the document it was already on', () => {

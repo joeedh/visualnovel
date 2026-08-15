@@ -38,6 +38,21 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   when it sees it — every shot references a base plate too — and the run reports one sentence
   naming the root instead of regenerating an approved library at cost.
 
+- **A concept has no node in the graph, and that is the whole of its contract.**
+  `generateConcept` writes an asset whose `sourceTask` is a hash of the request — prompt, params,
+  refs — and never a task that was planned. Nothing consumes it: every binding lookup outside the
+  document tree filters by kind first, and the planner resolves a shot's plate by **task hash**
+  rather than by manifest binding, so a concept bound to `{locationId: 'cafe'}` can never be
+  mistaken for that location's plate. The test that states this is that a project holding a concept
+  plans exactly the tasks it planned before.
+- **A `done` record may be written outside the scheduler exactly once, by promotion.**
+  `promoteConcept` logs the plate's own task `done` with the concept as its output, so the next run
+  **adopts** the picture rather than rendering over it. The bound that makes this safe is that the
+  identity is derived, in the same call, from the sheet that call just wrote: it can only mark done
+  the one node whose output this image now is. Nothing else in the system writes a terminal record
+  it did not run. Plan:
+  [`plans/on-demand-concept-images.md`](plans/on-demand-concept-images.md).
+
 ## Scheduling
 
 - **Gate-as-barrier.** The character-approval gate (P3) is not a task dependency — it's
@@ -154,6 +169,19 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   frame needs the clothes and not a turnaround — reaching the planner a wave later than the marker
   did, the same way a shot waits on its location plate. Plan:
   [`plans/outfits-at-scene-and-shot-level.md`](plans/outfits-at-scene-and-shot-level.md).
+- **Art direction is authored, appended, and re-renders exactly what it reaches.** A prompt is a
+  derivation folded into the task's content hash and rewritten on every planning pass, so there is
+  nothing there for an author to edit. `artNotes` is the authored half instead: an optional free-text
+  field at five rungs — `Character`, `Location`, `Shot`, each `Outfit`, each `LocationVariant` — that
+  the builders **append** to what they derived, entity note first and the specific rung second, so
+  the style preamble, the reference scaffolding and the closing "single illustrated frame" clause all
+  survive. Like the outfit, and unlike every scene edit, this one is meant to cost money: the note is
+  in the prompt, so setting one re-keys precisely the tasks that rung reaches and the next run
+  re-renders them. `buildShotPrompt` takes `shot.artNotes` **only** — an entity's note already
+  reached the plates and sheets the shot references, and re-stating it would double the voice.
+  Every builder ends in `.filter(Boolean).join(' ')`, so a project that authors no notes produces
+  byte-identical prompts and re-keys nothing; that, not the feature, is the test worth having. Plan:
+  [`plans/asset-names-and-the-asset-editor.md`](plans/asset-names-and-the-asset-editor.md).
 - **No edit to a scene invalidates art — which is why drift has to be reported.**
   `buildShotPrompt` reads neither `coversLines` nor line text (prose reaches only the P7 reviewer
   spec, which never enters a task's `inputs`), so retyping a covered line rehashes nothing and

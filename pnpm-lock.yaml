@@ -137,6 +137,9 @@ importers:
       '@google/genai':
         specifier: ^0.3.0
         version: 0.3.1
+      '@vn/artgen':
+        specifier: workspace:*
+        version: link:../../packages/artgen
       '@vn/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring
@@ -199,8 +202,38 @@ importers:
         specifier: ^6.0.3
         version: 6.4.3(@types/node@22.19.21)(yaml@2.9.0)
 
+  packages/artgen:
+    dependencies:
+      '@vn/config':
+        specifier: workspace:*
+        version: link:../config
+      '@vn/model':
+        specifier: workspace:*
+        version: link:../model
+      '@vn/parse':
+        specifier: workspace:*
+        version: link:../parse
+      '@vn/providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@vn/store':
+        specifier: workspace:*
+        version: link:../store
+      '@vn/taskgraph':
+        specifier: workspace:*
+        version: link:../taskgraph
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../types
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../util
+
   packages/authoring:
     dependencies:
+      '@vn/artgen':
+        specifier: workspace:*
+        version: link:../artgen
       '@vn/bible':
         specifier: workspace:*
         version: link:../bible
@@ -314,6 +347,9 @@ importers:
 
   packages/pipeline:
     dependencies:
+      '@vn/artgen':
+        specifier: workspace:*
+        version: link:../artgen
       '@vn/config':
         specifier: workspace:*
         version: link:../config

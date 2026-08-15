@@ -15,6 +15,7 @@ import type { Providers } from '@vn/types';
 import { outfitFor } from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
+import { baseRefusal } from '@vn/artgen';
 import {
   buildLocationPrompt,
   buildModelSheetPrompt,
@@ -197,12 +198,10 @@ function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
  * clone without the base repo leaves behind, and the whole plan rests on it: the four base kinds
  * would be re-generated from scratch, and every shot references a location plate and a portrait
  * whose bytes are equally gone. So nothing is plannable, and saying that in one sentence is the
- * point of the state existing at all.
+ * point of the state existing at all. The sentence lives in `@vn/artgen` because generating one
+ * image on demand must refuse in exactly the same words.
  */
-export function baseRefusal(base?: BaseAssets): string | undefined {
-  if (base?.state !== 'unavailable') return undefined;
-  return `base assets at ${base.root} are unavailable: the directory exists but has no readable manifest.json (a checkout without the base repo looks exactly like this). Nothing was planned — restore it rather than regenerate.`;
-}
+export { baseRefusal } from '@vn/artgen';
 
 /** Find an already-produced asset for a task identity, if it ran and succeeded. */
 function doneOutput(graph: TaskGraph, hash: string): AssetRef | undefined {

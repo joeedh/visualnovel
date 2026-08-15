@@ -28,6 +28,12 @@ export interface DocTreeInput {
   bible: BibleFile[];
   /** The bible root, workspace-relative — `wiki` normally, and the prefix its nodes carry. */
   wikiDir: string;
+  /**
+   * Display names by asset hash, from `labelAssets`. Passed in rather than derived here because
+   * a model-sheet's angle lives in the task graph, which this projection does not read; an asset
+   * missing from the map falls back to `hash8.ext`.
+   */
+  assetLabels?: ReadonlyMap<string, string>;
   cap?: number;
 }
 
@@ -59,6 +65,7 @@ const ASSET_KIND_LABELS: Record<AssetKind, string> = {
   outfit_sheet: 'Outfit sheets',
   location_ref: 'Location plates',
   shot_image: 'Shot frames',
+  concept: 'Concepts',
 };
 
 function storyBranch(input: DocTreeInput, cap: number): DocNode {
@@ -152,6 +159,11 @@ function wikiBranch(input: DocTreeInput): DocNode {
   return node('branch:wiki', 'branch', 'Wiki', { children: roots });
 }
 
+/** What to call one asset: its display name when the caller supplied one, else `hash8.ext`. */
+function assetLabelOf(input: DocTreeInput, asset: Asset): string {
+  return input.assetLabels?.get(asset.hash) ?? `${asset.hash.slice(0, 8)}.${asset.ext}`;
+}
+
 function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const byKind = new Map<AssetKind, Asset[]>();
   for (const asset of input.manifest) {
@@ -166,8 +178,10 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
         badge: isBaseKind(kind) ? 'base' : 'project',
         children: capped(
           `assetkind:${kind}`,
+          // No `path`: an asset is addressed by hash, and a path here would send a click down the
+          // document-opening route, which reads a file as text.
           assets.map((a) =>
-            node(`asset:${a.hash}`, 'asset', `${a.hash.slice(0, 8)}.${a.ext}`, {
+            node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
               ...(a.accepted ? { badge: 'accepted' } : {}),
             }),
           ),
@@ -208,6 +222,7 @@ function linksFor(
       hash: a.hash,
       ext: a.ext,
       kind: a.kind,
+      label: assetLabelOf(input, a),
       accepted: a.accepted,
       base: isBaseKind(a.kind),
     }));

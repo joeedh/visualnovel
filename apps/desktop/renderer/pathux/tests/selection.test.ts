@@ -3,7 +3,7 @@ import type { ImageParams } from '@vn/types';
 import type { Task } from '../../../src/shared/ipc';
 
 const PARAMS: ImageParams = { modelId: 'mock-image' };
-const NONE: Selection = { sceneId: '', shotId: '', characterId: '', docPath: '' };
+const NONE: Selection = { sceneId: '', shotId: '', characterId: '', docPath: '', assetHash: '' };
 
 const task = (over: Partial<Task> & Pick<Task, 'hash' | 'kind' | 'inputs'>): Task => ({
   deps: [],
@@ -61,11 +61,12 @@ describe('selectionForTask', () => {
       shotId: 'arrival__beat1',
       characterId: '',
       docPath: '',
+      assetHash: '',
     });
   });
 
   it('keeps the rest of the selection when it names a shot', () => {
-    const current: Selection = { sceneId: 'x', shotId: 'x__1', characterId: 'aiko', docPath: '' };
+    const current: Selection = { ...NONE, sceneId: 'x', shotId: 'x__1', characterId: 'aiko' };
     expect(selectionForTask(shot('greet__establishing'), current).characterId).toBe('aiko');
   });
 
@@ -79,12 +80,14 @@ describe('selectionForTask', () => {
       shotId: 'arrival__1',
       characterId: '',
       docPath: '',
+      assetHash: '',
     };
     expect(selectionForTask(portrait('aiko'), current)).toEqual({
       sceneId: 'arrival',
       shotId: 'arrival__1',
       characterId: 'aiko',
       docPath: '',
+      assetHash: '',
     });
   });
 
@@ -94,6 +97,7 @@ describe('selectionForTask', () => {
       shotId: 'arrival__1',
       characterId: 'aiko',
       docPath: '',
+      assetHash: '',
     };
     expect(selectionForTask(plate('school'), current)).toBe(current);
   });
@@ -106,6 +110,7 @@ describe('taskIsSelected', () => {
       shotId: 'arrival__beat1',
       characterId: 'aiko',
       docPath: '',
+      assetHash: '',
     };
     expect(taskIsSelected(shot('arrival__beat1'), sel)).toBe(true);
     expect(taskIsSelected(sheet('aiko'), sel)).toBe(true);
@@ -120,6 +125,7 @@ describe('isSelected', () => {
       shotId: 'arrival__beat1',
       characterId: '',
       docPath: '',
+      assetHash: '',
     };
     expect(isSelected(view(shot('arrival__beat1')), sel)).toBe(true);
     expect(isSelected(view(shot('arrival__beat2')), sel)).toBe(false);
@@ -153,6 +159,7 @@ describe('isSelected', () => {
       shotId: 'arrival__1',
       characterId: 'aiko',
       docPath: '',
+      assetHash: '',
     };
     expect(isSelected(ghost, sel)).toBe(false);
     expect(isSelected(barrier, sel)).toBe(false);

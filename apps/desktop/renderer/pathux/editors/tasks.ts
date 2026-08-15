@@ -78,6 +78,7 @@ export class TaskListEditor extends VnEditor {
       shotId: ui.shotId,
       characterId: ui.characterId,
       docPath: ui.docPath,
+      assetHash: ui.assetHash,
     };
   }
 

@@ -125,6 +125,7 @@ export class TaskGraphEditor extends VnEditor {
       shotId: ui.shotId,
       characterId: ui.characterId,
       docPath: ui.docPath,
+      assetHash: ui.assetHash,
     };
   }
 

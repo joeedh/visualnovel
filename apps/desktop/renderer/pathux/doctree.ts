@@ -64,9 +64,9 @@ function splitShot(key: string): { sceneId: string; shotId: string } {
 }
 
 /**
- * What clicking a node selects. A grouping, an asset and a counted `more` name nothing the shell
- * tracks, so they return the selection **unchanged and identical** — a click meant to open a
- * branch must not cost the author their place, which is the same contract `selectionForTask` has.
+ * What clicking a node selects. A grouping and a counted `more` name nothing the shell tracks, so
+ * they return the selection **unchanged and identical** — a click meant to open a branch must not
+ * cost the author their place, which is the same contract `selectionForTask` has.
  */
 export function selectionForNode(node: DocNode, current: Selection): Selection {
   const key = nodeKey(node);
@@ -94,6 +94,9 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
     case 'wiki':
     case 'file':
       return node.path === undefined ? current : { ...current, docPath: node.path };
+    // An asset carries no `path` on purpose — it is addressed by hash, which is its key here.
+    case 'asset':
+      return { ...current, assetHash: key };
     default:
       return current;
   }
@@ -155,6 +158,8 @@ export function nodeIsSelected(node: DocNode, selection: Selection): boolean {
     case 'wiki':
     case 'file':
       return selection.docPath !== '' && selection.docPath === node.path;
+    case 'asset':
+      return selection.assetHash !== '' && selection.assetHash === key;
     default:
       return false;
   }

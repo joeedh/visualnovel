@@ -1,12 +1,12 @@
 import type { Container, MenuTemplate } from 'pathux';
 import { EFFORT_LEVELS, TEXT_MODELS, supportsEffort } from '@vn/types';
-import { ask, convo, decide, revision, takeSeed } from '../agent.js';
+import { allow, answer, ask, convo, decide, revision, takeSeed } from '../agent.js';
 import { exec, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 import STUDIO_CSS from '../../styles/studio.css?inline';
 import type { FeedItem } from '../convo.js';
-import type { Plan } from '../../../src/shared/ipc.js';
+import type { AskRequest, ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
 
 /**
  * What the room supplied and the pane does not. `studio.css` is imported as-is — the transcript,
@@ -26,6 +26,33 @@ const SURFACE_CSS = `
 }
 .cv-surface button { font-family: inherit; color: inherit; cursor: pointer; }
 .cv-surface .composer .send:disabled { opacity: 0.45; cursor: default; }
+
+/* A plan is the machine proposing, so it is signal. A question and a confirmation are the
+   author's own turn to take — sodium, the same warm the header uses for the human side. */
+.cv-surface .plan.ask,
+.cv-surface .plan.confirm {
+  border-color: rgba(244, 162, 76, 0.4);
+  background: linear-gradient(180deg, rgba(244, 162, 76, 0.07), rgba(244, 162, 76, 0.015));
+}
+.cv-surface .plan.ask .plan-head,
+.cv-surface .plan.confirm .plan-head {
+  color: var(--sodium);
+}
+.cv-surface .ask-input {
+  width: 100%;
+  margin-bottom: 12px;
+  background: var(--ink-sunken);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  padding: 10px 13px;
+  color: var(--paper);
+  font: inherit;
+  font-size: 13.5px;
+}
+.cv-surface .ask-input:focus {
+  outline: none;
+  border-color: var(--sodium);
+}
 `;
 
 /**
@@ -58,6 +85,10 @@ export class ConvoEditor extends VnEditor {
   private drawn = -1;
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
+  /** The question id whose box already took focus, so a redraw does not steal the caret back. */
+  private focusedAsk = -1;
+  /** What the question box holds. The transcript is rebuilt wholesale; the half-typed answer isn't. */
+  private askDraft = '';
 
   static override define() {
     return {
@@ -199,13 +230,15 @@ export class ConvoEditor extends VnEditor {
     this.workingEl.style.display = state.busy ? 'block' : 'none';
 
     this.transcript.textContent = '';
-    if (state.feed.length === 0 && !state.plan) {
+    if (state.feed.length === 0 && !state.plan && !state.question && !state.confirm) {
       this.transcript.appendChild(
         el('div', 'empty-hint', 'Ask vnauthor to change a character, scene, or location.'),
       );
     }
     for (const item of state.feed) this.transcript.appendChild(this.turn(item));
     if (state.plan) this.transcript.appendChild(this.planCard(state.plan.plan));
+    if (state.question) this.transcript.appendChild(this.askCard(state.question));
+    if (state.confirm) this.transcript.appendChild(this.confirmCard(state.confirm));
     // The transcript is bottom-aligned, so what just happened is what is on screen.
     this.transcript.scrollTop = this.transcript.scrollHeight;
 
@@ -262,6 +295,81 @@ export class ConvoEditor extends VnEditor {
     button.className = className;
     button.textContent = label;
     button.addEventListener('click', () => void decide(approved));
+    return button;
+  }
+
+  /**
+   * The agent asked something and its turn is parked on the answer. It wears the plan card's
+   * shape because it is the same kind of moment — the conversation stopped, waiting on the author
+   * — and the box takes focus on arrival, since nothing else on this pane is worth typing into.
+   */
+  private askCard(request: AskRequest): HTMLElement {
+    const card = el('div', 'plan ask');
+    card.appendChild(el('div', 'plan-head', 'VNAUTHOR ASKS'));
+
+    const body = el('div', 'plan-body');
+    body.appendChild(el('div', 'plan-sum', request.question));
+
+    const field = document.createElement('input');
+    field.className = 'ask-input';
+    field.placeholder = 'Answer, or press Enter to say nothing…';
+    field.value = this.askDraft;
+    field.addEventListener('input', () => (this.askDraft = field.value));
+    field.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') this.reply();
+    });
+    body.appendChild(field);
+
+    const acts = el('div', 'plan-acts');
+    const send = document.createElement('button');
+    send.className = 'btn primary';
+    send.textContent = 'Answer →';
+    send.addEventListener('click', () => this.reply());
+    acts.appendChild(send);
+    body.appendChild(acts);
+
+    card.appendChild(body);
+    if (this.focusedAsk !== request.id) {
+      this.focusedAsk = request.id;
+      // The card is not in the document until `rebuild` has appended it.
+      queueMicrotask(() => field.focus());
+    }
+    return card;
+  }
+
+  private reply(): void {
+    const text = this.askDraft;
+    this.askDraft = '';
+    answer(text);
+  }
+
+  /**
+   * An always-confirm tool, waiting. Deny comes first and is the unaccented one: the author is
+   * being asked to spend money or rewrite history, so the accented button is never the one the
+   * hand lands on by default.
+   */
+  private confirmCard(request: ConfirmRequest): HTMLElement {
+    const card = el('div', 'plan confirm');
+    card.appendChild(el('div', 'plan-head', `CONFIRM · ${request.tool}`));
+
+    const body = el('div', 'plan-body');
+    body.appendChild(el('div', 'plan-sum', request.detail));
+
+    const acts = el('div', 'plan-acts');
+    acts.appendChild(this.allowBtn('Deny', 'btn', false));
+    acts.appendChild(this.allowBtn('Allow →', 'btn primary', true));
+    body.appendChild(acts);
+
+    card.appendChild(body);
+    return card;
+  }
+
+  private allowBtn(label: string, className: string, allowed: boolean): HTMLElement {
+    const button = document.createElement('button');
+    button.className = className;
+    button.textContent = label;
+    button.addEventListener('click', () => allow(allowed));
     return button;
   }
 }

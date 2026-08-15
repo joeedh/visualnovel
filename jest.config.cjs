@@ -17,6 +17,7 @@ const PACKAGES = [
   'export',
   'scriptedit',
   'bible',
+  'artgen',
   'git',
   'commands',
   'debug2d',

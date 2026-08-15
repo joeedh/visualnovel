@@ -161,7 +161,16 @@ function dedupe(candidates: Candidate[], kind: EntityTag, diagnostics: Diagnosti
  * building a path out of the id.
  */
 export function entityFile(docs: EntityDoc[], id: string): string | undefined {
-  return docs.find((d) => d.id === id)?.file;
+  return entityDoc(docs, id)?.file;
+}
+
+/**
+ * The whole discovered sheet, for a writer that patches front-matter rather than replacing the
+ * file. Same lookup as {@link entityFile}, so a writer and a reporter can never disagree about
+ * which of two files claiming an id they mean.
+ */
+export function entityDoc(docs: EntityDoc[], id: string): EntityDoc | undefined {
+  return docs.find((d) => d.id === id);
 }
 
 /** Every character and set-location sheet a project has, across all three surfaces. */

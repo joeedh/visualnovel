@@ -252,11 +252,18 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Fifty-two, in ten namespaces. Twenty-nine are `mutating`; twenty-eight declare a precondition;
-twenty are undoable; one asks for confirmation.
+Fifty-nine, in twelve namespaces. Thirty-five are `mutating`; thirty-four declare a precondition;
+twenty-one are undoable; five ask for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
+| `art.generate` ✍ ⚠ ✓           | `sentence`, `subject` (default `''`), `open` (default `true`) | Draw a concept from a sentence and file it under Concepts, bound to the location or character it names. Spends one image generation; the pipeline never plans one and `vngen export` ignores it. |
+| `art.promote` ✍ ⚠ ✓            | `hash`, `variant`, `description` (default `''`) | Make a concept the location plate for one variant: the variant joins the sheet if it is new, the bytes are re-recorded as a plate, and that plate's task is logged `done` so the next run **adopts** the picture. A character concept is refused — a look goes through the gate. |
+| `art.redraw` ✍ ⚠ ✓             | `hash`, `prompt` (default `''`), `title` (default `''`), `open` (default `true`) | Draw a concept again from an edited prompt — the one asset whose prompt is authored rather than derived, so the one prompt there is to rewrite. The result is a **new** sketch beside the original; nothing is overwritten. A planned asset is refused by name: re-rendering one is `asset.regenerate`. |
+| `art.setNotes` ✍ ↺ ✓           | `target`, `notes` (default `''`)  | Art direction on one rung — `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`. Appended to the prompt, so it **re-renders** what that rung reaches. Never creates the rung it names. |
+| `asset.info`                   | `hash`                            | One asset: label, kind, root, accepted, its task, the prompt it was rendered from, the prompt the builders would write **today**, and the art-notes rungs reaching it. |
+| `asset.accept` ✍ ✓             | `hash`                            | `store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. |
+| `asset.regenerate` ✍ ⚠ ✓       | `hash`, `run` (default `false`)   | Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. |
 | `bible.search`                 | `query`, `limit` (default `8`)    | Ranked excerpts from `wiki/`. There is no `bible.read`: [`@vn/bible`](story-bible.md) has no whole-file API. |
 | `command.check`                | `invocation`                      | Would that invocation run? See [Preconditions](#preconditions-asking-before-acting). |
 | `doc.read`                     | `path`                            | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
@@ -265,7 +272,7 @@ twenty are undoable; one asks for confirmation.
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
 | `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
 | `pipeline.status`              | —                                 | Task counts, gate-pending characters, gate-blocked state.  |
-| `pipeline.run` ✍ ⚠ ✓          | `mock` (default `true`)           | The only `confirm: true` command — it spends money.        |
+| `pipeline.run` ✍ ⚠ ✓          | `mock` (default `true`)           | Confirmed, like every command that spends money.           |
 | `story.play`                   | —                                 | Build the playable in memory; writes nothing.              |
 | `story.export` ✍ ✓             | —                                 | Write `vngen/build/story.play.json` (`vngen export`).      |
 | `story.screenplay` ✍ ✓         | `clean` (default `false`)         | Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way. |
@@ -304,7 +311,7 @@ twenty are undoable; one asks for confirmation.
 | `workspace.open` ✍ ✓           | `path`                            | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open). |
 | `workspace.pick` ✍ ✓           | —                                 | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
 | `workspace.recent`             | —                                 | The open project and the ones opened before it, most recent first. |
-| `view.open`                    | `editor`, `where` (`here`\|`left`\|`right`\|`above`\|`below`, default `here`), `subject` | Shows an editor, in the active pane or in a new pane split off it. |
+| `view.open`                    | `editor`, `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`, default `here`), `subject` | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane. |
 | `view.focus`                   | `editor`, `subject`               | Makes the pane already showing an editor the active one.   |
 | `view.close`                   | —                                 | Collapses the active pane into its neighbour; the last pane is kept. |
 | `view.layout`                  | —                                 | Throws the remembered arrangement away and rebuilds the default one. |
@@ -312,9 +319,16 @@ twenty are undoable; one asks for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
-**Only the document mutators are undoable** — the eighteen `story.*` ones plus `doc.write` and
-`doc.create` — because undo restores a snapshot of the
-document tree. `gate.approve` straddles both data classes — undoing `character.md` would leave
+**Only the document mutators are undoable** — the eighteen `story.*` ones plus `doc.write`,
+`doc.create` and `art.setNotes` — because undo restores a snapshot of the
+document tree. `asset.accept` and `asset.regenerate` write into the generated class instead (a
+manifest, a status log), so neither is undoable and neither needs to be: accepting again and
+regenerating again are both ordinary acts. `art.generate` and `art.redraw` are the same shape —
+bytes and a manifest row, and undoing an image you paid for by deleting it is not an improvement
+(a redraw files a *new* sketch and leaves the original where it is, so there is nothing to undo). `art.promote` writes
+across *both* classes at once (a location sheet, a manifest row, and a `done` record in the task
+log), which is exactly what a document snapshot cannot restore, so it asks for confirmation instead
+of offering undo. `gate.approve` straddles both data classes — undoing `character.md` would leave
 `manifest.json` still marking the asset `accepted` — `story.export`, `story.screenplay` and
 `pipeline.run` write only generated output, and `agent.run` owns its own commits, one per approved
 plan. `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst
@@ -344,10 +358,19 @@ Inspector.`, `This is the only pane — closing it would leave nothing.` — and
 that one as an error. The `CommandRecord` still reads `ok`, because nothing was refused; the
 command asked for something the layout had no room for.
 
-**`subject` is the document the editor should be showing.** `view.open`/`view.focus` take it and
-publish it as `ui.docPath` — but only when the mesh could show the editor at all, because a
-subject set on a pane that never opened would move every _other_ document editor instead. It is
+**`subject` is what the editor should be showing, in that editor's own vocabulary.**
+`view.open`/`view.focus` take it and publish it into the selection field the named editor watches —
+`ui.docPath` for `wiki`/`documents`, `ui.assetHash` for `asset` — but only when the mesh could show
+the editor at all, because a subject set on a pane that never opened would move every _other_
+editor on that field instead. Routing per editor rather than always writing `docPath` is what keeps
+an asset hash from arriving as a file path the wiki pane would try to `doc.read`. It is
 one optional prop rather than a second command, so "show me her sheet" stays one act.
+
+**`where=elsewhere` means *not on top of what I am looking at*.** A pane already showing the editor
+is focused; otherwise the biggest non-chrome pane that is not the asking one takes it, and only a
+mesh with nowhere else to put it splits the asking pane right. It exists because a click in the
+documents tree opens the Asset editor, and a sidebar that replaced itself with the thing it named
+would leave the author nothing to click next.
 
 The `story.*` mutators are the same discipline one level down — each is one authorial act, so a
 drag in the branch editor or the coverage timeline is one command and one `CommandRecord`, never
@@ -359,6 +382,15 @@ a stream of them.
 speak in scenes, lines and shots; a character sheet or a wiki note has no such structure, so the
 one honest interface to it is its bytes. Full write-up of the editors on top:
 [`desktop-app.md`](desktop-app.md#wiki).
+
+**The rule is about bytes, not about documents.** Moving a sheet's *bytes* happens only through
+`doc.*`; a **named field** inside one may also be set by a command that round-trips through
+`@vn/model`'s `apply*Edit` serializers, which rewrite the key they were given and leave every other
+byte — including the author's YAML comments — where it was. `art.setNotes` is the first such
+command and `art.promote` the second (it adds one variant to a location's `variants:` list), and both
+take the same write path `vnauthor`'s `edit_character`/`edit_location` take, so one
+authorial act still has one answer. What stays forbidden is unchanged: `scenes/**` has exactly one
+write path and it is `story.*`.
 
 - **Reads are bounded and text-only.** `doc.read` answers `{ path, text, hash, bytes }` for a
   file under the workspace, refusing what is outside it, what is too large, and what is not text.

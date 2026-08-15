@@ -34,6 +34,8 @@ import type {
   InvokeChannel,
   InvokeChannels,
   PlanDecision,
+  AskRequest,
+  ConfirmRequest,
   PlanRequest,
   SessionValue,
   UiEffect,
@@ -87,8 +89,52 @@ let win: BrowserWindow | null = null;
 let session: WorkspaceSession | null = null;
 let stack: CommandStack<CommandHost> | null = null;
 let sessionStore: SessionStore | null = null;
-const pendingPlans = new Map<number, (decision: PlanDecision) => void>();
-let planSeq = 0;
+/**
+ * A request main is blocked on until the renderer answers it. Plan approval, a clarifying
+ * question and an always-confirm tool are the same shape, so they share one: an id, the promise
+ * the agent turn is parked on, and the answer {@link abandon} gives when nobody is left to ask —
+ * a window that closes or a workspace that is torn down mid-turn must *end* the turn, and a
+ * promise that nothing will ever resolve hangs the agent for the life of the process.
+ */
+class Pending<T> {
+  private readonly waiting = new Map<number, (value: T) => void>();
+  private seq = 0;
+
+  constructor(private readonly abandoned: T) {}
+
+  ask(send: (id: number) => void): Promise<T> {
+    return new Promise<T>((resolve) => {
+      const id = ++this.seq;
+      this.waiting.set(id, resolve);
+      send(id);
+    });
+  }
+
+  answer(id: number, value: T): void {
+    const resolve = this.waiting.get(id);
+    if (!resolve) return;
+    this.waiting.delete(id);
+    resolve(value);
+  }
+
+  abandon(): void {
+    const waiters = [...this.waiting.values()];
+    this.waiting.clear();
+    for (const resolve of waiters) resolve(this.abandoned);
+  }
+}
+
+const pendingPlans = new Pending<PlanDecision>({ approved: false });
+/** An unanswered question is silence, not a guess; an unanswered confirmation is a refusal. */
+const pendingAsks = new Pending<string>('');
+const pendingConfirms = new Pending<boolean>(false);
+
+/** Nobody is left to ask: end every parked turn rather than leaving one blocked forever. */
+function abandonPending(): void {
+  pendingPlans.abandon();
+  pendingAsks.abandon();
+  pendingConfirms.abandon();
+}
 
 let workspaceRoot: string | null = null;
 
@@ -166,6 +212,8 @@ async function resolveWorkspace(): Promise<void> {
  */
 async function switchWorkspace(root: string): Promise<{ root: string; title: string }> {
   const opened = await openWorkspace(root);
+  // The agent being dropped may be parked on a question nobody is going to answer now.
+  abandonPending();
   workspaceRoot = opened.root;
   session = null;
   stack = null;
@@ -218,11 +266,19 @@ function committer(): Committer {
 const deps: SessionDeps = {
   emitEvent: (event) => win?.webContents.send('agent:event', event),
   requestPlan: (plan) =>
-    new Promise<PlanDecision>((resolve) => {
-      const id = ++planSeq;
-      pendingPlans.set(id, resolve);
+    pendingPlans.ask((id) => {
       const request: PlanRequest = { id, plan };
       win?.webContents.send('permission:plan', request);
+    }),
+  requestAnswer: (question) =>
+    pendingAsks.ask((id) => {
+      const request: AskRequest = { id, question };
+      win?.webContents.send('permission:ask', request);
+    }),
+  requestConfirm: (tool, detail) =>
+    pendingConfirms.ask((id) => {
+      const request: ConfirmRequest = { id, tool, detail };
+      win?.webContents.send('permission:confirm', request);
     }),
 };
 
@@ -333,13 +389,9 @@ function registerIpc(): void {
   handle('agent:setMode', (mode) => getSession().setMode(mode));
   handle('agent:setModel', (modelId) => getSession().setModel(modelId));
   handle('agent:clear', () => getSession().clearAgent());
-  handle('plan:decision', (payload: { id: number; decision: PlanDecision }) => {
-    const resolve = pendingPlans.get(payload.id);
-    if (resolve) {
-      pendingPlans.delete(payload.id);
-      resolve(payload.decision);
-    }
-  });
+  handle('plan:decision', (payload) => pendingPlans.answer(payload.id, payload.decision));
+  handle('ask:answer', (payload) => pendingAsks.answer(payload.id, payload.answer));
+  handle('confirm:decision', (payload) => pendingConfirms.answer(payload.id, payload.allowed));
   handle('pipeline:status', () => getSession().status());
   handle('pipeline:run', (opts) => getSession().runPipeline(opts.mock));
   handle('gate:candidates', (characterId) => getSession().gateCandidates(characterId));
@@ -419,6 +471,9 @@ function createWindow(): void {
   else void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'));
   win.on('closed', () => {
     win = null;
+    // Every request out there was addressed to a window that is gone. Deny and answer nothing,
+    // so an agent turn parked on one ends instead of holding the process open.
+    abandonPending();
   });
 
   // The stock menu is gone (see `app.whenReady`), and with it F12. The renderer cannot open its

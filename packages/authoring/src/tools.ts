@@ -45,6 +45,8 @@ import { guardedDir, readDocFile, resolveInWorkspace, writeShots } from '@vn/sto
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import type { Diagnostic } from '@vn/types';
 import type { Git } from '@vn/git';
+import { formatSubject, parseSubject } from '@vn/artgen';
+import type { ArtGen } from './art.js';
 import { updateContext } from './context.js';
 import { formatIndex, Workspace } from './workspace.js';
 import { discoverSkills, runSkill, skillRoots } from './skills.js';
@@ -72,6 +74,12 @@ export interface ToolContext {
   confirm?: (message: string) => Promise<boolean>;
   /** Extra directories to scan for skills, beyond the workspace's `.aiagent/skills`. */
   skillDirs?: string[];
+  /**
+   * Image generation, wired by the host that knows whether this run is mocked and where the keys
+   * are. Absent in bare contexts, in which case `generate_image` and `edit_image` refuse rather
+   * than assume an API key exists to spend.
+   */
+  art?: ArtGen;
 }
 
 /** A registered tool: a typed, gated shim over a reused function. */
@@ -349,19 +357,31 @@ const characterEditShape = z.object({
     .optional()
     .describe('outfit id worn wherever nothing else says otherwise; must be one of `outfits`'),
   outfits: z
-    .record(z.string())
+    .record(
+      z.union([
+        z.string(),
+        z.object({ description: z.string().optional(), art_notes: z.string().optional() }),
+      ]),
+    )
     .optional()
     .describe(
-      'the whole wardrobe, outfit id → description; replaces the map, so send the ones being kept too',
+      'the whole wardrobe, outfit id → description (or {description, art_notes} for one that needs its own art direction); replaces the map, so send the ones being kept too',
     ),
   traits: z.array(z.string()).optional(),
   palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
   referenceImages: z.array(z.string()).optional(),
+  artNotes: z
+    .string()
+    .optional()
+    .describe(
+      'art direction appended to every prompt this character reaches — how the art should look, not who the character is; empty string removes it',
+    ),
 });
 
 const editCharacterTool: Tool<z.infer<typeof characterEditShape>> = {
   name: 'edit_character',
-  description: 'Apply a validated edit to an existing character.md and write it back.',
+  description:
+    "Apply a validated edit to an existing character.md and write it back. `artNotes` (and an outfit's `art_notes`) is how an author tweaks the look of generated art: it goes into the prompt, so changing it re-renders the portrait and model sheets it reaches on the next run. Say so before proposing one.",
   mutating: true,
   args: characterEditShape,
   async run(a, ctx) {
@@ -388,12 +408,33 @@ const locationEditShape = z.object({
   mood: z.string().optional(),
   lighting: z.string().optional(),
   palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
-  variants: z.array(z.string()).optional(),
+  variants: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          id: z.string().min(1),
+          description: z.string().optional(),
+          art_notes: z.string().optional(),
+        }),
+      ]),
+    )
+    .optional()
+    .describe(
+      'the whole variant list, a bare id or {id, description, art_notes} for one that needs its own art direction; replaces the list',
+    ),
+  artNotes: z
+    .string()
+    .optional()
+    .describe(
+      'art direction appended to every plate of this location — how the art should look, not what the place is; empty string removes it',
+    ),
 });
 
 const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
   name: 'edit_location',
-  description: 'Apply a validated edit to an existing location.md and write it back.',
+  description:
+    "Apply a validated edit to an existing location.md and write it back. `artNotes` (and a variant's `art_notes`) is how an author tweaks the look of generated art: it goes into the prompt, so changing it re-renders the plates it reaches on the next run. Say so before proposing one.",
   mutating: true,
   args: locationEditShape,
   async run(a, ctx) {
@@ -829,6 +870,132 @@ const gitInitTool: Tool<Record<string, never>> = {
   },
 };
 
+const generateImageTool: Tool<{ sentence: string; subject?: string }> = {
+  name: 'generate_image',
+  description:
+    'Draw a concept image from a sentence, e.g. "an aerial shot of the high school". It is bound to the location or character it names — say which, or let the sentence decide — and appears under Concepts in the project. A concept is a sketch and nothing more: the pipeline never plans it, no scene renders it, and `vngen export` ignores it; promoting one to a real location plate is a separate, human decision. It costs one image generation, so ask before drawing several.',
+  mutating: true,
+  confirm: true,
+  args: z.object({
+    sentence: z.string().min(1).describe('what to draw, in plain words'),
+    subject: z
+      .string()
+      .optional()
+      .describe('location:<id> or character:<id>; omitted means the sentence decides'),
+  }),
+  async run(a, ctx) {
+    if (!ctx.art) {
+      return fail('image generation is not available in this session; nothing was drawn.');
+    }
+    const subject = a.subject ? parseSubject(a.subject) : undefined;
+    if (a.subject && !subject) {
+      return fail(`"${a.subject}" is not a subject — write location:<id> or character:<id>.`);
+    }
+    try {
+      const res = await ctx.art.generate({
+        sentence: a.sentence,
+        ...(subject ? { subject } : {}),
+      });
+      const file = rel(ctx.workspace.root, res.file);
+      const of = res.subject
+        ? ` of ${formatSubject(res.subject)}`
+        : ' bound to nothing in the project';
+      return ok(`Drew a concept${of}: ${file}. It is a sketch — nothing in the pipeline uses it.`, {
+        written: [file, rel(ctx.workspace.root, ctx.workspace.paths.baseManifest)],
+        data: {
+          hash: res.ref.hash,
+          file,
+          prompt: res.prompt,
+          ...(res.subject ? { subject: formatSubject(res.subject) } : {}),
+        },
+      });
+    } catch (e) {
+      return fail(e instanceof Error ? e.message : String(e));
+    }
+  },
+};
+
+const listImagesTool: Tool<Record<string, never>> = {
+  name: 'list_images',
+  description:
+    'List the concept sketches this project holds: hash, name, what each is bound to, and the prompt it was drawn from. Read-only. Use it before `edit_image` — a concept is named by its hash, and this is where one comes from.',
+  mutating: false,
+  args: z.object({}).strict(),
+  async run(_a, ctx) {
+    if (!ctx.art) return fail('image generation is not available in this session.');
+    const concepts = await ctx.art.list();
+    if (concepts.length === 0) {
+      return ok('No concept sketches yet. `generate_image` draws one from a sentence.');
+    }
+    const lines = concepts.map((c) => {
+      const of = c.subject ? ` of ${formatSubject(c.subject)}` : '';
+      return `${c.hash.slice(0, 12)}  ${c.title ?? '(unnamed)'}${of}\n  ${rel(ctx.workspace.root, c.file)}\n  prompt: ${c.prompt ?? '(none recorded)'}`;
+    });
+    return ok(`${concepts.length} concept sketch(es):\n${lines.join('\n')}`, {
+      data: concepts.map((c) => ({
+        hash: c.hash,
+        ...(c.title ? { title: c.title } : {}),
+        ...(c.prompt ? { prompt: c.prompt } : {}),
+        ...(c.subject ? { subject: formatSubject(c.subject) } : {}),
+      })),
+    });
+  },
+};
+
+const editImageTool: Tool<{ hash: string; prompt?: string; title?: string }> = {
+  name: 'edit_image',
+  description:
+    'Draw a concept sketch again, from an edited prompt. A concept is the one asset whose prompt is authored rather than derived from the project, so it is the one prompt you may rewrite — pass the whole prompt, starting from the one `list_images` reports, so the style preamble and the framing line survive. The result is a NEW sketch beside the original; nothing is overwritten and nothing downstream sees either. Omitting the prompt re-rolls the recorded one, which is pointless when `image_params.seed` is fixed. It costs one image generation, so confirm with the author before drawing.',
+  mutating: true,
+  confirm: true,
+  args: z.object({
+    hash: z.string().min(4).describe('the concept to redraw; a hash prefix from list_images'),
+    prompt: z
+      .string()
+      .optional()
+      .describe('the whole prompt to draw from; omitted re-rolls the recorded one'),
+    title: z.string().optional().describe('a new name for it; omitted keeps the one it has'),
+  }),
+  async run(a, ctx) {
+    if (!ctx.art) {
+      return fail('image generation is not available in this session; nothing was drawn.');
+    }
+    try {
+      // A 64-char hash is passed straight through so `redrawConcept` can refuse a derived asset by
+      // name; anything shorter is a prefix, and an ambiguous one is a question, not a guess.
+      let hash = a.hash;
+      if (hash.length < 64) {
+        const matches = (await ctx.art.list()).filter((c) => c.hash.startsWith(hash));
+        if (matches.length === 0) {
+          return fail(`no concept starts with "${hash}" — run list_images to see what there is.`);
+        }
+        if (matches.length > 1) {
+          return fail(
+            `"${hash}" names ${matches.length} concepts (${matches.map((m) => m.hash.slice(0, 12)).join(', ')}); say more of the hash.`,
+          );
+        }
+        hash = matches[0]!.hash;
+      }
+
+      const res = await ctx.art.redraw({
+        hash,
+        ...(a.prompt === undefined ? {} : { prompt: a.prompt }),
+        ...(a.title === undefined ? {} : { title: a.title }),
+      });
+      const file = rel(ctx.workspace.root, res.file);
+      const same = res.unchanged
+        ? ' The same prompt and a fixed seed gave back the very same picture.'
+        : ` ${res.from.slice(0, 12)} is still there.`;
+      return ok(`Redrew ${res.from.slice(0, 12)} as ${file}.${same}`, {
+        written: [file, rel(ctx.workspace.root, ctx.workspace.paths.baseManifest)],
+        data: { hash: res.ref.hash, from: res.from, file, prompt: res.prompt },
+      });
+    } catch (e) {
+      return fail(e instanceof Error ? e.message : String(e));
+    }
+  },
+};
+
 /** Escape a string for use as a literal regex (search default). */
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -850,6 +1017,9 @@ export const ALL_TOOLS: Tool[] = [
   createLocationTool,
   editSceneTool,
   setOutfitTool,
+  generateImageTool,
+  listImagesTool,
+  editImageTool,
   writeFileTool,
   updateContextTool,
   regenerateContextTool,

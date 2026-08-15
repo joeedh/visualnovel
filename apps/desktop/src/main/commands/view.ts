@@ -20,11 +20,13 @@ const WHERE: Record<OpenWhere, string> = {
   right: 'to the right',
   above: 'above',
   below: 'below',
+  elsewhere: 'in another pane',
 };
 
 /** What the optional subject is, said once — both `view.*` verbs take it and mean the same. */
 const SUBJECT =
-  'the document to show once it is there, workspace-relative; only the Wiki editor has one today';
+  'what to show once it is there: a workspace-relative path for the Wiki editor, an asset ' +
+  'hash for the Asset editor';
 
 /** ` on wiki/history.md`, or nothing — the half of the sentence a subject adds. */
 const onSubject = (subject: string): string => (subject ? ` on ${subject}` : '');
@@ -33,8 +35,9 @@ export const viewOpen = define({
   id: 'view.open',
   title: 'Show an editor',
   description:
-    'Show an editor: in the active pane, or in a new pane split off it. Already open ' +
-    'and asked for here, it is focused rather than opened twice.',
+    'Show an editor: in the active pane, in a new pane split off it, or `elsewhere` — the ' +
+    'biggest pane that is not the active one. Already open and asked for `here` or ' +
+    '`elsewhere`, it is focused rather than opened twice.',
   mutating: false,
   props: {
     editor: prop.oneOf(EDITOR_IDS, 'which editor to show'),

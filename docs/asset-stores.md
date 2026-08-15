@@ -44,9 +44,17 @@ vngen/build/assets/<hash>.<ext> shot frames
 ## The rules
 
 **Routing is by `AssetKind`, and that is the only rule.** `location_ref`, `portrait`,
-`model_sheet` and `outfit_sheet` go to the base root; `shot_image` goes to the project root.
-Not by `satisfies`, not by a flag on the task — one total function from a kind to a root, so
+`model_sheet`, `outfit_sheet` and `concept` go to the base root; `shot_image` goes to the project
+root. Not by `satisfies`, not by a flag on the task — one total function from a kind to a root, so
 no asset is ambiguous about where it lives.
+
+**A `concept` is base art too, which is what makes promotion cheap.** It is authored-side — a
+sketch of a place or a person, asked for in a sentence rather than planned — so it belongs beside
+the plates. `promoteConcept` then rewrites one record in place: the kind flips to `location_ref`,
+`sourceTask` becomes the plate's own task identity, `prompt` becomes the derived one, and
+`mergeBindings` **keeps** the concept's binding beside the new `{locationId, variant}` so the tree
+still shows where the plate came from. The bytes never move, because both kinds route here. That is
+the only thing in the system that changes an asset's kind.
 
 **Reads consult both roots, base first.** Hashes are content hashes, so a byte present in both
 roots *is* the same byte and the two indices cannot disagree about content. Where both hold a

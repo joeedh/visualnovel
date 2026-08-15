@@ -16,12 +16,16 @@ import {
 } from '@vn/scriptedit';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
+import type { Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
 
+// The three permission doors answer the way an abandoned window does: no plan, no answer, no.
 const deps: SessionDeps = {
   emitEvent: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
+  requestAnswer: () => Promise.resolve(''),
+  requestConfirm: () => Promise.resolve(false),
 };
 
 const sessionFor = (p: TestProject) => new WorkspaceSession(p.dir, true, deps);
@@ -1062,5 +1066,142 @@ describe('WorkspaceSession — over a generated project', () => {
       'current',
       'current',
     ]);
+  });
+
+  /** The classroom plate, which every assertion below is about. */
+  const plate = async (): Promise<string> => {
+    const { store } = await p.reload();
+    const found = store
+      .manifest()
+      .find((a) => a.kind === 'location_ref' && a.satisfies[0]?.locationId === 'classroom');
+    return found!.hash;
+  };
+
+  it('describes a plate: what to call it, what made it, and which rungs reach it', async () => {
+    const info = await session.assetInfo(await plate());
+    expect(info).toMatchObject({ kind: 'location_ref', base: true, stale: false });
+    expect(info!.label).toBe('Classroom — day');
+    // Nothing has been edited yet, so the bytes and the builders still say the same words.
+    expect(info!.derived).toBe(info!.prompt);
+    expect(info!.rungs.map((r) => r.target)).toEqual([
+      'location:classroom',
+      'location:classroom/day',
+    ]);
+    expect(info!.rungs.every((r) => r.notes === undefined)).toBe(true);
+    expect(await session.assetInfo('not-a-real-hash')).toBeNull();
+  });
+
+  it('accepts a plate, and refuses a hash the store does not hold', async () => {
+    const hash = await plate();
+    expect(await session.acceptAsset(hash)).toMatchObject({ ok: true });
+    expect((await session.assetInfo(hash))!.accepted).toBe(true);
+    expect(await session.acceptAsset('not-a-real-hash')).toMatchObject({ ok: false });
+  });
+
+  // A precondition is a sentence a surface may show, never a gate the act may lean on: `exec`
+  // re-decides for itself, so the refusal has to live where the writing happens.
+  it('refuses a portrait and a concept in the act, not only in the check', async () => {
+    const { store } = await p.reload();
+    const portrait = store.manifest().find((a) => a.kind === 'portrait')!.hash;
+    // A portrait in this project may already be accepted — the gate ran. What the refusal has to
+    // leave alone is whatever that state was.
+    const before = (await session.assetInfo(portrait))!.accepted;
+    expect(await session.previewAccept(portrait)).toMatchObject({ ok: false });
+    expect(await session.acceptAsset(portrait)).toMatchObject({ ok: false });
+    expect((await session.assetInfo(portrait))!.accepted).toBe(before);
+
+    const drawn = await session.drawConcept('the classroom at dusk', '');
+    expect(drawn).toMatchObject({ ok: true });
+    const refused = await session.acceptAsset(drawn.hash!);
+    expect(refused).toMatchObject({ ok: false });
+    expect(refused.message).toContain('art.promote');
+    expect((await session.assetInfo(drawn.hash!))!.accepted).toBe(false);
+  });
+
+  it('queues a plate for re-run by putting its own task back to pending', async () => {
+    const hash = await plate();
+    const info = (await session.assetInfo(hash))!;
+    expect(await session.previewRegenerate(hash)).toMatchObject({ ok: true });
+
+    const queued = await session.regenerateAsset(hash);
+    expect(queued).toMatchObject({ ok: true, written: ['vngen/state/tasks.jsonl'] });
+    const task = (await session.status()).tasks.find((t) => t.hash === info.sourceTask);
+    expect(task).toMatchObject({ status: 'pending' });
+  });
+
+  it('writes art notes on one variant, and the plate that predates them goes stale', async () => {
+    const notes = 'sodium streetlight raking across the formwork';
+    expect(await session.previewArtNotes('location:classroom/day', notes)).toMatchObject({
+      ok: true,
+    });
+    expect(await session.setArtNotes('location:classroom/day', notes)).toMatchObject({
+      ok: true,
+      written: ['locations/classroom.md'],
+    });
+    expect(await p.read('locations/classroom.md')).toContain(`art_notes: ${notes}`);
+
+    const info = (await session.assetInfo(await plate()))!;
+    expect(info.stale).toBe(true);
+    expect(info.derived).toContain(notes);
+    expect(info.rungs.find((r) => r.target === 'location:classroom/day')!.notes).toBe(notes);
+    // The task that made those bytes is now an orphan: the planner wants a different hash, so
+    // re-running it would buy back the picture the author just edited away from.
+    expect(await session.previewRegenerate(info.hash)).toMatchObject({ ok: false });
+  });
+
+  it('refuses a rung that does not exist rather than creating one, and writes nothing', async () => {
+    expect(await session.previewArtNotes('location:classroom/midnight', 'x')).toMatchObject({
+      ok: false,
+    });
+    expect(await session.previewArtNotes('a location', 'x')).toMatchObject({ ok: false });
+    expect(await session.setArtNotes('character:nobody', 'x')).toMatchObject({
+      ok: false,
+      written: [],
+    });
+  });
+});
+
+/**
+ * The agent's three permission doors. They were scaffolds — `ask` resolved to `''` and
+ * `confirmAction` to `true` — so the desktop answered for the author, told the model it had an
+ * answer, and auto-allowed every always-confirm tool. What is pinned here is that each door
+ * reaches the renderer and returns what came back, nothing more clever.
+ */
+describe('WorkspaceSession — the agent asks the author', () => {
+  const doors = (
+    session: WorkspaceSession,
+  ): {
+    approvePlan: (plan: Plan) => Promise<PlanDecision>;
+    confirmAction: (tool: string, args: unknown) => Promise<boolean>;
+    ask: (question: string) => Promise<string>;
+  } => (session as unknown as { permission: () => never }).permission();
+
+  it('routes a question to the renderer and hands back what was typed', async () => {
+    const asked: string[] = [];
+    const session = new WorkspaceSession('.', true, {
+      ...deps,
+      requestAnswer: (question) => {
+        asked.push(question);
+        return Promise.resolve('Call her Aiko.');
+      },
+    });
+    expect(await doors(session).ask('What name?')).toBe('Call her Aiko.');
+    expect(asked).toEqual(['What name?']);
+  });
+
+  it('asks before an always-confirm tool, in a sentence, and a denial is a denial', async () => {
+    const seen: string[] = [];
+    const session = new WorkspaceSession('.', true, {
+      ...deps,
+      requestConfirm: (tool, detail) => {
+        seen.push(`${tool}: ${detail}`);
+        return Promise.resolve(false);
+      },
+    });
+    expect(await doors(session).confirmAction('generate_image', { sentence: 'a rooftop' })).toBe(
+      false,
+    );
+    // The card reads English, not the argument list — `toolconfirm.ts` owns the wording.
+    expect(seen[0]).toContain('generate_image: Draw a concept sketch: “a rooftop”');
   });
 });

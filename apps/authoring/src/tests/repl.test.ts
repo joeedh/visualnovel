@@ -124,6 +124,25 @@ describe('runRepl (offline)', () => {
     }
   });
 
+  it('composes a /makeimage prompt in plan mode and draws nothing', async () => {
+    const { dir, cleanup } = await tempProject();
+    try {
+      const { channel, out } = scriptChannel(['/makeimage', '/makeimage the classroom at dusk']);
+      const code = await runRepl({ dir, mock: true, channel });
+      const text = out.join('\n');
+      expect(code).toBe(0);
+      expect(text).not.toContain('unknown command');
+      expect(text).toContain('Usage: /makeimage');
+      // The prompt is worth reading before spending anything, so plan mode still composes it.
+      expect(text).toContain('subject: location:classroom');
+      expect(text).toContain('the classroom at dusk');
+      expect(text).toContain('Plan mode');
+      expect(text).not.toContain('wrote ');
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('routes /model and /effort, reporting they have no effect under --mock', async () => {
     const { dir, cleanup } = await tempProject();
     try {

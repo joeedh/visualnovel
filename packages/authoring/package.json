@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@vn/artgen": "workspace:*",
     "@vn/bible": "workspace:*",
     "@vn/config": "workspace:*",
     "@vn/git": "workspace:*",

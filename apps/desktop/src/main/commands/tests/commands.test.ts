@@ -18,6 +18,8 @@ describe('the desktop registry', () => {
   it('registers every namespace the UI reaches', () => {
     expect(createDesktopRegistry().namespaces()).toEqual([
       'agent',
+      'art',
+      'asset',
       'bible',
       'command',
       'doc',
@@ -51,6 +53,12 @@ describe('the desktop registry', () => {
     const mutating = commands.filter((c) => c.mutating).map((c) => c.id);
     expect(mutating).toEqual([
       'agent.run',
+      'art.generate',
+      'art.promote',
+      'art.redraw',
+      'art.setNotes',
+      'asset.accept',
+      'asset.regenerate',
       'doc.create',
       'doc.write',
       'gate.approve',
@@ -85,7 +93,10 @@ describe('the desktop registry', () => {
   /**
    * Undo restores a snapshot of the *document* tree, so only commands whose writes are
    * documents may opt in. The rest write generated output (`story.export`, `story.screenplay`,
-   * `workspace.reindex`), append to a log (`pipeline.run`), restructure the whole worktree
+   * `workspace.reindex`, `asset.accept`), write new content-addressed bytes there was no prior
+   * state for (`art.generate`, `art.redraw`), append to a log (`pipeline.run`,
+   * `asset.regenerate`), straddle a sheet, the manifest and the task log at once
+   * (`art.promote`), restructure the whole worktree
    * (`workspace.import`, whose own `.imported` rename is the reversal), write into a *different*
    * tree than the one a snapshot covers (`workspace.open`, `workspace.pick`), or straddle both
    * classes (`gate.approve` flips
@@ -94,6 +105,7 @@ describe('the desktop registry', () => {
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
+      'art.setNotes',
       'doc.create',
       'doc.write',
       'story.assignLineIds',
@@ -126,6 +138,12 @@ describe('the desktop registry', () => {
    */
   it('declares a precondition on the mutators, and only on mutators', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
+      'art.generate',
+      'art.promote',
+      'art.redraw',
+      'art.setNotes',
+      'asset.accept',
+      'asset.regenerate',
       'doc.create',
       'doc.write',
       'gate.approve',
