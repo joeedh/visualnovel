@@ -45,7 +45,10 @@ function nameOf(binding: AssetBinding, ctx: AssetLabelContext): string | undefin
  */
 export function assetLabel(asset: Asset, ctx: AssetLabelContext): string | undefined {
   const binding = asset.satisfies[0];
-  // A concept is the one kind whose name was authored rather than derived, and the one that may
+  // An upload's name is the one an author typed, or the file they picked. It is bound to nothing
+  // by construction — nothing generated it — so a binding is never what names it.
+  if (asset.kind === 'reference') return asset.title || undefined;
+  // A concept is the other kind whose name was authored rather than derived, and the other that may
   // legitimately be bound to nothing — so it answers before the binding is required.
   if (asset.kind === 'concept') {
     const of = binding ? nameOf(binding, ctx) : undefined;

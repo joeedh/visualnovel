@@ -228,6 +228,17 @@ describe('buildModel — the wardrobe', () => {
         .diagnostics,
     ).toEqual([]);
   });
+
+  it('names the paths a retired reference_images left behind, and only when there are some', () => {
+    const model = build('reference_images:\n  - refs/ada-coat.png\n');
+    const d = model.diagnostics.filter((x) => x.code === 'retired_reference_images');
+    expect(d).toHaveLength(1);
+    expect(d[0]!.severity).toBe('warning');
+    expect(d[0]!.message).toContain('refs/ada-coat.png');
+    expect(d[0]!.message).toContain('asset.upload');
+    // Every sheet the fixtures ever wrote carries an empty list; that is not a migration.
+    expect(build('reference_images: []\n').diagnostics).toEqual([]);
+  });
 });
 
 const chunk = (id: string, body: string): SceneChunkDoc => {

@@ -3,9 +3,10 @@ import type { ProjectConfig } from '@vn/config';
 import type { LoadedInputs } from '@vn/parse';
 import { applyLocationEdit, docToMarkdown, modelFromInputs, type LocationEdit } from '@vn/model';
 import { entityFile, loadInputs, type AssetStore, type ProjectPaths } from '@vn/store';
-import { logTask, makeTask } from '@vn/taskgraph';
+import { loadGraph, makeTask } from '@vn/taskgraph';
 import { VnError, writeFileAtomic } from '@vn/util';
-import { buildLocationPrompt, imageParams } from './prompts.js';
+import { imageParams, locationInputs } from './prompts.js';
+import { adopt } from './adopt.js';
 import { baseRefusal } from './base.js';
 
 /** A variant id an author can type: the same shape `- night` already has in a sheet. */
@@ -161,34 +162,40 @@ export async function promoteConcept(
   const model = modelOf(deps.config, await loadInputs(deps.paths));
   const location = model.locations.get(locationId);
   if (!location) throw new VnError('NO_LOCATION', `Location "${locationId}" is gone.`);
-  const prompt = buildLocationPrompt(location, variant, deps.config);
-  const params = imageParams(deps.config);
-  const task = makeTask('location_ref', { locationId, variant, prompt, refs: [], params });
+  // Derived from the sheet this call just wrote, and handed to `adopt` as inputs rather than as a
+  // hash — which is what makes "cannot mark done a task nothing describes" structural.
+  const plate = locationInputs(location, variant, deps.config, imageParams(deps.config));
+  const hash = makeTask('location_ref', plate).hash;
 
   const bytes = await deps.store.read({ hash: asset.hash, ext: asset.ext });
   const ref = await deps.store.write(bytes, asset.ext, {
     kind: 'location_ref',
-    sourceTask: task.hash,
-    prompt,
-    refs: [],
+    sourceTask: hash,
+    prompt: plate.prompt,
+    refs: plate.refs.map((r) => r.hash),
     modelId: asset.modelId,
     // The concept binding is already on the record and `mergeBindings` keeps it, so the tree
     // still shows where this plate came from.
     satisfies: { locationId, variant },
   });
 
-  await logTask(deps.paths, {
-    ...task,
-    status: 'done',
-    output: ref.hash,
-    attempts: [{ attempt: 1, prompt, refs: [], output: ref.hash }],
-  });
+  const graph = await loadGraph(deps.paths);
+  const adopted = await adopt(
+    deps.paths,
+    {
+      kind: 'location_ref',
+      inputs: plate,
+      output: deps.store.manifest().find((a) => a.hash === ref.hash)!,
+    },
+    { has: (h) => deps.store.has(h), node: (h) => graph.get(h) },
+  );
+  if (!adopted.ok) throw new VnError(adopted.code, adopted.reason);
 
   return {
     ref,
     locationId,
     variant,
-    taskHash: task.hash,
+    taskHash: hash,
     addedVariant,
     ...(addedVariant ? { file } : {}),
   };

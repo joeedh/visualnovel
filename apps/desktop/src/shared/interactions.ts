@@ -18,6 +18,7 @@ import { removeChoice, setChoice, setNext, spliceScene } from './branchops.js';
 import type { BranchOp, SceneMap } from './branchops.js';
 import { resolveDrag, setCoverage, spansFor, type Edge } from './coverage.js';
 import type { CoverageLine, CoverageShot, PropValue, StoryEdge, StoryGraph } from './ipc.js';
+import { effectiveOrder, moveChunk, TOP_CHUNK, type PromptOrderState } from './promptops.js';
 
 /** A new choice has to be called something before the author has named it. */
 export const NEW_CHOICE = 'New choice';
@@ -437,10 +438,88 @@ export const scriptMoveLine = defineInteraction<ScriptState>({
   },
 });
 
+// ---------------------------------------------------------------------------
+// The asset pane's one gesture: the order the clauses of a prompt are said in.
+// ---------------------------------------------------------------------------
+
+/** Everything `prompt.reorder` is judged against: one asset's chunks and the mode in force. */
+export interface PromptDragState extends PromptOrderState {
+  /** The asset whose prompt this is — every `prompt.*` command addresses one by hash. */
+  hash: string;
+}
+
+/**
+ * Dragging a chunk card to another position in the same prompt. The targets are *insertion points*,
+ * so there is one more of them than there are cards: {@link TOP_CHUNK}, then "after each chunk".
+ *
+ * It earns its place as an interaction rather than a click handler because it has two real
+ * refusals. A drop that would reorder nothing is left out of the list entirely — no target, rather
+ * than an accept the author would learn nothing from. And in custom mode the whole gesture is
+ * unresolved: the cards are still drawn, but only as what the agent would be given, so there is no
+ * order in force for a drop to change.
+ *
+ * An accept's note carries the reorder-invalidates-a-condensation warning (see `moveChunk`), so the
+ * author reads it while the pointer is still down rather than after the prompt is already held.
+ *
+ */
+export const promptReorder = defineInteraction<PromptDragState>({
+  id: 'prompt.reorder',
+  title: 'Reorder a prompt chunk',
+  description:
+    'Drag a chunk card onto another one to say its sentence after that chunk. The prompt is one ' +
+    'string, so this moves what the image model reads first — and it moves the task hash, so the ' +
+    'asset re-renders.',
+  grab: "a chunk card's drag rail in the asset pane",
+  carries: 'the chunk being moved, by key',
+  accepts: 'another chunk of the same prompt, or `top`',
+  commands: ['prompt.moveChunk'],
+  cancellable: true,
+  targets: (state, carried) => {
+    if (state.mode === 'custom') {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          reason:
+            'A custom prompt has no chunk order; the list below is only what the agent would be given.',
+        },
+      ];
+    }
+    const keys = effectiveOrder(state.chunks, state.order).map((c) => c.key);
+    if (!keys.includes(carried)) {
+      return [
+        { target: UNRESOLVED, accept: false, reason: `No chunk "${carried}" in this prompt.` },
+      ];
+    }
+    const verdicts: Verdict[] = [];
+    for (const target of [TOP_CHUNK, ...keys]) {
+      if (target === carried) continue;
+      const after = target === TOP_CHUNK ? '' : target;
+      const move = moveChunk(state, { chunk: carried, after });
+      if (!move.ok && move.noop) continue;
+      verdicts.push(
+        move.ok
+          ? {
+              target,
+              accept: true,
+              note: move.message,
+              invoke: {
+                id: 'prompt.moveChunk',
+                props: { hash: state.hash, chunk: carried, after },
+              },
+            }
+          : { target, accept: false, reason: move.error },
+      );
+    }
+    return verdicts;
+  },
+});
+
 export const INTERACTION_IDS = [
   'branch.connect',
   'branch.splice',
   'branch.unwire',
+  'prompt.reorder',
   'script.moveLine',
   'timeline.cover',
   'timeline.reorder',
@@ -456,6 +535,7 @@ export function createDesktopInteractions(): InteractionRegistry {
     branchConnect,
     branchSplice,
     branchUnwire,
+    promptReorder,
     timelineCover,
     timelineReorder,
     scriptMoveLine,

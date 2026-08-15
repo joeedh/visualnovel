@@ -369,7 +369,6 @@ const characterEditShape = z.object({
     ),
   traits: z.array(z.string()).optional(),
   palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
-  referenceImages: z.array(z.string()).optional(),
   artNotes: z
     .string()
     .optional()

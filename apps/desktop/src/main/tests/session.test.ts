@@ -30,6 +30,14 @@ const deps: SessionDeps = {
 
 const sessionFor = (p: TestProject) => new WorkspaceSession(p.dir, true, deps);
 
+/**
+ * Bytes an ingest reads as a PNG and not as mock art: the signature, then filler. Ingest looks at
+ * the magic number and the placeholder marker and nothing else, so nothing here has to decode.
+ */
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const realPng = (): Uint8Array =>
+  new Uint8Array([...PNG_SIGNATURE, ...new Array<number>(64).fill(7)]);
+
 describe('WorkspaceSession — reading a project', () => {
   let p: TestProject;
 
@@ -998,6 +1006,51 @@ describe('WorkspaceSession — documents', () => {
   });
 });
 
+describe('WorkspaceSession — project settings', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({ title: 'Settings', script: SCRIPTS.linear });
+    session = sessionFor(p);
+  });
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  it('reports project.yaml as the run reads it', async () => {
+    const view = await session.projectView();
+    expect(view).toMatchObject({ root: p.dir, title: 'Settings' });
+    expect(view.models.image.length).toBeGreaterThan(0);
+    expect(view.imageParams.aspect.length).toBeGreaterThan(0);
+  });
+
+  it('writes the art style and reads it back', async () => {
+    const result = await session.setProjectArtStyle('ink wash, muted');
+    expect(result).toMatchObject({ ok: true, written: ['project.yaml'] });
+    expect((await session.projectView()).artStyle).toBe('ink wash, muted');
+    // The splice is textual, so the rest of the file is the property worth pinning.
+    expect(await p.read('project.yaml')).toContain('title: Settings');
+  });
+
+  it('refuses a style the project already says, rather than rewriting the file', async () => {
+    await session.setProjectArtStyle('ink wash, muted');
+    expect(await session.previewArtStyle('ink wash, muted')).toMatchObject({ ok: false });
+    expect(await session.setProjectArtStyle('ink wash, muted')).toMatchObject({
+      ok: false,
+      written: [],
+    });
+  });
+
+  // The count is the whole point of the confirmation: an art style is not art notes on one rung.
+  it('counts the image tasks a change would re-key', async () => {
+    const preview = await session.previewArtStyle('something else');
+    expect(preview.ok).toBe(true);
+    expect(preview.message).toMatch(/re-keys \d+ image task/);
+  });
+});
+
 describe('WorkspaceSession — over a generated project', () => {
   let p: TestProject;
   let session: WorkspaceSession;
@@ -1157,6 +1210,55 @@ describe('WorkspaceSession — over a generated project', () => {
     expect(await session.setArtNotes('character:nobody', 'x')).toMatchObject({
       ok: false,
       written: [],
+    });
+  });
+
+  /**
+   * The whole of §15 through the session rather than through `@vn/artgen`: outside bytes come in,
+   * get attached to a clause, and come off again. An upload is the one reference that pins itself,
+   * so it is also the case that proves `from` is optional the whole way down.
+   */
+  it('uploads an image, attaches it to a clause, and takes it off again', async () => {
+    const file = join(p.dir, 'moodboard.png');
+    await fs.writeFile(file, realPng());
+    expect(await session.previewUpload(file, 'Moodboard')).toMatchObject({ ok: true });
+
+    const up = await session.uploadAsset(file, 'Moodboard');
+    expect(up).toMatchObject({ ok: true });
+    const upload = (await session.assetInfo(up.hash!))!;
+    expect(upload.kind).toBe('reference');
+    expect(upload.accepted).toBe(false);
+    // Nothing generated it, so there is no work to bless — the mirror of the concept refusal.
+    expect(await session.previewAccept(upload.hash)).toMatchObject({ ok: false });
+    expect((await session.acceptAsset(upload.hash)).message).toContain('prompt.addRef');
+
+    const target = await plate();
+    const chunk = (await session.promptView(target))!.chunks[0]!.key;
+    expect(await session.previewAddRef(target, chunk, up.hash!)).toMatchObject({ ok: true });
+    expect(await session.addPromptRef(target, chunk, up.hash!)).toMatchObject({ ok: true });
+
+    const attached = (await session.promptView(target))!.chunks.find((c) => c.key === chunk)!;
+    expect(attached.refs).toEqual([
+      { pin: up.hash, ext: 'png', label: expect.stringContaining('Moodboard') },
+    ]);
+
+    // A prefix addresses it, the way an author reads one off the screen.
+    expect(await session.dropPromptRef(target, chunk, up.hash!.slice(0, 8))).toMatchObject({
+      ok: true,
+    });
+    expect((await session.promptView(target))!.chunks.find((c) => c.key === chunk)!.refs).toBe(
+      undefined,
+    );
+  });
+
+  it('refuses an address that names no slot, and one that names an empty one', async () => {
+    const target = await plate();
+    const chunk = (await session.promptView(target))!.chunks[0]!.key;
+    const nonsense = await session.previewAddRef(target, chunk, 'a picture of a cat');
+    expect(nonsense).toMatchObject({ ok: false });
+    expect(nonsense.message).toContain('plate:<location>/<variant>');
+    expect(await session.previewAddRef(target, chunk, 'plate:nowhere/night')).toMatchObject({
+      ok: false,
     });
   });
 });

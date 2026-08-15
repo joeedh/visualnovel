@@ -10,7 +10,12 @@
  */
 import fs from 'node:fs/promises';
 import type { Shot } from '@vn/types';
-import { shotsFileSchema } from '@vn/types';
+import {
+  promptOverrideFrom,
+  promptOverrideIsEmpty,
+  promptOverrideToDoc,
+  shotsFileSchema,
+} from '@vn/types';
 import { exists, readText, ValidationError, writeFileAtomic } from '@vn/util';
 import type { ProjectPaths } from './paths.js';
 
@@ -80,6 +85,7 @@ export async function readShots(
     };
     if (s.camera !== undefined) shot.camera = s.camera;
     if (s.artNotes !== undefined) shot.artNotes = s.artNotes;
+    if (s.promptOverride) shot.promptOverride = promptOverrideFrom(s.promptOverride);
     if (s.shotData?.prompt !== undefined) shot.prompt = s.shotData.prompt;
     if (s.shotData?.image !== undefined) shot.image = s.shotData.image;
     if (s.shotData?.proseHash !== undefined) shot.proseHash = s.shotData.proseHash;
@@ -102,6 +108,11 @@ function serialize(sceneId: string, shots: readonly Shot[]): string {
       subjects: s.subjects,
       ...(s.camera !== undefined ? { camera: s.camera } : {}),
       ...(s.artNotes !== undefined ? { artNotes: s.artNotes } : {}),
+      // An override that says nothing is not written: it would change nothing about the prompt,
+      // and a shots file that grows an inert key stops rewriting byte-identically.
+      ...(promptOverrideIsEmpty(s.promptOverride)
+        ? {}
+        : { promptOverride: promptOverrideToDoc(s.promptOverride!) }),
       coversLines: s.coversLines,
       // Omitted entirely until a run has produced something, so a freshly decomposed file is
       // purely authored material and reads as one.

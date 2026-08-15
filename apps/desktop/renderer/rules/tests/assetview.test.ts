@@ -124,6 +124,14 @@ describe('approveAction', () => {
     });
   });
 
+  // The mirror of the concept case: a concept has no downstream, an upload has no upstream.
+  it('refuses an upload, which nothing generated', () => {
+    expect(approveAction(info({ kind: 'reference', label: 'moodboard.png' }))).toEqual({
+      ok: false,
+      reason: expect.stringContaining('pointed at'),
+    });
+  });
+
   it('refuses a portrait whose character the project has lost, rather than guessing one', () => {
     expect(approveAction(portrait({ rungs: [] }))).toEqual({
       ok: false,
@@ -145,9 +153,9 @@ describe('promptEditable', () => {
     expect(promptEditable(concept())).toEqual({ ok: true, prompt: '', title: '' });
   });
 
-  it('refuses every derived kind, naming art notes as the way those move', () => {
+  it('refuses every derived kind, naming the clauses as the way those move', () => {
     const plate = promptEditable(info());
-    expect(plate).toEqual({ ok: false, reason: expect.stringContaining('art notes') });
+    expect(plate).toEqual({ ok: false, reason: expect.stringContaining('a clause at a time') });
     expect(plate.ok === false && plate.reason).toContain('location_ref');
     expect(promptEditable(portrait())).toMatchObject({ ok: false });
   });

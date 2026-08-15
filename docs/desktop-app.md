@@ -25,6 +25,7 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Wiki](#wiki)
 - [Documents](#documents)
 - [Asset](#asset)
+- [Project](#project)
 - [Remembered UI state (`.vndesktop/session.json`)](#remembered-ui-state-vndesktopsessionjson)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
@@ -141,8 +142,9 @@ default screen), put the header back, solve and paint, then install the keymap, 
 agent subscription and persistence.
 
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all eleven (`branches`, `script`, `convo`, `timeline`,
-  `tasklist`, `taskgraph`, `inspector`, `play`, `wiki`, `documents`, `asset`) with their titles. It is in
+  `apps/desktop/src/shared/editors.ts` holds all twelve (`branches`, `script`, `convo`, `timeline`,
+  `tasklist`, `taskgraph`, `inspector`, `play`, `wiki`, `documents`, `asset`, `project`) with their
+  titles. It is in
   `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
@@ -670,12 +672,34 @@ and [`plans/on-demand-concept-images.md`](plans/on-demand-concept-images.md).
 it here — so asking for a picture ends looking at it. `art.redraw` does the same with the sketch
 it produces.
 
-- **The prompt is read-only for every kind but one, and the art notes are the editable half.** A
-  prompt is a derivation folded into the task's content hash and rewritten on every planning pass,
-  so an editable one would freeze this asset against every later improvement to the builders.
-  `artNotes` is authored input, appended to the derivation, and setting one re-keys the task — so
-  "regenerate" is the pipeline that already exists rather than a second path to the image model.
-- **The exception is a concept, whose prompt is *authored*.** Nothing derives it, nothing rewrites
+- **The prompt is drawn as the clauses it is made of.** Each `PromptChunk` the builders derived is
+  one card, in the order it is sent, tagged with its category and voiced by where it came from —
+  `--sodium` for a sentence an author wrote somewhere, `--signal` for scaffolding the builder
+  supplies. A card can be muted, replaced, appended to, or dragged to another position, and one that
+  came from a document offers a `⇱` to it. The art notes are still the append-only half beside it,
+  and both are authored input: setting either re-keys the task, so "regenerate" is the pipeline that
+  already exists rather than a second path to the image model. See
+  [`plans/chunked-prompts.md`](plans/chunked-prompts.md).
+- **A reference image lives on the card of the clause it is evidence for.** Under each card is a
+  strip of thumbnails (`vnasset://<hash>.<ext>`); a click opens that picture `elsewhere` — this pane
+  is showing what the reference is *for* — and `×` runs `prompt.dropRef`. A chip on a muted clause is
+  drawn muted with it, because muting the clause stops sending its references too, and one whose
+  slot has moved is marked `drift`. `asset.upload` brings an outside image in; `prompt.addRef` takes
+  either its hash or a slot address (`plate:cafe/night`).
+- **A suspended asset says what moved rather than re-rendering.** The `suspended` badge and
+  `driftNote`'s sentence come before the ordinary staleness one, because it is the stronger claim:
+  the words may still be right and a picture this was drawn *against* is what changed.
+  `prompt.repin` clears it, and `regenerate=false` keeps the bytes.
+- **The mode strip says which text is actually being sent** — the clauses, a prompt the author wrote
+  by hand, or one the agent condensed. Condensing is a button beside it; a condensation whose
+  clauses have since moved is **held**, and the banner over the cards says so rather than the pane
+  quietly re-rendering the picture. `prompt.check`'s answer rides along: a clause a custom or
+  condensed prompt no longer appears to say is marked, as a prompt to look rather than a verdict.
+- **A reorder is judged on the grab.** `promptReorder.targets` runs once when a card's rail is
+  grabbed and every pointer move is a lookup, so the insertion rule and the sentence in the footer
+  are the verdict the drop would actually get; nothing moves until pointerup. `Alt+↑`/`Alt+↓` runs
+  the identical lookup without the pointer.
+- **A concept has no builder under it, so it gets a box rather than cards.** Nothing derives it, nothing rewrites
   it, and no task hash contains it — it is a root asset, so the pane gives it a Redraw box holding
   the recorded prompt whole (the style preamble and the framing sentence survive an edit by
   default) and `art.redraw` draws it again as a **new** sketch beside the original. The header bar
@@ -683,7 +707,7 @@ it produces.
   approved by nothing and planned by nothing, so neither could ever act on one, and a dead pair
   beside a working button reads as breakage.
   `promptEditable` in `renderer/rules/assetview.ts` is the one rule both halves read, and its
-  refusal for a derived kind names art notes as the way to move that prompt instead.
+  refusal for a derived kind points at the clause cards as the way to move that prompt instead.
 - **One box per rung that actually applies**, widest first: the character or location, then the
   outfit or variant, then the shot. Each commits on Ctrl+S or on leaving the box, through
   `art.setNotes` with the tree's own `kind:key` target vocabulary — so the same edit is reachable
@@ -695,7 +719,9 @@ it produces.
   the command that also writes `character.md` and `approved.png`; everything else is the generic
   `asset.accept` across both roots. A portrait whose character the project has lost is **refused by
   name** rather than accepted through the generic door, and so is a concept: nothing downstream
-  consumes one, so there is no question for accepting it to answer.
+  consumes one, so there is no question for accepting it to answer. An **upload** is the mirror of
+  that case — a concept has no downstream, an upload has no upstream — so the bar reads `uploaded`
+  where the pair would be: nothing generated it, so there is no work to bless and no task to requeue.
 - **A concept gets a Promote strip instead, and only a concept does.** It names the location the
   sketch is bound to, takes a variant id, and runs `art.promote` — the variant joins that location's
   sheet if it is new, the bytes become the plate, and the next run adopts them. `promoteAction`
@@ -708,6 +734,29 @@ it produces.
 - **A write anywhere re-reads, unless a box is dirty.** `onInvalidate` covers this pane's own edit,
   the agent's, and an undo of either; a refetch under a half-typed note would eat it, so an
   in-progress rung suppresses it until it commits.
+
+## Project
+
+`editors/project.ts` — `project.yaml` as the run reads it, and the twelfth editor. It is a
+**singleton pane**: a workspace has one config, so it has no subject, is absent from `SUBJECT_OF`,
+and `view.open(editor=project)` carries nothing. It is where an asset's style clause leads: the
+`⇱` on that chunk in the Asset pane opens this editor `elsewhere` and scrolls to the field.
+
+- **One field is editable and the rest are shown.** The art style is the sentence every image prompt
+  opens with, so it is the setting an author reaches for repeatedly; the model ids and the image
+  params are read-only here because changing one is a deliberate, file-level act and a pane that
+  made it a two-click affair would invite it.
+- **Applying is `project.setArtStyle`**, which confirms — it re-keys **every** image task — and says
+  how many before it writes. `withArtStyle` splices the line into `project.yaml` rather than
+  re-serializing it, and it is not quite `withStartScene`: prose may already be a block scalar, so
+  the entry it replaces is the header line plus the indented lines under it, and a trailing blank
+  line belongs to the entry only when indented text follows it. Comments, key order and the author's
+  own quoting survive, and undo restores the file byte-for-byte.
+- **It reads through `project.info`, not a bespoke channel.** Every other editor reads through a
+  non-mutating command; a twelfth IPC channel for the twelfth editor would have been the first
+  surface in the app reaching around the registry. `project.info` deliberately omits the `keys`
+  block: those are env-var *names* and safe to print, but a settings pane listing them is one
+  screenshot away from looking like it lists their values.
 
 ## Remembered UI state (`.vndesktop/session.json`)
 

@@ -25,7 +25,6 @@ status: draft
 default_outfit: uniform
 palette: ['#1a2a44']
 traits: [curious]
-reference_images: []
 ---
 
 Aiko is a transfer student.
@@ -235,7 +234,6 @@ status: draft
 default_outfit: uniform
 palette: ['#2a441a']
 traits: [wry]
-reference_images: []
 ---
 
 Ren keeps the roof key.

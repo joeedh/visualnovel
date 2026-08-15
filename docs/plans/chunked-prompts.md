@@ -1,7 +1,7 @@
 # Chunked prompts: a composable prompt editor for assets
 
-Status: **planned**. Two parts — Part I (§1–§10) is the chunk model and the prompt editor; Part II
-(§11–§16) is reference images and the asset reference graph, landable on top of a shipped Part I.
+Status: **shipped** (stages 0–17). Two parts — Part I (§1–§10) is the chunk model and the prompt editor; Part II
+(§11–§16) is reference images and the asset reference graph, landed on top of a shipped Part I.
 
 <!-- toc -->
 <!-- tocstop -->
@@ -675,6 +675,159 @@ one act in the undo history; which of the two outcomes it produced is in the rec
 | 9   | The pane: cards, mode strip, held banner, custom box, reorder gesture; `asset.css`                                                                                                                                                                                           | frozen                                  |
 | 10  | `scripts/verify-prompt-chunks.mjs`; docs                                                                                                                                                                                                                                    | —                                       |
 
+**Shipped: 0 through 17 — both parts are done.** The stage-0 baseline has stayed green and untouched
+through each, and now has two more halves: authoring one override on a shot moves exactly one
+`shot_image` hash, and an authored reference appends **after** the derived one rather than
+displacing it.
+
+Stage 4 was landed differently from the wording above, and the difference is worth keeping. Rather
+than "builders accept the override; `planner.ts` + `assetprompt.ts` pass it", each builder **resolves
+its own rung's override** from the entity it already receives — the portrait off `character`, the
+sheet off the outfit entry, the plate off the variant entry, the frame off the shot — and takes an
+optional trailing `override?` that _stands in for_ the stored one. So no call site changed at all
+(`promote.ts`'s `buildLocationPrompt`, which computes a plate's task identity, is automatically
+consistent with the planner's), it is structurally impossible for a caller to forget the override,
+and §6's preview/act pairs still get their seam.
+
+Stage 7 was taken **before** stage 6, because `PromptView.missing` is the `coverage()` answer and
+stage 6 cannot project it otherwise. Stage 6 then registered `promptReorder`, which stage 5 had left
+declared and node-tested but unregistered.
+
+Stage 7 landed as two modules rather than one. `coverage.ts` is the heuristic — content words minus
+a noise list, a majority of a chunk's own words having to survive — and it is separate from
+`condense.ts` because it is what every _other_ surface asks too: a hand-written custom prompt gets
+the same check, with no model involved. The noise list carries the builders' scaffolding vocabulary
+(`Palette:`, `no text`, `frame`) as well as English function words, so a chunk that says nothing
+distinctive is never reported lost. `ArtGenDeps` was deliberately **not** widened to carry a
+`TextLLM`: condensing is authoring-time and never runs during planning, and an optional `text` there
+would suggest otherwise. The fallback is the P1/P5 posture — any throw, malformed answer or empty
+prompt returns `renderPrompt(chunks)`, the exact string chunks mode would have produced.
+
+Stage 6 landed with four differences from §6's wording, three of them naming.
+
+`AssetInfo` gained **`promptView?: PromptView` and nothing else**. §6 asks for `prompt?: PromptView`
+plus `held: boolean`, but `AssetInfo.prompt` is already the prompt the _manifest_ recorded — the
+historical one `stale` compares against — so the composition needs its own key, and `held` is
+already inside `PromptView`. `assetInfo` populates it from the same `promptViewOf(project, hash)`
+the `prompt.info` command uses, so the pane still makes one round trip.
+
+The private plan is `promptPlan`, not `overridePlan`, and it splits in two: `promptChunksOf` answers
+"which rung, which chunks, what is stored there" and is what both the plan _and_ `promptView` are
+built on, so a preview and a projection cannot disagree about which rung owns a picture. The
+pure rules moved to `apps/desktop/src/main/promptedit.ts` (`applyPromptEdit`), node-tested without a
+project on disk — the same shape `lineops` has in `@vn/scriptedit`.
+
+`wardrobeEntries`/`variantEntries` were exported from `@vn/model`, because `CharacterEdit.outfits`
+and `LocationEdit.variants` **replace the whole collection**: a hand-rebuilt entry drops its
+siblings' keys. `art.setNotes` was already doing exactly that and would have erased a
+`prompt_override` sitting beside a note — a latent bug this stage fixed rather than reproduced.
+
+Condensing under `--mock` uses a canned `textResponses` answer that is the **identity**
+condensation, because the mock backend echoes its prompt and no schema accepts that: without it
+every mock condensation would take `condensePrompt`'s deterministic fallback and the real
+structured path would never be exercised. A genuine `source: 'fallback'` therefore means no model
+answered, and the session refuses to write rather than storing a condensation nobody made.
+
+Stage 8 landed with one addition §9 does not name: a `project.info` command. The pane needs the
+config to draw, and every other editor reads through a non-mutating command (`asset.info`,
+`doc.read`) rather than a bespoke IPC channel — a twelfth channel for the twelfth editor would have
+been the first surface in the app reaching around the registry. It returns a `ProjectView`
+carrying the title, the entry scene, the art style, the model ids, the image params, and the count
+of image tasks. Deliberately **not** the `keys` block: those are env-var *names* and safe to print,
+but a settings pane listing them is one screenshot away from looking like it lists their values.
+
+Stage 9 landed one thing §8 does not name: `interaction.targets` gained an `asset` prop. A
+`prompt.*` gesture is judged against one asset's composition, and the command had no way to say
+which asset — so an agent asking what a reorder would do had to be given the same addressing the
+pane uses. It routes to `session.promptView(asset)`, the same projection `prompt.info` answers with.
+
+Stage 10's live script answered §18's "first thing to check" in the affirmative: the editors'
+shadow roots are **open**, so no `window.__vnPrompt()` seam was shipped in app code. The probe is
+installed by the verify script itself, which keeps a debug affordance out of the product. Two other
+facts shaped it. `window.vn.exec` goes preload → main, so `onInvalidate` never fires for a command
+driven from CDP and the script re-reads the pane by retoggling the subject — through a *different*
+asset, since `applyView` ignores an empty one. And every read after a command polls with a deadline
+rather than sleeping: the surface settles a beat behind the store.
+
+Two of §18's ten steps assert something narrower than their wording, and deliberately. Under
+`--mock` the canned condensation is the **identity** condensation, so step 6 cannot show the text
+changing — it checks instead that a model answered (`agent.modelId` is recorded; the session
+refuses to store a deterministic fallback) and that nothing is missing. Step 8's "the hand-written
+sentence was discarded" is wrong about the shipped behaviour as well as unobservable under `--mock`:
+`prompt.condense(force=true)` **keeps** the custom text while switching the mode to `agent`, which
+is the reconciliation the flag is named for. The step asserts that. Both wordings need a real key to
+verify further.
+
+§18's `pipeline.test.ts` extension landed as one test rather than two: the mirror claim (no override
+adds not one character) sits beside the art-notes one, and the positive case lives in
+`prompthash.test.ts` instead, where a real fixture run makes "exactly these hashes moved" a
+statement about a project rather than about four builder calls.
+
+`withArtStyle` is not quite `withStartScene`. An art style is prose and may already be written as a
+block scalar, so the entry it replaces is the header line **plus** the indented lines under it — and
+a blank line only belongs to the entry if indented text follows it, otherwise it is the author's
+spacing before the next key and swallowing it would reflow their file. Verified live: setting the
+style through the pane left the flow-style `vision: [...]` list and the quoted `'16:9'` exactly as
+the author wrote them, and undo restored the file byte-for-byte.
+
+Two deliberate deviations, both in stage 1, both because §2's reasoned table contradicts §2's file
+checklist: `prompt_override` was **not** added to `locationFrontMatter`, and `promptOverride?` was
+**not** added to the `Location` interface. The table is right — every location prompt is per-variant,
+so a location-level override would be read by nothing. A location's overrides live on its variants.
+
+One rule stage 3 had to invent, since §2 does not state it: **`mode` alone is not an override.**
+All three modes fall back to the derived chunks when the shape they name is empty, so
+`promptOverrideIsEmpty` (in `@vn/types`) is what every writer clears the key by — otherwise a sheet
+that was ever edited grows an inert `prompt_override:` and a shots file stops rewriting
+byte-identically. It is also how an override is *cleared* through `applyCharacterEdit`, since
+`undefined` already means "the edit does not name this field".
+
+Notes from Part II as shipped. Stage 11 landed `ChunkRef` as **one** interface with an
+optional `from`, not the two-member presence-discriminated union §12 sketches: every reader asks
+"is this linked" exactly once, and a union buys a narrowing nobody used. Stage 14 turned up a
+latent hazard rather than a deviation — the `location_ref` task identity was spelled in three
+places (P2's plate loop, the shot loop's plate hash, `promoteConcept`) each with `refs: []`, which
+was harmless until a plate could carry an authored reference and then would have stranded shots on
+a hash nothing planned; it is now `locationTask` in `@vn/artgen`, and the three sites agree by
+construction. Stage 15's `resolveBinding` needed a tie-break §12 does not state: `manifest.json`
+is written **hash-sorted**, so "the newest candidate" cannot be read off list order. A single
+`accepted` candidate wins; otherwise the slot answers only when exactly one asset serves it;
+otherwise `undefined` — and `refDrift` reads `undefined` as *make no claim*, so an ambiguous slot
+never flags every reference under it as drifted. Stage 16's re-approve needed one decision §13 leaves
+open: what the newly-keyed task's `TaskInputs` are. It does **not** re-derive them — that would mean
+a second copy of the planner on the desktop side — but takes the previous node's inputs and swaps the
+old pin for the new one *in place*. A repin touches only the authored tail of `refs`, so the result
+is provably the hash the planner will compute; and if the derived half moved as well, the adopted
+node is merely an orphan and the picture re-renders, which is the fail-safe direction. The adoption
+is also **decided before anything is written** (`adoptionOf`, then the override write, then
+`adopt`), so a refusal leaves the pin where it was rather than a moved pin with no output.
+
+Stage 17 landed the upload ingest in **`@vn/artgen`**, not `@vn/store` as §15 and §18 both name it
+(`packages/artgen/src/upload.ts`, tested at `packages/artgen/src/tests/upload.test.ts`). The reason
+is the layering rule: refusing mock-marked bytes means calling `isPlaceholderImage`, which lives in
+`@vn/providers`, and `@vn/store` may not import `@vn/providers`. `@vn/artgen` may import both, and
+already holds the other write that adopts bytes the planner never asked for (`generateConcept`), so
+the ingest sits beside it. Nothing about the storage moved: it still writes the **base** root with a
+synthesized `sourceTask`.
+
+`prompt.addRef` needed an addressing §12 does not state. A reference is added by naming either an
+asset hash (a prefix suffices, the way an author reads one off the screen) or a **slot** — and
+`slotKey(binding)` doubles as the address an author types, `plate:cafe/night` or
+`shot:s1/s1-shot-2`, with `parseSlot` its inverse and a round-trip test pinning the two together.
+An address that parses but names an empty slot and one that parses as nothing at all are separate
+refusals, the second naming the shapes it accepts.
+
+The `reference` kind needed three refusals §15 leaves implicit, all of them the deliberate mirror of
+the `concept` ones — a concept has no downstream, an upload has no upstream. `asset.accept` refuses
+by name (nothing generated it, so there is no work to bless) and points at `prompt.addRef`;
+`asset.regenerate` refuses because an upload's `sourceTask` is a hash of the request that brought
+the bytes in and no node ever answered to it; and the pane draws an `uploaded` label where the
+Approve/Regenerate strip would be. `assetLabel` grew a matching case: an upload's name is the one
+its author typed, since it is bound to nothing by construction and a binding is never what names it.
+
+§18's Part II unit list asks `prompthash.test.ts` to prove authored refs append after derived ones;
+that landed in **stage 14**, where the ordering was introduced, rather than at the end.
+
 **Part II** — each stage below is landable on top of a shipped Part I:
 
 | #   | Content                                                                                                                                                                            | Hash invariant                            |
@@ -766,8 +919,9 @@ plain data — `--raw` crosses the wire with `returnByValue` and live objects do
 - `packages/pipeline/src/tests/prompthash.test.ts` — still the stage-0 literal, now also proving that
   authored refs append **after** derived ones (author a ref on a shot whose plate ref already exists
   and assert the derived ref is still at index 0).
-- `packages/store/src/tests/upload.test.ts` — ingest writes to the **base** root, `sourceTask` is the
-  synthesized hash, re-uploading identical bytes is idempotent, and mock-marked bytes are refused.
+- `packages/artgen/src/tests/upload.test.ts` (see the note above — not `@vn/store`, which may not
+  import `@vn/providers`) — ingest writes to the **base** root, `sourceTask` is the synthesized hash,
+  re-uploading identical bytes is idempotent, and mock-marked bytes are refused.
 - `packages/artgen/src/tests/adopt.test.ts` — the standalone guard returns a `done` record whose task
   identity is computed from the state just written, and a refusal when the asset is not actually the
   output of the slot it claims. `promoteConcept`'s existing tests must pass unchanged after the

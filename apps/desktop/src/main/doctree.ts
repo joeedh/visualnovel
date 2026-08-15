@@ -66,6 +66,7 @@ const ASSET_KIND_LABELS: Record<AssetKind, string> = {
   location_ref: 'Location plates',
   shot_image: 'Shot frames',
   concept: 'Concepts',
+  reference: 'References',
 };
 
 function storyBranch(input: DocTreeInput, cap: number): DocNode {

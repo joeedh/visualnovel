@@ -8,13 +8,26 @@
 import { CommandRegistry } from '@vn/commands';
 import { agentClear, agentRun, agentSetEffort, agentSetMode, agentSetModel } from './agent.js';
 import { artGenerate, artPromote, artRedraw, artSetNotes } from './art.js';
-import { assetAccept, assetInfo, assetRegenerate } from './asset.js';
+import { assetAccept, assetInfo, assetRegenerate, assetSuspended, assetUpload } from './asset.js';
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
 import { docCreate, docRead, docWrite } from './doc.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { interactionList, interactionTargets } from './interaction.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
+import {
+  promptAddRef,
+  promptCheck,
+  promptClear,
+  promptCondense,
+  promptDropRef,
+  promptInfo,
+  promptMoveChunk,
+  promptRepin,
+  promptSetChunk,
+  promptSetCustom,
+} from './prompt.js';
+import { projectInfo, projectSetArtStyle } from './project.js';
 import {
   storyAssignLineIds,
   storyCoverage,
@@ -70,6 +83,8 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     assetAccept,
     assetInfo,
     assetRegenerate,
+    assetSuspended,
+    assetUpload,
     bibleSearch,
     commandCheck,
     docCreate,
@@ -81,6 +96,18 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     interactionTargets,
     pipelineRun,
     pipelineStatus,
+    promptAddRef,
+    promptCheck,
+    promptClear,
+    promptCondense,
+    promptDropRef,
+    promptInfo,
+    promptMoveChunk,
+    promptRepin,
+    promptSetChunk,
+    promptSetCustom,
+    projectInfo,
+    projectSetArtStyle,
     storyAssignLineIds,
     storyCoverage,
     storyDeleteLine,

@@ -18,7 +18,7 @@ import {
   setCharacterApproval,
 } from '@vn/store';
 import { buildPlayable, loadSceneShots, writePlayable } from '@vn/export';
-import { gateStatus } from '@vn/pipeline';
+import { gateStatus, suspendedAssets } from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
 
@@ -237,6 +237,19 @@ export async function cmdStatus(args: Args): Promise<number> {
       ok(`  base root not created yet (${base.root}); the first base asset written creates it.`);
     }
   }
+  // Suspension is derived, so this is a walk over the manifest rather than a stored count. The
+  // list itself is `asset.suspended` in the desktop app; here it is one number and a pointer.
+  const suspended = suspendedAssets({
+    model: project.model,
+    assets: project.store.manifest(),
+    shots: await loadSceneShots(project.paths, project.model),
+    angleOf: (task) => {
+      const node = task ? project.graph.get(task) : undefined;
+      return node && 'angle' in node.inputs ? node.inputs.angle : undefined;
+    },
+  });
+  if (suspended.length)
+    ok(`  suspended: ${suspended.length} (a reference they were drawn from moved)`);
   ok('Tasks:');
   for (const status of ['pending', 'running', 'done', 'failed', 'needs_human'] as const) {
     if (counts[status]) ok(`  ${status}: ${counts[status]}`);

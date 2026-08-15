@@ -44,9 +44,17 @@ vngen/build/assets/<hash>.<ext> shot frames
 ## The rules
 
 **Routing is by `AssetKind`, and that is the only rule.** `location_ref`, `portrait`,
-`model_sheet`, `outfit_sheet` and `concept` go to the base root; `shot_image` goes to the project
-root. Not by `satisfies`, not by a flag on the task — one total function from a kind to a root, so
-no asset is ambiguous about where it lives.
+`model_sheet`, `outfit_sheet`, `concept` and `reference` go to the base root; `shot_image` goes to
+the project root. Not by `satisfies`, not by a flag on the task — one total function from a kind to
+a root, so no asset is ambiguous about where it lives.
+
+**A `reference` is an upload, and it is the one asset nothing generated.** `uploadAsset` in
+`@vn/artgen` reads bytes from outside the project, refuses anything that is not an image and
+anything carrying the mock-placeholder marker, and records them in the base root — it is authored
+input, so it belongs beside the art an author approved. Its `sourceTask` is a **synthesized** hash
+of the request (the same shape a concept's is), not a node in the graph, which is why `asset.accept`
+and `asset.regenerate` both refuse it by name: there is no work to bless and no task to re-run. It
+counts by being pointed at, with `prompt.addRef`.
 
 **A `concept` is base art too, which is what makes promotion cheap.** It is authored-side — a
 sketch of a place or a person, asked for in a sentence rather than planned — so it belongs beside

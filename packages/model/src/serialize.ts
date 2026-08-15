@@ -9,7 +9,18 @@
  * front-matter keys and prose — and re-validates the result through the `@vn/types`
  * schemas before returning, so a bad edit fails loudly instead of being written.
  */
-import type { Character, CharacterStatus, Location, LocationVariant, Scene } from '@vn/types';
+import {
+  promptOverrideIsEmpty,
+  promptOverrideToDoc,
+  type Character,
+  type CharacterStatus,
+  type Location,
+  type LocationVariant,
+  type Outfit,
+  type PromptOverride,
+  type PromptOverrideFrontMatter,
+  type Scene,
+} from '@vn/types';
 import { stringifyFrontMatter, type FrontMatterDoc } from '@vn/parse';
 import { characterFromDoc, locationFromDoc, type EntityResult } from './entities.js';
 import { slug } from './slug.js';
@@ -17,6 +28,45 @@ import { slug } from './slug.js';
 /** Drop `undefined` values so they never reach the YAML serializer as `null`. */
 function compact(data: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined));
+}
+
+/** An override worth writing, in its front-matter form — or nothing when it says nothing. */
+function overrideData(o: PromptOverride | undefined): PromptOverrideFrontMatter | undefined {
+  return promptOverrideIsEmpty(o) ? undefined : promptOverrideToDoc(o!);
+}
+
+/**
+ * A wardrobe in the form both `characterToDoc` and `CharacterEdit.outfits` want.
+ *
+ * Exported because an edit that touches one outfit has to resend the whole map, so a caller
+ * rebuilding it by hand drops whatever key it did not think about — which is how art notes and a
+ * prompt override come to erase each other. Every writer goes through this instead.
+ *
+ * The long form only when there is art direction or a prompt override to carry: a wardrobe that is
+ * descriptions alone stays the one-line-per-outfit map it was authored as.
+ */
+export function wardrobeEntries(outfits: readonly Outfit[]): NonNullable<CharacterEdit['outfits']> {
+  return Object.fromEntries(
+    outfits.map((o) => {
+      const override = overrideData(o.promptOverride);
+      if (o.artNotes === undefined && !override) return [o.id, o.description];
+      return [
+        o.id,
+        {
+          description: o.description,
+          ...(o.artNotes === undefined ? {} : { art_notes: o.artNotes }),
+          ...(override ? { prompt_override: override } : {}),
+        },
+      ];
+    }),
+  );
+}
+
+/** The same for a location's variants, resent whole for the same reason. */
+export function variantEntries(
+  variants: readonly LocationVariant[],
+): NonNullable<LocationEdit['variants']> {
+  return variants.map((v) => variantData(v));
 }
 
 /**
@@ -30,28 +80,22 @@ function wardrobeData(character: Character): Record<string, unknown> | undefined
     outfits.length === 1 &&
     outfits[0]?.id === character.defaultOutfit &&
     !outfits[0]?.description &&
-    !outfits[0]?.artNotes;
+    !outfits[0]?.artNotes &&
+    promptOverrideIsEmpty(outfits[0]?.promptOverride);
   if (outfits.length === 0 || synthesized) return undefined;
-  // The long form only when there is art direction to carry: a wardrobe that is descriptions
-  // alone stays the one-line-per-outfit map it was authored as.
-  return Object.fromEntries(
-    outfits.map((o) => [
-      o.id,
-      o.artNotes === undefined
-        ? o.description
-        : compact({ description: o.description, art_notes: o.artNotes }),
-    ]),
-  );
+  return wardrobeEntries(outfits);
 }
 
 /** A variant as front-matter: the bare id unless it has something more to say. */
-function variantData(variant: LocationVariant): unknown {
-  if (!variant.description && variant.artNotes === undefined) return variant.id;
-  return compact({
+function variantData(variant: LocationVariant): NonNullable<LocationEdit['variants']>[number] {
+  const override = overrideData(variant.promptOverride);
+  if (!variant.description && variant.artNotes === undefined && !override) return variant.id;
+  return {
     id: variant.id,
-    description: variant.description || undefined,
-    art_notes: variant.artNotes,
-  });
+    ...(variant.description ? { description: variant.description } : {}),
+    ...(variant.artNotes === undefined ? {} : { art_notes: variant.artNotes }),
+    ...(override ? { prompt_override: override } : {}),
+  };
 }
 
 /** Serialize a Character into a `character.md` doc (inverse of `characterFromDoc`). */
@@ -65,8 +109,8 @@ export function characterToDoc(character: Character): FrontMatterDoc {
       outfits: wardrobeData(character),
       traits: character.traits,
       palette: character.palette,
-      reference_images: character.referenceImages,
       art_notes: character.artNotes,
+      prompt_override: overrideData(character.promptOverride),
       approved_portrait: character.approvedPortrait,
     }),
     body: character.description,
@@ -250,20 +294,25 @@ export interface CharacterEdit {
   status?: CharacterStatus;
   defaultOutfit?: string;
   /**
-   * Replaces the whole wardrobe map, outfit id → description, or → `{description, art_notes}`
-   * for an outfit with art direction of its own.
+   * Replaces the whole wardrobe map, outfit id → description, or → the long form for an outfit
+   * with art direction or a prompt override of its own.
    */
-  outfits?: Record<string, string | { description?: string; art_notes?: string }>;
+  outfits?: Record<
+    string,
+    | string
+    | { description?: string; art_notes?: string; prompt_override?: PromptOverrideFrontMatter }
+  >;
   traits?: string[];
   palette?: string[];
-  referenceImages?: string[];
   /** Art direction for every prompt this character reaches; `''` clears it. */
   artNotes?: string;
+  /** The *portrait*'s prompt override; one that says nothing removes the key. */
+  promptOverride?: PromptOverride;
   approvedPortrait?: string;
 }
 
-/** Write an optional string field, or remove the key when the edit clears it to empty. */
-function setOrClear(data: Record<string, unknown>, key: string, value: string): void {
+/** Write an optional field, or remove the key when the edit clears it to nothing. */
+function setOrClear(data: Record<string, unknown>, key: string, value: unknown): void {
   if (value) data[key] = value;
   else delete data[key];
 }
@@ -290,8 +339,10 @@ export function applyCharacterEdit(
   if (edit.outfits !== undefined) data['outfits'] = edit.outfits;
   if (edit.traits !== undefined) data['traits'] = edit.traits;
   if (edit.palette !== undefined) data['palette'] = edit.palette;
-  if (edit.referenceImages !== undefined) data['reference_images'] = edit.referenceImages;
   if (edit.artNotes !== undefined) setOrClear(data, 'art_notes', edit.artNotes);
+  if (edit.promptOverride !== undefined) {
+    setOrClear(data, 'prompt_override', overrideData(edit.promptOverride));
+  }
   if (edit.approvedPortrait !== undefined) data['approved_portrait'] = edit.approvedPortrait;
   const body = edit.description !== undefined ? edit.description : doc.body;
   const next: FrontMatterDoc = { data, body };
@@ -308,7 +359,15 @@ export interface LocationEdit {
   lighting?: string;
   palette?: string[];
   /** Replaces the whole variant list; an entry may be a bare id or the long form. */
-  variants?: (string | { id: string; description?: string; art_notes?: string })[];
+  variants?: (
+    | string
+    | {
+        id: string;
+        description?: string;
+        art_notes?: string;
+        prompt_override?: PromptOverrideFrontMatter;
+      }
+  )[];
   /** Art direction for every plate of this location; `''` clears it. */
   artNotes?: string;
 }

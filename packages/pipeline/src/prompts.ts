@@ -11,4 +11,11 @@ export {
   buildModelSheetPrompt,
   buildShotPrompt,
   shotSpec,
+  portraitRefs,
+  locationRefs,
+  locationTask,
+  modelSheetRefs,
+  shotRefs,
+  suspendedAssets,
+  type Suspension,
 } from '@vn/artgen';

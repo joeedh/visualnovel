@@ -169,9 +169,7 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   frame needs the clothes and not a turnaround — reaching the planner a wave later than the marker
   did, the same way a shot waits on its location plate. Plan:
   [`plans/outfits-at-scene-and-shot-level.md`](plans/outfits-at-scene-and-shot-level.md).
-- **Art direction is authored, appended, and re-renders exactly what it reaches.** A prompt is a
-  derivation folded into the task's content hash and rewritten on every planning pass, so there is
-  nothing there for an author to edit. `artNotes` is the authored half instead: an optional free-text
+- **Art direction is authored, appended, and re-renders exactly what it reaches.** `artNotes` is an optional free-text
   field at five rungs — `Character`, `Location`, `Shot`, each `Outfit`, each `LocationVariant` — that
   the builders **append** to what they derived, entity note first and the specific rung second, so
   the style preamble, the reference scaffolding and the closing "single illustrated frame" clause all
@@ -182,6 +180,50 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md).
   Every builder ends in `.filter(Boolean).join(' ')`, so a project that authors no notes produces
   byte-identical prompts and re-keys nothing; that, not the feature, is the test worth having. Plan:
   [`plans/asset-names-and-the-asset-editor.md`](plans/asset-names-and-the-asset-editor.md).
+- **A prompt is a list of clauses, and an override edits the list rather than the string.** Every
+  builder in `@vn/artgen` assembles a `PromptChunk[]` — each clause keyed, categorised, and carrying
+  the origin (a builder, or the document and field the sentence came from) that lets a surface offer
+  a `⇱` to it — and `renderPrompt` collapses that list with the same `.filter(Boolean).join(' ')` the
+  flat builders used. **Byte-identity is the contract**: a project authoring no override composes
+  character-for-character the string it composed before, which is why every existing task hash
+  survives the feature (`packages/pipeline/src/tests/prompthash.test.ts` pins the whole sorted list
+  against a literal written before any of it). An override is authored input, stored at the **one**
+  rung that names the whole picture — `Character` for a portrait, the outfit entry for a sheet, the
+  location variant for a plate, the `Shot` for a frame — never at a rung that only contributes a
+  clause, so there is exactly one place to look. `mode` alone is not an override: every mode falls
+  back to the derived chunks when the shape it names is empty, and `promptOverrideIsEmpty` is what
+  each writer clears the key by, so a sheet that was once edited does not grow an inert
+  `prompt_override:`. `TaskInputs.*.prompt` **stays a flat string** — `taskHash` hashes the whole
+  inputs object with no allow-list, so a new key there would re-key every task in every project;
+  `composePrompt` is the boundary and a chunk reaches a hash only through the text it composes.
+  Editing one is like an art note and unlike a scene edit: it is meant to cost money, and re-keys
+  precisely the tasks that rung reaches. An **agent-condensed** prompt records the chunk list it
+  condensed, and when those chunks move it is **held** — `composePrompt` in `agent` mode returns the
+  stored text unconditionally and never falls back to freshly rendered chunks, because falling back
+  would re-render the asset the moment an unrelated note changed. The staleness is derived on read
+  and reported on the pane, never stored and never silently resolved. Plan:
+  [`plans/chunked-prompts.md`](plans/chunked-prompts.md).
+- **A reference attaches to a clause, pins a hash, and separately remembers where it came from.**
+  A `ChunkRef` on a `PromptChunk` is evidence for that clause, so muting the clause drops the
+  reference with it — one authorial act, one meaning. A **linked** ref also carries a `RefBinding`
+  naming the logical slot it was taken from (`plate:cafe/night`, `sheet:aiko/gala/front`, …), and
+  the two are separate on purpose: `refs` is inside the task hash, so pinning is what stops an
+  approval upstream from silently re-rendering everything that points at it. Authored refs are
+  appended **after** the derived ones in `TaskInputs.refs`, because `canonicalJson` maps arrays
+  positionally and any other order would re-key tasks that author none. A ref with **no** binding is
+  an upload: it pins itself and can never drift.
+- **Suspension is derived, transitive, and never stored.** When a slot moves, everything pinned to
+  its old hash — and everything downstream of that, walked with a `visited` guard so a cycle already
+  on disk is reported rather than hanging — is **suspended**: the bytes stay, the run plans nothing
+  new, and the fact is enumerable in dependency order (`asset.suspended`). A stored flag would have
+  to be invalidated by every writer, which is the failure this avoids; a suspended asset refuses
+  `accept`/`approve` by name, and `prompt.repin` is how it clears. `regenerate=false` re-approves:
+  it swaps the pin, computes the newly-keyed task's identity **from the state just written**, and
+  records the existing bytes as its output — the same don't-forge-work bound promotion rests on.
+- **The reference graph is kept acyclic at write time, over slots rather than hashes.** `refCycle`
+  runs in `prompt.addRef`'s precondition and refuses with the whole path named. Hashes cannot cycle
+  today, but bindings can, and a cycle in this graph does not error at run time — it leaves tasks
+  that are never ready, which reads as a run that quietly does nothing.
 - **No edit to a scene invalidates art — which is why drift has to be reported.**
   `buildShotPrompt` reads neither `coversLines` nor line text (prose reaches only the P7 reviewer
   spec, which never enters a task's `inputs`), so retyping a covered line rehashes nothing and

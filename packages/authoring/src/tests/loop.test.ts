@@ -21,7 +21,6 @@ status: draft
 default_outfit: uniform
 palette: ['#1a2a44']
 traits: [curious]
-reference_images: []
 ---
 
 Aiko is a transfer student.

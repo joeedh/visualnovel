@@ -15,13 +15,17 @@ import type { Providers } from '@vn/types';
 import { outfitFor } from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
-import { baseRefusal } from '@vn/artgen';
+import { baseRefusal, cycleRefusal, firstCycle } from '@vn/artgen';
+import { VnError } from '@vn/util';
 import {
-  buildLocationPrompt,
   buildModelSheetPrompt,
   buildPortraitPrompt,
   buildShotPrompt,
   imageParams,
+  locationTask,
+  modelSheetRefs,
+  portraitRefs,
+  shotRefs,
 } from './prompts.js';
 import { decomposeScene } from './p5.js';
 import { proseHash } from './drift.js';
@@ -105,7 +109,9 @@ function modelSheetTask(
     outfit,
     angle,
     prompt: buildModelSheetPrompt(character, outfit, angle, config),
-    refs: [portrait],
+    // Derived first, then whatever the author attached: arrays are positional in the hash, so this
+    // is the one order that leaves a project authoring no references byte-identical (§12).
+    refs: [portrait, ...modelSheetRefs(character, outfit, angle, config)],
     params,
   });
 }
@@ -255,9 +261,7 @@ export async function planTasks(opts: {
     const location = model.locations.get(locationId);
     if (!location) continue;
     for (const variant of variants) {
-      const prompt = buildLocationPrompt(location, variant, config);
-      const task = makeTask('location_ref', { locationId, variant, prompt, refs: [], params });
-      planned.push(graph.add(task));
+      planned.push(graph.add(locationTask(location, variant, config, params)));
     }
   }
 
@@ -266,7 +270,12 @@ export async function planTasks(opts: {
   // P3: one portrait task per used character (the human-approval gate sits on its output).
   for (const character of usedCharacters(model)) {
     const prompt = buildPortraitPrompt(character, config);
-    const task = makeTask('portrait', { characterId: character.id, prompt, refs: [], params });
+    const task = makeTask('portrait', {
+      characterId: character.id,
+      prompt,
+      refs: portraitRefs(character, config),
+      params,
+    });
     planned.push(graph.add(task));
 
     // P4: model sheets derive from the *approved* portrait, so only after the gate — and only for
@@ -291,13 +300,12 @@ export async function planTasks(opts: {
 
     for (const shot of scene.shots) {
       // A shot can only be hashed once its location plate exists (its hash is a ref).
-      const locTaskHash = makeTask('location_ref', {
-        locationId: scene.location,
-        variant: shot.location,
-        prompt: buildLocationPrompt(model.locations.get(scene.location)!, shot.location, config),
-        refs: [],
+      const locTaskHash = locationTask(
+        model.locations.get(scene.location)!,
+        shot.location,
+        config,
         params,
-      }).hash;
+      ).hash;
       const locAsset = doneOutput(graph, locTaskHash);
       if (!locAsset) continue;
 
@@ -340,7 +348,12 @@ export async function planTasks(opts: {
       shot.prompt = prompt;
       const task = makeTask(
         'shot_image',
-        { shotId: shot.id, prompt, refs: [locAsset, ...subjectRefs], params },
+        {
+          shotId: shot.id,
+          prompt,
+          refs: [locAsset, ...subjectRefs, ...shotRefs(shot, scene, model, config)],
+          params,
+        },
         [locTaskHash, ...sheetDeps],
       );
       const node = graph.add(task);
@@ -352,6 +365,15 @@ export async function planTasks(opts: {
     // is what gets a completed run's outputs into the file.
     if (paths && !readOnlyShots) await writeShots(paths, scene.id, scene.shots);
   }
+
+  // The defensive half of §14: `prompt.addRef` refuses a cycle before it can be written, so one
+  // here means a hand-edited project. Loud beats the alternative — a reference loop leaves every
+  // task in it permanently unplannable and the plan-run-replan loop starves without saying why.
+  const cycle = firstCycle({
+    model,
+    shots: new Map([...model.scenes].map(([id, s]) => [id, s.shots])),
+  });
+  if (cycle) throw new VnError('REF_CYCLE', cycleRefusal(cycle));
 
   return planned;
 }

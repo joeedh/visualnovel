@@ -7,6 +7,7 @@
  * so the desktop app stays bound to the same `AgentEvent` / `Plan` / `Task` types the
  * agent and scheduler actually emit.
  */
+import type { PromptView } from './prompt.js';
 import type {
   AgentEvent,
   AgentMode,
@@ -397,8 +398,44 @@ export interface AssetInfo {
    * produces. False when `derived` is unknown: a missing derivation is not evidence of drift.
    */
   stale: boolean;
+  /**
+   * A reference this was drawn from has moved, or something it references is itself suspended
+   * (§13). Derived on every read, never stored, and the sentence is the whole point: the pane
+   * offers re-approve or regenerate rather than deciding for the author.
+   */
+  suspended?: string;
   /** The art-notes rungs that reach this asset, widest first. */
   rungs: ArtRungInfo[];
+  /**
+   * The composed prompt: the clauses, what the override does to them, and the string that would
+   * be sent. Folded in here so the pane makes one round trip and there is one invalidation path.
+   * Named apart from `prompt`, which is the historical record the manifest kept — this is what
+   * would be sent *now*, and the two disagreeing is exactly what `stale` reports.
+   */
+  promptView?: PromptView;
+}
+
+/**
+ * What the Project editor draws: `project.yaml` as the app reads it, plus the one number that
+ * makes the art style consequential. Only `artStyle` is editable — everything else is shown so
+ * the author can see what the run is configured with without leaving the shell.
+ *
+ * Deliberately without `keys`: those are env-var *names* and safe to print, but a settings pane
+ * that lists them is one screenshot away from looking like it lists their values.
+ */
+export interface ProjectView {
+  root: string;
+  title: string;
+  artStyle: string;
+  start: string;
+  models: { image: string; text: string; vision: string[] };
+  imageParams: { aspect: string; seed?: number };
+  /**
+   * How many image tasks the graph holds. The art style is the first clause of every image prompt,
+   * so this is exactly how many task hashes change when it does — what `project.setArtStyle`
+   * confirms against.
+   */
+  imageTasks: number;
 }
 
 /**

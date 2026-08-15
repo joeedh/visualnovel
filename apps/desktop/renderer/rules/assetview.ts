@@ -42,12 +42,21 @@ export type ApproveAction =
  * A portrait is approved through the gate and nothing else — `gate.approve` also writes
  * `character.md` and `approved.png`, which is what actually clears the character — so the pane
  * offers that command rather than the generic `asset.accept` the command itself would refuse.
+ * A concept and an upload have no approval at all, for opposite reasons: nothing consumes a
+ * concept, and nothing generated an upload.
  */
 export function approveAction(info: AssetInfo): ApproveAction {
   if (info.kind === 'concept') {
     return {
       ok: false,
       reason: 'A concept is a sketch — nothing downstream consumes one. Promote it to a plate.',
+    };
+  }
+  if (info.kind === 'reference') {
+    return {
+      ok: false,
+      reason:
+        'An upload is not generated art — it counts by being pointed at, not by being blessed.',
     };
   }
   if (info.kind !== 'portrait') {
@@ -115,7 +124,7 @@ export function promptEditable(info: AssetInfo): RedrawAction {
   if (info.kind !== 'concept') {
     return {
       ok: false,
-      reason: `A ${info.kind}'s prompt is derived from the project on every planning pass — change it with art notes, not by hand.`,
+      reason: `A ${info.kind}'s prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string.`,
     };
   }
   return { ok: true, prompt: info.prompt ?? '', title: info.title ?? '' };
@@ -126,14 +135,21 @@ export function badgesOf(info: AssetInfo): string[] {
   const badges = [info.kind, info.base ? 'base' : 'project'];
   if (info.accepted) badges.push('accepted');
   if (info.stale) badges.push('stale');
+  if (info.suspended) badges.push('suspended');
   return badges;
 }
 
 /**
  * The drift sentence, or none. `stale` is only ever true when a derivation exists, so this says
  * what changed underneath rather than merely that something did.
+ *
+ * Suspension comes first because it is the stronger claim: the words may still be right, and a
+ * reference the picture was drawn *against* is what moved.
  */
 export function driftNote(info: AssetInfo): string {
+  if (info.suspended) {
+    return `Suspended — ${info.suspended}. Repin the reference or regenerate; the bytes stay either way.`;
+  }
   if (!info.stale) return '';
   return 'Rendered from an older prompt — the project describes it differently now. Regenerate to catch up.';
 }

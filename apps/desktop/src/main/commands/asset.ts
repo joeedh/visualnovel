@@ -32,6 +32,21 @@ export const assetInfo = define({
   },
 });
 
+export const assetSuspended = define({
+  id: 'asset.suspended',
+  title: 'Suspended assets',
+  description:
+    'Every asset drawn against a reference that has moved, plus everything downstream of one, ' +
+    'in dependency order with the reason for each. Derived on every call, never a stored flag — ' +
+    'the bytes stay; suspension only says they are out of date.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const found = await ctx.host.session.suspensions();
+    return { message: `${found.length} suspended asset(s).`, data: found };
+  },
+});
+
 export const assetAccept = define({
   id: 'asset.accept',
   title: 'Accept asset',
@@ -48,6 +63,40 @@ export const assetAccept = define({
     const result = await ctx.host.session.acceptAsset(hash);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: ['manifest.json'] };
+  },
+});
+
+export const assetUpload = define({
+  id: 'asset.upload',
+  title: 'Upload reference image',
+  description:
+    'Bring an image from outside into the base asset store as a reference. Nothing generated ' +
+    'it, so it is never approved and never planned — it exists only to be pointed at by a ' +
+    'prompt chunk. Mock placeholder art and anything that is not an image are refused by name.',
+  mutating: true,
+  // It writes bytes into the repo from a path the author named, which is worth one confirmation.
+  confirm: true,
+  props: {
+    file: prop.string('path to the image file (absolute, or relative to the project)'),
+    title: prop.string('what to call it on screen; empty means the filename', { default: '' }),
+    open: prop.boolean('open the asset editor on it afterwards', { default: true }),
+  },
+  async check({ file, title }, ctx) {
+    return verdict(await ctx.host.session.previewUpload(file, title));
+  },
+  async run({ file, title, open }, ctx) {
+    const result = await ctx.host.session.uploadAsset(file, title);
+    if (!result.ok) throw new Error(result.message);
+    if (open && result.hash) {
+      ctx.host.ui({
+        type: 'view',
+        action: 'open',
+        editor: 'asset',
+        where: 'elsewhere',
+        subject: result.hash,
+      });
+    }
+    return { message: result.message, data: result, written: result.written };
   },
 });
 

@@ -23,7 +23,6 @@ export interface CharacterSpec extends WikiPlacement {
   outfits?: Record<string, string>;
   traits?: string[];
   palette?: string[];
-  referenceImages?: string[];
   approvedPortrait?: string;
   /** Markdown body — the canonical description. */
   description?: string;
@@ -69,7 +68,6 @@ export function characterDoc(spec: CharacterSpec): string {
     ...(spec.outfits ? { outfits: spec.outfits } : {}),
     palette: spec.palette ?? ['#a02828', '#e8c8b0'],
     traits: spec.traits ?? ['curious', 'soft-spoken'],
-    reference_images: spec.referenceImages ?? [],
   };
   if (spec.approvedPortrait) data['approved_portrait'] = spec.approvedPortrait;
   return stringifyFrontMatter(data, `${spec.description ?? `${name}, a fixture character.`}\n`);

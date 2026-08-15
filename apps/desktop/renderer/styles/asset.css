@@ -324,6 +324,387 @@
   font-size: 11.5px;
 }
 
+/*
+ * The prompt, as chunks. Hue carries **voice**: sodium where the words come verbatim out of a
+ * document an author edits, signal where the builders wrote the sentence — the same 3px rail plus
+ * 7% wash `.as-promote` and `.as-drift` already use. Texture *groups* the category and the mono tag
+ * names it exactly, because twelve categories cannot be twelve hues without inventing accents.
+ * `--vermilion` is spent here on one thing only: the `not found ✗` coverage marker.
+ */
+
+.as-modes {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.as-mode {
+  padding: 3px 11px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-raised);
+  color: var(--mist);
+  font-family: var(--sans);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.as-mode:hover:not(:disabled) {
+  background: rgba(69, 200, 214, 0.14);
+}
+
+.as-mode.on {
+  border-color: rgba(69, 200, 214, 0.6);
+  color: var(--signal);
+}
+
+.as-mode:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The acts, pushed off the modes so the segmented three read as one control. */
+.as-mode.act {
+  margin-left: 8px;
+}
+
+/* Shaped like `.as-drift`: both say the picture and the words behind it have parted company. */
+.as-held {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(244, 162, 76, 0.45);
+  border-left-width: 2px;
+  border-radius: var(--r-chrome);
+  background: rgba(244, 162, 76, 0.07);
+  color: var(--sodium);
+  font-size: 12.5px;
+}
+
+.as-chunks {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.as-chunk {
+  display: flex;
+  gap: 9px;
+  padding: 6px 9px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  outline: none;
+}
+
+.as-chunk:focus-visible {
+  border-color: var(--signal);
+}
+
+.as-chunk-rail {
+  flex: 0 0 auto;
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--ink-line);
+  cursor: grab;
+}
+
+.as-chunk.sodium {
+  background: rgba(244, 162, 76, 0.07);
+}
+
+.as-chunk.sodium .as-chunk-rail {
+  background-color: var(--sodium);
+}
+
+.as-chunk.signal {
+  background: rgba(69, 200, 214, 0.07);
+}
+
+.as-chunk.signal .as-chunk-rail {
+  background-color: var(--signal);
+}
+
+.as-chunk.tex-dash .as-chunk-rail {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0 4px,
+    rgba(0, 0, 0, 0.5) 4px 8px
+  );
+}
+
+.as-chunk.tex-dot .as-chunk-rail {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0 2px,
+    rgba(0, 0, 0, 0.5) 2px 4px
+  );
+}
+
+/* An override widens the rail, the way `.as-badge.stale` thickens rather than recolours. */
+.as-chunk.edited .as-chunk-rail {
+  width: 5px;
+}
+
+.as-chunk.muted {
+  opacity: 0.45;
+}
+
+.as-chunk.muted .as-chunk-text {
+  text-decoration: line-through;
+}
+
+.as-chunk.muted .as-chunk-rail {
+  background-color: var(--ink-line);
+  background-image: none;
+}
+
+/* The whole prompt is written elsewhere, so the cards are only what the model was given. */
+.as-chunks.aside .as-chunk {
+  opacity: 0.72;
+}
+
+.as-chunk.dragging {
+  opacity: 0.65;
+}
+
+/* No layout shift mid-gesture: the insertion rule is a shadow, and no card moves until pointerup. */
+.as-chunk.drop-before {
+  box-shadow: 0 -2px 0 0 var(--signal);
+}
+
+.as-chunk.drop-after {
+  box-shadow: 0 2px 0 0 var(--signal);
+}
+
+.as-chunk-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.as-chunk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.as-chunk-tag {
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.as-chunk-addr {
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.as-chunk-open {
+  padding: 0 5px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-raised);
+  color: var(--mist);
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.as-chunk-open:hover {
+  color: var(--signal);
+}
+
+.as-chunk-mark {
+  color: var(--jade);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.as-chunk-mark.bad {
+  color: var(--vermilion);
+}
+
+.as-chunk-stale {
+  color: var(--sodium);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.as-chunk-text {
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* What the builders derived, under what the author put in its place. */
+.as-chunk-was {
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.as-chunk-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* The reference strip: what this clause is shown alongside. */
+.as-chunk-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.as-ref {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 5px 2px 2px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-raised);
+}
+
+.as-ref img {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.as-ref-name {
+  color: var(--mist);
+  font-family: var(--sans);
+  font-size: 11px;
+}
+
+/* Muted clause, muted evidence: still shown, visibly not being sent. */
+.as-ref.muted {
+  opacity: 0.45;
+}
+
+.as-ref.drift {
+  border-color: var(--sodium);
+}
+
+.as-ref-drop {
+  padding: 0 3px;
+  border: 0;
+  background: none;
+  color: var(--mist-dim);
+  font-family: var(--sans);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.as-ref-drop:hover {
+  color: var(--mist);
+}
+
+.as-chunk-act {
+  padding: 1px 8px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-raised);
+  color: var(--mist);
+  font-family: var(--sans);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.as-chunk-act:hover:not(:disabled) {
+  color: var(--sodium);
+  background: rgba(244, 162, 76, 0.14);
+}
+
+.as-chunk-act:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.as-chunk-box {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.as-chunk-box:focus {
+  border-color: var(--sodium);
+}
+
+.as-chunk.dirty .as-chunk-box {
+  border-color: rgba(244, 162, 76, 0.55);
+}
+
+.as-custom {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.as-custom textarea {
+  width: 100%;
+  min-height: 90px;
+  max-height: 30vh;
+  resize: vertical;
+  padding: 9px 11px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  outline: none;
+}
+
+.as-custom textarea:focus {
+  border-color: var(--sodium);
+}
+
+.as-custom.dirty textarea {
+  border-color: rgba(244, 162, 76, 0.55);
+}
+
+.as-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .as-note {
   flex: 0 0 auto;
   color: var(--sodium);

@@ -169,6 +169,24 @@ function cueToId(
   return characters.has(slug(baseName)) ? slug(baseName) : byName.get(baseName);
 }
 
+/**
+ * `reference_images:` was storage for a feature nothing ever read — no builder, no planner, no
+ * provider — so a project that set it never saw an effect and there is nothing to convert. It is
+ * named once, here, so an author who wrote paths in learns where they went.
+ */
+function retiredReferenceImages(id: string, data: Record<string, unknown>): Diagnostic | undefined {
+  const paths = data['reference_images'];
+  if (!Array.isArray(paths) || paths.length === 0) return undefined;
+  return {
+    severity: 'warning',
+    code: 'retired_reference_images',
+    message:
+      `character "${id}" sets reference_images (${paths.join(', ')}), which nothing has ever ` +
+      `read; upload the files with \`asset.upload\` and attach them to a prompt clause instead`,
+    where: id,
+  };
+}
+
 /** Resolve uppercase Fountain cue names to character ids; returns ids + diagnostics. */
 function resolveCast(
   scene: Scene,
@@ -246,6 +264,8 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
       continue;
     }
     if (!idAgrees('character', res.value.id, doc, diagnostics)) continue;
+    const retired = retiredReferenceImages(res.value.id, doc.doc.data);
+    if (retired) diagnostics.push(retired);
     if (characters.has(res.value.id)) {
       diagnostics.push({
         severity: 'error',

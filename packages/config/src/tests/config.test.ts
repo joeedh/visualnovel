@@ -1,7 +1,15 @@
 import { mkdtemp, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfig, resolveKeys, secretDirsFor, setStartScene, withStartScene } from '../index.js';
+import {
+  loadConfig,
+  resolveKeys,
+  secretDirsFor,
+  setArtStyle,
+  setStartScene,
+  withArtStyle,
+  withStartScene,
+} from '../index.js';
 
 async function tempProject(yaml: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'vn-config-'));
@@ -80,6 +88,61 @@ describe('setStartScene', () => {
       const dir = await tempProject('title: T\n');
       expect(await setStartScene(dir, id)).toBe(true);
       expect((await loadConfig(dir)).start).toBe(id);
+    }
+  });
+});
+
+describe('withArtStyle', () => {
+  it('replaces the value in place and leaves every other byte alone', () => {
+    const before = '# my novel\ntitle: T\nart_style: watercolor\nconcurrency: 2\n';
+    expect(withArtStyle(before, 'ink wash')).toBe(
+      '# my novel\ntitle: T\nart_style: ink wash\nconcurrency: 2\n',
+    );
+  });
+
+  it('replaces a block scalar entirely, indented lines included', () => {
+    const before = 'title: T\nart_style: |\n  soft anime,\n  cel shaded\nconcurrency: 2\n';
+    expect(withArtStyle(before, 'ink')).toBe('title: T\nart_style: ink\nconcurrency: 2\n');
+  });
+
+  it('leaves the blank line an author put before the next key', () => {
+    const before = 'title: T\nart_style: ink\n\n# how it runs\nconcurrency: 2\n';
+    expect(withArtStyle(before, 'wash')).toBe(
+      'title: T\nart_style: wash\n\n# how it runs\nconcurrency: 2\n',
+    );
+  });
+
+  it('adds it under the title, or appends when there is none', () => {
+    expect(withArtStyle('title: T\nconcurrency: 2\n', 'ink')).toBe(
+      'title: T\nart_style: ink\nconcurrency: 2\n',
+    );
+    expect(withArtStyle('', 'ink')).toBe('art_style: ink\n');
+  });
+});
+
+describe('setArtStyle', () => {
+  it('writes the style and reads back through loadConfig', async () => {
+    const dir = await tempProject('title: My Novel\nart_style: watercolor\n');
+    expect(await setArtStyle(dir, 'ink wash, muted')).toBe(true);
+    expect((await loadConfig(dir)).art_style).toBe('ink wash, muted');
+    expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe(
+      'title: My Novel\nart_style: ink wash, muted\n',
+    );
+  });
+
+  it('leaves a config that already says that untouched', async () => {
+    const dir = await tempProject('title: T\nart_style: ink\n');
+    expect(await setArtStyle(dir, 'ink')).toBe(false);
+  });
+
+  // Prose has colons, hashes and newlines in it; the serializer is what keeps a style that would
+  // otherwise re-read as a mapping or a comment intact.
+  it('survives prose YAML would otherwise re-read as structure', async () => {
+    for (const style of ['soft anime: cel shaded', '# not a comment', 'two\nlines']) {
+      const dir = await tempProject('title: T\nconcurrency: 2\n');
+      await setArtStyle(dir, style);
+      expect((await loadConfig(dir)).art_style).toBe(style);
+      expect((await loadConfig(dir)).concurrency).toBe(2);
     }
   });
 });

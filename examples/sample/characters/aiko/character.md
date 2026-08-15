@@ -15,7 +15,6 @@ traits:
   - curious
   - soft-spoken
   - determined
-reference_images: []
 ---
 
 Aiko is a sixteen-year-old transfer student with shoulder-length red hair and

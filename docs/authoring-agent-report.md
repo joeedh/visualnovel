@@ -71,8 +71,10 @@ produces malformed files:
   tells the author to run `vngen import` rather than editing one. See
   [`fountain.md`](fountain.md#where-the-fountain-lives-project-specific).
 - **Character file schema** — YAML front-matter (`id`, `name`, `status`,
-  `default_outfit`, `palette`, `reference_images`, …) + canonical prose description +
-  wardrobe section.
+  `default_outfit`, `palette`, …) + canonical prose description + wardrobe section.
+  _As shipped_ `reference_images` is **retired** — it was storage nothing read, and a file
+  still setting it gets a diagnostic. A reference image now attaches to a prompt clause
+  (`prompt.addRef`), not to a character.
 - **Location file schema** — description, mood/lighting, time-of-day/weather variants,
   camera notes.
 - **Fountain + branch markers** — the agent knows Fountain syntax (see `fountain.md`)

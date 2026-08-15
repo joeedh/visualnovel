@@ -10,6 +10,7 @@
   * [Is the running app your app?](#is-the-running-app-your-app)
   * [Drive it from a terminal (CDP)](#drive-it-from-a-terminal-cdp)
   * [Synthetic input](#synthetic-input)
+  * [A whole surface at once: a scripted PASS/FAIL run](#a-whole-surface-at-once-a-scripted-passfail-run)
   * [UI bugs: ask `window.__vnDebug`, not a screenshot](#ui-bugs-ask-window__vndebug-not-a-screenshot)
   * [CSS: silent failures and cascade order](#css-silent-failures-and-cascade-order)
   * [DevTools](#devtools)
@@ -282,6 +283,27 @@ that object, which is how two real bugs surfaced that a screenshot would not hav
   events on the layers above it (`renderer/styles/timeline.css`). Assert the band rects
   against the dragged element's rect *before* simulating anything — geometry first, then
   events.
+
+### A whole surface at once: a scripted PASS/FAIL run
+
+`scripts/cdp.mjs` is the wire on its own — `connect`, `pageTarget`, `send`, `evaluate`, `exec` —
+so a script that has to do more than one thing holds a single socket instead of paying `--raw`'s
+connect-per-call. `scripts/verify-prompt-chunks.mjs` is the worked example: it drives the asset
+pane's prompt editor through ten steps and prints a PASS/FAIL line each. Four things it had to
+learn, all of which cost a debugging cycle first:
+
+- **`window.vn.exec` goes preload → main**, so it never passes through the renderer's `bridge.exec`
+  and the pane's `onInvalidate` does not fire. A command driven from a script therefore leaves the
+  surface stale; the script re-reads it the way a click would, by retoggling the subject — and it
+  must retoggle through a **different** subject, because `applyView` ignores an empty one.
+- **The editors' shadow roots are open, but `document.querySelectorAll` still does not cross
+  them.** Walk: for every element, recurse into `.shadowRoot` if it has one. A selector that
+  silently matches nothing reads exactly like a feature that did not happen.
+- **`Input.dispatchMouseEvent` is a real pointer**, with a valid `pointerId`, so
+  `setPointerCapture` works and a drag can be exercised end to end — down, move, assert nothing
+  moved yet, up. Synthetic `PointerEvent`s dispatched from JS do not capture.
+- **Poll, never sleep.** Every read after a command is a loop with a deadline: the surface settles
+  a beat behind the store, and a fixed `sleep` that passes on a warm machine fails on a cold one.
 
 ### UI bugs: ask `window.__vnDebug`, not a screenshot
 

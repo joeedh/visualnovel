@@ -24,6 +24,7 @@ import './editors/convo.js';
 import './editors/documents.js';
 import './editors/graph.js';
 import './editors/inspector.js';
+import './editors/project.js';
 import './editors/script.js';
 import './editors/tasks.js';
 import './editors/timeline.js';

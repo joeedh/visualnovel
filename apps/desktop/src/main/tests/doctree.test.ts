@@ -42,7 +42,6 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
           description: '',
           traits: [],
           palette: [],
-          referenceImages: [],
           status: 'approved',
           defaultOutfit: 'uniform',
           outfits: [],

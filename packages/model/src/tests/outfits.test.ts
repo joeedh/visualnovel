@@ -7,7 +7,6 @@ const aiko: Character = {
   description: 'A transfer student.',
   traits: [],
   palette: [],
-  referenceImages: [],
   status: 'approved',
   defaultOutfit: 'uniform',
   outfits: [

@@ -13,6 +13,7 @@
   * [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
 - [The registered commands](#the-registered-commands)
   * [The `doc.` namespace](#the-doc-namespace)
+  * [The `prompt.` namespace](#the-prompt-namespace)
   * [Interactions: the gesture surface](#interactions-the-gesture-surface)
   * [Preconditions: asking before acting](#preconditions-asking-before-acting)
 - [Reaching the commands](#reaching-the-commands)
@@ -252,8 +253,8 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Fifty-nine, in twelve namespaces. Thirty-five are `mutating`; thirty-four declare a precondition;
-twenty-one are undoable; five ask for confirmation.
+Sixty-eight, in fourteen namespaces. Forty-one are `mutating`; forty declare a precondition;
+twenty-seven are undoable; six ask for confirmation.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
@@ -262,8 +263,10 @@ twenty-one are undoable; five ask for confirmation.
 | `art.redraw` ✍ ⚠ ✓             | `hash`, `prompt` (default `''`), `title` (default `''`), `open` (default `true`) | Draw a concept again from an edited prompt — the one asset whose prompt is authored rather than derived, so the one prompt there is to rewrite. The result is a **new** sketch beside the original; nothing is overwritten. A planned asset is refused by name: re-rendering one is `asset.regenerate`. |
 | `art.setNotes` ✍ ↺ ✓           | `target`, `notes` (default `''`)  | Art direction on one rung — `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`. Appended to the prompt, so it **re-renders** what that rung reaches. Never creates the rung it names. |
 | `asset.info`                   | `hash`                            | One asset: label, kind, root, accepted, its task, the prompt it was rendered from, the prompt the builders would write **today**, and the art-notes rungs reaching it. |
-| `asset.accept` ✍ ✓             | `hash`                            | `store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. |
-| `asset.regenerate` ✍ ⚠ ✓       | `hash`, `run` (default `false`)   | Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. |
+| `asset.accept` ✍ ✓             | `hash`                            | `store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved. |
+| `asset.regenerate` ✍ ⚠ ✓       | `hash`, `run` (default `false`)   | Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image. |
+| `asset.upload` ✍ ⚠ ✓           | `file`, `title` (default `''`), `open` (default `true`) | Bring an image from outside into the **base** store as a `reference`. Nothing generated it, so it is never approved and never planned — it exists to be pointed at by `prompt.addRef`. Mock placeholder art and anything that is not an image are refused by name. |
+| `asset.suspended`              | —                                 | Every asset drawn against a reference whose slot has moved, plus everything downstream of one, in dependency order with the reason for each. Derived on every call, never a stored flag — the bytes stay; suspension only says they are out of date. |
 | `bible.search`                 | `query`, `limit` (default `8`)    | Ranked excerpts from `wiki/`. There is no `bible.read`: [`@vn/bible`](story-bible.md) has no whole-file API. |
 | `command.check`                | `invocation`                      | Would that invocation run? See [Preconditions](#preconditions-asking-before-acting). |
 | `doc.read`                     | `path`                            | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
@@ -296,13 +299,25 @@ twenty-one are undoable; five ask for confirmation.
 | `story.deleteScene` ✍ ↺ ✓      | `scene`                           | Refuses while anything still points at it, naming what.    |
 | `story.splitScene` ✍ ↺ ✓       | `scene`, `at`, `into`             | `at` starts the second half; shots follow their lines, keeping their ids. |
 | `story.mergeScene` ✍ ↺ ✓       | `scene`, `into`                   | Only across a `next` boundary; `scene`'s file and storyboard are removed. |
+| `prompt.info`                  | `hash`                            | The prompt one asset would be generated from: the clauses the builders derived, what the author has done to them, and the one string that gets sent. The same projection the Asset editor draws, so an agent and the pane never disagree about what a picture was asked for. |
+| `prompt.setChunk` ✍ ↺ ✓        | `hash`, `chunk`, `op` (`replace`\|`append`\|`mute`\|`clear`), `text` (default `''`) | One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches. |
+| `prompt.moveChunk` ✍ ↺ ✓       | `hash`, `chunk`, `after` (default `''`) | Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order. |
+| `prompt.setCustom` ✍ ↺ ✓       | `hash`, `text`                    | Replace the whole prompt with one written by hand. The clauses stay underneath — they are what `prompt.condense` reconciles against and what `prompt.check` measures. |
+| `prompt.condense` ✍ ↺ ✓        | `hash`, `force` (default `false`) | Ask the text model to rewrite the clauses as one fluent prompt and store it. It is then **held**: clauses moving under it do not re-render the picture. `force` reconciles against a hand-written prompt rather than refusing over it. |
+| `prompt.clear` ✍ ↺ ✓           | `hash`, `part` (`chunks`\|`order`\|`custom`\|`agent`\|`all`, default `all`) | Discard part of what was done to a prompt. What is left is what the builders derive, byte for byte. |
+| `prompt.check`                 | `hash`                            | Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap heuristic — "not found", never "dropped" — so it is a prompt to go and look. In chunks mode nothing can be missing. |
+| `prompt.addRef` ✍ ↺ ✓          | `hash`, `chunk`, `ref`            | Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path. |
+| `prompt.dropRef` ✍ ↺ ✓         | `hash`, `chunk`, `ref`            | Take a reference off a clause. The bytes stay in the store — this only stops them being sent. |
+| `prompt.repin` ✍ ↺ ✓           | `hash`, `chunk`, `ref`, `regenerate` (default `true`) | Point a linked reference at whatever its slot holds now, which is how a suspension is cleared. `regenerate=false` is **re-approve**: it keeps the existing bytes by recording them as the newly-keyed task's output, so nothing re-renders. |
+| `project.info`                 | —                                 | What `project.yaml` says: title, entry scene, art style, model ids, image params, and how many image tasks the art style reaches. Never the API keys — their *names* are in the file and a pane listing them is one screenshot away from looking like it lists their values. |
+| `project.setArtStyle` ✍ ⚠ ↺ ✓  | `style` (default `''`)            | The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
 | `agent.setEffort`              | `effort` (`default`\|`low`\|`medium`\|`high`\|`xhigh`\|`max`) | How hard the model thinks. `default` leaves the knob off; a model with no such knob keeps the setting and ignores it (`supportsEffort`). |
 | `agent.clear`                  | —                                 | Resets the conversation, back to plan mode.                |
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
-| `interaction.targets`          | `interaction`, `carried`, `scene`        | Every target of a gesture, accepted or refused with why.   |
+| `interaction.targets`          | `interaction`, `carried`, `scene`, `asset` | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |
 | `workspace.doctree`            | —                                 | The sidebar tree (story → scenes → shots, characters, locations, wiki, assets by kind) plus per-entity backlinks — see [`document-tree.md`](document-tree.md). |
 | `workspace.filetree`           | —                                 | Every file in the workspace as a tree, `.git` and `node_modules` excluded. |
@@ -320,10 +335,12 @@ twenty-one are undoable; five ask for confirmation.
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
 **Only the document mutators are undoable** — the eighteen `story.*` ones plus `doc.write`,
-`doc.create` and `art.setNotes` — because undo restores a snapshot of the
+`doc.create`, `art.setNotes`, the eight `prompt.*` writers and `project.setArtStyle` — because undo restores a snapshot of the
 document tree. `asset.accept` and `asset.regenerate` write into the generated class instead (a
 manifest, a status log), so neither is undoable and neither needs to be: accepting again and
-regenerating again are both ordinary acts. `art.generate` and `art.redraw` are the same shape —
+regenerating again are both ordinary acts. `asset.upload` is the same class — bytes and a manifest
+row in the base store — and an upload nothing points at costs nothing, so it is not undoable either.
+`art.generate` and `art.redraw` are the same shape —
 bytes and a manifest row, and undoing an image you paid for by deleting it is not an improvement
 (a redraw files a *new* sketch and leaves the original where it is, so there is nothing to undo). `art.promote` writes
 across *both* classes at once (a location sheet, a manifest row, and a `done` record in the task
@@ -420,6 +437,45 @@ write path and it is `story.*`.
   front-matter block would be a shape the author has to delete. It refuses over an existing path
   rather than merging into one.
 
+### The `prompt.` namespace
+
+`prompt.*` edits the composition an image is generated from. The prompt itself is still derived —
+every builder assembles a `PromptChunk[]` and `renderPrompt` collapses it byte-identically to the
+flat string it always produced — so what these commands write is an **override** stored beside the
+authored input, and a project that runs none of them keeps every task hash it had. Full statement:
+[`plans/chunked-prompts.md`](plans/chunked-prompts.md).
+
+- **One asset, one rung.** Every command takes the asset `hash` and the session resolves it to the
+  rung that names the whole picture: the character for a portrait, the outfit entry for a sheet, the
+  variant for a plate, the shot for a frame. There is exactly one place an override can be, which is
+  what keeps `prompt.info` and the pane from disagreeing.
+- **`prompt.info` is the projection both an agent and the pane read.** It answers the derived
+  clauses, what the author did to each, and the one string that gets sent — the same `PromptView`
+  the Asset editor draws, so nobody has a second opinion about what a picture was asked for.
+- **It costs money, on purpose.** Like `art.setNotes` and unlike a scene edit, an override is in the
+  prompt, so it re-keys precisely the tasks that rung reaches. `project.setArtStyle` is the extreme
+  of the same rule — it reaches every image task — which is why it is the one of these that confirms.
+- **A condensation is held, not re-derived.** `prompt.condense` stores the model's rewrite along
+  with the chunks it condensed; when those move, the stored text is still what gets sent and the
+  pane says so. `prompt.check` measures a hand-written or condensed prompt against the clauses by
+  word overlap and reports what it cannot find — a prompt to go and look, never a verdict.
+- **`prompt.clear` is the way back, in parts.** `chunks`, `order`, `custom`, `agent` or `all`; what
+  is left is what the builders derive. And `mode` alone is not an override — every mode falls back
+  to the derived chunks when the shape it names is empty, so clearing the last edit clears the key
+  rather than leaving an inert `prompt_override:` in the author's file.
+- **A reference attaches to a clause, not to the prompt.** `prompt.addRef` says *this picture is
+  evidence for that sentence*, so muting the clause drops its references too — one act, one meaning.
+  `ref` is either an asset hash or a **slot address** (`plate:cafe/night`), and the address is the
+  same string the pane prints, so what an author reads off the screen is what they can type.
+- **A linked reference pins a hash and separately remembers the slot.** The pin is what the task
+  hashes over, so approving a new plate upstream never silently re-renders what points at it — it
+  **suspends** instead. Suspension is transitive, derived by walking the graph on read (never a
+  stored flag), and enumerable in dependency order through `asset.suspended`. `prompt.repin` is how
+  it clears, and `regenerate=false` clears it for free.
+- **The graph is kept acyclic at write time, over slots rather than hashes.** `prompt.addRef`'s
+  precondition refuses a reference that would close a cycle and names the whole path, because a
+  cycle here does not error — it starves the scheduler in silence.
+
 ### Interactions: the gesture surface
 
 A command answers _what can this app do_. On the direct-manipulation surfaces that leaves out
@@ -432,8 +488,9 @@ would run) or refuse (with the sentence the command itself would have given). It
 path of its own — every gesture terminates in a registered command, and
 `InteractionRegistry.verify` fails the build if it names one that does not exist.
 
-The five gestures — the branch editor's `branch.connect`, `branch.splice` and `branch.unwire`, the
-coverage timeline's `timeline.cover`, and the script's `script.moveLine` — are declared in
+The six gestures — the branch editor's `branch.connect`, `branch.splice` and `branch.unwire`, the
+coverage timeline's `timeline.cover`, the script's `script.moveLine`, and the asset pane's
+`prompt.reorder` — are declared in
 `apps/desktop/src/shared/interactions.ts`, beside `branchops.ts`/`coverage.ts` (and delegating to
 `@vn/scriptedit`'s `lineops`) for the same reason those are shared: `BranchEditor` runs
 `branchSplice.targets` to draw its mid-drag verdict overlay, the `Timeline` evaluates
@@ -466,8 +523,9 @@ Full design, including what deliberately is _not_ an interaction:
 one; `check` is the stack's own precondition query, reached through the host because a command
 cannot import the stack that runs it.
 
-Three state types now pass through `targets`, so `interaction.targets` builds the state the named
+Four state types now pass through `targets`, so `interaction.targets` builds the state the named
 gesture wants: a `timeline.*` gesture is judged against one scene and takes a `scene` prop, a
+`prompt.*` gesture is judged against one asset's composition and takes an `asset` prop, a
 `script.*` gesture gets every scene as its chunk parses (a line id names its own scene, so a `scene`
 prop would be a second answer to the same question), everything else gets the branch graph. The
 registry is untyped in its state

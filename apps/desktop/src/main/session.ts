@@ -7,15 +7,17 @@
  * imported from those apps, which aren't libraries.
  */
 import {
+  CONFIG_FILENAME,
   loadConfig,
   resolveKeys,
   secretDirsFor,
+  setArtStyle,
   setStartScene,
   type ProjectConfig,
   type ResolvedKeys,
 } from '@vn/config';
-import { readdir, rename } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { readdir, readFile, rename } from 'node:fs/promises';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
   applyCharacterEdit,
@@ -30,6 +32,8 @@ import {
   sceneChunksFromScript,
   scriptFromScenes,
   slug,
+  variantEntries,
+  wardrobeEntries,
   type CharacterEdit,
   type LocationEdit,
   type SceneChunk,
@@ -62,16 +66,39 @@ import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import { baseRefusal, costPreview, driftOf, gateStatus, isApproved } from '@vn/pipeline';
 import {
+  adopt,
+  adoptionOf,
+  composePrompt,
+  condensePrompt,
+  coverage,
+  cycleRefusal,
+  effectiveChunks,
+  enabledChunks,
   formatSubject,
   generateConcept,
   matchSubject,
+  overrideAt,
+  parseSlot,
   parseSubject,
   promoteConcept,
   promotionOf,
   redrawConcept,
   redrawOf,
+  refCycle,
+  refDrift,
+  renderPrompt,
+  resolveBinding,
+  rungOf,
+  slotKey,
+  slotLabel,
+  slotOf,
   subjectEntity,
+  suspensionMap,
+  uploadOf,
+  uploadReference,
   type ConceptRequest,
+  type PromptRung,
+  type Suspension,
 } from '@vn/artgen';
 import {
   createAnthropicChat,
@@ -124,8 +151,23 @@ import {
   type ScenePlan,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import type { AnyTask, Effort, Playable, ProjectModel, Providers, Scene, Shot } from '@vn/types';
-import { bindsTo } from '@vn/types';
+import type {
+  AnyTask,
+  AssetKind,
+  Effort,
+  LocationVariant,
+  Outfit,
+  Playable,
+  ProjectModel,
+  PromptChunk,
+  PromptOverride,
+  Providers,
+  Scene,
+  Shot,
+  TaskInputs,
+  TextLLM,
+} from '@vn/types';
+import { bindsTo, type TaskKind } from '@vn/types';
 import type {
   ApproveResult,
   AssetInfo,
@@ -136,6 +178,7 @@ import type {
   GateCandidate,
   PipelineRunResult,
   PipelineStatus,
+  ProjectView,
   SceneCoverage,
   SceneEditResult,
   StoryGraph,
@@ -143,10 +186,12 @@ import type {
 import { narrowTask } from './reviews.js';
 import { parseArtTarget, rungAt, rungsFor, type ArtTarget } from './artnotes.js';
 import { labelAssets, labelContext } from './assetlabel.js';
-import { derivePrompt } from './assetprompt.js';
+import { deriveChunks, derivePrompt } from './assetprompt.js';
+import { applyPromptEdit, type PromptEdit } from './promptedit.js';
 import { buildDocTree, fileTree } from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
 import { confirmDetail } from './toolconfirm.js';
+import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
 import type { BranchOp } from '../shared/branchops.js';
 import { setCoverage } from '../shared/coverage.js';
 
@@ -202,9 +247,37 @@ const editInputOf = (project: LoadedProject): SceneEditInput => ({
   ...(project.config.start === undefined ? {} : { entry: project.config.start }),
 });
 
+/**
+ * The task kinds that render a picture — every one whose prompt opens with the project's art
+ * style, and so exactly the set a change to it re-keys. `vision_review` and `prompt_refine` read
+ * a prompt but never carry the preamble.
+ */
+const IMAGE_KINDS = new Set<TaskKind>([
+  'location_ref',
+  'portrait',
+  'model_sheet',
+  'outfit_sheet',
+  'shot_image',
+]);
+
 /** Workspace-relative and forward-slashed, which is what a `written` list reports. */
 function relPath(dir: string, file: string): string {
   return relative(dir, file).split(sep).join('/');
+}
+
+/**
+ * Which assets are suspended, keyed by hash. One walk answers both the listing and the one-asset
+ * question, so a pane and `asset.suspended` can never disagree about a reason.
+ */
+function suspensionsOf(
+  project: LoadedProject,
+  shots: ReadonlyMap<string, Shot[] | null>,
+): Map<string, Suspension> {
+  return suspensionMap({
+    ...labelContext(project.model, project.graph),
+    assets: project.store.manifest(),
+    shots,
+  });
 }
 
 /**
@@ -235,10 +308,27 @@ function withArtNotes(shot: Shot, notes: string): Shot {
   return notes.trim() ? { ...rest, artNotes: notes.trim() } : rest;
 }
 
+/** An outfit with one field changed, in the shape `wardrobeEntries` re-serializes. */
+function withOutfit(outfit: Outfit, patch: Partial<Outfit>): Outfit {
+  const next = { ...outfit, ...patch };
+  if (!next.artNotes) delete next.artNotes;
+  if (!next.promptOverride) delete next.promptOverride;
+  return next;
+}
+
+/** The same for a variant. */
+function withVariant(variant: LocationVariant, patch: Partial<LocationVariant>): LocationVariant {
+  const next = { ...variant, ...patch };
+  if (!next.artNotes) delete next.artNotes;
+  if (!next.promptOverride) delete next.promptOverride;
+  return next;
+}
+
 /**
  * The character edit one rung's worth of notes amounts to. An outfit rung has to resend the whole
- * wardrobe — `applyCharacterEdit` replaces the map — so it is rebuilt from what the model already
- * normalized, with the one entry changed.
+ * wardrobe — `applyCharacterEdit` replaces the map — so it is rebuilt through `wardrobeEntries`
+ * from what the model already normalized, with the one entry changed. Rebuilding it by hand is
+ * how a note comes to erase the prompt override sitting beside it.
  */
 function characterNotesEdit(
   project: LoadedProject,
@@ -248,17 +338,10 @@ function characterNotesEdit(
   if (!target.outfit) return { artNotes: notes.trim() };
   const character = project.model.characters.get(target.id)!;
   return {
-    outfits: Object.fromEntries(
-      character.outfits.map((o) => {
-        const art = o.id === target.outfit ? notes.trim() : (o.artNotes ?? '');
-        // Empty keys are left out rather than written blank, matching `wardrobeData`.
-        return [
-          o.id,
-          art
-            ? { ...(o.description ? { description: o.description } : {}), art_notes: art }
-            : o.description,
-        ];
-      }),
+    outfits: wardrobeEntries(
+      character.outfits.map((o) =>
+        o.id === target.outfit ? withOutfit(o, { artNotes: notes.trim() }) : o,
+      ),
     ),
   };
 }
@@ -272,17 +355,79 @@ function locationNotesEdit(
   if (!target.variant) return { artNotes: notes.trim() };
   const location = project.model.locations.get(target.id)!;
   return {
-    variants: location.variants.map((v) => {
-      const art = v.id === target.variant ? notes.trim() : (v.artNotes ?? '');
-      return v.description || art
-        ? {
-            id: v.id,
-            ...(v.description ? { description: v.description } : {}),
-            ...(art ? { art_notes: art } : {}),
-          }
-        : v.id;
-    }),
+    variants: variantEntries(
+      location.variants.map((v) =>
+        v.id === target.variant ? withVariant(v, { artNotes: notes.trim() }) : v,
+      ),
+    ),
   };
+}
+
+/** A shot with its prompt override set, or removed when the edit settled on nothing. */
+function withPromptOverride(shot: Shot, override: PromptOverride | undefined): Shot {
+  const { promptOverride: _drop, ...rest } = shot;
+  return override ? { ...rest, promptOverride: override } : rest;
+}
+
+/**
+ * The character edit one rung's worth of prompt override amounts to — {@link characterNotesEdit}
+ * with the other field. A character rung has no wardrobe to resend, but it does have to say
+ * "nothing here" out loud: an empty override is what `overrideData` turns into a removed key.
+ */
+function characterOverrideEdit(
+  project: LoadedProject,
+  rung: Extract<PromptRung, { kind: 'character' | 'outfit' }>,
+  override: PromptOverride | undefined,
+): CharacterEdit {
+  if (rung.kind === 'character') return { promptOverride: override ?? { mode: 'chunks' } };
+  const character = project.model.characters.get(rung.characterId)!;
+  return {
+    outfits: wardrobeEntries(
+      character.outfits.map((o) =>
+        o.id === rung.outfit ? withOutfit(o, { promptOverride: override }) : o,
+      ),
+    ),
+  };
+}
+
+/** The same for a location variant. */
+function locationOverrideEdit(
+  project: LoadedProject,
+  rung: Extract<PromptRung, { kind: 'variant' }>,
+  override: PromptOverride | undefined,
+): LocationEdit {
+  const location = project.model.locations.get(rung.locationId)!;
+  return {
+    variants: variantEntries(
+      location.variants.map((v) =>
+        v.id === rung.variant ? withVariant(v, { promptOverride: override }) : v,
+      ),
+    ),
+  };
+}
+
+/** Why an asset of this kind has no chunks to edit — the sentence `PromptView.frozen` carries. */
+function frozenReason(kind: AssetKind): string {
+  return kind === 'concept'
+    ? 'A concept’s prompt was typed, not derived, so it has no chunks. art.redraw rewrites it.'
+    : 'The project no longer describes this asset, so its prompt cannot be re-derived.';
+}
+
+/** What a chunk edit does to one clause — `prompt.setChunk`'s `op`. */
+export type ChunkOp = 'replace' | 'append' | 'mute' | 'clear';
+
+/** Which half of an override `prompt.clear` discards. */
+export type ClearPart = 'all' | 'chunks' | 'order' | 'custom' | 'agent';
+
+/** What a prompt preview answers: would this be allowed, and what would it say. */
+export interface PromptResult {
+  ok: boolean;
+  message: string;
+}
+
+/** The same, plus the files a write touched — the shape every `prompt.*` mutator returns. */
+export interface PromptWriteResult extends PromptResult {
+  written: string[];
 }
 
 /** Directories no file tree of a project should ever show, and the walk's cap. */
@@ -523,17 +668,25 @@ export class WorkspaceSession {
   async gateCandidacy(
     characterId: string,
     hash: string,
-  ): Promise<{ character: boolean; candidate: boolean; approved: boolean; candidates: number }> {
+  ): Promise<{
+    character: boolean;
+    candidate: boolean;
+    approved: boolean;
+    candidates: number;
+    suspended?: string;
+  }> {
     const project = await loadProject(this.dir);
     const character = project.model.characters.get(characterId);
     const candidates = project.store
       .manifest()
       .filter((a) => a.kind === 'portrait' && bindsTo(a, { characterId }));
+    const suspended = await this.suspensionFor(project, hash);
     return {
       character: Boolean(character),
       candidate: candidates.some((a) => a.hash === hash),
       approved: character ? isApproved(character) : false,
       candidates: candidates.length,
+      ...(suspended ? { suspended } : {}),
     };
   }
 
@@ -541,6 +694,10 @@ export class WorkspaceSession {
   async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
     const project = await loadProject(this.dir);
     if (!project.store.has(hash)) return { ok: false, message: `No asset "${hash}" in the store.` };
+    // Approving a suspended picture would bless bytes drawn against a reference that has moved,
+    // and everything downstream would inherit it. Repin or regenerate first.
+    const suspended = await this.suspensionFor(project, hash);
+    if (suspended) return { ok: false, message: `${hash.slice(0, 8)} is suspended: ${suspended}.` };
     const file = entityFile(project.inputs.characterDocs, characterId);
     if (!file || !(await setCharacterApproval(file, hash))) {
       return { ok: false, message: `No character file for "${characterId}".` };
@@ -549,6 +706,21 @@ export class WorkspaceSession {
     await writeApprovedPortrait(project.paths, characterId, bytes);
     await project.store.accept(hash);
     return { ok: true, message: `Approved ${characterId} → ${hash}.` };
+  }
+
+  /**
+   * Every suspended asset, upstream first, with the sentence for each. Derived on every call —
+   * suspension is a walk over the manifest and the rungs, never a stored flag (§13).
+   */
+  async suspensions(): Promise<Suspension[]> {
+    const project = await loadProject(this.dir);
+    const shots = await readAllShots(project);
+    return [...suspensionsOf(project, shots).values()];
+  }
+
+  /** Why one asset is suspended, against a project already loaded. `undefined` when it is not. */
+  private async suspensionFor(project: LoadedProject, hash: string): Promise<string | undefined> {
+    return suspensionsOf(project, await readAllShots(project)).get(hash)?.reason;
   }
 
   /**
@@ -563,9 +735,11 @@ export class WorkspaceSession {
     if (!asset) return null;
 
     const shots = await readAllShots(project);
+    const suspended = suspensionsOf(project, shots).get(hash);
     const task = project.graph.get(asset.sourceTask);
     const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
     const derived = derivePrompt(asset, ctx);
+    const view = await this.promptViewOf(project, hash);
     return {
       hash: asset.hash,
       ext: asset.ext,
@@ -580,16 +754,18 @@ export class WorkspaceSession {
       // An unknown derivation is not evidence of drift — it means the project no longer describes
       // this asset, which the editor says a different way.
       stale: derived !== undefined && asset.prompt !== undefined && derived !== asset.prompt,
+      ...(suspended ? { suspended: suspended.reason } : {}),
       rungs: rungsFor(asset, { model: project.model, shots }),
+      ...(view ? { promptView: view } : {}),
     };
   }
 
   /**
-   * Whether accepting this asset is a question worth answering. Two kinds are refused by name:
+   * Whether accepting this asset is a question worth answering. Three kinds are refused by name:
    * a portrait, because approving one also writes `character.md` and `approved.png` and that is
-   * `gate.approve`; and a concept, because nothing downstream consumes one, so `accepted` would
-   * mean nothing. Already accepted is not a refusal — re-accepting is how an author changes
-   * their mind.
+   * `gate.approve`; a concept, because nothing downstream consumes one, so `accepted` would
+   * mean nothing; and a reference, because nothing generated it — it counts by being pointed at.
+   * Already accepted is not a refusal — re-accepting is how an author changes their mind.
    */
   async previewAccept(hash: string): Promise<{ ok: boolean; message: string }> {
     const info = await this.assetInfo(hash);
@@ -608,6 +784,20 @@ export class WorkspaceSession {
       return {
         ok: false,
         message: `${info.label} is a concept; nothing downstream consumes one. Use art.promote(hash='${hash}' variant=…) to make it a location plate.`,
+      };
+    }
+    if (info.kind === 'reference') {
+      return {
+        ok: false,
+        message: `${info.label} is an upload; nothing generated it, so there is no work to bless. It counts by being pointed at with prompt.addRef.`,
+      };
+    }
+    if (info.suspended) {
+      // Accepting is the whole point of suspension: it says these bytes are the answer, and they
+      // were drawn against a reference that has since moved.
+      return {
+        ok: false,
+        message: `${info.label} is suspended: ${info.suspended}. Repin or regenerate it first.`,
       };
     }
     return {
@@ -659,6 +849,14 @@ export class WorkspaceSession {
       return {
         ok: false,
         reason: `${info.label} is a concept: the planner never made it, so there is no task to re-run. Draw it again with art.redraw(hash='${hash}'), which takes an edited prompt.`,
+      };
+    }
+    // Same shape as the concept refusal, for the same reason: an upload's `sourceTask` is a hash of
+    // the request that brought the bytes in, and no node ever answered to it.
+    if (info.kind === 'reference') {
+      return {
+        ok: false,
+        reason: `${info.label} is an upload: nothing generated it, so there is no task to re-run. Bring in a different image with asset.upload(file=…).`,
       };
     }
     const task = info.sourceTask ? project.graph.get(info.sourceTask) : undefined;
@@ -812,6 +1010,634 @@ export class WorkspaceSession {
   }
 
   /**
+   * The composed prompt for one asset: the chunks the builders derived, what the author's override
+   * does to them, and the one string that would be sent. `null` when the manifest has never heard
+   * of the hash.
+   *
+   * The pane reads this off `assetInfo`, so a picture and its prompt are one round trip; the
+   * command is the same projection for an agent and for CDP.
+   */
+  async promptView(hash: string): Promise<PromptView | null> {
+    return this.promptViewOf(await loadProject(this.dir), hash);
+  }
+
+  /**
+   * The reference strip for each chunk: the pin, what it is called, the slot it follows and whether
+   * that slot has moved. One label pass and one manifest read, shared by every chunk on the card.
+   */
+  private chunkRefs(
+    project: LoadedProject,
+    override: PromptOverride | undefined,
+  ): (chunk: string) => ChunkRefInfo[] {
+    if (!override?.refs) return () => [];
+    const manifest = project.store.manifest();
+    const labels = labelContext(project.model, project.graph);
+    const names = labelAssets(manifest, labels);
+    const ctx = { ...labels, assets: manifest };
+    return (chunk) =>
+      (override.refs?.[chunk] ?? []).map((ref) => ({
+        pin: ref.pin,
+        ext: ref.ext,
+        label: names.get(ref.pin) ?? ref.pin.slice(0, 8),
+        ...(ref.from ? { from: slotKey(ref.from) } : {}),
+        ...(refDrift(ref, ctx) ? { drift: true } : {}),
+      }));
+  }
+
+  /** {@link promptView} against a project already loaded — what `assetInfo` folds in. */
+  private async promptViewOf(project: LoadedProject, hash: string): Promise<PromptView | null> {
+    const asset = project.store.manifest().find((a) => a.hash === hash);
+    if (!asset) return null;
+    const shots = await readAllShots(project);
+    const task = project.graph.get(asset.sourceTask);
+    const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
+    const chunks = deriveChunks(asset, ctx);
+    if (!chunks) {
+      // Nothing to compose: a concept, whose prompt was typed rather than derived, or an asset the
+      // project has stopped describing. Either way the recorded prompt is all there is to show — a
+      // concept as the one `request` chunk it was asked for, so the pane draws one kind of card.
+      const text = asset.prompt ?? '';
+      return {
+        hash,
+        mode: 'custom',
+        text,
+        chunks:
+          asset.kind === 'concept'
+            ? [
+                {
+                  key: 'request',
+                  category: 'request',
+                  origin: { kind: 'request' },
+                  text,
+                  derived: text,
+                  muted: false,
+                },
+              ]
+            : [],
+        held: false,
+        missing: [],
+        frozen: frozenReason(asset.kind),
+      };
+    }
+
+    const rung = rungOf(asset);
+    const override = rung ? overrideAt(rung, { model: project.model, shots }) : undefined;
+    const composed = composePrompt(chunks, override);
+    // Only a whole-prompt rewrite can lose a clause; in chunks mode the text *is* the chunks, and
+    // marking them would say "not found" about words that are demonstrably there.
+    const marks =
+      composed.mode === 'chunks'
+        ? undefined
+        : new Map(
+            coverage(enabledChunks(composed.chunks), composed.text).map((c) => [c.key, c.found]),
+          );
+    const refsOf = this.chunkRefs(project, override);
+    return {
+      hash,
+      mode: composed.mode,
+      text: composed.text,
+      chunks: composed.chunks.map((c) => ({
+        key: c.key,
+        category: c.category,
+        origin: c.origin,
+        ...(c.also ? { also: c.also } : {}),
+        text: c.text,
+        derived: c.derived,
+        ...(c.edit ? { edit: c.edit } : {}),
+        ...(c.authored === undefined ? {} : { authored: c.authored }),
+        muted: c.muted,
+        ...(c.editStale === undefined ? {} : { editStale: c.editStale }),
+        ...(marks?.has(c.key) ? { represented: marks.get(c.key)! } : {}),
+        ...(refsOf(c.key).length ? { refs: refsOf(c.key) } : {}),
+      })),
+      held: composed.held,
+      missing: marks ? [...marks].filter(([, found]) => !found).map(([key]) => key) : [],
+      ...(override?.custom ? { custom: override.custom } : {}),
+      ...(override?.agent
+        ? {
+            agent: {
+              ...(override.agent.modelId ? { modelId: override.agent.modelId } : {}),
+              ...(override.agent.at ? { at: override.agent.at } : {}),
+            },
+          }
+        : {}),
+    };
+  }
+
+  /** What one prompt edit would do, without writing it — every `prompt.*` command's `check`. */
+  private async previewPrompt(hash: string, edit: PromptEdit): Promise<PromptResult> {
+    const project = await loadProject(this.dir);
+    const decided = await this.promptPlan(project, hash, edit);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /** Write one prompt edit at the rung that owns the picture. */
+  private async writePrompt(hash: string, edit: PromptEdit): Promise<PromptWriteResult> {
+    const project = await loadProject(this.dir);
+    const decided = await this.promptPlan(project, hash, edit);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    await decided.write();
+    return { ok: true, message: decided.note, written: [relPath(this.dir, decided.file)] };
+  }
+
+  previewPromptChunk(
+    hash: string,
+    chunk: string,
+    op: ChunkOp,
+    text: string,
+  ): Promise<PromptResult> {
+    return this.previewPrompt(hash, { op: 'chunk', chunk, how: op, text });
+  }
+
+  setPromptChunk(
+    hash: string,
+    chunk: string,
+    op: ChunkOp,
+    text: string,
+  ): Promise<PromptWriteResult> {
+    return this.writePrompt(hash, { op: 'chunk', chunk, how: op, text });
+  }
+
+  previewMoveChunk(hash: string, chunk: string, after: string): Promise<PromptResult> {
+    return this.previewPrompt(hash, { op: 'move', chunk, after });
+  }
+
+  movePromptChunk(hash: string, chunk: string, after: string): Promise<PromptWriteResult> {
+    return this.writePrompt(hash, { op: 'move', chunk, after });
+  }
+
+  previewCustomPrompt(hash: string, text: string): Promise<PromptResult> {
+    return this.previewPrompt(hash, { op: 'custom', text });
+  }
+
+  setCustomPrompt(hash: string, text: string): Promise<PromptWriteResult> {
+    return this.writePrompt(hash, { op: 'custom', text });
+  }
+
+  previewClearPrompt(hash: string, part: ClearPart): Promise<PromptResult> {
+    return this.previewPrompt(hash, { op: 'clear', part });
+  }
+
+  clearPrompt(hash: string, part: ClearPart): Promise<PromptWriteResult> {
+    return this.writePrompt(hash, { op: 'clear', part });
+  }
+
+  /**
+   * The `ChunkRef` an address would attach, and the cycle it would close if it closed one (§14).
+   *
+   * Enforcement is here, at write time, rather than in the planner: refusing at plan time would mean
+   * the project is already broken on disk and the author meets a run failure instead of a rejected
+   * gesture. A bare hash attaches with no `from` — an upload or a concept *is* its own identity, so
+   * there is no slot under it and it can never drift.
+   */
+  private async addRefPlan(
+    hash: string,
+    chunk: string,
+    ref: string,
+  ): Promise<
+    { ok: false; reason: string } | { ok: true; project: LoadedProject; edit: PromptEdit }
+  > {
+    const project = await loadProject(this.dir);
+    const asset = project.store.manifest().find((a) => a.hash === hash);
+    if (!asset) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
+
+    const binding = parseSlot(ref);
+    if (!binding) {
+      return {
+        ok: false,
+        reason: `"${ref}" names no reference. Give an asset hash, or a slot: portrait:<character>, sheet:<character>/<outfit>/<angle>, plate:<location>/<variant>, shot:<scene>/<shot>.`,
+      };
+    }
+    const labels = labelContext(project.model, project.graph);
+    const pin = resolveBinding(binding, { ...labels, assets: project.store.manifest() });
+    if (!pin) {
+      return {
+        ok: false,
+        reason: `Nothing fills ${slotLabel(binding)} today, so there is no image to attach.`,
+      };
+    }
+    const target = project.store.manifest().find((a) => a.hash === pin);
+    if (!target) {
+      return {
+        ok: false,
+        reason: `${slotLabel(binding)} names ${pin.slice(0, 8)}, which is not in the manifest.`,
+      };
+    }
+
+    const shots = await readAllShots(project);
+    const from = slotOf(asset, labels.angleOf?.(asset.sourceTask));
+    if (from) {
+      const path = refCycle(from, binding, { model: project.model, shots });
+      if (path) return { ok: false, reason: `Cannot attach: ${cycleRefusal(path)}.` };
+    }
+    return {
+      ok: true,
+      project,
+      edit: {
+        op: 'addRef',
+        chunk,
+        ref: { pin, ext: target.ext, ...(binding.kind === 'asset' ? {} : { from: binding }) },
+      },
+    };
+  }
+
+  /** What `prompt.addRef` would attach, and every reason it would not. */
+  async previewAddRef(hash: string, chunk: string, ref: string): Promise<PromptResult> {
+    const plan = await this.addRefPlan(hash, chunk, ref);
+    if (!plan.ok) return { ok: false, message: plan.reason };
+    const decided = await this.promptPlan(plan.project, hash, plan.edit);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /** Attach a reference image to one chunk. It re-keys the task, so the picture re-renders. */
+  async addPromptRef(hash: string, chunk: string, ref: string): Promise<PromptWriteResult> {
+    const plan = await this.addRefPlan(hash, chunk, ref);
+    if (!plan.ok) return { ok: false, message: plan.reason, written: [] };
+    const decided = await this.promptPlan(plan.project, hash, plan.edit);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    await decided.write();
+    return { ok: true, message: decided.note, written: [relPath(this.dir, decided.file)] };
+  }
+
+  previewDropRef(hash: string, chunk: string, ref: string): Promise<PromptResult> {
+    return this.previewPrompt(hash, { op: 'dropRef', chunk, ref });
+  }
+
+  dropPromptRef(hash: string, chunk: string, ref: string): Promise<PromptWriteResult> {
+    return this.writePrompt(hash, { op: 'dropRef', chunk, ref });
+  }
+
+  /**
+   * What a repin would move, decided against one load: the slot the reference names, the hash that
+   * slot holds today, and — when the author is re-approving — the `done` record that keeps the
+   * existing bytes (§13). Both the check and the write ask this, so they cannot disagree.
+   *
+   * The adopted task's inputs are the previous node's with the old pin swapped for the new one in
+   * place. That is exact rather than a re-derivation: a repin touches only the authored tail of
+   * `refs`, so the result is provably what the planner will compute. If the derived half moved too,
+   * the adopted node is simply an orphan and the picture re-renders — the fail-safe direction.
+   */
+  private async repinPlan(
+    hash: string,
+    chunk: string,
+    ref: string,
+    regenerate: boolean,
+  ): Promise<
+    | { ok: false; reason: string }
+    | {
+        ok: true;
+        project: LoadedProject;
+        edit: PromptEdit;
+        note: string;
+        adoption?: () => Promise<void>;
+      }
+  > {
+    const project = await loadProject(this.dir);
+    const asset = project.store.manifest().find((a) => a.hash === hash);
+    if (!asset) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
+    const found = await this.promptChunksOf(project, hash);
+    if (!found.ok) return found;
+
+    const pinned = found.override?.refs?.[chunk]?.find(
+      (r) => r.pin === ref || r.pin.startsWith(ref),
+    );
+    if (!pinned) {
+      return { ok: false, reason: `No reference "${ref}" on "${chunk}" of ${hash.slice(0, 8)}.` };
+    }
+    if (!pinned.from) {
+      return {
+        ok: false,
+        reason: `${pinned.pin.slice(0, 8)} is an unlinked reference — it names no slot, so there is nothing to repin it to.`,
+      };
+    }
+    const to = resolveBinding(pinned.from, {
+      ...labelContext(project.model, project.graph),
+      assets: project.store.manifest(),
+    });
+    if (!to) {
+      return {
+        ok: false,
+        reason: `Nothing fills that slot today, so there is no hash to repin ${pinned.pin.slice(0, 8)} to.`,
+      };
+    }
+    const target = project.store.manifest().find((a) => a.hash === to);
+    if (!target)
+      return {
+        ok: false,
+        reason: `The slot names ${to.slice(0, 8)}, which is not in the manifest.`,
+      };
+    const edit: PromptEdit = { op: 'repin', chunk, ref: pinned.pin, to, ext: target.ext };
+
+    if (regenerate) {
+      return {
+        ok: true,
+        project,
+        edit,
+        note: `Repin to ${to.slice(0, 8)} and re-render — the task is newly keyed, so the next run draws it again.`,
+      };
+    }
+
+    const node = project.graph.get(asset.sourceTask);
+    if (!node || !('refs' in node.inputs)) {
+      return {
+        ok: false,
+        reason: `${hash.slice(0, 8)} has no task on record to re-approve against, so it can only be repinned with regenerate=true.`,
+      };
+    }
+    const inputs = {
+      ...node.inputs,
+      refs: node.inputs.refs.map((r) =>
+        r.hash === pinned.pin ? { hash: to, ext: target.ext } : r,
+      ),
+    } as TaskInputs[TaskKind];
+    const req = { kind: node.kind, inputs, output: asset };
+    const ctx = {
+      has: (h: string) => project.store.has(h),
+      node: (h: string) => project.graph.get(h),
+    };
+    const decided = adoptionOf(req, ctx);
+    if (!decided.ok) return { ok: false, reason: decided.reason };
+    return {
+      ok: true,
+      project,
+      edit,
+      note: `Repin to ${to.slice(0, 8)} and keep these bytes — the newly-keyed task is recorded done with ${hash.slice(0, 8)}, so nothing re-renders.`,
+      adoption: async () => {
+        const done = await adopt(project.paths, req, ctx);
+        if (!done.ok) throw new Error(done.reason);
+      },
+    };
+  }
+
+  async previewRepin(
+    hash: string,
+    chunk: string,
+    ref: string,
+    regenerate: boolean,
+  ): Promise<PromptResult> {
+    const plan = await this.repinPlan(hash, chunk, ref, regenerate);
+    if (!plan.ok) return { ok: false, message: plan.reason };
+    const decided = await this.promptPlan(plan.project, hash, plan.edit);
+    return decided.ok ? { ok: true, message: plan.note } : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Move a pinned reference to what its slot holds now. Written before the adoption is logged, and
+   * the adoption is decided *before* either — so a refusal leaves the pin where it was rather than
+   * a moved pin with no output.
+   */
+  async repinPrompt(
+    hash: string,
+    chunk: string,
+    ref: string,
+    regenerate: boolean,
+  ): Promise<PromptWriteResult> {
+    const plan = await this.repinPlan(hash, chunk, ref, regenerate);
+    if (!plan.ok) return { ok: false, message: plan.reason, written: [] };
+    const decided = await this.promptPlan(plan.project, hash, plan.edit);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    await decided.write();
+    if (plan.adoption) await plan.adoption();
+    return { ok: true, message: plan.note, written: [relPath(this.dir, decided.file)] };
+  }
+
+  /**
+   * What `prompt.condense` would spend the call on. It cannot know what the model will write, so
+   * this answers the two questions that do not need it: is there anything to condense, and is
+   * there a hand-written prompt in the way.
+   */
+  async previewCondense(hash: string, force: boolean): Promise<PromptResult> {
+    const view = await this.promptView(hash);
+    if (!view) return { ok: false, message: `No asset "${hash}" in the manifest.` };
+    if (view.frozen) return { ok: false, message: view.frozen };
+    if (view.mode === 'custom' && !force) {
+      return {
+        ok: false,
+        message:
+          `A custom prompt is already written. prompt.condense(hash='${hash.slice(0, 8)}' ` +
+          'force=true) reconciles it against the chunks instead of discarding it.',
+      };
+    }
+    const n = view.chunks.filter((c) => !c.muted).length;
+    return { ok: true, message: `Condense ${n} clause${n === 1 ? '' : 's'} into one prompt.` };
+  }
+
+  /**
+   * Condense the chunks into one prompt and store it at the rung. The condensation is **held** the
+   * moment the chunks move under it — `composePrompt` keeps sending this text rather than the
+   * fresh chunks, because re-rendering would move the task hash and re-render the picture.
+   */
+  async condenseAssetPrompt(hash: string, force: boolean): Promise<PromptWriteResult> {
+    const allowed = await this.previewCondense(hash, force);
+    if (!allowed.ok) return { ok: false, message: allowed.message, written: [] };
+    const project = await loadProject(this.dir);
+    const decided = await this.promptChunksOf(project, hash);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const { chunks, override } = decided;
+    const given = enabledChunks(effectiveChunks(chunks, override));
+
+    const result = await this.while('condensing a prompt', async () => {
+      const text = await this.condensingText(project, renderPrompt(given));
+      return condensePrompt(given, text, force ? override?.custom : undefined);
+    });
+    if (result.source === 'fallback') {
+      return {
+        ok: false,
+        message: 'No text model answered, so nothing was condensed and nothing was written.',
+        written: [],
+      };
+    }
+
+    const written = await this.writePrompt(hash, {
+      op: 'agent',
+      text: result.prompt,
+      modelId: project.config.models.text,
+      at: new Date().toISOString(),
+    });
+    if (!written.ok) return written;
+    const lost = result.coverage.filter((c) => !c.found).map((c) => c.key);
+    return {
+      ...written,
+      message:
+        `Condensed ${given.length} clauses into one prompt.` +
+        (lost.length ? ` Not found in the result: ${lost.join(', ')}.` : ''),
+    };
+  }
+
+  /**
+   * Which chunks the effective prompt still appears to say — `prompt.check`, and the same answer
+   * the pane's marks come from. A read, so it never refuses over mode: in chunks mode nothing can
+   * be missing, which is itself worth being able to ask.
+   */
+  async checkPrompt(hash: string): Promise<PromptResult> {
+    const view = await this.promptView(hash);
+    if (!view) return { ok: false, message: `No asset "${hash}" in the manifest.` };
+    if (!view.missing.length) {
+      return { ok: true, message: `Every clause is represented in the ${view.mode} prompt.` };
+    }
+    return {
+      ok: true,
+      message: `Not found in the ${view.mode} prompt: ${view.missing.join(', ')}.`,
+    };
+  }
+
+  /** `project.yaml` as the app reads it, for the Project editor. */
+  async projectView(): Promise<ProjectView> {
+    const project = await loadProject(this.dir);
+    const { config } = project;
+    return {
+      root: this.dir,
+      title: config.title,
+      artStyle: config.art_style,
+      start: config.start ?? '',
+      models: { ...config.models },
+      imageParams: { ...config.image_params },
+      imageTasks: project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length,
+    };
+  }
+
+  /** What `project.setArtStyle` would do, without writing it. */
+  async previewArtStyle(style: string): Promise<PromptResult> {
+    const project = await loadProject(this.dir);
+    if (project.config.art_style === style) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    const count = project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length;
+    const said = style.trim() ? `Set the art style to "${style.trim()}".` : 'Clear the art style.';
+    return {
+      ok: true,
+      message: `${said} It opens every image prompt, so it re-keys ${count} image task(s).`,
+    };
+  }
+
+  /**
+   * Write the project's art style. It is spliced into `project.yaml` rather than re-serialized,
+   * so an author's comments and key order survive — the same posture the prose writers take with
+   * front-matter.
+   */
+  async setProjectArtStyle(style: string): Promise<PromptWriteResult> {
+    const preview = await this.previewArtStyle(style);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setArtStyle(this.dir, style))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok: true,
+      message: preview.message,
+      written: [relPath(this.dir, join(this.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /**
+   * The text provider a condensation runs against. Under `--mock` the backend echoes the prompt,
+   * which no schema accepts, so every condensation would take the deterministic fallback and the
+   * real path would never run; the canned answer is the identity condensation, which exercises it
+   * with the chunks' own words.
+   */
+  private condensingText(project: LoadedProject, flat: string): Promise<TextLLM> {
+    if (!this.mock) return buildProviders(project, false).then((p) => p.text);
+    return Promise.resolve(
+      createMockProviders({ textResponses: [JSON.stringify({ prompt: flat, omitted: [] })] }).text,
+    );
+  }
+
+  /** The derivation an override sits on: the chunks, the rung, and what is stored there today. */
+  private async promptChunksOf(
+    project: LoadedProject,
+    hash: string,
+  ): Promise<
+    | { ok: false; reason: string }
+    | {
+        ok: true;
+        rung: PromptRung;
+        chunks: PromptChunk[];
+        override: PromptOverride | undefined;
+      }
+  > {
+    const asset = project.store.manifest().find((a) => a.hash === hash);
+    if (!asset) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
+    const shots = await readAllShots(project);
+    const task = project.graph.get(asset.sourceTask);
+    const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
+    const chunks = deriveChunks(asset, ctx);
+    const rung = rungOf(asset);
+    if (!chunks || !rung) return { ok: false, reason: frozenReason(asset.kind) };
+    return { ok: true, rung, chunks, override: overrideAt(rung, { model: project.model, shots }) };
+  }
+
+  /**
+   * The rule behind every `prompt.*` write, decided once against a fresh load: which rung owns
+   * this picture, what the edit does to what is stored there, and which file that lands in.
+   *
+   * The two writers are the same two `artNotesPlan` has — an entity sheet through `@vn/model`'s
+   * `apply*Edit`, or `work/shots/<sceneId>.json` — because an override lives beside the art notes
+   * it overrides, and this is the only place in the app that split appears.
+   */
+  private async promptPlan(
+    project: LoadedProject,
+    hash: string,
+    edit: PromptEdit,
+  ): Promise<
+    | { ok: false; reason: string }
+    | { ok: true; note: string; file: string; write: () => Promise<void> }
+  > {
+    const found = await this.promptChunksOf(project, hash);
+    if (!found.ok) return found;
+    const { rung, chunks, override } = found;
+    const next = applyPromptEdit(chunks, override, edit);
+    if (!next.ok) return next;
+
+    if (rung.kind === 'shot') {
+      const scene = project.model.scenes.get(rung.sceneId);
+      if (!scene) return { ok: false, reason: `No scene "${rung.sceneId}" to write to.` };
+      return {
+        ok: true,
+        note: next.note,
+        file: project.paths.shotsFile(rung.sceneId),
+        write: async () => {
+          const loaded = await readShots(
+            project.paths,
+            scene.id,
+            new Set(scene.lines.map((l) => l.id)),
+          );
+          if (!loaded) throw new Error(`Scene "${scene.id}" has no storyboard to write to.`);
+          await writeShots(
+            project.paths,
+            scene.id,
+            loaded.shots.map((s) =>
+              s.id === rung.shotId ? withPromptOverride(s, next.override) : s,
+            ),
+          );
+        },
+      };
+    }
+
+    const location = rung.kind === 'variant';
+    const kind = location ? 'location' : 'character';
+    const id = rung.kind === 'variant' ? rung.locationId : rung.characterId;
+    const docs = location ? project.inputs.locationDocs : project.inputs.characterDocs;
+    const doc = entityDoc(docs, id);
+    if (!doc) return { ok: false, reason: `No sheet on disk for ${kind} "${id}".` };
+    return {
+      ok: true,
+      note: next.note,
+      file: doc.file,
+      write: async () => {
+        const edited =
+          rung.kind === 'variant'
+            ? applyLocationEdit(doc.doc, locationOverrideEdit(project, rung, next.override))
+            : applyCharacterEdit(doc.doc, characterOverrideEdit(project, rung, next.override));
+        if (!edited.ok) throw new Error(`Edit rejected: ${edited.diagnostic.message}`);
+        await writeFileAtomic(doc.file, docToMarkdown(edited.value.doc));
+      },
+    };
+  }
+
+  /**
    * The rule behind both concept halves, decided once against a fresh load: is there something to
    * draw, is there a root to write it into, and what would the prompt say.
    */
@@ -888,6 +1714,62 @@ export class WorkspaceSession {
       message: `Drew a concept${of}: ${result.ref.hash.slice(0, 8)}.`,
       hash: result.ref.hash,
       written: [relPath(this.dir, result.file), relPath(this.dir, project.paths.baseManifest)],
+    };
+  }
+
+  /**
+   * The rule behind both upload halves: read the bytes once, then let `uploadOf` say everything
+   * that can be refused. A relative path is resolved against the project, so a command reads the
+   * same file the file picker named.
+   */
+  private async uploadPlan(
+    file: string,
+    title: string,
+  ): Promise<
+    { ok: false; reason: string } | { ok: true; project: LoadedProject; path: string; note: string }
+  > {
+    const said = file.trim();
+    if (!said) return { ok: false, reason: 'Nothing to upload: no file was named.' };
+    const path = isAbsolute(said) ? said : join(this.dir, said);
+    const project = await loadProject(this.dir);
+    let bytes: Uint8Array;
+    try {
+      bytes = new Uint8Array(await readFile(path));
+    } catch {
+      return { ok: false, reason: `Cannot read ${relPath(this.dir, path)}.` };
+    }
+    const decided = uploadOf(project.store, { file: path, title, bytes });
+    return decided.ok
+      ? { ok: true, project, path, note: decided.plan.note }
+      : { ok: false, reason: decided.reason };
+  }
+
+  /** What `asset.upload` would bring in, without writing anything. */
+  async previewUpload(file: string, title: string): Promise<{ ok: boolean; message: string }> {
+    const decided = await this.uploadPlan(file, title);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Bring an outside image into the base asset store as a `reference`. Nothing generated it, so it
+   * is never accepted and never planned — it exists only to be pointed at by a prompt chunk.
+   */
+  async uploadAsset(
+    file: string,
+    title: string,
+  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
+    const decided = await this.uploadPlan(file, title);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const { project, path } = decided;
+    const result = await uploadReference({ store: project.store }, { file: path, title });
+    const already = result.known ? ' It was already in the store; nothing new was written.' : '';
+    return {
+      ok: true,
+      message: `Uploaded "${result.title}" as ${result.ref.hash.slice(0, 8)}.${already}`,
+      hash: result.ref.hash,
+      written: [relPath(this.dir, result.stored), relPath(this.dir, project.paths.baseManifest)],
     };
   }
 

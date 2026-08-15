@@ -13,7 +13,6 @@ const character = (id: string): Character => ({
   description: `${id} description`,
   traits: [],
   palette: [],
-  referenceImages: [],
   status: 'approved',
   defaultOutfit: 'uniform',
   outfits: [{ id: 'uniform', characterId: id, description: 'school uniform' }],

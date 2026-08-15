@@ -64,6 +64,15 @@ describe('art notes', () => {
     );
   });
 
+  // The same claim for the chunk model underneath: composing a prompt from chunks that no
+  // override touches has to produce the byte-identical string the flat builders did, or every
+  // task in every existing project re-keys (`docs/plans/chunked-prompts.md` §18).
+  it('composes the same characters when no override is authored either', () => {
+    const c = character('aiko', 'approved', 'h1');
+    expect(buildPortraitPrompt(c, config)).toBe(buildPortraitPrompt(c, config, { mode: 'chunks' }));
+    expect(c.promptOverride).toBeUndefined();
+  });
+
   it('speaks the entity rung and the narrow rung, widest first', () => {
     const c = character('aiko');
     c.artNotes = 'ink-wash linework';

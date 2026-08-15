@@ -82,6 +82,56 @@ describe('shots file', () => {
     expect(loaded?.dropped).toEqual([{ shotId: 'arrival__establishing', lineIds: ['arrival:L9'] }]);
   });
 
+  it('round-trips a prompt override as authored material', async () => {
+    const paths = await tempPaths();
+    const overridden = shot({
+      promptOverride: {
+        mode: 'chunks',
+        mute: ['camera'],
+        append: { subject: { text: 'Seen from behind.', of: 'abc123' } },
+      },
+    });
+    await writeShots(paths, 'arrival', [overridden]);
+
+    const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    // Top level, beside artNotes: an override is something a human wrote, not run output.
+    expect(raw.shots[0].promptOverride.mute).toEqual(['camera']);
+    expect(raw.shots[0].shotData).toBeUndefined();
+
+    expect((await readShots(paths, 'arrival'))?.shots).toEqual([overridden]);
+    // Self-testing: a second write of what was just read must find the bytes identical.
+    expect(await writeShots(paths, 'arrival', [overridden])).toBe(false);
+  });
+
+  it('round-trips a chunk’s references, pin and binding both', async () => {
+    const paths = await tempPaths();
+    const withRefs = shot({
+      promptOverride: {
+        mode: 'chunks',
+        refs: {
+          subject: [
+            {
+              pin: 'cc33',
+              ext: 'png',
+              from: { kind: 'plate', locationId: 'cafe', variant: 'night' },
+            },
+          ],
+        },
+      },
+    });
+    await writeShots(paths, 'arrival', [withRefs]);
+    expect((await readShots(paths, 'arrival'))?.shots).toEqual([withRefs]);
+    expect(await writeShots(paths, 'arrival', [withRefs])).toBe(false);
+  });
+
+  it('writes no key for an override that says nothing', async () => {
+    const paths = await tempPaths();
+    await writeShots(paths, 'arrival', [shot()]);
+    expect(await writeShots(paths, 'arrival', [shot({ promptOverride: { mode: 'chunks' } })])).toBe(
+      false,
+    );
+  });
+
   it('deletes a file so the scene reads as undecomposed again', async () => {
     const paths = await tempPaths();
     await writeShots(paths, 'arrival', [shot()]);

@@ -1,11 +1,14 @@
 import {
   characterFrontMatter,
   locationFrontMatter,
+  promptOverrideFrom,
   sceneFrontMatter,
   type Character,
   type CharacterFrontMatter,
   type Diagnostic,
   type Location,
+  type LocationFrontMatter,
+  type LocationVariant,
   type Outfit,
   type Scene,
 } from '@vn/types';
@@ -41,13 +44,14 @@ export function characterFromDoc(doc: FrontMatterDoc): EntityResult<Character> {
     description: doc.body.trim(),
     traits: fm.traits,
     palette: fm.palette,
-    referenceImages: fm.reference_images,
     status: fm.status,
     defaultOutfit: fm.default_outfit,
     outfits: wardrobeOf(fm.id, fm.default_outfit, fm.outfits),
     artNotes: fm.art_notes,
     approvedPortrait: fm.approved_portrait,
   };
+  // The sheet's own override is the *portrait*'s; a model sheet's lives on the outfit it wears.
+  if (fm.prompt_override) character.promptOverride = promptOverrideFrom(fm.prompt_override);
   return { ok: true, value: character };
 }
 
@@ -62,11 +66,17 @@ function wardrobeOf(
   defaultOutfit: string,
   authored: CharacterFrontMatter['outfits'],
 ): Outfit[] {
-  const outfits = Object.entries(authored).map(([id, entry]) =>
-    typeof entry === 'string'
-      ? { id, characterId, description: entry }
-      : { id, characterId, description: entry.description, artNotes: entry.art_notes },
-  );
+  const outfits = Object.entries(authored).map(([id, entry]): Outfit => {
+    if (typeof entry === 'string') return { id, characterId, description: entry };
+    const outfit: Outfit = {
+      id,
+      characterId,
+      description: entry.description,
+      artNotes: entry.art_notes,
+    };
+    if (entry.prompt_override) outfit.promptOverride = promptOverrideFrom(entry.prompt_override);
+    return outfit;
+  });
   if (!outfits.some((o) => o.id === defaultOutfit)) {
     outfits.unshift({ id: defaultOutfit, characterId, description: '' });
   }
@@ -131,6 +141,17 @@ export function sceneFromDoc(doc: FrontMatterDoc, id: string): EntityResult<Load
   return { ok: true, value: { scene, mined: split.mined, diagnostics: split.diagnostics } };
 }
 
+/**
+ * One authored variant entry as a {@link LocationVariant}. A bare string is the id alone; the long
+ * form may also describe itself, carry art direction, or override the plate's prompt.
+ */
+function variantOf(v: LocationFrontMatter['variants'][number]): LocationVariant {
+  if (typeof v === 'string') return { id: v, description: '' };
+  const variant: LocationVariant = { id: v.id, description: v.description, artNotes: v.art_notes };
+  if (v.prompt_override) variant.promptOverride = promptOverrideFrom(v.prompt_override);
+  return variant;
+}
+
 /** Build a user-authored Location from a parsed `locations/<id>.md` doc. */
 export function locationFromDoc(doc: FrontMatterDoc): EntityResult<Location> {
   const parsed = locationFrontMatter.safeParse(doc.data);
@@ -153,11 +174,7 @@ export function locationFromDoc(doc: FrontMatterDoc): EntityResult<Location> {
     mood: fm.mood,
     lighting: fm.lighting,
     palette: fm.palette,
-    variants: fm.variants.map((v) =>
-      typeof v === 'string'
-        ? { id: v, description: '' }
-        : { id: v.id, description: v.description, artNotes: v.art_notes },
-    ),
+    variants: fm.variants.map(variantOf),
     artNotes: fm.art_notes,
     mined: false,
   };

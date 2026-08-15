@@ -38,7 +38,6 @@ describe('wardrobesOf', () => {
       description: '',
       traits: [],
       palette: [],
-      referenceImages: [],
       status: 'draft',
       defaultOutfit,
       outfits: outfits.map((o) => ({ id: o, characterId: id, description: '' })),

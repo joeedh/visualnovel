@@ -20,6 +20,7 @@ export const EDITORS = [
   { id: 'wiki', title: 'Wiki', what: 'one markdown document' },
   { id: 'documents', title: 'Documents', what: "the project's documents and what links to them" },
   { id: 'asset', title: 'Asset', what: 'one generated asset, and the art notes behind it' },
+  { id: 'project', title: 'Project', what: 'project.yaml — art style, models, image params' },
 ] as const;
 
 /** An editor's area name — the value `view.open`, `view.focus` and a stored layout all use. */

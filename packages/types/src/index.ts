@@ -1,4 +1,5 @@
 export * from './entities.js';
+export * from './prompt.js';
 export * from './tasks.js';
 export * from './providers.js';
 export * from './textmodels.js';

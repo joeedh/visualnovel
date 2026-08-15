@@ -45,17 +45,18 @@ export const interactionTargets = define({
     carried: prop.string(
       'what is being carried — a scene id, an edge id for branch.unwire, a ' +
         '`<shotId>#start`/`#end` handle for timeline.cover, a shot id for timeline.reorder, ' +
-        'or a line id for script.moveLine',
+        'a line id for script.moveLine, or a chunk key for prompt.reorder',
     ),
     scene: prop.string('which scene, for a gesture judged against one scene', { default: '' }),
+    asset: prop.string('which asset, for prompt.reorder', { default: '' }),
   },
-  async run({ interaction, carried, scene }, ctx) {
+  async run({ interaction, carried, scene, asset }, ctx) {
     const gesture = desktopInteractions.get(interaction);
     if (!gesture) throw new Error(`No interaction "${interaction}".`);
 
     // Each gesture is judged against the state its surface holds, so the state is built per
     // namespace rather than there being one union every interaction has to accept.
-    const verdicts = gesture.targets(await stateFor(interaction, scene, ctx.host), carried);
+    const verdicts = gesture.targets(await stateFor(interaction, scene, asset, ctx.host), carried);
     const accepted = verdicts.filter((v) => v.accept).length;
     const summary = `${accepted} of ${verdicts.length} target(s) would accept ${carried}.`;
     return {
@@ -68,9 +69,25 @@ export const interactionTargets = define({
 /**
  * The state a gesture's namespace is judged against. `script.*` takes no `scene` prop: a line id
  * names its own scene, so passing one would be a second answer to the same question.
+ *
+ * `prompt.*` is judged against one asset's chunks **in effective order**, which is what
+ * `promptView` returns — so the state carries no `order` of its own and a move computes the whole
+ * order from what is on screen, exactly as the pane does.
  */
-async function stateFor(interaction: string, scene: string, host: CommandHost): Promise<unknown> {
+async function stateFor(
+  interaction: string,
+  scene: string,
+  asset: string,
+  host: CommandHost,
+): Promise<unknown> {
   if (interaction.startsWith('script.')) return host.session.scriptState();
+  if (interaction.startsWith('prompt.')) {
+    if (!asset)
+      throw new Error(`"${interaction}" is judged against one asset — pass asset=<hash>.`);
+    const view = await host.session.promptView(asset);
+    if (!view) throw new Error(`No asset "${asset}" in the manifest.`);
+    return { hash: view.hash, chunks: view.chunks, mode: view.mode };
+  }
   if (!interaction.startsWith('timeline.')) return branchState(await host.session.storyGraph());
   if (!scene) throw new Error(`"${interaction}" is judged against one scene — pass scene=<id>.`);
   const { sceneId, lines, shots } = await host.session.sceneCoverage(scene);

@@ -37,6 +37,9 @@ export const gateApprove = define({
         reason: `${characterId} has no candidate ${hash} (${state.candidates} on file).`,
       };
     }
+    if (state.suspended) {
+      return { ok: false, reason: `${hash.slice(0, 8)} is suspended: ${state.suspended}.` };
+    }
     // Already approved is not a refusal: approving a second candidate is how an author
     // changes their mind, and the command supports it.
     return {

@@ -13,7 +13,7 @@ Follow these steps when adding a character to this project.
 2. **Draft the front-matter** with `create_character`:
    - `status: draft` (always — promotion to `approved` happens in the art pipeline, not here).
    - `default_outfit`, a 2–3 color `palette`, and 3–4 `traits`.
-   - `reference_images: []` unless the user supplied real reference art.
+   - `art_notes:` only when the user asked for a specific look; leave it out otherwise.
 3. **Write a one-paragraph visual description** in the body: hair, eyes, build, silhouette,
    and what makes them recognizable at a glance. The image model reads this verbatim, so be
    concrete and avoid story spoilers.

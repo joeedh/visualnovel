@@ -22,7 +22,6 @@ export function character(
     description: `${id} description`,
     traits: [],
     palette: ['#112233'],
-    referenceImages: [],
     status,
     defaultOutfit: 'default',
     outfits: [{ id: 'default', characterId: id, description: '' }],

@@ -47,7 +47,8 @@ function mergeBindings(existing: AssetBinding[] | undefined, next?: AssetBinding
 /**
  * The kinds every later prompt references, and the ones the base root holds. `concept` is here
  * because it is authored-side art — a sketch of a place belongs beside that place's plates, and
- * promoting one to a plate must not have to move bytes between roots.
+ * promoting one to a plate must not have to move bytes between roots. `reference` is here because
+ * it is the most authored thing in the store: bytes a person chose, which nothing generated.
  */
 const BASE_KINDS = new Set<AssetKind>([
   'location_ref',
@@ -55,6 +56,7 @@ const BASE_KINDS = new Set<AssetKind>([
   'model_sheet',
   'outfit_sheet',
   'concept',
+  'reference',
 ]);
 
 /**

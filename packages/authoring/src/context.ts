@@ -41,7 +41,7 @@ screenplay/*.fountain — the whole story in one file; it is NOT read, and \`vng
 it into scenes/ chunks. Tell the author to run that rather than editing it.
 
 CHARACTER front-matter: id, name, status(draft|candidates|approved|locked),
-default_outfit, traits[], palette[ hex ], reference_images[], approved_portrait?.
+default_outfit, traits[], palette[ hex ], art_notes?, approved_portrait?.
 The markdown body is the canonical description fed to the model.
 
 LOCATION front-matter: id, name, mood?, lighting?, palette[ hex ], variants[ id ].

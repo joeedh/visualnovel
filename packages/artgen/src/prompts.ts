@@ -1,6 +1,21 @@
-import type { Character, ImageParams, Location, ProjectModel, Scene, Shot } from '@vn/types';
+import type {
+  AssetRef,
+  Character,
+  ImageParams,
+  Location,
+  ProjectModel,
+  PromptChunk,
+  PromptOverride,
+  Scene,
+  Shot,
+  Task,
+  TaskInputs,
+} from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { outfitFor, outfitText } from '@vn/model';
+import { makeTask } from '@vn/taskgraph';
+import { chunk, chunkList, composePrompt } from './chunks.js';
+import { authoredRefs } from './refs.js';
 
 /** Image params derived from project config + the configured image model id. */
 export function imageParams(config: ProjectConfig): ImageParams {
@@ -34,20 +49,125 @@ export function artClause(...notes: (string | undefined)[]): string {
   return said.length ? `Art direction: ${said.join(' ')}` : '';
 }
 
-/** P3 portrait prompt: neutral pose/expression, plain background (report §P3). */
-export function buildPortraitPrompt(character: Character, config: ProjectConfig): string {
-  return [
-    stylePreamble(config),
-    `Character portrait of ${character.name}.`,
-    character.description,
-    paletteClause(character.palette),
-    artClause(character.artNotes),
-    'Neutral pose and expression, plain neutral background, head-and-shoulders framing.',
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+/**
+ * P3 portrait chunks: one chunk per clause the builder has always assembled (report §P3).
+ *
+ * The one-slot-one-chunk rule is not a style preference — splitting a clause in two would change
+ * the rendered string and re-key every task in every existing project.
+ */
+export function buildPortraitChunks(character: Character, config: ProjectConfig): PromptChunk[] {
+  const id = character.id;
+  return chunkList(
+    chunk('style', 'style', stylePreamble(config), { kind: 'project', field: 'art_style' }),
+    chunk('subject', 'subject', `Character portrait of ${character.name}.`, {
+      kind: 'character',
+      id,
+      field: 'name',
+    }),
+    chunk('description', 'description', character.description, {
+      kind: 'character',
+      id,
+      field: 'description',
+    }),
+    chunk('palette', 'palette', paletteClause(character.palette), {
+      kind: 'character',
+      id,
+      field: 'palette',
+    }),
+    chunk('art-notes', 'art-notes', artClause(character.artNotes), {
+      kind: 'art-notes',
+      target: `character:${id}`,
+    }),
+    chunk(
+      'scaffolding',
+      'scaffolding',
+      'Neutral pose and expression, plain neutral background, head-and-shoulders framing.',
+      { kind: 'builder' },
+    ),
+  );
+}
+
+/**
+ * P3 portrait prompt: neutral pose/expression, plain background (report §P3).
+ *
+ * The override defaults to the one stored at this prompt's own rung (§2), so every existing caller
+ * — the planner, the desktop's re-derivation — gets the authored answer without passing anything.
+ * `override` is the preview seam: a surface showing what a not-yet-saved edit *would* send passes a
+ * candidate here rather than writing it first. A project authoring none renders the derived chunks,
+ * character for character as before.
+ */
+export function buildPortraitPrompt(
+  character: Character,
+  config: ProjectConfig,
+  override?: PromptOverride,
+): string {
+  return composePrompt(buildPortraitChunks(character, config), override ?? character.promptOverride)
+    .text;
+}
+
+/**
+ * The reference images an author attached to this prompt, to be appended **after** whatever the
+ * planner derived (§12). A sibling of each `build*Prompt` rather than a call the planner assembles,
+ * for the same reason the override is: a caller cannot forget what it never passes.
+ */
+export function portraitRefs(
+  character: Character,
+  config: ProjectConfig,
+  override?: PromptOverride,
+): AssetRef[] {
+  return authoredRefs(buildPortraitChunks(character, config), override ?? character.promptOverride);
+}
+
+/** P2 location plate chunks for one time-of-day/weather variant (report §P2). */
+export function buildLocationChunks(
+  location: Location,
+  variant: string,
+  config: ProjectConfig,
+): PromptChunk[] {
+  // The variant is named by id here, and the id is all a plain `- night` entry says; a variant
+  // that describes itself or carries art direction is looked up rather than passed in.
+  const authored = location.variants.find((v) => v.id === variant);
+  const id = location.id;
+  return chunkList(
+    chunk('style', 'style', stylePreamble(config), { kind: 'project', field: 'art_style' }),
+    chunk('subject', 'subject', `Establishing shot of ${location.name}.`, {
+      kind: 'location',
+      id,
+      field: 'name',
+    }),
+    chunk('description', 'description', location.description, {
+      kind: 'location',
+      id,
+      field: 'description',
+    }),
+    chunk('mood', 'mood', location.mood ? `Mood: ${location.mood}.` : '', {
+      kind: 'location',
+      id,
+      field: 'mood',
+    }),
+    chunk('variant', 'variant', `Time of day / condition: ${variant}.`, {
+      kind: 'variant',
+      id,
+      variant,
+    }),
+    chunk('variant-desc', 'variant', authored?.description, { kind: 'variant', id, variant }),
+    chunk('palette', 'palette', paletteClause(location.palette), {
+      kind: 'location',
+      id,
+      field: 'palette',
+    }),
+    // One chunk even though two rungs feed it: `artClause` emits a single `Art direction:`
+    // sentence, and two chunks would emit the prefix twice. The variant rung rides along as
+    // `also`, so a card can still name where the narrower half came from.
+    chunk(
+      'art-notes',
+      'art-notes',
+      artClause(location.artNotes, authored?.artNotes),
+      { kind: 'art-notes', target: `location:${id}` },
+      authored?.artNotes ? { kind: 'art-notes', target: `location:${id}/${variant}` } : undefined,
+    ),
+    chunk('scaffolding', 'scaffolding', 'No characters, no text.', { kind: 'builder' }),
+  );
 }
 
 /** P2 location reference prompt for a specific time-of-day/weather variant (report §P2). */
@@ -55,25 +175,108 @@ export function buildLocationPrompt(
   location: Location,
   variant: string,
   config: ProjectConfig,
+  override?: PromptOverride,
 ): string {
-  // The variant is named by id here, and the id is all a plain `- night` entry says; a variant
-  // that describes itself or carries art direction is looked up rather than passed in.
-  const authored = location.variants.find((v) => v.id === variant);
-  return [
-    stylePreamble(config),
-    `Establishing shot of ${location.name}.`,
-    location.description,
-    location.mood ? `Mood: ${location.mood}.` : '',
-    `Time of day / condition: ${variant}.`,
-    authored?.description ?? '',
-    paletteClause(location.palette),
-    artClause(location.artNotes, authored?.artNotes),
-    'No characters, no text.',
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Per-variant, so the plate's rung is the variant entry — a location-level override would be
+  // read by nothing, which is why there is no such field.
+  const stored = location.variants.find((v) => v.id === variant)?.promptOverride;
+  return composePrompt(buildLocationChunks(location, variant, config), override ?? stored).text;
+}
+
+/** {@link portraitRefs} for a plate. */
+export function locationRefs(
+  location: Location,
+  variant: string,
+  config: ProjectConfig,
+  override?: PromptOverride,
+): AssetRef[] {
+  const stored = location.variants.find((v) => v.id === variant)?.promptOverride;
+  return authoredRefs(buildLocationChunks(location, variant, config), override ?? stored);
+}
+
+/**
+ * One plate task. Built in three places — P2 fans them out, a shot names its plate as a ref, and
+ * `promoteConcept` adopts one — so the identity is written down here rather than three times; a
+ * disagreement would strand the shot on a hash nothing planned.
+ */
+export function locationInputs(
+  location: Location,
+  variant: string,
+  config: ProjectConfig,
+  params: ImageParams,
+): TaskInputs['location_ref'] {
+  return {
+    locationId: location.id,
+    variant,
+    prompt: buildLocationPrompt(location, variant, config),
+    refs: locationRefs(location, variant, config),
+    params,
+  };
+}
+
+/** {@link locationInputs} hashed. Adoption takes the inputs instead — it may not be given a hash. */
+export function locationTask(
+  location: Location,
+  variant: string,
+  config: ProjectConfig,
+  params: ImageParams,
+): Task<'location_ref'> {
+  return makeTask('location_ref', locationInputs(location, variant, config, params));
+}
+
+/** P4 model-sheet chunks for one angle, derived from the approved portrait (report §P4). */
+export function buildModelSheetChunks(
+  character: Character,
+  outfit: string,
+  angle: string,
+  config: ProjectConfig,
+): PromptChunk[] {
+  const id = character.id;
+  const worn = character.outfits.find((o) => o.id === outfit);
+  return chunkList(
+    chunk('style', 'style', stylePreamble(config), { kind: 'project', field: 'art_style' }),
+    // There is no `wardrobe` chunk: the builder puts the outfit *inside* the subject sentence, and
+    // splitting it out would change this prompt for every project and re-key every sheet task. The
+    // outfit rides along as a second source instead, so a card can still name the rung.
+    chunk(
+      'subject',
+      'subject',
+      `Full-body ${angle} view of ${character.name} wearing ${outfitText(character, outfit)}.`,
+      { kind: 'character', id, field: 'name' },
+      { kind: 'outfit', id, outfit },
+    ),
+    chunk(
+      'reference',
+      'scaffolding',
+      'Preserve the exact face and look from the reference image.',
+      {
+        kind: 'builder',
+      },
+    ),
+    chunk('description', 'description', character.description, {
+      kind: 'character',
+      id,
+      field: 'description',
+    }),
+    chunk('palette', 'palette', paletteClause(character.palette), {
+      kind: 'character',
+      id,
+      field: 'palette',
+    }),
+    chunk(
+      'art-notes',
+      'art-notes',
+      artClause(character.artNotes, worn?.artNotes),
+      { kind: 'art-notes', target: `character:${id}` },
+      worn?.artNotes ? { kind: 'art-notes', target: `character:${id}/${outfit}` } : undefined,
+    ),
+    chunk(
+      'scaffolding',
+      'scaffolding',
+      'Neutral background, consistent lighting, turnaround model-sheet style.',
+      { kind: 'builder' },
+    ),
+  );
 }
 
 /** P4 model-sheet prompt for one angle, derived from the approved portrait (report §P4). */
@@ -82,29 +285,34 @@ export function buildModelSheetPrompt(
   outfit: string,
   angle: string,
   config: ProjectConfig,
+  override?: PromptOverride,
 ): string {
-  return [
-    stylePreamble(config),
-    `Full-body ${angle} view of ${character.name} wearing ${outfitText(character, outfit)}.`,
-    'Preserve the exact face and look from the reference image.',
-    character.description,
-    paletteClause(character.palette),
-    artClause(character.artNotes, character.outfits.find((o) => o.id === outfit)?.artNotes),
-    'Neutral background, consistent lighting, turnaround model-sheet style.',
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // The angle is recorded on the task alone, so the outfit's override covers all four sheets. A
+  // known coarseness (§2), stated on the card rather than fixed by a per-task override home.
+  const stored = character.outfits.find((o) => o.id === outfit)?.promptOverride;
+  return composePrompt(buildModelSheetChunks(character, outfit, angle, config), override ?? stored)
+    .text;
 }
 
-/** P6 shot prompt synthesis from the terse shot description + entities (report §P6). */
-export function buildShotPrompt(
+/** {@link portraitRefs} for a model sheet — one rung, so all four angles get the same references. */
+export function modelSheetRefs(
+  character: Character,
+  outfit: string,
+  angle: string,
+  config: ProjectConfig,
+  override?: PromptOverride,
+): AssetRef[] {
+  const stored = character.outfits.find((o) => o.id === outfit)?.promptOverride;
+  return authoredRefs(buildModelSheetChunks(character, outfit, angle, config), override ?? stored);
+}
+
+/** P6 shot chunks, synthesized from the terse shot description + entities (report §P6). */
+export function buildShotChunks(
   shot: Shot,
   scene: Scene,
   model: ProjectModel,
   config: ProjectConfig,
-): string {
+): PromptChunk[] {
   const location = model.locations.get(scene.location);
   const subjects = shot.subjects.map((s) => {
     const character = model.characters.get(s.characterId);
@@ -114,21 +322,60 @@ export function buildShotPrompt(
     if (s.expression) bits.push(`expression: ${s.expression}`);
     return bits.join(', ');
   });
-  return [
-    stylePreamble(config),
-    `${shot.framing} shot${location ? ` in ${location.name}` : ''} (${shot.location}).`,
-    subjects.length ? `Subjects: ${subjects.join('; ')}.` : 'No characters in frame.',
-    shot.camera ? `Camera: ${shot.camera}.` : '',
+  const at = { sceneId: shot.sceneId, shotId: shot.id } as const;
+  return chunkList(
+    chunk('style', 'style', stylePreamble(config), { kind: 'project', field: 'art_style' }),
+    chunk(
+      'framing',
+      'framing',
+      `${shot.framing} shot${location ? ` in ${location.name}` : ''} (${shot.location}).`,
+      { kind: 'shot', ...at, field: 'framing' },
+    ),
+    chunk(
+      'subject',
+      'subject',
+      subjects.length ? `Subjects: ${subjects.join('; ')}.` : 'No characters in frame.',
+      { kind: 'shot', ...at, field: 'subjects' },
+    ),
+    chunk('camera', 'camera', shot.camera ? `Camera: ${shot.camera}.` : '', {
+      kind: 'shot',
+      ...at,
+      field: 'camera',
+    }),
     // The shot's own notes only. A character's and a location's reach this frame through the
     // sheets and plates it references, which were generated with them; saying them again here
     // would double the voice.
-    artClause(shot.artNotes),
-    'Render as a single illustrated frame, no UI text.',
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+    chunk('art-notes', 'art-notes', artClause(shot.artNotes), {
+      kind: 'art-notes',
+      target: `shot:${shot.sceneId}/${shot.id}`,
+    }),
+    chunk('scaffolding', 'scaffolding', 'Render as a single illustrated frame, no UI text.', {
+      kind: 'builder',
+    }),
+  );
+}
+
+/** P6 shot prompt synthesis from the terse shot description + entities (report §P6). */
+export function buildShotPrompt(
+  shot: Shot,
+  scene: Scene,
+  model: ProjectModel,
+  config: ProjectConfig,
+  override?: PromptOverride,
+): string {
+  return composePrompt(buildShotChunks(shot, scene, model, config), override ?? shot.promptOverride)
+    .text;
+}
+
+/** {@link portraitRefs} for a shot frame. */
+export function shotRefs(
+  shot: Shot,
+  scene: Scene,
+  model: ProjectModel,
+  config: ProjectConfig,
+  override?: PromptOverride,
+): AssetRef[] {
+  return authoredRefs(buildShotChunks(shot, scene, model, config), override ?? shot.promptOverride);
 }
 
 /**

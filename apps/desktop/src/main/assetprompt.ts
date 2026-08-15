@@ -10,12 +10,14 @@
  */
 import type { ProjectConfig } from '@vn/config';
 import {
-  buildLocationPrompt,
-  buildModelSheetPrompt,
-  buildPortraitPrompt,
-  buildShotPrompt,
-} from '@vn/pipeline';
-import type { AnyTask, Asset, ProjectModel, Shot } from '@vn/types';
+  buildLocationChunks,
+  buildModelSheetChunks,
+  buildPortraitChunks,
+  buildShotChunks,
+  composePrompt,
+  overrideOf,
+} from '@vn/artgen';
+import type { AnyTask, Asset, ProjectModel, PromptChunk, Shot } from '@vn/types';
 
 /** What the derivation needs beyond the asset: the model, the config, and the storyboards. */
 export interface DerivePromptContext {
@@ -28,11 +30,11 @@ export interface DerivePromptContext {
 }
 
 /**
- * The prompt for `asset` as the builders would write it now, or `undefined` when the project no
- * longer describes this asset at all (its character was deleted, its storyboard is gone). Absent
- * is not "unchanged" — a caller comparing against the recorded prompt must treat it as unknown.
+ * The clauses `asset`'s prompt is built from today, or `undefined` on the same terms as
+ * {@link derivePrompt}. The builders' own order, with no override applied — `composePrompt` is
+ * what turns these into what would be sent.
  */
-export function derivePrompt(asset: Asset, ctx: DerivePromptContext): string | undefined {
+export function deriveChunks(asset: Asset, ctx: DerivePromptContext): PromptChunk[] | undefined {
   // A concept has no builder and no task: its prompt was a sentence somebody typed once, so there
   // is nothing to re-derive and it can never be stale.
   if (asset.kind === 'concept') return undefined;
@@ -42,7 +44,7 @@ export function derivePrompt(asset: Asset, ctx: DerivePromptContext): string | u
   switch (asset.kind) {
     case 'portrait': {
       const character = binding.characterId && ctx.model.characters.get(binding.characterId);
-      return character ? buildPortraitPrompt(character, ctx.config) : undefined;
+      return character ? buildPortraitChunks(character, ctx.config) : undefined;
     }
     case 'model_sheet':
     case 'outfit_sheet': {
@@ -50,19 +52,34 @@ export function derivePrompt(asset: Asset, ctx: DerivePromptContext): string | u
       const angle =
         ctx.task && 'angle' in ctx.task.inputs ? (ctx.task.inputs.angle as string) : undefined;
       if (!character || !binding.outfit || !angle) return undefined;
-      return buildModelSheetPrompt(character, binding.outfit, angle, ctx.config);
+      return buildModelSheetChunks(character, binding.outfit, angle, ctx.config);
     }
     case 'location_ref': {
       const location = binding.locationId && ctx.model.locations.get(binding.locationId);
       if (!location || !binding.variant) return undefined;
-      return buildLocationPrompt(location, binding.variant, ctx.config);
+      return buildLocationChunks(location, binding.variant, ctx.config);
     }
     case 'shot_image': {
       if (!binding.sceneId || !binding.shotId) return undefined;
       const scene = ctx.model.scenes.get(binding.sceneId);
       const shot = ctx.shots?.get(binding.sceneId)?.find((s) => s.id === binding.shotId);
       if (!scene || !shot) return undefined;
-      return buildShotPrompt(shot, scene, ctx.model, ctx.config);
+      return buildShotChunks(shot, scene, ctx.model, ctx.config);
     }
   }
+}
+
+/**
+ * The prompt for `asset` as the builders would write it now, or `undefined` when the project no
+ * longer describes this asset at all (its character was deleted, its storyboard is gone). Absent
+ * is not "unchanged" — a caller comparing against the recorded prompt must treat it as unknown.
+ *
+ * The author's override is part of "as the builders would write it now": it is what the planner
+ * folds into the task hash, so a derivation that ignored it would report every overridden asset
+ * as drifting from itself.
+ */
+export function derivePrompt(asset: Asset, ctx: DerivePromptContext): string | undefined {
+  const chunks = deriveChunks(asset, ctx);
+  if (!chunks) return undefined;
+  return composePrompt(chunks, overrideOf(asset, ctx)).text;
 }

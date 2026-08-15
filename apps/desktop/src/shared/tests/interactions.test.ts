@@ -10,13 +10,16 @@ import {
   NEW_CHOICE,
   createDesktopInteractions,
   handleId,
+  promptReorder,
   scriptMoveLine,
   timelineCover,
   timelineReorder,
   TOP,
   type BranchState,
   type CoverState,
+  type PromptDragState,
 } from '../interactions.js';
+import { TOP_CHUNK } from '../promptops.js';
 import { UNRESOLVED } from '@vn/commands';
 import { splitScenes } from '@vn/model';
 import { parseFountain } from '@vn/parse';
@@ -353,6 +356,59 @@ describe('timeline.reorder', () => {
   });
 });
 
+describe('prompt.reorder', () => {
+  const state = (over: Partial<PromptDragState> = {}): PromptDragState => ({
+    hash: 'abc123',
+    mode: 'chunks',
+    chunks: [{ key: 'style' }, { key: 'subject' }, { key: 'palette' }],
+    ...over,
+  });
+
+  it('offers every insertion point but the one the chunk already occupies', () => {
+    const verdicts = promptReorder.targets(state(), 'subject');
+    // `subject` sits second, so "after style" is where it already is and is left out.
+    expect(verdicts.map((v) => v.target)).toEqual([TOP_CHUNK, 'palette']);
+    expect(verdicts.every((v) => v.accept)).toBe(true);
+  });
+
+  it('carries the moveChunk the drop would run, with top as an empty after', () => {
+    const [top] = promptReorder.targets(state(), 'palette');
+    expect(top?.accept && top.invoke).toEqual({
+      id: 'prompt.moveChunk',
+      props: { hash: 'abc123', chunk: 'palette', after: '' },
+    });
+    expect(top?.accept && top.note).toBe('palette now sits first.');
+  });
+
+  it('warns before the drop that a condensation will be held', () => {
+    const [top] = promptReorder.targets(state({ mode: 'agent' }), 'palette');
+    expect(top?.accept && top.note).toContain('held until it is recondensed');
+  });
+
+  // The order in force is the one the gesture moves within, not the derivation order.
+  it('judges against the stored order when there is one', () => {
+    const verdicts = promptReorder.targets(state({ order: ['palette', 'style'] }), 'style');
+    expect(verdicts.map((v) => v.target)).toEqual([TOP_CHUNK, 'subject']);
+  });
+
+  it('is unresolved as a whole in custom mode', () => {
+    expect(promptReorder.targets(state({ mode: 'custom' }), 'style')).toEqual([
+      {
+        target: UNRESOLVED,
+        accept: false,
+        reason:
+          'A custom prompt has no chunk order; the list below is only what the agent would be given.',
+      },
+    ]);
+  });
+
+  it('refuses the grab, not the targets, for a chunk this prompt does not have', () => {
+    expect(promptReorder.targets(state(), 'gone')).toEqual([
+      { target: UNRESOLVED, accept: false, reason: 'No chunk "gone" in this prompt.' },
+    ]);
+  });
+});
+
 describe('script.moveLine', () => {
   /** Real ids from the real allocator, for the reason `lineops.test.ts` gives. */
   const script: ScriptState = (() => {
@@ -417,6 +473,7 @@ describe('the registry', () => {
       'branch.connect',
       'branch.splice',
       'branch.unwire',
+      'prompt.reorder',
       'script.moveLine',
       'timeline.cover',
       'timeline.reorder',
