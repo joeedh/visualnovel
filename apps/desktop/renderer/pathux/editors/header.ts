@@ -1,4 +1,4 @@
-import { AreaFlags, Menu, type Container, type MenuTemplate } from 'pathux';
+import { AreaFlags, Menu, createMenu, type Container, type MenuTemplate } from 'pathux';
 import { isLive } from '../../api.js';
 import { EDITORS } from '../../../src/shared/editors.js';
 import { exec, move, quit, toggleMode } from '../bridge.js';
@@ -7,6 +7,12 @@ import { openPalette } from '../palette.js';
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
 export const HEADER_HEIGHT = 34;
+
+/** The last segment of a path. Not `node:path` — this module is in the browser bundle. */
+function projectName(path: string): string {
+  const parts = path.split(/[\\/]/).filter(Boolean);
+  return parts[parts.length - 1] ?? path;
+}
 
 /**
  * The app header: the brand (which is also the app menu), the View menu, the project's name,
@@ -22,6 +28,12 @@ export class VnHeaderEditor extends VnEditor {
   private bar!: Container;
   /** What the bar last drew. Rebuilding on a change beats a widget-per-field push. */
   private drawn = '';
+
+  /** The remembered projects, and the one that is open, as `workspace.recent` last answered. */
+  private recents: string[] = [];
+  private current = '';
+  /** Which project title the list above was fetched for — the guard that keeps it one fetch. */
+  private recentsFor = '\0';
 
   static override define() {
     return {
@@ -73,8 +85,29 @@ export class VnHeaderEditor extends VnEditor {
     ].join('|');
   }
 
+  /**
+   * Refetch the remembered projects, once per project the header finds itself in. `workspace.open`
+   * is what changes the list, and it also changes the title — so the title is the cheap signal
+   * that the list is stale, and the guard is what keeps `rebuild` from fetching forever.
+   */
+  private refreshRecents(): void {
+    const key = this.ui.projectTitle;
+    if (this.recentsFor === key) return;
+    this.recentsFor = key;
+
+    void exec('workspace.recent').then((outcome) => {
+      const data = outcome.ok
+        ? (outcome.data as { current?: string; recent?: string[] })
+        : undefined;
+      this.recents = data?.recent ?? [];
+      this.current = data?.current ?? '';
+      this.rebuild();
+    });
+  }
+
   private rebuild(): void {
     this.drawn = this.stateKey();
+    this.refreshRecents();
     const ui = this.ui;
 
     this.bar.clear();
@@ -120,7 +153,12 @@ export class VnHeaderEditor extends VnEditor {
       // palette on its form. `mock` is seeded from whether this is a live app — a preview has
       // no keys and no main process, and a dry run is the only thing it could honestly do.
       ['Run Pipeline…', () => openPalette('pipeline.run', { mock: !isLive }), undefined],
+      // `workspace.create` takes a path to a directory that does not exist yet, which the OS
+      // chooser cannot express — so this one entry opens the palette on its form rather than a
+      // dialog, the way every other path-taking command is reached.
+      ['New Project…', () => openPalette('workspace.create'), undefined],
       ['Open Project…', () => openPalette('workspace.pick'), undefined],
+      this.recentMenu(),
       ['Reindex Project', () => openPalette('workspace.reindex'), undefined],
       Menu.SEP,
       ['Plan ⇄ Execute', () => void toggleMode(), 'Shift+Tab'],
@@ -128,6 +166,28 @@ export class VnHeaderEditor extends VnEditor {
       Menu.SEP,
       ['Quit', () => quit(), 'Ctrl+Q'],
     ] as MenuTemplate;
+  }
+
+  /**
+   * The projects opened before this one, as a submenu of `workspace.open` invocations. Built from
+   * `workspace.recent` and from nothing the renderer remembers on its own — a second answer here
+   * is how a menu starts offering a project main does not know about.
+   *
+   * The open project is left out rather than checked: `workspace.open` refuses it by name, and an
+   * entry that cannot be taken is worse than one that is not offered.
+   */
+  private recentMenu(): Menu {
+    const others = this.recents.filter((root) => root !== this.current);
+    const items = others.length
+      ? others.map((root) => [
+          projectName(root),
+          () => void exec('workspace.open', { path: root }),
+          undefined,
+          undefined,
+          root,
+        ])
+      : [['(none)', () => {}, undefined]];
+    return createMenu(this.ctx, 'Recent Projects', items as MenuTemplate);
   }
 
   /**

@@ -5,14 +5,19 @@
  * No mutator here is `undoable`. `workspace.import` restructures the whole worktree, which is what
  * a shadow snapshot is worst at, and the `.imported` rename it leaves behind is a reversal the
  * author can perform themselves; `workspace.reindex` writes one derived file, and undoing it means
- * running it again; and `workspace.open`/`pick` write into a *different* tree than the one the
- * undo journal snapshots, so a shadow ref in the old repo could not restore it anyway.
+ * running it again; and `workspace.open`/`pick`/`create` write into a *different* tree than the
+ * one the undo journal snapshots, so a shadow ref in the old repo could not restore it anyway.
  */
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { defineFor, prop } from '@vn/commands';
 import { GENERATED_CONTEXT_FILE } from '@vn/authoring';
 import type { CommandHost } from './host.js';
-import { inspectWorkspace, recentWorkspaces } from '../workspace.js';
+import {
+  createWorkspace,
+  inspectCreate,
+  inspectWorkspace,
+  recentWorkspaces,
+} from '../workspace.js';
 
 const define = defineFor<CommandHost>();
 
@@ -40,6 +45,61 @@ async function wouldOpen(
       : `Creates a new project at ${root}: writes project.yaml and initializes a git repo.`,
   };
 }
+
+/**
+ * What creating a project at `path` would do. The inside-a-repo case is an accept with a warning
+ * appended, not a refusal: the project works, it just never gets committed for the author, and
+ * afterwards that has no visible cause at all.
+ */
+async function wouldCreate(
+  path: string,
+  busy: string | undefined,
+): Promise<{ ok: true; note: string } | { ok: false; reason: string }> {
+  if (!path.trim()) return { ok: false, reason: 'Name a path for the new project.' };
+  if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
+
+  const root = resolve(path);
+  const found = await inspectCreate(root);
+  if (found.exists && !found.directory) return { ok: false, reason: `${root} is a file.` };
+  if (!found.empty) {
+    return {
+      ok: false,
+      reason: `${root} already contains files — open it with workspace.open instead.`,
+    };
+  }
+
+  const note = `Creates a new project at ${root}: a starter scene, a story bible page, project.yaml and a git repo.`;
+  return {
+    ok: true,
+    note: found.insideRepo
+      ? `${note} ${found.insideRepo} already owns this path, so edits here will not be committed for you.`
+      : note,
+  };
+}
+
+export const workspaceCreate = define({
+  id: 'workspace.create',
+  title: 'New project',
+  description:
+    'Create a project in a new or empty directory — a starter scene, a story bible page, ' +
+    'project.yaml and a git repository — then open it. Refuses a directory that already has ' +
+    'files in it. Closes the current project, its agent conversation and undo history with it.',
+  mutating: true,
+  props: {
+    path: prop.string('the directory to create the project in'),
+    title: prop.string('the project title', { default: '' }),
+  },
+  check: (props, ctx) => wouldCreate(props.path, ctx.host.session.busy()),
+  async run(props, ctx) {
+    const verdict = await wouldCreate(props.path, ctx.host.session.busy());
+    if (!verdict.ok) throw new Error(verdict.reason);
+
+    const root = resolve(props.path);
+    await createWorkspace(root, props.title.trim() || basename(root));
+    const opened = await ctx.host.openWorkspace(root);
+    return { message: `Created ${opened.title} (${opened.root}).` };
+  },
+});
 
 export const workspaceOpen = define({
   id: 'workspace.open',

@@ -333,6 +333,7 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `workspace.filetree`           | —                                 | Every file in the workspace as a tree, `.git` and `node_modules` excluded. |
 | `workspace.import` ✍ ✓         | —                                 | Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
 | `workspace.reindex` ✍ ✓        | —                                 | Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write. |
+| `workspace.create` ✍ ✓         | `path`, `title`                   | Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. Refuses a directory with files in it; warns when it sits inside another repo. |
 | `workspace.open` ✍ ✓           | `path`                            | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open). |
 | `workspace.pick` ✍ ✓           | —                                 | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
 | `workspace.recent`             | —                                 | The open project and the ones opened before it, most recent first. |
@@ -361,8 +362,8 @@ of offering undo. `gate.approve` straddles both data classes — undoing `charac
 plan. `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst
 at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can perform;
 `workspace.reindex` writes one derived file, and undoing it means running it again; and
-`workspace.open`/`workspace.pick` write into a *different* tree than the one a snapshot covers, so
-a shadow ref in the old repo could not restore it anyway. The reasoning is in
+`workspace.open`/`workspace.pick`/`workspace.create` write into a *different* tree than the one a
+snapshot covers, so a shadow ref in the old repo could not restore it anyway. The reasoning is in
 [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer

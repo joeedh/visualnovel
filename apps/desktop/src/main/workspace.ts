@@ -8,7 +8,7 @@
  * works there.
  */
 import { cp, mkdir, readdir, stat } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { CONFIG_FILENAME, loadConfig } from '@vn/config';
 import { openGit, type Git } from '@vn/git';
 import { writeFileAtomic } from '@vn/util';
@@ -138,6 +138,96 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
   }
   await ensureRepo(root, found.project ? 'Existing project files' : 'New project');
   return { root, created: !found.project, title };
+}
+
+/** The one scene a new project starts with — named by `start:` and by the file it lives in. */
+export const START_SCENE = 'opening';
+
+/**
+ * The three files a new project is created with.
+ *
+ * Not a copy of `examples/sample`: that is somebody else's story, and an author's first ten
+ * minutes should not go on deleting a cast. Not nothing either — with no `start:` and no scenes
+ * the model builds with error diagnostics, so an empty project greets its author with a red count.
+ */
+function skeleton(title: string): { path: string; text: string }[] {
+  return [
+    { path: CONFIG_FILENAME, text: `title: ${JSON.stringify(title)}\nstart: ${START_SCENE}\n` },
+    {
+      path: `scenes/${START_SCENE}.md`,
+      text:
+        `---\nscene: ${START_SCENE}\n---\n\n` +
+        'INT. A ROOM - DAY\n\n' +
+        'The story starts here.\n\n' +
+        'Write over this, or ask the agent to.\n',
+    },
+    {
+      path: 'wiki/index.md',
+      text:
+        '# Story bible\n\n' +
+        'Everything under `wiki/` is searchable by the authoring agent. One page per subject:\n' +
+        'history, factions, rules, whatever the story needs remembered.\n',
+    },
+  ];
+}
+
+/** What creating a project at a path would run into, before anything is written. */
+export interface CreateInspection {
+  root: string;
+  exists: boolean;
+  /** False when the path is a file, or is not there at all. */
+  directory: boolean;
+  /** True when there is nothing here to lose: no such path, or a directory with no entries. */
+  empty: boolean;
+  /** The repo that already owns this path, if any — commit-on-save will not run here. */
+  insideRepo?: string;
+}
+
+/** The closest ancestor that exists, so git can be asked about a path that does not yet. */
+async function nearestExistingDir(path: string): Promise<string | undefined> {
+  let cur = resolve(path);
+  for (;;) {
+    if ((await stat(cur).catch(() => null))?.isDirectory()) return cur;
+    const up = dirname(cur);
+    if (up === cur) return undefined;
+    cur = up;
+  }
+}
+
+/**
+ * Look at where a project would be created without touching it. `exists`/`directory`/`empty`
+ * decide whether it may happen at all; `insideRepo` is a warning rather than a refusal, because
+ * a project three levels down in a monorepo works — it just never gets committed for you.
+ */
+export async function inspectCreate(root: string): Promise<CreateInspection> {
+  const info = await stat(root).catch(() => null);
+  const directory = info?.isDirectory() === true;
+  const empty = info === null || (directory && (await readdir(root)).length === 0);
+  const near = await nearestExistingDir(root);
+  const insideRepo = near ? ((await openGit(near).topLevel()) ?? undefined) : undefined;
+  return { root, exists: info !== null, directory, empty, insideRepo };
+}
+
+/**
+ * Create a project at `root` and open it. Unlike `openWorkspace` this scaffolds: "create a new
+ * project here" is an explicit request for a project, and one whose model will not build is a
+ * worse answer than three files.
+ *
+ * The repo is initialized before the open so the first commit is the skeleton under its own
+ * subject; `openWorkspace` then finds a `project.yaml` already there and only reads it.
+ */
+export async function createWorkspace(root: string, title: string): Promise<OpenResult> {
+  if (!(await inspectCreate(root)).empty) {
+    throw new Error(`cannot create a project at ${root}: it is not empty`);
+  }
+
+  for (const file of skeleton(title)) {
+    const path = join(root, file.path);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFileAtomic(path, file.text);
+  }
+  await ensureRepo(root, 'New project');
+  return { ...(await openWorkspace(root)), created: true };
 }
 
 /** Where the remembered projects live, and how many are kept. */

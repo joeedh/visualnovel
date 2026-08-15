@@ -55,6 +55,7 @@ import {
 } from './story.js';
 import { viewClose, viewFocus, viewLayout, viewOpen, viewPalette } from './view.js';
 import {
+  workspaceCreate,
   workspaceDoctree,
   workspaceFiletree,
   workspaceImport,
@@ -136,6 +137,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     viewLayout,
     viewOpen,
     viewPalette,
+    workspaceCreate,
     workspaceDoctree,
     workspaceFiletree,
     workspaceImport,

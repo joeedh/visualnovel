@@ -863,6 +863,34 @@ Student*" vs "Creates a new project at …"), and refuses the root that is alrea
 that is not a directory, and a switch while a pipeline run or agent turn is in flight
 (`WorkspaceSession.busy()`).
 
+**Creating one is `workspace.create(path='…' title='…')`, and it scaffolds where opening does
+not.** The two are deliberately different promises: opening a directory the author already has
+must not litter it, whereas "create a new project here" is an explicit request for a project, and
+one whose model will not build is a worse answer than three files. So `createWorkspace` writes a
+skeleton — `project.yaml` (`title` + `start: opening`), `scenes/opening.md` (a Fountain slug line
+and two lines to write over), `wiki/index.md` (an empty story-bible page) — then `ensureRepo`
+commits it as `New project`, and only then opens it through the same `host.openWorkspace` every
+other path takes. The skeleton is not a copy of `examples/sample`: that is somebody else's story,
+and the author would spend their first ten minutes deleting a cast. It is sized by one assertion —
+the created project builds a model with **no error diagnostics**, so the header's first count is
+zero rather than red.
+
+The refusals are `inspectCreate`'s: a path that is a file, and a directory with anything in it
+(*"… already contains files — open it with workspace.open instead"*) — never a merge, never an
+overwrite. Sitting inside a larger git repo is a **warning appended to the accept**, not a refusal:
+the project works, it just gets no commit-on-save ([`repos-and-commits.md`](repos-and-commits.md)),
+and after the fact that symptom has no visible cause. Like every mutator, `run` re-runs the check
+rather than trusting the one the palette showed.
+
+**The app menu is where all three live**: New Project… and Open Project… open the palette (on
+`workspace.create` and `workspace.pick`), and **Recent Projects** is a submenu built from
+`workspace.recent` — one entry per remembered root, labelled by its last path segment with the full
+path as the tooltip, each invoking `workspace.open(path=…)`. The renderer keeps no list of its own;
+it refetches once per project it finds itself in, and leaves the open project out rather than
+checking it, because `workspace.open` refuses that root by name. There is no `workspace.createPick`:
+"choose a parent and type a name" is a save-dialog, so the path is typed into the palette the way
+every other path-taking command is reached.
+
 **A switch is a teardown, not a refresh.** The session (with its agent conversation), the command
 stack, its undo journal, the repo map and the undo revision are all rebuilt against the new root:
 undo never crosses a workspace boundary, and the `command:ui` effect the renderer receives

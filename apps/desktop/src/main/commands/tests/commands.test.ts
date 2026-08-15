@@ -95,6 +95,7 @@ describe('the desktop registry', () => {
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
+      'workspace.create',
       'workspace.import',
       'workspace.open',
       'workspace.pick',
@@ -110,7 +111,7 @@ describe('the desktop registry', () => {
    * `asset.regenerate`), straddle a sheet, the manifest and the task log at once
    * (`art.promote`), restructure the whole worktree
    * (`workspace.import`, whose own `.imported` rename is the reversal), write into a *different*
-   * tree than the one a snapshot covers (`workspace.open`, `workspace.pick`), or straddle both
+   * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), or straddle both
    * classes (`gate.approve` flips
    * `character.md` **and** marks the asset accepted in `manifest.json`) — see
    * `docs/plans/command-undo-redo.md`.
@@ -199,6 +200,7 @@ describe('the desktop registry', () => {
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
+      'workspace.create',
       'workspace.import',
       'workspace.open',
       'workspace.pick',

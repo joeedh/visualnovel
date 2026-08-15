@@ -7,7 +7,7 @@
 	 and the editor with the highest relevence score created.
 [x]: the wiki editor for a page should show assets that reference it.  we may need a generic cross-reference 
      asset viewer widget, that way we can reuse it in other places like the script editor.
-[ ]: create main menu entries to open a project repo, as well as a command to create a new repo.  creating
+[x]: create main menu entries to open a project repo, as well as a command to create a new repo.  creating
      a new repo should also open it.
 [ ]: create a /upload command for the agent that lets the user select files to upload.  the agent 
 	 will automatically switch to plan mode and ask the user what to do with the files.  to start with we

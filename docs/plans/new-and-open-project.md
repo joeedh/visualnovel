@@ -1,6 +1,6 @@
 # New Project, Open Project, Recent Projects
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -137,3 +137,27 @@ disabled-looking `(none)` entry rather than an empty submenu.
 - **New Project…** on a directory with files in it refuses with a sentence naming
   `workspace.open`.
 - The recents submenu lists previously opened projects and opening one from it works.
+
+All four were verified live over CDP against the running app: `workspace.create` on a fresh path
+produced `project.yaml` + `scenes/opening.md` + `wiki/index.md` under one `New project` commit and
+the app came back open on it; `workspace.index` on the result reported one scene, the mined
+location `a_room`, `entry: opening` and `diagnostics: []`; the same command on `examples/sample`
+refused by naming `workspace.open`, and on a fresh path inside this repo accepted with the
+inside-a-repo warning appended; the recents submenu held one entry per remembered root, labelled by
+basename, with the open project absent — and refetched itself when another was opened from it.
+
+## Shipped deviations
+
+- **`CreateInspection` also carries `directory`.** The plan's four fields cannot tell "the path is
+  a file" from "the directory has files in it", and those want different sentences.
+- **`ensureRepo` runs before `openWorkspace`, and `created: true` is set afterwards.** The plan had
+  `openWorkspace` do the `ensureRepo`, which would have committed under its own subject; creating
+  the repo first gets the honest `New project`, and `openWorkspace` then finds a `project.yaml`
+  already there and only reads it — so the returned `created` flag has to be re-asserted to keep
+  its documented meaning.
+- **The recents list is cached on the header, keyed by `projectTitle`.** The plan left "from
+  `ShellState` if they are there, or a call at menu-build time" open. `ShellState` does not carry
+  them, and fetching per menu build would fetch on every `rebuild`; the title is the cheap signal
+  that the project changed, so one fetch per project is the guard.
+- **The open project is omitted rather than checked.** The plan allowed either. `workspace.open`
+  refuses that root by name, and an entry that cannot be taken is worse than one not offered.

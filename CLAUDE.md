@@ -181,7 +181,10 @@ plays it. This is deliberately **not** an external DSL export.
   [`docs/document-tree.md`](docs/document-tree.md).
 - **One workspace at a time, and opening another is a teardown** — the session, the command stack
   and the undo journal are rebuilt against the new root, so undo never crosses a project boundary
-  and nothing may cache the root.
+  and nothing may cache the root. **Creating one scaffolds where opening does not**:
+  `workspace.create` writes a three-file skeleton whose model builds with no error diagnostics,
+  commits it, then opens it through the same path — and refuses a directory that already has files
+  in it. ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md))
 - **A document that is not a scene is written as text, and only by `doc.*`.** A save presents the
   hash it read at and is refused by **content**, never mtime; `scenes/**` is refused outright,
   because prose has one write path and it is `story.*`. A _named field_ inside a sheet may still

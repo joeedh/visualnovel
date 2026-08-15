@@ -65,13 +65,13 @@ nothing. Wave C is the two features that consume the rest.
 
 ### 3 — New, Open and Recent project
 
-- [ ] `inspectCreate` / `createWorkspace` in `apps/desktop/src/main/workspace.ts`
-- [ ] Three-file skeleton (`project.yaml` with `start: opening`, `scenes/opening.md`,
+- [x] `inspectCreate` / `createWorkspace` in `apps/desktop/src/main/workspace.ts`
+- [x] Three-file skeleton (`project.yaml` with `start: opening`, `scenes/opening.md`,
       `wiki/index.md`) — not a copy of `examples/sample`
-- [ ] `workspace.create` command, with the non-empty refusal and the inside-a-repo warning
-- [ ] `workspace.test.ts`: the created project loads a model with **zero** error diagnostics
-- [ ] Menu: New Project…, Open Project…, a Recents submenu built from `workspace.recent`
-- [ ] Docs: `docs/desktop-app.md`, `docs/repos-and-commits.md`, `CLAUDE.md`
+- [x] `workspace.create` command, with the non-empty refusal and the inside-a-repo warning
+- [x] `workspace.test.ts`: the created project loads a model with **zero** error diagnostics
+- [x] Menu: New Project…, Open Project…, a Recents submenu built from `workspace.recent`
+- [x] Docs: `docs/desktop-app.md`, `docs/repos-and-commits.md`, `CLAUDE.md`
 
 ### 4 — Conversation threads
 

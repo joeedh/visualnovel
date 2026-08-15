@@ -57,6 +57,12 @@ of this monorepo, say) resolves to that repo, and committing everything dirty th
 files that have nothing to do with the project. The app reports the repo and **declines to commit
 in it** rather than guessing at a narrower scope.
 
+That is why `workspace.create` says so before the directory exists: creating a project inside an
+existing repo is allowed — it works, and sometimes it is exactly what the author wants — but its
+check appends *"{repo} already owns this path, so edits here will not be committed for you"*,
+because afterwards the only symptom is edits that never become commits, with nothing on screen
+saying why.
+
 ## Commit-on-save
 
 Every act that changed something becomes a commit, in each repo it touched.

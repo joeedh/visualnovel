@@ -2,10 +2,16 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
+import { loadConfig } from '@vn/config';
+import { modelFromInputs } from '@vn/model';
+import { ProjectPaths, loadInputs } from '@vn/store';
 import {
   RECENT_KEY,
   RECENT_MAX,
+  START_SCENE,
+  createWorkspace,
   ensureRepo,
+  inspectCreate,
   inspectWorkspace,
   openWorkspace,
   recentWorkspaces,
@@ -190,6 +196,119 @@ describe('openWorkspace', () => {
     await writeFile(file, 'hello');
     await expect(openWorkspace(file)).rejects.toThrow('not a directory');
     await expect(openWorkspace(join(root, 'nope'))).rejects.toThrow('not a directory');
+  });
+});
+
+describe('inspectCreate', () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vn-create-'));
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true, maxRetries: 3 });
+  });
+
+  it('tells a path with nothing to lose from one with something', async () => {
+    const missing = join(root, 'deep', 'new');
+    const empty = join(root, 'empty');
+    const full = join(root, 'full');
+    const file = join(root, 'a-file.txt');
+    await mkdir(empty);
+    await mkdir(full);
+    await writeFile(join(full, 'notes.md'), 'mine\n');
+    await writeFile(file, 'hello');
+
+    expect(await inspectCreate(missing)).toMatchObject({
+      exists: false,
+      directory: false,
+      empty: true,
+    });
+    expect(await inspectCreate(empty)).toMatchObject({
+      exists: true,
+      directory: true,
+      empty: true,
+    });
+    expect(await inspectCreate(full)).toMatchObject({
+      exists: true,
+      directory: true,
+      empty: false,
+    });
+    expect(await inspectCreate(file)).toMatchObject({
+      exists: true,
+      directory: false,
+      empty: false,
+    });
+
+    // Read-only, including the walk up for `insideRepo`.
+    expect(await readdir(empty)).toEqual([]);
+    expect(await readdir(root)).not.toContain('deep');
+  });
+
+  it('names the repo that already owns the path, walking up past what does not exist yet', async () => {
+    expect((await inspectCreate(join(root, 'nested'))).insideRepo).toBeUndefined();
+
+    await writeFile(join(root, 'notes.md'), 'the outer repo\n');
+    await ensureRepo(root);
+    // The target is two levels below the repo root and neither level exists — the warning has to
+    // be available *before* the directory is made, or its symptom has no visible cause.
+    const inside = await inspectCreate(join(root, 'projects', 'mine'));
+    expect(inside.exists).toBe(false);
+    expect(inside.insideRepo).toBeDefined();
+  }, 20_000);
+});
+
+describe('createWorkspace', () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vn-new-'));
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true, maxRetries: 3 });
+  });
+
+  it('scaffolds a project that builds a model with no errors, and commits it', async () => {
+    const dir = join(root, 'my-story');
+
+    expect(await createWorkspace(dir, 'My Story')).toEqual({
+      root: dir,
+      created: true,
+      title: 'My Story',
+    });
+    expect((await readdir(dir)).sort()).toEqual(['.git', 'project.yaml', 'scenes', 'wiki']);
+
+    const config = await loadConfig(dir);
+    expect(config).toMatchObject({ title: 'My Story', start: START_SCENE });
+
+    // The whole point of the skeleton: an author's first sight of a new project is not a red count.
+    const model = modelFromInputs(await loadInputs(new ProjectPaths(dir)), {
+      title: config.title,
+      start: config.start,
+    });
+    expect(model.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect([...model.scenes.keys()]).toEqual([START_SCENE]);
+    expect(model.entry).toBe(START_SCENE);
+
+    const git = openGit(dir);
+    expect((await git.log()).map((c) => c.subject)).toEqual(['New project']);
+    expect((await git.status()).dirty).toBe(false);
+  }, 20_000);
+
+  it('titles the project after the directory when asked for nothing else', async () => {
+    const dir = join(root, 'the-transfer-student');
+    expect((await createWorkspace(dir, 'the-transfer-student')).title).toBe('the-transfer-student');
+  }, 20_000);
+
+  it('refuses a directory with files in it rather than merging into it', async () => {
+    const dir = join(root, 'theirs');
+    await mkdir(dir);
+    await writeFile(join(dir, 'notes.md'), 'not mine to touch\n');
+
+    await expect(createWorkspace(dir, 'Theirs')).rejects.toThrow('not empty');
+    expect(await readdir(dir)).toEqual(['notes.md']);
   });
 });
 
