@@ -1307,3 +1307,81 @@ describe('WorkspaceSession — the agent asks the author', () => {
     expect(seen[0]).toContain('generate_image: Draw a concept sketch: “a rooftop”');
   });
 });
+
+/**
+ * A conversation is written down as it happens. The mock backend answers every turn with one
+ * sentence, which is all this needs: what matters is that the turn, the answer and nothing else
+ * end up in a file under `vngen/state/threads/`.
+ */
+describe('WorkspaceSession — conversation threads', () => {
+  let p: TestProject;
+
+  beforeEach(async () => {
+    p = await makeProject({ title: 'Threads', script: SCRIPTS.linear });
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  it('writes nothing until somebody says something', async () => {
+    const session = sessionFor(p);
+    await session.setMode('plan');
+    expect(await session.threads()).toEqual({ threads: [] });
+  });
+
+  it('records the turn and the answer, and names the thread after the turn', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('give Aiko a jacket');
+
+    const { threads, active } = await session.threads();
+    expect(threads).toHaveLength(1);
+    expect(threads[0]!.title).toBe('give Aiko a jacket');
+    expect(active).toBe(threads[0]!.id);
+
+    const record = await session.openThreadForReading(threads[0]!.id);
+    expect(record.items.map((i) => i.role)).toEqual(['user', 'agent']);
+    expect(record.items[0]!.text).toBe('give Aiko a jacket');
+    expect(record.items[1]!.text).toContain('[mock]');
+  });
+
+  it('keeps a cleared conversation, and puts the next turn in a new thread', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('first');
+    await session.clearAgent();
+    expect((await session.threads()).active).toBeUndefined();
+
+    await session.runAgent('second');
+    const { threads } = await session.threads();
+    expect(threads.map((t) => t.title)).toEqual(['second', 'first']);
+  });
+
+  it('reopening a thread ends the live one, so the next turn is not written into it', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('first');
+    const [first] = (await session.threads()).threads;
+
+    await session.openThreadForReading(first!.id);
+    await session.runAgent('second');
+
+    const reread = await session.openThreadForReading(first!.id);
+    expect(reread.items.map((i) => i.text)).toEqual(expect.not.arrayContaining(['second']));
+    expect((await session.threads()).threads).toHaveLength(2);
+  });
+
+  it('renames the open conversation when no id is given, and refuses an empty name', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('first');
+
+    expect((await session.renameThread('', 'the jacket argument')).title).toBe(
+      'the jacket argument',
+    );
+    expect((await session.threads()).threads[0]!.title).toBe('the jacket argument');
+    await expect(session.renameThread('', '  ')).rejects.toThrow(/needs a name/);
+    await expect(session.renameThread('nosuchthread', 'x')).rejects.toThrow(/no such conversation/);
+  });
+
+  it('refuses to rename when there is nothing open', async () => {
+    await expect(sessionFor(p).renameThread('', 'x')).rejects.toThrow(/no conversation is open/);
+  });
+});

@@ -191,6 +191,24 @@ import { applyPromptEdit, type PromptEdit } from './promptedit.js';
 import { buildDocTree, fileTree } from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
 import { confirmDetail } from './toolconfirm.js';
+import {
+  answered,
+  answeredQuestion,
+  asked,
+  emptyConvo,
+  received,
+  type Convo,
+} from '../shared/convo.js';
+import {
+  appendItem,
+  listThreads,
+  openThread,
+  readThread,
+  retitleThread,
+  titleFrom,
+  type ThreadHeader,
+  type ThreadRecord,
+} from './threads.js';
 import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
 import type { BranchOp } from '../shared/branchops.js';
 import { setCoverage } from '../shared/coverage.js';
@@ -517,6 +535,20 @@ export class WorkspaceSession {
   /** What long-running work is in flight, by name; empty when the session is idle. */
   private readonly inFlight = new Set<string>();
 
+  /**
+   * The conversation as main sees it, reduced by the functions the renderer runs — so what is
+   * written down and what is on screen are derived from one definition rather than two.
+   */
+  private convo: Convo = emptyConvo('');
+  /** The thread being written to. Opened by the first turn, never by opening the app. */
+  private thread: ThreadHeader | undefined;
+  /**
+   * Appends, in order. Half the calls that add a transcript line happen inside a synchronous
+   * `onEvent`, so the writes queue behind one promise instead of racing; `runAgent` waits it out
+   * before returning, which is what makes the file complete the moment a turn is.
+   */
+  private writes: Promise<void> = Promise.resolve();
+
   constructor(
     readonly dir: string,
     readonly mock: boolean,
@@ -551,8 +583,36 @@ export class WorkspaceSession {
     return {
       approvePlan: (plan) => this.deps.requestPlan(plan),
       confirmAction: (tool, args) => this.deps.requestConfirm(tool, confirmDetail(tool, args)),
-      ask: (question) => this.deps.requestAnswer(question),
+      // The author's answer is the one turn of theirs that never passes through `run`, and the
+      // loop does not emit it — so a transcript that did not record it here would lose it. A
+      // declined confirmation needs no such care: the loop emits that as a `blocked` event.
+      ask: async (question) => {
+        const answer = await this.deps.requestAnswer(question);
+        this.record((convo) => answeredQuestion(convo, answer));
+        return answer;
+      },
     };
+  }
+
+  /**
+   * Reduce the conversation, and write whatever that added to the active thread. Returns nothing
+   * and never throws: a transcript that cannot be appended to is worth a warning, not a failed
+   * turn — the work the conversation was about has already happened.
+   */
+  private record(reduce: (convo: Convo) => Convo): void {
+    const before = this.convo.feed.length;
+    this.convo = reduce(this.convo);
+    const added = this.convo.feed.slice(before);
+    const id = this.thread?.id;
+    if (!id || added.length === 0) return;
+    const paths = new ProjectPaths(this.dir);
+    this.writes = this.writes
+      .then(async () => {
+        for (const item of added) await appendItem(paths, id, item);
+      })
+      .catch((err: unknown) => {
+        console.warn(`[vnstudio] could not append to thread ${id}: ${String(err)}`);
+      });
   }
 
   private async buildBackend(config: ProjectConfig, model?: string): Promise<AgentBackend> {
@@ -584,7 +644,10 @@ export class WorkspaceSession {
       ctx,
       permission: this.permission(),
       system: composeSystem(context),
-      onEvent: (event) => this.deps.emitEvent(event),
+      onEvent: (event) => {
+        this.record((convo) => received(convo, event));
+        this.deps.emitEvent(event);
+      },
     });
     return this.agent;
   }
@@ -617,7 +680,45 @@ export class WorkspaceSession {
   }
 
   async runAgent(input: string): Promise<RunResult> {
-    return this.while('an agent turn', async () => (await this.ensureAgent()).run(input));
+    return this.while('an agent turn', async () => {
+      const agent = await this.ensureAgent();
+      await this.beginThread(input);
+      this.record((convo) => asked(convo, input));
+      try {
+        const result = await agent.run(input);
+        this.record((convo) => answered(convo, result.final));
+        return result;
+      } finally {
+        // The turn is not over until what it said is on disk; a crash a moment later must not
+        // take the answer with it.
+        await this.writes;
+      }
+    });
+  }
+
+  /**
+   * Make sure there is a thread to write to. Because only a turn opens one, the first thing the
+   * author said is already known when the header is written and can be its title outright — the
+   * provisional title is what a thread keeps only until someone talks in it.
+   *
+   * A thread that cannot be opened costs a warning and nothing else: a project on a read-only
+   * volume is one you can still think in.
+   */
+  private async beginThread(input: string): Promise<void> {
+    if (this.thread) return;
+    const paths = new ProjectPaths(this.dir);
+    const commit = await openGit(this.dir)
+      .head()
+      .catch(() => null);
+    try {
+      this.thread = await openThread(paths, {
+        title: titleFrom(input),
+        ...(commit === null ? {} : { commit }),
+        ...(this.model === '' ? {} : { model: this.model }),
+      });
+    } catch (err) {
+      console.warn(`[vnstudio] could not start a conversation thread: ${String(err)}`);
+    }
   }
 
   async setMode(mode: AgentMode): Promise<AgentMode> {
@@ -648,8 +749,47 @@ export class WorkspaceSession {
     return effort;
   }
 
+  /**
+   * Start over. The thread is closed rather than deleted — a conversation that happened stays on
+   * disk, and the next turn opens a new one.
+   */
   async clearAgent(): Promise<void> {
     (await this.ensureAgent()).clear();
+    await this.writes;
+    this.thread = undefined;
+    this.convo = emptyConvo('');
+  }
+
+  /** Every saved conversation in this project, newest first, and which one is being written to. */
+  async threads(): Promise<{ threads: ThreadHeader[]; active?: string }> {
+    const threads = await listThreads(new ProjectPaths(this.dir));
+    return { threads, ...(this.thread ? { active: this.thread.id } : {}) };
+  }
+
+  /**
+   * A saved conversation, for reading. It ends the live one — the model is *not* shown what comes
+   * back, so leaving the previous turns in its context while the screen shows somebody else's
+   * would be the one arrangement in which neither the author nor the agent knows what is being
+   * talked about.
+   */
+  async openThreadForReading(id: string): Promise<ThreadRecord> {
+    const record = await readThread(new ProjectPaths(this.dir), id);
+    await this.clearAgent();
+    return record;
+  }
+
+  /** Rename a thread; an empty id means the one being written to. Refuses when there is none. */
+  async renameThread(id: string, title: string): Promise<ThreadHeader> {
+    const target = id.trim() === '' ? this.thread?.id : id.trim();
+    if (!target) throw new Error('no conversation is open — name one to rename it');
+    const named = title.trim();
+    if (!named) throw new Error('a conversation needs a name');
+
+    const paths = new ProjectPaths(this.dir);
+    const { items: _items, ...header } = await readThread(paths, target);
+    await retitleThread(paths, target, named);
+    if (this.thread?.id === target) this.thread = { ...this.thread, title: named };
+    return { ...header, title: named };
   }
 
   /** Portrait candidates for a character at the approval gate (from the manifest). */

@@ -10,8 +10,10 @@ import {
   proposed,
   queried,
   received,
+  replayed,
+  type FeedItem,
 } from '../convo.js';
-import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from '../../../src/shared/ipc';
+import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from '../ipc.js';
 
 const opening = 'Workspace loaded.';
 
@@ -34,10 +36,10 @@ describe('what an event does to the conversation', () => {
     expect(convo.line).toBe(opening);
   });
 
-  test('what the agent says replaces the dialogue box and appends nothing', () => {
+  test('what the agent says is both the dialogue box and a transcript line', () => {
     const convo = received(emptyConvo(opening), { type: 'final', text: 'Done — one file.' });
     expect(convo.line).toBe('Done — one file.');
-    expect(convo.feed).toEqual([]);
+    expect(convo.feed).toEqual([{ id: 1, role: 'agent', text: 'Done — one file.' }]);
   });
 
   test('a blocked tool reads as one sentence, with the reason', () => {
@@ -136,5 +138,25 @@ describe('clearing', () => {
     const after = received(cleared(convo, 'Conversation cleared.'), ranTool('c'));
     expect(after.line).toBe('Conversation cleared.');
     expect(after.feed).toEqual([{ id: 3, role: 'tool', text: 'c' }]);
+  });
+});
+
+describe('replaying a saved thread', () => {
+  const banner = 'Reopened for reading.';
+  const saved: FeedItem[] = [
+    { id: 1, role: 'user', text: 'give Aiko a jacket' },
+    { id: 2, role: 'agent', text: 'Done.' },
+  ];
+
+  test('shows the stored turns, and says in the dialogue box that it is a reading', () => {
+    const convo = replayed(emptyConvo(opening), saved, banner);
+    expect(convo.feed).toEqual(saved);
+    expect(convo.line).toBe(banner);
+    expect(convo.busy).toBe(false);
+  });
+
+  test('a turn typed afterwards cannot reuse a replayed id', () => {
+    const after = asked(replayed(emptyConvo(opening), saved, banner), 'and a scarf');
+    expect(after.feed[2]).toEqual({ id: 3, role: 'user', text: 'and a scarf' });
   });
 });

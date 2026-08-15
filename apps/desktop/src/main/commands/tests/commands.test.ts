@@ -54,6 +54,7 @@ describe('the desktop registry', () => {
   it('marks the file-writing commands mutating', () => {
     const mutating = commands.filter((c) => c.mutating).map((c) => c.id);
     expect(mutating).toEqual([
+      'agent.renameThread',
       'agent.run',
       'art.generate',
       'art.promote',
@@ -111,7 +112,9 @@ describe('the desktop registry', () => {
    * `asset.regenerate`), straddle a sheet, the manifest and the task log at once
    * (`art.promote`), restructure the whole worktree
    * (`workspace.import`, whose own `.imported` rename is the reversal), write into a *different*
-   * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), or straddle both
+   * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), write under
+   * `vngen/state`, which the snapshot deliberately excludes (`agent.renameThread` — a transcript
+   * must survive undoing the edits it produced), or straddle both
    * classes (`gate.approve` flips
    * `character.md` **and** marks the asset accepted in `manifest.json`) — see
    * `docs/plans/command-undo-redo.md`.
@@ -160,6 +163,7 @@ describe('the desktop registry', () => {
    */
   it('declares a precondition on the mutators, and only on mutators', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
+      'agent.renameThread',
       'art.generate',
       'art.promote',
       'art.redraw',

@@ -138,12 +138,16 @@ a widget that would change the project dispatches a command instead.
 | `errors` / `warnings` | `number` | Diagnostics counted apart; errors displace warnings in the badge |
 | `canUndo` / `canRedo` / `undoLabel` / `redoLabel` | `boolean` / `string` | Pushed on the `command:ui` `undo` effect |
 
-**The conversation (`renderer/pathux/agent.ts` + `convo.ts`)** is a second module, subscribed at
+**The conversation (`renderer/pathux/agent.ts` + `src/shared/convo.ts`)** is a second module, subscribed at
 boot whether or not a convo pane is open — the agent streams regardless, and a pane opened later
 has to show what was already said. The value is `{ feed, line, plan, busy, seq }` and every
 `agent:event` folds into it through the pure `received`/`asked`/`answered`/`proposed`/`decided`
 functions; a pane notices by comparing a revision counter, since `update()` runs every frame.
 `busy` is raised by a pipeline run too, not only by a turn.
+
+The reducer itself lives in `src/shared/convo.ts` because **main runs it as well** — every feed
+item it folds in is the line main appends to the open thread, so the transcript on disk is the
+transcript on screen rather than a second rendering of the same events.
 
 - **Nothing here decides which editor is on screen.** The `view.*` commands run in **main** and
   push a `command:ui` effect; the mesh applies it and answers with a correction only when it
@@ -390,7 +394,8 @@ invoke('pipeline:run', { mock })
 | Pane layout | `.vndesktop/session.json` (`pathux.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
 | Selected scene/shot/character/document | `.vndesktop/session.json` (`pathux.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
 | A field a pane remembers (the documents editor's mode) | `.vndesktop/session.json` (inside `pathux.layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
-| Conversation history | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
+| The conversation on screen | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
+| The conversation as a transcript | `vngen/state/threads/<id>.jsonl` | ✓ Survives restart | `agent.threads` / `agent.openThread` | Main, one line per feed item, as the turn runs |
 | Header facts, `taskHash`, per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |
 | Project config | Files | ✓ On disk | Main (lazy load) | Author / editor |
@@ -418,7 +423,7 @@ When the app restarts:
    - First IPC call (e.g., `workspace:index`) → lazy-loads project, creates Agent
    - Subsequent calls → may rebuild project (no cache) but reuse Agent
 
-The **conversation history is not recovered** because it lives only in the renderer. Each session starts a fresh Agent conversation, though the Agent loads `AICONTEXT.md` to restore plan-mode context (via `@vn/authoring`'s persistent system prompt).
+The **conversation on screen is not recovered**: the renderer opens on an empty pane and main starts a fresh `Agent`, though the Agent loads `AICONTEXT.md` to restore plan-mode context (via `@vn/authoring`'s persistent system prompt). What _is_ recovered is the **transcript** — every turn was written to `vngen/state/threads/<id>.jsonl` as it ran, and the convo pane's **Threads** menu reopens one. Reopening replays the stored feed and says so in the dialogue box: the model is not shown a word of it, because restoring the agent's own messages is a separate piece of work.
 
 ---
 
@@ -512,7 +517,8 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
 ## Edge Cases
 
 ### App restarts mid-run
-- **Agent state:** Lost. User starts a fresh conversation on next app load.
+- **Agent state:** Lost. User starts a fresh conversation on next app load — but the turns that
+  did complete are in `vngen/state/threads/`, and the Threads menu reads them back.
 - **Project state:** Safe. Files are unchanged; last task status is in `tasks.jsonl`.
 - **Playthrough:** Safe. Saved position is in `localStorage`.
 

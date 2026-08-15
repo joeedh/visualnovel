@@ -120,7 +120,7 @@ renderer/
   want under test and exactly what jsdom can't help with; the editors themselves are not tested,
   they are verified live over CDP. Same impure-shell/pure-core split as `@vn/debug2d`, for the
   same reason. Each port that found untested logic inside a `.tsx` extracted it: `pathux/branch.ts`,
-  `pathux/script.ts`, `pathux/timeline.ts`, `pathux/convo.ts`, `pathux/panes.ts` and
+  `pathux/script.ts`, `pathux/timeline.ts`, `src/shared/convo.ts`, `pathux/panes.ts` and
   `play/playback.ts` are all new pure modules with tests the React versions never had.
 - **`tokens.css` is the design contract**: `--sodium` `#f4a24c` is warm — the authored/human
   side; `--signal` `#45c8d6` is cool — the machine/pipeline side; `--ink*` is the surface ramp;
@@ -368,9 +368,10 @@ unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` wi
 ## Convo
 
 `editors/convo.ts` — the vnauthor pane: the transcript, the three permission cards, the dialogue
-box and the composer. The conversation itself is a **value**, `pathux/convo.ts`, reduced from the
-same `AgentEvent` stream `useAgent` reduced untestably inside a `useEffect`, with tests over what
-each event does to it.
+box and the composer. The conversation itself is a **value**, `src/shared/convo.ts`, reduced from
+the same `AgentEvent` stream `useAgent` reduced untestably inside a `useEffect`, with tests over
+what each event does to it. It sits in `shared/` rather than the renderer because **main reduces
+the same events** to write the transcript — see the threads bullet below.
 
 - **The live conversation is a module subscribed at boot** (`pathux/agent.ts`, installed by
   `shell.start()`), not editor state, because the agent streams whether or not a convo pane is open
@@ -395,8 +396,19 @@ each event does to it.
   no.
 - **Clearing follows the command, not the button.** The store watches the registry through
   `bridge.onExec`, so `agent.clear` from the pane and from the palette empty the transcript
-  identically. Named gap: `window.vn`/CDP goes straight to main and `agent.clear` emits no event, so
-  a clear run that way leaves an open pane's transcript standing.
+  identically — as do `agent.newThread` and `agent.openThread`. Named gap: `window.vn`/CDP goes
+  straight to main and none of them emits an event, so a clear run that way leaves an open pane's
+  transcript standing.
+- **A conversation is a thread, and it is written down as it happens.** Main appends one JSONL
+  line per feed item to `vngen/state/threads/<id>.jsonl` — lazily, so an app opened and closed
+  without a word writes no file — titled from the first thing the author said. The bar's
+  **Threads** button opens path.ux's searchable menu (`startMenu(…, true)`) over `agent.threads`,
+  newest first, the open one bulleted; a separator; **New conversation**. **Reopening one is
+  read-only**: the pane replays the stored feed and the dialogue box says the agent has not been
+  shown it, because restoring the model's own messages is separate work. The next thing typed
+  therefore starts a new thread rather than continuing what was read. Undo cannot take a
+  transcript back — its shadow snapshots exclude `vngen/state`, which is the point of putting
+  them there.
 - **The composer is built once and never rebuilt.** It is what the author is typing into and where a
   seed lands, so it outlives every redraw of the transcript above it — and it stops its own keydown.
 - **This pane unnests.** In the room shell the branch and script editors were rendered *inside*

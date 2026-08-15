@@ -1,11 +1,12 @@
-import type { Container, MenuTemplate } from 'pathux';
+import { Menu, createMenu, startMenu } from 'pathux';
+import type { Button, Container, MenuTemplate, MenuTemplateCustom } from 'pathux';
 import { EFFORT_LEVELS, TEXT_MODELS, supportsEffort } from '@vn/types';
 import { allow, answer, ask, convo, decide, revision, takeSeed } from '../agent.js';
 import { exec, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 import STUDIO_CSS from '../../styles/studio.css?inline';
-import type { FeedItem } from '../convo.js';
+import type { FeedItem, ThreadHeader } from '../../../src/shared/convo.js';
 import type { AskRequest, ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
 
 /**
@@ -82,6 +83,8 @@ export class ConvoEditor extends VnEditor {
   private sendBtn!: HTMLButtonElement;
   /** The one word said while a turn is in flight; a CSS animation does the rest. */
   private workingEl!: HTMLDivElement;
+  /** Kept because the thread menu opens under it, and only the button knows where that is. */
+  private threadsBtn!: Button;
   private drawn = -1;
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
@@ -160,10 +163,60 @@ export class ConvoEditor extends VnEditor {
       effort.description = `${ui.model || 'this model'} has no reasoning-effort setting.`;
     }
 
+    this.threadsBtn = this.bar.button('Threads', () => void this.showThreads());
+    this.threadsBtn.description =
+      'Saved conversations. Reopening one is read-only — the agent is not shown it.';
+
     // Through the registry: the transcript follows `agent.clear` itself, so clearing from here
     // and clearing from the palette are one act with one record.
     this.bar.button('Clear', () => void exec('agent.clear'));
     this.bar.flushUpdate();
+  }
+
+  /**
+   * The saved conversations, as path.ux's *fancy* menu — the one boolean that turns a menu into a
+   * searchable one, which is all a list that only ever grows needs.
+   *
+   * The list is fetched on the click rather than held on the pane: threads are written by main as
+   * a turn runs, so anything cached here would be a menu that does not list the conversation the
+   * author is having.
+   *
+   * Every row carries an explicit id in the last slot. `createMenu` reads `item[5]` for any row
+   * longer than four, so a row with a **tooltip** and no id is registered under `undefined` and
+   * its callback is never found — the click lands, the menu closes, and nothing happens.
+   */
+  private async showThreads(): Promise<void> {
+    const outcome = await exec('agent.threads');
+    if (!outcome.ok) return;
+    const { threads, active } = outcome.data as { threads: ThreadHeader[]; active?: string };
+
+    const rows: MenuTemplateCustom[] = threads.map((thread) => [
+      `${thread.id === active ? '• ' : ''}${label(thread)}`,
+      () => void exec('agent.openThread', { id: thread.id }),
+      undefined,
+      undefined,
+      detail(thread),
+      thread.id,
+    ]);
+    if (rows.length === 0)
+      rows.push(['(nothing saved yet)', () => {}, undefined, undefined, '', 'none']);
+
+    const templ: MenuTemplate = [
+      ...rows,
+      Menu.SEP,
+      [
+        'New conversation',
+        () => void exec('agent.newThread'),
+        undefined,
+        undefined,
+        'Save this one and start again.',
+        'new',
+      ] as MenuTemplateCustom,
+    ];
+
+    const menu = createMenu(this.ctx, 'Conversations', templ);
+    const rect = this.threadsBtn.getBoundingClientRect();
+    startMenu(menu, rect.x, rect.y + rect.height, true, 0);
   }
 
   /** The dialogue box and the composer: the same element whatever the transcript is doing. */
@@ -372,6 +425,32 @@ export class ConvoEditor extends VnEditor {
     button.addEventListener('click', () => allow(allowed));
     return button;
   }
+}
+
+/**
+ * A thread's menu row: what it was about, and when. The date is short because the title is the
+ * part being searched, and it is dropped entirely rather than rendered as `Invalid Date` — a log
+ * old enough to have a header this reader does not understand is still a log worth opening.
+ */
+function label(thread: ThreadHeader): string {
+  const at = new Date(thread.startedAt);
+  if (Number.isNaN(at.getTime())) return thread.title;
+  const when = at.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${thread.title} · ${when}`;
+}
+
+/** The tooltip: the facts the row had no room for. */
+function detail(thread: ThreadHeader): string {
+  const at = new Date(thread.startedAt);
+  const parts = [Number.isNaN(at.getTime()) ? thread.startedAt : at.toLocaleString()];
+  if (thread.model) parts.push(thread.model);
+  if (thread.commit) parts.push(thread.commit.slice(0, 8));
+  return parts.join(' · ');
 }
 
 function el(tag: string, className: string, text?: string): HTMLElement {

@@ -185,6 +185,12 @@ plays it. This is deliberately **not** an external DSL export.
   `workspace.create` writes a three-file skeleton whose model builds with no error diagnostics,
   commits it, then opens it through the same path — and refuses a directory that already has files
   in it. ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md))
+- **A conversation is a thread, and it is written down where the other logs are** —
+  `vngen/state/threads/<id>.jsonl`, one line per feed item, appended by main as the turn runs and
+  titled from the first thing the author said. Undo's snapshots exclude `vngen/state`, so undoing
+  the edit a conversation made never deletes the conversation that explains it. **Reopening a
+  thread is read-only**: the pane replays it and says the model was not shown it.
+  ([`docs/plans/conversation-threads.md`](docs/plans/conversation-threads.md))
 - **A document that is not a scene is written as text, and only by `doc.*`.** A save presents the
   hash it read at and is refused by **content**, never mtime; `scenes/**` is refused outright,
   because prose has one write path and it is `story.*`. A _named field_ inside a sheet may still

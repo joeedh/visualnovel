@@ -1,0 +1,200 @@
+/**
+ * Conversation threads on disk: one append-only JSONL log per thread under
+ * `vngen/state/threads/<id>.jsonl`.
+ *
+ * `vngen/state/` is where this project already keeps its append-only logs (`tasks.jsonl`,
+ * `commands.jsonl`), `vngen/` is committed in a user's project so a transcript travels with the
+ * work it produced, and undo's shadow snapshots exclude `vngen/state` — so undoing the edit a
+ * conversation made never deletes the conversation that explains it.
+ *
+ * It lives in the desktop app rather than `@vn/store` because a transcript is not one of a
+ * *project's* authored files. Nothing in the format assumes the desktop, so when `vnauthor`'s REPL
+ * wants threads too this module moves down to `@vn/authoring` and both hosts read the same files.
+ */
+import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { appendJsonl, ensureDir } from '@vn/util';
+import type { ProjectPaths } from '@vn/store';
+import type { FeedItem, ThreadHeader, ThreadRecord } from '../shared/convo.js';
+
+export type { ThreadHeader, ThreadRecord };
+
+/** The title a thread is created with, before a first turn names it. */
+export const NEW_THREAD_TITLE = 'New conversation';
+
+/** Where a title stops being a label. The full text is in the transcript either way. */
+const TITLE_MAX = 60;
+
+/**
+ * Where a transcript line stops. A tool line is already a digest, but a tool that reports a whole
+ * file would otherwise put it in the log twice — once as the tool's own line and once as whatever
+ * it wrote.
+ */
+const TEXT_MAX = 400;
+
+type ThreadLine =
+  | ({ v: 1; type: 'thread' } & ThreadHeader)
+  | ({ type: 'item'; at: string } & FeedItem)
+  | { type: 'title'; title: string; at: string };
+
+export function threadsDir(paths: ProjectPaths): string {
+  return join(paths.state, 'threads');
+}
+
+export function threadFile(paths: ProjectPaths, id: string): string {
+  return join(threadsDir(paths), `${id}.jsonl`);
+}
+
+/** A thread's title, from the first thing the author said: one line, trimmed at a word boundary. */
+export function titleFrom(text: string): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length <= TITLE_MAX) return flat || NEW_THREAD_TITLE;
+  const cut = flat.slice(0, TITLE_MAX);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > TITLE_MAX / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
+function clamp(text: string): string {
+  return text.length <= TEXT_MAX ? text : `${text.slice(0, TEXT_MAX).trimEnd()}…`;
+}
+
+function stamp(at: Date): string {
+  const p = (n: number, width = 2) => String(n).padStart(width, '0');
+  return (
+    `${at.getFullYear()}${p(at.getMonth() + 1)}${p(at.getDate())}-` +
+    `${p(at.getHours())}${p(at.getMinutes())}${p(at.getSeconds())}`
+  );
+}
+
+/**
+ * Every line a file holds that parses. A half-written last line is what a crash mid-append leaves
+ * behind, and a transcript that will not list because of it is worse than one missing its final
+ * line — so a bad line is skipped, never thrown over.
+ */
+async function lines(file: string, keep?: (raw: string) => boolean): Promise<ThreadLine[]> {
+  let text: string;
+  try {
+    text = await readFile(file, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
+  }
+
+  const out: ThreadLine[] = [];
+  for (const raw of text.split('\n')) {
+    if (raw.trim() === '' || (keep && !keep(raw))) continue;
+    try {
+      out.push(JSON.parse(raw) as ThreadLine);
+    } catch {
+      // A line that will not parse is a line that was never finished being written.
+    }
+  }
+  return out;
+}
+
+function headerOf(id: string, parsed: ThreadLine[]): ThreadHeader | undefined {
+  const first = parsed.find((line) => line.type === 'thread');
+  if (!first) return undefined;
+
+  const { title, startedAt, commit, model } = first;
+  const renamed = parsed.filter((line) => line.type === 'title');
+  const last = renamed[renamed.length - 1];
+  return {
+    id,
+    title: last ? last.title : title,
+    startedAt,
+    ...(commit === undefined ? {} : { commit }),
+    ...(model === undefined ? {} : { model }),
+  };
+}
+
+/**
+ * Every saved thread, newest first. Only the header and any retitles are parsed — ids are
+ * timestamps, so the directory listing already sorts and there is no index file to keep true, and
+ * nothing here is expensive enough to cache and then have to invalidate.
+ */
+export async function listThreads(paths: ProjectPaths): Promise<ThreadHeader[]> {
+  let files: string[];
+  try {
+    files = await readdir(threadsDir(paths));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
+  }
+
+  const ids = files.filter((f) => f.endsWith('.jsonl')).map((f) => f.slice(0, -'.jsonl'.length));
+  const headers: ThreadHeader[] = [];
+  for (const id of ids.sort().reverse()) {
+    const keep = (raw: string) => raw.includes('"thread"') || raw.includes('"title"');
+    const header = headerOf(id, await lines(threadFile(paths, id), keep));
+    if (header) headers.push(header);
+  }
+  return headers;
+}
+
+/** One thread in full. A file with no header line is not a thread, and says so by name. */
+export async function readThread(paths: ProjectPaths, id: string): Promise<ThreadRecord> {
+  const parsed = await lines(threadFile(paths, id));
+  const header = headerOf(id, parsed);
+  if (!header) throw new Error(`no such conversation: ${id}`);
+
+  const items = parsed
+    .filter((line) => line.type === 'item')
+    .map(({ id: itemId, role, text }) => ({ id: itemId, role, text }));
+  return { ...header, items };
+}
+
+/**
+ * Start a thread: allocate an id and write line 0. Called by the first turn and never by opening
+ * the app — launching the desktop and saying nothing must leave no trace, or every launch litters
+ * the project with an empty conversation.
+ */
+export async function openThread(
+  paths: ProjectPaths,
+  info: { title?: string; commit?: string; model?: string } = {},
+  now = new Date(),
+): Promise<ThreadHeader> {
+  await ensureDir(threadsDir(paths));
+  const taken = new Set(await readdir(threadsDir(paths)));
+
+  const base = stamp(now);
+  let id = base;
+  for (let n = 2; taken.has(`${id}.jsonl`); n++) id = `${base}-${n}`;
+
+  const header: ThreadHeader = {
+    id,
+    title: info.title ?? NEW_THREAD_TITLE,
+    startedAt: now.toISOString(),
+    ...(info.commit === undefined ? {} : { commit: info.commit }),
+    ...(info.model === undefined ? {} : { model: info.model }),
+  };
+  await appendJsonl(threadFile(paths, id), { v: 1, type: 'thread', ...header });
+  return header;
+}
+
+export async function appendItem(
+  paths: ProjectPaths,
+  id: string,
+  item: FeedItem,
+  now = new Date(),
+): Promise<void> {
+  await appendJsonl(threadFile(paths, id), {
+    type: 'item',
+    ...item,
+    text: clamp(item.text),
+    at: now.toISOString(),
+  });
+}
+
+/**
+ * Rename a thread by appending, never by rewriting line 0 — the reader takes the last `title`
+ * record. Editing the first line of an append log is how it stops being one.
+ */
+export async function retitleThread(
+  paths: ProjectPaths,
+  id: string,
+  title: string,
+  now = new Date(),
+): Promise<void> {
+  await appendJsonl(threadFile(paths, id), { type: 'title', title, at: now.toISOString() });
+}

@@ -39,6 +39,11 @@ directly — see [Concept images](#concept-images)), `/exit` (or `/quit`). **Shi
 between plan and execute mode. `/model` and `/effort` rebuild the backend and hot-swap it into
 the running agent, preserving conversation state.
 
+**The REPL keeps no transcript.** A conversation here lives as long as the process does, and
+`/clear` ends it with nothing written down. The desktop app saves the same turns to
+`vngen/state/threads/<id>.jsonl` (see [`desktop-app.md`](desktop-app.md)); nothing stops the REPL
+from writing to the same place, and it does not yet.
+
 Offline smoke test:
 
 ```sh

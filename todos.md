@@ -20,7 +20,7 @@
      on how to write the next use prompt, e.g. 'what should I do with these (e.g. 'integrate into the wiki').	 
 [ ]: create a main menu item to import files.  it will activate or create a conversation editor in a new thread, 
      autofill it with an /upload command and visually highlight the conversation editor somehow (briefly flashing border?).
-[ ]: create the concept of conversation threads if it doesn't exist already.  there should be a searchable dropdown
+[x]: create the concept of conversation threads if it doesn't exist already.  there should be a searchable dropdown
      menu of all past threads.  we will be saving the thread transcripts (minus tool calls? your call) in project 
 	 repo in an appropriate place (propose one).
 [ ]: the asset editor should have an option to upload a custom asset for if e.g. a user pays someone to clean up

@@ -63,11 +63,85 @@ export const agentSetEffort = define({
 export const agentClear = define({
   id: 'agent.clear',
   title: 'Clear agent context',
-  description: 'Reset the conversation, returning the agent to plan mode.',
+  description: 'Reset the conversation, returning the agent to plan mode. The thread is saved.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
     await ctx.host.session.clearAgent();
     return { message: 'Agent context cleared.' };
+  },
+});
+
+/**
+ * The four thread commands. None is `undoable`: `vngen/state` is outside the undo snapshot by
+ * design, so a journal entry claiming to restore a transcript could not — and `agent.renameThread`
+ * is `mutating` only because it writes a file, which is also why it is the only one of the four
+ * that is.
+ */
+export const agentThreads = define({
+  id: 'agent.threads',
+  title: 'List conversations',
+  description: 'Every saved conversation in this project, newest first.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const { threads, active } = await ctx.host.session.threads();
+    const count = threads.length === 1 ? '1 conversation' : `${threads.length} conversations`;
+    return { message: `${count} saved.`, data: { threads, active } };
+  },
+});
+
+export const agentNewThread = define({
+  id: 'agent.newThread',
+  title: 'New conversation',
+  description: 'Save the current conversation and start a fresh one.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    await ctx.host.session.clearAgent();
+    return { message: 'Started a new conversation.' };
+  },
+});
+
+export const agentOpenThread = define({
+  id: 'agent.openThread',
+  title: 'Open conversation',
+  description: 'Replay a saved conversation on screen. Read-only: the agent is not shown it.',
+  mutating: false,
+  props: { id: prop.string('the conversation to reopen') },
+  async run({ id }, ctx) {
+    const record = await ctx.host.session.openThreadForReading(id);
+    return { message: `Reopened “${record.title}” for reading.`, data: record };
+  },
+});
+
+/** What renaming would hit — the open thread when no id is named, and nothing when none is. */
+async function wouldRename(
+  id: string,
+  title: string,
+  session: CommandHost['session'],
+): Promise<{ ok: true; note: string } | { ok: false; reason: string }> {
+  if (!title.trim()) return { ok: false, reason: 'Give the conversation a name.' };
+  const { threads, active } = await session.threads();
+  const target = id.trim() || active;
+  if (!target) return { ok: false, reason: 'No conversation is open — name the one to rename.' };
+  const found = threads.find((t) => t.id === target);
+  if (!found) return { ok: false, reason: `No conversation ${target}.` };
+  return { ok: true, note: `Renames “${found.title}” to “${title.trim()}”.` };
+}
+
+export const agentRenameThread = define({
+  id: 'agent.renameThread',
+  title: 'Rename conversation',
+  description: 'Retitle a saved conversation; an empty id renames the one that is open.',
+  mutating: true,
+  props: {
+    id: prop.string('the conversation to rename, or empty for the open one', { default: '' }),
+    title: prop.string('the new name'),
+  },
+  check: ({ id, title }, ctx) => wouldRename(id, title, ctx.host.session),
+  async run({ id, title }, ctx) {
+    const header = await ctx.host.session.renameThread(id, title);
+    return { message: `Renamed to “${header.title}”.`, data: header };
   },
 });

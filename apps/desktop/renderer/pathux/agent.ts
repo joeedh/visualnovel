@@ -21,13 +21,22 @@ import {
   proposed,
   queried,
   received,
+  replayed,
   type Convo,
-} from './convo.js';
+  type ThreadRecord,
+} from '../../src/shared/convo.js';
 import type { AskRequest, ConfirmRequest, PlanRequest } from '../../src/shared/ipc.js';
 
 const OPENING = isLive
   ? 'Workspace loaded. Tell me what to change — I plan first, you approve, then I edit and commit.'
   : 'Design preview (no Electron bridge). Live data appears when launched as the desktop app.';
+
+/**
+ * What a reopened thread says in the dialogue box. It has to be the sentence still on screen after
+ * the replayed turns are scrolled away, because the mistake it prevents — typing at a model that
+ * was never shown any of this — is one an author makes at the bottom of the pane.
+ */
+const REOPENED = 'Reopened for reading — the agent has not been shown this conversation.';
 
 let state: Convo = emptyConvo(OPENING);
 let rev = 0;
@@ -124,12 +133,21 @@ export function installAgent(): void {
   api.on('permission:ask', (request: AskRequest) => set(queried(state, request)));
   api.on('permission:confirm', (request: ConfirmRequest) => set(confirmAsked(state, request)));
 
-  // Clearing is a command, so the transcript follows the command rather than the button on the
-  // pane: the palette running `agent.clear` empties this the same way. One reaches it and this
-  // does not — `window.vn`/CDP, which goes straight to main, and `agent.clear` emits nothing.
+  // Clearing and the thread commands follow the *command* rather than the button on the pane, so
+  // the palette running the same id has the same effect. One route reaches neither —
+  // `window.vn`/CDP, which goes straight to main — and none of these commands emits an event.
   onExec((id, outcome) => {
-    if (id !== 'agent.clear' || !outcome.ok) return;
-    set(cleared(state, 'Conversation cleared. Back to plan mode.'));
-    setMode('plan');
+    if (!outcome.ok) return;
+    if (id === 'agent.clear') {
+      set(cleared(state, 'Conversation cleared. Back to plan mode.'));
+      setMode('plan');
+    } else if (id === 'agent.newThread') {
+      set(cleared(state, 'New conversation. Tell me what to change.'));
+      setMode('plan');
+    } else if (id === 'agent.openThread') {
+      const record = outcome.data as ThreadRecord | undefined;
+      if (record) set(replayed(state, record.items, REOPENED));
+      setMode('plan');
+    }
   });
 }

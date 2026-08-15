@@ -5,18 +5,41 @@
  * `useAgent` kept all of this in React state and reduced the event stream inside a `useEffect`,
  * so what one `agent:event` does to the conversation was never testable on its own. Here the
  * reduction is a pure function of `(Convo, event)` and the subscription is somebody else's
- * problem — `agent.ts` holds the live one.
+ * problem — `renderer/pathux/agent.ts` holds the live one.
+ *
+ * It is **shared** rather than renderer-only because main writes the same transcript to
+ * `vngen/state/threads/<id>.jsonl` as it emits. Two reducers over one event stream would drift
+ * within a week, so there is one, and the file and the screen are derived from it identically.
  *
  * Ids come from `Convo.seq` rather than a module counter, which is what keeps `received` pure;
  * clearing carries the counter over, so a cleared conversation never reuses an id.
  */
-import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from '../../src/shared/ipc.js';
+import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from './ipc.js';
 
 /** A rendered line in the transcript. */
 export interface FeedItem {
   id: number;
   role: 'user' | 'agent' | 'tool' | 'blocked';
   text: string;
+}
+
+/**
+ * A saved conversation's header. Beside `FeedItem` rather than beside the store in
+ * `main/threads.ts` because both sides of the bridge hold one — main writes it, and
+ * `agent.threads` hands it to the dropdown — and `main/` is node-only.
+ */
+export interface ThreadHeader {
+  id: string;
+  title: string;
+  startedAt: string;
+  /** The commit the conversation opened at — what turns a decision into the tree it was made against. */
+  commit?: string;
+  model?: string;
+}
+
+/** A whole saved conversation: the header plus every transcript line, in order. */
+export interface ThreadRecord extends ThreadHeader {
+  items: FeedItem[];
 }
 
 export interface Convo {
@@ -61,6 +84,11 @@ export function answered(convo: Convo, final: string | null): Convo {
  * One streamed event. A `mode` event is the *shell's* — `ui.agentMode` is what the header reads —
  * and a `plan` event only reports a decision that `permission:plan` already asked for, so neither
  * changes the conversation.
+ *
+ * What the agent says goes to **both** places, the way a visual novel's dialogue box and its
+ * backlog hold the same line: the box is what is being said now, the transcript is what was said.
+ * A transcript of only the author's turns and the tools they caused is a record of an argument
+ * with one side missing — and it is the side a saved thread is reopened to read.
  */
 export function received(convo: Convo, event: AgentEvent): Convo {
   switch (event.type) {
@@ -70,7 +98,7 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       return push(convo, 'blocked', `${event.tool} blocked — ${event.reason}`);
     case 'message':
     case 'final':
-      return { ...convo, line: event.text };
+      return { ...push(convo, 'agent', event.text), line: event.text };
     default:
       return convo;
   }
@@ -113,4 +141,17 @@ export function confirmDecided(convo: Convo, allowed: boolean): Convo {
 /** Start over, keeping the id counter so no two feed items ever share an id in one session. */
 export function cleared(convo: Convo, line: string): Convo {
   return { ...emptyConvo(line), seq: convo.seq };
+}
+
+/**
+ * A saved thread put back on screen. The banner is the dialogue box rather than a transcript line
+ * because it is not something anyone said — and because it must be the sentence still visible when
+ * the author has scrolled the replayed turns out of sight.
+ *
+ * Stored items keep the ids they were written with, and `seq` resumes past the highest of them, so
+ * a turn typed after a replay cannot collide with one being replayed.
+ */
+export function replayed(convo: Convo, items: readonly FeedItem[], banner: string): Convo {
+  const highest = items.reduce((max, item) => Math.max(max, item.id), 0);
+  return { ...emptyConvo(banner), feed: [...items], seq: Math.max(convo.seq, highest) };
 }

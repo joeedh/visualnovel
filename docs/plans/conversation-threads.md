@@ -1,6 +1,6 @@
 # Conversation threads, saved in the project
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -179,3 +179,34 @@ constraint rather than rediscovering it.
 - Launching the app and quitting without talking to the agent creates no thread file.
 - A thread file with a half-written last line still lists and still replays everything before it.
 - Undoing a `story.*` edit made during a conversation leaves the transcript intact.
+
+## Shipped deviations
+
+- **`ThreadHeader` and `ThreadRecord` live in `src/shared/convo.ts`**, not in `main/threads.ts`.
+  The renderer names both — the menu labels headers, and the replay reads `record.items` off a
+  `CommandOutcome.data` — and `src/shared/` is the only place a type can sit that both processes
+  may import without dragging node into the browser bundle.
+- **`openThread` returns the whole record, not the id.** The renderer needs the items to replay,
+  and a second round trip to fetch what the command just read would be a second chance to read a
+  different file.
+- **The first turn's title goes straight into the header line**, rather than being appended as a
+  superseding `title` record. The thread does not exist until someone speaks, so there is no
+  earlier title for the first one to supersede — the record shape is still what renames use.
+- **The reducer records the agent's speech in the feed as well as the dialogue box.** It had only
+  ever set `line`, because the box was the only place a live pane showed it. A transcript that
+  keeps the questions and drops every answer is not a transcript, and both processes reduce the
+  same function, so this was the one change that made the log worth reading.
+- **No `session.newThread()` alias.** `agent.newThread` closes the open thread and the next turn
+  opens the next one lazily, which is exactly what `clearAgent` already did — a second method
+  would have been a second way to be half-open.
+- **Main does not re-record a denied confirm.** The agent loop already emits a `blocked` event and
+  the reducer folds it in, so recording the denial again in the confirm handler wrote it twice.
+- **Every menu row carries an explicit id in slot 5.** `createMenu`'s array branch reads
+  `item.length > 4 ? item[5] : id++`, so a row with a tooltip and no id registers its callback
+  under `undefined` while the `li` is keyed by its own DOM node — the click lands, the menu
+  closes, and nothing runs. Passing the thread id (and `new` / `none` for the two fixed rows) is
+  a one-word fix on this side of the seam rather than a patch to the vendored submodule.
+- **Undo was already safe, for a second reason.** `vngen/state` is outside the shadow snapshot as
+  the plan says, and the stack also refuses to undo past a non-undoable command — so an
+  `agent.run` between an edit and an undo stops the undo rather than rolling the transcript back.
+  Verified live: four transcripts intact across an undone `project.setArtStyle`.

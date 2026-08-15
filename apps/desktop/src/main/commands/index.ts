@@ -6,7 +6,17 @@
  * where backend logic lives, and commands only add naming, typed props, and provenance.
  */
 import { CommandRegistry } from '@vn/commands';
-import { agentClear, agentRun, agentSetEffort, agentSetMode, agentSetModel } from './agent.js';
+import {
+  agentClear,
+  agentNewThread,
+  agentOpenThread,
+  agentRenameThread,
+  agentRun,
+  agentSetEffort,
+  agentSetMode,
+  agentSetModel,
+  agentThreads,
+} from './agent.js';
 import { artGenerate, artPromote, artRedraw, artSetNotes } from './art.js';
 import { assetAccept, assetInfo, assetRegenerate, assetSuspended, assetUpload } from './asset.js';
 import { bibleSearch } from './bible.js';
@@ -73,10 +83,14 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
   const registry = new CommandRegistry<CommandHost>();
   registry.registerAll([
     agentClear,
+    agentNewThread,
+    agentOpenThread,
+    agentRenameThread,
     agentRun,
     agentSetEffort,
     agentSetMode,
     agentSetModel,
+    agentThreads,
     artGenerate,
     artPromote,
     artRedraw,

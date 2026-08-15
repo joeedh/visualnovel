@@ -254,7 +254,7 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Seventy-three, in fourteen namespaces. Forty-five are `mutating`; forty-four declare a
+Seventy-eight, in fourteen namespaces. Forty-seven are `mutating`; forty-six declare a
 precondition; thirty are undoable; seven ask for confirmation.
 
 **Commands are the only write path.** The `story.*` branch mutators go through
@@ -325,7 +325,11 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
 | `agent.setEffort`              | `effort` (`default`\|`low`\|`medium`\|`high`\|`xhigh`\|`max`) | How hard the model thinks. `default` leaves the knob off; a model with no such knob keeps the setting and ignores it (`supportsEffort`). |
-| `agent.clear`                  | —                                 | Resets the conversation, back to plan mode.                |
+| `agent.clear`                  | —                                 | Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed. |
+| `agent.threads`                | —                                 | Every saved conversation, newest first, plus which one is open. Header lines only — no transcripts. |
+| `agent.newThread`              | —                                 | End the open conversation and start again. The next turn opens a new thread file. |
+| `agent.openThread`             | `id`                              | Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread. Returns the whole record as `data`. |
+| `agent.renameThread` ✍ ✓       | `id` (default `''`), `title`      | Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins. |
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
 | `interaction.targets`          | `interaction`, `carried`, `scene`, `asset` | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 | `workspace.index`              | —                                 | Characters, locations, screenplay files, diagnostics.      |

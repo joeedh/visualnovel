@@ -75,14 +75,14 @@ nothing. Wave C is the two features that consume the rest.
 
 ### 4 — Conversation threads
 
-- [ ] Move the reducer to `apps/desktop/src/shared/convo.ts`; both processes reduce identically
-- [ ] `apps/desktop/src/main/threads.ts`: the JSONL log at `vngen/state/threads/<id>.jsonl`,
+- [x] Move the reducer to `apps/desktop/src/shared/convo.ts`; both processes reduce identically
+- [x] `apps/desktop/src/main/threads.ts`: the JSONL log at `vngen/state/threads/<id>.jsonl`,
       append-only including the superseding `title` record
-- [ ] `threads.test.ts`: round-trip, retitle, corrupt last line, ordering
-- [ ] `session.runAgent` opens lazily and appends as it emits; `clearAgent` closes
-- [ ] `agent.threads` / `newThread` / `openThread` / `renameThread`
-- [ ] The searchable dropdown — `startMenu(menu, x, y, true)` — and the read-only replay banner
-- [ ] Docs: `docs/desktopAppState.md` (two "lost on restart" rows), `docs/desktop-app.md`,
+- [x] `threads.test.ts`: round-trip, retitle, corrupt last line, ordering
+- [x] `session.runAgent` opens lazily and appends as it emits; `clearAgent` closes
+- [x] `agent.threads` / `newThread` / `openThread` / `renameThread`
+- [x] The searchable dropdown — `startMenu(menu, x, y, true)` — and the read-only replay banner
+- [x] Docs: `docs/desktopAppState.md` (two "lost on restart" rows), `docs/desktop-app.md`,
       `docs/vnauthor.md`, `CLAUDE.md`
 
 ### 5 — `/upload` and the archive
