@@ -98,6 +98,12 @@ a save-dialog, which is a different Electron API and a different set of platform
 menu entry opens the palette on `workspace.create` with `path` empty, and the author types or
 pastes a path — the same way every other path-taking command is reached today.
 
+> **Superseded** by
+> [`new-project-dialog-with-folder-browse.md`](new-project-dialog-with-folder-browse.md). The
+> save-dialog reasoning holds; the conclusion does not. Splitting the path into a browsed folder
+> and a `newFolder` checkbox makes each half something a chooser or a textbox can say on its own,
+> so the palette's form became the dialog rather than a place to type a path.
+
 Tests: `apps/desktop/src/main/tests/workspace.test.ts` gains `inspectCreate` cases (missing dir,
 empty dir, non-empty dir, dir inside a repo) and a `createWorkspace` round-trip asserting that the
 created project loads a model with one scene and **zero error diagnostics** — that assertion is
@@ -166,3 +172,8 @@ basename, with the open project absent — and refetched itself when another was
   take no argument and ask for no confirmation, so the palette was an empty form dismissed with the
   same click that opened it. Both now run from the menu and report what they answered; `New
   Project…` keeps the palette because `workspace.create` needs a path no chooser can express.
+- **Later correction: `New Project…` browses.** The paragraph refusing a `workspace.createPick` is
+  superseded by
+  [`new-project-dialog-with-folder-browse.md`](new-project-dialog-with-folder-browse.md): `path` is
+  a `prop.directory` with a Browse… button beside it, and a `newFolder` checkbox decides whether the
+  project lands in the browsed folder or in a `slug(title)` child of it.

@@ -193,7 +193,11 @@ plays it. This is deliberately **not** an external DSL export.
   and nothing may cache the root. **Creating one scaffolds where opening does not**:
   `workspace.create` writes a three-file skeleton whose model builds with no error diagnostics,
   commits it, then opens it through the same path — and refuses a directory that already has files
-  in it. ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md))
+  in it. **Its form is the dialog**: `path` is a `prop.directory`, so the palette draws a Browse…
+  button that `exec`s `workspace.chooseDirectory`, and a `newFolder` checkbox — off in the
+  vocabulary, ticked by the menu entry — puts the project in a `slug(title)` child of what was
+  browsed. ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md),
+  [`docs/plans/new-project-dialog-with-folder-browse.md`](docs/plans/new-project-dialog-with-folder-browse.md))
 - **A conversation is a thread, and it is written down where the other logs are** —
   `vngen/state/threads/<id>.jsonl`, one line per feed item, appended by main as the turn runs and
   titled from the first thing the author said. Undo's snapshots exclude `vngen/state`, so undoing

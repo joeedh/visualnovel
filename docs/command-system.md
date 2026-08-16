@@ -78,7 +78,7 @@ provenance. They stay separate because their gating rules differ.
 
 ```ts
 export interface Prop<T extends PropValue = PropValue, Req extends boolean = boolean> {
-  kind: 'string' | 'number' | 'boolean' | 'enum' | 'string[]';
+  kind: 'string' | 'directory' | 'number' | 'boolean' | 'enum' | 'string[]';
   description: string;
   required: Req;
   default?: T;
@@ -94,9 +94,9 @@ serves all three. A zod schema serves none of them without a second hand-rolled 
 repo is on zod 3, so there is no `z.toJSONSchema`, and `@vn/authoring` already had to
 hand-roll `describeToolParams` for exactly this reason.
 
-Builders cover the five kinds — `prop.string`, `prop.number`, `prop.boolean`, `prop.oneOf`,
-`prop.stringList`. Each is overloaded so that **passing a `default` narrows `required` to
-`false`**:
+Builders cover the kinds — `prop.string`, `prop.directory`, `prop.number`, `prop.boolean`,
+`prop.oneOf`, `prop.stringList`. Each is overloaded so that **passing a `default` narrows
+`required` to `false`**:
 
 ```ts
 props: {
@@ -105,6 +105,11 @@ props: {
   mode: prop.oneOf(['plan', 'execute'] as const, 'the mode to switch to'),
 }
 ```
+
+**`directory` is a string that says the OS can fill it in.** It coerces, serializes and
+schematizes exactly as `string` — it *is* one — and exists only so a form can offer a folder
+chooser beside the field. The alternative, a palette that draws a Browse button for any property
+happening to be spelled `path`, makes a widget depend on spelling.
 
 `PropsOf<M>` maps the spec to the object `run` receives, and **every key is present**:
 `coerceProps` has already applied the defaults, so optionality belongs to the *raw input*, not
@@ -342,9 +347,10 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `workspace.filetree`           | —                                 | Every file in the workspace as a tree, `.git` and `node_modules` excluded. |
 | `workspace.import` ✍ ✓         | —                                 | Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
 | `workspace.reindex` ✍ ✓        | —                                 | Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write. |
-| `workspace.create` ✍ ✓         | `path`, `title`                   | Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. Refuses a directory with files in it; warns when it sits inside another repo. |
+| `workspace.create` ✍ ✓         | `path`, `title`, `newFolder` (default `false`) | Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. `newFolder` puts it in a `slug(title)` folder inside `path`. Refuses a directory with files in it; warns when it sits inside another repo. |
 | `workspace.open` ✍ ✓           | `path`                            | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open). |
 | `workspace.pick` ✍ ✓           | —                                 | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
+| `workspace.chooseDirectory`    | —                                 | Open the folder chooser and answer with what was chosen, touching nothing — what fills in a `directory` field. |
 | `workspace.recent`             | —                                 | The open project and the ones opened before it, most recent first. |
 | `view.open`                    | `editor`, `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`, default `here`), `subject` | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane. |
 | `view.focus`                   | `editor`, `subject`               | Makes the pane already showing an editor the active one.   |
@@ -645,6 +651,16 @@ this document ("the palette … reaches the same registry") true rather than asp
   `<select>` (`enum`, options from `values`) or a text/number input; lists edit as comma-separated
   text. `blankProps` seeds it from each prop's `default`, so what is submitted matches what
   `coerceProps` would accept. A command with no props runs straight from its row.
+- **A `directory` prop gets a Browse… button, and stays typeable.** The button `exec`s
+  `workspace.chooseDirectory` — a non-mutating command with no props that answers with the chosen
+  absolute path, or with `Cancelled.` — and writes what came back into the field. The chooser is a
+  convenience beside the field, not a gate in front of it, and it is a command rather than an IPC
+  channel so CDP and the agent reach the same act. This is what makes the palette's form a real
+  dialog: `workspace.create` collects a folder, a title and a checkbox in it rather than asking for
+  a path to be typed.
+- **A toggle does not rebuild the form.** A `boolean` is a `check-x` carrying its own state, so
+  flipping it rechecks and redraws nothing else — a form rebuilt under a widget costs that widget
+  the focus it just took.
 - **`mutating` is marked `writes`; `confirm` takes a second click.** The main process still
   auto-approves `confirm` for other callers — that half of follow-on 2 is still open — but from
   the palette, `pipeline.run` is a real two-step.
@@ -708,7 +724,8 @@ and half their entries are shell acts rather than commands — Quit, Split Area,
 reach no registry because there is none to reach. So those menus run and report: `exec` says the
 refusal after the click instead of drawing it before, which is the same sentence one beat later. The
 rule they do keep is the palette's: an entry opens the palette when the command has something to
-collect (`workspace.create`'s path) or something to confirm (`pipeline.run`, `upload.pick`), and
+collect (`workspace.create`'s folder, title and checkbox) or something to confirm (`pipeline.run`,
+`upload.pick`), and
 runs outright when it has neither (`workspace.pick`, `workspace.reindex`) — an empty form is
 friction, not a safeguard.
 

@@ -11,8 +11,10 @@
 import { basename, resolve } from 'node:path';
 import { defineFor, prop } from '@vn/commands';
 import { GENERATED_CONTEXT_FILE } from '@vn/authoring';
+import { slug } from '@vn/model';
 import type { CommandHost } from './host.js';
 import {
+  createRoot,
   createWorkspace,
   inspectCreate,
   inspectWorkspace,
@@ -50,15 +52,22 @@ async function wouldOpen(
  * What creating a project at `path` would do. The inside-a-repo case is an accept with a warning
  * appended, not a refusal: the project works, it just never gets committed for the author, and
  * afterwards that has no visible cause at all.
+ *
+ * Every sentence names the **resolved** root, so an author with `newFolder` checked reads where
+ * the project actually lands rather than being asked to apply the naming rule themselves.
  */
 async function wouldCreate(
-  path: string,
+  props: { path: string; title: string; newFolder: boolean },
   busy: string | undefined,
 ): Promise<{ ok: true; note: string } | { ok: false; reason: string }> {
-  if (!path.trim()) return { ok: false, reason: 'Name a path for the new project.' };
+  const { path, title, newFolder } = props;
+  if (!path.trim()) return { ok: false, reason: 'Choose a folder for the new project.' };
+  if (newFolder && !slug(title)) {
+    return { ok: false, reason: 'Type a title: it names the folder that will be created.' };
+  }
   if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
 
-  const root = resolve(path);
+  const root = createRoot(path, title, newFolder);
   const found = await inspectCreate(root);
   if (found.exists && !found.directory) return { ok: false, reason: `${root} is a file.` };
   if (!found.empty) {
@@ -82,19 +91,26 @@ export const workspaceCreate = define({
   title: 'New project',
   description:
     'Create a project in a new or empty directory — a starter scene, a story bible page, ' +
-    'project.yaml and a git repository — then open it. Refuses a directory that already has ' +
-    'files in it. Closes the current project, its agent conversation and undo history with it.',
+    'project.yaml and a git repository — then open it. With `newFolder`, the project goes in a ' +
+    'folder named after the title inside `path` rather than in `path` itself. Refuses a ' +
+    'directory that already has files in it. Closes the current project, its agent ' +
+    'conversation and undo history with it.',
   mutating: true,
   props: {
-    path: prop.string('the directory to create the project in'),
+    path: prop.directory('the folder the project goes in'),
     title: prop.string('the project title', { default: '' }),
+    // Off by default because `workspace.create(path='/x/y')` has always meant "the project goes
+    // at /x/y", and every existing caller says it that way. The New Project… menu entry checks it.
+    newFolder: prop.boolean('create a folder named after the title inside `path`', {
+      default: false,
+    }),
   },
-  check: (props, ctx) => wouldCreate(props.path, ctx.host.session.busy()),
+  check: (props, ctx) => wouldCreate(props, ctx.host.session.busy()),
   async run(props, ctx) {
-    const verdict = await wouldCreate(props.path, ctx.host.session.busy());
+    const verdict = await wouldCreate(props, ctx.host.session.busy());
     if (!verdict.ok) throw new Error(verdict.reason);
 
-    const root = resolve(props.path);
+    const root = createRoot(props.path, props.title, props.newFolder);
     await createWorkspace(root, props.title.trim() || basename(root));
     const opened = await ctx.host.openWorkspace(root);
     return { message: `Created ${opened.title} (${opened.root}).` };
@@ -142,6 +158,25 @@ export const workspacePick = define({
     if (!verdict.ok) throw new Error(verdict.reason);
     const opened = await ctx.host.openWorkspace(resolve(picked));
     return { message: `Opened ${opened.title} (${opened.root}).` };
+  },
+});
+
+export const workspaceChooseDirectory = define({
+  id: 'workspace.chooseDirectory',
+  title: 'Choose a folder…',
+  description:
+    'Open the folder chooser and answer with what was chosen, without doing anything to it — ' +
+    'what fills in a directory field. Cancelling answers with nothing.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const picked = await ctx.host.pickDirectory({
+      title: 'Choose a folder',
+      buttonLabel: 'Choose folder',
+    });
+    return picked
+      ? { message: `Chose ${picked}.`, data: { path: picked } }
+      : { message: 'Cancelled.' };
   },
 });
 

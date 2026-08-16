@@ -74,6 +74,7 @@ import {
 import { uploadFiles, uploadPick } from './upload.js';
 import { viewClose, viewFocus, viewLayout, viewOpen, viewPalette } from './view.js';
 import {
+  workspaceChooseDirectory,
   workspaceCreate,
   workspaceDoctree,
   workspaceFiletree,
@@ -164,6 +165,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     viewLayout,
     viewOpen,
     viewPalette,
+    workspaceChooseDirectory,
     workspaceCreate,
     workspaceDoctree,
     workspaceFiletree,

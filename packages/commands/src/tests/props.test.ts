@@ -71,6 +71,16 @@ describe('prop builders', () => {
     });
   });
 
+  it('coerces a directory exactly as a string, and declares itself one', () => {
+    const dirSpecs = { path: prop.directory('where') };
+    expect(prop.directory('where').kind).toBe('directory');
+    expect(coerceProps(dirSpecs, { path: 'C:/dev/x' })).toEqual({
+      ok: true,
+      value: { path: 'C:/dev/x' },
+    });
+    expect(coerceProps(dirSpecs, { path: 7 })).toEqual({ ok: true, value: { path: '7' } });
+  });
+
   it('records enum values and numeric bounds', () => {
     expect(prop.oneOf(['a', 'b'] as const, 'x').values).toEqual(['a', 'b']);
     expect(prop.number('x', { min: 1, max: 2 })).toMatchObject({ min: 1, max: 2 });

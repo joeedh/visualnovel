@@ -11,6 +11,7 @@ import { cp, mkdir, readdir, stat } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { CONFIG_FILENAME, loadConfig } from '@vn/config';
 import { openGit, type Git } from '@vn/git';
+import { slug } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
 
 /**
@@ -181,6 +182,17 @@ export interface CreateInspection {
   empty: boolean;
   /** The repo that already owns this path, if any — commit-on-save will not run here. */
   insideRepo?: string;
+}
+
+/**
+ * Where a create lands: the folder that was chosen, or a child of it named from the title. The
+ * two halves of "choose a parent and type a name" — separated so an OS chooser can answer one
+ * and a textbox the other. Slugged, because a title is prose and a folder name is not.
+ */
+export function createRoot(path: string, title: string, newFolder: boolean): string {
+  const base = resolve(path);
+  const name = slug(title);
+  return newFolder && name ? join(base, name) : base;
 }
 
 /** The closest ancestor that exists, so git can be asked about a path that does not yet. */

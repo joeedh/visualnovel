@@ -164,10 +164,10 @@ export class VnHeaderEditor extends VnEditor {
       // palette on its form. `mock` is seeded from whether this is a live app — a preview has
       // no keys and no main process, and a dry run is the only thing it could honestly do.
       ['Run Pipeline…', () => openPalette('pipeline.run', { mock: !isLive }), undefined],
-      // `workspace.create` takes a path to a directory that does not exist yet, which the OS
-      // chooser cannot express — so this one entry opens the palette on its form rather than a
-      // dialog, the way every other path-taking command is reached.
-      ['New Project…', () => openPalette('workspace.create'), undefined],
+      // The palette's form is this command's dialog: a folder to browse for, a title, and the
+      // checkbox that turns the two into a folder the OS chooser could not have named. Checked
+      // here rather than in the command, whose own default has always been "the project goes here".
+      ['New Project…', () => openPalette('workspace.create', { newFolder: true }), undefined],
       // These two take no argument and ask for no confirmation, so the palette would be an empty
       // form the author dismisses with the same click. They run, and say what they answered — the
       // chooser `workspace.pick` opens is its own confirmation.

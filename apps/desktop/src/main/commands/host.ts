@@ -14,6 +14,12 @@ export interface FilePickOptions {
   single?: boolean;
 }
 
+/** How a directory chooser is dressed. The defaults open a project; browsing for one does not. */
+export interface DirectoryPickOptions {
+  title?: string;
+  buttonLabel?: string;
+}
+
 /**
  * What the desktop's commands are allowed to reach. Everything else a command needs — the
  * workspace root, git, logging, the confirmation gate — comes from `CommandContext`.
@@ -31,7 +37,7 @@ export interface CommandHost {
    */
   openWorkspace(root: string): Promise<{ root: string; title: string }>;
   /** The native directory chooser. `undefined` when the user cancelled; throws with no window. */
-  pickDirectory(): Promise<string | undefined>;
+  pickDirectory(options?: DirectoryPickOptions): Promise<string | undefined>;
   /** The native file chooser. Empty when the user cancelled; throws with no window. */
   pickFiles(options?: FilePickOptions): Promise<string[]>;
   /**

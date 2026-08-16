@@ -9,6 +9,7 @@ import {
   RECENT_KEY,
   RECENT_MAX,
   START_SCENE,
+  createRoot,
   createWorkspace,
   ensureRepo,
   inspectCreate,
@@ -196,6 +197,22 @@ describe('openWorkspace', () => {
     await writeFile(file, 'hello');
     await expect(openWorkspace(file)).rejects.toThrow('not a directory');
     await expect(openWorkspace(join(root, 'nope'))).rejects.toThrow('not a directory');
+  });
+});
+
+describe('createRoot', () => {
+  const parent = join(tmpdir(), 'projects');
+
+  it('leaves the chosen folder alone unless a folder was asked for', () => {
+    expect(createRoot(join(parent, 'mine'), 'My Story', false)).toBe(join(parent, 'mine'));
+  });
+
+  it('names the new folder from the title, slugged', () => {
+    expect(createRoot(parent, 'My First Story!', true)).toBe(join(parent, 'my_first_story'));
+  });
+
+  it('has nowhere to put a title that slugs to nothing, so it stays put', () => {
+    expect(createRoot(parent, '   ', true)).toBe(parent);
   });
 });
 

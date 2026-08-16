@@ -906,8 +906,8 @@ Student*" vs "Creates a new project at …"), and refuses the root that is alrea
 that is not a directory, and a switch while a pipeline run or agent turn is in flight
 (`WorkspaceSession.busy()`).
 
-**Creating one is `workspace.create(path='…' title='…')`, and it scaffolds where opening does
-not.** The two are deliberately different promises: opening a directory the author already has
+**Creating one is `workspace.create(path='…' title='…' newFolder=false)`, and it scaffolds where
+opening does not.** The two are deliberately different promises: opening a directory the author already has
 must not litter it, whereas "create a new project here" is an explicit request for a project, and
 one whose model will not build is a worse answer than three files. So `createWorkspace` writes a
 skeleton — `project.yaml` (`title` + `start: opening`), `scenes/opening.md` (a Fountain slug line
@@ -918,6 +918,14 @@ and the author would spend their first ten minutes deleting a cast. It is sized 
 the created project builds a model with **no error diagnostics**, so the header's first count is
 zero rather than red.
 
+**`newFolder` is what makes an OS chooser enough.** Off — the default, and what
+`workspace.create(path='/x/y')` has always meant — the project goes at `path`. On, it goes in
+`slug(title)` **inside** `path`, so "choose a parent and type a name" becomes a folder the chooser
+can answer and a textbox the author can, instead of a save-dialog. The rule is `createRoot(path,
+title, newFolder)` and every sentence `wouldCreate` produces names the root it resolved, so the
+author reads where the project lands rather than applying the rule themselves. On with a title that
+slugs to nothing is a refusal: there is no root yet to take a `basename` from.
+
 The refusals are `inspectCreate`'s: a path that is a file, and a directory with anything in it
 (*"… already contains files — open it with workspace.open instead"*) — never a merge, never an
 overwrite. Sitting inside a larger git repo is a **warning appended to the accept**, not a refusal:
@@ -925,18 +933,20 @@ the project works, it just gets no commit-on-save ([`repos-and-commits.md`](repo
 and after the fact that symptom has no visible cause. Like every mutator, `run` re-runs the check
 rather than trusting the one the palette showed.
 
-**The app menu is where all three live**: New Project… opens the palette on `workspace.create`,
-because that command needs a path to a directory that does not exist yet and no OS chooser can
-express one; **Open Project…** runs `workspace.pick` outright, since the chooser it raises is the
-form. (The palette is for a command with something to collect or something to confirm — an entry
+**The app menu is where all three live**: New Project… opens the palette on `workspace.create`
+with `newFolder` checked, because the palette's form is that command's dialog — a `path` field with
+a **Browse…** button beside it, a title, and the checkbox that turns the two into a directory no
+chooser could have named; **Open Project…** runs `workspace.pick` outright, since the chooser it
+raises is the form. (The palette is for a command with something to collect or something to confirm — an entry
 with neither, like this one and **Reindex Project**, would draw an empty form the author dismisses
 with the same click that opened it.) **Recent Projects** is a submenu built from
 `workspace.recent` — one entry per remembered root, labelled by its last path segment with the full
 path as the tooltip, each invoking `workspace.open(path=…)`. The renderer keeps no list of its own;
 it refetches once per project it finds itself in, and leaves the open project out rather than
-checking it, because `workspace.open` refuses that root by name. There is no `workspace.createPick`:
-"choose a parent and type a name" is a save-dialog, so the path is typed into the palette the way
-every other path-taking command is reached.
+checking it, because `workspace.open` refuses that root by name. Browsing is
+`workspace.chooseDirectory` — non-mutating, no props, the chosen absolute path in `data` and
+`Cancelled.` when there is none — so the Browse button is an invocation like every other button in
+the app rather than a renderer-only capability, and CDP can reach the same act.
 
 **A switch is a teardown, not a refresh.** The session (with its agent conversation), the command
 stack, its undo journal, the repo map and the undo revision are all rebuilt against the new root:

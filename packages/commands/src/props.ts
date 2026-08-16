@@ -5,7 +5,12 @@
  * zod schema serves none of them without a second hand-rolled walker.
  */
 
-export type PropKind = 'string' | 'number' | 'boolean' | 'enum' | 'string[]';
+/**
+ * `directory` is a string everywhere that matters — it coerces, serializes and schematizes as
+ * one. It is its own kind so a form knows the OS can fill it in, rather than inferring that
+ * from a property happening to be spelled `path`.
+ */
+export type PropKind = 'string' | 'directory' | 'number' | 'boolean' | 'enum' | 'string[]';
 
 /** Every value a command property can hold. Matches what the DSL can express. */
 export type PropValue = string | number | boolean | string[];
@@ -48,14 +53,17 @@ interface Opts<T extends PropValue> {
 }
 
 /**
- * Builders for the five prop kinds. Passing a `default` makes the property optional; the
- * overloads narrow `Prop`'s `Req` parameter so `PropsOf` sees the difference. Declared as an
- * interface because object literals can't carry overload signatures.
+ * Builders for the prop kinds. Passing a `default` makes the property optional; the overloads
+ * narrow `Prop`'s `Req` parameter so `PropsOf` sees the difference. Declared as an interface
+ * because object literals can't carry overload signatures.
  */
 interface PropBuilders {
   string(description: string): Prop<string, true>;
   string(description: string, opts: { digest: true }): Prop<string, true>;
   string(description: string, opts: Opts<string> & { default: string }): Prop<string, false>;
+
+  directory(description: string): Prop<string, true>;
+  directory(description: string, opts: Opts<string> & { default: string }): Prop<string, false>;
 
   number(description: string, opts?: Omit<Opts<number>, 'default'>): Prop<number, true>;
   number(description: string, opts: Opts<number> & { default: number }): Prop<number, false>;
@@ -92,6 +100,7 @@ function make(
 
 export const prop: PropBuilders = {
   string: (description: string, opts?: Opts<string>) => make('string', description, opts),
+  directory: (description: string, opts?: Opts<string>) => make('directory', description, opts),
   number: (description: string, opts?: Opts<number>) => make('number', description, opts),
   boolean: (description: string, opts?: Opts<boolean>) => make('boolean', description, opts),
   oneOf: (values: readonly string[], description: string, opts?: Opts<string>) =>
@@ -107,6 +116,7 @@ export type CoerceResult =
 function coerceOne(kind: PropKind, raw: unknown): PropValue | undefined {
   switch (kind) {
     case 'string':
+    case 'directory':
     case 'enum':
       if (typeof raw === 'string') return raw;
       if (typeof raw === 'number' || typeof raw === 'boolean') return String(raw);

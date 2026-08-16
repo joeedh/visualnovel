@@ -330,11 +330,11 @@ function getStack(): CommandStack<CommandHost> {
       state: getSessionStore(),
       ui: (effect: UiEffect) => win?.webContents.send('command:ui', effect),
       openWorkspace: (next: string) => switchWorkspace(next),
-      pickDirectory: async () => {
+      pickDirectory: async (options) => {
         if (!win) throw new Error('there is no window to show a directory chooser in');
         const result = await dialog.showOpenDialog(win, {
-          title: 'Open or create a VN project',
-          buttonLabel: 'Open project',
+          title: options?.title ?? 'Open or create a VN project',
+          buttonLabel: options?.buttonLabel ?? 'Open project',
           properties: ['openDirectory', 'createDirectory'],
         });
         return result.canceled ? undefined : result.filePaths[0];

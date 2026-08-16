@@ -185,13 +185,14 @@ class Palette {
     const value = this.values[prop.name];
 
     if (prop.kind === 'boolean') {
-      // A button rather than a checkbox: the label carries the state, so the form reads the
-      // same whether or not the widget has focus.
-      row.button(value ? 'yes' : 'no', () => {
-        this.values[prop.name] = !value;
-        this.renderDetail();
+      // Nothing is rebuilt on a toggle: the widget carries its own state, so redrawing the form
+      // around it would only cost it the focus it just took.
+      const box = row.check(undefined, prop.description);
+      box.checked = Boolean(value);
+      box.on_change = (next: unknown) => {
+        this.values[prop.name] = Boolean(next);
         void this.recheck();
-      });
+      };
       return undefined;
     }
 
@@ -217,7 +218,27 @@ class Palette {
       void this.recheck();
     });
     box.description = prop.description;
+
+    // A directory is the one string the OS can say for itself. The field stays typeable — the
+    // chooser fills it in, it does not own it.
+    if (prop.kind === 'directory') {
+      const browse = row.button('Browse…', () => void this.browse(prop.name, box));
+      browse.description = 'Choose this folder in a file dialog';
+    }
+
     return box;
+  }
+
+  /** Run the chooser and put what it answered in the field, leaving a cancel alone. */
+  private async browse(name: string, box: TextBox): Promise<void> {
+    const outcome = await exec('workspace.chooseDirectory');
+    if (!outcome.ok) return;
+    const picked = (outcome.data as { path?: string } | undefined)?.path;
+    if (!picked) return;
+
+    this.values[name] = picked;
+    box.text = picked;
+    void this.recheck();
   }
 
   private async run(entry: CatalogEntry): Promise<void> {
