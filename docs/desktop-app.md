@@ -92,7 +92,9 @@ renderer/
   global.d.ts           ambient declarations for what the preload injects
   debug/install.ts      dev-only @vn/debug2d glue; vite build drops it entirely
   pathux/               shell.ts (boot) · screen.ts · context.ts · state.ts · api.ts (DataAPI)
-                        theme.ts · tokens.ts · keymap.ts · palette.ts · bridge.ts · persist.ts
+                        theme.ts · tokens.ts · keymap.ts · bridge.ts · persist.ts
+                        commandform.ts (one command as a form) · palette.ts (find one)
+                        dialog.ts (fill one in, when it was already found)
                         editor.ts (VnEditor + registerEditor) · view.ts · panes.ts (pure)
                         route.ts (which editor a clicked node opens; pure)
                         open.ts (the one line of glue that runs that route)
@@ -216,8 +218,15 @@ agent subscription and persistence.
   palette in the middle of a sentence.
 - **The palette is a screen popup over the live registry.** `app/catalog.ts` — matching, blank
   values, field coercion — is imported unchanged by both shells, because two palettes disagreeing
-  about which command a query names would be a bug in both. `openPalette(id, props)` is also how
-  surfaces hand off a command that needs confirmation (`pipeline.run`, `gate.approve`).
+  about which command a query names would be a bug in both.
+- **Finding a command and filling it in are two surfaces over one form.** `commandform.ts` is the
+  form — declared props as widgets, the live verdict above the button, `confirm`'s second click,
+  a `directory`'s Browse… — and it is hosted twice. The **palette** is the finder: a search box, a
+  list, and the chosen entry's form underneath. `openCommandDialog(id, props)` is the other host: a
+  caller that already knows which command it wants (a menu entry, a gate bar, `pipeline.run`) opens
+  a dialog titled with the command, with Cancel beside the button, and **no search box and no
+  list** — the author picked it off a menu, so offering to find it again is noise. Both are screen
+  popups, so both are inside the mesh; neither is an OS window.
 - **A mid-gesture verdict must be the verdict that would happen.** Wherever a drag decides
   something, the grab captures every candidate's verdict up front — from the same pure rule the
   command itself runs, through the interaction layer's `targets` query
@@ -596,9 +605,9 @@ and each fix is a pure function tested in node:
   the UI can't offer an estimate as a fact.
 
 **The gate has one affordance, and it is the same one in both places.** A pending character is a
-bar in the list and a button on the graph's barrier rule, and each opens the palette on
-`gate.approve` with `characterId` prefilled — so `stack.check`'s refusal is printed before the
-author commits to anything. The room shell had four partial gate surfaces; there is no
+bar in the list and a button on the graph's barrier rule, and each opens `gate.approve`'s own dialog
+with `characterId` prefilled — so `stack.check`'s refusal is printed before the author commits to
+anything. The room shell had four partial gate surfaces; there is no
 `view.room` to jump through any more.
 
 **The inspector renders the P7 refine loop**, since `shot_image` folds generate → critique → refine
@@ -928,18 +937,20 @@ slugs to nothing is a refusal: there is no root yet to take a `basename` from.
 
 The refusals are `inspectCreate`'s: a path that is a file, and a directory with anything in it
 (*"… already contains files — open it with workspace.open instead"*) — never a merge, never an
-overwrite. Sitting inside a larger git repo is a **warning appended to the accept**, not a refusal:
-the project works, it just gets no commit-on-save ([`repos-and-commits.md`](repos-and-commits.md)),
-and after the fact that symptom has no visible cause. Like every mutator, `run` re-runs the check
-rather than trusting the one the palette showed.
+overwrite. Sitting inside a larger git repo is a **fact appended to the accept**, not a refusal and
+no longer a warning: creating a project initializes a repository **at** its own root whatever
+encloses it (`initRepoAt`, the deliberate opposite of `ensureRepo`), so the accept says the new
+project will be a repository nested inside the one that already owns the path
+([`repos-and-commits.md`](repos-and-commits.md)). Like every mutator, `run` re-runs the check rather
+than trusting the one the form showed.
 
-**The app menu is where all three live**: New Project… opens the palette on `workspace.create`
-with `newFolder` checked, because the palette's form is that command's dialog — a `path` field with
-a **Browse…** button beside it, a title, and the checkbox that turns the two into a directory no
-chooser could have named; **Open Project…** runs `workspace.pick` outright, since the chooser it
-raises is the form. (The palette is for a command with something to collect or something to confirm — an entry
-with neither, like this one and **Reindex Project**, would draw an empty form the author dismisses
-with the same click that opened it.) **Recent Projects** is a submenu built from
+**The app menu is where all three live**: New Project… opens `workspace.create`'s **own dialog**
+with `newFolder` checked — a `path` field with a **Browse…** button beside it, a title, the checkbox
+that turns the two into a directory no chooser could have named, and Cancel beside the button;
+**Open Project…** runs `workspace.pick` outright, since the chooser it raises is the form. (A dialog
+is for a command with something to collect or something to confirm — an entry with neither, like
+this one and **Reindex Project**, would draw an empty form the author dismisses with the same click
+that opened it.) **Recent Projects** is a submenu built from
 `workspace.recent` — one entry per remembered root, labelled by its last path segment with the full
 path as the tooltip, each invoking `workspace.open(path=…)`. The renderer keeps no list of its own;
 it refetches once per project it finds itself in, and leaves the open project out rather than

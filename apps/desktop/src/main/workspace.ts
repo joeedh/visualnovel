@@ -70,7 +70,17 @@ export async function seedWorkspace(template: string, target: string): Promise<S
 export async function ensureRepo(root: string, message = 'Existing project files'): Promise<Git> {
   const git = openGit(root);
   if (await git.isRepo()) return git;
+  return initRepoAt(root, message);
+}
 
+/**
+ * `ensureRepo`'s deliberate opposite: initialize a repository **at** `root` whatever encloses it,
+ * because "create a new project here" is a request for a project and a project has a repo. A
+ * nested one is a thing this codebase already understands — git does not descend into it, and
+ * `Workspace.repos()` calls a project owning its own root `owned`, which is what commits it.
+ */
+export async function initRepoAt(root: string, message: string): Promise<Git> {
+  const git = openGit(root);
   await git.init();
   // A fresh repo inherits no local identity, and `commit` fails outright without one — but a
   // global identity is the user's own, so only fill in what git can't already answer.
@@ -226,7 +236,9 @@ export async function inspectCreate(root: string): Promise<CreateInspection> {
  * worse answer than three files.
  *
  * The repo is initialized before the open so the first commit is the skeleton under its own
- * subject; `openWorkspace` then finds a `project.yaml` already there and only reads it.
+ * subject; `openWorkspace` then finds a `project.yaml` already there and only reads it. It is
+ * `initRepoAt` rather than `ensureRepo` because the promise is a repository, not a repository
+ * unless something already encloses this one.
  */
 export async function createWorkspace(root: string, title: string): Promise<OpenResult> {
   if (!(await inspectCreate(root)).empty) {
@@ -238,7 +250,7 @@ export async function createWorkspace(root: string, title: string): Promise<Open
     await mkdir(dirname(path), { recursive: true });
     await writeFileAtomic(path, file.text);
   }
-  await ensureRepo(root, 'New project');
+  await initRepoAt(root, 'New project');
   return { ...(await openWorkspace(root)), created: true };
 }
 

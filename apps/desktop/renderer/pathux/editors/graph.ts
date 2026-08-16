@@ -12,7 +12,7 @@ import { card, dot, mono, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
 import { isSelected, selectionForTask, type Selection } from '../selection.js';
-import { openPalette } from '../palette.js';
+import { openCommandDialog } from '../dialog.js';
 import { TOKENS, alpha } from '../tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
@@ -278,13 +278,13 @@ export class TaskGraphEditor extends VnEditor {
   /**
    * The gate's one affordance: name the character in the shared selection, then open the
    * approval command on them. `gate.approve` also needs the candidate hash — which portrait is
-   * the author's judgement, not the graph's — so the palette's form is where it is answered,
+   * the author's judgement, not the graph's — so the command's own dialog is where it is answered,
    * and this editor writes nothing.
    */
   private resolve(characterId: string): void {
     this.ui.characterId = characterId;
     this.announce();
-    openPalette('gate.approve', { characterId });
+    openCommandDialog('gate.approve', { characterId });
   }
 }
 

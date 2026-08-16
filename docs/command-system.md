@@ -18,7 +18,7 @@
   * [Preconditions: asking before acting](#preconditions-asking-before-acting)
 - [Reaching the commands](#reaching-the-commands)
   * [From the renderer](#from-the-renderer)
-  * [From the palette](#from-the-palette)
+  * [From the palette, or from a command's own dialog](#from-the-palette-or-from-a-commands-own-dialog)
   * [From a right-click](#from-a-right-click)
   * [From DevTools or CDP](#from-devtools-or-cdp)
   * [From the agent](#from-the-agent)
@@ -108,7 +108,7 @@ props: {
 
 **`directory` is a string that says the OS can fill it in.** It coerces, serializes and
 schematizes exactly as `string` — it *is* one — and exists only so a form can offer a folder
-chooser beside the field. The alternative, a palette that draws a Browse button for any property
+chooser beside the field. The alternative, a form that draws a Browse button for any property
 happening to be spelled `path`, makes a widget depend on spelling.
 
 `PropsOf<M>` maps the spec to the object `run` receives, and **every key is present**:
@@ -639,13 +639,21 @@ While wiring this up, `registerIpc()` gained a typed `handle<C>()` wrapper that 
 against `InvokeChannels`, so a handler can no longer drift from its declared signature — the
 old hand-annotated `ipcMain.handle` calls could and did.
 
-### From the palette
+### From the palette, or from a command's own dialog
 
-The `/` palette (`renderer/app/Palette.tsx`) is a **view of the catalog**, not a hand-kept list:
-it fetches `command:catalog` once — the live registry, never `dist/commands.json` — and renders a
-`COMMANDS` group under the existing skills and session rows. A newly registered command therefore
-appears in the palette with no palette edit at all, which is what makes the claim at the top of
-this document ("the palette … reaches the same registry") true rather than aspirational.
+The `/` palette (`renderer/pathux/palette.ts`) is a **view of the catalog**, not a hand-kept list:
+it fetches `command:catalog` once — the live registry, never `dist/commands.json` — and lists what
+matches the query. A newly registered command therefore appears in the palette with no palette edit
+at all, which is what makes the claim at the top of this document ("the palette … reaches the same
+registry") true rather than aspirational.
+
+**Finding a command and filling it in are separate jobs, and only one surface does both.** The
+palette is the finder. A caller that already knows which command it wants — a menu entry, the gate
+bar, a right-click that needs an argument — calls `openCommandDialog(id, props)` and gets that
+command **alone**: its title, what it does, its fields, its verdict, Cancel, and a button labelled
+with the command. No search box, no list of eighty-odd other commands to scroll past. Both are
+`Screen.popup`s inside the path.ux mesh rather than OS windows, and both host the same
+`renderer/pathux/commandform.ts`, so every rule below holds in either.
 
 - **The form is generated from `props`.** Each `CatalogProp` becomes a checkbox (`boolean`), a
   `<select>` (`enum`, options from `values`) or a text/number input; lists edit as comma-separated
@@ -655,9 +663,8 @@ this document ("the palette … reaches the same registry") true rather than asp
   `workspace.chooseDirectory` — a non-mutating command with no props that answers with the chosen
   absolute path, or with `Cancelled.` — and writes what came back into the field. The chooser is a
   convenience beside the field, not a gate in front of it, and it is a command rather than an IPC
-  channel so CDP and the agent reach the same act. This is what makes the palette's form a real
-  dialog: `workspace.create` collects a folder, a title and a checkbox in it rather than asking for
-  a path to be typed.
+  channel so CDP and the agent reach the same act. This is what lets `workspace.create` collect a
+  folder, a title and a checkbox in one form rather than asking for a path to be typed.
 - **A toggle does not rebuild the form.** A `boolean` is a `check-x` carrying its own state, so
   flipping it rechecks and redraws nothing else — a form rebuilt under a widget costs that widget
   the focus it just took.
@@ -675,10 +682,10 @@ this document ("the palette … reaches the same registry") true rather than asp
   every keystroke and rebuilding the whole form would tear out the input being typed into — a
   field that survives one character and then vanishes is a command that cannot be given an
   argument at all.
-- **A palette opened on a command lands in its first text field.** Focus is the search box's only
-  when the author is searching; someone who picked the command off a menu is here to fill its
-  first blank, and typing that path into the filter instead is indistinguishable from the entry
-  not working.
+- **A form opened on a command lands in its first text field.** In the palette, focus is the
+  search box's only when the author is searching; a dialog has no search box at all. Someone who
+  picked the command off a menu is here to fill its first blank, and typing that path into a filter
+  instead is indistinguishable from the entry not working.
 - **Highlighting a row is not navigating to it.** Focus and hover only arm the check, so the
   verdict is there to read before the click that opens the form or runs the command.
 - **Execution is `command:exec` with `source: 'ui'`** — the same stack `window.vn.exec` and CDP
@@ -686,8 +693,8 @@ this document ("the palette … reaches the same registry") true rather than asp
   lands, the shell re-reads the workspace index and remounts the room, exactly as it does for
   undo: those are writes a room did not make itself.
 
-The pure half — filtering, blank values, field coercion — is `renderer/app/catalog.ts` with a
-`tests/` sibling; `Palette.tsx` stays thin rendering.
+The pure half — filtering, blank values, field coercion — is `renderer/rules/catalog.ts` with a
+`tests/` sibling; `commandform.ts`, `palette.ts` and `dialog.ts` stay thin rendering.
 
 ### From a right-click
 
@@ -708,10 +715,12 @@ call `exec` and hope are exactly how a surface starts offering what the command 
 - **Checks are awaited before the menu opens.** `startMenu` is synchronous, so the handler gathers
   every verdict first. They are read-only previews over state main already holds; if one ever
   became slow enough to notice, the fix is that check, not a menu that lies while it loads.
-- **An entry needing an argument opens the palette pre-filled**, and so does every `confirm: true`
-  one — the palette is where a command's arguments are typed and where it says what it is about to
-  do. Such an entry is deliberately not checked: its props are incomplete by design, so the
-  refusal it would earn is about the blank the author is on their way to filling in.
+- **An entry needing an argument opens that command's dialog pre-filled**, and so does every
+  `confirm: true` one — a form is where a command's arguments are typed and where it says what it
+  is about to do, and the author has already found the command by right-clicking, so they get the
+  one command rather than the finder. Such an entry is deliberately not checked: its props are
+  incomplete by design, so the refusal it would earn is about the blank the author is on their way
+  to filling in.
 
 Which entries a node offers is a pure table in `renderer/pathux/doctree.ts`; the verdict-to-item
 resolution is `renderer/pathux/contextmenu.ts`, pure and node-testable because it imports no
@@ -723,11 +732,11 @@ like every other surface. The tables are in
 and half their entries are shell acts rather than commands — Quit, Split Area, Undo, Plan ⇄ Execute
 reach no registry because there is none to reach. So those menus run and report: `exec` says the
 refusal after the click instead of drawing it before, which is the same sentence one beat later. The
-rule they do keep is the palette's: an entry opens the palette when the command has something to
-collect (`workspace.create`'s folder, title and checkbox) or something to confirm (`pipeline.run`,
-`upload.pick`), and
-runs outright when it has neither (`workspace.pick`, `workspace.reindex`) — an empty form is
-friction, not a safeguard.
+rule they do keep is the right-click's: an entry opens the command's own dialog when it has
+something to collect (`workspace.create`'s folder, title and checkbox) or something to confirm
+(`pipeline.run`, `upload.pick`), and runs outright when it has neither (`workspace.pick`,
+`workspace.reindex`) — an empty form is friction, not a safeguard. **Command Palette…** is the one
+entry that opens the finder, because finding is what it is for.
 
 ### From DevTools or CDP
 

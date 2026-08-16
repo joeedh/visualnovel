@@ -3,7 +3,7 @@ import { api } from '../../api.js';
 import { subjectOf } from '../../rules/taskGraph.js';
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
-import { openPalette } from '../palette.js';
+import { openCommandDialog } from '../dialog.js';
 import { selectionForTask, taskIsSelected, type Selection } from '../selection.js';
 import { TOKENS, alpha } from '../tokens.js';
 import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
@@ -117,7 +117,7 @@ export class TaskListEditor extends VnEditor {
 
     // A run spends money and writes assets, so it goes through the palette's form and its
     // confirmation rather than off a bare button — `pipeline.run` is gated on the command.
-    this.bar.button('▸ Run', () => openPalette('pipeline.run'));
+    this.bar.button('▸ Run', () => openCommandDialog('pipeline.run'));
     this.bar.button('Refresh', () => void this.load());
     this.bar.flushUpdate();
   }
@@ -171,7 +171,7 @@ export class TaskListEditor extends VnEditor {
     cta.addEventListener('click', () => {
       this.ui.characterId = character;
       this.announce();
-      openPalette('gate.approve', { characterId: character });
+      openCommandDialog('gate.approve', { characterId: character });
     });
     bar.appendChild(cta);
     return bar;

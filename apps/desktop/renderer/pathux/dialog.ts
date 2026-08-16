@@ -1,0 +1,95 @@
+/**
+ * One command as its own dialog: a heading, what it does, its fields, its verdict, Cancel and the
+ * button that runs it.
+ *
+ * The palette is a *finder* — a search box over every command and a scrolling list of them — and
+ * an author who picked an entry off a menu has already found the command. What they need is the
+ * form. It is the same `CommandForm` the palette hosts, so nothing about a field or a verdict is
+ * decided twice.
+ */
+import { UIBase, type Container } from 'pathux';
+import { api } from '../api.js';
+import type { PropValue } from '../../src/shared/ipc.js';
+import { shell } from './bridge.js';
+import { CommandForm } from './commandform.js';
+
+/** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
+type Popup = Container & { end(): void };
+
+const WIDTH = 520;
+
+let open: Dialog | undefined;
+
+class Dialog {
+  private readonly popup: Popup;
+  private readonly body: Container;
+  private form: CommandForm | undefined;
+
+  constructor(id: string, overrides?: Record<string, PropValue>) {
+    const screen = shell().screen;
+    if (!screen) throw new Error('no screen to hang a dialog on');
+
+    const x = Math.max(8, Math.round(screen.size[0] / 2 - WIDTH / 2));
+    const y = Math.max(56, Math.round(screen.size[1] * 0.22));
+    this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
+    this.popup.style['width'] = `${WIDTH}px`;
+
+    const end = this.popup.end.bind(this.popup);
+    this.popup.end = () => {
+      open = undefined;
+      this.form?.detach();
+      end();
+    };
+
+    this.body = this.popup.col();
+
+    void api.invoke('command:catalog').then((catalog) => {
+      const entry = catalog.commands.find((c) => c.id === id);
+      if (!entry) {
+        this.body.label(`No command called ${id}.`);
+        this.body.flushUpdate();
+        return;
+      }
+
+      this.body.label(entry.title);
+      this.body.label(entry.description);
+
+      this.form = new CommandForm(
+        this.body.col(),
+        entry,
+        {
+          onRan: () => this.close(),
+          runLabel: entry.title,
+          buttons: (row) => {
+            row.button('Cancel', () => this.close());
+          },
+        },
+        overrides,
+      );
+      this.form.render();
+      void this.form.recheck();
+      this.body.flushUpdate();
+      this.form.focusFirst();
+    });
+
+    this.popup.flushUpdate();
+  }
+
+  close(): void {
+    this.popup.end();
+  }
+}
+
+/**
+ * Open a dialog on one command. Idempotent, like the palette — a menu entry clicked twice is one
+ * dialog. Escape and a click outside close it, and so does Cancel.
+ */
+export function openCommandDialog(id: string, overrides?: Record<string, PropValue>): void {
+  if (open) return;
+  open = new Dialog(id, overrides);
+}
+
+export function closeCommandDialog(): void {
+  open?.close();
+  open = undefined;
+}

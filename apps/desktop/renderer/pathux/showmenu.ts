@@ -17,7 +17,7 @@ import {
   type MenuEntry,
   type ResolvedEntry,
 } from './contextmenu.js';
-import { openPalette } from './palette.js';
+import { openCommandDialog } from './dialog.js';
 
 /**
  * Show the menu these entries describe. An empty list opens nothing at all, rather than an empty
@@ -71,7 +71,7 @@ function take(item: ResolvedEntry): void {
   }
   const { id, props, form } = item.entry;
   if (form) {
-    openPalette(id, props);
+    openCommandDialog(id, props);
     return;
   }
   void exec(id, props ?? {}).then((outcome) => {

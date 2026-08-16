@@ -193,11 +193,14 @@ plays it. This is deliberately **not** an external DSL export.
   and nothing may cache the root. **Creating one scaffolds where opening does not**:
   `workspace.create` writes a three-file skeleton whose model builds with no error diagnostics,
   commits it, then opens it through the same path — and refuses a directory that already has files
-  in it. **Its form is the dialog**: `path` is a `prop.directory`, so the palette draws a Browse…
-  button that `exec`s `workspace.chooseDirectory`, and a `newFolder` checkbox — off in the
-  vocabulary, ticked by the menu entry — puts the project in a `slug(title)` child of what was
-  browsed. ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md),
-  [`docs/plans/new-project-dialog-with-folder-browse.md`](docs/plans/new-project-dialog-with-folder-browse.md))
+  in it, and **initializes a repository at the new root whatever encloses it** (`initRepoAt`, the
+  deliberate opposite of `ensureRepo`) — a nested repo is `owned`, so commit-on-save works. **It
+  gets its own dialog**, not the palette: `path` is a `prop.directory` drawing a Browse… button that
+  `exec`s `workspace.chooseDirectory`, and a `newFolder` checkbox — off in the vocabulary, ticked by
+  the menu entry — puts the project in a `slug(title)` child of what was browsed.
+  ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md),
+  [`docs/plans/new-project-dialog-with-folder-browse.md`](docs/plans/new-project-dialog-with-folder-browse.md),
+  [`docs/plans/new-project-as-its-own-dialog-and-its-own-repo.md`](docs/plans/new-project-as-its-own-dialog-and-its-own-repo.md))
 - **A conversation is a thread, and it is written down where the other logs are** —
   `vngen/state/threads/<id>.jsonl`, one line per feed item, appended by main as the turn runs and
   titled from the first thing the author said. Undo's snapshots exclude `vngen/state`, so undoing
@@ -270,10 +273,13 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
 - **The palette, the menu bar, the tree's right-click menus, the agent and CDP all reach the same
   registry.** A **right-click** entry is an _invocation_, never a callback: checked before it is
   drawn, `exec`d when clicked, and a refusal is **shown** with the command's own sentence rather
-  than hidden. One needing an argument a menu cannot supply — and every `confirm: true` one — opens
-  the palette on its form instead, and is deliberately not checked. The **menu bar** mixes commands
-  with shell acts (Quit, Undo, Split Area), so it runs and reports rather than pre-checking — and it
-  opens the palette only where there is something to collect or confirm.
+  than hidden. **Finding a command and filling it in are two hosts over one `CommandForm`**: the
+  palette is the finder, and a caller that already knows which command it wants opens
+  `openCommandDialog(id, props)` — that command alone, with Cancel, no search box and no list. One
+  needing an argument a menu cannot supply — and every `confirm: true` one — opens that dialog, and
+  is deliberately not checked. The **menu bar** mixes commands with shell acts (Quit, Undo, Split
+  Area), so it runs and reports rather than pre-checking — and it opens a dialog only where there is
+  something to collect or confirm.
   ([`docs/plans/document-tree-context-menus.md`](docs/plans/document-tree-context-menus.md))
 - **Provenance, undo and commits are each opt-in.** Executions append to
   `vngen/state/commands.jsonl`; undo restores a shadow snapshot under `refs/vn/undo/<seq>/` and
@@ -316,6 +322,23 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   zod schemas in `@vn/types` so malformed data never reaches the deterministic core.
 - Keep new packages inside the layering graph above; the boundaries lint rule will reject
   an illegal cross-layer import.
+
+### Tooltips
+
+- **Every interactive UI element carries a tooltip — no exceptions.** Buttons, checkboxes,
+  text fields, menu and palette entries, tree rows, thumbnails, drag handles, icon-only
+  controls: if the author can click, type into, or drag it, it says what it does on hover.
+  A control shipped without one is an unfinished control.
+- **Say what it does, not what it is named.** "Leave this clause out of the prompt" beats
+  "Mute". Where the label already says everything (a plain `OK`), the tooltip adds the
+  consequence instead of repeating the word.
+- **A disabled control's tooltip is its refusal.** When a command declined through
+  `stack.check`, show that sentence verbatim — a greyed control that will not say why is the
+  same bug as a hidden one.
+- **Two mechanisms, one rule.** A path.ux widget takes `.description`; a raw DOM node in an
+  `appendSurface` root takes `.title`. Command-backed controls default to the registry's own
+  text (the entry's `title`, a prop's `description`), so a command with a vague description is
+  fixed in the definition rather than papered over at the call site.
 
 ### Comments
 

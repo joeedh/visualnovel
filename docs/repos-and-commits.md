@@ -57,11 +57,13 @@ of this monorepo, say) resolves to that repo, and committing everything dirty th
 files that have nothing to do with the project. The app reports the repo and **declines to commit
 in it** rather than guessing at a narrower scope.
 
-That is why `workspace.create` says so before the directory exists: creating a project inside an
-existing repo is allowed — it works, and sometimes it is exactly what the author wants — but its
-check appends *"{repo} already owns this path, so edits here will not be committed for you"*,
-because afterwards the only symptom is edits that never become commits, with nothing on screen
-saying why.
+Which is exactly why **creating** a project gets a repository of its own. `workspace.create`
+promises "a starter scene, a story bible page, project.yaml and a git repo", so it initializes one
+**at** the new root whatever encloses it, and the project comes back `owned: true` with
+commit-on-save working. Its check still says what happened — *"{repo} already owns this path, so
+the new project will be a repository nested inside it"* — but as a fact appended to an accept, not
+the warning it used to be, because a nested repository is a thing this codebase already understands:
+git does not descend into one, so the outer repo sees the project as a single untracked directory.
 
 ## Commit-on-save
 
@@ -125,7 +127,13 @@ whether or not it is that tree's root. Otherwise it runs `git init`, fills in a 
 only when git cannot already answer who the committer is, sets `core.autocrlf false` (scene prose
 is patched byte-exactly), and commits what is there.
 
-`seedWorkspace` uses the same function for the sample workspace, with its own first-commit
+`initRepoAt(root, message)` is its deliberate opposite, and the half `ensureRepo` now delegates to:
+it inits **at** `root` without asking what encloses it. Only `createWorkspace` calls it directly,
+because "create a new project here" is a request for a project and a project has a repo — a
+directory the author already had must not silently grow a nested one, which is why `open` keeps
+`ensureRepo`.
+
+`seedWorkspace` uses `ensureRepo` for the sample workspace, with its own first-commit
 subject, and so does `openWorkspace(root)` — the directory the user picked, made a project if it
 is not one yet (a one-line `project.yaml`) and then brought under version control. Which project
 is open, and what a switch tears down, is

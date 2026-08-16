@@ -49,9 +49,10 @@ async function wouldOpen(
 }
 
 /**
- * What creating a project at `path` would do. The inside-a-repo case is an accept with a warning
- * appended, not a refusal: the project works, it just never gets committed for the author, and
- * afterwards that has no visible cause at all.
+ * What creating a project at `path` would do. The inside-a-repo case is an accept with a fact
+ * appended, not a refusal: the project gets a repository of its own either way, and the sentence
+ * is there because git calls a nested one an embedded repository the first time the outer repo is
+ * asked to add it.
  *
  * Every sentence names the **resolved** root, so an author with `newFolder` checked reads where
  * the project actually lands rather than being asked to apply the naming rule themselves.
@@ -81,7 +82,7 @@ async function wouldCreate(
   return {
     ok: true,
     note: found.insideRepo
-      ? `${note} ${found.insideRepo} already owns this path, so edits here will not be committed for you.`
+      ? `${note} ${found.insideRepo} already owns this path, so the new project will be a repository nested inside it.`
       : note,
   };
 }

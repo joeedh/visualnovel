@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
@@ -317,6 +317,20 @@ describe('createWorkspace', () => {
   it('titles the project after the directory when asked for nothing else', async () => {
     const dir = join(root, 'the-transfer-student');
     expect((await createWorkspace(dir, 'the-transfer-student')).title).toBe('the-transfer-student');
+  }, 20_000);
+
+  it('gets a repository of its own even inside one that already owns the path', async () => {
+    await writeFile(join(root, 'notes.md'), 'the outer repo\n');
+    await ensureRepo(root);
+
+    const dir = join(root, 'projects', 'mine');
+    await createWorkspace(dir, 'Mine');
+
+    // The command promises a git repository, so the answer for the project is the project's own
+    // repo — not the enclosing one, which is what makes `Workspace.repos()` call it owned.
+    expect(await openGit(dir).topLevel()).toBe((await realpath(dir)).replace(/\\/g, '/'));
+    expect((await openGit(dir).log()).map((c) => c.subject)).toEqual(['New project']);
+    expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
   }, 20_000);
 
   it('refuses a directory with files in it rather than merging into it', async () => {

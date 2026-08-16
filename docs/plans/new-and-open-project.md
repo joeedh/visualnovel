@@ -55,6 +55,13 @@ So three things are missing, and only one of them is interesting.
   a monorepo will silently get no commit-on-save. The `check` sentence must say that before the
   directory exists, because afterwards the symptom is "my edits aren't being committed" with no
   visible cause.
+
+  > **Superseded** by
+  > [`new-project-as-its-own-dialog-and-its-own-repo.md`](new-project-as-its-own-dialog-and-its-own-repo.md).
+  > It now proceeds with a repository of its **own** — `initRepoAt` rather than `ensureRepo` — so
+  > commit-on-save works and there is nothing left to warn about. The sentence survives as a fact
+  > appended to the accept, saying the new project will be a repository nested inside the one that
+  > already owns the path.
 - **Creating opens.** The command ends with the same `host.openWorkspace` call `workspace.open`
   uses, so the teardown-and-rebuild contract (session, command stack and undo journal rebuilt
   against the new root) is exercised by one code path, not two.

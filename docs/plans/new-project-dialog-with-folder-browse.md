@@ -33,6 +33,13 @@ the OS chooser and a textbox can each say on their own.
   New Project window would be a second one to keep in sync — with its own focus rules, its own
   Escape handling and its own idea of what `workspace.create` refuses.
 
+  > **Superseded** by
+  > [`new-project-as-its-own-dialog-and-its-own-repo.md`](new-project-as-its-own-dialog-and-its-own-repo.md).
+  > The author's objection was the search box and the list of every other command, not the form —
+  > so the form was extracted to `commandform.ts` and given a second host, `dialog.ts`. The fear
+  > this decision was guarding against still holds and is still met: there is exactly one form,
+  > hosted twice.
+
 - **A path prop is a declared kind, not a naming convention.** `@vn/commands` gains
   `PropKind: 'directory'`, built by `prop.directory(description)`. It coerces exactly as a
   string — it _is_ a string — and its whole reason to exist is that the form knows the OS can

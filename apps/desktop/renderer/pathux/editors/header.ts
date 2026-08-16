@@ -3,6 +3,7 @@ import { isLive } from '../../api.js';
 import { EDITORS } from '../../../src/shared/editors.js';
 import { exec, move, quit, say, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { openCommandDialog } from '../dialog.js';
 import { openPalette } from '../palette.js';
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
@@ -160,14 +161,14 @@ export class VnHeaderEditor extends VnEditor {
       ['Undo', () => void move('undo'), 'Ctrl+Z'],
       ['Redo', () => void move('redo'), 'Ctrl+Shift+Z'],
       Menu.SEP,
-      // Not fired from the menu: `pipeline.run` asks before it writes, so the menu opens the
-      // palette on its form. `mock` is seeded from whether this is a live app — a preview has
-      // no keys and no main process, and a dry run is the only thing it could honestly do.
-      ['Run Pipeline…', () => openPalette('pipeline.run', { mock: !isLive }), undefined],
-      // The palette's form is this command's dialog: a folder to browse for, a title, and the
-      // checkbox that turns the two into a folder the OS chooser could not have named. Checked
-      // here rather than in the command, whose own default has always been "the project goes here".
-      ['New Project…', () => openPalette('workspace.create', { newFolder: true }), undefined],
+      // Not fired from the menu: `pipeline.run` asks before it writes, so the menu opens a dialog
+      // on its form. `mock` is seeded from whether this is a live app — a preview has no keys and
+      // no main process, and a dry run is the only thing it could honestly do.
+      ['Run Pipeline…', () => openCommandDialog('pipeline.run', { mock: !isLive }), undefined],
+      // A folder to browse for, a title, and the checkbox that turns the two into a folder the OS
+      // chooser could not have named. Checked here rather than in the command, whose own default
+      // has always been "the project goes here".
+      ['New Project…', () => openCommandDialog('workspace.create', { newFolder: true }), undefined],
       // These two take no argument and ask for no confirmation, so the palette would be an empty
       // form the author dismisses with the same click. They run, and say what they answered — the
       // chooser `workspace.pick` opens is its own confirmation.
@@ -175,9 +176,9 @@ export class VnHeaderEditor extends VnEditor {
       this.recentMenu(),
       ['Reindex Project', () => act('workspace.reindex'), undefined],
       Menu.SEP,
-      // The palette, not the dialog directly: `upload.pick` is `confirm`, and the palette is where
-      // a command says what it is about to do before the OS chooser takes over the screen.
-      ['Upload Files…', () => openPalette('upload.pick'), undefined],
+      // Not fired from the menu either: `upload.pick` is `confirm`, and the dialog is where a
+      // command says what it is about to do before the OS chooser takes over the screen.
+      ['Upload Files…', () => openCommandDialog('upload.pick'), undefined],
       Menu.SEP,
       ['Plan ⇄ Execute', () => void toggleMode(), 'Shift+Tab'],
       ['Split Area', () => this.ctx.screen.splitTool(), undefined],
