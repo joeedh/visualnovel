@@ -102,15 +102,15 @@ nothing. Wave C is the two features that consume the rest.
 
 ### 6 — Adopting an uploaded picture
 
-- [ ] Extract `portraitInputs` / `modelSheetInputs` / `shotInputs` into
+- [x] Extract `portraitInputs` / `modelSheetInputs` / `shotInputs` into
       `packages/artgen/src/prompts.ts`; the planner calls them — **hashes unchanged**
-- [ ] `packages/artgen/src/adoptslot.ts`: `adoptionForSlot` / `adoptSlot`, addressed by
+- [x] `packages/artgen/src/adoptslot.ts`: `adoptionForSlot` / `adoptSlot`, addressed by
       `RefBinding` through the existing `parseSlot` vocabulary
-- [ ] `replace` on `AdoptRequest`, honoured at the one `ALREADY_RENDERED` site
-- [ ] `promoteConcept` rewritten as a caller, its tests unchanged
-- [ ] `asset.adopt`; `asset.upload` gains `slot=''`
-- [ ] The asset editor's Replace-with-a-file strip, and the supersede confirm sentence
-- [ ] Docs: `docs/asset-stores.md`, `docs/desktop-app.md`, `CLAUDE.md`
+- [x] `replace` on `AdoptRequest`, honoured at the one `ALREADY_RENDERED` site
+- [x] `promoteConcept` rewritten as a caller, its tests unchanged
+- [x] `asset.adopt`; `asset.upload` gains `slot=''`
+- [x] The asset editor's Replace-with-a-file strip, and the supersede confirm sentence
+- [x] Docs: `docs/asset-stores.md`, `docs/desktop-app.md`, `CLAUDE.md`
 
 ### 7 — The agent revises art
 

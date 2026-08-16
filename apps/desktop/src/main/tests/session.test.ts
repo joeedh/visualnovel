@@ -1264,6 +1264,66 @@ describe('WorkspaceSession — over a generated project', () => {
 });
 
 /**
+ * Adoption from the desktop side: an author who paid for a cleanup hands the file to the pane
+ * showing the picture it stands in for, so the slot is read off that asset rather than typed.
+ * Its own project, because replacing a plate writes a second `done` for that plate's task and the
+ * assertions about *which* bytes are in the slot only mean anything on a run nothing else moved.
+ */
+describe('WorkspaceSession — replacing a picture with a file', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({ title: 'Replaced', script: SCRIPTS.linear });
+    session = sessionFor(p);
+    await p.run(); // locations render before the gate, so there is a plate to replace
+  }, 30_000);
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  const plate = async (): Promise<string> => {
+    const { store } = await p.reload();
+    return store.manifest().find((a) => a.kind === 'location_ref')!.hash;
+  };
+
+  it('refuses bytes nothing planned, which is what having no slot means', async () => {
+    expect((await session.assetInfo(await plate()))!.slot).toMatch(/^plate:/);
+
+    const drawn = await session.drawConcept('the classroom at dusk', '');
+    expect((await session.assetInfo(drawn.hash!))!.slot).toBeUndefined();
+    expect(await session.previewReplace(drawn.hash!)).toMatchObject({
+      ok: false,
+      message: expect.stringContaining('fills no slot'),
+    });
+  });
+
+  it('puts an outside file in the plate’s place, and the render it replaced keeps its bytes', async () => {
+    const before = await plate();
+    const slot = (await session.assetInfo(before))!.slot!;
+    expect(await session.previewReplace(before)).toMatchObject({
+      ok: true,
+      message: expect.stringContaining('supersed'),
+    });
+
+    const file = join(p.dir, 'cleanup.png');
+    await fs.writeFile(file, new Uint8Array([...realPng(), 11, 12, 13]));
+    const done = await session.replaceAsset(before, file);
+    expect(done).toMatchObject({
+      ok: true,
+      written: expect.arrayContaining(['vngen/state/tasks.jsonl']),
+    });
+
+    // One act: the bytes came in as a reference and left as the plate.
+    expect(await session.assetInfo(done.hash!)).toMatchObject({ kind: 'location_ref', slot });
+    // The picture it stood in for is still there to look at — it is only no longer the one in
+    // the slot, which is what makes the strip disappear from its pane.
+    expect((await session.assetInfo(before))!.slot).toBeUndefined();
+  });
+});
+
+/**
  * The agent's three permission doors. They were scaffolds — `ask` resolved to `''` and
  * `confirmAction` to `true` — so the desktop answered for the author, told the model it had an
  * answer, and auto-allowed every always-confirm tool. What is pinned here is that each door

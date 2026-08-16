@@ -259,6 +259,13 @@ Two consequences to state plainly, because both are new:
   task identity that it computes itself from the model it just wrote, so it cannot forge a node for
   work that was never done: the image it points at is the image that node would have produced.
 
+**Since shipped:** steps 3–5 are no longer written here. They were generalized into `adoptSlot`
+(`packages/artgen/src/adoptslot.ts`) — "any bytes become any slot's output" — and `promoteConcept`
+is now one **caller** of it: `promotionOf`, the sheet write, then
+`adoptSlot({hash, slot: {kind: 'plate', locationId, variant}})`. The two consequences above are
+unchanged and are now stated once, for every slot kind, rather than once for plates. See
+[`adopting-an-uploaded-asset.md`](adopting-an-uploaded-asset.md).
+
 The Asset editor grows a **Promote** strip, drawn only when `promoteAction(info)` in
 `renderer/rules/assetview.ts` says it applies — a concept bound to a location, so a character
 concept never offers a control that would walk around the gate. It names that location, takes a

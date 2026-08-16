@@ -810,6 +810,19 @@ it produces.
   decides whether the strip is drawn at all, so a character concept never offers a control that
   would walk around the approval gate. What is half-typed there survives a background refetch of the
   same asset and is dropped when the pane moves to another one.
+- **A picture the project planned gets a Replace strip, and the slot is never typed.** An author who
+  paid someone to clean a frame up has bytes better than any run will produce, so
+  `asset.replace(hash=…)` opens an image chooser and makes what comes back that slot's output —
+  `asset.upload` and `asset.adopt` as one act, with the slot read off the asset on screen rather than
+  spelled by hand. `AssetInfo.slot` is what the strip is drawn from, and it means "the slot these
+  bytes fill **now**": absent on a concept and an upload (nothing plans those), and absent again once
+  a later render has taken the slot over, so a superseded picture never offers to supersede the one
+  that replaced it. `replaceAction` declines a `portrait:` slot by name — replacing a look is
+  approving one, and that is `gate.approve`'s — which is `adoptionForSlot`'s `GATED_SLOT` said as
+  layout. The hint says what it costs: the render it stands in for keeps its bytes in the store, and
+  the next run adopts the author's picture instead of drawing one. Nothing is auto-accepted, and the
+  pane moves to the new hash afterwards, because the bytes it was showing are no longer the slot's.
+  See [`plans/adopting-an-uploaded-asset.md`](plans/adopting-an-uploaded-asset.md).
 - **Show task hands off rather than duplicating.** `ui.taskHash` is published and the inspector is
   opened `elsewhere` — attempts, the refine loop and the reviewer's verdict are its subject, and
   this pane does not re-render them.

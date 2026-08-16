@@ -2,6 +2,18 @@ import type { WorkspaceSession } from '../session.js';
 import type { SessionStore } from '../sessionstore.js';
 import type { UiEffect } from '../../shared/ipc.js';
 
+/** How a file chooser is dressed. Everything is optional: the defaults are the document upload. */
+export interface FilePickOptions {
+  title?: string;
+  buttonLabel?: string;
+  /** Extensions offered, without dots. Absent means every file. */
+  extensions?: string[];
+  /** What that filter is called in the dialog's dropdown. */
+  filterName?: string;
+  /** One file rather than many — a chooser that fills a single slot. */
+  single?: boolean;
+}
+
 /**
  * What the desktop's commands are allowed to reach. Everything else a command needs — the
  * workspace root, git, logging, the confirmation gate — comes from `CommandContext`.
@@ -20,8 +32,8 @@ export interface CommandHost {
   openWorkspace(root: string): Promise<{ root: string; title: string }>;
   /** The native directory chooser. `undefined` when the user cancelled; throws with no window. */
   pickDirectory(): Promise<string | undefined>;
-  /** The native file chooser, multi-select. Empty when the user cancelled; throws with no window. */
-  pickFiles(): Promise<string[]>;
+  /** The native file chooser. Empty when the user cancelled; throws with no window. */
+  pickFiles(options?: FilePickOptions): Promise<string[]>;
   /**
    * Ask another command's precondition — the stack's own `check`, reached through the host
    * because a command cannot import the stack that runs it.

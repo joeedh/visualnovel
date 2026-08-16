@@ -1,6 +1,6 @@
 # Adopting an uploaded picture as a slot's output
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -205,3 +205,57 @@ The document tree needs nothing new — the adopted asset is already labelled by
 - `asset.adopt(slot='portrait:aiko')` refuses with a sentence naming `gate.approve`.
 - `asset.adopt` on a mock placeholder refuses.
 - `art.promote` behaves exactly as it does today, with its tests unchanged.
+
+## Shipped deviations
+
+**`adoptionForSlot` is async, where `promotionOf` and `uploadOf` are not.** A slot has to be
+resolved against the model, the shots on disk and the task graph, and none of those can be answered
+from the manifest alone. The two-layer shape survives; only the signature moved.
+
+**Three refusal codes the table did not name**, each a question the plan assumed away:
+
+| code | when |
+| --- | --- |
+| `BASE_UNAVAILABLE` | the base root exists without a manifest — the same refusal every other base writer gives |
+| `NOT_APPROVED` | a `sheet:` slot whose character has no approved portrait; a sheet is drawn *from* that portrait, so its identity does not exist yet |
+| `UPSTREAM_MISSING` | a `shot:` slot whose plate, portrait or outfit sheet has not rendered — a frame's identity is built on those outputs, so there is no hash to log done |
+
+**`AdoptSlotRequest` gained `bytes`.** `asset.upload(slot=…)` has to hear the refusal *at the
+picker*, before the file is copied into the tree, and at that moment the store does not hold the
+hash. It is a decision-time escape hatch only: `adoptSlot` ignores it and adopts what the store
+holds, so the act cannot be tricked into recording bytes that were never filed.
+
+**`AdoptSlotPlan.kind` is a three-member `SlotKind`, not `TaskKind`,** and the plan carries a
+`note`. The narrow type is the refusal expressed as a type — `portrait` and `asset` are not adoptable
+and so are not in it — and the note is what makes the confirm sentence the plan's own words rather
+than a surface's paraphrase.
+
+**The shot test asserts the build manifest, not `story.play.json`.** `@vn/artgen` cannot import
+`@vn/export` (the boundaries rule), and re-deriving the playable inside the artgen tests would be a
+second answer to what the export already answers. The claim is the same one: the frame is recorded
+as that shot's output.
+
+**Stage 4 shipped as a dedicated `asset.replace(hash)` rather than the plan's
+`asset.upload(slot=… replace=…)` from the pane.** The plan had the pane compose the slot string and
+hand it to the upload command. Taking the *hash* instead makes the slot un-typeable — it is the
+picture on screen — and keeps one authority for the refusals. `asset.upload(slot=…)` still exists and
+still works; the pane just does not use it.
+
+**`AssetInfo.slot` is new, and it means the slot these bytes fill _now_** — gated on the source task
+being `done` with this hash as its output, not merely on the binding the bytes carry. That is what
+makes the strip honest: a superseded render keeps its `satisfies` binding forever, and a pane
+offering to replace *that* would supersede a picture the project has already moved past.
+
+**`pickFiles` gained a `FilePickOptions` argument.** The upload chooser's title, button, filters and
+single-vs-multi were hard-coded; a replace chooser wants an image filter and one file.
+
+**`previewReplace` deliberately ignores `MOCK_PLACEHOLDER`.** It reuses `adoptionForSlot`'s refusals
+by asking about the *outgoing* asset, and in a mock project every render is placeholder-marked — so
+that one code would refuse Replace everywhere. The rule judges the bytes coming *in*, and `uploadOf`
+refuses mock art at the upload, which is where it belongs.
+
+**Adoption across the two roots is one hash in two rows.** Adopting a base `reference` onto a
+`shot:` slot writes a project-root row under `shot_image` and leaves the base row where it is;
+`manifest()` is base-first, so `asset.info` keeps answering `reference`. Within the base root it is
+still a rewrite in place, which is why promotion's behaviour is unchanged. Stated in
+[`../asset-stores.md`](../asset-stores.md).

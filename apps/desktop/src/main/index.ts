@@ -339,12 +339,15 @@ function getStack(): CommandStack<CommandHost> {
         });
         return result.canceled ? undefined : result.filePaths[0];
       },
-      pickFiles: async () => {
+      pickFiles: async (options) => {
         if (!win) throw new Error('there is no window to show a file chooser in');
         const result = await dialog.showOpenDialog(win, {
-          title: 'Upload documents',
-          buttonLabel: 'Upload',
-          properties: ['openFile', 'multiSelections'],
+          title: options?.title ?? 'Upload documents',
+          buttonLabel: options?.buttonLabel ?? 'Upload',
+          properties: options?.single ? ['openFile'] : ['openFile', 'multiSelections'],
+          ...(options?.extensions
+            ? { filters: [{ name: options.filterName ?? 'Files', extensions: options.extensions }] }
+            : {}),
         });
         return result.canceled ? [] : result.filePaths;
       },

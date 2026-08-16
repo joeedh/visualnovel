@@ -8,6 +8,7 @@ import {
   promoteAction,
   promptEditable,
   promptShown,
+  replaceAction,
 } from '../../rules/assetview.js';
 import {
   chunkAddress,
@@ -232,6 +233,28 @@ export class AssetEditor extends VnEditor {
     if (!outcome.ok) return;
     say(outcome.record.message);
     void this.load(this.shown);
+  }
+
+  /**
+   * Put a file of the author's own in this picture's place. The slot is never typed: it is the
+   * asset on screen, so `asset.replace` takes the hash and reads the slot off it.
+   *
+   * The bytes that come back have a different identity, so the pane moves to them rather than
+   * re-reading the hash it was on — which after this is a superseded picture, not the slot's.
+   */
+  private async replace(): Promise<void> {
+    const info = this.info;
+    if (!info) return;
+    const action = replaceAction(info);
+    if (!action.ok) return void say(action.reason, true);
+
+    const outcome = await exec('asset.replace', { hash: info.hash });
+    if (!outcome.ok) return;
+    say(outcome.record.message);
+    const next = (outcome.data as { hash?: string } | undefined)?.hash;
+    if (next === undefined || next === this.shown) return void this.load(this.shown);
+    this.ui.assetHash = next;
+    this.announce();
   }
 
   /** Hand the task off to the inspector, which is the pane that reads attempts. */
@@ -544,6 +567,11 @@ export class AssetEditor extends VnEditor {
 
     const promotable = promoteAction(info);
     if (promotable.ok) this.surface.appendChild(this.promoteStrip(promotable.locationId));
+
+    // Mutually exclusive with the one above by construction: a concept fills no slot, and nothing
+    // that fills one is a concept.
+    const replaceable = replaceAction(info);
+    if (replaceable.ok) this.surface.appendChild(this.replaceStrip(replaceable.slot));
 
     const drift = driftNote(info);
     if (drift) this.surface.appendChild(el('div', 'as-drift', drift));
@@ -974,6 +1002,28 @@ export class AssetEditor extends VnEditor {
         'div',
         'as-hint',
         'The variant joins the location sheet if it is new, and the next run adopts this picture instead of rendering its own.',
+      ),
+    );
+    return strip;
+  }
+
+  /**
+   * The offer every planned picture has: hand in a file and let it be this one. An author who paid
+   * for a cleanup has bytes better than anything a run will produce, and the strip says what that
+   * costs — the render it stands in for stays in the store, and the next run adopts rather than
+   * draws. The slot is shown rather than asked for: it is the picture on screen.
+   */
+  private replaceStrip(slot: string): HTMLElement {
+    const strip = el('div', 'as-replace');
+    const go = el('button', 'as-replace-go', 'Replace with a file…');
+    go.addEventListener('click', () => void this.replace());
+    strip.appendChild(go);
+    strip.appendChild(el('span', 'as-replace-what', slot));
+    strip.appendChild(
+      el(
+        'div',
+        'as-hint',
+        'A chooser opens first. What you choose supersedes this picture — its bytes stay in the store — and the next run adopts yours instead of rendering one.',
       ),
     );
     return strip;

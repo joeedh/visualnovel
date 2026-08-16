@@ -129,10 +129,14 @@ with the failure it prevents: [`docs/pipeline-contracts.md`](docs/pipeline-contr
   planned, consumed, exported or `accepted`, and its `sourceTask` hashes the request.
 - **A concept's prompt is authored, so it is the one prompt an author may edit** — `art.redraw`
   files the rewrite as a new sketch, and `asset.regenerate` refuses a concept by name.
-- **Promotion adopts rather than regenerates**: `promoteConcept` writes the variant, re-records
-  the bytes, and logs the plate's task `done` — the one such record written outside the scheduler,
-  computed from the sheet it just wrote so it cannot forge work.
-  ([`docs/plans/on-demand-concept-images.md`](docs/plans/on-demand-concept-images.md))
+- **Adoption is the one `done` record written outside the scheduler.** `adoptSlot` makes any bytes
+  any slot's output — `plate:`/`sheet:`/`shot:` — re-recording them under the slot's kind and logging
+  that task done, so the next run adopts rather than renders. It cannot forge work: the identity is
+  computed from the project as it stands, never from a passed hash. A `portrait:` slot is refused
+  because the P3 gate owns it, mock art is refused, and superseding a real render is a declared act
+  (`replace`). `promoteConcept` is one caller.
+  ([`docs/plans/adopting-an-uploaded-asset.md`](docs/plans/adopting-an-uploaded-asset.md),
+  [`docs/plans/on-demand-concept-images.md`](docs/plans/on-demand-concept-images.md))
 - **No scene edit invalidates art, so drift is reported instead** — `Shot.proseHash` beside the
   image, `driftOf` re-derived on every read; never a stored flag, never the task hash.
 - **Line ids are allocated and written down, and reading never writes.** Persisting is the
@@ -198,6 +202,9 @@ plays it. This is deliberately **not** an external DSL export.
 - **An asset is named, and one pane answers for it** — the document tree labels assets by what
   they are, and the asset editor shows the derived prompt read-only beside editable art notes.
   ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
+- **A picture the project planned can be replaced by a file, and the slot is never typed** —
+  `asset.replace` reads it off the asset on screen. `AssetInfo.slot` means the slot these bytes fill
+  **now**, so a concept, an upload and a render something later superseded all offer nothing.
 - **What was drawn from a document is one widget, and a scene is a subject like any other** —
   backlinks are keyed by `scene:<id>` as well as by entity, `DocTree.pathIndex` inverts the key
   convention for a pane that holds only a path, and `renderAssetStrip` is the read-only strip

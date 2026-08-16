@@ -25,6 +25,13 @@ export interface AdoptRequest<K extends TaskKind> {
   output: Asset;
   /** The prompt recorded on the attempt. Defaults to the one in `inputs`, when it has one. */
   prompt?: string;
+  /**
+   * Supersede a render that already holds this identity. Off by default, because the refusal is
+   * the safety property; a caller sets it when the author has been shown which render they are
+   * replacing and said yes. Nothing is destroyed either way — `tasks.jsonl` is append-only and the
+   * superseded bytes stay in the store.
+   */
+  replace?: boolean;
 }
 
 /** What the guard has to ask about the world: the store, and the graph as replayed. */
@@ -46,7 +53,8 @@ export type Adoption<K extends TaskKind> =
  * The interesting refusal is the last one. A `done` node already holding **different** bytes means
  * the identity did not move, so nothing about the project changed and this would quietly replace a
  * real render with something else. When the identity *has* moved — which is what repinning does —
- * there is no node, and adoption is exactly the right answer.
+ * there is no node, and adoption is exactly the right answer. `replace` is the third case: the
+ * author *means* to supersede that render, and says so before the act rather than around it.
  */
 export function adoptionOf<K extends TaskKind>(
   req: AdoptRequest<K>,
@@ -62,7 +70,12 @@ export function adoptionOf<K extends TaskKind>(
   }
   const task = makeTask(req.kind, req.inputs);
   const existing = ctx.node(task.hash);
-  if (existing?.status === 'done' && existing.output && existing.output !== req.output.hash) {
+  if (
+    !req.replace &&
+    existing?.status === 'done' &&
+    existing.output &&
+    existing.output !== req.output.hash
+  ) {
     return {
       ok: false,
       code: 'ALREADY_RENDERED',

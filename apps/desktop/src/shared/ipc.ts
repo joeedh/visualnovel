@@ -423,6 +423,12 @@ export interface AssetInfo {
    * offers re-approve or regenerate rather than deciding for the author.
    */
   suspended?: string;
+  /**
+   * The picture this asset *is*, as a slot address — `plate:cafe/night`, `shot:greet/s2`. Absent
+   * when nothing plans these bytes (a concept, an upload) and absent once a later render has taken
+   * the slot over: it names what these bytes fill now, not what they were once drawn for.
+   */
+  slot?: string;
   /** The art-notes rungs that reach this asset, widest first. */
   rungs: ArtRungInfo[];
   /**

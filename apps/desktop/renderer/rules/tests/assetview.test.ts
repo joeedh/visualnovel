@@ -7,6 +7,7 @@ import {
   promoteAction,
   promptEditable,
   promptShown,
+  replaceAction,
 } from '../assetview.js';
 import type { AssetInfo } from '../../../src/shared/ipc.js';
 
@@ -83,6 +84,31 @@ describe('promoteAction', () => {
     expect(promoteAction(concept({ rungs: [] }))).toEqual({
       ok: false,
       reason: expect.stringContaining('no location'),
+    });
+  });
+});
+
+describe('replaceAction', () => {
+  it('offers the slot the asset itself fills', () => {
+    expect(replaceAction(info({ slot: 'plate:cafe/night' }))).toEqual({
+      ok: true,
+      slot: 'plate:cafe/night',
+    });
+  });
+
+  // A concept and an upload have no slot, and neither does a render something newer superseded —
+  // main leaves the field off for all three, so the strip is absent for all three.
+  it('is absent for anything that is not the picture in a slot', () => {
+    expect(replaceAction(concept())).toEqual({
+      ok: false,
+      reason: expect.stringContaining('fills no slot'),
+    });
+  });
+
+  it('refuses a portrait, whose look is the gate’s to bless', () => {
+    expect(replaceAction(portrait({ slot: 'portrait:aiko' }))).toEqual({
+      ok: false,
+      reason: expect.stringContaining('gate.approve'),
     });
   });
 });

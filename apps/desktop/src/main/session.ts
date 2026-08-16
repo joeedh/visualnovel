@@ -17,7 +17,7 @@ import {
   type ResolvedKeys,
 } from '@vn/config';
 import { readdir, readFile, rename } from 'node:fs/promises';
-import { isAbsolute, join, relative, sep } from 'node:path';
+import { basename, isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
   applyCharacterEdit,
@@ -63,10 +63,12 @@ import {
   type DocWritePlan,
 } from '@vn/store';
 import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
-import { exists, readText, writeFileAtomic } from '@vn/util';
+import { exists, readText, sha256, writeFileAtomic } from '@vn/util';
 import { baseRefusal, costPreview, driftOf, gateStatus, isApproved } from '@vn/pipeline';
 import {
   adopt,
+  adoptSlot,
+  adoptionForSlot,
   adoptionOf,
   composePrompt,
   condensePrompt,
@@ -96,6 +98,7 @@ import {
   suspensionMap,
   uploadOf,
   uploadReference,
+  type AdoptSlotPlan,
   type ConceptRequest,
   type PromptRung,
   type Suspension,
@@ -164,6 +167,7 @@ import type {
   PromptChunk,
   PromptOverride,
   Providers,
+  RefBinding,
   Scene,
   Shot,
   TaskInputs,
@@ -890,11 +894,16 @@ export class WorkspaceSession {
     const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
     const derived = derivePrompt(asset, ctx);
     const view = await this.promptViewOf(project, hash);
+    const labels = labelContext(project.model, project.graph);
+    const from = slotOf(asset, labels.angleOf?.(asset.sourceTask));
+    // A slot only counts while these are the bytes in it: a superseded render keeps its binding,
+    // and a pane offering to replace *that* would supersede a picture already moved past.
+    const slot = from && task?.status === 'done' && task.output === asset.hash ? from : undefined;
     return {
       hash: asset.hash,
       ext: asset.ext,
       kind: asset.kind,
-      label: labelAssets(manifest, labelContext(project.model, project.graph)).get(hash) ?? hash,
+      label: labelAssets(manifest, labels).get(hash) ?? hash,
       base: isBaseKind(asset.kind),
       accepted: asset.accepted,
       sourceTask: asset.sourceTask,
@@ -905,6 +914,7 @@ export class WorkspaceSession {
       // this asset, which the editor says a different way.
       stale: derived !== undefined && asset.prompt !== undefined && derived !== asset.prompt,
       ...(suspended ? { suspended: suspended.reason } : {}),
+      ...(slot ? { slot: slotKey(slot) } : {}),
       rungs: rungsFor(asset, { model: project.model, shots }),
       ...(view ? { promptView: view } : {}),
     };
@@ -1875,8 +1885,11 @@ export class WorkspaceSession {
   private async uploadPlan(
     file: string,
     title: string,
+    slot: string,
+    replace: boolean,
   ): Promise<
-    { ok: false; reason: string } | { ok: true; project: LoadedProject; path: string; note: string }
+    | { ok: false; reason: string }
+    | { ok: true; project: LoadedProject; path: string; note: string; slot?: RefBinding }
   > {
     const said = file.trim();
     if (!said) return { ok: false, reason: 'Nothing to upload: no file was named.' };
@@ -1889,38 +1902,218 @@ export class WorkspaceSession {
       return { ok: false, reason: `Cannot read ${relPath(this.dir, path)}.` };
     }
     const decided = uploadOf(project.store, { file: path, title, bytes });
-    return decided.ok
-      ? { ok: true, project, path, note: decided.plan.note }
-      : { ok: false, reason: decided.reason };
+    if (!decided.ok) return { ok: false, reason: decided.reason };
+    if (!slot.trim()) return { ok: true, project, path, note: decided.plan.note };
+
+    // Both refusals before either write: an upload that names a slot is one act, and hearing
+    // "that slot is already rendered" after the bytes are copied is hearing it too late.
+    const hash = sha256(bytes);
+    const adoption = await this.adoptPlan(hash, slot, replace, bytes);
+    if (!adoption.ok) return { ok: false, reason: adoption.reason };
+    const supersede = adoption.plan.supersedes
+      ? ` It supersedes the render ${adoption.plan.supersedes.slice(0, 8)}, whose bytes stay in the store.`
+      : ' The next run adopts it instead of rendering one.';
+    return {
+      ok: true,
+      project,
+      path,
+      slot: adoption.slot,
+      note: `Would bring ${basename(path)} in as ${hash.slice(0, 8)} and make it the ${adoption.plan.label}.${supersede}`,
+    };
   }
 
   /** What `asset.upload` would bring in, without writing anything. */
-  async previewUpload(file: string, title: string): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.uploadPlan(file, title);
+  async previewUpload(
+    file: string,
+    title: string,
+    slot = '',
+    replace = false,
+  ): Promise<{ ok: boolean; message: string }> {
+    const decided = await this.uploadPlan(file, title, slot, replace);
     return decided.ok
       ? { ok: true, message: decided.note }
       : { ok: false, message: decided.reason };
   }
 
   /**
-   * Bring an outside image into the base asset store as a `reference`. Nothing generated it, so it
-   * is never accepted and never planned — it exists only to be pointed at by a prompt chunk.
+   * Bring an outside image into the base asset store. With no slot it is a `reference`: nothing
+   * generated it, so it is never accepted and never planned — it exists only to be pointed at by a
+   * prompt chunk. With a slot it is filed the same way and then adopted as that slot's output.
    */
   async uploadAsset(
     file: string,
     title: string,
+    slot = '',
+    replace = false,
   ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
-    const decided = await this.uploadPlan(file, title);
+    const decided = await this.uploadPlan(file, title, slot, replace);
     if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
     const { project, path } = decided;
     const result = await uploadReference({ store: project.store }, { file: path, title });
     const already = result.known ? ' It was already in the store; nothing new was written.' : '';
+    const uploaded = `Uploaded "${result.title}" as ${result.ref.hash.slice(0, 8)}.${already}`;
+    const written = [
+      relPath(this.dir, result.stored),
+      relPath(this.dir, project.paths.baseManifest),
+    ];
+    if (!decided.slot) return { ok: true, message: uploaded, hash: result.ref.hash, written };
+
+    // The bytes are in by now, so a refusal here is recoverable rather than lost — which is what
+    // the message has to say, because the author's file did land somewhere.
+    const adopted = await this.adoptAsset(result.ref.hash, slot, replace);
+    if (!adopted.ok) {
+      return {
+        ok: false,
+        message: `${uploaded} It could not be adopted, and stays a reference: ${adopted.message} Finish with asset.adopt(hash='${result.ref.hash}' slot='${slot}').`,
+        hash: result.ref.hash,
+        written,
+      };
+    }
     return {
       ok: true,
-      message: `Uploaded "${result.title}" as ${result.ref.hash.slice(0, 8)}.${already}`,
+      message: `${uploaded} ${adopted.message}`,
       hash: result.ref.hash,
-      written: [relPath(this.dir, result.stored), relPath(this.dir, project.paths.baseManifest)],
+      written: [...written, ...adopted.written],
     };
+  }
+
+  /**
+   * The rule behind both adoption halves: read the slot address, then let `adoptionForSlot` say
+   * everything else. `bytes` is for the pre-upload case, where the hash is not in the store yet.
+   */
+  private async adoptPlan(
+    hash: string,
+    slot: string,
+    replace: boolean,
+    bytes?: Uint8Array,
+  ): Promise<
+    | { ok: false; code: string; reason: string }
+    | { ok: true; project: LoadedProject; slot: RefBinding; plan: AdoptSlotPlan }
+  > {
+    const said = parseSlot(slot);
+    if (!said) {
+      return {
+        ok: false,
+        code: 'NOT_A_SLOT',
+        reason: `"${slot}" is not a picture in this project. A slot reads like plate:cafe/night, sheet:aiko/gala/front or shot:greet/s2.`,
+      };
+    }
+    const project = await loadProject(this.dir);
+    const decided = await adoptionForSlot(
+      { config: project.config, paths: project.paths, store: project.store },
+      { hash, slot: said, replace, ...(bytes ? { bytes } : {}) },
+    );
+    return decided.ok
+      ? { ok: true, project, slot: said, plan: decided.plan }
+      : { ok: false, code: decided.code, reason: decided.reason };
+  }
+
+  /** What `asset.adopt` would make this picture, without writing anything. */
+  async previewAdopt(
+    hash: string,
+    slot: string,
+    replace: boolean,
+  ): Promise<{ ok: boolean; message: string }> {
+    const decided = await this.adoptPlan(hash, slot, replace);
+    return decided.ok
+      ? { ok: true, message: decided.plan.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Record bytes already in the store as a slot's output — the general form of promotion. The task
+   * identity is derived from the project as it stands and logged `done`, so the next run adopts the
+   * picture rather than rendering over it.
+   */
+  async adoptAsset(
+    hash: string,
+    slot: string,
+    replace: boolean,
+  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
+    const decided = await this.adoptPlan(hash, slot, replace);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const { project, slot: binding } = decided;
+    const result = await adoptSlot(
+      { config: project.config, paths: project.paths, store: project.store },
+      { hash, slot: binding, replace },
+    );
+    const superseded = result.plan.supersedes
+      ? ` It supersedes the render ${result.plan.supersedes.slice(0, 8)}, whose bytes stay in the store.`
+      : '';
+    return {
+      ok: true,
+      message: `${hash.slice(0, 8)} is now the ${result.plan.label}.${superseded}`,
+      hash: result.ref.hash,
+      written: this.adoptWrote(project, binding, result.plan),
+    };
+  }
+
+  /**
+   * The rule behind both replace halves: the asset names its own slot, so an author replacing the
+   * picture in front of them never types one. Refusals come from {@link adoptionForSlot} asked
+   * about these very bytes — a portrait, a concept and an upload are refused there, by name, and
+   * asking twice is how a strip on screen and the act it runs stay the same rule.
+   */
+  private async replacePlan(
+    hash: string,
+  ): Promise<{ ok: false; reason: string } | { ok: true; slot: RefBinding; note: string }> {
+    const info = await this.assetInfo(hash);
+    if (!info) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
+    if (!info.slot) {
+      return {
+        ok: false,
+        reason: `${info.label} fills no slot — nothing planned it, or a later render took the slot over, so there is nothing for a file to replace.`,
+      };
+    }
+    const slot = parseSlot(info.slot);
+    if (!slot) return { ok: false, reason: `"${info.slot}" is not a picture in this project.` };
+
+    // Every refusal but one. `MOCK_PLACEHOLDER` judges the bytes coming *in*, and the chooser has
+    // not produced any yet — `uploadOf` refuses mock art at the upload, which is where that belongs.
+    // Asking about the outgoing picture is only how the slot itself gets checked.
+    const decided = await this.adoptPlan(hash, info.slot, false);
+    if (!decided.ok && decided.code !== 'MOCK_PLACEHOLDER') {
+      return { ok: false, reason: decided.reason };
+    }
+    const label = decided.ok ? decided.plan.label : slotLabel(slot);
+    return {
+      ok: true,
+      slot,
+      note: `Opens a file chooser; what you choose becomes the ${label}, superseding ${hash.slice(0, 8)} — whose bytes stay in the store.`,
+    };
+  }
+
+  /** What `asset.replace` would replace, before the chooser is opened. */
+  async previewReplace(hash: string): Promise<{ ok: boolean; message: string }> {
+    const decided = await this.replacePlan(hash);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Put an outside file in the place of a picture the project generated: upload it, then adopt it
+   * onto the slot those bytes fill. One act, so a file that lands but cannot be adopted says so —
+   * `uploadAsset` is where that sentence lives.
+   */
+  async replaceAsset(
+    hash: string,
+    file: string,
+  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
+    const decided = await this.replacePlan(hash);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    return this.uploadAsset(file, '', slotKey(decided.slot), true);
+  }
+
+  /** What an adoption touched: the manifest its kind routes to, the log, and a shot's own file. */
+  private adoptWrote(project: LoadedProject, slot: RefBinding, plan: AdoptSlotPlan): string[] {
+    const manifest =
+      plan.kind === 'shot_image' ? project.paths.manifest : project.paths.baseManifest;
+    return [
+      ...(slot.kind === 'shot' ? [relPath(this.dir, project.paths.shotsFile(slot.sceneId))] : []),
+      relPath(this.dir, manifest),
+      relPath(this.dir, project.paths.tasksLog),
+    ];
   }
 
   /** What `art.redraw` would draw, decided from the manifest without spending the call. */

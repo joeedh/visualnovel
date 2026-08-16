@@ -70,22 +70,28 @@ export const assetUpload = define({
   id: 'asset.upload',
   title: 'Upload reference image',
   description:
-    'Bring an image from outside into the base asset store as a reference. Nothing generated ' +
-    'it, so it is never approved and never planned — it exists only to be pointed at by a ' +
-    'prompt chunk. Mock placeholder art and anything that is not an image are refused by name.',
+    'Bring an image from outside into the base asset store. With no slot it is a reference: ' +
+    'nothing generated it, so it is never approved and never planned — it exists only to be ' +
+    'pointed at by a prompt chunk. Name a slot and the same image becomes that picture, the way ' +
+    'a repainted plate should. Mock placeholder art and anything that is not an image are ' +
+    'refused by name.',
   mutating: true,
   // It writes bytes into the repo from a path the author named, which is worth one confirmation.
   confirm: true,
   props: {
     file: prop.string('path to the image file (absolute, or relative to the project)'),
     title: prop.string('what to call it on screen; empty means the filename', { default: '' }),
+    slot: prop.string('the picture it becomes, e.g. plate:cafe/night; empty files a reference', {
+      default: '',
+    }),
+    replace: prop.boolean('supersede the render already holding that slot', { default: false }),
     open: prop.boolean('open the asset editor on it afterwards', { default: true }),
   },
-  async check({ file, title }, ctx) {
-    return verdict(await ctx.host.session.previewUpload(file, title));
+  async check({ file, title, slot, replace }, ctx) {
+    return verdict(await ctx.host.session.previewUpload(file, title, slot, replace));
   },
-  async run({ file, title, open }, ctx) {
-    const result = await ctx.host.session.uploadAsset(file, title);
+  async run({ file, title, slot, replace, open }, ctx) {
+    const result = await ctx.host.session.uploadAsset(file, title, slot, replace);
     if (!result.ok) throw new Error(result.message);
     if (open && result.hash) {
       ctx.host.ui({
@@ -96,6 +102,66 @@ export const assetUpload = define({
         subject: result.hash,
       });
     }
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const assetAdopt = define({
+  id: 'asset.adopt',
+  title: 'Adopt as a slot’s art',
+  description:
+    'Make an asset already in the store the output of the picture a slot names — plate:cafe/' +
+    'night, sheet:aiko/gala/front, shot:greet/s2 — so the next run adopts it instead of ' +
+    'rendering one. A portrait is refused by name, because approving a look is `gate.approve`; ' +
+    'so is an upload or a concept, which are their own identity. Superseding a render that ' +
+    'already holds the slot needs `replace`, and the old bytes stay in the store either way.',
+  mutating: true,
+  // It changes what the project's art *is*, and with `replace` it supersedes real work.
+  confirm: true,
+  props: {
+    hash: prop.string('the asset hash to adopt'),
+    slot: prop.string('the picture it becomes, e.g. plate:cafe/night'),
+    replace: prop.boolean('supersede the render already holding that slot', { default: false }),
+  },
+  async check({ hash, slot, replace }, ctx) {
+    return verdict(await ctx.host.session.previewAdopt(hash, slot, replace));
+  },
+  async run({ hash, slot, replace }, ctx) {
+    const result = await ctx.host.session.adoptAsset(hash, slot, replace);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const assetReplace = define({
+  id: 'asset.replace',
+  title: 'Replace with a file…',
+  description:
+    'Choose an image and put it in the place of a picture the project generated — `asset.upload` ' +
+    'with the chooser in front and the slot read off the asset instead of typed. The slot is the ' +
+    'one these bytes fill now, so an asset a later render superseded is refused, as is anything ' +
+    'nothing planned. Cancelling changes nothing.',
+  mutating: true,
+  // It supersedes real work with a file from outside, which is the bar `asset.upload` clears too.
+  confirm: true,
+  props: { hash: prop.string('the asset the chosen file replaces') },
+  async check({ hash }, ctx) {
+    return verdict(await ctx.host.session.previewReplace(hash));
+  },
+  async run({ hash }, ctx) {
+    // The chooser is not a permission: what the command would refuse is refused after it too.
+    const picked = await ctx.host.pickFiles({
+      title: 'Replace with a file',
+      buttonLabel: 'Replace',
+      extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
+      filterName: 'Images',
+      single: true,
+    });
+    const file = picked[0];
+    if (file === undefined) return { message: 'Cancelled.' };
+
+    const result = await ctx.host.session.replaceAsset(hash, file);
+    if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: result.written };
   },
 });

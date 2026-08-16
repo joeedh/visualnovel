@@ -58,11 +58,26 @@ counts by being pointed at, with `prompt.addRef`.
 
 **A `concept` is base art too, which is what makes promotion cheap.** It is authored-side — a
 sketch of a place or a person, asked for in a sentence rather than planned — so it belongs beside
-the plates. `promoteConcept` then rewrites one record in place: the kind flips to `location_ref`,
-`sourceTask` becomes the plate's own task identity, `prompt` becomes the derived one, and
-`mergeBindings` **keeps** the concept's binding beside the new `{locationId, variant}` so the tree
-still shows where the plate came from. The bytes never move, because both kinds route here. That is
-the only thing in the system that changes an asset's kind.
+the plates. Promoting one rewrites a record in place: the kind flips to `location_ref`, `sourceTask`
+becomes the plate's own task identity, `prompt` becomes the derived one, and `mergeBindings`
+**keeps** the concept's binding beside the new `{locationId, variant}` so the tree still shows where
+the plate came from. The bytes never move, because both kinds route here.
+
+**Adoption is the only thing that changes an asset's kind, and it is where a slot's routing bites.**
+`adoptSlot` in `@vn/artgen` re-records bytes already in the store under the kind the slot implies —
+`plate:` → `location_ref`, `sheet:` → `model_sheet`, `shot:` → `shot_image` — which is exactly the
+routing rule above, applied a second time to the same hash. Within the base root that is a rewrite
+in place. Across the roots it is not: a `reference` an author uploaded lives in `assets/`, and
+adopting it onto a shot slot writes the bytes to `vngen/build/assets/` as well. **One hash, two rows,
+two roots**, each with honest provenance — the base row still says an author handed the picture in,
+the project row says which frame it is. Reads are base-first, so `asset.info` answers from the base
+record; both rows carry the same content because the hash is the content.
+
+`promoteConcept` is one caller of `adoptSlot` — the location-concept case, with the sheet write in
+front of it. The general act refuses a `portrait:` slot (the P3 gate owns that picture), refuses
+mock-marked bytes, and refuses to supersede a render that already holds the slot unless the caller
+declared `replace`. Nothing is auto-accepted: adoption says "this is that task's output", not "a
+human approved it".
 
 **Reads consult both roots, base first.** Hashes are content hashes, so a byte present in both
 roots *is* the same byte and the two indices cannot disagree about content. Where both hold a

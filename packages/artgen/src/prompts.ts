@@ -17,6 +17,17 @@ import { makeTask } from '@vn/taskgraph';
 import { chunk, chunkList, composePrompt } from './chunks.js';
 import { authoredRefs } from './refs.js';
 
+/**
+ * The angles a model sheet is generated at once a character is approved (report §P4). Here rather
+ * than in the planner because it is part of what a sheet *is*: the cycle walk and adoption both
+ * have to name an angle, and three spellings of one list is how a shot ends up referencing a sheet
+ * nothing planned.
+ */
+export const MODEL_SHEET_ANGLES = ['front', 'side', 'back'] as const;
+
+/** The angle a shot references. One, not three: a frame needs the clothes, not a turnaround. */
+export const SHEET_FRONT = MODEL_SHEET_ANGLES[0];
+
 /** Image params derived from project config + the configured image model id. */
 export function imageParams(config: ProjectConfig): ImageParams {
   return {
@@ -116,6 +127,24 @@ export function portraitRefs(
   override?: PromptOverride,
 ): AssetRef[] {
   return authoredRefs(buildPortraitChunks(character, config), override ?? character.promptOverride);
+}
+
+/**
+ * One portrait task's inputs. Beside {@link locationInputs} for the reason that one exists: the
+ * planner fans these out and adoption re-derives them, and a helper each computes from is the only
+ * way the two cannot disagree about a hash.
+ */
+export function portraitInputs(
+  character: Character,
+  config: ProjectConfig,
+  params: ImageParams,
+): TaskInputs['portrait'] {
+  return {
+    characterId: character.id,
+    prompt: buildPortraitPrompt(character, config),
+    refs: portraitRefs(character, config),
+    params,
+  };
 }
 
 /** P2 location plate chunks for one time-of-day/weather variant (report §P2). */
@@ -306,6 +335,30 @@ export function modelSheetRefs(
   return authoredRefs(buildModelSheetChunks(character, outfit, angle, config), override ?? stored);
 }
 
+/**
+ * One model-sheet task's inputs. The approved portrait is passed in rather than read off the
+ * character, because a sheet derives from the portrait *the caller resolved* — and it leads the
+ * refs: arrays are positional in the hash, so this is the one order that leaves a project
+ * authoring no references byte-identical (§12).
+ */
+export function modelSheetInputs(
+  character: Character,
+  outfit: string,
+  angle: string,
+  portrait: AssetRef,
+  config: ProjectConfig,
+  params: ImageParams,
+): TaskInputs['model_sheet'] {
+  return {
+    characterId: character.id,
+    outfit,
+    angle,
+    prompt: buildModelSheetPrompt(character, outfit, angle, config),
+    refs: [portrait, ...modelSheetRefs(character, outfit, angle, config)],
+    params,
+  };
+}
+
 /** P6 shot chunks, synthesized from the terse shot description + entities (report §P6). */
 export function buildShotChunks(
   shot: Shot,
@@ -376,6 +429,27 @@ export function shotRefs(
   override?: PromptOverride,
 ): AssetRef[] {
   return authoredRefs(buildShotChunks(shot, scene, model, config), override ?? shot.promptOverride);
+}
+
+/**
+ * One shot task's inputs. `upstream` is what the caller resolved and this cannot — the plate the
+ * shot is set in and the portrait/sheet of each subject — and it leads the refs, with the authored
+ * ones appended after, the order the hash has always seen (§12).
+ */
+export function shotInputs(
+  shot: Shot,
+  scene: Scene,
+  model: ProjectModel,
+  config: ProjectConfig,
+  params: ImageParams,
+  upstream: AssetRef[],
+): TaskInputs['shot_image'] {
+  return {
+    shotId: shot.id,
+    prompt: buildShotPrompt(shot, scene, model, config),
+    refs: [...upstream, ...shotRefs(shot, scene, model, config)],
+    params,
+  };
 }
 
 /**

@@ -109,8 +109,12 @@
   border-radius: var(--r-chrome);
 }
 
-/* The concept's one offer. Sodium: naming the variant is an authorial act, not a machine one. */
-.as-promote {
+/*
+ * The two offers that change what an asset *is* — promoting a sketch, replacing a render with the
+ * author's own file. Sodium and one box: both are authorial acts, and no pane shows both at once.
+ */
+.as-promote,
+.as-replace {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
@@ -145,7 +149,15 @@
   border-color: var(--sodium);
 }
 
-.as-promote-go {
+/* The slot address, not prose: it is an identity the author can read back into a command. */
+.as-replace-what {
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.as-promote-go,
+.as-replace-go {
   padding: 4px 12px;
   border: 1px solid rgba(244, 162, 76, 0.6);
   border-radius: var(--r-chrome);
@@ -156,11 +168,13 @@
   cursor: pointer;
 }
 
-.as-promote-go:hover {
+.as-promote-go:hover,
+.as-replace-go:hover {
   background: rgba(244, 162, 76, 0.14);
 }
 
-.as-promote .as-hint {
+.as-promote .as-hint,
+.as-replace .as-hint {
   flex: 1 1 100%;
 }
 

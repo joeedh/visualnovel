@@ -11,10 +11,7 @@
 import type { Asset, RefBinding } from '@vn/types';
 import { outfitFor } from '@vn/model';
 import { overrideAt, type PromptRung, type RungContext } from './resolve.js';
-
-// The angle a shot's subject references when it is out of its default outfit. Spelled here rather
-// than imported: `MODEL_SHEET_ANGLES` lives in `@vn/pipeline`, which imports this package.
-const SHEET_FRONT = 'front';
+import { SHEET_FRONT } from './prompts.js';
 
 /**
  * One slot, as a string, so the walk can use a `Set`. Angles stay distinct: they are two pictures.

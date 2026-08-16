@@ -18,24 +18,20 @@ import { makeTask } from '@vn/taskgraph';
 import { baseRefusal, cycleRefusal, firstCycle } from '@vn/artgen';
 import { VnError } from '@vn/util';
 import {
-  buildModelSheetPrompt,
-  buildPortraitPrompt,
-  buildShotPrompt,
   imageParams,
   locationTask,
-  modelSheetRefs,
-  portraitRefs,
-  shotRefs,
+  modelSheetInputs,
+  portraitInputs,
+  shotInputs,
+  MODEL_SHEET_ANGLES,
+  SHEET_FRONT,
 } from './prompts.js';
 import { decomposeScene } from './p5.js';
 import { proseHash } from './drift.js';
 import { isApproved, sceneUnblocked } from './gate.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
-export const MODEL_SHEET_ANGLES = ['front', 'side', 'back'] as const;
-
-/** The angle a shot references. One, not three: a frame needs the clothes, not a turnaround. */
-const SHEET_FRONT = MODEL_SHEET_ANGLES[0];
+export { MODEL_SHEET_ANGLES };
 
 const PNG = 'png';
 
@@ -94,7 +90,7 @@ function usedOutfits(model: ProjectModel): Map<string, Set<string>> {
 /**
  * One model-sheet task. Built in two places — P4 fans them out, and a shot in a non-default outfit
  * names one as a ref — so the identity is written down once or the shot would depend on a hash
- * nothing planned.
+ * nothing planned. The inputs come from `@vn/artgen` because adoption derives them too.
  */
 function modelSheetTask(
   character: Character,
@@ -104,16 +100,10 @@ function modelSheetTask(
   config: ProjectConfig,
   params: ImageParams,
 ): AnyTask {
-  return makeTask('model_sheet', {
-    characterId: character.id,
-    outfit,
-    angle,
-    prompt: buildModelSheetPrompt(character, outfit, angle, config),
-    // Derived first, then whatever the author attached: arrays are positional in the hash, so this
-    // is the one order that leaves a project authoring no references byte-identical (§12).
-    refs: [portrait, ...modelSheetRefs(character, outfit, angle, config)],
-    params,
-  });
+  return makeTask(
+    'model_sheet',
+    modelSheetInputs(character, outfit, angle, portrait, config, params),
+  );
 }
 
 /** Locations referenced by a reachable scene, paired with the variants those scenes use. */
@@ -269,14 +259,7 @@ export async function planTasks(opts: {
 
   // P3: one portrait task per used character (the human-approval gate sits on its output).
   for (const character of usedCharacters(model)) {
-    const prompt = buildPortraitPrompt(character, config);
-    const task = makeTask('portrait', {
-      characterId: character.id,
-      prompt,
-      refs: portraitRefs(character, config),
-      params,
-    });
-    planned.push(graph.add(task));
+    planned.push(graph.add(makeTask('portrait', portraitInputs(character, config, params))));
 
     // P4: model sheets derive from the *approved* portrait, so only after the gate — and only for
     // the outfits something puts this character in, not for every one the sheet authors.
@@ -344,18 +327,9 @@ export async function planTasks(opts: {
       }
       if (missingRef) continue;
 
-      const prompt = buildShotPrompt(shot, scene, model, config);
-      shot.prompt = prompt;
-      const task = makeTask(
-        'shot_image',
-        {
-          shotId: shot.id,
-          prompt,
-          refs: [locAsset, ...subjectRefs, ...shotRefs(shot, scene, model, config)],
-          params,
-        },
-        [locTaskHash, ...sheetDeps],
-      );
+      const inputs = shotInputs(shot, scene, model, config, params, [locAsset, ...subjectRefs]);
+      shot.prompt = inputs.prompt;
+      const task = makeTask('shot_image', inputs, [locTaskHash, ...sheetDeps]);
       const node = graph.add(task);
       planned.push(node);
       refreshShotData(shot, node, scene);

@@ -3,10 +3,8 @@ import type { ProjectConfig } from '@vn/config';
 import type { LoadedInputs } from '@vn/parse';
 import { applyLocationEdit, docToMarkdown, modelFromInputs, type LocationEdit } from '@vn/model';
 import { entityFile, loadInputs, type AssetStore, type ProjectPaths } from '@vn/store';
-import { loadGraph, makeTask } from '@vn/taskgraph';
 import { VnError, writeFileAtomic } from '@vn/util';
-import { imageParams, locationInputs } from './prompts.js';
-import { adopt } from './adopt.js';
+import { adoptSlot } from './adoptslot.js';
 import { baseRefusal } from './base.js';
 
 /** A variant id an author can type: the same shape `- night` already has in a sheet. */
@@ -109,14 +107,12 @@ export function promotionOf(
 /**
  * Turn a concept into the location plate the planner would have rendered.
  *
- * Three writes, in this order, because each depends on the last: the variant goes onto the
- * location's sheet, the bytes are re-recorded as a `location_ref` under that binding, and the task
- * identity the planner derives for `(location, variant)` is logged `done` with this asset as its
- * output. That last one is what makes the next `vngen run` **adopt** the sketch — `loadGraph`
- * replays the record, `TaskGraph.add` returns the existing `done` node, and `ready()` skips it.
+ * Two acts, in this order because the second depends on the first: the variant goes onto the
+ * location's sheet, and then the sketch is adopted as `plate:<location>/<variant>` — the general
+ * act, which re-records the bytes and logs the plate's task `done`.
  *
- * It cannot forge work that never happened: the identity is computed here from the sheet this call
- * just wrote, so the node it marks done is exactly the node whose output this image now is.
+ * It cannot forge work that never happened: {@link adoptSlot} derives the identity from the sheet
+ * this call just wrote, so the node it marks done is exactly the node whose output this image is.
  */
 export async function promoteConcept(
   deps: PromoteDeps,
@@ -125,7 +121,6 @@ export async function promoteConcept(
   const decided = promotionOf(deps.store, req);
   if (!decided.ok) throw new VnError(decided.code, decided.reason);
   const { locationId, variant } = decided.plan;
-  const asset = deps.store.manifest().find((a) => a.hash === req.hash)!;
 
   const inputs = await loadInputs(deps.paths);
   const entry = inputs.locationDocs.find((d) => d.id === locationId);
@@ -158,44 +153,18 @@ export async function promoteConcept(
     await writeFileAtomic(file, docToMarkdown(edited.value.doc));
   }
 
-  // Re-read: the prompt must be derived from the sheet as it now stands, not as it was.
-  const model = modelOf(deps.config, await loadInputs(deps.paths));
-  const location = model.locations.get(locationId);
-  if (!location) throw new VnError('NO_LOCATION', `Location "${locationId}" is gone.`);
-  // Derived from the sheet this call just wrote, and handed to `adopt` as inputs rather than as a
-  // hash — which is what makes "cannot mark done a task nothing describes" structural.
-  const plate = locationInputs(location, variant, deps.config, imageParams(deps.config));
-  const hash = makeTask('location_ref', plate).hash;
-
-  const bytes = await deps.store.read({ hash: asset.hash, ext: asset.ext });
-  const ref = await deps.store.write(bytes, asset.ext, {
-    kind: 'location_ref',
-    sourceTask: hash,
-    prompt: plate.prompt,
-    refs: plate.refs.map((r) => r.hash),
-    modelId: asset.modelId,
-    // The concept binding is already on the record and `mergeBindings` keeps it, so the tree
-    // still shows where this plate came from.
-    satisfies: { locationId, variant },
+  // The general act, against the sheet this call just wrote: it re-reads the model, so the identity
+  // it derives is the one the planner would derive now.
+  const adopted = await adoptSlot(deps, {
+    hash: req.hash,
+    slot: { kind: 'plate', locationId, variant },
   });
 
-  const graph = await loadGraph(deps.paths);
-  const adopted = await adopt(
-    deps.paths,
-    {
-      kind: 'location_ref',
-      inputs: plate,
-      output: deps.store.manifest().find((a) => a.hash === ref.hash)!,
-    },
-    { has: (h) => deps.store.has(h), node: (h) => graph.get(h) },
-  );
-  if (!adopted.ok) throw new VnError(adopted.code, adopted.reason);
-
   return {
-    ref,
+    ref: adopted.ref,
     locationId,
     variant,
-    taskHash: hash,
+    taskHash: adopted.plan.taskHash,
     addedVariant,
     ...(addedVariant ? { file } : {}),
   };

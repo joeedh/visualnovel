@@ -62,7 +62,9 @@ describe('the desktop registry', () => {
       'art.redraw',
       'art.setNotes',
       'asset.accept',
+      'asset.adopt',
       'asset.regenerate',
+      'asset.replace',
       'asset.upload',
       'doc.create',
       'doc.write',
@@ -113,7 +115,8 @@ describe('the desktop registry', () => {
    * `workspace.reindex`, `asset.accept`), write new content-addressed bytes there was no prior
    * state for (`art.generate`, `art.redraw`, `asset.upload`), append to a log (`pipeline.run`,
    * `asset.regenerate`), straddle a sheet, the manifest and the task log at once
-   * (`art.promote`), restructure the whole worktree
+   * (`art.promote`, and `asset.adopt`/`asset.replace`, which append a `done` record the log has
+   * no un-appending for), restructure the whole worktree
    * (`workspace.import`, whose own `.imported` rename is the reversal), write into a *different*
    * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), copy bytes in from
    * outside the tree *and* close the conversation a snapshot cannot restore (`upload.*`), write under
@@ -173,7 +176,9 @@ describe('the desktop registry', () => {
       'art.redraw',
       'art.setNotes',
       'asset.accept',
+      'asset.adopt',
       'asset.regenerate',
+      'asset.replace',
       'asset.upload',
       'doc.create',
       'doc.write',

@@ -46,12 +46,15 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
   rather than by manifest binding, so a concept bound to `{locationId: 'cafe'}` can never be
   mistaken for that location's plate. The test that states this is that a project holding a concept
   plans exactly the tasks it planned before.
-- **A `done` record may be written outside the scheduler exactly once, by promotion.**
-  `promoteConcept` logs the plate's own task `done` with the concept as its output, so the next run
-  **adopts** the picture rather than rendering over it. The bound that makes this safe is that the
-  identity is derived, in the same call, from the sheet that call just wrote: it can only mark done
-  the one node whose output this image now is. Nothing else in the system writes a terminal record
-  it did not run. Plan:
+- **A `done` record may be written outside the scheduler exactly once, by adoption.** `adoptSlot`
+  logs a slot's own task `done` with the handed-in bytes as its output, so the next run **adopts**
+  the picture rather than rendering over it. The bound that makes this safe is that the identity is
+  derived, in the same call, from the project as it stands — never from a passed hash — so it can
+  only mark done the one node whose output this image now is. A `portrait:` slot is refused because
+  the P3 gate owns it, mock-marked bytes are refused because mock art never becomes real output, and
+  superseding a render that already holds the slot is a **declared** act (`replace`), not a silent
+  one. `promoteConcept` is one caller of this; nothing else in the system writes a terminal record it
+  did not run. Plans: [`plans/adopting-an-uploaded-asset.md`](plans/adopting-an-uploaded-asset.md),
   [`plans/on-demand-concept-images.md`](plans/on-demand-concept-images.md).
 
 ## Scheduling

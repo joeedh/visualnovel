@@ -18,7 +18,15 @@ import {
   agentThreads,
 } from './agent.js';
 import { artGenerate, artPromote, artRedraw, artSetNotes } from './art.js';
-import { assetAccept, assetInfo, assetRegenerate, assetSuspended, assetUpload } from './asset.js';
+import {
+  assetAccept,
+  assetAdopt,
+  assetInfo,
+  assetRegenerate,
+  assetReplace,
+  assetSuspended,
+  assetUpload,
+} from './asset.js';
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
 import { docCreate, docRead, docWrite } from './doc.js';
@@ -97,8 +105,10 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     artRedraw,
     artSetNotes,
     assetAccept,
+    assetAdopt,
     assetInfo,
     assetRegenerate,
+    assetReplace,
     assetSuspended,
     assetUpload,
     bibleSearch,

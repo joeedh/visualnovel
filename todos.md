@@ -23,7 +23,7 @@
 [x]: create the concept of conversation threads if it doesn't exist already.  there should be a searchable dropdown
      menu of all past threads.  we will be saving the thread transcripts (minus tool calls? your call) in project 
 	 repo in an appropriate place (propose one).
-[ ]: the asset editor should have an option to upload a custom asset for if e.g. a user pays someone to clean up
+[x]: the asset editor should have an option to upload a custom asset for if e.g. a user pays someone to clean up
      artwork.
 [ ]: if the agent is told to change an artwork asset it should have the tools not just to append to the art notes 
      but also to ask the user if it can regenerate it, and if so read back the image and propose further changes to the art

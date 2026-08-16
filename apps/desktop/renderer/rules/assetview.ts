@@ -107,6 +107,32 @@ export function promoteAction(info: AssetInfo): PromoteAction {
   return { ok: true, locationId };
 }
 
+/** The replace strip: the slot a chosen file would fill, or why these bytes have none. */
+export type ReplaceAction = { ok: true; slot: string } | { ok: false; reason: string };
+
+/**
+ * A file can only stand in for a picture the project actually planned, and only while these are
+ * still the bytes in it — `AssetInfo.slot` is absent for a concept, an upload and a superseded
+ * render alike. A portrait is the one live slot this declines: replacing a look is approving one,
+ * and that is the gate's. Both refusals are `adoptionForSlot`'s, said as layout.
+ */
+export function replaceAction(info: AssetInfo): ReplaceAction {
+  if (info.slot === undefined) {
+    return {
+      ok: false,
+      reason: `A ${info.kind} fills no slot — nothing planned it, or a newer render holds the slot now.`,
+    };
+  }
+  if (info.slot.startsWith('portrait:')) {
+    return {
+      ok: false,
+      reason:
+        'A portrait is the look the gate owns — upload the file, then approve it with gate.approve.',
+    };
+  }
+  return { ok: true, slot: info.slot };
+}
+
 /** The redraw strip: what the boxes start out holding, or why this prompt cannot be edited. */
 export type RedrawAction =
   | { ok: true; prompt: string; title: string }
