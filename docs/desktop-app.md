@@ -925,8 +925,12 @@ the project works, it just gets no commit-on-save ([`repos-and-commits.md`](repo
 and after the fact that symptom has no visible cause. Like every mutator, `run` re-runs the check
 rather than trusting the one the palette showed.
 
-**The app menu is where all three live**: New Project… and Open Project… open the palette (on
-`workspace.create` and `workspace.pick`), and **Recent Projects** is a submenu built from
+**The app menu is where all three live**: New Project… opens the palette on `workspace.create`,
+because that command needs a path to a directory that does not exist yet and no OS chooser can
+express one; **Open Project…** runs `workspace.pick` outright, since the chooser it raises is the
+form. (The palette is for a command with something to collect or something to confirm — an entry
+with neither, like this one and **Reindex Project**, would draw an empty form the author dismisses
+with the same click that opened it.) **Recent Projects** is a submenu built from
 `workspace.recent` — one entry per remembered root, labelled by its last path segment with the full
 path as the tooltip, each invoking `workspace.open(path=…)`. The renderer keeps no list of its own;
 it refetches once per project it finds itself in, and leaves the open project out rather than

@@ -264,10 +264,12 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
 - **A mutating command declares its refusal before it runs** — `stack.check` answers `accept` |
   `refuse` | `undeclared`, and absence of a check is not permission.
 - **The palette, the menu bar, the tree's right-click menus, the agent and CDP all reach the same
-  registry.** A menu entry is an _invocation_, never a callback: checked before it is drawn, `exec`d
-  when clicked, and a refusal is **shown** with the command's own sentence rather than hidden. One
-  needing an argument a menu cannot supply — and every `confirm: true` one — opens the palette on
-  its form instead, and is deliberately not checked.
+  registry.** A **right-click** entry is an _invocation_, never a callback: checked before it is
+  drawn, `exec`d when clicked, and a refusal is **shown** with the command's own sentence rather
+  than hidden. One needing an argument a menu cannot supply — and every `confirm: true` one — opens
+  the palette on its form instead, and is deliberately not checked. The **menu bar** mixes commands
+  with shell acts (Quit, Undo, Split Area), so it runs and reports rather than pre-checking — and it
+  opens the palette only where there is something to collect or confirm.
   ([`docs/plans/document-tree-context-menus.md`](docs/plans/document-tree-context-menus.md))
 - **Provenance, undo and commits are each opt-in.** Executions append to
   `vngen/state/commands.jsonl`; undo restores a shadow snapshot under `refs/vn/undo/<seq>/` and

@@ -161,3 +161,8 @@ basename, with the open project absent — and refetched itself when another was
   that the project changed, so one fetch per project is the guard.
 - **The open project is omitted rather than checked.** The plan allowed either. `workspace.open`
   refuses that root by name, and an entry that cannot be taken is worse than one not offered.
+- **Later correction: only `New Project…` opens the palette.** The plan's Stage 2 snippet had all
+  four entries do it, and the app shipped that way — but `workspace.pick` and `workspace.reindex`
+  take no argument and ask for no confirmation, so the palette was an empty form dismissed with the
+  same click that opened it. Both now run from the menu and report what they answered; `New
+  Project…` keeps the palette because `workspace.create` needs a path no chooser can express.

@@ -695,6 +695,15 @@ resolution is `renderer/pathux/contextmenu.ts`, pure and node-testable because i
 like every other surface. The tables are in
 [`document-tree.md`](document-tree.md#right-click-menus).
 
+**The menu bar is not this.** `header.ts`'s app and View menus are built with the bar, synchronously,
+and half their entries are shell acts rather than commands — Quit, Split Area, Undo, Plan ⇄ Execute
+reach no registry because there is none to reach. So those menus run and report: `exec` says the
+refusal after the click instead of drawing it before, which is the same sentence one beat later. The
+rule they do keep is the palette's: an entry opens the palette when the command has something to
+collect (`workspace.create`'s path) or something to confirm (`pipeline.run`, `upload.pick`), and
+runs outright when it has neither (`workspace.pick`, `workspace.reindex`) — an empty form is
+friction, not a safeguard.
+
 ### From DevTools or CDP
 
 The preload exposes a second bridge, `window.vn`, over that same IPC:

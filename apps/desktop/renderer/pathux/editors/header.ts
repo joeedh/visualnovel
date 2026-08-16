@@ -1,7 +1,7 @@
 import { AreaFlags, Menu, createMenu, type Container, type MenuTemplate } from 'pathux';
 import { isLive } from '../../api.js';
 import { EDITORS } from '../../../src/shared/editors.js';
-import { exec, move, quit, toggleMode } from '../bridge.js';
+import { exec, move, quit, say, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 
@@ -12,6 +12,17 @@ export const HEADER_HEIGHT = 34;
 function projectName(path: string): string {
   const parts = path.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] ?? path;
+}
+
+/**
+ * Run a menu entry and say what it answered. `exec` reports a refusal on its own; the *success*
+ * sentence is what an entry that opens no palette and no dialog would otherwise show nothing for —
+ * and "Cancelled." is the one an entry that opens a chooser most needs to pass on.
+ */
+function act(id: string): void {
+  void exec(id).then((outcome) => {
+    if (outcome.ok) say(outcome.record.message);
+  });
 }
 
 /**
@@ -157,9 +168,12 @@ export class VnHeaderEditor extends VnEditor {
       // chooser cannot express — so this one entry opens the palette on its form rather than a
       // dialog, the way every other path-taking command is reached.
       ['New Project…', () => openPalette('workspace.create'), undefined],
-      ['Open Project…', () => openPalette('workspace.pick'), undefined],
+      // These two take no argument and ask for no confirmation, so the palette would be an empty
+      // form the author dismisses with the same click. They run, and say what they answered — the
+      // chooser `workspace.pick` opens is its own confirmation.
+      ['Open Project…', () => act('workspace.pick'), undefined],
       this.recentMenu(),
-      ['Reindex Project', () => openPalette('workspace.reindex'), undefined],
+      ['Reindex Project', () => act('workspace.reindex'), undefined],
       Menu.SEP,
       // The palette, not the dialog directly: `upload.pick` is `confirm`, and the palette is where
       // a command says what it is about to do before the OS chooser takes over the screen.
@@ -191,7 +205,11 @@ export class VnHeaderEditor extends VnEditor {
           root,
         ])
       : [['(none)', () => {}, undefined]];
-    return createMenu(this.ctx, 'Recent Projects', items as MenuTemplate);
+    const menu = createMenu(this.ctx, 'Recent Projects', items as MenuTemplate);
+    // `createMenu` files its title under the `name` attribute, but the row a parent menu draws for
+    // a submenu reads `.title` — so without this the entry is a blank, full-width strip.
+    menu.title = 'Recent Projects';
+    return menu;
   }
 
   /**
