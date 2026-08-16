@@ -9,7 +9,7 @@
  * always framework-free, and two palettes disagreeing about which command a query names would
  * be a bug in both.
  */
-import { UIBase, type Container, type MenuTemplateCustom } from 'pathux';
+import { UIBase, type Container, type MenuTemplateCustom, type TextBox } from 'pathux';
 import { api } from '../api.js';
 import { blankProps, fieldText, fieldValue, filterCommands } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
@@ -27,6 +27,14 @@ class Palette {
   private readonly popup: Popup;
   private readonly listCol: Container;
   private readonly detailCol: Container;
+  /**
+   * The verdict's own strip inside the form. A recheck redraws this and nothing else: rebuilding
+   * the whole detail column would tear out the very input being typed into, and the check is
+   * re-asked on every keystroke.
+   */
+  private verdictCol: Container | undefined;
+  /** The form's first text field, so a palette opened on a command lands in it. */
+  private firstField: TextBox | undefined;
 
   private commands: CatalogEntry[] = [];
   private query = '';
@@ -78,6 +86,9 @@ class Palette {
         this.renderDetail();
         void this.recheck();
       }
+      // The search box has the focus the constructor gave it, and the author who picked this
+      // command off a menu is not searching for it — they are here to fill its first blank.
+      this.firstField?.focus();
     });
 
     this.popup.flushUpdate();
@@ -122,7 +133,7 @@ class Palette {
     // A newer selection may have landed while this was in flight; its answer wins.
     if (this.chosen !== entry) return;
     this.check = check;
-    this.renderDetail();
+    this.renderVerdict();
   }
 
   private renderDetail(): void {
@@ -133,13 +144,14 @@ class Palette {
     this.detailCol.label(entry.id);
     this.detailCol.label(entry.description);
 
-    for (const prop of entry.props) this.field(prop);
-
-    // `undeclared` renders as nothing at all: a command that states no precondition has not
-    // said yes, and a tick here would invent an assurance.
-    if (this.check && this.check.state !== 'undeclared') {
-      this.detailCol.label(`${this.check.state === 'accept' ? '✓' : '✕'} ${this.check.message}`);
+    this.firstField = undefined;
+    for (const prop of entry.props) {
+      const box = this.field(prop);
+      this.firstField ??= box;
     }
+
+    this.verdictCol = this.detailCol.col();
+    this.renderVerdict();
 
     const run = this.detailCol.button(this.confirming ? 'confirm — run it' : 'run', () => {
       void this.run(entry);
@@ -149,8 +161,25 @@ class Palette {
     this.detailCol.flushUpdate();
   }
 
-  /** One declared prop as an editable widget. `coerceProps` in main stays the authority. */
-  private field(prop: CatalogProp): void {
+  /**
+   * The verdict, on its own. `undeclared` renders as nothing at all: a command that states no
+   * precondition has not said yes, and a tick here would invent an assurance.
+   */
+  private renderVerdict(): void {
+    const col = this.verdictCol;
+    if (!col) return;
+    col.clear();
+    if (this.check && this.check.state !== 'undeclared') {
+      col.label(`${this.check.state === 'accept' ? '✓' : '✕'} ${this.check.message}`);
+    }
+    col.flushUpdate();
+  }
+
+  /**
+   * One declared prop as an editable widget, returning it when it is a text field — those are
+   * what a form opened on a command wants the focus in. `coerceProps` in main stays the authority.
+   */
+  private field(prop: CatalogProp): TextBox | undefined {
     const row = this.detailCol.row();
     row.label(`${prop.name}${prop.required ? ' *' : ''}`);
     const value = this.values[prop.name];
@@ -163,7 +192,7 @@ class Palette {
         this.renderDetail();
         void this.recheck();
       });
-      return;
+      return undefined;
     }
 
     if (prop.kind === 'enum') {
@@ -180,7 +209,7 @@ class Palette {
           ],
         ),
       );
-      return;
+      return undefined;
     }
 
     const box = row.textbox(undefined, fieldText(value ?? ''), (text: unknown) => {
@@ -188,6 +217,7 @@ class Palette {
       void this.recheck();
     });
     box.description = prop.description;
+    return box;
   }
 
   private async run(entry: CatalogEntry): Promise<void> {

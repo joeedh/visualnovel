@@ -655,6 +655,14 @@ this document ("the palette … reaches the same registry") true rather than asp
   verdict never gates the run; a refusal surfaces as the execution error, from a stack that
   re-decided for itself. It is also re-asked after every run, since a command that just ran
   changed what its own precondition would now answer.
+- **The verdict redraws alone.** It is its own strip inside the form, because a recheck lands on
+  every keystroke and rebuilding the whole form would tear out the input being typed into — a
+  field that survives one character and then vanishes is a command that cannot be given an
+  argument at all.
+- **A palette opened on a command lands in its first text field.** Focus is the search box's only
+  when the author is searching; someone who picked the command off a menu is here to fill its
+  first blank, and typing that path into the filter instead is indistinguishable from the entry
+  not working.
 - **Highlighting a row is not navigating to it.** Focus and hover only arm the check, so the
   verdict is there to read before the click that opens the form or runs the command.
 - **Execution is `command:exec` with `source: 'ui'`** — the same stack `window.vn.exec` and CDP
