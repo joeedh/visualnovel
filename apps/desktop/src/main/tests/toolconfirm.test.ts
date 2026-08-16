@@ -31,6 +31,17 @@ describe('confirmDetail', () => {
     expect(confirmDetail('edit_image', { hash: 'a1b2c3d4' })).toContain('from the same prompt');
   });
 
+  // Queueing and drawing cost different things, and the card is where that difference is stated.
+  it('separates queueing a re-render from paying for one now', () => {
+    const now = confirmDetail('regenerate_asset', { hash: 'abcdef0123456789abcdef', run: true });
+    expect(now).toContain('abcdef012345');
+    expect(now).toContain('one image generation');
+
+    const later = confirmDetail('regenerate_asset', { hash: 'abcdef0123456789abcdef' });
+    expect(later).toContain('next pipeline run');
+    expect(later).not.toContain('image generation');
+  });
+
   it('says what the destructive git tools destroy', () => {
     expect(confirmDetail('git_revert', { ref: 'HEAD~2' })).toContain('HEAD~2');
     expect(confirmDetail('git_restore', { path: 'characters/aiko' })).toContain('cannot be undone');

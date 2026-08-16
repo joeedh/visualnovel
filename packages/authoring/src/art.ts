@@ -9,10 +9,18 @@
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import { AssetStore, loadInputs } from '@vn/store';
-import { createMockProviders, createProviders } from '@vn/providers';
+import {
+  RecordedChatBackend,
+  chatBackendFor,
+  chatVendorFor,
+  createMockProviders,
+  createProviders,
+  type ChatBackend,
+} from '@vn/providers';
 import {
   bindingSubject,
   conceptPrompt,
+  describeAsset,
   generateConcept,
   matchSubject,
   redrawConcept,
@@ -20,6 +28,8 @@ import {
   type ConceptRequest,
   type ConceptResult,
   type ConceptSubject,
+  type DescribeRequest,
+  type DescribeResult,
   type RedrawRequest,
   type RedrawResult,
 } from '@vn/artgen';
@@ -56,6 +66,8 @@ export interface ArtGen {
   redraw(req: RedrawRequest): Promise<RedrawResult>;
   /** Every concept the project holds. A hash is not memorable, so nothing can be edited unlisted. */
   list(): Promise<ConceptListing[]>;
+  /** Look at one stored picture and answer a question about it. Costs a vision call. */
+  describe(req: DescribeRequest): Promise<DescribeResult>;
 }
 
 /**
@@ -99,6 +111,29 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
     return providers.image;
   }
 
+  /**
+   * The vision model for a read-back — the first `models.vision` entry, which is the reviewer the
+   * pipeline would have used. Mocked, it answers the same sentence every time and says what it is:
+   * a stub that never looked at the picture must not read as a description of one.
+   */
+  async function visionOf(config: Awaited<ReturnType<typeof loadConfig>>): Promise<ChatBackend> {
+    if (opts.mock) {
+      return new RecordedChatBackend(
+        'mock-vision',
+        () => 'A mock vision backend does not look at pictures, so there is nothing to report.',
+      );
+    }
+    const modelId = config.models.vision[0];
+    if (!modelId) {
+      throw new VnError('NO_VISION_MODEL', 'project.yaml names no models.vision to look with.');
+    }
+    const keys = await resolveKeys(config, {
+      secretsDirs: await secretDirsFor(workspace.root),
+      require: [chatVendorFor(modelId)],
+    });
+    return chatBackendFor(modelId, keys).backend;
+  }
+
   return {
     async generate(req: ConceptRequest): Promise<ConceptResult> {
       const { config, model, store, loadRef } = await open();
@@ -127,6 +162,11 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
             ...(subject ? { subject } : {}),
           };
         });
+    },
+
+    async describe(req: DescribeRequest): Promise<DescribeResult> {
+      const { config, store } = await open();
+      return describeAsset({ store, backend: await visionOf(config) }, req);
     },
 
     async preview(req: ConceptRequest): Promise<ConceptPreview> {

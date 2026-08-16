@@ -114,15 +114,15 @@ nothing. Wave C is the two features that consume the rest.
 
 ### 7 — The agent revises art
 
-- [ ] Move `apps/desktop/src/main/artnotes.ts` → `packages/artgen/src/artnotes.ts` with its tests;
+- [x] Move `apps/desktop/src/main/artnotes.ts` → `packages/artgen/src/artnotes.ts` with its tests;
       behaviour byte-identical
-- [ ] `packages/artgen/src/setnotes.ts`, and `session.setArtNotes` delegating to it
-- [ ] `packages/artgen/src/describe.ts` — `describeAsset` over the `ChatBackend` seam, **not** a
+- [x] `packages/artgen/src/setnotes.ts`, and `session.setArtNotes` delegating to it
+- [x] `packages/artgen/src/describe.ts` — `describeAsset` over the `ChatBackend` seam, **not** a
       widened `VisionReviewer`
-- [ ] `ToolContext.pipeline?: PipelineControl`, wired by the desktop, refused by name in the REPL
-- [ ] Tools: `list_assets`, `art_notes`, `set_art_notes`, `view_image`, `regenerate_asset`
-- [ ] `regenerate_asset` always-confirm sentence in `apps/desktop/src/main/toolconfirm.ts`
-- [ ] Docs: `docs/vnauthor.md`, `docs/packages.md`, `CLAUDE.md`
+- [x] `ToolContext.pipeline?: PipelineControl`, wired by the desktop, refused by name in the REPL
+- [x] Tools: `list_assets`, `art_notes`, `set_art_notes`, `view_image`, `regenerate_asset`
+- [x] `regenerate_asset` always-confirm sentence in `apps/desktop/src/main/toolconfirm.ts`
+- [x] Docs: `docs/vnauthor.md`, `docs/packages.md`, `CLAUDE.md`
 
 ### 8 — Document tree context menus
 

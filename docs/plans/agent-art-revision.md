@@ -1,6 +1,6 @@
 # The agent revises art: notes, regeneration, and reading the picture back
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -149,3 +149,27 @@ The intended shape of a turn, which the tool descriptions should make obvious:
 - The asset editor's rung strip and every `art.setNotes` refusal are unchanged by the Stage 1 move.
 - A project that authors no art notes still produces byte-identical prompts — the test that
   matters for anything touching this path.
+
+## Shipped deviations
+
+- **`apps/desktop/src/main/artnotes.ts` disappeared rather than becoming a re-export.** Stage 1
+  allowed either. A re-export would have left two import paths for one vocabulary and no way to
+  tell which one a new call site should use, so every caller now names `@vn/artgen` directly.
+- **`SetNotesDeps.config` is `Pick<ProjectConfig, 'title' | 'start'>`, not a `ProjectConfig`.**
+  `Workspace.load()` deliberately tolerates a `project.yaml` that will not parse, and an agent holds
+  exactly that workspace. Neither field reaches a prompt — they only build the model — so the
+  narrower type lets `set_art_notes` work in a project whose config is broken, and a full
+  `ProjectConfig` still satisfies it.
+- **`chatVendorFor` / `chatBackendFor` are now exported from `@vn/providers`.** `workspaceArtGen`
+  needs the vision backend `describe` sits on, and it must resolve the same key for the same model
+  id the pipeline would; re-deriving that mapping in `@vn/authoring` would be a second answer to
+  which vendor a model belongs to.
+- **`set_art_notes` defaults to `mode='append'`, while `art.setNotes` still defaults to
+  `'replace'`.** The default lives in the tool, not in `setArtNotes`, so the desktop command is
+  byte-identical. The two differ because the actors do: an author typing in the asset editor is
+  writing the field, and an agent is adding a correction to a paragraph it did not write.
+- **The desktop's `pipeline.run` passes the session's `mock` flag**, where `asset.regenerate` passes
+  a hard-coded `false`. A mock session's agent must not be the one path that spends money.
+- **`PipelineControl.run()` returns `{ran, failed, blockedOnGate}`**, not the desktop's
+  `PipelineRunResult`. `@vn/authoring` owns the shape it consumes and the host adapts down to it,
+  which is what keeps the capability from becoming a back door to pipeline types.

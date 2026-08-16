@@ -3,9 +3,11 @@
  *
  * A note is authored input — the one thing an author can say about how generated art should
  * *look* — and it goes into the prompt, so setting one re-keys the tasks it reaches. There are
- * five rungs, and `art.setNotes` names them with the document tree's `kind:key` vocabulary
- * extended by one `/sub` segment: `character:aiko`, `character:aiko/gala`, `location:cafe`,
- * `location:cafe/night`, `shot:greet/s2`. Pure: every fact comes from the caller.
+ * five rungs, and they are named with the document tree's `kind:key` vocabulary extended by one
+ * `/sub` segment: `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`,
+ * `shot:greet/s2`. Both hosts speak it — the desktop's `art.setNotes` and `vnauthor`'s
+ * `set_art_notes` — which is why the vocabulary lives here rather than in either. Pure: every fact
+ * comes from the caller; {@link setArtNotes} is the half that touches disk.
  */
 import type { Asset, ProjectModel, Shot } from '@vn/types';
 

@@ -124,7 +124,12 @@ with the failure it prevents: [`docs/pipeline-contracts.md`](docs/pipeline-contr
   ([`docs/plans/outfits-at-scene-and-shot-level.md`](docs/plans/outfits-at-scene-and-shot-level.md))
 - **Art direction is an authored field, and it deliberately re-renders.** `artNotes` is free text
   at five rungs, **appended** to what was derived; authoring none leaves prompts byte-identical.
-  ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
+  **The agent reaches the same rungs through the same refusals** — `set_art_notes` is `setArtNotes`,
+  and it appends by default because it is correcting a paragraph it did not write; re-rendering
+  reaches it as an injected `ToolContext.pipeline`, never an import, and `view_image` reads the
+  result back so the next note answers the picture rather than the prompt.
+  ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md),
+  [`docs/plans/agent-art-revision.md`](docs/plans/agent-art-revision.md))
 - **A concept is a picture the pipeline never asked for**: bound to what it sketches, never
   planned, consumed, exported or `accepted`, and its `sourceTask` hashes the request.
 - **A concept's prompt is authored, so it is the one prompt an author may edit** — `art.redraw`

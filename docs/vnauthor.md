@@ -86,7 +86,7 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 31 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 36 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -97,7 +97,8 @@ whatever the mode).
 | Entity editing | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M** |
 | Scene prose | `edit_scene` **M** |
 | Wardrobe | `set_outfit` **M** |
-| Art | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
+| Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
+| Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
 | Raw write | `write_file` **M** |
 | Context | `update_context` **M**, `regenerate_context` **M** |
 | Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
@@ -132,8 +133,9 @@ authored on the character sheet (`edit_character`'s `outfits` / `defaultOutfit`)
 without a task in the graph. Both run `@vn/artgen`'s `generateConcept`, which is also what the
 desktop's `art.generate` runs.
 
-- **The agent core never constructs a provider.** `ToolContext.art` is an `ArtGen` seam — `generate`
-  `preview`, `redraw` and `list` — wired by the host, which is the half that knows whether this run is `--mock` and
+- **The agent core never constructs a provider.** `ToolContext.art` is an `ArtGen` seam —
+  `generate`, `preview`, `redraw`, `list` and `describe` — wired by the host, which is the half that
+  knows whether this run is `--mock` and
   where the keys are. A bare context has no `art`, and the tool refuses rather than assume an API
   key exists to spend. This is the same shape as `confirm`: the core decides *what*, the host
   decides *whether*.
@@ -152,7 +154,7 @@ desktop's `art.generate` runs.
   human decision, and deliberately not a tool the agent has.
 - **A concept is the one asset the agent can edit, because it is the one whose prompt is
   authored.** Every other prompt is derived on each planning pass and folded into a task hash, so
-  the agent moves those with art notes (`edit_character` / `edit_location`) and the pipeline
+  the agent moves those with art notes (`set_art_notes`, below) and the pipeline
   re-renders. A concept has no builder behind it: `edit_image` redraws one from a rewritten
   prompt and files the result as a **new** sketch, leaving the original where it is. It is
   `confirm: true` for the same reason `generate_image` is — one image, billed.
@@ -160,6 +162,44 @@ desktop's `art.generate` runs.
   prints every concept with its short hash, name, subject and prompt, and `edit_image` accepts a
   hash *prefix*, refusing an unknown or ambiguous one by name rather than guessing which picture
   the author meant.
+
+### Revising planned art
+
+A picture the pipeline planned is not edited, it is **re-directed**: the prompt is derived on every
+planning pass, so the durable thing an author changes is the art note behind it. The five tools are
+that loop — see what exists, read how it was directed, change the direction, draw it again, look at
+what came back:
+
+```
+list_assets(subject='location:cafe')          → the plates bound to that location, by short hash
+art_notes(hash=…)                             → every rung above that picture, and what each says
+  …propose, and have the plan approved…
+set_art_notes(target='location:cafe' notes='…brutalist concrete…')
+regenerate_asset(hash=… run=true)             (confirm)
+view_image(hash=…)                            → what actually came back
+  …propose the next note…
+```
+
+- **`set_art_notes` appends by default.** The agent is adding a correction to what the author
+  already wrote, not replacing an authorial paragraph it never read; `mode='replace'` and
+  `mode='clear'` are available and say so. It goes through `@vn/artgen`'s `setArtNotes`, so the
+  agent reaches the same five rungs through the same refusals the desktop's `art.setNotes` does —
+  including the one that matters, that a note never invents the outfit, variant or shot it names.
+  It is **M** but not **C**: a note costs nothing, and the write is a plain undoable edit.
+- **`regenerate_asset` is the capability-gated one.** `@vn/authoring` may not import `@vn/pipeline`
+  or `@vn/scheduler`, so re-rendering arrives as an injected `ToolContext.pipeline` — `regenerate`
+  and `run`, which is all an agent has business asking for. In `vnauthor`'s REPL it is absent and
+  the tool refuses by naming the host that can do it. In the desktop app it is the same two calls
+  `asset.regenerate` makes, so an agent-started run takes the busy flag a pipeline run takes.
+- **It is `confirm: true`, and the card separates queueing from paying.** `run=false` puts the task
+  back to `pending` and nothing is drawn; `run=true` says *one image generation* on the card,
+  because that is what clicking it spends.
+- **`view_image` is the read-back, and it is the reason this is a loop rather than a shot in the
+  dark.** It sends the bytes to the vision backend with a question and prints the answer, so the
+  agent proposes the *next* note against the picture that exists instead of against its own prompt.
+  Like the concept tools it needs `ToolContext.art` and refuses without it.
+- **Every one of them takes a hash prefix**, resolved against the manifest and refused by name when
+  it is unknown or ambiguous — before a capability is called, so a typo never costs anything.
 
 `regenerate_context` writes the **project map**, `AICONTEXT.generated.md`: the cast with each
 sheet's path and wardrobe, the locations and their variants, the story graph, and the story

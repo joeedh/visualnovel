@@ -70,6 +70,7 @@ import {
   adoptSlot,
   adoptionForSlot,
   adoptionOf,
+  artNotesOf,
   composePrompt,
   condensePrompt,
   coverage,
@@ -91,6 +92,8 @@ import {
   renderPrompt,
   resolveBinding,
   rungOf,
+  rungsFor,
+  setArtNotes as writeArtNotes,
   slotKey,
   slotLabel,
   slotOf,
@@ -190,7 +193,6 @@ import type {
   StoryGraph,
 } from '../shared/ipc.js';
 import { narrowTask } from './reviews.js';
-import { parseArtTarget, rungAt, rungsFor, type ArtTarget } from './artnotes.js';
 import { labelAssets, labelContext } from './assetlabel.js';
 import { deriveChunks, derivePrompt } from './assetprompt.js';
 import { applyPromptEdit, type PromptEdit } from './promptedit.js';
@@ -326,12 +328,6 @@ async function readAllShots(
   return shots;
 }
 
-/** A shot with its art notes set, or removed when the text is blank. `Shot` is flat, so this is it. */
-function withArtNotes(shot: Shot, notes: string): Shot {
-  const { artNotes: _drop, ...rest } = shot;
-  return notes.trim() ? { ...rest, artNotes: notes.trim() } : rest;
-}
-
 /** An outfit with one field changed, in the shape `wardrobeEntries` re-serializes. */
 function withOutfit(outfit: Outfit, patch: Partial<Outfit>): Outfit {
   const next = { ...outfit, ...patch };
@@ -346,45 +342,6 @@ function withVariant(variant: LocationVariant, patch: Partial<LocationVariant>):
   if (!next.artNotes) delete next.artNotes;
   if (!next.promptOverride) delete next.promptOverride;
   return next;
-}
-
-/**
- * The character edit one rung's worth of notes amounts to. An outfit rung has to resend the whole
- * wardrobe — `applyCharacterEdit` replaces the map — so it is rebuilt through `wardrobeEntries`
- * from what the model already normalized, with the one entry changed. Rebuilding it by hand is
- * how a note comes to erase the prompt override sitting beside it.
- */
-function characterNotesEdit(
-  project: LoadedProject,
-  target: Extract<ArtTarget, { kind: 'character' }>,
-  notes: string,
-): CharacterEdit {
-  if (!target.outfit) return { artNotes: notes.trim() };
-  const character = project.model.characters.get(target.id)!;
-  return {
-    outfits: wardrobeEntries(
-      character.outfits.map((o) =>
-        o.id === target.outfit ? withOutfit(o, { artNotes: notes.trim() }) : o,
-      ),
-    ),
-  };
-}
-
-/** The same for a location; a variant rung resends the whole list for the same reason. */
-function locationNotesEdit(
-  project: LoadedProject,
-  target: Extract<ArtTarget, { kind: 'location' }>,
-  notes: string,
-): LocationEdit {
-  if (!target.variant) return { artNotes: notes.trim() };
-  const location = project.model.locations.get(target.id)!;
-  return {
-    variants: variantEntries(
-      location.variants.map((v) =>
-        v.id === target.variant ? withVariant(v, { artNotes: notes.trim() }) : v,
-      ),
-    ),
-  };
 }
 
 /** A shot with its prompt override set, or removed when the edit settled on nothing. */
@@ -641,6 +598,15 @@ export class WorkspaceSession {
       // The agent's `generate_image` and the palette's `art.generate` draw the same picture; the
       // session's own `mock` is the only policy about whether it is real art.
       art: workspaceArtGen(workspace, { mock: this.mock }),
+      // The capability `vnauthor` does not have: the same two calls `asset.regenerate` makes, so
+      // an agent-started re-render takes the busy flag a pipeline run takes.
+      pipeline: {
+        regenerate: (hash) => this.regenerateAsset(hash),
+        run: async () => {
+          const result = await this.runPipeline(this.mock);
+          return { ran: result.ran, failed: result.failed, blockedOnGate: result.blockedOnGate };
+        },
+      },
     };
     const context = await loadContext(this.dir);
     const config = await loadConfig(this.dir);
@@ -1078,95 +1044,27 @@ export class WorkspaceSession {
 
   /** What `art.setNotes` would do, without writing it. */
   async previewArtNotes(target: string, notes: string): Promise<{ ok: boolean; message: string }> {
-    const project = await loadProject(this.dir);
-    const decided = await this.artNotesPlan(project, target, notes);
+    const { config, paths } = await loadProject(this.dir);
+    const decided = await artNotesOf({ config, paths }, { target, notes });
     return decided.ok
-      ? { ok: true, message: decided.note }
+      ? { ok: true, message: decided.plan.note }
       : { ok: false, message: decided.reason };
   }
 
   /**
-   * Write one art-notes rung. An entity rung goes through `@vn/model`'s `apply*Edit` into the
-   * sheet the model was built from — the same path `vnauthor`'s `edit_character` takes, so one
-   * authorial act has one answer — and a shot rung goes into `work/shots/<sceneId>.json`.
+   * Write one art-notes rung, through the rule `vnauthor`'s `set_art_notes` runs — an entity rung
+   * into the sheet the model was built from, a shot rung into `work/shots/<sceneId>.json`.
    */
   async setArtNotes(
     target: string,
     notes: string,
   ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const project = await loadProject(this.dir);
-    const decided = await this.artNotesPlan(project, target, notes);
+    const { config, paths } = await loadProject(this.dir);
+    const deps = { config, paths };
+    const decided = await artNotesOf(deps, { target, notes });
     if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    await decided.write();
-    return { ok: true, message: decided.note, written: [relPath(this.dir, decided.file)] };
-  }
-
-  /**
-   * The rule behind both, decided once against a fresh load: does the rung exist, and what would
-   * writing it do. Never creates an outfit, a variant or a shot — a note on something that does
-   * not exist is a typo, and inventing the thing would hide it.
-   */
-  private async artNotesPlan(
-    project: LoadedProject,
-    target: string,
-    notes: string,
-  ): Promise<
-    | { ok: false; reason: string }
-    | { ok: true; note: string; file: string; write: () => Promise<void> }
-  > {
-    const parsed = parseArtTarget(target);
-    if (!parsed) {
-      return {
-        ok: false,
-        reason: `"${target}" names no art-notes rung; expected character:<id>[/<outfit>], location:<id>[/<variant>] or shot:<sceneId>/<shotId>.`,
-      };
-    }
-    const shots = await readAllShots(project);
-    const rung = rungAt(parsed, { model: project.model, shots });
-    if (!rung) return { ok: false, reason: `No such art-notes rung: ${target}.` };
-    const said = notes.trim()
-      ? `Set art notes on ${rung.label}.`
-      : `Cleared art notes on ${rung.label}.`;
-
-    if (parsed.kind === 'shot') {
-      const scene = project.model.scenes.get(parsed.sceneId)!;
-      const file = project.paths.shotsFile(parsed.sceneId);
-      return {
-        ok: true,
-        note: said,
-        file,
-        write: async () => {
-          const loaded = await readShots(
-            project.paths,
-            scene.id,
-            new Set(scene.lines.map((l) => l.id)),
-          );
-          if (!loaded) throw new Error(`Scene "${scene.id}" has no storyboard to write to.`);
-          const next = loaded.shots.map((s) =>
-            s.id === parsed.shotId ? withArtNotes(s, notes) : s,
-          );
-          await writeShots(project.paths, scene.id, next);
-        },
-      };
-    }
-
-    const docs =
-      parsed.kind === 'character' ? project.inputs.characterDocs : project.inputs.locationDocs;
-    const found = entityDoc(docs, parsed.id);
-    if (!found) return { ok: false, reason: `No sheet on disk for ${parsed.kind} "${parsed.id}".` };
-    return {
-      ok: true,
-      note: said,
-      file: found.file,
-      write: async () => {
-        const edited =
-          parsed.kind === 'character'
-            ? applyCharacterEdit(found.doc, characterNotesEdit(project, parsed, notes))
-            : applyLocationEdit(found.doc, locationNotesEdit(project, parsed, notes));
-        if (!edited.ok) throw new Error(`Edit rejected: ${edited.diagnostic.message}`);
-        await writeFileAtomic(found.file, docToMarkdown(edited.value.doc));
-      },
-    };
+    const plan = await writeArtNotes(deps, { target, notes });
+    return { ok: true, message: plan.note, written: [relPath(this.dir, plan.file)] };
   }
 
   /**

@@ -37,6 +37,14 @@ export function confirmDetail(tool: string, args: unknown): string {
       const how = prompt ? `from an edited prompt: “${clip(prompt)}”` : 'from the same prompt';
       return `Redraw concept ${hash} ${how}. Costs one image generation; the original stays.`;
     }
+    case 'regenerate_asset': {
+      const hash = field(args, 'hash').slice(0, 12);
+      const runs =
+        typeof args === 'object' && args !== null && (args as Record<string, unknown>)['run'];
+      return runs === true
+        ? `Re-render asset ${hash} now. Costs one image generation.`
+        : `Queue asset ${hash} to be re-rendered by the next pipeline run.`;
+    }
     case 'git_revert': {
       const ref = field(args, 'ref') || field(args, 'sha') || 'the last commit';
       return `Revert ${ref}, undoing everything that commit changed.`;
