@@ -19,6 +19,7 @@
 - [Reaching the commands](#reaching-the-commands)
   * [From the renderer](#from-the-renderer)
   * [From the palette](#from-the-palette)
+  * [From a right-click](#from-a-right-click)
   * [From DevTools or CDP](#from-devtools-or-cdp)
   * [From the agent](#from-the-agent)
 - [The catalog](#the-catalog)
@@ -28,9 +29,9 @@
 <!-- tocstop -->
 
 Every action the desktop shell can take is a **registered command**: a named, described,
-typed shim over a function that already exists. The palette, the menu bar, the authoring
-agent, and an external CDP client all reach the same registry through the same execution
-path, and every execution is recorded with the document repo's git HEAD.
+typed shim over a function that already exists. The palette, the menu bar, the document tree's
+right-click menus, the authoring agent, and an external CDP client all reach the same registry
+through the same execution path, and every execution is recorded with the document repo's git HEAD.
 
 This document describes what shipped. The implementation plan — including the deviations
 from it and the follow-ons deliberately left out — is
@@ -663,6 +664,36 @@ this document ("the palette … reaches the same registry") true rather than asp
 
 The pure half — filtering, blank values, field coercion — is `renderer/app/catalog.ts` with a
 `tests/` sibling; `Palette.tsx` stays thin rendering.
+
+### From a right-click
+
+The document tree's context menus are the palette's argument made direct: a **third view of the
+catalog**, and the one where `check` earns its keep. An entry is an _invocation_ — a command id and
+its props — not a callback, and the menu resolves it twice: through `command:check` before it is
+drawn, and through `command:exec` when it is clicked. Three bespoke `contextmenu` handlers that
+call `exec` and hope are exactly how a surface starts offering what the command would refuse.
+
+- **A refusal is shown, with its reason, not hidden.** path.ux's menu template has no per-item
+  disabled state, so a refused entry draws as `⃠ Accept` and clicking it reports the command's own
+  sentence in the message line instead of executing. Hiding it would leave the author guessing why
+  the option they remember is gone; the sentence is the whole value of `check`, and it should reach
+  the surface that asked.
+- **`undeclared` is not permission.** A command with no check draws enabled — the same three-state
+  contract — but nothing synthesizes an `accept` for it. Absence of a check is absence of
+  information, in a menu exactly as everywhere else.
+- **Checks are awaited before the menu opens.** `startMenu` is synchronous, so the handler gathers
+  every verdict first. They are read-only previews over state main already holds; if one ever
+  became slow enough to notice, the fix is that check, not a menu that lies while it loads.
+- **An entry needing an argument opens the palette pre-filled**, and so does every `confirm: true`
+  one — the palette is where a command's arguments are typed and where it says what it is about to
+  do. Such an entry is deliberately not checked: its props are incomplete by design, so the
+  refusal it would earn is about the blank the author is on their way to filling in.
+
+Which entries a node offers is a pure table in `renderer/pathux/doctree.ts`; the verdict-to-item
+resolution is `renderer/pathux/contextmenu.ts`, pure and node-testable because it imports no
+`pathux`; `renderer/pathux/showmenu.ts` is the half that opens the menu, verified live over CDP
+like every other surface. The tables are in
+[`document-tree.md`](document-tree.md#right-click-menus).
 
 ### From DevTools or CDP
 

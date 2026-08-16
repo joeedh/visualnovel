@@ -17,6 +17,7 @@ reasoning behind each decision:
 - [Contracts](#contracts)
 - [The file tree](#the-file-tree)
 - [Where it lives](#where-it-lives)
+- [Right-click menus](#right-click-menus)
 - [Deliberately absent](#deliberately-absent)
 
 <!-- tocstop -->
@@ -138,11 +139,53 @@ surface consumes the result. The commands exist so the palette and `scripts/vn-c
 the same tree the sidebar draws — which is how the shape got debugged before the sidebar existed,
 and how it is still checked without one open.
 
+## Right-click menus
+
+Right-clicking a row opens a menu of **commands**, gated by `stack.check` before it is drawn. The
+entries are a pure table, `menuFor(node)` in `renderer/pathux/doctree.ts`, so what a kind offers is
+testable without a DOM; resolving a verdict into a drawn item is `renderer/pathux/contextmenu.ts`,
+and opening the path.ux menu is `renderer/pathux/showmenu.ts`. The full write-up, including why an
+entry is an invocation rather than a callback, is in
+[`command-system.md`](command-system.md#from-a-right-click) and
+[`plans/document-tree-context-menus.md`](plans/document-tree-context-menus.md).
+
+| node kind | entries |
+| --- | --- |
+| `location` | New reference shot… · Art notes… · Open sheet elsewhere |
+| `character` | New concept image… · Art notes… · Open sheet elsewhere |
+| `branch:wiki`, `wikidir` | New wiki page… · New character sheet… · New location sheet… |
+| `asset` | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Open in the Asset editor |
+| `scene` | Assign line ids · Write the screenplay |
+| `shot` | Set coverage… · Set outfit… |
+| the other four branches, `assetkind`, `wiki`, `dir`, `file`, `more` | none — no menu opens at all |
+
+Three things this table settles:
+
+- **A right-click selects but does not open.** The menu acts on the node under the cursor, so the
+  selection is published first — otherwise "Regenerate" and whatever the asset pane happens to be
+  showing could disagree about which asset is meant. Routing to an editor stays the left click's
+  job.
+- **Every act an asset has is offered, and each command refuses itself.** `asset.accept` refuses a
+  portrait by naming `gate.approve` and a concept by naming `art.promote`; the menu shows all four
+  with their refusals rather than guessing which applies. There is no _reject_: rejecting a
+  candidate is approving a different one, and inventing the command inside a menu would be
+  designing the gate through a menu.
+- **A kind with nothing to offer is named, not skipped.** A wiki note is the interesting one —
+  nothing binds to it, and `doc.write` needs the text, so its only act is the one a plain click
+  already performs. `branch:wiki` is the exception among the five headings, because it is a place:
+  it is the "top level wiki tree" an author right-clicks, and the `wikidir:` nodes below it are the
+  folders inside, which a flat `wiki/` never has at all.
+
+The asset editor's own header carries the same `asset` entries behind a `⋯` button, from the same
+table — which is the check that `menuFor` is node-shaped rather than tree-shaped.
+
 ## Deliberately absent
 
 - **An agent backlink tool** — `vnauthor` authors inputs and stops at them; shots and assets are
   pipeline output.
 - **Filesystem watching** — both trees are reads, refetched after a write like `story:graph`.
 - **Editing through the tree** — rename, move and delete are `story.*` commands with their own
-  refusals; a drag in a sidebar would dispatch those, not open a new write path. The pane's one
-  authored act is creation, and it is the existing `doc.create` rather than a tree-shaped write.
+  refusals; a drag in a sidebar would dispatch those, not open a new write path. The menus above
+  are that rule kept: every entry is a registered command, and none is a tree-shaped write.
+- **A menu entry that is not a command** — if an act is worth a right-click it is worth being in
+  the palette, the catalog and the provenance log.

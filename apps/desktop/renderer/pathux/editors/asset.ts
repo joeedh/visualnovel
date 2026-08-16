@@ -1,6 +1,10 @@
 import type { Container } from 'pathux';
 import { UNRESOLVED, type Verdict } from '@vn/commands';
 import { exec, onInvalidate, say } from '../bridge.js';
+import type { VnContext } from '../context.js';
+import { menuFor } from '../doctree.js';
+import { assetNode } from '../open.js';
+import { showContextMenu } from '../showmenu.js';
 import {
   approveAction,
   badgesOf,
@@ -536,6 +540,21 @@ export class AssetEditor extends VnEditor {
     const task = this.bar.button('Task', () => this.showTask());
     task.disabled = !info?.sourceTask;
     task.description = 'Show the task that produced this asset in the inspector';
+
+    // The same entries the tree's right-click offers, raised from the pane already showing the
+    // asset — which is also the check that `menuFor` is node-shaped rather than tree-shaped.
+    const acts = this.bar.button('⋯', () => {
+      const box = acts.getBoundingClientRect();
+      void showContextMenu(
+        this.ctx as VnContext,
+        box.left,
+        box.bottom,
+        info?.hash ?? '',
+        menuFor(assetNode(this.shown)),
+      );
+    });
+    acts.disabled = !info;
+    acts.description = 'Everything this asset can be told to do';
 
     this.bar.button('⟳', () => void this.load(this.shown)).description =
       'Re-read this asset from the manifest';

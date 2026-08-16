@@ -4,6 +4,7 @@ import {
   defaultExpanded,
   findNode,
   flattenTree,
+  menuFor,
   nodeIsSelected,
   nodeKey,
   selectionForNode,
@@ -11,6 +12,7 @@ import {
   toggleExpanded,
   type DocRow,
 } from '../doctree.js';
+import { MENU_SEP } from '../contextmenu.js';
 import type { Selection } from '../selection.js';
 import type { DocNode, EntityLinks } from '../../../src/shared/ipc.js';
 
@@ -262,6 +264,89 @@ describe('assetGroups', () => {
     expect(groups.map((g) => g.title)).toEqual(['greet__s1', 'greet']);
     expect(groups[0]!.assets.map((a) => a.hash)).toEqual(['a', 'c']);
     expect(groups[1]!.assets.map((a) => a.hash)).toEqual(['b']);
+  });
+});
+
+describe('menuFor', () => {
+  const idsOf = (n: DocNode): string[] => menuFor(n).map((entry) => entry.id);
+
+  it('offers a location a reference shot, bound to that location', () => {
+    const entries = menuFor(node('location:cafe', 'location', { path: 'locations/cafe.md' }));
+    expect(entries[0]).toMatchObject({
+      id: 'art.generate',
+      props: { subject: 'location:cafe', open: true },
+      form: true,
+    });
+    expect(idsOf(node('location:cafe', 'location', { path: 'locations/cafe.md' }))).toEqual([
+      'art.generate',
+      'art.setNotes',
+      'view.open',
+    ]);
+  });
+
+  it('leaves out the sheet entry for a location with no sheet of its own', () => {
+    expect(idsOf(node('location:cafe', 'location'))).toEqual(['art.generate', 'art.setNotes']);
+  });
+
+  it('offers the wiki branch the three things a page can be', () => {
+    // `branch:wiki` is the top of the wiki tree an author right-clicks; the `wikidir:` nodes are
+    // the folders inside it, which a flat `wiki/` never has at all. Both offer the same three.
+    for (const wiki of [node('branch:wiki', 'branch'), node('wikidir:lore', 'wikidir')]) {
+      const entries = menuFor(wiki);
+      expect(entries.map((entry) => entry.props?.['kind'])).toEqual([
+        'note',
+        'character',
+        'location',
+      ]);
+      expect(entries.every((entry) => entry.id === 'doc.create' && entry.form)).toBe(true);
+    }
+  });
+
+  it('offers the other four branches nothing — they are headings, not places', () => {
+    for (const id of ['story', 'characters', 'locations', 'assets']) {
+      expect(menuFor(node(`branch:${id}`, 'branch'))).toEqual([]);
+    }
+  });
+
+  it('offers an asset all four acts and lets each command refuse itself', () => {
+    const entries = menuFor(node('asset:a1b2c3', 'asset'));
+    expect(entries.map((entry) => entry.id)).toEqual([
+      'asset.regenerate',
+      'asset.accept',
+      'gate.approve',
+      'art.promote',
+      MENU_SEP,
+      'view.open',
+    ]);
+    for (const entry of entries.slice(0, 4)) expect(entry.props).toEqual({ hash: 'a1b2c3' });
+  });
+
+  it('splits a shot key back into the two props its commands take', () => {
+    const entries = menuFor(node('shot:greet/greet__s1', 'shot'));
+    expect(entries.map((entry) => entry.props)).toEqual([
+      { scene: 'greet', shot: 'greet__s1' },
+      { scene: 'greet', shot: 'greet__s1' },
+    ]);
+  });
+
+  it('opens nothing for a kind that names no subject a command takes', () => {
+    for (const kind of ['assetkind', 'wiki', 'dir', 'file', 'more'] as const) {
+      expect(menuFor(node(`${kind}:x`, kind))).toEqual([]);
+    }
+  });
+
+  it('names a command for every entry that is not a separator', () => {
+    const every = [...TREE, node('asset:a1b2c3', 'asset'), node('wikidir:wiki', 'wikidir')];
+    const walk = (nodes: readonly DocNode[]): void => {
+      for (const each of nodes) {
+        for (const entry of menuFor(each)) {
+          if (entry.id === MENU_SEP) continue;
+          expect(entry.id).toMatch(/^[a-z]+\.[A-Za-z]+$/);
+        }
+        walk(each.children ?? []);
+      }
+    };
+    walk(every);
   });
 });
 

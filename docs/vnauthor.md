@@ -12,6 +12,7 @@ validated input files in a clean commit. Design:
 - [How it works](#how-it-works)
 - [Tools](#tools)
   * [Concept images](#concept-images)
+  * [Revising planned art](#revising-planned-art)
 - [The archive](#the-archive)
 - [Skills](#skills)
 

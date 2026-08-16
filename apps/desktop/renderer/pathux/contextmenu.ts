@@ -1,0 +1,81 @@
+/**
+ * What a right-click offers, and whether the author may take it.
+ *
+ * An entry is an **invocation**, not a callback: a command id and its props, resolved through
+ * `stack.check` before the menu opens and through `exec` when it is clicked. A menu item that is
+ * not a command has no place here — if an action is worth a right-click it is worth being in the
+ * palette, the catalog and the provenance log, and three bespoke `contextmenu` handlers that call
+ * `exec` and hope are exactly how a surface starts offering what the command would refuse.
+ *
+ * Pure, with no `pathux` import, so the resolution rules are testable in node. Opening the menu on
+ * a screen is `showmenu.ts`.
+ */
+import type { CommandCheck, PropValue } from '../../src/shared/ipc.js';
+
+/** The id a separator carries. Not a command: never checked, never run. */
+export const MENU_SEP = '-';
+
+export interface MenuEntry {
+  label: string;
+  /** A command id, or {@link MENU_SEP}. */
+  id: string;
+  props?: Record<string, PropValue>;
+  /**
+   * Open the palette on this command's form instead of running it. Two entries need it: one whose
+   * argument a menu cannot supply (a variant id, a line of prose), and one that is `confirm: true`,
+   * because the palette is where a command says what it is about to do before it does it.
+   *
+   * Such an entry is deliberately **not** checked — its props are incomplete by design, and the
+   * refusal that would earn is about the blank the author is on their way to filling in.
+   */
+  form?: boolean;
+}
+
+/** One item as it will be drawn: what it says, whether clicking it acts, and the sentence behind. */
+export interface ResolvedEntry {
+  entry: MenuEntry;
+  /** What the menu draws — the label, marked when the command refused it. */
+  label: string;
+  separator: boolean;
+  /** False only for a declared refusal. `undeclared` is not permission, but it is not a refusal. */
+  enabled: boolean;
+  /** The command's own sentence, or `''` where it stated none. */
+  message: string;
+}
+
+/** U+20E0, combining enclosing no-symbol: the label reads as struck through rather than missing. */
+const REFUSED = '⃠ ';
+
+/** Whether `check` is worth asking for this entry, which is also what gives the verdict its slot. */
+export function needsCheck(entry: MenuEntry): boolean {
+  return entry.id !== MENU_SEP && !entry.form;
+}
+
+/**
+ * The entries as they will be drawn, given what `check` answered. `verdicts` is positional over
+ * `entries` — `undefined` wherever {@link needsCheck} said not to ask — so an entry and its verdict
+ * cannot drift apart the way a filtered second list would.
+ *
+ * A refusal is **shown**, not hidden: path.ux's menu template has no per-item disabled state, and
+ * hiding the option would leave the author guessing why the one they remember is gone. The refusal
+ * sentence is the whole value of `check`, and it should reach the surface that asked.
+ */
+export function entriesWithVerdicts(
+  entries: readonly MenuEntry[],
+  verdicts: readonly (CommandCheck | undefined)[],
+): ResolvedEntry[] {
+  return entries.map((entry, index) => {
+    if (entry.id === MENU_SEP) {
+      return { entry, label: entry.label, separator: true, enabled: false, message: '' };
+    }
+    const check = verdicts[index];
+    const refused = check?.state === 'refuse';
+    return {
+      entry,
+      label: refused ? `${REFUSED}${entry.label}` : entry.label,
+      separator: false,
+      enabled: !refused,
+      message: check && check.state !== 'undeclared' ? check.message : '',
+    };
+  });
+}

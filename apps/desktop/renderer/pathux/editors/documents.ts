@@ -2,12 +2,14 @@ import type { Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
 import { exec, onInvalidate } from '../bridge.js';
+import type { VnContext } from '../context.js';
 import {
   assetGroups,
   backlinkSubject,
   defaultExpanded,
   findNode,
   flattenTree,
+  menuFor,
   nodeIsSelected,
   selectionForNode,
   toggleExpanded,
@@ -17,6 +19,7 @@ import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import { layoutChanged } from '../persist.js';
 import type { VnScreen } from '../screen.js';
+import { showContextMenu } from '../showmenu.js';
 import type { Selection } from '../selection.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
 import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
@@ -320,6 +323,10 @@ export class DocumentsEditor extends VnEditor {
         if (row.expandable) this.toggle(node.id);
       });
       line.addEventListener('click', () => this.pick(row));
+      line.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        this.openMenu(row, event.clientX, event.clientY);
+      });
     }
     return line;
   }
@@ -418,6 +425,25 @@ export class DocumentsEditor extends VnEditor {
     // string, so an editor whose subject cannot travel opens on the selection it already sees.
     this.publish(next);
     this.route(row.node);
+  }
+
+  /**
+   * Right-click. The node under the cursor is selected first — otherwise "Regenerate" and whatever
+   * the asset pane happens to be showing could disagree about which asset is meant — but it is not
+   * routed to: opening a pane is what a left click is for, and a menu that rearranged the screen
+   * before the author chose anything would be answering a question they have not asked yet.
+   */
+  private openMenu(row: DocRow, x: number, y: number): void {
+    const entries = menuFor(row.node);
+    if (entries.length === 0) return;
+
+    this.picked = row.node.kind === 'location' ? row.node.id : '';
+    const current = this.selection();
+    const next = selectionForNode(row.node, current);
+    if (next === current) this.rebuild();
+    else this.publish(next);
+
+    void showContextMenu(this.ctx as VnContext, x, y, row.node.label, entries);
   }
 
   /**

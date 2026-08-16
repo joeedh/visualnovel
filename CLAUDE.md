@@ -263,6 +263,12 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   validation authority.
 - **A mutating command declares its refusal before it runs** — `stack.check` answers `accept` |
   `refuse` | `undeclared`, and absence of a check is not permission.
+- **The palette, the menu bar, the tree's right-click menus, the agent and CDP all reach the same
+  registry.** A menu entry is an _invocation_, never a callback: checked before it is drawn, `exec`d
+  when clicked, and a refusal is **shown** with the command's own sentence rather than hidden. One
+  needing an argument a menu cannot supply — and every `confirm: true` one — opens the palette on
+  its form instead, and is deliberately not checked.
+  ([`docs/plans/document-tree-context-menus.md`](docs/plans/document-tree-context-menus.md))
 - **Provenance, undo and commits are each opt-in.** Executions append to
   `vngen/state/commands.jsonl`; undo restores a shadow snapshot under `refs/vn/undo/<seq>/` and
   **refuses rather than guesses** when the worktree drifted; the `Committer` commits the whole

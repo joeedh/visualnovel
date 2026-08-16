@@ -1,6 +1,6 @@
 # Right-click menus in the document tree, built from the command catalog
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -165,3 +165,35 @@ node-shaped rather than tree-shaped.
 - Right-clicking a `branch` grouping opens no menu.
 - No menu entry exists that is not a command in the catalog — verifiable by
   `node scripts/vn-cdp.mjs --catalog` and the table above.
+
+## Shipped deviations
+
+- **The builder is two modules, not one.** `pathux` is a vite alias with no jest
+  `moduleNameMapper`, so anything importing it cannot be loaded in the node test project. The
+  rules — `needsCheck`, `entriesWithVerdicts`, `MenuEntry`, `MENU_SEP` — live in
+  `pathux/contextmenu.ts` with no `pathux` import and a `tests/` sibling; `showContextMenu` lives
+  in `pathux/showmenu.ts`, which is the only half that touches path.ux. Same split as
+  `route.ts`/`open.ts` and `structfields.ts`.
+- **`menuFor(node)` takes no second argument.** The plan's `ctx: { assetKind? }` turned out to be
+  unnecessary: the asset row offers all four acts and each command refuses itself, so the table
+  never needs to know the kind.
+- **The wiki entries hang off `branch:wiki`, not only `wikidir`.** The "top level wiki tree" the
+  todo names is the branch heading; `wikidir:` nodes are the folders inside it, which a project
+  with a flat `wiki/` never has at all. It is the one branch that is a place, so `case 'branch'`
+  answers for `wiki` and returns nothing for the other four.
+- **`confirm: true` entries open the palette, they do not fire.** `MenuEntry.form` covers both the
+  entries needing an argument a menu cannot supply and every confirming command, because the
+  palette is where a command says what it is about to do. Such an entry is not checked at all: its
+  props are incomplete by design.
+- **A right-click selects but does not route.** The plan's step 2 ("publishes the row's selection")
+  is what shipped; opening a pane stays the left click's job, so the menu never rearranges the
+  screen before the author has chosen anything.
+- **`after: 'openAsset'` was not needed.** `art.generate` already carries `open`, and the asset
+  row's routing is a plain `view.open` entry, so no post-exec hook exists.
+
+Verified live over CDP against a real project (`examples/mySampleRepo`): the location, scene and
+wiki-branch menus draw at the cursor; a concept's menu draws `⃠ Accept` carrying
+`asset.accept`'s own sentence and does not execute when clicked; **Open sheet elsewhere** records
+`view.open(editor='wiki' where='elsewhere' subject='locations/classroom.md')`; **New wiki page…**
+opens the palette on `doc.create` with `kind` pre-filled to `note`; and the asset editor's `⋯`
+raises the same five entries from the same table.

@@ -1,6 +1,6 @@
 # Authoring surface — tasklist
 
-Status: **planned**
+Status: **shipped**
 
 The eight plans below cover every open item in `todos.md` as of 2026-08-15. This page is the
 running order and the checkbox list; each plan states its own decisions and acceptance criteria and
@@ -128,15 +128,15 @@ nothing. Wave C is the two features that consume the rest.
 
 *Depends on 1.*
 
-- [ ] `apps/desktop/renderer/pathux/contextmenu.ts`: entries are invocations, resolved through
+- [x] `apps/desktop/renderer/pathux/contextmenu.ts`: entries are invocations, resolved through
       `check` then `exec`
-- [ ] Refused entries render `⃠ Label` and report the command's own sentence; `undeclared` is not
+- [x] Refused entries render `⃠ Label` and report the command's own sentence; `undeclared` is not
       permission
-- [ ] `entriesWithVerdicts` unit-tested in `pathux/tests/contextmenu.test.ts`
-- [ ] `menuFor(node)` in `pathux/doctree.ts` — the table, including the kinds that offer nothing
-- [ ] `documents.ts` wires `contextmenu`: prevent default, publish selection, open
-- [ ] The asset editor's header uses the same builder
-- [ ] Docs: `docs/command-system.md`, `docs/document-tree.md`, `CLAUDE.md`
+- [x] `entriesWithVerdicts` unit-tested in `pathux/tests/contextmenu.test.ts`
+- [x] `menuFor(node)` in `pathux/doctree.ts` — the table, including the kinds that offer nothing
+- [x] `documents.ts` wires `contextmenu`: prevent default, publish selection, open
+- [x] The asset editor's header uses the same builder
+- [x] Docs: `docs/command-system.md`, `docs/document-tree.md`, `CLAUDE.md`
 
 ## Closing out
 

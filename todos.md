@@ -30,8 +30,8 @@
 	 notes to get the desired results.
 
 ## document tree item right click menus:
-[ ]: right clicking on a location should pop up a menu including an option to create a new reference shot asset.
+[x]: right clicking on a location should pop up a menu including an option to create a new reference shot asset.
      it should open the asset editor automatically.
-[ ]: right clicking on the top level wiki tree should include a menu item to create a new wiki page.
-[ ]: right clicking on an asset item should pop up a menu including 'regenerate' 'accept' 'reject' etc.  
+[x]: right clicking on the top level wiki tree should include a menu item to create a new wiki page.
+[x]: right clicking on an asset item should pop up a menu including 'regenerate' 'accept' 'reject' etc.  
      it should open the asset editor automatically for that asset.

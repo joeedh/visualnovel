@@ -8,6 +8,7 @@
  * tree, so the toggle in the header buys a second fetch and no second flattener.
  */
 import type { DocNode, EntityLinks } from '../../src/shared/ipc.js';
+import { MENU_SEP, type MenuEntry } from './contextmenu.js';
 import type { Selection } from './selection.js';
 
 /** One drawn line: the node, how deep it sits, and what its twisty would do. */
@@ -161,6 +162,132 @@ export function assetGroups(links: EntityLinks): AssetGroup[] {
  */
 export function shotGroups(links: EntityLinks, sceneId: string): AssetGroup[] {
   return gather(links.assets, (a) => a.shotId ?? sceneId);
+}
+
+/** `view.open` on this node's sheet, put anywhere but the pane the menu was raised in. */
+function openSheet(path: string): MenuEntry {
+  return {
+    label: 'Open sheet elsewhere',
+    id: 'view.open',
+    props: { editor: 'wiki', where: 'elsewhere', subject: path },
+  };
+}
+
+/**
+ * The three things a new page under `wiki/` can be. `doc.create` takes a kind and a name and files
+ * it itself, so a nested directory offers exactly what the branch above it does.
+ */
+function wikiCreate(): MenuEntry[] {
+  return [
+    { label: 'New wiki page…', id: 'doc.create', props: { kind: 'note' }, form: true },
+    { label: 'New character sheet…', id: 'doc.create', props: { kind: 'character' }, form: true },
+    { label: 'New location sheet…', id: 'doc.create', props: { kind: 'location' }, form: true },
+  ];
+}
+
+/**
+ * What right-clicking a node offers. Every entry is a command, and the ones needing an argument a
+ * menu cannot supply — a sentence to draw from, a name, a variant, a line of prose — open the
+ * palette on their own form instead; so does every `confirm: true` one, because the palette is
+ * where a command says what it is about to do.
+ *
+ * Kinds with nothing to offer answer with an empty list, and are named here rather than falling
+ * through silently: a new node kind should be a visible hole, not nothing.
+ */
+export function menuFor(node: DocNode): MenuEntry[] {
+  const key = nodeKey(node);
+  switch (node.kind) {
+    case 'location':
+      return [
+        // The todo's own words. A reference shot of a place is a concept bound to that place —
+        // `art.generate` with the subject already answered, so the sentence is all that is left.
+        {
+          label: 'New reference shot…',
+          id: 'art.generate',
+          props: { subject: `location:${key}`, open: true },
+          form: true,
+        },
+        {
+          label: 'Art notes…',
+          id: 'art.setNotes',
+          props: { target: `location:${key}` },
+          form: true,
+        },
+        ...(node.path ? [openSheet(node.path)] : []),
+      ];
+    case 'character':
+      return [
+        {
+          label: 'New concept image…',
+          id: 'art.generate',
+          props: { subject: `character:${key}`, open: true },
+          form: true,
+        },
+        {
+          label: 'Art notes…',
+          id: 'art.setNotes',
+          props: { target: `character:${key}` },
+          form: true,
+        },
+        ...(node.path ? [openSheet(node.path)] : []),
+      ];
+    case 'wikidir':
+      return wikiCreate();
+    // All four acts are offered and each refuses itself: `asset.accept` names `gate.approve` for a
+    // portrait and `art.promote` for a concept, and those two refuse everything else. The commands
+    // already know which one applies, and their sentences beat a menu's guess. There is no
+    // 'reject' — rejecting a candidate is approving a different one, and inventing the command
+    // here would be designing the gate through a menu.
+    case 'asset':
+      return [
+        { label: 'Regenerate…', id: 'asset.regenerate', props: { hash: key }, form: true },
+        { label: 'Accept', id: 'asset.accept', props: { hash: key } },
+        { label: 'Approve as a portrait…', id: 'gate.approve', props: { hash: key }, form: true },
+        { label: 'Promote to a plate…', id: 'art.promote', props: { hash: key }, form: true },
+        { label: MENU_SEP, id: MENU_SEP },
+        {
+          label: 'Open in the Asset editor',
+          id: 'view.open',
+          props: { editor: 'asset', where: 'elsewhere', subject: key },
+        },
+      ];
+    case 'scene':
+      return [
+        { label: 'Assign line ids', id: 'story.assignLineIds', props: { scene: key } },
+        { label: 'Write the screenplay', id: 'story.screenplay' },
+      ];
+    case 'shot': {
+      const { sceneId, shotId } = splitShot(key);
+      return [
+        {
+          label: 'Set coverage…',
+          id: 'story.setCoverage',
+          props: { scene: sceneId, shot: shotId },
+          form: true,
+        },
+        {
+          label: 'Set outfit…',
+          id: 'story.setOutfit',
+          props: { scene: sceneId, shot: shotId },
+          form: true,
+        },
+      ];
+    }
+    // The one branch that is a place rather than a heading: the todo asks for a new page from the
+    // top of the wiki tree, and that top is `branch:wiki` — the `wikidir:` nodes are the folders
+    // inside it, which a project with a flat `wiki/` never has at all.
+    case 'branch':
+      return key === 'wiki' ? wikiCreate() : [];
+    // A grouping, a page, a bare file and a counted stand-in: none names a subject a command takes.
+    // A wiki note is the interesting one — nothing binds to it (see `assetstrip.ts`) and `doc.write`
+    // needs the text, so the only act it has is the one a plain click already performs.
+    case 'assetkind':
+    case 'wiki':
+    case 'dir':
+    case 'file':
+    case 'more':
+      return [];
+  }
 }
 
 /** Whether the shared selection names this node — the highlight, for both modes at once. */
