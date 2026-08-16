@@ -10,4 +10,6 @@ to provide the model key with a dropdown box for the model provider.
 [ ]: Double clicking on renamable documents in the document tree should let you edit the 
      name inline, applying the rename on enter (and aborting on escape).  This operation 
 	 should be undoable, which presumably could be done with git?
+[ ]: When initializing a new project git repo a default .gitignore should be created.
+
 	 
