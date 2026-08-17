@@ -10,36 +10,18 @@
  * it stands and handed over as inputs, never as a remembered hash, so an adoption cannot mark done
  * a task the project no longer describes.
  */
-import type {
-  Asset,
-  AssetBinding,
-  AssetRef,
-  ImageParams,
-  ProjectModel,
-  RefBinding,
-  Scene,
-  Shot,
-  TaskGraph,
-  TaskInputs,
-} from '@vn/types';
+import type { Asset, AssetBinding, AssetRef, RefBinding, Scene, Shot, TaskGraph } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import { modelFromInputs, outfitFor } from '@vn/model';
+import { modelFromInputs } from '@vn/model';
 import { loadInputs, readShots, writeShots, type AssetStore, type ProjectPaths } from '@vn/store';
-import { loadGraph, makeTask } from '@vn/taskgraph';
+import { loadGraph } from '@vn/taskgraph';
 import { isPlaceholderImage } from '@vn/providers';
 import { VnError } from '@vn/util';
-import {
-  imageParams,
-  locationInputs,
-  modelSheetInputs,
-  shotInputs,
-  MODEL_SHEET_ANGLES,
-  SHEET_FRONT,
-} from './prompts.js';
 import { proseHash } from './drift.js';
 import { adopt } from './adopt.js';
 import { baseRefusal } from './base.js';
 import { slotLabel } from './refcycle.js';
+import { type Decided, type ResolvedSlot, resolveSlot, slotTaskHash } from './slotgraph.js';
 
 export interface AdoptSlotDeps {
   config: ProjectConfig;
@@ -78,25 +60,30 @@ export interface AdoptSlotPlan {
   note: string;
 }
 
-export type Decided<T> = { ok: false; code: string; reason: string } | { ok: true; plan: T };
-
 export interface AdoptSlotResult {
   ref: AssetRef;
   plan: AdoptSlotPlan;
 }
 
+/** The storyboard entry a shot adoption stamps: `serialize` drops `proseHash` without the image. */
+interface ShotStamp {
+  scene: Scene;
+  shot: Shot;
+  shots: Shot[];
+}
+
 /**
- * A slot resolved against the project: the task it names, and — for a shot — the file whose frame
- * has to be stamped, since `serialize` drops `proseHash` unless the image is written with it.
+ * A slot resolved against the project: the task it names, and — for a shot — the frame to stamp.
+ *
+ * The identity half is {@link resolveSlot}'s, so adoption and the slot graph cannot disagree about
+ * what task a picture is. The stamp is adoption's alone: nothing else rewrites the storyboard.
+ *
+ * Never a portrait: {@link resolve} turns that one away, so the narrowing `AdoptSlotPlan.kind`
+ * needs is in the type rather than in an assertion.
  */
 type Resolved =
-  | { kind: 'location_ref'; inputs: TaskInputs['location_ref'] }
-  | { kind: 'model_sheet'; inputs: TaskInputs['model_sheet'] }
-  | {
-      kind: 'shot_image';
-      inputs: TaskInputs['shot_image'];
-      stamp: { scene: Scene; shot: Shot; shots: Shot[] };
-    };
+  | { slot: Exclude<ResolvedSlot, { kind: 'portrait' | 'shot_image' }>; stamp?: undefined }
+  | { slot: Extract<ResolvedSlot, { kind: 'shot_image' }>; stamp: ShotStamp };
 
 /** The manifest binding a slot writes. The angle is not one: it lives in the task's inputs (§8). */
 function bindingOf(slot: RefBinding): AssetBinding {
@@ -112,168 +99,56 @@ function bindingOf(slot: RefBinding): AssetBinding {
   }
 }
 
-/** The task identity a resolved slot has. Switched rather than generic: the pair has to correlate. */
-function taskHashOf(r: Resolved): string {
-  switch (r.kind) {
-    case 'location_ref':
-      return makeTask('location_ref', r.inputs).hash;
-    case 'model_sheet':
-      return makeTask('model_sheet', r.inputs).hash;
-    case 'shot_image':
-      return makeTask('shot_image', r.inputs).hash;
-  }
-}
-
-/** The upstream art a shot's identity is built on, in the order the planner puts it in. */
-function shotUpstream(
-  model: ProjectModel,
-  scene: Scene,
-  shot: Shot,
-  config: ProjectConfig,
-  params: ImageParams,
-  graph: TaskGraph,
-): Decided<AssetRef[]> {
-  const missing = (what: string): Decided<AssetRef[]> => ({
-    ok: false,
-    code: 'UPSTREAM_MISSING',
-    reason: `${what} has not been rendered, and a frame's identity is built on it — run the pipeline far enough to produce it, then adopt.`,
-  });
-  const output = (hash: string): AssetRef | undefined => {
-    const task = graph.get(hash);
-    return task?.status === 'done' && task.output ? { hash: task.output, ext: 'png' } : undefined;
-  };
-
-  const location = model.locations.get(scene.location);
-  if (!location) {
-    return {
-      ok: false,
-      code: 'NO_SUCH_SLOT',
-      reason: `Scene ${scene.id} is set in "${scene.location}", which is not a location this project has.`,
-    };
-  }
-  const plate = output(
-    makeTask('location_ref', locationInputs(location, shot.location, config, params)).hash,
-  );
-  if (!plate) return missing(`The "${shot.location}" plate for ${location.id}`);
-
-  const refs: AssetRef[] = [plate];
-  for (const subject of shot.subjects) {
-    const character = model.characters.get(subject.characterId);
-    if (!character?.approvedPortrait) return missing(`${subject.characterId}'s portrait`);
-    const portrait: AssetRef = { hash: character.approvedPortrait, ext: 'png' };
-    refs.push(portrait);
-
-    const outfit = outfitFor(subject, scene, character);
-    if (outfit.id === character.defaultOutfit) continue;
-    const sheet = output(
-      makeTask(
-        'model_sheet',
-        modelSheetInputs(character, outfit.id, SHEET_FRONT, portrait, config, params),
-      ).hash,
-    );
-    if (!sheet) return missing(`${character.id}'s "${outfit.id}" sheet`);
-    refs.push(sheet);
-  }
-  return { ok: true, plan: refs };
-}
-
-/** A slot against the project as loaded: which task it is, and what that task's inputs are. */
+/**
+ * A slot against the project as loaded. The identity is {@link resolveSlot}'s; this is the loading
+ * — the model, and for a shot the storyboard the frame will be stamped into.
+ */
 async function resolve(
   deps: AdoptSlotDeps,
   slot: RefBinding,
   graph: TaskGraph,
 ): Promise<Decided<Resolved>> {
-  const params = imageParams(deps.config);
   const inputs = await loadInputs(deps.paths);
   const model = modelFromInputs(inputs, {
     title: deps.config.title,
     ...(deps.config.start ? { start: deps.config.start } : {}),
   });
-  const gone = (what: string): Decided<Resolved> => ({
-    ok: false,
-    code: 'NO_SUCH_SLOT',
-    reason: `${what} — nothing in this project plans that picture.`,
-  });
 
-  switch (slot.kind) {
-    case 'plate': {
-      const location = model.locations.get(slot.locationId);
-      if (!location) return gone(`There is no location "${slot.locationId}"`);
-      if (!location.variants.some((v) => v.id === slot.variant))
-        return gone(`${location.id} has no "${slot.variant}" variant`);
-      return {
-        ok: true,
-        plan: {
-          kind: 'location_ref',
-          inputs: locationInputs(location, slot.variant, deps.config, params),
-        },
-      };
-    }
-    case 'sheet': {
-      const character = model.characters.get(slot.characterId);
-      if (!character) return gone(`There is no character "${slot.characterId}"`);
-      if (!character.approvedPortrait) {
-        return {
-          ok: false,
-          code: 'NOT_APPROVED',
-          reason: `${character.id}'s look has not been approved, and a sheet is drawn from the approved portrait — approve one with gate.approve first.`,
-        };
+  // A shot's frame is stamped where it was decomposed, so the storyboard is loaded here and handed
+  // to `resolveSlot` as well — it needs the same shots to say what the frame's identity is.
+  const shots = new Map<string, readonly Shot[]>();
+  let stamp: ShotStamp | undefined;
+  if (slot.kind === 'shot') {
+    const scene = model.scenes.get(slot.sceneId);
+    if (scene) {
+      const loaded = await readShots(deps.paths, scene.id, new Set(scene.lines.map((l) => l.id)));
+      if (loaded) {
+        shots.set(scene.id, loaded.shots);
+        const shot = loaded.shots.find((s) => s.id === slot.shotId);
+        if (shot) stamp = { scene, shot, shots: loaded.shots };
       }
-      if (!character.outfits.some((o) => o.id === slot.outfit))
-        return gone(`${character.id} has no "${slot.outfit}" outfit`);
-      if (!(MODEL_SHEET_ANGLES as readonly string[]).includes(slot.angle))
-        return gone(`"${slot.angle}" is not one of the ${MODEL_SHEET_ANGLES.join(', ')} angles`);
-      return {
-        ok: true,
-        plan: {
-          kind: 'model_sheet',
-          inputs: modelSheetInputs(
-            character,
-            slot.outfit,
-            slot.angle,
-            { hash: character.approvedPortrait, ext: 'png' },
-            deps.config,
-            params,
-          ),
-        },
-      };
     }
-    case 'shot': {
-      const scene = model.scenes.get(slot.sceneId);
-      if (!scene) return gone(`There is no scene "${slot.sceneId}"`);
-      const loaded = await readShots(
-        deps.paths,
-        slot.sceneId,
-        new Set(scene.lines.map((l) => l.id)),
-      );
-      const shot = loaded?.shots.find((s) => s.id === slot.shotId);
-      if (!loaded || !shot) return gone(`Scene ${scene.id} has no shot "${slot.shotId}"`);
-      const upstream = shotUpstream(model, scene, shot, deps.config, params, graph);
-      if (!upstream.ok) return upstream;
-      return {
-        ok: true,
-        plan: {
-          kind: 'shot_image',
-          inputs: shotInputs(shot, scene, model, deps.config, params, upstream.plan),
-          stamp: { scene, shot, shots: loaded.shots },
-        },
-      };
-    }
-    // The two the vocabulary can spell and adoption will not do, each refused by what it is.
-    case 'portrait':
-      return {
-        ok: false,
-        code: 'GATED_SLOT',
-        reason: `A portrait is not adopted: approving one writes ${slot.characterId}'s sheet and releases every scene they are in. Use gate.approve.`,
-      };
-    case 'asset':
-      return {
-        ok: false,
-        code: 'NOT_A_SLOT',
-        reason:
-          'An upload and a concept are their own identity — there is no task under them to be the output of.',
-      };
   }
+
+  const decided = resolveSlot(slot, { model, shots, config: deps.config, graph });
+  if (!decided.ok) return decided;
+  const plan = decided.plan;
+  // Adoption's own refusal, in front of an identity that exists: a portrait *is* a task, it is just
+  // not one a picture is handed to. Approving one is the gate's act, and it releases scenes.
+  if (plan.kind === 'portrait') {
+    return {
+      ok: false,
+      code: 'GATED_SLOT',
+      reason: `A portrait is not adopted: approving one writes ${plan.inputs.characterId}'s sheet and releases every scene they are in. Use gate.approve.`,
+    };
+  }
+  if (plan.kind === 'shot_image') {
+    // Unreachable: `resolveSlot` found the same shot in the same map, so a stamp was taken.
+    if (!stamp)
+      return { ok: false, code: 'NO_SUCH_SLOT', reason: `No such shot: ${slotLabel(slot)}.` };
+    return { ok: true, plan: { slot: plan, stamp } };
+  }
+  return { ok: true, plan: { slot: plan } };
 }
 
 /**
@@ -308,7 +183,7 @@ export async function adoptionForSlot(
   if (!resolved.ok) return resolved;
 
   const label = slotLabel(req.slot);
-  const taskHash = taskHashOf(resolved.plan);
+  const taskHash = slotTaskHash(resolved.plan.slot);
   const node = graph.get(taskHash);
   const held = node?.status === 'done' && node.output !== req.hash ? node.output : undefined;
   if (held && !req.replace) {
@@ -321,7 +196,7 @@ export async function adoptionForSlot(
   return {
     ok: true,
     plan: {
-      kind: resolved.plan.kind,
+      kind: resolved.plan.slot.kind,
       taskHash,
       label,
       ...(held ? { supersedes: held } : {}),
@@ -335,7 +210,7 @@ export async function adoptionForSlot(
 /** The `done` record, written through `adopt` so the one guard stays the one guard. */
 async function record(
   deps: AdoptSlotDeps,
-  resolved: Resolved,
+  slot: Resolved['slot'],
   output: Asset,
   replace: boolean | undefined,
   graph: TaskGraph,
@@ -343,11 +218,11 @@ async function record(
   const ctx = { has: (h: string) => deps.store.has(h), node: (h: string) => graph.get(h) };
   const flag = replace ? { replace: true } : {};
   // Spelled out per kind because `adopt` is generic: only a narrowed pair type-checks.
-  const done = await (resolved.kind === 'location_ref'
-    ? adopt(deps.paths, { kind: resolved.kind, inputs: resolved.inputs, output, ...flag }, ctx)
-    : resolved.kind === 'model_sheet'
-      ? adopt(deps.paths, { kind: resolved.kind, inputs: resolved.inputs, output, ...flag }, ctx)
-      : adopt(deps.paths, { kind: resolved.kind, inputs: resolved.inputs, output, ...flag }, ctx));
+  const done = await (slot.kind === 'location_ref'
+    ? adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx)
+    : slot.kind === 'model_sheet'
+      ? adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx)
+      : adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx));
   if (!done.ok) throw new VnError(done.code, done.reason);
 }
 
@@ -377,17 +252,18 @@ export async function adoptSlot(
 
   const bytes = await deps.store.read({ hash: asset.hash, ext: asset.ext });
   const ref = await deps.store.write(bytes, asset.ext, {
-    kind: resolved.plan.kind,
+    kind: resolved.plan.slot.kind,
     sourceTask: decided.plan.taskHash,
-    prompt: resolved.plan.inputs.prompt,
-    refs: resolved.plan.inputs.refs.map((r) => r.hash),
+    prompt: resolved.plan.slot.inputs.prompt,
+    refs: resolved.plan.slot.inputs.refs.map((r) => r.hash),
     modelId: asset.modelId,
     // `mergeBindings` keeps what the bytes already served, so the tree still shows where an adopted
     // picture came from — the same thing promotion has always done.
     satisfies: bindingOf(req.slot),
   });
 
-  if (resolved.plan.kind === 'shot_image') {
+  // A stamp is taken for a shot slot and no other, so this is that branch.
+  if (resolved.plan.stamp) {
     // Beside the image, because that is the only place the hash means anything: a frame handed in
     // by an artist is answerable for the lines it was drawn from exactly as a rendered one is.
     const { scene, shot, shots } = resolved.plan.stamp;
@@ -397,6 +273,6 @@ export async function adoptSlot(
   }
 
   const written = deps.store.manifest().find((a) => a.hash === ref.hash)!;
-  await record(deps, resolved.plan, written, req.replace, graph);
+  await record(deps, resolved.plan.slot, written, req.replace, graph);
   return { ref, plan: decided.plan };
 }

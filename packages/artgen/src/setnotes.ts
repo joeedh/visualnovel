@@ -25,7 +25,7 @@ import type { EntityDoc } from '@vn/parse';
 import { entityDoc, loadInputs, readShots, writeShots, type ProjectPaths } from '@vn/store';
 import { VnError, writeFileAtomic } from '@vn/util';
 import { parseArtTarget, rungAt, type ArtRung, type ArtTarget } from './artnotes.js';
-import type { Decided } from './adoptslot.js';
+import type { Decided } from './slotgraph.js';
 
 export interface SetNotesDeps {
   /**

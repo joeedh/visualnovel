@@ -10,12 +10,14 @@
  * derived), and `promoteConcept`, which turns a sketch that turned out to be canon into the plate
  * the planner would have rendered.
  */
+export * from './gate.js';
 export * from './chunks.js';
 export * from './coverage.js';
 export * from './condense.js';
 export * from './resolve.js';
 export * from './refs.js';
 export * from './refcycle.js';
+export * from './slotgraph.js';
 export * from './suspend.js';
 export * from './prompts.js';
 export * from './artnotes.js';

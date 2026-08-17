@@ -68,6 +68,52 @@ function pick(candidates: readonly Asset[]): string | undefined {
   return candidates.length === 1 ? candidates[0]!.hash : undefined;
 }
 
+/**
+ * Every asset bound to a slot, accepted or not — the set {@link pick} chooses from.
+ *
+ * Separate from {@link resolveBinding} because "which one is it" and "has anything been drawn for
+ * this at all" are different questions and `pick` deliberately declines the first one whenever the
+ * answer is not certain. A slot holding three unaccepted drafts resolves to `undefined` and would
+ * read as empty; it is not, and the slot graph has to tell those two apart to say whether a picture
+ * is awaiting approval or has yet to be rendered.
+ *
+ * A `portrait` slot answers from the **manifest** here, unlike `resolveBinding`, which reads the
+ * gate off the model. Both are right: the gate says which portrait is *the* portrait, and this says
+ * what has been drawn for the character.
+ */
+export function candidatesFor(binding: RefBinding, ctx: BindingContext): Asset[] {
+  switch (binding.kind) {
+    case 'asset':
+      return ctx.assets.filter((a) => a.hash === binding.hash);
+    case 'portrait':
+      return ctx.assets.filter(
+        (a) => a.kind === 'portrait' && bindsTo(a, { characterId: binding.characterId }),
+      );
+    case 'sheet': {
+      const bound = ctx.assets.filter(
+        (a) =>
+          (a.kind === 'model_sheet' || a.kind === 'outfit_sheet') &&
+          bindsTo(a, { characterId: binding.characterId, outfit: binding.outfit }),
+      );
+      return ctx.angleOf
+        ? bound.filter((a) => ctx.angleOf!(a.sourceTask) === binding.angle)
+        : bound;
+    }
+    case 'plate':
+      return ctx.assets.filter(
+        (a) =>
+          a.kind === 'location_ref' &&
+          bindsTo(a, { locationId: binding.locationId, variant: binding.variant }),
+      );
+    case 'shot':
+      return ctx.assets.filter(
+        (a) =>
+          a.kind === 'shot_image' &&
+          bindsTo(a, { sceneId: binding.sceneId, shotId: binding.shotId }),
+      );
+  }
+}
+
 /** The asset hash a binding names today, or `undefined` when nothing fills the slot. */
 export function resolveBinding(binding: RefBinding, ctx: BindingContext): string | undefined {
   switch (binding.kind) {
@@ -79,33 +125,8 @@ export function resolveBinding(binding: RefBinding, ctx: BindingContext): string
     // so the manifest never has to be consulted.
     case 'portrait':
       return ctx.model.characters.get(binding.characterId)?.approvedPortrait;
-    case 'sheet': {
-      const bound = ctx.assets.filter(
-        (a) =>
-          (a.kind === 'model_sheet' || a.kind === 'outfit_sheet') &&
-          bindsTo(a, { characterId: binding.characterId, outfit: binding.outfit }),
-      );
-      const angled = ctx.angleOf
-        ? bound.filter((a) => ctx.angleOf!(a.sourceTask) === binding.angle)
-        : bound;
-      return pick(angled);
-    }
-    case 'plate':
-      return pick(
-        ctx.assets.filter(
-          (a) =>
-            a.kind === 'location_ref' &&
-            bindsTo(a, { locationId: binding.locationId, variant: binding.variant }),
-        ),
-      );
-    case 'shot':
-      return pick(
-        ctx.assets.filter(
-          (a) =>
-            a.kind === 'shot_image' &&
-            bindsTo(a, { sceneId: binding.sceneId, shotId: binding.shotId }),
-        ),
-      );
+    default:
+      return pick(candidatesFor(binding, ctx));
   }
 }
 

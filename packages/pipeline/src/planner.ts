@@ -12,10 +12,16 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Providers } from '@vn/types';
-import { outfitFor } from '@vn/model';
+import {
+  outfitFor,
+  reachableScenes,
+  usedCharacters,
+  usedLocationVariants,
+  usedOutfits,
+} from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
-import { baseRefusal, cycleRefusal, firstCycle } from '@vn/artgen';
+import { baseRefusal, cycleRefusal, firstCycle, isApproved, sceneUnblocked } from '@vn/artgen';
 import { VnError } from '@vn/util';
 import {
   imageParams,
@@ -28,64 +34,11 @@ import {
 } from './prompts.js';
 import { decomposeScene } from './p5.js';
 import { proseHash } from './drift.js';
-import { isApproved, sceneUnblocked } from './gate.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
 export { MODEL_SHEET_ANGLES };
 
 const PNG = 'png';
-
-/** Characters that appear in at least one reachable scene (everyone else is dead weight). */
-function usedCharacters(model: ProjectModel): Character[] {
-  const ids = new Set<string>();
-  for (const scene of model.scenes.values()) {
-    if (!model.reachable.has(scene.id)) continue;
-    for (const id of scene.characters) ids.add(id);
-  }
-  return [...ids].map((id) => model.characters.get(id)).filter((c): c is Character => !!c);
-}
-
-/** Reachable scenes only — never spend generation on unreachable branches. */
-function reachableScenes(model: ProjectModel): Scene[] {
-  return [...model.scenes.values()].filter((s) => model.reachable.has(s.id));
-}
-
-/**
- * The outfits a run actually needs, character id → outfit ids in the order they were found: the
- * character's default first (anything with no opinion inherits it), then every `[[outfit:]]` marker
- * and shot override over reachable scenes. Authoring a wardrobe therefore costs nothing until
- * something puts a character in it — a sheet is three image calls per outfit.
- *
- * The set is exactly the range of {@link outfitFor} over this model, an id it does not author
- * included: `outfitText` falls back to the id for the sheet prompt just as it does for the shot's,
- * so a shot can never depend on a sheet nothing planned.
- */
-function usedOutfits(model: ProjectModel): Map<string, Set<string>> {
-  const out = new Map<string, Set<string>>();
-  const add = (characterId: string, outfit: string | undefined): void => {
-    const set = out.get(characterId) ?? new Set<string>();
-    if (!out.has(characterId)) {
-      // The default goes in first whoever asks, so a wardrobe-less project plans what it always did.
-      const fallback = model.characters.get(characterId)?.defaultOutfit;
-      if (fallback) set.add(fallback);
-      out.set(characterId, set);
-    }
-    if (outfit) set.add(outfit);
-  };
-
-  for (const scene of reachableScenes(model)) {
-    const marks = scene.outfits ?? {};
-    // The cast, plus anyone a marker names who is not in it — a marker for someone the scene
-    // forgot to list is still an outfit something asked for.
-    for (const id of new Set([...scene.characters, ...Object.keys(marks)])) add(id, marks[id]);
-    // Shots exist only once a scene has been decomposed, so an override reaches this on a later
-    // wave than the marker does — which is what incremental planning is for.
-    for (const shot of scene.shots) {
-      for (const subject of shot.subjects) add(subject.characterId, subject.outfit);
-    }
-  }
-  return out;
-}
 
 /**
  * One model-sheet task. Built in two places — P4 fans them out, and a shot in a non-default outfit
@@ -104,20 +57,6 @@ function modelSheetTask(
     'model_sheet',
     modelSheetInputs(character, outfit, angle, portrait, config, params),
   );
-}
-
-/** Locations referenced by a reachable scene, paired with the variants those scenes use. */
-function usedLocationVariants(model: ProjectModel): Map<string, Set<string>> {
-  const out = new Map<string, Set<string>>();
-  for (const scene of reachableScenes(model)) {
-    const location = model.locations.get(scene.location);
-    if (!location) continue;
-    const set = out.get(location.id) ?? new Set<string>();
-    // Generate every declared variant for a used location so shots can pick any.
-    for (const v of location.variants.length ? location.variants : [{ id: 'day' }]) set.add(v.id);
-    out.set(location.id, set);
-  }
-  return out;
 }
 
 /**
