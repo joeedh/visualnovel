@@ -208,6 +208,16 @@ plays it. This is deliberately **not** an external DSL export.
   `keys` is ignored, because commit-on-save runs `git commit -A`. `prop.secret` is redacted at
   `digestProps`, the single record-time projection, so the props, the invocation and the commit
   trailer are all clean; it is deliberately **not undoable**, an undo point being a git snapshot.
+- **A layout template is an arrangement the project owns, and it is never merged** —
+  `.vnstudio/layouts/<slug>.json`, applied from View ▸ Layout, holding a declarative **recipe**
+  (what ships, because main scaffolds and resets with no renderer in the loop) or a serialized
+  **mesh** (what `Save Current Layout As…` writes, because a dragged layout has no recipe). The
+  live mesh stays per install in `.vndesktop/session.json`, so `view.applyLayout` writes nothing
+  while `view.saveLayout`/`view.resetLayout` are undoable. `.gitattributes` marks the files
+  `-merge`: git conflicts one and the author picks a side, and the app **refuses** a conflicted
+  template by name rather than applying half a window. Undo restores the file, and the screen
+  follows because the fingerprint moved.
+  ([`docs/plans/layout-templates-and-the-view-menu.md`](docs/plans/layout-templates-and-the-view-menu.md))
 - **A conversation is a thread, and it is written down where the other logs are** —
   `vngen/state/threads/<id>.jsonl`, one line per feed item, appended by main as the turn runs and
   titled from the first thing the author said. Undo's snapshots exclude `vngen/state`, so undoing

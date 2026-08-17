@@ -16,6 +16,8 @@ export interface CatalogProp {
   required: boolean;
   default?: PropValue;
   values?: readonly string[];
+  /** Bulk content (`digest.ts`). A form shows what it is, not a field to type it into. */
+  digest?: boolean;
 }
 
 export interface JsonSchema {
@@ -124,6 +126,7 @@ export function toCatalog(
         required: spec.required,
         ...(spec.default !== undefined ? { default: spec.default } : {}),
         ...(spec.values ? { values: [...spec.values] } : {}),
+        ...(spec.digest ? { digest: true } : {}),
       })),
       usage: formatCommand(command.id, template),
       schema: { type: 'object', properties, required, additionalProperties: false },

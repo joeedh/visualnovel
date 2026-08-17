@@ -145,10 +145,12 @@ describe('openWorkspace', () => {
     expect(opened).toEqual({ root: dir, created: true, title: 'my story' });
     // The shortest honest config: every other key has a default.
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: "my story"\n');
+    // Opening scaffolds the layout templates and the rule that keeps git from merging one.
     expect((await readdir(dir)).sort()).toEqual([
       '.git',
       '.gitattributes',
       '.gitignore',
+      '.vnstudio',
       'project.yaml',
     ]);
 
@@ -168,6 +170,7 @@ describe('openWorkspace', () => {
       '.git',
       '.gitattributes',
       '.gitignore',
+      '.vnstudio',
       'project.yaml',
       'scenes',
     ]);
@@ -197,6 +200,21 @@ describe('openWorkspace', () => {
 
     expect((await openWorkspace(dir)).created).toBe(false);
     expect(await openGit(dir).log()).toEqual(before);
+  }, 20_000);
+
+  // Opening a scratch directory inside a checkout of this monorepo really did file two commits
+  // onto its master, which is how this test came to exist.
+  it('scaffolds into a project inside a foreign repo without writing its history', async () => {
+    await writeFile(join(root, 'notes.md'), 'the outer repo\n');
+    await ensureRepo(root);
+    const dir = join(root, 'inside');
+    await mkdir(dir);
+
+    expect((await openWorkspace(dir)).created).toBe(true);
+    // The files belong to the project either way — it is the commits that are somebody else's.
+    expect(await readFile(join(dir, '.gitattributes'), 'utf8')).toContain('merge=union');
+    expect(await readdir(join(dir, '.vnstudio', 'layouts'))).not.toEqual([]);
+    expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
   }, 20_000);
 
   it('refuses a config that will not parse instead of opening a broken project', async () => {
@@ -315,6 +333,7 @@ describe('createWorkspace', () => {
       '.git',
       '.gitattributes',
       '.gitignore',
+      '.vnstudio',
       'project.yaml',
       'scenes',
       'wiki',
@@ -428,6 +447,17 @@ describe('ensureGitAttributes', () => {
     const git = openGit(root);
     expect((await git.log())[0]?.subject).toBe('Union-merge the notification log');
     expect((await git.status()).dirty).toBe(false);
+  }, 20_000);
+
+  it('writes the attribute but not a commit when the project sits inside a foreign repo', async () => {
+    await ensureRepo(root);
+    const dir = join(root, 'inside');
+    await mkdir(dir);
+    await writeFile(join(dir, 'project.yaml'), 'title: "Nested"\n');
+
+    expect(await adoptGitAttributes(dir)).toBe(true);
+    expect(await readFile(join(dir, '.gitattributes'), 'utf8')).toContain(line);
+    expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
   }, 20_000);
 
   it('says no and commits nothing when the attribute is already there', async () => {

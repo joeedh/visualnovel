@@ -1,11 +1,15 @@
 import { AreaFlags, Menu, createMenu, type Container, type MenuTemplate } from 'pathux';
 import { isLive } from '../../api.js';
-import { EDITORS } from '../../../src/shared/editors.js';
-import { exec, move, quit, report, toggleMode } from '../bridge.js';
+import { EDITOR_IDS, EDITORS, type EditorId } from '../../../src/shared/editors.js';
+import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
+import { exec, move, onInvalidate, quit, report, say, toggleMode } from '../bridge.js';
+import type { VnContext } from '../context.js';
+import { currentLayoutFile, fetchLayouts } from '../layouts.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
 import { openNotifications } from '../notifications.js';
 import { openPalette } from '../palette.js';
+import { panesOf } from '../view.js';
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
 export const HEADER_HEIGHT = 34;
@@ -46,6 +50,14 @@ export class VnHeaderEditor extends VnEditor {
   /** Which project title the list above was fetched for — the guard that keeps it one fetch. */
   private recentsFor = '\0';
 
+  /** The project's layout templates, and which one the window is showing. */
+  private layouts: LayoutSummary[] = [];
+  private activeSlug = '';
+  private layoutsFor = '\0';
+  /** Bumped whenever the files may have moved, which is what makes the guard above expire. */
+  private layoutRevision = 0;
+  private unwatch: (() => void) | undefined;
+
   static override define() {
     return {
       tagname: 'vn-header-editor-x',
@@ -71,7 +83,20 @@ export class VnHeaderEditor extends VnEditor {
 
     this.bar = (this.header as Container).row();
     this.placeNoteArea();
+
+    // The Layout submenu is a list of files, so it follows the files rather than the exec feed:
+    // a pull, an undo or another window's save all move it without this window running anything.
+    this.unwatch = onInvalidate(() => {
+      this.layoutRevision++;
+      this.rebuild();
+    });
     this.rebuild();
+  }
+
+  override on_remove() {
+    this.unwatch?.();
+    this.unwatch = undefined;
+    super.on_remove();
   }
 
   /** The one header that keeps a note frame — see `VnEditor.wantsNoteArea`. */
@@ -115,6 +140,7 @@ export class VnHeaderEditor extends VnEditor {
       ui.canRedo,
       ui.undoLabel,
       ui.redoLabel,
+      this.layoutRevision,
     ].join('|');
   }
 
@@ -138,9 +164,27 @@ export class VnHeaderEditor extends VnEditor {
     });
   }
 
+  /**
+   * Refetch the project's layout templates. Same shape as {@link refreshRecents}, keyed on the
+   * project *and* on the revision the invalidate watch bumps — a template is a file, so the
+   * things that change the list are writes rather than a change of project.
+   */
+  private refreshLayouts(): void {
+    const key = `${this.ui.projectTitle}|${this.layoutRevision}`;
+    if (this.layoutsFor === key) return;
+    this.layoutsFor = key;
+
+    void fetchLayouts().then(({ active, layouts }) => {
+      this.layouts = layouts;
+      this.activeSlug = active;
+      this.rebuild();
+    });
+  }
+
   private rebuild(): void {
     this.drawn = this.stateKey();
     this.refreshRecents();
+    this.refreshLayouts();
     const ui = this.ui;
 
     this.bar.clear();
@@ -210,7 +254,6 @@ export class VnHeaderEditor extends VnEditor {
       ['Upload Files…', () => openCommandDialog('upload.pick'), undefined],
       Menu.SEP,
       ['Plan ⇄ Execute', () => void toggleMode(), 'Shift+Tab'],
-      ['Split Area', () => this.ctx.screen.splitTool(), undefined],
       Menu.SEP,
       ['Quit', () => quit(), 'Ctrl+Q'],
     ] as MenuTemplate;
@@ -226,20 +269,39 @@ export class VnHeaderEditor extends VnEditor {
    */
   private recentMenu(): Menu {
     const others = this.recents.filter((root) => root !== this.current);
-    const items = others.length
-      ? others.map((root) => [
-          projectName(root),
-          () => void exec('workspace.open', { path: root }),
-          undefined,
-          undefined,
-          root,
-        ])
-      : [['(none)', () => {}, undefined]];
-    const menu = createMenu(this.ctx, 'Recent Projects', items as MenuTemplate);
-    // `createMenu` files its title under the `name` attribute, but the row a parent menu draws for
-    // a submenu reads `.title` — so without this the entry is a blank, full-width strip.
-    menu.title = 'Recent Projects';
-    return menu;
+    const items: MenuTemplate = others.length
+      ? others.map((root) => ({
+          name: projectName(root),
+          callback: () => void exec('workspace.open', { path: root }),
+          tooltip: `Close this project and open ${root}`,
+          id: root,
+        }))
+      : [{ name: '(none)', callback: () => {}, tooltip: 'No other project has been opened yet' }];
+
+    return this.submenu('Recent Projects', 'Reopen a project you worked on before', items);
+  }
+
+  /**
+   * The View menu is two lists and two acts: which editor a pane shows, and how the whole
+   * window is arranged. Both are long enough to be submenus — the editor list grows with every
+   * port, and the layout list grows with whatever the author saves.
+   */
+  private viewMenu(): MenuTemplate {
+    return [
+      this.editorsMenu(),
+      this.layoutMenu(),
+      Menu.SEP,
+      {
+        name: 'Close Pane',
+        callback: () => void exec('view.close'),
+        tooltip: 'Collapse this pane into its neighbour. The last pane is kept.',
+      },
+      {
+        name: 'Split Area',
+        callback: () => this.ctx.screen.splitTool(),
+        tooltip: 'Drag a line across a pane to divide it in two.',
+      },
+    ];
   }
 
   /**
@@ -247,19 +309,90 @@ export class VnHeaderEditor extends VnEditor {
    * `shared/editors.ts`, which is also what the command's props are built from — a menu that
    * offered something the command would refuse is the drift this avoids.
    */
-  private viewMenu(): MenuTemplate {
-    const items: MenuTemplate = EDITORS.map((editor) => [
-      editor.title,
-      () => void exec('view.open', { editor: editor.id }),
-      undefined,
-    ]) as MenuTemplate;
+  private editorsMenu(): Menu {
+    return this.submenu(
+      'Editors',
+      'Show a different editor in this pane',
+      EDITORS.map((editor) => ({
+        name: editor.title,
+        callback: () => void exec('view.open', { editor: editor.id }),
+        tooltip: `Show ${editor.what} in this pane`,
+        id: editor.id,
+      })),
+    );
+  }
 
-    return [
+  /**
+   * The project's named arrangements, then the two acts that maintain them. A template that
+   * cannot be applied is still offered, saying why — `view.applyLayout` refuses it with the same
+   * sentence, and an entry silently missing is worse than one that explains itself.
+   */
+  private layoutMenu(): Menu {
+    const rows = this.layouts.map((layout) => ({
+      name: layout.slug === this.activeSlug ? `${layout.title} ✓` : layout.title,
+      callback: () => void exec('view.applyLayout', { name: layout.slug }),
+      tooltip: layout.problem
+        ? `Cannot be used: ${layout.problem}`
+        : `Rearrange the window: ${layout.description}`,
+      id: layout.slug,
+    }));
+
+    const items = rows.length
+      ? rows
+      : [{ name: '(none)', callback: () => {}, tooltip: 'This project has no layouts yet' }];
+
+    return this.submenu('Layout', 'Rearrange the whole window', [
       ...items,
       Menu.SEP,
-      ['Close Pane', () => void exec('view.close'), undefined],
-      ['Reset Layout', () => void exec('view.layout'), undefined],
-    ] as MenuTemplate;
+      {
+        name: 'Save Current Layout As…',
+        // The dialog collects the name; the mesh it saves is composed here, because only this
+        // half can serialize one.
+        callback: () => this.saveLayout(),
+        tooltip: 'File the arrangement on screen in the project under a name of your own',
+      },
+      {
+        name: 'Reset View Layout…',
+        callback: () => openCommandDialog('view.resetLayout'),
+        tooltip: 'Put the layouts that ship with the app back the way they shipped — undoable',
+      },
+    ]);
+  }
+
+  /**
+   * A submenu row. `createMenu` files its title under the `name` attribute, but the row a parent
+   * menu draws for a submenu reads `.title` — so without setting it the entry is a blank,
+   * full-width strip.
+   */
+  private submenu(title: string, tooltip: string, items: MenuTemplate): Menu {
+    const menu = createMenu(this.ctx, title, items);
+    menu.title = title;
+    menu.tooltip = tooltip;
+    return menu;
+  }
+
+  /**
+   * Save what is on screen. The blob is serialized here and handed over as a prop, so main —
+   * which has no mesh and no renderer — still owns where the file goes and what it is called.
+   *
+   * The editor list is read off the mesh here rather than in `layouts.ts`, which would have to
+   * import `view.ts` to do it — and `view.ts` imports `layouts.ts`.
+   */
+  private saveLayout(): void {
+    const shell = (this.ctx as VnContext).state;
+    const editors = shell.screen
+      ? panesOf(shell.screen)
+          .filter((pane) => !pane.chrome)
+          .map((pane) => pane.editor)
+          .filter((id): id is EditorId => (EDITOR_IDS as readonly string[]).includes(id))
+      : [];
+
+    const file = currentLayoutFile(shell, editors);
+    if (!file) {
+      say('This arrangement could not be serialized.', true);
+      return;
+    }
+    openCommandDialog('view.saveLayout', { layout: serializeLayoutFile(file) });
   }
 }
 

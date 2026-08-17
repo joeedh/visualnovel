@@ -105,6 +105,8 @@ describe('the desktop registry', () => {
       'story.splitScene',
       'upload.files',
       'upload.pick',
+      'view.resetLayout',
+      'view.saveLayout',
       'workspace.create',
       'workspace.import',
       'workspace.open',
@@ -131,6 +133,10 @@ describe('the desktop registry', () => {
    * classes (`gate.approve` flips
    * `character.md` **and** marks the asset accepted in `manifest.json`) — see
    * `docs/plans/command-undo-redo.md`.
+   *
+   * `view.saveLayout` and `view.resetLayout` are the exception that proves the rule: a layout
+   * template is not a document, but it *is* an authored file inside the snapshot's pathspec, so
+   * undo restores it exactly the way it restores a scene.
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
@@ -165,6 +171,8 @@ describe('the desktop registry', () => {
       'story.setSpeaker',
       'story.spliceScene',
       'story.splitScene',
+      'view.resetLayout',
+      'view.saveLayout',
     ]);
     expect(commands.filter((c) => c.undoable && !c.mutating)).toEqual([]);
   });
@@ -225,6 +233,8 @@ describe('the desktop registry', () => {
       'story.splitScene',
       'upload.files',
       'upload.pick',
+      'view.resetLayout',
+      'view.saveLayout',
       'workspace.create',
       'workspace.import',
       'workspace.open',

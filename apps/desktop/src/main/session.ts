@@ -417,8 +417,12 @@ export interface PromptWriteResult extends PromptResult {
   written: string[];
 }
 
-/** Directories no file tree of a project should ever show, and the walk's cap. */
-const TREE_SKIP = new Set(['.git', 'node_modules']);
+/**
+ * Directories no file tree of a project should ever show, and the walk's cap. `.vnstudio` holds
+ * the layout templates — the View menu is where those are named, and a JSON mesh is not a
+ * document anyone opens in an editor.
+ */
+const TREE_SKIP = new Set(['.git', 'node_modules', '.vnstudio']);
 
 /** Who owns `scenes/**` from this side of the app — the sentence a refused whole-file save gets. */
 const SCENE_WRITER = 'story.*';

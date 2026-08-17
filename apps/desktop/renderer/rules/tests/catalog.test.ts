@@ -1,5 +1,13 @@
 import type { CatalogEntry, CatalogProp } from '../../../src/shared/ipc';
-import { blankProps, blankValue, fieldText, fieldValue, filterCommands, matches } from '../catalog';
+import {
+  blankProps,
+  blankValue,
+  bulkSize,
+  fieldText,
+  fieldValue,
+  filterCommands,
+  matches,
+} from '../catalog';
 
 const prop = (over: Partial<CatalogProp> & { name: string }): CatalogProp => ({
   kind: 'string',
@@ -88,5 +96,14 @@ describe('prop form values', () => {
     expect(fieldValue(spec, 'a:L1, a:L2 ,, a:L3')).toEqual(['a:L1', 'a:L2', 'a:L3']);
     expect(fieldText(fieldValue(spec, 'a:L1, a:L2'))).toBe('a:L1, a:L2');
     expect(fieldText('arrival')).toBe('arrival');
+  });
+
+  it('summarizes a bulk prop by size, in the unit that reads', () => {
+    expect(bulkSize('')).toBe('0 characters');
+    expect(bulkSize('x'.repeat(2047))).toBe('2047 characters');
+    expect(bulkSize('x'.repeat(2048))).toBe('2 KB');
+    expect(bulkSize('x'.repeat(23277))).toBe('23 KB');
+    // A list measures as the text the form would have shown, separators and all.
+    expect(bulkSize(['ab', 'cd'])).toBe('6 characters');
   });
 });

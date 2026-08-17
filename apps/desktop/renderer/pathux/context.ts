@@ -7,6 +7,7 @@ import {
   type DataAPI,
   type ToolStack,
 } from 'pathux';
+import type { LayoutFile } from '../../src/shared/layouts.js';
 import type { VnScreen } from './screen.js';
 import type { ShellState } from './state.js';
 
@@ -33,6 +34,12 @@ export interface ShellApp {
    * that would make the effect path import the boot path.
    */
   rebuild(): void;
+  /**
+   * Rearrange the window to a layout template, answering whether it took. Here for the same
+   * reason `rebuild` is: only the shell knows how to stand a screen up, and a refusal has to be
+   * reportable rather than a half-built mesh.
+   */
+  applyLayout(file: LayoutFile): boolean;
 }
 
 class VnOverlay extends ContextOverlay {

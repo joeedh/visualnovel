@@ -80,13 +80,44 @@ export function watchLayout(shell: ShellApp): void {
   if (shell.screen) shell.screen.onLayoutChange = () => schedule(shell);
 }
 
-export function saveLayout(shell: ShellApp): void {
-  if (!shell.screen) return;
+/**
+ * The mesh as it stands, in the form both the session and a saved template store it in.
+ * `undefined` when it cannot be serialized, which a caller must treat as "nothing to save"
+ * rather than as an empty layout.
+ */
+export function currentScreen(shell: ShellApp): unknown {
+  if (!shell.screen) return undefined;
   try {
-    api.session.set(LAYOUT_KEY, simple.saveFile(shell, FILE_ARGS, []) as Record<string, never>);
+    return simple.saveFile(shell, FILE_ARGS, []);
   } catch (err) {
     console.warn('could not serialize the screen layout', err);
+    return undefined;
   }
+}
+
+export function saveLayout(shell: ShellApp): void {
+  const blob = currentScreen(shell);
+  if (blob !== undefined) api.session.set(LAYOUT_KEY, blob as Record<string, never>);
+}
+
+/**
+ * Install a serialized screen, returning whether it worked. Shared by the boot restore and by a
+ * layout template, so both get the same `buildable` gate.
+ *
+ * The caller owns the screen being replaced: `loadFile` unlistens and removes the old one but
+ * does not destroy it, and a screen that still holds its window listeners goes on answering the
+ * pointer from underneath the new one.
+ */
+export function loadScreen(shell: ShellApp, blob: object): boolean {
+  if (!buildable(blob)) return false;
+
+  try {
+    simple.loadFile(shell, FILE_ARGS, blob);
+  } catch (err) {
+    console.warn('discarding an unreadable screen layout', err);
+    return false;
+  }
+  return Boolean(shell.screen);
 }
 
 /**
@@ -96,15 +127,7 @@ export function saveLayout(shell: ShellApp): void {
 export function restoreLayout(shell: ShellApp): boolean {
   const stored = api.session.initial()[LAYOUT_KEY];
   if (stored === undefined || stored === null || typeof stored !== 'object') return false;
-  if (!buildable(stored)) return false;
-
-  try {
-    simple.loadFile(shell, FILE_ARGS, stored);
-  } catch (err) {
-    console.warn('discarding an unreadable screen layout', err);
-    return false;
-  }
-  return Boolean(shell.screen);
+  return loadScreen(shell, stored);
 }
 
 /**

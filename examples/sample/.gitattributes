@@ -1,0 +1,12 @@
+# The notification log is append-only and its read/hidden flags are patched in place.
+# Union-merge it: two branches’ notifications combine instead of conflicting, and the
+# reader dedupes by id and ORs the flags, so a line that comes back twice folds cleanly.
+vngen/state/notifications.jsonl merge=union
+
+# A view layout is one blob: which panes exist, how big they are, what each holds. Two
+# authors' versions merged line by line make an arrangement neither of them built, so git is
+# told not to try. Pick one:
+#   git checkout --ours   .vnstudio/layouts/<name>.json    # keep mine
+#   git checkout --theirs .vnstudio/layouts/<name>.json    # take theirs
+#   git add               .vnstudio/layouts/<name>.json
+.vnstudio/layouts/*.json text eol=lf -merge

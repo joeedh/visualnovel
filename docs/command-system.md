@@ -364,14 +364,23 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `view.open`                    | `editor`, `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`, default `here`), `subject` | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane. |
 | `view.focus`                   | `editor`, `subject`               | Makes the pane already showing an editor the active one.   |
 | `view.close`                   | —                                 | Collapses the active pane into its neighbour; the last pane is kept. |
-| `view.layout`                  | —                                 | Throws the remembered arrangement away and rebuilds the default one. |
+| `view.layout`                  | —                                 | Throws the remembered arrangement away and rebuilds the default one, ignoring the project's layout templates. The escape hatch; the menu offers `view.applyLayout` instead. |
+| `view.layouts`                 | —                                 | Every layout template the project has, and which one the window is showing. One a merge left unresolved is listed with the reason rather than left out. |
+| `view.applyLayout`             | `name`                            | Rearranges the whole window to one of the project's layout templates. Refuses a missing, unreadable or conflicted one by name. |
+| `view.saveLayout` ✍ ↺ ✓        | `name`, `layout` (digest)         | Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away. |
+| `view.resetLayout` ✍ ⚠ ↺ ✓     | `scope` (`shipped`\|`all`, default `shipped`) | Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
-**Only the document mutators are undoable** — the eighteen `story.*` ones plus `doc.write`,
-`doc.create`, `doc.rename`, `art.setNotes`, the eight `prompt.*` writers and `project.setArtStyle` — because undo restores a snapshot of the
-document tree. `asset.accept` and `asset.regenerate` write into the generated class instead (a
+**Only what a snapshot of the worktree can restore is undoable** — the eighteen `story.*` ones plus
+`doc.write`, `doc.create`, `doc.rename`, `art.setNotes`, the eight `prompt.*` writers,
+`project.setArtStyle`, and the two `view.*` commands that write layout templates. Those last two
+are the only undoable commands that are not document edits, and they qualify for exactly the same
+reason: a template is an ordinary file in the project, inside the snapshot pathspec, so undo puts
+the author's back.
+Which panes are open is *not* — that is a window fact remembered per install, which is why
+`view.applyLayout` is neither mutating nor undoable. `asset.accept` and `asset.regenerate` write into the generated class instead (a
 manifest, a status log), so neither is undoable and neither needs to be: accepting again and
 regenerating again are both ordinary acts. `asset.upload` is the same class — bytes and a manifest
 row in the base store — and an upload nothing points at costs nothing, so it is not undoable either.
@@ -467,6 +476,10 @@ write path and it is `story.*`.
   a log of _acts_ rather than a second copy of the author's prose. The value the command _runs_
   with is untouched. A digested invocation is not re-executable, which is honest: replaying a
   whole-file overwrite out of a log is not something the record should imply it can do.
+  **The same flag reaches the form.** `digest` rides through `toCatalog` onto `CatalogProp`, and
+  `CommandForm` draws a filled digest prop as a summary line — `21 KB — the arrangement, as the
+  renderer serialized it` — rather than a textbox. A text field over bulk content composed by the
+  caller is unreadable and one keystroke from corrupting it.
 - **Front-matter is the one thing a save reads.** Front-matter that will not parse is refused, and
   so is a save dropping a `type:` tag the file had — that deletes an entity. Front-matter that
   parses but fails the entity schema **saves**, with the diagnostic beside it: an author

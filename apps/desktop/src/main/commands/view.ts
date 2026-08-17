@@ -10,9 +10,20 @@
  */
 import { defineFor, prop } from '@vn/commands';
 import { EDITOR_IDS, OPEN_WHERE, editorTitle, type OpenWhere } from '../../shared/editors.js';
+import {
+  DEFAULT_LAYOUT,
+  LAYOUT_DIR,
+  layoutSlug,
+  parseLayoutFile,
+  type LayoutFile,
+} from '../../shared/layouts.js';
+import { listLayouts, readLayout, resetLayouts, writeLayout } from '../layouts.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
+
+/** Which template the window is showing, remembered per install beside the live mesh. */
+const TEMPLATE_KEY = 'pathux.template';
 
 const WHERE: Record<OpenWhere, string> = {
   here: 'in this pane',
@@ -81,13 +92,157 @@ export const viewClose = define({
 
 export const viewLayout = define({
   id: 'view.layout',
-  title: 'Reset the layout',
-  description: 'Throw the remembered arrangement away and rebuild the default one.',
+  title: 'Rebuild the default arrangement',
+  description:
+    'Throw the arrangement away and build the one the app ships with, ignoring the layout ' +
+    'templates in the project entirely. The escape hatch for a mesh no template can fix; the ' +
+    'menu offers `view.applyLayout` instead.',
   mutating: false,
   props: {},
   run(_props, ctx) {
     ctx.host.ui({ type: 'view', action: 'reset' });
     return Promise.resolve({ message: 'Layout reset.' });
+  },
+});
+
+export const viewLayouts = define({
+  id: 'view.layouts',
+  title: 'List the layout templates',
+  description:
+    'Every named arrangement this project has, and which one the window is showing. A layout ' +
+    'that cannot be applied — one a merge left unresolved, one naming an editor this build has ' +
+    'not got — is listed with the reason rather than left out.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const layouts = await listLayouts(ctx.root, ctx.git);
+    const active = ctx.host.state.get(TEMPLATE_KEY, '');
+    const broken = layouts.filter((entry) => entry.problem).length;
+    return {
+      message: `${layouts.length} layout${layouts.length === 1 ? '' : 's'}${
+        broken ? `, ${broken} unusable` : ''
+      }.`,
+      data: { active, layouts },
+    };
+  },
+});
+
+export const viewApplyLayout = define({
+  id: 'view.applyLayout',
+  title: 'Rearrange the window to a layout',
+  description:
+    'Rearrange the whole window to one of the project’s layout templates. Not undoable and not ' +
+    'a write: which panes you have open is a window fact, remembered per install.',
+  mutating: false,
+  props: { name: prop.string('the layout’s slug, as `view.layouts` lists it') },
+  async run({ name }, ctx) {
+    const read = await readLayout(ctx.root, name, ctx.git);
+    if (!read.ok) throw new Error(read.reason);
+
+    ctx.host.state.set(TEMPLATE_KEY, name);
+    ctx.host.ui({
+      type: 'view',
+      action: 'apply',
+      slug: name,
+      fingerprint: read.fingerprint,
+      layout: read.file,
+    });
+    return { message: `Rearranged the window to ${read.file.title}.` };
+  },
+});
+
+export const viewSaveLayout = define({
+  id: 'view.saveLayout',
+  title: 'Save the current layout as a template',
+  description:
+    'File the arrangement on screen in the project as a named layout, so it can be applied ' +
+    'again and travels to whoever else works on the story. Saving over one that exists is ' +
+    'allowed and is one undo away.',
+  mutating: true,
+  undoable: true,
+  props: {
+    name: prop.string('what to call it; the filename is derived from this'),
+    // Composed by the renderer, because only a live screen can serialize a mesh or say which
+    // editors are in it. Main still decides the slug, the title and where the file goes.
+    layout: prop.string('the arrangement, as the renderer serialized it', { digest: true }),
+  },
+  async check({ name, layout }, ctx) {
+    const slug = layoutSlug(name);
+    if (!slug)
+      return { ok: false, reason: `"${name}" has nothing in it a filename can be made of` };
+    const parsed = parseLayoutFile(layout);
+    if (!parsed.ok)
+      return { ok: false, reason: `that arrangement cannot be saved: ${parsed.problem}` };
+
+    const existing = (await listLayouts(ctx.root, ctx.git)).find((entry) => entry.slug === slug);
+    return {
+      ok: true,
+      note: existing
+        ? `replaces the ${existing.title} layout at ${LAYOUT_DIR}/${slug}.json`
+        : `writes ${LAYOUT_DIR}/${slug}.json`,
+    };
+  },
+  async run({ name, layout }, ctx) {
+    const slug = layoutSlug(name);
+    if (!slug) throw new Error(`"${name}" has nothing in it a filename can be made of`);
+    const parsed = parseLayoutFile(layout);
+    if (!parsed.ok) throw new Error(`that arrangement cannot be saved: ${parsed.problem}`);
+
+    const file: LayoutFile = { ...parsed.file, slug, title: name.trim(), source: 'saved' };
+    const path = await writeLayout(ctx.root, file);
+    ctx.host.state.set(TEMPLATE_KEY, slug);
+    return { message: `Saved the ${file.title} layout.`, data: { slug, path }, written: [path] };
+  },
+});
+
+export const viewResetLayout = define({
+  id: 'view.resetLayout',
+  title: 'Reset the layout templates',
+  description:
+    'Put the layouts the app ships with back the way they shipped, overwriting any edits to ' +
+    'them, and rearrange the window to the one it was showing. Undoable — the edits come back, ' +
+    'and so does the arrangement.',
+  mutating: true,
+  undoable: true,
+  confirm: true,
+  props: {
+    scope: prop.oneOf(['shipped', 'all'] as const, 'which layouts to put back', {
+      default: 'shipped',
+    }),
+  },
+  async check({ scope }, ctx) {
+    const layouts = await listLayouts(ctx.root, ctx.git);
+    const mine = layouts.filter((entry) => entry.source === 'saved');
+    const kept =
+      scope === 'all'
+        ? `deletes the ${mine.length} you saved yourself`
+        : `leaves the ${mine.length} you saved yourself alone`;
+    return { ok: true, note: `rewrites the shipped layouts and ${kept}` };
+  },
+  async run({ scope }, ctx) {
+    const written = await resetLayouts(ctx.root, scope as 'shipped' | 'all');
+
+    // Whatever was on screen, put it back — a reset that leaves the window showing an
+    // arrangement no file describes any more would be the one act that lies about itself.
+    const wanted = ctx.host.state.get(TEMPLATE_KEY, DEFAULT_LAYOUT) || DEFAULT_LAYOUT;
+    let read = await readLayout(ctx.root, wanted, ctx.git);
+    let slug = wanted;
+    if (!read.ok) {
+      slug = DEFAULT_LAYOUT;
+      read = await readLayout(ctx.root, slug, ctx.git);
+    }
+    if (read.ok) {
+      ctx.host.state.set(TEMPLATE_KEY, slug);
+      ctx.host.ui({
+        type: 'view',
+        action: 'apply',
+        slug,
+        fingerprint: read.fingerprint,
+        layout: read.file,
+      });
+    }
+
+    return { message: `Put ${written.length} layout file(s) back.`, written };
   },
 });
 

@@ -13,6 +13,7 @@ import type { EditorId, UiEffect } from '../../src/shared/ipc.js';
 import type { ShellApp } from './context.js';
 import { editorClass } from './editor.js';
 import { flashRect } from './flash.js';
+import { markApplied } from './layouts.js';
 import { NO_PANE, paneElsewhere, paneShowing, paneToClose, paneToUse, type Pane } from './panes.js';
 import { SUBJECT_OF } from './route.js';
 import type { VnScreen } from './screen.js';
@@ -41,6 +42,12 @@ export function applyView(app: ShellApp, effect: ViewEffect): string | null {
     case 'reset':
       app.rebuild();
       return null;
+    case 'apply':
+      if (!app.applyLayout(effect.layout)) {
+        return `The ${effect.layout.title} layout could not be built in this window.`;
+      }
+      markApplied(effect.slug, effect.fingerprint);
+      return null;
   }
 }
 
@@ -66,8 +73,10 @@ function withSubject(
  * the effect, since there is then no pane the correction is about.
  */
 function flashed(screen: VnScreen, effect: ViewEffect, correction: string | null): string | null {
-  const wants = effect.action !== 'close' && effect.action !== 'reset' && effect.flash;
-  if (correction || !wants) return correction;
+  // Only the two effects that name an editor can outline the pane it landed in. The rest moved
+  // the whole window, and there is no one rectangle for that.
+  if (effect.action !== 'open' && effect.action !== 'focus') return correction;
+  if (correction || !effect.flash) return correction;
   const index = paneShowing(panesOf(screen), effect.editor);
   if (index === NO_PANE) return correction;
   const sarea = (screen.sareas as ScreenArea[])[index] as unknown as HTMLElement;
