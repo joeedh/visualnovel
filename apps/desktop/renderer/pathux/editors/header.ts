@@ -9,6 +9,7 @@ import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
 import { openNotifications } from '../notifications.js';
 import { openPalette } from '../palette.js';
+import { openReportDialog } from '../report.js';
 import { panesOf } from '../view.js';
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
@@ -190,6 +191,7 @@ export class VnHeaderEditor extends VnEditor {
     this.bar.clear();
     this.bar.menu('VN STUDIO', this.appMenu());
     this.bar.menu('View', this.viewMenu());
+    this.bar.menu('Help', this.helpMenu());
     this.badge(`project ${ui.projectTitle || '—'}`);
 
     const undo = this.bar.button('⟲', () => void move('undo'));
@@ -300,6 +302,23 @@ export class VnHeaderEditor extends VnEditor {
         name: 'Split Area',
         callback: () => this.ctx.screen.splitTool(),
         tooltip: 'Drag a line across a pane to divide it in two.',
+      },
+    ];
+  }
+
+  /**
+   * One entry, for now. It cannot be a bare `openCommandDialog`: the conversation list is this
+   * project's and the model list carries advice, so the dialog is opened by a function that
+   * fetches both first.
+   */
+  private helpMenu(): MenuTemplate {
+    return [
+      {
+        name: 'Report a Difficult Agent…',
+        callback: () => void openReportDialog(),
+        tooltip:
+          'Have a conversation that went wrong read by a debug agent, and draft a bug report ' +
+          'from it. Runs on your own model key; names from your story are replaced first.',
       },
     ];
   }

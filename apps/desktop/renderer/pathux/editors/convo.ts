@@ -6,7 +6,12 @@ import { exec, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 import STUDIO_CSS from '../../styles/studio.css?inline';
-import type { FeedItem, ThreadHeader } from '../../../src/shared/convo.js';
+import {
+  threadDetail,
+  threadLabel,
+  type FeedItem,
+  type ThreadHeader,
+} from '../../../src/shared/convo.js';
 import type { AskRequest, ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
 
 /**
@@ -220,11 +225,11 @@ export class ConvoEditor extends VnEditor {
     const { threads, active } = outcome.data as { threads: ThreadHeader[]; active?: string };
 
     const rows: MenuTemplateCustom[] = threads.map((thread) => [
-      `${thread.id === active ? '• ' : ''}${label(thread)}`,
+      `${thread.id === active ? '• ' : ''}${threadLabel(thread)}`,
       () => void exec('agent.openThread', { id: thread.id }),
       undefined,
       undefined,
-      detail(thread),
+      threadDetail(thread),
       thread.id,
     ]);
     if (rows.length === 0)
@@ -477,32 +482,6 @@ export class ConvoEditor extends VnEditor {
     button.addEventListener('click', () => allow(allowed));
     return button;
   }
-}
-
-/**
- * A thread's menu row: what it was about, and when. The date is short because the title is the
- * part being searched, and it is dropped entirely rather than rendered as `Invalid Date` — a log
- * old enough to have a header this reader does not understand is still a log worth opening.
- */
-function label(thread: ThreadHeader): string {
-  const at = new Date(thread.startedAt);
-  if (Number.isNaN(at.getTime())) return thread.title;
-  const when = at.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  return `${thread.title} · ${when}`;
-}
-
-/** The tooltip: the facts the row had no room for. */
-function detail(thread: ThreadHeader): string {
-  const at = new Date(thread.startedAt);
-  const parts = [Number.isNaN(at.getTime()) ? thread.startedAt : at.toLocaleString()];
-  if (thread.model) parts.push(thread.model);
-  if (thread.commit) parts.push(thread.commit.slice(0, 8));
-  return parts.join(' · ');
 }
 
 function el(tag: string, className: string, text?: string): HTMLElement {

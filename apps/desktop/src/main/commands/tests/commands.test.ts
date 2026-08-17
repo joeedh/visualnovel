@@ -29,6 +29,7 @@ describe('the desktop registry', () => {
       'pipeline',
       'project',
       'prompt',
+      'report',
       'story',
       'upload',
       'view',
@@ -180,12 +181,13 @@ describe('the desktop registry', () => {
   });
 
   /**
-   * A check is a precondition on an *act*. A non-mutating command has no precondition worth
-   * asking about — running it is how you find out — so declaring one there would advertise a
-   * question with no answer behind it. `agent.run` is the one mutator with no check: what it
-   * would do is decided by a model, not by state this process can read.
+   * A check is a precondition on an *act* — something with a cost that running it would incur.
+   * That is usually a write, so it is usually a mutator; `agent.run` is the one mutator without
+   * one, because what it would do is decided by a model rather than by state this process can
+   * read. `report.agent` is the converse: it writes nothing into the project, but it spends a
+   * minute of a real model's time on a real key, so "run it and find out" is the wrong answer.
    */
-  it('declares a precondition on the mutators, and only on mutators', () => {
+  it('declares a precondition on what an act would cost', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
       'agent.renameThread',
       'art.generate',
@@ -213,6 +215,7 @@ describe('the desktop registry', () => {
       'prompt.repin',
       'prompt.setChunk',
       'prompt.setCustom',
+      'report.agent',
       'story.assignLineIds',
       'story.decomposeAll',
       'story.deleteLine',
@@ -244,7 +247,10 @@ describe('the desktop registry', () => {
       'workspace.pick',
       'workspace.reindex',
     ]);
-    expect(commands.filter((c) => c.check && !c.mutating)).toEqual([]);
+    // A checked non-mutator is the exception, so it is listed by name rather than allowed by rule.
+    expect(commands.filter((c) => c.check && !c.mutating).map((c) => c.id)).toEqual([
+      'report.agent',
+    ]);
   });
 
   it('projects to a catalog with a usage template and a schema per command', () => {

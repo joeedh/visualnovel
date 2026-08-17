@@ -1,0 +1,57 @@
+/**
+ * Reporting a conversation that went wrong.
+ *
+ * `mutating: false` and deliberately so: the analysis reads a saved transcript and the act log,
+ * borrows the bound model for one call, and writes nothing into the project. Nothing here rebinds
+ * the agent either — an author who switches to Opus to read a bad conversation has not changed
+ * what their next turn runs on.
+ */
+import { defineFor, prop, type CheckResult } from '@vn/commands';
+import type { CommandHost } from './host.js';
+
+const define = defineFor<CommandHost>();
+
+/** A session preview read as a precondition: the session's own sentence either way. */
+function verdict(result: { ok: boolean; message: string }): CheckResult {
+  return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
+}
+
+export const reportAgent = define({
+  id: 'report.agent',
+  title: 'Report a difficult agent',
+  description:
+    'Analyse a conversation that went wrong and draft a bug report. The analysis runs on your ' +
+    'own machine with your own model key — the conversation is never sent to us. Names from ' +
+    'your story are replaced before the model sees them, and you review the report before ' +
+    'anything is posted.',
+  mutating: false,
+  props: {
+    thread: prop.string('the conversation to analyse; empty means the most recent one', {
+      default: '',
+    }),
+    note: prop.string('what you had wanted the agent to do', { default: '', multiline: true }),
+    source: prop.boolean('let the debug agent read the source code (uses more tokens)', {
+      default: false,
+      hint:
+        "The debug agent reads this app's own code and design docs, so it can point at the rule " +
+        'that was broken instead of guessing from the conversation. Slower, and it spends more ' +
+        'of your tokens.',
+    }),
+    // Both are `prop.string`, not `prop.oneOf`: an enum's values are baked into the catalog at
+    // module load, and this menu's rows depend on the model chosen in the same form.
+    model: prop.string('the model that reads the conversation; empty means the bound one', {
+      default: '',
+    }),
+    effort: prop.string('how hard it thinks about it; empty means the bound setting, raised', {
+      default: '',
+    }),
+  },
+  async check(props, ctx) {
+    return verdict(await ctx.host.session.previewReport(props));
+  },
+  async run(props, ctx) {
+    const { report, body } = await ctx.host.session.reportAgent(props);
+    const read = report.readSource ? ' It read the source.' : '';
+    return { message: `${report.analysis.summary}${read}`, data: { report, body } };
+  },
+});

@@ -1,4 +1,4 @@
-import type { Providers } from '@vn/types';
+import type { EffortChoice, Providers } from '@vn/types';
 import type { ProjectConfig, ResolvedKeys } from '@vn/config';
 import type { ChatBackend, RefLoader } from './backend.js';
 import { createAnthropicChat } from './backends/anthropic.js';
@@ -17,13 +17,18 @@ export function chatVendorFor(modelId: string): keyof ResolvedKeys {
  * Pick the vendor for a model id and a stable reviewer label. Exported because a plain chat call
  * is not always a `Providers` bundle — `describeAsset` asks one vision model one question, and
  * building the reviewers and the image provider to get at it would be theatre.
+ *
+ * `effort` is per-call rather than per-project: the desktop app binds it to the conversation and
+ * a difficult-agent report borrows a different one for a single analysis. Gemini has no such knob
+ * and ignores it.
  */
 export function chatBackendFor(
   modelId: string,
   keys: ResolvedKeys,
+  effort?: EffortChoice,
 ): { backend: ChatBackend; label: string } {
   return chatVendorFor(modelId) === 'anthropic'
-    ? { backend: createAnthropicChat(keys.anthropic, modelId), label: 'claude' }
+    ? { backend: createAnthropicChat(keys.anthropic, modelId, { effort }), label: 'claude' }
     : { backend: createGeminiChat(keys.gemini, modelId), label: 'gemini' };
 }
 

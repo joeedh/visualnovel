@@ -7,11 +7,27 @@
  * `directory` draws, when `confirm` needs a second click, or whether an `undeclared` check is a
  * yes. `coerceProps` in main stays the authority on the values themselves.
  */
-import type { Container, MenuTemplateCustom, TextBox } from 'pathux';
+import type { Container, MenuTemplateCustom, MenuTemplateEntry, TextBox } from 'pathux';
 import { api } from '../api.js';
 import { blankProps, bulkSize, fieldText, fieldValue } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
 import { exec, report } from './bridge.js';
+import { TOKENS } from './tokens.js';
+
+/** One option a host offers for a `string` prop this time it is opened. */
+export interface ChoiceRow {
+  value: string;
+  label: string;
+  tooltip?: string;
+}
+
+/**
+ * Per-open option lists, keyed by prop name — a *function of the current values*, because one
+ * field's list can depend on another's (the effort a model offers depends on the model). An enum's
+ * `values` are baked into the catalog at module load and stay that way: a list of this project's
+ * conversations is not part of a command's vocabulary.
+ */
+export type Choices = (values: Record<string, PropValue>) => Record<string, ChoiceRow[]>;
 
 export interface FormOptions {
   /** Called once the command ran and the surface hosting the form should go away. */
@@ -20,6 +36,7 @@ export interface FormOptions {
   runLabel?: string;
   /** Drawn at the head of the button row, so a dialog can put Cancel beside the action. */
   buttons?: (row: Container) => void;
+  choices?: Choices;
 }
 
 export class CommandForm {
@@ -120,6 +137,8 @@ export class CommandForm {
       // around it would only cost it the focus it just took.
       const box = row.check(undefined, prop.description);
       box.checked = Boolean(value);
+      // The description is the label here, so the hover sentence has to come from somewhere else.
+      box.description = prop.hint ?? prop.description;
       box.on_change = (next: unknown) => {
         this.values[prop.name] = Boolean(next);
         void this.recheck();
@@ -127,8 +146,19 @@ export class CommandForm {
       return undefined;
     }
 
+    const rows = this.opts.choices?.(this.values)[prop.name];
+    if (rows && rows.length > 0) {
+      this.chooser(row, prop, rows, String(value ?? ''));
+      return undefined;
+    }
+
+    if (prop.multiline) {
+      this.writingBox(row, prop, fieldText(value ?? ''));
+      return undefined;
+    }
+
     if (prop.kind === 'enum') {
-      row.menu(
+      const menu = row.menu(
         String(value ?? ''),
         (prop.values ?? []).map(
           (option): MenuTemplateCustom => [
@@ -141,6 +171,7 @@ export class CommandForm {
           ],
         ),
       );
+      menu.description = prop.hint ?? prop.description;
       return undefined;
     }
 
@@ -148,7 +179,7 @@ export class CommandForm {
       this.values[prop.name] = fieldValue(prop, String(text));
       void this.recheck();
     });
-    box.description = prop.description;
+    box.description = prop.hint ?? prop.description;
 
     // A directory is the one string the OS can say for itself. The field stays typeable — the
     // chooser fills it in, it does not own it.
@@ -158,6 +189,65 @@ export class CommandForm {
     }
 
     return box;
+  }
+
+  /**
+   * A prop the host offered a list for. The button shows the chosen row's *label* — an id is what
+   * the command takes, not what an author recognises — and each row carries its own tooltip, so
+   * the advice about a choice is readable before it is made rather than only after.
+   */
+  private chooser(row: Container, prop: CatalogProp, rows: ChoiceRow[], value: string): void {
+    const chosen = rows.find((option) => option.value === value);
+    const menu = row.menu(
+      chosen?.label ?? value,
+      rows.map(
+        (option): MenuTemplateEntry => ({
+          name: option.label,
+          callback: () => {
+            this.values[prop.name] = option.value;
+            // A dependent list is recomputed by drawing again; this is the whole mechanism.
+            this.render();
+            void this.recheck();
+          },
+          tooltip: option.tooltip,
+        }),
+      ),
+    );
+    menu.description = prop.hint ?? prop.description;
+  }
+
+  /**
+   * Free text of more than a line: a plain `<textarea>` in the row's shadow root, the same way
+   * every writing surface in this app draws one. Deliberately not path.ux's `textarea()`, which is
+   * a `contentEditable` rich-text editor with a bold/italic toolbar and `innerHTML` for a value —
+   * more widget than a note wants, and it stores markup where a command expects a string.
+   */
+  private writingBox(row: Container, prop: CatalogProp, value: string): void {
+    const box = document.createElement('textarea');
+    box.value = value;
+    box.spellcheck = true;
+    box.rows = 4;
+    box.title = prop.hint ?? prop.description;
+    box.setAttribute('aria-label', prop.description);
+    Object.assign(box.style, {
+      boxSizing: 'border-box',
+      width: '100%',
+      minHeight: '72px',
+      resize: 'vertical',
+      padding: '6px 8px',
+      border: `1px solid ${TOKENS.inkLine}`,
+      borderRadius: `${TOKENS.radiusChrome}px`,
+      background: TOKENS.inkSunken,
+      color: TOKENS.paper,
+      font: `13px ${TOKENS.sans}`,
+    });
+    box.addEventListener('input', () => {
+      this.values[prop.name] = box.value;
+      void this.recheck();
+    });
+    // The screen keymap is a bubble-phase window listener, so the box stops its own keys.
+    box.addEventListener('keydown', (event) => event.stopPropagation());
+    row.shadow.appendChild(box);
   }
 
   /** Run the chooser and put what it answered in the field, leaving a cancel alone. */

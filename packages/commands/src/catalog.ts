@@ -18,6 +18,10 @@ export interface CatalogProp {
   values?: readonly string[];
   /** Bulk content (`digest.ts`). A form shows what it is, not a field to type it into. */
   digest?: boolean;
+  /** Free text of more than a line. A form draws a box to write in. */
+  multiline?: boolean;
+  /** The hover sentence, where `description` is drawn as a label instead. */
+  hint?: string;
 }
 
 export interface JsonSchema {
@@ -127,6 +131,8 @@ export function toCatalog(
         ...(spec.default !== undefined ? { default: spec.default } : {}),
         ...(spec.values ? { values: [...spec.values] } : {}),
         ...(spec.digest ? { digest: true } : {}),
+        ...(spec.multiline ? { multiline: true } : {}),
+        ...(spec.hint ? { hint: spec.hint } : {}),
       })),
       usage: formatCommand(command.id, template),
       schema: { type: 'object', properties, required, additionalProperties: false },

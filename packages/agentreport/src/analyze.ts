@@ -13,7 +13,7 @@
  */
 import { ConfigError } from '@vn/util';
 import { secretFileFor, type ResolvedKeys } from '@vn/config';
-import type { ProjectConfig } from '@vn/types';
+import type { EffortChoice, ProjectConfig } from '@vn/types';
 import {
   chatBackendFor,
   chatVendorFor,
@@ -101,6 +101,7 @@ export function analystBackend(
   modelId: string,
   config: ProjectConfig,
   keys: ResolvedKeys,
+  effort?: EffortChoice,
 ): ChatBackend {
   const vendor = chatVendorFor(modelId);
   if (!keys[vendor]?.trim()) {
@@ -109,7 +110,7 @@ export function analystBackend(
         `set $${config.keys[vendor]} or put ${secretFileFor(vendor)} in the project's keys/ directory`,
     );
   }
-  return chatBackendFor(modelId, keys).backend;
+  return chatBackendFor(modelId, keys, effort).backend;
 }
 
 /** The read tools the analyst gets when the author lets it look at the source. */

@@ -66,6 +66,32 @@ export interface ThreadRecord extends ThreadHeader {
   items: FeedItem[];
 }
 
+/**
+ * How a conversation reads in a list, and what the row says on hover. Here rather than in the pane
+ * that first drew one, because two surfaces now offer the same list — the Threads menu and the
+ * report dialog's dropdown — and a conversation should not be named differently by each.
+ */
+export function threadLabel(thread: ThreadHeader): string {
+  const at = new Date(thread.startedAt);
+  if (Number.isNaN(at.getTime())) return thread.title;
+  const when = at.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${thread.title} · ${when}`;
+}
+
+/** The tooltip: the facts the row had no room for. */
+export function threadDetail(thread: ThreadHeader): string {
+  const at = new Date(thread.startedAt);
+  const parts = [Number.isNaN(at.getTime()) ? thread.startedAt : at.toLocaleString()];
+  if (thread.model) parts.push(thread.model);
+  if (thread.commit) parts.push(thread.commit.slice(0, 8));
+  return parts.join(' · ');
+}
+
 export interface Convo {
   feed: readonly FeedItem[];
   /** What the dialogue box says: the agent's last word, never a transcript line. */

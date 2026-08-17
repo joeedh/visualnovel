@@ -41,6 +41,17 @@ export interface Prop<T extends PropValue = PropValue, Req extends boolean = boo
    * it instead of the value (`digest.ts`). The command still receives the real thing.
    */
   digest?: boolean;
+  /**
+   * Free text of more than a line — a note, a paragraph of prose. A form draws a box to write in
+   * rather than a one-line field. Unlike `digest` the value is still typed, sent and recorded.
+   */
+  multiline?: boolean;
+  /**
+   * The hover sentence, where `description` cannot be it. A checkbox draws its description as its
+   * *label*, which leaves nowhere for the tooltip every control owes the author — so a prop whose
+   * label and explanation are different things says both. Defaults to `description`.
+   */
+  hint?: string;
 }
 
 export type PropSpecMap = Record<string, Prop<PropValue, boolean>>;
@@ -60,6 +71,8 @@ interface Opts<T extends PropValue> {
   max?: number;
   default?: T;
   digest?: boolean;
+  multiline?: boolean;
+  hint?: string;
 }
 
 /**
@@ -107,6 +120,8 @@ function make(
   if (opts?.min !== undefined) spec.min = opts.min;
   if (opts?.max !== undefined) spec.max = opts.max;
   if (opts?.digest) spec.digest = true;
+  if (opts?.multiline) spec.multiline = true;
+  if (opts?.hint) spec.hint = opts.hint;
   return spec;
 }
 

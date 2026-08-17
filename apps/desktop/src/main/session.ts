@@ -120,13 +120,7 @@ import {
   type PromptRung,
   type Suspension,
 } from '@vn/artgen';
-import {
-  createAnthropicChat,
-  createGeminiChat,
-  createMockProviders,
-  createProviders,
-  type ChatBackend,
-} from '@vn/providers';
+import { chatBackendFor, chatVendorFor, createMockProviders, createProviders } from '@vn/providers';
 import {
   Agent,
   StructuredAgentBackend,
@@ -191,7 +185,8 @@ import type {
   TaskInputs,
   TextLLM,
 } from '@vn/types';
-import { DEFAULT_EFFORT, bindsTo, resolveEffort, type TaskKind } from '@vn/types';
+import { DEFAULT_EFFORT, EFFORT_CHOICES, bindsTo, resolveEffort, type TaskKind } from '@vn/types';
+import { renderReport, sourceRoot, type Evidence, type Report } from '@vn/agentreport';
 import type {
   ApproveResult,
   AssetInfo,
@@ -238,6 +233,8 @@ import {
 import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
 import type { BranchOp } from '../shared/branchops.js';
 import { setCoverage } from '../shared/coverage.js';
+import { adviseRun, analysisEffort } from '../shared/advice.js';
+import { NO_SOURCE, analyseThread } from './agentreport.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -250,15 +247,6 @@ class MockAgentBackend implements AgentBackend {
   }
 }
 
-/** Pick the vendor chat backend for a text model id (mirrors @vn/providers' private picker). */
-function chatBackendFor(modelId: string, keys: ResolvedKeys, effort?: EffortChoice): ChatBackend {
-  const id = modelId.toLowerCase();
-  if (id.startsWith('claude') || id.startsWith('anthropic')) {
-    return createAnthropicChat(keys.anthropic, modelId, { effort });
-  }
-  return createGeminiChat(keys.gemini, modelId);
-}
-
 /** Hooks the session uses to reach the renderer: events out, and the three permission doors. */
 export interface SessionDeps {
   emitEvent(event: AgentEvent): void;
@@ -267,6 +255,13 @@ export interface SessionDeps {
   requestAnswer(question: string): Promise<string>;
   /** Yes or no to an always-confirm tool. `detail` is the English sentence the card reads out. */
   requestConfirm(tool: string, detail: string): Promise<boolean>;
+  /** The app build, so a bug report names the code a maintainer should read. Absent in tests. */
+  appVersion?: string;
+  /**
+   * Where the app may keep files that are the *app's*, not the author's — a drafted bug report,
+   * cached provider docs. Deliberately not under the project: neither belongs in its history.
+   */
+  userData?: string;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -434,6 +429,19 @@ export type ClearPart = 'all' | 'chunks' | 'order' | 'custom' | 'agent';
 export interface PromptResult {
   ok: boolean;
   message: string;
+}
+
+/**
+ * What the report dialog asked for, before anything about it has been resolved. Every string may
+ * be empty, and empty means the default — the newest conversation, the bound model, the bound
+ * effort stepped up.
+ */
+export interface ReportAsk {
+  thread: string;
+  note: string;
+  source: boolean;
+  model: string;
+  effort: string;
 }
 
 /** The same, plus the files a write touched — the shape every `prompt.*` mutator returns. */
@@ -615,12 +623,11 @@ export class WorkspaceSession {
   private async buildBackend(config: ProjectConfig, model?: string): Promise<AgentBackend> {
     if (this.mock) return new MockAgentBackend();
     const modelId = model ?? config.models.text;
-    const vendor = modelId.toLowerCase().startsWith('claude') ? 'anthropic' : 'gemini';
     const keys = await resolveKeys(config, {
       secretsDirs: await secretDirsFor(this.dir),
-      require: [vendor],
+      require: [chatVendorFor(modelId)],
     });
-    return new StructuredAgentBackend(chatBackendFor(modelId, keys, this.effort));
+    return new StructuredAgentBackend(chatBackendFor(modelId, keys, this.effort).backend);
   }
 
   private async ensureAgent(): Promise<Agent> {
@@ -809,6 +816,112 @@ export class WorkspaceSession {
     await retitleThread(paths, target, named);
     if (this.thread?.id === target) this.thread = { ...this.thread, title: named };
     return { ...header, title: named };
+  }
+
+  /**
+   * The model and effort one analysis runs at. An empty field means *whatever the agent is bound
+   * to* — so a scripted `report.agent(thread='t3')` does the sensible thing without naming a
+   * model, and the dialog seeds both explicitly when a person opens it.
+   *
+   * Nothing here is written back: the analysis borrows the binding for one run, and an author who
+   * switches to Opus to read a bad conversation has not rebound their agent.
+   */
+  private analysisBinding(
+    config: ProjectConfig,
+    ask: ReportAsk,
+  ): { modelId: string; effort?: EffortChoice } {
+    const modelId = ask.model.trim() || this.model || config.models.text;
+    const asked = ask.effort.trim();
+    const chosen = (EFFORT_CHOICES as readonly string[]).includes(asked)
+      ? (asked as EffortChoice)
+      : undefined;
+    const effort = chosen ? resolveEffort(modelId, chosen) : analysisEffort(modelId, this.effort);
+    return { modelId, ...(effort ? { effort } : {}) };
+  }
+
+  /** The conversation an analysis would read: the one named, else the newest. */
+  private async reportTarget(
+    ask: ReportAsk,
+  ): Promise<{ ok: false; message: string } | { ok: true; header: ThreadHeader }> {
+    const { threads } = await this.threads();
+    const newest = threads[0];
+    if (!newest) {
+      return { ok: false, message: 'No conversations have been recorded in this project yet.' };
+    }
+    const wanted = ask.thread.trim() || newest.id;
+    const header = threads.find((t) => t.id === wanted);
+    return header ? { ok: true, header } : { ok: false, message: `No conversation ${wanted}.` };
+  }
+
+  /**
+   * What `report.agent` would do, without spending anything on it. Every refusal is a sentence a
+   * disabled control shows verbatim, and the key one is keyed to the *chosen* model — switching
+   * the dropdown from a Claude id to a Gemini one changes which key has to be there. It names the
+   * vendor and the command that sets it, never a value.
+   */
+  async previewReport(ask: ReportAsk): Promise<PromptResult> {
+    if (this.mock) {
+      return {
+        ok: false,
+        message:
+          'Not while this workspace is running with mock providers — a real model has to read ' +
+          'the conversation.',
+      };
+    }
+
+    const target = await this.reportTarget(ask);
+    if (!target.ok) return target;
+
+    const config = await loadConfig(this.dir);
+    const { modelId, effort } = this.analysisBinding(config, ask);
+    const vendor = chatVendorFor(modelId);
+    const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(this.dir) });
+    if (!keys[vendor]?.trim()) {
+      return { ok: false, message: `No ${vendor} key is set — use Provide Model Key… first.` };
+    }
+
+    if (ask.source && !(await sourceRoot())) return { ok: false, message: NO_SOURCE };
+
+    const advice = adviseRun(modelId, effort ?? this.effort, ask.source, this.effort);
+    return {
+      ok: true,
+      message: `Reads “${target.header.title}” with ${modelId}.${advice ? ` ${advice}` : ''}`,
+    };
+  }
+
+  /**
+   * Analyse a conversation that went wrong. Long — a minute or two, more with the source — so it
+   * takes the busy flag every other long act does, and the dialog closes rather than being held
+   * open across it.
+   */
+  async reportAgent(ask: ReportAsk): Promise<{ report: Report; evidence: Evidence; body: string }> {
+    const target = await this.reportTarget(ask);
+    if (!target.ok) throw new Error(target.message);
+
+    const project = await loadProject(this.dir);
+    const { modelId, effort } = this.analysisBinding(project.config, ask);
+    const keys = await resolveKeys(project.config, {
+      secretsDirs: await secretDirsFor(this.dir),
+      require: [chatVendorFor(modelId)],
+    });
+
+    return this.while('an agent report', async () => {
+      const { report, evidence } = await analyseThread({
+        dir: this.dir,
+        paths: project.paths,
+        config: project.config,
+        model: project.model,
+        keys,
+        threadId: target.header.id,
+        modelId,
+        source: ask.source,
+        ...(effort ? { effort } : {}),
+        ...(ask.note.trim() ? { wanted: ask.note } : {}),
+        ...(this.deps.appVersion ? { appVersion: this.deps.appVersion } : {}),
+        ...(this.deps.userData ? { cacheDir: this.deps.userData } : {}),
+      });
+      return { report, evidence, body: renderReport(report, evidence) };
+    });
   }
 
   /** Portrait candidates for a character at the approval gate (from the manifest). */

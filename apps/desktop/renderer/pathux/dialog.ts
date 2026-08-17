@@ -11,7 +11,7 @@ import { UIBase, type Container } from 'pathux';
 import { api } from '../api.js';
 import type { PropValue } from '../../src/shared/ipc.js';
 import { shell } from './bridge.js';
-import { CommandForm } from './commandform.js';
+import { CommandForm, type Choices } from './commandform.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
@@ -25,7 +25,7 @@ class Dialog {
   private readonly body: Container;
   private form: CommandForm | undefined;
 
-  constructor(id: string, overrides?: Record<string, PropValue>) {
+  constructor(id: string, overrides?: Record<string, PropValue>, choices?: Choices) {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang a dialog on');
 
@@ -61,8 +61,10 @@ class Dialog {
           onRan: () => this.close(),
           runLabel: entry.title,
           buttons: (row) => {
-            row.button('Cancel', () => this.close());
+            const cancel = row.button('Cancel', () => this.close());
+            cancel.description = 'Close this without running anything';
           },
+          choices,
         },
         overrides,
       );
@@ -83,10 +85,17 @@ class Dialog {
 /**
  * Open a dialog on one command. Idempotent, like the palette — a menu entry clicked twice is one
  * dialog. Escape and a click outside close it, and so does Cancel.
+ *
+ * `choices` offers option lists for this opening only, for the fields whose vocabulary belongs to
+ * the project rather than to the command — the conversations in it, the models a key is set for.
  */
-export function openCommandDialog(id: string, overrides?: Record<string, PropValue>): void {
+export function openCommandDialog(
+  id: string,
+  overrides?: Record<string, PropValue>,
+  choices?: Choices,
+): void {
   if (open) return;
-  open = new Dialog(id, overrides);
+  open = new Dialog(id, overrides, choices);
 }
 
 export function closeCommandDialog(): void {

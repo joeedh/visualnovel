@@ -636,11 +636,12 @@ The model rows carry their advice as the **row tooltip**, so it is readable befo
 than only after — which is the tooltip rule doing real work, not decoration. An empty `effort`
 array means the model has no knob, and `field()` falls through to no menu at all.
 
-**The default is `active ?? threads[0].id`.** `Session.thread` is set lazily on the first turn and
-cleared by `agent.clear`, `agent.newThread`, uploads and *reopening a thread*
+**The default is `threads[0].id` — the newest, not the active one.** `Session.thread` is set lazily
+on the first turn and cleared by `agent.clear`, `agent.newThread`, uploads and *reopening a thread*
 (`session.ts:743`, `:770`) — so `active` is `undefined` most of the time, including right after
 someone reopens the bad conversation to look at it. Newest-first ordering makes `threads[0]` the
-one they just had trouble with.
+one they just had trouble with, so the `active ??` half was dropped as a fallback that would fire
+about as often as it misfired.
 
 ### Running it
 
@@ -649,13 +650,43 @@ other long act — one to two minutes is far too long to hold a modal, and `open
 one-at-a-time (`dialog.ts:88`), so holding it would block the palette too. Completion opens the
 preview.
 
-- [ ] 6.1 — `Prop.multiline`, `Prop.hint`, `CommandForm` support, catalog passthrough for `hint`
-- [ ] 6.2 — `openCommandDialog` `choices` as a function of the current values
-- [ ] 6.3 — `src/shared/advice.ts`: `adviseModel`, `adviseEffort`, `adviseRun`, `stronger`, tested
-- [ ] 6.4 — the `report.agent` command, its refusals, and the accept note; `model`/`effort`
+Five things the implementation settled:
+
+- **A multiline prop is a plain `<textarea>`, not path.ux's `textarea()`.** That widget is a
+  `contentEditable` rich-text editor with a bold/italic toolbar, and its value is `innerHTML` —
+  more widget than a note wants, and it stores markup where a command expects a string. So
+  `CommandForm.writingBox` appends a raw `<textarea>` to the row's shadow root, the way every other
+  writing surface in this app draws one, carrying its tooltip as `.title` per the two-mechanism
+  rule and stopping its own keydown because the screen keymap is a bubble-phase window listener.
+- **There is a fifth refusal, and it is first: mock providers.** A workspace opened with `--mock`
+  has no real backend, so the key check would refuse with the wrong sentence — or worse, a mock
+  backend would answer and the author would get a fabricated diagnosis. `previewReport` answers
+  `Not while this workspace is running with mock providers — a real model has to read the
+  conversation.` before anything else is asked.
+- **`chatBackendFor` moved into `@vn/providers` and took an optional effort.** The desktop session
+  had a private copy of the vendor-picking rule; the analysis needed a third caller with a
+  *different* effort from the bound one. Rather than a third copy, the factory's exported picker
+  gained `effort?: EffortChoice` (Gemini has no such knob and ignores it) and the duplicate was
+  deleted — one picker, one rule.
+- **The report is a checked non-mutator, and the invariant was widened rather than bent.**
+  `commands.test.ts` asserted a `check` exists only on mutators. Making `report.agent` mutating to
+  satisfy it would be a lie that drags it onto the undo and commit path. A check is a precondition
+  on an *act* — something with a cost running it would incur — and this one spends a minute of a
+  real model's time on a real key, so "run it and find out" is the wrong answer. The test now says
+  that, and lists the one checked non-mutator by name.
+- **The verdict strip is the disabled state.** `CommandForm` does not grey the run button on a
+  refusal; it prints the refusal verbatim in its own strip directly above it, which is the same
+  sentence a disabled control's tooltip would have carried. Rather than add a second mechanism for
+  one command, Stage 6 filled the actual gap it found — the `enum` menu was the one widget in
+  `field()` drawing without a tooltip — and left the refusal where every other command shows it.
+
+- [x] 6.1 — `Prop.multiline`, `Prop.hint`, `CommandForm` support, catalog passthrough for `hint`
+- [x] 6.2 — `openCommandDialog` `choices` as a function of the current values
+- [x] 6.3 — `src/shared/advice.ts`: `adviseModel`, `adviseEffort`, `adviseRun`, `stronger`, tested
+- [x] 6.4 — the `report.agent` command, its refusals, and the accept note; `model`/`effort`
       defaulting to the bound pair and validated through `effortChoicesFor` + `resolveEffort`
-- [ ] 6.5 — the Help menu and `openReportDialog()`, including the two dependent menus
-- [ ] 6.6 — tooltips on every control, the checkbox's from `hint`, the model rows' from
+- [x] 6.5 — the Help menu and `openReportDialog()`, including the two dependent menus
+- [x] 6.6 — tooltips on every control, the checkbox's from `hint`, the model rows' from
       `adviseModel`, the disabled state from `check`
 
 ## Stage 7 — review, then the issue

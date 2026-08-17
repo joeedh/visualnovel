@@ -305,6 +305,8 @@ const deps: SessionDeps = {
       const request: ConfirmRequest = { id, tool, detail };
       win?.webContents.send('permission:confirm', request);
     }),
+  appVersion: app.getVersion(),
+  userData: app.getPath('userData'),
 };
 
 function getSession(): WorkspaceSession {
