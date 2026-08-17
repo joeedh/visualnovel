@@ -11,12 +11,23 @@ import {
   createAnthropicChat,
   createGeminiChat,
   type ChatBackend,
-  type Effort,
+  type EffortChoice,
 } from '@vn/providers';
 
-// The curated model list, the effort levels, and which models honour one all live in `@vn/types`:
-// the desktop app offers the same three menus and cannot import a package that loads a vendor SDK.
-export { EFFORT_LEVELS, TEXT_MODELS, supportsEffort, type Effort } from '@vn/providers';
+// The curated model list and what reasoning each model takes both live in `@vn/types`: the
+// desktop app offers the same menus and cannot import a package that loads a vendor SDK.
+export {
+  DEFAULT_EFFORT,
+  EFFORT_CHOICES,
+  EFFORT_LEVELS,
+  TEXT_MODELS,
+  effortChoicesFor,
+  effortLabel,
+  resolveEffort,
+  supportsEffort,
+  type Effort,
+  type EffortChoice,
+} from '@vn/providers';
 import {
   Agent,
   NativeAgentBackend,
@@ -46,7 +57,7 @@ class MockAgentBackend implements AgentBackend {
 function chatBackendFor(
   modelId: string,
   keys: { gemini: string; anthropic: string },
-  effort?: Effort,
+  effort?: EffortChoice,
 ): ChatBackend {
   const id = modelId.toLowerCase();
   if (id.startsWith('claude') || id.startsWith('anthropic')) {
@@ -63,7 +74,7 @@ function chatBackendFor(
  */
 export async function buildAgentBackend(
   dir: string,
-  opts: { mock?: boolean; native?: boolean; model?: string; effort?: Effort },
+  opts: { mock?: boolean; native?: boolean; model?: string; effort?: EffortChoice },
 ): Promise<AgentBackend> {
   if (opts.mock) return new MockAgentBackend();
   const config = await loadConfig(dir);

@@ -1,6 +1,6 @@
 import { Menu, createMenu, startMenu } from 'pathux';
 import type { Button, Container, MenuTemplate, MenuTemplateCustom } from 'pathux';
-import { EFFORT_LEVELS, TEXT_MODELS, supportsEffort } from '@vn/types';
+import { TEXT_MODELS, effortChoicesFor, effortLabel } from '@vn/types';
 import { allow, answer, ask, convo, decide, revision, takeSeed } from '../agent.js';
 import { exec, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
@@ -175,15 +175,19 @@ export class ConvoEditor extends VnEditor {
     ]) as MenuTemplate;
     this.bar.menu(ui.model || 'model…', models);
 
-    const efforts: MenuTemplate = ['default', ...EFFORT_LEVELS].map((level) => [
-      level,
-      () => void setEffort(level),
+    // Only what this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable thinks
+    // unconditionally, so it is never offered `no thinking`.
+    const offered = effortChoicesFor(ui.model);
+    const efforts: MenuTemplate = offered.map((choice) => [
+      effortLabel(choice),
+      () => void setEffort(choice),
       undefined,
     ]) as MenuTemplate;
-    const effort = this.bar.menu(`effort: ${ui.effort}`, efforts);
+    const effort = this.bar.menu(`effort: ${effortLabel(ui.effort)}`, efforts);
+    effort.description = 'How hard the model thinks before answering. Higher costs more.';
     // A model with no thinking knob gets the menu greyed rather than hidden — the setting is kept
     // across a model switch, so what the author picked is still true, it is just not in use.
-    if (!supportsEffort(ui.model)) {
+    if (offered.length === 0) {
       effort.disabled = true;
       effort.description = `${ui.model || 'this model'} has no reasoning-effort setting.`;
     }

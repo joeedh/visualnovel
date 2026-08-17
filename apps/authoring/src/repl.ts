@@ -21,11 +21,15 @@ import {
 import {
   buildAgentBackend,
   createAuthoringAgent,
+  effortChoicesFor,
+  effortLabel,
+  resolveEffort,
   supportsEffort,
-  EFFORT_LEVELS,
+  DEFAULT_EFFORT,
+  EFFORT_CHOICES,
   TEXT_MODELS,
   type AuthoringSession,
-  type Effort,
+  type EffortChoice,
 } from './agent.js';
 import { bold, cyan, dim, renderEvent, renderPlan, green, yellow } from './render.js';
 
@@ -210,10 +214,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
 
   // Live model/effort settings; `/model` and `/effort` rebuild the backend and swap it in.
   let currentModel = session.model;
-  let currentEffort: Effort | undefined;
+  let currentEffort: EffortChoice = DEFAULT_EFFORT;
 
   /** Rebuild the backend with the current model+effort and hot-swap it into the agent. */
-  async function applySettings(model: string, effort: Effort | undefined): Promise<boolean> {
+  async function applySettings(model: string, effort: EffortChoice): Promise<boolean> {
     try {
       const backend = await buildAgentBackend(opts.dir, { native: opts.native, model, effort });
       session.agent.setBackend(backend);
@@ -245,10 +249,16 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       target = picked;
     }
     if (target === currentModel) return void channel.write(dim(`Already using ${target}.`));
-    if (await applySettings(target, currentEffort)) {
+    // Step the bound effort down to what the new model takes rather than sending one it refuses.
+    const was = currentEffort;
+    const stepped = resolveEffort(target, was) ?? was;
+    if (await applySettings(target, stepped)) {
       channel.write(green(`Model set to ${target}.`));
-      if (currentEffort && !supportsEffort(target)) {
+      if (!supportsEffort(target)) {
         channel.write(yellow(`Note: ${target} ignores effort; it has no extended-thinking knob.`));
+      } else if (stepped !== was) {
+        const note = `${target} has no ${effortLabel(was)} — using ${effortLabel(stepped)}.`;
+        channel.write(yellow(`Note: ${note}`));
       }
     }
   }
@@ -258,25 +268,29 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       channel.write(yellow('Running with --mock — no model is in use, so /effort has no effect.'));
       return;
     }
-    const menu = ['default', ...EFFORT_LEVELS];
+    // Only what this model takes. An unsupported one still gets the menu — the setting is kept
+    // across a model switch — so fall back to the full list rather than offering nothing.
+    const offered = effortChoicesFor(currentModel);
+    const menu = offered.length > 0 ? offered : EFFORT_CHOICES;
     let choice = arg;
     if (!choice) {
       const picked = await chooseFromMenu(
         channel,
         'Select reasoning effort',
-        menu,
-        currentEffort ?? 'default',
+        menu.map(effortLabel),
+        effortLabel(currentEffort),
       );
       if (!picked) return void channel.write(dim('No change.'));
-      choice = picked;
+      choice = picked === 'no thinking' ? 'none' : picked;
     }
-    if (choice !== 'default' && !EFFORT_LEVELS.includes(choice as Effort)) {
-      return void channel.write(yellow(`Unknown effort "${choice}". Options: ${menu.join(', ')}.`));
+    if (!menu.includes(choice as EffortChoice)) {
+      const options = menu.map(effortLabel).join(', ');
+      return void channel.write(yellow(`Unknown effort "${choice}". Options: ${options}.`));
     }
-    const effort = choice === 'default' ? undefined : (choice as Effort);
+    const effort = choice as EffortChoice;
     if (await applySettings(currentModel, effort)) {
-      channel.write(green(`Effort set to ${effort ?? 'default'}.`));
-      if (effort && !supportsEffort(currentModel)) {
+      channel.write(green(`Effort set to ${effortLabel(effort)}.`));
+      if (!supportsEffort(currentModel)) {
         channel.write(yellow(`Note: ${currentModel} ignores effort (Claude Opus 4.5+ only).`));
       }
     }

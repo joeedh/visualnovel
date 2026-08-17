@@ -1,7 +1,11 @@
 import { Buffer } from 'node:buffer';
-import { supportsEffort, type Effort } from '@vn/types';
+import { DEFAULT_EFFORT, resolveEffort, type EffortChoice } from '@vn/types';
 import type { ChatBackend, ChatRequest, ChatToolReply, ToolSchema } from '../backend.js';
 import { callWithRetry } from './transient.js';
+
+// Room for the answer. Thinking gets more because `max_tokens` caps thinking + text together.
+const MAX_TOKENS = 10_000;
+const MAX_TOKENS_THINKING = 16_000;
 
 const MIME: Record<string, string> = {
   png: 'image/png',
@@ -15,21 +19,26 @@ const MIME: Record<string, string> = {
  * usable (and testable) without the dependency loaded. Untyped at the SDK boundary on
  * purpose — the vendor surface changes faster than our contract.
  *
- * `opts.effort` sets the reasoning effort: when the model supports it, the request adds
- * `output_config.effort` + adaptive thinking and a larger `max_tokens` so thinking has room.
+ * `opts.effort` sets the reasoning: a level adds `output_config.effort` + adaptive thinking,
+ * `none` switches thinking off, and an omitted one is {@link DEFAULT_EFFORT} rather than the
+ * vendor's — omitting the field runs Opus 4.7/4.8 and Sonnet 4.6 with no thinking at all.
  */
 export function createAnthropicChat(
   apiKey: string,
   modelId: string,
-  opts: { effort?: Effort } = {},
+  opts: { effort?: EffortChoice } = {},
 ): ChatBackend {
-  // Extra request fields for reasoning effort. `budget_tokens` is removed on current Claude
-  // models (400) — the supported path is output_config.effort + adaptive thinking.
+  // Extra request fields for reasoning. `budget_tokens` is removed on current Claude models
+  // (400) — the supported path is output_config.effort + adaptive thinking.
   const tuning = (): Record<string, unknown> => {
-    if (!opts.effort || !supportsEffort(modelId)) return { max_tokens: 2048 };
+    const choice = resolveEffort(modelId, opts.effort ?? DEFAULT_EFFORT);
+    if (!choice) return { max_tokens: MAX_TOKENS };
+    // No `output_config` alongside: Opus 5 refuses disabled thinking above `high`, and the
+    // API's own effort default is `high`, so saying nothing is the one safe pairing.
+    if (choice === 'none') return { max_tokens: MAX_TOKENS, thinking: { type: 'disabled' } };
     return {
-      max_tokens: 16000,
-      output_config: { effort: opts.effort },
+      max_tokens: MAX_TOKENS_THINKING,
+      output_config: { effort: choice },
       thinking: { type: 'adaptive' },
     };
   };

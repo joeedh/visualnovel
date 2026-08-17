@@ -3,12 +3,15 @@ import {
   BackendImageProvider,
   ChatTextLLM,
   ChatVisionReviewer,
+  DEFAULT_EFFORT,
   RecordedChatBackend,
   StubImageBackend,
   createGeminiImage,
+  effortChoicesFor,
   mapRefLoader,
   mergeReports,
   placeholderPng,
+  resolveEffort,
   supportsEffort,
 } from '../index.js';
 
@@ -124,5 +127,11 @@ describe('supportsEffort', () => {
     for (const id of ['claude-haiku-4-5', 'claude-sonnet-4-5', 'gemini-2.5-pro']) {
       expect(supportsEffort(id)).toBe(false);
     }
+  });
+
+  it('is re-exported alongside the rest of the model table', () => {
+    expect(effortChoicesFor('claude-opus-4-8')).toContain('none');
+    expect(resolveEffort('claude-sonnet-4-6', 'xhigh')).toBe('high');
+    expect(DEFAULT_EFFORT).toBe('low');
   });
 });

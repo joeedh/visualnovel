@@ -3,6 +3,7 @@
  * allowed to bind to directly. Document state never lands here — `@vn/commands` stays the
  * one write path, so a widget that would change the project dispatches a command instead.
  */
+import { DEFAULT_EFFORT, type EffortChoice } from '@vn/types';
 import type { AgentMode } from '../../src/shared/ipc.js';
 
 export class ShellState {
@@ -43,8 +44,8 @@ export class ShellState {
    */
   projectTitle = '';
   model = 'claude-opus-4-8';
-  /** How hard the model is asked to think; `default` is the knob left off, not a level. */
-  effort = 'default';
+  /** How hard the model is asked to think. Mirrors `WorkspaceSession.effort`, same default. */
+  effort: EffortChoice = DEFAULT_EFFORT;
   agentMode: AgentMode = 'plan';
   errors = 0;
   warnings = 0;

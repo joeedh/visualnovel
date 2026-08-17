@@ -165,7 +165,7 @@ import type {
   AnyTask,
   Asset,
   AssetKind,
-  Effort,
+  EffortChoice,
   LocationVariant,
   Outfit,
   Playable,
@@ -179,7 +179,7 @@ import type {
   TaskInputs,
   TextLLM,
 } from '@vn/types';
-import { bindsTo, type TaskKind } from '@vn/types';
+import { DEFAULT_EFFORT, bindsTo, resolveEffort, type TaskKind } from '@vn/types';
 import type {
   ApproveResult,
   AssetInfo,
@@ -239,7 +239,7 @@ class MockAgentBackend implements AgentBackend {
 }
 
 /** Pick the vendor chat backend for a text model id (mirrors @vn/providers' private picker). */
-function chatBackendFor(modelId: string, keys: ResolvedKeys, effort?: Effort): ChatBackend {
+function chatBackendFor(modelId: string, keys: ResolvedKeys, effort?: EffortChoice): ChatBackend {
   const id = modelId.toLowerCase();
   if (id.startsWith('claude') || id.startsWith('anthropic')) {
     return createAnthropicChat(keys.anthropic, modelId, { effort });
@@ -502,8 +502,8 @@ export class WorkspaceSession {
   private bibleWorkspace: Workspace | undefined;
   /** The text model the agent is bound to (what a future `/model` would report). */
   model = '';
-  /** The reasoning effort the backend is built with; `undefined` is the vendor default. */
-  effort: Effort | undefined;
+  /** The reasoning the backend is built with. A stated default, never the vendor's. */
+  effort: EffortChoice = DEFAULT_EFFORT;
 
   /** What long-running work is in flight, by name; empty when the session is idle. */
   private readonly inFlight = new Set<string>();
@@ -709,9 +709,14 @@ export class WorkspaceSession {
     return agent.currentMode;
   }
 
-  /** Hot-swap the text model and rebuild the backend, preserving conversation state. */
+  /**
+   * Hot-swap the text model and rebuild the backend, preserving conversation state. The bound
+   * effort is stepped down to what the new model offers — `xhigh` is not a level Sonnet 4.6
+   * takes — so nothing downstream shows a setting the wire will not carry.
+   */
   async setModel(modelId: string): Promise<string> {
     this.model = modelId;
+    this.effort = resolveEffort(modelId, this.effort) ?? this.effort;
     if (this.mock) return modelId;
     const agent = await this.ensureAgent();
     agent.setBackend(await this.buildBackend(await loadConfig(this.dir), modelId));
@@ -719,11 +724,11 @@ export class WorkspaceSession {
   }
 
   /**
-   * Hot-swap the reasoning effort the same way. A model that does not honour one keeps the
-   * setting anyway — `supportsEffort` is what a surface greys out on, and the backend simply
-   * omits the knob — so switching back to a model that does needs no second gesture.
+   * Hot-swap the reasoning setting the same way. A model that honours none keeps the setting
+   * anyway — `supportsEffort` is what a surface greys out on, and the backend simply omits the
+   * knob — so switching back to a model that does needs no second gesture.
    */
-  async setEffort(effort: Effort | undefined): Promise<Effort | undefined> {
+  async setEffort(effort: EffortChoice): Promise<EffortChoice> {
     this.effort = effort;
     if (this.mock) return effort;
     const agent = await this.ensureAgent();

@@ -495,10 +495,16 @@ the same events** to write the transcript — see the threads bullet below.
 - **The bar carries the three session facts the turn depends on.** The header has the same
   PLAN ⇄ EXECUTE toggle, but this is the pane a turn is typed into, so this is the pane that has to
   say whether typing edits files. Beside it are the model menu (`agent.setModel`) and the effort
-  menu (`agent.setEffort`), both from the one list in `@vn/types` — `TEXT_MODELS`, `EFFORT_LEVELS`
-  and `supportsEffort`, which the `vnauthor` REPL's `/model` and `/effort` read too. A model with no
-  reasoning-effort knob greys the effort menu and says why; the setting is **kept** rather than
-  cleared, so switching back to a model that honours it needs no second gesture.
+  menu (`agent.setEffort`), both from the one table in `@vn/types` — `TEXT_MODELS`,
+  `effortChoicesFor`, `resolveEffort` and `supportsEffort`, which the `vnauthor` REPL's `/model`
+  and `/effort` read too. **The effort menu offers what the model takes, and there is no
+  `default` item**: it lists that model's own ladder plus `no thinking` where an explicit
+  `thinking: disabled` is accepted, and it starts at `low` — see
+  [`plans/deliberate-reasoning-effort-defaults.md`](plans/deliberate-reasoning-effort-defaults.md)
+  for why the absent knob was the wrong default. A model with no reasoning knob at all greys the
+  menu and says why; the setting is **kept** rather than cleared, so switching back to a model
+  that honours it needs no second gesture — but a level the new model does not offer is stepped
+  down, in main and in the mirrored shell state alike, by the same pure `resolveEffort`.
 - **The dialogue box is bounded and the transcript is what grows.** `.convo` is
   `grid-template-rows: 1fr auto`, so an unbounded line takes the pane and the transcript gets what
   is left — a long narration turn once cut it to a couple of hundred pixels and put the plan card

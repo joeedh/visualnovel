@@ -33,9 +33,10 @@ vnauthor [dir] [--mock] [--native]
   root).
 
 REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the text model; no arg
-→ interactive menu), `/effort [level]` (set reasoning effort — `low`…`max` map to Anthropic
-`output_config.effort` + adaptive thinking, ignored on models that don't support it; no arg →
-interactive menu), `/clear` (reset the conversation context, back to plan mode), `/status`
+→ interactive menu), `/effort [level]` (set reasoning — `low`…`max` map to Anthropic
+`output_config.effort` + adaptive thinking, `no thinking` sends `thinking: disabled`, and the menu
+offers only what the model takes; it starts at `low` and is ignored on models with no such knob;
+no arg → interactive menu), `/clear` (reset the conversation context, back to plan mode), `/status`
 (project index), `/skills` (available skills), `/makeimage <what to draw>` (a concept image,
 directly — see [Concept images](#concept-images)), `/upload <file…>` (archive documents and ask
 what to do with them — see [The archive](#the-archive)), `/exit` (or `/quit`). **Shift-Tab** cycles

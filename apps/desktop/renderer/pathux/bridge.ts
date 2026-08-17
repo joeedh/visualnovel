@@ -8,6 +8,7 @@
  * props — there is nothing to thread it through.
  */
 import { message as note, error as noteError } from 'pathux';
+import { resolveEffort, type EffortChoice } from '@vn/types';
 import { api } from '../api.js';
 import type {
   AgentEvent,
@@ -188,13 +189,16 @@ export async function toggleMode(): Promise<void> {
 
 export async function setModel(modelId: string): Promise<void> {
   if ((await exec('agent.setModel', { modelId })).ok) {
-    shell().ui.model = modelId;
+    const ui = shell().ui;
+    ui.model = modelId;
+    // Main steps the bound effort down to what the new model takes; `resolveEffort` is pure and
+    // shared, so mirroring it here reaches the same answer without a correction push.
+    ui.effort = resolveEffort(modelId, ui.effort) ?? ui.effort;
     touch();
   }
 }
 
-/** `default` is the absence of the knob, and it is the value the command and the state both use. */
-export async function setEffort(effort: string): Promise<void> {
+export async function setEffort(effort: EffortChoice): Promise<void> {
   if ((await exec('agent.setEffort', { effort })).ok) {
     shell().ui.effort = effort;
     touch();

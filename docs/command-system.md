@@ -341,7 +341,7 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
-| `agent.setEffort`              | `effort` (`default`\|`low`\|`medium`\|`high`\|`xhigh`\|`max`) | How hard the model thinks. `default` leaves the knob off; a model with no such knob keeps the setting and ignores it (`supportsEffort`). |
+| `agent.setEffort`              | `effort` (`none`\|`low`\|`medium`\|`high`\|`xhigh`\|`max`) | How hard the model thinks; `none` switches thinking off. Every choice is accepted — the menu is what filters by model, and one the model will not take is stepped down at the wire (`resolveEffort`). A model with no such knob keeps the setting and ignores it (`supportsEffort`). |
 | `agent.clear`                  | —                                 | Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed. |
 | `agent.threads`                | —                                 | Every saved conversation, newest first, plus which one is open. Header lines only — no transcripts. |
 | `agent.newThread`              | —                                 | End the open conversation and start again. The next turn opens a new thread file. |
