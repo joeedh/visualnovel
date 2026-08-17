@@ -1,7 +1,7 @@
 /**
  * Opening the difficult-agent report on a command dialog.
  *
- * It is a function rather than a bare `openCommandDialog` in the menu because three of the four
+ * It is a function rather than a bare `openCommandDialog` in the menu because three of the five
  * fields have a vocabulary the command cannot carry: the conversations in *this* project, the
  * models a key might be set for, and the efforts the chosen model offers. All three are per-open
  * choice rows, and the last is a function of the first — which is why `choices` takes the current

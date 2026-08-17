@@ -85,6 +85,9 @@ export interface Prop<T extends PropValue = PropValue, Req extends boolean = boo
   values?: readonly string[]; // enum only
   min?: number; // number only
   max?: number;
+  digest?: boolean; // bulk content: recorded as a fingerprint, drawn as a size label
+  multiline?: boolean; // free text of more than a line: drawn as a box to write in
+  hint?: string; // the hover sentence, where `description` is drawn as a label instead
 }
 ```
 
@@ -117,6 +120,13 @@ covers `record.props`, the formatted `invocation` and the commit trailer built f
 its value with the literal `<secret>`. `digest` is the near miss and is the wrong tool: it records
 `<sha256:…+len>`, a fingerprint of a live credential and its exact length. `run` still receives
 the real value; nothing downstream of the record ever does.
+
+**`multiline` and `hint` say how to *draw* a prop, and change nothing about its value.**
+`multiline` is a string that wants a box rather than a field — a note, a paragraph of prose — and
+unlike `digest` the value is still typed, sent and recorded in full. `hint` exists because a
+checkbox draws its `description` as its **label**, which leaves nowhere for the tooltip every
+control owes the author; a prop whose label and explanation are different sentences says both, and
+`hint` defaults to `description` so the ordinary case declares nothing.
 
 `PropsOf<M>` maps the spec to the object `run` receives, and **every key is present**:
 `coerceProps` has already applied the defaults, so optionality belongs to the *raw input*, not
@@ -267,8 +277,9 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Ninety-seven, in sixteen namespaces. Fifty-seven are `mutating`; fifty-six declare a
-precondition; thirty-four are undoable; fifteen ask for confirmation.
+Ninety-nine, in seventeen namespaces. Fifty-seven are `mutating`; fifty-eight declare a
+precondition; thirty-four are undoable; fourteen ask for confirmation. (The table below is every
+one of them but `notify.*`, which [`notifications.md`](plans/notifications.md) states in full.)
 
 **Commands are the only write path.** The `story.*` branch mutators go through
 `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the scene
@@ -349,6 +360,8 @@ none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 | `agent.newThread`              | —                                 | End the open conversation and start again. The next turn opens a new thread file. |
 | `agent.openThread`             | `id`                              | Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread. Returns the whole record as `data`. |
 | `agent.renameThread` ✍ ✓       | `id` (default `''`), `title`      | Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins. |
+| `report.agent` ✓               | `thread` (default `''`), `note` (default `''`), `source` (default `false`), `model` (default `''`), `effort` (default `''`) | Have a conversation that went wrong read by a debug agent and draft a bug report from it. Non-mutating on purpose: it reads a saved transcript and the act log, borrows the bound model for one call, and writes nothing into the project — nor does it rebind the agent, so reading a bad conversation with Opus does not change what the next turn runs on. Checked because it spends a minute of a real model's time on a real key; refused outright under `--mock`. Names from the fiction are replaced before the model sees them. |
+| `report.openIssue` ✓           | `title`, `body` (**digest**)      | Put the report on the clipboard and open GitHub's new-issue form on as much of it as a URL will hold. Checked, and the check is a **leak scan**: a name the redactor still recognises in the body is refused by name rather than silently rewritten. The repo is fixed at build time and the composed URL is asserted before the OS sees it. Nothing is posted — the author presses Create. |
 | `upload.files` ✍ ⚠ ✓           | `paths`                           | Copy the author's own documents into `archive/` verbatim, then open a fresh conversation in plan mode asking what to do with them. The archive is outside every directory the agent sweeps, so nothing here reaches `search` or the bible — it is read by name. |
 | `upload.pick` ✍ ⚠ ✓            | —                                 | `upload.files` with the native multi-select file chooser in front. Cancelling changes nothing, and the dialog is not a permission: what the command refuses is refused after it too. |
 | `interaction.list`             | —                                 | The gestures the app offers — see below.                   |
@@ -691,6 +704,18 @@ with the command. No search box, no list of eighty-odd other commands to scroll 
   convenience beside the field, not a gate in front of it, and it is a command rather than an IPC
   channel so CDP and the agent reach the same act. This is what lets `workspace.create` collect a
   folder, a title and a checkbox in one form rather than asking for a path to be typed.
+- **A `multiline` prop gets a plain `<textarea>`, and it is shared.** `renderer/pathux/writingbox.ts`
+  is the one writing surface, deliberately **not** path.ux's `textarea()` — that is a
+  `contentEditable` rich-text editor with a formatting toolbar and `innerHTML` for a value, which
+  stores markup where a command expects a string. It stops its own keydown, like every other text
+  surface in the app, and the report preview draws the same one.
+- **A host may offer a `string` prop's options *this time it is opened*.** `FormOptions.choices` is
+  a function of the current values answering with rows per prop name, so what it offers may depend
+  on what is already filled in — the efforts a model supports are a function of the model chosen in
+  the same form. It is not `enum`: `values` is baked into the build-time catalog, and a list of
+  *this project's* conversations is not part of a command's vocabulary. Each row carries its own
+  tooltip, so what a choice costs is readable before it is made rather than only in the verdict
+  afterwards.
 - **A toggle does not rebuild the form.** A `boolean` is a `check-x` carrying its own state, so
   flipping it rechecks and redraws nothing else — a form rebuilt under a widget costs that widget
   the focus it just took.

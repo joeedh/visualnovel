@@ -80,8 +80,8 @@ config  parse
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
   │  │      │       authoring ── authoring-app (vnauthor)
-  └──┴── pipeline
-            │
+  └──┴── pipeline   │
+            │       agentreport
         scheduler
             │
            cli
@@ -95,6 +95,12 @@ providers   │      ╲ ╲  │
   the same rules, so the rules can live in neither.
 - **The boundaries rule is per import statement, not transitive**, so reaching the pipeline
   through a leaf is not a loophole.
+- **`@vn/agentreport` is a fifth leaf, with one host rather than two.** It reads a bad conversation
+  and writes a bug report, so it may import the input side up to `@vn/authoring` — whose loop it
+  borrows — and `@vn/commands`, whose log is the acting record a transcript lacks; like the other
+  leaves it may never import `@vn/pipeline` or `@vn/scheduler`. Its only consumer is
+  `apps/desktop/src/main/`, and it moves in beside the four if `vnauthor` ever grows the same
+  command.
 - **Two packages sit outside the graph.** `@vn/debug2d` imports nothing from `packages/` and is
   dev-only in the renderer; `@vn/testkit` may import every layer and **nothing may import it**.
 
@@ -276,6 +282,17 @@ plays it. This is deliberately **not** an external DSL export.
   One `archiveUpload` behind both `/upload` and `upload.*`; a format with no converter is still
   archived, and said so.
   ([`docs/plans/upload-and-archive.md`](docs/plans/upload-and-archive.md))
+- **A bad conversation is diagnosed on the author's own key, and the fiction's names never leave
+  with it** — Help ▸ Report a Difficult Agent… runs `report.agent` over one thread and opens the
+  finished report for review before anything is filed. Three things it rests on: **redaction is a
+  boundary, not a prompt** — `redactEvidence` runs once in `analyseThread`, so the model, the
+  rendered issue and the saved copy all read the same scrubbed value, and the leak scan that gates
+  filing runs against the **same** pseudonym table the report was written with; **the source the
+  analyst may read is a declared manifest** (`sourcemap.ts`), so narrowing what an install ships is
+  an edit to one list and the refusals stay honest; and **the issue repo is fixed at build time**
+  (`ISSUE_REPO`), never read from the git remote, because a packaged app has no checkout and a
+  fork's tracker is one nobody reads. Nothing is posted — the browser opens an unsubmitted form.
+  ([`docs/plans/reporting-a-difficult-agent.md`](docs/plans/reporting-a-difficult-agent.md))
 
 The renderer is a **path.ux screen mesh**: the window subdivides into panes, each pane shows one
 editor. path.ux is a git submodule at `vendor/path.ux` — a fresh clone needs

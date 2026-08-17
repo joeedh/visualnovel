@@ -75,7 +75,9 @@ a new thread**" cannot be built before threads exist.
 {"v":1,"type":"thread","id":"20260815-142233","title":"New conversation","startedAt":"…","commit":"a1b2c3d","model":"claude-…"}
 // then, one per feed item
 {"type":"item","id":1,"role":"user","text":"give aiko a track outfit","at":"…"}
-{"type":"item","id":2,"role":"tool","text":"edit_character(aiko) — added outfit `track`","at":"…"}
+// a tool line also keeps what it was handed and what came back (see Shipped deviations)
+{"type":"item","id":2,"role":"tool","text":"edit_character(aiko) — added outfit `track`","at":"…","detail":{"args":"{\"id\":\"aiko\"}","ok":true,"output":"…"}}
+// and any line the log clamped keeps what it was cut from, in `full`
 {"type":"item","id":3,"role":"agent","text":"Added a track outfit…","at":"…"}
 // and, once the first user turn names it
 {"type":"title","title":"give aiko a track outfit","at":"…"}
@@ -206,6 +208,20 @@ constraint rather than rediscovering it.
   under `undefined` while the `li` is keyed by its own DOM node — the click lands, the menu
   closes, and nothing runs. Passing the thread id (and `new` / `none` for the two fixed rows) is
   a one-word fix on this side of the seam rather than a patch to the vendored submodule.
+- **The line the reader sees is not all a line keeps.** A thread is a *display* log, so
+  `appendItem` clamps every text — right for a pane, wrong for anything asked why the agent did
+  that. `FeedItem` therefore also carries `full`, present **only when something was actually cut**,
+  and a `tool` item carries `detail`: the args it was called with, whether it worked, and what came
+  back. Before this the format recorded a tool's **name and nothing else**, so a transcript could
+  say the agent read a file but not which one or what it got. `received()` fills both from the
+  event it already has; every cap stays at the write boundary beside `clamp`, so one place decides
+  how big a log line may be. The fields are optional and the reader takes them one at a time, so
+  threads already on disk still read — and anything analysing one can say the transcript predates
+  the detailed format rather than mistaking thin evidence for innocence.
+  ([`reporting-a-difficult-agent.md`](reporting-a-difficult-agent.md))
+- **`FeedItem.at` was always written and never read back.** `appendItem` has stamped every line
+  since Stage 1; the reader simply dropped the field. Carrying it through `readThread` is what lets
+  a thread be joined to the acts that ran while it was open, and it works on old files unchanged.
 - **Undo was already safe, for a second reason.** `vngen/state` is outside the shadow snapshot as
   the plan says, and the stack also refuses to undo past a non-undoable command — so an
   `agent.run` between an edit and an undo stops the undo rather than rolling the transcript back.

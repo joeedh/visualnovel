@@ -146,7 +146,9 @@ renderer/
 `pathux/shell.ts` boots it, in this order: theme, icons, `nstructjs.validateStructs()`, the
 editor-name check, then `Shell.start()` — restore the selection, restore the layout (or build the
 default screen), put the header back, solve and paint, then install the keymap, the bridge, the
-agent subscription and persistence.
+agent subscription, persistence, the layout watch and the report preview. The last two come after
+the bridge on purpose — one subscribes to the invalidate feed and the other to `onExec`, and both
+are the bridge's.
 
 - **A pane shows an editor, and the list of editors is written down once.**
   `apps/desktop/src/shared/editors.ts` holds all twelve (`branches`, `script`, `convo`, `timeline`,
@@ -184,9 +186,9 @@ agent subscription and persistence.
   `MenuBarEditor` makes, so the mesh owns its geometry and the header survives the layout
   round-trip like everything else. It is 34px, locked at both ends, and `ensureHeader` puts it back
   on **every** boot (a stored layout may predate it), squeezing what was there into the space below
-  in proportion. It holds the app menu, the View menu, the project badge, undo/redo with the labels
-  `command:undo` pushes, an error-or-warning count, the model, `live`/`preview`, and the
-  PLAN ⇄ EXECUTE toggle. It rebuilds when — and only when — the string of everything it draws
+  in proportion. It holds the app menu, the View menu, the Help menu, the project badge, undo/redo
+  with the labels `command:undo` pushes, an error-or-warning count, the model, `live`/`preview`, and
+  the PLAN ⇄ EXECUTE toggle. It rebuilds when — and only when — the string of everything it draws
   changes.
 - **The View menu is two submenus and two acts.** **Editors** is every editor by name, each entry a
   `view.open`; **Layout** is the project's [layout templates](#layout-templates) plus Save Current
@@ -238,6 +240,24 @@ agent subscription and persistence.
   a dialog titled with the command, with Cancel beside the button, and **no search box and no
   list** — the author picked it off a menu, so offering to find it again is noise. Both are screen
   popups, so both are inside the mesh; neither is an OS window.
+- **The Help menu is one entry, and it opens two dialogs in turn.** Report a Difficult Agent…
+  (`pathux/report.ts`) is not a bare `openCommandDialog`: three of `report.agent`'s five fields have
+  a vocabulary the command cannot carry — the conversations in *this* project, the models a key
+  might be set for, and the efforts the chosen model offers — so the function fetches the threads
+  first and passes `choices` as a **function of the current values**, the effort rows being a
+  function of the model row. It seeds the newest thread rather than the active one (`Session.thread`
+  is usually empty, including right after someone reopened the bad conversation to look at it), and
+  it seeds the **bound** model and the bound effort stepped up to where a diagnosis starts — seeds a
+  form, not a rebinding: picking opus here does not change what the authoring agent runs on.
+  The second dialog is `pathux/reportpreview.ts`, opened from `installReportPreview()` — an `onExec`
+  watch on `report.agent` rather than a callback on the first dialog's button, because the palette
+  and CDP run the same id and a minute of a real model's time answering into nothing is a minute
+  paid for twice. It is bespoke rather than a `CommandForm` for one reason: the report body must be
+  **editable** here and must **not** be written verbatim into `commands.jsonl`, and `digest: true`
+  — which is what keeps it out of the log — replaces the editor with a size label. The Open GitHub
+  Issue… button is gated by `report.openIssue`'s own `check`, re-asked on every keystroke, so a name
+  the redactor still recognises in the body is a refusal in the command's own words rather than a
+  silent rewrite. ([`plans/reporting-a-difficult-agent.md`](plans/reporting-a-difficult-agent.md))
 - **A mid-gesture verdict must be the verdict that would happen.** Wherever a drag decides
   something, the grab captures every candidate's verdict up front — from the same pure rule the
   command itself runs, through the interaction layer's `targets` query

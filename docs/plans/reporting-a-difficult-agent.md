@@ -1,6 +1,6 @@
 # Reporting a difficult agent
 
-Status: **planned**
+Status: **shipped**
 
 <!-- toc -->
 
