@@ -8,6 +8,7 @@
  * and why its check counts what it would touch.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
+import { KEY_VENDORS } from '@vn/config';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -55,5 +56,31 @@ export const projectSetArtStyle = define({
     const result = await ctx.host.session.setProjectArtStyle(style);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetKey = define({
+  id: 'project.setKey',
+  title: 'Provide a model key',
+  description:
+    "Store an API key for one model provider in the project's `keys/` directory — the file " +
+    '`resolveKeys` reads when the matching environment variable is unset. The value is written ' +
+    'to that file and nowhere else: the history records `<secret>`, and `keys` is added to ' +
+    '`.gitignore` before the write so commit-on-save cannot pick it up.',
+  mutating: true,
+  // Deliberately not undoable: an undo point is a git snapshot, and snapshotting a credential is
+  // the one thing this command exists to avoid.
+  undoable: false,
+  props: {
+    provider: prop.oneOf(KEY_VENDORS, 'which model provider the key is for'),
+    key: prop.secret('the API key; it is written to a gitignored file and never recorded'),
+  },
+  async check({ provider }, ctx) {
+    return verdict(await ctx.host.session.previewKey(provider));
+  },
+  async run({ provider, key }, ctx) {
+    const result = await ctx.host.session.setKey(provider, key);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, written: result.written };
   },
 });

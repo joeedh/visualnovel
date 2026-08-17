@@ -11,6 +11,7 @@ import {
   flattenTree,
   menuFor,
   nodeIsSelected,
+  renameOf,
   selectionForNode,
   toggleExpanded,
   type DocRow,
@@ -19,13 +20,16 @@ import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import { layoutChanged } from '../persist.js';
 import type { VnScreen } from '../screen.js';
-import { showContextMenu } from '../showmenu.js';
+import { menuIsOpen, showContextMenu } from '../showmenu.js';
 import type { Selection } from '../selection.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
 import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
 
 /** Which tree the pane is drawing. Remembered per pane, so two of them can differ. */
 type DocMode = 'documents' | 'files';
+
+/** How close two clicks on one row have to be to mean "rename this". The platform default. */
+const DOUBLE_CLICK_MS = 500;
 
 /**
  * The sidebar, as a pane: the project's five branches — Story → scenes → shots, Characters,
@@ -68,6 +72,12 @@ export class DocumentsEditor extends VnEditor {
   private drawn = '';
   /** The last location clicked here, which is the only thing that knows one is selected. */
   private picked = '';
+  /** A menu was up when the pointer went down, so the click it becomes is a dismissal. */
+  private dismissing = false;
+  /** The last row clicked and when, which is how a second click on the same one is recognised. */
+  private lastClick = { id: '', at: -1 };
+  /** The node being renamed right now, so a rebuild underneath the box cannot start a second one. */
+  private renaming = '';
   private unwatch: (() => void) | undefined;
 
   static override define() {
@@ -90,6 +100,7 @@ export class DocumentsEditor extends VnEditor {
     this.rows = el('div', 'dt-rows') as HTMLDivElement;
     this.panel = el('div', 'dt-panel') as HTMLDivElement;
     this.surface.append(this.buildNewRow(), this.rows, this.panel);
+    this.armDismissLatch();
     this.appendSurface(this.surface);
 
     // Coarse on purpose (decision 7 of the plan): there is no write effect to listen for, a tree
@@ -216,6 +227,37 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
+   * Swallow the click that dismisses a context menu. path.ux closes a menu on mouse-up, so what
+   * reaches the tree afterwards is an ordinary first click — and it selects, or toggles, whatever
+   * row the pointer happened to be resting over. From the author's seat that is a right-click
+   * rearranging the tree, which is exactly what a right-click must not do.
+   *
+   * Pointer-down is the only moment the question can be asked, because it is the last one at which
+   * a menu is still open. Both listeners are capture-phase on the surface, so one latch covers
+   * every row, twisty and backlink under it; and the latch is *assigned* on each pointer-down, so
+   * a gesture that never becomes a click cannot leave it armed.
+   */
+  private armDismissLatch(): void {
+    this.surface.addEventListener(
+      'pointerdown',
+      () => {
+        this.dismissing = menuIsOpen();
+      },
+      true,
+    );
+    this.surface.addEventListener(
+      'click',
+      (event) => {
+        if (!this.dismissing) return;
+        this.dismissing = false;
+        event.stopPropagation();
+        event.preventDefault();
+      },
+      true,
+    );
+  }
+
+  /**
    * The one authored act the tree itself performs: scaffold a sheet or a note from a name, and
    * open what it wrote. A row rather than a dialog — path.ux has no prompt, and the surface is
    * already raw DOM in this pane's shadow root.
@@ -272,6 +314,9 @@ export class DocumentsEditor extends VnEditor {
   }
 
   private rebuildRows(): void {
+    // Whatever was being renamed, its box is about to be thrown away with the row it sat in —
+    // so the latch goes with it, rather than blocking every rename after the next refetch.
+    this.renaming = '';
     this.rows.textContent = '';
 
     if (this.failure) {
@@ -299,6 +344,9 @@ export class DocumentsEditor extends VnEditor {
     const group = node.kind === 'branch' || node.kind === 'assetkind';
 
     const line = el('div', 'dt-row') as HTMLDivElement;
+    // The node's own id, so a rename opened by the second of two clicks can find the row the
+    // first click's rebuild replaced. DOM identity does not survive a rebuild; this does.
+    line.dataset['id'] = node.id;
     if (inert) line.classList.add('inert');
     if (group) line.classList.add('group');
     if (nodeIsSelected(node, selection)) line.classList.add('sel');
@@ -312,7 +360,10 @@ export class DocumentsEditor extends VnEditor {
       if (node.badge === 'unreadable' || node.badge === 'unreachable') badge.classList.add('bad');
       line.appendChild(badge);
     }
-    if (node.path) line.title = node.path;
+    const renamable = renameOf(node);
+    if (node.path) {
+      line.title = renamable ? `${node.path} — double-click the name to rename it` : node.path;
+    }
 
     if (!inert) {
       // The twisty is its own target so a node that is both a place and a container — a scene
@@ -322,7 +373,15 @@ export class DocumentsEditor extends VnEditor {
         event.stopPropagation();
         if (row.expandable) this.toggle(node.id);
       });
-      line.addEventListener('click', () => this.pick(row));
+      // A double click is counted rather than listened for: the first click rebuilds the rows, so
+      // by the time a `dblclick` was dispatched the element both clicks landed on is gone.
+      line.addEventListener('click', (event) => {
+        const again =
+          this.lastClick.id === node.id && event.timeStamp - this.lastClick.at < DOUBLE_CLICK_MS;
+        this.lastClick = again ? { id: '', at: -1 } : { id: node.id, at: event.timeStamp };
+        this.pick(row);
+        if (again && renamable) this.beginRename(node.id, renamable);
+      });
       line.addEventListener('contextmenu', (event) => {
         event.preventDefault();
         this.openMenu(row, event.clientX, event.clientY);
@@ -425,6 +484,59 @@ export class DocumentsEditor extends VnEditor {
     // string, so an editor whose subject cannot travel opens on the selection it already sees.
     this.publish(next);
     this.route(row.node);
+  }
+
+  /**
+   * Rename in place: the label becomes a text box over the row it was drawn in, Enter commits and
+   * Escape leaves it alone. Undoable like every other document write, because it *is* one —
+   * `doc.rename` rewrites the field the name was read from, and the file never moves.
+   *
+   * The row is found by node id rather than held onto: the click that opened this rebuilt the
+   * rows, so the element the author double-clicked no longer exists.
+   */
+  private beginRename(id: string, target: { path: string; name: string }): void {
+    if (this.renaming) return;
+    const line = [...this.rows.children].find(
+      (child): child is HTMLElement => child instanceof HTMLElement && child.dataset['id'] === id,
+    );
+    const label = line?.querySelector('.dt-label');
+    if (!line || !label) return;
+
+    this.renaming = id;
+    const box = document.createElement('input');
+    box.className = 'dt-rename';
+    box.value = target.name;
+    box.title = 'Type the new name — Enter renames the document, Escape leaves it as it was';
+    line.replaceChild(box, label);
+
+    let settled = false;
+    const finish = (name?: string): void => {
+      if (settled) return;
+      settled = true;
+      this.renaming = '';
+      // The name only travels if it changed: renaming a document to what it is called already is
+      // a commit, an undo point and a rewritten file for nothing.
+      if (name !== undefined && name !== '' && name !== target.name) {
+        void exec('doc.rename', { path: target.path, name }).then(() => void this.load());
+      } else {
+        this.rebuild();
+      }
+    };
+
+    // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
+    // keys opens the palette on the first `/` of a name.
+    box.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') finish(box.value.trim());
+      if (event.key === 'Escape') finish();
+    });
+    // Clicking away is walking away, and walking away from a rename is not renaming.
+    box.addEventListener('blur', () => finish());
+    // Otherwise the click that puts the caret in the box is the row's third click.
+    box.addEventListener('click', (event) => event.stopPropagation());
+
+    box.focus();
+    box.select();
   }
 
   /**

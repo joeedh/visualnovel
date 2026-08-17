@@ -58,10 +58,13 @@ describe('seedWorkspace', () => {
 
     expect((await readdir(target)).sort()).toEqual([
       '.git',
+      '.gitignore',
       'characters',
       'project.yaml',
       'screenplay',
     ]);
+    // `keys` before anything else: commit-on-save runs `git commit -A`.
+    expect(await readFile(join(target, '.gitignore'), 'utf8')).toContain('keys\n');
     expect(await readFile(join(target, 'project.yaml'), 'utf8')).toBe('title: Sample\n');
 
     // A fresh workspace has not been run: nothing may claim it has.
@@ -142,7 +145,12 @@ describe('openWorkspace', () => {
     expect(opened).toEqual({ root: dir, created: true, title: 'my story' });
     // The shortest honest config: every other key has a default.
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: "my story"\n');
-    expect((await readdir(dir)).sort()).toEqual(['.git', '.gitattributes', 'project.yaml']);
+    expect((await readdir(dir)).sort()).toEqual([
+      '.git',
+      '.gitattributes',
+      '.gitignore',
+      'project.yaml',
+    ]);
 
     const git = openGit(dir);
     expect((await git.log()).map((c) => c.subject)).toEqual(['New project']);
@@ -159,6 +167,7 @@ describe('openWorkspace', () => {
     expect((await readdir(dir)).sort()).toEqual([
       '.git',
       '.gitattributes',
+      '.gitignore',
       'project.yaml',
       'scenes',
     ]);
@@ -305,6 +314,7 @@ describe('createWorkspace', () => {
     expect((await readdir(dir)).sort()).toEqual([
       '.git',
       '.gitattributes',
+      '.gitignore',
       'project.yaml',
       'scenes',
       'wiki',

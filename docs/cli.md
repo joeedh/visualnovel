@@ -67,6 +67,12 @@ In a user's own project `vngen/` is **committed**. It is the reproducible output
 something to gitignore. `examples/sample` is the one exception: it is a template this repo ships,
 so it stays inputs-only.
 
+**A project the app initializes gets a `.gitignore` before its first commit** — `keys`,
+`node_modules`, `.DS_Store`, and deliberately **not** `vngen/`, which is the whole reason the file
+is written here rather than left to a template. `keys` is the load-bearing line: the desktop app
+commits the worktree after every mutating command, so a key git can see is committed within the
+second.
+
 ### A scene is one file
 
 `scenes/<id>.md` holds `scene: <id>` front-matter — identity and nothing else, matching the

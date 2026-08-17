@@ -11,13 +11,14 @@ import {
   loadConfig,
   resolveKeys,
   secretDirsFor,
+  secretFileFor,
   setArtStyle,
   setStartScene,
   type ProjectConfig,
   type ResolvedKeys,
 } from '@vn/config';
-import { readdir, readFile, rename } from 'node:fs/promises';
-import { basename, isAbsolute, join, relative, sep } from 'node:path';
+import { mkdir, readdir, readFile, rename } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
   applyCharacterEdit,
@@ -201,7 +202,9 @@ import { deriveChunks, derivePrompt } from './assetprompt.js';
 import { applyPromptEdit, type PromptEdit } from './promptedit.js';
 import { buildDocTree, fileTree } from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
+import { renameInText } from './rename.js';
 import { confirmDetail } from './toolconfirm.js';
+import { ensureIgnored } from './workspace.js';
 import {
   answered,
   answeredQuestion,
@@ -1594,6 +1597,58 @@ export class WorkspaceSession {
   }
 
   /**
+   * Where a vendor's key file sits, whether one is already there, and whether an environment
+   * variable would shadow it — `resolveKeys` reads `$NAME` first, so a file written under a set
+   * variable is a key that never gets used. Reads no key back, here or anywhere.
+   */
+  private async keyFile(
+    vendor: keyof ResolvedKeys,
+  ): Promise<{ rel: string; had: boolean; shadow: string }> {
+    const rel = `keys/${secretFileFor(vendor)}`;
+    const envName = (await loadConfig(this.dir)).keys[vendor];
+    const set = (process.env[envName] ?? '').trim() !== '';
+    return {
+      rel,
+      had: await exists(join(this.dir, rel)),
+      shadow: set ? ` $${envName} is set and is read first, so the file goes unused.` : '',
+    };
+  }
+
+  /** What `project.setKey` would do, without writing it. */
+  async previewKey(vendor: keyof ResolvedKeys): Promise<PromptResult> {
+    const { rel, had, shadow } = await this.keyFile(vendor);
+    return {
+      ok: true,
+      message: `${had ? 'Replace' : 'Write'} the ${vendor} key in ${rel}.${shadow}`,
+    };
+  }
+
+  /**
+   * Store an API key. The value reaches exactly one file — the first name `resolveKeys` looks
+   * for — and nothing else: not the message, not the log, and not `commands.jsonl`, where
+   * `prop.secret` has already replaced it. `keys` is ignored *before* the write, because
+   * commit-on-save runs `git commit -A` and would otherwise commit the file within the second.
+   */
+  async setKey(vendor: keyof ResolvedKeys, key: string): Promise<PromptWriteResult> {
+    const value = key.trim();
+    if (!value) return { ok: false, message: 'No key given.', written: [] };
+
+    const { rel, had, shadow } = await this.keyFile(vendor);
+    const ignored = await ensureIgnored(this.dir, ['keys']);
+    const path = join(this.dir, rel);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFileAtomic(path, `${value}\n`);
+
+    // The key file itself is never reported as written: it is ignored, so nothing downstream
+    // may treat it as a document. The `.gitignore` is, because it is committed.
+    return {
+      ok: true,
+      message: `${had ? 'Replaced' : 'Wrote'} the ${vendor} key in ${rel}, which git ignores.${shadow}`,
+      written: ignored ? ['.gitignore'] : [],
+    };
+  }
+
+  /**
    * The text provider a condensation runs against. Under `--mock` the backend echoes the prompt,
    * which no schema accepts, so every condensation would take the deterministic fallback and the
    * real path would never run; the canned answer is the identity condensation, which exercises it
@@ -2234,6 +2289,46 @@ export class WorkspaceSession {
       hash: written.hash,
       bytes: written.bytes,
     };
+  }
+
+  /**
+   * Read a document and work out what renaming it to `name` would write. Where the name lives is
+   * `renameInText`'s call; this is the half that touches the disk, so both the check and the run
+   * ask the same question of the same bytes.
+   */
+  private async planRename(
+    path: string,
+    name: string,
+  ): Promise<DocResult<{ text: string; what: string; seenHash: string }>> {
+    const read = await this.readDoc(path);
+    if (!read.ok) return read;
+    const renamed = renameInText(path, read.file.text, name);
+    if (!renamed.ok) return { ok: false, reason: renamed.reason };
+    return { ok: true, text: renamed.text, what: renamed.what, seenHash: read.file.hash };
+  }
+
+  /** What `doc.rename` would do, decided without writing. */
+  async previewRename(path: string, name: string): Promise<DocResult<{ note: string }>> {
+    const plan = await this.planRename(path, name);
+    if (!plan.ok) return plan;
+    const write = await this.previewDoc(path, plan.text, plan.seenHash);
+    if (!write.ok) return write;
+    return { ok: true, note: `Rewrite ${plan.what} in ${path} as "${name.trim()}".` };
+  }
+
+  /**
+   * Rename one document in place. The **file never moves**: an id is derived from a name once, at
+   * creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at.
+   */
+  async renameDoc(
+    path: string,
+    name: string,
+  ): Promise<DocResult<DocSaveResult & { what: string }>> {
+    const plan = await this.planRename(path, name);
+    if (!plan.ok) return plan;
+    const saved = await this.saveDoc(path, plan.text, plan.seenHash);
+    if (!saved.ok) return saved;
+    return { ...saved, what: plan.what };
   }
 
   /** Scenes + branch edges for the STUDIO branch editor, derived from the validated model. */

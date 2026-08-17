@@ -7,7 +7,14 @@
  * read-only previews over state main already holds; if one ever became slow enough to notice, the
  * fix is that check, not a menu that lies while it loads.
  */
-import { Menu, createMenu, startMenu, type MenuTemplate, type MenuTemplateCustom } from 'pathux';
+import {
+  Menu,
+  createMenu,
+  menuWrangler,
+  startMenu,
+  type MenuTemplate,
+  type MenuTemplateCustom,
+} from 'pathux';
 import { api } from '../api.js';
 import type { VnContext } from './context.js';
 import { exec, report, say } from './bridge.js';
@@ -18,6 +25,17 @@ import {
   type ResolvedEntry,
 } from './contextmenu.js';
 import { openCommandDialog } from './dialog.js';
+
+/**
+ * Whether a path.ux menu is up right now. Beside the one place that opens one, because it is the
+ * only other thing that knows how to ask.
+ *
+ * A surface underneath a menu needs this at **pointer-down**: the wrangler closes on mouse-up, so
+ * by the time the dismissing `click` arrives the menu is gone and the click looks like a first one.
+ */
+export function menuIsOpen(): boolean {
+  return menuWrangler.menu !== undefined;
+}
 
 /**
  * Show the menu these entries describe. An empty list opens nothing at all, rather than an empty

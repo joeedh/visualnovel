@@ -52,6 +52,19 @@ const save = define({
   },
 });
 
+/** A credential as a prop: the command wants the key, nothing written down may contain it. */
+const setKey = define({
+  id: 'demo.setKey',
+  title: 'Set key',
+  description: 'Stores an API key.',
+  mutating: true,
+  props: { provider: prop.string('vendor'), key: prop.secret('the API key') },
+  run(props, ctx) {
+    ctx.host.seen.push(props.key);
+    return Promise.resolve({ message: `stored ${props.provider}` });
+  },
+});
+
 const explode = define({
   id: 'demo.explode',
   title: 'Explode',
@@ -110,7 +123,7 @@ const brokenCheck = define({
 
 function setup(over: Partial<CommandContext<Host>> = {}) {
   const registry = new CommandRegistry<Host>();
-  registry.registerAll([greet, save, explode, guarded, checked, brokenCheck]);
+  registry.registerAll([greet, save, setKey, explode, guarded, checked, brokenCheck]);
   const host: Host = { seen: [] };
   const persisted: CommandRecord[] = [];
   const logs: string[] = [];
@@ -167,6 +180,22 @@ describe('CommandStack.exec', () => {
     const digest = `<sha256:${sha256(text).slice(0, 12)}+5007>`;
     expect(persisted[0]?.props).toEqual({ path: 'wiki/ada.md', text: digest });
     expect(persisted[0]?.invocation).toBe(`demo.save(path='wiki/ada.md' text='${digest}')`);
+  });
+
+  /**
+   * The digest treatment would be worse than nothing here: a hash of a live credential plus its
+   * exact length is a fingerprint of the credential. Both places a prop is written must be clean.
+   */
+  it('records a secret prop as <secret> in props and in the invocation', async () => {
+    const { stack, host, persisted } = setup();
+    const key = 'sk-ant-notarealkey-000';
+    const outcome = await stack.exec('demo.setKey', { provider: 'anthropic', key }, 'ui');
+
+    expect(outcome.ok).toBe(true);
+    expect(host.seen).toEqual([key]);
+    expect(persisted[0]?.props).toEqual({ provider: 'anthropic', key: '<secret>' });
+    expect(persisted[0]?.invocation).toBe("demo.setKey(provider='anthropic' key='<secret>')");
+    expect(JSON.stringify(persisted[0])).not.toContain(key);
   });
 
   it('numbers records monotonically regardless of outcome', async () => {
@@ -716,6 +745,7 @@ describe('registry', () => {
       'demo.greet',
       'demo.guarded',
       'demo.save',
+      'demo.setKey',
     ]);
     expect(registry.namespaces()).toEqual(['demo']);
   });

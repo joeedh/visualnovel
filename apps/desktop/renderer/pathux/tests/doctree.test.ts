@@ -7,6 +7,7 @@ import {
   menuFor,
   nodeIsSelected,
   nodeKey,
+  renameOf,
   selectionForNode,
   shotGroups,
   toggleExpanded,
@@ -302,10 +303,25 @@ describe('menuFor', () => {
     }
   });
 
-  it('offers the other four branches nothing — they are headings, not places', () => {
-    for (const id of ['story', 'characters', 'locations', 'assets']) {
-      expect(menuFor(node(`branch:${id}`, 'branch'))).toEqual([]);
+  it('offers the cast branches the one sheet each is made of', () => {
+    for (const [branch, kind] of [
+      ['characters', 'character'],
+      ['locations', 'location'],
+    ] as const) {
+      expect(menuFor(node(`branch:${branch}`, 'branch'))).toEqual([
+        { label: expect.stringContaining('New'), id: 'doc.create', props: { kind }, form: true },
+      ]);
     }
+  });
+
+  it('offers the story branch the same acts a scene under it offers', () => {
+    expect(idsOf(node('branch:story', 'branch'))).toEqual(['story.newScene', 'story.screenplay']);
+    const scene = idsOf(node('scene:greet', 'scene', { path: 'scenes/greet.md' }));
+    expect(scene).toEqual(['story.assignLineIds', MENU_SEP, 'story.newScene', 'story.screenplay']);
+  });
+
+  it('offers the assets branch nothing — an asset is rendered, never authored from a name', () => {
+    expect(menuFor(node('branch:assets', 'branch'))).toEqual([]);
   });
 
   it('offers an asset all four acts and lets each command refuse itself', () => {
@@ -347,6 +363,34 @@ describe('menuFor', () => {
       }
     };
     walk(every);
+  });
+});
+
+describe('renameOf', () => {
+  it('answers with the props doc.rename takes, for the three kinds a document names', () => {
+    expect(
+      renameOf(node('character:aiko', 'character', { label: 'Aiko', path: 'c/aiko.md' })),
+    ).toEqual({ path: 'c/aiko.md', name: 'Aiko' });
+    expect(
+      renameOf(node('location:cafe', 'location', { label: 'Café', path: 'locations/cafe.md' })),
+    ).toMatchObject({ name: 'Café' });
+    expect(
+      renameOf(node('wiki:lore', 'wiki', { label: 'Lore', path: 'wiki/lore.md' })),
+    ).toMatchObject({ name: 'Lore' });
+  });
+
+  it('refuses an entity with no sheet of its own — there is nothing to write the name in', () => {
+    expect(renameOf(node('location:cafe', 'location', { label: 'Café' }))).toBeUndefined();
+  });
+
+  it('refuses a scene: its label is its id, and its id is what every [[goto:]] points at', () => {
+    expect(renameOf(node('scene:greet', 'scene', { path: 'scenes/greet.md' }))).toBeUndefined();
+  });
+
+  it('refuses what no document names at all', () => {
+    for (const kind of ['asset', 'shot', 'branch', 'assetkind', 'dir', 'more'] as const) {
+      expect(renameOf(node(`${kind}:x`, kind, { path: 'somewhere.md' }))).toBeUndefined();
+    }
   });
 });
 

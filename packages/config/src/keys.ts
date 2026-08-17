@@ -8,11 +8,22 @@ export interface ResolvedKeys {
   anthropic: string;
 }
 
+/** The vendors a key is resolved for. Ordered, so a UI can offer them without inventing a list. */
+export const KEY_VENDORS = ['gemini', 'anthropic'] as const;
+
 /** Filenames to look for when an env var is unset: `<secretsDir>/<file>`, by vendor. */
 const SECRET_FILES: Record<keyof ResolvedKeys, string[]> = {
   gemini: ['gemini.txt'],
   anthropic: ['claude.txt', 'anthropic.txt'],
 };
+
+/**
+ * Where a vendor's key is *written*: the first filename `resolveKeys` looks for, so what a
+ * writer puts down is what a reader picks up. The later names are read-only aliases.
+ */
+export function secretFileFor(vendor: keyof ResolvedKeys): string {
+  return SECRET_FILES[vendor][0]!;
+}
 
 /** Files that mark the root of a repo/workspace when walking up from a project dir. */
 const ROOT_MARKERS = ['pnpm-workspace.yaml', '.git'];

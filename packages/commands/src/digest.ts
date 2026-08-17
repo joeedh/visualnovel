@@ -9,6 +9,10 @@
  * lost. A digested invocation is not re-executable, which is honest: replaying a whole-file
  * overwrite from a log line was never the recovery path — undo is.
  *
+ * A `secret` prop is redacted through the same seam, but to the bare word `<secret>`: a digest
+ * of a live credential is a fingerprint of it plus its exact length, which is not a thing to
+ * write down.
+ *
  * This is a projection at record time only. The command's `run` receives the real value.
  *
  * Hashing is Web Crypto rather than `@vn/util`'s `sha256`, which is the one thing here worth
@@ -30,16 +34,27 @@ export async function digestOf(value: PropValue): Promise<string> {
   return `<sha256:${hex(new Uint8Array(hash)).slice(0, 12)}+${bytes.length}>`;
 }
 
-/** Every `digest` prop replaced by {@link digestOf}; everything else is itself. */
+/** What a `secret` prop is recorded as, whatever it held. */
+export const REDACTED = '<secret>';
+
+/**
+ * Every `digest` prop replaced by {@link digestOf} and every `secret` prop by {@link REDACTED};
+ * everything else is itself.
+ */
 export async function digestProps(
   specs: PropSpecMap,
   props: Record<string, PropValue>,
 ): Promise<Record<string, PropValue>> {
   let out: Record<string, PropValue> | undefined;
   for (const [name, spec] of Object.entries(specs)) {
-    if (!spec.digest || props[name] === undefined) continue;
-    out ??= { ...props };
-    out[name] = await digestOf(props[name]!);
+    if (props[name] === undefined) continue;
+    if (spec.kind === 'secret') {
+      out ??= { ...props };
+      out[name] = REDACTED;
+    } else if (spec.digest) {
+      out ??= { ...props };
+      out[name] = await digestOf(props[name]!);
+    }
   }
   return out ?? props;
 }

@@ -68,11 +68,13 @@ describe('the desktop registry', () => {
       'asset.replace',
       'asset.upload',
       'doc.create',
+      'doc.rename',
       'doc.write',
       'gate.approve',
       'notify.deleteAll',
       'pipeline.run',
       'project.setArtStyle',
+      'project.setKey',
       'prompt.addRef',
       'prompt.clear',
       'prompt.condense',
@@ -123,7 +125,9 @@ describe('the desktop registry', () => {
    * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), copy bytes in from
    * outside the tree *and* close the conversation a snapshot cannot restore (`upload.*`), write under
    * `vngen/state`, which the snapshot deliberately excludes (`agent.renameThread` — a transcript
-   * must survive undoing the edits it produced), or straddle both
+   * must survive undoing the edits it produced), write a credential to a *gitignored* file
+   * (`project.setKey`: an undo point is a git snapshot, and snapshotting a key is the one thing
+   * that command exists to avoid), or straddle both
    * classes (`gate.approve` flips
    * `character.md` **and** marks the asset accepted in `manifest.json`) — see
    * `docs/plans/command-undo-redo.md`.
@@ -132,6 +136,7 @@ describe('the desktop registry', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
       'art.setNotes',
       'doc.create',
+      'doc.rename',
       'doc.write',
       'project.setArtStyle',
       'prompt.addRef',
@@ -183,11 +188,13 @@ describe('the desktop registry', () => {
       'asset.replace',
       'asset.upload',
       'doc.create',
+      'doc.rename',
       'doc.write',
       'gate.approve',
       'notify.deleteAll',
       'pipeline.run',
       'project.setArtStyle',
+      'project.setKey',
       'prompt.addRef',
       'prompt.clear',
       'prompt.condense',

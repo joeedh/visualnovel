@@ -173,15 +173,32 @@ function openSheet(path: string): MenuEntry {
   };
 }
 
+/** One `doc.create` entry. Spelled once, so the wiki tree and the cast branches agree. */
+function newSheet(kind: 'note' | 'character' | 'location', label: string): MenuEntry {
+  return { label, id: 'doc.create', props: { kind }, form: true };
+}
+
 /**
  * The three things a new page under `wiki/` can be. `doc.create` takes a kind and a name and files
  * it itself, so a nested directory offers exactly what the branch above it does.
  */
 function wikiCreate(): MenuEntry[] {
   return [
-    { label: 'New wiki page…', id: 'doc.create', props: { kind: 'note' }, form: true },
-    { label: 'New character sheet…', id: 'doc.create', props: { kind: 'character' }, form: true },
-    { label: 'New location sheet…', id: 'doc.create', props: { kind: 'location' }, form: true },
+    newSheet('note', 'New wiki page…'),
+    newSheet('character', 'New character sheet…'),
+    newSheet('location', 'New location sheet…'),
+  ];
+}
+
+/**
+ * What the story offers wherever it is right-clicked: from the branch that heads it and from any
+ * scene under it. A scene's own acts sit above these, so the scene menu is a superset — the same
+ * two commands, in the same words, wherever the pointer was.
+ */
+function storyActs(): MenuEntry[] {
+  return [
+    { label: 'New scene…', id: 'story.newScene', form: true },
+    { label: 'Export Fountain', id: 'story.screenplay' },
   ];
 }
 
@@ -254,7 +271,8 @@ export function menuFor(node: DocNode): MenuEntry[] {
     case 'scene':
       return [
         { label: 'Assign line ids', id: 'story.assignLineIds', props: { scene: key } },
-        { label: 'Write the screenplay', id: 'story.screenplay' },
+        { label: MENU_SEP, id: MENU_SEP },
+        ...storyActs(),
       ];
     case 'shot': {
       const { sceneId, shotId } = splitShot(key);
@@ -273,11 +291,23 @@ export function menuFor(node: DocNode): MenuEntry[] {
         },
       ];
     }
-    // The one branch that is a place rather than a heading: the todo asks for a new page from the
-    // top of the wiki tree, and that top is `branch:wiki` — the `wikidir:` nodes are the folders
-    // inside it, which a project with a flat `wiki/` never has at all.
+    // A branch heading is where an author reaches for "another one of these", so each offers what
+    // its subtree is made of. `wiki` is the one that is a place rather than a heading — the
+    // `wikidir:` nodes are the folders inside it, which a flat `wiki/` never has at all. `assets`
+    // offers nothing on purpose: an asset is rendered from a subject, never authored from a name.
     case 'branch':
-      return key === 'wiki' ? wikiCreate() : [];
+      switch (key) {
+        case 'story':
+          return storyActs();
+        case 'characters':
+          return [newSheet('character', 'New character sheet…')];
+        case 'locations':
+          return [newSheet('location', 'New location sheet…')];
+        case 'wiki':
+          return wikiCreate();
+        default:
+          return [];
+      }
     // A grouping, a page, a bare file and a counted stand-in: none names a subject a command takes.
     // A wiki note is the interesting one — nothing binds to it (see `assetstrip.ts`) and `doc.write`
     // needs the text, so the only act it has is the one a plain click already performs.
@@ -287,6 +317,27 @@ export function menuFor(node: DocNode): MenuEntry[] {
     case 'file':
     case 'more':
       return [];
+  }
+}
+
+/**
+ * What double-clicking this node would rename, or `undefined` if it is not renamable. Answering
+ * with the props `doc.rename` takes keeps the surface from assembling them: a row that can be
+ * renamed is exactly a row this returns something for.
+ *
+ * A **scene is deliberately not renamable**. Its label is its id, and its id is its filename, the
+ * config's `start:` and every `[[goto:]]` pointing at it — one of those is a rename and the rest
+ * are a refactor. So are assets, shots and branch headings: none is named by a document at all.
+ */
+export function renameOf(node: DocNode): { path: string; name: string } | undefined {
+  if (!node.path) return undefined;
+  switch (node.kind) {
+    case 'character':
+    case 'location':
+    case 'wiki':
+      return { path: node.path, name: node.label };
+    default:
+      return undefined;
   }
 }
 

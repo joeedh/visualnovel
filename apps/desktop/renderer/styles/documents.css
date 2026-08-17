@@ -82,6 +82,23 @@
   text-overflow: ellipsis;
 }
 
+/* The label, swapped for a box in place. Sized to the row rather than to itself, so the tree does
+   not reflow around a name being typed. */
+.dt-rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--sodium);
+  border-radius: var(--r-chrome);
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font: inherit;
+  padding: 0 3px;
+}
+
+.dt-rename:focus {
+  outline: none;
+}
+
 .dt-badge {
   flex: 0 0 auto;
   padding: 0 5px;

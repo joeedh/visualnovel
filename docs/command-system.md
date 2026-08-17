@@ -78,7 +78,7 @@ provenance. They stay separate because their gating rules differ.
 
 ```ts
 export interface Prop<T extends PropValue = PropValue, Req extends boolean = boolean> {
-  kind: 'string' | 'directory' | 'number' | 'boolean' | 'enum' | 'string[]';
+  kind: 'string' | 'directory' | 'secret' | 'number' | 'boolean' | 'enum' | 'string[]';
   description: string;
   required: Req;
   default?: T;
@@ -94,8 +94,8 @@ serves all three. A zod schema serves none of them without a second hand-rolled 
 repo is on zod 3, so there is no `z.toJSONSchema`, and `@vn/authoring` already had to
 hand-roll `describeToolParams` for exactly this reason.
 
-Builders cover the kinds — `prop.string`, `prop.directory`, `prop.number`, `prop.boolean`,
-`prop.oneOf`, `prop.stringList`. Each is overloaded so that **passing a `default` narrows
+Builders cover the kinds — `prop.string`, `prop.directory`, `prop.secret`, `prop.number`,
+`prop.boolean`, `prop.oneOf`, `prop.stringList`. Each is overloaded so that **passing a `default` narrows
 `required` to `false`**:
 
 ```ts
@@ -110,6 +110,13 @@ props: {
 schematizes exactly as `string` — it *is* one — and exists only so a form can offer a folder
 chooser beside the field. The alternative, a form that draws a Browse button for any property
 happening to be spelled `path`, makes a widget depend on spelling.
+
+**`secret` is a string that says never write this down.** Same trick, opposite reason: it coerces
+and schematizes as a string, and `digestProps` — the single record-time projection, so one seam
+covers `record.props`, the formatted `invocation` and the commit trailer built from it — replaces
+its value with the literal `<secret>`. `digest` is the near miss and is the wrong tool: it records
+`<sha256:…+len>`, a fingerprint of a live credential and its exact length. `run` still receives
+the real value; nothing downstream of the record ever does.
 
 `PropsOf<M>` maps the spec to the object `run` receives, and **every key is present**:
 `coerceProps` has already applied the defaults, so optionality belongs to the *raw input*, not
@@ -219,8 +226,8 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
   document mutators set it — every `story.*` one (the branch/coverage commands it shipped for, the
-  prose edits, `moveShot` and the two outfit commands), `doc.write` and `doc.create`, which write
-  documents by the same right, and the authored-input writers that followed: `art.setNotes`,
+  prose edits, `moveShot` and the two outfit commands), `doc.write`, `doc.create` and `doc.rename`,
+  which write documents by the same right, and the authored-input writers that followed: `art.setNotes`,
   `project.setArtStyle` and the `prompt.*` chunk editors. A command whose writes are generated
   output, or that straddles both classes, stays out. The `↺` column in the table below is the
   list — read it there rather than counting here, because the set grows.
@@ -290,6 +297,7 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `doc.read`                     | `path`                            | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
 | `doc.write` ✍ ↺ ✓              | `path`, `text` (digested), `seenHash` (default `''`) | Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
 | `doc.create` ✍ ↺ ✓             | `kind` (`character`\|`location`\|`note`), `name` | Scaffold a sheet or a note in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
+| `doc.rename` ✍ ↺ ✓             | `path`, `name`                    | Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
 | `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
 | `pipeline.status`              | —                                 | Task counts, gate-pending characters, gate-blocked state.  |
@@ -329,6 +337,7 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `prompt.repin` ✍ ↺ ✓           | `hash`, `chunk`, `ref`, `regenerate` (default `true`) | Point a linked reference at whatever its slot holds now, which is how a suspension is cleared. `regenerate=false` is **re-approve**: it keeps the existing bytes by recording them as the newly-keyed task's output, so nothing re-renders. |
 | `project.info`                 | —                                 | What `project.yaml` says: title, entry scene, art style, model ids, image params, and how many image tasks the art style reaches. Never the API keys — their *names* are in the file and a pane listing them is one screenshot away from looking like it lists their values. |
 | `project.setArtStyle` ✍ ⚠ ↺ ✓  | `style` (default `''`)            | The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setKey` ✍ ✓           | `provider` (`gemini`\|`anthropic`), `key` (**secret**) | Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: an undo point is a git snapshot, and snapshotting a credential is what this command exists to avoid. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
@@ -361,7 +370,7 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
 **Only the document mutators are undoable** — the eighteen `story.*` ones plus `doc.write`,
-`doc.create`, `art.setNotes`, the eight `prompt.*` writers and `project.setArtStyle` — because undo restores a snapshot of the
+`doc.create`, `doc.rename`, `art.setNotes`, the eight `prompt.*` writers and `project.setArtStyle` — because undo restores a snapshot of the
 document tree. `asset.accept` and `asset.regenerate` write into the generated class instead (a
 manifest, a status log), so neither is undoable and neither needs to be: accepting again and
 regenerating again are both ordinary acts. `asset.upload` is the same class — bytes and a manifest
@@ -379,6 +388,8 @@ is recoverable the honest way instead, by adopting the earlier hash back. `gate.
 plan. `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst
 at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can perform;
 `workspace.reindex` writes one derived file, and undoing it means running it again;
+`project.setKey` writes a *gitignored* one on purpose — an undo point is a git snapshot, and
+snapshotting a credential is the one thing that command exists to avoid;
 `upload.files`/`upload.pick` copy bytes in from outside the tree *and* close the conversation that
 was open, which `vngen/state` being outside the snapshot means undo could not put back; and
 `workspace.open`/`workspace.pick`/`workspace.create` write into a *different* tree than the one a

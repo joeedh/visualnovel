@@ -69,6 +69,35 @@ export const docWrite = define({
   },
 });
 
+export const docRename = define({
+  id: 'doc.rename',
+  title: 'Rename a document',
+  description:
+    'Change the name a document is known by, in place. A character or location sheet is renamed ' +
+    'through its `name:` field; anything else through its title — front-matter `title:`, else the ' +
+    'first heading — so the new name is read back from wherever the old one was. **The file does ' +
+    'not move**: an id is derived from a name once, at creation, and afterwards it is what shots, ' +
+    'cast lists and `[[goto:]]` markers point at.',
+  mutating: true,
+  undoable: true,
+  props: {
+    path: prop.string('workspace-relative path to the file'),
+    name: prop.string('the new name'),
+  },
+  async check({ path, name }, ctx) {
+    return verdict(await ctx.host.session.previewRename(path, name));
+  },
+  async run({ path, name }, ctx) {
+    const saved = await ctx.host.session.renameDoc(path, name);
+    if (!saved.ok) throw new Error(saved.reason);
+    return {
+      message: `Renamed ${saved.path}: ${saved.what} is now "${name.trim()}".`,
+      data: saved,
+      written: [saved.path],
+    };
+  },
+});
+
 export const docCreate = define({
   id: 'doc.create',
   title: 'Create a document',

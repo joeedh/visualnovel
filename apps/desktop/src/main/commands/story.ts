@@ -625,7 +625,9 @@ export const storyExport = define({
 
 export const storyScreenplay = define({
   id: 'story.screenplay',
-  title: 'Write the screenplay',
+  // Named for the format it writes, beside `story.export`'s "Export playable". A menu entry
+  // takes its tooltip from this title, so the two must be the same words.
+  title: 'Export Fountain',
   description:
     'Project the scenes back into one Fountain screenplay at the project root — the `vngen ' +
     'screenplay` equivalent. A snapshot, not a mirror: it goes stale as soon as a scene changes.',

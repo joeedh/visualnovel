@@ -24,6 +24,29 @@ const SKIP = new Set(['vngen', 'keys', '.git', 'node_modules']);
 /** Used only when git can't already answer who the committer is. */
 const FALLBACK_IDENTITY = { name: 'VN Studio', email: 'vnstudio@localhost' };
 
+/**
+ * What a project's `.gitignore` starts as. `vngen/` is deliberately **not** here: the generated
+ * tree is committed on purpose. `keys` is the load-bearing line — commit-on-save runs
+ * `git commit -A`, so a key git can see is committed within the second.
+ */
+const DEFAULT_IGNORES = ['keys', 'node_modules', '.DS_Store'];
+
+/**
+ * Ensure `root/.gitignore` ignores each of `entries`, appending only what is missing and
+ * creating the file if there is none. Answers whether it wrote. Lines are compared whole, with
+ * a trailing slash normalized away: a substring test would read `keysomething` as `keys`.
+ */
+export async function ensureIgnored(root: string, entries: string[]): Promise<boolean> {
+  const path = join(root, '.gitignore');
+  const before = await readFile(path, 'utf8').catch(() => '');
+  const have = new Set(before.split(/\r?\n/).map((line) => line.trim().replace(/\/$/, '')));
+  const missing = entries.filter((entry) => !have.has(entry.replace(/\/$/, '')));
+  if (missing.length === 0) return false;
+  const head = before === '' || before.endsWith('\n') ? before : `${before}\n`;
+  await writeFileAtomic(path, `${head}${missing.join('\n')}\n`);
+  return true;
+}
+
 export interface SeedResult {
   root: string;
   /** False when the workspace already existed and was opened untouched. */
@@ -90,6 +113,8 @@ export async function initRepoAt(root: string, message: string): Promise<Git> {
   }
   // Same reason testkit sets it: the branch editor patches scene prose byte-exactly.
   await git.config('core.autocrlf', 'false');
+  // Before the first commit, so `keys` is ignored by the time anything can be committed.
+  await ensureIgnored(root, DEFAULT_IGNORES);
   await git.commit({ message, paths: ['-A'] });
   return git;
 }

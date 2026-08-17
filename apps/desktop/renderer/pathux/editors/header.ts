@@ -201,6 +201,9 @@ export class VnHeaderEditor extends VnEditor {
       ['Open Project…', () => act('workspace.pick'), undefined],
       this.recentMenu(),
       ['Reindex Project', () => act('workspace.reindex'), undefined],
+      // A key is an argument no menu can supply, so this opens the form like the two above. What
+      // it collects is written to a gitignored file and recorded as `<secret>`.
+      ['Provide Model Key…', () => openCommandDialog('project.setKey'), undefined],
       Menu.SEP,
       // Not fired from the menu either: `upload.pick` is `confirm`, and the dialog is where a
       // command says what it is about to do before the OS chooser takes over the screen.

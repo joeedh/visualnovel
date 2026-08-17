@@ -197,10 +197,17 @@ plays it. This is deliberately **not** an external DSL export.
   deliberate opposite of `ensureRepo`) — a nested repo is `owned`, so commit-on-save works. **It
   gets its own dialog**, not the palette: `path` is a `prop.directory` drawing a Browse… button that
   `exec`s `workspace.chooseDirectory`, and a `newFolder` checkbox — off in the vocabulary, ticked by
-  the menu entry — puts the project in a `slug(title)` child of what was browsed.
+  the menu entry — puts the project in a `slug(title)` child of what was browsed. **A repository it
+  initializes gets a `.gitignore` before its first commit** — `keys`, `node_modules`, `.DS_Store`,
+  and deliberately not `vngen/`, which is committed on purpose.
   ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md),
   [`docs/plans/new-project-dialog-with-folder-browse.md`](docs/plans/new-project-dialog-with-folder-browse.md),
   [`docs/plans/new-project-as-its-own-dialog-and-its-own-repo.md`](docs/plans/new-project-as-its-own-dialog-and-its-own-repo.md))
+- **A model key is written to a file git cannot see, and recorded as `<secret>`** — `project.setKey`
+  writes `keys/<gemini.txt|claude.txt>`, the first name `resolveKeys` looks for, after ensuring
+  `keys` is ignored, because commit-on-save runs `git commit -A`. `prop.secret` is redacted at
+  `digestProps`, the single record-time projection, so the props, the invocation and the commit
+  trailer are all clean; it is deliberately **not undoable**, an undo point being a git snapshot.
 - **A conversation is a thread, and it is written down where the other logs are** —
   `vngen/state/threads/<id>.jsonl`, one line per feed item, appended by main as the turn runs and
   titled from the first thing the author said. Undo's snapshots exclude `vngen/state`, so undoing
@@ -217,6 +224,12 @@ plays it. This is deliberately **not** an external DSL export.
   hash it read at and is refused by **content**, never mtime; `scenes/**` is refused outright,
   because prose has one write path and it is `story.*`. A _named field_ inside a sheet may still
   be set by a command that round-trips through `@vn/model`'s `apply*Edit`.
+- **A rename writes where the name was read from, and never moves the file** — `doc.rename` edits a
+  sheet's `name:`, else front-matter `title:`, else the first H1, adding one if a page was titled by
+  its filename alone. An id is derived from a name once, at creation, and afterwards it is what
+  shots, cast lists and `[[goto:]]` markers point at — so a scene is deliberately not renamable, and
+  double-clicking a tree row edits the label in place for the three kinds that are.
+  ([`docs/document-tree.md`](docs/document-tree.md))
 - **An asset is named, and one pane answers for it** — the document tree labels assets by what
   they are, and the asset editor shows the derived prompt read-only beside editable art notes.
   ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
@@ -273,13 +286,18 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   commands named in that doc. `vnauthor` runs the same `@vn/scriptedit` rules and gets the same
   refusals.
 - **Props are declarative specs, not zod** (the repo is on zod 3); `coerceProps` is the single
-  validation authority.
+  validation authority. **`prop.secret` is a string that says never write this down** — coerced like
+  any other, redacted to `<secret>` by `digestProps`, which is the one projection every record
+  passes through, so no seam has to remember separately.
 - **A mutating command declares its refusal before it runs** — `stack.check` answers `accept` |
   `refuse` | `undeclared`, and absence of a check is not permission.
 - **The palette, the menu bar, the tree's right-click menus, the agent and CDP all reach the same
   registry.** A **right-click** entry is an _invocation_, never a callback: checked before it is
   drawn, `exec`d when clicked, and a refusal is **shown** with the command's own sentence rather
-  than hidden. **Finding a command and filling it in are two hosts over one `CommandForm`**: the
+  than hidden. A **branch heading** carries the menu for what it heads, and **a right-click never
+  moves the tree**: the click that dismisses an open menu is swallowed at pointer-down, because
+  path.ux menus close on mouse-up and by click time there is nothing left to ask.
+  **Finding a command and filling it in are two hosts over one `CommandForm`**: the
   palette is the finder, and a caller that already knows which command it wants opens
   `openCommandDialog(id, props)` — that command alone, with Cancel, no search box and no list. One
   needing an argument a menu cannot supply — and every `confirm: true` one — opens that dialog, and

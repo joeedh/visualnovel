@@ -9,8 +9,18 @@
  * `directory` is a string everywhere that matters — it coerces, serializes and schematizes as
  * one. It is its own kind so a form knows the OS can fill it in, rather than inferring that
  * from a property happening to be spelled `path`.
+ *
+ * `secret` is the same trick for the opposite reason: a credential, which the history must
+ * record as `<secret>` rather than as itself (`digest.ts`).
  */
-export type PropKind = 'string' | 'directory' | 'number' | 'boolean' | 'enum' | 'string[]';
+export type PropKind =
+  | 'string'
+  | 'directory'
+  | 'secret'
+  | 'number'
+  | 'boolean'
+  | 'enum'
+  | 'string[]';
 
 /** Every value a command property can hold. Matches what the DSL can express. */
 export type PropValue = string | number | boolean | string[];
@@ -65,6 +75,8 @@ interface PropBuilders {
   directory(description: string): Prop<string, true>;
   directory(description: string, opts: Opts<string> & { default: string }): Prop<string, false>;
 
+  secret(description: string): Prop<string, true>;
+
   number(description: string, opts?: Omit<Opts<number>, 'default'>): Prop<number, true>;
   number(description: string, opts: Opts<number> & { default: number }): Prop<number, false>;
 
@@ -101,6 +113,7 @@ function make(
 export const prop: PropBuilders = {
   string: (description: string, opts?: Opts<string>) => make('string', description, opts),
   directory: (description: string, opts?: Opts<string>) => make('directory', description, opts),
+  secret: (description: string) => make('secret', description, undefined),
   number: (description: string, opts?: Opts<number>) => make('number', description, opts),
   boolean: (description: string, opts?: Opts<boolean>) => make('boolean', description, opts),
   oneOf: (values: readonly string[], description: string, opts?: Opts<string>) =>
@@ -117,6 +130,7 @@ function coerceOne(kind: PropKind, raw: unknown): PropValue | undefined {
   switch (kind) {
     case 'string':
     case 'directory':
+    case 'secret':
     case 'enum':
       if (typeof raw === 'string') return raw;
       if (typeof raw === 'number' || typeof raw === 'boolean') return String(raw);

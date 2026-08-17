@@ -959,6 +959,16 @@ checking it, because `workspace.open` refuses that root by name. Browsing is
 `Cancelled.` when there is none — so the Browse button is an invocation like every other button in
 the app rather than a renderer-only capability, and CDP can reach the same act.
 
+**Provide Model Key…** is in the same menu and opens the same kind of dialog, because a key is an
+argument no menu can supply: a provider dropdown and the key itself. `project.setKey` writes
+`keys/<gemini.txt|claude.txt>` — the first filename `resolveKeys` looks for, so what is written is
+what is read — and adds `keys` to `.gitignore` before writing, because commit-on-save runs
+`git commit -A` and a key git can see is committed within the second. The key is a `secret` prop,
+so the history records `<secret>`; the field is **not masked**, because path.ux has no password
+widget and a raw input smuggled into one row of a path.ux form would be the only such thing in the
+app and would not take the theme. When the provider's environment variable is set, the check and
+the result both say so — the variable wins, so the file would go unused.
+
 **A switch is a teardown, not a refresh.** The session (with its agent conversation), the command
 stack, its undo journal, the repo map and the undo revision are all rebuilt against the new root:
 undo never crosses a workspace boundary, and the `command:ui` effect the renderer receives

@@ -18,6 +18,7 @@ reasoning behind each decision:
 - [The file tree](#the-file-tree)
 - [Where it lives](#where-it-lives)
 - [Right-click menus](#right-click-menus)
+- [Renaming in place](#renaming-in-place)
 - [Deliberately absent](#deliberately-absent)
 
 <!-- tocstop -->
@@ -154,17 +155,24 @@ entry is an invocation rather than a callback, is in
 | `location` | New reference shot… · Art notes… · Open sheet elsewhere |
 | `character` | New concept image… · Art notes… · Open sheet elsewhere |
 | `branch:wiki`, `wikidir` | New wiki page… · New character sheet… · New location sheet… |
+| `branch:characters` | New character sheet… |
+| `branch:locations` | New location sheet… |
+| `branch:story` | New scene… · Export Fountain |
 | `asset` | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Open in the Asset editor |
-| `scene` | Assign line ids · Write the screenplay |
+| `scene` | Assign line ids · New scene… · Export Fountain |
 | `shot` | Set coverage… · Set outfit… |
-| the other four branches, `assetkind`, `wiki`, `dir`, `file`, `more` | none — no menu opens at all |
+| `branch:assets`, `assetkind`, `wiki`, `dir`, `file`, `more` | none — no menu opens at all |
 
-Three things this table settles:
+Four things this table settles:
 
 - **A right-click selects but does not open.** The menu acts on the node under the cursor, so the
   selection is published first — otherwise "Regenerate" and whatever the asset pane happens to be
   showing could disagree about which asset is meant. Routing to an editor stays the left click's
   job.
+- **A branch heading offers what its subtree is made of**, because that is where an author reaches
+  for "another one of these"; and a scene's menu is a **superset** of the story branch's, so the
+  same two acts are in the same words wherever the pointer was. `branch:assets` is the one heading
+  that offers nothing on purpose: an asset is rendered from a subject, never authored from a name.
 - **Every act an asset has is offered, and each command refuses itself.** `asset.accept` refuses a
   portrait by naming `gate.approve` and a concept by naming `art.promote`; the menu shows all four
   with their refusals rather than guessing which applies. There is no _reject_: rejecting a
@@ -172,20 +180,53 @@ Three things this table settles:
   designing the gate through a menu.
 - **A kind with nothing to offer is named, not skipped.** A wiki note is the interesting one —
   nothing binds to it, and `doc.write` needs the text, so its only act is the one a plain click
-  already performs. `branch:wiki` is the exception among the five headings, because it is a place:
-  it is the "top level wiki tree" an author right-clicks, and the `wikidir:` nodes below it are the
+  already performs. `branch:wiki` is the exception among the headings, because it is a place: it is
+  the "top level wiki tree" an author right-clicks, and the `wikidir:` nodes below it are the
   folders inside, which a flat `wiki/` never has at all.
+
+**A right-click never moves the tree.** The gesture itself is innocent — Chromium fires no `click`
+for button 2 — but path.ux closes a menu on **mouse-up**, so the click that dismisses one used to
+land on whatever row the pointer was resting over and select or collapse it. `showmenu.ts` exports
+`menuIsOpen()`, and the tree latches it at capture-phase **pointer-down**, which is the last moment
+a menu is still open; the `click` that follows is swallowed. It self-clears in every case: escaped,
+nothing was ever latched; taken from the menu, the pointer-down landed in the popup.
 
 The asset editor's own header carries the same `asset` entries behind a `⋯` button, from the same
 table — which is the check that `menuFor` is node-shaped rather than tree-shaped.
+
+## Renaming in place
+
+Double-clicking a row whose node names a document lets the author retype its name over the label.
+Enter commits, Escape and blur abort, and a name that did not change writes nothing.
+
+What is renamable is `renameOf(node)` in the pure `doctree.ts` — a `character`, `location` or
+`wiki` node **carrying a path**, answering with the two props `doc.rename` takes, so the surface
+never assembles them. An entity with no sheet of its own has nowhere to write the name. A **scene
+is deliberately not renamable**: its label is its id, and its id is its filename, the config's
+`start:` and every `[[goto:]]` pointing at it — one of those is a rename and the rest are a
+refactor.
+
+Two things behind the gesture:
+
+- **The double click is counted, not listened for.** The first click selects, which rebuilds the
+  rows — so the element both clicks landed on is gone before a `dblclick` could be dispatched. Two
+  clicks on the same **node id** within 500 ms is the gesture, and the row is found again by
+  `data-id`.
+- **The rename is a command like any other.** `doc.rename` is `mutating` and `undoable`, so it
+  commits, records and undoes through the same journal as `doc.write`; `renameInText` in
+  `src/main/rename.ts` decides where the name lives — `name:` for a sheet, and for anything else
+  wherever the title was **read** from (front-matter `title:`, else the first H1, else a heading is
+  added), because writing anywhere else would leave the tree showing the old name. **The file never
+  moves**: the id is derived from a name once, at creation.
 
 ## Deliberately absent
 
 - **An agent backlink tool** — `vnauthor` authors inputs and stops at them; shots and assets are
   pipeline output.
 - **Filesystem watching** — both trees are reads, refetched after a write like `story:graph`.
-- **Editing through the tree** — rename, move and delete are `story.*` commands with their own
-  refusals; a drag in a sidebar would dispatch those, not open a new write path. The menus above
-  are that rule kept: every entry is a registered command, and none is a tree-shaped write.
+- **Moving and deleting through the tree** — a drag in a sidebar would have to dispatch the `story.*`
+  commands that own those refusals, not open a new write path. Renaming is the one editing gesture
+  the tree has, and it is that rule kept rather than broken: it is a registered command with its own
+  check, reached from a double-click instead of the palette.
 - **A menu entry that is not a command** — if an act is worth a right-click it is worth being in
   the palette, the catalog and the provenance log.

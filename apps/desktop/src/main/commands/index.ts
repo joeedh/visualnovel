@@ -29,7 +29,7 @@ import {
 } from './asset.js';
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
-import { docCreate, docRead, docWrite } from './doc.js';
+import { docCreate, docRead, docRename, docWrite } from './doc.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { interactionList, interactionTargets } from './interaction.js';
 import {
@@ -54,7 +54,7 @@ import {
   promptSetChunk,
   promptSetCustom,
 } from './prompt.js';
-import { projectInfo, projectSetArtStyle } from './project.js';
+import { projectInfo, projectSetArtStyle, projectSetKey } from './project.js';
 import {
   storyAssignLineIds,
   storyCoverage,
@@ -125,6 +125,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     commandCheck,
     docCreate,
     docRead,
+    docRename,
     docWrite,
     gateApprove,
     gateCandidates,
@@ -151,6 +152,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     promptSetCustom,
     projectInfo,
     projectSetArtStyle,
+    projectSetKey,
     storyAssignLineIds,
     storyCoverage,
     storyDeleteLine,
