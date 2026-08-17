@@ -1,15 +1,7 @@
-[x]: Add 'provide model key' to the file menu, it should pop up a dialog
-to provide the model key with a dropdown box for the model provider.
-[x]: Right-clicking on the characters tree root item thingy in the document tree 
-     should popup the context menu with 'create character sheet' etc.  Same with
-	 locations tree.
-[x]: The story context menu should also pop up when right clicking its root item,
-     also right clicking items with context menus shouldn't collapse or expand the trees.
-[x]: 'Write the screenplay' in the story context menu should renamed to 'Export Fountain'.
-[x]: The Story context menu should include a 'new scene' command.
-[x]: Double clicking on renamable documents in the document tree should let you edit the 
-     name inline, applying the rename on enter (and aborting on escape).  This operation 
-	 should be undoable, which presumably could be done with git?
-[x]: When initializing a new project git repo a default .gitignore should be created.
-
-	 
+[ ]: the asset editor should have a 'seed' field 
+[ ]: the 'close pane' view menu should invoke the interactive pane closing pathux
+     tool where the user selects an editor to close with the mouse (the editor is highlighted
+	 with a border and maybe big red X) then clicks to close it.  if it doesn't exist write it.
+[ ]: The recent projects menu is empty, fix it.
+[ ]: modal popup dialogs should have a more visually distinctive border 
+     and reasonable width limit (currently some popups can take up the whole screen).
