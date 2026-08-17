@@ -33,8 +33,32 @@ const plan: PlanRequest = {
 describe('what an event does to the conversation', () => {
   test('a tool call is transcript, not dialogue', () => {
     const convo = received(emptyConvo(opening), ranTool('read_file'));
-    expect(convo.feed).toEqual([{ id: 1, role: 'tool', text: 'read_file' }]);
+    expect(convo.feed[0]).toMatchObject({ id: 1, role: 'tool', text: 'read_file' });
     expect(convo.line).toBe(opening);
+  });
+
+  test('a tool line keeps what it was called with and what came back', () => {
+    const convo = received(emptyConvo(opening), {
+      type: 'tool',
+      tool: 'read_file',
+      args: { path: 'characters/aiko.md' },
+      result: { ok: false, output: 'no such file' },
+    });
+    expect(convo.feed[0]!.detail).toEqual({
+      args: '{"path":"characters/aiko.md"}',
+      ok: false,
+      output: 'no such file',
+    });
+  });
+
+  test('a tool called with nothing says nothing, rather than saying “undefined”', () => {
+    const convo = received(emptyConvo(opening), {
+      type: 'tool',
+      tool: 'list_files',
+      args: undefined,
+      result: { ok: true, output: '3 files' },
+    });
+    expect(convo.feed[0]!.detail?.args).toBe('');
   });
 
   test('what the agent says is both the dialogue box and a transcript line', () => {
@@ -138,7 +162,8 @@ describe('clearing', () => {
     const convo = received(received(emptyConvo(opening), ranTool('a')), ranTool('b'));
     const after = received(cleared(convo, 'Conversation cleared.'), ranTool('c'));
     expect(after.line).toBe('Conversation cleared.');
-    expect(after.feed).toEqual([{ id: 3, role: 'tool', text: 'c' }]);
+    expect(after.feed).toHaveLength(1);
+    expect(after.feed[0]).toMatchObject({ id: 3, role: 'tool', text: 'c' });
   });
 });
 

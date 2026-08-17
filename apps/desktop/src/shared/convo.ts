@@ -16,11 +16,29 @@
  */
 import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from './ipc.js';
 
-/** A rendered line in the transcript. */
+/** What a tool was called with and what came back — the half of a turn `text` cannot hold. */
+export interface ToolDetail {
+  /** The arguments, JSON-stringified. Clamped on the way to disk, like everything else. */
+  args?: string;
+  ok?: boolean;
+  output?: string;
+}
+
+/**
+ * A rendered line in the transcript.
+ *
+ * `full` and `detail` are for a reader that is not a person: a transcript is clamped so the log
+ * stays a log, but an analyst asked *why the agent did that* needs the sentence that was cut and
+ * the call that was summarised. Nothing on screen reads either — the renderer draws `text`.
+ */
 export interface FeedItem {
   id: number;
   role: 'user' | 'agent' | 'tool' | 'blocked';
   text: string;
+  /** The text at full length, present only when `text` was clamped writing it down. */
+  full?: string;
+  /** For a `tool` item: what it was called with and whether it worked. */
+  detail?: ToolDetail;
 }
 
 /**
@@ -78,9 +96,24 @@ export function emptyConvo(line: string): Convo {
   };
 }
 
-function push(convo: Convo, role: FeedItem['role'], text: string): Convo {
+function push(convo: Convo, role: FeedItem['role'], text: string, detail?: ToolDetail): Convo {
   const seq = convo.seq + 1;
-  return { ...convo, seq, feed: [...convo.feed, { id: seq, role, text }] };
+  const item: FeedItem = { id: seq, role, text, ...(detail ? { detail } : {}) };
+  return { ...convo, seq, feed: [...convo.feed, item] };
+}
+
+/**
+ * Tool args as a string. A tool call arrives as parsed JSON, so there is nothing to cycle — but
+ * this is on the path every turn takes, and a thrown `TypeError` here would lose the turn rather
+ * than one field of it.
+ */
+function stringifyArgs(args: unknown): string {
+  if (args === undefined) return '';
+  try {
+    return JSON.stringify(args) ?? String(args);
+  } catch {
+    return String(args);
+  }
 }
 
 /** The author's turn, the moment it is sent — the transcript shows it before the agent reads it. */
@@ -107,11 +140,19 @@ export function answered(convo: Convo, final: string | null): Convo {
  * backlog hold the same line: the box is what is being said now, the transcript is what was said.
  * A transcript of only the author's turns and the tools they caused is a record of an argument
  * with one side missing — and it is the side a saved thread is reopened to read.
+ *
+ * A `tool` event's args and result go into `detail` rather than into the line: the transcript says
+ * which tool ran, and what it ran on is evidence, not display. Sizing is somebody else's job —
+ * `text` is held in full here too, and clamped where it is written down.
  */
 export function received(convo: Convo, event: AgentEvent): Convo {
   switch (event.type) {
     case 'tool':
-      return push(convo, 'tool', event.tool);
+      return push(convo, 'tool', event.tool, {
+        args: stringifyArgs(event.args),
+        ok: event.result.ok,
+        output: event.result.output,
+      });
     case 'blocked':
       return push(convo, 'blocked', `${event.tool} blocked — ${event.reason}`);
     case 'message':

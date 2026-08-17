@@ -15,7 +15,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { appendJsonl, ensureDir } from '@vn/util';
 import type { ProjectPaths } from '@vn/store';
-import type { FeedItem, ThreadHeader, ThreadRecord } from '../shared/convo.js';
+import type { FeedItem, ThreadHeader, ThreadRecord, ToolDetail } from '../shared/convo.js';
 
 export type { ThreadHeader, ThreadRecord };
 
@@ -31,6 +31,15 @@ const TITLE_MAX = 60;
  * it wrote.
  */
 const TEXT_MAX = 400;
+
+/**
+ * Where the evidence stops. `full` and a tool's args and output are written for an analyst rather
+ * than a reader, so they are allowed to be longer than a transcript line — but a thread is still a
+ * log and not an archive, and these are the numbers that keep it one.
+ */
+const FULL_MAX = 8000;
+const ARGS_MAX = 600;
+const OUTPUT_MAX = 2000;
 
 type ThreadLine =
   | ({ v: 1; type: 'thread' } & ThreadHeader)
@@ -54,8 +63,21 @@ export function titleFrom(text: string): string {
   return `${(space > TITLE_MAX / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-function clamp(text: string): string {
-  return text.length <= TEXT_MAX ? text : `${text.slice(0, TEXT_MAX).trimEnd()}…`;
+function clamp(text: string, max = TEXT_MAX): string {
+  return text.length <= max ? text : `${text.slice(0, max).trimEnd()}…`;
+}
+
+/**
+ * A tool's evidence, sized for the log. Absent fields stay absent rather than becoming empty
+ * strings: an item written before this format existed and one whose tool took no arguments should
+ * read the same way, because they mean the same thing.
+ */
+function clampDetail(detail: ToolDetail): ToolDetail {
+  return {
+    ...(detail.args === undefined ? {} : { args: clamp(detail.args, ARGS_MAX) }),
+    ...(detail.ok === undefined ? {} : { ok: detail.ok }),
+    ...(detail.output === undefined ? {} : { output: clamp(detail.output, OUTPUT_MAX) }),
+  };
 }
 
 function stamp(at: Date): string {
@@ -125,6 +147,8 @@ export async function listThreads(paths: ProjectPaths): Promise<ThreadHeader[]> 
   const ids = files.filter((f) => f.endsWith('.jsonl')).map((f) => f.slice(0, -'.jsonl'.length));
   const headers: ThreadHeader[] = [];
   for (const id of ids.sort().reverse()) {
+    // Tool args are in the file too, so this filter lets the odd item line through to be parsed
+    // and then dropped by `headerOf`. That is a wasted parse, not a wrong answer.
     const keep = (raw: string) => raw.includes('"thread"') || raw.includes('"title"');
     const header = headerOf(id, await lines(threadFile(paths, id), keep));
     if (header) headers.push(header);
@@ -138,9 +162,18 @@ export async function readThread(paths: ProjectPaths, id: string): Promise<Threa
   const header = headerOf(id, parsed);
   if (!header) throw new Error(`no such conversation: ${id}`);
 
+  // Field by field rather than by spreading the line, so `at` and `type` stay in the file where
+  // they belong. `full` and `detail` come back for whoever asked for the whole record; the screen
+  // reads `text` and is none the wiser.
   const items = parsed
     .filter((line) => line.type === 'item')
-    .map(({ id: itemId, role, text }) => ({ id: itemId, role, text }));
+    .map(({ id: itemId, role, text, full, detail }) => ({
+      id: itemId,
+      role,
+      text,
+      ...(full === undefined ? {} : { full }),
+      ...(detail === undefined ? {} : { detail }),
+    }));
   return { ...header, items };
 }
 
@@ -172,16 +205,25 @@ export async function openThread(
   return header;
 }
 
+/**
+ * One transcript line, clamped for reading and kept for evidence: `text` is what a person sees,
+ * `full` is what was cut and only when something was, `detail` is what the tool was actually
+ * handed. Writing `full` unconditionally would double the log to say nothing.
+ */
 export async function appendItem(
   paths: ProjectPaths,
   id: string,
   item: FeedItem,
   now = new Date(),
 ): Promise<void> {
+  const text = clamp(item.text);
+  const full = item.full ?? item.text;
   await appendJsonl(threadFile(paths, id), {
     type: 'item',
     ...item,
-    text: clamp(item.text),
+    text,
+    ...(full.length > text.length ? { full: clamp(full, FULL_MAX) } : {}),
+    ...(item.detail ? { detail: clampDetail(item.detail) } : {}),
     at: now.toISOString(),
   });
 }

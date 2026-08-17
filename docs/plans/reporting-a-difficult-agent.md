@@ -90,8 +90,12 @@ export interface FeedItem {
 
 **`received()` fills `detail` from the event it already has.** The reducer stays pure and stays
 the single one — the invariant `conversation-threads.md` rests on — and the renderer is untouched
-because it renders `text`. `args` is JSON-stringified and capped; `output` is the `ToolResult`'s
-own output, capped separately.
+because it renders `text`. `args` is JSON-stringified there, in a `try`, because a throw on that
+path would lose the whole turn rather than one field of it.
+
+**Sizing is not the reducer's job.** `received()` holds args and output in full, exactly as it
+already holds `text` in full, and every cap is applied by `appendItem` on the way to disk — one
+place that decides how big a log line may be, which is where `clamp` already lives.
 
 **`appendItem` writes `detail` through and computes `full`** (`threads.ts:175`): `text` stays
 clamped for display, `full` is written only when `clamp()` actually cut something. `readThread`
@@ -109,9 +113,9 @@ discarded by `headerOf`, which filters on `line.type`. It is a wasted `JSON.pars
 Caps to add beside `TEXT_MAX`: `ARGS_MAX` (600), `OUTPUT_MAX` (2000), `FULL_MAX` (8000). A thread
 is still a log, not an archive.
 
-- [ ] 1.1 — `FeedItem.full` / `FeedItem.detail`, and `received()` filling them
-- [ ] 1.2 — `appendItem` / `readThread` round-tripping both, with the new caps
-- [ ] 1.3 — tests in `apps/desktop/src/shared/tests/` and `apps/desktop/src/main/tests/`:
+- [x] 1.1 — `FeedItem.full` / `FeedItem.detail`, and `received()` filling them
+- [x] 1.2 — `appendItem` / `readThread` round-tripping both, with the new caps
+- [x] 1.3 — tests in `apps/desktop/src/shared/tests/` and `apps/desktop/src/main/tests/`:
       a clamped item round-trips with `full`, a tool item carries args and `ok`, an old file with
       neither still reads
 

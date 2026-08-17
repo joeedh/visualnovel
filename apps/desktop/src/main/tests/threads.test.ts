@@ -125,6 +125,50 @@ describe('threads', () => {
     expect(stored!.text.length).toBeLessThan(500);
     expect(stored!.text.endsWith('…')).toBe(true);
   });
+
+  it('keeps what a clamped line said, and only when something was cut', async () => {
+    const { id } = await openThread(paths);
+    await appendItem(paths, id, item(1, 'agent', 'x'.repeat(5000)));
+    await appendItem(paths, id, item(2, 'agent', 'short enough'));
+
+    const [long, short] = (await readThread(paths, id)).items;
+    expect(long!.full).toHaveLength(5000);
+    expect(long!.text.length).toBeLessThan(long!.full!.length);
+    expect(short!.full).toBeUndefined();
+  });
+
+  it('caps the kept text too — a thread is a log, not an archive', async () => {
+    const { id } = await openThread(paths);
+    await appendItem(paths, id, item(1, 'agent', 'x'.repeat(20_000)));
+
+    const [stored] = (await readThread(paths, id)).items;
+    expect(stored!.full!.length).toBeLessThan(8100);
+    expect(stored!.full!.endsWith('…')).toBe(true);
+  });
+
+  it('round-trips a tool call’s args and result, each capped on its own', async () => {
+    const { id } = await openThread(paths);
+    await appendItem(paths, id, {
+      ...item(1, 'tool', 'read_file'),
+      detail: { args: `{"path":"${'a'.repeat(900)}"}`, ok: false, output: 'y'.repeat(5000) },
+    });
+
+    const [stored] = (await readThread(paths, id)).items;
+    expect(stored!.detail!.ok).toBe(false);
+    expect(stored!.detail!.args!.length).toBeLessThan(700);
+    expect(stored!.detail!.output!.length).toBeLessThan(2100);
+    expect(stored!.full).toBeUndefined();
+  });
+
+  it('reads a thread written before the format carried any of this', async () => {
+    const { id } = await openThread(paths, { title: 'older' });
+    await appendFile(
+      threadFile(paths, id),
+      `${JSON.stringify({ type: 'item', id: 1, role: 'tool', text: 'read_file', at: 'then' })}\n`,
+    );
+
+    expect((await readThread(paths, id)).items).toEqual([item(1, 'tool', 'read_file')]);
+  });
 });
 
 describe('titleFrom', () => {
