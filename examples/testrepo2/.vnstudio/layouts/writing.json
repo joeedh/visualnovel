@@ -1,0 +1,37 @@
+{
+  "vnstudio": "layout/1",
+  "slug": "writing",
+  "title": "Writing",
+  "description": "The documents tree, the script with the branch cards behind it, and the agent.",
+  "editors": [
+    "documents",
+    "script",
+    "branches",
+    "convo"
+  ],
+  "source": "shipped",
+  "recipe": {
+    "split": "columns",
+    "at": 0.6,
+    "first": {
+      "split": "columns",
+      "at": 0.3,
+      "first": {
+        "pane": [
+          "documents"
+        ]
+      },
+      "second": {
+        "pane": [
+          "script",
+          "branches"
+        ]
+      }
+    },
+    "second": {
+      "pane": [
+        "convo"
+      ]
+    }
+  }
+}

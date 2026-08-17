@@ -1,0 +1,37 @@
+{
+  "vnstudio": "layout/1",
+  "slug": "art",
+  "title": "Art",
+  "description": "The documents tree, one asset with its art notes, and the pipeline queue.",
+  "editors": [
+    "documents",
+    "asset",
+    "tasklist",
+    "taskgraph"
+  ],
+  "source": "shipped",
+  "recipe": {
+    "split": "columns",
+    "at": 0.7,
+    "first": {
+      "split": "columns",
+      "at": 0.3,
+      "first": {
+        "pane": [
+          "documents"
+        ]
+      },
+      "second": {
+        "pane": [
+          "asset"
+        ]
+      }
+    },
+    "second": {
+      "pane": [
+        "tasklist",
+        "taskgraph"
+      ]
+    }
+  }
+}
