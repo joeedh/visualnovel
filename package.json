@@ -16,6 +16,7 @@
   },
   "scripts": {
     "check": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
+    "typecheck": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
     "check:renderer": "pnpm --filter @vn/desktop check",
     "doctor": "node scripts/check-submodules.mjs",
     "test": "jest",
