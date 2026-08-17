@@ -353,6 +353,8 @@ export type DocNodeKind =
   | 'wiki'
   | 'assetkind'
   | 'asset'
+  /** A picture the project implies with no bytes yet — an address (`plate:cafe/night`), not a file. */
+  | 'slot'
   | 'dir'
   | 'file'
   | 'more';
@@ -373,6 +375,11 @@ export interface DocNode {
   path?: string;
   /** One word, never a sentence: `unreachable`, `draft`, `mined`, `base`, `accepted`. */
   badge?: string;
+  /**
+   * The row's tooltip, where the path is not the useful thing to say — a slot's `blocked` sentence.
+   * A pathless row otherwise carries no hover text at all, which the tooltip rule forbids.
+   */
+  note?: string;
   children?: DocNode[];
 }
 

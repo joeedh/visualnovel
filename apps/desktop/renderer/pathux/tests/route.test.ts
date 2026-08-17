@@ -31,6 +31,7 @@ const NODES: Record<DocNodeKind, DocNode> = {
   wiki: node('wiki', { id: 'wiki:wiki/lore/tea.md', path: 'wiki/lore/tea.md' }),
   assetkind: node('assetkind', { id: 'assetkind:portrait' }),
   asset: node('asset', { id: 'asset:a1b2c3' }),
+  slot: node('slot', { id: 'slot:plate:cafe/night' }),
   dir: node('dir', { id: 'dir:art' }),
   file: node('file', { id: 'file:notes.md', path: 'notes.md' }),
   more: node('more', { id: 'more:assets' }),
@@ -47,6 +48,8 @@ const WITH_NOTHING_OPEN: Record<DocNodeKind, EditorId | ''> = {
   wiki: 'wiki',
   assetkind: '',
   asset: 'asset',
+  // The one pane that can draw a picture with no bytes: a slot is a place in the graph.
+  slot: 'taskgraph',
   dir: '',
   file: 'wiki',
   more: '',

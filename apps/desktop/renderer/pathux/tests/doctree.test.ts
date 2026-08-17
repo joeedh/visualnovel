@@ -337,6 +337,21 @@ describe('menuFor', () => {
     for (const entry of entries.slice(0, 4)) expect(entry.props).toEqual({ hash: 'a1b2c3' });
   });
 
+  it('offers a slot the three ways of getting bytes into it, address intact', () => {
+    // The key keeps its own colon: `slot:` names the row, `plate:cafe/night` is the address, and
+    // both `asset.upload` and `asset.adopt` take that string verbatim as their `slot` prop.
+    const entries = menuFor(node('slot:plate:cafe/night', 'slot'));
+    expect(entries.map((entry) => entry.id)).toEqual([
+      'asset.upload',
+      'asset.adopt',
+      MENU_SEP,
+      'pipeline.run',
+    ]);
+    for (const entry of entries.slice(0, 2)) {
+      expect(entry.props).toEqual({ slot: 'plate:cafe/night' });
+    }
+  });
+
   it('splits a shot key back into the two props its commands take', () => {
     const entries = menuFor(node('shot:greet/greet__s1', 'shot'));
     expect(entries.map((entry) => entry.props)).toEqual([

@@ -361,8 +361,12 @@ export class DocumentsEditor extends VnEditor {
       line.appendChild(badge);
     }
     const renamable = renameOf(node);
+    // A path is the useful thing to say where there is one; `note` is what a row with no file says
+    // instead — a slot's own sentence — because no row may hover silently.
     if (node.path) {
       line.title = renamable ? `${node.path} — double-click the name to rename it` : node.path;
+    } else if (node.note) {
+      line.title = node.note;
     }
 
     if (!inert) {

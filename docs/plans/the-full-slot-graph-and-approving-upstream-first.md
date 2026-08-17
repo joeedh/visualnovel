@@ -287,7 +287,7 @@ picture rests on and nothing here detaches — you cannot un-draw a picture from
 
 Tooltips on the heading and every row, per the absolute rule.
 
-## Phase 7 — the Unapproved subtree
+## Phase 7 — the Unapproved subtree *(done)*
 
 Both groups are projections of the slot graph — one walk, no second enumeration, so a slot the tree
 promises is a slot `resolveSlot` can name:

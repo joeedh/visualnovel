@@ -8,6 +8,7 @@ import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, type Asset, type AssetKind, type ProjectModel, type Shot } from '@vn/types';
 import { isBaseKind } from '@vn/store';
+import { assetApproved, type SlotGraph } from '@vn/artgen';
 import type { BibleFile } from '@vn/bible';
 import type { DocNode, DocTree, EntityLinks } from '../shared/ipc.js';
 
@@ -34,6 +35,12 @@ export interface DocTreeInput {
    * missing from the map falls back to `hash8.ext`.
    */
   assetLabels?: ReadonlyMap<string, string>;
+  /**
+   * Every picture the project implies, from `buildSlotGraph`. **Optional**: without it the tree is
+   * exactly what it was, and the Unapproved root is simply absent rather than empty — a caller that
+   * has not built the graph must not be made to claim nothing is waiting.
+   */
+  slots?: SlotGraph;
   cap?: number;
 }
 
@@ -193,6 +200,75 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   return node('branch:assets', 'branch', 'Assets', { children: groups });
 }
 
+/**
+ * Everything still standing between this project and a finished set of pictures, in two groups the
+ * slot graph makes disjoint by construction.
+ *
+ * A second index into nodes that already exist rather than a new kind of thing: an *Awaiting
+ * approval* row reuses the `asset:<hash>` id the Assets branch uses, so selection, routing and the
+ * right-click menu all work here with no renderer change. Only *Not yet rendered* is new, because
+ * a slot with nothing in it is the one row in the tree that has no bytes behind it.
+ *
+ * Both groups walk `SlotGraph.order` — upstream before downstream — so the top of each list is what
+ * can be worked on now, which is the same order approval has to happen in.
+ */
+function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined {
+  const slots = input.slots;
+  if (!slots) return undefined;
+
+  const byHash = new Map(input.manifest.map((a) => [a.hash, a]));
+  const waiting: DocNode[] = [];
+  const unrendered: DocNode[] = [];
+  const seen = new Set<string>();
+
+  for (const key of slots.order) {
+    const slot = slots.nodes.get(key);
+    if (!slot) continue;
+    // Zero candidates, deliberately — not `hash === undefined`. `pick` declines whenever the answer
+    // is not certain, so a slot holding three drafts resolves to nothing and would read as
+    // unrendered; those three drafts are what the other group is listing.
+    if (slot.candidates.length === 0) {
+      unrendered.push(
+        node(`slot:${key}`, 'slot', slot.label, {
+          ...(slot.status ? { badge: slot.status } : {}),
+          note:
+            slot.blocked ??
+            'Nothing has been drawn for this slot yet — run the pipeline to make it.',
+        }),
+      );
+      continue;
+    }
+    for (const hash of slot.candidates) {
+      const asset = byHash.get(hash);
+      // One row per picture: a sheet bound to two outfits is still one thing to approve.
+      if (!asset || seen.has(hash) || assetApproved(asset, input.model)) continue;
+      seen.add(hash);
+      waiting.push(
+        node(`asset:${hash}`, 'asset', assetLabelOf(input, asset), {
+          badge: slot.binding.kind,
+          note: `Waiting on approval for ${slot.label}.`,
+        }),
+      );
+    }
+  }
+
+  if (waiting.length === 0 && unrendered.length === 0) return undefined;
+  const group = (id: string, label: string, children: DocNode[]): DocNode[] =>
+    children.length === 0
+      ? []
+      : [
+          node(id, 'branch', `${label} (${children.length})`, {
+            children: capped(id, children, cap),
+          }),
+        ];
+  return node('branch:unapproved', 'branch', 'Unapproved assets', {
+    children: [
+      ...group('unapproved:waiting', 'Awaiting approval', waiting),
+      ...group('unapproved:unrendered', 'Not yet rendered', unrendered),
+    ],
+  });
+}
+
 /** What a backlink entry is *about*. One of the three things a document in this project can be. */
 type Subject = { characterId: string } | { locationId: string } | { sceneId: string };
 
@@ -259,11 +335,15 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
 
 export function buildDocTree(input: DocTreeInput): DocTree {
   const cap = input.cap ?? DEFAULT_CAP;
+  // Immediately before Assets: it is a lens on the same nodes, so it sits next to them, and the
+  // four roots that were here keep the order the sidebar has always drawn them in.
+  const unapproved = unapprovedBranch(input, cap);
   const roots = [
     storyBranch(input, cap),
     entityBranch(input, 'character'),
     entityBranch(input, 'location'),
     wikiBranch(input),
+    ...(unapproved ? [unapproved] : []),
     assetBranch(input, cap),
   ];
 

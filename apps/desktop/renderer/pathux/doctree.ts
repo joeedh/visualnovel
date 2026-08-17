@@ -268,6 +268,17 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { editor: 'asset', where: 'elsewhere', subject: key },
         },
       ];
+    // A slot has no bytes, so every act on one is about *making* some: hand a file in, adopt one
+    // already in the store, or run the pipeline and let it draw. All three take the address as it
+    // is written in the tree, and each refuses itself — a `portrait:` slot's two upload entries
+    // give `adoptionForSlot`'s own sentence, because the gate owns a look.
+    case 'slot':
+      return [
+        { label: 'Upload a file for this…', id: 'asset.upload', props: { slot: key }, form: true },
+        { label: 'Adopt an asset for this…', id: 'asset.adopt', props: { slot: key }, form: true },
+        { label: MENU_SEP, id: MENU_SEP },
+        { label: 'Run pipeline…', id: 'pipeline.run', form: true },
+      ];
     case 'scene':
       return [
         { label: 'Assign line ids', id: 'story.assignLineIds', props: { scene: key } },

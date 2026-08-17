@@ -38,7 +38,14 @@ export const EDITORS = [
     },
   },
   { id: 'tasklist', title: 'Tasks', what: 'the pipeline task list' },
-  { id: 'taskgraph', title: 'Task Graph', what: 'the pipeline task graph' },
+  {
+    id: 'taskgraph',
+    title: 'Task Graph',
+    what: 'the pipeline task graph',
+    // The only editor with anything to say about a picture that has no bytes: a slot is a place in
+    // the graph, and every other pane's subject is a file or a hash.
+    claims: (node: ClaimNode) => (node.kind === 'slot' ? 'primary' : undefined),
+  },
   // The Inspector claims nothing on purpose: its subject is `ui.taskHash`, and no document-tree
   // node names a task — a click that opened it would land on an empty pane.
   { id: 'inspector', title: 'Inspector', what: 'what is selected, in detail' },

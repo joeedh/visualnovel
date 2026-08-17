@@ -74,6 +74,7 @@ import {
   artNotesOf,
   assetPrereqs,
   assetSlotLabel,
+  buildSlotGraph,
   composePrompt,
   condensePrompt,
   coverage,
@@ -2220,6 +2221,7 @@ export class WorkspaceSession {
 
     const shots = await readAllShots(project, { reportBroken: true });
     const manifest = project.store.manifest();
+    const labels = labelContext(project.model, project.graph);
     return buildDocTree({
       root: this.dir,
       model: project.model,
@@ -2228,7 +2230,16 @@ export class WorkspaceSession {
       shots,
       bible: bible.files(),
       wikiDir: relPath(this.dir, project.paths.wikiDir),
-      assetLabels: labelAssets(manifest, labelContext(project.model, project.graph)),
+      assetLabels: labelAssets(manifest, labels),
+      // The same walk the Task Graph pane reads, over the same load: the tree's two unapproved
+      // groups are projections of it, so nothing here enumerates slots a second time.
+      slots: buildSlotGraph({
+        ...labels,
+        assets: manifest,
+        shots,
+        config: project.config,
+        graph: project.graph,
+      }),
     });
   }
 

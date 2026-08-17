@@ -10,12 +10,12 @@
  * required its own direct prerequisites to be approved, so the closure holds at accept time. The
  * pane stays short and every row is one click from actionable.
  *
- * Three of the five arms below answer `approved: true` for something that was never approvable —
- * a portrait outside the gate, an upload, a concept, and a hash the manifest has never heard of.
- * Each mirrors a refusal `previewAccept` already gives by name: requiring an approval that cannot
- * be granted would make Approve permanently unreachable for everything drawn from one.
+ * Three things count as approved that nobody ever approved — an upload, a concept, and a hash the
+ * manifest has never heard of. Each mirrors a refusal `previewAccept` already gives by name:
+ * requiring an approval that cannot be granted would make Approve permanently unreachable for
+ * everything drawn from one. What "approved" means otherwise is {@link assetApproved}.
  */
-import type { Asset, AssetKind } from '@vn/types';
+import type { Asset, AssetKind, ProjectModel } from '@vn/types';
 import { isApproved } from './gate.js';
 import { assetSlotLabel } from './describe.js';
 import { slotKey, slotOf } from './refcycle.js';
@@ -39,6 +39,30 @@ export interface Prereq {
   note: string;
   /** No manifest record for these bytes. Reported, deliberately not a refusal. */
   missing?: boolean;
+}
+
+/**
+ * Whether a human has blessed these bytes — the one predicate, so no two surfaces can disagree
+ * about what "approved" means.
+ *
+ * **Asymmetric on purpose.** A portrait answers to the P3 gate and never to `accepted`, and twice
+ * over: the character has to be approved *and* these have to be the bytes they were approved with,
+ * so a draft filed beside the approved one does not count. A concept and an upload were never
+ * approvable at all, so they count as approved rather than blocking forever.
+ */
+export function assetApproved(asset: Asset, model: ProjectModel): boolean {
+  switch (asset.kind) {
+    case 'portrait': {
+      const id = asset.satisfies[0]?.characterId;
+      const character = id ? model.characters.get(id) : undefined;
+      return !!character && isApproved(character) && character.approvedPortrait === asset.hash;
+    }
+    case 'reference':
+    case 'concept':
+      return true;
+    default:
+      return asset.accepted;
+  }
 }
 
 /**
@@ -71,41 +95,32 @@ function prereqOf(hash: string, up: Asset | undefined, ctx: PrereqContext): Prer
     };
   }
   const slot = slotOf(up, ctx.angleOf?.(up.sourceTask));
+  const approved = assetApproved(up, ctx.model);
   const base = {
     hash,
     label: assetSlotLabel(up),
     kind: up.kind,
     ...(slot ? { slot: slotKey(slot) } : {}),
+    approved,
   };
+  // One verdict, four ways of saying it: the arms differ only in *why*, which is the row's tooltip.
   switch (up.kind) {
-    case 'portrait': {
-      // The gate owns a portrait, and it owns it twice over: the character has to be approved, and
-      // this has to be the portrait they were approved with rather than a draft beside it.
-      const id = up.satisfies[0]?.characterId;
-      const character = id ? ctx.model.characters.get(id) : undefined;
-      const ok = !!character && isApproved(character) && character.approvedPortrait === hash;
+    case 'portrait':
       return {
         ...base,
-        approved: ok,
-        note: ok
+        note: approved
           ? 'Approved at the character gate.'
-          : `Not approved: ${id ?? 'this character'} has not cleared the character gate with these bytes.`,
+          : `Not approved: ${up.satisfies[0]?.characterId ?? 'this character'} has not cleared the character gate with these bytes.`,
       };
-    }
     case 'reference':
-      return { ...base, approved: true, note: 'An upload is authored input, not generated art.' };
+      return { ...base, note: 'An upload is authored input, not generated art.' };
     case 'concept':
       return {
         ...base,
-        approved: true,
         note: 'A concept is a sketch — nothing downstream consumes it, so nothing approves it.',
       };
     default:
-      return {
-        ...base,
-        approved: up.accepted,
-        note: up.accepted ? 'Approved.' : 'Not approved yet.',
-      };
+      return { ...base, note: approved ? 'Approved.' : 'Not approved yet.' };
   }
 }
 

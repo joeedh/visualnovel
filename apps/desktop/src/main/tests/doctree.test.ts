@@ -3,7 +3,8 @@
  * end-to-end case at the bottom is what proves the projection is fed the real thing.
  */
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
-import type { Asset, ProjectModel, Shot } from '@vn/types';
+import type { SlotGraph, SlotNode } from '@vn/artgen';
+import type { Asset, ProjectModel, RefBinding, Shot } from '@vn/types';
 import type { LoadedInputs } from '@vn/parse';
 import type { DocNode } from '../../shared/ipc.js';
 import { buildDocTree, fileTree, type DocTreeInput } from '../doctree.js';
@@ -27,6 +28,18 @@ const scene = (id: string, over: Partial<Shot> = {}): Shot => ({
   subjects: [{ characterId: 'aiko' }],
   coversLines: [],
   status: 'pending',
+  ...over,
+});
+
+const asset = (hash: string, over: Partial<Asset> = {}): Asset => ({
+  hash,
+  ext: 'png',
+  kind: 'portrait',
+  sourceTask: 't',
+  refs: [],
+  modelId: 'm',
+  satisfies: [{ characterId: 'aiko' }],
+  accepted: false,
   ...over,
 });
 
@@ -75,18 +88,6 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
     ],
     diagnostics: [],
   } as unknown as LoadedInputs;
-
-  const asset = (hash: string, over2: Partial<Asset> = {}): Asset => ({
-    hash,
-    ext: 'png',
-    kind: 'portrait',
-    sourceTask: 't',
-    refs: [],
-    modelId: 'm',
-    satisfies: [{ characterId: 'aiko' }],
-    accepted: false,
-    ...over2,
-  });
 
   return {
     root: ROOT,
@@ -179,6 +180,147 @@ describe('buildDocTree', () => {
     const shots = branch(capped.roots, 'branch:story').children![0]!.children!;
     expect(shots.map((n) => n.label)).toEqual(['s0', 's1', '… and 3 more']);
     expect(shots[2]!.kind).toBe('more');
+  });
+});
+
+describe('the Unapproved branch', () => {
+  const HASH_A = 'a'.repeat(64);
+
+  const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
+    key,
+    binding,
+    label: key,
+    refs: [],
+    candidates: [],
+    approved: false,
+    ...over,
+  });
+
+  // The projection is what is under test, so the graph is handed over rather than built — what
+  // `buildSlotGraph` puts in these fields is `slotgraph.test.ts`'s job.
+  const slots = (nodes: SlotNode[]): SlotGraph => ({
+    nodes: new Map(nodes.map((n) => [n.key, n])),
+    dependents: new Map(),
+    order: nodes.map((n) => n.key),
+  });
+
+  const portrait = slot(
+    'portrait:aiko',
+    { kind: 'portrait', characterId: 'aiko' },
+    { candidates: [HASH_A] },
+  );
+  const plate = slot(
+    'plate:gate/day',
+    { kind: 'plate', locationId: 'gate', variant: 'day' },
+    { blocked: 'The gate has no approved look yet.' },
+  );
+
+  const treeWith = (graph: SlotGraph, over: Partial<DocTreeInput> = {}): DocNode | undefined =>
+    buildDocTree(makeInput({ slots: graph, ...over })).roots.find(
+      (n) => n.id === 'branch:unapproved',
+    );
+
+  it('is absent entirely without a slot graph, rather than empty', () => {
+    // A caller that has not built the graph must not be made to claim nothing is waiting.
+    expect(buildDocTree(makeInput()).roots.map((n) => n.id)).not.toContain('branch:unapproved');
+  });
+
+  it('splits into two counted groups, sitting immediately before Assets', () => {
+    const roots = buildDocTree(makeInput({ slots: slots([portrait, plate]) })).roots;
+    expect(roots.map((n) => n.id)).toEqual([
+      'branch:story',
+      'branch:characters',
+      'branch:locations',
+      'branch:wiki',
+      'branch:unapproved',
+      'branch:assets',
+    ]);
+
+    const groups = branch(roots, 'branch:unapproved').children!;
+    expect(groups.map((n) => [n.id, n.label])).toEqual([
+      ['unapproved:waiting', 'Awaiting approval (1)'],
+      ['unapproved:unrendered', 'Not yet rendered (1)'],
+    ]);
+  });
+
+  it('reuses the Assets branch’s ids for a picture that exists, so a click routes unchanged', () => {
+    const waiting = treeWith(slots([portrait]))!.children![0]!.children!;
+    expect(waiting).toEqual([
+      {
+        id: `asset:${HASH_A}`,
+        kind: 'asset',
+        label: 'aaaaaaaa.png',
+        badge: 'portrait',
+        note: 'Waiting on approval for portrait:aiko.',
+      },
+    ]);
+  });
+
+  it('gives a slot with no bytes an address and its own sentence, since it has no path to hover', () => {
+    const unrendered = treeWith(slots([plate]))!.children![0]!.children!;
+    expect(unrendered).toEqual([
+      {
+        id: 'slot:plate:gate/day',
+        kind: 'slot',
+        label: 'plate:gate/day',
+        note: 'The gate has no approved look yet.',
+      },
+    ]);
+  });
+
+  it('reads a portrait’s approval off the gate, never off Asset.accepted', () => {
+    // `a` is `accepted: true` and still waiting: the P3 gate owns a look, and nothing else does.
+    expect(treeWith(slots([portrait]))!.children![0]!.label).toBe('Awaiting approval (1)');
+
+    const input = makeInput();
+    const aiko = input.model.characters.get('aiko')!;
+    const approved = {
+      ...input.model,
+      characters: new Map([['aiko', { ...aiko, approvedPortrait: HASH_A }]]),
+    } as ProjectModel;
+    expect(treeWith(slots([portrait]), { model: approved })).toBeUndefined();
+  });
+
+  it('files three unaccepted drafts as awaiting approval, never as unrendered', () => {
+    // `pick` declines when candidates tie, so `hash === undefined` would report real bytes as
+    // unrendered. Zero candidates is the predicate, which is what keeps the two groups disjoint.
+    const hashes = ['1', '2', '3'].map((n) => n.repeat(64));
+    const drafts = hashes.map((hash) =>
+      asset(hash, {
+        kind: 'shot_image',
+        satisfies: [{ sceneId: 'arrival', shotId: 'arrival-s1' }],
+      }),
+    );
+    const frame = slot(
+      'shot:arrival/arrival-s1',
+      { kind: 'shot', sceneId: 'arrival', shotId: 'arrival-s1' },
+      { candidates: hashes },
+    );
+    const groups = treeWith(slots([frame]), { manifest: drafts })!.children!;
+    expect(groups.map((n) => n.id)).toEqual(['unapproved:waiting']);
+    expect(groups[0]!.children!.map((n) => n.id)).toEqual(hashes.map((h) => `asset:${h}`));
+  });
+
+  it('lists a picture bound to two slots once, and caps each group on its own', () => {
+    const second = slot(
+      'sheet:aiko/uniform/front',
+      { kind: 'sheet', characterId: 'aiko', outfit: 'uniform', angle: 'front' },
+      { candidates: [HASH_A] },
+    );
+    const groups = treeWith(slots([portrait, second, plate]), { cap: 1 })!.children!;
+    expect(groups[0]!.children!.map((n) => n.label)).toEqual(['aaaaaaaa.png']);
+    expect(groups[0]!.label).toBe('Awaiting approval (1)');
+    expect(groups[1]!.children!.map((n) => n.kind)).toEqual(['slot']);
+  });
+
+  it('offers nothing for a candidate the manifest has never heard of', () => {
+    // The bytes are gone; there is no picture to open and nothing an author could approve.
+    const stale = slot(
+      'portrait:aiko',
+      { kind: 'portrait', characterId: 'aiko' },
+      { candidates: ['z'.repeat(64)] },
+    );
+    expect(treeWith(slots([stale]))).toBeUndefined();
   });
 });
 
