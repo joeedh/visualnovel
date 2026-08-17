@@ -162,17 +162,18 @@ export async function readThread(paths: ProjectPaths, id: string): Promise<Threa
   const header = headerOf(id, parsed);
   if (!header) throw new Error(`no such conversation: ${id}`);
 
-  // Field by field rather than by spreading the line, so `at` and `type` stay in the file where
-  // they belong. `full` and `detail` come back for whoever asked for the whole record; the screen
-  // reads `text` and is none the wiser.
+  // Field by field rather than by spreading the line, so `type` stays in the file where it
+  // belongs. `full`, `detail` and `at` come back for whoever asked for the whole record; the
+  // screen reads `text` and is none the wiser.
   const items = parsed
     .filter((line) => line.type === 'item')
-    .map(({ id: itemId, role, text, full, detail }) => ({
+    .map(({ id: itemId, role, text, full, detail, at }) => ({
       id: itemId,
       role,
       text,
       ...(full === undefined ? {} : { full }),
       ...(detail === undefined ? {} : { detail }),
+      ...(at === undefined ? {} : { at }),
     }));
   return { ...header, items };
 }

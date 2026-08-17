@@ -52,7 +52,9 @@ describe('threads', () => {
     for (const feed of items) await appendItem(paths, header.id, feed);
 
     const read = await readThread(paths, header.id);
-    expect(read.items).toEqual(items);
+    expect(read.items).toMatchObject(items);
+    // Every stored line is stamped, which is what a report lines a conversation up by.
+    expect(read.items.every((stored) => !Number.isNaN(Date.parse(stored.at!)))).toBe(true);
     expect(read.commit).toBe('a1b2c3d');
     expect(read.model).toBe('claude-opus-5');
     expect(read.startedAt).toBe(at.toISOString());
@@ -103,7 +105,7 @@ describe('threads', () => {
     await appendFile(threadFile(paths, id), '{"type":"item","id":2,"role":"age');
 
     expect((await listThreads(paths)).map((t) => t.title)).toEqual(['interrupted']);
-    expect((await readThread(paths, id)).items).toEqual([
+    expect((await readThread(paths, id)).items).toMatchObject([
       item(1, 'user', 'rewrite the café sheet'),
     ]);
   });
@@ -167,7 +169,9 @@ describe('threads', () => {
       `${JSON.stringify({ type: 'item', id: 1, role: 'tool', text: 'read_file', at: 'then' })}\n`,
     );
 
-    expect((await readThread(paths, id)).items).toEqual([item(1, 'tool', 'read_file')]);
+    expect((await readThread(paths, id)).items).toEqual([
+      { ...item(1, 'tool', 'read_file'), at: 'then' },
+    ]);
   });
 });
 

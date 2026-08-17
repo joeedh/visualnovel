@@ -15,6 +15,7 @@
       "@vn/artgen": ["./packages/artgen/src/index.ts"],
       "@vn/git": ["./packages/git/src/index.ts"],
       "@vn/commands": ["./packages/commands/src/index.ts"],
+      "@vn/agentreport": ["./packages/agentreport/src/index.ts"],
       "@vn/debug2d": ["./packages/debug2d/src/index.ts"],
       "@vn/authoring": ["./packages/authoring/src/index.ts"],
       "@vn/taskgraph": ["./packages/taskgraph/src/index.ts"],

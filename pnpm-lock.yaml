@@ -137,6 +137,9 @@ importers:
       '@google/genai':
         specifier: ^0.3.0
         version: 0.3.1
+      '@vn/agentreport':
+        specifier: workspace:*
+        version: link:../../packages/agentreport
       '@vn/artgen':
         specifier: workspace:*
         version: link:../../packages/artgen
@@ -201,6 +204,18 @@ importers:
       vite:
         specifier: ^6.0.3
         version: 6.4.3(@types/node@22.19.21)(yaml@2.9.0)
+
+  packages/agentreport:
+    dependencies:
+      '@vn/commands':
+        specifier: workspace:*
+        version: link:../commands
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../types
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../util
 
   packages/artgen:
     dependencies:

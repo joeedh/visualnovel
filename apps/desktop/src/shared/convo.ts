@@ -39,6 +39,12 @@ export interface FeedItem {
   full?: string;
   /** For a `tool` item: what it was called with and whether it worked. */
   detail?: ToolDetail;
+  /**
+   * When the line was written down. Absent on a live item and stamped by `appendItem`, so it is
+   * present on anything read back — which is what lets a report line a conversation up against
+   * `commands.jsonl` and say what the app was doing while it was being had.
+   */
+  at?: string;
 }
 
 /**

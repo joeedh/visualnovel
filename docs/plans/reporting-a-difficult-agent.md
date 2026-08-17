@@ -58,9 +58,10 @@ providers  authoring  model  config  store
             apps/desktop (main)
 ```
 
-- It may import `@vn/types`, `@vn/util`, `@vn/store`, `@vn/model`, `@vn/config`, `@vn/providers`
-  and `@vn/authoring`. It **must not** import `@vn/pipeline` or `@vn/scheduler` — analysing an
-  agent is an input-side concern, and the boundaries rule should say so.
+- It may import `@vn/types`, `@vn/util`, `@vn/store`, `@vn/model`, `@vn/config`, `@vn/parse`,
+  `@vn/commands`, `@vn/providers` and `@vn/authoring`. It **must not** import `@vn/pipeline` or
+  `@vn/scheduler` — analysing an agent is an input-side concern, and the boundaries rule says so.
+  `@vn/commands` is on the list because the acting record a transcript lacks is `commands.jsonl`.
 - Its only consumer is `apps/desktop/src/main/`. It is deliberately not one of the four shared
   leaves (`export`, `scriptedit`, `bible`, `artgen`): those exist because *two* hosts need them,
   and this has one. If `vnauthor` ever grows the same command, that is when it moves.
@@ -124,30 +125,67 @@ is still a log, not an archive.
 `packages/agentreport/src/transcript.ts`, pure, given already-read data:
 
 ```ts
+export interface ReportContext {
+  /** The app build the report is written from, so a maintainer knows which code to read. */
+  appVersion?: string;
+  /** The reasoning effort the conversation ran at. */
+  effort?: string;
+}
 export interface Evidence {
   thread: ThreadRecord;
   /** Command records whose window overlaps the thread — what the agent actually did. */
   acts: CommandRecord[];
   /** True when the thread predates the detailed format, so the report can say so. */
   thin: boolean;
+  context: ReportContext;
 }
-export function assemble(thread: ThreadRecord, records: CommandRecord[]): Evidence;
+export function assemble(
+  thread: ThreadRecord,
+  records: CommandRecord[],
+  context?: ReportContext,
+): Evidence;
 export function toMarkdown(evidence: Evidence): string;
 ```
 
+`ReportContext` exists because the header wants two facts a thread file has never held — the app
+build and the effort — and inventing them inside a pure function is not on.
+
+**`ThreadRecord` and `FeedItem` are re-declared in the package, not imported.** Thread storage is
+the desktop app's (`apps/desktop/src/main/threads.ts`) and a package may not import an app. The
+shapes are structurally identical, so main passes its record straight in; if the app ever adds a
+role this package does not know, the call site is where that should fail.
+
+**`FeedItem` gains `at`, and `readThread` carries it back.** `appendItem` has always stamped every
+line — `readThread` simply dropped it on the way out, so recovering it costs one destructured
+field and works on threads already on disk. Without it there is no window to join against.
+
 The join is by time. `ThreadHeader.startedAt` and every item's `at` are ISO stamps, and
 `CommandRecord` (`packages/commands/src/command.ts:117`) carries `startedAt`, `finishedAt`, `id`,
-`invocation`, `status`, `message`, `error` and `written`. Records inside the thread's window,
-ordered by `seq`, are the acting record the transcript lacks — including the ones the agent caused
-indirectly. `thin` is `true` when no item carries `detail` or `full`.
+`invocation`, `status`, `message`, `error` and `written`. The window runs from the thread's start
+to its **last stamped line** — not to now: a thread stays open while the author keeps working, and
+those later acts are not the agent's. A record overlapping that window is in, ordered by `seq`.
+That deliberately includes acts the author performed by hand, because for reading a bad
+conversation back, what happened in the project while it was open *is* the evidence.
 
-`toMarkdown` renders one document: header (model, effort, commit, app version), the interleaved
-turns, and the act log. This is the *only* thing handed to the analyst, and it goes through the
+`thin` is decided by the tool lines when there are any — the old format recorded a name alone, so
+a tool line without `detail` dates the thread. With no tool lines at all nothing is decisive, and
+it falls back to "no item carries `full` or `detail`", which flags a short new thread along with a
+genuinely old one. That false positive costs one caveat sentence, which is the right way round.
+
+`toMarkdown` renders one document: header (model, effort, commit, app version), the turns in
+order, then the act log. Tool args and output are fenced with a run of backticks longer than any
+in the text, because a report about an agent that mangled a markdown file must not end its own
+code block mid-way. This is the *only* thing handed to the analyst, and it goes through the
 redactor first.
 
-- [ ] 2.1 — `assemble` + `toMarkdown` with tests over a fixture thread and a fixture
+Reading the log back is `apps/desktop/src/main/commandlog.ts` — `readCommandLog` beside the
+`onRecord` that writes it, and `evidenceFor(paths, threadId, context)` as the one seam that
+touches disk. Nothing in the app had read `commands.jsonl` in code before; provenance was written
+to be read by a person with a text editor.
+
+- [x] 2.1 — `assemble` + `toMarkdown` with tests over a fixture thread and a fixture
       `commands.jsonl`
-- [ ] 2.2 — reading `commands.jsonl` in main and passing it in (the package stays pure)
+- [x] 2.2 — reading `commands.jsonl` in main and passing it in (the package stays pure)
 
 ## Stage 3 — redaction is a boundary, not an instruction
 

@@ -40,6 +40,21 @@ const ALLOWED = {
   // The command framework: registry, prop specs, DSL, stack. Reads git HEAD for provenance,
   // knows nothing about the domain — commands themselves are defined by the host app.
   commands: ['types', 'util', 'git'],
+  // Reading a bad conversation back: evidence assembly, redaction, the debug agent and the
+  // GitHub issue it produces. Input-side, and forbidden from the pipeline/scheduler for the same
+  // reason `authoring` is — analysing an agent is not generating art. `commands` is here because
+  // the acting record a transcript lacks is `commands.jsonl` (reporting-a-difficult-agent plan).
+  agentreport: [
+    'types',
+    'util',
+    'config',
+    'parse',
+    'model',
+    'store',
+    'commands',
+    'providers',
+    'authoring',
+  ],
   // 2D debug layer: sits OUTSIDE the layering graph — imports nothing from packages/ and is
   // imported only by the desktop renderer. Must stay strippable from production builds.
   debug2d: [],
@@ -116,6 +131,7 @@ const ALLOWED = {
     'artgen',
     'git',
     'commands',
+    'agentreport',
     'taskgraph',
     'providers',
     'pipeline',
@@ -179,6 +195,7 @@ export default tseslint.config(
         { type: 'artgen', pattern: 'packages/artgen', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
         { type: 'commands', pattern: 'packages/commands', mode: 'folder' },
+        { type: 'agentreport', pattern: 'packages/agentreport', mode: 'folder' },
         { type: 'debug2d', pattern: 'packages/debug2d', mode: 'folder' },
         { type: 'authoring', pattern: 'packages/authoring', mode: 'folder' },
         { type: 'taskgraph', pattern: 'packages/taskgraph', mode: 'folder' },

@@ -20,6 +20,7 @@ const PACKAGES = [
   'artgen',
   'git',
   'commands',
+  'agentreport',
   'debug2d',
   'authoring',
   'taskgraph',
