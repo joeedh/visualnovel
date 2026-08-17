@@ -57,3 +57,5 @@
 [ ]: can the document tree's asset subtree use asset slots instead of hashes to prune out old/rejected
      assets?
 [ ]: you should be able to right click a line and get a menu with 'open shot asset'.
+[ ]: the agent should be provided the active scene (if it's not already).
+	 
