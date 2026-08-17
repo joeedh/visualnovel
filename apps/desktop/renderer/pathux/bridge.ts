@@ -9,8 +9,17 @@
  */
 import { message as note, error as noteError } from 'pathux';
 import { api } from '../api.js';
-import type { AgentEvent, CommandOutcome, PropValue, UiEffect } from '../../src/shared/ipc.js';
+import type {
+  AgentEvent,
+  CommandOutcome,
+  Notification,
+  NotificationInput,
+  PropValue,
+  UiEffect,
+} from '../../src/shared/ipc.js';
+import { shouldFileCommand } from '../../src/shared/notify.js';
 import type { ShellApp } from './context.js';
+import { notificationsChanged, refreshNotifications } from './notifications.js';
 import { closePalette, openPalette } from './palette.js';
 import { applyView } from './view.js';
 
@@ -39,6 +48,31 @@ export function say(text: string, bad = false): void {
   if (!screen) return;
   if (bad) noteError(screen, text, 4000);
   else note(screen, text, 4000);
+}
+
+/**
+ * File a notification the shell raised on its own — a notice that is not a command's outcome,
+ * which main would otherwise never hear about. It is *not* shown from here: main pushes every
+ * notification back over `notify:changed`, and that is what says it.
+ */
+export function notify(input: NotificationInput): void {
+  // Swallowed rather than shown: with no project open there is no log to file it in, and a
+  // browser preview has no main process at all. Neither is worth a second failure on screen.
+  void api.invoke('notify:post', { source: 'ui', ...input }).catch(() => {});
+}
+
+/**
+ * Say what a command answered, **without saying it twice**. Main files every act and every
+ * failure it heard about and pushes them back, and that push is already displayed; what the
+ * shell still has to voice is the rest — a read that succeeded, and the handful of failures the
+ * stack rejects before a record exists (an unknown command, bad props, a declined confirm).
+ */
+export function report(outcome: CommandOutcome): void {
+  if (!outcome.ok) {
+    if (!outcome.record) say(outcome.error, true);
+    return;
+  }
+  if (!shouldFileCommand(outcome.record)) say(outcome.record.message);
 }
 
 /** Re-read the workspace: the project's name and the diagnostics the header counts. */
@@ -113,7 +147,7 @@ export async function exec(
   props: Record<string, PropValue> = {},
 ): Promise<CommandOutcome> {
   const outcome = await api.invoke('command:exec', { id, props, source: 'ui' });
-  if (!outcome.ok) say(outcome.error, true);
+  if (!outcome.ok && !outcome.record) say(outcome.error, true);
   for (const watcher of watchers) watcher(id, outcome);
   if (outcome.ok) wrote(outcome.record.written ?? []);
   if (outcome.ok && outcome.record.mutating) invalidate();
@@ -122,12 +156,11 @@ export async function exec(
 
 /**
  * Undo or redo. A refusal is the interesting outcome: undo declines rather than guessing when
- * the worktree drifted, and the author has to be told why.
+ * the worktree drifted, and the author has to be told why. A refusal here carries no record —
+ * the stack answers before it writes one — so `report` is what voices it.
  */
 export async function move(direction: 'undo' | 'redo'): Promise<void> {
-  const outcome = await api.invoke(direction === 'undo' ? 'command:undo' : 'command:redo');
-  if (outcome.ok) say(outcome.record?.message ?? `${direction} ok`);
-  else say(outcome.error, true);
+  report(await api.invoke(direction === 'undo' ? 'command:undo' : 'command:redo'));
 }
 
 /**
@@ -195,7 +228,8 @@ export function installBridge(app: ShellApp): void {
       }
       touch();
     } else if (effect.type === 'workspace') {
-      say(`Opened ${effect.title}`);
+      // Nothing said here: whichever command opened it is mutating, so main filed its sentence
+      // and pushed it back. This effect is only "re-read the project you are now in".
       void refreshWorkspace();
     } else if (effect.type === 'view') {
       // The command already said what it meant to do; the mesh answers only when it disagrees,
@@ -217,5 +251,14 @@ export function installBridge(app: ShellApp): void {
     }
   });
 
+  // Main files every notification and pushes it back, so the transient sentence and the durable
+  // record are the same event: the bell recounts, an open list redraws, and the note frame shows
+  // it once. A flag change carries no note — the count is stale, but nothing new was said.
+  api.on('notify:changed', (payload: { note?: Notification }) => {
+    notificationsChanged();
+    if (payload.note) say(payload.note.message, payload.note.level === 'error');
+  });
+
   void refreshWorkspace();
+  void refreshNotifications();
 }

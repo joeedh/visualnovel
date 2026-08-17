@@ -341,6 +341,12 @@ const fallback: DesktopApi = {
         return Promise.resolve({ version: 1, source: '(preview)', commands: [] });
       case 'command:history':
         return Promise.resolve([]);
+      // A preview has no project, and the log lives in one. An empty list is the honest answer:
+      // the bell draws zero unread and the dialog says nothing has happened yet.
+      case 'notify:list':
+        return Promise.resolve([]);
+      case 'notify:post':
+        return Promise.reject(new Error('(preview) no notification log'));
       case 'command:exec':
         return Promise.resolve({ ok: false, error: '(preview) no command stack' });
       // Not `refuse`: a preview has no precondition to consult, and dressing that up as a

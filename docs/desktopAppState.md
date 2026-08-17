@@ -136,6 +136,7 @@ a widget that would change the project dispatches a command instead.
 | `model` | `string` | Text model id, for the header badge |
 | `agentMode` | `'plan' \| 'execute'` | Mirrored from `agent.setMode`'s outcome and from `agent:event` |
 | `errors` / `warnings` | `number` | Diagnostics counted apart; errors displace warnings in the badge |
+| `unread` | `number` | What the bell shows: unread, unarchived notifications matching the active filter. Written by `pathux/notifications.ts`, never counted in the header, so the badge and the list cannot disagree |
 | `canUndo` / `canRedo` / `undoLabel` / `redoLabel` | `boolean` / `string` | Pushed on the `command:ui` `undo` effect |
 
 **The conversation (`renderer/pathux/agent.ts` + `src/shared/convo.ts`)** is a second module, subscribed at
@@ -239,6 +240,7 @@ class WorkspaceSession {
 │   ├── state/
 │   │   ├── tasks.jsonl         # Append-only task status log (crash recovery + resume)
 │   │   ├── commands.jsonl      # Append-only CommandRecord log (provenance + undo)
+│   │   ├── notifications.jsonl # Append-only notification log; `r`/`h` patched in place
 │   │   └── reviews/<taskHash>  # Vision-review reports per task
 │   └── work/
 │       ├── story.graph.mmd     # Mermaid diagram of story branches
@@ -404,6 +406,8 @@ invoke('pipeline:run', { mock })
 | Manifest | `vngen/build/manifest.json` | ✓ On disk | AssetStore | Pipeline tasks |
 | Task graph | `vngen/state/tasks.jsonl` | ✓ On disk | TaskGraph loader | Pipeline runner |
 | Command history | `vngen/state/commands.jsonl` | ✓ On disk | `CommandStack` (`command:history`) | Every command execution, via `onRecord` |
+| Notifications | `vngen/state/notifications.jsonl` | ✓ On disk | `notify:list` / the bell | Every filed command outcome, every pipeline task, every shell notice |
+| Which categories the list shows | `.vndesktop/session.json` (`vn.notifications.filter`) | ✓ Survives restart | `pathux/notifications.ts` | The filter popup and the "show deleted" box |
 | Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | The eighteen undoable `story.*` commands |
 
 ---
@@ -449,6 +453,8 @@ The **conversation on screen is not recovered**: the renderer opens on an empty 
 | `command:catalog` | none | CommandCatalog | No (the **live** registry, never the generated file) |
 | `command:exec` | CommandExecRequest | CommandOutcome | **Yes** — appends to `vngen/state/commands.jsonl` |
 | `command:history` | `limit?: number` | CommandRecord[] | No (read back from the log) |
+| `notify:list` | none | Notification[] | No (read back from the log, deduped and sorted) |
+| `notify:post` | NotificationInput | Notification | **Yes** — appends to `vngen/state/notifications.jsonl` |
 | `command:check` | `{ id, props? }` | CommandCheck | No (a read, never a gate — `exec` re-decides) |
 | `command:undo` | none | CommandOutcome | **Yes** (restores a snapshot; refuses on drift) |
 | `command:redo` | none | CommandOutcome | **Yes** |
@@ -476,6 +482,7 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
 | `agent:event` | AgentEvent | During agent:run (each step) |
 | `permission:plan` | PlanRequest | Agent needs approval |
 | `command:ui` | UiEffect | A `view.*` command named an editor or a pane, the palette opened, undo state moved, or a workspace opened |
+| `notify:changed` | `{ note? }` | A notification was filed, or one's read/hidden flag moved. Carries the note when there is a new one; the renderer's answer to either is a refetch, and the note is what the one surviving note frame shows |
 | `session:changed` | `{ key, value }` | Any session write, whoever made it |
 | `log` | `{ level, message }` | Diagnostic logging |
 

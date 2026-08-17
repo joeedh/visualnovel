@@ -1,7 +1,7 @@
 import { HotKey, KeyMap, type Container } from 'pathux';
 import { api } from '../../api.js';
 import type { Playable, PlayableScene } from '../../../src/shared/ipc.js';
-import { say } from '../bridge.js';
+import { notify } from '../bridge.js';
 import { centered } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import {
@@ -203,7 +203,7 @@ export class PlayEditor extends VnEditor {
   private load(): void {
     const saved = parseSave(localStorage.getItem(saveKeyOf(this.play)));
     if (!saved) {
-      say('No save found for this project.', true);
+      notify({ category: 'workspace', level: 'warn', message: 'No save found for this project.' });
       return;
     }
     this.history = saved;

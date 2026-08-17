@@ -1,6 +1,6 @@
 import type { Container } from 'pathux';
 import { UNRESOLVED, type Verdict } from '@vn/commands';
-import { exec, onInvalidate, say } from '../bridge.js';
+import { exec, notify, onInvalidate, report } from '../bridge.js';
 import type { VnContext } from '../context.js';
 import { menuFor } from '../doctree.js';
 import { assetNode } from '../open.js';
@@ -175,14 +175,22 @@ export class AssetEditor extends VnEditor {
   // Acting
   // -------------------------------------------------------------------------
 
+  /**
+   * A complaint this pane raised on its own — a refusal from a rule module, or a box left empty.
+   * Filed rather than merely shown: it is an event about an asset like the commands around it,
+   * and main pushes it back, which is what displays it.
+   */
+  private complain(message: string): void {
+    notify({ category: 'asset', level: 'warn', message });
+  }
+
   private async approve(): Promise<void> {
     const info = this.info;
     if (!info) return;
     const action = approveAction(info);
-    if (!action.ok) return void say(action.reason, true);
+    if (!action.ok) return this.complain(action.reason);
 
-    const outcome = await exec(action.id, action.props);
-    if (outcome.ok) say(outcome.record.message);
+    report(await exec(action.id, action.props));
   }
 
   /**
@@ -192,8 +200,7 @@ export class AssetEditor extends VnEditor {
   private async regenerate(): Promise<void> {
     const info = this.info;
     if (!info) return;
-    const outcome = await exec('asset.regenerate', { hash: info.hash, run: true });
-    if (outcome.ok) say(outcome.record.message);
+    report(await exec('asset.regenerate', { hash: info.hash, run: true }));
   }
 
   /**
@@ -205,18 +212,18 @@ export class AssetEditor extends VnEditor {
     const info = this.info;
     if (!info) return;
     const action = promptEditable(info);
-    if (!action.ok) return void say(action.reason, true);
+    if (!action.ok) return this.complain(action.reason);
 
     const prompt = this.draft.trim();
-    if (prompt === '') return void say('A redraw needs a prompt — the box is empty.', true);
+    if (prompt === '') return this.complain('A redraw needs a prompt — the box is empty.');
 
     const outcome = await exec('art.redraw', {
       hash: info.hash,
       prompt,
       title: this.titleDraft.trim(),
     });
+    report(outcome);
     if (!outcome.ok) return;
-    say(outcome.record.message);
     this.promptDirty = false;
   }
 
@@ -229,13 +236,13 @@ export class AssetEditor extends VnEditor {
     const info = this.info;
     if (!info) return;
     const action = promoteAction(info);
-    if (!action.ok) return void say(action.reason, true);
+    if (!action.ok) return this.complain(action.reason);
     const variant = this.variant.trim();
-    if (variant === '') return void say('Name the variant this becomes the plate for.', true);
+    if (variant === '') return this.complain('Name the variant this becomes the plate for.');
 
     const outcome = await exec('art.promote', { hash: info.hash, variant });
+    report(outcome);
     if (!outcome.ok) return;
-    say(outcome.record.message);
     void this.load(this.shown);
   }
 
@@ -250,11 +257,11 @@ export class AssetEditor extends VnEditor {
     const info = this.info;
     if (!info) return;
     const action = replaceAction(info);
-    if (!action.ok) return void say(action.reason, true);
+    if (!action.ok) return this.complain(action.reason);
 
     const outcome = await exec('asset.replace', { hash: info.hash });
+    report(outcome);
     if (!outcome.ok) return;
-    say(outcome.record.message);
     const next = (outcome.data as { hash?: string } | undefined)?.hash;
     if (next === undefined || next === this.shown) return void this.load(this.shown);
     this.ui.assetHash = next;
@@ -264,7 +271,7 @@ export class AssetEditor extends VnEditor {
   /** Hand the task off to the inspector, which is the pane that reads attempts. */
   private showTask(): void {
     const task = this.info?.sourceTask ?? '';
-    if (task === '') return void say('The manifest records no task for this asset.', true);
+    if (task === '') return this.complain('The manifest records no task for this asset.');
     this.ui.taskHash = task;
     this.announce();
     void exec('view.open', { editor: 'inspector', where: 'elsewhere' });
@@ -284,9 +291,9 @@ export class AssetEditor extends VnEditor {
 
     const outcome = await exec('art.setNotes', { target: rung.target, notes: next });
     this.dirty.delete(rung.target);
+    report(outcome);
     if (!outcome.ok) return;
 
-    say(outcome.record.message);
     box.classList.remove('dirty');
     // The edit changed the derivation, so everything on the pane below the image is now wrong.
     void this.load(this.shown);
@@ -295,18 +302,16 @@ export class AssetEditor extends VnEditor {
   /** Every prompt edit is one command, and the pane re-reads: a chunk edit moves the whole prompt. */
   private async runPrompt(id: string, props: Record<string, PropValue>): Promise<void> {
     const outcome = await exec(id, props);
+    report(outcome);
     if (!outcome.ok) return;
-    say(outcome.record.message);
     void this.load(this.shown);
   }
 
   /** Which clauses the prompt in force no longer appears to say. Reads; writes nothing. */
   private async runCheck(): Promise<void> {
     const outcome = await exec('prompt.check', { hash: this.shown });
-    if (outcome.ok) {
-      say(outcome.record.message);
-      void this.load(this.shown);
-    }
+    report(outcome);
+    if (outcome.ok) void this.load(this.shown);
   }
 
   private async setChunk(chunk: string, op: string, text: string): Promise<void> {
@@ -329,7 +334,7 @@ export class AssetEditor extends VnEditor {
     if (next === '') {
       this.editing.delete(chunk);
       this.rebuildBody();
-      return void say('Nothing typed — use Reset to go back to the derived words.', true);
+      return this.complain('Nothing typed — use Reset to go back to the derived words.');
     }
     await this.setChunk(chunk, how, next);
   }
@@ -361,7 +366,7 @@ export class AssetEditor extends VnEditor {
       const at = this.surface.querySelector(
         action.to === 'request' ? '[data-anchor="request"]' : `[data-rung="${action.to}"]`,
       );
-      if (!at) return void say(`Nothing on this pane holds ${action.to}.`, true);
+      if (!at) return this.complain(`Nothing on this pane holds ${action.to}.`);
       at.scrollIntoView({ block: 'center' });
       const box = at.querySelector('textarea');
       if (box instanceof HTMLTextAreaElement) box.focus();
@@ -393,7 +398,7 @@ export class AssetEditor extends VnEditor {
     const state: PromptDragState = { hash: view.hash, chunks: view.chunks, mode: view.mode };
     const verdicts = promptReorder.targets(state, chunk);
     const refusal = verdicts.find((v) => v.target === UNRESOLVED);
-    if (refusal && !refusal.accept) return void say(refusal.reason, true);
+    if (refusal && !refusal.accept) return this.complain(refusal.reason);
 
     this.drag = {
       chunk,
@@ -470,7 +475,7 @@ export class AssetEditor extends VnEditor {
 
     const verdict = drag.verdicts.get(drag.target);
     if (!verdict) return;
-    if (!verdict.accept) return void say(verdict.reason, true);
+    if (!verdict.accept) return this.complain(verdict.reason);
     this.refocus = drag.chunk;
     await this.runPrompt(verdict.invoke.id, verdict.invoke.props);
   }
@@ -490,7 +495,7 @@ export class AssetEditor extends VnEditor {
     );
     const verdict = verdicts.find((v) => v.target === target);
     if (!verdict) return;
-    if (!verdict.accept) return void say(verdict.reason, true);
+    if (!verdict.accept) return this.complain(verdict.reason);
     this.refocus = chunk;
     await this.runPrompt(verdict.invoke.id, verdict.invoke.props);
   }

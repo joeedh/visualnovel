@@ -139,6 +139,38 @@ is not one yet (a one-line `project.yaml`) and then brought under version contro
 is open, and what a switch tears down, is
 [`desktop-app.md`](desktop-app.md#which-project-is-open).
 
+### One `.gitattributes` line, and why
+
+`openWorkspace` also runs `ensureGitAttributes(root)` — an idempotent append of
+
+```
+vngen/state/notifications.jsonl merge=union
+```
+
+before `ensureRepo`, so a project created before the notification log existed picks it up on next
+open (committed on its own, as "Union-merge the notification log"). `skeleton()` writes the same
+line into a new project.
+
+`openWorkspace` is not enough on its own, because the ordinary launch never calls it: `main`
+resolves a root from the recents list or `VN_PROJECT` and goes straight to `openRepos()`. So
+`openRepos()` calls `adoptGitAttributes(root)` — the same ensure, plus that separate commit —
+between `ensureRepo` and the `checkpoint`, which is what keeps the line out of "Changes made
+outside the app". It is skipped when the project sits inside a larger repo, on the same grounds
+as commit-on-save: that history is somebody else's.
+
+Union merge is what makes an append-only log survive a branch merge: both sides' lines are kept.
+It duplicates a line whose read/hidden flags each side changed, which is why the reader dedupes by
+id and **ORs** the flags — both are monotonic, so the set bit wins. See
+[`plans/notifications.md`](plans/notifications.md).
+
+This repo's own `* text=auto eol=lf` is deliberately **not** copied into a project. `merge` and
+`text`/`eol` are orthogonal attributes, and a project is the user's repo; `initRepoAt` already
+sets `core.autocrlf=false` for the byte-exact reasons the branch editor needs.
+
+**Notification writes ride along in the next act's commit**, because `Committer.commit` stages the
+whole worktree. That is not new — `vngen/state/commands.jsonl` has always behaved this way, and
+the open-time checkpoint exists to absorb it.
+
 ## How undo composes with it
 
 The two mechanisms compose **without ordering constraints**, which is what makes commit-on-save a

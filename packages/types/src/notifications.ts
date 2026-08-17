@@ -1,0 +1,115 @@
+/**
+ * A notification: one durable, linkable event, one line of `vngen/state/notifications.jsonl`.
+ *
+ * Two things about the shape are load-bearing and are stated here because nothing downstream can
+ * infer them:
+ *
+ * - **`v` is per line, not per file.** The log is union-merged by git, so two builds' lines end up
+ *   interleaved in one file and a file-level version field would be a lie about half of them.
+ * - **`v`, `r` and `h` come first.** `r` (read) and `h` (hidden) are single ASCII digits patched
+ *   in place at a computed byte offset, so they must sit in the line's pure-ASCII head, ahead of
+ *   any authored text. Serializing must preserve that order.
+ */
+import { z } from 'zod';
+
+/** What a notification is about. A string literal union, deliberately not a TS `enum`. */
+export const NOTIFICATION_CATEGORIES = [
+  'asset', // rendered, adopted, replaced, accepted
+  'pipeline', // a run started, finished, halted at the gate
+  'agent', // wrote files, finished a turn, asked
+  'document', // a scene / sheet / wiki page was written
+  'workspace', // project opened, created, reindexed
+  'command', // an ordinary command's success or refusal
+  'error', // something failed
+  'debug', // instrumentation with nowhere else to land
+] as const;
+
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
+
+export const NOTIFICATION_LEVELS = ['info', 'warn', 'error'] as const;
+export type NotificationLevel = (typeof NOTIFICATION_LEVELS)[number];
+
+/** Who posted it. Kept separate from `category`: the same subject can arrive from either side. */
+export const NOTIFICATION_SOURCES = ['ui', 'main', 'agent', 'pipeline', 'cdp'] as const;
+export type NotificationSource = (typeof NOTIFICATION_SOURCES)[number];
+
+/**
+ * Where a notification points. Deliberately the argument shape of the `view.open` command, so
+ * following a link invents nothing — it runs the command the palette and the menu already run.
+ *
+ * `editor` is a bare string here and not the desktop's `EditorId`: that union lives in
+ * `apps/desktop/src/shared/editors.ts`, which this package sits below and must not import. The
+ * desktop narrows it on the way out and refuses a link naming an editor this build lacks.
+ */
+export const NotificationLinkSchema = z.object({
+  editor: z.string().min(1),
+  subject: z.string().optional(),
+});
+export type NotificationLink = z.infer<typeof NotificationLinkSchema>;
+
+/** The version this build writes. Bump alongside a new entry in `MIGRATIONS`. */
+export const NOTIFICATION_VERSION = 1;
+
+export const NotificationSchema = z.object({
+  v: z.number().int().positive(),
+  /** Read. 0 or 1 — a number, not a boolean, because it is patched as one ASCII digit. */
+  r: z.union([z.literal(0), z.literal(1)]),
+  /** Hidden ("archived"). Same contract as `r`. */
+  h: z.union([z.literal(0), z.literal(1)]),
+  id: z.string().min(1),
+  /** ISO-8601. Sorts lexically, which is what the reader relies on. */
+  at: z.string().min(1),
+  /** One app launch, so debugging tooling can tell two runs apart in a merged log. */
+  session: z.string().min(1),
+  category: z.enum(NOTIFICATION_CATEGORIES),
+  level: z.enum(NOTIFICATION_LEVELS),
+  source: z.enum(NOTIFICATION_SOURCES),
+  message: z.string(),
+  link: NotificationLinkSchema.optional(),
+});
+
+export type Notification = z.infer<typeof NotificationSchema>;
+
+/** Everything a caller supplies; `notify()` stamps the rest. */
+export interface NotificationInput {
+  category: NotificationCategory;
+  message: string;
+  level?: NotificationLevel;
+  source?: NotificationSource;
+  link?: NotificationLink;
+}
+
+/**
+ * Lift a line written by an older build to the current shape, keyed by the `v` it was written at.
+ * Empty at v1 and that is the point — the chain exists so the first schema change is an entry
+ * here rather than a decision about what to do with everyone's existing log.
+ */
+const MIGRATIONS: Record<number, (line: Record<string, unknown>) => Record<string, unknown>> = {};
+
+/**
+ * Parse one line, migrating it forward. Returns `undefined` rather than throwing for anything it
+ * cannot use: a half-written line (what a crash mid-append leaves), a line that does not validate,
+ * or one whose `v` is *newer* than this build knows.
+ *
+ * This departs from the repo's usual `z.literal(1)`-and-throw (`@vn/store`'s `readShots`), and the
+ * asymmetry is deliberate. A shot file that silently re-decomposes corrupts art, so it must throw.
+ * A notification log that refuses to open because one line came from tomorrow's build loses every
+ * other line with it — skipping is the smaller loss. `main/threads.ts` reasons the same way.
+ */
+export function migrateNotification(raw: unknown): Notification | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+
+  let line = { ...(raw as Record<string, unknown>) };
+  const from = line['v'];
+  if (typeof from !== 'number' || !Number.isInteger(from) || from < 1) return undefined;
+  if (from > NOTIFICATION_VERSION) return undefined;
+
+  for (let v = from; v < NOTIFICATION_VERSION; v++) {
+    const step = MIGRATIONS[v];
+    if (!step) return undefined;
+    line = step(line);
+  }
+
+  const parsed = NotificationSchema.safeParse({ ...line, v: NOTIFICATION_VERSION });
+  return parsed.success ? parsed.data : undefined;
+}

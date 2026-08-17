@@ -16,6 +16,7 @@ import { installBridge } from './bridge.js';
 import { editorNameProblems } from '../../src/shared/editors.js';
 import { ShellContext, type ShellApp } from './context.js';
 import { editorClass, switchableAreaNames } from './editor.js';
+import { registerCustomIcons } from './icons.js';
 // Importing an editor is what registers it, and registration is what puts it in the area
 // switcher — so every ported editor is listed here whether or not a default screen uses it.
 import './editors/asset.js';
@@ -187,6 +188,7 @@ function installIcons(): void {
     ),
   );
   setIconMap(simple.Icons);
+  registerCustomIcons();
 }
 
 /**

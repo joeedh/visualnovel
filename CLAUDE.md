@@ -207,6 +207,12 @@ plays it. This is deliberately **not** an external DSL export.
   the edit a conversation made never deletes the conversation that explains it. **Reopening a
   thread is read-only**: the pane replays it and says the model was not shown it.
   ([`docs/plans/conversation-threads.md`](docs/plans/conversation-threads.md))
+- **Every notification is durable, and one hook files them all** — `vngen/state/notifications.jsonl`,
+  versioned **per line** because git union-merges it, with `r`/`h` as single ASCII digits patched at
+  a byte offset (never decode the file to a string — an earlier line's `…` shifts every index). The
+  hook is main's `onRecord`, filtered by `shouldFileCommand`, so a call site uses `report(outcome)`
+  and says only what the push will not. Exactly **one** note frame survives, in the menu bar.
+  ([`docs/plans/notifications.md`](docs/plans/notifications.md))
 - **A document that is not a scene is written as text, and only by `doc.*`.** A save presents the
   hash it read at and is refused by **content**, never mtime; `scenes/**` is refused outright,
   because prose has one write path and it is `story.*`. A _named field_ inside a sheet may still

@@ -9,8 +9,10 @@ import {
   RECENT_KEY,
   RECENT_MAX,
   START_SCENE,
+  adoptGitAttributes,
   createRoot,
   createWorkspace,
+  ensureGitAttributes,
   ensureRepo,
   inspectCreate,
   inspectWorkspace,
@@ -140,7 +142,7 @@ describe('openWorkspace', () => {
     expect(opened).toEqual({ root: dir, created: true, title: 'my story' });
     // The shortest honest config: every other key has a default.
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: "my story"\n');
-    expect(await readdir(dir)).toEqual(['.git', 'project.yaml']);
+    expect((await readdir(dir)).sort()).toEqual(['.git', '.gitattributes', 'project.yaml']);
 
     const git = openGit(dir);
     expect((await git.log()).map((c) => c.subject)).toEqual(['New project']);
@@ -154,7 +156,12 @@ describe('openWorkspace', () => {
 
     const opened = await openWorkspace(dir);
     expect(opened.created).toBe(true);
-    expect((await readdir(dir)).sort()).toEqual(['.git', 'project.yaml', 'scenes']);
+    expect((await readdir(dir)).sort()).toEqual([
+      '.git',
+      '.gitattributes',
+      'project.yaml',
+      'scenes',
+    ]);
     expect((await openGit(dir).status()).dirty).toBe(false);
   }, 20_000);
 
@@ -295,7 +302,13 @@ describe('createWorkspace', () => {
       created: true,
       title: 'My Story',
     });
-    expect((await readdir(dir)).sort()).toEqual(['.git', 'project.yaml', 'scenes', 'wiki']);
+    expect((await readdir(dir)).sort()).toEqual([
+      '.git',
+      '.gitattributes',
+      'project.yaml',
+      'scenes',
+      'wiki',
+    ]);
 
     const config = await loadConfig(dir);
     expect(config).toMatchObject({ title: 'My Story', start: START_SCENE });
@@ -341,6 +354,80 @@ describe('createWorkspace', () => {
     await expect(createWorkspace(dir, 'Theirs')).rejects.toThrow('not empty');
     expect(await readdir(dir)).toEqual(['notes.md']);
   });
+});
+
+describe('ensureGitAttributes', () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vn-attrs-'));
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true, maxRetries: 3 });
+  });
+
+  const line = 'vngen/state/notifications.jsonl merge=union';
+
+  it('writes the union-merge attribute where there is no file', async () => {
+    expect(await ensureGitAttributes(root)).toBe(true);
+    expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain(line);
+  });
+
+  it('appends to what the author already wrote, keeping it', async () => {
+    await writeFile(join(root, '.gitattributes'), '*.png binary\n');
+    expect(await ensureGitAttributes(root)).toBe(true);
+
+    const text = await readFile(join(root, '.gitattributes'), 'utf8');
+    expect(text).toContain('*.png binary');
+    expect(text).toContain(line);
+  });
+
+  it('separates itself from a file with no trailing newline', async () => {
+    await writeFile(join(root, '.gitattributes'), '*.png binary');
+    await ensureGitAttributes(root);
+    expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain('*.png binary\n#');
+  });
+
+  it('says no and writes nothing the second time', async () => {
+    await ensureGitAttributes(root);
+    const before = await readFile(join(root, '.gitattributes'), 'utf8');
+
+    expect(await ensureGitAttributes(root)).toBe(false);
+    expect(await readFile(join(root, '.gitattributes'), 'utf8')).toBe(before);
+  });
+
+  it('reaches a project created before the attribute existed, on open', async () => {
+    await writeFile(join(root, 'project.yaml'), 'title: "Older"\n');
+    await ensureRepo(root);
+    await rm(join(root, '.gitattributes'), { force: true });
+
+    await openWorkspace(root);
+    expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain(line);
+  }, 20_000);
+
+  // The boot path never calls `openWorkspace` — it resolves a root from the recents list and goes
+  // straight to the repos — so `adoptGitAttributes` is what reaches a reopened project.
+  it('adopts the attribute on its own commit, leaving nothing for the open-time checkpoint', async () => {
+    await writeFile(join(root, 'project.yaml'), 'title: "Older"\n');
+    await ensureRepo(root);
+
+    expect(await adoptGitAttributes(root)).toBe(true);
+    expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain(line);
+
+    const git = openGit(root);
+    expect((await git.log())[0]?.subject).toBe('Union-merge the notification log');
+    expect((await git.status()).dirty).toBe(false);
+  }, 20_000);
+
+  it('says no and commits nothing when the attribute is already there', async () => {
+    await writeFile(join(root, 'project.yaml'), 'title: "Older"\n');
+    await ensureGitAttributes(root);
+    await ensureRepo(root);
+
+    expect(await adoptGitAttributes(root)).toBe(false);
+    expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
+  }, 20_000);
 });
 
 describe('inspectWorkspace', () => {

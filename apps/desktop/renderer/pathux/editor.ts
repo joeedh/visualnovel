@@ -44,7 +44,17 @@ export class VnEditor extends Area {
     this.container.ctx = this.ctx;
     this.shadow.appendChild(this.container);
 
-    this.header = this.makeHeader(this.container, true);
+    this.header = this.makeHeader(this.container, this.wantsNoteArea);
+  }
+
+  /**
+   * Whether this editor's header carries a note frame. False everywhere but the menu bar:
+   * `sendNote` broadcasts to **every** `noteframe-x` on screen, so with one per editor a single
+   * sentence appeared thirteen times at once. Notifications have one home now — the bar, beside
+   * the bell that keeps them — and `getNoteFrames` finds exactly one place to put them.
+   */
+  protected get wantsNoteArea(): boolean {
+    return false;
   }
 
   /**

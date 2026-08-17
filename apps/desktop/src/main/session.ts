@@ -71,6 +71,7 @@ import {
   adoptionForSlot,
   adoptionOf,
   artNotesOf,
+  assetSlotLabel,
   composePrompt,
   condensePrompt,
   coverage,
@@ -135,7 +136,7 @@ import {
   type WorkspaceIndex,
 } from '@vn/authoring';
 import type { Excerpt } from '@vn/bible';
-import { runPipeline } from '@vn/scheduler';
+import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { buildPlayable, loadSceneShots } from '@vn/export';
 import {
   moveShot,
@@ -161,6 +162,7 @@ import {
 } from '@vn/scriptedit/write';
 import type {
   AnyTask,
+  Asset,
   AssetKind,
   Effort,
   LocationVariant,
@@ -192,6 +194,7 @@ import type {
   SceneEditResult,
   StoryGraph,
 } from '../shared/ipc.js';
+import { notify } from './notifications.js';
 import { narrowTask } from './reviews.js';
 import { labelAssets, labelContext } from './assetlabel.js';
 import { deriveChunks, derivePrompt } from './assetprompt.js';
@@ -2834,10 +2837,10 @@ export class WorkspaceSession {
   async runPipeline(mock: boolean): Promise<PipelineRunResult> {
     // The whole method, loads included: `busy()` has to be true from the call, not from the
     // moment the scheduler starts, or a switch could land in the gap.
-    const summary = await this.while('a pipeline run', async () => {
+    const { summary, assets } = await this.while('a pipeline run', async () => {
       const project = await loadProject(this.dir);
       const providers = await buildProviders(project, mock);
-      return runPipeline({
+      const ran = await runPipeline({
         model: project.model,
         graph: project.graph,
         store: project.store,
@@ -2847,7 +2850,12 @@ export class WorkspaceSession {
         dryRun: mock,
         now: () => new Date().toISOString(),
       });
+      // Read the manifest inside the closure, while the project that ran is still in hand — the
+      // labels below name pictures this run produced, and reloading to find them is a second read
+      // of everything for a handful of hashes.
+      return { summary: ran, assets: project.store.manifest() };
     });
+    this.announceRun(summary, assets, mock);
     return {
       ran: summary.ran.length,
       blockedOnGate: summary.blockedOnGate,
@@ -2860,5 +2868,47 @@ export class WorkspaceSession {
       failed: summary.failed.length,
       failures: summary.failed.map((t) => ({ hash: t.hash, kind: t.kind, error: t.error })),
     };
+  }
+
+  /**
+   * File what the run did: one notification per picture it produced, each linked to the asset
+   * editor by the hash it made, and one for the run itself.
+   *
+   * A run is one blocking round trip today, so these all arrive at the end. Live per-task
+   * progress would mean an `onTask` hook on `RunOptions` — a change to the pipeline spine for
+   * the same user-visible result — so it stays future work rather than a seam added on spec.
+   */
+  private announceRun(summary: RunSummary, assets: readonly Asset[], mock: boolean): void {
+    for (const task of summary.ran) {
+      const hash = task.output;
+      if (task.status !== 'done' || !hash) continue;
+      const asset = assets.find((a) => a.hash === hash);
+      const label = asset ? assetSlotLabel(asset) : `${task.kind} ${hash.slice(0, 8)}`;
+      void notify({
+        category: 'asset',
+        source: 'pipeline',
+        message: `Rendered ${label}.`,
+        link: { editor: 'asset', subject: hash },
+      });
+    }
+
+    for (const task of summary.failed) {
+      void notify({
+        category: 'error',
+        level: 'error',
+        source: 'pipeline',
+        message: `${task.kind} ${task.hash.slice(0, 8)} failed: ${task.error ?? 'no reason recorded'}.`,
+      });
+    }
+
+    const ran = summary.ran.length;
+    const how = mock ? 'Dry run' : 'Run';
+    const gate = summary.blockedOnGate ? ', halted at the character gate' : '';
+    void notify({
+      category: 'pipeline',
+      level: summary.failed.length > 0 ? 'warn' : 'info',
+      source: 'pipeline',
+      message: `${how} finished: ${ran} task${ran === 1 ? '' : 's'}, ${summary.failed.length} failed${gate}.`,
+    });
   }
 }

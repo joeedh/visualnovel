@@ -7,7 +7,7 @@
  * scratch copy with its own git repo — gitignored by the parent, hence not a submodule — and
  * works there.
  */
-import { cp, mkdir, readdir, stat } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { CONFIG_FILENAME, loadConfig } from '@vn/config';
 import { openGit, type Git } from '@vn/git';
@@ -147,15 +147,70 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
   if (!found.project) {
     await writeFileAtomic(join(root, CONFIG_FILENAME), `title: ${JSON.stringify(title)}\n`);
   }
-  await ensureRepo(root, found.project ? 'Existing project files' : 'New project');
+  // Before `ensureRepo`, so a repository being initialized here takes the attribute in its first
+  // commit; a repository that already exists gets its own commit below. Either way opening a
+  // project must not leave the worktree dirty — the app's open-time checkpoint would otherwise
+  // sweep this file up under "Changes made outside the app", once, on every author's machine.
+  const wroteAttributes = await ensureGitAttributes(root);
+  const fresh = !(await openGit(root).isRepo());
+  const git = await ensureRepo(root, found.project ? 'Existing project files' : 'New project');
+  if (wroteAttributes && !fresh) {
+    await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
+  }
   return { root, created: !found.project, title };
+}
+
+/**
+ * The same guarantee for a project that is *reached* rather than opened. `openWorkspace` runs on
+ * an explicit `workspace.open`, but the ordinary boot path resolves a root from the recents list
+ * or `VN_PROJECT` and goes straight to the repos — so this is what reaches a project the author
+ * simply reopened, and it is why the attribute is not a create-time-only affair.
+ *
+ * Commits what it wrote, for the reason `openWorkspace` gives: the app's open-time checkpoint
+ * would otherwise sweep this file up under "Changes made outside the app".
+ */
+export async function adoptGitAttributes(root: string): Promise<boolean> {
+  if (!(await ensureGitAttributes(root))) return false;
+  const git = openGit(root);
+  if (await git.isRepo()) {
+    await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
+  }
+  return true;
+}
+
+const GITATTRIBUTES_COMMIT = 'Union-merge the notification log';
+
+/** The one attribute a project needs from us, and why it needs it. */
+const GITATTRIBUTES_LINE = 'vngen/state/notifications.jsonl merge=union';
+const GITATTRIBUTES_TEXT =
+  '# The notification log is append-only and its read/hidden flags are patched in place.\n' +
+  '# Union-merge it: two branches’ notifications combine instead of conflicting, and the\n' +
+  '# reader dedupes by id and ORs the flags, so a line that comes back twice folds cleanly.\n' +
+  `${GITATTRIBUTES_LINE}\n`;
+
+/**
+ * Give an existing project the union-merge attribute it was created without. Idempotent, and it
+ * appends rather than writes: a `.gitattributes` is the user's file and may already say plenty.
+ *
+ * Deliberately *not* carrying this repo's own `* text=auto eol=lf`. `merge` and `text`/`eol` are
+ * orthogonal attributes, so the line stands alone — and a project is the author's repository, not
+ * somewhere to install our line-ending policy. `initRepoAt` already sets `core.autocrlf=false`.
+ */
+export async function ensureGitAttributes(root: string): Promise<boolean> {
+  const path = join(root, '.gitattributes');
+  const current = await readFile(path, 'utf8').catch(() => undefined);
+  if (current?.includes(GITATTRIBUTES_LINE)) return false;
+
+  const prefix = current === undefined || current === '' || current.endsWith('\n') ? '' : '\n';
+  await writeFile(path, `${current ?? ''}${prefix}${GITATTRIBUTES_TEXT}`);
+  return true;
 }
 
 /** The one scene a new project starts with — named by `start:` and by the file it lives in. */
 export const START_SCENE = 'opening';
 
 /**
- * The three files a new project is created with.
+ * The files a new project is created with.
  *
  * Not a copy of `examples/sample`: that is somebody else's story, and an author's first ten
  * minutes should not go on deleting a cast. Not nothing either — with no `start:` and no scenes
@@ -163,6 +218,7 @@ export const START_SCENE = 'opening';
  */
 function skeleton(title: string): { path: string; text: string }[] {
   return [
+    { path: '.gitattributes', text: GITATTRIBUTES_TEXT },
     { path: CONFIG_FILENAME, text: `title: ${JSON.stringify(title)}\nstart: ${START_SCENE}\n` },
     {
       path: `scenes/${START_SCENE}.md`,

@@ -1,7 +1,7 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
-import { exec, onInvalidate, onWrote, say } from '../bridge.js';
+import { exec, onInvalidate, onWrote } from '../bridge.js';
 import { assetGroups } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
@@ -239,8 +239,9 @@ export class WikiEditor extends VnEditor {
     this.seenHash = saved.hash;
     this.dirty = false;
     drafts.delete(path);
+    // No sentence from here: `doc.save` is mutating, so main filed it and pushed it back, and the
+    // push is what says it. A second one here would show the same save twice.
     this.note(saved.diagnostic ?? '');
-    if (!saved.diagnostic) say(`Saved ${saved.path}`);
     this.paint();
   }
 

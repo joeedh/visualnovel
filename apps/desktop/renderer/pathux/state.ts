@@ -48,6 +48,12 @@ export class ShellState {
   agentMode: AgentMode = 'plan';
   errors = 0;
   warnings = 0;
+  /**
+   * What the bell shows: unread, unarchived notifications matching the active filter. Pushed by
+   * `pathux/notifications.ts` rather than counted in the header, so the badge and the list can
+   * never disagree about which ones count.
+   */
+  unread = 0;
   canUndo = false;
   canRedo = false;
   undoLabel = '';

@@ -10,7 +10,7 @@
 import { Menu, createMenu, startMenu, type MenuTemplate, type MenuTemplateCustom } from 'pathux';
 import { api } from '../api.js';
 import type { VnContext } from './context.js';
-import { exec, say } from './bridge.js';
+import { exec, report, say } from './bridge.js';
 import {
   entriesWithVerdicts,
   needsCheck,
@@ -74,7 +74,5 @@ function take(item: ResolvedEntry): void {
     openCommandDialog(id, props);
     return;
   }
-  void exec(id, props ?? {}).then((outcome) => {
-    if (outcome.ok) say(outcome.record.message);
-  });
+  void exec(id, props ?? {}).then(report);
 }

@@ -11,7 +11,7 @@ import type { Container, MenuTemplateCustom, TextBox } from 'pathux';
 import { api } from '../api.js';
 import { blankProps, fieldText, fieldValue } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
-import { exec, say } from './bridge.js';
+import { exec, report } from './bridge.js';
 
 export interface FormOptions {
   /** Called once the command ran and the surface hosting the form should go away. */
@@ -174,8 +174,8 @@ export class CommandForm {
     this.confirming = false;
 
     const outcome = await exec(this.entry.id, this.values);
+    report(outcome);
     if (outcome.ok) {
-      say(outcome.record.message);
       this.opts.onRan();
     } else {
       // The refusal already went to the note frame; the form stays up so it can be edited.

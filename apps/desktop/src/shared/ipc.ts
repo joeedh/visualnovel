@@ -22,6 +22,8 @@ import type {
   DefectReport,
   Diagnostic,
   Drift,
+  Notification,
+  NotificationInput,
   Playable,
   SceneLine,
   Shot,
@@ -48,6 +50,14 @@ export type {
   PropValue,
   UndoState,
 } from '@vn/commands';
+
+export type {
+  Notification,
+  NotificationCategory,
+  NotificationInput,
+  NotificationLevel,
+  NotificationLink,
+} from '@vn/types';
 
 import type { EditorId, OpenWhere } from './editors.js';
 
@@ -583,6 +593,16 @@ export interface InvokeChannels {
   'command:redo': () => CommandOutcome;
   /** Persist one piece of UI state; the initial read is the synchronous preload snapshot. */
   'session:set': (payload: { key: string; value: SessionValue }) => void;
+  /**
+   * Every notification the project holds, oldest first, already deduped across a union merge.
+   * A read; every *change* to one goes through a `notify.*` command like any other mutation.
+   */
+  'notify:list': () => Notification[];
+  /**
+   * File a notification the renderer raised on its own — the handful of notices that are not a
+   * command's outcome, which main would otherwise never hear about.
+   */
+  'notify:post': (input: NotificationInput) => Notification;
 }
 
 /** Events pushed from main to the renderer (fire-and-forget). */
@@ -592,6 +612,12 @@ export interface EventChannels {
   'permission:ask': AskRequest;
   'permission:confirm': ConfirmRequest;
   'command:ui': UiEffect;
+  /**
+   * One notification was posted, or one's flags changed. Carries the notification when it is new
+   * and nothing when a flag moved — the dialog refetches either way, and the bell only needs to
+   * know that its count is stale.
+   */
+  'notify:changed': { note?: Notification };
   /** A session key changed — either by this window or by a command that wrote one. */
   'session:changed': { key: string; value: SessionValue };
   log: { level: 'info' | 'warn' | 'error'; message: string };
