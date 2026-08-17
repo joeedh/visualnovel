@@ -16,11 +16,15 @@ import { exec, onExec, say, shell } from './bridge.js';
 import { openReportPreview, type ReportDraft } from './reportpreview.js';
 
 /**
- * Open the preview whenever a report finishes, whoever asked for one.
+ * Open the preview whenever a report finishes, whoever in the shell asked for one.
  *
- * Bound to the *command* rather than to the dialog's button: the palette and CDP run the same id,
- * and a minute of a real model's time answering into nothing would be a minute paid for twice.
- * Called once, at boot, after the bridge.
+ * Bound to the *command* rather than to the dialog's button, so the palette running the same id
+ * gets the same preview — a minute of a real model's time answering into nothing would be a minute
+ * paid for twice. Called once, at boot, after the bridge.
+ *
+ * **`window.vn.exec` is not one of them.** The scripting bridge lives in the preload and invokes
+ * main directly, so no watcher here ever sees it; a report run from CDP is read off the outcome
+ * and off the copy under `userData/reports/`, which is what a script wanted anyway.
  */
 export function installReportPreview(): void {
   onExec((id, outcome) => {

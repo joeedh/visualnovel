@@ -14,12 +14,15 @@ import { UIBase, type Container } from 'pathux';
 import { api } from '../api.js';
 import type { CommandCheck } from '../../src/shared/ipc.js';
 import { exec, report, shell } from './bridge.js';
+import { paragraph } from './paragraph.js';
 import { writingBox } from './writingbox.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
 
 const WIDTH = 720;
+/** What prose may fill, leaving the popup's own inset either side. */
+const PROSE = WIDTH - 24;
 
 /** The part of `report.agent`'s answer this dialog opens on. */
 export interface ReportDraft {
@@ -64,9 +67,9 @@ class Preview {
     };
 
     const col = this.popup.col();
-    col.label(draft.title);
-    col.label(PRIVACY);
-    if (draft.file) col.label(`A copy is kept at ${draft.file}.`);
+    paragraph(col, draft.title, PROSE);
+    paragraph(col, PRIVACY, PROSE);
+    if (draft.file) paragraph(col, `A copy is kept at ${draft.file}.`, PROSE);
 
     writingBox(col.row(), {
       value: draft.body,
@@ -108,7 +111,8 @@ class Preview {
   private renderVerdict(): void {
     this.verdictCol.clear();
     if (this.check && this.check.state !== 'undeclared') {
-      this.verdictCol.label(`${this.check.state === 'accept' ? '✓' : '✕'} ${this.check.message}`);
+      const mark = this.check.state === 'accept' ? '✓' : '✕';
+      paragraph(this.verdictCol, `${mark} ${this.check.message}`, PROSE);
     }
     this.verdictCol.flushUpdate();
   }

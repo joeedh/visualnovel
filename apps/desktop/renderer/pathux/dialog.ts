@@ -12,11 +12,14 @@ import { api } from '../api.js';
 import type { PropValue } from '../../src/shared/ipc.js';
 import { shell } from './bridge.js';
 import { CommandForm, type Choices } from './commandform.js';
+import { paragraph } from './paragraph.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
 
 const WIDTH = 520;
+/** What prose may fill, leaving the popup's own inset either side. */
+const PROSE = WIDTH - 24;
 
 let open: Dialog | undefined;
 
@@ -52,7 +55,7 @@ class Dialog {
       }
 
       this.body.label(entry.title);
-      this.body.label(entry.description);
+      paragraph(this.body, entry.description, PROSE);
 
       this.form = new CommandForm(
         this.body.col(),
@@ -65,6 +68,7 @@ class Dialog {
             cancel.description = 'Close this without running anything';
           },
           choices,
+          width: PROSE,
         },
         overrides,
       );

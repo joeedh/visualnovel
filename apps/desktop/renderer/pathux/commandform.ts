@@ -12,6 +12,7 @@ import { api } from '../api.js';
 import { blankProps, bulkSize, fieldText, fieldValue } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
 import { exec, report } from './bridge.js';
+import { paragraph } from './paragraph.js';
 import { writingBox } from './writingbox.js';
 
 /** One option a host offers for a `string` prop this time it is opened. */
@@ -37,6 +38,8 @@ export interface FormOptions {
   /** Drawn at the head of the button row, so a dialog can put Cancel beside the action. */
   buttons?: (row: Container) => void;
   choices?: Choices;
+  /** How wide the host is, so a verdict wraps inside it rather than off the window. */
+  width: number;
 }
 
 export class CommandForm {
@@ -128,7 +131,8 @@ export class CommandForm {
     if (!col) return;
     col.clear();
     if (this.check && this.check.state !== 'undeclared') {
-      col.label(`${this.check.state === 'accept' ? '✓' : '✕'} ${this.check.message}`);
+      const mark = this.check.state === 'accept' ? '✓' : '✕';
+      paragraph(col, `${mark} ${this.check.message}`, this.opts.width);
     }
     col.flushUpdate();
   }
@@ -138,6 +142,12 @@ export class CommandForm {
    * what a form opened on a command wants the focus in.
    */
   private field(prop: CatalogProp): TextBox | undefined {
+    // A host that offered a list and came back empty has said this prop has *no* choice to make
+    // here — the effort a model without a reasoning setting takes. Falling through to a text field
+    // would invite typing a value that model does not have, so the row is not drawn at all.
+    const rows = this.opts.choices?.(this.values)[prop.name];
+    if (rows && rows.length === 0) return undefined;
+
     const row = this.col.row();
     row.label(`${prop.name}${prop.required ? ' *' : ''}`);
     const value = this.values[prop.name];
@@ -163,8 +173,7 @@ export class CommandForm {
       return undefined;
     }
 
-    const rows = this.opts.choices?.(this.values)[prop.name];
-    if (rows && rows.length > 0) {
+    if (rows) {
       this.chooser(row, prop, rows, String(value ?? ''));
       return undefined;
     }

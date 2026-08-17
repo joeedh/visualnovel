@@ -16,11 +16,14 @@ import { filterCommands } from '../rules/catalog.js';
 import type { CatalogEntry, PropValue } from '../../src/shared/ipc.js';
 import { shell } from './bridge.js';
 import { CommandForm } from './commandform.js';
+import { paragraph } from './paragraph.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
 
 const WIDTH = 620;
+/** What prose may fill, leaving the popup's own inset either side. */
+const PROSE = WIDTH - 24;
 const TOP = 56;
 
 let open: Palette | undefined;
@@ -108,12 +111,12 @@ class Palette {
 
     this.detailCol.clear();
     this.detailCol.label(entry.id);
-    this.detailCol.label(entry.description);
+    paragraph(this.detailCol, entry.description, PROSE);
 
     this.form = new CommandForm(
       this.detailCol.col(),
       entry,
-      { onRan: () => this.close() },
+      { onRan: () => this.close(), width: PROSE },
       overrides,
     );
     this.form.render();

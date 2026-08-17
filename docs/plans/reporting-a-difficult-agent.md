@@ -793,6 +793,28 @@ Per the house rule, pure logic gets `tests/` siblings and surfaces are verified 
 - **No live model call in CI.** The analyst is exercised against a mock `ChatBackend`, the way the
   rest of the repo does it.
 
+### What the live pass found
+
+Run against a copy of `examples/test3` with the author's own key, every CDP item above passed, and
+three defects in the surfaces turned up on the way:
+
+- **Prose painted out of its popup.** A path.ux `Label` is a `<div>` sized to its text and never
+  told a maximum width, so a command's description and a verdict sentence ran past the dialog and
+  off the window. Everything the shell draws as a *sentence* now goes through `paragraph()`
+  (`renderer/pathux/paragraph.ts`) — the dialog, the palette's detail column and the report preview.
+- **An empty choice list degraded to a free-text field.** With a model that has no reasoning knob,
+  `effortChoicesFor` answers `[]` and `CommandForm.field` fell through to a textbox, inviting an
+  effort the model does not have. An offered-but-empty list now draws no row at all.
+- **`onExec` never fires for `window.vn.exec`.** The scripting bridge lives in the preload and
+  invokes main directly, so the preview cannot be watched into existence from CDP. The comment on
+  `installReportPreview` said otherwise and was corrected; a scripted run reads the outcome and the
+  copy under `userData/reports/`, which is what a script wanted.
+
+Two things were seen and left alone, because both are the redactor's exact-token contract rather
+than a surface bug: a possessive typo (`jame's`) is not the token `james`, so it survives
+substitution *and* the preview's leak scan, which consults the same table; and an unknown model id
+passed from a script accepts with no advisory, being unreachable from the dropdown.
+
 ## Deliberately out of scope
 
 - **Restoring `Agent.messages` on reopen** — Stage 5 of `conversation-threads.md`, still deferred.
