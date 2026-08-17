@@ -186,7 +186,16 @@ import type {
   TextLLM,
 } from '@vn/types';
 import { DEFAULT_EFFORT, EFFORT_CHOICES, bindsTo, resolveEffort, type TaskKind } from '@vn/types';
-import { renderReport, sourceRoot, type Evidence, type Report } from '@vn/agentreport';
+import {
+  assertIssueUrl,
+  fitBody,
+  issueUrl,
+  renderReport,
+  reportTitle,
+  sourceRoot,
+  type Redactor,
+  type Report,
+} from '@vn/agentreport';
 import type {
   ApproveResult,
   AssetInfo,
@@ -234,7 +243,7 @@ import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
 import type { BranchOp } from '../shared/branchops.js';
 import { setCoverage } from '../shared/coverage.js';
 import { adviseRun, analysisEffort } from '../shared/advice.js';
-import { NO_SOURCE, analyseThread } from './agentreport.js';
+import { NO_SOURCE, analyseThread, makeRedactor, saveReport } from './agentreport.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -262,6 +271,13 @@ export interface SessionDeps {
    * cached provider docs. Deliberately not under the project: neither belongs in its history.
    */
   userData?: string;
+  /**
+   * Hand a URL to the OS, and put text on the clipboard. Both are Electron's, so they arrive as
+   * functions rather than as an import — this file is typechecked and tested with no app around
+   * it. Absent means no browser: `report.openIssue` says so rather than reporting a success.
+   */
+  openExternal?(url: string): Promise<void>;
+  writeClipboard?(text: string): void;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -444,6 +460,33 @@ export interface ReportAsk {
   effort: string;
 }
 
+/** A finished analysis: the findings, the markdown they render to, and where a copy was kept. */
+export interface ReportDraft {
+  report: Report;
+  /** The issue title, `AGENTREPORT:`-prefixed, so the preview does not re-derive one. */
+  title: string;
+  body: string;
+  /** Absent when there was nowhere to write one, or the write failed. */
+  file?: string;
+}
+
+/** Where `report.openIssue` sent the author, and whether the report had to be cut to fit. */
+export interface IssueOpened {
+  url: string;
+  truncated: boolean;
+}
+
+/**
+ * The refusal a leak earns, naming the first one. Only the first: the author fixes them one at a
+ * time and the scan re-runs on every keystroke, so a list of six would be five sentences that stop
+ * being true as soon as the first edit lands.
+ */
+function leakSentence(leaked: readonly string[]): string {
+  const rest = leaked.length - 1;
+  const more = rest > 0 ? ` (and ${rest} other${rest === 1 ? '' : 's'})` : '';
+  return `“${leaked[0]}”${more} is still in the report — take it out before filing.`;
+}
+
 /** The same, plus the files a write touched — the shape every `prompt.*` mutator returns. */
 export interface PromptWriteResult extends PromptResult {
   written: string[];
@@ -553,6 +596,12 @@ export class WorkspaceSession {
    * before returning, which is what makes the file complete the moment a turn is.
    */
   private writes: Promise<void> = Promise.resolve();
+  /**
+   * The redactor the last report was written with, kept so the leak scan runs against the same
+   * pseudonym table rather than a freshly built one — a different table is a different set of
+   * names, and the question being asked is whether *this* report still says one.
+   */
+  private redaction: Redactor | undefined;
 
   constructor(
     readonly dir: string,
@@ -894,7 +943,7 @@ export class WorkspaceSession {
    * takes the busy flag every other long act does, and the dialog closes rather than being held
    * open across it.
    */
-  async reportAgent(ask: ReportAsk): Promise<{ report: Report; evidence: Evidence; body: string }> {
+  async reportAgent(ask: ReportAsk): Promise<ReportDraft> {
     const target = await this.reportTarget(ask);
     if (!target.ok) throw new Error(target.message);
 
@@ -906,7 +955,7 @@ export class WorkspaceSession {
     });
 
     return this.while('an agent report', async () => {
-      const { report, evidence } = await analyseThread({
+      const { report, evidence, redactor } = await analyseThread({
         dir: this.dir,
         paths: project.paths,
         config: project.config,
@@ -918,10 +967,89 @@ export class WorkspaceSession {
         ...(effort ? { effort } : {}),
         ...(ask.note.trim() ? { wanted: ask.note } : {}),
         ...(this.deps.appVersion ? { appVersion: this.deps.appVersion } : {}),
-        ...(this.deps.userData ? { cacheDir: this.deps.userData } : {}),
+        ...(this.deps.userData ? { userData: this.deps.userData } : {}),
       });
-      return { report, evidence, body: renderReport(report, evidence) };
+
+      this.redaction = redactor;
+      const body = renderReport(report, evidence);
+      return { report, title: reportTitle(report), body, ...(await this.keepReport(body)) };
     });
+  }
+
+  /**
+   * Archive the report, and shrug if that fails. The author has the analysis on screen either way;
+   * refusing to show it because a copy could not be written would be losing the thing they paid a
+   * minute and a model call for over the thing they did not ask for.
+   */
+  private async keepReport(body: string): Promise<{ file?: string }> {
+    const userData = this.deps.userData;
+    if (!userData) return {};
+    try {
+      return { file: await saveReport(userData, body, new Date()) };
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * The redactor to scan a report with: the one that wrote it, else one built from the project as
+   * it stands. The second case is the scripted one — `report.openIssue(body='…')` with no analysis
+   * in this process — and building it there costs a project load, which is why the first case is
+   * cached rather than rebuilt per keystroke.
+   */
+  private async reportRedaction(): Promise<Redactor> {
+    if (!this.redaction) {
+      const project = await loadProject(this.dir);
+      this.redaction = makeRedactor(this.dir, project.model);
+    }
+    return this.redaction;
+  }
+
+  /**
+   * What `report.openIssue` would do. The leak scan is the refusal: a name the redactor knows,
+   * still in the body, is a name about to be typed into a public issue tracker, and it is named
+   * back so the author can find it rather than hunt for it.
+   */
+  async previewIssue(input: { title: string; body: string }): Promise<PromptResult> {
+    if (!input.body.trim()) return { ok: false, message: 'There is no report to file.' };
+    if (!input.title.trim()) return { ok: false, message: 'An issue needs a title.' };
+
+    const leaked = (await this.reportRedaction()).leaks(input.body);
+    if (leaked.length > 0) return { ok: false, message: leakSentence(leaked) };
+
+    const { truncated } = fitBody(input.body);
+    const cut = truncated
+      ? ' It is too long for a URL, so the issue gets the findings and your clipboard gets all of it.'
+      : '';
+    return {
+      ok: true,
+      message: `Opens a new issue in your browser. Nothing is posted until you press Create.${cut}`,
+    };
+  }
+
+  /**
+   * Put the whole report on the clipboard, then open GitHub's new-issue form on as much of it as a
+   * URL will hold. The clipboard write comes first deliberately: the browser is where the author
+   * loses the report if the URL had to be trimmed, and it has to already be in hand by then.
+   *
+   * The leak scan runs again here. A check is advice a caller may skip — CDP can, the palette
+   * cannot be relied on not to — and the one thing this must never do is publish a name.
+   */
+  async openIssue(input: { title: string; body: string }): Promise<IssueOpened> {
+    const preview = await this.previewIssue(input);
+    if (!preview.ok) throw new Error(preview.message);
+
+    const open = this.deps.openExternal;
+    if (!open) throw new Error('This build cannot open a browser.');
+
+    const { body, truncated } = fitBody(input.body);
+    const url = issueUrl({ title: input.title, body });
+    // Belt to `issueUrl`'s own brace: what reaches the shell is checked, not merely composed.
+    assertIssueUrl(url);
+
+    this.deps.writeClipboard?.(input.body);
+    await open(url.href);
+    return { url: url.href, truncated };
   }
 
   /** Portrait candidates for a character at the approval gate (from the manifest). */

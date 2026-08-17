@@ -12,7 +12,23 @@ import { threadDetail, threadLabel, type ThreadHeader } from '../../src/shared/c
 import { adviseModel, analysisEffort } from '../../src/shared/advice.js';
 import { openCommandDialog } from './dialog.js';
 import type { ChoiceRow } from './commandform.js';
-import { exec, say, shell } from './bridge.js';
+import { exec, onExec, say, shell } from './bridge.js';
+import { openReportPreview, type ReportDraft } from './reportpreview.js';
+
+/**
+ * Open the preview whenever a report finishes, whoever asked for one.
+ *
+ * Bound to the *command* rather than to the dialog's button: the palette and CDP run the same id,
+ * and a minute of a real model's time answering into nothing would be a minute paid for twice.
+ * Called once, at boot, after the bridge.
+ */
+export function installReportPreview(): void {
+  onExec((id, outcome) => {
+    if (id !== 'report.agent' || !outcome.ok) return;
+    const draft = outcome.data as ReportDraft | undefined;
+    if (draft?.body) openReportPreview(draft);
+  });
+}
 
 /**
  * Ask main for the conversations, then open the form seeded with the newest one.

@@ -184,8 +184,9 @@ describe('the desktop registry', () => {
    * A check is a precondition on an *act* — something with a cost that running it would incur.
    * That is usually a write, so it is usually a mutator; `agent.run` is the one mutator without
    * one, because what it would do is decided by a model rather than by state this process can
-   * read. `report.agent` is the converse: it writes nothing into the project, but it spends a
-   * minute of a real model's time on a real key, so "run it and find out" is the wrong answer.
+   * read. The two `report.*` commands are the converse: neither writes anything into the project,
+   * but one spends a minute of a real model's time on a real key and the other opens a public
+   * issue tracker on text — so "run it and find out" is the wrong answer to both.
    */
   it('declares a precondition on what an act would cost', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
@@ -216,6 +217,7 @@ describe('the desktop registry', () => {
       'prompt.setChunk',
       'prompt.setCustom',
       'report.agent',
+      'report.openIssue',
       'story.assignLineIds',
       'story.decomposeAll',
       'story.deleteLine',
@@ -250,6 +252,7 @@ describe('the desktop registry', () => {
     // A checked non-mutator is the exception, so it is listed by name rather than allowed by rule.
     expect(commands.filter((c) => c.check && !c.mutating).map((c) => c.id)).toEqual([
       'report.agent',
+      'report.openIssue',
     ]);
   });
 

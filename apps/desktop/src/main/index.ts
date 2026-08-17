@@ -10,7 +10,17 @@
  * fallbacks for callers that pass env instead of argv (e.g. `scripts/dev.desktop.mjs`); a CLI
  * flag wins over its env-var counterpart when both are given.
  */
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  Menu,
+  net,
+  protocol,
+  shell,
+} from 'electron';
 import { existsSync } from 'node:fs';
 import { join, resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -307,6 +317,8 @@ const deps: SessionDeps = {
     }),
   appVersion: app.getVersion(),
   userData: app.getPath('userData'),
+  openExternal: (url) => shell.openExternal(url),
+  writeClipboard: (text) => clipboard.writeText(text),
 };
 
 function getSession(): WorkspaceSession {

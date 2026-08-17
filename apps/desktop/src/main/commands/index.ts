@@ -55,7 +55,7 @@ import {
   promptSetCustom,
 } from './prompt.js';
 import { projectInfo, projectSetArtStyle, projectSetKey } from './project.js';
-import { reportAgent } from './report.js';
+import { reportAgent, reportOpenIssue } from './report.js';
 import {
   storyAssignLineIds,
   storyCoverage,
@@ -166,6 +166,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectSetArtStyle,
     projectSetKey,
     reportAgent,
+    reportOpenIssue,
     storyAssignLineIds,
     storyCoverage,
     storyDecomposeAll,

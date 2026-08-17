@@ -50,8 +50,31 @@ export const reportAgent = define({
     return verdict(await ctx.host.session.previewReport(props));
   },
   async run(props, ctx) {
-    const { report, body } = await ctx.host.session.reportAgent(props);
-    const read = report.readSource ? ' It read the source.' : '';
-    return { message: `${report.analysis.summary}${read}`, data: { report, body } };
+    const draft = await ctx.host.session.reportAgent(props);
+    const read = draft.report.readSource ? ' It read the source.' : '';
+    return { message: `${draft.report.analysis.summary}${read}`, data: { ...draft } };
+  },
+});
+
+export const reportOpenIssue = define({
+  id: 'report.openIssue',
+  title: 'Open a GitHub issue on this report',
+  description:
+    'Copy the report to your clipboard and open a new issue in your browser, filled in. ' +
+    'Nothing is posted until you press Create there.',
+  mutating: false,
+  props: {
+    title: prop.string('the issue title'),
+    // `digest: true` is about the *record*, not the form: a report is thousands of words of
+    // someone's conversation, and `commands.jsonl` is committed. The preview edits it elsewhere.
+    body: prop.string('the report, as it will be filed', { digest: true }),
+  },
+  async check(props, ctx) {
+    return verdict(await ctx.host.session.previewIssue(props));
+  },
+  async run(props, ctx) {
+    const { truncated } = await ctx.host.session.openIssue(props);
+    const cut = truncated ? ' The full report is on your clipboard.' : '';
+    return { message: `Opened a new issue in your browser.${cut}` };
   },
 });

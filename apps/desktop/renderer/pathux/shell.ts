@@ -41,6 +41,7 @@ import { HEADER_HEIGHT, VnHeaderEditor } from './editors/header.js';
 import { PlayEditor } from './editors/play.js';
 import { installKeymap } from './keymap.js';
 import { installLayoutWatch } from './layouts.js';
+import { installReportPreview } from './report.js';
 import {
   installPersistence,
   loadScreen,
@@ -90,6 +91,7 @@ class Shell implements ShellApp {
     installPersistence(this);
     // After the bridge, which is where `exec` and the invalidate feed come from.
     installLayoutWatch();
+    installReportPreview();
   }
 
   /**

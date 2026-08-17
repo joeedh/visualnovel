@@ -6,6 +6,7 @@
  * `commands.jsonl` — so the whole join is a function of its arguments and a fixture is a literal.
  */
 import type { CommandRecord } from '@vn/commands';
+import type { Redactor } from './redact.js';
 
 /**
  * A transcript line, as `readThread` gives it back.
@@ -55,6 +56,50 @@ export interface Evidence {
    */
   thin: boolean;
   context: ReportContext;
+}
+
+/**
+ * Every string in the evidence that says anything about the author, replaced.
+ *
+ * Applied **once, at the boundary**, so nothing downstream has to remember: the analyst's prompt,
+ * the rendered issue body and the copy saved to disk are all derived from an already-clean value
+ * rather than each redacting for itself. Redaction is idempotent, so the second application in
+ * `userPrompt` costs nothing and stays as the belt to this brace.
+ *
+ * Ids, sequence numbers, statuses and timestamps are left alone — they name nothing outside this
+ * report. Everything `toMarkdown` renders is covered, and a field it starts rendering must be
+ * added here at the same time.
+ */
+export function redactEvidence(evidence: Evidence, redactor: Redactor): Evidence {
+  const scrub = (text: string): string => redactor.apply(text);
+  return {
+    ...evidence,
+    thread: {
+      ...evidence.thread,
+      title: scrub(evidence.thread.title),
+      items: evidence.thread.items.map((item) => ({
+        ...item,
+        text: scrub(item.text),
+        ...(item.full === undefined ? {} : { full: scrub(item.full) }),
+        ...(item.detail === undefined
+          ? {}
+          : {
+              detail: {
+                ...item.detail,
+                ...(item.detail.args === undefined ? {} : { args: scrub(item.detail.args) }),
+                ...(item.detail.output === undefined ? {} : { output: scrub(item.detail.output) }),
+              },
+            }),
+      })),
+    },
+    acts: evidence.acts.map((act) => ({
+      ...act,
+      invocation: scrub(act.invocation),
+      message: scrub(act.message),
+      ...(act.error === undefined ? {} : { error: scrub(act.error) }),
+      ...(act.written === undefined ? {} : { written: act.written.map(scrub) }),
+    })),
+  };
 }
 
 function time(iso: string | undefined): number {

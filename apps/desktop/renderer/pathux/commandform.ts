@@ -12,7 +12,7 @@ import { api } from '../api.js';
 import { blankProps, bulkSize, fieldText, fieldValue } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
 import { exec, report } from './bridge.js';
-import { TOKENS } from './tokens.js';
+import { writingBox } from './writingbox.js';
 
 /** One option a host offers for a `string` prop this time it is opened. */
 export interface ChoiceRow {
@@ -54,6 +54,12 @@ export class CommandForm {
   private firstField: TextBox | undefined;
   /** A detached form's check may still be in flight; its answer must not redraw a dead column. */
   private live = true;
+  /**
+   * A command is in flight. Some of them take a minute — an analysis, a pipeline wave — and a form
+   * that looks idle while one runs invites a second click, which is a second minute and a second
+   * bill. The button says so and declines until the first one answers.
+   */
+  private running = false;
 
   constructor(
     private readonly col: Container,
@@ -79,10 +85,21 @@ export class CommandForm {
     this.opts.buttons?.(row);
 
     const label = this.opts.runLabel ?? 'run';
-    const run = row.button(this.confirming ? `confirm — ${label}` : label, () => void this.run());
-    run.description = this.entry.confirm ? 'this command asks before it writes' : this.entry.title;
+    const run = row.button(this.buttonText(label), () => void this.run());
+    run.disabled = this.running;
+    run.description = this.running
+      ? 'Running. This can take a while; closing the form does not stop it.'
+      : this.entry.confirm
+        ? 'this command asks before it writes'
+        : this.entry.title;
 
     this.col.flushUpdate();
+  }
+
+  /** What the action button says: the command, unless it is mid-flight or awaiting a confirm. */
+  private buttonText(label: string): string {
+    if (this.running) return `${label} — working…`;
+    return this.confirming ? `confirm — ${label}` : label;
   }
 
   focusFirst(): void {
@@ -153,7 +170,7 @@ export class CommandForm {
     }
 
     if (prop.multiline) {
-      this.writingBox(row, prop, fieldText(value ?? ''));
+      this.multiline(row, prop, fieldText(value ?? ''));
       return undefined;
     }
 
@@ -216,38 +233,17 @@ export class CommandForm {
     menu.description = prop.hint ?? prop.description;
   }
 
-  /**
-   * Free text of more than a line: a plain `<textarea>` in the row's shadow root, the same way
-   * every writing surface in this app draws one. Deliberately not path.ux's `textarea()`, which is
-   * a `contentEditable` rich-text editor with a bold/italic toolbar and `innerHTML` for a value —
-   * more widget than a note wants, and it stores markup where a command expects a string.
-   */
-  private writingBox(row: Container, prop: CatalogProp, value: string): void {
-    const box = document.createElement('textarea');
-    box.value = value;
-    box.spellcheck = true;
-    box.rows = 4;
-    box.title = prop.hint ?? prop.description;
-    box.setAttribute('aria-label', prop.description);
-    Object.assign(box.style, {
-      boxSizing: 'border-box',
-      width: '100%',
-      minHeight: '72px',
-      resize: 'vertical',
-      padding: '6px 8px',
-      border: `1px solid ${TOKENS.inkLine}`,
-      borderRadius: `${TOKENS.radiusChrome}px`,
-      background: TOKENS.inkSunken,
-      color: TOKENS.paper,
-      font: `13px ${TOKENS.sans}`,
+  /** Free text of more than a line, in the shared writing surface. */
+  private multiline(row: Container, prop: CatalogProp, value: string): void {
+    writingBox(row, {
+      value,
+      title: prop.hint ?? prop.description,
+      label: prop.description,
+      onInput: (text) => {
+        this.values[prop.name] = text;
+        void this.recheck();
+      },
     });
-    box.addEventListener('input', () => {
-      this.values[prop.name] = box.value;
-      void this.recheck();
-    });
-    // The screen keymap is a bubble-phase window listener, so the box stops its own keys.
-    box.addEventListener('keydown', (event) => event.stopPropagation());
-    row.shadow.appendChild(box);
   }
 
   /** Run the chooser and put what it answered in the field, leaving a cancel alone. */
@@ -263,6 +259,7 @@ export class CommandForm {
   }
 
   private async run(): Promise<void> {
+    if (this.running) return;
     if (this.entry.confirm && !this.confirming) {
       this.confirming = true;
       this.render();
@@ -270,12 +267,23 @@ export class CommandForm {
     }
     this.confirming = false;
 
-    const outcome = await exec(this.entry.id, this.values);
+    this.running = true;
+    this.render();
+    let outcome;
+    try {
+      outcome = await exec(this.entry.id, this.values);
+    } finally {
+      this.running = false;
+    }
+
     report(outcome);
+    // A form whose surface went away mid-run still ran; it just has nothing left to redraw.
+    if (!this.live) return;
     if (outcome.ok) {
       this.opts.onRan();
     } else {
       // The refusal already went to the note frame; the form stays up so it can be edited.
+      this.render();
       void this.recheck();
     }
   }

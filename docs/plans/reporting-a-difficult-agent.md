@@ -738,11 +738,40 @@ export function fitBody(report: string, limit = 8000): { body: string; truncated
 `shell` and `clipboard` are new imports in `apps/desktop/src/main/index.ts:13` — neither is
 currently pulled in.
 
-- [ ] 7.1 — `issue.ts` (`issueUrl`, `fitBody`, the origin assertion) with tests, including a body
+### Five things the implementation settled
+
+- **The evidence was going out unredacted, and the fix is a boundary rather than a habit.**
+  `analyze` scrubbed the `Analysis` prose it got back from the model, but `renderReport(report,
+  evidence)` embeds `toMarkdown(evidence)` verbatim — so the `<details>` transcript in the issue
+  body would have carried real character names, real paths, the author's account name and every
+  `record.invocation`. `redactEvidence` now runs **once**, in `analyseThread`, before the analyst
+  sees it: the prompt, the rendered issue and the saved copy are all derived from an
+  already-clean value, and nothing downstream has to remember. The scrub inside `userPrompt`
+  stays as the belt to this brace — redaction is idempotent, so it costs nothing.
+- **Two budgets, not one.** The plan said `fitBody(report, limit = 8000)`; the code splits it into
+  `URL_LIMIT = 8000` (what GitHub will take) and `BODY_BUDGET = 6000` (what the body may spend of
+  it), because the title and the label are also on that URL. Trimming sheds in order — the
+  `<details>` transcript, then `From the transcript`, `What happened`, `What went wrong` — and
+  falls back to a binary search on the *encoded* prefix, so the budget is a promise even when the
+  limit is too small to hold the trimmed-note itself.
+- **The redactor an analysis was written with is the redactor its report is scanned with.** A
+  pseudonym table is per-redactor, so building a fresh one for the leak check would be scanning
+  for different names. `WorkspaceSession` keeps the one `analyseThread` handed back, and builds
+  one from the loaded project only for the scripted case — `report.openIssue(body='…')` with no
+  analysis in this process — which is also what keeps the per-keystroke check off `loadProject`.
+- **Electron reaches `openIssue` as two functions, not as an import.** `session.ts` is
+  typechecked and tested with no app around it, so `shell.openExternal` and
+  `clipboard.writeText` arrive as optional `SessionDeps` members. Absent means no browser, and
+  the command says so rather than reporting a success it did not have.
+- **The writing surface is now one function.** The preview needs the same `<textarea>` a
+  `multiline` prop draws, so `writingBox` moved out of `CommandForm` into `pathux/writingbox.ts` —
+  one place to decide that this app does not use path.ux's `contentEditable` rich-text editor.
+
+- [x] 7.1 — `issue.ts` (`issueUrl`, `fitBody`, the origin assertion) with tests, including a body
       that must be trimmed and one that must not
-- [ ] 7.2 — writing the report to `userData/reports/`
-- [ ] 7.3 — the preview dialog and its live leak check
-- [ ] 7.4 — `report.openIssue`: clipboard, assertion, `shell.openExternal`
+- [x] 7.2 — writing the report to `userData/reports/`
+- [x] 7.3 — the preview dialog and its live leak check
+- [x] 7.4 — `report.openIssue`: clipboard, assertion, `shell.openExternal`
 
 ## Testing
 
