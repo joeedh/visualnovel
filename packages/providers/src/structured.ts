@@ -1,16 +1,15 @@
 import type { ZodType } from 'zod';
 import { ProviderError, retry, StructuredOutputError } from '@vn/util';
 
-/**
- * Extract a JSON object/array from a model's raw text response. Tolerates ```json
- * code fences and leading/trailing prose, since models often wrap structured output.
- */
-export function extractJson(raw: string): unknown {
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
-  const candidate = fenced ? (fenced[1] ?? '') : raw;
+/** What one candidate string yielded: a value, or why it did not hold one. */
+type Scan =
+  | { ok: true; value: unknown }
+  | { ok: false; reason: 'none' | 'unterminated' | 'invalid'; cause?: unknown };
+
+/** Walk one candidate from its first bracket to the matching close, ignoring trailing prose. */
+function scanJson(candidate: string): Scan {
   const start = candidate.search(/[[{]/);
-  if (start < 0) throw new StructuredOutputError('no JSON found in model output');
-  // Walk to the matching closing bracket so trailing prose is ignored.
+  if (start < 0) return { ok: false, reason: 'none' };
   const text = candidate.slice(start);
   const open = text[0];
   const close = open === '{' ? '}' : ']';
@@ -31,14 +30,47 @@ export function extractJson(raw: string): unknown {
       depth--;
       if (depth === 0) {
         try {
-          return JSON.parse(text.slice(0, i + 1));
+          return { ok: true, value: JSON.parse(text.slice(0, i + 1)) };
         } catch (err) {
-          throw new StructuredOutputError('model output was not valid JSON', { cause: err });
+          return { ok: false, reason: 'invalid', cause: err };
         }
       }
     }
   }
-  throw new StructuredOutputError('unterminated JSON in model output');
+  return { ok: false, reason: 'unterminated' };
+}
+
+/** A short, single-line quote of what the model said, so a failure names its own evidence. */
+function preview(raw: string): string {
+  const flat = raw.replace(/\s+/g, ' ').trim();
+  if (flat === '') return 'the model returned nothing';
+  return `got: ${flat.length > 200 ? `${flat.slice(0, 200)}…` : flat}`;
+}
+
+/**
+ * Extract a JSON object/array from a model's raw text response. Tolerates ```json
+ * code fences and leading/trailing prose, since models often wrap structured output.
+ *
+ * The raw text is tried **before** any fence: a reply that is already JSON routinely quotes a
+ * fenced example inside one of its own strings (a Fountain snippet, a shell line), and reaching
+ * for the first fence there discards the object and finds only the example's prose.
+ */
+export function extractJson(raw: string): unknown {
+  const fences = [...raw.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map((m) => m[1] ?? '');
+  let failure: Scan & { ok: false } = { ok: false, reason: 'none' };
+  for (const candidate of [raw, ...fences]) {
+    const scan = scanJson(candidate);
+    if (scan.ok) return scan.value;
+    // A bracket that failed to parse says more than a candidate holding none at all.
+    if (failure.reason === 'none') failure = scan;
+  }
+  if (failure.reason === 'invalid') {
+    throw new StructuredOutputError(`model output was not valid JSON — ${preview(raw)}`, {
+      cause: failure.cause,
+    });
+  }
+  const what = failure.reason === 'unterminated' ? 'unterminated JSON in' : 'no JSON found in';
+  throw new StructuredOutputError(`${what} model output — ${preview(raw)}`);
 }
 
 /** Parse + zod-validate a model response, throwing StructuredOutputError on mismatch. */

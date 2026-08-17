@@ -12,8 +12,21 @@ describe('extractJson', () => {
   it('ignores trailing prose after the closing brace', () => {
     expect(extractJson('{"a":3} and some commentary')).toEqual({ a: 3 });
   });
+  it('keeps the object when one of its strings quotes a code fence', () => {
+    const raw = '{"final":"Write it like:\\n\\n```\\ntitus: Yeesh!\\n```\\n\\nThat is all."}';
+    expect(extractJson(raw)).toEqual({
+      final: 'Write it like:\n\n```\ntitus: Yeesh!\n```\n\nThat is all.',
+    });
+  });
+  it('falls back to a fence when the prose before it holds a stray brace', () => {
+    expect(extractJson('Use {placeholder}, then:\n```json\n{"a":4}\n```')).toEqual({ a: 4 });
+  });
   it('throws when there is no JSON', () => {
     expect(() => extractJson('no json here')).toThrow(StructuredOutputError);
+  });
+  it('quotes what the model actually said', () => {
+    expect(() => extractJson('sorry, I cannot')).toThrow(/got: sorry, I cannot/);
+    expect(() => extractJson('   ')).toThrow(/the model returned nothing/);
   });
 });
 
