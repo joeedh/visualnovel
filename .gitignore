@@ -1,3 +1,4 @@
+.claude/worktrees
 keys
 node_modules
 # The desktop app's scratch workspace, seeded from examples/sample on first launch and given
