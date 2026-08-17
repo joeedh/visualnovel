@@ -201,15 +201,16 @@ export interface Redactor {
   leaks(text: string): string[];
 }
 export function buildRedactor(sources: RedactionSources): Redactor;
+export function sourcesFrom(model: ProjectModel, machine?: MachineFacts): RedactionSources;
 ```
 
 What it knows, all of it already derivable:
 
 | Source | Replaced with |
 | --- | --- |
-| Every `EntityDoc` from entity discovery — characters, locations, items | `Character A`, `Location B`, … assigned in first-appearance order |
+| Every character and location the loaded model holds | `Character A`, `Location B`, … assigned in first-appearance order |
 | Entity **ids** as well as display names (`titus` and `Titus Vale` both) | the same pseudonym |
-| Scene ids and titles | `Scene 3` |
+| Scene ids | `Scene 3` |
 | The project title from `project.yaml` | `<project>` |
 | The absolute project root, and every path under it | `<project>/…` |
 | `os.userInfo().username`, and the home directory prefix | `<author>` |
@@ -220,14 +221,33 @@ pseudonym cased consistently, and **the map is held in memory only** — it is n
 disk, never sent to the model, and never appears in the report. A report is not de-anonymisable by
 whoever reads the issue.
 
+Three details the implementation settled:
+
+- **The sources come from `ProjectModel`, not from `EntityDoc`s.** The model already has every
+  character, location and scene, keyed by id and carrying its display name, and the app has one
+  loaded — re-running entity discovery to learn the same names would be work for nothing. Items
+  stay in the `NamedEntity` vocabulary because the redactor costs nothing to widen; nothing
+  supplies them yet. A scene contributes its id alone: it has no title, and its synopsis is prose
+  whose names the entity pass replaces anyway.
+- **A boundary guard is per name, not global.** `\b` is ASCII, so `\bCafé\b` never matches — and a
+  script written without spaces has no boundary to require, so demanding one would silently refuse
+  to redact every name in a Japanese project. Each alias is guarded with `(?<![\p{L}\p{N}_])` only
+  on an edge whose own character is a letter in a spaced script. The same reasoning exempts a
+  single ideograph from the two-character minimum: 蓮 is a whole name, not a letter.
+- **A path is matched through either separator and through JSON escaping.** Tool args reach the
+  report having been through `JSON.stringify`, so `C:\dev\x` arrives as `C:\\dev\\x`; one pattern
+  sees both. The project root is replaced **before** the home directory, or a project inside the
+  author's home comes out as `<author>/dev/proj` — naming the layout instead of hiding it.
+
 `leaks()` is the same matcher used as a detector, and Stage 7 makes it a refusal.
 
 The prompt instruction to write in general terms stays, as a second layer. It is not the
 mechanism.
 
-- [ ] 3.1 — `buildRedactor` + tests: substring safety, possessives, case, path prefixes,
+- [x] 3.1 — `buildRedactor` + tests: substring safety, possessives, case, path prefixes,
       idempotence (`apply(apply(x)) === apply(x)`), and `leaks` finding what `apply` would replace
-- [ ] 3.2 — gathering the sources in main from the loaded model + `project.yaml`
+- [x] 3.2 — `sourcesFrom(model, machine)`: every name the loaded project holds, with the `os`
+      calls left to the caller so the derivation stays pure
 
 ## Stage 4 — the analyst
 
