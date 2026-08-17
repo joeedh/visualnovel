@@ -2941,11 +2941,22 @@ export class WorkspaceSession {
   async status(): Promise<PipelineStatus> {
     const project = await loadProject(this.dir);
     const gate = gateStatus(project.model);
-    const exts = new Map(project.store.manifest().map((a) => [a.hash, a.ext]));
+    const manifest = project.store.manifest();
+    const exts = new Map(manifest.map((a) => [a.hash, a.ext]));
+    // The same walk `docTree` reads. Emitted in `order`, so the wire carries the topology the
+    // pane needs without shipping the two Maps: upstream is always earlier in the array.
+    const slots = buildSlotGraph({
+      ...labelContext(project.model, project.graph),
+      assets: manifest,
+      shots: await readAllShots(project),
+      config: project.config,
+      graph: project.graph,
+    });
     return {
       tasks: [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
       gatePending: gate.pending,
       blockedOnGate: !gate.cleared,
+      slots: slots.order.map((key) => slots.nodes.get(key)!),
     };
   }
 

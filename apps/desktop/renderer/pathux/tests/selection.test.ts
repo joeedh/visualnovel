@@ -147,11 +147,20 @@ describe('isSelected', () => {
     expect(isSelected(view(plate('school')), { ...NONE, characterId: 'school' })).toBe(false);
   });
 
-  it('never selects a ghost or the gate barrier', () => {
-    const ghost = {
-      kind: 'ghost' as const,
-      id: 'ghost:shots:arrival',
-      ghost: { id: 'ghost:shots:arrival', label: '', after: [], gated: true },
+  // A slot names the same shot the selection does, and is still not selected: the highlight is a
+  // task's, and drawing it on the promise as well would claim the work exists.
+  it('never selects a slot or the gate barrier', () => {
+    const slot = {
+      kind: 'slot' as const,
+      id: 'slot:shot:arrival/1',
+      slot: {
+        key: 'shot:arrival/1',
+        binding: { kind: 'shot' as const, sceneId: 'arrival', shotId: '1' },
+        label: 'arrival · 1',
+        refs: [],
+        candidates: [],
+        approved: false,
+      },
     };
     const barrier = { kind: 'barrier' as const, id: 'gate:barrier', pending: ['aiko'] };
     const sel: Selection = {
@@ -161,7 +170,7 @@ describe('isSelected', () => {
       docPath: '',
       assetHash: '',
     };
-    expect(isSelected(ghost, sel)).toBe(false);
+    expect(isSelected(slot, sel)).toBe(false);
     expect(isSelected(barrier, sel)).toBe(false);
   });
 });

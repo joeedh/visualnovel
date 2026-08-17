@@ -153,8 +153,8 @@ export type {
 export type { BibleFile, Excerpt } from '@vn/bible';
 // Type-only for the same reason: `@vn/artgen` reads prompts off the model, and the renderer names
 // this shape only as data that already crossed the wire.
-import type { Prereq } from '@vn/artgen';
-export type { Prereq };
+import type { Prereq, SlotNode } from '@vn/artgen';
+export type { Prereq, SlotNode };
 export type { Playable, Beat, PlayableScene, TaskKind, TaskStatus } from '@vn/types';
 export type { Defect, DefectReport, Diagnostic } from '@vn/types';
 
@@ -206,6 +206,12 @@ export interface PipelineStatus {
   /** Character ids still awaiting portrait approval (the gate). */
   gatePending: string[];
   blockedOnGate: boolean;
+  /**
+   * Every picture the project implies, in `SlotGraph.order` — upstream before downstream. This is
+   * what makes the graph whole: `tasks` can only ever hold what was plannable at the last wave, so
+   * a view drawing it alone has to guess at the rest, and the Task Graph pane used to.
+   */
+  slots: SlotNode[];
 }
 
 /** Result of kicking off a pipeline run to the next gate. */

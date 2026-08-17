@@ -11,14 +11,16 @@
  * 2. **`deps` understates coupling.** A `shot_image` lists only its location plate as a dep; the
  *    subject portraits reach it through `inputs.refs`. Both are drawn — deps solid, resolved
  *    refs dashed.
- * 3. **The graph is deliberately partial.** Planning is incremental, so work that is not yet
- *    plannable is simply absent. Ghost clusters stand in for it, so an empty region reads as
- *    "not yet" rather than "nothing to do".
+ * 3. **A slot and the task that fills it are one picture.** `status.slots` is every picture the
+ *    project implies; `status.tasks` is only what was plannable at the last wave. Where a slot
+ *    has a task the planner actually emitted, the two collapse into a single node keyed by the
+ *    task hash — otherwise the future would be drawn twice, once as a promise and once as work.
+ *    An unplanned slot is an addressable picture with a real name, so nothing here estimates.
  */
-import type { PipelineStatus, StoryGraph, Task } from '../../src/shared/ipc';
+import type { PipelineStatus, SlotNode, StoryGraph, Task } from '../../src/shared/ipc';
 import type { Graph, GraphEdge, GraphNode } from '../graph/types.js';
 
-/** One size for tasks and ghosts, so the two never misalign within a rank. */
+/** One size for tasks and slots, so the two never misalign within a rank. */
 export const TASK_NODE = { width: 178, height: 46 };
 /** The barrier reserves a rank of its own; the rule itself is drawn across the layout bounds. */
 export const BARRIER_NODE = { width: 268, height: 34 };
@@ -27,25 +29,11 @@ export const BARRIER_ID = 'gate:barrier';
 /** What a node in the task graph stands for — the view renders one shape per member. */
 export type TaskNodeView =
   | { kind: 'task'; id: string; task: Task; subject: string }
-  | { kind: 'ghost'; id: string; ghost: Ghost }
+  | { kind: 'slot'; id: string; slot: SlotNode }
   | { kind: 'barrier'; id: string; pending: string[] };
 
-/**
- * A cluster of work the planner cannot emit yet. Deliberately *not* individually addressable:
- * shot counts come from `decomposeScene`, which is LLM-backed with a deterministic fallback, so
- * `count` is an estimate and a node per estimated shot would be a promise the run may not keep.
- */
-export interface Ghost {
-  id: string;
-  /** What the cluster is, in the view's words — "arrival · shots". */
-  label: string;
-  /** Approximate node count, when the baseline decomposition makes one derivable. */
-  count?: number;
-  /** Task hashes this work will hang off once it exists. */
-  after: string[];
-  /** Held up by the character-approval gate, as opposed to merely not run yet. */
-  gated: boolean;
-}
+/** A slot drawn as itself gets a node id of its own, so it can never collide with a task hash. */
+export const slotNodeId = (key: string): string => `slot:${key}`;
 
 export interface TaskGraphModel {
   /** Nodes plus *ranking* edges — what `layoutGraph` is given. */
@@ -53,7 +41,8 @@ export interface TaskGraphModel {
   /** The edges actually drawn. A subset of `graph.edges`: the barrier's are structural only. */
   edges: GraphEdge[];
   nodes: Map<string, TaskNodeView>;
-  ghosts: Ghost[];
+  /** The slots drawn as themselves — pictures the project implies that nothing has planned. */
+  unplanned: SlotNode[];
   /** Present only while the gate holds something up. */
   barrier: { pending: string[]; below: Set<string> } | null;
 }
@@ -118,72 +107,80 @@ export function buildDepEdges(tasks: readonly Task[]): GraphEdge[] {
 }
 
 /**
- * Work the planner has not emitted yet, as one cluster per scene (shots) and per gate-pending
- * character (model sheets). The shot estimate is the deterministic baseline — one establishing
- * shot plus one per character — which is a floor, not a promise; the sheet count is left off
- * entirely because outfits are not visible from here and a wrong number is worse than none.
+ * Where each slot is drawn: its task's hash when the planner has actually emitted that task,
+ * otherwise a `slot:` id of its own. A slot carrying a `taskHash` the graph has never seen is
+ * still unplanned — the identity is computable from the project, which is not the same as work
+ * having been filed for it.
  */
-export function ghostsFor(status: PipelineStatus, story: StoryGraph | null): Ghost[] {
-  if (!story) return [];
-  const pending = new Set(status.gatePending);
-
-  const scenesWithShots = new Set<string>();
-  const charactersWithSheets = new Set<string>();
-  const platesFor = new Map<string, string[]>();
-  const portraitOf = new Map<string, string>();
-  for (const task of status.tasks) {
-    const inputs = task.inputs;
-    if ('shotId' in inputs) scenesWithShots.add(sceneOfShot(inputs.shotId));
-    else if (task.kind === 'location_ref' && 'locationId' in inputs) {
-      platesFor.set(inputs.locationId, [...(platesFor.get(inputs.locationId) ?? []), task.hash]);
-    } else if (task.kind === 'portrait' && 'characterId' in inputs) {
-      portraitOf.set(inputs.characterId, task.hash);
-    } else if (task.kind === 'model_sheet' && 'characterId' in inputs) {
-      charactersWithSheets.add(inputs.characterId);
-    }
-  }
-
-  const ghosts: Ghost[] = [];
-  for (const character of status.gatePending) {
-    if (charactersWithSheets.has(character)) continue;
-    const portrait = portraitOf.get(character);
-    ghosts.push({
-      id: `ghost:sheets:${character}`,
-      label: `${character} · model sheets`,
-      after: portrait ? [portrait] : [],
-      gated: true,
-    });
-  }
-
-  for (const scene of story.scenes) {
-    if (!scene.reachable || scenesWithShots.has(scene.id)) continue;
-    ghosts.push({
-      id: `ghost:shots:${scene.id}`,
-      label: `${scene.id} · shots`,
-      count: 1 + scene.characters.length,
-      after: platesFor.get(scene.location) ?? [],
-      gated: scene.characters.some((c) => pending.has(c)),
-    });
-  }
-  return ghosts;
+export function slotNodeIds(status: PipelineStatus): Map<string, string> {
+  const planned = new Set(status.tasks.map((t) => t.hash));
+  return new Map(
+    status.slots.map((slot) => [
+      slot.key,
+      slot.taskHash && planned.has(slot.taskHash) ? slot.taskHash : slotNodeId(slot.key),
+    ]),
+  );
 }
 
 /**
- * The synthetic gate barrier: who it is waiting on, and every node it holds up. Ghosts declare
- * their own `gated` flag; a real task lands below the line only in the case that flag cannot
- * cover — a shot whose subject was un-approved after it was planned.
+ * The edges the slot graph knows and `deps`/`refs` cannot: what a picture will be drawn from,
+ * before either end of it exists. A ref naming a slot outside the graph — an authored
+ * `asset:<hash>` pin — is skipped rather than drawn to nowhere, exactly as `buildRefEdges` skips
+ * an author-supplied image. A pair already carrying a dep or ref edge is skipped too, so a
+ * coupling the planner has filed renders once, as the firmer of the two.
+ */
+export function buildSlotEdges(status: PipelineStatus, drawn: readonly GraphEdge[]): GraphEdge[] {
+  const ids = slotNodeIds(status);
+  const seen = new Set(drawn.map((e) => `${e.from}|${e.to}`));
+  const edges: GraphEdge[] = [];
+  for (const slot of status.slots) {
+    const to = ids.get(slot.key);
+    for (const ref of slot.refs) {
+      const from = ids.get(ref);
+      if (!from || !to || from === to || seen.has(`${from}|${to}`)) continue;
+      seen.add(`${from}|${to}`);
+      edges.push({ id: `slot:${from}->${to}`, from, to, kind: 'slot' });
+    }
+  }
+  return edges;
+}
+
+/**
+ * The synthetic gate barrier: who it is waiting on, and every node it holds up.
+ *
+ * A slot is held up when a portrait the gate is still pending sits anywhere upstream of it — which
+ * is the gate predicate stated as reachability rather than guessed at per kind, and it is why the
+ * sheets and shots of a pending character land below the line without either being named here. A
+ * pending portrait is not below its own gate: it is the work the gate is waiting for.
+ *
+ * A real task lands below only in the case that walk cannot cover — a shot planned while its
+ * subject was approved, whose approval was withdrawn afterwards. That one still reads the cast off
+ * the story graph, because the task's own inputs no longer agree with the model.
  */
 export function barrierFor(
   status: PipelineStatus,
   story: StoryGraph | null,
-  ghosts: readonly Ghost[],
 ): { pending: string[]; below: Set<string> } | null {
   if (status.gatePending.length === 0) return null;
   const pending = new Set(status.gatePending);
   const cast = new Map((story?.scenes ?? []).map((s) => [s.id, s.characters]));
+  const ids = slotNodeIds(status);
 
+  // `slots` arrives in `SlotGraph.order`, upstream first, so one forward pass closes the walk.
+  const gated = new Set<string>();
+  const seeds = new Set(status.gatePending.map((c) => `portrait:${c}`));
   const below = new Set<string>();
-  for (const ghost of ghosts) if (ghost.gated) below.add(ghost.id);
+  for (const slot of status.slots) {
+    if (seeds.has(slot.key)) {
+      gated.add(slot.key);
+      continue;
+    }
+    if (!slot.refs.some((ref) => gated.has(ref))) continue;
+    gated.add(slot.key);
+    const id = ids.get(slot.key);
+    if (id) below.add(id);
+  }
+
   for (const task of status.tasks) {
     if (!('shotId' in task.inputs)) continue;
     const characters = cast.get(sceneOfShot(task.inputs.shotId)) ?? [];
@@ -199,8 +196,9 @@ export function barrierFor(
  * where to draw the line. Those edges are never routed; `edges` is the drawn set.
  */
 export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): TaskGraphModel {
-  const ghosts = ghostsFor(status, story);
-  const barrier = barrierFor(status, story, ghosts);
+  const barrier = barrierFor(status, story);
+  const ids = slotNodeIds(status);
+  const unplanned = status.slots.filter((slot) => ids.get(slot.key) === slotNodeId(slot.key));
 
   const nodes = new Map<string, TaskNodeView>();
   const boxes: GraphNode[] = [];
@@ -208,23 +206,14 @@ export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): T
     nodes.set(task.hash, { kind: 'task', id: task.hash, task, subject: subjectOf(task) });
     boxes.push({ id: task.hash, ...TASK_NODE });
   }
-  for (const ghost of ghosts) {
-    nodes.set(ghost.id, { kind: 'ghost', id: ghost.id, ghost });
-    boxes.push({ id: ghost.id, ...TASK_NODE });
+  for (const slot of unplanned) {
+    const id = slotNodeId(slot.key);
+    nodes.set(id, { kind: 'slot', id, slot });
+    boxes.push({ id, ...TASK_NODE });
   }
 
-  const edges: GraphEdge[] = [
-    ...buildDepEdges(status.tasks),
-    ...buildRefEdges(status.tasks),
-    ...ghosts.flatMap((ghost) =>
-      ghost.after.map((from) => ({
-        id: `ghost:${from}->${ghost.id}`,
-        from,
-        to: ghost.id,
-        kind: 'ghost',
-      })),
-    ),
-  ];
+  const planned = [...buildDepEdges(status.tasks), ...buildRefEdges(status.tasks)];
+  const edges: GraphEdge[] = [...planned, ...buildSlotEdges(status, planned)];
 
   const ranking: GraphEdge[] = [];
   if (barrier) {
@@ -245,5 +234,11 @@ export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): T
     }
   }
 
-  return { graph: { nodes: boxes, edges: [...edges, ...ranking] }, edges, nodes, ghosts, barrier };
+  return {
+    graph: { nodes: boxes, edges: [...edges, ...ranking] },
+    edges,
+    nodes,
+    unplanned,
+    barrier,
+  };
 }

@@ -360,17 +360,34 @@ decomposition is a baseline, and persisting one is the exact failure this design
 decomposition draws nothing, so refusing it for a missing image key is a refusal the author cannot
 act on.
 
-## Phase 9 — the Task Graph pane
+## Phase 9 — the Task Graph pane _(done)_
 
-`Ghost`, `ghostsFor`, `buildDepEdges` and `buildRefEdges` are all deleted — they exist purely to
-repair the dishonesty of rendering `Task.deps` literally, and a real slot graph with real edges
-answers what they were guessing at. Node identity becomes the slot key, so
-`layout.byId.get(ui.slotKey)` needs no mapping table. A task whose slot the graph no longer names
-becomes an `orphan` node rather than disappearing silently.
+`Ghost` and `ghostsFor` are deleted: they estimated a count (`1 + scene.characters.length`) for work
+nobody had planned, and the slot graph names that work instead. `PipelineStatus` gains
+`slots: SlotNode[]`, filled by `session.status()` from the same walk `docTree` reads and shipped as
+a **flat array in `SlotGraph.order`** — upstream before downstream — so the topology survives the
+wire without shipping the two `Map`s.
 
-`barrierFor` **survives** — the P3 gate is a planner predicate, not an edge, so it stays a synthetic
-node. The module header comment ("The graph is deliberately partial… Ghost clusters stand in for
-it") is now false and is rewritten.
+**A slot and the task that fills it are one picture.** `slotNodeIds` keys a slot by its task hash
+where the planner actually emitted that task and by a `slot:<key>` id of its own otherwise, so the
+future is never drawn twice — once as a promise and once as work. A slot carrying a computable
+`taskHash` the graph has never seen is still unplanned: an identity being computable is not work
+having been filed for it. `buildDepEdges` and `buildRefEdges` **survive** for the planned half —
+the scheduler orders on those, and they are the firmer statement — and `buildSlotEdges` adds only
+the couplings they cannot know, deduped by `from|to` so a pair renders once.
+
+An unplanned slot is drawn hatched and dashed, and — unlike a ghost cluster — it is **clickable**:
+`pickSlot` moves the selection to its subject and its asset hash, so an unapproved picture in the
+graph lands in the asset editor.
+
+`barrierFor` **survives**, and is re-expressed as **reachability from a pending portrait** over the
+topologically-ordered `slots` — one forward pass, no story graph needed, and the sheets and shots of
+a pending character fall below the line without being named per kind. The story graph is kept for
+the one case that walk cannot cover: a shot planned while its subject was approved, whose approval
+was withdrawn afterwards.
+
+The module header comment ("The graph is deliberately partial… Ghost clusters stand in for it") is
+now false and is rewritten.
 
 This phase can ship after 1–8; nothing else depends on it.
 

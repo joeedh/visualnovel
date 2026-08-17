@@ -17,13 +17,12 @@ import { TOKENS, alpha } from '../tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
 import type { LaidOutNode } from '../../graph/types.js';
-import type { PipelineStatus, StoryGraph } from '../../../src/shared/ipc.js';
+import type { PipelineStatus, SlotNode, StoryGraph } from '../../../src/shared/ipc.js';
 
 /**
- * The pipeline as a DAG. The derivation is untouched — `rules/taskGraph.ts` still says
- * what the gate barrier, the ref edges and the ghost clusters are, and its tests still pin
- * them — so this editor is the React `TaskGraphView`'s markup rebuilt on `GraphCanvas` and
- * nothing more.
+ * The pipeline as a DAG. The derivation lives in `rules/taskGraph.ts` — what the gate barrier is,
+ * what the ref edges are, and which slots the planner has not filed work for yet — so this editor
+ * is markup over `GraphCanvas` and nothing more.
  *
  * The gate is drawn as a rule across the layout rather than as a node with wires, because it is
  * not a dependency: it is a planner predicate, and a wire would claim a coupling the data does
@@ -38,7 +37,7 @@ export class TaskGraphEditor extends VnEditor {
   private canvas!: GraphCanvas;
 
   private status: PipelineStatus | undefined;
-  /** The story graph is what makes ghosts derivable; without it the view is merely quieter. */
+  /** Only the barrier's one un-approved-after-planning case reads it; without it that case is lost. */
   private story: StoryGraph | null = null;
   private failure = '';
 
@@ -134,7 +133,7 @@ export class TaskGraphEditor extends VnEditor {
     return [
       this.failure,
       this.status?.tasks.length ?? -1,
-      this.model?.ghosts.length ?? -1,
+      this.model?.unplanned.length ?? -1,
       ui.sceneId,
       ui.shotId,
       ui.characterId,
@@ -157,7 +156,7 @@ export class TaskGraphEditor extends VnEditor {
   }
 
   private rebuildBar(): void {
-    const ghosts = this.model?.ghosts.length ?? 0;
+    const unplanned = this.model?.unplanned.length ?? 0;
     const tasks = this.status?.tasks.length ?? 0;
 
     this.bar.clear();
@@ -165,7 +164,7 @@ export class TaskGraphEditor extends VnEditor {
     this.bar.label(
       this.failure
         ? this.failure
-        : `${tasks} task${tasks === 1 ? '' : 's'}${ghosts > 0 ? ` · ${ghosts} not yet planned` : ''}`,
+        : `${tasks} task${tasks === 1 ? '' : 's'}${unplanned > 0 ? ` · ${unplanned} not yet planned` : ''}`,
     ).style['padding'] = '0px 8px';
 
     this.bar.button('Fit', () => {
@@ -201,8 +200,9 @@ export class TaskGraphEditor extends VnEditor {
   private onPick(hit: GraphPick): void {
     if (hit.type !== 'node') return;
     const view = this.model?.nodes.get(hit.node.id);
-    // Only real tasks are addressable: a ghost is a cluster of work that does not exist yet,
-    // and the barrier's own affordance is the approve button drawn on it.
+    // The barrier's own affordance is the approve button drawn on it, so a click on it does
+    // nothing here; a slot is a picture with a real address, so it moves the selection like a task.
+    if (view?.kind === 'slot') return this.pickSlot(view.slot);
     if (view?.kind !== 'task') return;
 
     // The hash moves for every task, including the ones that name no scene or character: the
@@ -221,11 +221,28 @@ export class TaskGraphEditor extends VnEditor {
     this.announce();
   }
 
+  /**
+   * A slot names a subject the way a task does, minus the task hash there is no task for. The
+   * asset hash moves too when something already fills the slot, so clicking an unapproved picture
+   * here lands it in the asset editor rather than merely highlighting a box.
+   */
+  private pickSlot(slot: SlotNode): void {
+    const binding = slot.binding;
+    if (binding.kind === 'shot') {
+      this.ui.sceneId = binding.sceneId;
+      this.ui.shotId = binding.shotId;
+    } else if (binding.kind === 'portrait' || binding.kind === 'sheet') {
+      this.ui.characterId = binding.characterId;
+    }
+    if (slot.hash) this.ui.assetHash = slot.hash;
+    this.announce();
+  }
+
   private renderNode(node: LaidOutNode): HTMLElement | null {
     const view = this.model?.nodes.get(node.id);
     if (!view) return null;
     if (view.kind === 'barrier') return this.gateNode(view.pending);
-    if (view.kind === 'ghost') return ghostNode(view);
+    if (view.kind === 'slot') return slotNode(view);
     return taskNode(view, isSelected(view, this.selection()));
   }
 
@@ -295,7 +312,7 @@ const RULE_OVERHANG = 64;
 function wireStyle(edge: EdgeRoute): EdgeStyle {
   if (edge.kind === 'dep') return { stroke: TOKENS.signalDeep, width: 1.5 };
   if (edge.kind === 'ref') return { stroke: TOKENS.mistDim, width: 1, dash: '4 4' };
-  if (edge.kind === 'ghost') return { stroke: TOKENS.inkLine, width: 1, dash: '2 5' };
+  if (edge.kind === 'slot') return { stroke: TOKENS.inkLine, width: 1, dash: '2 5' };
   return { stroke: TOKENS.mistDim, width: 1.5 };
 }
 
@@ -329,26 +346,29 @@ function taskNode(view: Extract<TaskNodeView, { kind: 'task' }>, selected: boole
 }
 
 /**
- * Work the planner cannot emit yet, drawn as an approximate cluster — hatched and dashed, so
- * it never reads as a node that might turn out not to exist.
+ * A picture the project implies that no task has been filed for — hatched and dashed, so it never
+ * reads as work in flight. It is one picture with a real address, not a cluster, so it says which.
  */
-function ghostNode(view: Extract<TaskNodeView, { kind: 'ghost' }>): HTMLElement {
+function slotNode(view: Extract<TaskNodeView, { kind: 'slot' }>): HTMLElement {
+  const slot = view.slot;
   const box = nodeCard();
   Object.assign(box.style, {
-    border: `1px dashed ${view.ghost.gated ? alpha(TOKENS.sodium, 0.4) : TOKENS.inkLine}`,
+    border: `1px dashed ${slot.blocked ? alpha(TOKENS.sodium, 0.4) : TOKENS.inkLine}`,
     background: `repeating-linear-gradient(135deg, ${alpha(TOKENS.signal, 0.04)} 0 8px, transparent 8px 16px)`,
   });
 
   const head = row();
-  head.appendChild(mono('not yet planned', TOKENS.mistDim));
-  if (view.ghost.count !== undefined) {
-    const count = mono(`~${view.ghost.count}`, TOKENS.mistDim);
+  head.appendChild(
+    mono(slot.candidates.length ? 'awaiting approval' : 'not yet planned', TOKENS.mistDim),
+  );
+  if (slot.candidates.length > 1) {
+    const count = mono(`${slot.candidates.length} drafts`, TOKENS.mistDim);
     count.style.marginLeft = 'auto';
     head.appendChild(count);
   }
 
   box.appendChild(head);
-  box.appendChild(subject(view.ghost.label, TOKENS.mistDim));
+  box.appendChild(subject(slot.label, TOKENS.mistDim));
   return box;
 }
 

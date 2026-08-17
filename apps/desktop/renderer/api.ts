@@ -78,6 +78,7 @@ const MOCK_STATUS: PipelineStatus = {
   tasks: MOCK_TASKS,
   gatePending: ['haruki'],
   blockedOnGate: true,
+  slots: [],
 };
 
 const MOCK_CANDIDATES = [
