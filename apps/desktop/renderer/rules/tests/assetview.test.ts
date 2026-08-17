@@ -20,6 +20,7 @@ const info = (over: Partial<AssetInfo> = {}): AssetInfo => ({
   accepted: false,
   sourceTask: 't1',
   stale: false,
+  prereqs: [],
   rungs: [],
   ...over,
 });
@@ -156,6 +157,15 @@ describe('approveAction', () => {
       ok: false,
       reason: expect.stringContaining('pointed at'),
     });
+  });
+
+  // Main's sentence, shown verbatim — a disabled control's tooltip is its refusal, and this one
+  // has to be the same words `asset.accept` gives when the palette or the agent reaches it.
+  it('refuses while anything it was drawn from is unapproved, in main’s own words', () => {
+    const waiting = 'Approve what this was drawn from first: cafe — night plate is not approved yet.';
+    expect(approveAction(info({ unapproved: waiting }))).toEqual({ ok: false, reason: waiting });
+    // Ahead of the portrait split, so the gate button is greyed for the same reason.
+    expect(approveAction(portrait({ unapproved: waiting }))).toEqual({ ok: false, reason: waiting });
   });
 
   it('refuses a portrait whose character the project has lost, rather than guessing one', () => {

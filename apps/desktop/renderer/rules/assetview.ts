@@ -44,6 +44,10 @@ export type ApproveAction =
  * offers that command rather than the generic `asset.accept` the command itself would refuse.
  * A concept and an upload have no approval at all, for opposite reasons: nothing consumes a
  * concept, and nothing generated an upload.
+ *
+ * Approval also flows upstream-first, and that refusal is placed ahead of the portrait split so it
+ * gates both doors. The sentence is main's — `previewAccept` refuses `asset.accept` with the same
+ * one — because a greyed button the command would honour is a lie about the rule.
  */
 export function approveAction(info: AssetInfo): ApproveAction {
   if (info.kind === 'concept') {
@@ -59,6 +63,7 @@ export function approveAction(info: AssetInfo): ApproveAction {
         'An upload is not generated art — it counts by being pointed at, not by being blessed.',
     };
   }
+  if (info.unapproved) return { ok: false, reason: info.unapproved };
   if (info.kind !== 'portrait') {
     return {
       ok: true,

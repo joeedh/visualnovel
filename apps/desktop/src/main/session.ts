@@ -72,6 +72,7 @@ import {
   adoptionForSlot,
   adoptionOf,
   artNotesOf,
+  assetPrereqs,
   assetSlotLabel,
   composePrompt,
   condensePrompt,
@@ -85,6 +86,7 @@ import {
   overrideAt,
   parseSlot,
   parseSubject,
+  prereqRefusal,
   promoteConcept,
   promotionOf,
   redrawConcept,
@@ -296,6 +298,18 @@ const IMAGE_KINDS = new Set<TaskKind>([
 function relPath(dir: string, file: string): string {
   return relative(dir, file).split(sep).join('/');
 }
+
+/**
+ * The kinds `previewAccept` does not refuse outright. A portrait belongs to the gate, a concept is
+ * consumed by nothing and an upload was never generated — so none of the three has an approval to
+ * withhold, and asking about their upstream would be a refusal with no act behind it.
+ */
+const ACCEPTABLE = new Set<AssetKind>([
+  'location_ref',
+  'model_sheet',
+  'outfit_sheet',
+  'shot_image',
+]);
 
 /**
  * Which assets are suspended, keyed by hash. One walk answers both the listing and the one-asset
@@ -876,6 +890,13 @@ export class WorkspaceSession {
     const derived = derivePrompt(asset, ctx);
     const view = await this.promptViewOf(project, hash);
     const labels = labelContext(project.model, project.graph);
+    const label = labelAssets(manifest, labels).get(hash) ?? hash;
+    const prereqs = assetPrereqs(asset, { ...labels, assets: manifest, shots });
+    // Only for the kinds that can be accepted at all: a portrait, a concept and an upload are each
+    // refused by name before this could be reached, and a second sentence beside those reads as a
+    // second rule. Their prereqs are still listed — what a sketch was drawn from is worth showing
+    // even where there is nothing to approve.
+    const unapproved = ACCEPTABLE.has(asset.kind) ? prereqRefusal(label, prereqs) : undefined;
     const from = slotOf(asset, labels.angleOf?.(asset.sourceTask));
     // A slot only counts while these are the bytes in it: a superseded render keeps its binding,
     // and a pane offering to replace *that* would supersede a picture already moved past.
@@ -884,7 +905,7 @@ export class WorkspaceSession {
       hash: asset.hash,
       ext: asset.ext,
       kind: asset.kind,
-      label: labelAssets(manifest, labels).get(hash) ?? hash,
+      label,
       base: isBaseKind(asset.kind),
       accepted: asset.accepted,
       sourceTask: asset.sourceTask,
@@ -896,6 +917,8 @@ export class WorkspaceSession {
       stale: derived !== undefined && asset.prompt !== undefined && derived !== asset.prompt,
       ...(suspended ? { suspended: suspended.reason } : {}),
       ...(slot ? { slot: slotKey(slot) } : {}),
+      prereqs,
+      ...(unapproved ? { unapproved } : {}),
       rungs: rungsFor(asset, { model: project.model, shots }),
       ...(view ? { promptView: view } : {}),
     };
@@ -941,6 +964,9 @@ export class WorkspaceSession {
         message: `${info.label} is suspended: ${info.suspended}. Repin or regenerate it first.`,
       };
     }
+    // After suspension deliberately: that is a claim about *these* bytes resting on a reference
+    // that moved, which is the more specific thing to say. This one is about other bytes.
+    if (info.unapproved) return { ok: false, message: info.unapproved };
     return {
       ok: true,
       message: info.accepted

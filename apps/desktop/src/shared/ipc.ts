@@ -151,6 +151,10 @@ export type {
 // Type-only, so the browser bundle never pulls in `@vn/bible` (which reads the filesystem):
 // `bible.search` results cross the wire as data, and this is the shape the renderer names.
 export type { BibleFile, Excerpt } from '@vn/bible';
+// Type-only for the same reason: `@vn/artgen` reads prompts off the model, and the renderer names
+// this shape only as data that already crossed the wire.
+import type { Prereq } from '@vn/artgen';
+export type { Prereq };
 export type { Playable, Beat, PlayableScene, TaskKind, TaskStatus } from '@vn/types';
 export type { Defect, DefectReport, Diagnostic } from '@vn/types';
 
@@ -447,6 +451,17 @@ export interface AssetInfo {
    * the slot over: it names what these bytes fill now, not what they were once drawn for.
    */
   slot?: string;
+  /**
+   * The pictures these bytes were drawn from, in the order the task fed them to the model — the
+   * approval frontier, and what the pane's DRAWN FROM strip lists. Always present, empty for an
+   * asset drawn from nothing, so no surface has to branch on `undefined`.
+   */
+  prereqs: Prereq[];
+  /**
+   * Why Approve is disabled: something upstream is not approved yet. The same sentence
+   * `asset.accept` refuses with, so a greyed button's tooltip is the command's own word.
+   */
+  unapproved?: string;
   /** The art-notes rungs that reach this asset, widest first. */
   rungs: ArtRungInfo[];
   /**

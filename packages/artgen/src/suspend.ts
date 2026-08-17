@@ -11,10 +11,10 @@
  * date and the author picks re-approve or regenerate. Auto-cascade and suspension are the same fork
  * in the road, and the pinned reference (§13) is what buys the second one.
  */
-import type { Asset, ChunkRef } from '@vn/types';
 import { refDrift, resolveBinding, type BindingContext } from './refs.js';
 import { slotLabel } from './refcycle.js';
-import { overrideAt, rungOf, type RungContext } from './resolve.js';
+import type { RungContext } from './resolve.js';
+import { attachedRefs } from './upstream.js';
 
 /** Everything the walk reads: the manifest and the rungs an override could be stored at. */
 export interface SuspendContext extends BindingContext, RungContext {}
@@ -28,20 +28,6 @@ export interface Suspension {
 }
 
 const short = (hash: string): string => hash.slice(0, 8);
-
-/** The references an author attached to this asset's prompt, by chunk. A muted chunk has none. */
-function attachedRefs(asset: Asset, ctx: RungContext): { chunk: string; ref: ChunkRef }[] {
-  const rung = rungOf(asset);
-  const o = rung && overrideAt(rung, ctx);
-  if (!o?.refs) return [];
-  const muted = new Set(o.mute ?? []);
-  const out: { chunk: string; ref: ChunkRef }[] = [];
-  for (const [chunk, refs] of Object.entries(o.refs)) {
-    if (muted.has(chunk)) continue;
-    for (const ref of refs) out.push({ chunk, ref });
-  }
-  return out;
-}
 
 /**
  * Every suspended asset, upstream before downstream — the order an agent clearing a subtree has to
