@@ -11,6 +11,7 @@
     "@vn/commands": "workspace:*",
     "@vn/config": "workspace:*",
     "@vn/providers": "workspace:*",
+    "@vn/store": "workspace:*",
     "@vn/types": "workspace:*",
     "@vn/util": "workspace:*",
     "zod": "^3.24.1"

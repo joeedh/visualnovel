@@ -378,14 +378,36 @@ exfiltration channel. The allow-list is what closes it.
 
 ### Budget
 
-`maxSteps: 24`, a total input-token ceiling, and a per-run byte budget across all reads. The
-checkbox tooltip states a rough cost so "uses more tokens" is a number rather than a vibe.
+`maxSteps: 24`, a total input-token ceiling, and a per-run byte budget across all reads
+(`DEFAULT_READ_BUDGET`, 250 kB of text handed back). One `Budget` is built in
+`createSourceTools` and shared by all three tools, so an analysis cannot spend its cap three
+times. The checkbox tooltip states a rough cost so "uses more tokens" is a number rather than a
+vibe.
 
-- [ ] 5.1 — `sourcemap.ts` + `sourceRoot()` with tests for the refusals
-- [ ] 5.2 — `grep` with caps and reported truncation
-- [ ] 5.3 — the two-root `read_file` with the `keys/` and symlink refusals
-- [ ] 5.4 — `fetch_api_docs` with the allow-list and cache
-- [ ] 5.5 — the budget and its accounting
+Four things the implementation settled:
+
+- **`DENY` is matched two ways, because one way is wrong.** A one-segment entry is denied wherever
+  it appears, since `node_modules` nests; a multi-segment entry names one place and is matched as
+  a prefix — matched segment-wise, `vendor/path.ux/scripts/lib` would deny every `scripts/` and
+  every `src/lib/` in the repo.
+- **A readable root may be a file, and the first walker lost them silently.** `CLAUDE.md` and
+  `package.json` are files, and a walk that opens each root with `readdir` skips them without
+  saying so — meaning grep could never find the one document most worth quoting, while `read_file`
+  could read it. `collect` now `lstat`s each root entry and takes either kind.
+- **The credential refusal answers before the general one.** `keys` is on `DENY` as well, so the
+  generic sentence won the race and said "build output, dependencies, or credentials" about a
+  secret. The project-side `keys/` check runs first, so the refusal a maintainer reads in a log is
+  the specific one.
+- **`where` is optional-with-a-fallback, not `.default('source')`.** zod 3's `.default()` splits a
+  schema's input type from its output type, and `Tool<A>` is a single parameter — so the tools take
+  `where?: Where` and fall back inside `run`. The same shape as `analysisArgs` in Stage 4, for the
+  same reason.
+
+- [x] 5.1 — `sourcemap.ts` + `sourceRoot()` with tests for the refusals
+- [x] 5.2 — `grep` with caps and reported truncation
+- [x] 5.3 — the two-root `read_file` with the `keys/` and symlink refusals
+- [x] 5.4 — `fetch_api_docs` with the allow-list and cache
+- [x] 5.5 — the budget and its accounting
 
 ## Stage 6 — the dialog
 

@@ -219,6 +219,9 @@ importers:
       '@vn/providers':
         specifier: workspace:*
         version: link:../providers
+      '@vn/store':
+        specifier: workspace:*
+        version: link:../store
       '@vn/types':
         specifier: workspace:*
         version: link:../types
