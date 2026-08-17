@@ -99,6 +99,19 @@ export async function ensureRepo(root: string, message = 'Existing project files
 }
 
 /**
+ * Whether the repository containing `root` is the project's *own*, rather than one the project
+ * merely sits inside — `RepoRef.owned`, asked of a single directory and without loading a model.
+ *
+ * Scaffolding may write into a foreign work tree, because the file belongs to the project either
+ * way; it must not **commit** there, on the grounds `openRepos()` gives — that history is somebody
+ * else's. False for a directory in no work tree at all, which has no history to write to.
+ */
+export async function ownsRepo(root: string): Promise<boolean> {
+  const top = await openGit(root).topLevel();
+  return top !== null && resolve(top) === resolve(root);
+}
+
+/**
  * `ensureRepo`'s deliberate opposite: initialize a repository **at** `root` whatever encloses it,
  * because "create a new project here" is a request for a project and a project has a repo. A
  * nested one is a thing this codebase already understands — git does not descend into it, and
@@ -182,7 +195,10 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
   const wroteAttributes = await ensureGitAttributes(root);
   const fresh = !(await openGit(root).isRepo());
   const git = await ensureRepo(root, found.project ? 'Existing project files' : 'New project');
-  if (!fresh) {
+  // A repo `ensureRepo` just initialized is the project's by construction. One that was already
+  // there may be a repo the project merely sits inside, and scaffolding must not write two
+  // commits into somebody else's history.
+  if (!fresh && (await ownsRepo(root))) {
     if (wroteAttributes) {
       await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
     }
@@ -204,9 +220,11 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
  */
 export async function adoptGitAttributes(root: string): Promise<boolean> {
   if (!(await ensureGitAttributes(root))) return false;
-  const git = openGit(root);
-  if (await git.isRepo()) {
-    await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
+  // `isRepo` would be true of a project sitting inside a larger repo, and committing there is the
+  // one thing this must not do. Its caller asks the same question first; asking it here too is
+  // what keeps the answer with the write.
+  if (await ownsRepo(root)) {
+    await openGit(root).commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
   }
   return true;
 }

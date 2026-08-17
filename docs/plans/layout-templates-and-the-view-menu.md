@@ -161,6 +161,13 @@ same shape `ensureGitAttributes` uses for the notification log's `merge=union` l
 other rule in the same file; the two ensures append independently and neither overwrites the
 other's work.
 
+That commit is conditional on `ownsRepo(root)`, and the condition is not theoretical: opening a
+scratch folder inside a checkout of this monorepo filed both scaffolding commits onto its master,
+because `isRepo()` is true of a directory that merely sits inside a work tree. The layouts are
+still written — they are the project's files wherever the project lives — but a repo the project
+does not own gets no history from the app. See
+[`repos-and-commits.md`](../repos-and-commits.md#the-gitattributes-a-project-gets).
+
 A project that predates the feature needs none of this to work either: a shipped layout **with no
 file** still appears in the list and still applies, answered for by its recipe.
 

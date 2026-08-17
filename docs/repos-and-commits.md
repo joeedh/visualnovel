@@ -157,12 +157,23 @@ open (committed on its own, as "Union-merge the notification log"). `skeleton()`
 line into a new project. `ensureLayouts` appends the second rule the same way, in the same place,
 and is the subject of [the section below](#the-one-thing-git-is-told-not-to-merge).
 
+**Both of those commits ask `ownsRepo(root)` first**, and this is the load-bearing part.
+Scaffolding may *write* into a project that sits inside a larger repo — the files belong to the
+project either way — but the history does not belong to the app, on exactly the grounds
+`owned: false` gives above. `isRepo()` is the wrong question here: it is true of a directory that
+merely sits inside a work tree, so asking it is how opening a scratch folder inside a checkout
+files two commits onto somebody's branch. `ownsRepo` compares `git rev-parse --show-toplevel`
+against the root itself, which is `RepoRef.owned` asked of one directory and without loading a
+model. A repo `ensureRepo` just initialized needs no check: it is the project's by construction,
+and the scaffolding is already in its first commit.
+
 `openWorkspace` is not enough on its own, because the ordinary launch never calls it: `main`
 resolves a root from the recents list or `VN_PROJECT` and goes straight to `openRepos()`. So
 `openRepos()` calls `adoptGitAttributes(root)` — the same ensure, plus that separate commit —
 between `ensureRepo` and the `checkpoint`, which is what keeps the line out of "Changes made
-outside the app". It is skipped when the project sits inside a larger repo, on the same grounds
-as commit-on-save: that history is somebody else's.
+outside the app". Its caller skips it when the project sits inside a larger repo, and it asks
+`ownsRepo` again itself: the guard travels with the write rather than living only at the one call
+site that happens to remember it.
 
 Union merge is what makes an append-only log survive a branch merge: both sides' lines are kept.
 It duplicates a line whose read/hidden flags each side changed, which is why the reader dedupes by
