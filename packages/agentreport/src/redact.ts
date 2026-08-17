@@ -104,6 +104,22 @@ function escapeRe(text: string): string {
 const WORDISH = /[\p{L}\p{N}_]/u;
 const GUARD = '[\\p{L}\\p{N}_]';
 
+/** Both the typewriter apostrophe and the typographic one, because a report is full of both. */
+const APOSTROPHE = "['’]";
+const APOSTROPHES = /['’]/gu;
+
+/**
+ * A name with its apostrophes taken out, which is how one is compared here.
+ *
+ * An apostrophe is punctuation a possessive moves around, and a name is what is left when it is
+ * gone. `James's`, `James'` and the slip `Jame's` are all the same person to a reader, so they must
+ * all be the same person to the matcher — a redaction that holds only for correctly typed
+ * possessives is a redaction that leaks the moment someone types quickly.
+ */
+function bare(text: string): string {
+  return text.replace(APOSTROPHES, '');
+}
+
 /**
  * Scripts written without spaces. A boundary guard is what stops `Mori` matching inside
  * `Morison`, and there is no such thing to guard against in Japanese — requiring one there would
@@ -112,13 +128,17 @@ const GUARD = '[\\p{L}\\p{N}_]';
 const UNSPACED =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
 
+/**
+ * The alias as a pattern: its letters in order, with room for a stray apostrophe between any two
+ * of them, and a boundary guard on each end that a word character would break.
+ */
 function guarded(alias: string): string {
-  const chars = [...alias];
+  const chars = [...bare(alias)];
   const edge = (char: string | undefined) =>
     char !== undefined && WORDISH.test(char) && !UNSPACED.test(char);
   const left = edge(chars[0]) ? `(?<!${GUARD})` : '';
   const right = edge(chars[chars.length - 1]) ? `(?!${GUARD})` : '';
-  return `${left}${escapeRe(alias)}${right}`;
+  return `${left}${chars.map(escapeRe).join(`${APOSTROPHE}?`)}${right}`;
 }
 
 /**
@@ -156,7 +176,8 @@ export function buildRedactor(sources: RedactionSources): Redactor {
   const aliases: Alias[] = [];
   const add = (source: string | undefined, rest: Omit<Alias, 'source'>) => {
     const trimmed = source?.trim();
-    if (trimmed && longEnough(trimmed)) aliases.push({ source: trimmed, ...rest });
+    // Length is judged on the letters, not the punctuation: `A'` is one identifying character.
+    if (trimmed && longEnough(bare(trimmed))) aliases.push({ source: trimmed, ...rest });
   };
 
   for (const entity of sources.entities) {
@@ -169,8 +190,8 @@ export function buildRedactor(sources: RedactionSources): Redactor {
 
   // Longest first, because JS alternation takes the leftmost alternative that matches rather than
   // the longest — without this, `Titus Vale` is half-replaced by `Titus`.
-  const ordered = [...aliases].sort((a, b) => b.source.length - a.source.length);
-  const byAlias = new Map(ordered.map((alias) => [alias.source.toLowerCase(), alias]));
+  const ordered = [...aliases].sort((a, b) => bare(b.source).length - bare(a.source).length);
+  const byAlias = new Map(ordered.map((alias) => [bare(alias.source).toLowerCase(), alias]));
   const matcher =
     ordered.length === 0
       ? undefined
@@ -212,7 +233,7 @@ export function buildRedactor(sources: RedactionSources): Redactor {
     for (const path of paths) out = out.replace(path.pattern, path.with);
     if (!matcher) return out;
     return out.replace(matcher, (match) => {
-      const alias = byAlias.get(match.toLowerCase());
+      const alias = byAlias.get(bare(match).toLowerCase());
       return alias ? pseudonym(alias) : match;
     });
   }
@@ -231,7 +252,7 @@ export function buildRedactor(sources: RedactionSources): Redactor {
     }
     if (matcher) {
       for (const match of text.matchAll(new RegExp(matcher.source, 'giu'))) {
-        const alias = byAlias.get(match[0].toLowerCase());
+        const alias = byAlias.get(bare(match[0]).toLowerCase());
         if (alias) note(alias.source);
       }
     }

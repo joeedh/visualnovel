@@ -51,6 +51,27 @@ describe('replacing a name', () => {
 
   it('leaves a possessive possessive', () => {
     expect(redactor().apply("Titus Vale's jacket")).toBe("Character A's jacket");
+    expect(redactor().apply('Titus Vale’s jacket')).toBe('Character A’s jacket');
+  });
+
+  it('reads a name through an apostrophe typed inside it', () => {
+    const james = { id: 'james', name: 'James', kind: 'character' as const };
+    const one = buildRedactor({ entities: [james] });
+    expect(one.apply("jame's back modelsheet")).toBe('Character A back modelsheet');
+    expect(one.apply('jame’s back modelsheet')).toBe('Character A back modelsheet');
+    expect(one.apply("James' jacket")).toBe("Character A' jacket");
+  });
+
+  it('takes a name that is written with an apostrophe whether or not one is typed', () => {
+    const house = { id: 'zims-house', name: "Zim's house", kind: 'location' as const };
+    const one = buildRedactor({ entities: [house] });
+    expect(one.apply("meet at Zim's house")).toBe('meet at Location A');
+    expect(one.apply('meet at Zims house')).toBe('meet at Location A');
+  });
+
+  it('still refuses an alias whose letters are too few, apostrophe or not', () => {
+    const initial = { id: 'a', name: "A'", kind: 'character' as const };
+    expect(buildRedactor({ entities: [initial] }).apply("a bad a' answer")).toBe("a bad a' answer");
   });
 
   it('reads a name in a script that has no word boundaries', () => {
@@ -152,6 +173,11 @@ describe('leaks', () => {
   it('says nothing about a report that has been redacted', () => {
     const one = redactor(sources);
     expect(one.leaks(one.apply('Titus Vale at C:\\dev\\proj'))).toEqual([]);
+  });
+
+  it('sees a name through the same apostrophe apply would have', () => {
+    const james = { id: 'james', name: 'James', kind: 'character' as const };
+    expect(buildRedactor({ entities: [james] }).leaks("jame's back modelsheet")).toEqual(['James']);
   });
 
   it('names each leak once, however often it was written', () => {

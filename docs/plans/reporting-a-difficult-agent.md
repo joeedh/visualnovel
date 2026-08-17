@@ -216,7 +216,8 @@ What it knows, all of it already derivable:
 | `os.userInfo().username`, and the home directory prefix | `<author>` |
 
 Rules that matter: longest match first (so `Titus Vale` is not half-replaced by `Titus`), word
-boundaries with possessives (`Titus's` → `Character A's`), case-insensitive matching with the
+boundaries with possessives (`Titus's` → `Character A's`) and an apostrophe treated as punctuation
+wherever it lands, so a mistyped one (`Jame's`) does not hide a name, case-insensitive matching with the
 pseudonym cased consistently, and **the map is held in memory only** — it is never written to
 disk, never sent to the model, and never appears in the report. A report is not de-anonymisable by
 whoever reads the issue.
@@ -810,10 +811,16 @@ three defects in the surfaces turned up on the way:
   `installReportPreview` said otherwise and was corrected; a scripted run reads the outcome and the
   copy under `userData/reports/`, which is what a script wanted.
 
-Two things were seen and left alone, because both are the redactor's exact-token contract rather
-than a surface bug: a possessive typo (`jame's`) is not the token `james`, so it survives
-substitution *and* the preview's leak scan, which consults the same table; and an unknown model id
-passed from a script accepts with no advisory, being unreachable from the dropdown.
+It also turned up a leak, which is the one class of defect this feature cannot ship with: the
+author had typed `jame's`, and an exact-token matcher does not see `james` in it, so the name went
+past the substitution *and* past the preview's leak scan, which reads the same table. **An
+apostrophe is now punctuation rather than a letter** — `bare()` takes them out on both sides of the
+comparison and the pattern allows one between any two letters of a name, so `James's`, `James'` and
+the slip `Jame's` are one person. Length is judged on the letters too, so `A'` is still refused as
+too short to be identifying.
+
+One thing was seen and left alone: an unknown model id passed from a script accepts with no
+advisory, being unreachable from the dropdown.
 
 ## Deliberately out of scope
 
