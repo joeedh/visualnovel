@@ -34,6 +34,12 @@ const shared = {
   testEnvironment: 'node',
   transform: { '^.+\\.tsx?$': '<rootDir>/scripts/jest-esbuild.cjs' },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+  // Linked worktrees under .claude/worktrees contain full copies of every
+  // package.json, which the haste map indexes regardless of testMatch,
+  // producing "duplicate @vn/x" errors. Excluded here rather than moved into
+  // `roots`, since roots is scoped by directory and the crawl still needs to
+  // reach `packages/` and `apps/` at the repo root.
+  modulePathIgnorePatterns: ['<rootDir>/.claude/worktrees'],
   moduleNameMapper: {
     // Strip the explicit .js extension used in source so jest resolves the .ts file.
     '^(\\.{1,2}/.*)\\.js$': '$1',
