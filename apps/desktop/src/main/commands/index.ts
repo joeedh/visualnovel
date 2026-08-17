@@ -32,6 +32,15 @@ import { commandCheck } from './command.js';
 import { docCreate, docRead, docWrite } from './doc.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import { interactionList, interactionTargets } from './interaction.js';
+import {
+  notifyClear,
+  notifyDeleteAll,
+  notifyFollow,
+  notifyHide,
+  notifyList,
+  notifyMarkRead,
+  notifyUnhide,
+} from './notify.js';
 import { pipelineRun, pipelineStatus } from './pipeline.js';
 import {
   promptAddRef,
@@ -121,6 +130,13 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     gateCandidates,
     interactionList,
     interactionTargets,
+    notifyClear,
+    notifyDeleteAll,
+    notifyFollow,
+    notifyHide,
+    notifyList,
+    notifyMarkRead,
+    notifyUnhide,
     pipelineRun,
     pipelineStatus,
     promptAddRef,

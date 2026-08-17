@@ -1,9 +1,10 @@
 import { AreaFlags, Menu, createMenu, type Container, type MenuTemplate } from 'pathux';
 import { isLive } from '../../api.js';
 import { EDITORS } from '../../../src/shared/editors.js';
-import { exec, move, quit, say, toggleMode } from '../bridge.js';
+import { exec, move, quit, report, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
+import { openNotifications } from '../notifications.js';
 import { openPalette } from '../palette.js';
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
@@ -16,14 +17,12 @@ function projectName(path: string): string {
 }
 
 /**
- * Run a menu entry and say what it answered. `exec` reports a refusal on its own; the *success*
- * sentence is what an entry that opens no palette and no dialog would otherwise show nothing for —
+ * Run a menu entry and say what it answered. `report` voices only what the notification push
+ * will not — an entry that opens no palette and no dialog would otherwise show nothing at all,
  * and "Cancelled." is the one an entry that opens a chooser most needs to pass on.
  */
 function act(id: string): void {
-  void exec(id).then((outcome) => {
-    if (outcome.ok) say(outcome.record.message);
-  });
+  void exec(id).then(report);
 }
 
 /**
@@ -71,7 +70,28 @@ export class VnHeaderEditor extends VnEditor {
     this.minSize[1] = this.maxSize[1] = HEADER_HEIGHT;
 
     this.bar = (this.header as Container).row();
+    this.placeNoteArea();
     this.rebuild();
+  }
+
+  /** The one header that keeps a note frame — see `VnEditor.wantsNoteArea`. */
+  protected override get wantsNoteArea(): boolean {
+    return true;
+  }
+
+  /**
+   * Put the note frame last and hard right, beside the bell that keeps what it shows.
+   * `makeHeader` runs inside `super.init()`, so the frame is added before `this.bar` exists and
+   * would otherwise sit at the far left, in front of the brand. Re-adding it moves it in the
+   * shadow root; the margin goes through `setCSSAfter` because `setBoxCSS` unsets `margin` and
+   * rewrites every side from the theme on hover, on press and on every `flushUpdate` — a plain
+   * `style['marginLeft']` write is erased moments later.
+   */
+  private placeNoteArea(): void {
+    const notes = this.noteArea;
+    if (!notes) return;
+    (this.header as Container)._add(notes);
+    notes.setCSSAfter(() => (notes.style['marginLeft'] = 'auto'));
   }
 
   override update() {
@@ -90,6 +110,7 @@ export class VnHeaderEditor extends VnEditor {
       ui.agentMode,
       ui.errors,
       ui.warnings,
+      ui.unread,
       ui.canUndo,
       ui.canRedo,
       ui.undoLabel,
@@ -145,6 +166,11 @@ export class VnHeaderEditor extends VnEditor {
     this.badge(ui.model);
     this.badge(isLive ? 'live' : 'preview');
     this.bar.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => void toggleMode());
+
+    const bell = this.bar.button(ui.unread ? `🔔 ${ui.unread}` : '🔔', () => openNotifications());
+    bell.description = ui.unread
+      ? `Show notifications — ${ui.unread} unread`
+      : 'Show notifications';
 
     this.bar.flushUpdate();
   }

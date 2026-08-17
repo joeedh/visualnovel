@@ -135,6 +135,14 @@ export class ProjectPaths {
   get commandsLog(): string {
     return join(this.state, 'commands.jsonl');
   }
+  /**
+   * Append-only notification log. Flags are patched in place at a byte offset rather than appended
+   * as deltas, and the file is union-merged by git — see the project's own `.gitattributes` and
+   * `apps/desktop/src/main/notifications.ts`, which owns both contracts.
+   */
+  get notificationsLog(): string {
+    return join(this.state, 'notifications.jsonl');
+  }
   reviewsDir(taskHash: string): string {
     return join(this.state, 'reviews', taskHash);
   }

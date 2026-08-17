@@ -1,5 +1,5 @@
 import type { Button, Container } from 'pathux';
-import { exec, onInvalidate, say } from '../bridge.js';
+import { exec, onInvalidate, report } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import PROJECT_CSS from '../../styles/project.css?inline';
 import type { ProjectView } from '../../../src/shared/ipc.js';
@@ -132,7 +132,7 @@ export class ProjectEditor extends VnEditor {
     const outcome = await exec('project.setArtStyle', { style: this.styleBox.value.trim() });
     if (!outcome.ok) return void this.note(outcome.error, true);
     this.dirty = false;
-    say(outcome.record.message);
+    report(outcome);
     await this.load();
   }
 

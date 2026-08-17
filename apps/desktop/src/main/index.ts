@@ -21,9 +21,12 @@ import { Workspace } from '@vn/authoring';
 import { CommandStack, Committer, UndoJournal } from '@vn/commands';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
+import { installNotifications, notifications, notify } from './notifications.js';
+import { categoryOfCommand, shouldFileCommand } from '../shared/notify.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
 import {
+  adoptGitAttributes,
   ensureRepo,
   openWorkspace,
   recentWorkspaces,
@@ -214,6 +217,7 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   const opened = await openWorkspace(root);
   // The agent being dropped may be parked on a question nobody is going to answer now.
   abandonPending();
+  notifications().suspend();
   workspaceRoot = opened.root;
   session = null;
   stack = null;
@@ -255,13 +259,33 @@ async function openRepos(): Promise<void> {
     if (ref.owned) ownedRepos.push(openGit(ref.root));
     else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
   }
+  // Here rather than in `openWorkspace`, because that runs only for an explicit `workspace.open`
+  // — a project reached from the recents list or `VN_PROJECT` would never get the attribute. Not
+  // when the project sits inside a larger repo: that history is somebody else's, as above.
+  if (refs.some((ref) => ref.role === 'project' && ref.owned)) await adoptGitAttributes(root);
   const committed = await committer().checkpoint('Changes made outside the app');
   for (const c of committed) console.log(`[vnstudio] checkpoint ${c.sha.slice(0, 8)} in ${c.repo}`);
+  // Only now: the checkpoint above is what a notification written earlier would have been
+  // swept into, under a subject that has nothing to do with it.
+  await notifications().open();
 }
 
 function committer(): Committer {
   return new Committer({ repos: () => ownedRepos });
 }
+
+/**
+ * The notification hub. Installed at module load and dormant until `openRepos` opens it, so
+ * nothing reaches `vngen/state` before the open-time checkpoint has swept the worktree.
+ *
+ * The log path is resolved per post rather than captured — `switchWorkspace` replaces the root
+ * under it, and a captured one would write into a directory `workspace.create` is about to
+ * require to be empty.
+ */
+installNotifications({
+  file: () => (workspaceRoot ? new ProjectPaths(workspaceRoot).notificationsLog : undefined),
+  push: (note) => win?.webContents.send('notify:changed', { note }),
+});
 
 const deps: SessionDeps = {
   emitEvent: (event) => win?.webContents.send('agent:event', event),
@@ -376,6 +400,18 @@ function getStack(): CommandStack<CommandHost> {
       onRecord: async (record) => {
         if (record.stack) undoRevision++;
         await appendJsonl(paths.commandsLog, record);
+        // Every command, whoever ran it and however it ended — the palette, a menu, the agent,
+        // CDP. One hook here is what makes "all notifications go through this system" true
+        // without a call at each of the thirty places that used to `say()` their own outcome.
+        // A refusal reaches this as a throw, so it arrives with `status: 'error'` and its reason.
+        if (shouldFileCommand(record)) {
+          await notify({
+            category: record.status === 'ok' ? categoryOfCommand(record.id) : 'error',
+            level: record.status === 'ok' ? 'info' : 'error',
+            message: record.status === 'ok' ? record.message : (record.error ?? record.message),
+            source: record.source === 'agent' || record.source === 'cdp' ? record.source : 'ui',
+          });
+        }
         host.ui({ type: 'undo', state: getStack().undoState(), revision: undoRevision });
       },
     });
@@ -429,6 +465,9 @@ function registerIpc(): void {
   handle('command:history', (limit) => getStack().history(limit));
   handle('command:undo', () => getStack().undo());
   handle('command:redo', () => getStack().redo());
+
+  handle('notify:list', () => notifications().list());
+  handle('notify:post', (input) => notifications().post(input));
 
   handle('session:set', (payload) => getSessionStore().set(payload.key, payload.value));
   // Synchronous on purpose (so the preload can hand the renderer its state before first
