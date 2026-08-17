@@ -1,5 +1,7 @@
 # The full slot graph, and approving upstream first
 
+Status: **shipped** — all nine phases. Deviations are in [As shipped](#as-shipped).
+
 ## Context
 
 The project can only ever see *part* of the work ahead of it. `planTasks` is deliberately
@@ -419,3 +421,41 @@ Others worth writing by name:
 End to end over `examples/sample`: `story.decomposeAll()` under `--mock` must **refuse by name**;
 `asset.accept` on a frame whose plate is unapproved must refuse with the same sentence the greyed
 button showed.
+
+## As shipped
+
+All nine phases are in the codebase. What differs from the plan above, and why:
+
+- **The two walks got their own modules.** `assetPrereqs` lives in `packages/artgen/src/prereq.ts`
+  rather than inside `slotgraph.ts`, and the hash walk itself came out again as
+  `packages/artgen/src/upstream.ts` — `upstreamOf(asset, ctx)` = `Asset.refs` plus the references
+  an author attached at the prompt rung, minus anything on a muted clause. `suspend.ts` now reads
+  the same function, so "what these bytes rest on" has one definition.
+- **Direct prerequisites only, and the induction is the argument.** The plan's `indirect` flag is
+  gone: accepting anything already required *its* direct prerequisites to be approved, so the
+  closure holds at accept time and every row in the pane stays one click from actionable. `Prereq`
+  ships as `{ hash, label, kind?, slot?, approved, note, missing? }` — `note` is the row's tooltip
+  and the reason it is or is not approved, and `missing` reports bytes the manifest has lost
+  without making Approve permanently unreachable.
+- **`assetApproved` is the one predicate**, and it is what the Unapproved branch, `previewAccept`
+  and `assetPrereqs` all read — so no two surfaces can disagree about the word. `prereqRefusal` is
+  the sentence, written once and shown by both the greyed button and the command. `isApproved` moved from
+  `@vn/pipeline` to `@vn/artgen` (`gate.ts`) to make that possible: artgen may not import the
+  pipeline.
+- **`SlotNode` carries `refs`, not `upstream`/`downstream`.** No reverse index shipped: nothing
+  asked "what is drawn from this", and `SlotGraph.order` already gives the direction that matters.
+  `hash`/`candidates`/`taskHash`/`status`/`blocked` are the rest, and `blocked` is the sentence the
+  tree and the graph both show.
+- **Slot task identity is computed once.** `resolveSlot`/`slotTaskHash` live in `slotgraph.ts` and
+  `adoptslot.ts` calls them, so an adoption and the graph cannot disagree about which task a picture
+  is — the plan had adoption keeping its own copy.
+- **`decomposeall.ts` shipped as `packages/pipeline/src/decompose.ts`**, and the CLI half was built
+  rather than left optional: `vngen decompose [dir]`, refusing `--mock` by name. It asks
+  `buildProviders` for the **text** key (a new `require` option defaulting to the `['gemini']` every
+  other verb wants), because decomposition draws nothing and refusing it for a missing image key
+  would be a refusal the author cannot act on.
+- **Phase 9 kept `buildDepEdges` and `buildRefEdges`.** The plan proposed deleting them and keying
+  every node by slot. They stayed: the scheduler orders on `deps`, which makes it the firmer
+  statement of a coupling the planner has actually filed, and `buildSlotEdges` adds only what they
+  cannot know, deduped by endpoints. Node identity is the task hash where a task exists and a
+  `slot:<key>` id otherwise, so one picture is never two boxes.

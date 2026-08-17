@@ -112,7 +112,11 @@ describe('assetPrereqs', () => {
         ...(mute ? { mute } : {}),
         refs: {
           setting: [
-            { pin: 'pin1', ext: 'png', from: { kind: 'plate', locationId: 'cafe', variant: 'dawn' } },
+            {
+              pin: 'pin1',
+              ext: 'png',
+              from: { kind: 'plate', locationId: 'cafe', variant: 'dawn' },
+            },
           ],
         },
       },

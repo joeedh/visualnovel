@@ -267,16 +267,17 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Eighty, in fifteen namespaces. Forty-nine are `mutating`; forty-eight declare a
-precondition; thirty are undoable; nine ask for confirmation.
+Ninety-seven, in sixteen namespaces. Fifty-seven are `mutating`; fifty-six declare a
+precondition; thirty-four are undoable; fifteen ask for confirmation.
 
 **Commands are the only write path.** The `story.*` branch mutators go through
 `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the scene
 editors through `session.editScene(decide)`, so no surface writes scene prose by another route.
 The same holds for the shot decompositions: outside the planner, `work/shots/<sceneId>.json` is
 written by `story.setCoverage`, `story.setOutfit`, `art.setNotes` (a shot rung), the `prompt.*`
-chunk editors, and `editScene` — which carries a shot's coverage across a split, merge or delete
-rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs the same
+chunk editors, `editScene` — which carries a shot's coverage across a split, merge or delete rather
+than stranding it — and `story.decomposeAll`, the one that creates a storyboard where there was
+none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 `@vn/scriptedit` rules and gets the same refusals.
 
 | Command                        | Props                             | Notes                                                     |
@@ -325,6 +326,7 @@ rather than stranding it. `vnauthor`'s `set_outfit` is not another one: it runs 
 | `story.deleteScene` ✍ ↺ ✓      | `scene`                           | Refuses while anything still points at it, naming what.    |
 | `story.splitScene` ✍ ↺ ✓       | `scene`, `at`, `into`             | `at` starts the second half; shots follow their lines, keeping their ids. |
 | `story.mergeScene` ✍ ↺ ✓       | `scene`, `into`                   | Only across a `next` boundary; `scene`'s file and storyboard are removed. |
+| `story.decomposeAll` ✍ ↺ ⚠ ✓  | —                                 | Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this". `check` refuses mock or unresolved keys with `pipeline.run`'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch. |
 | `prompt.info`                  | `hash`                            | The prompt one asset would be generated from: the clauses the builders derived, what the author has done to them, and the one string that gets sent. The same projection the Asset editor draws, so an agent and the pane never disagree about what a picture was asked for. |
 | `prompt.setChunk` ✍ ↺ ✓        | `hash`, `chunk`, `op` (`replace`\|`append`\|`mute`\|`clear`), `text` (default `''`) | One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches. |
 | `prompt.moveChunk` ✍ ↺ ✓       | `hash`, `chunk`, `after` (default `''`) | Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order. |

@@ -69,6 +69,32 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
   appear after that upstream task is `done`. Consequence: `vngen cost` is a snapshot of
   _currently-plannable_ work and undercounts tasks that only become plannable after an earlier
   wave finishes.
+- **The whole graph is a graph of slots, not of task hashes.** A `shot_image` hash is unknowable
+  until its plate has actually rendered, because `TaskInputs.shot_image.refs` embeds the upstream
+  asset hashes and `taskHash` covers the whole inputs object. So "every picture this project
+  implies" is enumerated over the **slot** vocabulary that already exists in
+  `@vn/artgen`'s `refcycle.ts` — `portrait:<id>`, `sheet:<id>/<outfit>/<angle>`,
+  `plate:<loc>/<variant>`, `shot:<scene>/<shot>` — with `refsOfSlot` as the edge rule and the
+  planner's real task identity attached only to the slots the project can currently state one for.
+  `buildSlotGraph` and the planner **must enumerate the same set**, which is why
+  `reachableScenes`/`usedCharacters`/`usedOutfits`/`usedLocationVariants` were lifted into
+  `@vn/model`'s `used.ts` and both sides call them; a test plans a mock project to exhaustion and
+  asserts the two agree in both directions. `SlotGraph.order` is topological, upstream first —
+  which is the order approval has to happen in. Never derive edges from `Task.deps`: it is
+  documented as incomplete and is not hashed.
+- **`SlotNode.approved` is two different things wearing one word, deliberately.** A `portrait:`
+  slot is approved when the character's `approvedPortrait` names it — that is the P3 gate, read
+  from the model — and every other slot when the asset filling it has `accepted === true`.
+  Conflating them is the bug the approval frontier exists to prevent.
+- **Decomposing every scene is an explicit act, and a fallback is never persisted.**
+  `work/shots/<sceneId>.json` wins forever once written and an **absent** file is the only signal
+  meaning "decompose this scene", so `decomposeAll` (behind `vngen decompose` and
+  `story.decomposeAll`) is additive with no `force`, skips a scene the model does not answer for
+  and names it instead of writing `deterministicShots`, and refuses mock or unresolved keys by
+  name. `decomposeSceneChecked` exists solely to make that last distinction reportable: inside one
+  run, one scene at a time, the silent fallback is the deterministic-fallback contract working;
+  sixty scenes at once with a bad key would baseline the project permanently. Plan:
+  [`plans/the-full-slot-graph-and-approving-upstream-first.md`](plans/the-full-slot-graph-and-approving-upstream-first.md).
 - **A terminal task records why, is retried once, and is reported from the live plan.** Three
   rules, each of which was a separate defect: a `shot_image` failed, the reason existed only on a
   logger event nobody kept, the next run planned nothing for it, and the CLI printed `Gate

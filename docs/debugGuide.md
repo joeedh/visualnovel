@@ -127,8 +127,8 @@ provenance does not belong.
 ### Getting a project into the state you need
 
 - **The desktop app cannot produce tasks in mock mode.** `session.ts` passes `mock` straight
-  through as `dryRun`, so `pipeline.run(mock=true)` reports `ran 0 tasks` and FLOOR shows a
-  gate barrier, ghosts, and nothing real. The command's own result says so; believe it before
+  through as `dryRun`, so `pipeline.run(mock=true)` reports `ran 0 tasks` and the graph shows a
+  gate barrier, unplanned slots, and nothing real. The command's own result says so; believe it before
   suspecting the derivation. On-disk task state comes from `@vn/testkit` — a throwaway jest
   test that builds `makeProject` fixtures and prints their paths (one gate-halted, one through
   `approveAll()`), then `$env:VN_PROJECT=<dir>` before the dev loop. **Never** point a run at

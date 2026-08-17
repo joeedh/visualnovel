@@ -112,6 +112,25 @@ with the failure it prevents: [`docs/pipeline-contracts.md`](docs/pipeline-contr
   dependency: a run halts with nothing ready. Scenes with no cast render immediately.
 - **Incremental planning.** The planner runs once per wave, so `vngen cost` counts only
   _currently-plannable_ work and undercounts what a later wave unlocks.
+- **The whole graph is a graph of slots, not of task hashes** — a shot cannot be hashed before its
+  plate renders, so every picture the project implies is enumerated over `portrait:`/`sheet:`/
+  `plate:`/`shot:` with `refsOfSlot` as the edge rule, real task identity attached only where the
+  project can state one, and `SlotGraph.order` topological upstream-first. The planner and
+  `buildSlotGraph` **share one enumeration** (`@vn/model`'s `used.ts`) and a test plans a project to
+  exhaustion to prove they agree. `SlotNode.approved` is asymmetric: a `portrait:` answers to the P3
+  gate, everything else to `Asset.accepted`.
+- **Approval flows upstream first, and it is one sentence in three places** — `assetApproved` is the
+  only predicate, `assetPrereqs` the only walk (over `Asset.refs`, so a listed row is clickable),
+  `prereqRefusal` the only sentence: the greyed Approve, the DRAWN FROM strip and `asset.accept`'s
+  own refusal all say it. Direct prerequisites only — accepting anything already required its own.
+  The tree grows an **Unapproved assets** branch in two groups the slot graph makes disjoint:
+  _Awaiting approval_ (real bytes nothing accepted) and _Not yet rendered_ (**zero candidates**,
+  deliberately not "unresolved" — `pick` declines on a tie, and those drafts are in the other group).
+- **Decomposing every scene is an explicit act, and a fallback is never persisted** — an absent
+  `work/shots/<sceneId>.json` is the only signal meaning "decompose this", so `story.decomposeAll` /
+  `vngen decompose` are additive with no `force`, name a scene the model did not answer for instead
+  of baselining it, and refuse mock or unresolved keys.
+  ([`docs/plans/the-full-slot-graph-and-approving-upstream-first.md`](docs/plans/the-full-slot-graph-and-approving-upstream-first.md))
 - **A terminal task records why, is retried once, and is reported from the live plan** — both the
   requeue and `RunSummary.failed` intersect the planned set, because `tasks.jsonl` holds orphans.
 - **Shot decompositions are persisted, not re-derived.** `work/shots/<sceneId>.json` wins forever

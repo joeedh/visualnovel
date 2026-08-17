@@ -13,7 +13,7 @@ reasoning behind each decision:
 <!-- toc -->
 
 - [What it is](#what-it-is)
-- [The five branches](#the-five-branches)
+- [The six branches](#the-six-branches)
 - [Contracts](#contracts)
 - [The file tree](#the-file-tree)
 - [Where it lives](#where-it-lives)
@@ -35,14 +35,16 @@ walks them once and shapes the result; it reads nothing else and writes nothing 
 no excerpt, no image bytes — so the tree can be shipped over IPC whole, and a large project costs a
 manifest parse rather than a corpus.
 
-## The five branches
+## The six branches
 
 ```
-Story          scene:<id>            → shot:<sceneId>/<shotId>
-Characters     character:<id>
-Locations      location:<id>
-Wiki           wikidir:<rel>         → wiki:<rel>
-Assets         assetkind:<kind>      → asset:<hash>
+Story              scene:<id>            → shot:<sceneId>/<shotId>
+Characters         character:<id>
+Locations          location:<id>
+Wiki               wikidir:<rel>         → wiki:<rel>
+Unapproved assets  unapproved:waiting    → asset:<hash>
+                   unapproved:unrendered → slot:<slotKey>
+Assets             assetkind:<kind>      → asset:<hash>
 ```
 
 - **Story** lists every scene in model order, each carrying its `scenes/<id>.md` path and its
@@ -54,6 +56,17 @@ Assets         assetkind:<kind>      → asset:<hash>
   whichever file the `type:` tag was found in — `characters/aiko/character.md`, or
   `wiki/cast/aiko.md` if that is where the author filed it.
 - **Wiki** is `Bible.files()` nested back into directories. Path, title, nothing else.
+- **Unapproved assets** is a lens on the two branches around it — everything still standing between
+  the project and a finished set of pictures, in two groups the
+  [slot graph](plans/the-full-slot-graph-and-approving-upstream-first.md) makes disjoint by
+  construction. *Awaiting approval* is real bytes nothing has accepted, reusing the same
+  `asset:<hash>` ids the Assets branch uses, so selection, routing and the right-click menu work
+  here with no renderer change. *Not yet rendered* is slots with **zero candidates** — deliberately
+  not "unresolved", because `pick` declines whenever the answer is not certain and a slot holding
+  three drafts would then be listed as unrendered while its three drafts sat in the other group.
+  Both walk `SlotGraph.order`, upstream before downstream, so the top of each list is what can be
+  worked on now. A project with nothing outstanding has **no branch at all** rather than an empty
+  one, and so does a caller that did not pass a slot graph.
 - **Assets** groups `AssetStore.manifest()` by `AssetKind`, each group labelled `base` or `project`
   by the same routing rule the store writes with (`isBaseKind`). The label describes what the asset
   *is*, so a legacy project whose base art is still indexed in the project manifest still groups
@@ -80,6 +93,10 @@ Assets         assetkind:<kind>      → asset:<hash>
   bind to nothing, so it answers before a binding is required: unbound it is the title alone,
   titleless it is the entity it names, and with neither it falls back to the hash like any other
   orphan.
+- **A `slot` node is the one row with nothing behind it.** No path and no hash — just the address
+  (`slot:plate:cafe/night`) and a sentence: why the graph says it is blocked, or that nothing has
+  been drawn for it yet. The Task Graph editor `claims` it `primary` and is the only editor that
+  can say anything about a picture with no bytes; every other editor needs a document or a hash.
 - **An asset node carries no `path`.** It is bytes in a content-addressed store, not a document —
   and a `path` is what the pane routes to the `wiki` editor, which would then `doc.read` a PNG.
   Clicking one names `ui.assetHash` instead and opens the `asset` editor.
@@ -161,6 +178,7 @@ entry is an invocation rather than a callback, is in
 | `asset` | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Open in the Asset editor |
 | `scene` | Assign line ids · New scene… · Export Fountain |
 | `shot` | Set coverage… · Set outfit… |
+| `slot` | Upload a file for this… · Adopt an asset for this… · Run pipeline… |
 | `branch:assets`, `assetkind`, `wiki`, `dir`, `file`, `more` | none — no menu opens at all |
 
 Four things this table settles:

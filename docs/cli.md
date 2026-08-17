@@ -24,9 +24,19 @@ vngen status [dir]                  task/asset/approval summary
 vngen graph [dir]                   emit the story branch graph (Mermaid)
 vngen export [dir]                  write vngen/build/story.play.json (the playable)
 vngen cost [dir]                    dry-run cost preview
+vngen decompose [dir]               storyboard every reachable scene that has none yet
 vngen import [dir]                  convert a retired screenplay/*.fountain into scenes/<id>.md
 vngen screenplay [dir] [-o f|-][--clean]  project the scenes back to one Fountain file
 ```
+
+`decompose` is the one verb that **refuses `--mock` by name**. Decomposition writes
+`vngen/work/shots/<sceneId>.json`, an absent one is the only signal that means "decompose this
+scene", and a mock provider yields the deterministic baseline — so a mock run would permanently
+baseline the whole project. It is additive with no `force` (the file wins forever, and moving shot
+ids would move task identities and re-render paid-for art), it skips a scene the model does not
+answer for rather than writing a fallback, and it is the only verb that asks for the **text** key
+rather than the image one: it draws nothing, so refusing it for a missing Gemini key would be a
+refusal the author cannot act on. `story.decomposeAll` in the desktop app is the same function.
 
 `export` and `screenplay` are different artifacts: `export` writes the playable the desktop app
 runs ([`playable-format.md`](playable-format.md)), `screenplay` writes Fountain a human (or

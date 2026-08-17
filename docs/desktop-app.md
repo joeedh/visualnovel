@@ -15,6 +15,7 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Renderer layout](#renderer-layout)
 - [The shell](#the-shell)
   * [Surfaces, shadow roots and stylesheets](#surfaces-shadow-roots-and-stylesheets)
+- [Layout templates](#layout-templates)
 - [The shared graph canvas](#the-shared-graph-canvas)
 - [Branches](#branches)
 - [Script](#script)
@@ -650,12 +651,16 @@ and each fix is a pure function tested in node:
   subject portraits arrive through `inputs.refs`. `buildRefEdges` matches an `AssetRef.hash`
   back to the task whose `output` equals it — **deps solid, ref edges dashed**. A ref no task
   produced (an author-supplied image) is not an edge.
-- **The graph is deliberately partial.** Planning is incremental, so shot tasks don't exist
-  until their plate is `done`; an empty region means "not yet plannable", not "nothing to do".
-  `ghostsFor` reads the story graph (not the task list — those two states look identical from
-  the tasks alone) and ghosts each scene's expected work at `decomposeScene`'s deterministic
-  baseline. Ghosts are **clusters, never addressable**: `onPick` acts on real tasks only, so
-  the UI can't offer an estimate as a fact.
+- **A slot and the task that fills it are one picture.** Planning is incremental, so shot tasks
+  don't exist until their plate is `done` — but the *pictures* do, and `PipelineStatus.slots`
+  carries every one of them in `SlotGraph.order` (upstream first, so the wire keeps the topology
+  without shipping a `Map`). `slotNodeIds` keys a slot by its task hash where the planner actually
+  emitted that task and by a `slot:<key>` id otherwise, so the future is never drawn twice — once
+  as a promise and once as work. A computable `taskHash` the graph has never seen is still
+  unplanned. `buildSlotEdges` adds only the couplings `deps`/`refs` cannot know, deduped by
+  endpoints so a pair renders once, as the firmer of the two. An unplanned slot draws hatched and
+  dashed and **is** addressable — clicking it moves the selection to its subject and, when
+  something already fills it, its asset hash. Nothing estimates a count any more.
 
 **The gate has one affordance, and it is the same one in both places.** A pending character is a
 bar in the list and a button on the graph's barrier rule, and each opens `gate.approve`'s own dialog
@@ -866,6 +871,20 @@ it produces.
   consumes one, so there is no question for accepting it to answer. An **upload** is the mirror of
   that case — a concept has no downstream, an upload has no upstream — so the bar reads `uploaded`
   where the pair would be: nothing generated it, so there is no work to bless and no task to requeue.
+- **Approval flows upstream first, and the frontier is drawn under the picture it belongs to.** A
+  **DRAWN FROM** strip lists `AssetInfo.prereqs` — everything these bytes rest on, in the order the
+  task fed them to the model — each row saying whether it stands. While any is pending, Approve is
+  greyed and its tooltip is the refusal *verbatim*; the strip repeats the same sentence out loud, so
+  nobody has to hover a disabled button to learn which row is holding it up. The sentence is main's:
+  `previewAccept` refuses `asset.accept` with the identical one, because a greyed button the command
+  itself would honour is a lie about the rule, and the palette, the agent and CDP all reach the
+  command directly. **This is deliberately not the reference strip**: that lists the bytes pinned to
+  one prompt clause — evidence, per clause, detachable, opened *elsewhere* because it is a second
+  thing to look at. This lists what the whole picture rests on; nothing detaches, and a click
+  retargets **this** pane, because the job is to walk up the chain approving as you go and a new pane
+  per hop litters the mesh. One `← back` chip makes that walk reversible, and it clears itself when
+  the subject changes any other way. A prerequisite whose bytes the manifest has lost is a disabled
+  row whose tooltip is its own refusal.
 - **A concept gets a Promote strip instead, and only a concept does.** It names the location the
   sketch is bound to, takes a variant id, and runs `art.promote` — the variant joins that location's
   sheet if it is new, the bytes become the plate, and the next run adopts them. `promoteAction`
