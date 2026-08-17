@@ -81,7 +81,17 @@ import {
   storySplitScene,
 } from './story.js';
 import { uploadFiles, uploadPick } from './upload.js';
-import { viewClose, viewFocus, viewLayout, viewOpen, viewPalette } from './view.js';
+import {
+  viewApplyLayout,
+  viewClose,
+  viewFocus,
+  viewLayout,
+  viewLayouts,
+  viewOpen,
+  viewPalette,
+  viewResetLayout,
+  viewSaveLayout,
+} from './view.js';
 import {
   workspaceChooseDirectory,
   workspaceCreate,
@@ -178,11 +188,15 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storySplitScene,
     uploadFiles,
     uploadPick,
+    viewApplyLayout,
     viewClose,
     viewFocus,
     viewLayout,
+    viewLayouts,
     viewOpen,
     viewPalette,
+    viewResetLayout,
+    viewSaveLayout,
     workspaceChooseDirectory,
     workspaceCreate,
     workspaceDoctree,

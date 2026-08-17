@@ -145,10 +145,12 @@ describe('openWorkspace', () => {
     expect(opened).toEqual({ root: dir, created: true, title: 'my story' });
     // The shortest honest config: every other key has a default.
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: "my story"\n');
+    // Opening scaffolds the layout templates and the rule that keeps git from merging one.
     expect((await readdir(dir)).sort()).toEqual([
       '.git',
       '.gitattributes',
       '.gitignore',
+      '.vnstudio',
       'project.yaml',
     ]);
 
@@ -168,6 +170,7 @@ describe('openWorkspace', () => {
       '.git',
       '.gitattributes',
       '.gitignore',
+      '.vnstudio',
       'project.yaml',
       'scenes',
     ]);
@@ -315,6 +318,7 @@ describe('createWorkspace', () => {
       '.git',
       '.gitattributes',
       '.gitignore',
+      '.vnstudio',
       'project.yaml',
       'scenes',
       'wiki',

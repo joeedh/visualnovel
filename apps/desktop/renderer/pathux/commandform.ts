@@ -9,7 +9,7 @@
  */
 import type { Container, MenuTemplateCustom, TextBox } from 'pathux';
 import { api } from '../api.js';
-import { blankProps, fieldText, fieldValue } from '../rules/catalog.js';
+import { blankProps, bulkSize, fieldText, fieldValue } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
 import { exec, report } from './bridge.js';
 
@@ -107,6 +107,13 @@ export class CommandForm {
     const row = this.col.row();
     row.label(`${prop.name}${prop.required ? ' *' : ''}`);
     const value = this.values[prop.name];
+
+    // Bulk content the caller composed — a serialized mesh, a whole document. A text field over
+    // it is unreadable and one keystroke from corrupting it, so the form says what it holds.
+    if (prop.digest && value !== undefined && value !== '') {
+      row.label(`${bulkSize(value)} — ${prop.description}`);
+      return undefined;
+    }
 
     if (prop.kind === 'boolean') {
       // Nothing is rebuilt on a toggle: the widget carries its own state, so redrawing the form

@@ -74,11 +74,12 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 one line from `~/.vndesktop` once the app ships installed). Gitignored. **Global per install,
 not per workspace** — a layout is about the window, not the project.
 
-**Shape:** a flat `Record<string, SessionValue>` with dotted keys. Two are written today:
+**Shape:** a flat `Record<string, SessionValue>` with dotted keys. Three are written today:
 
 ```jsonc
 {
   "pathux.layout": { /* nstructjs-serialized screen, magic "VNSC" */ },
+  "pathux.template": "writing",
   "pathux.selection": {
     "sceneId": "arrival",
     "shotId": "",
@@ -108,6 +109,11 @@ not per workspace** — a layout is about the window, not the project.
   struct schema into the blob, so a layout written before path.ux changed a `STRUCT` still reads
   back. Nothing here may block boot: a layout that will not load — corrupt, or naming an editor
   this build has not got — is discarded and the default screen takes its place
+- `pathux.template` is the odd one out: it is written by **main**, in `view.applyLayout` /
+  `view.saveLayout` / `view.resetLayout`, and it is a *pointer into the project* — the slug of the
+  layout template the window is showing. The arrangement itself still lives in `pathux.layout`,
+  because which panes are open is a window fact even when a project named the arrangement. See
+  [Layout templates](desktop-app.md#layout-templates)
 - Writes are merged **per key** under a `mkdir` lock, so two running instances don't clobber
   each other's keys (same key is last-flush-wins)
 - **Survives:** app restart. **Lost when:** the file is deleted
@@ -396,6 +402,8 @@ invoke('pipeline:run', { mock })
 | Pane layout | `.vndesktop/session.json` (`pathux.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
 | Selected scene/shot/character/document | `.vndesktop/session.json` (`pathux.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
 | A field a pane remembers (the documents editor's mode) | `.vndesktop/session.json` (inside `pathux.layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
+| Which layout template the window shows | `.vndesktop/session.json` (`pathux.template`) | ✓ Survives restart | `view.layouts`, the layout watch | `view.applyLayout` / `saveLayout` / `resetLayout`, in main |
+| The layout templates themselves | `.vnstudio/layouts/*.json` (the **project** repo) | ✓ On disk, committed | `view.layouts` / `view.applyLayout` | `view.saveLayout`, `view.resetLayout`, `ensureLayouts` |
 | The conversation on screen | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
 | The conversation as a transcript | `vngen/state/threads/<id>.jsonl` | ✓ Survives restart | `agent.threads` / `agent.openThread` | Main, one line per feed item, as the turn runs |
 | Header facts, `taskHash`, per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
@@ -408,7 +416,7 @@ invoke('pipeline:run', { mock })
 | Command history | `vngen/state/commands.jsonl` | ✓ On disk | `CommandStack` (`command:history`) | Every command execution, via `onRecord` |
 | Notifications | `vngen/state/notifications.jsonl` | ✓ On disk | `notify:list` / the bell | Every filed command outcome, every pipeline task, every shell notice |
 | Which categories the list shows | `.vndesktop/session.json` (`vn.notifications.filter`) | ✓ Survives restart | `pathux/notifications.ts` | The filter popup and the "show deleted" box |
-| Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | The eighteen undoable `story.*` commands |
+| Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | Every undoable command — the eighteen `story.*` ones, the document writers, and the two that write layout templates |
 
 ---
 
@@ -420,8 +428,10 @@ When the app restarts:
 2. **localStorage → playthrough saved.** If the author was in the Play editor, click Load to
    restore position.
 3. **`.vndesktop/session.json` → the pane layout and the selection are restored**, synchronously,
-   before the first paint. A layout that will not load falls back to the default arrangement
-   (Branches beside Convo) rather than failing.
+   before the first paint. A layout that will not load falls back to the Writing arrangement — the
+   documents tree, the script with the branch cards behind it, and the agent — rather than failing.
+   `pathux.template` comes back too, and the layout watch seeds from it **without re-applying**, so
+   a border dragged last session is not thrown away by a template that also describes this window.
 4. **Project files → unchanged.** Workspace loads with latest committed state.
 5. **Main process → rebuilds on first use.**
    - First IPC call (e.g., `workspace:index`) → lazy-loads project, creates Agent

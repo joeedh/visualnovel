@@ -13,6 +13,8 @@ import { CONFIG_FILENAME, loadConfig } from '@vn/config';
 import { openGit, type Git } from '@vn/git';
 import { slug } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
+import { LAYOUT_ATTRIBUTES_BLOCK, shippedLayoutFiles } from '../shared/layouts.js';
+import { ensureLayouts } from './layouts.js';
 
 /**
  * Template entries that are never seeded: `vngen/` is a previous run's output (a fresh
@@ -172,15 +174,21 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
   if (!found.project) {
     await writeFileAtomic(join(root, CONFIG_FILENAME), `title: ${JSON.stringify(title)}\n`);
   }
-  // Before `ensureRepo`, so a repository being initialized here takes the attribute in its first
-  // commit; a repository that already exists gets its own commit below. Either way opening a
-  // project must not leave the worktree dirty — the app's open-time checkpoint would otherwise
-  // sweep this file up under "Changes made outside the app", once, on every author's machine.
+  // Before `ensureRepo`, so a repository being initialized here takes these in its first commit;
+  // a repository that already exists gets its own commits below. Either way opening a project
+  // must not leave the worktree dirty — the app's open-time checkpoint would otherwise sweep
+  // these up under "Changes made outside the app", once, on every author's machine.
+  const wroteLayouts = await ensureLayouts(root);
   const wroteAttributes = await ensureGitAttributes(root);
   const fresh = !(await openGit(root).isRepo());
   const git = await ensureRepo(root, found.project ? 'Existing project files' : 'New project');
-  if (wroteAttributes && !fresh) {
-    await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
+  if (!fresh) {
+    if (wroteAttributes) {
+      await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
+    }
+    if (wroteLayouts.length > 0) {
+      await git.commit({ message: LAYOUTS_COMMIT, paths: wroteLayouts });
+    }
   }
   return { root, created: !found.project, title };
 }
@@ -204,6 +212,7 @@ export async function adoptGitAttributes(root: string): Promise<boolean> {
 }
 
 const GITATTRIBUTES_COMMIT = 'Union-merge the notification log';
+const LAYOUTS_COMMIT = 'Add the shipped layout templates';
 
 /** The one attribute a project needs from us, and why it needs it. */
 const GITATTRIBUTES_LINE = 'vngen/state/notifications.jsonl merge=union';
@@ -235,15 +244,20 @@ export async function ensureGitAttributes(root: string): Promise<boolean> {
 export const START_SCENE = 'opening';
 
 /**
- * The files a new project is created with.
+ * The files a new project is created with: three that make its model build, the shipped layout
+ * templates, and the `.gitattributes` carrying both rules a project needs from us.
  *
  * Not a copy of `examples/sample`: that is somebody else's story, and an author's first ten
  * minutes should not go on deleting a cast. Not nothing either — with no `start:` and no scenes
  * the model builds with error diagnostics, so an empty project greets its author with a red count.
+ *
+ * The layouts are here rather than left to `ensureLayouts` so they land in the first commit,
+ * under the subject that says what they are.
  */
 function skeleton(title: string): { path: string; text: string }[] {
   return [
-    { path: '.gitattributes', text: GITATTRIBUTES_TEXT },
+    ...shippedLayoutFiles(),
+    { path: '.gitattributes', text: `${GITATTRIBUTES_TEXT}\n${LAYOUT_ATTRIBUTES_BLOCK}` },
     { path: CONFIG_FILENAME, text: `title: ${JSON.stringify(title)}\nstart: ${START_SCENE}\n` },
     {
       path: `scenes/${START_SCENE}.md`,

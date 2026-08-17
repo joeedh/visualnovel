@@ -14,6 +14,13 @@ import { installAgent } from './agent.js';
 import { defineShellApi } from './api.js';
 import { installBridge } from './bridge.js';
 import { editorNameProblems } from '../../src/shared/editors.js';
+import {
+  DEFAULT_RECIPE,
+  isPane,
+  recipeProblem,
+  type LayoutFile,
+  type LayoutRecipe,
+} from '../../src/shared/layouts.js';
 import { ShellContext, type ShellApp } from './context.js';
 import { editorClass, switchableAreaNames } from './editor.js';
 import { registerCustomIcons } from './icons.js';
@@ -33,8 +40,10 @@ import './editors/wiki.js';
 import { HEADER_HEIGHT, VnHeaderEditor } from './editors/header.js';
 import { PlayEditor } from './editors/play.js';
 import { installKeymap } from './keymap.js';
+import { installLayoutWatch } from './layouts.js';
 import {
   installPersistence,
+  loadScreen,
   restoreLayout,
   restoreSelection,
   saveLayout,
@@ -79,6 +88,8 @@ class Shell implements ShellApp {
     // store from boot, so a pane opened later shows what was already said.
     installAgent();
     installPersistence(this);
+    // After the bridge, which is where `exec` and the invalidate feed come from.
+    installLayoutWatch();
   }
 
   /**
@@ -87,13 +98,46 @@ class Shell implements ShellApp {
    * answering the pointer is the shape of a haunted layout.
    */
   rebuild(): void {
+    this.discardScreen();
+    this.buildDefaultScreen();
+    this.settleScreen();
+  }
+
+  /**
+   * Rearrange the window to a layout template, reporting whether it took. A template carries
+   * either a recipe or a saved mesh, and the two are built differently — but a refusal has to
+   * come before the old screen goes, or a template that will not build leaves a blank window.
+   */
+  applyLayout(file: LayoutFile): boolean {
+    if (file.recipe !== undefined) {
+      if (recipeProblem(file.recipe) !== undefined) return false;
+      this.discardScreen();
+      this.buildScreen(file.recipe);
+      this.settleScreen();
+      return true;
+    }
+
+    if (!file.screen || typeof file.screen !== 'object') return false;
+    const old = this.screen;
+    if (!loadScreen(this, file.screen)) return false;
+    // `loadFile` unlistens and removes the old screen but never destroys it, so the destroy
+    // that `discardScreen` does has to happen here instead — after the new one is up.
+    old?.destroy();
+    this.settleScreen();
+    return true;
+  }
+
+  private discardScreen(): void {
     const old = this.screen;
     old?.unlisten();
     old?.destroy();
     old?.remove();
+  }
 
-    this.buildDefaultScreen();
+  /** What every path onto a new screen finishes with: header, layout, persistence. */
+  private settleScreen(): void {
     const screen = this.screen as VnScreen;
+    screen.ctx = this.ctx as unknown as ContextLike;
     this.ensureHeader(screen);
     screen.completeSetCSS();
     screen.completeUpdate();
@@ -141,18 +185,27 @@ class Shell implements ShellApp {
   }
 
   /**
-   * The layout a project opens with when nothing was remembered: the story on the left, the
-   * agent on the right. With the room nav retired this is also what `view.layout` restores, so
-   * it has to be somewhere to work from rather than the emptiest thing that renders.
+   * The layout a project opens with when nothing was remembered. It is the Writing template's
+   * own recipe rather than a second copy of that arrangement, so the default and the template
+   * the menu offers cannot drift apart.
    */
   private buildDefaultScreen(): void {
+    this.buildScreen(DEFAULT_RECIPE);
+  }
+
+  /**
+   * Build a mesh from a recipe: divide first, fill after. Both orders make the same picture,
+   * but only this one is safe — `splitArea` copies the area it divides, and a copy made before
+   * the screen has been laid out carries no size to divide, so the screen goes into the
+   * document before the first cut.
+   */
+  private buildScreen(recipe: LayoutRecipe): void {
     const screen = (this.screen = UIBase.createElement<VnScreen>('vn-screen-x'));
     screen.ctx = this.ctx as unknown as ContextLike;
 
-    const sarea = screen.newScreenArea();
-    sarea.switchEditor(editorClass('script') ?? PlayEditor, { deleteExisting: true });
-    sarea.switchEditor(editorClass('branches') ?? PlayEditor, { deleteExisting: false });
-    screen.add(sarea);
+    const root = screen.newScreenArea();
+    root.switchEditor(PlayEditor, { deleteExisting: true });
+    screen.add(root);
 
     screen.solveAreaConstraints();
     screen.regenBorders();
@@ -162,13 +215,29 @@ class Shell implements ShellApp {
     screen.setCSS();
     screen.listen();
 
-    // After the screen is in the document: `splitArea` copies the area it divides, and a copy
-    // made before the first layout carries no size to divide.
-    const right = screen.splitArea(sarea, 0.6, false);
-    right.switchEditor(editorClass('convo') ?? PlayEditor, { deleteExisting: true });
+    const leaves: [ScreenArea, readonly string[]][] = [];
+    const cut = (sarea: ScreenArea, node: LayoutRecipe): void => {
+      if (isPane(node)) {
+        leaves.push([sarea, node.pane]);
+        return;
+      }
+      // `splitArea` keeps `sarea` as the first half and returns the second; `horiz` divides by
+      // height, so a recipe's rows are its horizontal cuts.
+      const made = screen.splitArea(sarea, node.at, node.split === 'rows');
+      cut(sarea, node.first);
+      cut(made, node.second);
+    };
+    cut(root, recipe);
 
-    screen.splitArea(sarea, 0.3, false);
-    sarea.switchEditor(editorClass('documents') ?? PlayEditor, { deleteExisting: true });
+    for (const [sarea, editors] of leaves) {
+      editors.forEach((id, i) =>
+        sarea.switchEditor(editorClass(id) ?? PlayEditor, { deleteExisting: i === 0 }),
+      );
+      // Switching is how an editor gets made, so a pane ends up showing whichever was made
+      // last. A recipe's pane reads front-to-back, so the first one named comes back up.
+      const [front] = editors;
+      if (front && editors.length > 1) sarea.switchEditor(editorClass(front) ?? PlayEditor);
+    }
   }
 }
 

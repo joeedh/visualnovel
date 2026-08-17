@@ -21,6 +21,7 @@ import { Workspace } from '@vn/authoring';
 import { CommandStack, Committer, UndoJournal } from '@vn/commands';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
+import { ensureLayouts } from './layouts.js';
 import { installNotifications, notifications, notify } from './notifications.js';
 import { categoryOfCommand, shouldFileCommand } from '../shared/notify.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
@@ -559,6 +560,9 @@ void app.whenReady().then(async () => {
   // workspace is resolved from lives.
   await openSessionStore();
   await resolveWorkspace();
+  // Also in `openWorkspace`, but neither `--project` nor the recents branch goes through it —
+  // and those are the normal launch paths, so without this the layout files never land.
+  await ensureLayouts(workspace());
   await openRepos();
   rememberWorkspace(getSessionStore(), workspace());
   registerAssetProtocol();

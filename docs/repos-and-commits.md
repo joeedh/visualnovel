@@ -14,6 +14,8 @@ For undo — which is the other half of the same machinery — see
   * [Message shape](#message-shape)
   * [Who does not commit](#who-does-not-commit)
 - [Bootstrap](#bootstrap)
+  * [The `.gitattributes` a project gets](#the-gitattributes-a-project-gets)
+- [The one thing git is told not to merge](#the-one-thing-git-is-told-not-to-merge)
 - [How undo composes with it](#how-undo-composes-with-it)
 - [Multi-repo](#multi-repo)
 
@@ -139,9 +141,12 @@ is not one yet (a one-line `project.yaml`) and then brought under version contro
 is open, and what a switch tears down, is
 [`desktop-app.md`](desktop-app.md#which-project-is-open).
 
-### One `.gitattributes` line, and why
+### The `.gitattributes` a project gets
 
-`openWorkspace` also runs `ensureGitAttributes(root)` — an idempotent append of
+Bootstrap writes the only `.gitattributes` this app puts into a project, and it carries exactly
+two rules — one per thing git would otherwise get wrong. This is the first.
+
+`openWorkspace` runs `ensureGitAttributes(root)` — an idempotent append of
 
 ```
 vngen/state/notifications.jsonl merge=union
@@ -149,7 +154,8 @@ vngen/state/notifications.jsonl merge=union
 
 before `ensureRepo`, so a project created before the notification log existed picks it up on next
 open (committed on its own, as "Union-merge the notification log"). `skeleton()` writes the same
-line into a new project.
+line into a new project. `ensureLayouts` appends the second rule the same way, in the same place,
+and is the subject of [the section below](#the-one-thing-git-is-told-not-to-merge).
 
 `openWorkspace` is not enough on its own, because the ordinary launch never calls it: `main`
 resolves a root from the recents list or `VN_PROJECT` and goes straight to `openRepos()`. So
@@ -170,6 +176,32 @@ sets `core.autocrlf=false` for the byte-exact reasons the branch editor needs.
 **Notification writes ride along in the next act's commit**, because `Committer.commit` stages the
 whole worktree. That is not new — `vngen/state/commands.jsonl` has always behaved this way, and
 the open-time checkpoint exists to absorb it.
+
+## The one thing git is told not to merge
+
+The second rule, and the one with teeth:
+
+```gitattributes
+.vnstudio/layouts/*.json text eol=lf -merge
+```
+
+A [layout template](desktop-app.md#layout-templates) is one blob describing a whole window: which
+panes exist, how big they are, what each holds. Two authors' versions merged line by line make an
+arrangement neither of them built, so git is told not to try. `-merge` rather than a registered
+custom merge driver, because a driver needs `git config merge.<driver>.driver` installed in every
+clone to work at all, and nothing this app runs reaches a collaborator's machine. `-merge` needs
+nothing: git conflicts the path, leaves **ours** in the worktree, and the author picks a side with
+`git checkout --ours` or `--theirs` and then `git add`. The comment block written above the rule
+says exactly that.
+
+`ensureLayouts` **appends** it: a `.gitattributes` an author wrote is theirs, and only the rule
+that is missing is added. `skeleton()` writes it outright for a new project, so it is in the first
+commit.
+
+Conflict resolution stays out of scope, but *noticing* one does not. `listLayouts` reads
+`git status` porcelain codes (`isConflictCode`: `DD AU UD UA DU AA UU`) and marks the template
+unusable; `view.applyLayout` refuses it, naming the path and quoting the two commands. Applying half
+a mesh would be worse than saying so.
 
 ## How undo composes with it
 

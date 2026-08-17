@@ -61,3 +61,12 @@ export function fieldValue(prop: CatalogProp, raw: string | boolean): PropValue 
 export function fieldText(value: PropValue): string {
   return Array.isArray(value) ? value.join(', ') : String(value);
 }
+
+/**
+ * How much a bulk (`digest`) prop is carrying, said the way a form can show it. The value is a
+ * serialized document or mesh nobody reads in a text field, so its size is the honest summary.
+ */
+export function bulkSize(value: PropValue): string {
+  const chars = fieldText(value).length;
+  return chars < 2048 ? `${chars} characters` : `${Math.round(chars / 1024)} KB`;
+}

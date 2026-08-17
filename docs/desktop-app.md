@@ -172,7 +172,9 @@ agent subscription and persistence.
   editor on `wiki/history.md`" is one invocation rather than two racing acts; it is
   published only if the mesh could show the editor at all. Routing it per editor is not tidiness:
   pointing `docPath` at a `.png` would make the wiki pane `doc.read` a binary. `view.close` (collapse into a
-  neighbour; the last pane is kept) and `view.layout` (throw the arrangement away) complete the set.
+  neighbour; the last pane is kept) and `view.layout` (throw the arrangement away and rebuild the
+  one the app ships with, ignoring the project's templates) complete the set; the four layout-template
+  verbs are below.
   Main answers optimistically because only the renderer knows how many panes there are, so
   `pathux/view.ts` returns a **correction** sentence the bridge says instead — "No pane is showing
   Script." The pure half of that decision is `panes.ts` (which pane to use, which to close, which is
@@ -181,11 +183,19 @@ agent subscription and persistence.
   `MenuBarEditor` makes, so the mesh owns its geometry and the header survives the layout
   round-trip like everything else. It is 34px, locked at both ends, and `ensureHeader` puts it back
   on **every** boot (a stored layout may predate it), squeezing what was there into the space below
-  in proportion. It holds the app menu, the View menu (every editor by name, each entry a
-  `view.open`, plus Close Pane and Reset Layout), the project badge, undo/redo with the labels
+  in proportion. It holds the app menu, the View menu, the project badge, undo/redo with the labels
   `command:undo` pushes, an error-or-warning count, the model, `live`/`preview`, and the
   PLAN ⇄ EXECUTE toggle. It rebuilds when — and only when — the string of everything it draws
   changes.
+- **The View menu is two submenus and two acts.** **Editors** is every editor by name, each entry a
+  `view.open`; **Layout** is the project's [layout templates](#layout-templates) plus Save Current
+  Layout As… and Reset View Layout…; then Close Pane and Split Area, the latter moved down from the
+  app menu because it is a view act. A submenu is a `Menu` instance in the parent template, and it
+  needs `.title` set explicitly — `createMenu` files the title under `name` while the row a parent
+  draws reads `.title`, so without it the entry is a blank full-width strip. Entries use path.ux's
+  object form (`{name, callback, tooltip, id}`) rather than the positional tuple, because every one
+  of them must carry a tooltip and counting commas to reach the fifth slot is how `recentMenu` put
+  a project path in it by accident.
 - **`bridge.ts` is the one seam to main.** Every fact the shell shows is pushed in from
   `workspace:index`, the agent event stream and `command:ui`; every act leaves as
   `command:exec`, so provenance, undo and history are identical whether the header, the palette, an
@@ -257,6 +267,43 @@ that pass every DOM query:
   inline form at all — the coverage strip's auto-growing editor is a pseudo-element and its handles
   are hover states. The room stylesheets are imported `?inline` rather than copied, so both shells
   share one sheet for as long as both exist.
+
+## Layout templates
+
+A **layout template** is a named screen arrangement the *project* owns:
+`.vnstudio/layouts/<slug>.json`, applied from View ▸ Layout, grown by Save Current Layout As…, and
+put back by Reset View Layout…. Two ship — **Writing** (the documents tree, the script with the
+branch cards behind it, the agent) and **Art** (the documents tree, one asset with its art notes,
+the pipeline queue). Full write-up:
+[`plans/layout-templates-and-the-view-menu.md`](plans/layout-templates-and-the-view-menu.md).
+
+- **The template is the saved arrangement; the live mesh is not.** What is on screen right now
+  stays per install in `.vndesktop/session.json` under `pathux.layout`, for the reason
+  [`desktopAppState.md`](desktopAppState.md) gives — it is a window fact. `pathux.template`, beside
+  it, is the slug last applied: the pointer between the two. So `view.applyLayout` is neither
+  mutating nor undoable, while `view.saveLayout` and `view.resetLayout` are both.
+- **A template holds a recipe or a saved mesh, and which one says where it came from.** The shipped
+  layouts are declarative recipes (`{split, at, first, second}` down to `{pane: [editor, …]}`)
+  because **main writes those with no renderer in the loop** — scaffolding a project, ensuring an
+  old one, resetting. `Save Current Layout As…` writes path.ux's own `simple.saveFile` blob instead,
+  because an author drags borders into shapes no split grammar describes and per-pane state (the
+  Documents editor's mode) has no recipe representation. A file holding both is refused.
+- **`DEFAULT_RECIPE` is the Writing recipe**, so `buildDefaultScreen` and the Writing template
+  cannot drift. A pane naming several editors comes up on the **first**: building one switches
+  editors in turn, which would otherwise leave the last one showing.
+- **A shipped layout with no file still works**, answered for by its recipe — so the feature works
+  on day one in a project that predates it. `ensureLayouts` then writes any missing file and never
+  overwrites one; putting an edited `writing.json` back is `view.resetLayout`'s job, not something
+  opening a project does.
+- **A layout is never merged.** `.gitattributes` marks `.vnstudio/layouts/*.json` `-merge`, so git
+  conflicts the path and leaves *ours* in the worktree; the app then reads `git status` porcelain
+  codes, lists the template with the reason, and **refuses to apply it by name**, quoting
+  `git checkout --ours`/`--theirs`. Applying half a mesh would be worse than saying so. See
+  [`repos-and-commits.md`](repos-and-commits.md).
+- **Undo comes back to the screen, not just the file.** Undo restores the template files, and no
+  `view.*` command ran, so nothing pushes an effect. `renderer/pathux/layouts.ts` notices by
+  **fingerprint**: it records what was applied and re-applies when main reports different bytes
+  under the same slug. It seeds without applying at boot, so a border dragged last session survives.
 
 ## The shared graph canvas
 

@@ -7,6 +7,7 @@
  * so the desktop app stays bound to the same `AgentEvent` / `Plan` / `Task` types the
  * agent and scheduler actually emit.
  */
+import type { LayoutFile } from './layouts.js';
 import type { PromptView } from './prompt.js';
 import type {
   AgentEvent,
@@ -103,6 +104,13 @@ export type UiEffect =
   | { type: 'view'; action: 'focus'; editor: EditorId; subject?: string; flash?: boolean }
   | { type: 'view'; action: 'close' }
   | { type: 'view'; action: 'reset' }
+  /**
+   * Rearrange the whole window to a layout template. Main reads the file and sends what it
+   * holds, because the renderer is the only half that can stand a mesh up and main is the only
+   * half that may read the project — and `fingerprint` is how the renderer knows whether the
+   * arrangement it is already showing is still the one on disk.
+   */
+  | { type: 'view'; action: 'apply'; slug: string; fingerprint: string; layout: LayoutFile }
   /**
    * Pushed after every command, so the undo/redo affordances stay honest whoever ran it — the
    * palette, a drag, or CDP. `revision` counts undo/redo moves **only**: those are the writes
