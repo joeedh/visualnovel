@@ -298,10 +298,29 @@ that ends the run. Structure is forced by the same zod validation every other to
 
 `render.ts` turns it into markdown. Pure, tested, and the same renderer for both paths.
 
-- [ ] 4.1 — the schema, `render.ts`, and tests
-- [ ] 4.2 — the no-source path
-- [ ] 4.3 — the with-source path: registry, `Permission`, `submit_report`
-- [ ] 4.4 — refusal when no key resolves for the analysis model, naming the source not the value
+Four things the implementation settled:
+
+- **The source path falls back to the cheap one rather than failing.** An author who has just
+  described a bad experience should not be told that the thing meant to report it also misbehaved.
+  The fallback is recorded on the report (`Report.fellBack`) and rendered, because a recommendation
+  naming a specific file is worth less from an analyst that never opened it — so `readSource` on
+  the finished report means *it actually read it*, not *it was allowed to*.
+- **Redaction is applied on both sides of the model, in `analyze`.** The transcript and the
+  author's note go through the redactor before the prompt is built, and every prose field of the
+  reply goes through it again on the way out — the analyst quotes the transcript back, and a
+  quotation of a redacted line is redacted, but a name it recalled from source it read is not.
+- **A confirmation is refused, not auto-approved.** A plan is approved because the loop parks
+  forever otherwise and the registry holds nothing that could act on one; a tool that asks for
+  confirmation is asking a person, and there is not one. `ask_user` is answered with a fixed
+  sentence saying so.
+- **The key check is at the point of use** (`analystBackend`). `resolveKeys` only throws for a
+  vendor the caller declared required, and the caller cannot know which vendor until the author
+  has picked a model in the dialog. It names the env var and the file, never the value.
+
+- [x] 4.1 — the schema, `render.ts`, and tests
+- [x] 4.2 — the no-source path
+- [x] 4.3 — the with-source path: registry, `Permission`, `submit_report`
+- [x] 4.4 — refusal when no key resolves for the analysis model, naming the source not the value
 
 ## Stage 5 — the source the debug agent may read
 

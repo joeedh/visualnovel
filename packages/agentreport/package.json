@@ -7,8 +7,12 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@vn/authoring": "workspace:*",
     "@vn/commands": "workspace:*",
+    "@vn/config": "workspace:*",
+    "@vn/providers": "workspace:*",
     "@vn/types": "workspace:*",
-    "@vn/util": "workspace:*"
+    "@vn/util": "workspace:*",
+    "zod": "^3.24.1"
   }
 }

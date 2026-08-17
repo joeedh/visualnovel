@@ -207,15 +207,27 @@ importers:
 
   packages/agentreport:
     dependencies:
+      '@vn/authoring':
+        specifier: workspace:*
+        version: link:../authoring
       '@vn/commands':
         specifier: workspace:*
         version: link:../commands
+      '@vn/config':
+        specifier: workspace:*
+        version: link:../config
+      '@vn/providers':
+        specifier: workspace:*
+        version: link:../providers
       '@vn/types':
         specifier: workspace:*
         version: link:../types
       '@vn/util':
         specifier: workspace:*
         version: link:../util
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   packages/artgen:
     dependencies:
