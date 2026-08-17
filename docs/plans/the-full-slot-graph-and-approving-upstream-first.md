@@ -326,7 +326,7 @@ sentence `adoptionForSlot` already gives.
 `DocNode` gains `note?: string`, and `documents.ts` sets `line.title = node.note ?? <path text>` —
 today a pathless row carries no tooltip at all, which the tooltip rule already forbids.
 
-## Phase 8 — decomposing every reachable scene
+## Phase 8 — decomposing every reachable scene *(done)*
 
 `packages/pipeline/src/p5.ts`: the bare `catch` at :143 is the blocker — a bad key and a good answer
 are indistinguishable, and the result is persisted forever. One scene inside a run is the
@@ -354,7 +354,11 @@ carrying an `unknown_character` warning — `resolveSubject` silently drops a `c
 does not have, so decomposing before the cast exists permanently omits that character.
 
 **`vngen decompose [dir]`** over the same function. `--mock` is **refused by name**: a mock
-decomposition is a baseline, and persisting one is the exact failure this design avoids.
+decomposition is a baseline, and persisting one is the exact failure this design avoids. It asks
+`buildProviders` for the **text** key (`require: ['anthropic']`, a new option defaulting to the
+`['gemini']` every other verb wants) for the same reason `session.decomposePreconditions` does:
+decomposition draws nothing, so refusing it for a missing image key is a refusal the author cannot
+act on.
 
 ## Phase 9 — the Task Graph pane
 

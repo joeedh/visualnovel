@@ -7,6 +7,27 @@ export function shotId(sceneId: string, raw: string): string {
 }
 
 /**
+ * A storyboard and where it came from.
+ *
+ * The provenance is the whole point of the type. A baseline inside a run is the deterministic
+ * fallback contract working as designed; a baseline written to `work/shots/` is permanent, because
+ * an absent file is the only signal that means "decompose this". One scene at a time nobody
+ * notices, and a batch over a whole project with one bad key silently baselines everything — so a
+ * caller that persists has to be able to tell the two apart, and now it can.
+ */
+export interface Decomposition {
+  shots: Shot[];
+  /** `baseline` means no model answered — see {@link reason}, which is always set with it. */
+  source: 'model' | 'baseline';
+  /** Why the model's answer was not used, in a sentence a caller can report verbatim. */
+  reason?: string;
+}
+
+function baseline(scene: Scene, model: ProjectModel, reason: string): Decomposition {
+  return { shots: deterministicShots(scene, model), source: 'baseline', reason };
+}
+
+/**
  * Deterministic shot decomposition (report §P5 baseline). Without an LLM we still produce
  * a runnable storyboard: one establishing shot of the scene's location plus one medium
  * shot per character present. Every shot defaults to the scene's primary location variant.
@@ -89,12 +110,15 @@ const DECOMP_SYSTEM = [
  * Decompose a scene into shots (report §P5). Uses the text LLM with structured-output
  * enforcement, falling back to the deterministic storyboard if the model is unavailable
  * or returns nothing usable. Shot ids are namespaced under the scene id.
+ *
+ * Never throws: every failure becomes a `baseline` {@link Decomposition} naming its own cause, so
+ * a run always has a storyboard and a caller that persists can still refuse to write one.
  */
 export async function decomposeScene(
   scene: Scene,
   model: ProjectModel,
   providers: Providers,
-): Promise<Shot[]> {
+): Promise<Decomposition> {
   const location = model.locations.get(scene.location);
   const variants = location?.variants.map((v) => v.id) ?? ['day'];
   // The identified lines, each prefixed with its id: `coversLines` asks for line ids, so
@@ -120,7 +144,7 @@ export async function decomposeScene(
       (raw) => shotDecompositionSchema.parse(JSON.parse(raw)),
       DECOMP_SYSTEM,
     );
-    if (!result.shots.length) return deterministicShots(scene, model);
+    if (!result.shots.length) return baseline(scene, model, 'the model returned no shots');
     // Only accept line ids the scene actually has, so the LLM cannot invent bindings.
     const realLineIds = new Set(scene.lines.map((l) => l.id));
     const shots: Shot[] = result.shots.map((s) => ({
@@ -140,8 +164,8 @@ export async function decomposeScene(
       status: 'pending' as const,
     }));
     return withCoverage(shots, scene, model);
-  } catch {
-    return deterministicShots(scene, model);
+  } catch (err) {
+    return baseline(scene, model, err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -155,12 +179,14 @@ export async function decomposeScene(
  * `coversLines` is not part of a shot's task hash (`buildShotPrompt` ignores it), so repairing
  * coverage here rehashes nothing.
  */
-function withCoverage(shots: Shot[], scene: Scene, model: ProjectModel): Shot[] {
+function withCoverage(shots: Shot[], scene: Scene, model: ProjectModel): Decomposition {
   const covered = new Set(shots.flatMap((s) => s.coversLines));
-  if (!scene.lines.some((l) => covered.has(l.id))) return deterministicShots(scene, model);
+  if (!scene.lines.some((l) => covered.has(l.id))) {
+    return baseline(scene, model, 'the decomposition bound none of the scene’s lines');
+  }
   // A scene has to open on something: with the first line uncovered there is no `show` before
   // the first beat, so the runner starts on a blank frame no matter how good the rest is.
   const first = scene.lines[0];
   if (first && !covered.has(first.id) && shots[0]) shots[0].coversLines.unshift(first.id);
-  return shots;
+  return { shots, source: 'model' };
 }

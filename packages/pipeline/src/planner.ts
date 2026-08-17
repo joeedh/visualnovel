@@ -86,9 +86,18 @@ async function shotsFor(
       return loaded.shots;
     }
   }
-  const shots = await decomposeScene(scene, model, providers);
-  if (paths && !readOnly) await writeShots(paths, scene.id, shots);
-  return shots;
+  const decomposition = await decomposeScene(scene, model, providers);
+  // Inside a run the baseline is the deterministic-fallback contract working, so it is still
+  // written — but silently persisting one is how a whole project ends up baselined forever, and
+  // until now nothing could even say it had happened. `decomposeAll` refuses to write it at all.
+  if (decomposition.source === 'baseline') {
+    logger?.warn('decomposition fell back to the deterministic storyboard', {
+      scene: scene.id,
+      reason: decomposition.reason,
+    });
+  }
+  if (paths && !readOnly) await writeShots(paths, scene.id, decomposition.shots);
+  return decomposition.shots;
 }
 
 /**

@@ -18,7 +18,7 @@ import {
   setCharacterApproval,
 } from '@vn/store';
 import { buildPlayable, loadSceneShots, writePlayable } from '@vn/export';
-import { gateStatus, suspendedAssets } from '@vn/pipeline';
+import { decomposeAll, gateStatus, suspendedAssets } from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
 
@@ -287,6 +287,43 @@ function printPreview(summary: RunSummary, header: string): void {
   ok(
     `Gate: ${summary.gate.cleared ? 'cleared' : `awaiting approval — ${summary.gate.pending.join(', ')}`}`,
   );
+}
+
+/**
+ * `vngen decompose [dir]` — ask the writing model for a storyboard for every reachable scene that
+ * has none yet, so the whole graph exists before anything is rendered.
+ *
+ * **`--mock` is refused by name rather than honoured.** Mock providers give the deterministic
+ * baseline for every scene, `decomposeAll` declines to write a baseline, and the run would report
+ * nothing done — a flag that silently does nothing is worse than one that says why it will not.
+ *
+ * Exits 1 when any scene went unwritten: a fallback and an unreadable file are both things the
+ * author has to act on before the next run freezes the wrong storyboard in.
+ */
+export async function cmdDecompose(args: Args, logger: Logger): Promise<number> {
+  if (args.flags['mock']) {
+    ok('vngen decompose: --mock would produce the deterministic baseline for every scene, which');
+    ok('  is never written — a storyboard file wins forever. Run it with real keys, or let');
+    ok('  `vngen run` fall back per scene as it always has.');
+    return 1;
+  }
+  const dir = args.positional[0] ?? '.';
+  const project = await loadProject(dir);
+  if (project.model.diagnostics.length) reportDiagnostics(project.model);
+  assertValid(project.model);
+
+  const providers = await buildProviders(project, { logger, require: ['anthropic'] });
+  const result = await decomposeAll({
+    model: project.model,
+    providers,
+    paths: project.paths,
+    logger,
+  });
+
+  ok(`Decomposed ${result.decomposed.length} scene(s); ${result.kept.length} already had one.`);
+  for (const f of result.fellBack) ok(`  not written — ${f.scene}: ${f.reason}`);
+  for (const u of result.unreadable) ok(`  unreadable — ${u.scene}: ${u.error}`);
+  return result.fellBack.length || result.unreadable.length ? 1 : 0;
 }
 
 /** `vngen cost [dir]` — dry-run cost preview without spending (report §10). */

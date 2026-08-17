@@ -78,7 +78,7 @@ const shot = (subjects: unknown[]): Record<string, unknown> => ({
 
 describe('decomposeScene subjects', () => {
   it('keeps a subject the model has', async () => {
-    const shots = await decomposeScene(
+    const { shots } = await decomposeScene(
       SCENE,
       MODEL,
       providersReturning([shot([{ characterId: 'aiko', outfit: 'uniform' }])]),
@@ -87,7 +87,7 @@ describe('decomposeScene subjects', () => {
   });
 
   it('resolves the case the prose uses to the id the sheet has', async () => {
-    const shots = await decomposeScene(
+    const { shots } = await decomposeScene(
       SCENE,
       MODEL,
       providersReturning([shot([{ characterId: 'Aiko', outfit: 'uniform' }])]),
@@ -97,7 +97,7 @@ describe('decomposeScene subjects', () => {
   });
 
   it('drops a character the project does not have, and keeps the shot', async () => {
-    const shots = await decomposeScene(
+    const { shots } = await decomposeScene(
       SCENE,
       MODEL,
       providersReturning([
@@ -112,7 +112,7 @@ describe('decomposeScene subjects', () => {
   });
 
   it('carries pose and expression through the resolution, but never an outfit', async () => {
-    const shots = await decomposeScene(
+    const { shots } = await decomposeScene(
       SCENE,
       MODEL,
       providersReturning([

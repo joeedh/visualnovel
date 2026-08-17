@@ -56,7 +56,7 @@ export function assertValid(model: ProjectModel): void {
  */
 export async function buildProviders(
   project: LoadedProject,
-  opts: { mock?: boolean; logger?: Logger } = {},
+  opts: { mock?: boolean; logger?: Logger; require?: (keyof ResolvedKeys)[] } = {},
 ): Promise<Providers> {
   const loadRef = async (ref: { hash: string; ext: string }) => ({
     bytes: await project.store.read(ref),
@@ -64,9 +64,11 @@ export async function buildProviders(
   });
   if (opts.mock) return createMockProviders({ refLoader: loadRef });
 
+  // A run draws, so it needs the image key; `vngen decompose` only writes text, and refusing it
+  // for a missing image key would be a refusal the author cannot act on.
   const keys: ResolvedKeys = await resolveKeys(project.config, {
     secretsDirs: await secretDirsFor(project.dir),
-    require: ['gemini'],
+    require: opts.require ?? ['gemini'],
   });
   return createProviders({ config: project.config, keys, loadRef });
 }

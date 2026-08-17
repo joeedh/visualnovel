@@ -58,6 +58,7 @@ import { projectInfo, projectSetArtStyle, projectSetKey } from './project.js';
 import {
   storyAssignLineIds,
   storyCoverage,
+  storyDecomposeAll,
   storyDeleteLine,
   storyDeleteScene,
   storyExport,
@@ -165,6 +166,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectSetKey,
     storyAssignLineIds,
     storyCoverage,
+    storyDecomposeAll,
     storyDeleteLine,
     storyDeleteScene,
     storyExport,

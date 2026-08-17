@@ -65,7 +65,16 @@ import {
 } from '@vn/store';
 import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, sha256, writeFileAtomic } from '@vn/util';
-import { baseRefusal, costPreview, driftOf, gateStatus, isApproved } from '@vn/pipeline';
+import {
+  baseRefusal,
+  costPreview,
+  decomposeAll,
+  decomposeAllPreview,
+  driftOf,
+  gateStatus,
+  isApproved,
+  type DecomposeAllResult,
+} from '@vn/pipeline';
 import {
   adopt,
   adoptSlot,
@@ -2973,6 +2982,51 @@ export class WorkspaceSession {
       gatePending: gate.pending,
       keyError,
     };
+  }
+
+  /**
+   * What `decomposeAllScenes` would do, for free. A `check` may not call the model, so this is the
+   * cheap half: how many scenes have no storyboard, which files will not parse, which scenes name
+   * a character the project does not have yet — and whether the *text* key resolves.
+   *
+   * Deliberately `anthropic` and not `gemini`: decomposition draws nothing, and refusing it for a
+   * missing image key would be a refusal the author cannot act on.
+   */
+  async decomposePreconditions(): Promise<{
+    pending: string[];
+    kept: string[];
+    unreadable: string[];
+    atRisk: string[];
+    /** Why the text key did not resolve — naming the source, never a value. Null when it did. */
+    keyError: string | null;
+  }> {
+    const project = await loadProject(this.dir);
+    let keyError: string | null = null;
+    try {
+      await resolveKeys(project.config, {
+        secretsDirs: await secretDirsFor(project.dir),
+        require: ['anthropic'],
+      });
+    } catch (err) {
+      keyError = err instanceof Error ? err.message : String(err);
+    }
+    return { ...(await decomposeAllPreview(project.model, project.paths)), keyError };
+  }
+
+  /**
+   * Decompose every reachable scene that has no storyboard yet. Real providers always: a mock
+   * decomposition is the deterministic baseline, and `decomposeAll` would decline to write it —
+   * so running this against mocks would be a no-op that looked like work.
+   */
+  async decomposeAllScenes(): Promise<DecomposeAllResult> {
+    return this.while('decomposing scenes', async () => {
+      const project = await loadProject(this.dir);
+      return decomposeAll({
+        model: project.model,
+        providers: await buildProviders(project, false),
+        paths: project.paths,
+      });
+    });
   }
 
   async runPipeline(mock: boolean): Promise<PipelineRunResult> {

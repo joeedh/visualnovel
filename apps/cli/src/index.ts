@@ -2,6 +2,7 @@ import { createLogger } from '@vn/util';
 import {
   cmdApprove,
   cmdCost,
+  cmdDecompose,
   cmdExport,
   cmdGraph,
   cmdImport,
@@ -36,6 +37,8 @@ export async function main(argv: string[]): Promise<number> {
         return await cmdImport(args);
       case 'screenplay':
         return await cmdScreenplay(args);
+      case 'decompose':
+        return await cmdDecompose(args, logger);
       case 'cost':
         return await cmdCost(args, logger);
       default:
@@ -68,6 +71,8 @@ function usage(): string {
     '                       (default <dir>/screenplay.fountain; --clean drops the [[…]] markers,',
     '                        which takes the scene ids, the branches and nextLineId with them)',
     '  export [dir]         write vngen/build/story.play.json (the playable, not a screenplay)',
+    '  decompose [dir]      storyboard every reachable scene that has none yet (no --mock: a',
+    '                       baseline is never written, so a mock run would do nothing)',
     '  cost [dir]           dry-run cost preview',
     '',
   ].join('\n');

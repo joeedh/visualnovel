@@ -339,7 +339,7 @@ describe('decomposeScene (LLM path)', () => {
 
   it('keeps a decomposition that binds lines, dropping ids the scene does not have', async () => {
     const m = build();
-    const shots = await decomposeScene(
+    const { shots } = await decomposeScene(
       m.scenes.get('s1')!,
       m,
       providersReturning([SHOT('a', ['s1:L1']), SHOT('b', ['s1:L2', 's1:L9'])]),
@@ -352,17 +352,44 @@ describe('decomposeScene (LLM path)', () => {
     const m = build();
     // Every shot would be generated and none ever displayed — an unplayable scene, not a
     // stylistic difference, so the baseline is strictly better than honoring it.
-    const shots = await decomposeScene(
+    const result = await decomposeScene(
       m.scenes.get('s1')!,
       m,
       providersReturning([SHOT('a', []), SHOT('b', ['s1:L9'])]),
     );
-    expect(shots.map((s) => s.id)).toEqual([shotId('s1', 'establishing'), shotId('s1', 'beat1')]);
+    expect(result.shots.map((s) => s.id)).toEqual([
+      shotId('s1', 'establishing'),
+      shotId('s1', 'beat1'),
+    ]);
+    // The storyboard is the same as it always was; saying where it came from is what is new, and
+    // it is what lets `decomposeAll` decline to write this one down forever.
+    expect(result).toMatchObject({ source: 'baseline', reason: expect.stringContaining('bound') });
+  });
+
+  it('names the failure rather than swallowing it, when the model cannot be reached', async () => {
+    const m = build();
+    const providers = providersReturning([]);
+    providers.text.structured = () => Promise.reject(new Error('no API key for claude'));
+    const result = await decomposeScene(m.scenes.get('s1')!, m, providers);
+    expect(result.source).toBe('baseline');
+    expect(result.reason).toBe('no API key for claude');
+    // Still a runnable storyboard: a run must not stop because a decomposition did.
+    expect(result.shots.length).toBeGreaterThan(0);
+  });
+
+  it('says the answer was the model’s when it was', async () => {
+    const m = build();
+    const result = await decomposeScene(
+      m.scenes.get('s1')!,
+      m,
+      providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]),
+    );
+    expect(result).toEqual({ shots: expect.any(Array), source: 'model' });
   });
 
   it('gives the first line to the first shot, so the scene cannot open on a blank frame', async () => {
     const m = build();
-    const shots = await decomposeScene(
+    const { shots } = await decomposeScene(
       m.scenes.get('s1')!,
       m,
       providersReturning([SHOT('a', []), SHOT('b', ['s1:L2'])]),

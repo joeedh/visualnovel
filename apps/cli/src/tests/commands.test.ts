@@ -9,6 +9,7 @@ import type { Playable } from '@vn/types';
 import { makeProject, SCRIPTS } from '@vn/testkit';
 import {
   cmdApprove,
+  cmdDecompose,
   cmdExport,
   cmdImport,
   cmdRun,
@@ -393,6 +394,41 @@ describe('cmdExport', () => {
       // No assets were generated, so no image refs leak into the beats.
       expect(play.characters['aiko']!.portrait).toBeUndefined();
     } finally {
+      await cleanup();
+    }
+  });
+});
+
+/**
+ * The one behaviour worth pinning here is the refusal. Every other path in `cmdDecompose` calls a
+ * real text model, which `decomposeall.test.ts` covers over `decomposeAll` directly.
+ */
+describe('cmdDecompose', () => {
+  it('refuses --mock by name, because the baseline it would write wins forever', async () => {
+    const { dir, cleanup } = await tempProject();
+    try {
+      const { code, out } = await capture(() =>
+        cmdDecompose(parseArgs(['--mock', dir]), silentLogger),
+      );
+      expect(code).toBe(1);
+      expect(out).toContain('--mock');
+      expect(out).toContain('never written');
+      // Nothing was written, so `vngen run` still decomposes per scene the way it always has.
+      await expect(fs.readdir(join(dir, 'vngen', 'work', 'shots'))).rejects.toThrow();
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('names the key source, never a value, when there is no text key to reach a model with', async () => {
+    const { dir, cleanup } = await tempProject();
+    const saved = { ...process.env };
+    delete process.env['ANTHROPIC_API_KEY'];
+    delete process.env['CLAUDE_API_KEY'];
+    try {
+      await expect(cmdDecompose(parseArgs([dir]), silentLogger)).rejects.toThrow(/anthropic/i);
+    } finally {
+      process.env = saved;
       await cleanup();
     }
   });

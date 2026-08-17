@@ -584,6 +584,60 @@ export const storyAssignLineIds = define({
   },
 });
 
+export const storyDecomposeAll = define({
+  id: 'story.decomposeAll',
+  title: 'Storyboard every scene',
+  description:
+    'Ask the writing model for a storyboard for every reachable scene that has none yet, so the ' +
+    'project can see the whole graph instead of one wave of it. One model call per scene, so it ' +
+    'costs real money. A scene that already has one is left alone and there is no way to force ' +
+    'it: the file wins forever, and re-decomposing would change shot ids, hence task identities, ' +
+    'hence re-render art already paid for. A scene the model does not answer for is reported and ' +
+    'NOT written, because an absent file is the only signal that means "decompose this". Run ' +
+    'story.assignLineIds first, and write the cast sheets first — a character the project does ' +
+    'not have yet is dropped from the shots silently and permanently.',
+  mutating: true,
+  // One undo point for the whole batch, which is the reason this is one command and not N.
+  undoable: true,
+  // A model call per scene, and the result is a file that wins forever. Both halves of that
+  // deserve the dialog.
+  confirm: true,
+  props: {},
+  async check(_props, ctx) {
+    const state = await ctx.host.session.decomposePreconditions();
+    // Mock or unresolved keys give the deterministic baseline for every scene, which
+    // `decomposeAll` declines to write — so the run would be an expensive-looking no-op.
+    if (state.keyError) return { ok: false, reason: state.keyError };
+    if (state.pending.length === 0) {
+      return { ok: false, reason: 'Every reachable scene already has a storyboard.' };
+    }
+    const bad = state.unreadable.length
+      ? ` ${state.unreadable.length} file(s) will not parse.`
+      : '';
+    const risk = state.atRisk.length
+      ? ` ${state.atRisk.join(', ')} name a character the project does not have — they will be dropped permanently.`
+      : '';
+    return { ok: true, note: `Would decompose ${state.pending.length} scene(s).${bad}${risk}` };
+  },
+  async run(_props, ctx) {
+    const result = await ctx.host.session.decomposeAllScenes();
+    const parts = [`Decomposed ${result.decomposed.length} scene(s)`];
+    if (result.kept.length) parts.push(`${result.kept.length} already had one`);
+    // Named, not counted: an unwritten scene is the one thing here an author has to act on.
+    if (result.fellBack.length) {
+      parts.push(`not written for ${result.fellBack.map((f) => f.scene).join(', ')}`);
+    }
+    if (result.unreadable.length) {
+      parts.push(`unreadable: ${result.unreadable.map((u) => u.scene).join(', ')}`);
+    }
+    return {
+      message: `${parts.join('; ')}.`,
+      data: result,
+      ...(result.decomposed.length ? { written: ['vngen/work/shots/'] } : {}),
+    };
+  },
+});
+
 export const storyPlay = define({
   id: 'story.play',
   title: 'Build playable',
