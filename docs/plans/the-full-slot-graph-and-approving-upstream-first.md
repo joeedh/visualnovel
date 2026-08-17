@@ -182,7 +182,7 @@ Traversal uses the `visiting`/`decided` shape of `suspendedAssets` — enforceme
 `dependents` is built here, not in `packages/taskgraph/src/graph.ts`: a reverse index over
 `Task.deps` would answer a different question than anyone asks, because `deps` is incomplete.
 
-## Phase 3 — prerequisites for one asset
+## Phase 3 — prerequisites for one asset *(done)*
 
 **`packages/artgen/src/upstream.ts`**, factored out of `suspend.ts` (whose
 `[...asset.refs, ...attached.map(({ ref }) => ref.pin)]` becomes one call, with `suspend.test.ts`
@@ -231,7 +231,7 @@ so on down. The closure holds at accept time, the pane stays small, and every ro
 actionable. Order is `Asset.refs` order — plate → portraits → sheets → pins — which is meaningful,
 so it is **not** sorted.
 
-## Phase 4 — `AssetInfo` and the session
+## Phase 4 — `AssetInfo` and the session *(done)*
 
 `apps/desktop/src/shared/ipc.ts` — `export type { Prereq } from '@vn/artgen'` (**type-only**, or
 `vite build` breaks: `src/shared/` is in the browser bundle and neither `tsgo` pass catches it), and
@@ -259,7 +259,7 @@ Order matters: `suspended` first (a claim about *these* bytes resting on a moved
 **`gate.approve` is deliberately left alone.** A portrait's `Asset.refs` are authored uploads,
 `kind: 'reference'`, always approved — the gate would never fire and it would be dead code.
 
-## Phase 5 — the Approve button
+## Phase 5 — the Approve button *(done)*
 
 `apps/desktop/renderer/rules/assetview.ts`, in `approveAction`, after the `concept`/`reference`
 refusals and before the `kind !== 'portrait'` split, so it gates both doors:
@@ -271,7 +271,7 @@ if (info.unapproved) return { ok: false, reason: info.unapproved };
 That string is the disabled button's `.description` — the repo rule is that a disabled control's
 tooltip is its refusal, verbatim.
 
-## Phase 6 — the dependency list in the pane
+## Phase 6 — the dependency list in the pane *(done)*
 
 A strip headed **DRAWN FROM** in `rebuildBody()`, directly under the frame. One row per
 prerequisite: label, an approved/pending badge, clickable.

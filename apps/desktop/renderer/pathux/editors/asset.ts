@@ -33,7 +33,7 @@ import { promptReorder, type PromptDragState } from '../../../src/shared/interac
 import { TOP_CHUNK } from '../../../src/shared/promptops.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import ASSET_CSS from '../../styles/asset.css?inline';
-import type { AssetInfo, ArtRungInfo, PropValue } from '../../../src/shared/ipc.js';
+import type { AssetInfo, ArtRungInfo, Prereq, PropValue } from '../../../src/shared/ipc.js';
 import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js';
 
 /** A reorder in flight: every insertion point's verdict, judged once on the grab. */
@@ -84,6 +84,9 @@ export class AssetEditor extends VnEditor {
   private drag: ChunkDrag | undefined;
   private refocus = '';
   private dragNote: HTMLElement | undefined;
+  /** One hop of history, so walking up DRAWN FROM is reversible: where from, and back to what. */
+  private back = '';
+  private backFor = '';
   private unwatch: (() => void) | undefined;
 
   static override define() {
@@ -588,6 +591,9 @@ export class AssetEditor extends VnEditor {
 
     this.surface.appendChild(this.head(info));
     this.surface.appendChild(this.frame(info));
+    // Only when there are rows: an empty strip on every portrait would say nothing that its
+    // absence does not, and `unapproved` is only ever set when one of these rows is pending.
+    if (info.prereqs.length > 0) this.surface.appendChild(this.drawnFrom(info));
 
     const promotable = promoteAction(info);
     if (promotable.ok) this.surface.appendChild(this.promoteStrip(promotable.locationId));
@@ -993,6 +999,69 @@ export class AssetEditor extends VnEditor {
     img.draggable = false;
     frame.appendChild(img);
     return frame;
+  }
+
+  /**
+   * The approval frontier, under the picture it belongs to: everything these bytes were drawn
+   * from, in the order the task fed them to the model, each saying whether it stands.
+   *
+   * **Deliberately not the reference strip.** That one lists the bytes pinned to a single prompt
+   * clause — evidence, per clause, detachable, and a click opens the picture *elsewhere* because
+   * it is a second thing to look at. This lists what the whole picture rests on; nothing here
+   * detaches, and a click retargets **this** pane, because the job is to walk up the chain
+   * approving as you go and a new pane per hop litters the mesh. One `← back` chip makes that
+   * walk reversible without keeping a history nobody asked for.
+   */
+  private drawnFrom(info: AssetInfo): HTMLElement {
+    const strip = el('div', 'as-from');
+
+    const head = el('div', 'as-from-head');
+    const title = el('span', 'as-section', 'DRAWN FROM');
+    title.title =
+      'The pictures this one was drawn from. Each has to be approved before this one can be.';
+    head.appendChild(title);
+
+    // Self-clearing: any other way of changing the subject leaves `backFor` naming a picture that
+    // is no longer on screen, so the chip is only offered on the hop it can actually undo.
+    if (this.back !== '' && this.backFor === info.hash) {
+      const back = button('as-from-back', '← back');
+      back.title = 'Back to the picture you came here from';
+      back.addEventListener('click', () => this.showPrereq(this.back, ''));
+      head.appendChild(back);
+    }
+    strip.appendChild(head);
+
+    for (const p of info.prereqs) strip.appendChild(this.prereqRow(info, p));
+    // The same sentence the greyed Approve carries, said out loud: an author reading the list
+    // should not have to hover a disabled button to learn which row is holding it up.
+    if (info.unapproved) strip.appendChild(el('div', 'as-from-note', info.unapproved));
+    return strip;
+  }
+
+  /** One prerequisite. Disabled when the manifest has no such bytes, so the tooltip is the refusal. */
+  private prereqRow(info: AssetInfo, p: Prereq): HTMLElement {
+    const row = button(`as-from-row${p.approved ? ' ok' : ''}`, '');
+    row.appendChild(el('span', 'as-from-mark', p.approved ? '✓' : '·'));
+    row.appendChild(el('span', 'as-from-name', p.label));
+    if (p.slot) row.appendChild(el('span', 'as-from-slot', p.slot));
+
+    if (p.missing) {
+      row.disabled = true;
+      row.title = p.note;
+      return row;
+    }
+    row.title = `${p.note} Click to open ${p.label} in this pane.`;
+    row.addEventListener('click', () => this.showPrereq(p.hash, info.hash));
+    return row;
+  }
+
+  /** Retarget this pane, remembering the one hop back. `from` empty means the chip was the click. */
+  private showPrereq(hash: string, from: string): void {
+    if (hash === '' || hash === this.shown) return;
+    this.back = from === '' ? '' : this.shown;
+    this.backFor = from === '' ? '' : hash;
+    this.ui.assetHash = hash;
+    this.announce();
   }
 
   /**

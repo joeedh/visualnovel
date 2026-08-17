@@ -189,6 +189,98 @@
   font-size: 12.5px;
 }
 
+/*
+ * The approval frontier. Machine voice (`--signal` family, mono addresses): these rows are what
+ * the project says this picture rests on, not anything the author typed — so no sodium, and the
+ * only warm thing in the strip is the sentence saying what is still in the way.
+ */
+.as-from {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+}
+
+.as-from-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.as-from-back {
+  padding: 0 6px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-raised);
+  color: var(--mist);
+  font-family: var(--sans);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.as-from-back:hover {
+  color: var(--paper);
+}
+
+.as-from-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-chrome);
+  background: none;
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.as-from-row:hover:not(:disabled) {
+  border-color: var(--ink-line);
+  background: var(--ink-raised);
+}
+
+/* Nothing to open, so nothing to click: the tooltip carries the reason. */
+.as-from-row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.as-from-mark {
+  width: 12px;
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+}
+
+.as-from-row.ok .as-from-mark {
+  color: var(--jade);
+}
+
+.as-from-name {
+  flex: 1 1 auto;
+}
+
+/* The slot address, not prose — the same voice `.as-replace-what` uses, for the same reason. */
+.as-from-slot {
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.as-from-note {
+  padding-top: 3px;
+  color: var(--sodium);
+  font-size: 12px;
+}
+
 .as-section {
   flex: 0 0 auto;
   color: var(--mist);
