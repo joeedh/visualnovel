@@ -87,7 +87,6 @@ export class AssetEditor extends VnEditor {
   /** One hop of history, so walking up DRAWN FROM is reversible: where from, and back to what. */
   private back = '';
   private backFor = '';
-  private unwatch: (() => void) | undefined;
 
   static override define() {
     return {
@@ -111,19 +110,14 @@ export class AssetEditor extends VnEditor {
     // Anything that wrote could have been the art-notes edit this pane just ran, or an undo of
     // one — either way the derived prompt and the drift flag are re-derived on read, so the
     // honest move is to ask again rather than patch what is drawn.
-    this.unwatch = onInvalidate(() => {
+    const reload = (): void => {
       if (this.shown !== '' && this.dirty.size === 0 && !this.promptDirty)
         void this.load(this.shown);
-    });
+    };
+    this.watch(() => onInvalidate(reload), reload);
 
     this.rebuild();
     void this.load(this.ui.assetHash);
-  }
-
-  override on_remove() {
-    this.unwatch?.();
-    this.unwatch = undefined;
-    super.on_remove();
   }
 
   override update() {

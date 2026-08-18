@@ -1,9 +1,11 @@
-import type { Container } from 'pathux';
+import type { Check, Container } from 'pathux';
 import { api } from '../../api.js';
+import { onBusy, onInvalidate } from '../bridge.js';
 import { subjectOf } from '../../rules/taskGraph.js';
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
+import { layoutChanged } from '../persist.js';
 import { selectionForTask, taskIsSelected, type Selection } from '../selection.js';
 import { TOKENS, alpha } from '../tokens.js';
 import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
@@ -25,6 +27,21 @@ export class TaskListEditor extends VnEditor {
   private status: PipelineStatus | undefined;
   private failure = '';
   private drawn = '';
+  /** Rising with every fetch, so a slow answer that arrived out of order is dropped. */
+  private token = 0;
+  /** Remembered per pane: whether the list is narrowed to what has already finished. */
+  onlyDone = false;
+  /**
+   * Hashes the author cleared out of the *list*. Nothing is deleted: a `done` record is what
+   * makes a run resumable, so pruning `tasks.jsonl` would re-render — and re-pay for — every
+   * picture it named. A task that comes back to life is drawn again.
+   */
+  private cleared = new Set<string>();
+
+  /** A task in a state nothing will move it out of without a new run. */
+  private static finished(task: Task): boolean {
+    return task.status === 'done' || task.status === 'failed' || task.status === 'needs_human';
+  }
 
   static override define() {
     return {
@@ -52,6 +69,16 @@ export class TaskListEditor extends VnEditor {
     });
     this.appendSurface(this.list);
 
+    // Two feeds, because they answer different questions. `onInvalidate` is every mutating
+    // command and every undo — an approval, an adoption, a regenerate — and arrives once the work
+    // is over. `onBusy` is the only thing that moves *during* a run, which is what makes a task
+    // actually appear here as `running` rather than only after it has stopped being one.
+    this.watch(
+      () => onInvalidate(() => void this.load()),
+      () => void this.load(),
+    );
+    this.watch(() => onBusy(() => void this.load()));
+
     void this.load();
   }
 
@@ -62,13 +89,25 @@ export class TaskListEditor extends VnEditor {
   }
 
   private async load(): Promise<void> {
+    const mine = ++this.token;
     try {
-      this.status = await api.invoke('pipeline:status');
+      const status = await api.invoke('pipeline:status');
+      if (mine !== this.token) return;
+      this.status = status;
       this.failure = '';
     } catch (err) {
+      if (mine !== this.token) return;
       this.failure = err instanceof Error ? err.message : String(err);
     }
     this.rebuild();
+  }
+
+  /** The tasks the list is showing: the filter's answer, minus whatever Clear took out of it. */
+  private showing(): Task[] {
+    const tasks = this.status?.tasks ?? [];
+    return tasks.filter(
+      (task) => !this.cleared.has(task.hash) && (!this.onlyDone || task.status === 'done'),
+    );
   }
 
   private selection(): Selection {
@@ -86,8 +125,12 @@ export class TaskListEditor extends VnEditor {
     const ui = this.ui;
     return [
       this.failure,
-      this.status?.tasks.length ?? -1,
+      // Statuses, not a count: a wave that moves five tasks from `pending` to `running` changes
+      // nothing about the length, and a list that redrew only on the count would never show it.
+      (this.status?.tasks ?? []).map((t) => `${t.hash.slice(0, 8)}:${t.status}`).join(','),
       this.status?.gatePending.join(',') ?? '',
+      this.onlyDone ? 'done-only' : 'all',
+      this.cleared.size,
       ui.taskHash,
       ui.sceneId,
       ui.shotId,
@@ -104,6 +147,7 @@ export class TaskListEditor extends VnEditor {
   private rebuildBar(): void {
     const tasks = this.status?.tasks ?? [];
     const running = tasks.filter((t) => t.status === 'running').length;
+    const hidden = tasks.length - this.showing().length;
 
     this.bar.clear();
     this.bar.label('TASKS').style['padding'] = '0px 8px';
@@ -111,16 +155,40 @@ export class TaskListEditor extends VnEditor {
       this.failure
         ? this.failure
         : `${tasks.length} task${tasks.length === 1 ? '' : 's'} · ${running} running${
-            this.status?.blockedOnGate ? ' · blocked on gate' : ''
-          }`,
+            hidden > 0 ? ` · ${hidden} not shown` : ''
+          }${this.status?.blockedOnGate ? ' · blocked on gate' : ''}`,
     ).style['padding'] = '0px 8px';
 
     // A run spends money and writes assets, so it goes through the palette's form and its
     // confirmation rather than off a bare button — `pipeline.run` is gated on the command.
     this.bar.button('▸ Run', () => openCommandDialog('pipeline.run')).description =
       'Open the run form, where the flags are spelled out before anything is spent';
-    this.bar.button('Refresh', () => void this.load()).description =
-      'Re-read what has run, what is running and what is ready';
+
+    const only = this.bar.check(undefined, 'only done') as Check;
+    only.checked = this.onlyDone;
+    only.description = 'Narrow the list to the tasks that finished successfully.';
+    // `on_change`, not `onchange` — path.ux's own hook. A DOM-shaped name is never called.
+    only.on_change = (next: unknown) => {
+      this.onlyDone = next === true;
+      layoutChanged();
+      this.rebuild();
+    };
+
+    const clear = this.bar.button('Clear finished', () => {
+      for (const task of tasks) if (TaskListEditor.finished(task)) this.cleared.add(task.hash);
+      this.rebuild();
+    });
+    clear.description =
+      'Take everything already finished out of this list. Nothing is deleted — those records ' +
+      'are what make a run resumable — and Refresh brings them back.';
+    clear.disabled = !tasks.some((t) => TaskListEditor.finished(t) && !this.cleared.has(t.hash));
+
+    const refresh = this.bar.button('Refresh', () => {
+      this.cleared.clear();
+      void this.load();
+    });
+    refresh.description =
+      'Re-read what has run, what is running and what is ready, and undo Clear finished';
     this.bar.flushUpdate();
   }
 
@@ -129,17 +197,25 @@ export class TaskListEditor extends VnEditor {
 
     if (this.failure) return void this.list.appendChild(note(this.failure, TOKENS.vermilion));
 
-    const tasks = this.status?.tasks ?? [];
+    const all = this.status?.tasks ?? [];
+    const tasks = this.showing();
     for (const character of this.status?.gatePending ?? []) {
       this.list.appendChild(this.gateBar(character));
     }
     if (tasks.length === 0) {
-      this.list.appendChild(note('No tasks yet — run the pipeline.'));
+      this.list.appendChild(note(this.emptyBecause(all.length)));
       return;
     }
 
     const selection = this.selection();
     for (const task of tasks) this.list.appendChild(this.taskCard(task, selection));
+  }
+
+  /** Why the list is empty, said in terms of what the author can change. */
+  private emptyBecause(total: number): string {
+    if (total === 0) return 'No tasks yet — run the pipeline.';
+    if (this.onlyDone) return 'Nothing has finished yet — untick “only done” to see the rest.';
+    return 'Everything is cleared out of this list. Refresh brings it back.';
   }
 
   /** The gate, as the one thing standing between the author and the rest of the run. */
@@ -225,4 +301,4 @@ export class TaskListEditor extends VnEditor {
   }
 }
 
-registerEditor(TaskListEditor, 'vn.TaskListEditor');
+registerEditor(TaskListEditor, 'vn.TaskListEditor', ['onlyDone : bool']);

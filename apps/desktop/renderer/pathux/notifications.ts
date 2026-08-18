@@ -121,7 +121,9 @@ class NotificationList {
     this.header(shown);
     const rows = this.body.col();
     rows.style['overflowY'] = 'auto';
-    rows.style['maxHeight'] = '420px';
+    // Bounded by the window as well as by a number: 420px is taller than a short screen, and a
+    // list that runs off the bottom has no scrollbar the author can reach.
+    rows.style['maxHeight'] = 'min(420px, 60vh)';
 
     if (shown.length === 0) rows.label(this.emptyBecause());
     for (const note of shown) this.row(rows, note);
@@ -199,6 +201,10 @@ class NotificationList {
    */
   private row(rows: Container, note: Notification): void {
     const row = rows.row();
+    // A `colframe-x` is a flex column, and a flex child shrinks before its parent scrolls — so a
+    // long list squeezed every row to a few pixels and drew all of them through each other
+    // instead of overflowing. Refusing to shrink is what turns the max-height into a scrollbar.
+    row.style['flexShrink'] = '0';
     if (this.archived.has(note.id)) {
       row.label('archived');
       row.button('undo', () => {

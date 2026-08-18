@@ -73,7 +73,6 @@ export class DocumentsEditor extends VnEditor {
   private picked = '';
   /** The node being renamed right now, so a rebuild underneath the box cannot start a second one. */
   private renaming = '';
-  private unwatch: (() => void) | undefined;
 
   static override define() {
     return {
@@ -102,15 +101,15 @@ export class DocumentsEditor extends VnEditor {
 
     // Coarse on purpose (decision 7 of the plan): there is no write effect to listen for, a tree
     // is one cached `loadProject` away, and a stale tree is worse than a redundant fetch.
-    this.unwatch = onInvalidate(() => void this.load());
+    // Re-armed on the way back on screen, and refetched with it: a tab switch tears the watch
+    // down, and a tree that stopped following the agent the first time the author looked at
+    // another pane is the bug this replaces.
+    this.watch(
+      () => onInvalidate(() => void this.load()),
+      () => void this.load(),
+    );
 
     void this.load();
-  }
-
-  override on_remove() {
-    this.unwatch?.();
-    this.unwatch = undefined;
-    super.on_remove();
   }
 
   override update() {

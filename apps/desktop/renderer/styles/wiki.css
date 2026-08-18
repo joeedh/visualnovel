@@ -38,7 +38,13 @@
   font-size: 13px;
   line-height: 1.65;
   tab-size: 2;
-  white-space: pre;
+  /* Soft-wrapped, not clipped: a sheet is prose, and a hard-wrapped column read in a narrow pane
+     would otherwise scroll sideways one paragraph at a time. `wrap="soft"` on the element means
+     the wrap is only where it is drawn -- the value saved to disk keeps the author's own newlines.
+     `overflow-wrap` is the backstop for the one thing `pre-wrap` cannot break: a URL or a path
+     longer than the pane is wide. */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
   overflow: auto;
 }
 

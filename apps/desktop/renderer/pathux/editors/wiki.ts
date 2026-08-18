@@ -42,7 +42,6 @@ export class WikiEditor extends VnEditor {
 
   /** The tree the strip is read out of. One fetch per invalidation, not one per document. */
   private tree: DocTree | undefined;
-  private unwatchTree: (() => void) | undefined;
 
   /**
    * The document in the box, which trails `ui.docPath` by one async read. The draft it files, the
@@ -50,7 +49,6 @@ export class WikiEditor extends VnEditor {
    * the widgets and nothing about the text.
    */
   private readonly buf = new DocBuffer(() => this.paint());
-  private unwatch: (() => void) | undefined;
 
   static override define() {
     return {
@@ -121,22 +119,22 @@ export class WikiEditor extends VnEditor {
     // A file this pane is showing can be written by something else entirely — `gate.approve`
     // rewrites `character.md`, and so does the agent, whose writes are not commands at all. What
     // a clean and a dirty buffer each do about that is `DocBuffer.wrote`.
-    this.unwatch = onWrote((paths) => this.buf.wrote(paths));
+    this.watch(
+      () => onWrote((paths) => this.buf.wrote(paths)),
+      // Which paths moved while the pane was off screen is unknowable, so the one it is showing
+      // is re-read on the same terms.
+      () => this.buf.wrote([this.buf.path]),
+    );
 
     // Generating a portrait while the character's sheet is open should make the portrait appear,
     // and generation is not a write to *this* file — so the strip follows the coarser signal.
-    this.unwatchTree = onInvalidate(() => void this.loadTree());
+    this.watch(
+      () => onInvalidate(() => void this.loadTree()),
+      () => void this.loadTree(),
+    );
     void this.loadTree();
 
     this.paint();
-  }
-
-  override on_remove() {
-    this.unwatch?.();
-    this.unwatch = undefined;
-    this.unwatchTree?.();
-    this.unwatchTree = undefined;
-    super.on_remove();
   }
 
   override update() {

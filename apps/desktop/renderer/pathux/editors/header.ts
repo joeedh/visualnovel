@@ -93,7 +93,6 @@ export class VnHeaderEditor extends VnEditor {
   private layoutsFor = '\0';
   /** Bumped whenever the files may have moved, which is what makes the guard above expire. */
   private layoutRevision = 0;
-  private unwatch: (() => void) | undefined;
 
   static override define() {
     return {
@@ -123,17 +122,12 @@ export class VnHeaderEditor extends VnEditor {
 
     // The Layout submenu is a list of files, so it follows the files rather than the exec feed:
     // a pull, an undo or another window's save all move it without this window running anything.
-    this.unwatch = onInvalidate(() => {
+    const recheck = (): void => {
       this.layoutRevision++;
       this.rebuild();
-    });
+    };
+    this.watch(() => onInvalidate(recheck), recheck);
     this.rebuild();
-  }
-
-  override on_remove() {
-    this.unwatch?.();
-    this.unwatch = undefined;
-    super.on_remove();
   }
 
   /** The one header that keeps a note frame — see `VnEditor.wantsNoteArea`. */

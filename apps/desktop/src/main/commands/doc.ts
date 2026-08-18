@@ -109,13 +109,23 @@ export const docCreate = define({
   props: {
     kind: prop.oneOf(NEW_DOC_KINDS, 'what to create'),
     name: prop.string('the name it is known by; the id is derived from it'),
+    open: prop.boolean('show the new document in the Wiki editor', { default: true }),
   },
   async check({ kind, name }, ctx) {
     return verdict(await ctx.host.session.previewCreate(kind as NewDocKind, name));
   },
-  async run({ kind, name }, ctx) {
+  async run({ kind, name, open }, ctx) {
     const made = await ctx.host.session.createDoc(kind as NewDocKind, name);
     if (!made.ok) throw new Error(made.reason);
+    // A page scaffolded and then left unfindable is a page the author has to go looking for, so
+    // the same route a click in the document tree takes is run for them. All three kinds land in
+    // the Wiki editor: a sheet is markdown too, and `EDITORS` claims it there.
+    if (open) {
+      ctx.host.ui(
+        { type: 'view', action: 'open', editor: 'wiki', where: 'elsewhere', subject: made.path },
+        ctx.origin,
+      );
+    }
     return {
       message: `Created ${made.path}.`,
       data: made,

@@ -145,6 +145,25 @@ function wrote(paths: readonly string[]): void {
   for (const watcher of scribes) watcher(paths);
 }
 
+/** What a run has done so far, as the busy push reports it. */
+export interface BusyState {
+  what: string;
+  ran: number;
+  pending: number;
+}
+
+const busyWatchers = new Set<(state: BusyState) => void>();
+
+/**
+ * Watch a run's progress. The one signal that moves *while* something is in flight: a command's
+ * outcome — and so {@link onInvalidate} — arrives only once the run it started has finished, so a
+ * pane that wants to show what is running right now has nothing else to follow.
+ */
+export function onBusy(listener: (state: BusyState) => void): () => void {
+  busyWatchers.add(listener);
+  return () => busyWatchers.delete(listener);
+}
+
 /**
  * Run a command. Every mutating surface in the shell goes through this — the header's menu,
  * the palette, and whatever an editor offers — so provenance, undo and history are identical
@@ -275,6 +294,8 @@ export function installBridge(app: ShellApp): void {
       ui.busyWhat = effect.what ?? '';
       ui.busyRan = effect.ran;
       ui.busyPending = effect.pending;
+      const state: BusyState = { what: ui.busyWhat, ran: effect.ran, pending: effect.pending };
+      for (const watcher of busyWatchers) watcher(state);
       touch();
     } else if (effect.type === 'view') {
       // The command already said what it meant to do; the mesh answers only when it disagrees,

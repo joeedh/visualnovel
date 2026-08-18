@@ -244,6 +244,9 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       running++;
       graph.setStatus(task.hash, 'running');
       await logTask(paths, graph.get(task.hash)!);
+      // Reported at the start as well as the end. A host drawing what is in flight would
+      // otherwise only ever hear about a task once it had stopped being in flight.
+      progress();
       logger?.info('task.start', { hash: task.hash, kind: task.kind });
 
       let result;

@@ -59,6 +59,43 @@ export class VnEditor extends Area {
   }
 
   /**
+   * Register a subscription that follows this editor on and off the screen.
+   *
+   * path.ux calls `init()` **once** and `remove()` — and so `on_remove()` — every time a tab
+   * switch detaches the editor, without ever calling `init()` again when the tab comes back. A
+   * watcher unsubscribed in a hand-written `on_remove` is therefore gone for good: the pane draws
+   * whatever it held the moment it was first hidden and never hears another word, which is why a
+   * document tree stopped following the agent after the author looked at anything else. Watches
+   * registered here are dropped on the way out and re-made on the way back in, and `onReturn`
+   * runs on the way back so the pane catches up on what it missed while it was off screen.
+   *
+   * `arm` is called immediately, so this belongs in `init()` like the subscription it replaces.
+   */
+  protected watch(arm: () => () => void, onReturn?: () => void): void {
+    this.watches.push({ arm, onReturn, off: arm() });
+  }
+
+  private watches: { arm: () => () => void; onReturn?: () => void; off?: () => void }[] = [];
+
+  override on_remove(): void {
+    for (const watch of this.watches) {
+      watch.off?.();
+      watch.off = undefined;
+    }
+    super.on_remove();
+  }
+
+  override on_area_active(): void {
+    super.on_area_active();
+    // Also the first activation, where every watch is already armed and this is a no-op.
+    for (const watch of this.watches) {
+      if (watch.off) continue;
+      watch.off = watch.arm();
+      watch.onReturn?.();
+    }
+  }
+
+  /**
    * Put a raw DOM surface — a play stage, a graph canvas — under the column container, filling
    * what the header leaves. It cannot go through `container.appendChild`: that routes a `UIBase`
    * into the container's shadow root but hands anything else to `super.appendChild`, which lands

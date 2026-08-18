@@ -30,7 +30,6 @@ export class ProjectEditor extends VnEditor {
   private dirty = false;
   /** Rising with every load, so a slow read that arrives after a newer one is dropped. */
   private token = 0;
-  private unwatch: (() => void) | undefined;
 
   static override define() {
     return {
@@ -91,17 +90,12 @@ export class ProjectEditor extends VnEditor {
     // Opening another workspace, importing, or an undo of this pane's own write all move the file
     // under it; a draft the author has not applied does not follow, and its next apply earns the
     // "already says that" or the real refusal, which is the honest outcome.
-    this.unwatch = onInvalidate(() => {
+    const refollow = (): void => {
       if (!this.dirty) void this.load();
-    });
+    };
+    this.watch(() => onInvalidate(refollow), refollow);
 
     void this.load();
-  }
-
-  override on_remove() {
-    this.unwatch?.();
-    this.unwatch = undefined;
-    super.on_remove();
   }
 
   // -------------------------------------------------------------------------

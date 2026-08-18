@@ -118,7 +118,6 @@ export class ScriptEditor extends VnEditor {
 
   /** The tree the frames are read out of. One fetch per invalidation, not one per scene. */
   private tree: DocTree | undefined;
-  private unwatchTree: (() => void) | undefined;
 
   private story: StoryGraph | undefined;
   private data: SceneCoverage | undefined;
@@ -147,7 +146,6 @@ export class ScriptEditor extends VnEditor {
   private notice: Notice | null = null;
   // Latched at pointer-down when a context menu is up; see `armDismissLatch`.
   private dismissing = false;
-  private unwatch: (() => void) | undefined;
 
   static override define() {
     return {
@@ -177,14 +175,25 @@ export class ScriptEditor extends VnEditor {
     // execute mode is the usual one. A page nobody is in the middle of follows; one with an open
     // row or a held line does not, because re-reading would take the draft with it. That is what
     // `⟳` is for.
-    this.unwatch = onWrote((paths) => {
-      if (this.editing || this.pending || this.drag) return;
-      if (touchesScene(paths, this.ui.sceneId)) void this.loadScene();
-    });
+    this.watch(
+      () =>
+        onWrote((paths) => {
+          if (this.editing || this.pending || this.drag) return;
+          if (touchesScene(paths, this.ui.sceneId)) void this.loadScene();
+        }),
+      // Coming back on screen, the pane cannot know which paths moved while it was away, so it
+      // re-reads the scene on the same terms the watch would have.
+      () => {
+        if (!this.editing && !this.pending && !this.drag) void this.loadScene();
+      },
+    );
 
     // Rendering a shot is not a write to the scene file, so the frames follow the coarser signal:
     // a frame generated while its scene is open should appear under the prose that ordered it.
-    this.unwatchTree = onInvalidate(() => void this.loadTree());
+    this.watch(
+      () => onInvalidate(() => void this.loadTree()),
+      () => void this.loadTree(),
+    );
     void this.loadTree();
 
     void this.load();
@@ -218,14 +227,6 @@ export class ScriptEditor extends VnEditor {
       },
       true,
     );
-  }
-
-  override on_remove() {
-    this.unwatch?.();
-    this.unwatch = undefined;
-    this.unwatchTree?.();
-    this.unwatchTree = undefined;
-    super.on_remove();
   }
 
   override update() {
