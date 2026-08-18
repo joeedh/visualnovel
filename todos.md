@@ -92,5 +92,5 @@
 [ ]: Editors that operate on active things should have a blender-style pin icon to prevent them from changing
      to a different thing when it becomes active.  We should support serializing this in pinnable editor
 	 STRUCT scripts.
-[ ]: Use an agent to write a report on a less technical mode in the desktop app that would automatically 
+[x]: Use an agent to write a report on a less technical mode in the desktop app that would automatically 
      approve assets. Think about any other simplifications.  This mode would be for people to play around with.
