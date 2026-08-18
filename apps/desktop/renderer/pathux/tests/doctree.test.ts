@@ -15,6 +15,7 @@ import {
   type DocRow,
 } from '../doctree.js';
 import { MENU_SEP } from '../contextmenu.js';
+import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import type { Selection } from '../selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
 
@@ -332,6 +333,21 @@ describe('menuFor', () => {
         { label: expect.stringContaining('New'), id: 'doc.create', props: { kind }, form: true },
       ]);
     }
+  });
+
+  it('offers the skills branch both ways to get a skill, and both as forms', () => {
+    // The branch is drawn even when empty, so this menu is the always-reachable way to make the
+    // first skill a project ever has. Neither entry can be run from the menu: one needs a name and
+    // the other needs a sentence.
+    expect(menuFor(node('branch:skills', 'branch'))).toEqual([
+      { label: 'New skill…', id: 'doc.create', props: { kind: 'skill' }, form: true },
+      {
+        label: 'Ask the agent for a skill…',
+        id: 'agent.run',
+        props: { input: NEW_SKILL_PROMPT },
+        form: true,
+      },
+    ]);
   });
 
   it('offers the story branch the same acts a scene under it offers', () => {

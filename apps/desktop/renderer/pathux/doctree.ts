@@ -7,6 +7,7 @@
  * The same functions serve both modes: a file tree is a different source, not a different kind of
  * tree, so the toggle in the header buys a second fetch and no second flattener.
  */
+import { NEW_SKILL_PROMPT } from '../rules/skills.js';
 import type { DocNode, EntityLinks } from '../../src/shared/ipc.js';
 import { MENU_SEP, type MenuEntry } from './contextmenu.js';
 import type { Selection } from './selection.js';
@@ -179,7 +180,7 @@ function openSheet(path: string): MenuEntry {
 }
 
 /** One `doc.create` entry. Spelled once, so the wiki tree and the cast branches agree. */
-function newSheet(kind: 'note' | 'character' | 'location', label: string): MenuEntry {
+function newSheet(kind: 'note' | 'character' | 'location' | 'skill', label: string): MenuEntry {
   return { label, id: 'doc.create', props: { kind }, form: true };
 }
 
@@ -339,6 +340,19 @@ export function menuFor(node: DocNode): MenuEntry[] {
           return [newSheet('location', 'New location sheet…')];
         case 'wiki':
           return wikiCreate();
+        // Two ways to get a skill, and both are forms: the menu can supply neither a name nor a
+        // sentence. This is the always-reachable one — the branch is drawn even when empty
+        // (`doctree.ts` in main), so the first skill a project ever gets starts here.
+        case 'skills':
+          return [
+            newSheet('skill', 'New skill…'),
+            {
+              label: 'Ask the agent for a skill…',
+              id: 'agent.run',
+              props: { input: NEW_SKILL_PROMPT },
+              form: true,
+            },
+          ];
         default:
           return [];
       }

@@ -211,6 +211,7 @@ entry is an invocation rather than a callback, is in
 | `branch:characters` | New character sheet… |
 | `branch:locations` | New location sheet… |
 | `branch:story` | New scene… · Export Fountain |
+| `branch:skills` | New skill… · Ask the agent for a skill… |
 | `asset` | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Open in the Asset editor |
 | `scene` | Assign line ids · New scene… · Export Fountain |
 | `shot` | Set coverage… · Set outfit… |
@@ -228,6 +229,9 @@ Four things this table settles:
   for "another one of these"; and a scene's menu is a **superset** of the story branch's, so the
   same two acts are in the same words wherever the pointer was. `branch:assets` is the one heading
   that offers nothing on purpose: an asset is rendered from a subject, never authored from a name.
+  `branch:skills` matters most of the four, because it is the heading drawn **even when empty**:
+  it is the always-reachable way to make the first skill a project ever has, and both its entries
+  are forms — the menu can supply neither a name nor a sentence.
 - **Every act an asset has is offered, and each command refuses itself.** `asset.accept` refuses a
   portrait by naming `gate.approve` and a concept by naming `art.promote`; the menu shows all four
   with their refusals rather than guessing which applies. There is no _reject_: rejecting a

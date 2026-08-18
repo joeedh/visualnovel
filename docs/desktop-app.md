@@ -953,9 +953,9 @@ with tests beside them.
   **before** the open, always — a shot needs two fields to name it and `view.open` carries one
   string, so an editor whose subject cannot travel opens on the selection it already sees.
   A node that claims nothing keeps today's behaviour: the click selects, and a grouping expands.
-- **New… scaffolds a document and opens it.** Kind plus a name, straight into `doc.create`, which
-  shares `newCharacterTemplate`/`newLocationDoc` with the agent's create tools — one authorial act,
-  one answer. A character's is a **full sheet of placeholders**, because the shape is best learned by
+- **New… scaffolds a document and opens it.** Kind plus a name — character, location, page or
+  skill — straight into `doc.create`, which shares `newCharacterTemplate`/`newLocationDoc`/
+  `newSkillTemplate` with the agent's create tools — one authorial act, one answer. A character's is a **full sheet of placeholders**, because the shape is best learned by
   editing it; its `palette` is empty under a YAML comment saying what a palette is and to ask the
   agent for one, since a colour name will not parse and so cannot be exampled. That comment is why
   the template is text rather than a `FrontMatterDoc`, and why it does not survive the first edit.

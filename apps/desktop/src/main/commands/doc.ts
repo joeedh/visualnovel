@@ -12,7 +12,7 @@ import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
 
-const NEW_DOC_KINDS = ['character', 'location', 'note'] as const;
+const NEW_DOC_KINDS = ['character', 'location', 'note', 'skill'] as const;
 
 /** A `DocResult` read as a precondition: the plan's own sentence either way. */
 function verdict(result: { ok: true; note: string } | { ok: false; reason: string }): CheckResult {
@@ -102,7 +102,7 @@ export const docCreate = define({
   id: 'doc.create',
   title: 'Create a document',
   description:
-    'Scaffold a character sheet, a location sheet or a wiki note from a name, in its ' +
+    'Scaffold a character sheet, a location sheet, a wiki note or a skill from a name, in its ' +
     'conventional home. Refuses rather than overwriting a document already at that path.',
   mutating: true,
   undoable: true,

@@ -14,6 +14,7 @@ import {
   setLineText,
   splitScene,
 } from '@vn/scriptedit';
+import { discoverSkills, newSkillTemplate, skillRoots } from '@vn/authoring';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
 import type { Plan, PlanDecision } from '../../shared/ipc.js';
@@ -989,6 +990,49 @@ describe('WorkspaceSession — documents', () => {
     );
     // The new sheet is a real character, not a file nothing reads.
     expect((await session.index()).characters.map((c) => c.id)).toContain('ada_lovelace');
+  });
+
+  it('scaffolds a skill as a SKILL.md in a directory of its own', async () => {
+    const made = await session.createDoc('skill', 'Continuity Pass');
+    expect(made.ok && made).toMatchObject({
+      id: 'continuity-pass',
+      path: '.aiagent/skills/continuity-pass/SKILL.md',
+    });
+    // The same bytes `create_skill` writes: a reader cannot tell which made the file.
+    const text = await fs.readFile(
+      join(p.dir, '.aiagent', 'skills', 'continuity-pass', 'SKILL.md'),
+      'utf8',
+    );
+    expect(text).toBe(newSkillTemplate('Continuity Pass'));
+    // And it is a skill the agent can find, not a file nothing reads.
+    expect((await discoverSkills(skillRoots(p.dir))).map((skill) => skill.id)).toContain(
+      'continuity-pass',
+    );
+  });
+
+  it('refuses a skill over a SKILL.md already there', async () => {
+    expect((await session.previewCreate('skill', 'Twice Over')).ok).toBe(true);
+    expect((await session.createDoc('skill', 'Twice Over')).ok).toBe(true);
+    const again = await session.previewCreate('skill', 'Twice Over');
+    expect(again.ok ? '' : again.reason).toBe('.aiagent/skills/twice-over/SKILL.md already exists');
+  });
+
+  /*
+   * The asymmetry with the agent's `create_skill`, asserted rather than assumed. `writeSkill`
+   * refuses an existing **directory**; this goes through `checkDocWrite` and refuses an existing
+   * **file** — so a directory a human already put a vetted `run.mjs` in takes the author's
+   * scaffold and rejects the agent's, which is the right way round.
+   */
+  it('scaffolds into a directory that holds only a script a human put there', async () => {
+    const dir = join(p.dir, '.aiagent', 'skills', 'lint-fountain');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(join(dir, 'run.mjs'), 'process.stdout.write("ok");\n');
+
+    expect((await session.previewCreate('skill', 'Lint Fountain')).ok).toBe(true);
+    const made = await session.createDoc('skill', 'Lint Fountain');
+    expect(made.ok && made.path).toBe('.aiagent/skills/lint-fountain/SKILL.md');
+    // The script is still there — the scaffold wrote one file and touched nothing else.
+    expect(await fs.readFile(join(dir, 'run.mjs'), 'utf8')).toContain('ok');
   });
 
   it('refuses to scaffold over a document already there', async () => {

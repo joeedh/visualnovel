@@ -134,6 +134,8 @@ import {
   discoverSkills,
   focusOnScene,
   loadContext,
+  newSkillTemplate,
+  skillId,
   skillRoots,
   systemSections,
   workspaceArtGen,
@@ -531,8 +533,8 @@ const TREE_SKIP = new Set(['.git', 'node_modules', '.vnstudio']);
 /** Who owns `scenes/**` from this side of the app — the sentence a refused whole-file save gets. */
 const SCENE_WRITER = 'story.*';
 
-/** The three things `doc.create` scaffolds. A note is a title and nothing else. */
-export type NewDocKind = 'character' | 'location' | 'note';
+/** The four things `doc.create` scaffolds. A note is a title and nothing else. */
+export type NewDocKind = 'character' | 'location' | 'note' | 'skill';
 
 /**
  * What the model will make of a document that has already been saved — a sentence, or nothing.
@@ -2757,10 +2759,10 @@ export class WorkspaceSession {
   }
 
   /**
-   * Where a scaffolded document would land and what it would say. The character and location
-   * templates are the same `newCharacterTemplate` / `newLocationDoc` the agent's
-   * `create_character` calls, so one authorial act has one answer and the id is derived in exactly
-   * one place. The path is conventional; filing a sheet elsewhere is a move, not a different
+   * Where a scaffolded document would land and what it would say. The templates are the same
+   * `newCharacterTemplate` / `newLocationDoc` / `newSkillTemplate` the agent's `create_character`
+   * and `create_skill` call, so one authorial act has one answer and the id is derived in exactly
+   * one place — a reader cannot tell whether a human or the agent made a file by looking at it. The path is conventional; filing a sheet elsewhere is a move, not a different
    * scaffolder.
    */
   private newDoc(
@@ -2775,6 +2777,21 @@ export class WorkspaceSession {
       return id
         ? { id, path: relPath(this.dir, join(paths.wikiDir, `${id}.md`)), text: `# ${name}\n` }
         : null;
+    }
+    // A skill is a directory with a `SKILL.md` in it. `writeFileAtomic` makes the directory, so
+    // nothing here has to — and the refusal that results is deliberately *not* `writeSkill`'s. That
+    // one refuses an existing **directory**; this goes through `checkDocWrite` with an empty
+    // `seenHash` and refuses an existing **file**. So a directory a human has already put a vetted
+    // `run.mjs` in accepts the author's scaffold and rejects the agent's, which is the right way
+    // round: the human is the one who put the script there.
+    if (kind === 'skill') {
+      const id = skillId(name);
+      if (!id) return null;
+      return {
+        id,
+        path: relPath(this.dir, join(this.dir, PROJECT_SKILLS_DIR, id, 'SKILL.md')),
+        text: newSkillTemplate(name),
+      };
     }
     // A character gets the full template, which is text because its palette note is a YAML
     // comment; a location is still front-matter alone, so it goes through the doc scaffolder.
@@ -2798,7 +2815,7 @@ export class WorkspaceSession {
   }
 
   /**
-   * Scaffold a character, a location or a wiki note from a **name**. The empty `seenHash` is what
+   * Scaffold a character, a location, a wiki note or a skill from a **name**. The empty `seenHash` is what
    * makes this a creation: the write refuses over a file already there rather than overwriting
    * whatever the author had under that name.
    */

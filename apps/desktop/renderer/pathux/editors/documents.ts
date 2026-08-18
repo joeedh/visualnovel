@@ -221,7 +221,7 @@ export class DocumentsEditor extends VnEditor {
       ? 'Showing every file on disk. Click to group by what the documents are instead.'
       : 'Showing cast, locations and scenes. Click to see the folders they live in instead.';
     this.bar.button('New…', () => this.showNewRow()).description =
-      'Add a character, location, scene or page to this project';
+      'Add a character, location, page or skill to this project';
     this.bar.button('Refresh', () => void this.load()).description =
       'Re-read the project from disk';
     this.bar.flushUpdate();
@@ -240,7 +240,7 @@ export class DocumentsEditor extends VnEditor {
     this.newKind.className = 'dt-new-kind';
     this.newKind.title =
       'Which kind of document to scaffold — it decides the folder and the fields';
-    for (const kind of ['character', 'location', 'note'] as const) {
+    for (const kind of ['character', 'location', 'note', 'skill'] as const) {
       const option = document.createElement('option');
       option.value = kind;
       option.textContent = kind;

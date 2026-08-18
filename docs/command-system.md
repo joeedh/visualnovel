@@ -310,7 +310,7 @@ none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 | `command.check`                | `invocation`                      | Would that invocation run? See [Preconditions](#preconditions-asking-before-acting). |
 | `doc.read`                     | `path`                            | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
 | `doc.write` ✍ ↺ ✓              | `path`, `text` (digested), `seenHash` (default `''`) | Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
-| `doc.create` ✍ ↺ ✓             | `kind` (`character`\|`location`\|`note`), `name` | Scaffold a sheet or a note in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
+| `doc.create` ✍ ↺ ✓             | `kind` (`character`\|`location`\|`note`\|`skill`), `name` | Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
 | `doc.rename` ✍ ↺ ✓             | `path`, `name`                    | Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
 | `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
@@ -546,8 +546,16 @@ write path and it is `story.*`.
   conventional home — `characters/<id>/character.md` and `locations/<id>.md` from
   `newCharacterTemplate`/`newLocationDoc`, the same scaffolds `vnauthor`'s create tools use; a note
   is `wiki/<id>.md` holding a heading and nothing else, because `wiki/` is free-form and an empty
-  front-matter block would be a shape the author has to delete. It refuses over an existing path
+  front-matter block would be a shape the author has to delete. A skill is
+  `.aiagent/skills/<id>/SKILL.md` from `newSkillTemplate`. It refuses over an existing path
   rather than merging into one.
+
+  The skill kind is the one place the author's scaffold and the agent's write **refuse
+  differently**, and deliberately so. `create_skill` goes through `writeSkill`, which refuses an
+  existing **directory** — the directory is the unit a skill occupies, and one already holding a
+  vetted `run.mjs` is not the agent's to rewrite. `doc.create` goes through `checkDocWrite` with an
+  empty `seenHash` and refuses an existing **file**. So a directory a human put a script in takes
+  the human's `SKILL.md` and rejects the agent's, which is the right way round.
 
 ### The `prompt.` namespace
 
