@@ -58,4 +58,28 @@
      assets?
 [x]: you should be able to right click a line and get a menu with 'open shot asset'.
 [x]: the agent should be provided the active scene (if it's not already).
-	 
+
+[ ]: the agent had an error again (in the git_commit tool), search the transcripts for project test4 at august 17th, 2026
+[ ]: the document tree isn't always refreshed after the agent creates a wiki page
+[ ]: the wiki editor should word wrap lines.
+[ ]: the agent itself should generate files with a 100 column word wrap limit.  update the system prompt.
+     if you think modifying the write_file tool to give a warning or an error on exceeding the limit is 
+	 a good idea you may do that.
+[ ]: the new wiki context menu item doesn't refresh the tree on creation
+[ ]: the notifications popup needs a vertical scrollbar.  if there's a large number of items 
+     they are simply drawn on top of each other in a tangled mess.
+[ ]: make sure path.ux's help picker works.  it just shows tooltips under the active mouse.
+     it's designed to help show tooltips when using multitouch input.
+[ ]: modify the system prompt so when the user asks the agent to create things with a category,
+     that category is mentioned in the associated wiki pages.  for example 'create 4 love interests'
+	 will create 4 characters with 'love interest' in the character sheets.  the idea is to make 
+	 it easier for the model to identify which characters are the love interests.
+[ ]: in a similar vein to the above, the agent should list characters in plot important categories
+     in whatever we ended up calling the root agent memory file that lives in the project repo.
+[ ]: when the user create a wiki page via right click -> new wiki page, it should be made the active 
+     wiki page.	 
+[ ]: agent tools should show their arguments where it makes sense, e.g. read_file should show the 
+     (relative to the project repo root) path of the file being read.
+[ ]: The tokens counter label should keep track of uncached tokens only.
+[ ]: 
+     
