@@ -31,7 +31,10 @@ import {
   DEFAULT_EFFORT,
   EFFORT_CHOICES,
   TEXT_MODELS,
+  BUDGET_CHOICES,
+  budgetLabel,
   type AuthoringSession,
+  type BudgetChoice,
   type EffortChoice,
 } from './agent.js';
 import { bold, cyan, dim, renderEvent, renderPlan, renderTokens, green, yellow } from './render.js';
@@ -158,6 +161,7 @@ const HELP = [
   '  /mode            show the current mode (plan or execute)',
   '  /model [id]      show/switch the text model (no arg → interactive menu)',
   '  /effort [level]  show/set reasoning effort (no arg → interactive menu)',
+  '  /budget [size]   show/set what one turn may spend (no arg → interactive menu)',
   '  /clear           clear the conversation context (back to plan mode)',
   '  /status          list characters, locations, and scenes',
   '  /skills          list available authoring skills',
@@ -201,6 +205,8 @@ export interface ReplOptions {
   mock?: boolean;
   /** Force the text tool protocol (Path A) even where the model can call tools natively. */
   noNative?: boolean;
+  /** What one turn may spend, in non-cached tokens. Defaults to the agent's own default (200k). */
+  budget?: BudgetChoice;
   /** Inject a channel (tests); defaults to the real terminal. */
   channel?: Channel;
 }
@@ -219,6 +225,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
     session = await createAuthoringAgent(opts.dir, permission, {
       mock: opts.mock,
       noNative: opts.noNative,
+      ...(opts.budget ? { budget: opts.budget } : {}),
       onEvent: (event) => {
         if (event.type === 'usage') {
           spent.input += event.input;
@@ -330,6 +337,30 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
     }
   }
 
+  /**
+   * The turn ceiling. Unlike /model and /effort this rebuilds nothing — the budget is the loop's
+   * own meter, not something the backend was constructed with — so it works under --mock too.
+   */
+  async function handleBudget(arg: string): Promise<void> {
+    let choice = arg;
+    if (!choice) {
+      const picked = await chooseFromMenu(
+        channel,
+        'Select what one turn may spend',
+        BUDGET_CHOICES.map(budgetLabel),
+        budgetLabel(session.agent.currentBudget),
+      );
+      if (!picked) return void channel.write(dim('No change.'));
+      choice = picked;
+    }
+    if (!BUDGET_CHOICES.includes(choice as BudgetChoice)) {
+      const options = BUDGET_CHOICES.join(', ');
+      return void channel.write(yellow(`Unknown budget "${choice}". Options: ${options}.`));
+    }
+    session.agent.setBudget(choice as BudgetChoice);
+    channel.write(green(`Turn budget set to ${choice} non-cached tokens.`));
+  }
+
   try {
     for (;;) {
       const tag = session.agent.currentMode === 'execute' ? green('execute') : cyan('plan');
@@ -358,6 +389,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       }
       if (line === '/effort' || line.startsWith('/effort ')) {
         await handleEffort(line.slice('/effort'.length).trim());
+        continue;
+      }
+      if (line === '/budget' || line.startsWith('/budget ')) {
+        await handleBudget(line.slice('/budget'.length).trim());
         continue;
       }
       if (line === '/status') {

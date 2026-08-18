@@ -129,8 +129,8 @@ export interface AnalyzeOptions {
   wanted?: string;
   /** Present when the author ticked the box. Absent is the cheap path. */
   source?: SourceAccess;
-  /** Cap on tool-call iterations for the source path. */
-  maxSteps?: number;
+  /** Runaway backstop on tool-call iterations for the source path. */
+  maxIterations?: number;
 }
 
 /**
@@ -196,7 +196,7 @@ async function analyzeWithSource(
     permission: unattended(),
     system: `${SYSTEM}${WITH_SOURCE}`,
     registry,
-    maxSteps: opts.maxSteps ?? 24,
+    maxIterations: opts.maxIterations ?? 24,
   });
 
   const result = await agent.run(userPrompt(opts.evidence, opts.wanted, opts.redactor));

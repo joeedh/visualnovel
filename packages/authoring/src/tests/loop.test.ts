@@ -734,3 +734,131 @@ describe('the tool catalog', () => {
     }
   });
 });
+
+/**
+ * A backend that never finishes: every step reads a file and bills the same receipt, so the only
+ * thing that can end the turn is the meter.
+ */
+function meteredBackend(usage: {
+  input: number;
+  output: number;
+  cacheRead?: number;
+}): AgentBackend & { steps: number; systemSaid: string[] } {
+  const state = {
+    steps: 0,
+    systemSaid: [] as string[],
+    next(_system: string, messages: AgentMessage[]) {
+      state.steps++;
+      for (const m of messages) {
+        if (m.role === 'system') {
+          const text = String(m.content);
+          if (!state.systemSaid.includes(text)) state.systemSaid.push(text);
+        }
+      }
+      return Promise.resolve({ actions: [{ tool: 'list_workspace', args: {} }], usage });
+    },
+  };
+  return state;
+}
+
+describe('the turn budget', () => {
+  it('stops when the non-cached spend passes the ceiling, and says what it cost', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = meteredBackend({ input: 20_000, output: 5_000 });
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        budget: '50k',
+      });
+      const res = await agent.run('go');
+      // 25k a step, so the third step is the one that finds the meter already at 50k.
+      expect(backend.steps).toBe(2);
+      expect(res.final).toContain('Out of budget');
+      expect(res.final).toContain('50,000');
+      expect(res.final).toContain('(50k)');
+      expect(res.final).toContain('Nothing has been written');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('does not charge for what the cache read back', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      // 100k of input, 99k of it re-sent cached prefix: 1k fresh plus 1k out is 2k a step.
+      const backend = meteredBackend({ input: 100_000, output: 1_000, cacheRead: 99_000 });
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        budget: '50k',
+      });
+      await agent.run('go');
+      expect(backend.steps).toBe(25);
+    } finally {
+      await cleanup();
+    }
+    // Twenty-five real dispatches against a project on disk: slow enough to trip the default
+    // timeout when jest is running every project at once.
+  }, 20_000);
+
+  it('warns once at four fifths, as a system message rather than an edited prefix', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = meteredBackend({ input: 8_000, output: 2_000 });
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        budget: '50k',
+      });
+      await agent.run('go');
+      const warnings = backend.systemSaid.filter((t) => t.startsWith('BUDGET:'));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('10,000 tokens remain');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('never trips when unlimited — the iteration cap is what catches a runaway', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = meteredBackend({ input: 1_000_000, output: 1_000_000 });
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        budget: 'unlimited',
+        maxIterations: 4,
+      });
+      const res = await agent.run('go');
+      expect(backend.steps).toBe(4);
+      expect(res.final).toContain('4 steps without finishing');
+      expect(res.final).toContain('runaway');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('takes a new ceiling between turns, and reports the one in force', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = meteredBackend({ input: 60_000, output: 0 });
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      expect(agent.currentBudget).toBe('200k');
+      agent.setBudget('50k');
+      expect(agent.currentBudget).toBe('50k');
+      const res = await agent.run('go');
+      expect(res.final).toContain('(50k)');
+    } finally {
+      await cleanup();
+    }
+  });
+});

@@ -28,6 +28,8 @@ export {
   type Effort,
   type EffortChoice,
 } from '@vn/providers';
+export { BUDGET_CHOICES, DEFAULT_BUDGET, budgetLabel, type BudgetChoice } from '@vn/types';
+import { type BudgetChoice } from '@vn/types';
 import {
   Agent,
   NativeAgentBackend,
@@ -109,6 +111,8 @@ export async function createAuthoringAgent(
   opts: {
     mock?: boolean;
     noNative?: boolean;
+    /** What one turn may spend, in non-cached tokens. Defaults to {@link DEFAULT_BUDGET}. */
+    budget?: BudgetChoice;
     onEvent?: (e: AgentEvent) => void;
   } = {},
 ): Promise<AuthoringSession> {
@@ -126,6 +130,7 @@ export async function createAuthoringAgent(
     ctx,
     permission,
     system: composeSystem(context),
+    ...(opts.budget ? { budget: opts.budget } : {}),
     onEvent: opts.onEvent,
   });
   return { agent, ctx, model };

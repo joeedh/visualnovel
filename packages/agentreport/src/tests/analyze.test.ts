@@ -177,10 +177,10 @@ describe('with the source', () => {
       backend,
       redactor: redactor(),
       source: source(),
-      maxSteps: 3,
+      maxIterations: 3,
     });
     expect(grepped).toHaveLength(3);
-    expect(report.fellBack).toContain('step limit');
+    expect(report.fellBack).toContain('3 steps without finishing');
   });
 });
 

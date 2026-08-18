@@ -15,6 +15,7 @@
  * registry — they drive the state machine rather than touch the workspace.
  */
 import { z } from 'zod';
+import { budgetTokens, charge, DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
 import type { AgentAction, AgentBackend, AgentMessage, ToolSpec } from './backend.js';
 import { joinSections, type SystemSection } from './context.js';
 import {
@@ -106,8 +107,17 @@ export interface AgentOptions {
   registry?: Map<string, Tool>;
   /** Starting mode; defaults to plan (read-only). */
   mode?: AgentMode;
-  /** Safety cap on tool-call iterations per `run`. */
-  maxSteps?: number;
+  /**
+   * What one `run` may spend before the agent is told to wrap up, in non-cached tokens.
+   * Defaults to {@link DEFAULT_BUDGET}; `unlimited` removes the ceiling but not the backstop.
+   */
+  budget?: BudgetChoice;
+  /**
+   * The runaway backstop, in steps. Defaults to {@link MAX_ITERATIONS}. Not a policy knob — a
+   * host that wants a turn to stop sooner sets `budget`; this is only what catches a loop the
+   * meter cannot see, because the backend reports no usage.
+   */
+  maxIterations?: number;
   /** Optional live event sink (the REPL renders these as they happen). */
   onEvent?: (event: AgentEvent) => void;
 }
@@ -150,6 +160,23 @@ const ALWAYS_LOADED = new Set([
   'search',
   'list_workspace',
 ]);
+
+/**
+ * The runaway backstop, and deliberately not a policy — the policy is the token budget. It has to
+ * exist because a backend that reports no usage (a mock, a provider without receipts) spends zero
+ * against any budget and would otherwise loop until the process died. `unlimited` means unlimited
+ * *budget*; it is still backstopped.
+ */
+const MAX_ITERATIONS = 200;
+
+/** What the model is told as the ceiling comes into view. The instruction, not the number alone. */
+function budgetWarning(left: number): string {
+  return (
+    `BUDGET: about ${left.toLocaleString()} tokens remain this turn. Stop starting new work. ` +
+    'Finish and commit what is in progress, then reply telling the author exactly what landed ' +
+    'and what is left.'
+  );
+}
 
 /** How the mode is stated to the model. The whole sentence, so re-filing it re-states the rule. */
 function modeMessage(mode: AgentMode): string {
@@ -214,7 +241,10 @@ export class Agent {
   private readonly permission: Permission;
   private system: string;
   private readonly registry: Map<string, Tool>;
-  private readonly maxSteps: number;
+  private budget: number;
+  /** Which choice {@link budget} came from — what a sentence about running out quotes. */
+  private budgetChoice: BudgetChoice;
+  private readonly maxIterations: number;
   private readonly onEvent?: (event: AgentEvent) => void;
   private readonly messages: AgentMessage[] = [];
   /** Workspace-relative paths the agent has written since the last commit (commit scope). */
@@ -243,7 +273,9 @@ export class Agent {
     this.system = opts.system;
     this.registry = opts.registry ?? createRegistry();
     this.mode = opts.mode ?? 'plan';
-    this.maxSteps = opts.maxSteps ?? 24;
+    this.budgetChoice = opts.budget ?? DEFAULT_BUDGET;
+    this.budget = budgetTokens(this.budgetChoice);
+    this.maxIterations = opts.maxIterations ?? MAX_ITERATIONS;
     this.onEvent = opts.onEvent;
   }
 
@@ -259,6 +291,17 @@ export class Agent {
    */
   setMode(mode: AgentMode): void {
     this.mode = mode;
+  }
+
+  /** What one turn may spend from here on. Mid-turn it changes nothing; the meter is per run. */
+  setBudget(choice: BudgetChoice): void {
+    this.budgetChoice = choice;
+    this.budget = budgetTokens(choice);
+  }
+
+  /** The ceiling currently bound. */
+  get currentBudget(): BudgetChoice {
+    return this.budgetChoice;
   }
 
   /**
@@ -377,8 +420,10 @@ export class Agent {
     }
     const tools = this.toolSpecs();
     this.stopped = false;
+    let spent = 0;
+    let warned = false;
 
-    for (let step = 0; step < this.maxSteps; step++) {
+    for (let step = 0; step < this.maxIterations; step++) {
       // Between steps, so a stop lands after the tool in flight rather than during it.
       if (this.stopped) {
         const text = 'Stopped at your request.';
@@ -387,9 +432,17 @@ export class Agent {
         return { final: text, mode: this.mode, events };
       }
 
+      // The same rule `stop()` follows, for the same reason: a budget exhausted mid-reply still
+      // dispatches every call in that reply, because a `tool_use` the transcript never answers
+      // is a request the API will refuse to continue.
+      if (spent >= this.budget) return this.ranOut(this.spentSentence(spent), emit, events);
+
       const turn = await this.backend.next(this.system, this.messages, tools);
       // Before the narration: the call is already paid for whether or not it said anything useful.
-      if (turn.usage) emit({ type: 'usage', ...turn.usage });
+      if (turn.usage) {
+        spent += charge(turn.usage);
+        emit({ type: 'usage', ...turn.usage });
+      }
 
       const actions = turn.actions ?? [];
       // One assistant message per step. `raw` when the provider sent blocks — echoing them back
@@ -420,11 +473,51 @@ export class Agent {
           ...(action.id ? { toolUseId: action.id } : {}),
         });
       }
+
+      // After the observations, never between a call and its answer. Filed as a `{role: 'system'}`
+      // message like everything else that changes mid-conversation, so it costs one cache write
+      // and invalidates nothing.
+      if (!warned && spent >= this.budget * 0.8) {
+        warned = true;
+        this.messages.push({
+          role: 'system',
+          content: budgetWarning(Math.max(0, this.budget - spent)),
+        });
+      }
     }
 
-    const text = 'Reached the step limit before finishing; stopping to avoid looping.';
+    return this.ranOut(
+      `Reached ${this.maxIterations} steps without finishing, which is a runaway rather than a ` +
+        'budget — nothing is left to spend here until you say what to do next.',
+      emit,
+      events,
+    );
+  }
+
+  /**
+   * How a turn that could not finish reports. It names what was spent and what is on disk since
+   * the last commit, because falling out of a loop is otherwise indistinguishable from finishing
+   * and the host files whatever comes back as the turn's answer.
+   */
+  private ranOut(why: string, emit: (event: AgentEvent) => void, events: AgentEvent[]): RunResult {
+    const written = this.editedPaths.size
+      ? ` Written since the last commit: ${[...this.editedPaths].join(', ')}.`
+      : ' Nothing has been written since the last commit.';
+    const text = `${why}${written} Say “continue” to keep going, or raise the turn budget.`.replace(
+      /\s+/g,
+      ' ',
+    );
+    this.messages.push({ role: 'assistant', content: text });
     emit({ type: 'final', text });
     return { final: text, mode: this.mode, events };
+  }
+
+  /** The sentence a budget-exhausted turn opens with. */
+  private spentSentence(spent: number): string {
+    return (
+      `Out of budget for this turn — spent ${spent.toLocaleString()} of ` +
+      `${this.budget.toLocaleString()} non-cached tokens (${this.budgetChoice}).`
+    );
   }
 
   /** Gate + execute one action; return the observation text to feed back to the model. */

@@ -3,6 +3,7 @@ export * from './prompt.js';
 export * from './tasks.js';
 export * from './providers.js';
 export * from './textmodels.js';
+export * from './budget.js';
 export * from './model.js';
 export * from './notifications.js';
 export * from './schemas.js';

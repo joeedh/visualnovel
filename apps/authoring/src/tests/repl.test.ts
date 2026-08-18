@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeProject } from '@vn/testkit';
 import { renderDiff, renderEvent, renderPlan, renderTokens } from '../render.js';
+import { main } from '../index.js';
 import { runRepl, terminalPermission, type Channel } from '../repl.js';
 
 /** A scripted channel: feeds fixed answers, records everything written/asked. */
@@ -230,5 +231,37 @@ describe('runRepl (offline)', () => {
     } finally {
       await cleanup();
     }
+  });
+
+  it('sets the turn budget from a command, and unlike the others it works under --mock', async () => {
+    const { dir, cleanup } = await tempProject();
+    try {
+      const { channel, out } = scriptChannel(['/budget 400k', '/budget 3k', '/exit']);
+      const code = await runRepl({ dir, mock: true, channel });
+      const text = out.join('\n');
+      expect(code).toBe(0);
+      expect(text).not.toContain('unknown command');
+      expect(text).toContain('Turn budget set to 400k');
+      expect(text).toContain('Unknown budget "3k"');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('vnauthor argv', () => {
+  it('refuses a budget that is not one of the offered sizes', async () => {
+    const wrote: string[] = [];
+    const original = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string) => {
+      wrote.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      expect(await main(['--budget', '17k'])).toBe(2);
+    } finally {
+      process.stderr.write = original;
+    }
+    expect(wrote.join('')).toContain('--budget takes one of');
   });
 });
