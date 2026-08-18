@@ -6,7 +6,7 @@
  */
 import type { Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
-import { reachableScenes, usedCharacters, usedLocationVariants, usedOutfits } from '../used.js';
+import { allCharacters, allLocationVariants, reachableScenes, usedOutfits } from '../used.js';
 
 const shot = (id: string, sceneId: string, subjects: Shot['subjects']): Shot => ({
   id,
@@ -26,24 +26,24 @@ describe('reachableScenes', () => {
   });
 });
 
-describe('usedCharacters', () => {
-  it('takes the cast of reachable scenes only', () => {
+describe('allCharacters', () => {
+  it('draws everyone the project authored, cast or not', () => {
     const m = model(
-      [character('aiko'), character('ren'), character('unused')],
+      [character('aiko'), character('ren'), character('uncast')],
       [scene('a', ['aiko'], 'cafe'), scene('dead', ['ren'], 'cafe')],
       [location('cafe')],
     );
     m.reachable = new Set(['a']);
-    expect(usedCharacters(m).map((c) => c.id)).toEqual(['aiko']);
+    expect(allCharacters(m).map((c) => c.id)).toEqual(['aiko', 'ren', 'uncast']);
   });
 
-  it('drops a cast id the model does not have, rather than yielding a hole', () => {
+  it('yields no hole for a cast id the model does not have', () => {
     const m = model(
       [character('aiko')],
       [scene('a', ['aiko', 'ghost'], 'cafe')],
       [location('cafe')],
     );
-    expect(usedCharacters(m).map((c) => c.id)).toEqual(['aiko']);
+    expect(allCharacters(m).map((c) => c.id)).toEqual(['aiko']);
   });
 });
 
@@ -89,31 +89,31 @@ describe('usedOutfits', () => {
   });
 });
 
-describe('usedLocationVariants', () => {
-  it('takes every declared variant of a used location, not just the ones scenes name', () => {
+describe('allLocationVariants', () => {
+  it('takes every declared variant, not just the ones scenes name', () => {
     const cafe = location('cafe');
     cafe.variants = [
       { id: 'day', description: '' },
       { id: 'night', description: '' },
     ];
     const m = model([], [scene('a', [], 'cafe')], [cafe]);
-    expect([...(usedLocationVariants(m).get('cafe') ?? [])]).toEqual(['day', 'night']);
+    expect([...(allLocationVariants(m).get('cafe') ?? [])]).toEqual(['day', 'night']);
   });
 
   it('falls back to a day variant for a location that declares none', () => {
     const bare = location('cafe');
     bare.variants = [];
     const m = model([], [scene('a', [], 'cafe')], [bare]);
-    expect([...(usedLocationVariants(m).get('cafe') ?? [])]).toEqual(['day']);
+    expect([...(allLocationVariants(m).get('cafe') ?? [])]).toEqual(['day']);
   });
 
-  it('skips a location no reachable scene sits in, and one the model does not have', () => {
+  it('plates a location no reachable scene sits in, and invents none the model lacks', () => {
     const m = model(
       [],
       [scene('a', [], 'cafe'), scene('dead', [], 'roof'), scene('b', [], 'nowhere')],
       [location('cafe'), location('roof')],
     );
     m.reachable = new Set(['a', 'b']);
-    expect([...usedLocationVariants(m).keys()]).toEqual(['cafe']);
+    expect([...allLocationVariants(m).keys()]).toEqual(['cafe', 'roof']);
   });
 });

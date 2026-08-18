@@ -27,10 +27,10 @@
 import type { AnyTask, AssetRef, RefBinding, Scene, Shot, TaskInputs, TaskStatus } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import {
+  allCharacters,
+  allLocationVariants,
   outfitFor,
   reachableScenes,
-  usedCharacters,
-  usedLocationVariants,
   usedOutfits,
 } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
@@ -272,10 +272,10 @@ export interface SlotGraph {
 export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
   const bindings: RefBinding[] = [];
 
-  for (const [locationId, variants] of usedLocationVariants(ctx.model))
+  for (const [locationId, variants] of allLocationVariants(ctx.model))
     for (const variant of variants) bindings.push({ kind: 'plate', locationId, variant });
 
-  for (const character of usedCharacters(ctx.model))
+  for (const character of allCharacters(ctx.model))
     bindings.push({ kind: 'portrait', characterId: character.id });
 
   const shots = new Map<string, readonly Shot[]>();

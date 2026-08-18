@@ -77,11 +77,20 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
   `plate:<loc>/<variant>`, `shot:<scene>/<shot>` — with `refsOfSlot` as the edge rule and the
   planner's real task identity attached only to the slots the project can currently state one for.
   `buildSlotGraph` and the planner **must enumerate the same set**, which is why
-  `reachableScenes`/`usedCharacters`/`usedOutfits`/`usedLocationVariants` were lifted into
+  `reachableScenes`/`allCharacters`/`usedOutfits`/`allLocationVariants` were lifted into
   `@vn/model`'s `used.ts` and both sides call them; a test plans a mock project to exhaustion and
   asserts the two agree in both directions. `SlotGraph.order` is topological, upstream first —
   which is the order approval has to happen in. Never derive edges from `Task.deps`: it is
   documented as incomplete and is not hashed.
+- **A portrait and a plate are owed to whoever authored a sheet; a model sheet is not.** P2 and P3
+  enumerate over `allLocationVariants`/`allCharacters` — **every** authored location and character,
+  cast or not — because a cast sheet exists to be looked at and an author draws the cast before
+  writing scenes for it. P4 still fans out over `usedOutfits`, so an uncast character plans no
+  sheets even once approved: a portrait is one image call, a sheet is three per outfit and exists to
+  be referenced by a shot that does not exist yet. The gate is untouched — `gateStatus` keeps its
+  own reachable-scene walk, so an uncast character's unapproved portrait halts nothing, and it
+  surfaces instead in the tree's *Awaiting approval* branch. Plan:
+  [`plans/drawing-a-character-before-a-scene-casts-them.md`](plans/drawing-a-character-before-a-scene-casts-them.md).
 - **`SlotNode.approved` is two different things wearing one word, deliberately.** A `portrait:`
   slot is approved when the character's `approvedPortrait` names it — that is the P3 gate, read
   from the model — and every other slot when the asset filling it has `accepted === true`.
@@ -203,7 +212,9 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
   before writing a word of it. Unlike every other scene edit this one **does** re-render, and
   deliberately — the outfit is part of `buildShotPrompt`, so changing it rehashes exactly the
   shots it reaches and no others. The sheet fan-out follows from the same function: `usedOutfits`
-  in the planner is `{defaultOutfit} ∪ {scene markers} ∪ {shot overrides}` over reachable scenes,
+  in the planner is `{defaultOutfit} ∪ {scene markers} ∪ {shot overrides}` over reachable scenes —
+  and a character no reachable scene casts has **no entry at all**, which is what keeps drawing
+  every authored portrait from also drawing every authored turnaround —
   which is exactly `outfitFor`'s range over the model, so authoring an outfit nothing wears costs
   nothing and a shot can never depend on a sheet nothing planned. A subject out of its default
   takes that outfit's **front** sheet as a reference and depends on its task — one angle, because a

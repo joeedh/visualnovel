@@ -343,6 +343,101 @@ describe('the Unapproved branch', () => {
   });
 });
 
+/**
+ * A project that re-rendered a portrait four times has four rows named `Aiko`, three of which
+ * nobody will look at again. The slot graph already knows which one is current, so the branch asks
+ * it — and files the rest in a collapsed child rather than dropping them, because deleting one is a
+ * right-click on the row itself.
+ */
+describe('the Assets branch, pruned by slot', () => {
+  const HASH_A = 'a'.repeat(64);
+  const HASH_B = 'b'.repeat(64);
+  const OLD = 'c'.repeat(64);
+
+  const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
+    key,
+    binding,
+    label: key,
+    refs: [],
+    candidates: [],
+    approved: false,
+    ...over,
+  });
+
+  const slots = (nodes: SlotNode[]): SlotGraph => ({
+    nodes: new Map(nodes.map((n) => [n.key, n])),
+    dependents: new Map(),
+    order: nodes.map((n) => n.key),
+  });
+
+  /** The default manifest plus one older portrait take, and the slot that moved on from it. */
+  const withOldTake = (over: Partial<SlotNode> = {}) => {
+    const base = makeInput();
+    const portrait = slot(
+      'portrait:aiko',
+      { kind: 'portrait', characterId: 'aiko' },
+      {
+        candidates: [HASH_A, OLD],
+        hash: HASH_A,
+        ...over,
+      },
+    );
+    return buildDocTree({
+      ...base,
+      manifest: [...base.manifest, asset(OLD)],
+      slots: slots([portrait]),
+    });
+  };
+
+  const kinds = (tree: { roots: DocNode[] }) => branch(tree.roots, 'branch:assets').children!;
+
+  it('files an older take under Superseded and counts the heading by what it draws', () => {
+    const portraits = kinds(withOldTake())[0]!;
+    expect(portraits.label).toBe('Portraits (1)');
+    expect(portraits.children!.map((n) => n.id)).toEqual([
+      `asset:${HASH_A}`,
+      'superseded:portrait',
+    ]);
+    const attic = portraits.children![1]!;
+    expect(attic.label).toBe('Superseded (1)');
+    expect(attic.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
+    // A pathless row that will not say what it holds is the tooltip rule's own bug.
+    expect(attic.note).toBeTruthy();
+  });
+
+  it('supersedes neither of two candidates a slot could not choose between', () => {
+    // `pick` declines on a tie, so both are still live — burying one would bury a picture the
+    // author is being asked to choose.
+    const portraits = kinds(withOldTake({ hash: undefined }))[0]!;
+    expect(portraits.label).toBe('Portraits (2)');
+    expect(portraits.children!.map((n) => n.id)).toEqual([`asset:${HASH_A}`, `asset:${OLD}`]);
+  });
+
+  it('keeps an asset no slot mentions, because silence is not a verdict', () => {
+    // A concept is bound to what it sketches and never planned, so no slot ever names it.
+    const base = makeInput();
+    const sketch = asset(OLD, { kind: 'concept' });
+    const tree = buildDocTree({
+      ...base,
+      manifest: [...base.manifest, sketch],
+      slots: slots([
+        slot('portrait:aiko', { kind: 'portrait', characterId: 'aiko' }, { candidates: [HASH_A] }),
+      ]),
+    });
+    const concepts = kinds(tree).find((n) => n.id === 'assetkind:concept')!;
+    expect(concepts.label).toBe('Concepts (1)');
+    expect(concepts.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
+  });
+
+  it('is exactly what it always was without a slot graph', () => {
+    const plain = kinds(buildDocTree(makeInput()));
+    expect(plain.map((n) => [n.label, n.children!.map((c) => c.id)])).toEqual([
+      ['Portraits (1)', [`asset:${HASH_A}`]],
+      ['Shot frames (1)', [`asset:${HASH_B}`]],
+    ]);
+  });
+});
+
 describe('backlinks', () => {
   const { backlinks } = buildDocTree(makeInput());
 

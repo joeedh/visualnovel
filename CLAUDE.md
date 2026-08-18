@@ -116,6 +116,12 @@ with the failure it prevents: [`docs/pipeline-contracts.md`](docs/pipeline-contr
   `unavailable` and the planner plans **nothing**. ([`docs/asset-stores.md`](docs/asset-stores.md))
 - **Gate-as-barrier.** The P3 character-approval gate is a planner predicate, not a task
   dependency: a run halts with nothing ready. Scenes with no cast render immediately.
+- **A portrait and a plate are owed to whoever authored a sheet; a model sheet is not** — P2/P3
+  enumerate every authored location and character (`allLocationVariants`/`allCharacters`), because a
+  cast sheet exists to be looked at and an author draws the cast before writing scenes for it, while
+  P4 still fans out over `usedOutfits` so an uncast character costs no turnarounds. `gateStatus`
+  keeps its own reachable-scene walk, so an uncast unapproved portrait halts nothing.
+  ([`docs/plans/drawing-a-character-before-a-scene-casts-them.md`](docs/plans/drawing-a-character-before-a-scene-casts-them.md))
 - **Incremental planning.** The planner runs once per wave, so `vngen cost` counts only
   _currently-plannable_ work and undercounts what a later wave unlocks.
 - **The whole graph is a graph of slots, not of task hashes** — a shot cannot be hashed before its
@@ -290,6 +296,12 @@ plays it. This is deliberately **not** an external DSL export.
 - **An asset is named, and one pane answers for it** — the document tree labels assets by what
   they are, and the asset editor shows the derived prompt read-only beside editable art notes.
   ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
+- **An older take is filed rather than listed, and the slot graph says which one is old** — each
+  `assetkind:` group keeps what fills a slot **now** and puts the rest under a collapsed
+  `superseded:<kind>` child. "Now" is `SlotNode.hash`, or **every** candidate where it did not
+  resolve, because `pick` declines on a tie; an asset no slot mentions stays put, silence being no
+  verdict. Without a slot graph the branch is what it always was.
+  ([`docs/plans/superseded-assets-in-the-document-tree.md`](docs/plans/superseded-assets-in-the-document-tree.md))
 - **A picture the project planned can be replaced by a file, and the slot is never typed** —
   `asset.replace` reads it off the asset on screen. `AssetInfo.slot` means the slot these bytes fill
   **now**, so a concept, an upload and a render something later superseded all offer nothing.

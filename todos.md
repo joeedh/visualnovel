@@ -17,7 +17,7 @@
 	 iconsheet svg icon with a css animation) with a tooltip explaining the pipeline is running 
 	 and how many tasks are left.
 [x]: the document tree's arrays need to be 3x larger, they are too small.
-[ ]: the pipeline should render character portraits even if the characters aren't used in a scene yet. 
+[x]: the pipeline should render character portraits even if the characters aren't used in a scene yet. 
      it should also do the same with locations.
 [x]: On asking the model 'how do I write a dialog line so it's picked up by the pipeline' I got the error
      'I couldn't produce a valid action (no JSON found in model output)' fix it
@@ -54,7 +54,7 @@
 [x]: clicking run pipeline (in the main menu or the header button) should display a message 
      if it cannot run (e.g. the agent is running?).
 [x]: when an asset becomes stale it should not be marked as 'accepted' in the document tree.
-[ ]: can the document tree's asset subtree use asset slots instead of hashes to prune out old/rejected
+[x]: can the document tree's asset subtree use asset slots instead of hashes to prune out old/rejected
      assets?
 [x]: you should be able to right click a line and get a menu with 'open shot asset'.
 [x]: the agent should be provided the active scene (if it's not already).

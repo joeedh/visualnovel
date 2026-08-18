@@ -1,4 +1,4 @@
-import { projectConfig, type Shot } from '@vn/types';
+import { projectConfig, type ProjectModel, type Shot } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
 import { createMockProviders } from '@vn/providers';
 import { character, location, model, scene } from '@vn/testkit';
@@ -443,6 +443,51 @@ describe('planTasks (gate-as-barrier)', () => {
     const providers = createMockProviders();
     await planTasks({ model: m, graph, config, providers });
     expect(graph.all().some((t) => t.kind === 'model_sheet')).toBe(true);
+  });
+});
+
+/**
+ * A portrait and a plate are owed to whoever authored a sheet, because that is what an author asks
+ * the pipeline for first. A model sheet is not: it is three image calls that exist to be referenced
+ * by a shot, so it still waits for something to put the character in an outfit.
+ */
+describe('planTasks (drawing what no scene has used yet)', () => {
+  const inputsOf = (graph: TaskGraph, kind: string): Record<string, unknown>[] =>
+    graph
+      .all()
+      .filter((t) => t.kind === kind)
+      .map((t) => t.inputs as Record<string, unknown>);
+
+  const plan = async (m: ProjectModel): Promise<TaskGraph> => {
+    const graph = new TaskGraph();
+    await planTasks({ model: m, graph, config, providers: createMockProviders() });
+    return graph;
+  };
+
+  it('draws a character no scene has cast', async () => {
+    const m = model(
+      [character('aiko', 'draft'), character('uncast', 'draft')],
+      [scene('s1', ['aiko'], 'class')],
+      [location('class')],
+    );
+    const drawn = inputsOf(await plan(m), 'portrait').map((i) => i.characterId);
+    expect(drawn.sort()).toEqual(['aiko', 'uncast']);
+  });
+
+  it('plates a location no scene sits in', async () => {
+    const m = model([], [scene('s1', [], 'class')], [location('class'), location('rooftop')]);
+    const plated = inputsOf(await plan(m), 'location_ref').map((i) => i.locationId);
+    expect(plated.sort()).toEqual(['class', 'rooftop']);
+  });
+
+  it('still leaves an uncast character with no model sheets, approved or not', async () => {
+    const m = model(
+      [character('aiko', 'approved', 'h1'), character('uncast', 'approved', 'h2')],
+      [scene('s1', ['aiko'], 'class')],
+      [location('class')],
+    );
+    const dressed = inputsOf(await plan(m), 'model_sheet').map((i) => i.characterId);
+    expect(new Set(dressed)).toEqual(new Set(['aiko']));
   });
 });
 

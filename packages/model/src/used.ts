@@ -1,10 +1,15 @@
 /**
- * What a run actually needs, enumerated from the model alone.
+ * What a run draws, enumerated from the model alone.
  *
  * These four answers used to be private to `planTasks`, which was fine while the planner was the
  * only thing that wanted them. It is not any more: the slot graph promises every picture the
  * project implies, and a promise the planner never plans is the one bug that shape of graph can
  * have. So the enumeration lives here, above both, and there is exactly one of it.
+ *
+ * Two of them are scoped to the *story* and two to the *sheets*, and the split is the point: a
+ * portrait and a plate are owed to whoever authored one, because that is what an author asks the
+ * pipeline for first; a model sheet is three image calls that exist to be referenced, so it waits
+ * for a scene to reference them.
  *
  * All four are pure over a `ProjectModel` — no disk, no providers, no task graph.
  */
@@ -15,11 +20,16 @@ export function reachableScenes(model: ProjectModel): Scene[] {
   return [...model.scenes.values()].filter((s) => model.reachable.has(s.id));
 }
 
-/** Characters that appear in at least one reachable scene (everyone else is dead weight). */
-export function usedCharacters(model: ProjectModel): Character[] {
-  const ids = new Set<string>();
-  for (const scene of reachableScenes(model)) for (const id of scene.characters) ids.add(id);
-  return [...ids].map((id) => model.characters.get(id)).filter((c): c is Character => !!c);
+/**
+ * Every character the project authored, cast or not. A cast sheet exists to be looked at, so a
+ * portrait is owed to whoever has one — an author draws the cast, then writes scenes for the cast
+ * they have, and a character invisible until a scene names them has that backwards.
+ *
+ * Deliberately *not* the question the P3 gate asks. `gateStatus` keeps its own reachable-scene walk
+ * so an uncast character's unapproved portrait halts nothing.
+ */
+export function allCharacters(model: ProjectModel): Character[] {
+  return [...model.characters.values()];
 }
 
 /**
@@ -64,14 +74,16 @@ export function usedOutfits(
   return out;
 }
 
-/** Locations referenced by a reachable scene, paired with the variants those scenes use. */
-export function usedLocationVariants(model: ProjectModel): Map<string, Set<string>> {
+/**
+ * Every authored location paired with every variant it declares, whether or not a scene sits there
+ * yet — for the same reason as {@link allCharacters}. A location that declares no variants gets
+ * `day`, so a plate is planned for it rather than nothing.
+ */
+export function allLocationVariants(model: ProjectModel): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
-  for (const scene of reachableScenes(model)) {
-    const location = model.locations.get(scene.location);
-    if (!location) continue;
-    const set = out.get(location.id) ?? new Set<string>();
-    // Generate every declared variant for a used location so shots can pick any.
+  for (const location of model.locations.values()) {
+    const set = new Set<string>();
+    // Every declared variant, so a shot can pick any of them without a second wave.
     for (const v of location.variants.length ? location.variants : [{ id: 'day' }]) set.add(v.id);
     out.set(location.id, set);
   }

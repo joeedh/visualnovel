@@ -15,8 +15,8 @@ import type { Providers } from '@vn/types';
 import {
   outfitFor,
   reachableScenes,
-  usedCharacters,
-  usedLocationVariants,
+  allCharacters,
+  allLocationVariants,
   usedOutfits,
 } from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
@@ -194,8 +194,9 @@ export async function planTasks(opts: {
   const params = imageParams(config);
   const planned: AnyTask[] = [];
 
-  // P2: location reference plates — no upstream deps, always plannable.
-  for (const [locationId, variants] of usedLocationVariants(model)) {
+  // P2: location reference plates — no upstream deps, always plannable. Every authored location,
+  // not only the ones a scene sits in: a location sheet is asking for its plate.
+  for (const [locationId, variants] of allLocationVariants(model)) {
     const location = model.locations.get(locationId);
     if (!location) continue;
     for (const variant of variants) {
@@ -205,15 +206,16 @@ export async function planTasks(opts: {
 
   const wardrobe = usedOutfits(model);
 
-  // P3: one portrait task per used character (the human-approval gate sits on its output).
-  for (const character of usedCharacters(model)) {
+  // P3: one portrait task per authored character (the human-approval gate sits on its output).
+  for (const character of allCharacters(model)) {
     planned.push(graph.add(makeTask('portrait', portraitInputs(character, config, params))));
 
     // P4: model sheets derive from the *approved* portrait, so only after the gate — and only for
-    // the outfits something puts this character in, not for every one the sheet authors.
+    // the outfits something puts this character in, not for every one the sheet authors. An uncast
+    // character has no wardrobe entry at all, and `?? []` is what keeps that costing nothing.
     if (isApproved(character) && character.approvedPortrait) {
       const portraitRef: AssetRef = { hash: character.approvedPortrait, ext: PNG };
-      for (const outfit of wardrobe.get(character.id) ?? [character.defaultOutfit]) {
+      for (const outfit of wardrobe.get(character.id) ?? []) {
         for (const angle of MODEL_SHEET_ANGLES) {
           planned.push(
             graph.add(modelSheetTask(character, outfit, angle, portraitRef, config, params)),

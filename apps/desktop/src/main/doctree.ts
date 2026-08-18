@@ -189,32 +189,68 @@ function driftedImages(input: DocTreeInput): Set<string> {
   return stale;
 }
 
+/**
+ * The renders some slot has moved on from — an older take an accepted one replaced, or a portrait
+ * draft the gate passed over. Every candidate of every slot, minus what fills that slot *now*.
+ *
+ * "Now" is `hash` where the slot resolved, and **every** candidate where it did not: `pick` declines
+ * whenever the answer is not certain, so three undecided drafts are three live drafts rather than
+ * none, and calling them superseded would bury the very pictures waiting to be chosen between.
+ *
+ * An asset no slot mentions is **not** in here. The graph enumerates slots, so its silence about a
+ * concept, an upload, a reference or a base-root asset is not a verdict — pruning on silence would
+ * bury every sketch in the project.
+ */
+function supersededAssets(input: DocTreeInput): Set<string> {
+  const superseded = new Set<string>();
+  const current = new Set<string>();
+  for (const slot of input.slots?.nodes.values() ?? []) {
+    for (const hash of slot.candidates) superseded.add(hash);
+    if (slot.hash) current.add(slot.hash);
+    else for (const hash of slot.candidates) current.add(hash);
+  }
+  for (const hash of current) superseded.delete(hash);
+  return superseded;
+}
+
 function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const stale = driftedImages(input);
+  const superseded = supersededAssets(input);
   const byKind = new Map<AssetKind, Asset[]>();
   for (const asset of input.manifest) {
     const list = byKind.get(asset.kind);
     if (list) list.push(asset);
     else byKind.set(asset.kind, [asset]);
   }
+  // No `path` on an asset row: it is addressed by hash, and a path here would send a click down the
+  // document-opening route, which reads a file as text.
+  const row = (a: Asset): DocNode =>
+    node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
+      ...(stale.has(a.hash) ? { badge: 'stale' } : a.accepted ? { badge: 'accepted' } : {}),
+    });
+
   const groups = [...byKind.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([kind, assets]) =>
-      node(`assetkind:${kind}`, 'assetkind', `${ASSET_KIND_LABELS[kind]} (${assets.length})`, {
+    .map(([kind, assets]) => {
+      const live = assets.filter((a) => !superseded.has(a.hash));
+      const past = assets.filter((a) => superseded.has(a.hash));
+      // Collapsed rather than dropped: `defaultExpanded` opens only the roots, so these are out of
+      // the way but still reachable — deleting one is a right-click on the row itself.
+      const attic =
+        past.length === 0
+          ? []
+          : [
+              node(`superseded:${kind}`, 'branch', `Superseded (${past.length})`, {
+                note: 'Older takes something newer or accepted replaced. Still here to compare against or delete.',
+                children: capped(`superseded:${kind}`, past.map(row), cap),
+              }),
+            ];
+      // The heading counts what it draws; the attic counts its own.
+      return node(`assetkind:${kind}`, 'assetkind', `${ASSET_KIND_LABELS[kind]} (${live.length})`, {
         badge: isBaseKind(kind) ? 'base' : 'project',
-        children: capped(
-          `assetkind:${kind}`,
-          // No `path`: an asset is addressed by hash, and a path here would send a click down the
-          // document-opening route, which reads a file as text.
-          assets.map((a) =>
-            node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
-              ...(stale.has(a.hash) ? { badge: 'stale' } : a.accepted ? { badge: 'accepted' } : {}),
-            }),
-          ),
-          cap,
-        ),
-      }),
-    );
+        children: [...capped(`assetkind:${kind}`, live.map(row), cap), ...attic],
+      });
+    });
   return node('branch:assets', 'branch', 'Assets', { children: groups });
 }
 
