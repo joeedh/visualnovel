@@ -26,7 +26,13 @@ export function nodeKey(node: DocNode): string {
   return node.id.slice(node.id.indexOf(':') + 1);
 }
 
-/** Visible rows, in draw order. A collapsed node contributes one row and hides its subtree. */
+/**
+ * Visible rows, in draw order. A collapsed node contributes one row and hides its subtree.
+ *
+ * A `more` node is the one exception, and it is an exception about depth only: what a cap dropped
+ * are siblings of the rows above it, not children of the count, so expanding one continues the
+ * list at its own indent instead of nesting a copy of the branch inside itself.
+ */
 export function flattenTree(roots: readonly DocNode[], expanded: ReadonlySet<string>): DocRow[] {
   const rows: DocRow[] = [];
   const walk = (nodes: readonly DocNode[], depth: number): void => {
@@ -35,7 +41,7 @@ export function flattenTree(roots: readonly DocNode[], expanded: ReadonlySet<str
       const expandable = children.length > 0;
       const open = expandable && expanded.has(node.id);
       rows.push({ node, depth, expandable, expanded: open });
-      if (open) walk(children, depth + 1);
+      if (open) walk(children, node.kind === 'more' ? depth : depth + 1);
     }
   };
   walk(roots, 0);
@@ -71,7 +77,9 @@ function splitShot(key: string): { sceneId: string; shotId: string } {
 /**
  * What clicking a node selects. A grouping and a counted `more` name nothing the shell tracks, so
  * they return the selection **unchanged and identical** — a click meant to open a branch must not
- * cost the author their place, which is the same contract `selectionForTask` has.
+ * cost the author their place, which is the same contract `selectionForTask` has. That identity is
+ * also what lets the pane spend such a click on the twisty instead, which is how `more` shows what
+ * it counted.
  */
 export function selectionForNode(node: DocNode, current: Selection): Selection {
   const key = nodeKey(node);
@@ -399,11 +407,15 @@ export function renameOf(node: DocNode): { path: string; name: string } | undefi
  * What a row says on hover, and no row hovers silently. A path is the useful thing to say where
  * there is one; the rest is what a row with no file says instead.
  *
- * The two facts the tree adds to the node are the arguments, because neither is on `DocNode`:
- * `renamable` is `renameOf(node) !== undefined`, and `sheetless` is a location known only from a
- * scene heading — its second click writes a sheet rather than renaming one.
+ * The three facts the tree adds to the node are the arguments, because none is on `DocNode`:
+ * `renamable` is `renameOf(node) !== undefined`, `sheetless` is a location known only from a
+ * scene heading — its second click writes a sheet rather than renaming one — and `expanded` is
+ * the row's own state, which only a counted stand-in has anything to say about.
  */
-export function rowTitle(node: DocNode, opts: { renamable: boolean; sheetless: boolean }): string {
+export function rowTitle(
+  node: DocNode,
+  opts: { renamable: boolean; sheetless: boolean; expanded: boolean },
+): string {
   if (node.path) {
     return opts.renamable ? `${node.path} — double-click the name to rename it` : node.path;
   }
@@ -413,9 +425,11 @@ export function rowTitle(node: DocNode, opts: { renamable: boolean; sheetless: b
     return 'Show or hide what is filed under this heading';
   }
   if (node.kind === 'more') {
-    return 'More than the tree will draw at once — narrow it, or open the folder itself';
+    return opts.expanded
+      ? 'Hide the rest of this list again'
+      : 'More than the tree draws at once — click to show the rest';
   }
-  return `Select this ${node.kind} — every pane showing one follows the click`;
+  return `Open this ${node.kind} in its editor`;
 }
 
 /** Whether the shared selection names this node — the highlight, for both modes at once. */

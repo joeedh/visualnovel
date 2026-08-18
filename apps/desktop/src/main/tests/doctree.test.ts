@@ -216,6 +216,9 @@ describe('buildDocTree', () => {
     const shots = branch(capped.roots, 'branch:story').children![0]!.children!;
     expect(shots.map((n) => n.label)).toEqual(['s0', 's1', '… and 3 more']);
     expect(shots[2]!.kind).toBe('more');
+    // Counted *and* carried: the cap is about what the tree draws at rest, not about what it is
+    // allowed to know, so the rest is one click away rather than gone.
+    expect(shots[2]!.children!.map((n) => n.label)).toEqual(['s2', 's3', 's4']);
   });
 });
 
@@ -360,12 +363,6 @@ describe('the Unapproved branch', () => {
   });
 });
 
-/**
- * A project that re-rendered a portrait four times has four rows named `Aiko`, three of which
- * nobody will look at again. The slot graph already knows which one is current, so the branch asks
- * it — and files the rest in a collapsed child rather than dropping them, because deleting one is a
- * right-click on the row itself.
- */
 describe('the Skills branch', () => {
   const skill = (over: Partial<SkillEntry> = {}): SkillEntry => ({
     id: 'continuity-pass',
@@ -458,7 +455,13 @@ describe('the Skills branch', () => {
   });
 });
 
-describe('the Assets branch, pruned by slot', () => {
+/**
+ * A project that re-rendered a portrait four times has four rows named `Aiko`, three of which
+ * nobody will look at again. The slot graph already knows which one fills the slot, so the branch
+ * asks it and draws one row per *slot*, with the takes it moved on from folded underneath —
+ * dropped nowhere, because deleting one is a right-click on the row itself.
+ */
+describe('the Assets branch, one row per slot', () => {
   const HASH_A = 'a'.repeat(64);
   const HASH_B = 'b'.repeat(64);
   const OLD = 'c'.repeat(64);
@@ -500,26 +503,41 @@ describe('the Assets branch, pruned by slot', () => {
 
   const kinds = (tree: { roots: DocNode[] }) => branch(tree.roots, 'branch:assets').children!;
 
-  it('files an older take under Superseded and counts the heading by what it draws', () => {
+  it('folds an earlier take under the picture that replaced it, and counts rows', () => {
     const portraits = kinds(withOldTake())[0]!;
+    // One row, because one slot — the heading counts what it draws, and two takes of one portrait
+    // are one thing to look at.
     expect(portraits.label).toBe('Portraits (1)');
-    expect(portraits.children!.map((n) => n.id)).toEqual([
-      `asset:${HASH_A}`,
-      'superseded:portrait',
-    ]);
-    const attic = portraits.children![1]!;
-    expect(attic.label).toBe('Superseded (1)');
-    expect(attic.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
-    // A pathless row that will not say what it holds is the tooltip rule's own bug.
-    expect(attic.note).toBeTruthy();
+    expect(portraits.children!.map((n) => n.id)).toEqual([`asset:${HASH_A}`]);
+
+    const current = portraits.children![0]!;
+    expect(current.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
+    // The row has to say that a second click is what opens that — nothing else in the tree
+    // behaves this way, and a row that will not explain itself is the tooltip rule's own bug.
+    expect(current.note).toContain('click again to see history');
+    expect(current.children![0]!.note).toContain('earlier take');
   });
 
-  it('supersedes neither of two candidates a slot could not choose between', () => {
-    // `pick` declines on a tie, so both are still live — burying one would bury a picture the
-    // author is being asked to choose.
+  it('opens on the newest take where the slot could not choose between them', () => {
+    // `pick` declines on a tie. Manifest order is the only record of when a picture was made, so
+    // the newest is what the row opens on — which is not a verdict: both candidates are still
+    // listed one per row in the Unapproved branch, where the choosing actually happens.
     const portraits = kinds(withOldTake({ hash: undefined }))[0]!;
-    expect(portraits.label).toBe('Portraits (2)');
-    expect(portraits.children!.map((n) => n.id)).toEqual([`asset:${HASH_A}`, `asset:${OLD}`]);
+    expect(portraits.label).toBe('Portraits (1)');
+    expect(portraits.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
+    expect(portraits.children![0]!.children!.map((n) => n.id)).toEqual([`asset:${HASH_A}`]);
+  });
+
+  it('files a picture two slots claim under the first of them', () => {
+    // A sheet bound to two outfits is one render; drawing it twice would make the manifest look
+    // twice the size it is, and `SlotGraph.order` is what decides which row gets it.
+    const base = makeInput();
+    const both = ['portrait:aiko', 'portrait:aiko-again'].map((key) =>
+      slot(key, { kind: 'portrait', characterId: 'aiko' }, { candidates: [HASH_A], hash: HASH_A }),
+    );
+    const portraits = kinds(buildDocTree({ ...base, slots: slots(both) }))[0]!;
+    expect(portraits.label).toBe('Portraits (1)');
+    expect(portraits.children![0]!.note).toContain('portrait:aiko.');
   });
 
   it('keeps an asset no slot mentions, because silence is not a verdict', () => {
@@ -538,7 +556,7 @@ describe('the Assets branch, pruned by slot', () => {
     expect(concepts.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
   });
 
-  it('is exactly what it always was without a slot graph', () => {
+  it('is a flat list of everything without a slot graph', () => {
     const plain = kinds(buildDocTree(makeInput()));
     expect(plain.map((n) => [n.label, n.children!.map((c) => c.id)])).toEqual([
       ['Portraits (1)', [`asset:${HASH_A}`]],

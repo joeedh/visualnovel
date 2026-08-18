@@ -86,6 +86,46 @@ describe('flattenTree', () => {
   });
 });
 
+describe('a counted `more`', () => {
+  const CAPPED: DocNode[] = [
+    node('branch:story', 'branch', {
+      children: [
+        node('scene:a', 'scene'),
+        node('more:branch:story', 'more', {
+          label: '… and 2 more',
+          children: [node('scene:b', 'scene'), node('scene:c', 'scene')],
+        }),
+      ],
+    }),
+  ];
+
+  it('is one row until it is opened', () => {
+    expect(flattenTree(CAPPED, new Set(['branch:story'])).map((r) => r.node.id)).toEqual([
+      'branch:story',
+      'scene:a',
+      'more:branch:story',
+    ]);
+  });
+
+  it('continues the list at its own depth rather than nesting a branch inside itself', () => {
+    const open = flattenTree(CAPPED, new Set(['branch:story', 'more:branch:story']));
+    expect(open.map((r) => [r.node.id, r.depth])).toEqual([
+      ['branch:story', 0],
+      ['scene:a', 1],
+      ['more:branch:story', 1],
+      // Siblings of `scene:a`, not children of the count — what a cap dropped is the rest of the
+      // list, and it is drawn at the indent the list is at.
+      ['scene:b', 1],
+      ['scene:c', 1],
+    ]);
+  });
+
+  it('still names nothing, so a click on it is spent on its twisty', () => {
+    const current = { ...NONE, sceneId: 'a' };
+    expect(selectionForNode(CAPPED[0]!.children![1]!, current)).toBe(current);
+  });
+});
+
 describe('toggleExpanded', () => {
   it('opens what is closed and closes what is open, without touching the set it was given', () => {
     const open = new Set(['branch:story']);
@@ -474,7 +514,7 @@ describe('renameOf', () => {
 });
 
 describe('rowTitle', () => {
-  const plain = { renamable: false, sheetless: false };
+  const plain = { renamable: false, sheetless: false, expanded: false };
 
   it('says the path, and how to rename it where that is possible', () => {
     const aiko = node('character:aiko', 'character', { label: 'Aiko', path: 'c/aiko.md' });
@@ -491,7 +531,7 @@ describe('rowTitle', () => {
   });
 
   it('tells a sheetless location that a second click writes its sheet', () => {
-    expect(rowTitle(node('location:cafe', 'location'), { renamable: false, sheetless: true })).toBe(
+    expect(rowTitle(node('location:cafe', 'location'), { ...plain, sheetless: true })).toBe(
       'Only a heading names this place — double-click to write its sheet',
     );
   });
@@ -504,15 +544,17 @@ describe('rowTitle', () => {
     }
   });
 
-  it('says why a counted stand-in is inert', () => {
-    expect(rowTitle(node('more:assetkind:portrait', 'more'), plain)).toBe(
-      'More than the tree will draw at once — narrow it, or open the folder itself',
-    );
+  // A counted stand-in carries what it stood for, so its sentence is an offer rather than an
+  // apology — and it says the opposite thing once the offer has been taken up.
+  it('offers to finish the list a cap cut short, and to fold it back', () => {
+    const more = node('more:assetkind:portrait', 'more');
+    expect(rowTitle(more, plain)).toBe('More than the tree draws at once — click to show the rest');
+    expect(rowTitle(more, { ...plain, expanded: true })).toBe('Hide the rest of this list again');
   });
 
-  it('falls back to what the click would select, naming the kind', () => {
+  it('falls back to what the click would open, naming the kind', () => {
     expect(rowTitle(node('shot:greet/greet__s1', 'shot'), plain)).toBe(
-      'Select this shot — every pane showing one follows the click',
+      'Open this shot in its editor',
     );
   });
 

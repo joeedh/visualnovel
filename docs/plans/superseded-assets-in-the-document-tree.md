@@ -83,6 +83,15 @@ worth recording: a group whose every asset is superseded reads `Portraits (0)` w
 `Superseded` child, and that is correct rather than a special case — the heading counts what it
 draws, and a zero says the truth about a kind whose current take was deleted.
 
+**Replaced, later (todos item 37).** The attic is gone. Filing every group's old takes together
+answered "which of these is stale" but not "how many times did we draw *this*", which is the
+question an author asking about a picture actually has — and a kind with four re-rendered slots put
+twelve unrelated rows in one drawer. So the split became a nesting: one row per slot, its own
+earlier takes under it. The rule about what is current survived intact and is still the reason any
+of this works; what changed is where the old ones are filed. `supersededAssets` no longer exists —
+"superseded" is now just "not the head of its slot's list" — and `docs/document-tree.md` carries the
+contract.
+
 ## Docs
 
 - `docs/document-tree.md` — the Assets branch section.

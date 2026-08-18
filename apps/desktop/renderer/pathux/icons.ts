@@ -10,7 +10,7 @@
 import { iconmanager, setIconMap } from 'pathux';
 
 /** Ids allocated for this app's icons. `-1` until — and if — the image decodes. */
-export const VN_ICONS: { filter: number } = { filter: -1 };
+export const VN_ICONS: { filter: number; collapse: number } = { filter: -1, collapse: -1 };
 
 /** A funnel, drawn to the sheet's 32px tile. Inline so nothing is fetched at runtime. */
 const FILTER_SVG =
@@ -19,20 +19,44 @@ const FILTER_SVG =
   'stroke-linejoin="round"/></svg>';
 
 /**
+ * Two chevrons closing onto a line: everything above folds down and everything below folds up,
+ * which is what collapsing a whole tree looks like. Drawn to the same 32px tile.
+ */
+const COLLAPSE_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+  '<g fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" ' +
+  'stroke-linejoin="round">' +
+  '<path d="M9 5l7 7 7-7"/><path d="M4 16h24"/><path d="M9 27l7-7 7 7"/>' +
+  '</g></svg>';
+
+/** One icon to register: what to call it, the name a `setIconMap` entry uses, and its drawing. */
+const CUSTOM: { key: keyof typeof VN_ICONS; name: string; map: string; svg: string }[] = [
+  { key: 'filter', name: 'vn-filter', map: 'VN_FILTER', svg: FILTER_SVG },
+  { key: 'collapse', name: 'vn-collapse', map: 'VN_COLLAPSE', svg: COLLAPSE_SVG },
+];
+
+/**
  * Start registering the custom icons. Returns immediately; the ids land later. Called from
  * `installIcons`, which must stay synchronous — the first header built needs an icon manager.
+ *
+ * Each icon lands on its own: one that fails to decode costs its own glyph and nothing else, and
+ * the map is rewritten with what has arrived so far rather than waiting for the whole set.
  */
 export function registerCustomIcons(): void {
-  const image = new Image(32, 32);
-  image.src = `data:image/svg+xml;utf8,${encodeURIComponent(FILTER_SVG)}`;
-  void image
-    .decode()
-    .then(() => {
-      VN_ICONS.filter = iconmanager.addCustomIcon('vn-filter', image);
-      setIconMap({ VN_FILTER: VN_ICONS.filter });
-    })
-    .catch(() => {
-      // Left at -1 on purpose: callers fall back to a labelled button.
-      console.warn('the filter icon did not decode; falling back to a text button');
-    });
+  const map: Record<string, number> = {};
+  for (const icon of CUSTOM) {
+    const image = new Image(32, 32);
+    image.src = `data:image/svg+xml;utf8,${encodeURIComponent(icon.svg)}`;
+    void image
+      .decode()
+      .then(() => {
+        VN_ICONS[icon.key] = iconmanager.addCustomIcon(icon.name, image);
+        map[icon.map] = VN_ICONS[icon.key];
+        setIconMap({ ...map });
+      })
+      .catch(() => {
+        // Left at -1 on purpose: callers fall back to a labelled button.
+        console.warn(`the ${icon.name} icon did not decode; falling back to a text button`);
+      });
+  }
 }

@@ -122,7 +122,9 @@ export function renderTree(root: HTMLElement, rows: readonly DocRow[], h: TreeHa
 
 function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
   const { node } = row;
-  const inert = node.kind === 'more';
+  // A counted stand-in is a row like any other now that it carries what it stood for: it draws
+  // greyed, because it is a count rather than a thing, but it clicks.
+  const counted = node.kind === 'more';
   const group = node.kind === 'branch' || node.kind === 'assetkind';
   const look = h.look(row);
 
@@ -130,7 +132,7 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
   // The node's own id, so a rename opened by the second of two clicks can find the row the
   // first click's rebuild replaced. DOM identity does not survive a rebuild; this does.
   line.dataset['id'] = node.id;
-  if (inert) line.classList.add('inert');
+  if (counted) line.classList.add('inert');
   if (group) line.classList.add('group');
   if (look.selected) line.classList.add('sel');
   line.style.paddingLeft = `${4 + row.depth * 13}px`;
@@ -149,8 +151,6 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
     line.appendChild(badge);
   }
 
-  if (inert) return line;
-
   // The twisty is its own target so a node that is both a place and a container — a scene
   // with shots under it — can be opened without being selected, and selected without being
   // opened. Everything else follows from whether the click named anything.
@@ -164,6 +164,8 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
     h.onClick(row);
     if (again) h.onSecondClick?.(row);
   });
+  // A host answers with nothing for a heading and a count, and shows nothing for an empty list —
+  // so the listener is unconditional and the host decides.
   line.addEventListener('contextmenu', (event) => {
     event.preventDefault();
     h.onMenu?.(row, event.clientX, event.clientY);

@@ -18,6 +18,7 @@ import {
   type DocRow,
 } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { VN_ICONS } from '../icons.js';
 import { assetNode, openNode } from '../open.js';
 import { layoutChanged } from '../persist.js';
 import type { VnScreen } from '../screen.js';
@@ -223,6 +224,14 @@ export class DocumentsEditor extends VnEditor {
       'Add a character, location, page or skill to this project';
     this.bar.button('Refresh', () => void this.load()).description =
       'Re-read the project from disk';
+    // Fold the whole tree back up. Not the same as reloading: expansion is the author's and
+    // survives every refetch, so once a morning's work has left forty branches open there is
+    // otherwise no way back but forty clicks.
+    const shut =
+      VN_ICONS.collapse >= 0
+        ? this.bar.iconbutton(VN_ICONS.collapse, '', () => this.collapseAll())
+        : this.bar.button('Close all', () => this.collapseAll());
+    shut.description = 'Fold every branch of the tree shut';
     this.bar.flushUpdate();
   }
 
@@ -325,6 +334,7 @@ export class DocumentsEditor extends VnEditor {
         title: rowTitle(row.node, {
           renamable: renameOf(row.node) !== undefined,
           sheetless: this.sheetless(row.node),
+          expanded: row.expanded,
         }),
       }),
       onToggle: (id) => this.toggle(id),
@@ -386,7 +396,7 @@ export class DocumentsEditor extends VnEditor {
       this.panel.appendChild(el('div', 'dt-section', 'SCENES'));
       for (const scene of links.scenes) {
         this.panel.appendChild(
-          this.linkRow(scene, `Select ${scene} — every pane follows the pick`, () =>
+          this.linkRow(scene, `Go to ${scene}`, () =>
             this.publish({ ...this.selection(), sceneId: scene, shotId: '' }),
           ),
         );
@@ -397,7 +407,7 @@ export class DocumentsEditor extends VnEditor {
       this.panel.appendChild(el('div', 'dt-section', 'SHOTS'));
       for (const { scene, shot } of links.shots) {
         this.panel.appendChild(
-          this.linkRow(shot, `Select this shot of ${scene}`, () =>
+          this.linkRow(shot, `Go to this shot of ${scene}`, () =>
             this.publish({ ...this.selection(), sceneId: scene, shotId: shot }),
           ),
         );
@@ -421,6 +431,17 @@ export class DocumentsEditor extends VnEditor {
     this.rebuild();
   }
 
+  /**
+   * Everything shut, headings included — emptied rather than reset to `defaultExpanded`, because
+   * an author who asked for the tree closed means the tree, and the five headings are one click
+   * each to get back. Nothing to close is not an act, so it does not cost a rebuild.
+   */
+  private collapseAll(): void {
+    if (this.expanded.size === 0) return;
+    this.expanded = new Set();
+    this.rebuild();
+  }
+
   private pick(row: DocRow): void {
     // A location is remembered here and nowhere else — there is no `ui.locationId` — and it is
     // remembered before the selection is compared, because a location with no sheet of its own
@@ -431,9 +452,19 @@ export class DocumentsEditor extends VnEditor {
     const next = selectionForNode(row.node, current);
     if (next === current) {
       // A grouping names nothing, so its whole row opens it — otherwise clicking the word
-      // "Characters" would be the one click in the tree that does nothing at all.
+      // "Characters" would be the one click in the tree that does nothing at all. A counted `more`
+      // is the same click for the same reason: it names nothing, and what it hides is the answer.
       if (row.expandable) this.toggle(row.node.id);
       else this.rebuild();
+      return;
+    }
+
+    // An asset row is a slot, and its children are the takes that slot has had. Selecting the one
+    // already selected would do nothing visible, so the second click is spent on the only question
+    // the row has left an answer to: what came before this. Assets only — a scene is expandable
+    // too, and its shots must not appear and vanish as the author clicks around the story.
+    if (row.node.kind === 'asset' && row.expandable && nodeIsSelected(row.node, current)) {
+      this.toggle(row.node.id);
       return;
     }
 

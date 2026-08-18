@@ -45,8 +45,8 @@ Wiki               wikidir:<rel>         → wiki:<rel>
 Skills             skill:<id>
 Unapproved assets  unapproved:waiting    → asset:<hash>
                    unapproved:unrendered → slot:<slotKey>
-Assets             assetkind:<kind>      → asset:<hash>
-                                         → superseded:<kind> → asset:<hash>
+Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
+                                         → asset:<hash>  (its earlier takes)
 ```
 
 - **Story** lists every scene in model order, each carrying its `scenes/<id>.md` path and its
@@ -85,8 +85,8 @@ Assets             assetkind:<kind>      → asset:<hash>
   *is*, so a legacy project whose base art is still indexed in the project manifest still groups
   correctly. A leaf is named, not hashed — see below. **Concepts** is one of those groups, and the
   only one the pipeline never plans: an `art.generate` sketch has no task in the graph, and the tree
-  is the one place it is visible at all. Each group's older takes are filed under a **Superseded**
-  child — see the contract below.
+  is the one place it is visible at all. Within a group the rows are **slots**, not
+  pictures — see the contract below.
 
 ## Contracts
 
@@ -94,18 +94,23 @@ Assets             assetkind:<kind>      → asset:<hash>
   `character:aiko`, `wiki:history/the-war.md`, `asset:<hash>`. The backlink map is keyed by the same
   string, so a panel is a lookup rather than a second convention — and expansion state persists
   against these ids, which is why `character:aiko` must not become a path when the sheet moves.
-- **An older take is filed, not deleted, and the slot graph is what says which one is old.** A
-  project that re-rendered a portrait four times has four rows called `Aiko`, told apart only by the
-  `(hash8)` a label collision costs. So each `assetkind:` group splits: what fills a slot **now**
-  stays in the group, and the rest go under a `superseded:<kind>` child, collapsed by default
-  because `defaultExpanded` opens only the roots. "Now" is `SlotNode.hash` where the slot resolved
-  and **every** candidate where it did not — `pick` declines whenever the answer is not certain, so
-  three undecided drafts are three live drafts, and burying one would bury a picture the author is
-  being asked to choose between. **An asset no slot mentions stays put**: the graph enumerates
-  slots, so its silence about a concept, an upload, a reference or a base-root asset is not a
-  verdict. The group heading counts what it draws and the child counts its own, for the same reason
-  `capped` counts what it dropped. Without a slot graph the branch is exactly what it always was.
-  Plan: [`plans/superseded-assets-in-the-document-tree.md`](plans/superseded-assets-in-the-document-tree.md).
+- **A row in the Assets branch is a slot, and its children are the takes that slot has had.** A
+  project that re-rendered a portrait four times has four pictures called `Aiko`, told apart only by
+  the `(hash8)` a label collision costs — so it gets **one** row, the one filling the slot now, with
+  the other three folded underneath it newest-first and collapsed, because `defaultExpanded` opens
+  only the roots. Slots come in `SlotGraph.order`, upstream before downstream, the same order the
+  Unapproved branch lists in. "Now" is `SlotNode.hash` where the slot resolved, and the **newest**
+  candidate where it did not: `pick` declines whenever the answer is not certain, a row still has to
+  open on something, and that is not a verdict on the drafts — choosing between them happens in the
+  Unapproved branch, where all of them are still listed one per row. Newest means latest in the
+  manifest, which is the only record of when a picture was made. **A picture two slots claim is
+  filed under the first of them**, so one render never reads as two, and **a picture no slot
+  mentions stays put** beneath the slots of its kind: the graph enumerates slots, so its silence
+  about a concept, an upload, a reference or a base-root asset is not a verdict. The group heading
+  counts **rows**, because rows are what it heads. Without a slot graph the branch is a flat list of
+  everything, exactly as it was before any of this.
+  Plans: [`plans/superseded-assets-in-the-document-tree.md`](plans/superseded-assets-in-the-document-tree.md)
+  (the first form of it), then `todos.md` item 37.
 - **An asset is named, and the hash is what a collision costs.** `labelAssets`
   (`apps/desktop/src/main/assetlabel.ts`, pure) turns the manifest's bindings into display names —
   `Aiko`, `Aiko — uniform / front`, `Café Mori — night`, `greet · s2`. The angle on a model sheet
@@ -136,8 +141,13 @@ Assets             assetkind:<kind>      → asset:<hash>
   [`desktop-app.md`](desktop-app.md#documents); what a click does stays the shell's business.
 - **Paths are workspace-relative with `/` separators**, like the generated project map's — they are
   shown to a human, and an absolute path in a serialized shape is unportable.
-- **A cap is a number in the shape.** A branch over its cap (50 by default) ends in one `more` node
-  whose label counts the remainder, so a truncated branch can never be drawn as a complete one.
+- **A cap is a number in the shape, and the remainder rides under it.** A branch over its cap (50
+  by default) ends in one `more` node whose label counts what was dropped, so a truncated branch can
+  never be drawn as a complete one — and that node **carries** the dropped rows as its children, so
+  the count is an offer rather than a dead end. The cap is about what a tree draws at rest, not
+  about what it is allowed to know. `flattenTree` expands a `more` node **at its own depth**: what a
+  cap dropped are siblings of the rows above it, so opening one continues the list rather than
+  nesting a copy of the branch inside itself.
 - **Backlinks come from the same walk.** `EntityLinks` gives an entity's sheet, its `wiki` path when
   that sheet lives under `wiki/`, its assets (with `accepted` and `base`), its scenes and its shots.
   An entity with no art gets an empty list, never a missing key.

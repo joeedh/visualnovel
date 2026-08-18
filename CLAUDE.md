@@ -218,9 +218,9 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   **content**, never mtime; `scenes/**` is refused outright, because prose is `story.*`.
 - **A rename writes where the name was read from, and never moves the file** — an id is derived
   from a name once, at creation, so a scene is deliberately not renamable.
-- **An asset is named, one pane answers for it, and an older take is filed rather than listed**
-  under `superseded:<kind>`; `asset.replace` reads the slot off the asset on screen rather than
-  being told it.
+- **An asset is named, one pane answers for it, and the tree lists slots rather than pictures** —
+  one row per slot, its earlier takes folded under the one that replaced them; `asset.replace` reads
+  the slot off the asset on screen rather than being told it.
   ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md))
 - **What was drawn from a document is one widget, and a scene is a subject like any other** —
   `renderAssetStrip`, shared by Documents, Wiki and Script.

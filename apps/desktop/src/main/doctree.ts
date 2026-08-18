@@ -83,11 +83,20 @@ const node = (
 /**
  * Apply the cap, appending one counted node when it bit. The count is in the shape rather than
  * left to the renderer, so a truncated branch cannot be drawn as a complete one.
+ *
+ * The remainder rides *under* that node rather than being dropped: the cap is about what a tree
+ * draws at rest, not about what it is allowed to know, and an author who wants the other three
+ * hundred scenes has nowhere else to ask. The renderer expands it in place — a `more` node is a
+ * continuation of the list it ends, not a container — so paying for it is one click, and the
+ * shape stays a shape a caller that never expands anything can ignore.
  */
 function capped(id: string, children: DocNode[], cap: number): DocNode[] {
   if (children.length <= cap) return children;
-  const dropped = children.length - cap;
-  return [...children.slice(0, cap), node(`more:${id}`, 'more', `… and ${dropped} more`)];
+  const rest = children.slice(cap);
+  return [
+    ...children.slice(0, cap),
+    node(`more:${id}`, 'more', `… and ${rest.length} more`, { children: rest }),
+  ];
 }
 
 const ASSET_KIND_LABELS: Record<AssetKind, string> = {
@@ -241,67 +250,98 @@ function driftedImages(input: DocTreeInput): Set<string> {
 }
 
 /**
- * The renders some slot has moved on from — an older take an accepted one replaced, or a portrait
- * draft the gate passed over. Every candidate of every slot, minus what fills that slot *now*.
+ * The manifest, filed the way it was *made*: one row per **slot** — the address a picture has,
+ * `aiko portrait`, `cafe — night plate` — showing what fills that slot now, with every earlier take
+ * of the same slot folded underneath it. A slot rendered eight times is one row and not eight,
+ * which is the difference between a list an author reads and a wall of near-identical thumbnails
+ * told apart only by a hash.
  *
- * "Now" is `hash` where the slot resolved, and **every** candidate where it did not: `pick` declines
- * whenever the answer is not certain, so three undecided drafts are three live drafts rather than
- * none, and calling them superseded would bury the very pictures waiting to be chosen between.
- *
- * An asset no slot mentions is **not** in here. The graph enumerates slots, so its silence about a
- * concept, an upload, a reference or a base-root asset is not a verdict — pruning on silence would
- * bury every sketch in the project.
+ * A picture no slot claims is listed on its own beneath the slots of its kind. The graph enumerates
+ * slots, so its silence about a concept, an upload, a reference or a base-root asset is not a
+ * verdict — pruning on silence would bury every sketch in the project. With no graph passed at all
+ * this is exactly the flat list it always was.
  */
-function supersededAssets(input: DocTreeInput): Set<string> {
-  const superseded = new Set<string>();
-  const current = new Set<string>();
-  for (const slot of input.slots?.nodes.values() ?? []) {
-    for (const hash of slot.candidates) superseded.add(hash);
-    if (slot.hash) current.add(slot.hash);
-    else for (const hash of slot.candidates) current.add(hash);
-  }
-  for (const hash of current) superseded.delete(hash);
-  return superseded;
-}
-
 function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const stale = driftedImages(input);
-  const superseded = supersededAssets(input);
-  const byKind = new Map<AssetKind, Asset[]>();
-  for (const asset of input.manifest) {
-    const list = byKind.get(asset.kind);
-    if (list) list.push(asset);
-    else byKind.set(asset.kind, [asset]);
-  }
+  const byHash = new Map(input.manifest.map((a) => [a.hash, a]));
+  // Manifest order is the order the pictures were made in, so later means newer. Nothing else in
+  // the shape knows when a render happened, and a slot's candidate list is a set, not a history.
+  const madeAt = new Map(input.manifest.map((a, i) => [a.hash, i]));
+
   // No `path` on an asset row: it is addressed by hash, and a path here would send a click down the
   // document-opening route, which reads a file as text.
-  const row = (a: Asset): DocNode =>
+  const row = (a: Asset, over: Partial<DocNode> = {}): DocNode =>
     node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
       ...(stale.has(a.hash) ? { badge: 'stale' } : a.accepted ? { badge: 'accepted' } : {}),
+      ...over,
     });
+
+  const byKind = new Map<AssetKind, DocNode[]>();
+  const add = (kind: AssetKind, n: DocNode): void => {
+    const list = byKind.get(kind);
+    if (list) list.push(n);
+    else byKind.set(kind, [n]);
+  };
+
+  // Slots first, in `SlotGraph.order` — upstream before downstream, the same order the Unapproved
+  // branch lists in and the order the work itself has to happen in.
+  const claimed = new Set<string>();
+  for (const key of input.slots?.order ?? []) {
+    const slot = input.slots?.nodes.get(key);
+    if (!slot) continue;
+    // Only takes no earlier slot spoke for: one picture can satisfy two slots, and filing it twice
+    // would make one render read as two.
+    const takes = slot.candidates
+      .filter((hash) => byHash.has(hash) && !claimed.has(hash))
+      .sort((a, b) => madeAt.get(a)! - madeAt.get(b)!);
+    if (takes.length === 0) continue;
+    for (const hash of takes) claimed.add(hash);
+
+    // What fills the slot: what it resolved to, else the newest take. `pick` declines whenever the
+    // answer is not certain, and a row still has to open on something — which is not a verdict on
+    // the drafts, because choosing between them happens in the Unapproved branch, where all of
+    // them are still listed one per row.
+    const current =
+      slot.hash !== undefined && takes.includes(slot.hash) ? slot.hash : takes.at(-1)!;
+    const past = takes.filter((hash) => hash !== current).reverse();
+    add(
+      byHash.get(current)!.kind,
+      row(byHash.get(current)!, {
+        note:
+          past.length === 0
+            ? `${slot.label}. Show the asset in the asset editor.`
+            : `${slot.label}, and ${past.length} earlier take${past.length === 1 ? '' : 's'}. ` +
+              'Show the asset in the asset editor; click again to see history.',
+        ...(past.length === 0
+          ? {}
+          : {
+              children: capped(
+                `takes:${key}`,
+                past.map((hash) =>
+                  row(byHash.get(hash)!, {
+                    note: `An earlier take of ${slot.label}. Show it in the asset editor.`,
+                  }),
+                ),
+                cap,
+              ),
+            }),
+      }),
+    );
+  }
+
+  for (const asset of input.manifest) if (!claimed.has(asset.hash)) add(asset.kind, row(asset));
 
   const groups = [...byKind.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([kind, assets]) => {
-      const live = assets.filter((a) => !superseded.has(a.hash));
-      const past = assets.filter((a) => superseded.has(a.hash));
-      // Collapsed rather than dropped: `defaultExpanded` opens only the roots, so these are out of
-      // the way but still reachable — deleting one is a right-click on the row itself.
-      const attic =
-        past.length === 0
-          ? []
-          : [
-              node(`superseded:${kind}`, 'branch', `Superseded (${past.length})`, {
-                note: 'Older takes something newer or accepted replaced. Still here to compare against or delete.',
-                children: capped(`superseded:${kind}`, past.map(row), cap),
-              }),
-            ];
-      // The heading counts what it draws; the attic counts its own.
-      return node(`assetkind:${kind}`, 'assetkind', `${ASSET_KIND_LABELS[kind]} (${live.length})`, {
+    // The heading counts rows rather than pictures, because rows are what it heads: a kind with
+    // one slot rendered nine times is one thing to look at, and saying nine would be a count of
+    // something the branch does not draw.
+    .map(([kind, rows]) =>
+      node(`assetkind:${kind}`, 'assetkind', `${ASSET_KIND_LABELS[kind]} (${rows.length})`, {
         badge: isBaseKind(kind) ? 'base' : 'project',
-        children: [...capped(`assetkind:${kind}`, live.map(row), cap), ...attic],
-      });
-    });
+        children: capped(`assetkind:${kind}`, rows, cap),
+      }),
+    );
   return node('branch:assets', 'branch', 'Assets', { children: groups });
 }
 

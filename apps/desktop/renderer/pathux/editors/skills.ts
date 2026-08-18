@@ -251,7 +251,7 @@ export class SkillsEditor extends VnEditor {
         selected: nodeIsSelected(row.node, selection),
         // Nothing here is renamable — a skill's name is front-matter, not a path — and nothing is
         // a sheetless location, so both facts are false rather than derived.
-        title: rowTitle(row.node, { renamable: false, sheetless: false }),
+        title: rowTitle(row.node, { renamable: false, sheetless: false, expanded: row.expanded }),
       }),
       onToggle: (id) => {
         this.expanded = toggleExpanded(this.expanded, id);
