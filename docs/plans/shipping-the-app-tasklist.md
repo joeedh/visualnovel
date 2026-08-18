@@ -3,41 +3,53 @@
 Status: **planned**
 
 Everything between "the app runs from a checkout" and "someone who is not us has it installed and
-updating." Five plans. This page is the running order and the checkbox list; each plan states its
-own decisions and acceptance criteria and is the authority on its own work.
+updating." Five scheduled plans and one deferred by decision. This page is the running order and
+the checkbox list; each plan states its own decisions and acceptance criteria and is the authority
+on its own work.
 
 The shape of the problem: a packaged app has no checkout, no `pnpm`, no submodule, and no
 `keys/` directory sitting in a repo the author happens to be standing in. Each of those is a plan.
 
-| #   | Plan                                                                                                   | Covers                                                                        |
-| --- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| 1   | [`onboarding-editor-and-user-level-keys.md`](onboarding-editor-and-user-level-keys.md)                   | keys above the project, the Setup pane, `offered: false` and path.ux's filter  |
-| 2   | [`packaging-the-desktop-app.md`](packaging-the-desktop-app.md)                                           | electron-builder, what ships, the version source of truth, the runtime doctor  |
-| 3   | [`release-ci-workflow.md`](release-ci-workflow.md)                                                       | tag-triggered GitHub Actions, the green gate, the draft release               |
-| 4   | [`in-app-update-checks.md`](in-app-update-checks.md)                                                     | `app.checkForUpdates` as a command, the releases feed, later auto-install      |
-| 5   | [`auditing-the-api-key-instructions.md`](auditing-the-api-key-instructions.md)                           | `docs/api-keys.md` as one source, the link check, the weekly advisory audit    |
-| —   | [`code-signing-and-notarization.md`](code-signing-and-notarization.md)                                   | deferred by decision: what it costs, what it unblocks, when to do it           |
+| #   | Plan                                                                                     | Covers                                                                        |
+| --- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 1   | [`onboarding-editor-and-user-level-keys.md`](onboarding-editor-and-user-level-keys.md)     | keys above the project, the Setup pane, `offered: false` and path.ux's filter  |
+| 2   | [`packaging-the-desktop-app.md`](packaging-the-desktop-app.md)                             | electron-builder, what ships, the version source of truth, the runtime doctor  |
+| 3   | [`release-ci-workflow.md`](release-ci-workflow.md)                                         | `ci.yml` on every push, then the tag-triggered build and the draft release     |
+| 4   | [`in-app-update-checks.md`](in-app-update-checks.md)                                       | `app.checkForUpdates` as a command, the releases feed, later auto-install      |
+| 5   | [`auditing-the-api-key-instructions.md`](auditing-the-api-key-instructions.md)             | `docs/api-keys.md` as one source, the link check, the weekly advisory audit    |
+| —   | [`code-signing-and-notarization.md`](code-signing-and-notarization.md)                     | deferred by decision: what it costs, what it unblocks, when to do it           |
 
 ## Order
 
-Three edges are real:
+**Plan 3 is two workflows, and they schedule differently.** `ci.yml` — check/test/lint on every
+push and PR — depends on nothing in any other plan and lands first, in wave A. `release.yml` is
+the tag-triggered build, and it needs plan 2. Splitting them is what makes the rest of this order
+work: plan 5's blocking half runs *in* `ci.yml`, and `master`'s every-commit-green claim gets a
+machine on day one rather than at the end.
 
-- **1 before 2.** Packaging has to know where user state lives, because that is the one directory
-  the installer must not put inside the install and the uninstaller must not delete by accident.
-  `userConfigDir()` is plan 1's function.
-- **2 before 3.** CI runs the packaging command. There is nothing to automate until it works by
-  hand on one machine.
-- **2 before 4.** An update check compares against the app's version, and plan 2 is where a single
-  version source of truth is decided.
+The edges that are real:
 
-Plan 5 is independent of all of them — it only needs `docs/api-keys.md`, which plan 1 writes — and
-plan 6 is deliberately not scheduled.
+- **1 before 2.** Packaging ships `docs/api-keys.md` as `extraResources`, and plan 1 is what
+  writes it. It must also know where user state lives — `userConfigDir()` is plan 1's function —
+  because that is the one directory the installer must not put inside the install and the
+  uninstaller must not delete by accident. **Plan 2 does not currently say this**; it is a
+  checkbox below rather than a section there, and should become one.
+- **`ci.yml` before 5.** Tier 1 of the audit is a job in `ci.yml`, and plan 5's first acceptance
+  criterion is that breaking a URL fails it.
+- **2 before `release.yml`.** CI runs the packaging command. There is nothing to automate until it
+  works by hand on one machine.
+- **2 and `release.yml` before 4.** An update check compares against the app's version (plan 2's
+  single source of truth) and reads the releases feed — which has nothing in it until a tag has
+  produced a draft release.
 
 ```
-wave A   1 onboarding + user keys
-wave B   2 packaging                 5 key-docs audit
-wave C   3 release CI                4 update checks
+wave A   1 onboarding + user keys        3a ci.yml
+wave B   2 packaging                     5 key-docs audit
+wave C   3b release.yml
+wave D   4 update checks
 ```
+
+Plan 6 is deliberately not scheduled.
 
 ## The list
 
@@ -47,38 +59,54 @@ wave C   3 release CI                4 update checks
 - [ ] `@vn/config`: `userConfigDir` / `userKeysDir`, `secretDirsFor` opt-out, testkit + jest guards
 - [ ] `project.setKey` scope prop; `project.keyStatus`
 - [ ] `offered?: false` in `EDITORS`, the shell's filter install, the View submenu narrowing
-- [ ] `docs/api-keys.md`, then the onboarding editor rendering it
+- [ ] `docs/api-keys.md` — **an H2 per vendor slugged to its `KEY_VENDORS` id, each with the fenced
+      yaml block plan 5 checks**; then the onboarding editor rendering it
 - [ ] The File menu entry, and the first-run notification
 - [ ] Docs, including the three `CLAUDE.md` additions
 
+### 3a — `ci.yml` (wave A, ahead of everything it guards)
+
+- [ ] `.github/workflows/ci.yml` on push and PR, `submodules: recursive`, pnpm store cache
+- [ ] `pnpm check && pnpm test && pnpm lint` — `pnpm check`, not a bare `tsgo`, or the renderer
+      is never typechecked
+
 ### 2 — Packaging the desktop app
 
-- [ ] Decide and record the version source of truth; stop shipping `0.0.0`
+- [ ] Stop shipping `0.0.0`: bump `apps/desktop/package.json`, the decided source of truth
 - [ ] electron-builder config: `files`, `asarUnpack`, `extraResources` for `docs/api-keys.md`
 - [ ] A hoisted install for packaging, so pnpm's symlinks do not reach the app image
+- [ ] Where user state lives, in the installer and the uninstaller — `userConfigDir()` is outside
+      the install and survives an uninstall
 - [ ] The runtime doctor: `git` on PATH, and what the app says when it is not
-- [ ] `pnpm package` produces an installer on Windows that a clean machine can run
+- [ ] `pnpm package` produces an NSIS installer a clean VM can install and open a project with
+- [ ] A smoke test that forces one lazy import of **each** SDK — "the window opened" is not evidence
+- [ ] The image contains no `packages/`, no `vendor/`, no `dist/pathux-types/`
 
-### 3 — Release CI workflow
+### 5 — Auditing the API-key instructions
+
+- [ ] Tier 1: the deterministic link check over the yaml blocks, in `ci.yml`, blocking
+- [ ] Tier 2: the weekly advisory audit, its artifact, and the issue it opens
+- [ ] The rule that tier 2 never fails a build, and that neither tier writes to `docs/api-keys.md`
+
+### 3b — `release.yml`
 
 - [ ] `.github/workflows/release.yml`, tag-triggered, `submodules: recursive`
-- [ ] The green gate: `pnpm check`, `pnpm test`, `pnpm lint` before anything is built
-- [ ] Assert the tag matches the version rather than writing the version
+- [ ] The green gate runs once, first, and separately from the build matrix
+- [ ] Assert the tag matches the version rather than writing it
 - [ ] Upload artifacts to a **draft** release; publishing stays a human act
 
 ### 4 — In-app update checks
 
 - [ ] `app.checkForUpdates` as a registered command, reachable from Help and the palette
 - [ ] The releases feed read, the semver compare, and what it does when offline
+- [ ] Reuse `ISSUE_REPO` from `@vn/agentreport`; do not add a second repo constant
+- [ ] A prerelease newer than the running version is not offered
 - [ ] The notification, and the browser hand-off to the release page
 - [ ] A periodic check, off by default until someone asks for it
 
-### 5 — Auditing the API-key instructions
-
-- [ ] `docs/api-keys.md` structured so a machine can find the URLs and the steps
-- [ ] Tier 1: the deterministic link check, in CI, blocking
-- [ ] Tier 2: the weekly advisory audit, its artifact, and the issue it opens
-- [ ] The rule that tier 2 never fails a build
+The repo must be public for an unauthenticated feed read; it already is
+(`joeedh/visualnovel`), so this constrains nothing today — but it is why the repo cannot go
+private later without hosting a feed.
 
 ### 6 — Code signing and notarization
 
