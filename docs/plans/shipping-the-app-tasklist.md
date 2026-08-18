@@ -66,9 +66,13 @@ Plan 6 is deliberately not scheduled.
 
 ### 3a — `ci.yml` (wave A, ahead of everything it guards)
 
-- [ ] `.github/workflows/ci.yml` on push and PR, `submodules: recursive`, pnpm store cache
-- [ ] `pnpm check && pnpm test && pnpm lint` — `pnpm check`, not a bare `tsgo`, or the renderer
+- [x] `.github/workflows/ci.yml` on push and PR, `submodules: recursive`, pnpm store cache
+- [x] `pnpm check && pnpm test && pnpm lint` — `pnpm check`, not a bare `tsgo`, or the renderer
       is never typechecked
+- [ ] **Push `vendor/path.ux` before the first run can pass.** `submodules: recursive` fetches the
+      pinned commit from `github.com/joeedh/path.ux`, and the commit plan 1 added (`25b4519a`) is
+      local only — the public tip is still its parent. Every job fails at checkout until it is
+      pushed, and this is not something the workflow can work around.
 
 ### 2 — Packaging the desktop app
 

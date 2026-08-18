@@ -1,0 +1,43 @@
+# The checks, on every push and every pull request. `master` is claimed to be green at every
+# commit; this is the machine that verifies it rather than the convention that asks for it.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A branch pushed twice in a minute does not need the first run's answer.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # `submodules: recursive` is not optional here. `vendor/path.ux` is a submodule that
+      # carries one of its own, the renderer compiles path.ux from source, and `pnpm check`
+      # typechecks the renderer — so without this every run fails a long way from its cause.
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # No version pinned here: the action reads `packageManager` from package.json, so the
+      # pin lives in one place and CI cannot drift from a local install.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Three steps rather than one chained command, so a failure names the gate that failed
+      # without anyone reading the log. `pnpm check` — not a bare `tsgo` — because it is two
+      # passes, and the second is the only thing that typechecks `renderer/**`.
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm lint
