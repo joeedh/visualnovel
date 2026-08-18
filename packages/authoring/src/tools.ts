@@ -75,6 +75,7 @@ import {
 import type { ArtGen } from './art.js';
 import { listArchive } from './archive.js';
 import { updateContext } from './context.js';
+import { wrapWarning, WRAP_COLUMNS } from './wrap.js';
 import { formatIndex, Workspace } from './workspace.js';
 import {
   discoverSkills,
@@ -1011,7 +1012,8 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
   description:
     'Create or overwrite a workspace file, whole. Execute mode only. To change part of a file ' +
     'that already exists, use edit_file — an overwrite of a file this conversation has not read ' +
-    'is refused. Never for scenes/ (edit_scene), characters/ or locations/ (their own tools).',
+    'is refused. Never for scenes/ (edit_scene), characters/ or locations/ (their own tools). ' +
+    `Wrap what you write at ${WRAP_COLUMNS} columns; the receipt says so when a line runs past it.`,
   mutating: true,
   args: z.object({ path: z.string(), content: z.string() }),
   async run(a, ctx) {
@@ -1039,7 +1041,12 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     );
     if (!written.ok) return fail(written.reason);
     ctx.seen?.set(path, { hash: written.hash, whole: true });
-    return ok(`Wrote ${path} (${written.bytes.toLocaleString()} bytes).`, { written: [path] });
+    // Said on the way out rather than refused on the way in: the file is already correct prose,
+    // and a rejected write would cost a whole second generation of it to fix a line break.
+    const long = wrapWarning(a.content);
+    return ok(`Wrote ${path} (${written.bytes.toLocaleString()} bytes).${long}`, {
+      written: [path],
+    });
   },
 };
 
