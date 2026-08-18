@@ -10,6 +10,7 @@ import {
   threadDetail,
   threadLabel,
   tokensDetail,
+  uncachedTokens,
   type FeedItem,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
@@ -289,6 +290,13 @@ export class ConvoEditor extends VnEditor {
     this.threadsBtn.description =
       'Saved conversations. Reopening one is read-only — the agent is not shown it.';
 
+    // Beside the list rather than only inside it: starting a fresh conversation is the commonest
+    // thing anyone opens that menu for, and it is one gesture, not two.
+    const fresh = this.bar.button('New', () => void exec('agent.newThread'));
+    fresh.description =
+      'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
+      'stays under Threads.';
+
     // Through the registry: the transcript follows `agent.clear` itself, so clearing from here
     // and clearing from the palette are one act with one record.
     const clear = this.bar.button('Clear', () => void exec('agent.clear'));
@@ -330,12 +338,16 @@ export class ConvoEditor extends VnEditor {
    * The running total, the way a terminal agent shows one: what has been spent on this
    * conversation, not on this turn. It reads `—` until a provider reports something, because a
    * mock backend and a backend that does not say are both `0`, and `0` would look like a bug.
+   *
+   * What it counts is the *uncached* half — fresh input plus output. Total input climbs by the
+   * whole cached prefix on every step of a long turn, so a counter reading it says a one-sentence
+   * answer cost forty thousand tokens. The full split is a hover away.
    */
   private sayTokens(): void {
     if (!this.tokensLbl) return;
     const tokens = convo().tokens;
-    const total = tokens.input + tokens.output;
-    this.tokensLbl.text = total === 0 ? 'tokens —' : `tokens ${compact(total)}`;
+    const counted = tokens.input + tokens.output === 0 ? 0 : uncachedTokens(tokens);
+    this.tokensLbl.text = counted === 0 ? 'tokens —' : `tokens ${compact(counted)}`;
     this.tokensLbl.description = tokensDetail(tokens);
   }
 

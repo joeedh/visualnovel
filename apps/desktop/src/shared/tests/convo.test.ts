@@ -13,6 +13,8 @@ import {
   received,
   replayed,
   tokensDetail,
+  toolSummary,
+  uncachedTokens,
   type FeedItem,
 } from '../convo.js';
 import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from '../ipc.js';
@@ -36,6 +38,16 @@ describe('what an event does to the conversation', () => {
     const convo = received(emptyConvo(opening), ranTool('read_file'));
     expect(convo.feed[0]).toMatchObject({ id: 1, role: 'tool', text: 'read_file' });
     expect(convo.line).toBe(opening);
+  });
+
+  test('a tool line says what it acted on, not just which tool it was', () => {
+    const convo = received(emptyConvo(opening), {
+      type: 'tool',
+      tool: 'read_file',
+      args: { path: 'wiki/hollow-court.md' },
+      result: { ok: true, output: '…' },
+    });
+    expect(convo.feed[0]!.text).toBe('read_file wiki/hollow-court.md');
   });
 
   test('a tool line keeps what it was called with and what came back', () => {
@@ -79,6 +91,16 @@ describe('what an event does to the conversation', () => {
       role: 'blocked',
       text: 'write_file blocked — plan mode is read-only',
     });
+  });
+
+  test('a blocked tool names its target too, where it had one', () => {
+    const convo = received(emptyConvo(opening), {
+      type: 'blocked',
+      tool: 'write_file',
+      args: { path: 'wiki/notes.md', content: 'x' },
+      reason: 'plan mode is read-only',
+    });
+    expect(convo.feed[0]!.text).toBe('write_file wiki/notes.md blocked — plan mode is read-only');
   });
 
   test('the mode is the shell’s, so the conversation is untouched by it', () => {
@@ -375,5 +397,50 @@ describe('replaying a saved thread', () => {
   test('a turn typed afterwards cannot reuse a replayed id', () => {
     const after = asked(replayed(emptyConvo(opening), saved, banner), 'and a scarf');
     expect(after.feed[2]).toEqual({ id: 3, role: 'user', text: 'and a scarf' });
+  });
+});
+
+/**
+ * What a transcript line says a tool did. The whole call is in `detail.args` either way — this is
+ * the glance, and the rule it follows is *one* field, chosen the same way every time.
+ */
+describe('a tool line’s headline argument', () => {
+  test('prefers the path, whatever order the fields arrived in', () => {
+    expect(toolSummary('edit_file', { edits: [], path: 'wiki/a.md' })).toBe('edit_file wiki/a.md');
+  });
+
+  test('falls back to the rung, the id, or the query — in that order', () => {
+    expect(toolSummary('set_art_notes', { notes: 'colder', target: 'location:cafe/night' })).toBe(
+      'set_art_notes location:cafe/night',
+    );
+    expect(toolSummary('search_bible', { query: 'the hollow court' })).toBe(
+      'search_bible the hollow court',
+    );
+  });
+
+  test('takes a lone unrecognised field, and refuses to guess between several', () => {
+    expect(toolSummary('run_skill', { skill: 'outline' })).toBe('run_skill outline');
+    expect(toolSummary('mystery', { alpha: 'a', beta: 'b' })).toBe('mystery');
+  });
+
+  test('says the tool alone when there was nothing to say', () => {
+    expect(toolSummary('list_workspace', {})).toBe('list_workspace');
+    expect(toolSummary('git_status', undefined)).toBe('git_status');
+  });
+
+  test('clamps a field long enough to be a document', () => {
+    const summary = toolSummary('write_file', { text: 'x'.repeat(400) });
+    expect(summary.length).toBeLessThan(80);
+    expect(summary.endsWith('…')).toBe(true);
+  });
+});
+
+describe('the number the counter shows', () => {
+  test('is fresh input plus output — never the cached prefix re-sent every step', () => {
+    expect(uncachedTokens({ input: 40_000, output: 500, cacheRead: 39_000 })).toBe(1500);
+  });
+
+  test('is the whole input where the provider reported no split', () => {
+    expect(uncachedTokens({ input: 1200, output: 300 })).toBe(1500);
   });
 });

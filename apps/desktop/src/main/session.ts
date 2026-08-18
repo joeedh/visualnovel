@@ -254,6 +254,7 @@ import {
 } from '../shared/convo.js';
 import {
   appendItem,
+  bindThread,
   listThreads,
   openThread,
   readThread,
@@ -927,6 +928,7 @@ export class WorkspaceSession {
         title: titleFrom(input),
         ...(commit === null ? {} : { commit }),
         ...(this.model === '' ? {} : { model: this.model }),
+        ...(this.effort === undefined ? {} : { effort: this.effort }),
       });
     } catch (err) {
       console.warn(`[vnstudio] could not start a conversation thread: ${String(err)}`);
@@ -947,6 +949,7 @@ export class WorkspaceSession {
   async setModel(modelId: string): Promise<string> {
     this.model = modelId;
     this.effort = resolveEffort(modelId, this.effort) ?? this.effort;
+    await this.noteBinding();
     if (this.mock) return modelId;
     const agent = await this.ensureAgent();
     agent.setBackend(await this.buildBackend(await loadConfig(this.dir), modelId));
@@ -960,10 +963,31 @@ export class WorkspaceSession {
    */
   async setEffort(effort: EffortChoice): Promise<EffortChoice> {
     this.effort = effort;
+    await this.noteBinding();
     if (this.mock) return effort;
     const agent = await this.ensureAgent();
     agent.setBackend(await this.buildBackend(await loadConfig(this.dir), this.model || undefined));
     return effort;
+  }
+
+  /**
+   * Write the current binding into the open thread, if there is one. A switch made before anyone
+   * has said anything writes nothing — the thread that has not been opened yet will carry the
+   * binding on its own line 0 — and a thread on a read-only volume costs a warning, like every
+   * other write here.
+   */
+  private async noteBinding(): Promise<void> {
+    if (!this.thread) return;
+    const binding = {
+      ...(this.model === '' ? {} : { model: this.model }),
+      ...(this.effort === undefined ? {} : { effort: this.effort }),
+    };
+    this.thread = { ...this.thread, ...binding };
+    try {
+      await bindThread(new ProjectPaths(this.dir), this.thread.id, binding);
+    } catch (err) {
+      console.warn(`[vnstudio] could not record the conversation's model: ${String(err)}`);
+    }
   }
 
   /**
@@ -1010,6 +1034,15 @@ export class WorkspaceSession {
   async openThreadForReading(id: string): Promise<ThreadRecord> {
     const record = await readThread(new ProjectPaths(this.dir), id);
     await this.clearAgent();
+    // Reopened on the binding it was had on. A conversation reads as the model that wrote it —
+    // its turns, its refusals, its reasoning — so answering the next question on whatever the
+    // last conversation happened to leave bound is the one thing nobody means. `clearAgent` has
+    // already closed the live thread, so nothing is written here: the next turn opens a thread
+    // carrying this binding on its own line 0.
+    if (record.model && record.model !== this.model) await this.setModel(record.model);
+    if (record.effort && (EFFORT_CHOICES as readonly string[]).includes(record.effort)) {
+      await this.setEffort(record.effort as EffortChoice);
+    }
     return record;
   }
 

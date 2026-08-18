@@ -44,7 +44,8 @@ const OUTPUT_MAX = 2000;
 type ThreadLine =
   | ({ v: 1; type: 'thread' } & ThreadHeader)
   | ({ type: 'item'; at: string } & FeedItem)
-  | { type: 'title'; title: string; at: string };
+  | { type: 'title'; title: string; at: string }
+  | { type: 'binding'; model?: string; effort?: string; at: string };
 
 export function threadsDir(paths: ProjectPaths): string {
   return join(paths.state, 'threads');
@@ -118,15 +119,24 @@ function headerOf(id: string, parsed: ThreadLine[]): ThreadHeader | undefined {
   const first = parsed.find((line) => line.type === 'thread');
   if (!first) return undefined;
 
-  const { title, startedAt, commit, model } = first;
+  const { title, startedAt, commit, model, effort } = first;
   const renamed = parsed.filter((line) => line.type === 'title');
   const last = renamed[renamed.length - 1];
+  // A conversation is had at whatever it was last switched to, so the newest binding wins over
+  // the one line 0 opened with — and a rebind that named only the effort leaves the model alone.
+  const bound = { model, effort };
+  for (const line of parsed) {
+    if (line.type !== 'binding') continue;
+    if (line.model !== undefined) bound.model = line.model;
+    if (line.effort !== undefined) bound.effort = line.effort;
+  }
   return {
     id,
     title: last ? last.title : title,
     startedAt,
     ...(commit === undefined ? {} : { commit }),
-    ...(model === undefined ? {} : { model }),
+    ...(bound.model === undefined ? {} : { model: bound.model }),
+    ...(bound.effort === undefined ? {} : { effort: bound.effort }),
   };
 }
 
@@ -149,7 +159,8 @@ export async function listThreads(paths: ProjectPaths): Promise<ThreadHeader[]> 
   for (const id of ids.sort().reverse()) {
     // Tool args are in the file too, so this filter lets the odd item line through to be parsed
     // and then dropped by `headerOf`. That is a wasted parse, not a wrong answer.
-    const keep = (raw: string) => raw.includes('"thread"') || raw.includes('"title"');
+    const keep = (raw: string) =>
+      raw.includes('"thread"') || raw.includes('"title"') || raw.includes('"binding"');
     const header = headerOf(id, await lines(threadFile(paths, id), keep));
     if (header) headers.push(header);
   }
@@ -185,7 +196,7 @@ export async function readThread(paths: ProjectPaths, id: string): Promise<Threa
  */
 export async function openThread(
   paths: ProjectPaths,
-  info: { title?: string; commit?: string; model?: string } = {},
+  info: { title?: string; commit?: string; model?: string; effort?: string } = {},
   now = new Date(),
 ): Promise<ThreadHeader> {
   await ensureDir(threadsDir(paths));
@@ -201,6 +212,7 @@ export async function openThread(
     startedAt: now.toISOString(),
     ...(info.commit === undefined ? {} : { commit: info.commit }),
     ...(info.model === undefined ? {} : { model: info.model }),
+    ...(info.effort === undefined ? {} : { effort: info.effort }),
   };
   await appendJsonl(threadFile(paths, id), { v: 1, type: 'thread', ...header });
   return header;
@@ -225,6 +237,27 @@ export async function appendItem(
     text,
     ...(full.length > text.length ? { full: clamp(full, FULL_MAX) } : {}),
     ...(item.detail ? { detail: clampDetail(item.detail) } : {}),
+    at: now.toISOString(),
+  });
+}
+
+/**
+ * Record that the conversation changed model or reasoning level, mid-thread. Appended for the
+ * same reason a retitle is: line 0 says what the conversation opened at, and a thread reopened a
+ * week later should come back on the model it was actually had on rather than the one it started
+ * on. Naming one field leaves the other where it was.
+ */
+export async function bindThread(
+  paths: ProjectPaths,
+  id: string,
+  binding: { model?: string; effort?: string },
+  now = new Date(),
+): Promise<void> {
+  if (binding.model === undefined && binding.effort === undefined) return;
+  await appendJsonl(threadFile(paths, id), {
+    type: 'binding',
+    ...(binding.model === undefined ? {} : { model: binding.model }),
+    ...(binding.effort === undefined ? {} : { effort: binding.effort }),
     at: now.toISOString(),
   });
 }

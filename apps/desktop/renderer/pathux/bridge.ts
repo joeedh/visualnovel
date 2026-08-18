@@ -8,7 +8,13 @@
  * props — there is nothing to thread it through.
  */
 import { message as note, error as noteError } from 'pathux';
-import { DEFAULT_BUDGET, resolveEffort, type BudgetChoice, type EffortChoice } from '@vn/types';
+import {
+  DEFAULT_BUDGET,
+  EFFORT_CHOICES,
+  resolveEffort,
+  type BudgetChoice,
+  type EffortChoice,
+} from '@vn/types';
 import { api } from '../api.js';
 import type {
   AgentEvent,
@@ -245,6 +251,20 @@ export async function setEffort(effort: EffortChoice): Promise<void> {
     shell().ui.effort = effort;
     touch();
   }
+}
+
+/**
+ * Mirror a binding main changed on its own. Reopening a saved conversation puts the agent back on
+ * the model and effort that conversation was had on, and nothing pushes that — so the bar would
+ * otherwise name the model of the conversation the author just left.
+ */
+export function noteBinding(model?: string, effort?: string): void {
+  const ui = shell().ui;
+  if (model) ui.model = model;
+  if (effort && (EFFORT_CHOICES as readonly string[]).includes(effort)) {
+    ui.effort = effort as EffortChoice;
+  }
+  touch();
 }
 
 export async function setBudget(budget: BudgetChoice): Promise<void> {

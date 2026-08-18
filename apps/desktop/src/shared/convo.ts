@@ -59,7 +59,13 @@ export interface ThreadHeader {
   startedAt: string;
   /** The commit the conversation opened at — what turns a decision into the tree it was made against. */
   commit?: string;
+  /**
+   * What the conversation was last had on. Written at line 0 and again whenever the author
+   * switches mid-thread, so reopening one comes back on the binding it ended with rather than the
+   * one it started with — a thread thought through on Opus is not a thread to answer on Haiku.
+   */
   model?: string;
+  effort?: string;
 }
 
 /** A whole saved conversation: the header plus every transcript line, in order. */
@@ -89,6 +95,7 @@ export function threadDetail(thread: ThreadHeader): string {
   const at = new Date(thread.startedAt);
   const parts = [Number.isNaN(at.getTime()) ? thread.startedAt : at.toLocaleString()];
   if (thread.model) parts.push(thread.model);
+  if (thread.effort) parts.push(`effort: ${thread.effort}`);
   if (thread.commit) parts.push(thread.commit.slice(0, 8));
   return parts.join(' · ');
 }
@@ -112,6 +119,12 @@ export function tokensDetail(tokens: Convo['tokens']): string {
   ];
   // The percentage is of input, because that is the number caching moves.
   if (cacheRead !== undefined || cacheWrite !== undefined) {
+    // What the counter itself shows, said before the split it comes from — a provider that
+    // reported no split has nothing to subtract, and the line above is already that number.
+    lines.unshift(
+      `${uncachedTokens(tokens).toLocaleString()} the cache did not serve — what the counter ` +
+        'shows.',
+    );
     const read = cacheRead ?? 0;
     const share = input === 0 ? 0 : Math.round((read / input) * 100);
     lines.push(
@@ -125,6 +138,83 @@ export function tokensDetail(tokens: Convo['tokens']): string {
   }
   lines.push('Retried steps are counted every time. Clearing the conversation resets it.');
   return lines.join(' ');
+}
+
+/**
+ * What the counter counts: fresh input plus output, cache reads excluded — the same arithmetic
+ * the turn budget is measured in, and the number that moves with the bill. Total input is the
+ * wrong figure to show: a long conversation re-sends its whole cached prefix on every step, so a
+ * counter reading it climbs by tens of thousands for a turn that said one sentence.
+ *
+ * A provider that reports no cache split spends its whole input, because absent means it said
+ * nothing, which here is the same as nothing having been cached.
+ */
+export function uncachedTokens(tokens: Convo['tokens']): number {
+  return charge(tokens);
+}
+
+/**
+ * A tool line, as the transcript shows it: the tool's name and the one argument that says what it
+ * acted on. `read_file` alone is a line that could be about anything, and a transcript of forty
+ * of them is unreadable; `read_file wiki/hollow-court.md` is the record the author came for.
+ *
+ * One argument, not all of them — the whole call is in `detail.args`, which is what an analyst
+ * reads. The headline is the first field present from a fixed list, so the choice does not depend
+ * on JSON key order, and it is clamped because a `write_file` carries a whole document.
+ */
+export function toolSummary(tool: string, args: unknown): string {
+  const shown = headlineArg(args);
+  return shown ? `${tool} ${shown}` : tool;
+}
+
+/** The fields worth putting on a transcript line, in the order they are preferred. */
+const HEADLINE_KEYS = [
+  'path',
+  'file',
+  'target',
+  'sceneId',
+  'scene',
+  'id',
+  'characterId',
+  'locationId',
+  'hash',
+  'slot',
+  'query',
+  'pattern',
+  'text',
+  'name',
+  'skill',
+  'rule',
+];
+
+/** Where a headline stops being a glance. The full value is in `detail.args`. */
+const HEADLINE_MAX = 60;
+
+function headlineArg(args: unknown): string {
+  if (typeof args !== 'object' || args === null) return '';
+  const bag = args as Record<string, unknown>;
+  for (const key of HEADLINE_KEYS) {
+    const said = scalar(bag[key]);
+    if (said) return said;
+  }
+  // Nothing recognised: a one-field call still says what it was about, and a call with several
+  // unrecognised fields says nothing rather than picking one at random.
+  const values = Object.values(bag);
+  return values.length === 1 ? scalar(values[0]) : '';
+}
+
+function scalar(value: unknown): string {
+  const text =
+    typeof value === 'string'
+      ? value
+      : typeof value === 'number' || typeof value === 'boolean'
+        ? String(value)
+        : Array.isArray(value)
+          ? value.filter((v) => typeof v === 'string' || typeof v === 'number').join(', ')
+          : '';
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (!flat) return '';
+  return flat.length <= HEADLINE_MAX ? flat : `${flat.slice(0, HEADLINE_MAX).trimEnd()}…`;
 }
 
 export interface Convo {
@@ -241,7 +331,7 @@ export function answered(convo: Convo, final: string | null): Convo {
 export function received(convo: Convo, event: AgentEvent): Convo {
   switch (event.type) {
     case 'tool':
-      return push(convo, 'tool', event.tool, {
+      return push(convo, 'tool', toolSummary(event.tool, event.args), {
         args: stringifyArgs(event.args),
         ok: event.result.ok,
         output: event.result.output,
@@ -250,7 +340,7 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       return push(
         convo,
         'blocked',
-        `${event.tool} blocked — ${event.reason}`,
+        `${toolSummary(event.tool, event.args)} blocked — ${event.reason}`,
         event.args === undefined ? undefined : { args: stringifyArgs(event.args), ok: false },
       );
     case 'usage': {

@@ -6,6 +6,7 @@ import type { FeedItem } from '../../shared/convo.js';
 import {
   NEW_THREAD_TITLE,
   appendItem,
+  bindThread,
   listThreads,
   openThread,
   readThread,
@@ -85,6 +86,33 @@ describe('threads', () => {
     const lines = (await readFile(threadFile(paths, id), 'utf8')).trim().split('\n');
     expect(JSON.parse(lines[0]!)).toMatchObject({ v: 1, type: 'thread', title: NEW_THREAD_TITLE });
     expect((await readThread(paths, id)).items).toHaveLength(1);
+  });
+
+  it('remembers the model and effort it was last had on, not the ones it opened on', async () => {
+    const { id } = await openThread(paths, { model: 'claude-sonnet-5', effort: 'medium' });
+    await bindThread(paths, id, { effort: 'high' });
+    await bindThread(paths, id, { model: 'claude-opus-5', effort: 'xhigh' });
+
+    expect(await readThread(paths, id)).toMatchObject({
+      model: 'claude-opus-5',
+      effort: 'xhigh',
+    });
+    // And the listing reads the same binding — it parses only the header-shaped lines.
+    expect((await listThreads(paths))[0]).toMatchObject({ model: 'claude-opus-5' });
+  });
+
+  it('a rebind that names one field leaves the other where it was', async () => {
+    const { id } = await openThread(paths, { model: 'claude-sonnet-5', effort: 'low' });
+    await bindThread(paths, id, { effort: 'high' });
+    expect(await readThread(paths, id)).toMatchObject({ model: 'claude-sonnet-5', effort: 'high' });
+
+    // Naming neither writes nothing at all, rather than a line saying nothing.
+    const count = async (): Promise<number> =>
+      (await readFile(threadFile(paths, id), 'utf8')).trim().split('\n').length;
+    const before = await count();
+    await bindThread(paths, id, {});
+    const after = await count();
+    expect(after).toBe(before);
   });
 
   it('lists newest first', async () => {

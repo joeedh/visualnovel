@@ -8,7 +8,7 @@
  * every frame, so there is nothing to subscribe to.
  */
 import { api, isLive, onAgentEvent } from '../api.js';
-import { exec, onExec, shell } from './bridge.js';
+import { exec, noteBinding, onExec, shell } from './bridge.js';
 import {
   answered,
   answeredQuestion,
@@ -151,7 +151,12 @@ export function installAgent(): void {
       setMode('plan');
     } else if (id === 'agent.openThread') {
       const record = outcome.data as ThreadRecord | undefined;
-      if (record) set(replayed(state, record.items, REOPENED));
+      if (record) {
+        set(replayed(state, record.items, REOPENED));
+        // Main has already rebound the agent to what this conversation was had on; the bar is
+        // told, because no effect reports a model change.
+        noteBinding(record.model, record.effort);
+      }
       setMode('plan');
     } else if (id === 'upload.files' || id === 'upload.pick') {
       // The seeded turn is the command's sentence, not the model's — nothing has been asked yet,
