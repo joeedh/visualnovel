@@ -2,11 +2,15 @@ import { mkdtemp, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  keyStatus,
   loadConfig,
   resolveKeys,
   secretDirsFor,
   setArtStyle,
   setStartScene,
+  userConfigDir,
+  userConfigDirs,
+  userKeysDir,
   withArtStyle,
   withStartScene,
 } from '../index.js';
@@ -199,22 +203,147 @@ describe('resolveKeys', () => {
 });
 
 describe('secretDirsFor', () => {
-  it("includes the project's keys/ then the enclosing repo root's keys/", async () => {
+  it("includes the project's keys/, the repo root's, then the user's", async () => {
     const root = await mkdtemp(join(tmpdir(), 'vn-repo-'));
     await mkdir(join(root, '.git'), { recursive: true });
     const project = join(root, 'templates', 'basic');
     await mkdir(project, { recursive: true });
     const dirs = await secretDirsFor(project);
-    expect(dirs).toEqual([join(project, 'keys'), join(root, 'keys')]);
+    expect(dirs).toEqual([join(project, 'keys'), join(root, 'keys'), userKeysDir()]);
   });
 
   it('de-duplicates when the project is itself the repo root', async () => {
     const root = await mkdtemp(join(tmpdir(), 'vn-repo-root-'));
     await mkdir(join(root, '.git'), { recursive: true });
     const dirs = await secretDirsFor(root);
+    expect(dirs).toEqual([join(root, 'keys'), userKeysDir()]);
+  });
+
+  it('omits the user rung when asked to — the opt-out testkit relies on', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'vn-repo-closed-'));
+    await mkdir(join(root, '.git'), { recursive: true });
+    const dirs = await secretDirsFor(root, { includeUser: false });
     expect(dirs).toEqual([join(root, 'keys')]);
   });
 
+  it('the user rung is last, so a project that carries a key still wins', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'vn-userhome-'));
+    await mkdir(join(home, 'keys'), { recursive: true });
+    await writeFile(join(home, 'keys', 'gemini.txt'), 'user-gemini\n');
+
+    const project = await tempProject('title: T\n');
+    await mkdir(join(project, 'keys'), { recursive: true });
+    await writeFile(join(project, 'keys', 'gemini.txt'), 'project-gemini\n');
+    await writeFile(join(project, 'keys', 'claude.txt'), '');
+
+    const config = await loadConfig(project);
+    const secretsDirs = await secretDirsFor(project, { env: { VNAUTHOR_HOME: home } });
+    const keys = await resolveKeys(config, { secretsDirs });
+    expect(keys.gemini).toBe('project-gemini');
+    // …and it does answer when the project carries nothing.
+    await writeFile(join(home, 'keys', 'claude.txt'), 'user-claude\n');
+    expect((await resolveKeys(config, { secretsDirs })).anthropic).toBe('user-claude');
+  });
+});
+
+describe('userConfigDir', () => {
+  const HOME = join('/tmp', 'home', 'someone');
+
+  it('is %LOCALAPPDATA%\\vnauthor on Windows', () => {
+    const env = { LOCALAPPDATA: join('C:', 'Users', 'someone', 'AppData', 'Local') };
+    expect(userConfigDir({ platform: 'win32', env, home: HOME })).toBe(
+      join(env.LOCALAPPDATA, 'vnauthor'),
+    );
+  });
+
+  it('falls back to AppData\\Local under the home directory when the variable is unset', () => {
+    expect(userConfigDir({ platform: 'win32', env: {}, home: HOME })).toBe(
+      join(HOME, 'AppData', 'Local', 'vnauthor'),
+    );
+  });
+
+  it('is Application Support on macOS', () => {
+    expect(userConfigDir({ platform: 'darwin', env: {}, home: HOME })).toBe(
+      join(HOME, 'Library', 'Application Support', 'vnauthor'),
+    );
+  });
+
+  it('honours $XDG_CONFIG_HOME on Linux, else ~/.config', () => {
+    const xdg = join('/tmp', 'xdg');
+    expect(userConfigDir({ platform: 'linux', env: { XDG_CONFIG_HOME: xdg }, home: HOME })).toBe(
+      join(xdg, 'vnauthor'),
+    );
+    expect(userConfigDir({ platform: 'linux', env: {}, home: HOME })).toBe(
+      join(HOME, '.config', 'vnauthor'),
+    );
+  });
+
+  it('$VNAUTHOR_HOME overrides every platform', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'vn-override-'));
+    for (const platform of ['win32', 'darwin', 'linux'] as const) {
+      expect(userConfigDir({ platform, env: { VNAUTHOR_HOME: dir }, home: HOME })).toBe(dir);
+    }
+  });
+
+  it('reads a legacy ~/.vnauthor when the native directory does not exist', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'vn-legacy-'));
+    await mkdir(join(home, '.vnauthor'), { recursive: true });
+    const dirs = userConfigDirs({ platform: 'linux', env: {}, home });
+    expect(dirs).toEqual([join(home, '.config', 'vnauthor'), join(home, '.vnauthor')]);
+    // …but it is never the *write* target, so nothing has to be migrated later.
+    expect(userConfigDir({ platform: 'linux', env: {}, home })).toBe(
+      join(home, '.config', 'vnauthor'),
+    );
+  });
+
+  it('an explicit $VNAUTHOR_HOME suppresses the legacy fallback rather than preceding it', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'vn-legacy-off-'));
+    await mkdir(join(home, '.vnauthor'), { recursive: true });
+    const override = join(home, 'elsewhere');
+    expect(userConfigDirs({ platform: 'linux', env: { VNAUTHOR_HOME: override }, home })).toEqual([
+      override,
+    ]);
+  });
+});
+
+describe('keyStatus', () => {
+  it('names the source that answered, and never the value', async () => {
+    const dir = await tempProject('title: T\n');
+    await mkdir(join(dir, 'keys'), { recursive: true });
+    await writeFile(join(dir, 'keys', 'gemini.txt'), 'sekrit\n');
+    const config = await loadConfig(dir);
+
+    const status = await keyStatus(config, { secretsDirs: [join(dir, 'keys')] });
+    expect(status.map((s) => s.vendor)).toEqual(['gemini', 'anthropic']);
+
+    const gemini = status[0]!;
+    expect(gemini.resolved).toBe(true);
+    expect(gemini.source).toEqual({ kind: 'file', dir: join(dir, 'keys'), file: 'gemini.txt' });
+    expect(gemini.envShadow).toBe(false);
+    expect(JSON.stringify(status)).not.toContain('sekrit');
+
+    expect(status[1]!.resolved).toBe(false);
+    expect(status[1]!.source).toBeUndefined();
+    expect(status[1]!.envName).toBe(config.keys.anthropic);
+  });
+
+  it('reports an environment variable as the source, and as a shadow over a file', async () => {
+    const dir = await tempProject('title: T\nkeys:\n  gemini: VN_TEST_GEMINI_KEY\n');
+    await mkdir(join(dir, 'keys'), { recursive: true });
+    await writeFile(join(dir, 'keys', 'gemini.txt'), 'from-file\n');
+    process.env.VN_TEST_GEMINI_KEY = 'from-env';
+    try {
+      const config = await loadConfig(dir);
+      const [gemini] = await keyStatus(config, { secretsDirs: [join(dir, 'keys')] });
+      expect(gemini!.source).toEqual({ kind: 'env', name: 'VN_TEST_GEMINI_KEY' });
+      expect(gemini!.envShadow).toBe(true);
+    } finally {
+      delete process.env.VN_TEST_GEMINI_KEY;
+    }
+  });
+});
+
+describe('resolveKeys errors', () => {
   it('throws when a required key is missing, without leaking values', async () => {
     const dir = await tempProject('title: T\n');
     const config = await loadConfig(dir);

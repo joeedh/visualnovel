@@ -34,6 +34,9 @@ const PACKAGES = [
 const shared = {
   testEnvironment: 'node',
   transform: { '^.+\\.tsx?$': '<rootDir>/scripts/jest-esbuild.cjs' },
+  // Points $VNAUTHOR_HOME somewhere empty, so a test that resolves keys cannot read the
+  // developer's own. See the file for why the default has to be on for everything else.
+  setupFiles: ['<rootDir>/scripts/jest-setup.cjs'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   // Linked worktrees under .claude/worktrees contain full copies of every
   // package.json, which the haste map indexes regardless of testMatch,

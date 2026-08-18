@@ -162,7 +162,11 @@ export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusRepo
   try {
     const config = await loadConfig(probe.dir);
     const keys = await resolveKeys(config, {
-      secretsDirs: await secretDirsFor(process.cwd()),
+      // A test project is a closed world, which is the whole point of testkit — so the user-level
+      // rung is opted out of here rather than inherited. This function spends real money on a
+      // real model, and the one thing worse than it failing on CI for want of a key is it
+      // succeeding on a developer's machine because their own key was lying one directory up.
+      secretsDirs: await secretDirsFor(process.cwd(), { includeUser: false }),
       require: ['gemini'],
     });
     backend = new CachedImageBackend(cache, createGeminiImage(keys.gemini, config.models.image), {
