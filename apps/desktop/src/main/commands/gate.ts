@@ -32,6 +32,17 @@ export const gateApprove = define({
     const state = await ctx.host.session.gateCandidacy(characterId, hash);
     if (!state.character) return { ok: false, reason: `No character "${characterId}".` };
     if (!state.candidate) {
+      // An empty hash is the ordinary way in, not a typo: the tasks and graph editors open this
+      // form on a *character* and leave which portrait to the author. "has no candidate ''" reads
+      // like a lookup that failed, so the unanswered field is named instead.
+      if (!hash) {
+        return {
+          ok: false,
+          reason: state.candidates
+            ? `Name the portrait to approve — ${state.candidates} on file for ${characterId}, which \`gate.candidates\` lists.`
+            : `${characterId} has no portrait yet — run the pipeline before approving one.`,
+        };
+      }
       return {
         ok: false,
         reason: `${characterId} has no candidate ${hash} (${state.candidates} on file).`,

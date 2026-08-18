@@ -782,6 +782,18 @@ Plan: [`plans/task-dag-view.md`](plans/task-dag-view.md).
 - **Two questions, two marks.** In the list, the ring is the task the inspector is open on; the
   tint is every other card the authored selection is about. The React board had one highlight and
   therefore could not say both.
+- **A task that stopped says why on the card.** `Task.error` is the runner's own sentence for a
+  `failed` or `needs_human` node, and the list is the surface built for scanning — so it is drawn
+  there rather than one click away in the inspector, whose attempt stack answers a different
+  question (what each *attempt* said) and is not where an author looking for the failure starts.
+- **An empty list blames the control that emptied it.** There are two ways to hide a task and they
+  overlap: `only done` keeps what succeeded, Clear finished takes what finished out, and Clear's set
+  is a superset of the filter's. So the sentence has to ask about Clear *first* — otherwise a list
+  emptied by Clear says nothing has finished at the moment ten things have. `renderer/rules/
+  tasklist.ts` holds both that and `showing`, because both are inferences and both were wrong; the
+  pane keeps only the two control values. Clear's own tooltip while greyed is its refusal, per the
+  tooltip rule.
+
 - **A hash the cached status has never heard of is a re-plan, not a miss.** The inspector re-fetches
   once on that condition rather than polling, and says so on screen when the task is still absent.
 
@@ -811,7 +823,9 @@ and each fix is a pure function tested in node:
 **The gate has one affordance, and it is the same one in both places.** A pending character is a
 bar in the list and a button on the graph's barrier rule, and each opens `gate.approve`'s own dialog
 with `characterId` prefilled — so `stack.check`'s refusal is printed before the author commits to
-anything. The room shell had four partial gate surfaces; there is no
+anything. Which portrait is left to the author, so that first refusal is always about the empty
+`hash`: it names the unanswered field and how many are on file, rather than reporting a lookup for
+a hash nobody has been asked for yet. The room shell had four partial gate surfaces; there is no
 `view.room` to jump through any more.
 
 **The inspector renders the P7 refine loop**, since `shot_image` folds generate → critique → refine

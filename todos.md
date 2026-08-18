@@ -60,7 +60,7 @@
      dialog box showing the warnings.
 [x]: when the document tree truncates a subtree with '... and X more' you should be able to click 
      on it to show the truncated items.
-[ ]: pressure test the tasks editor to make sure all of its functionality works
+[x]: pressure test the tasks editor to make sure all of its functionality works
 [x]: asks editor: add a checkbox to 'show only completed tasks'.  also add a 'clear finished tasks'
      button.
 [x]: the system used to make a specific type of editor visible should try to avoid screen areas with 

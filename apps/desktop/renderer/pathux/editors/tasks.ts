@@ -2,6 +2,7 @@ import type { Check, Container } from 'pathux';
 import { api } from '../../api.js';
 import { onBusy, onInvalidate } from '../bridge.js';
 import { subjectOf } from '../../rules/taskGraph.js';
+import { emptyBecause, showing, type ListFilter } from '../../rules/tasklist.js';
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
@@ -102,12 +103,13 @@ export class TaskListEditor extends VnEditor {
     this.rebuild();
   }
 
-  /** The tasks the list is showing: the filter's answer, minus whatever Clear took out of it. */
+  /** What the two controls in the bar are set to, as the pure rules want to be asked. */
+  private filter(): ListFilter {
+    return { cleared: this.cleared, onlyDone: this.onlyDone };
+  }
+
   private showing(): Task[] {
-    const tasks = this.status?.tasks ?? [];
-    return tasks.filter(
-      (task) => !this.cleared.has(task.hash) && (!this.onlyDone || task.status === 'done'),
-    );
+    return showing(this.status?.tasks ?? [], this.filter());
   }
 
   private selection(): Selection {
@@ -178,10 +180,13 @@ export class TaskListEditor extends VnEditor {
       for (const task of tasks) if (TaskListEditor.finished(task)) this.cleared.add(task.hash);
       this.rebuild();
     });
-    clear.description =
-      'Take everything already finished out of this list. Nothing is deleted — those records ' +
-      'are what make a run resumable — and Refresh brings them back.';
+    // A greyed control that will not say why is the same bug as a hidden one, so the two
+    // sentences are chosen together: what it would do, or why it cannot.
     clear.disabled = !tasks.some((t) => TaskListEditor.finished(t) && !this.cleared.has(t.hash));
+    clear.description = clear.disabled
+      ? 'Nothing finished is left in the list to take out of it.'
+      : 'Take everything already finished out of this list. Nothing is deleted — those records ' +
+        'are what make a run resumable — and Refresh brings them back.';
 
     const refresh = this.bar.button('Refresh', () => {
       this.cleared.clear();
@@ -203,19 +208,12 @@ export class TaskListEditor extends VnEditor {
       this.list.appendChild(this.gateBar(character));
     }
     if (tasks.length === 0) {
-      this.list.appendChild(note(this.emptyBecause(all.length)));
+      this.list.appendChild(note(emptyBecause(all, this.filter())));
       return;
     }
 
     const selection = this.selection();
     for (const task of tasks) this.list.appendChild(this.taskCard(task, selection));
-  }
-
-  /** Why the list is empty, said in terms of what the author can change. */
-  private emptyBecause(total: number): string {
-    if (total === 0) return 'No tasks yet — run the pipeline.';
-    if (this.onlyDone) return 'Nothing has finished yet — untick “only done” to see the rest.';
-    return 'Everything is cleared out of this list. Refresh brings it back.';
   }
 
   /** The gate, as the one thing standing between the author and the rest of the run. */
@@ -281,6 +279,14 @@ export class TaskListEditor extends VnEditor {
 
     box.appendChild(head);
     box.appendChild(subject(subjectOf(task), TOKENS.paper));
+    // A task that stopped records why, and this is the surface built for scanning — so the
+    // reason belongs on the card rather than one click away in the inspector's attempt list,
+    // which is not where an author looking for what went wrong starts.
+    if (task.error) {
+      const why = subject(task.error, TOKENS.vermilion);
+      why.title = task.error;
+      box.appendChild(why);
+    }
 
     box.title = `Inspect this ${task.kind} — every other pane follows the pick`;
     box.addEventListener('click', () => this.select(task));
