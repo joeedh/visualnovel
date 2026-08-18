@@ -129,6 +129,7 @@ import {
   StructuredAgentBackend,
   Workspace,
   archiveUpload,
+  PROJECT_SKILLS_DIR,
   composeSystem,
   discoverSkills,
   focusOnScene,
@@ -233,7 +234,7 @@ import { narrowTask } from './reviews.js';
 import { labelAssets, labelContext } from './assetlabel.js';
 import { deriveChunks, derivePrompt } from './assetprompt.js';
 import { applyPromptEdit, type PromptEdit } from './promptedit.js';
-import { buildDocTree, fileTree, type SkillEntry } from './doctree.js';
+import { DEFAULT_CAP, buildDocTree, fileTree, type SkillEntry } from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
 import { renameInText } from './rename.js';
 import { confirmDetail } from './toolconfirm.js';
@@ -2699,6 +2700,26 @@ export class WorkspaceSession {
   /** The tree's other mode: what is actually on disk, `.git` and `node_modules` excluded. */
   async fileTree(): Promise<DocNode[]> {
     return fileTree(await walkFiles(this.dir));
+  }
+
+  /**
+   * Every file under `.aiagent/skills`, as the Skills pane's own tree — the *content* the document
+   * tree deliberately leaves out.
+   *
+   * Its own walk rather than a filter over `fileTree()`: that one is capped at 5000 files across
+   * the whole project, so on a large one `.aiagent` could be truncated away and this pane would
+   * draw an empty directory with nothing to say about why. It would also ship the entire project's
+   * file list to paint a dozen rows.
+   *
+   * No skills directory at all is `[]`, not a failure: that is the state every new project starts
+   * in, and it is the Skills branch being drawn empty that tells the author what to do about it.
+   */
+  async skillTree(): Promise<DocNode[]> {
+    const root = join(this.dir, PROJECT_SKILLS_DIR);
+    if (!(await exists(root))) return [];
+    // The paths come back relative to the skills directory, so the prefix is what makes each id a
+    // workspace-relative path `doc.read` would take.
+    return fileTree(await walkFiles(root), DEFAULT_CAP, `${relPath(this.dir, root)}/`);
   }
 
   /**

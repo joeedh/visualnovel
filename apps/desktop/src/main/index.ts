@@ -586,6 +586,7 @@ function registerIpc(): void {
   handle('workspace:index', () => getSession().index());
   handle('workspace:doctree', () => getSession().docTree());
   handle('workspace:filetree', () => getSession().fileTree());
+  handle('workspace:skilltree', () => getSession().skillTree());
   handle('agent:run', (origin, input) => {
     // Remembered so a plan or a clarifying question lands where the turn was started.
     turnWindow = origin;

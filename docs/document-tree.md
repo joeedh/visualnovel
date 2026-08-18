@@ -166,6 +166,15 @@ document tree but the `DocNode` type: every file under the workspace root, direc
 **not** consult git — a project that is not a repo still has files, and `.gitignore` semantics are
 not what "view every file" asks for.
 
+`workspace:skilltree` is the same walk over `.aiagent/skills` alone, and is deliberately **not** a
+filter over the one above: that walk stops at 5000 files across the whole project, so on a large
+one `.aiagent` could be truncated away and the Skills pane would draw an empty directory with
+nothing to say about why — and it would ship the entire project's file list to paint a dozen rows.
+`fileTree`'s third argument prefixes every id and path while the structure still comes from the
+paths as walked, so the rows come out `file:.aiagent/skills/<id>/SKILL.md` — workspace-relative,
+which is what `selectionForNode` and `nodeIsSelected` already act on with no new rule. No skills
+directory at all is `[]`, which is the state every new project starts in.
+
 ## Where it lives
 
 | Piece | Where |
@@ -174,8 +183,9 @@ not what "view every file" asks for.
 | The projection (`buildDocTree`, `fileTree`) — pure | `apps/desktop/src/main/doctree.ts` |
 | Asset display names (`assetLabel`, `labelAssets`) — pure | `apps/desktop/src/main/assetlabel.ts` |
 | The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()` |
-| Channels | `workspace:doctree`, `workspace:filetree` |
-| Commands | `workspace.doctree`, `workspace.filetree` (non-mutating, no props) |
+| The skills walk (`walkFiles` under `.aiagent/skills`) | `WorkspaceSession.skillTree()` |
+| Channels | `workspace:doctree`, `workspace:filetree`, `workspace:skilltree` |
+| Commands | `workspace.doctree`, `workspace.filetree`, `workspace.skilltree` (non-mutating, no props) |
 
 It sits in the desktop's main process rather than `@vn/authoring` because the walk needs
 `AssetStore` and the persisted storyboards, neither of which `Workspace` opens, and exactly one

@@ -621,6 +621,8 @@ export interface InvokeChannels {
   'workspace:doctree': () => DocTree;
   /** Every file on disk, `.git` and `node_modules` excluded, capped. The tree's other mode. */
   'workspace:filetree': () => DocNode[];
+  /** The files under `.aiagent/skills`, which the document tree deliberately does not carry. */
+  'workspace:skilltree': () => DocNode[];
   'agent:run': (userInput: string) => RunResult;
   'agent:setMode': (mode: AgentMode) => AgentMode;
   'agent:setModel': (modelId: string) => string;

@@ -2,12 +2,20 @@
  * The document tree is a projection, so most of it is testable with no filesystem at all — the
  * end-to-end case at the bottom is what proves the projection is fed the real thing.
  */
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import type { SlotGraph, SlotNode } from '@vn/artgen';
 import type { Asset, ProjectModel, RefBinding, Shot } from '@vn/types';
 import type { LoadedInputs } from '@vn/parse';
 import type { DocNode } from '../../shared/ipc.js';
-import { buildDocTree, fileTree, type DocTreeInput, type SkillEntry } from '../doctree.js';
+import {
+  DEFAULT_CAP,
+  buildDocTree,
+  fileTree,
+  type DocTreeInput,
+  type SkillEntry,
+} from '../doctree.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {
@@ -627,6 +635,28 @@ describe('fileTree', () => {
     );
     expect(roots[0]!.children!.map((n) => n.label)).toEqual(['f0.md', 'f1.md', '… and 2 more']);
   });
+
+  // A caller that walked one subdirectory still hands back ids a click can act on: the prefix goes
+  // on every id and path, while the *structure* comes from the paths as they arrived.
+  it('prefixes ids and paths without changing the shape they nest into', () => {
+    const roots = fileTree(['lint/run.mjs', 'lint/SKILL.md'], DEFAULT_CAP, '.aiagent/skills/');
+    expect(roots.map((n) => n.id)).toEqual(['dir:.aiagent/skills/lint']);
+    expect(roots[0]!.path).toBe('.aiagent/skills/lint');
+    expect(roots[0]!.label).toBe('lint');
+    expect(roots[0]!.children!.map((n) => n.id)).toEqual([
+      'file:.aiagent/skills/lint/SKILL.md',
+      'file:.aiagent/skills/lint/run.mjs',
+    ]);
+    expect(roots[0]!.children!.map((n) => n.path)).toEqual([
+      '.aiagent/skills/lint/SKILL.md',
+      '.aiagent/skills/lint/run.mjs',
+    ]);
+  });
+
+  it('still puts directories before files under a prefix', () => {
+    const roots = fileTree(['b.md', 'a/x.md'], DEFAULT_CAP, 'p/');
+    expect(roots.map((n) => n.id)).toEqual(['dir:p/a', 'file:p/b.md']);
+  });
 });
 
 describe('WorkspaceSession — the tree over a real project', () => {
@@ -685,6 +715,22 @@ describe('WorkspaceSession — the tree over a real project', () => {
     const portraits = tree.backlinks['character:aiko']!.assets;
     expect(portraits.length).toBeGreaterThan(0);
     expect(portraits.every((a) => a.kind === 'portrait' && a.base)).toBe(true);
+  });
+
+  it('walks the skills directory on its own, with workspace-relative ids', async () => {
+    const roots = await new WorkspaceSession(p.dir, true, deps).skillTree();
+    expect(roots.map((n) => n.id)).toEqual(['dir:.aiagent/skills/continuity-pass']);
+    expect(roots[0]!.children!.map((n) => n.path)).toEqual([
+      '.aiagent/skills/continuity-pass/SKILL.md',
+    ]);
+  });
+
+  // Every project starts here — `skeleton()` writes no `.aiagent/` at all — so a missing
+  // directory is the ordinary case and must be `[]` rather than the walk's rejection.
+  it('answers with nothing at all where no skills directory exists', async () => {
+    const bare = join(p.dir, 'empty-workspace');
+    await mkdir(bare, { recursive: true });
+    expect(await new WorkspaceSession(bare, true, deps).skillTree()).toEqual([]);
   });
 
   it('walks the workspace on disk, skipping .git', async () => {

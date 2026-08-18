@@ -259,6 +259,20 @@ export const workspaceFiletree = define({
   },
 });
 
+export const workspaceSkilltree = define({
+  id: 'workspace.skilltree',
+  title: 'Skill files',
+  description:
+    'Every file under .aiagent/skills as a tree — what is inside the playbooks, which the ' +
+    'document tree leaves out because it carries identity rather than content.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const roots = await ctx.host.session.skillTree();
+    return { message: `${roots.length} skill(s) on disk.`, data: roots };
+  },
+});
+
 export const workspaceReindex = define({
   id: 'workspace.reindex',
   title: 'Regenerate the project map',

@@ -498,8 +498,17 @@ export function buildDocTree(input: DocTreeInput): DocTree {
  * The full file tree, from a flat list of workspace-relative paths. Separate from the document
  * tree on purpose: it answers "what is on disk", shares nothing with it but the node type, and is
  * walked only when the sidebar asks for that mode.
+ *
+ * `base` is prepended to every id and path while the **structure** still comes from the paths as
+ * given. That is what lets a caller walk one subdirectory and still hand back rows a click can act
+ * on: the ids come out `file:.aiagent/skills/<id>/SKILL.md`, which is the workspace-relative path
+ * `doc.read` takes, so `selectionForNode` and `nodeIsSelected` work on them with no new rule.
  */
-export function fileTree(paths: readonly string[], cap: number = DEFAULT_CAP): DocNode[] {
+export function fileTree(
+  paths: readonly string[],
+  cap: number = DEFAULT_CAP,
+  base = '',
+): DocNode[] {
   const roots: DocNode[] = [];
   const dirs = new Map<string, DocNode>();
 
@@ -512,13 +521,16 @@ export function fileTree(paths: readonly string[], cap: number = DEFAULT_CAP): D
       prefix = prefix ? `${prefix}/${segment}` : segment;
       let dir = dirs.get(prefix);
       if (!dir) {
-        dir = node(`dir:${prefix}`, 'dir', segment, { path: prefix, children: [] });
+        dir = node(`dir:${base}${prefix}`, 'dir', segment, {
+          path: `${base}${prefix}`,
+          children: [],
+        });
         dirs.set(prefix, dir);
         parent.push(dir);
       }
       parent = dir.children!;
     }
-    parent.push(node(`file:${path}`, 'file', name, { path }));
+    parent.push(node(`file:${base}${path}`, 'file', name, { path: `${base}${path}` }));
   }
 
   // Directories before files at every level, which is what a file tree looks like; the paths

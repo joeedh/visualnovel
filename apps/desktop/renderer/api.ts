@@ -318,6 +318,47 @@ const MOCK_FILETREE: DocNode[] = [
 ];
 
 /**
+ * What is inside the two mock skills — the tree the Skills pane draws, whose ids are already the
+ * workspace-relative paths `doc.read` would take. The second has the script its badge claims.
+ */
+const MOCK_SKILLTREE: DocNode[] = [
+  {
+    id: 'dir:.aiagent/skills/continuity-pass',
+    kind: 'dir',
+    label: 'continuity-pass',
+    path: '.aiagent/skills/continuity-pass',
+    children: [
+      {
+        id: 'file:.aiagent/skills/continuity-pass/SKILL.md',
+        kind: 'file',
+        label: 'SKILL.md',
+        path: '.aiagent/skills/continuity-pass/SKILL.md',
+      },
+    ],
+  },
+  {
+    id: 'dir:.aiagent/skills/lint-fountain',
+    kind: 'dir',
+    label: 'lint-fountain',
+    path: '.aiagent/skills/lint-fountain',
+    children: [
+      {
+        id: 'file:.aiagent/skills/lint-fountain/SKILL.md',
+        kind: 'file',
+        label: 'SKILL.md',
+        path: '.aiagent/skills/lint-fountain/SKILL.md',
+      },
+      {
+        id: 'file:.aiagent/skills/lint-fountain/run.mjs',
+        kind: 'file',
+        label: 'run.mjs',
+        path: '.aiagent/skills/lint-fountain/run.mjs',
+      },
+    ],
+  },
+];
+
+/**
  * The browser preview has no main process to persist to, so the session store's role is
  * played by `localStorage` — enough that the resizable panels behave identically there.
  */
@@ -344,6 +385,8 @@ const fallback: DesktopApi = {
         return Promise.resolve(MOCK_DOCTREE);
       case 'workspace:filetree':
         return Promise.resolve(MOCK_FILETREE);
+      case 'workspace:skilltree':
+        return Promise.resolve(MOCK_SKILLTREE);
       case 'pipeline:status':
         return Promise.resolve(MOCK_STATUS);
       case 'agent:setMode':
