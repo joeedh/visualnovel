@@ -5,6 +5,7 @@ import {
   UIBase,
   cconst,
   nstructjs,
+  setAreaMenuFilter,
   setIconManager,
   setIconMap,
   simple,
@@ -14,7 +15,7 @@ import {
 import { installAgent } from './agent.js';
 import { defineShellApi } from './api.js';
 import { exec, installBridge } from './bridge.js';
-import { editorNameProblems } from '../../src/shared/editors.js';
+import { editorNameProblems, isOfferedEditor } from '../../src/shared/editors.js';
 import {
   DEFAULT_RECIPE,
   isPane,
@@ -33,6 +34,7 @@ import './editors/convo.js';
 import './editors/documents.js';
 import './editors/graph.js';
 import './editors/inspector.js';
+import './editors/onboarding.js';
 import './editors/project.js';
 import './editors/script.js';
 import './editors/skills.js';
@@ -328,5 +330,10 @@ export function startShell(): void {
 
   nstructjs.validateStructs();
   checkEditorNames();
+  // What a pane may be switched to, answered in one place for both switchers. path.ux builds its
+  // own area menu by enumerating the registry, which knows nothing about `EDITORS`; this hands it
+  // the same predicate the Editors submenu is built from, so an editor that is named-but-not-
+  // offered is absent from both rather than from whichever one someone remembered to narrow.
+  setAreaMenuFilter(isOfferedEditor);
   new Shell().start();
 }

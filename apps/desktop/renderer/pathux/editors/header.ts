@@ -1,6 +1,13 @@
 import { AreaFlags, Menu, createMenu, type Container, type Label, type MenuTemplate } from 'pathux';
 import { isLive } from '../../api.js';
-import { EDITOR_IDS, EDITORS, editorTooltip, type EditorId } from '../../../src/shared/editors.js';
+import {
+  EDITOR_IDS,
+  editorTitle,
+  editorTooltip,
+  OFFERED_EDITOR_IDS,
+  type EditorId,
+} from '../../../src/shared/editors.js';
+import type { PropValue } from '../../../src/shared/ipc.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
 import {
   check,
@@ -39,8 +46,8 @@ function projectName(path: string): string {
  * will not — an entry that opens no palette and no dialog would otherwise show nothing at all,
  * and "Cancelled." is the one an entry that opens a chooser most needs to pass on.
  */
-function act(id: string): void {
-  void exec(id).then(report);
+function act(id: string, props: Record<string, PropValue> = {}): void {
+  void exec(id, props).then(report);
 }
 
 /**
@@ -435,12 +442,13 @@ export class VnHeaderEditor extends VnEditor {
         callback: () => act('workspace.reindex'),
         tooltip: 'Rebuild the map the authoring agent reads: cast, locations, story graph, bible',
       },
-      // A key is an argument no menu can supply, so this opens the form like the two above. What
-      // it collects is written to a gitignored file and recorded as `<secret>`.
+      // The Setup pane rather than `project.setKey`'s bare form: a box asking for a credential is
+      // no use to someone who does not yet have one, and the pane is the same box with the steps
+      // for getting there above it. The form is still in the palette for anyone who just wants it.
       {
-        name: 'Provide Model Key…',
-        callback: () => openCommandDialog('project.setKey'),
-        tooltip: 'Store an API key in this project, in a file git is told to ignore',
+        name: 'Set Up API Keys…',
+        callback: () => act('view.open', { editor: 'onboarding', where: 'elsewhere' }),
+        tooltip: 'How to get a model key, which of yours are set, and where they are read from',
       },
       Menu.SEP,
       // Not fired from the menu either: `upload.pick` is `confirm`, and the dialog is where a
@@ -586,19 +594,23 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * What replaced the room nav: every editor by name, each one a `view.open`. The list is
-   * `shared/editors.ts`, which is also what the command's props are built from — a menu that
-   * offered something the command would refuse is the drift this avoids.
+   * What replaced the room nav: every editor an author browses to, each one a `view.open`. The
+   * list is `shared/editors.ts`, which is also what the command's props are built from — a menu
+   * that offered something the command would refuse is the drift this avoids.
+   *
+   * `OFFERED_EDITOR_IDS` rather than `EDITORS`, and it is the same predicate the shell hands
+   * path.ux's own area menu: an editor reached from one place and one place only is listed in
+   * neither switcher. `view.open` still takes its name, so the entry that does reach it works.
    */
   private editorsMenu(): Menu {
     return this.submenu(
       'Editors',
       'Show a different editor in this pane',
-      EDITORS.map((editor) => ({
-        name: editor.title,
-        callback: () => void exec('view.open', { editor: editor.id }),
-        tooltip: editorTooltip(editor.id),
-        id: editor.id,
+      OFFERED_EDITOR_IDS.map((id) => ({
+        name: editorTitle(id),
+        callback: () => void exec('view.open', { editor: id }),
+        tooltip: editorTooltip(id),
+        id,
       })),
     );
   }

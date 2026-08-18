@@ -343,6 +343,44 @@ async function openRepos(): Promise<void> {
   // Only now: the checkpoint above is what a notification written earlier would have been
   // swept into, under a subject that has nothing to do with it.
   await notifications().open();
+  await noticeMissingKeys();
+}
+
+/**
+ * Say once, per project, that this install cannot call a model yet.
+ *
+ * A brand-new install looks completely healthy — it opens, it draws a tree, the palette is full —
+ * right up to the first run, which fails somewhere deep in a task with a message about a provider.
+ * This is the earlier, plainer version of that news, and it carries the pane that fixes it.
+ *
+ * Filed rather than shown: a notification is durable, so an author who dismisses the note frame
+ * still has it in the bell. It is posted at most once per project, and the guard is the log
+ * itself — nothing else remembers, and a second copy every launch would be nagging rather than
+ * news. Under `--mock` there is nothing to warn about: a mock run calls no provider, which is
+ * exactly the state someone trying the app out is in.
+ */
+async function noticeMissingKeys(): Promise<void> {
+  if (MOCK) return;
+  const view = await getSession()
+    .keyStatusView()
+    .catch(() => undefined);
+  const missing = view?.vendors.filter((vendor) => !vendor.resolved) ?? [];
+  if (missing.length === 0) return;
+
+  // Said once, whether or not it was read: the log dedupes by id, so "have I said this" is a
+  // question only the notifications already in it can answer.
+  const already = await notifications().list();
+  if (already.some((note) => note.link?.editor === 'onboarding')) return;
+
+  await notifications().post({
+    category: 'workspace',
+    level: 'warn',
+    source: 'main',
+    message:
+      `No API key for ${missing.map((vendor) => vendor.vendor).join(' or ')}, so anything that ` +
+      `needs ${missing.length > 1 ? 'them' : 'it'} fails at the first call. Setup has the steps.`,
+    link: { editor: 'onboarding' },
+  });
 }
 
 function committer(): Committer {

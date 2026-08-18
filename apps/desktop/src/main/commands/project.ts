@@ -95,6 +95,31 @@ export const projectSetKey = define({
   },
 });
 
+export const projectTestKey = define({
+  id: 'project.testKey',
+  title: 'Test a model key',
+  description:
+    'Make one small real call with a provider’s key and say whether it worked. This is the ' +
+    'question `project.keyStatus` cannot answer: a key can resolve and still be revoked, ' +
+    'mistyped, or on an account with no credit, and without this the first news of that arrives ' +
+    'much later as a run failing. It costs a fraction of a cent, and under `--mock` it does ' +
+    'nothing, because a mock run never calls a provider.',
+  // It writes nothing. It does spend, which the description says, because a command that quietly
+  // costs money is one an author should have been told about rather than have to infer.
+  mutating: false,
+  props: {
+    provider: prop.oneOf(KEY_VENDORS, 'which provider’s key to try'),
+  },
+  async check({ provider }, ctx) {
+    return verdict(await ctx.host.session.previewTestKey(provider));
+  },
+  async run({ provider }, ctx) {
+    const result = await ctx.host.session.testKey(provider);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message };
+  },
+});
+
 export const projectKeyStatus = define({
   id: 'project.keyStatus',
   title: 'Which model keys are set',
@@ -110,7 +135,8 @@ export const projectKeyStatus = define({
     const view = await ctx.host.session.keyStatusView();
     const missing = view.vendors.filter((v) => !v.resolved).map((v) => v.vendor);
     return {
-      message: missing.length === 0 ? 'Every provider has a key.' : `No key for ${missing.join(', ')}.`,
+      message:
+        missing.length === 0 ? 'Every provider has a key.' : `No key for ${missing.join(', ')}.`,
       data: view,
     };
   },

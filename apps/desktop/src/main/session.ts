@@ -253,6 +253,8 @@ import type {
   SceneEditResult,
   StoryGraph,
 } from '../shared/ipc.js';
+import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../shared/apikeys.js';
+import { readResource } from './resources.js';
 import { notify } from './notifications.js';
 import { narrowTask } from './reviews.js';
 import { labelAssets, labelContext } from './assetlabel.js';
@@ -2421,10 +2423,7 @@ export class WorkspaceSession {
     // The key file itself is never reported as written: it is ignored (or outside the repo
     // entirely), so nothing downstream may treat it as a document. The `.gitignore` is, because
     // it is committed.
-    const safety =
-      scope === 'user'
-        ? ', which is outside every repository'
-        : ', which git ignores';
+    const safety = scope === 'user' ? ', which is outside every repository' : ', which git ignores';
     const reach =
       scope === 'user' ? ' Every project on this machine reads it.' : ' This project reads it.';
     return {
@@ -2459,6 +2458,96 @@ export class WorkspaceSession {
         };
       }),
     };
+  }
+
+  /**
+   * The key walkthrough, read from the one file that holds it and parsed into blocks.
+   *
+   * Parsed here rather than in the pane because main is the side with a filesystem: what crosses
+   * the IPC boundary is already drawable, and the pane cannot end up with a second opinion about
+   * what the page says.
+   */
+  async keyGuide(): Promise<KeyGuide> {
+    return parseKeyGuide(await readResource('docs', 'api-keys.md'));
+  }
+
+  /**
+   * Open one of a vendor's pages — its key console, its documentation, its pricing — in the
+   * system browser.
+   *
+   * The URL is looked up here, from the shipped guide, rather than passed in. A renderer that
+   * could name any URL for the OS to open is a renderer that can be talked into opening one, and
+   * nothing about these buttons needs that: the pages they may reach are three fields of a file
+   * the app ships.
+   */
+  async openKeyLink(vendor: keyof ResolvedKeys, link: GuideUrlField): Promise<PromptResult> {
+    const guide = await this.keyGuide();
+    const url = guide.vendors.find((entry) => entry.vendor === vendor)?.[link] ?? '';
+    if (!/^https:\/\//.test(url)) {
+      return { ok: false, message: `The setup guide names no ${link} page for ${vendor}.` };
+    }
+    const open = this.deps.openExternal;
+    if (!open) return { ok: false, message: 'This build cannot open a browser.' };
+    await open(url);
+    return { ok: true, message: `Opened ${url}.` };
+  }
+
+  /**
+   * Whether {@link testKey} has anything to try, in its own sentence either way — so the Setup
+   * pane's greyed-out button says why it is grey rather than looking broken.
+   */
+  async previewTestKey(vendor: keyof ResolvedKeys): Promise<PromptResult> {
+    if (this.mock) {
+      return { ok: false, message: 'Mock mode makes no calls, so there is nothing to test.' };
+    }
+    const entry = (await this.keyStatusView()).vendors.find((v) => v.vendor === vendor);
+    if (!entry?.resolved) {
+      return { ok: false, message: `No ${vendor} key resolves yet, so there is nothing to try.` };
+    }
+    return { ok: true, message: `One small ${vendor} call, with the key it already reads.` };
+  }
+
+  /**
+   * Make one real, cheap call with a vendor's key and say whether it worked.
+   *
+   * The Setup pane exists to end the state of "I pasted something and I do not know". A key can
+   * resolve and still be wrong — revoked, mistyped, or belonging to an account with no credit —
+   * and every one of those failures otherwise surfaces much later, inside a run, as a stack of
+   * pipeline errors that name a task rather than a key.
+   *
+   * The model is one the *project* already configures for that vendor, not a name written down
+   * here: a model id this file invented could be one the account has no access to, and the
+   * refusal would then be about our choice rather than about their key.
+   */
+  async testKey(vendor: keyof ResolvedKeys): Promise<PromptResult> {
+    if (this.mock)
+      return { ok: true, message: 'Mock mode makes no calls, so there is nothing to test.' };
+
+    const config = await loadConfig(this.dir);
+    const modelId = [config.models.text, ...config.models.vision].find(
+      (id) => chatVendorFor(id) === vendor,
+    );
+    if (!modelId) {
+      return {
+        ok: false,
+        message: `This project configures no ${vendor} chat model, so there is nothing cheap to call.`,
+      };
+    }
+
+    try {
+      const keys = await resolveKeys(config, {
+        secretsDirs: await secretDirsFor(this.dir),
+        require: [vendor],
+      });
+      const backend = chatBackendFor(modelId, keys).backend;
+      await backend.message({ prompt: 'Reply with the single word OK.' });
+      return { ok: true, message: `The ${vendor} key works — ${modelId} answered.` };
+    } catch (err) {
+      // The provider's own sentence, which is the one that distinguishes "no credit" from
+      // "revoked" from "no access to that model". `resolveKeys` names sources, never values, and
+      // a vendor SDK does not echo the key back, so this is safe to show.
+      return { ok: false, message: `The ${vendor} key did not work: ${(err as Error).message}` };
+    }
   }
 
   /**

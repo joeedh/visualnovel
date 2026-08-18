@@ -6,11 +6,13 @@
 import {
   EDITOR_IDS,
   EDITORS,
+  OFFERED_EDITOR_IDS,
   OPEN_WHERE,
   PIN_NOUN,
   editorNameProblems,
   editorTitle,
   editorTooltip,
+  isOfferedEditor,
   pinFieldOf,
 } from '../editors.js';
 
@@ -79,6 +81,41 @@ describe('what an editor can be pinned to', () => {
       if (field === undefined) continue;
       expect(PIN_NOUN[field]).toBeTruthy();
     }
+  });
+});
+
+/**
+ * Named but not listed. Setup is reached from one File-menu entry and from nowhere an author
+ * browses, and the two halves of that are easy to get half-right: narrowing the *vocabulary*
+ * instead of the offer would take the editor away from `view.open`, the palette, CDP and any
+ * layout that already held it.
+ */
+describe('the offered subset', () => {
+  it('leaves an unoffered editor out of what an author browses', () => {
+    expect(OFFERED_EDITOR_IDS).not.toContain('onboarding');
+    expect(isOfferedEditor('onboarding')).toBe(false);
+  });
+
+  it('still names it, so every way of reaching it by name keeps working', () => {
+    expect(EDITOR_IDS).toContain('onboarding');
+    expect(editorTitle('onboarding')).toBe('Setup');
+    // The boot check covers it like any other: an unoffered editor going missing from the
+    // registry is exactly as broken as an offered one going missing.
+    expect(editorNameProblems(EDITOR_IDS.filter((id) => id !== 'onboarding'))).toEqual({
+      unregistered: ['onboarding'],
+      unnamed: [],
+    });
+  });
+
+  it('offers everything else, and answers for a name it has never heard of', () => {
+    for (const id of EDITOR_IDS) {
+      if (id === 'onboarding') continue;
+      expect(isOfferedEditor(id)).toBe(true);
+    }
+    // The filter is installed application-wide and sees path.ux's own areas too. Whatever it has
+    // not been told about is not this list's to take away.
+    expect(isOfferedEditor('header')).toBe(true);
+    expect(isOfferedEditor('some.pathux.area')).toBe(true);
   });
 });
 

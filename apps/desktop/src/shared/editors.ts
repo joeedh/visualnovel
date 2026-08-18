@@ -98,6 +98,15 @@ export const EDITORS = [
     pins: 'assetHash',
   },
   { id: 'project', title: 'Project', what: 'project.yaml — art style, models, image params' },
+  {
+    id: 'onboarding',
+    title: 'Setup',
+    what: 'how to get a model key, and where yours are',
+    // Reached once, from the File menu, and never again — so it is named but not listed. It also
+    // claims nothing: no document-tree node names an API key, and a click that opened it would
+    // have landed on a pane about something else entirely.
+    offered: false,
+  },
 ] as const;
 
 /**
@@ -186,6 +195,37 @@ export const CLAIMS: readonly { id: EditorId; claims: EditorClaim }[] = EDITORS.
 );
 
 export const EDITOR_IDS: readonly EditorId[] = EDITORS.map((editor) => editor.id);
+
+/**
+ * The editors on offer: the ones the pane switcher lists and the View ▸ Editors submenu draws.
+ *
+ * An entry with `offered: false` is **named but not listed** — reachable from a menu entry, the
+ * palette, CDP, the agent and a stored layout, and absent from the two places an author browses.
+ * path.ux enforces the first half through `setAreaMenuFilter`, which the shell installs from this
+ * list; the submenu is built from the same one, so the two ways of switching a pane cannot come
+ * to disagree.
+ *
+ * `EDITOR_IDS` is deliberately *not* narrowed: `view.open`'s props, a stored layout's validation
+ * and `editorNameProblems`'s boot check all still cover every editor, because an unoffered editor
+ * going missing is exactly as broken as an offered one going missing.
+ */
+export const OFFERED_EDITOR_IDS: readonly EditorId[] = EDITORS.flatMap((editor) =>
+  'offered' in editor && editor.offered === false ? [] : [editor.id],
+);
+
+/**
+ * Whether an area is listed where an author browses — the predicate the shell installs as
+ * path.ux's `setAreaMenuFilter`.
+ *
+ * It answers `true` for a name this list does not carry, rather than `false`. The filter is
+ * installed application-wide and sees every registered area, path.ux's own included; a predicate
+ * that took away everything it had not heard of would be this list quietly deciding what a
+ * library may offer. It narrows exactly what it names and nothing else.
+ */
+export function isOfferedEditor(name: string): boolean {
+  const editor = EDITORS.find((entry) => entry.id === name);
+  return !editor || !('offered' in editor && editor.offered === false);
+}
 
 export function editorTitle(id: EditorId): string {
   return EDITORS.find((editor) => editor.id === id)?.title ?? id;

@@ -18,6 +18,7 @@ describe('the desktop registry', () => {
   it('registers every namespace the UI reaches', () => {
     expect(createDesktopRegistry().namespaces()).toEqual([
       'agent',
+      'app',
       'art',
       'asset',
       'bible',
@@ -191,9 +192,11 @@ describe('the desktop registry', () => {
    * one, because what it would do is decided by a model rather than by state this process can
    * read.
    *
-   * Three non-mutators declare one anyway. The two `report.*` commands write nothing into the
-   * project, but one spends a minute of a real model's time on a real key and the other opens a
-   * public issue tracker on text — so "run it and find out" is the wrong answer to both. The two
+   * A handful of non-mutators declare one anyway, and each is an act with a cost that is not a
+   * write. The two `report.*` commands put nothing in the project, but one spends a minute of a
+   * real model's time on a real key and the other opens a public issue tracker on text — so "run
+   * it and find out" is the wrong answer to both. `project.testKey` is the same shape and cheaper:
+   * it calls a provider for real, so whether a key even resolves is worth answering first. The two
    * stops are the converse: they interrupt an act rather than performing one, so there *is* state
    * to read — whether a run or a turn is in progress — and the answer is what greys the Stop
    * button and says why.
@@ -221,6 +224,7 @@ describe('the desktop registry', () => {
       'pipeline.stop',
       'project.setArtStyle',
       'project.setKey',
+      'project.testKey',
       'prompt.addRef',
       'prompt.clear',
       'prompt.condense',
@@ -270,6 +274,9 @@ describe('the desktop registry', () => {
     expect(commands.filter((c) => c.check && !c.mutating).map((c) => c.id)).toEqual([
       'agent.stop',
       'pipeline.stop',
+      // Writes nothing and calls a provider, which is the cost. The Setup pane's Test button is
+      // grey until a key resolves, and this is the sentence it shows for why.
+      'project.testKey',
       'report.agent',
       'report.openIssue',
       // A window writes nothing, but closing one is not free either: the tooltip on a disabled

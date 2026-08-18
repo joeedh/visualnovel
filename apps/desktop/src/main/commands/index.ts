@@ -6,6 +6,7 @@
  * where backend logic lives, and commands only add naming, typed props, and provenance.
  */
 import { CommandRegistry } from '@vn/commands';
+import { appKeyGuide, appOpenKeyLink } from './app.js';
 import {
   agentClear,
   agentNewThread,
@@ -56,7 +57,13 @@ import {
   promptSetChunk,
   promptSetCustom,
 } from './prompt.js';
-import { projectInfo, projectKeyStatus, projectSetArtStyle, projectSetKey } from './project.js';
+import {
+  projectInfo,
+  projectKeyStatus,
+  projectSetArtStyle,
+  projectSetKey,
+  projectTestKey,
+} from './project.js';
 import { reportAgent, reportOpenIssue } from './report.js';
 import {
   storyAssignLineIds,
@@ -118,6 +125,8 @@ export type { CommandHost } from './host.js';
 export function createDesktopRegistry(): CommandRegistry<CommandHost> {
   const registry = new CommandRegistry<CommandHost>();
   registry.registerAll([
+    appKeyGuide,
+    appOpenKeyLink,
     agentClear,
     agentNewThread,
     agentOpenThread,
@@ -175,6 +184,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectKeyStatus,
     projectSetArtStyle,
     projectSetKey,
+    projectTestKey,
     reportAgent,
     reportOpenIssue,
     storyAssignLineIds,

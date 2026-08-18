@@ -1,0 +1,317 @@
+/*
+ * The Setup pane's surface. Adopted into the pane's shadow root by `editors/onboarding.ts`,
+ * never imported by `index.css` — document rules do not cross that boundary, so the reset is
+ * here too.
+ *
+ * This is the one pane an author sees before they have a project worth looking at, so it reads
+ * as a document rather than as an instrument: prose width, ordinary paragraphs, and the machine
+ * colours (`--signal`, `--jade`, `--vermilion`) reserved for the three facts that are about
+ * *their* machine — whether a key resolved, where it came from, and what would happen next.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.ob-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 14px 16px 24px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ob-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 720px;
+}
+
+/* ------------------------------------------------------------------ prose */
+
+.ob-prose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ob-prose h3 {
+  margin-top: 4px;
+  color: var(--signal);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.ob-prose ol,
+.ob-prose ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.ob-prose li {
+  padding-left: 2px;
+}
+
+.ob-prose code {
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--ink);
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.ob-prose strong {
+  color: var(--paper);
+  font-weight: 600;
+}
+
+/*
+ * A link in the prose is shown, not followed. Nothing in the shadow root navigates the renderer,
+ * and the only pages this app opens are the three fields `app.openKeyLink` names — so the address
+ * is in the tooltip and the buttons above are how you get there.
+ */
+.ob-link {
+  color: var(--signal);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
+
+.ob-prose pre {
+  overflow-x: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  background: var(--ink);
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ob-prose table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ob-prose th,
+.ob-prose td {
+  padding: 3px 10px 3px 0;
+  border-bottom: 1px solid var(--ink-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ob-prose th {
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ cards */
+
+.ob-card {
+  border: 1px solid var(--ink-line);
+  border-radius: 4px;
+  background: var(--ink-raised);
+}
+
+.ob-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ink-line);
+}
+
+.ob-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ob-env {
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.ob-badge {
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid currentcolor;
+  border-radius: 9px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ob-badge.yes {
+  color: var(--jade);
+}
+
+.ob-badge.no {
+  color: var(--mist-dim);
+}
+
+.ob-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+/* ----------------------------------------------------------------- status */
+
+.ob-status {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.ob-dot {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ob-status.set .ob-dot {
+  color: var(--jade);
+}
+
+.ob-status.unset .ob-dot {
+  color: var(--mist-dim);
+}
+
+.ob-shadow {
+  padding: 6px 8px;
+  border-left: 2px solid var(--sodium);
+  background: var(--ink-sunken);
+  color: var(--sodium);
+  font-size: 12px;
+}
+
+.ob-money {
+  color: var(--mist);
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- controls */
+
+.ob-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ob-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ob-btn:hover:not(:disabled) {
+  border-color: var(--signal);
+}
+
+.ob-btn:disabled {
+  color: var(--mist-dim);
+  cursor: not-allowed;
+}
+
+.ob-btn.go {
+  border-color: var(--sodium);
+  color: var(--sodium);
+}
+
+.ob-paste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.ob-key {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.ob-key:focus {
+  border-color: var(--sodium);
+  outline: none;
+}
+
+.ob-scope {
+  padding: 5px 6px;
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 12px;
+}
+
+.ob-where {
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.ob-said {
+  min-height: 18px;
+  font-size: 12px;
+}
+
+.ob-said.good {
+  color: var(--jade);
+}
+
+.ob-said.bad {
+  color: var(--vermilion);
+}
+
+/* ------------------------------------------------------------------ notes */
+
+.ob-note {
+  min-height: 18px;
+  color: var(--mist-dim);
+  font-size: 12px;
+}
+
+.ob-note.bad {
+  color: var(--vermilion);
+}

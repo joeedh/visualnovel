@@ -141,6 +141,46 @@ describe('project.keyStatus', () => {
   });
 });
 
+/**
+ * The refusal, not the call. `testKey` itself makes a real request and so is not something a test
+ * suite may run; what is testable — and what the Setup pane's greyed-out button shows — is the
+ * sentence that says why there is nothing to try.
+ */
+describe('project.testKey — what it says before it calls', () => {
+  let p: TestProject;
+
+  beforeEach(async () => {
+    p = await makeProject({ script: SCRIPTS.linear });
+  });
+
+  afterEach(async () => {
+    await p.cleanup();
+  });
+
+  it('refuses under --mock, because a mock run calls no provider', async () => {
+    const session = new WorkspaceSession(p.dir, true, deps);
+    const verdict = await session.previewTestKey('gemini');
+    expect(verdict).toEqual({ ok: false, message: expect.stringContaining('Mock mode') });
+    // And the call itself is the same answer, so a palette invocation cannot get further.
+    expect((await session.testKey('gemini')).message).toContain('Mock mode');
+  });
+
+  it('refuses when no key resolves, naming the vendor', async () => {
+    const session = new WorkspaceSession(p.dir, false, deps);
+    const verdict = await session.previewTestKey('anthropic');
+    expect(verdict.ok).toBe(false);
+    expect(verdict.message).toContain('anthropic');
+  });
+
+  it('accepts once a key resolves, and does not repeat it', async () => {
+    const session = new WorkspaceSession(p.dir, false, deps);
+    await session.setKey('gemini', SECRET);
+    const verdict = await session.previewTestKey('gemini');
+    expect(verdict.ok).toBe(true);
+    expect(verdict.message).not.toContain(SECRET);
+  });
+});
+
 describe('describeKeySource', () => {
   const dir = join('/tmp', 'a-project');
 
