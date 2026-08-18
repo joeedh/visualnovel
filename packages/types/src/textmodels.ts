@@ -83,3 +83,18 @@ export function effortLabel(choice: EffortChoice): string {
 export function supportsEffort(modelId: string): boolean {
   return effortChoicesFor(modelId).length > 0;
 }
+
+/**
+ * Whether a model accepts a `{"role": "system"}` message inside `messages[]`. It is how
+ * turn-scoped truth — the plan/execute mode, a section of the system prompt that has since been
+ * rewritten — is filed without recomposing the cached prefix.
+ *
+ * A model-level predicate rather than a backend-level one, because all four curated Claude
+ * entries go through the same `createAnthropicChat`: an unsupported model answers
+ * `role 'system' is not supported on this model`, and the caller down-renders to a `user` turn
+ * instead. That matters most on a mid-session model switch, which keeps the transcript.
+ */
+export function supportsSystemRole(modelId: string): boolean {
+  const id = modelId.toLowerCase();
+  return /(fable|mythos)-5/.test(id) || /opus-5/.test(id) || /opus-4-8/.test(id);
+}

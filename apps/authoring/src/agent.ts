@@ -68,13 +68,18 @@ function chatBackendFor(
 
 /**
  * Build the agent backend for a project, or a mock when offline. `model`/`effort` override
- * the configured defaults (used by `/model` and `/effort`). `native` selects Path B
- * (provider-native function-calling) when the chosen `ChatBackend` supports `chatWithTools`;
- * otherwise it falls back to Path A (structured ReAct over the text seam).
+ * the configured defaults (used by `/model` and `/effort`). Path B (provider-native
+ * function-calling) is the default wherever the chosen `ChatBackend` can hold a conversation,
+ * because it is the only path whose prefix caches; `noNative` is the escape hatch back to
+ * Path A (structured ReAct over the text seam), which is also where a backend without
+ * `chatConversation` lands anyway.
+ *
+ * The probe is `chatConversation` and deliberately not `chatWithTools`: Gemini implements the
+ * latter for a request that is still single-shot and still caches nothing.
  */
 export async function buildAgentBackend(
   dir: string,
-  opts: { mock?: boolean; native?: boolean; model?: string; effort?: EffortChoice },
+  opts: { mock?: boolean; noNative?: boolean; model?: string; effort?: EffortChoice },
 ): Promise<AgentBackend> {
   if (opts.mock) return new MockAgentBackend();
   const config = await loadConfig(dir);
@@ -85,7 +90,7 @@ export async function buildAgentBackend(
     require: [vendor],
   });
   const chat = chatBackendFor(modelId, keys, opts.effort);
-  if (opts.native && chat.chatWithTools) return new NativeAgentBackend(chat);
+  if (!opts.noNative && chat.chatConversation) return new NativeAgentBackend(chat);
   return new StructuredAgentBackend(chat);
 }
 
@@ -103,7 +108,7 @@ export async function createAuthoringAgent(
   permission: Permission,
   opts: {
     mock?: boolean;
-    native?: boolean;
+    noNative?: boolean;
     onEvent?: (e: AgentEvent) => void;
   } = {},
 ): Promise<AuthoringSession> {
@@ -115,7 +120,7 @@ export async function createAuthoringAgent(
   };
   const context = await loadContext(dir);
   const model = (await loadConfig(dir)).models.text;
-  const backend = await buildAgentBackend(dir, { mock: opts.mock, native: opts.native, model });
+  const backend = await buildAgentBackend(dir, { mock: opts.mock, noNative: opts.noNative, model });
   const agent = new Agent({
     backend,
     ctx,

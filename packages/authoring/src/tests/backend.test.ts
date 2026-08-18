@@ -1,4 +1,10 @@
-import type { ChatBackend, ChatToolReply, ToolSchema } from '@vn/providers';
+import type {
+  ChatBackend,
+  ChatConvoReply,
+  ChatConvoRequest,
+  ChatTurn,
+  ToolSchema,
+} from '@vn/providers';
 import {
   NativeAgentBackend,
   StructuredAgentBackend,
@@ -8,56 +14,124 @@ import {
 
 const TOOLS: ToolSpec[] = [
   { name: 'read_file', description: 'Read a file.', mutating: false },
-  { name: 'write_file', description: 'Write a file.', mutating: true },
+  { name: 'write_file', description: 'Write a file.', mutating: true, defer: true },
 ];
 
 const MESSAGES: AgentMessage[] = [{ role: 'user', content: 'Show me the script.' }];
 
-/** A ChatBackend whose native tool path replays a scripted reply and records its inputs. */
-function toolChat(reply: ChatToolReply): ChatBackend & { calls: { tools: ToolSchema[] }[] } {
-  const calls: { tools: ToolSchema[] }[] = [];
+type Recorded = { req: ChatConvoRequest; tools: ToolSchema[] };
+
+/** A ChatBackend whose conversation path replays a scripted reply and records its inputs. */
+function convoChat(
+  reply: Omit<ChatConvoReply, 'raw'> & { raw?: unknown[] },
+): ChatBackend & { calls: Recorded[] } {
+  const calls: Recorded[] = [];
   return {
     modelId: 'mock-native',
     calls,
     message: () => Promise.reject(new Error('message() should not be called on the native path')),
-    chatWithTools: (_req, tools) => {
-      calls.push({ tools });
-      return Promise.resolve(reply);
+    chatConversation: (req, tools) => {
+      calls.push({ req, tools });
+      return Promise.resolve({ raw: [], ...reply });
     },
   };
 }
 
 describe('NativeAgentBackend', () => {
-  it('throws if the chat backend lacks native tool-calling', () => {
-    const plain: ChatBackend = { modelId: 'plain', message: () => Promise.resolve('') };
+  it('throws if the chat backend cannot hold a conversation', () => {
+    // `chatWithTools` alone is not enough: it is single-shot, so it caches nothing.
+    const plain: ChatBackend = {
+      modelId: 'plain',
+      message: () => Promise.resolve(''),
+      chatWithTools: () => Promise.resolve({ toolCalls: [] }),
+    };
     expect(() => new NativeAgentBackend(plain)).toThrow(/native tool-calling/);
   });
 
-  it('maps the first tool call to an action and advertises permissive params', async () => {
-    const chat = toolChat({
+  it('returns every tool call the model asked for, and advertises deferral', async () => {
+    const chat = convoChat({
       text: 'reading',
-      toolCalls: [{ name: 'read_file', args: { path: 'a' } }],
+      toolCalls: [
+        { id: 't1', name: 'read_file', args: { path: 'a' } },
+        { id: 't2', name: 'read_file', args: { path: 'b' } },
+      ],
     });
-    const backend = new NativeAgentBackend(chat);
-    const turn = await backend.next('sys', MESSAGES, TOOLS, 'plan');
+    const turn = await new NativeAgentBackend(chat).next('sys', MESSAGES, TOOLS);
 
-    expect(turn.action).toEqual({ tool: 'read_file', args: { path: 'a' } });
+    expect(turn.actions).toEqual([
+      { tool: 'read_file', args: { path: 'a' }, id: 't1' },
+      { tool: 'read_file', args: { path: 'b' }, id: 't2' },
+    ]);
     expect(turn.message).toBe('reading');
     expect(turn.final).toBeUndefined();
-    // Every tool is advertised with a permissive object schema (the loop re-validates args).
-    expect(chat.calls[0]!.tools.map((t) => t.name)).toEqual(['read_file', 'write_file']);
-    expect(chat.calls[0]!.tools[1]!.parameters).toEqual({
-      type: 'object',
-      additionalProperties: true,
-    });
+    // Every tool is advertised with a permissive object schema (the loop re-validates args),
+    // and `defer` rides through untouched for the provider's own tool search.
+    const { tools } = chat.calls[0]!;
+    expect(tools.map((t) => t.name)).toEqual(['read_file', 'write_file']);
+    expect(tools[0]!.defer).toBeUndefined();
+    expect(tools[1]!.defer).toBe(true);
+    expect(tools[1]!.parameters).toEqual({ type: 'object', additionalProperties: true });
   });
 
-  it('treats a text-only reply as a final message', async () => {
-    const chat = toolChat({ text: 'all done', toolCalls: [] });
-    const backend = new NativeAgentBackend(chat);
-    const turn = await backend.next('sys', MESSAGES, TOOLS, 'execute');
+  it('treats a text-only reply as a final message and keeps the blocks it came in', async () => {
+    const raw = [{ type: 'thinking', thinking: '…', signature: 'sig' }, { type: 'text' }];
+    const chat = convoChat({ text: 'all done', toolCalls: [], raw });
+    const turn = await new NativeAgentBackend(chat).next('sys', MESSAGES, TOOLS);
     expect(turn.final).toBe('all done');
-    expect(turn.action).toBeUndefined();
+    expect(turn.actions).toBeUndefined();
+    expect(turn.raw).toBe(raw);
+  });
+
+  it('answers a call by quoting its id, and a host note as prose', async () => {
+    const chat = convoChat({ text: 'ok', toolCalls: [] });
+    const messages: AgentMessage[] = [
+      { role: 'user', content: 'go' },
+      { role: 'context', content: 'scene s1 is open' },
+      { role: 'system', content: 'MODE: plan' },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 't1' }] },
+      { role: 'observation', content: 'file contents', toolUseId: 't1' },
+      { role: 'observation', content: 'the author cancelled' },
+    ];
+    await new NativeAgentBackend(chat).next('sys', messages, TOOLS);
+
+    const turns = chat.calls[0]!.req.turns;
+    expect(chat.calls[0]!.req.system).toBe('sys');
+    expect(turns.map((t) => t.role)).toEqual([
+      'user',
+      'user',
+      'system',
+      'assistant',
+      'user',
+      'user',
+    ]);
+    expect(turns[1]!.content).toBe('CONTEXT: scene s1 is open');
+    expect(turns[4]!.content).toEqual([
+      { type: 'tool_result', tool_use_id: 't1', content: 'file contents' },
+    ]);
+    expect(turns[5]!.content).toBe('OBSERVATION: the author cancelled');
+  });
+
+  it('rolls two breakpoints: the tail writes, the previous tail reads', async () => {
+    const chat = convoChat({ text: 'ok', toolCalls: [] });
+    const backend = new NativeAgentBackend(chat);
+    const marked = (call: Recorded): number[] =>
+      call.req.turns.flatMap((t: ChatTurn, i: number) => (t.cache ? [i] : []));
+
+    const first: AgentMessage[] = [{ role: 'user', content: 'one' }];
+    await backend.next('sys', first, TOOLS);
+    expect(marked(chat.calls[0]!)).toEqual([0]);
+
+    const second: AgentMessage[] = [
+      ...first,
+      { role: 'assistant', content: 'a' },
+      { role: 'user', content: 'two' },
+    ];
+    await backend.next('sys', second, TOOLS);
+    expect(marked(chat.calls[1]!)).toEqual([0, 2]);
+
+    // The conversation was cleared: there is no prefix left to read from, only one to write.
+    await backend.next('sys', first, TOOLS);
+    expect(marked(chat.calls[2]!)).toEqual([0]);
   });
 });
 
@@ -67,9 +141,23 @@ describe('StructuredAgentBackend', () => {
       modelId: 'mock-text',
       message: () => Promise.resolve('{"thought":"look","tool":"read_file","args":{"path":"a"}}'),
     };
-    const turn = await new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS, 'plan');
-    expect(turn.action).toEqual({ tool: 'read_file', args: { path: 'a' } });
+    const turn = await new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS);
+    expect(turn.actions).toEqual([{ tool: 'read_file', args: { path: 'a' } }]);
     expect(turn.message).toBe('look');
+  });
+
+  it('renders every tool, deferred or not — there is nothing here to search', async () => {
+    let seen = '';
+    const chat: ChatBackend = {
+      modelId: 'mock-text',
+      message: (req) => {
+        seen = req.prompt;
+        return Promise.resolve('{"final":"done"}');
+      },
+    };
+    await new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS);
+    expect(seen).toContain('read_file');
+    expect(seen).toContain('write_file');
   });
 
   it('degrades to a final message when the model never emits valid JSON', async () => {
@@ -78,10 +166,9 @@ describe('StructuredAgentBackend', () => {
       'sys',
       MESSAGES,
       TOOLS,
-      'plan',
     );
     expect(turn.final).toBeDefined();
-    expect(turn.action).toBeUndefined();
+    expect(turn.actions).toBeUndefined();
   });
 });
 
@@ -109,7 +196,7 @@ describe('the receipt', () => {
       modelId: 'mock-text',
       message: () => Promise.resolve('{"final":"done"}'),
     };
-    const turn = await new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS, 'plan');
+    const turn = await new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS);
     expect(turn.usage).toBeUndefined();
   });
 
@@ -119,9 +206,8 @@ describe('the receipt', () => {
       'sys',
       MESSAGES,
       TOOLS,
-      'plan',
     );
-    expect(turn.action).toBeDefined();
+    expect(turn.actions).toBeDefined();
     expect(turn.usage).toEqual({ input: 30, output: 9 });
   });
 
@@ -130,19 +216,18 @@ describe('the receipt', () => {
       'sys',
       MESSAGES,
       TOOLS,
-      'plan',
     );
     expect(turn.final).toBeDefined();
     expect(turn.usage).toEqual({ input: 20, output: 6 });
   });
 
-  it('comes through the native path too', async () => {
-    const chat = toolChat({
+  it('carries the cache split through the native path', async () => {
+    const chat = convoChat({
       text: 'all done',
       toolCalls: [],
-      usage: { input: 120, output: 40 },
+      usage: { input: 120, output: 40, cacheRead: 100, cacheWrite: 0 },
     });
-    const turn = await new NativeAgentBackend(chat).next('sys', MESSAGES, TOOLS, 'execute');
-    expect(turn.usage).toEqual({ input: 120, output: 40 });
+    const turn = await new NativeAgentBackend(chat).next('sys', MESSAGES, TOOLS);
+    expect(turn.usage).toEqual({ input: 120, output: 40, cacheRead: 100, cacheWrite: 0 });
   });
 });

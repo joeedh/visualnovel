@@ -3,12 +3,13 @@
  * The conversation loop is written against `AgentBackend` so the tool-call protocol can
  * evolve without touching the loop. Path A (the MVP, here) runs a structured ReAct loop
  * on the existing `ChatBackend` text seam — the model emits one zod-validated action per
- * turn and we feed back an observation. Path B (native function-calling) can implement the
- * same interface later (M5).
+ * turn and we feed back an observation. Path B is native function-calling over
+ * `chatConversation`, which is the cached path
+ * (`docs/plans/prompt-caching-and-deferred-tool-loading.md`).
  */
 import { z } from 'zod';
 import { parseStructured } from '@vn/providers';
-import type { ChatBackend, ChatReply, TokenUsage, ToolSchema } from '@vn/providers';
+import type { ChatBackend, ChatReply, ChatTurn, TokenUsage, ToolSchema } from '@vn/providers';
 
 /**
  * A message in the running transcript handed to the backend.
@@ -16,10 +17,20 @@ import type { ChatBackend, ChatReply, TokenUsage, ToolSchema } from '@vn/provide
  * `context` is what the *host* knew when the turn started — which scene the author had open, say.
  * It is a message rather than part of the system prompt because it was true at that turn and not
  * at the others, and a transcript is the only place that distinction survives.
+ *
+ * `system` is out-of-band truth filed the same way and for the same reason: the mode, or a
+ * section of the system prompt that has since been rewritten. Editing the prompt itself would
+ * invalidate the whole cached prefix; appending a message does not.
+ *
+ * `content` is a string on every message the loop writes itself. It is the provider's own blocks
+ * on an assistant turn that came back from a native backend — thinking blocks must be echoed
+ * complete and unmodified, so the only safe transcript entry is the one that was received.
  */
 export interface AgentMessage {
-  role: 'user' | 'assistant' | 'observation' | 'context';
-  content: string;
+  role: 'user' | 'assistant' | 'observation' | 'context' | 'system';
+  content: string | unknown[];
+  /** For an `observation`: the call it answers, so a native backend can pair the two. */
+  toolUseId?: string;
 }
 
 /** A tool the model may call, as advertised to the backend. */
@@ -29,22 +40,35 @@ export interface ToolSpec {
   mutating: boolean;
   /** Compact `name?: type (note)` argument signature, so the model needn't guess fields. */
   parameters?: string;
+  /** Keep out of context until the model searches for it. Advisory — a text path renders all. */
+  defer?: boolean;
 }
 
 /** A single requested tool call. */
 export interface AgentAction {
   tool: string;
   args: unknown;
+  /** The provider's id for the call, when there is one; a `tool_result` must quote it back. */
+  id?: string;
 }
 
-/** One step the backend produces: an optional message + either an action or a final answer. */
+/** One step the backend produces: an optional message + either some actions or a final answer. */
 export interface AgentTurn {
   /** Free-text reasoning/narration to surface to the user. */
   message?: string;
-  /** A tool to execute next. */
-  action?: AgentAction;
+  /**
+   * Tools to execute next. More than one when the model asked for them in parallel — every call
+   * must be answered, so the loop runs them all rather than picking the first.
+   */
+  actions?: AgentAction[];
   /** When set, the turn is the final answer to the user and the loop ends. */
   final?: string;
+  /**
+   * The assistant's content blocks exactly as the provider sent them. Recorded in place of the
+   * rendered text when present, because a thinking block that is rebuilt rather than echoed is
+   * rejected outright.
+   */
+  raw?: unknown[];
   /**
    * What this step cost, when the provider said. A step that was retried carries the sum of
    * every attempt: each one was a call, and each one was billed.
@@ -52,20 +76,33 @@ export interface AgentTurn {
   usage?: TokenUsage;
 }
 
-/** Add up two receipts. `undefined` throughout means nothing was reported, not that it was free. */
+/**
+ * Add up two receipts. `undefined` throughout means nothing was reported, not that it was free —
+ * so a cache field stays absent until some attempt actually reported one.
+ */
 function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage | undefined {
   if (!b) return a;
-  return { input: (a?.input ?? 0) + b.input, output: (a?.output ?? 0) + b.output };
+  const sum: TokenUsage = {
+    input: (a?.input ?? 0) + b.input,
+    output: (a?.output ?? 0) + b.output,
+  };
+  if (a?.cacheRead !== undefined || b.cacheRead !== undefined) {
+    sum.cacheRead = (a?.cacheRead ?? 0) + (b.cacheRead ?? 0);
+  }
+  if (a?.cacheWrite !== undefined || b.cacheWrite !== undefined) {
+    sum.cacheWrite = (a?.cacheWrite ?? 0) + (b.cacheWrite ?? 0);
+  }
+  return sum;
 }
 
-/** The protocol the loop targets; swap implementations to change tool-call mechanics. */
+/**
+ * The protocol the loop targets; swap implementations to change tool-call mechanics.
+ *
+ * There is no `mode` parameter: the plan/execute mode is filed into `messages` as a `system`
+ * turn, so switching it appends rather than rewriting a prompt every cached byte depends on.
+ */
 export interface AgentBackend {
-  next(
-    system: string,
-    messages: AgentMessage[],
-    tools: ToolSpec[],
-    mode: 'plan' | 'execute',
-  ): Promise<AgentTurn>;
+  next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn>;
 }
 
 /** The JSON shape the structured backend asks the model to emit each turn. */
@@ -97,12 +134,26 @@ function renderTools(tools: ToolSpec[]): string {
     .join('\n');
 }
 
+/** A message's text, for the paths and panes that can only carry text. */
+export function messageText(content: string | unknown[]): string {
+  if (typeof content === 'string') return content;
+  return content
+    .map((b) => (b && typeof b === 'object' ? ((b as { text?: string }).text ?? '') : ''))
+    .filter((t) => t)
+    .join('\n');
+}
+
 /** Render the transcript for a single-turn text backend. */
 function renderTranscript(messages: AgentMessage[]): string {
   return messages
     .map((m) => {
-      const label = m.role === 'observation' ? 'OBSERVATION' : m.role.toUpperCase();
-      return `${label}: ${m.content}`;
+      const label =
+        m.role === 'observation'
+          ? 'OBSERVATION'
+          : m.role === 'system'
+            ? 'SYSTEM (out-of-band)'
+            : m.role.toUpperCase();
+      return `${label}: ${messageText(m.content)}`;
     })
     .join('\n\n');
 }
@@ -111,6 +162,9 @@ function renderTranscript(messages: AgentMessage[]): string {
  * Path A: structured ReAct over a plain `ChatBackend`. Builds a one-shot prompt from the
  * transcript + tool catalog + protocol, then parses the model's JSON into an `AgentTurn`
  * (with retry on malformed output via `parseStructured`). No `@vn/providers` change.
+ *
+ * Every tool is rendered whatever its `defer` flag says: deferral is a property of the API's
+ * own tool search, and there is nothing here to search.
  */
 export class StructuredAgentBackend implements AgentBackend {
   constructor(
@@ -118,15 +172,8 @@ export class StructuredAgentBackend implements AgentBackend {
     private readonly opts: { attempts?: number } = {},
   ) {}
 
-  async next(
-    system: string,
-    messages: AgentMessage[],
-    tools: ToolSpec[],
-    mode: 'plan' | 'execute',
-  ): Promise<AgentTurn> {
+  async next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn> {
     const prompt = [
-      `MODE: ${mode}${mode === 'plan' ? ' (read-only — mutating tools are blocked until a plan is approved)' : ''}`,
-      '',
       'TOOLS:',
       renderTools(tools),
       '',
@@ -150,7 +197,9 @@ export class StructuredAgentBackend implements AgentBackend {
         const parsed = parseStructured(reply.text, turnSchema);
         const turn: AgentTurn = { message: parsed.thought };
         if (parsed.final !== undefined) turn.final = parsed.final;
-        else if (parsed.tool !== undefined) turn.action = { tool: parsed.tool, args: parsed.args };
+        else if (parsed.tool !== undefined) {
+          turn.actions = [{ tool: parsed.tool, args: parsed.args }];
+        }
         if (spent) turn.usage = spent;
         return turn;
       } catch (err) {
@@ -158,9 +207,8 @@ export class StructuredAgentBackend implements AgentBackend {
       }
     }
     // Degrade gracefully: surface the parse failure as a final message rather than throw.
-    const failed: AgentTurn = {
-      final: `I couldn't produce a valid action (${lastErr instanceof Error ? lastErr.message : String(lastErr)}).`,
-    };
+    const why = lastErr instanceof Error ? lastErr.message : String(lastErr);
+    const failed: AgentTurn = { final: `I couldn't produce a valid action (${why}).` };
     if (spent) failed.usage = spent;
     return failed;
   }
@@ -175,44 +223,77 @@ export class StructuredAgentBackend implements AgentBackend {
 /** A permissive object schema — the agent loop re-validates args via the registry's zod. */
 const LOOSE_PARAMS = { type: 'object', additionalProperties: true } as const;
 
+/** One transcript message as a conversation turn. Roles the API lacks are prefixed instead. */
+function turnOf(m: AgentMessage): ChatTurn {
+  if (m.role === 'assistant') return { role: 'assistant', content: m.content };
+  if (m.role === 'system') return { role: 'system', content: m.content };
+  if (m.role === 'observation') {
+    // A native call is answered by quoting its id back; an observation with no id is a
+    // host-authored note (a refusal, a cancellation) that belongs in the transcript as prose.
+    if (m.toolUseId) {
+      return {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: m.toolUseId, content: messageText(m.content) },
+        ],
+      };
+    }
+    return { role: 'user', content: `OBSERVATION: ${messageText(m.content)}` };
+  }
+  if (m.role === 'context') return { role: 'user', content: `CONTEXT: ${messageText(m.content)}` };
+  return { role: 'user', content: m.content };
+}
+
 /**
- * Path B: native function-calling over a `ChatBackend` that implements `chatWithTools`. The
- * loop's `ToolSpec`s become provider tool schemas (with permissive parameters — the loop is
- * the real arg-validation authority), and the model's first tool call maps to an
- * `AgentTurn` action; text-only replies become a final message. Same `AgentBackend`
- * contract as Path A, so the conversation loop is unchanged.
+ * Path B: native function-calling over a `ChatBackend` that implements `chatConversation`. The
+ * transcript is sent as turns rather than re-rendered into one prompt, which is what makes the
+ * prefix cacheable, and every tool call in a reply is returned — the API requires all of them to
+ * be answered. Same `AgentBackend` contract as Path A, so the conversation loop is unchanged.
  */
 export class NativeAgentBackend implements AgentBackend {
+  /** Where the previous request put its trailing breakpoint — the one this request reads from. */
+  private prevBreak = -1;
+
   constructor(private readonly chat: ChatBackend) {
-    if (!chat.chatWithTools) {
+    if (!chat.chatConversation) {
       throw new Error(`backend "${chat.modelId}" does not support native tool-calling`);
     }
   }
 
-  async next(
-    system: string,
-    messages: AgentMessage[],
-    tools: ToolSpec[],
-    mode: 'plan' | 'execute',
-  ): Promise<AgentTurn> {
+  async next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn> {
     const schemas: ToolSchema[] = tools.map((t) => {
       let description = t.mutating ? `${t.description} (mutating)` : t.description;
       if (t.parameters) description += ` Args: ${t.parameters}`;
-      return { name: t.name, description, parameters: LOOSE_PARAMS };
+      return {
+        name: t.name,
+        description,
+        parameters: LOOSE_PARAMS,
+        ...(t.defer ? { defer: true } : {}),
+      };
     });
-    const prompt = [
-      `MODE: ${mode}${mode === 'plan' ? ' (read-only — mutating tools are blocked until a plan is approved)' : ''}`,
-      '',
-      'TRANSCRIPT:',
-      renderTranscript(messages),
-    ].join('\n');
 
-    const reply = await this.chat.chatWithTools!({ system, prompt }, schemas);
-    const call = reply.toolCalls[0];
-    const turn: AgentTurn = call
-      ? { action: { tool: call.name, args: call.args } }
-      : { final: reply.text ?? '' };
-    if (call && reply.text) turn.message = reply.text;
+    const turns = messages.map(turnOf);
+    // Two rolling breakpoints: the tail, which writes, and the previous tail, which reads. A
+    // conversation that got shorter (it was cleared) has no prefix left worth reading.
+    if (messages.length <= this.prevBreak) this.prevBreak = -1;
+    const last = turns.length - 1;
+    if (last >= 0) {
+      turns[last] = { ...turns[last]!, cache: true };
+      if (this.prevBreak >= 0 && this.prevBreak < last) {
+        turns[this.prevBreak] = { ...turns[this.prevBreak]!, cache: true };
+      }
+      this.prevBreak = last;
+    }
+
+    const reply = await this.chat.chatConversation!({ system, turns }, schemas);
+    const turn: AgentTurn = { raw: reply.raw };
+    const actions = reply.toolCalls.map((c) => ({ tool: c.name, args: c.args, id: c.id }));
+    if (actions.length) {
+      turn.actions = actions;
+      if (reply.text) turn.message = reply.text;
+    } else {
+      turn.final = reply.text ?? '';
+    }
     if (reply.usage) turn.usage = reply.usage;
     return turn;
   }

@@ -7,8 +7,12 @@ import { RecordedChatBackend, type ChatBackend } from '@vn/providers';
 import {
   Agent,
   focusOnScene,
+  type AgentBackend,
+  type AgentMessage,
   type AskChoices,
   StructuredAgentBackend,
+  type SystemSection,
+  type ToolSpec,
   Workspace,
   type Permission,
   type Plan,
@@ -550,6 +554,181 @@ describe('ask_choice', () => {
         said,
       );
       expect(observed).toContain(`OBSERVATION: User answered: ${said}`);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+/** One recorded request: what the backend was handed, snapshotted before the loop mutates it. */
+interface Recorded {
+  system: string;
+  messages: AgentMessage[];
+  tools: ToolSpec[];
+}
+
+/** A backend that answers `final` every time and keeps what it was asked. */
+function recordingBackend(): AgentBackend & { seen: Recorded[] } {
+  const seen: Recorded[] = [];
+  return {
+    seen,
+    next(system, messages, tools) {
+      seen.push({ system, messages: messages.map((m) => ({ ...m })), tools });
+      return Promise.resolve({ final: 'ok' });
+    },
+  };
+}
+
+/** The messages a request carried in a given role, as text. */
+function roled(record: Recorded, role: AgentMessage['role']): string[] {
+  return record.messages.filter((m) => m.role === role).map((m) => String(m.content));
+}
+
+describe('what the transcript says out of band', () => {
+  it('states the mode on the first turn, on every change, and again after clear()', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+
+      await agent.run('one');
+      expect(roled(backend.seen[0]!, 'system')).toEqual([
+        expect.stringContaining('MODE: plan (read-only)'),
+      ]);
+
+      // Nothing changed, so nothing is re-stated: the prefix behind it stays cached.
+      await agent.run('two');
+      expect(roled(backend.seen[1]!, 'system')).toHaveLength(1);
+
+      agent.setMode('execute');
+      await agent.run('three');
+      expect(roled(backend.seen[2]!, 'system')).toEqual([
+        expect.stringContaining('MODE: plan'),
+        expect.stringContaining('MODE: execute (read-write)'),
+      ]);
+
+      agent.clear();
+      await agent.run('four');
+      expect(roled(backend.seen[3]!, 'system')).toEqual([
+        expect.stringContaining('MODE: plan (read-only)'),
+      ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('supersedes only the section that changed, and never the system prompt itself', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      const sections = (context: string): SystemSection[] => [
+        { name: 'BUILT-IN', text: 'the contract' },
+        { name: 'PROJECT MAP (AICONTEXT.generated.md)', text: 'the map' },
+        { name: 'PROJECT CONTEXT (AICONTEXT.md)', text: context },
+      ];
+
+      // Before there is a transcript, a refresh is free: it rebuilds the prompt outright.
+      agent.refreshSystem(sections('be terse'));
+      await agent.run('one');
+      expect(backend.seen[0]!.system).toContain('be terse');
+      expect(roled(backend.seen[0]!, 'system')).toHaveLength(1); // the mode, and nothing else
+
+      // The author edited AICONTEXT.md mid-conversation. One section is superseded by name; the
+      // prompt every cached byte sits behind is not touched.
+      agent.refreshSystem(sections('be terse, and never guess'));
+      await agent.run('two');
+      const filed = roled(backend.seen[1]!, 'system');
+      expect(backend.seen[1]!.system).toBe(backend.seen[0]!.system);
+      expect(filed).toHaveLength(2); // the earlier mode message, plus this one
+      expect(filed[1]).toContain('"PROJECT CONTEXT (AICONTEXT.md)" section');
+      expect(filed[1]).toContain('be terse, and never guess');
+      expect(filed.join('\n')).not.toContain('BUILT-IN');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('withdraws a section that has gone away', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      agent.refreshSystem([
+        { name: 'BUILT-IN', text: 'the contract' },
+        { name: 'PROJECT CONTEXT (AICONTEXT.md)', text: 'be terse' },
+      ]);
+      await agent.run('one');
+
+      agent.refreshSystem([{ name: 'BUILT-IN', text: 'the contract' }]);
+      await agent.run('two');
+      const filed = roled(backend.seen[1]!, 'system');
+      expect(filed[1]).toContain('"PROJECT CONTEXT (AICONTEXT.md)"');
+      expect(filed[1]).toContain('no longer');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('records what a tool call asked for, not just which tool ran', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const prompts: string[] = [];
+      const answers = [
+        JSON.stringify({ thought: 'look', tool: 'read_file', args: { path: 'project.yaml' } }),
+        JSON.stringify({ final: 'ok' }),
+      ];
+      let i = 0;
+      const chat = new RecordedChatBackend('mock', (req) => {
+        prompts.push(req.prompt);
+        return answers[Math.min(i++, answers.length - 1)]!;
+      });
+      const agent = new Agent({
+        backend: new StructuredAgentBackend(chat),
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+      });
+      await agent.run('what is in project.yaml?');
+      expect(prompts[1]).toContain('{"tool":"read_file","args":{"path":"project.yaml"}}');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('the tool catalog', () => {
+  it('defers everything except the six a turn can need before it has searched', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      await agent.run('one');
+      const loaded = backend.seen[0]!.tools.filter((t) => !t.defer).map((t) => t.name);
+      expect(loaded.sort()).toEqual([
+        'ask_choice',
+        'ask_user',
+        'list_workspace',
+        'propose_plan',
+        'read_file',
+        'search',
+      ]);
+      // Everything else defers, which is the whole point: the catalog is most of the prefix.
+      expect(backend.seen[0]!.tools.length).toBeGreaterThan(loaded.length);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('is byte-identical between turns, including after a mode change', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      await agent.run('one');
+      agent.setMode('execute');
+      await agent.run('two');
+      expect(JSON.stringify(backend.seen[1]!.tools)).toBe(JSON.stringify(backend.seen[0]!.tools));
     } finally {
       await cleanup();
     }

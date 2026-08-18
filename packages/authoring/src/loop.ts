@@ -15,7 +15,8 @@
  * registry — they drive the state machine rather than touch the workspace.
  */
 import { z } from 'zod';
-import type { AgentBackend, AgentMessage, ToolSpec } from './backend.js';
+import type { AgentAction, AgentBackend, AgentMessage, ToolSpec } from './backend.js';
+import { joinSections, type SystemSection } from './context.js';
 import {
   createRegistry,
   describeToolParams,
@@ -74,8 +75,10 @@ export type AgentEvent =
   | { type: 'mode'; mode: AgentMode }
   | { type: 'blocked'; tool: string; reason: string }
   // What one step cost. Emitted only when the provider reported it, so a host that adds these up
-  // shows either a real total or none — never a plausible one that never moves.
-  | { type: 'usage'; input: number; output: number }
+  // shows either a real total or none — never a plausible one that never moves. The cache split
+  // is carved out of `input` rather than added beside it, and absent where the provider said
+  // nothing, which is not the same as a cache that missed.
+  | { type: 'usage'; input: number; output: number; cacheRead?: number; cacheWrite?: number }
   | { type: 'final'; text: string };
 
 /** The result of a single `run(userInput)` turn-of-conversation. */
@@ -125,6 +128,56 @@ const CONTROL_TOOLS: ToolSpec[] = [
   },
 ];
 
+/**
+ * The tools sent in full on every request; the rest are `defer`red and the model searches for
+ * them. These six are the ones a turn can need before it has had a chance to search: the three
+ * control tools it must always be able to reach, and the three it opens an unfamiliar project
+ * with. The list is static, so the catalog it produces is byte-identical between turns.
+ */
+const ALWAYS_LOADED = new Set([
+  'propose_plan',
+  'ask_user',
+  'ask_choice',
+  'read_file',
+  'search',
+  'list_workspace',
+]);
+
+/** How the mode is stated to the model. The whole sentence, so re-filing it re-states the rule. */
+function modeMessage(mode: AgentMode): string {
+  return mode === 'plan'
+    ? 'MODE: plan (read-only). Mutating tools are blocked until a plan is approved. This ' +
+        'supersedes any earlier mode message.'
+    : 'MODE: execute (read-write). Mutating tools will run. This supersedes any earlier mode ' +
+        'message.';
+}
+
+/** How a rewritten system-prompt section is handed over mid-conversation. */
+function supersedeMessage(section: SystemSection): string {
+  return (
+    `The "${section.name}" section of the system prompt has been rewritten since this ` +
+    'conversation started. What follows replaces that section in full — read it instead of the ' +
+    `version above.\n\n${section.text}`
+  );
+}
+
+/**
+ * How a tool call reads back in a text transcript. The arguments are in it because a transcript
+ * that says only which tool ran leaves the model re-deriving what it asked for — and on the text
+ * path this is exactly the JSON it emitted.
+ */
+function callRecord(action: AgentAction): string {
+  return JSON.stringify({ tool: action.tool, args: action.args });
+}
+
+/** How a section that has since disappeared is withdrawn. */
+function withdrawMessage(name: string): string {
+  return (
+    `The "${name}" section of the system prompt no longer exists. Disregard the version above; ` +
+    'nothing replaces it.'
+  );
+}
+
 const planSchema = z.object({
   summary: z.string().min(1),
   steps: z.array(z.string()).default([]),
@@ -159,6 +212,12 @@ export class Agent {
   /** Workspace-relative paths the agent has written since the last commit (commit scope). */
   private readonly editedPaths = new Set<string>();
   private mode: AgentMode;
+  /** The mode the transcript last stated. Differs from {@link mode} exactly when one is owed. */
+  private filedMode?: AgentMode;
+  /** The system-prompt sections this conversation was started with, by name. */
+  private sections = new Map<string, string>();
+  /** System messages owed to the model, filed after the next user turn (never before one). */
+  private readonly pendingSystem: string[] = [];
   /** Set by {@link stop}, cleared when a turn starts. Read between steps, never inside one. */
   private stopped = false;
 
@@ -203,6 +262,10 @@ export class Agent {
     this.messages.length = 0;
     this.editedPaths.clear();
     this.mode = 'plan';
+    // Nothing has been stated to a transcript that no longer exists, and the next
+    // `refreshSystem` rebuilds the prompt outright rather than superseding into thin air.
+    this.filedMode = undefined;
+    this.pendingSystem.length = 0;
   }
 
   /**
@@ -223,15 +286,49 @@ export class Agent {
   }
 
   /**
-   * Recompose the system message. The project map inside it is a snapshot of a file, so an agent
-   * that outlives a rewrite of that file — which `update_context` and the desktop's own commands
-   * both do — would otherwise keep quoting the version it was built with.
+   * Replace the system message outright. The new-conversation path: every byte behind it is
+   * invalidated, which is free before there is a transcript and expensive after.
    */
   setSystem(system: string): void {
     this.system = system;
   }
 
-  /** The tool catalog advertised to the backend (registry + control tools). */
+  /**
+   * Bring the system prompt up to date without rewriting it. The project map inside it is a
+   * snapshot of a file, so an agent that outlives a rewrite of that file — which `update_context`
+   * and the desktop's own commands both do — would otherwise keep quoting the version it was
+   * built with.
+   *
+   * On an empty transcript that means replacing the prompt; on a live one it means filing each
+   * changed section as a message that supersedes it by name, because the prompt is the front of
+   * the cached prefix and appending is the only edit that keeps the rest of it.
+   */
+  refreshSystem(sections: SystemSection[]): void {
+    if (this.messages.length === 0) {
+      this.system = joinSections(sections);
+      this.sections = new Map(sections.map((s) => [s.name, s.text]));
+      return;
+    }
+    const seen = new Set<string>();
+    for (const section of sections) {
+      seen.add(section.name);
+      if (this.sections.get(section.name) === section.text) continue;
+      this.pendingSystem.push(supersedeMessage(section));
+      this.sections.set(section.name, section.text);
+    }
+    for (const name of [...this.sections.keys()]) {
+      if (seen.has(name)) continue;
+      this.pendingSystem.push(withdrawMessage(name));
+      this.sections.delete(name);
+    }
+  }
+
+  /**
+   * The tool catalog advertised to the backend (registry + control tools), each flagged for
+   * whether it may be deferred. Derived from a static list and the registry's own order, so two
+   * turns of one conversation produce byte-identical catalogs — the prefix everything else caches
+   * behind.
+   */
   private toolSpecs(): ToolSpec[] {
     const fromRegistry = [...this.registry.values()].map((t) => ({
       name: t.name,
@@ -239,7 +336,10 @@ export class Agent {
       mutating: t.mutating,
       parameters: describeToolParams(t.args),
     }));
-    return [...fromRegistry, ...CONTROL_TOOLS];
+    return [...fromRegistry, ...CONTROL_TOOLS].map((t) => ({
+      ...t,
+      ...(ALWAYS_LOADED.has(t.name) ? {} : { defer: true }),
+    }));
   }
 
   /**
@@ -258,6 +358,15 @@ export class Agent {
 
     if (focus) this.messages.push({ role: 'context', content: focus });
     this.messages.push({ role: 'user', content: userInput });
+    // After the user's message, never before it: a system message may not open a conversation,
+    // and must follow a user turn. Sections first, mode last — policy is what should read last.
+    for (const content of this.pendingSystem.splice(0)) {
+      this.messages.push({ role: 'system', content });
+    }
+    if (this.filedMode !== this.mode) {
+      this.messages.push({ role: 'system', content: modeMessage(this.mode) });
+      this.filedMode = this.mode;
+    }
     const tools = this.toolSpecs();
     this.stopped = false;
 
@@ -270,25 +379,39 @@ export class Agent {
         return { final: text, mode: this.mode, events };
       }
 
-      const turn = await this.backend.next(this.system, this.messages, tools, this.mode);
+      const turn = await this.backend.next(this.system, this.messages, tools);
       // Before the narration: the call is already paid for whether or not it said anything useful.
       if (turn.usage) emit({ type: 'usage', ...turn.usage });
 
+      const actions = turn.actions ?? [];
+      // One assistant message per step. `raw` when the provider sent blocks — echoing them back
+      // unmodified is the contract — and otherwise the narration, with each call written out as
+      // the JSON the model emitted so the next turn can read what it asked for.
       const narration: string[] = [];
       if (turn.message) narration.push(turn.message);
-      if (turn.action) narration.push(`(calling ${turn.action.tool})`);
-      if (narration.length) this.messages.push({ role: 'assistant', content: narration.join(' ') });
+      for (const action of actions) narration.push(callRecord(action));
+      if (turn.final !== undefined && turn.final !== turn.message) narration.push(turn.final);
+      if (turn.raw) this.messages.push({ role: 'assistant', content: turn.raw });
+      else if (narration.length) {
+        this.messages.push({ role: 'assistant', content: narration.join('\n') });
+      }
       if (turn.message) emit({ type: 'message', text: turn.message });
 
       if (turn.final !== undefined) {
-        this.messages.push({ role: 'assistant', content: turn.final });
         emit({ type: 'final', text: turn.final });
         return { final: turn.final, mode: this.mode, events };
       }
 
-      if (!turn.action) continue;
-      const observation = await this.dispatch(turn.action.tool, turn.action.args, emit);
-      this.messages.push({ role: 'observation', content: observation });
+      // Every call is answered, including the ones a stop request arrived during: a `tool_use`
+      // the transcript never answers is a request the model's own API will refuse to continue.
+      for (const action of actions) {
+        const observation = await this.dispatch(action.tool, action.args, emit);
+        this.messages.push({
+          role: 'observation',
+          content: observation,
+          ...(action.id ? { toolUseId: action.id } : {}),
+        });
+      }
     }
 
     const text = 'Reached the step limit before finishing; stopping to avoid looping.';

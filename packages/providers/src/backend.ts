@@ -19,6 +19,12 @@ export interface ToolSchema {
   description: string;
   /** JSON Schema for the tool arguments (may be a permissive object). */
   parameters: unknown;
+  /**
+   * Keep this definition out of the context window until the model searches for it. The full
+   * definition is still sent — the API needs it server-side to run the search — so the cached
+   * prefix is untouched either way. A backend without tool search ignores it.
+   */
+  defer?: boolean;
 }
 
 /** A tool call the model requested in a native function-calling turn. */
@@ -33,10 +39,18 @@ export interface ToolCall {
  * What one call cost, as the vendor reported it. Input counts everything billed as input —
  * Anthropic bills cache reads and cache writes separately, and a total that dropped them would
  * be quietly wrong on the side that matters.
+ *
+ * `cacheRead` and `cacheWrite` are that split, carved back *out* of `input` rather than added
+ * beside it: a total stays a total, and a caller that wants to know whether the cache is working
+ * asks for the parts. Absent means the vendor said nothing, which is not the same as zero.
  */
 export interface TokenUsage {
   input: number;
   output: number;
+  /** Of `input`, what was billed at the cache-read rate. */
+  cacheRead?: number;
+  /** Of `input`, what was billed at the cache-write rate. */
+  cacheWrite?: number;
 }
 
 /** A plain text turn, plus what it was billed at. */
@@ -50,6 +64,40 @@ export interface ChatToolReply {
   text?: string;
   toolCalls: ToolCall[];
   usage?: TokenUsage;
+}
+
+/**
+ * One block of a multi-turn conversation, in provider-neutral form.
+ *
+ * `content` is a string for anything we compose ourselves, and the provider-native blocks a
+ * previous reply handed back when it is replaying an assistant turn — thinking blocks in
+ * particular can only be echoed, never rebuilt.
+ */
+export interface ChatTurn {
+  role: 'user' | 'assistant' | 'system';
+  /** Text, or the provider-native blocks a previous reply handed back. */
+  content: string | unknown[];
+  /**
+   * Cache the prefix ending at this turn. The backend maps it to the vendor's marker, or ignores
+   * it — a request that cannot be cached is still a request.
+   */
+  cache?: boolean;
+}
+
+/** What a conversation turn returned, with enough of it kept to send back. */
+export interface ChatConvoReply extends ChatToolReply {
+  /**
+   * The assistant message's content blocks exactly as received — thinking, text, tool_use,
+   * server_tool_use, tool_search_tool_result, in order. The caller echoes this verbatim;
+   * rebuilding it from `text` + `toolCalls` is a 400.
+   */
+  raw: unknown[];
+}
+
+/** A conversation-shaped request: one system prompt, and the turns so far. */
+export interface ChatConvoRequest {
+  system: string;
+  turns: ChatTurn[];
 }
 
 /**
@@ -73,6 +121,13 @@ export interface ChatBackend {
    * asks and is not answered shows no total, which is honest.
    */
   messageWithUsage?(req: ChatRequest): Promise<ChatReply>;
+  /**
+   * A multi-turn tool-calling conversation, with cache breakpoints. Optional like
+   * {@link chatWithTools}, so a mock or recorded backend is still a backend — and the probe a
+   * host uses to pick the native agent path, because a backend that has only `chatWithTools` is
+   * still single-shot and still caches nothing.
+   */
+  chatConversation?(req: ChatConvoRequest, tools: ToolSchema[]): Promise<ChatConvoReply>;
 }
 
 /** The low-level seam for image generation/editing. */

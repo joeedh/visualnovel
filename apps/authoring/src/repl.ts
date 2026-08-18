@@ -9,13 +9,13 @@ import { relative } from 'node:path';
 import { createInterface, emitKeypressEvents, type Interface } from 'node:readline';
 import {
   archiveUpload,
-  composeSystem,
   describeUpload,
   discoverSkills,
   formatIndex,
   formatSubject,
   loadContext,
   skillRoots,
+  systemSections,
   uploadSuggestions,
   type AskChoices,
   type Permission,
@@ -199,8 +199,8 @@ async function chooseFromMenu(
 export interface ReplOptions {
   dir: string;
   mock?: boolean;
-  /** Use provider-native function-calling (Path B) when the model supports it. */
-  native?: boolean;
+  /** Force the text tool protocol (Path A) even where the model can call tools natively. */
+  noNative?: boolean;
   /** Inject a channel (tests); defaults to the real terminal. */
   channel?: Channel;
 }
@@ -218,7 +218,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   try {
     session = await createAuthoringAgent(opts.dir, permission, {
       mock: opts.mock,
-      native: opts.native,
+      noNative: opts.noNative,
       onEvent: (event) => {
         if (event.type === 'usage') {
           spent.input += event.input;
@@ -253,7 +253,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   /** Rebuild the backend with the current model+effort and hot-swap it into the agent. */
   async function applySettings(model: string, effort: EffortChoice): Promise<boolean> {
     try {
-      const backend = await buildAgentBackend(opts.dir, { native: opts.native, model, effort });
+      const backend = await buildAgentBackend(opts.dir, { noNative: opts.noNative, model, effort });
       session.agent.setBackend(backend);
       currentModel = model;
       currentEffort = effort;
@@ -382,8 +382,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       }
 
       // The project map inside the system message is a snapshot of a file the agent's own
-      // `update_context` rewrites, so it is re-read per turn rather than frozen at startup.
-      session.agent.setSystem(composeSystem(await loadContext(opts.dir)));
+      // `update_context` rewrites, so it is re-read per turn rather than frozen at startup —
+      // section by section, so a rewrite supersedes itself in a message rather than editing the
+      // prompt every cached byte behind it depends on.
+      session.agent.refreshSystem(systemSections(await loadContext(opts.dir)));
       const result = await session.agent.run(line);
       channel.write('');
       channel.write(result.final);

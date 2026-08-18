@@ -2,12 +2,15 @@ import { Buffer } from 'node:buffer';
 import { DEFAULT_EFFORT, resolveEffort, type EffortChoice } from '@vn/types';
 import type {
   ChatBackend,
+  ChatConvoReply,
+  ChatConvoRequest,
   ChatReply,
   ChatRequest,
   ChatToolReply,
   TokenUsage,
   ToolSchema,
 } from '../backend.js';
+import { buildConvoRequest } from './convo-request.js';
 import { callWithRetry } from './transient.js';
 
 // Room for the answer. Thinking gets more because `max_tokens` caps thinking + text together.
@@ -23,15 +26,40 @@ const MIME: Record<string, string> = {
 
 /**
  * What the response says it cost. Cache reads and cache writes are billed input, so they are
- * input here too; `undefined` when the field is missing rather than zero, so a backend that
- * stopped reporting shows no total instead of a plausible one that never moves.
+ * input here too — and reported *beside* it as well, because a total is right for the bill and
+ * useless for telling whether the cache is working. `undefined` when the field is missing rather
+ * than zero, so a backend that stopped reporting shows no total instead of a plausible one that
+ * never moves.
  */
 function usageOf(res: any): TokenUsage | undefined {
   const u = res?.usage;
   if (!u) return undefined;
-  const input =
-    (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
-  return { input, output: u.output_tokens ?? 0 };
+  const cacheRead = u.cache_read_input_tokens ?? undefined;
+  const cacheWrite = u.cache_creation_input_tokens ?? undefined;
+  const input = (u.input_tokens ?? 0) + (cacheRead ?? 0) + (cacheWrite ?? 0);
+  return {
+    input,
+    output: u.output_tokens ?? 0,
+    ...(cacheRead === undefined ? {} : { cacheRead }),
+    ...(cacheWrite === undefined ? {} : { cacheWrite }),
+  };
+}
+
+/** The two projections every caller wants out of an assistant reply, plus the blocks themselves. */
+function readBlocks(res: any): {
+  text: string;
+  toolCalls: { id: string; name: string; args: unknown }[];
+  blocks: any[];
+} {
+  const blocks = res.content ?? [];
+  const text = blocks
+    .filter((b: any) => b.type === 'text')
+    .map((b: any) => b.text)
+    .join('\n');
+  const toolCalls = blocks
+    .filter((b: any) => b.type === 'tool_use')
+    .map((b: any) => ({ id: b.id, name: b.name, args: b.input }));
+  return { text, toolCalls, blocks };
 }
 
 /**
@@ -135,15 +163,23 @@ export function createAnthropicChat(
           messages: [{ role: 'user', content }],
           ...tuning(),
         });
-        const blocks = res.content ?? [];
-        const text = blocks
-          .filter((b: any) => b.type === 'text')
-          .map((b: any) => b.text)
-          .join('\n');
-        const toolCalls = blocks
-          .filter((b: any) => b.type === 'tool_use')
-          .map((b: any) => ({ id: b.id, name: b.name, args: b.input }));
+        const { text, toolCalls } = readBlocks(res);
         return { text: text || undefined, toolCalls, usage: usageOf(res) } as ChatToolReply;
+      });
+    },
+    /**
+     * The cached, multi-turn path. Everything about it that matters is in
+     * {@link buildConvoRequest}; here it is the round trip, and `raw` — the assistant's blocks
+     * exactly as received, because thinking blocks must come back complete and unmodified and
+     * rebuilding one from `text` + `toolCalls` is a 400.
+     */
+    async chatConversation(req: ChatConvoRequest, tools: ToolSchema[]): Promise<ChatConvoReply> {
+      const anthropic = await client();
+      const body = buildConvoRequest(modelId, req, tools, tuning());
+      return callWithRetry(`Claude conversation failed (${modelId})`, async () => {
+        const res = await anthropic.messages.create(body);
+        const { text, toolCalls, blocks } = readBlocks(res);
+        return { text: text || undefined, toolCalls, usage: usageOf(res), raw: blocks };
       });
     },
   };

@@ -267,7 +267,10 @@ plays it. This is deliberately **not** an external DSL export.
   `AgentTurn.usage` → `AgentEvent` `{ type: 'usage' }` → `Convo.tokens` → a label in the convo bar
   and a line under each `vnauthor` reply. A retried step was billed every attempt, so it is summed
   every attempt; a backend that keeps no receipt shows **no total**, never `0`. It adds no
-  `FeedItem`, so nothing about it reaches the thread on disk.
+  `FeedItem`, so nothing about it reaches the thread on disk. **The cache split rides the same
+  wire** — `cacheRead`/`cacheWrite` are part of `input`, not extra, and stay **absent** until a
+  provider reports one, because a provider that says nothing about caching is not a cache that
+  missed.
 - **Every notification is durable, and one hook files them all** — `vngen/state/notifications.jsonl`,
   versioned **per line** because git union-merges it, with `r`/`h` as single ASCII digits patched at
   a byte offset (never decode the file to a string — an earlier line's `…` shifts every index). The
@@ -390,7 +393,18 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   line of what any file says. **What the host had on screen is a `context` message, never a system
   line** — it was true at that turn and not the others — and it is resolved against the live index
   (`focusOnScene`), so a stale selection says nothing rather than asserting a scene that is gone.
-  [`docs/vnauthor.md`](docs/vnauthor.md).
+  **The request is a conversation shaped to be cached, and the native path is the default** —
+  `buildConvoRequest` lays out `tools` → `system` → `messages` and spends the API's four
+  `cache_control` breakpoints on the last non-deferred tool, the system prompt and the two newest
+  turns (rolling, never on a `thinking` block); six tools load and the rest are `defer_loading`
+  beside the server-side `tool_search_tool_bm25`, so the catalog is byte-stable for a session; and
+  **anything that changes mid-conversation is appended as a `{"role":"system"}` message rather than
+  edited into the prefix** — the mode (filed on change only) and any superseded `AICONTEXT.md`
+  section. A model without the system role gets those turns **down-rendered at request time**,
+  which is what stops a mid-session `/model` switch leaving a conversation that cannot be sent. The
+  probe is `chatConversation`, deliberately not `chatWithTools`.
+  [`docs/vnauthor.md`](docs/vnauthor.md),
+  [`docs/plans/prompt-caching-and-deferred-tool-loading.md`](docs/plans/prompt-caching-and-deferred-tool-loading.md).
 - **`@vn/bible`** — retrieval over `wiki/`. `openBible(dir)` takes a directory, `query` is
   budgeted and is the only door, and a missing `wiki/` is an empty bible, not an error.
   [`docs/story-bible.md`](docs/story-bible.md).

@@ -18,6 +18,7 @@ export {
   effortLabel,
   resolveEffort,
   supportsEffort,
+  supportsSystemRole,
   type Effort,
   type EffortChoice,
 } from '@vn/types';

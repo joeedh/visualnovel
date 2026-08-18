@@ -116,8 +116,12 @@ export interface Convo {
    * composer's bar shows. It counts *calls*, not turns: a step the backend had to retry was paid
    * for every time. Nothing writes it to a thread, so a reopened one starts at zero and says so;
    * the number is about the money being spent now.
+   *
+   * `cacheRead`/`cacheWrite` are part of `input`, not extra: they say how much of it was billed
+   * at the cache rates. They stay absent until some step reports one, because a provider that
+   * says nothing about caching is not a cache that missed.
    */
-  tokens: { input: number; output: number };
+  tokens: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
   /** Feed ids issued so far. */
   seq: number;
 }
@@ -195,14 +199,19 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       });
     case 'blocked':
       return push(convo, 'blocked', `${event.tool} blocked — ${event.reason}`);
-    case 'usage':
-      return {
-        ...convo,
-        tokens: {
-          input: convo.tokens.input + event.input,
-          output: convo.tokens.output + event.output,
-        },
+    case 'usage': {
+      const tokens: Convo['tokens'] = {
+        input: convo.tokens.input + event.input,
+        output: convo.tokens.output + event.output,
       };
+      if (convo.tokens.cacheRead !== undefined || event.cacheRead !== undefined) {
+        tokens.cacheRead = (convo.tokens.cacheRead ?? 0) + (event.cacheRead ?? 0);
+      }
+      if (convo.tokens.cacheWrite !== undefined || event.cacheWrite !== undefined) {
+        tokens.cacheWrite = (convo.tokens.cacheWrite ?? 0) + (event.cacheWrite ?? 0);
+      }
+      return { ...convo, tokens };
+    }
     case 'message':
     case 'final':
       return { ...push(convo, 'agent', event.text), line: event.text };

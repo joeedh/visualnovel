@@ -125,12 +125,14 @@ import {
 import { chatBackendFor, chatVendorFor, createMockProviders, createProviders } from '@vn/providers';
 import {
   Agent,
+  NativeAgentBackend,
   StructuredAgentBackend,
   Workspace,
   archiveUpload,
   composeSystem,
   focusOnScene,
   loadContext,
+  systemSections,
   workspaceArtGen,
   type AgentBackend,
   type AgentEvent,
@@ -720,6 +722,14 @@ export class WorkspaceSession {
       });
   }
 
+  /**
+   * The backend for the next turn. Native when the resolved chat backend can hold a conversation,
+   * which is the cached path; the text path otherwise.
+   *
+   * The probe is `chatConversation` and deliberately not `chatWithTools`: Gemini implements the
+   * latter, and moving it onto the native path would give it a larger tools block for a request
+   * that is still single-shot and still caches nothing.
+   */
   private async buildBackend(config: ProjectConfig, model?: string): Promise<AgentBackend> {
     if (this.mock) return new MockAgentBackend();
     const modelId = model ?? config.models.text;
@@ -727,7 +737,8 @@ export class WorkspaceSession {
       secretsDirs: await secretDirsFor(this.dir),
       require: [chatVendorFor(modelId)],
     });
-    return new StructuredAgentBackend(chatBackendFor(modelId, keys, this.effort).backend);
+    const chat = chatBackendFor(modelId, keys, this.effort).backend;
+    return chat.chatConversation ? new NativeAgentBackend(chat) : new StructuredAgentBackend(chat);
   }
 
   private async ensureAgent(): Promise<Agent> {
@@ -802,8 +813,9 @@ export class WorkspaceSession {
       const agent = await this.ensureAgent();
       // The project map is a file, and this session outlives every rewrite of it — including the
       // agent's own `update_context`. Re-read it per turn so the map above the tool output is not
-      // an older, more authoritative-looking answer than the tools give.
-      agent.setSystem(composeSystem(await loadContext(this.dir)));
+      // an older, more authoritative-looking answer than the tools give. Section by section, so a
+      // rewritten map supersedes itself in a message rather than invalidating the cached prefix.
+      agent.refreshSystem(systemSections(await loadContext(this.dir)));
       const focus = scene ? focusOnScene(await this.index(), scene) : undefined;
       await this.beginThread(input);
       this.record((convo) => asked(convo, input));

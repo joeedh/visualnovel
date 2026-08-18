@@ -21,13 +21,14 @@ validated input files in a clean commit. Design:
 ## Running it
 
 ```
-vnauthor [dir] [--mock] [--native]
+vnauthor [dir] [--mock] [--no-native]
 ```
 
 - `--mock` runs offline with no model (read-only smoke test — exercises workspace/skill loading
   and the REPL without API keys).
-- `--native` uses provider-native function-calling (Path B) when the configured model supports
-  `chatWithTools`; otherwise the agent falls back to structured ReAct (Path A).
+- `--no-native` forces structured ReAct (Path A). Provider-native function-calling (Path B) is
+  the default wherever the configured backend offers `chatConversation`; a backend without it falls
+  back to Path A on its own.
 - Model + keys resolve exactly like `vngen`: `models.text` in `project.yaml`, key via env var or
   a secret file under `<dir>/keys/` (falling back to a shared `keys/` at the enclosing repo
   root).
@@ -76,10 +77,30 @@ agent honors.
   pattern-match a click. A shortlist of fewer than two is refused, being a leading question. In the
   terminal the list is numbered and anything that is not a run of valid numbers is taken as the
   author's own words.
-- **Agent backend seam.** The loop targets an internal `AgentBackend`; `StructuredAgentBackend`
-  (Path A) drives tools as zod-validated JSON over the text seam, `NativeAgentBackend` (Path B)
-  drives them through the vendor tool protocol. The loop is the arg-validation authority, so
-  Path B advertises permissive tool params and re-validates via the registry.
+- **Agent backend seam, and Path B is the default.** The loop targets an internal
+  `AgentBackend`; `StructuredAgentBackend` (Path A) drives tools as zod-validated JSON over the text
+  seam, `NativeAgentBackend` (Path B) drives them through the vendor tool protocol. The loop is the
+  arg-validation authority, so Path B advertises permissive tool params and re-validates via the
+  registry. **The probe is `chatConversation`, deliberately not `chatWithTools`** — Gemini
+  implements the latter for a request that is still one re-rendered string and therefore caches
+  nothing, and a request that cannot be cached is the fault Path B exists to fix.
+- **The request is a conversation, and it is shaped to be cached.** `buildConvoRequest`
+  (`@vn/providers`) lays out `tools` → `system` → `messages` and spends the API's four
+  `cache_control` breakpoints on the last non-deferred tool, the system prompt, and the two newest
+  message turns — a rolling pair, so each turn reads the previous one's write. A breakpoint never
+  lands on a `thinking` block, assistant blocks are echoed back verbatim (`AgentTurn.raw`), and the
+  builder clones rather than marking the caller's own arrays.
+- **Most tools are deferred, and the model searches for them.** `toolSpecs()` sends exactly six
+  schemas up front — `propose_plan`, `ask_user`, `ask_choice`, `read_file`, `search`,
+  `list_workspace` — and flags the rest `defer_loading`, alongside the server-side
+  `tool_search_tool_bm25` tool. The rendered catalog is byte-identical for the life of a session,
+  including across a mode change, because a tool list that moves invalidates everything after it.
+- **What changes mid-conversation is said in the transcript, never edited into the prefix.** The
+  mode, and any `AICONTEXT.md` section that has been superseded or withdrawn, are appended as
+  `{"role":"system"}` messages — filed on change only (`Agent.filedMode`), so restating the mode it
+  is already in costs nothing. On a model without the system role the builder down-renders those
+  turns to user turns at request time, which is what keeps a mid-session `/model` switch from
+  leaving a conversation that can no longer be sent.
 - **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested per-dir files and
   `@import` lines; `AGENTS.md`/`CLAUDE.md` as fallbacks) > `AICONTEXT.generated.md` (the project
   map) > inferred defaults. `update_context` turns a chat instruction into a durable line in

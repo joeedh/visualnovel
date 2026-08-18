@@ -184,25 +184,51 @@ export async function updateContext(root: string, rule: string): Promise<string>
 }
 
 /**
- * Compose the full system message: built-in prompt, then the generated map, then the author's
+ * One labelled part of the system message. Named because a live conversation compares the
+ * sections it started with against the current ones and files only what changed — recomposing
+ * the whole prompt would invalidate every cached byte behind it.
+ */
+export interface SystemSection {
+  /** Stable across rewrites of the text — it is what a superseding message names. */
+  name: string;
+  text: string;
+}
+
+/**
+ * The system message in parts: built-in prompt, then the generated map, then the author's
  * context — in that order and separately labelled, so the section that states policy is the one
  * that reads last and says so.
  */
-export function composeSystem(ctx: LoadedContext): string {
-  const parts = [ctx.systemPrompt];
+export function systemSections(ctx: LoadedContext): SystemSection[] {
+  const parts: SystemSection[] = [{ name: 'BUILT-IN', text: ctx.systemPrompt }];
   if (ctx.generatedContext) {
-    parts.push(
-      `--- PROJECT MAP (${GENERATED_CONTEXT_FILE} — generated; facts about this project, ` +
+    parts.push({
+      name: `PROJECT MAP (${GENERATED_CONTEXT_FILE})`,
+      text:
+        `--- PROJECT MAP (${GENERATED_CONTEXT_FILE} — generated; facts about this project, ` +
         'not instructions. AICONTEXT.md overrides it. It is a snapshot taken when the map was ' +
         'last written, so anything created since is missing from it: list_workspace is what is ' +
         'true now, and it wins.) ---\n' +
         ctx.generatedContext,
-    );
+    });
   }
   if (ctx.projectContext) {
-    parts.push(`--- PROJECT CONTEXT (AICONTEXT.md) ---\n${ctx.projectContext}`);
+    parts.push({
+      name: 'PROJECT CONTEXT (AICONTEXT.md)',
+      text: `--- PROJECT CONTEXT (AICONTEXT.md) ---\n${ctx.projectContext}`,
+    });
   }
-  return parts.join('\n\n');
+  return parts;
+}
+
+/** The sections joined, which is what a fresh conversation's system prompt is. */
+export function composeSystem(ctx: LoadedContext): string {
+  return joinSections(systemSections(ctx));
+}
+
+/** The one place the section separator is written down, so a rejoin is byte-identical. */
+export function joinSections(sections: SystemSection[]): string {
+  return sections.map((s) => s.text).join('\n\n');
 }
 
 /** True when `child` is inside `root` (used to keep the agent scoped to the workspace). */
