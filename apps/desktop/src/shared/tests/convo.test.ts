@@ -188,6 +188,37 @@ describe('the tokens tooltip', () => {
   });
 });
 
+/**
+ * What the turn in flight has spent against its budget — the other half of the same receipt, and
+ * a different number: the conversation total counts every token, the meter counts what is billed
+ * fresh, so a long cached turn moves one fast and the other barely at all.
+ */
+describe('what the turn in flight has spent', () => {
+  test('excludes what the cache served, unlike the conversation total', () => {
+    const convo = received(emptyConvo(opening), {
+      type: 'usage',
+      input: 100_000,
+      output: 1_000,
+      cacheRead: 99_000,
+    });
+    expect(convo.tokens.input).toBe(100_000);
+    expect(convo.turnSpend).toBe(2_000);
+  });
+
+  test('starts again when a turn is sent, not when one comes back', () => {
+    let convo = received(asked(emptyConvo(opening), 'one'), {
+      type: 'usage',
+      input: 500,
+      output: 100,
+    });
+    expect(convo.turnSpend).toBe(600);
+    // The label still says what the last turn cost while the composer is open again.
+    convo = answered(convo, 'done');
+    expect(convo.turnSpend).toBe(600);
+    expect(asked(convo, 'two').turnSpend).toBe(0);
+  });
+});
+
 describe('a turn', () => {
   test('shows the author’s own words before the agent has read them', () => {
     const convo = asked(emptyConvo(opening), 'give Aiko a jacket');

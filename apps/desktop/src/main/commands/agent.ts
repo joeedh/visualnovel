@@ -4,7 +4,13 @@
  * bypass: the command is just another way to hand it a turn.
  */
 import { defineFor, prop } from '@vn/commands';
-import { EFFORT_CHOICES, effortLabel, type EffortChoice } from '@vn/types';
+import {
+  BUDGET_CHOICES,
+  EFFORT_CHOICES,
+  effortLabel,
+  type BudgetChoice,
+  type EffortChoice,
+} from '@vn/types';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -83,6 +89,25 @@ export const agentSetEffort = define({
   async run({ effort }, ctx) {
     const bound = await ctx.host.session.setEffort(effort as EffortChoice);
     return { message: `Agent effort is now ${effortLabel(bound)}.` };
+  },
+});
+
+/** Where the chosen ceiling is remembered between runs of the app. */
+export const BUDGET_KEY = 'agent.budget';
+
+export const agentSetBudget = define({
+  id: 'agent.setBudget',
+  title: 'Set agent turn budget',
+  description:
+    'Cap what one agent turn may spend, in tokens the cache did not serve. Persists between sessions.',
+  mutating: false,
+  props: { budget: prop.oneOf(BUDGET_CHOICES, 'what one turn may spend') },
+  async run({ budget }, ctx) {
+    const bound = await ctx.host.session.setBudget(budget as BudgetChoice);
+    // Kept in the install's session file rather than the project's: it is a spending decision
+    // about this machine and this author, not something a collaborator inherits with the repo.
+    ctx.host.state.set(BUDGET_KEY, bound);
+    return { message: `One agent turn may now spend ${bound} non-cached tokens.` };
   },
 });
 

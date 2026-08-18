@@ -1,8 +1,8 @@
 import { Menu, createMenu, startMenu } from 'pathux';
-import type { Button, Container, Label, MenuTemplate, MenuTemplateCustom } from 'pathux';
-import { TEXT_MODELS, effortChoicesFor, effortLabel } from '@vn/types';
+import type { Button, Container, DropBox, Label, MenuTemplate, MenuTemplateCustom } from 'pathux';
+import { BUDGET_CHOICES, TEXT_MODELS, budgetLabel, effortChoicesFor, effortLabel } from '@vn/types';
 import { allow, answer, ask, convo, decide, revision, takeSeed } from '../agent.js';
-import { exec, report, setEffort, setModel, toggleMode } from '../bridge.js';
+import { exec, report, setBudget, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 import STUDIO_CSS from '../../styles/studio.css?inline';
@@ -165,6 +165,7 @@ export class ConvoEditor extends VnEditor {
    * finishing would otherwise rebuild the whole bar mid-turn, closing any menu open over it.
    */
   private tokensLbl?: Label;
+  private budgetMenu?: DropBox;
   private drawn = -1;
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
@@ -265,6 +266,21 @@ export class ConvoEditor extends VnEditor {
       effort.description = `${ui.model || 'this model'} has no reasoning-effort setting.`;
     }
 
+    // The turn ceiling. Deliberately outside `stateKey`: the label is retitled in place by
+    // `sayBudget`, because rebuilding the bar under an open menu closes it mid-choice.
+    const budgets: MenuTemplate = BUDGET_CHOICES.map((choice) => [
+      budgetLabel(choice),
+      () => void setBudget(choice),
+      undefined,
+      undefined,
+      choice === 'unlimited'
+        ? 'Let a turn run until it finishes or hits the 200-step runaway stop.'
+        : `Stop a turn once it has spent ${choice} tokens the cache did not serve.`,
+      choice,
+    ]) as MenuTemplate;
+    this.budgetMenu = this.bar.menu('', budgets);
+    this.sayBudget();
+
     this.tokensLbl = this.bar.label('');
     this.tokensLbl.setCSSAfter(() => (this.tokensLbl!.style['padding'] = '0px 8px'));
     this.sayTokens();
@@ -279,6 +295,35 @@ export class ConvoEditor extends VnEditor {
     clear.description =
       'Forget this conversation and start again in plan mode. The thread stays saved.';
     this.bar.flushUpdate();
+  }
+
+  /**
+   * The ceiling, and what the turn in flight has spent against it. Retitled in place rather than
+   * rebuilt, so a click that opens the menu is not undone by the next usage event arriving.
+   */
+  private sayBudget(): void {
+    if (!this.budgetMenu) return;
+    const choice = this.ui.budget;
+    const spent = convo().turnSpend;
+    // Through the attribute rather than a field: `updateName` is what notices the change and
+    // re-measures the canvas the label is painted on.
+    this.budgetMenu.setAttribute(
+      'name',
+      spent === 0 || choice === 'unlimited'
+        ? `budget ${choice}`
+        : `budget ${compact(spent)}/${choice}`,
+    );
+    const limit =
+      choice === 'unlimited'
+        ? 'This turn runs until it finishes or hits the 200-step runaway stop.'
+        : `This turn stops once it has spent ${choice}.`;
+    this.budgetMenu.description =
+      `What one turn may spend, counting fresh input and output but not what the cache served. ` +
+      `${limit} ` +
+      (spent === 0
+        ? 'Nothing spent on the last turn yet.'
+        : `${spent.toLocaleString()} spent on this turn so far.`) +
+      ' The setting is remembered between sessions.';
   }
 
   /**
@@ -422,6 +467,7 @@ export class ConvoEditor extends VnEditor {
 
     this.lineEl.textContent = state.line;
     this.sayTokens();
+    this.sayBudget();
     this.sendBtn.disabled = state.busy;
     this.stopBtn.style.display = state.busy ? 'grid' : 'none';
     this.workingEl.style.display = state.busy ? 'block' : 'none';

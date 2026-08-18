@@ -14,6 +14,7 @@
  * Ids come from `Convo.seq` rather than a module counter, which is what keeps `received` pure;
  * clearing carries the counter over, so a cleared conversation never reuses an id.
  */
+import { charge } from '@vn/types';
 import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from './ipc.js';
 
 /** What a tool was called with and what came back — the half of a turn `text` cannot hold. */
@@ -163,6 +164,12 @@ export interface Convo {
     cacheWrite?: number;
     cacheEstimated?: boolean;
   };
+  /**
+   * What the turn in flight has spent against its budget: fresh input plus output, cache reads
+   * excluded, which is the same arithmetic the loop's own meter runs. Zeroed when a turn is sent
+   * rather than when one ends, so the label a finished turn leaves behind says what it cost.
+   */
+  turnSpend: number;
   /** Feed ids issued so far. */
   seq: number;
 }
@@ -177,6 +184,7 @@ export function emptyConvo(line: string): Convo {
     busy: false,
     suggestions: [],
     tokens: { input: 0, output: 0 },
+    turnSpend: 0,
     seq: 0,
   };
 }
@@ -205,7 +213,7 @@ function stringifyArgs(args: unknown): string {
 export function asked(convo: Convo, text: string): Convo {
   // Whatever was suggested has been answered, taken or ignored; leaving the chips up would offer
   // to start a conversation that is already under way.
-  return { ...push(convo, 'user', text), busy: true, suggestions: [] };
+  return { ...push(convo, 'user', text), busy: true, suggestions: [], turnSpend: 0 };
 }
 
 /**
@@ -254,7 +262,7 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       // Sticky, like the sum it qualifies: a running total that mixed a bill with a guess is a
       // guess, and Gemini reports nothing at all for the first calls of a conversation.
       if (convo.tokens.cacheEstimated || event.cacheEstimated) tokens.cacheEstimated = true;
-      return { ...convo, tokens };
+      return { ...convo, tokens, turnSpend: convo.turnSpend + charge(event) };
     }
     case 'message':
     case 'final':

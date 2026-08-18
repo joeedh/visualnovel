@@ -24,6 +24,7 @@ export function defineShellApi(): DataAPI {
   ui.string('projectTitle', 'projectTitle', 'Project');
   ui.string('model', 'model', 'Model');
   ui.string('effort', 'effort', 'Effort');
+  ui.string('budget', 'budget', 'Turn Budget');
   ui.string('agentMode', 'agentMode', 'Agent Mode');
   ui.int('errors', 'errors', 'Errors');
   ui.int('warnings', 'warnings', 'Warnings');

@@ -8,7 +8,7 @@
  * props — there is nothing to thread it through.
  */
 import { message as note, error as noteError } from 'pathux';
-import { resolveEffort, type EffortChoice } from '@vn/types';
+import { DEFAULT_BUDGET, resolveEffort, type BudgetChoice, type EffortChoice } from '@vn/types';
 import { api } from '../api.js';
 import type {
   AgentEvent,
@@ -223,12 +223,25 @@ export async function setEffort(effort: EffortChoice): Promise<void> {
   }
 }
 
+export async function setBudget(budget: BudgetChoice): Promise<void> {
+  if ((await exec('agent.setBudget', { budget })).ok) {
+    shell().ui.budget = budget;
+    touch();
+  }
+}
+
 /**
  * Subscribe to what main pushes, and take the first workspace read. Called once, after the
  * screen exists — `say` and the palette both need one.
  */
 export function installBridge(app: ShellApp): void {
   host = app;
+
+  // The one agent setting main restores from the install's session file, so the bar paints the
+  // budget in force rather than the default and then correcting itself.
+  const storedBudget = api.session.initial()['agent.budget'];
+  app.ui.budget =
+    typeof storedBudget === 'string' ? (storedBudget as BudgetChoice) : DEFAULT_BUDGET;
 
   api.on('command:ui', (effect: UiEffect) => {
     const ui = app.ui;

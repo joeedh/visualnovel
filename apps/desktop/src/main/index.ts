@@ -30,6 +30,8 @@ import { openGit, type Git } from '@vn/git';
 import { appendJsonl } from '@vn/util';
 import { Workspace } from '@vn/authoring';
 import { CommandStack, Committer, UndoJournal } from '@vn/commands';
+import { DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
+import { BUDGET_KEY } from './commands/agent.js';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
 import { ensureLayouts } from './layouts.js';
@@ -409,7 +411,12 @@ const deps: SessionDeps = {
 };
 
 function getSession(): WorkspaceSession {
-  if (!session) session = new WorkspaceSession(workspace(), MOCK, deps);
+  if (!session) {
+    session = new WorkspaceSession(workspace(), MOCK, deps);
+    // The one agent setting that outlives the run: what a turn may spend is a decision about
+    // this machine's bill, so it is restored here rather than re-chosen every launch.
+    session.budget = getSessionStore().get<BudgetChoice>(BUDGET_KEY, DEFAULT_BUDGET);
+  }
   return session;
 }
 

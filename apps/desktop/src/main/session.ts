@@ -192,7 +192,15 @@ import type {
   TaskInputs,
   TextLLM,
 } from '@vn/types';
-import { DEFAULT_EFFORT, EFFORT_CHOICES, bindsTo, resolveEffort, type TaskKind } from '@vn/types';
+import {
+  DEFAULT_BUDGET,
+  DEFAULT_EFFORT,
+  EFFORT_CHOICES,
+  bindsTo,
+  resolveEffort,
+  type BudgetChoice,
+  type TaskKind,
+} from '@vn/types';
 import {
   assertIssueUrl,
   fitBody,
@@ -594,6 +602,12 @@ export class WorkspaceSession {
   model = '';
   /** The reasoning the backend is built with. A stated default, never the vendor's. */
   effort: EffortChoice = DEFAULT_EFFORT;
+  /**
+   * What one turn may spend, in non-cached tokens. Unlike the model and the effort this is not
+   * something the backend is built with — it is the loop's own meter — so setting it rebuilds
+   * nothing and works under `--mock` like anything else the loop decides.
+   */
+  budget: BudgetChoice = DEFAULT_BUDGET;
 
   /** What long-running work is in flight, by name; empty when the session is idle. */
   private readonly inFlight = new Set<string>();
@@ -768,6 +782,7 @@ export class WorkspaceSession {
       ctx,
       permission: this.permission(),
       system: composeSystem(context),
+      budget: this.budget,
       onEvent: (event) => {
         this.record((convo) => received(convo, event));
         this.deps.emitEvent(event);
@@ -887,6 +902,16 @@ export class WorkspaceSession {
     const agent = await this.ensureAgent();
     agent.setBackend(await this.buildBackend(await loadConfig(this.dir), this.model || undefined));
     return effort;
+  }
+
+  /**
+   * The turn ceiling. Nothing is rebuilt and nothing is awaited beyond the agent existing: the
+   * budget is read by the loop at each step, so a change lands on the turn in flight too.
+   */
+  async setBudget(budget: BudgetChoice): Promise<BudgetChoice> {
+    this.budget = budget;
+    (await this.ensureAgent()).setBudget(budget);
+    return budget;
   }
 
   /**
