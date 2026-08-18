@@ -10,9 +10,10 @@
 <!-- tocstop -->
 
 Reference material for the VN Generator monorepo. For the working map of the code itself
-(package layering, the invariants in brief, conventions), see [`../CLAUDE.md`](../CLAUDE.md);
-each area's full write-up is below. For how to debug the repo (state files, CDP, the 2D debug
-surface, known traps), see [`debugGuide.md`](debugGuide.md).
+(package layering, the invariants in brief), see [`../CLAUDE.md`](../CLAUDE.md); each area's
+full write-up is below. CLAUDE.md keeps the git-history and tooltip rules in hand; the rest of
+how this repo is written is [`conventions.md`](conventions.md). For how to debug the repo
+(state files, CDP, the 2D debug surface, known traps), see [`debugGuide.md`](debugGuide.md).
 
 Implementation plans live separately in [`plans/`](plans); [`plans/index.md`](plans/index.md)
 lists all of them with their build status.
@@ -37,6 +38,7 @@ How a part of the system actually works today, in the detail CLAUDE.md only summ
 | [`vnauthor.md`](vnauthor.md) | The authoring agent as shipped: CLI flags, REPL commands, the plan/execute state machine, the agent-backend seam, context precedence, and skills. |
 | [`story-bible.md`](story-bible.md) | `wiki/` and `@vn/bible`: retrieval over the author's free-form notes — why there is no whole-file API, how the character budget is enforced, what the index holds, the grep ranking an embedding store would replace, and who reaches it (`search_bible`, `bible.search`). |
 | [`debugGuide.md`](debugGuide.md) | How to debug anything here, cheapest tool first: the gates, reading state on disk, reproducing offline, driving the desktop app over CDP, `window.__vnDebug`, and the known traps. |
+| [`conventions.md`](conventions.md) | How this repository is written rather than what it does: comment style (`//` for non-doc, three lines, `CLAUDENOTE:`), where plans and research are filed and how `todos.md` is treated, the rule that CLAUDE.md stays a map with pointers, formatting markdown by naming the files, and the checklist a plan passes before it counts as finished. |
 
 ## Design reports
 
