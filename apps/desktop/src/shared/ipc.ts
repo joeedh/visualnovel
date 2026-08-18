@@ -552,6 +552,39 @@ export interface ProjectView {
   imageTasks: number;
 }
 
+/** Where a key was found, or would be written: the two rungs an author can act on, plus the two
+ *  they can only be told about. */
+export type KeyScope = 'project' | 'user';
+
+/**
+ * What the Setup pane knows about one vendor's key. Never the key — `keyStatus` reports which
+ * source answered and nothing else, which is what makes this safe to send to a renderer.
+ */
+export interface VendorKeyView {
+  vendor: string;
+  /** Whether a key resolved at all. */
+  resolved: boolean;
+  /** Where it came from, as a sentence: an env var by name, or a directory and a file. */
+  source: string;
+  /** The environment variable `project.yaml` names for this vendor. */
+  envName: string;
+  /**
+   * Whether that variable is set. It is read before every file, so a set variable shadows a key
+   * the author has just pasted — the pane says so rather than leaving them to guess.
+   */
+  envShadow: boolean;
+  /** Where `project.setKey` would put a key at each scope. Absolute for `user`, relative for the
+   *  project, because one is in the workspace and the other deliberately is not. */
+  writesTo: Record<KeyScope, string>;
+}
+
+/** What the Setup pane draws: one row per vendor, in `KEY_VENDORS` order. */
+export interface KeyStatusView {
+  vendors: VendorKeyView[];
+  /** The user-level `keys/` directory, so the pane can name it once rather than per vendor. */
+  userKeysDir: string;
+}
+
 /**
  * The sidebar's default view: five branches plus the backlinks behind them. One shape because it
  * is one walk — the scene → shot tree and "which shots is Aiko in" read the same storyboards.

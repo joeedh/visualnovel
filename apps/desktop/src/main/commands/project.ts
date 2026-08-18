@@ -59,28 +59,59 @@ export const projectSetArtStyle = define({
   },
 });
 
+/** The two rungs an author can write to. Ordered so the enum's first value is today's default. */
+const KEY_SCOPES = ['project', 'user'] as const;
+
 export const projectSetKey = define({
   id: 'project.setKey',
   title: 'Provide a model key',
   description:
-    "Store an API key for one model provider in the project's `keys/` directory — the file " +
-    '`resolveKeys` reads when the matching environment variable is unset. The value is written ' +
-    'to that file and nowhere else: the history records `<secret>`, and `keys` is added to ' +
-    '`.gitignore` before the write so commit-on-save cannot pick it up.',
+    'Store an API key for one model provider — the file `resolveKeys` reads when the matching ' +
+    'environment variable is unset. `scope=project` writes it into this project (`keys/`, added ' +
+    'to `.gitignore` before the write so commit-on-save cannot pick it up); `scope=user` writes ' +
+    'it once for every project on this machine, into a directory no repository contains. Either ' +
+    'way the value reaches that file and nowhere else: the history records `<secret>`.',
   mutating: true,
   // Deliberately not undoable: an undo point is a git snapshot, and snapshotting a credential is
-  // the one thing this command exists to avoid.
+  // the one thing this command exists to avoid. That holds doubly at the user scope, where the
+  // file is not in a repository at all and there is no snapshot to be had.
   undoable: false,
   props: {
     provider: prop.oneOf(KEY_VENDORS, 'which model provider the key is for'),
     key: prop.secret('the API key; it is written to a gitignored file and never recorded'),
+    scope: prop.oneOf(
+      KEY_SCOPES,
+      'where the key is written: in this project, or once for every project on this machine',
+      { default: 'project' },
+    ),
   },
-  async check({ provider }, ctx) {
-    return verdict(await ctx.host.session.previewKey(provider));
+  async check({ provider, scope }, ctx) {
+    return verdict(await ctx.host.session.previewKey(provider, scope));
   },
-  async run({ provider, key }, ctx) {
-    const result = await ctx.host.session.setKey(provider, key);
+  async run({ provider, key, scope }, ctx) {
+    const result = await ctx.host.session.setKey(provider, key, scope);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, written: result.written };
+  },
+});
+
+export const projectKeyStatus = define({
+  id: 'project.keyStatus',
+  title: 'Which model keys are set',
+  description:
+    'For each model provider, whether a key resolved and **which source** answered — an ' +
+    'environment variable by name, this project’s `keys/`, an enclosing repository’s, or the ' +
+    'user-level one. Never the key itself. It is also the honest answer to “why is it still ' +
+    'asking me”: a set environment variable is read before every file, so it shadows one that ' +
+    'was just pasted.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const view = await ctx.host.session.keyStatusView();
+    const missing = view.vendors.filter((v) => !v.resolved).map((v) => v.vendor);
+    return {
+      message: missing.length === 0 ? 'Every provider has a key.' : `No key for ${missing.join(', ')}.`,
+      data: view,
+    };
   },
 });

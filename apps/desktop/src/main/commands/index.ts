@@ -56,7 +56,7 @@ import {
   promptSetChunk,
   promptSetCustom,
 } from './prompt.js';
-import { projectInfo, projectSetArtStyle, projectSetKey } from './project.js';
+import { projectInfo, projectKeyStatus, projectSetArtStyle, projectSetKey } from './project.js';
 import { reportAgent, reportOpenIssue } from './report.js';
 import {
   storyAssignLineIds,
@@ -172,6 +172,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     promptSetChunk,
     promptSetCustom,
     projectInfo,
+    projectKeyStatus,
     projectSetArtStyle,
     projectSetKey,
     reportAgent,

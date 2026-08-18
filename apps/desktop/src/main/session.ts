@@ -8,16 +8,20 @@
  */
 import {
   CONFIG_FILENAME,
+  KEY_VENDORS,
+  keyStatus,
   loadConfig,
   resolveKeys,
   secretDirsFor,
   secretFileFor,
   setArtStyle,
   setStartScene,
+  userKeysDir,
   type ProjectConfig,
   type ResolvedKeys,
+  type VendorKeyStatus,
 } from '@vn/config';
-import { mkdir, readdir, readFile, rename } from 'node:fs/promises';
+import { chmod, mkdir, readdir, readFile, rename } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
@@ -240,6 +244,8 @@ import type {
   DocSaveResult,
   DocTree,
   GateCandidate,
+  KeyScope,
+  KeyStatusView,
   PipelineRunResult,
   PipelineStatus,
   ProjectView,
@@ -549,6 +555,26 @@ function leakSentence(leaked: readonly string[]): string {
 /** The same, plus the files a write touched — the shape every `prompt.*` mutator returns. */
 export interface PromptWriteResult extends PromptResult {
   written: string[];
+}
+
+/**
+ * Where a key came from, in words. Four rungs answer, and the pane has to distinguish them: a key
+ * in the project is a fact about the project, a key in the user directory is a fact about the
+ * machine, and an environment variable is a fact about whatever shell launched the app — which is
+ * the one an author cannot see and the one most likely to be stale.
+ *
+ * Pure, and it never touches the value: `VendorKeyStatus` does not carry one.
+ */
+export function describeKeySource(projectDir: string, status: VendorKeyStatus | undefined): string {
+  if (!status?.source) return 'Not set.';
+  if (status.source.kind === 'env') return `From $${status.source.name}.`;
+  const { dir, file } = status.source;
+  if (dir === userKeysDir()) return `From ${join(dir, file)} — every project on this machine.`;
+  const within = relative(projectDir, dir);
+  if (!within.startsWith('..') && !isAbsolute(within)) {
+    return `From ${join(within, file).split(sep).join('/')} in this project.`;
+  }
+  return `From ${join(dir, file)}.`;
 }
 
 /**
@@ -2337,48 +2363,101 @@ export class WorkspaceSession {
    */
   private async keyFile(
     vendor: keyof ResolvedKeys,
-  ): Promise<{ rel: string; had: boolean; shadow: string }> {
-    const rel = `keys/${secretFileFor(vendor)}`;
+    scope: KeyScope,
+  ): Promise<{ path: string; shown: string; had: boolean; shadow: string }> {
+    const file = secretFileFor(vendor);
+    // The project scope is named relatively, because it is a place in the workspace the author is
+    // standing in; the user scope is named in full, because its whole point is that it is not.
+    const path = scope === 'user' ? join(userKeysDir(), file) : join(this.dir, 'keys', file);
+    const shown = scope === 'user' ? path : `keys/${file}`;
     const envName = (await loadConfig(this.dir)).keys[vendor];
     const set = (process.env[envName] ?? '').trim() !== '';
     return {
-      rel,
-      had: await exists(join(this.dir, rel)),
+      path,
+      shown,
+      had: await exists(path),
       shadow: set ? ` $${envName} is set and is read first, so the file goes unused.` : '',
     };
   }
 
   /** What `project.setKey` would do, without writing it. */
-  async previewKey(vendor: keyof ResolvedKeys): Promise<PromptResult> {
-    const { rel, had, shadow } = await this.keyFile(vendor);
+  async previewKey(vendor: keyof ResolvedKeys, scope: KeyScope = 'project'): Promise<PromptResult> {
+    const { shown, had, shadow } = await this.keyFile(vendor, scope);
+    const reach =
+      scope === 'user' ? ' Every project on this machine reads it.' : ' This project reads it.';
     return {
       ok: true,
-      message: `${had ? 'Replace' : 'Write'} the ${vendor} key in ${rel}.${shadow}`,
+      message: `${had ? 'Replace' : 'Write'} the ${vendor} key in ${shown}.${reach}${shadow}`,
     };
   }
 
   /**
    * Store an API key. The value reaches exactly one file — the first name `resolveKeys` looks
    * for — and nothing else: not the message, not the log, and not `commands.jsonl`, where
-   * `prop.secret` has already replaced it. `keys` is ignored *before* the write, because
-   * commit-on-save runs `git commit -A` and would otherwise commit the file within the second.
+   * `prop.secret` has already replaced it.
+   *
+   * At the project scope, `keys` is ignored *before* the write, because commit-on-save runs
+   * `git commit -A` and would otherwise commit the file within the second. At the user scope
+   * there is no repository to ignore it in — the directory is deliberately outside every one —
+   * so the equivalent guard is the mode: `0600` on POSIX, which is the one thing a `keys/`
+   * inside a project never needed because the repository was the boundary.
    */
-  async setKey(vendor: keyof ResolvedKeys, key: string): Promise<PromptWriteResult> {
+  async setKey(
+    vendor: keyof ResolvedKeys,
+    key: string,
+    scope: KeyScope = 'project',
+  ): Promise<PromptWriteResult> {
     const value = key.trim();
     if (!value) return { ok: false, message: 'No key given.', written: [] };
 
-    const { rel, had, shadow } = await this.keyFile(vendor);
-    const ignored = await ensureIgnored(this.dir, ['keys']);
-    const path = join(this.dir, rel);
+    const { path, shown, had, shadow } = await this.keyFile(vendor, scope);
+    const ignored = scope === 'project' ? await ensureIgnored(this.dir, ['keys']) : false;
     await mkdir(dirname(path), { recursive: true });
     await writeFileAtomic(path, `${value}\n`);
+    if (scope === 'user' && process.platform !== 'win32') {
+      await chmod(path, 0o600).catch(() => undefined);
+    }
 
-    // The key file itself is never reported as written: it is ignored, so nothing downstream
-    // may treat it as a document. The `.gitignore` is, because it is committed.
+    // The key file itself is never reported as written: it is ignored (or outside the repo
+    // entirely), so nothing downstream may treat it as a document. The `.gitignore` is, because
+    // it is committed.
+    const safety =
+      scope === 'user'
+        ? ', which is outside every repository'
+        : ', which git ignores';
+    const reach =
+      scope === 'user' ? ' Every project on this machine reads it.' : ' This project reads it.';
     return {
       ok: true,
-      message: `${had ? 'Replaced' : 'Wrote'} the ${vendor} key in ${rel}, which git ignores.${shadow}`,
+      message: `${had ? 'Replaced' : 'Wrote'} the ${vendor} key in ${shown}${safety}.${reach}${shadow}`,
       written: ignored ? ['.gitignore'] : [],
+    };
+  }
+
+  /**
+   * For each vendor, whether a key resolved and which source answered — never the value. The
+   * Setup pane is built on this, and so is the first-run check that decides whether to offer it.
+   */
+  async keyStatusView(): Promise<KeyStatusView> {
+    const config = await loadConfig(this.dir);
+    const status = await keyStatus(config, { secretsDirs: await secretDirsFor(this.dir) });
+    const byVendor = new Map<string, VendorKeyStatus>(status.map((s) => [s.vendor, s]));
+    return {
+      userKeysDir: userKeysDir(),
+      vendors: KEY_VENDORS.map((vendor) => {
+        const s = byVendor.get(vendor);
+        return {
+          vendor,
+          resolved: s?.resolved ?? false,
+          source: describeKeySource(this.dir, s),
+          envName: s?.envName ?? config.keys[vendor],
+          envShadow: s?.envShadow ?? false,
+          writesTo: {
+            project: `keys/${secretFileFor(vendor)}`,
+            user: join(userKeysDir(), secretFileFor(vendor)),
+          },
+        };
+      }),
     };
   }
 
