@@ -56,7 +56,7 @@
 	 whatever (we won't need it but the capability should exist).  it should be a simple event 
 	 handler.
 [x]: the tasks editor never shows running tasks
-[ ]: if you click the warnings label (turn it into a button) on the main menu bar it should popup a 
+[x]: if you click the warnings label (turn it into a button) on the main menu bar it should popup a 
      dialog box showing the warnings.
 [x]: when the document tree truncates a subtree with '... and X more' you should be able to click 
      on it to show the truncated items.

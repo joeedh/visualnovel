@@ -18,6 +18,7 @@ import type { VnContext } from '../context.js';
 import { currentLayoutFile, fetchLayouts } from '../layouts.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
+import { openDiagnostics } from '../diagnostics.js';
 import { openNotifications } from '../notifications.js';
 import { openPalette } from '../palette.js';
 import { openReportDialog } from '../report.js';
@@ -240,11 +241,19 @@ export class VnHeaderEditor extends VnEditor {
     redo.description = ui.redoLabel ? `Redo ${ui.redoLabel}` : 'Nothing to redo';
     redo.disabled = !ui.canRedo;
 
-    // Errors displace warnings: one count, and the worse one wins it.
+    // Errors displace warnings: one count, and the worse one wins it. A button rather than a
+    // label, because a count with no way to ask *which* is a number the author cannot act on.
     const shown = ui.errors || ui.warnings;
     if (shown > 0) {
       const kind = ui.errors ? 'error' : 'warning';
-      this.badge(`${shown} ${kind}${shown === 1 ? '' : 's'}`);
+      const problems = this.bar.button(`${shown} ${kind}${shown === 1 ? '' : 's'}`, () =>
+        openDiagnostics(),
+      );
+      problems.description =
+        ui.errors && ui.warnings
+          ? `List them — ${ui.errors} error${ui.errors === 1 ? '' : 's'} and ` +
+            `${ui.warnings} warning${ui.warnings === 1 ? '' : 's'} in this project`
+          : 'List what validation says is wrong with this project';
     }
 
     this.badge(ui.model, false, 'current agent model - set in convo tab');

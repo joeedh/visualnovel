@@ -211,6 +211,18 @@ are the bridge's.
   with the labels `command:undo` pushes, an error-or-warning count, the model, `live`/`preview`, and
   the PLAN ⇄ EXECUTE toggle. It rebuilds when — and only when — the string of everything it draws
   changes.
+- **The problem count opens the problems.** The badge is a button: it lists what validation said,
+  errors before warnings, each row hovering its code and the entity it named. The badge still shows
+  **one** number — errors displace warnings, the worse one wins it — while the list shows both, so
+  the count stays the thing to fix next and the popup is the whole picture. Rows are refetched from
+  `workspace:index` on open rather than read off `ShellState`, which carries only the two counts,
+  and **nothing in the popup writes**: a diagnostic is a reading of the model, re-derived on every
+  index, so there is no dismiss and no acknowledge — fixing what it is about is what clears it. A
+  row whose `where` names a scene the workspace lists is a **way in**, routed like any other node
+  (`diagnosticScene` in `renderer/rules/`, because `where` is an entity id in some diagnostics and
+  can name a scene that does not exist in others — `start:` pointing at nothing is exactly that).
+  The ordering and the two sentences a row needs are `src/shared/diagnostics.ts`, so the node-only
+  jest project tests them and the popup stays widgets.
 - **The View menu is two submenus and two acts.** **Editors** is every editor by name, each entry a
   `view.open`; **Layout** is the project's [layout templates](#layout-templates) plus Save Current
   Layout As… and Reset View Layout…; then Close Pane… and Split Area, the latter moved down from the
