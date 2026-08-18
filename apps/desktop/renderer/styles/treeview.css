@@ -1,0 +1,112 @@
+/*
+ * The DOM tree the Documents pane and the Skills pane both draw. One sheet rather than two,
+ * because a tree that looks like a different widget in each pane is not the same widget — the
+ * `assetstrip.css` precedent, and the same reasoning.
+ *
+ * Class names are `tv-` and nothing else: it is adopted *beside* the host's own sheet, so a name
+ * the host already uses would be styled twice.
+ *
+ * **No reset, and no typography.** Not an omission: the rows inherit their font, size and colour
+ * from the host's surface, which is what makes a tree drawn inside the Documents pane look like
+ * that pane and one drawn inside Skills look like Skills. The cost is that a host surface which
+ * sets none of them draws the tree in whatever the shadow root's default is — so a surface hosting
+ * `renderTree` owes it `font-family`, `font-size` and `color`, the way `.dt-surface` does.
+ */
+
+.tv-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.tv-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+.tv-row:hover {
+  background: var(--ink-raised);
+}
+
+.tv-row.sel {
+  background: rgba(69, 200, 214, 0.1);
+  border-left-color: var(--signal);
+}
+
+/* A grouping is a heading, not a place — it reads as chrome so the documents under it do not
+   have to compete with it. */
+.tv-row.group .tv-label {
+  color: var(--mist);
+  letter-spacing: 0.04em;
+}
+
+/* The counted stand-in for children a cap dropped: inert, and visibly so. */
+.tv-row.inert {
+  cursor: default;
+  color: var(--mist-dim);
+  font-style: italic;
+}
+
+.tv-row.inert:hover {
+  background: none;
+}
+
+/* Three times the glyph it was, in a box clamped to the row: the triangle overflows its own line
+   box rather than making every row taller, so the tree keeps its density and gains a target. */
+.tv-twisty {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  color: var(--mist-dim);
+  font-size: 27px;
+  overflow: visible;
+  user-select: none;
+}
+
+.tv-label {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The label, swapped for a box in place. Written by the host — rename is the host's, not the
+   renderer's — but it covers a row that lives here, so it is styled here. Sized to the row rather
+   than to itself, so the tree does not reflow around a name being typed. */
+.tv-rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--sodium);
+  border-radius: var(--r-chrome);
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font: inherit;
+  padding: 0 3px;
+}
+
+.tv-rename:focus {
+  outline: none;
+}
+
+.tv-badge {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border-radius: var(--r-chrome);
+  background: rgba(244, 162, 76, 0.14);
+  color: var(--sodium);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+/* Two badges the tree must not make look like the others: one is a fact about the disk. */
+.tv-badge.bad {
+  background: rgba(229, 83, 75, 0.16);
+  color: var(--vermilion);
+}

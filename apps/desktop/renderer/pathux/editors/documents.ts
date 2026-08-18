@@ -12,6 +12,7 @@ import {
   menuFor,
   nodeIsSelected,
   renameOf,
+  rowTitle,
   selectionForNode,
   toggleExpanded,
   type DocRow,
@@ -22,14 +23,12 @@ import { layoutChanged } from '../persist.js';
 import type { VnScreen } from '../screen.js';
 import { menuIsOpen, showContextMenu } from '../showmenu.js';
 import type { Selection } from '../selection.js';
+import { TREEVIEW_CSS, armDismissLatch, renderTree, rowElementFor } from '../treeview.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
 import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
 
 /** Which tree the pane is drawing. Remembered per pane, so two of them can differ. */
 type DocMode = 'documents' | 'files';
-
-/** How close two clicks on one row have to be to mean "rename this". The platform default. */
-const DOUBLE_CLICK_MS = 500;
 
 /**
  * The sidebar, as a pane: the project's five branches — Story → scenes → shots, Characters,
@@ -72,10 +71,6 @@ export class DocumentsEditor extends VnEditor {
   private drawn = '';
   /** The last location clicked here, which is the only thing that knows one is selected. */
   private picked = '';
-  /** A menu was up when the pointer went down, so the click it becomes is a dismissal. */
-  private dismissing = false;
-  /** The last row clicked and when, which is how a second click on the same one is recognised. */
-  private lastClick = { id: '', at: -1 };
   /** The node being renamed right now, so a rebuild underneath the box cannot start a second one. */
   private renaming = '';
   private unwatch: (() => void) | undefined;
@@ -95,12 +90,14 @@ export class DocumentsEditor extends VnEditor {
     this.bar = (this.header as Container).row();
 
     this.adoptStyle(DOCUMENTS_CSS);
+    this.adoptStyle(TREEVIEW_CSS);
     this.adoptStyle(ASSETSTRIP_CSS);
     this.surface = el('div', 'dt-surface') as HTMLDivElement;
-    this.rows = el('div', 'dt-rows') as HTMLDivElement;
+    this.rows = el('div', 'tv-rows') as HTMLDivElement;
     this.panel = el('div', 'dt-panel') as HTMLDivElement;
     this.surface.append(this.buildNewRow(), this.rows, this.panel);
-    this.armDismissLatch();
+    // The surface rather than the rows, so the latch covers the backlink panel under them too.
+    armDismissLatch(this.surface, menuIsOpen);
     this.appendSurface(this.surface);
 
     // Coarse on purpose (decision 7 of the plan): there is no write effect to listen for, a tree
@@ -231,37 +228,6 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Swallow the click that dismisses a context menu. path.ux closes a menu on mouse-up, so what
-   * reaches the tree afterwards is an ordinary first click — and it selects, or toggles, whatever
-   * row the pointer happened to be resting over. From the author's seat that is a right-click
-   * rearranging the tree, which is exactly what a right-click must not do.
-   *
-   * Pointer-down is the only moment the question can be asked, because it is the last one at which
-   * a menu is still open. Both listeners are capture-phase on the surface, so one latch covers
-   * every row, twisty and backlink under it; and the latch is *assigned* on each pointer-down, so
-   * a gesture that never becomes a click cannot leave it armed.
-   */
-  private armDismissLatch(): void {
-    this.surface.addEventListener(
-      'pointerdown',
-      () => {
-        this.dismissing = menuIsOpen();
-      },
-      true,
-    );
-    this.surface.addEventListener(
-      'click',
-      (event) => {
-        if (!this.dismissing) return;
-        this.dismissing = false;
-        event.stopPropagation();
-        event.preventDefault();
-      },
-      true,
-    );
-  }
-
-  /**
    * The one authored act the tree itself performs: scaffold a sheet or a note from a name, and
    * open what it wrote. A row rather than a dialog — path.ux has no prompt, and the surface is
    * already raw DOM in this pane's shadow root.
@@ -347,84 +313,37 @@ export class DocumentsEditor extends VnEditor {
       return;
     }
 
-    const selection = this.selection();
     const rows = flattenTree(roots, this.expanded);
     if (rows.length === 0) {
       this.rows.appendChild(el('div', 'dt-note', 'Nothing in this workspace yet.'));
       return;
     }
-    for (const row of rows) this.rows.appendChild(this.rowEl(row, selection));
+
+    const selection = this.selection();
+    renderTree(this.rows, rows, {
+      look: (row) => ({
+        selected: nodeIsSelected(row.node, selection),
+        title: rowTitle(row.node, {
+          renamable: renameOf(row.node) !== undefined,
+          sheetless: this.sheetless(row.node),
+        }),
+      }),
+      onToggle: (id) => this.toggle(id),
+      onClick: (row) => this.pick(row),
+      // A location mined from a heading has no sheet, so its second click writes one rather than
+      // renaming — the only place in the tree where a second click authors a file.
+      onSecondClick: (row) => {
+        const renamable = renameOf(row.node);
+        if (renamable) this.beginRename(row.node.id, renamable);
+        else if (this.sheetless(row.node)) void this.writeSheet(row.node.label);
+      },
+      onMenu: (row, x, y) => this.openMenu(row, x, y),
+    });
   }
 
-  private rowEl(row: DocRow, selection: Selection): HTMLElement {
-    const { node } = row;
-    const inert = node.kind === 'more';
-    const group = node.kind === 'branch' || node.kind === 'assetkind';
-
-    const line = el('div', 'dt-row') as HTMLDivElement;
-    // The node's own id, so a rename opened by the second of two clicks can find the row the
-    // first click's rebuild replaced. DOM identity does not survive a rebuild; this does.
-    line.dataset['id'] = node.id;
-    if (inert) line.classList.add('inert');
-    if (group) line.classList.add('group');
-    if (nodeIsSelected(node, selection)) line.classList.add('sel');
-    line.style.paddingLeft = `${4 + row.depth * 13}px`;
-
-    const twisty = el('span', 'dt-twisty', row.expandable ? (row.expanded ? '▾' : '▸') : '');
-    if (row.expandable) {
-      twisty.title = row.expanded ? 'Hide what is under this' : 'Show what is under this';
-    }
-    line.appendChild(twisty);
-    line.appendChild(el('span', 'dt-label', node.label));
-    if (node.badge) {
-      const badge = el('span', 'dt-badge', node.badge);
-      if (node.badge === 'unreadable' || node.badge === 'unreachable') badge.classList.add('bad');
-      line.appendChild(badge);
-    }
-    const renamable = renameOf(node);
-    // A path is the useful thing to say where there is one; the rest is what a row with no file
-    // says instead, because no row may hover silently. A location mined from a heading has no
-    // sheet, so its second click writes one rather than renaming.
-    const sheetless = node.kind === 'location' && node.path === undefined;
-    if (node.path) {
-      line.title = renamable ? `${node.path} — double-click the name to rename it` : node.path;
-    } else if (node.note) {
-      line.title = node.note;
-    } else if (sheetless) {
-      line.title = 'Only a heading names this place — double-click to write its sheet';
-    } else if (group) {
-      line.title = 'Show or hide what is filed under this heading';
-    } else if (inert) {
-      line.title = 'More than the tree will draw at once — narrow it, or open the folder itself';
-    } else {
-      line.title = `Select this ${node.kind} — every pane showing one follows the click`;
-    }
-
-    if (!inert) {
-      // The twisty is its own target so a node that is both a place and a container — a scene
-      // with shots under it — can be opened without being selected, and selected without being
-      // opened. Everything else follows from whether the click named anything.
-      twisty.addEventListener('click', (event) => {
-        event.stopPropagation();
-        if (row.expandable) this.toggle(node.id);
-      });
-      // A double click is counted rather than listened for: the first click rebuilds the rows, so
-      // by the time a `dblclick` was dispatched the element both clicks landed on is gone.
-      line.addEventListener('click', (event) => {
-        const again =
-          this.lastClick.id === node.id && event.timeStamp - this.lastClick.at < DOUBLE_CLICK_MS;
-        this.lastClick = again ? { id: '', at: -1 } : { id: node.id, at: event.timeStamp };
-        this.pick(row);
-        if (!again) return;
-        if (renamable) this.beginRename(node.id, renamable);
-        else if (sheetless) void this.writeSheet(node.label);
-      });
-      line.addEventListener('contextmenu', (event) => {
-        event.preventDefault();
-        this.openMenu(row, event.clientX, event.clientY);
-      });
-    }
-    return line;
+  /** A location known only from a scene heading: named, drawn, and with no file behind it. */
+  private sheetless(node: DocNode): boolean {
+    return node.kind === 'location' && node.path === undefined;
   }
 
   /**
@@ -442,7 +361,7 @@ export class DocumentsEditor extends VnEditor {
     const node = findNode(this.tree.roots, id);
     const head = el('div', 'dt-subject');
     head.append(
-      el('span', 'dt-label', node?.label ?? id.slice(id.indexOf(':') + 1)),
+      el('span', 'dt-name', node?.label ?? id.slice(id.indexOf(':') + 1)),
       el('span', 'dt-kind', id.startsWith('location:') ? 'LOCATION' : 'CHARACTER'),
     );
     this.panel.appendChild(head);
@@ -535,15 +454,15 @@ export class DocumentsEditor extends VnEditor {
    */
   private beginRename(id: string, target: { path: string; name: string }): void {
     if (this.renaming) return;
-    const line = [...this.rows.children].find(
-      (child): child is HTMLElement => child instanceof HTMLElement && child.dataset['id'] === id,
-    );
-    const label = line?.querySelector('.dt-label');
+    // `dataset.id` and `.tv-label` are `renderTree`'s stated contract, which is what lets the
+    // rename box land in a row this pane did not build and no longer holds a reference to.
+    const line = rowElementFor(this.rows, id);
+    const label = line?.querySelector('.tv-label');
     if (!line || !label) return;
 
     this.renaming = id;
     const box = document.createElement('input');
-    box.className = 'dt-rename';
+    box.className = 'tv-rename';
     box.value = target.name;
     box.title = 'Type the new name — Enter renames the document, Escape leaves it as it was';
     line.replaceChild(box, label);

@@ -82,6 +82,9 @@ module.exports = {
       rootDir: __dirname,
       testMatch: ['**/apps/desktop/**/tests/*.test.ts'],
       moduleNameMapper: {
+        // Before the `.js`-stripping rule, which would otherwise never see it: a renderer module
+        // that adopts a stylesheet must still be importable by a node-only test.
+        '\\.css\\?inline$': '<rootDir>/scripts/jest-css-inline.cjs',
         ...shared.moduleNameMapper,
         // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
         // same build ships beside it in CommonJS. Only the desktop app depends on it.

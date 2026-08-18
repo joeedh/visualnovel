@@ -8,6 +8,7 @@ import {
   nodeIsSelected,
   nodeKey,
   renameOf,
+  rowTitle,
   selectionForNode,
   shotGroups,
   toggleExpanded,
@@ -406,6 +407,69 @@ describe('renameOf', () => {
     for (const kind of ['asset', 'shot', 'branch', 'assetkind', 'dir', 'more'] as const) {
       expect(renameOf(node(`${kind}:x`, kind, { path: 'somewhere.md' }))).toBeUndefined();
     }
+  });
+});
+
+describe('rowTitle', () => {
+  const plain = { renamable: false, sheetless: false };
+
+  it('says the path, and how to rename it where that is possible', () => {
+    const aiko = node('character:aiko', 'character', { label: 'Aiko', path: 'c/aiko.md' });
+    expect(rowTitle(aiko, plain)).toBe('c/aiko.md');
+    expect(rowTitle(aiko, { ...plain, renamable: true })).toBe(
+      'c/aiko.md — double-click the name to rename it',
+    );
+  });
+
+  it('prefers the node’s own note where it has one and no file', () => {
+    expect(rowTitle(node('slot:portrait/aiko', 'slot', { note: 'Nothing drawn yet' }), plain)).toBe(
+      'Nothing drawn yet',
+    );
+  });
+
+  it('tells a sheetless location that a second click writes its sheet', () => {
+    expect(rowTitle(node('location:cafe', 'location'), { renamable: false, sheetless: true })).toBe(
+      'Only a heading names this place — double-click to write its sheet',
+    );
+  });
+
+  it('says what a heading does, for both kinds of heading', () => {
+    for (const kind of ['branch', 'assetkind'] as const) {
+      expect(rowTitle(node(`${kind}:x`, kind), plain)).toBe(
+        'Show or hide what is filed under this heading',
+      );
+    }
+  });
+
+  it('says why a counted stand-in is inert', () => {
+    expect(rowTitle(node('more:assetkind:portrait', 'more'), plain)).toBe(
+      'More than the tree will draw at once — narrow it, or open the folder itself',
+    );
+  });
+
+  it('falls back to what the click would select, naming the kind', () => {
+    expect(rowTitle(node('shot:greet/greet__s1', 'shot'), plain)).toBe(
+      'Select this shot — every pane showing one follows the click',
+    );
+  });
+
+  it('never hovers silently: every kind says something', () => {
+    const kinds = [
+      'branch',
+      'scene',
+      'shot',
+      'character',
+      'location',
+      'wiki',
+      'wikidir',
+      'dir',
+      'file',
+      'asset',
+      'assetkind',
+      'slot',
+      'more',
+    ] as const;
+    for (const kind of kinds) expect(rowTitle(node(`${kind}:x`, kind), plain)).not.toBe('');
   });
 });
 

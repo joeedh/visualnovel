@@ -352,6 +352,29 @@ export function renameOf(node: DocNode): { path: string; name: string } | undefi
   }
 }
 
+/**
+ * What a row says on hover, and no row hovers silently. A path is the useful thing to say where
+ * there is one; the rest is what a row with no file says instead.
+ *
+ * The two facts the tree adds to the node are the arguments, because neither is on `DocNode`:
+ * `renamable` is `renameOf(node) !== undefined`, and `sheetless` is a location known only from a
+ * scene heading — its second click writes a sheet rather than renaming one.
+ */
+export function rowTitle(node: DocNode, opts: { renamable: boolean; sheetless: boolean }): string {
+  if (node.path) {
+    return opts.renamable ? `${node.path} — double-click the name to rename it` : node.path;
+  }
+  if (node.note) return node.note;
+  if (opts.sheetless) return 'Only a heading names this place — double-click to write its sheet';
+  if (node.kind === 'branch' || node.kind === 'assetkind') {
+    return 'Show or hide what is filed under this heading';
+  }
+  if (node.kind === 'more') {
+    return 'More than the tree will draw at once — narrow it, or open the folder itself';
+  }
+  return `Select this ${node.kind} — every pane showing one follows the click`;
+}
+
 /** Whether the shared selection names this node — the highlight, for both modes at once. */
 export function nodeIsSelected(node: DocNode, selection: Selection): boolean {
   const key = nodeKey(node);
