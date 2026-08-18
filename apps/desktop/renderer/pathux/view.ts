@@ -14,7 +14,15 @@ import type { ShellApp } from './context.js';
 import { editorClass } from './editor.js';
 import { flashRect } from './flash.js';
 import { markApplied } from './layouts.js';
-import { NO_PANE, paneElsewhere, paneShowing, paneToClose, paneToUse, type Pane } from './panes.js';
+import {
+  NO_PANE,
+  paneElsewhere,
+  paneShowing,
+  paneToClose,
+  paneToShowIn,
+  paneToUse,
+  type Pane,
+} from './panes.js';
 import { SUBJECT_OF } from './route.js';
 import type { VnScreen } from './screen.js';
 
@@ -110,7 +118,9 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
   const from = paneToUse(panes);
   if (from === NO_PANE) return 'There is no pane to show it in.';
 
-  let index = from;
+  // Which pane the author is in, and which pane may be covered, are two questions: a split is
+  // asked of where they are, and a replacement steps around a conversation if it can.
+  let index = where === 'here' ? paneToShowIn(panes) : from;
   let split: Split | undefined;
   if (where === 'elsewhere') {
     // Anywhere but the pane doing the asking — the documents tree opening an asset into itself

@@ -4,6 +4,7 @@ import {
   paneElsewhere,
   paneShowing,
   paneToClose,
+  paneToShowIn,
   paneToUse,
   type Pane,
 } from '../panes.js';
@@ -53,6 +54,36 @@ describe('which pane an open lands in', () => {
   });
 });
 
+describe('which pane an editor is put in', () => {
+  test('the active one, when the author is not reading a conversation', () => {
+    const panes = [header, pane('script', { active: true }), pane('convo')];
+    expect(paneToShowIn(panes)).toBe(1);
+  });
+
+  test('somewhere else when the active pane is a conversation', () => {
+    const panes = [header, pane('script', { width: 300 }), pane('convo', { active: true })];
+    expect(paneToShowIn(panes)).toBe(1);
+  });
+
+  test('the biggest that is not a conversation, when the pointer is over chrome', () => {
+    const panes = [
+      pane('header', { chrome: true, active: true, height: 34 }),
+      pane('script', { width: 300 }),
+      pane('convo', { width: 900 }),
+    ];
+    expect(paneToShowIn(panes)).toBe(1);
+  });
+
+  test('the conversation after all, when it is the only pane there is', () => {
+    const panes = [header, pane('convo', { active: true })];
+    expect(paneToShowIn(panes)).toBe(1);
+  });
+
+  test('nowhere at all when the mesh is only chrome', () => {
+    expect(paneToShowIn([header])).toBe(NO_PANE);
+  });
+});
+
 describe('which pane an open lands in when it must not land here', () => {
   test('the biggest other one', () => {
     const panes = [header, pane('documents', { width: 260 }), pane('script', { width: 900 })];
@@ -70,6 +101,15 @@ describe('which pane an open lands in when it must not land here', () => {
 
   test('nowhere when the asking pane is the only one — the caller splits instead', () => {
     expect(paneElsewhere([pane('documents')], 0)).toBe(NO_PANE);
+  });
+
+  test('steps around a conversation, even when the conversation is the biggest', () => {
+    const panes = [header, pane('documents'), pane('convo', { width: 900 }), pane('script')];
+    expect(paneElsewhere(panes, 1)).toBe(3);
+  });
+
+  test('lands in the conversation when it is the only other pane', () => {
+    expect(paneElsewhere([header, pane('documents'), pane('convo')], 1)).toBe(2);
   });
 });
 

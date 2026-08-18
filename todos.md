@@ -63,7 +63,7 @@
 [ ]: pressure test the tasks editor to make sure all of its functionality works
 [x]: asks editor: add a checkbox to 'show only completed tasks'.  also add a 'clear finished tasks'
      button.
-[ ]: the system used to make a specific type of editor visible should try to avoid screen areas with 
+[x]: the system used to make a specific type of editor visible should try to avoid screen areas with 
      active conversation editors.
 [ ]: change path.ux so the little 'x' close buttons on area tabs is optional, if they're 
      disabled path.ux should automatically append 'right click->close to close' (pick 

@@ -190,7 +190,15 @@ are the bridge's.
   focused, otherwise the biggest non-chrome pane that is **not** the asking pane takes it, and only
   a mesh with nowhere else to put it splits the asking pane right. It is what a click in the
   documents tree asks for, so opening an asset never replaces the tree that named it
-  (`paneElsewhere` in `panes.ts`, pure and tested). Both `view.open` and
+  (`paneElsewhere` in `panes.ts`, pure and tested). **An automatic open steps around a
+  conversation**: whichever pane it would have covered, if that pane is showing Convo and any other
+  pane is free, the other one takes it — `paneToShowIn` for `here`, and the same preference inside
+  `paneElsewhere`. A transcript is the only pane whose contents the author *wrote*; everything else
+  redraws from the project, so covering it costs a scroll position, while covering a conversation
+  mid-turn hides the answer they are waiting for. It is a preference, never a rule — a mesh with
+  nowhere else still opens over it — and it is deliberately **not** in `paneToUse`, which answers
+  "where is the author": closing a pane, or splitting one, still means the pane the pointer is in,
+  conversation or not. Both `view.open` and
   `view.focus` take an optional `subject`, published into the selection field **that editor's**
   subject is — `ui.docPath` for `wiki`/`documents`, `ui.assetHash` for `asset` — so "open the wiki
   editor on `wiki/history.md`" is one invocation rather than two racing acts; it is
