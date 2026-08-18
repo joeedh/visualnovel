@@ -76,15 +76,23 @@ Plan 6 is deliberately not scheduled.
 
 ### 2 — Packaging the desktop app
 
-- [ ] Stop shipping `0.0.0`: bump `apps/desktop/package.json`, the decided source of truth
-- [ ] electron-builder config: `files`, `asarUnpack`, `extraResources` for `docs/api-keys.md`
-- [ ] A hoisted install for packaging, so pnpm's symlinks do not reach the app image
-- [ ] Where user state lives, in the installer and the uninstaller — `userConfigDir()` is outside
-      the install and survives an uninstall
-- [ ] The runtime doctor: `git` on PATH, and what the app says when it is not
-- [ ] `pnpm package` produces an NSIS installer a clean VM can install and open a project with
-- [ ] A smoke test that forces one lazy import of **each** SDK — "the window opened" is not evidence
-- [ ] The image contains no `packages/`, no `vendor/`, no `dist/pathux-types/`
+- [x] Stop shipping `0.0.0`: bump `apps/desktop/package.json`, the decided source of truth —
+      `0.1.0`, plus `version.ts` so a build between releases says `0.1.0 (dev <sha>)`
+- [x] electron-builder config: `files`, `extraResources` for `docs/api-keys.md`. **No `asarUnpack`**
+      — nothing native ships, and the only executable the app spawns is the machine's own `git`
+- [x] A hoisted install for packaging, so pnpm's symlinks do not reach the app image
+- [x] Where user state lives, in the installer and the uninstaller — `userConfigDir()` is outside
+      the install and survives an uninstall (`deleteAppDataOnUninstall: false`). The session store
+      moved there too: derived from `__dirname` it was inside `app.asar`, and `mkdir` on a *file*
+      is why a packaged build opened no window at all
+- [x] The runtime doctor: `git` on PATH, and what the app says when it is not — and, found by
+      testing it, the startup path that died on `git init` before the warning could be shown
+- [x] `pnpm package` produces an NSIS installer — **the clean VM is still owed**; see the plan's
+      [As shipped](packaging-the-desktop-app.md#as-shipped) for what was verified instead
+- [x] A smoke test that forces one lazy import of **each** SDK — "the window opened" is not evidence
+      (`pnpm smoke`, against the built binary, with the vendor key variables blanked)
+- [x] The image contains no `packages/`, no `vendor/`, no `dist/pathux-types/`
+- [ ] Install the built `vnstudio-Setup-0.1.0.exe` on a clean VM and open a project
 
 ### 5 — Auditing the API-key instructions
 

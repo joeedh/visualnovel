@@ -5,6 +5,7 @@ import { openGit } from '@vn/git';
 import { loadConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import { ProjectPaths, loadInputs } from '@vn/store';
+import { noteGitHealth } from '../doctor.js';
 import {
   RECENT_KEY,
   RECENT_MAX,
@@ -100,6 +101,22 @@ describe('ensureRepo', () => {
   afterEach(async () => {
     await rm(root, { recursive: true, force: true, maxRetries: 3 });
   });
+
+  // What a machine without git gets: an app that opens, rather than one that dies on `git init`
+  // before its first window. `initRepoAt` still throws — see the comment there for why.
+  it('hands back a handle rather than initializing when git is absent', async () => {
+    const dir = join(root, 'no-git');
+    await mkdir(dir);
+    await writeFile(join(dir, 'project.yaml'), 'title: Mine\n');
+
+    noteGitHealth({ ok: false });
+    try {
+      const git = await ensureRepo(dir);
+      expect(await git.isRepo()).toBe(false);
+    } finally {
+      noteGitHealth({ ok: true });
+    }
+  }, 20_000);
 
   it('initializes a repo around a directory the user picked, and commits what is there', async () => {
     const dir = join(root, 'my-story');

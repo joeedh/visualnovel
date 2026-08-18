@@ -29,7 +29,7 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Asset](#asset)
 - [Project](#project)
 - [Setup](#setup)
-- [Remembered UI state (`.vndesktop/session.json`)](#remembered-ui-state-vndesktopsessionjson)
+- [Remembered UI state (`desktop/session.json`)](#remembered-ui-state-desktopsessionjson)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
 
@@ -43,6 +43,11 @@ pnpm --filter @vn/desktop dev -- --mock         # live dev loop
 ```
 
 `--project <dir>` overrides the workspace (`VN_PROJECT=<dir>` is an equivalent env fallback).
+
+**Shipping it is a different command**: `pnpm package` builds an installer and `pnpm smoke`
+runs the packaged binary to prove the two lazily-imported SDKs actually reached the app image.
+Why it is built the way it is: [`toolchain.md`](toolchain.md#packaging-the-desktop-app) and
+[`plans/packaging-the-desktop-app.md`](plans/packaging-the-desktop-app.md).
 
 **`pnpm vndesktop` opens CDP on 9222**, like the dev loop — `scripts/vndesktop.mjs` sets
 `VN_CDP_PORT` before launching Electron, because the switch can only be appended before
@@ -398,7 +403,7 @@ the pipeline queue). Full write-up:
 [`plans/layout-templates-and-the-view-menu.md`](plans/layout-templates-and-the-view-menu.md).
 
 - **The template is the saved arrangement; the live mesh is not.** What is on screen right now
-  stays per install in `.vndesktop/session.json` under `pathux.layout`, for the reason
+  stays per install in `desktop/session.json` under `pathux.layout`, for the reason
   [`desktopAppState.md`](desktopAppState.md) gives — it is a window fact. `pathux.template`, beside
   it, is the slug last applied: the pointer between the two. So `view.applyLayout` is neither
   mutating nor undoable, while `view.saveLayout` and `view.resetLayout` are both.
@@ -1204,7 +1209,8 @@ knows nothing about.
 
 - **The walkthrough is [`docs/api-keys.md`](api-keys.md), rendered — not retyped.**
   `app.keyGuide` reads that one file through `main/resources.ts`, which tries `$VN_RESOURCES`,
-  then Electron's `process.resourcesPath` (where packaging will put it), then the repo root — so
+  then Electron's `process.resourcesPath` (where `extraResources` puts it in a packaged build),
+  then the repo root — so
   the same command answers from a checkout and from an installed app, and the pane cannot drift
   from the doc because there is nothing to drift from. `shared/markdown.ts` parses the subset the
   file uses (headings, paragraphs, lists, tables, fenced code, and inline `code`/**strong**/links)
@@ -1245,12 +1251,17 @@ knows nothing about.
   at most once per project, guarded by scanning the log for an existing notification pointing at
   this editor, since the notification log dedupes by id rather than by message.
 
-## Remembered UI state (`.vndesktop/session.json`)
+## Remembered UI state (`desktop/session.json`)
 
 The layout, the selection (and anything else the shell should remember) live in a flat key/value
-file the main process owns — `apps/desktop/src/main/sessionstore.ts`, gitignored, **global per
-install** rather than per workspace. `VN_DESKTOP_HOME` relocates it; the default is one line away
-from `~/.vndesktop` once the app is installed rather than run from the repo. Full write-up:
+file the main process owns — `apps/desktop/src/main/sessionstore.ts`, **global per install** rather
+than per workspace. It sits at `<userConfigDir()>/desktop/session.json` — the same home
+`@vn/config` gives API keys (`%LOCALAPPDATA%\vnauthor` on Windows), so user-level state has one
+address rather than two. `VN_DESKTOP_HOME` relocates it, which is how a test gets its own; a
+development run deliberately shares the installed app's, because a second home is how a recents
+list quietly forks in two. It is emphatically **not** a path under the bundle: a packaged app's
+`__dirname` is inside `app.asar`, which is a *file*, so a store derived from it fails `ENOTDIR`
+before the first window and the app hangs with nothing on screen. Full write-up:
 [`desktopAppState.md`](desktopAppState.md).
 
 - **Two keys, debounced.** `pathux.layout` is the nstructjs-serialized screen (JSON, magic `VNSC`,

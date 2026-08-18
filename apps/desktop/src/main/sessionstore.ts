@@ -12,6 +12,7 @@
  */
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
+import { userConfigDir } from '@vn/config';
 import { createLogger, retry, writeFileAtomic } from '@vn/util';
 import type { SessionValue } from '../shared/ipc.js';
 
@@ -29,12 +30,19 @@ const FLUSH_DEBOUNCE_MS = 200;
 const log = createLogger().child({ mod: 'sessionstore' });
 
 /**
- * Where the store lives. `__dirname` is `apps/desktop/dist/main` at runtime, so this is
- * `apps/desktop/.vndesktop` — one line away from `join(homedir(), '.vndesktop')` once the
- * app is installed rather than run from the repo. `VN_DESKTOP_HOME` overrides it.
+ * Where the store lives: `<user config dir>/desktop`, the same home `userConfigDir` gives keys,
+ * so the app has one place for user-level state rather than two.
+ *
+ * It used to be `apps/desktop/.vndesktop`, derived from `__dirname` — which in a packaged app is
+ * inside `app.asar`, a *file*, so the store's `mkdir` failed `ENOTDIR` before the first window
+ * and the app hung with nothing on screen. A path relative to the bundle is a path relative to
+ * a read-only archive, and no amount of care about the rest of packaging survives that.
+ *
+ * `VN_DESKTOP_HOME` overrides it, which is what lets a test isolate the store; a development run
+ * shares the installed app's, because a second home is how a recents list quietly forks in two.
  */
 export function resolveSessionDir(): string {
-  return process.env.VN_DESKTOP_HOME ?? join(__dirname, '..', '..', '.vndesktop');
+  return process.env.VN_DESKTOP_HOME ?? join(userConfigDir(), 'desktop');
 }
 
 /** Read the file, tolerating absence and corruption — a bad file must never block the app. */

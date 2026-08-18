@@ -9,6 +9,7 @@ wired that way" companion.
 
 - [Typecheck](#typecheck)
 - [Bundling](#bundling)
+- [Packaging the desktop app](#packaging-the-desktop-app)
 - [Adding a package](#adding-a-package)
 - [Lint](#lint)
 - [Test](#test)
@@ -61,6 +62,43 @@ wired that way" companion.
   `apps/desktop/dist/commands.json` (see [`command-system.md`](command-system.md)). Both
   bundle scripts share one alias map, `scripts/aliases.mjs`, so their package lists can't
   drift.
+
+## Packaging the desktop app
+
+`pnpm package` (unpacked-only: `pnpm package:dir`) turns `apps/desktop` into an installer.
+electron-builder does the work, configured in `apps/desktop/electron-builder.yml` — which carries
+the comments explaining each choice, so read that file rather than this section for *why*. The
+plan is [`plans/packaging-the-desktop-app.md`](plans/packaging-the-desktop-app.md). Four things
+about how it fits the rest of the toolchain:
+
+- **It packages from a scratch project, not from the workspace.** pnpm's `node_modules` is a farm
+  of symlinks into a content-addressed store, and electron-builder does not reproduce that layout
+  in an app image. So `scripts/package.desktop.mjs` assembles `apps/desktop/.package/` — a
+  `package.json` naming only the two runtime dependencies, `dist/` beside it — and runs
+  `pnpm install --ignore-workspace --config.node-linker=hoisted` there. The workspace's own
+  `node_modules` is untouched. Both `.package/` and `release/` are gitignored.
+- **Only two packages ship.** Everything under `packages/` plus `nstructjs` and the whole of
+  path.ux is bundled into `dist/` by esbuild and vite; `scripts/aliases.mjs` leaves exactly
+  `electron`, `@google/genai` and `@anthropic-ai/sdk` external. That is why the `files` list is
+  written out rather than left to a default glob, and why it excludes `dist/pathux-types/` — a
+  `tsgo` artifact that lands in the same `dist/` the runtime files do.
+- **`pnpm smoke` runs the packaged executable.** Both SDKs are reached through a lazy `import()`
+  at the moment a model is first called, so a packaging mistake that loses them yields an app that
+  installs, opens, opens a project — and throws `Cannot find module` at the first agent turn,
+  after every check that only watches for a window. `scripts/smoke.desktop.mjs` launches the built
+  binary with `--smoke`, which forces one import of each and exits; `src/main/smoke.ts` holds the
+  logic and its tests. It runs with the vendor key variables blanked, because a smoke test that
+  quietly leans on the developer's key is not a test of the installer.
+- **`apps/desktop/package.json`'s `version` is the app version.** The root and every package stay
+  at `0.0.0` — they are private and unpublished, so versioning them buys nothing. A release tag is
+  *asserted* against that field rather than written into it, and a build made between releases
+  reports `0.1.0 (dev <sha>)` via `src/main/version.ts`.
+
+Two paths inside a packaged app are not what a checkout would suggest, and both cost an evening
+once: `__dirname` resolves *inside* `app.asar`, which is a file — so anything derived from it and
+then written to fails `ENOTDIR` (this is why the session store lives under `userConfigDir()`), and
+`docs/api-keys.md` arrives as `extraResources` under `process.resourcesPath`, which is what
+`src/main/resources.ts` looks at first.
 
 ## Adding a package
 

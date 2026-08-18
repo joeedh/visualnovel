@@ -14,4 +14,8 @@ coverage
 # Bundled entry points the build scripts require() and delete; an aborted run leaves one behind.
 .record-entry.cjs*
 .cache-entry.cjs*
+# Packaging: the scratch project `scripts/package.desktop.mjs` assembles for a hoisted
+# install, and the installers electron-builder writes out of it.
+apps/desktop/.package
+apps/desktop/release
 .DS_Store

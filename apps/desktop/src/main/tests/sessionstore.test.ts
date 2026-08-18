@@ -7,6 +7,7 @@ import { promises as fs } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { userConfigDir } from '@vn/config';
 import { SessionStore, resolveSessionDir } from '../sessionstore.js';
 
 let dir: string;
@@ -90,6 +91,20 @@ describe('SessionStore', () => {
     } finally {
       if (before === undefined) delete process.env.VN_DESKTOP_HOME;
       else process.env.VN_DESKTOP_HOME = before;
+    }
+  });
+
+  // A packaged app's `__dirname` is inside `app.asar`, which is a file — so a store derived from
+  // it could not be created at all. This asserts the store sits in the author's config directory
+  // instead, which is the one place that is a real directory in both builds.
+  it('otherwise lives under the same user config directory keys do', () => {
+    const before = process.env.VN_DESKTOP_HOME;
+    delete process.env.VN_DESKTOP_HOME;
+    try {
+      expect(resolveSessionDir()).toBe(join(userConfigDir(), 'desktop'));
+      expect(resolveSessionDir().includes('app.asar')).toBe(false);
+    } finally {
+      if (before !== undefined) process.env.VN_DESKTOP_HOME = before;
     }
   });
 });

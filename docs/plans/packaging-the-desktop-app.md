@@ -1,6 +1,8 @@
 # Packaging the desktop app
 
-Status: **planned**. Plan 2 of [`shipping-the-app-tasklist.md`](shipping-the-app-tasklist.md).
+Status: **shipped**, Windows only. Plan 2 of
+[`shipping-the-app-tasklist.md`](shipping-the-app-tasklist.md). See
+[As shipped](#as-shipped) for the three places the build differs from the plan above.
 
 Turning `apps/desktop` into an installer a stranger can double-click. The app currently runs
 from a checkout, which means it has pnpm's symlinked `node_modules`, a git submodule at
@@ -137,6 +139,35 @@ Both live in `apps/desktop/package.json` alongside `build`, and `package` depend
 - The app image contains no `packages/`, no `vendor/`, and no `pathux-types`.
 - With git renamed off PATH, the app opens and says why saving is unavailable.
 - `docs/api-keys.md` renders in the Setup pane from the packaged copy.
+
+## As shipped
+
+Everything above holds. Three things the plan did not say:
+
+- **The installer's filename is pinned** — `artifactName: ${productName}-Setup-${version}.${ext}`.
+  By default electron-builder writes `vnstudio Setup 0.1.0.exe` to disk and the URL-safe
+  `vnstudio-Setup-0.1.0.exe` into `latest.yml`, and the two disagreeing is invisible until an
+  update check 404s months later. One name, stated once, read by both.
+- **Two paths had to move before a packaged app would open at all**, and both produced the same
+  symptom — a process that starts and never shows a window, which no test running from a checkout
+  can reproduce:
+  - `sessionstore.ts` derived its directory from `__dirname`, which in a packaged app is *inside*
+    `app.asar`. That is a file, so the store's `mkdir` failed `ENOTDIR` before the first window.
+    It now lives at `<userConfigDir()>/desktop/`, the same home keys use.
+  - `openRepos` called `ensureRepo` unconditionally, and `git init` is the first `@vn/git` call
+    that *throws* rather than answering false — so on the machine the doctor exists to warn, the
+    app died before it could warn. The doctor's finding is now recorded (`noteGitHealth` /
+    `gitHealth` in `doctor.ts`) and read as a branch by both `openRepos` and `ensureRepo`.
+    `initRepoAt` deliberately still throws: that one is someone *asking* for a repository.
+- **The clean-VM acceptance line is untested.** What was verified is the packaged binary on the
+  development machine: `pnpm smoke` resolves and constructs both SDKs out of the app image with
+  the vendor key variables blanked, the asar contains no `packages/`, no `vendor/` and no
+  `pathux-types`, the app opens `templates/basic` with git off PATH after a dismissable dialog and
+  files the durable note, and the Setup pane renders from the packaged `resources/docs/api-keys.md`.
+  A real clean VM is worth doing before the first public tag; it is not something this branch can
+  do for itself.
+
+macOS and Linux targets remain deferred, for the reasons in the table above.
 
 ## Out of scope
 

@@ -70,9 +70,11 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 
 **What:** The arrangement of panes the user built, and the selection they left in it.
 
-**Storage:** `.vndesktop/session.json` next to `apps/desktop/` (override with `VN_DESKTOP_HOME`;
-one line from `~/.vndesktop` once the app ships installed). Gitignored. **The file is global per
-install** — and that is exactly why the keys inside it are not.
+**Storage:** `<userConfigDir()>/desktop/session.json` — the same home `@vn/config` gives API keys,
+`%LOCALAPPDATA%\vnauthor\desktop` on Windows (override with `VN_DESKTOP_HOME`). Outside the repo,
+so nothing gitignores it, and outside the bundle on purpose: a packaged app's `__dirname` is inside
+`app.asar`, which is a file. **The file is global per install** — and that is exactly why the keys
+inside it are not.
 
 **Shape:** a flat `Record<string, SessionValue>` with dotted keys. The three that describe a
 window are scoped **by workspace and by window index**, built in `src/shared/sessionkeys.ts`:
@@ -420,11 +422,11 @@ invoke('pipeline:run', { mock })
 | Data | Where | Persists? | Who Reads | Who Writes |
 |------|-------|-----------|-----------|-----------|
 | Playthrough position | `localStorage` | ✓ Survives restart | Runner component | Save button |
-| Pane layout | `.vndesktop/session.json` (`pathux.<ws>.window.<n>.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
-| Selected scene/shot/character/document | `.vndesktop/session.json` (`pathux.<ws>.window.<n>.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
-| A field a pane remembers (the documents editor's mode) | `.vndesktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
-| Whether a pane is pinned, and to what | `.vndesktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The pin toggle, via `VnScreen.onLayoutChange` |
-| Which layout template the window shows | `.vndesktop/session.json` (`pathux.<ws>.window.<n>.template`) | ✓ Survives restart | `view.layouts`, the layout watch | `view.applyLayout` / `saveLayout` / `resetLayout`, in main |
+| Pane layout | `desktop/session.json` (`pathux.<ws>.window.<n>.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
+| Selected scene/shot/character/document | `desktop/session.json` (`pathux.<ws>.window.<n>.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
+| A field a pane remembers (the documents editor's mode) | `desktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
+| Whether a pane is pinned, and to what | `desktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The pin toggle, via `VnScreen.onLayoutChange` |
+| Which layout template the window shows | `desktop/session.json` (`pathux.<ws>.window.<n>.template`) | ✓ Survives restart | `view.layouts`, the layout watch | `view.applyLayout` / `saveLayout` / `resetLayout`, in main |
 | The layout templates themselves | `.vnstudio/layouts/*.json` (the **project** repo) | ✓ On disk, committed | `view.layouts` / `view.applyLayout` | `view.saveLayout`, `view.resetLayout`, `ensureLayouts` |
 | The conversation on screen | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
 | The conversation as a transcript | `vngen/state/threads/<id>.jsonl` | ✓ Survives restart | `agent.threads` / `agent.openThread` | Main, one line per feed item, as the turn runs |
@@ -437,7 +439,7 @@ invoke('pipeline:run', { mock })
 | Task graph | `vngen/state/tasks.jsonl` | ✓ On disk | TaskGraph loader | Pipeline runner |
 | Command history | `vngen/state/commands.jsonl` | ✓ On disk | `CommandStack` (`command:history`) | Every command execution, via `onRecord` |
 | Notifications | `vngen/state/notifications.jsonl` | ✓ On disk | `notify:list` / the bell | Every filed command outcome, every pipeline task, every shell notice |
-| Which categories the list shows | `.vndesktop/session.json` (`vn.notifications.filter`) | ✓ Survives restart | `pathux/notifications.ts` | The filter popup and the "show deleted" box |
+| Which categories the list shows | `desktop/session.json` (`vn.notifications.filter`) | ✓ Survives restart | `pathux/notifications.ts` | The filter popup and the "show deleted" box |
 | Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | Every undoable command — the eighteen `story.*` ones, the document writers, and the two that write layout templates |
 
 ---
@@ -449,7 +451,7 @@ When the app restarts:
 1. **Renderer memory → all cleared.** The transcript, the header facts and every draft are gone.
 2. **localStorage → playthrough saved.** If the author was in the Play editor, click Load to
    restore position.
-3. **`.vndesktop/session.json` → the pane layout and the selection are restored**, synchronously,
+3. **`desktop/session.json` → the pane layout and the selection are restored**, synchronously,
    before the first paint. A layout that will not load falls back to the Writing arrangement — the
    documents tree, the script with the branch cards behind it, and the agent — rather than failing.
    the window's template key comes back too, and the layout watch seeds from it **without re-applying**, so
@@ -490,7 +492,7 @@ The **conversation on screen is not recovered**: the renderer opens on an empty 
 | `command:check` | `{ id, props? }` | CommandCheck | No (a read, never a gate — `exec` re-decides) |
 | `command:undo` | none | CommandOutcome | **Yes** (restores a snapshot; refuses on drift) |
 | `command:redo` | none | CommandOutcome | **Yes** |
-| `session:set` | `{ key, value }` | void | **Yes** (`.vndesktop/session.json`) |
+| `session:set` | `{ key, value }` | void | **Yes** (`desktop/session.json`) |
 
 The `story:*` reads and the `command:*` family are the two halves of one rule: **commands are
 the only write path.** There is no mutating IPC channel for the branch editor or the timeline —
@@ -602,4 +604,3 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
   one after. Switching to a project another instance owns is refused, and that instance is
   brought forward instead.
 - Full write-up: [`desktop-app.md`](desktop-app.md#which-project-is-open).
-

@@ -36,6 +36,15 @@ import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
 import { ensureLayouts } from './layouts.js';
 import { installNotifications, notifications, notify } from './notifications.js';
+import {
+  checkGit,
+  gitHealth,
+  noteGitHealth,
+  GIT_DOWNLOAD_URL,
+  GIT_MISSING_MESSAGE,
+} from './doctor.js';
+import { describeVersion, shortSha } from './version.js';
+import { formatSmoke, runSmoke } from './smoke.js';
 import { categoryOfCommand, shouldFileCommand } from '../shared/notify.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
@@ -76,22 +85,26 @@ import type {
   UiEffect,
 } from '../shared/ipc.js';
 
-/** `--mock` / `--project <dir>` (also `--project=<dir>`), parsed from the app's own argv. */
+/** `--mock` / `--project <dir>` (also `--project=<dir>`) / `--smoke`, from the app's own argv. */
 interface CliArgs {
   mock: boolean;
   project?: string;
+  /** Resolve the two external SDKs, say so, and exit. See `./smoke.ts`. */
+  smoke: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
   let mock = false;
   let project: string | undefined;
+  let smoke = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--mock') mock = true;
+    else if (arg === '--smoke') smoke = true;
     else if (arg === '--project') project = argv[++i];
     else if (arg.startsWith('--project=')) project = arg.slice('--project='.length);
   }
-  return { mock, project };
+  return { mock, project, smoke };
 }
 
 // Electron's own argv carries an extra `appPath` ('.') entry when running unpackaged
@@ -328,22 +341,68 @@ const ownedRepos: Git[] = [];
  */
 async function openRepos(): Promise<void> {
   const root = workspace();
-  await ensureRepo(root);
-  const refs = await new Workspace(root).repos();
-  for (const ref of refs) {
-    if (ref.owned) ownedRepos.push(openGit(ref.root));
-    else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
+  // Everything down to the checkpoint spawns `git`, and on a machine without it the first call
+  // throws before any window exists — an app that never appears, which is a worse answer than
+  // one that opens and cannot save. So the doctor's finding is a branch rather than a try/catch:
+  // a catch would have to guess which git failures meant "no git", and get it wrong.
+  if (gitHealth().ok) {
+    await ensureRepo(root);
+    const refs = await new Workspace(root).repos();
+    for (const ref of refs) {
+      if (ref.owned) ownedRepos.push(openGit(ref.root));
+      else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
+    }
+    // Here rather than in `openWorkspace`, because that runs only for an explicit
+    // `workspace.open` — a project reached from the recents list or `VN_PROJECT` would never get
+    // the attribute. Not when the project sits inside a larger repo: that history is somebody
+    // else's, as above.
+    if (refs.some((ref) => ref.role === 'project' && ref.owned)) await adoptGitAttributes(root);
+    const committed = await committer().checkpoint('Changes made outside the app');
+    for (const c of committed) {
+      console.log(`[vnstudio] checkpoint ${c.sha.slice(0, 8)} in ${c.repo}`);
+    }
   }
-  // Here rather than in `openWorkspace`, because that runs only for an explicit `workspace.open`
-  // — a project reached from the recents list or `VN_PROJECT` would never get the attribute. Not
-  // when the project sits inside a larger repo: that history is somebody else's, as above.
-  if (refs.some((ref) => ref.role === 'project' && ref.owned)) await adoptGitAttributes(root);
-  const committed = await committer().checkpoint('Changes made outside the app');
-  for (const c of committed) console.log(`[vnstudio] checkpoint ${c.sha.slice(0, 8)} in ${c.repo}`);
   // Only now: the checkpoint above is what a notification written earlier would have been
   // swept into, under a subject that has nothing to do with it.
   await notifications().open();
+  await noticeMissingGit();
   await noticeMissingKeys();
+}
+
+/**
+ * The dialog, once, before a window exists — so the first thing a stranger sees on a machine
+ * without git is the reason rather than the symptom. Not fatal: the app opens anyway, because
+ * someone who only wants to watch a generated VN should not need git to do it.
+ */
+async function askAboutGit(): Promise<void> {
+  const { response } = await dialog.showMessageBox({
+    type: 'warning',
+    title: 'Git was not found',
+    message: 'Git was not found on this machine',
+    detail: GIT_MISSING_MESSAGE,
+    buttons: ['Download git', 'Continue without it'],
+    defaultId: 0,
+    cancelId: 1,
+  });
+  if (response === 0) await shell.openExternal(GIT_DOWNLOAD_URL);
+}
+
+/**
+ * The startup doctor's finding, filed where it outlives the dialog that already said it. A
+ * dismissed modal leaves no trace, and this is the sort of news an author reads once and then
+ * needs to find again a day later.
+ */
+async function noticeMissingGit(): Promise<void> {
+  if (gitHealth().ok) return;
+  const already = await notifications().list();
+  if (already.some((note) => note.message === GIT_MISSING_MESSAGE)) return;
+
+  await notifications().post({
+    category: 'workspace',
+    level: 'warn',
+    source: 'main',
+    message: GIT_MISSING_MESSAGE,
+  });
 }
 
 /**
@@ -424,6 +483,12 @@ function askWindow<T>(pending: Pending<T>, send: (id: number, win: BrowserWindow
   return pending.ask((requestId) => send(requestId, target), id);
 }
 
+/**
+ * What this build calls itself. A release says its version; anything built between releases says
+ * the commit too, resolved once at startup because it costs a `git` call.
+ */
+let appVersion = app.getVersion();
+
 const deps: SessionDeps = {
   emitEvent: (event) => broadcast('agent:event', event),
   requestPlan: (plan) =>
@@ -441,7 +506,11 @@ const deps: SessionDeps = {
       const request: ConfirmRequest = { id, tool, detail };
       target.webContents.send('permission:confirm', request);
     }),
-  appVersion: app.getVersion(),
+  // A getter, not a value: the development build appends the commit, and that costs a `git`
+  // call, which is not something a module-level object literal should be waiting on.
+  get appVersion() {
+    return appVersion;
+  },
   userData: app.getPath('userData'),
   openExternal: (url) => shell.openExternal(url),
   writeClipboard: (text) => clipboard.writeText(text),
@@ -859,10 +928,31 @@ function createWindow(options: NewWindowOptions = {}): WindowId {
 }
 
 void app.whenReady().then(async () => {
+  // Before the menu, the session store, and any window: `--smoke` is a self-check a packaged
+  // build runs about its own module resolution, and anything it opened would be a side effect
+  // whose failure is not the one being reported.
+  if (cliArgs.smoke) {
+    const report = await runSmoke((spec) => import(spec));
+    process.stdout.write(formatSmoke(report) + '\n');
+    app.exit(report.ok ? 0 : 1);
+    return;
+  }
+
   // No stock menu: this shell has its own bar, and the File/Edit/View scaffolding named things
   // it does not have. Quit and DevTools are the two accelerators worth keeping - they come back
   // as `window.quit` on Ctrl+Q in the renderer's keymap and F12 in `createWindow`.
   Menu.setApplicationMenu(null);
+
+  // Before anything opens a workspace, because a missing git is what opening one will fail on.
+  // A development build also learns its commit here; a packaged app has no repository to ask.
+  noteGitHealth(await checkGit());
+  if (!app.isPackaged) {
+    appVersion = describeVersion(app.getVersion(), {
+      packaged: false,
+      sha: await shortSha(app.getAppPath()),
+    });
+  }
+  if (!gitHealth().ok) await askAboutGit();
   // The session store first: it is global per install, and it is where the recents list the
   // workspace is resolved from lives.
   await openSessionStore();

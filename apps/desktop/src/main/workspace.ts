@@ -14,6 +14,7 @@ import { openGit, type Git } from '@vn/git';
 import { slug } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
 import { LAYOUT_ATTRIBUTES_BLOCK, shippedLayoutFiles } from '../shared/layouts.js';
+import { gitHealth } from './doctor.js';
 import { ensureLayouts } from './layouts.js';
 
 /**
@@ -95,6 +96,12 @@ export async function seedWorkspace(template: string, target: string): Promise<S
 export async function ensureRepo(root: string, message = 'Existing project files'): Promise<Git> {
   const git = openGit(root);
   if (await git.isRepo()) return git;
+  // On a machine with no git (`./doctor.ts`) this is where the app would die: `init` is the first
+  // spawn that throws rather than answering false, and it happens before any window exists. Hand
+  // back the handle instead — reads say "not a repo", writes refuse, and the author gets an app
+  // that opens and a notification saying why it cannot save. `initRepoAt` deliberately keeps
+  // throwing: *that* one is someone asking for a repository, not the app taking a precaution.
+  if (!gitHealth().ok) return git;
   return initRepoAt(root, message);
 }
 

@@ -1,0 +1,60 @@
+# What ships, and what deliberately does not. Read `files` first — it is the whole answer to
+# "why is the installer the size it is". Config lives here rather than in package.json because
+# it carries comments, and because the `files` list is the part someone will need to read.
+appId: dev.joeedh.vnstudio
+productName: vnstudio
+
+# The file on disk has to be spelt exactly as `latest.yml` spells it, and the default is not:
+# electron-builder names the installer `vnstudio Setup 0.1.0.exe` but writes the URL-safe
+# `vnstudio-Setup-0.1.0.exe` into the update feed. That mismatch is invisible until an update
+# check 404s months later, so the name is stated once here and both sides read it.
+artifactName: ${productName}-Setup-${version}.${ext}
+
+directories:
+  # electron-builder is pointed at a scratch project tree built by `scripts/package.desktop.mjs`
+  # (a hoisted install, so pnpm's symlink farm never reaches the app image), so this climbs back
+  # out of it to the app it was made from.
+  output: ../release
+
+# esbuild and Vite bundle every `@vn/*` package, `nstructjs` and the whole of path.ux into
+# `dist/`. `scripts/aliases.mjs` declares only three externals, one of which is Electron itself,
+# so the two model SDKs are the entire runtime dependency tree. This list is explicit rather than
+# a default glob because the exclusion below is the kind of thing a default would ship.
+files:
+  - dist/**
+  - package.json
+  # A tsgo artifact that happens to live in the same `dist/` as the runtime files: declarations
+  # so `renderer/tsconfig.json` has something to check path.ux against. Never runtime.
+  - '!dist/pathux-types/**'
+
+# `docs/api-keys.md` is the Setup pane's single source, and it is markdown outside `apps/desktop`.
+# `resourcePath()` looks under `process.resourcesPath` first in a packaged build, so this `to:`
+# and the `readResource('docs', 'api-keys.md')` call have to keep saying the same thing.
+extraResources:
+  - from: docs/api-keys.md
+    to: docs/api-keys.md
+
+# Nothing is unpacked from the asar, and that is a finding rather than an omission: no native
+# module ships, and the only executable the app spawns is the machine's own `git`, which was
+# never in the image to begin with.
+asar: true
+
+win:
+  target: nsis
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  # API keys — and anything a settings system later adds — live in `userConfigDir()`
+  # (`%LOCALAPPDATA%\vnauthor`), which is neither the app's userData nor ours to delete. Both
+  # survive an uninstall on purpose, so reinstalling does not ask again for a key already given.
+  deleteAppDataOnUninstall: false
+
+# electron-updater reads `latest.yml`, and electron-builder emits it only when it knows where
+# releases live. Publishing stays a human act even so: local runs pass `--publish never`, and the
+# release workflow uploads to a draft.
+publish:
+  provider: github
+  owner: joeedh
+  repo: visualnovel

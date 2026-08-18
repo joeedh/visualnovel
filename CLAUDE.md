@@ -65,6 +65,8 @@ Run from the repo root.
 | Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)               |
 | Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`) |
 | Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                      |
+| Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)              |
+| Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs resolve)          |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 
@@ -241,6 +243,11 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   a bad key, and only the first opens the report dialog by itself. The analyst reads the ring by
   pointer on the author's own key; none of it is carried into what is filed.
   ([`docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md`](docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md))
+- **The app ships as an installer, and `git` is a runtime dependency it checks for rather than
+  bundles** — `pnpm package`, a hoisted scratch install because pnpm’s symlink farm does not
+  survive into an app image, and `pnpm smoke` to prove the two lazily-imported SDKs resolved. A
+  machine without git gets an app that **opens** and a durable note saying why saving does not.
+  ([`docs/plans/packaging-the-desktop-app.md`](docs/plans/packaging-the-desktop-app.md))
 
 The renderer is a **path.ux screen mesh** — panes subdivide the window, each showing one editor;
 no React, no room vocabulary. path.ux is a git submodule at `vendor/path.ux`, so a fresh clone
