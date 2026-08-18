@@ -51,6 +51,13 @@ export interface TokenUsage {
   cacheRead?: number;
   /** Of `input`, what was billed at the cache-write rate. */
   cacheWrite?: number;
+  /**
+   * The split above is what the provider *matched*, not a line on the bill. Gemini's implicit
+   * cache is the case: it reports a matched prefix, bills no cache-write at all, and says nothing
+   * whatever for the first calls of a conversation — so an absent count there is silence, not a
+   * miss. Absent means the figures are billing facts, which is what Anthropic's are.
+   */
+  cacheEstimated?: boolean;
 }
 
 /** A plain text turn, plus what it was billed at. */

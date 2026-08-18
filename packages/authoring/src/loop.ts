@@ -77,8 +77,16 @@ export type AgentEvent =
   // What one step cost. Emitted only when the provider reported it, so a host that adds these up
   // shows either a real total or none — never a plausible one that never moves. The cache split
   // is carved out of `input` rather than added beside it, and absent where the provider said
-  // nothing, which is not the same as a cache that missed.
-  | { type: 'usage'; input: number; output: number; cacheRead?: number; cacheWrite?: number }
+  // nothing, which is not the same as a cache that missed. `cacheEstimated` marks a split that is
+  // a matched-prefix count rather than a billed one — Gemini's implicit cache.
+  | {
+      type: 'usage';
+      input: number;
+      output: number;
+      cacheRead?: number;
+      cacheWrite?: number;
+      cacheEstimated?: boolean;
+    }
   | { type: 'final'; text: string };
 
 /** The result of a single `run(userInput)` turn-of-conversation. */

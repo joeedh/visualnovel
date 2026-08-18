@@ -92,6 +92,40 @@ export function threadDetail(thread: ThreadHeader): string {
   return parts.join(' · ');
 }
 
+/**
+ * The tokens counter's tooltip — the exact figures the glanceable label rounds off, and what the
+ * cache did with them. Here rather than in the pane that draws it for the reason `threadDetail`
+ * is: it is prose about a value, and the editor above it is meant to be thin rendering.
+ *
+ * The cache sentence appears only where the provider reported something, and is worded as an
+ * estimate where what it reported was a matched prefix rather than a bill. Saying "read from
+ * cache" of Gemini's count would promise an exactness that is not there — it says nothing at all
+ * on many calls that hit, so a low share may mean *not said* rather than *missed*.
+ */
+export function tokensDetail(tokens: Convo['tokens']): string {
+  const { input, output, cacheRead, cacheWrite, cacheEstimated } = tokens;
+  if (input + output === 0) return 'What this conversation has cost so far. Nothing counted yet.';
+
+  const lines = [
+    `${input.toLocaleString()} in, ${output.toLocaleString()} out, this conversation.`,
+  ];
+  // The percentage is of input, because that is the number caching moves.
+  if (cacheRead !== undefined || cacheWrite !== undefined) {
+    const read = cacheRead ?? 0;
+    const share = input === 0 ? 0 : Math.round((read / input) * 100);
+    lines.push(
+      cacheEstimated
+        ? `Of the input, roughly ${read.toLocaleString()} (${share}%) was already cached — an ` +
+            'estimate, because the provider reports what it matched rather than what it billed, ' +
+            'and says nothing at all on many calls that did hit.'
+        : `Of the input, ${read.toLocaleString()} read from cache (${share}%) and ` +
+            `${(cacheWrite ?? 0).toLocaleString()} written to it.`,
+    );
+  }
+  lines.push('Retried steps are counted every time. Clearing the conversation resets it.');
+  return lines.join(' ');
+}
+
 export interface Convo {
   feed: readonly FeedItem[];
   /** What the dialogue box says: the agent's last word, never a transcript line. */
@@ -119,9 +153,16 @@ export interface Convo {
    *
    * `cacheRead`/`cacheWrite` are part of `input`, not extra: they say how much of it was billed
    * at the cache rates. They stay absent until some step reports one, because a provider that
-   * says nothing about caching is not a cache that missed.
+   * says nothing about caching is not a cache that missed. `cacheEstimated` says that split is a
+   * matched-prefix count rather than a bill, which is all Gemini's implicit cache can offer.
    */
-  tokens: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
+  tokens: {
+    input: number;
+    output: number;
+    cacheRead?: number;
+    cacheWrite?: number;
+    cacheEstimated?: boolean;
+  };
   /** Feed ids issued so far. */
   seq: number;
 }
@@ -210,6 +251,9 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       if (convo.tokens.cacheWrite !== undefined || event.cacheWrite !== undefined) {
         tokens.cacheWrite = (convo.tokens.cacheWrite ?? 0) + (event.cacheWrite ?? 0);
       }
+      // Sticky, like the sum it qualifies: a running total that mixed a bill with a guess is a
+      // guess, and Gemini reports nothing at all for the first calls of a conversation.
+      if (convo.tokens.cacheEstimated || event.cacheEstimated) tokens.cacheEstimated = true;
       return { ...convo, tokens };
     }
     case 'message':

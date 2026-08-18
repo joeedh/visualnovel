@@ -12,6 +12,7 @@ import {
   queried,
   received,
   replayed,
+  tokensDetail,
   type FeedItem,
 } from '../convo.js';
 import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from '../ipc.js';
@@ -111,6 +112,79 @@ describe('what a step cost', () => {
     const convo = received(emptyConvo(opening), spent(10, 2));
     expect(cleared(convo, 'Cleared.').tokens).toEqual({ input: 0, output: 0 });
     expect(replayed(convo, [], 'Reopened.').tokens).toEqual({ input: 0, output: 0 });
+  });
+});
+
+/**
+ * The cache half of the receipt. Its whole subtlety is that absent and zero are different
+ * answers — a provider that says nothing about caching has not reported a miss.
+ */
+describe('what the cache did', () => {
+  type Usage = Extract<AgentEvent, { type: 'usage' }>;
+  const cached = (usage: Partial<Usage>): AgentEvent => ({
+    type: 'usage',
+    input: 1000,
+    output: 100,
+    ...usage,
+  });
+
+  test('stays absent while no step has mentioned it', () => {
+    const convo = received(emptyConvo(opening), cached({}));
+    expect(convo.tokens).toEqual({ input: 1000, output: 100 });
+  });
+
+  test('adds up from the first step that does, counting the silent ones as nothing', () => {
+    let convo = received(emptyConvo(opening), cached({}));
+    convo = received(convo, cached({ cacheRead: 800, cacheEstimated: true }));
+    convo = received(convo, cached({ cacheRead: 800, cacheEstimated: true }));
+    expect(convo.tokens).toEqual({
+      input: 3000,
+      output: 300,
+      cacheRead: 1600,
+      cacheEstimated: true,
+    });
+  });
+
+  // A total is only as exact as its vaguest term, so one estimated step estimates the whole.
+  test('is an estimate ever after, once one step was one', () => {
+    let convo = received(emptyConvo(opening), cached({ cacheRead: 900, cacheWrite: 100 }));
+    expect(convo.tokens.cacheEstimated).toBeUndefined();
+    convo = received(convo, cached({ cacheRead: 800, cacheEstimated: true }));
+    expect(convo.tokens.cacheEstimated).toBe(true);
+  });
+});
+
+describe('the tokens tooltip', () => {
+  test('offers no figures before anything has been counted', () => {
+    expect(tokensDetail({ input: 0, output: 0 })).toBe(
+      'What this conversation has cost so far. Nothing counted yet.',
+    );
+  });
+
+  test('says nothing about a cache no provider mentioned', () => {
+    const said = tokensDetail({ input: 1200, output: 300 });
+    expect(said).toContain('1,200 in, 300 out');
+    expect(said).not.toMatch(/cache/i);
+  });
+
+  test('reports a billed split as fact, both halves of it', () => {
+    const said = tokensDetail({ input: 1200, output: 300, cacheRead: 900, cacheWrite: 100 });
+    expect(said).toContain('900 read from cache (75%)');
+    expect(said).toContain('100 written to it');
+    expect(said).not.toMatch(/estimate/i);
+  });
+
+  // The share is of input alone: output is not what a prefix cache moves.
+  test('hedges a matched split, and does not invent a write it was never told about', () => {
+    const said = tokensDetail({
+      input: 1200,
+      output: 300,
+      cacheRead: 900,
+      cacheEstimated: true,
+    });
+    expect(said).toContain('roughly 900 (75%) was already cached');
+    expect(said).toContain('estimate');
+    expect(said).not.toContain('written to it');
   });
 });
 

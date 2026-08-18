@@ -276,7 +276,11 @@ plays it. This is deliberately **not** an external DSL export.
   `FeedItem`, so nothing about it reaches the thread on disk. **The cache split rides the same
   wire** — `cacheRead`/`cacheWrite` are part of `input`, not extra, and stay **absent** until a
   provider reports one, because a provider that says nothing about caching is not a cache that
-  missed.
+  missed. **A split may also arrive marked an estimate**: `cacheEstimated` means the provider
+  reported what it _matched_ rather than what it billed — Gemini's implicit cache, which has no
+  write counterpart and is silent for the first calls of a conversation. It is sticky through
+  every sum, and the tooltip hedges the sentence rather than the number.
+  ([`docs/plans/gemini-estimated-cache-hit-rate.md`](docs/plans/gemini-estimated-cache-hit-rate.md))
 - **Every notification is durable, and one hook files them all** — `vngen/state/notifications.jsonl`,
   versioned **per line** because git union-merges it, with `r`/`h` as single ASCII digits patched at
   a byte offset (never decode the file to a string — an earlier line's `…` shifts every index). The

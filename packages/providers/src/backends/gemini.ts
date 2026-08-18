@@ -97,13 +97,20 @@ function extractImage(res: any, modelId: string): ImageResult {
  * What the response says it cost. Thinking is billed as output, so it is counted there;
  * `undefined` when the metadata is missing rather than zero, so a total that stopped arriving
  * reads as "not said" instead of "free".
+ *
+ * `cachedContentTokenCount` is already part of `promptTokenCount`, so reporting it as `cacheRead`
+ * carves the split *out* of `input` the way Anthropic's is rather than double-counting it. It is
+ * flagged `cacheEstimated` because the implicit cache reports a match rather than a billed line,
+ * and there is no cache-write counterpart to report at all.
  */
 function usageOf(res: any): TokenUsage | undefined {
   const u = res?.usageMetadata;
   if (!u) return undefined;
+  const cacheRead = u.cachedContentTokenCount ?? undefined;
   return {
     input: u.promptTokenCount ?? 0,
     output: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0),
+    ...(cacheRead === undefined ? {} : { cacheRead, cacheEstimated: true }),
   };
 }
 

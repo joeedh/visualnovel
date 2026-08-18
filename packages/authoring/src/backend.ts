@@ -92,6 +92,8 @@ function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage 
   if (a?.cacheWrite !== undefined || b.cacheWrite !== undefined) {
     sum.cacheWrite = (a?.cacheWrite ?? 0) + (b.cacheWrite ?? 0);
   }
+  // One estimated attempt makes the sum an estimate: a total is only as exact as its vaguest term.
+  if (a?.cacheEstimated || b.cacheEstimated) sum.cacheEstimated = true;
   return sum;
 }
 

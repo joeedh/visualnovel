@@ -9,6 +9,7 @@ import STUDIO_CSS from '../../styles/studio.css?inline';
 import {
   threadDetail,
   threadLabel,
+  tokensDetail,
   type FeedItem,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
@@ -287,28 +288,10 @@ export class ConvoEditor extends VnEditor {
    */
   private sayTokens(): void {
     if (!this.tokensLbl) return;
-    const { input, output, cacheRead, cacheWrite } = convo().tokens;
-    const total = input + output;
+    const tokens = convo().tokens;
+    const total = tokens.input + tokens.output;
     this.tokensLbl.text = total === 0 ? 'tokens —' : `tokens ${compact(total)}`;
-    if (total === 0) {
-      this.tokensLbl.description = 'What this conversation has cost so far. Nothing counted yet.';
-      return;
-    }
-    const lines = [
-      `${input.toLocaleString()} in, ${output.toLocaleString()} out, this conversation.`,
-    ];
-    // The split is only worth a sentence where the provider reported one — and the percentage is
-    // of input, because that is the number caching moves.
-    if (cacheRead !== undefined || cacheWrite !== undefined) {
-      const read = cacheRead ?? 0;
-      const hit = input === 0 ? 0 : Math.round((read / input) * 100);
-      lines.push(
-        `Of the input, ${read.toLocaleString()} read from cache (${hit}%) and ` +
-          `${(cacheWrite ?? 0).toLocaleString()} written to it.`,
-      );
-    }
-    lines.push('Retried steps are counted every time. Clearing the conversation resets it.');
-    this.tokensLbl.description = lines.join(' ');
+    this.tokensLbl.description = tokensDetail(tokens);
   }
 
   /**

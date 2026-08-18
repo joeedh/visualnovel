@@ -5,11 +5,18 @@
  * Everything about caching that a unit test can check is a claim about the *request* — where the
  * breakpoints are, what defers, what was echoed — and those are checked in
  * `packages/providers/src/backends/tests/`. A cache **hit** only exists in the vendor's reply, so
- * it takes a real key and a real bill. This is that ritual: two steps of one conversation against
- * the configured Claude model, asserting step 1 wrote a prefix and step 2 read it back.
+ * it takes a real key and a real bill. This is that ritual, and it runs the one the configured
+ * `models.text` calls for:
+ *
+ * - **Claude** — two steps of one conversation, asserting step 1 wrote a prefix and step 2 read
+ *   it back. The breakpoints are ours to place, so the proof is that they were placed.
+ * - **Gemini** — five calls carrying a byte-identical prefix, asserting that *some* call came back
+ *   reporting one. There is nothing to place: the implicit cache is opportunistic, and it says
+ *   nothing at all on many calls that hit (`docs/plans/gemini-estimated-cache-hit-rate.md`), which
+ *   is why five and not two.
  *
  * Usage:
- *   node scripts/verify-prompt-cache.mjs [dir]        # costs money; two small calls
+ *   node scripts/verify-prompt-cache.mjs [dir]        # costs money; a handful of small calls
  *
  * It is deliberately **not** in `package.json`'s scripts and `pnpm test` will not run it, exactly
  * like its sibling `scripts/verify-prompt-chunks.mjs`. The key is resolved through `resolveKeys`
@@ -31,7 +38,7 @@ await build({
   stdin: {
     contents: [
       "export { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';",
-      "export { createAnthropicChat } from '@vn/providers';",
+      "export { createAnthropicChat, createGeminiChat } from '@vn/providers';",
       "export { NativeAgentBackend } from '@vn/authoring';",
     ].join('\n'),
     resolveDir: root,
@@ -67,19 +74,22 @@ function PARAMS() {
 }
 
 /**
- * A system prompt long enough to be cacheable at all. The minimum cacheable prefix is ~1024
- * tokens, so a short one would report no cache write and look like a broken implementation
- * rather than a request that was simply too small — hence the padding, and hence step 1's own
- * assertion below.
+ * A prompt prefix long enough to be cacheable at all. Vendor minimums sit around 1–2k tokens, so
+ * a short one would report nothing and look like a broken implementation rather than a request
+ * that was simply too small — hence the padding, and hence step 1's own assertion below.
+ *
+ * `paras` is the dial because the minimums differ: Claude's breakpoints go on a catalog and a
+ * system prompt that carry their own bulk, while the Gemini run below is this text and nothing
+ * else, and has to clear 2k on its own.
  */
-function systemPrompt() {
+function fixedPrefix(paras) {
   const para =
     'You are a verification harness for the VN Generator authoring agent. You answer in one ' +
     'short sentence and you never call a tool. This paragraph exists to make the prompt prefix ' +
     'long enough to be cacheable at all, because a prefix under the vendor minimum is silently ' +
     'not cached and would be indistinguishable from a bug. It is fixed text: the same bytes on ' +
     'every run, which is the whole premise of a prefix cache.\n\n';
-  return para.repeat(12);
+  return para.repeat(paras);
 }
 
 /** The one non-failure way out of the run below, so the `finally` still tidies up. */
@@ -96,30 +106,19 @@ const ok = (claim, message) => {
 
 const say = (usage) =>
   `input ${usage.input}, output ${usage.output}, cache read ${usage.cacheRead ?? '—'}, ` +
-  `cache written ${usage.cacheWrite ?? '—'}`;
+  `cache written ${usage.cacheWrite ?? '—'}${usage.cacheEstimated ? ' (estimated)' : ''}`;
 
-try {
-  const mod = createRequire(import.meta.url)(TMP);
-  const config = await mod.loadConfig(dir);
-  const modelId = config.models.text;
-  if (!/^(claude|anthropic)/i.test(modelId)) {
-    process.stdout.write(
-      `SKIP — ${dir} is configured for "${modelId}", and only Claude models cache. ` +
-        'Point this at a project whose `models.text` is a Claude model.\n',
-    );
-    // Not `process.exit`, which would skip the cleanup below and leave the bundle in the tree.
-    throw new Skip();
-  }
+/** Resolve the vendor's key, naming its *source* on failure — never its value. */
+const keyFor = async (mod, config, vendor) =>
+  (await mod.resolveKeys(config, { secretsDirs: await mod.secretDirsFor(dir), require: [vendor] }))[
+    vendor
+  ];
 
-  // Through `resolveKeys` so a missing key names its *source* — never its value, which is not
-  // printed here or anywhere below.
-  const keys = await mod.resolveKeys(config, {
-    secretsDirs: await mod.secretDirsFor(dir),
-    require: ['anthropic'],
-  });
-  const chat = mod.createAnthropicChat(keys.anthropic, modelId);
+/** Two steps of one conversation: step 1 writes the prefix, step 2 reads it back. */
+async function verifyClaude(mod, config, modelId) {
+  const chat = mod.createAnthropicChat(await keyFor(mod, config, 'anthropic'), modelId);
   const backend = new mod.NativeAgentBackend(chat);
-  const system = systemPrompt();
+  const system = fixedPrefix(12);
 
   process.stdout.write(`model ${modelId} — two calls, both billed\n`);
 
@@ -151,6 +150,84 @@ try {
   if (wrote && read) {
     const share = Math.round(((second.usage.cacheRead ?? 0) / (second.usage.input || 1)) * 100);
     process.stdout.write(`PASS — step 2 read ${share}% of its input from the cache.\n`);
+  }
+}
+
+/**
+ * Five calls carrying one prefix. There is nothing to place and nothing to echo — Gemini's
+ * implicit cache either matches the front of the request or it does not — so the claim is only
+ * that it eventually says it did, and that what it says arrives marked as the estimate it is.
+ *
+ * Five rather than two because it is slow to start and then intermittent. Two runs on 2026-08-18
+ * over a byte-identical 3.4k-token prefix: one reported nothing for calls 1–2 and 88% of the input
+ * for 3–5; the other reported nothing at all except on call 4. So the claim this can honestly
+ * make is *some* call, and a run that reports a hit on none of five is the only failure — which is
+ * also why a conversation's running total is an estimate rather than a bill.
+ */
+async function verifyGemini(mod, config, modelId) {
+  const CALLS = 5;
+  const chat = mod.createGeminiChat(await keyFor(mod, config, 'gemini'), modelId);
+  // The fixed bytes lead the *prompt* rather than sitting in the system instruction, because what
+  // is being tested is a prefix of the request and the numeral is the only thing that varies.
+  const prefix = fixedPrefix(40);
+
+  process.stdout.write(`model ${modelId} — ${CALLS} calls, all billed\n`);
+
+  let firstHit = 0;
+  let hits = 0;
+  let hitUsage;
+  for (let i = 1; i <= CALLS; i++) {
+    const reply = await chat.messageWithUsage({
+      system: 'You answer with one word and never explain.',
+      prompt: `${prefix}Say the number ${i}.`,
+    });
+    const usage = reply.usage ?? {};
+    process.stdout.write(`call ${i} · ${say(usage)}\n`);
+    if ((usage.cacheRead ?? 0) > 0) {
+      hits += 1;
+      if (!firstHit) [firstHit, hitUsage] = [i, usage];
+    }
+  }
+
+  const hit = ok(
+    firstHit > 0,
+    `no call in ${CALLS} reported a cached token. Either the prefix is under the vendor minimum ` +
+      '(~1–2k tokens, higher for Pro), or something varies between the calls that should not — ' +
+      'the implicit cache matches bytes, so a timestamp or a nonce anywhere in front defeats it.',
+  );
+  // Asserted on the call that hit, not the last one: a later call reporting nothing is the normal
+  // behaviour above, and reading `cacheEstimated` off it would fail a working implementation.
+  const marked =
+    !hit ||
+    ok(
+      hitUsage.cacheEstimated === true,
+      'a cached count came back unmarked — `usageOf` reported a split without `cacheEstimated`, ' +
+        'so the tooltip will present a matched prefix as though it were a bill.',
+    );
+
+  if (hit && marked) {
+    const share = Math.round(((hitUsage.cacheRead ?? 0) / (hitUsage.input || 1)) * 100);
+    process.stdout.write(
+      `PASS — ${hits} of ${CALLS} calls reported a cache read, first on call ${firstHit}, ` +
+        `${share}% of its input.\n`,
+    );
+  }
+}
+
+try {
+  const mod = createRequire(import.meta.url)(TMP);
+  const config = await mod.loadConfig(dir);
+  const modelId = config.models.text;
+
+  if (/^(claude|anthropic)/i.test(modelId)) await verifyClaude(mod, config, modelId);
+  else if (/^(gemini|google)/i.test(modelId)) await verifyGemini(mod, config, modelId);
+  else {
+    process.stdout.write(
+      `SKIP — ${dir} is configured for "${modelId}", which this script knows no cache ritual ` +
+        'for. Point it at a project whose `models.text` is a Claude or Gemini model.\n',
+    );
+    // Not `process.exit`, which would skip the cleanup below and leave the bundle in the tree.
+    throw new Skip();
   }
 } catch (err) {
   if (!(err instanceof Skip)) throw err;
