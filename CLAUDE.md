@@ -441,6 +441,31 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
 - Keep new packages inside the layering graph above; the boundaries lint rule will reject
   an illegal cross-layer import.
 
+### Git history
+
+- **`master` is linear — it has no merge commits, and a branch lands by rebasing.** Rebase the
+  branch onto `master` (`git rebase master`, or `git pull --rebase` where a remote is involved),
+  then land it from the master checkout with `git merge --ff-only <branch>`. `--ff-only` is not a
+  precaution, it is the check: if it refuses, the rebase was not done, so rebase again rather than
+  reaching for a plain `git merge`. Set `pull.rebase true` so a routine pull cannot weave one in
+  either. A worktree's branch lands the same way — `ExitWorktree` with `action: "keep"` first,
+  because a worktree cannot merge itself.
+- **Squash a branch that is one idea; keep the steps of a branch that is several.** A fix, a small
+  feature, a docs pass — one commit, squashed on the way in. A plan implemented in reviewable
+  stages keeps those stages, because each is a step a reader would want to land on. What is
+  _always_ squashed is the noise the branch made getting there — `wip`, `fix typo`,
+  `address review`, `oops`. Fold each into the commit it repairs with `git commit --fixup <sha>`
+  while working, then collapse them before landing with
+  `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash master` — spelt that way because an agent
+  session has no interactive editor, and because a fixup is a note to the rebase rather than a
+  commit anyone reads.
+- **Every commit on `master` is green** — `pnpm check`, `pnpm test`, `pnpm lint` — because a linear
+  history's whole payoff is that `git bisect` lands on a buildable tree and `git log -p <file>`
+  reads as the story of that file. A stage that only compiles once the next stage arrives belongs
+  in the next stage.
+- **Rewrite only what nobody else has.** Rebasing, squashing and `--fixup` are for a branch still
+  in hand; once history is published and someone could have pulled it, it is append-only.
+
 ### Tooltips
 
 - **Every interactive UI element carries a tooltip — no exceptions.** Buttons, checkboxes,
