@@ -176,6 +176,9 @@ export default tseslint.config(
         console: 'readonly',
         fetch: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        AbortController: 'readonly',
+        URL: 'readonly',
       },
     },
     rules: {

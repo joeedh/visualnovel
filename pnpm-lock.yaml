@@ -197,6 +197,9 @@ importers:
       nstructjs:
         specifier: ^0.8.7
         version: 0.8.7
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       electron:
         specifier: ^33.2.0

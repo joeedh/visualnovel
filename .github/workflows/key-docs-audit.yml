@@ -1,0 +1,80 @@
+# Tier 2 of `docs/plans/auditing-the-api-key-instructions.md`: does the walkthrough in
+# `docs/api-keys.md` still describe what the vendors' own pages say?
+#
+# Weekly rather than per-tag, and advisory rather than blocking, both on purpose. A model
+# comparing prose to prose across pages that get reworded constantly will be wrong some of the
+# time, and a blocking check that is wrong some of the time is one people learn to override — at
+# which point it costs the same and buys nothing. You also want to hear that the docs moved
+# *before* you are mid-release, not as a gate that stalls one.
+#
+# The link check that *is* unambiguous enough to block lives in `ci.yml`.
+name: Key docs audit
+
+on:
+  # Monday morning, at a minute nobody else picked. Nothing waits on this.
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # The whole output of this workflow is one issue. Nothing here writes to the repository, and
+  # `docs/api-keys.md` in particular is only ever read — it is edited by a person.
+  issues: write
+
+# The title is the identity: the run below finds the open issue by it and edits that one rather
+# than filing a second every week.
+env:
+  ISSUE_TITLE: 'API key instructions may be out of date'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # No `submodules: recursive`: this reads two source files and talks to the network, and
+      # nothing it touches is compiled through the renderer.
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Exits 0 whatever happens, including with no key at all — in which case the review says
+      # so, which is the honest report rather than a red cron nobody is on the hook for.
+      - id: audit
+        run: node scripts/audit-key-instructions.mjs --out key-instructions-review.md
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      # Kept every week, drift or not. A run that reported `could-not-check` for a month is
+      # something you want to be able to look back at.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: key-instructions-review
+          path: key-instructions-review.md
+
+      # An artifact nobody is told about is an artifact nobody reads, so drift becomes an issue.
+      # One issue, updated: a weekly workflow that files a new one each Monday is a workflow
+      # people mute.
+      - name: File or update the review issue
+        if: steps.audit.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
+            --json number,title --jq ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -1)
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file key-instructions-review.md
+            echo "updated #$existing"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file key-instructions-review.md
+          fi

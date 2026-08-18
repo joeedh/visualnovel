@@ -13,6 +13,7 @@ wired that way" companion.
 - [Adding a package](#adding-a-package)
 - [Lint](#lint)
 - [Test](#test)
+- [Continuous integration](#continuous-integration)
 - [Format and package manager](#format-and-package-manager)
 
 <!-- tocstop -->
@@ -142,6 +143,35 @@ a node-side type erases cleanly — only `vite build` fails, with
 - The desktop project is `**/apps/desktop/**/tests/*.test.ts` — `.ts` only, node environment,
   no jsdom. See [`desktop-app.md`](desktop-app.md) for what that implies about where renderer
   logic lives.
+
+## Continuous integration
+
+Two workflows, and the split between them is the point: a job blocks only where its verdict is
+unambiguous.
+
+- **`ci.yml` runs on every push and pull request.** Its `check` job is `pnpm check`, `pnpm test`
+  and `pnpm lint` as three separate steps, so a failure names the gate without anyone opening the
+  log. It checks out `submodules: recursive`, because `pnpm check:renderer` typechecks against
+  path.ux's source.
+- **A second `links` job runs `pnpm check:keylinks`** — every URL in `docs/api-keys.md`'s vendor
+  blocks, requested. Blocking, because a dead link in the instructions a brand-new user follows is
+  a shipped bug, and the verdict is a status code rather than an opinion. Separate from `check`
+  because it is the one gate that can go red on somebody else's outage, so it should read as its
+  own tick rather than as "the tests broke"; and because nothing it touches is compiled through
+  the renderer, it takes no submodules and so runs whatever state `vendor/path.ux` is in.
+- **`key-docs-audit.yml` runs weekly** — `pnpm audit:keydocs`, which asks a model whether the
+  _words_ around those links are still true. Advisory: it exits 0 in every path there is, and
+  turns drift into one issue rather than a red tick. A model comparing prose to prose will be
+  wrong some of the time, and a blocking check that is wrong some of the time is one people learn
+  to override. Neither tier ever writes to `docs/api-keys.md`.
+- **Two verdicts are deliberately not failures.** Tier 1 reports `unverified` when a host answers
+  a sibling path that cannot exist — `aistudio.google.com` serves its sign-in for every URL under
+  it, so a 200 there proves only that the host is up. Tier 2 reports `could-not-check` for the
+  same reason from the other end. Whether a vendor hides its console behind a login is not a fact
+  about our file. Both counts are printed every run, because the number going up is the signal
+  that the check is quietly ceasing to be one.
+- Why each is shaped this way, in full:
+  [`plans/auditing-the-api-key-instructions.md`](plans/auditing-the-api-key-instructions.md).
 
 ## Format and package manager
 

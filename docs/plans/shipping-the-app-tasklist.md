@@ -96,9 +96,11 @@ Plan 6 is deliberately not scheduled.
 
 ### 5 — Auditing the API-key instructions
 
-- [ ] Tier 1: the deterministic link check over the yaml blocks, in `ci.yml`, blocking
-- [ ] Tier 2: the weekly advisory audit, its artifact, and the issue it opens
-- [ ] The rule that tier 2 never fails a build, and that neither tier writes to `docs/api-keys.md`
+- [x] Tier 1: the deterministic link check over the yaml blocks, in `ci.yml`, blocking
+- [x] Tier 2: the weekly advisory audit, its artifact, and the issue it opens
+- [x] The rule that tier 2 never fails a build, and that neither tier writes to `docs/api-keys.md`
+- [ ] Run tier 2 end to end against a real key — locally there is none, so the model round-trip
+      and the issue it files are the one part of this plan nothing has yet exercised
 
 ### 3b — `release.yml`
 

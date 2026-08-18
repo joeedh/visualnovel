@@ -87,7 +87,11 @@ function parseFacts(text: string): Record<string, string> {
 
 /** Split a document into its leading matter and its H2 sections, in file order. */
 function sections(markdown: string): { intro: string; parts: { title: string; body: string }[] } {
-  const lines = markdown.replace(TOC_RE, '').split('\n');
+  // Line endings first. `parseMarkdown` normalizes its own input, but this split happens before
+  // it, so on a CRLF copy of the file every heading kept a trailing carriage return and no
+  // section was recognised as a vendor's — a Setup pane with no vendors in it, from nothing
+  // worse than someone opening the file in a Windows editor and saving.
+  const lines = markdown.replace(/\r\n?/g, '\n').replace(TOC_RE, '').split('\n');
   const intro: string[] = [];
   const parts: { title: string; lines: string[] }[] = [];
 
@@ -185,4 +189,122 @@ export function guideUrls(guide: KeyGuide): { vendor: string; field: string; url
       url: vendor[field],
     })),
   );
+}
+
+/**
+ * The site a URL belongs to: its last two labels, so `aistudio.google.com` and
+ * `accounts.google.com` are the same place and `platform.claude.com` is not.
+ *
+ * This is an approximation of the registrable domain, and it is wrong for a multi-label public
+ * suffix (`example.co.uk` reduces to `co.uk`). That is fine for what it is used for — comparing
+ * the two ends of one redirect, where both sides reduce the same way — and a real public-suffix
+ * list is a dependency and a monthly update for no gain here.
+ */
+export function siteOf(url: string): string {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.split('.').slice(-2).join('.');
+  } catch {
+    return '';
+  }
+}
+
+/** What asking for one of the guide's URLs produced, or why nothing did. */
+export interface LinkOutcome {
+  /** The status of the final response, when one arrived. */
+  status?: number;
+  /** Where the request finished after redirects — `response.url`. */
+  finalUrl?: string;
+  /** Why no response arrived at all. */
+  error?: string;
+}
+
+/**
+ * Whether a link is still good, given what asking for it produced. Three ways to fail, and the
+ * second is the one with a decision in it:
+ *
+ * - a non-2xx status, or no response at all;
+ * - a redirect that leaves the **site** — not merely the host. `https://aistudio.google.com/apikey`
+ *   answers 200 from `accounts.google.com` for anyone not signed in, which is the page working
+ *   exactly as intended; a check that called that a failure would fail every run and be switched
+ *   off within a month. It still catches the failure that matters: a vendor moving its key console
+ *   somewhere else entirely.
+ * - a redirect to the site's own root. A deep link whose page was deleted usually 301s to the
+ *   front page and answers 200, which a status alone cannot tell from the page still being there.
+ *
+ * A query string is not a change: `ai.google.dev` appends `?hl=<locale>` based on where the
+ * request came from, so CI in one region and a laptop in another see different final URLs for one
+ * intact page.
+ */
+export function linkVerdict(url: string, outcome: LinkOutcome): { ok: boolean; detail: string } {
+  if (outcome.error !== undefined) return { ok: false, detail: outcome.error };
+  const status = outcome.status ?? 0;
+  if (status < 200 || status > 299) return { ok: false, detail: `HTTP ${status}` };
+
+  const finalUrl = outcome.finalUrl ?? url;
+  if (siteOf(finalUrl) !== siteOf(url) || siteOf(url) === '') {
+    return { ok: false, detail: `redirected off ${siteOf(url)} to ${finalUrl}` };
+  }
+
+  const asked = new URL(url).pathname.replace(/\/+$/, '');
+  let landed: string;
+  try {
+    landed = new URL(finalUrl).pathname.replace(/\/+$/, '');
+  } catch {
+    return { ok: false, detail: `answered with an unreadable URL: ${finalUrl}` };
+  }
+  if (landed === '' && asked !== '') {
+    return { ok: false, detail: `redirected to the site root (${finalUrl})` };
+  }
+
+  return { ok: true, detail: `HTTP ${status}` };
+}
+
+/** How a link can turn out. `unverified` is a real answer, not a softened failure — see below. */
+export type LinkState = 'ok' | 'broken' | 'unverified';
+
+/**
+ * A sibling of `url` that cannot exist, for asking a host whether it says no to anything at all.
+ *
+ * Deterministic rather than random, so a run that reported something can be repeated by hand from
+ * its own output.
+ */
+export function canaryFor(url: string): string {
+  const canary = new URL(url);
+  canary.pathname = canary.pathname.replace(/[/]+$/, '') + '/vn-link-check-canary';
+  canary.search = '';
+  canary.hash = '';
+  return canary.toString();
+}
+
+/**
+ * The verdict for one guide URL, given what it answered **and** what a path that cannot exist
+ * answered from the same host.
+ *
+ * The canary is the whole reason this is not just {@link linkVerdict}. `aistudio.google.com` is a
+ * single-page app behind a sign-in: every path under it answers 200 from Google's login, including
+ * `/apikey-moved-last-year`. A check that took that 200 as proof would go on saying the key console
+ * is fine for as long as Google keeps the domain — which is to say, exactly when it stops being
+ * true. So the check also asks a question it already knows the answer to, and when the host answers
+ * 200 to that as well it reports what it actually learned: the host is up, and nothing more.
+ *
+ * `unverified` is deliberately not a failure. Whether a vendor puts its console behind a sign-in is
+ * not a fact about our file, and failing on it would make this a check people switch off.
+ */
+export function linkReport(
+  url: string,
+  outcome: LinkOutcome,
+  canary: LinkOutcome,
+): { state: LinkState; detail: string } {
+  const verdict = linkVerdict(url, outcome);
+  if (!verdict.ok) return { state: 'broken', detail: verdict.detail };
+  if (linkVerdict(canaryFor(url), canary).ok) {
+    return {
+      state: 'unverified',
+      detail:
+        `${verdict.detail}, but so does a path that cannot exist — the host answers ` +
+        `everything, so this proves only that it is up`,
+    };
+  }
+  return { state: 'ok', detail: verdict.detail };
 }

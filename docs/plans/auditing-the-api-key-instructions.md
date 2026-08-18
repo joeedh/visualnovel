@@ -1,6 +1,6 @@
 # Auditing the API-key instructions
 
-Status: **planned**. Plan 5 of [`shipping-the-app-tasklist.md`](shipping-the-app-tasklist.md).
+Status: **shipped**. Plan 5 of [`shipping-the-app-tasklist.md`](shipping-the-app-tasklist.md).
 Needs `docs/api-keys.md`, which
 [`onboarding-editor-and-user-level-keys.md`](onboarding-editor-and-user-level-keys.md) writes.
 
@@ -67,6 +67,76 @@ per-PR is not, and per-PR would also mean every contributor's branch making vend
 user reads when they are most confused and least able to tell that something is wrong — an
 unreviewed model edit landing there is the highest-consequence automated write in the repo, for
 the smallest saving.
+
+## As shipped
+
+Both tiers exist. The split between them held; what the plan did not anticipate is that a status
+code is not always evidence.
+
+- **Tier 1 is `scripts/check-key-links.mjs`** (`pnpm check:keylinks`), run by a `links` job in
+  `ci.yml`. It reads the file through `parseKeyGuide` — the same reader the Setup pane uses, so
+  the checker and the pane cannot disagree about what a vendor block says — and requests every URL
+  in `guideUrls`, three attempts with a backoff. The verdict for one response is `linkVerdict`,
+  and it is pure and tested: non-2xx fails, and a redirect fails if it leaves the *site* (last two
+  labels of the host, so `platform.claude.com` → `accounts.google.com` fails while
+  `aistudio.google.com` → `accounts.google.com` does not) or lands a deep link on the site root.
+  Query strings are ignored, because `ai.google.dev` adds `?hl=th` on its own.
+
+- **A 200 is not proof, so every URL is asked about twice.** `aistudio.google.com` is a
+  single-page app behind a sign-in: *every* path under it answers 200 from Google's login,
+  including one that has never existed. The first draft of this check passed a deliberately broken
+  `https://aistudio.google.com/apikey-moved-last-year` — which is to say it would have gone on
+  reporting the Gemini key console as fine for exactly as long as Google keeps the domain. So each
+  URL is now sent alongside `canaryFor(url)`, a sibling path that cannot exist, and `linkReport`
+  returns one of three states. A host that answers the canary too yields **`unverified`**: the run
+  says the host is up and nothing more, and does not fail. Today that is one of our six links, and
+  the closing summary states the count every run — the number going up is the signal that this
+  check is quietly ceasing to be one.
+
+- **`unverified` is deliberately not a failure.** Whether a vendor puts its console behind a
+  sign-in is not a fact about our file, and a check that failed on it would be one people switch
+  off. It is the same reasoning as tier 2's `could-not-check`, arrived at from the other end.
+
+- **The `links` job is separate from `check`, and takes no submodules.** It is the one gate here
+  that can go red because of somebody else's outage, so it should read as its own tick rather than
+  as "the tests broke" — and since nothing it touches is compiled through the renderer, it is also
+  the one job that runs whatever state `vendor/path.ux` is in.
+
+- **Tier 2 is `scripts/audit-key-instructions.mjs`** (`pnpm audit:keydocs`) over
+  `apps/desktop/src/main/keyaudit.ts`, on a Monday cron in `.github/workflows/key-docs-audit.yml`.
+  Everything that decides anything is in the `.ts` and has tests; the `.mjs` is the network, the
+  key and the file. It writes `key-instructions-review.md`, uploads it every week drift or not,
+  and on drift files **one** issue found by title and edited in place.
+
+- **It exits 0 in every path there is** — no key, a page that will not load, a model that will not
+  answer, a reply about the wrong vendor. Each of those becomes a `could-not-check` line naming
+  what happened, because a red weekly cron nobody is on the hook for is a cron people mute.
+
+- **A run that checked nothing may not report a pass.** The first version of `renderReview` opened
+  a keyless run with "**Nothing to do.** All 2 vendor sections still match" — a clean bill of
+  health for a week in which no page was read. The headline now counts what was actually
+  compared, and a run with no agreements at all says **"Nothing was checked"** in its first
+  sentence. That line is the whole report for anyone reading a notification.
+
+- **The audit authenticates through the variable its own documentation names.** The key is read
+  from `vendor.env` in the guide's yaml block rather than from a constant here, so if that line
+  ever goes stale the audit stops working and says which variable it wanted. It names the
+  variable; it never names a value.
+
+- **`--dry-run` does everything except the call.** It fetches, converts and assembles the prompt,
+  then reports its size — which is how you check the audit is still reading the pages you think it
+  is without spending anything, and how the fetch half of this was verified with no key on hand.
+
+- **`htmlToText` is deliberately not a parser.** What is being compared is a walkthrough, and
+  every wording of "open this, click that" survives losing the markup; both vendor pages are
+  framework-rendered anyway. It keeps list items on separate lines, because step order is most of
+  what the audit is checking. `pageProblem` refuses anything under 2000 characters as a loading
+  shell rather than letting a model report drift against nothing.
+
+**Owed.** Tier 2's model round-trip has never run: there is no key on this machine, so the
+acceptance lines about a stale copy reporting `drifted` with a pasteable proposal, and about the
+issue it opens, are argued for by unit tests over the reply shape and by a `--dry-run` that stops
+one step short. Running it once by hand with a real key is the remaining item on the tasklist.
 
 ## Acceptance
 

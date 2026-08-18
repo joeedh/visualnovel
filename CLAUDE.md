@@ -67,6 +67,8 @@ Run from the repo root.
 | Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                      |
 | Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)              |
 | Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs resolve)          |
+| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/api-keys.md` only)         |
+| Audit the key-guide wording  | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)        |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 

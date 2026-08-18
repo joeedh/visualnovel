@@ -41,3 +41,29 @@ jobs:
       - run: pnpm check
       - run: pnpm test
       - run: pnpm lint
+
+  # Separate from `check` on purpose, and for two reasons. It is the one gate that can fail
+  # because of somebody else's outage rather than this commit, so it should be readable as a
+  # distinct red tick and not as "the tests broke". And it is the only job here that does not
+  # need `vendor/path.ux`: nothing it touches is compiled through the renderer, so it keeps
+  # working whatever state the submodule is in.
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Blocking, because a dead link in the instructions a new user follows is a shipped bug and
+      # the verdict is unambiguous. The soft half of this audit — whether the words around the
+      # link are still true — is tier 2, and deliberately never fails a build.
+      - run: pnpm check:keylinks

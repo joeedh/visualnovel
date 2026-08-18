@@ -33,7 +33,9 @@
     "vndesktop": "node scripts/vndesktop.mjs",
     "package": "pnpm --filter @vn/desktop package",
     "package:dir": "pnpm --filter @vn/desktop package:dir",
-    "smoke": "pnpm --filter @vn/desktop smoke"
+    "smoke": "pnpm --filter @vn/desktop smoke",
+    "check:keylinks": "node scripts/check-key-links.mjs",
+    "audit:keydocs": "node scripts/audit-key-instructions.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

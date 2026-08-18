@@ -14,6 +14,10 @@ coverage
 # Bundled entry points the build scripts require() and delete; an aborted run leaves one behind.
 .record-entry.cjs*
 .cache-entry.cjs*
+.keylinks-entry.cjs*
+.keyaudit-entry.cjs*
+# What the weekly key-docs audit proposes. It is an artifact and an issue body, never a commit.
+key-instructions-review.md
 # Packaging: the scratch project `scripts/package.desktop.mjs` assembles for a hoisted
 # install, and the installers electron-builder writes out of it.
 apps/desktop/.package
