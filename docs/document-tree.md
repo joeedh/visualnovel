@@ -13,7 +13,7 @@ reasoning behind each decision:
 <!-- toc -->
 
 - [What it is](#what-it-is)
-- [The six branches](#the-six-branches)
+- [The seven branches](#the-seven-branches)
 - [Contracts](#contracts)
 - [The file tree](#the-file-tree)
 - [Where it lives](#where-it-lives)
@@ -35,13 +35,14 @@ walks them once and shapes the result; it reads nothing else and writes nothing 
 no excerpt, no image bytes — so the tree can be shipped over IPC whole, and a large project costs a
 manifest parse rather than a corpus.
 
-## The six branches
+## The seven branches
 
 ```
 Story              scene:<id>            → shot:<sceneId>/<shotId>
 Characters         character:<id>
 Locations          location:<id>
 Wiki               wikidir:<rel>         → wiki:<rel>
+Skills             skill:<id>
 Unapproved assets  unapproved:waiting    → asset:<hash>
                    unapproved:unrendered → slot:<slotKey>
 Assets             assetkind:<kind>      → asset:<hash>
@@ -57,6 +58,17 @@ Assets             assetkind:<kind>      → asset:<hash>
   whichever file the `type:` tag was found in — `characters/aiko/character.md`, or
   `wiki/cast/aiko.md` if that is where the author filed it.
 - **Wiki** is `Bible.files()` nested back into directories. Path, title, nothing else.
+- **Skills** lists the playbooks under `.aiagent/skills/`, one leaf each — labelled by the skill's
+  `name:`, pathed at its `SKILL.md`, badged `script` where a person has given it one to run, and
+  hovering its `description:`. **Leaves only, with no file children**: identity, not content — a
+  skill is one thing with an id, a name and a description, at the same granularity as a character,
+  and what is *inside* the directory is the Skills pane's own tree. It is **the one branch drawn
+  when it is empty**, which is a deliberate exception to the rule Unapproved assets follows: a
+  skill has to be findable before one exists, and the heading's own right-click menu is the only
+  always-reachable way to make the first. `skeleton()` writes no `.aiagent/` at all, so every
+  project created in the app starts here, and an absent branch would hide the feature from exactly
+  the authors who have not read this file. The caller still decides — `DocTreeInput.skills`
+  undefined means it did not look, and leaves the branch out.
 - **Unapproved assets** is a lens on the two branches around it — everything still standing between
   the project and a finished set of pictures, in two groups the
   [slot graph](plans/the-full-slot-graph-and-approving-upstream-first.md) makes disjoint by
@@ -161,7 +173,7 @@ not what "view every file" asks for.
 | Shapes (`DocNode`, `EntityLinks`, `DocTree`) | `apps/desktop/src/shared/ipc.ts` |
 | The projection (`buildDocTree`, `fileTree`) — pure | `apps/desktop/src/main/doctree.ts` |
 | Asset display names (`assetLabel`, `labelAssets`) — pure | `apps/desktop/src/main/assetlabel.ts` |
-| The reads (one `loadProject`, one `readShots` per scene, `bible.files()`) | `WorkspaceSession.docTree()` / `.fileTree()` |
+| The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()` |
 | Channels | `workspace:doctree`, `workspace:filetree` |
 | Commands | `workspace.doctree`, `workspace.filetree` (non-mutating, no props) |
 
@@ -193,6 +205,7 @@ entry is an invocation rather than a callback, is in
 | `scene` | Assign line ids · New scene… · Export Fountain |
 | `shot` | Set coverage… · Set outfit… |
 | `slot` | Upload a file for this… · Adopt an asset for this… · Run pipeline… |
+| `skill` | Open in the Skills pane · Ask the agent to change this skill… |
 | `branch:assets`, `assetkind`, `wiki`, `dir`, `file`, `more` | none — no menu opens at all |
 
 Four things this table settles:
@@ -215,6 +228,10 @@ Four things this table settles:
   already performs. `branch:wiki` is the exception among the headings, because it is a place: it is
   the "top level wiki tree" an author right-clicks, and the `wikidir:` nodes below it are the
   folders inside, which a flat `wiki/` never has at all.
+- **A skill's second entry is a form, not a turn.** _Ask the agent to change this skill…_ opens
+  `agent.run` pre-filled with `Edit the "<name>" skill: ` and stops there, because "change this
+  skill" with nothing said about how is a turn the author would only have to interrupt. The skill
+  is named in the sentence, which is all the agent needs — `discover_skills` already lists them.
 
 **A right-click never moves the tree.** The gesture itself is innocent — Chromium fires no `click`
 for button 2 — but path.ux closes a menu on **mouse-up**, so the click that dismisses one used to
@@ -237,6 +254,12 @@ never assembles them. An entity with no sheet of its own has nowhere to write th
 is deliberately not renamable**: its label is its id, and its id is its filename, the config's
 `start:` and every `[[goto:]]` pointing at it — one of those is a rename and the rest are a
 refactor.
+
+A **skill is left out too, for a different reason.** It has a path and a label, so it looks
+renamable — but `renameInText` writes `name:` only for a *sheet*, and for anything else it writes
+wherever the title was read from, which for a `SKILL.md` is a `title:` nothing reads: a skill's
+label is its `name:` key and its id is the directory, which no rewrite of the file could move.
+Renaming a skill is `edit_skill`, or the Skills pane.
 
 Two things behind the gesture:
 

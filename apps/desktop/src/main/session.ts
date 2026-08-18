@@ -130,8 +130,10 @@ import {
   Workspace,
   archiveUpload,
   composeSystem,
+  discoverSkills,
   focusOnScene,
   loadContext,
+  skillRoots,
   systemSections,
   workspaceArtGen,
   type AgentBackend,
@@ -231,7 +233,7 @@ import { narrowTask } from './reviews.js';
 import { labelAssets, labelContext } from './assetlabel.js';
 import { deriveChunks, derivePrompt } from './assetprompt.js';
 import { applyPromptEdit, type PromptEdit } from './promptedit.js';
-import { buildDocTree, fileTree } from './doctree.js';
+import { buildDocTree, fileTree, type SkillEntry } from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
 import { renameInText } from './rename.js';
 import { confirmDetail } from './toolconfirm.js';
@@ -2664,6 +2666,9 @@ export class WorkspaceSession {
       bible: bible.files(),
       wikiDir: relPath(this.dir, project.paths.wikiDir),
       assetLabels: labelAssets(manifest, labels),
+      // Always an array, never undefined: the branch is drawn even with nothing in it, and only a
+      // caller outside the app (a test, the CLI) leaves it out.
+      skills: await this.skillEntries(),
       // The same walk the Task Graph pane reads, over the same load: the tree's two unapproved
       // groups are projections of it, so nothing here enumerates slots a second time.
       slots: buildSlotGraph({
@@ -2674,6 +2679,21 @@ export class WorkspaceSession {
         graph: project.graph,
       }),
     });
+  }
+
+  /**
+   * The project's skills, as the tree needs them — one `discoverSkills` per doc-tree read. The
+   * whole instruction body is dropped here rather than in the renderer: what ships is identity.
+   */
+  private async skillEntries(): Promise<SkillEntry[]> {
+    const skills = await discoverSkills(skillRoots(this.dir));
+    return skills.map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      file: relPath(this.dir, skill.file),
+      script: skill.script !== undefined,
+    }));
   }
 
   /** The tree's other mode: what is actually on disk, `.git` and `node_modules` excluded. */

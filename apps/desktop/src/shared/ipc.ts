@@ -369,7 +369,7 @@ export interface SceneCoverage {
 }
 
 /**
- * What a document-tree node is. `branch` is a pure grouping (the five roots); `dir`/`file` only
+ * What a document-tree node is. `branch` is a pure grouping (the roots); `dir`/`file` only
  * appear in the full file tree; `more` is the counted stand-in for children a cap dropped.
  */
 export type DocNodeKind =
@@ -384,6 +384,8 @@ export type DocNodeKind =
   | 'asset'
   /** A picture the project implies with no bytes yet — an address (`plate:cafe/night`), not a file. */
   | 'slot'
+  /** A reusable playbook under `.aiagent/skills/` — the skill itself, never the files inside it. */
+  | 'skill'
   | 'dir'
   | 'file'
   | 'more';
@@ -402,7 +404,7 @@ export interface DocNode {
   label: string;
   /** Workspace-relative, `/` separators. Absent for a grouping, and for an entity with no sheet. */
   path?: string;
-  /** One word, never a sentence: `unreachable`, `draft`, `mined`, `base`, `accepted`, `stale`. */
+  /** One word, never a sentence: `unreachable`, `draft`, `mined`, `base`, `accepted`, `stale`, `script`. */
   badge?: string;
   /**
    * The row's tooltip, where the path is not the useful thing to say — a slot's `blocked` sentence.

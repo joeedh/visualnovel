@@ -49,9 +49,12 @@ export function toggleExpanded(expanded: ReadonlySet<string>, id: string): Set<s
 }
 
 /**
- * What a tree opens on: its roots, and nothing below them. In document mode that is the five
- * branches, which is a table of contents; expanding further would print every scene, every shot
+ * What a tree opens on: its roots, and nothing below them. In document mode that is the branch
+ * headings, which is a table of contents; expanding further would print every scene, every shot
  * and the whole manifest before the author has asked for any of it.
+ *
+ * A branch with no children is not opened, which is why an empty Skills branch draws no twisty —
+ * the heading is still there, and still right-clickable, which is the whole point of drawing it.
  */
 export function defaultExpanded(roots: readonly DocNode[]): Set<string> {
   return new Set(roots.filter((node) => node.children?.length).map((node) => node.id));
@@ -90,9 +93,11 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
     case 'character':
       return { ...current, characterId: key, docPath: node.path ?? current.docPath };
     // A location has no `ui.locationId` to publish, so its sheet is the whole selection — which
-    // is also all a wiki note or a bare file has.
+    // is also all a wiki note, a skill or a bare file has. A skill's path is its `SKILL.md`, so
+    // selecting one is selecting that document, and the Skills pane opens on it like any other.
     case 'location':
     case 'wiki':
+    case 'skill':
     case 'file':
       return node.path === undefined ? current : { ...current, docPath: node.path };
     // An asset carries no `path` on purpose — it is addressed by hash, which is its key here.
@@ -250,6 +255,24 @@ export function menuFor(node: DocNode): MenuEntry[] {
       ];
     case 'wikidir':
       return wikiCreate();
+    // Two acts, and the second is a *form*: `agent.run` is handed a first sentence to edit rather
+    // than a turn already sent, because "change this skill" without saying how is a turn the
+    // author would only have to interrupt. The skill is named in the sentence, which is how the
+    // agent finds it — `discover_skills` already lists them, so nothing else needs to travel.
+    case 'skill':
+      return [
+        {
+          label: 'Open in the Skills pane',
+          id: 'view.open',
+          props: { editor: 'skills', where: 'elsewhere', subject: node.path ?? '' },
+        },
+        {
+          label: 'Ask the agent to change this skill…',
+          id: 'agent.run',
+          props: { input: `Edit the "${node.label}" skill: ` },
+          form: true,
+        },
+      ];
     // All four acts are offered and each refuses itself: `asset.accept` names `gate.approve` for a
     // portrait and `art.promote` for a concept, and those two refuse everything else. The commands
     // already know which one applies, and their sentences beat a menu's guess. There is no
@@ -339,6 +362,12 @@ export function menuFor(node: DocNode): MenuEntry[] {
  * A **scene is deliberately not renamable**. Its label is its id, and its id is its filename, the
  * config's `start:` and every `[[goto:]]` pointing at it — one of those is a rename and the rest
  * are a refactor. So are assets, shots and branch headings: none is named by a document at all.
+ *
+ * **A skill is deliberately left out too, for a different reason.** It has a path and a label, so
+ * it looks renamable, but `doc.rename` renames a document by rewriting a `title:` in its
+ * front-matter — and a `SKILL.md` has no `title:`. Its label is `name:`, which is a different key,
+ * and its id is the directory, which no rewrite of the file could move. Renaming a skill is
+ * `edit_skill`, or the Skills pane; a double-click here would silently write a key nobody reads.
  */
 export function renameOf(node: DocNode): { path: string; name: string } | undefined {
   if (!node.path) return undefined;
@@ -387,6 +416,7 @@ export function nodeIsSelected(node: DocNode, selection: Selection): boolean {
       return selection.characterId !== '' && selection.characterId === key;
     case 'location':
     case 'wiki':
+    case 'skill':
     case 'file':
       return selection.docPath !== '' && selection.docPath === node.path;
     case 'asset':

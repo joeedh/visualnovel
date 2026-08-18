@@ -257,6 +257,28 @@ const MOCK_DOCTREE: DocTree = {
         { id: 'wiki:history.md', kind: 'wiki', label: 'History', path: 'wiki/history.md' },
       ],
     },
+    {
+      id: 'branch:skills',
+      kind: 'branch',
+      label: 'Skills',
+      children: [
+        {
+          id: 'skill:continuity-pass',
+          kind: 'skill',
+          label: 'Continuity pass',
+          path: '.aiagent/skills/continuity-pass/SKILL.md',
+          note: 'Re-read a scene against the bible and list what contradicts it.',
+        },
+        {
+          id: 'skill:lint-fountain',
+          kind: 'skill',
+          label: 'Lint the screenplay',
+          path: '.aiagent/skills/lint-fountain/SKILL.md',
+          badge: 'script',
+          note: 'Run the Fountain checker over every scene and summarise what it says.',
+        },
+      ],
+    },
   ],
   backlinks: {},
   pathIndex: {},

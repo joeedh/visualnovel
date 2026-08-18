@@ -42,7 +42,30 @@ export interface DocTreeInput {
    * has not built the graph must not be made to claim nothing is waiting.
    */
   slots?: SlotGraph;
+  /**
+   * The project's skills, if the caller looked for them. **Optional, and `[]` is not the same as
+   * absent**: undefined leaves the branch out entirely (which is what every caller that knows
+   * nothing about skills wants), while an empty array draws an empty heading on purpose — see
+   * {@link skillsBranch}.
+   */
+  skills?: readonly SkillEntry[];
   cap?: number;
+}
+
+/**
+ * One skill, as the tree needs it. Deliberately **not** `@vn/authoring`'s `Skill`, which carries
+ * the whole instruction body and absolute paths on disk — neither belongs on the wire, and a tree
+ * that shipped the body would put every playbook in the renderer on every read.
+ */
+export interface SkillEntry {
+  /** The skill directory's name, which is its id everywhere else. */
+  id: string;
+  name: string;
+  description: string;
+  /** Its `SKILL.md`, workspace-relative with `/` separators. */
+  file: string;
+  /** Whether a person has given it a script to run. */
+  script: boolean;
 }
 
 /** Workspace-relative, `/`-separated: these are shown to a human and shipped over IPC. */
@@ -166,6 +189,34 @@ function wikiBranch(input: DocTreeInput): DocNode {
     );
   }
   return node('branch:wiki', 'branch', 'Wiki', { children: roots });
+}
+
+/**
+ * The skills, as leaves. **No file children**: the doc tree is identity, not content
+ * (`docs/document-tree.md`), and a skill is one thing with an id, a name and a description — the
+ * same granularity as a character. What is *inside* the directory is the Skills pane's own tree.
+ *
+ * **Drawn even when empty**, which no other branch is. A skill has to be findable before one
+ * exists, and the heading's own right-click menu is the only always-reachable way to make the
+ * first: `skeleton()` writes no `.aiagent/` at all, so every project created in the app starts
+ * here, and an absent branch would hide the feature from exactly the authors who have not read
+ * `docs/`. The caller still decides — `input.skills` undefined means it did not look.
+ */
+function skillsBranch(input: DocTreeInput, cap: number): DocNode | undefined {
+  const skills = input.skills;
+  if (!skills) return undefined;
+  const children = skills.map((skill) =>
+    node(`skill:${skill.id}`, 'skill', skill.name, {
+      path: skill.file,
+      ...(skill.script ? { badge: 'script' } : {}),
+      // A skill with no description still hovers: the sentence says what the row *is*, which is
+      // the one thing an author looking at an unfamiliar playbook needs before opening it.
+      note: skill.description || 'A playbook the agent can follow. Open it in the Skills pane.',
+    }),
+  );
+  return node('branch:skills', 'branch', 'Skills', {
+    children: capped('branch:skills', children, cap),
+  });
 }
 
 /** What to call one asset: its display name when the caller supplied one, else `hash8.ext`. */
@@ -392,11 +443,15 @@ export function buildDocTree(input: DocTreeInput): DocTree {
   // Immediately before Assets: it is a lens on the same nodes, so it sits next to them, and the
   // four roots that were here keep the order the sidebar has always drawn them in.
   const unapproved = unapprovedBranch(input, cap);
+  // Skills sit with the other authored input, after Wiki — and before Unapproved, because nothing
+  // may come between the two lenses on the manifest.
+  const skills = skillsBranch(input, cap);
   const roots = [
     storyBranch(input, cap),
     entityBranch(input, 'character'),
     entityBranch(input, 'location'),
     wikiBranch(input),
+    ...(skills ? [skills] : []),
     ...(unapproved ? [unapproved] : []),
     assetBranch(input, cap),
   ];

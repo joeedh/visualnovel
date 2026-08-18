@@ -32,6 +32,10 @@ const NODES: Record<DocNodeKind, DocNode> = {
   assetkind: node('assetkind', { id: 'assetkind:portrait' }),
   asset: node('asset', { id: 'asset:a1b2c3' }),
   slot: node('slot', { id: 'slot:plate:cafe/night' }),
+  skill: node('skill', {
+    id: 'skill:continuity-pass',
+    path: '.aiagent/skills/continuity-pass/SKILL.md',
+  }),
   dir: node('dir', { id: 'dir:art' }),
   file: node('file', { id: 'file:notes.md', path: 'notes.md' }),
   more: node('more', { id: 'more:assets' }),
@@ -50,6 +54,10 @@ const WITH_NOTHING_OPEN: Record<DocNodeKind, EditorId | ''> = {
   asset: 'asset',
   // The one pane that can draw a picture with no bytes: a slot is a place in the graph.
   slot: 'taskgraph',
+  // Nothing claims a skill yet. Wiki does not, deliberately — its `file` clause is about a path
+  // the *file tree* produced, and a `SKILL.md` opened in a plain text box would let an author
+  // edit front-matter the Skills pane is about to own.
+  skill: '',
   dir: '',
   file: 'wiki',
   more: '',

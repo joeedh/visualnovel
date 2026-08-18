@@ -7,7 +7,7 @@ import type { SlotGraph, SlotNode } from '@vn/artgen';
 import type { Asset, ProjectModel, RefBinding, Shot } from '@vn/types';
 import type { LoadedInputs } from '@vn/parse';
 import type { DocNode } from '../../shared/ipc.js';
-import { buildDocTree, fileTree, type DocTreeInput } from '../doctree.js';
+import { buildDocTree, fileTree, type DocTreeInput, type SkillEntry } from '../doctree.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {
@@ -110,6 +110,15 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
     ...over,
   };
 }
+
+/** A real skill on disk, front-matter and all — what `discoverSkills` actually reads. */
+const SKILL_MD = `---
+name: Continuity pass
+description: List what a scene contradicts.
+---
+
+Read the scene twice, then the bible.
+`;
 
 const branch = (roots: DocNode[], id: string): DocNode => roots.find((n) => n.id === id)!;
 
@@ -349,6 +358,98 @@ describe('the Unapproved branch', () => {
  * it — and files the rest in a collapsed child rather than dropping them, because deleting one is a
  * right-click on the row itself.
  */
+describe('the Skills branch', () => {
+  const skill = (over: Partial<SkillEntry> = {}): SkillEntry => ({
+    id: 'continuity-pass',
+    name: 'Continuity pass',
+    description: 'Re-read a scene against the bible and list what contradicts it.',
+    file: '.aiagent/skills/continuity-pass/SKILL.md',
+    script: false,
+    ...over,
+  });
+
+  const skills = (entries: readonly SkillEntry[]): DocNode | undefined =>
+    buildDocTree(makeInput({ skills: entries })).roots.find((n) => n.id === 'branch:skills');
+
+  it('is absent when the caller did not look for skills', () => {
+    expect(buildDocTree(makeInput()).roots.map((n) => n.id)).not.toContain('branch:skills');
+  });
+
+  // The one branch drawn empty. A skill has to be findable before one exists, so `[]` and
+  // undefined are deliberately different answers.
+  it('is drawn empty when the caller looked and found none', () => {
+    expect(skills([])).toEqual({
+      id: 'branch:skills',
+      kind: 'branch',
+      label: 'Skills',
+      children: [],
+    });
+  });
+
+  it('sits after Wiki and before the two lenses on the manifest', () => {
+    // One slot waiting, so the Unapproved branch is drawn too — otherwise there is no second
+    // root between Skills and Assets to be ordered against.
+    const waiting: SlotNode = {
+      key: 'portrait:aiko',
+      binding: { kind: 'portrait', characterId: 'aiko' },
+      label: 'portrait:aiko',
+      refs: [],
+      candidates: ['a'.repeat(64)],
+      approved: false,
+    };
+    const graph: SlotGraph = {
+      nodes: new Map([[waiting.key, waiting]]),
+      dependents: new Map(),
+      order: [waiting.key],
+    };
+    const roots = buildDocTree(makeInput({ skills: [], slots: graph })).roots;
+    expect(roots.map((n) => n.id)).toEqual([
+      'branch:story',
+      'branch:characters',
+      'branch:locations',
+      'branch:wiki',
+      'branch:skills',
+      'branch:unapproved',
+      'branch:assets',
+    ]);
+  });
+
+  it('draws one leaf per skill: the name, the SKILL.md, and no children', () => {
+    const [leaf] = skills([skill()])!.children!;
+    expect(leaf).toEqual({
+      id: 'skill:continuity-pass',
+      kind: 'skill',
+      label: 'Continuity pass',
+      path: '.aiagent/skills/continuity-pass/SKILL.md',
+      note: 'Re-read a scene against the bible and list what contradicts it.',
+    });
+    expect(leaf!.children).toBeUndefined();
+  });
+
+  it('badges the ones a person gave a script', () => {
+    const children = skills([
+      skill(),
+      skill({ id: 'lint', name: 'Lint', script: true }),
+    ])!.children!;
+    expect(children.map((n) => n.badge)).toEqual([undefined, 'script']);
+  });
+
+  // No row hovers silently, and a skill with no description is exactly the row an author needs
+  // told what it is.
+  it('says what a skill is when it does not say so itself', () => {
+    const [leaf] = skills([skill({ description: '' })])!.children!;
+    expect(leaf!.note).toBe('A playbook the agent can follow. Open it in the Skills pane.');
+  });
+
+  it('caps the branch, counting what it dropped', () => {
+    const many = Array.from({ length: 4 }, (_, i) => skill({ id: `s${i}`, name: `S${i}` }));
+    const children = buildDocTree(makeInput({ skills: many, cap: 2 })).roots.find(
+      (n) => n.id === 'branch:skills',
+    )!.children!;
+    expect(children.map((n) => n.label)).toEqual(['S0', 'S1', '… and 2 more']);
+  });
+});
+
 describe('the Assets branch, pruned by slot', () => {
   const HASH_A = 'a'.repeat(64);
   const HASH_B = 'b'.repeat(64);
@@ -535,7 +636,10 @@ describe('WorkspaceSession — the tree over a real project', () => {
     p = await makeProject({
       title: 'Tree',
       script: SCRIPTS.linear,
-      files: { 'wiki/history/canal.md': '# The canal\n\nRaised over a filled canal.\n' },
+      files: {
+        'wiki/history/canal.md': '# The canal\n\nRaised over a filled canal.\n',
+        '.aiagent/skills/continuity-pass/SKILL.md': SKILL_MD,
+      },
     });
   });
 
@@ -557,6 +661,22 @@ describe('WorkspaceSession — the tree over a real project', () => {
     ]);
     expect(branch(tree.roots, 'branch:assets').children).toEqual([]);
     expect(tree.backlinks['character:aiko']!.scenes.length).toBeGreaterThan(0);
+  });
+
+  // The one thing the pure projection cannot check: `SkillEntry.file` is built by `relPath`, and
+  // on Windows the path it starts from is backslash-separated. A backslash here would ship a path
+  // `doc.read` refuses and no pane could open.
+  it('finds the skills on disk, with a path a document command would take', async () => {
+    const tree = await new WorkspaceSession(p.dir, true, deps).docTree();
+    expect(branch(tree.roots, 'branch:skills').children).toEqual([
+      {
+        id: 'skill:continuity-pass',
+        kind: 'skill',
+        label: 'Continuity pass',
+        path: '.aiagent/skills/continuity-pass/SKILL.md',
+        note: 'List what a scene contradicts.',
+      },
+    ]);
   });
 
   it('binds generated art to the character it was made for', async () => {

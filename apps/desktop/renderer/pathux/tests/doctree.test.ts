@@ -16,7 +16,7 @@ import {
 } from '../doctree.js';
 import { MENU_SEP } from '../contextmenu.js';
 import type { Selection } from '../selection.js';
-import type { DocNode, EntityLinks } from '../../../src/shared/ipc.js';
+import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
 
 const NONE: Selection = { sceneId: '', shotId: '', characterId: '', docPath: '', assetHash: '' };
 
@@ -42,6 +42,12 @@ const TREE: DocNode[] = [
   }),
   node('branch:wiki', 'branch'),
 ];
+
+const SKILL = node('skill:continuity-pass', 'skill', {
+  label: 'Continuity pass',
+  path: '.aiagent/skills/continuity-pass/SKILL.md',
+  note: 'List what a scene contradicts.',
+});
 
 const ids = (rows: DocRow[]): string[] => rows.map((row) => row.node.id);
 
@@ -168,6 +174,14 @@ describe('selectionForNode', () => {
       docPath: 'wiki/a.md',
     });
   });
+
+  // A skill is its `SKILL.md` and nothing else — no id field of its own, the same as a wiki note.
+  it('names a skill by the document it is', () => {
+    expect(selectionForNode(SKILL, NONE)).toEqual({
+      ...NONE,
+      docPath: '.aiagent/skills/continuity-pass/SKILL.md',
+    });
+  });
 });
 
 describe('nodeIsSelected', () => {
@@ -193,6 +207,11 @@ describe('nodeIsSelected', () => {
 
   it('lights nothing when nothing is selected', () => {
     for (const n of [scene, shot, character, TREE[0]!]) expect(nodeIsSelected(n, NONE)).toBe(false);
+  });
+
+  it('lights a skill by its path, like every other row that is a document', () => {
+    expect(nodeIsSelected(SKILL, { ...NONE, docPath: SKILL.path! })).toBe(true);
+    expect(nodeIsSelected(SKILL, { ...NONE, docPath: 'wiki/a.md' })).toBe(false);
   });
 });
 
@@ -367,8 +386,30 @@ describe('menuFor', () => {
     }
   });
 
+  // The second entry is a form on purpose: "change this skill" with nothing said about how is a
+  // turn the author would only have to interrupt.
+  it('offers a skill the pane that owns it, and a first sentence for the agent', () => {
+    expect(menuFor(SKILL)).toEqual([
+      {
+        label: 'Open in the Skills pane',
+        id: 'view.open',
+        props: {
+          editor: 'skills',
+          where: 'elsewhere',
+          subject: '.aiagent/skills/continuity-pass/SKILL.md',
+        },
+      },
+      {
+        label: 'Ask the agent to change this skill…',
+        id: 'agent.run',
+        props: { input: 'Edit the "Continuity pass" skill: ' },
+        form: true,
+      },
+    ]);
+  });
+
   it('names a command for every entry that is not a separator', () => {
-    const every = [...TREE, node('asset:a1b2c3', 'asset'), node('wikidir:wiki', 'wikidir')];
+    const every = [...TREE, node('asset:a1b2c3', 'asset'), node('wikidir:wiki', 'wikidir'), SKILL];
     const walk = (nodes: readonly DocNode[]): void => {
       for (const each of nodes) {
         for (const entry of menuFor(each)) {
@@ -407,6 +448,12 @@ describe('renameOf', () => {
     for (const kind of ['asset', 'shot', 'branch', 'assetkind', 'dir', 'more'] as const) {
       expect(renameOf(node(`${kind}:x`, kind, { path: 'somewhere.md' }))).toBeUndefined();
     }
+  });
+
+  // It has a path and a label, so it looks renamable — but `doc.rename` rewrites `title:`, and a
+  // SKILL.md's name lives under `name:`. A double-click here would write a key nobody reads.
+  it('refuses a skill, whose name is not the key doc.rename writes', () => {
+    expect(renameOf(SKILL)).toBeUndefined();
   });
 });
 
@@ -454,22 +501,27 @@ describe('rowTitle', () => {
   });
 
   it('never hovers silently: every kind says something', () => {
-    const kinds = [
-      'branch',
-      'scene',
-      'shot',
-      'character',
-      'location',
-      'wiki',
-      'wikidir',
-      'dir',
-      'file',
-      'asset',
-      'assetkind',
-      'slot',
-      'more',
-    ] as const;
-    for (const kind of kinds) expect(rowTitle(node(`${kind}:x`, kind), plain)).not.toBe('');
+    // A `Record` rather than a list, so adding a `DocNodeKind` fails to compile here until
+    // someone has decided what its row says on hover.
+    const kinds: Record<DocNodeKind, true> = {
+      branch: true,
+      scene: true,
+      shot: true,
+      character: true,
+      location: true,
+      wiki: true,
+      wikidir: true,
+      skill: true,
+      dir: true,
+      file: true,
+      asset: true,
+      assetkind: true,
+      slot: true,
+      more: true,
+    };
+    for (const kind of Object.keys(kinds) as DocNodeKind[]) {
+      expect(rowTitle(node(`${kind}:x`, kind), plain)).not.toBe('');
+    }
   });
 });
 
