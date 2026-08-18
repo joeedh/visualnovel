@@ -19,11 +19,25 @@ import {
 } from '../../shared/layouts.js';
 import { listLayouts, readLayout, resetLayouts, writeLayout } from '../layouts.js';
 import type { CommandHost } from './host.js';
+import { templateKey, workspaceScope } from '../../shared/sessionkeys.js';
 
 const define = defineFor<CommandHost>();
 
-/** Which template the window is showing, remembered per install beside the live mesh. */
-const TEMPLATE_KEY = 'pathux.template';
+/**
+ * Which template *this* window is showing, remembered beside its live mesh.
+ *
+ * Not a module constant any more, and the reason it could never stay one is that it failed
+ * loudly: `view.applyLayout` in window A wrote the flat `pathux.template`, and
+ * `view.resetLayout` in window B then re-applied **A's** template to B. So it is derived from
+ * who asked, like any other targeted act - and from the workspace, because `session.json` is
+ * install-global and two instances on two repos would otherwise share one window 0.
+ *
+ * A command with no origin - the agent, CDP, main itself - remembers about the window its
+ * effect will actually land in, which is the focused one.
+ */
+function templateKeyFor(ctx: { root: string; origin?: number; host: CommandHost }): string {
+  return templateKey(workspaceScope(ctx.root), ctx.origin ?? ctx.host.focusedWindow());
+}
 
 const WHERE: Record<OpenWhere, string> = {
   here: 'in this pane',
@@ -32,6 +46,7 @@ const WHERE: Record<OpenWhere, string> = {
   above: 'above',
   below: 'below',
   elsewhere: 'in another pane',
+  window: 'in a new window',
 };
 
 /** What the optional subject is, said once — both `view.*` verbs take it and mean the same. */
@@ -55,11 +70,22 @@ export const viewOpen = define({
     where: prop.oneOf(OPEN_WHERE, 'where to put it', { default: 'here' }),
     subject: prop.string(SUBJECT, { default: '' }),
   },
-  run({ editor, where, subject }, ctx) {
-    ctx.host.ui({ type: 'view', action: 'open', editor, where, subject });
-    return Promise.resolve({
+  async run({ editor, where, subject }, ctx) {
+    // `window` is not something a mesh can do to itself, so it is answered here instead of
+    // pushed: the new renderer opens showing the editor, which is the same outcome by the only
+    // route that exists.
+    if (where === 'window') {
+      const id = await ctx.host.newWindow({ editor, subject: subject || undefined });
+      return {
+        message: `Showing ${editorTitle(editor)}${onSubject(subject)} in window ${id}.`,
+        data: { window: id },
+      };
+    }
+
+    ctx.host.ui({ type: 'view', action: 'open', editor, where, subject }, ctx.origin);
+    return {
       message: `Showing ${editorTitle(editor)}${onSubject(subject)} ${WHERE[where]}.`,
-    });
+    };
   },
 });
 
@@ -73,7 +99,7 @@ export const viewFocus = define({
     subject: prop.string(SUBJECT, { default: '' }),
   },
   run({ editor, subject }, ctx) {
-    ctx.host.ui({ type: 'view', action: 'focus', editor, subject });
+    ctx.host.ui({ type: 'view', action: 'focus', editor, subject }, ctx.origin);
     return Promise.resolve({ message: `Focused ${editorTitle(editor)}${onSubject(subject)}.` });
   },
 });
@@ -85,7 +111,7 @@ export const viewClose = define({
   mutating: false,
   props: {},
   run(_props, ctx) {
-    ctx.host.ui({ type: 'view', action: 'close' });
+    ctx.host.ui({ type: 'view', action: 'close' }, ctx.origin);
     return Promise.resolve({ message: 'Closed the pane.' });
   },
 });
@@ -100,7 +126,7 @@ export const viewLayout = define({
   mutating: false,
   props: {},
   run(_props, ctx) {
-    ctx.host.ui({ type: 'view', action: 'reset' });
+    ctx.host.ui({ type: 'view', action: 'reset' }, ctx.origin);
     return Promise.resolve({ message: 'Layout reset.' });
   },
 });
@@ -116,7 +142,7 @@ export const viewLayouts = define({
   props: {},
   async run(_props, ctx) {
     const layouts = await listLayouts(ctx.root, ctx.git);
-    const active = ctx.host.state.get(TEMPLATE_KEY, '');
+    const active = ctx.host.state.get(templateKeyFor(ctx), '');
     const broken = layouts.filter((entry) => entry.problem).length;
     return {
       message: `${layouts.length} layout${layouts.length === 1 ? '' : 's'}${
@@ -139,14 +165,17 @@ export const viewApplyLayout = define({
     const read = await readLayout(ctx.root, name, ctx.git);
     if (!read.ok) throw new Error(read.reason);
 
-    ctx.host.state.set(TEMPLATE_KEY, name);
-    ctx.host.ui({
-      type: 'view',
-      action: 'apply',
-      slug: name,
-      fingerprint: read.fingerprint,
-      layout: read.file,
-    });
+    ctx.host.state.set(templateKeyFor(ctx), name);
+    ctx.host.ui(
+      {
+        type: 'view',
+        action: 'apply',
+        slug: name,
+        fingerprint: read.fingerprint,
+        layout: read.file,
+      },
+      ctx.origin,
+    );
     return { message: `Rearranged the window to ${read.file.title}.` };
   },
 });
@@ -190,7 +219,7 @@ export const viewSaveLayout = define({
 
     const file: LayoutFile = { ...parsed.file, slug, title: name.trim(), source: 'saved' };
     const path = await writeLayout(ctx.root, file);
-    ctx.host.state.set(TEMPLATE_KEY, slug);
+    ctx.host.state.set(templateKeyFor(ctx), slug);
     return { message: `Saved the ${file.title} layout.`, data: { slug, path }, written: [path] };
   },
 });
@@ -224,7 +253,7 @@ export const viewResetLayout = define({
 
     // Whatever was on screen, put it back — a reset that leaves the window showing an
     // arrangement no file describes any more would be the one act that lies about itself.
-    const wanted = ctx.host.state.get(TEMPLATE_KEY, DEFAULT_LAYOUT) || DEFAULT_LAYOUT;
+    const wanted = ctx.host.state.get(templateKeyFor(ctx), DEFAULT_LAYOUT) || DEFAULT_LAYOUT;
     let read = await readLayout(ctx.root, wanted, ctx.git);
     let slug = wanted;
     if (!read.ok) {
@@ -232,14 +261,17 @@ export const viewResetLayout = define({
       read = await readLayout(ctx.root, slug, ctx.git);
     }
     if (read.ok) {
-      ctx.host.state.set(TEMPLATE_KEY, slug);
-      ctx.host.ui({
-        type: 'view',
-        action: 'apply',
-        slug,
-        fingerprint: read.fingerprint,
-        layout: read.file,
-      });
+      ctx.host.state.set(templateKeyFor(ctx), slug);
+      ctx.host.ui(
+        {
+          type: 'view',
+          action: 'apply',
+          slug,
+          fingerprint: read.fingerprint,
+          layout: read.file,
+        },
+        ctx.origin,
+      );
     }
 
     return { message: `Put ${written.length} layout file(s) back.`, written };
@@ -253,7 +285,7 @@ export const viewPalette = define({
   mutating: false,
   props: { open: prop.boolean('true to open, false to close', { default: true }) },
   run({ open }, ctx) {
-    ctx.host.ui({ type: 'palette', open });
+    ctx.host.ui({ type: 'palette', open }, ctx.origin);
     return Promise.resolve({ message: open ? 'Palette opened.' : 'Palette closed.' });
   },
 });

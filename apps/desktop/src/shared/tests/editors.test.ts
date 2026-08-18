@@ -46,6 +46,8 @@ describe('the editor vocabulary', () => {
       'here',
       'left',
       'right',
+      // Not a direction: `window` is where main opens a second renderer instead of splitting.
+      'window',
     ]);
   });
 });

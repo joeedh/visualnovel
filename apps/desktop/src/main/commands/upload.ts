@@ -54,7 +54,10 @@ async function upload(
   await ctx.host.session.setMode('plan');
   await ctx.host.session.clearAgent();
 
-  ctx.host.ui({ type: 'view', action: 'open', editor: 'convo', where: 'elsewhere', flash: true });
+  ctx.host.ui(
+    { type: 'view', action: 'open', editor: 'convo', where: 'elsewhere', flash: true },
+    ctx.origin,
+  );
   return {
     message,
     data: { batch, seed: message, suggestions: uploadSuggestions(batch) },
@@ -93,7 +96,7 @@ export const uploadPick = define({
       : { ok: true as const, note: 'Opens a file chooser.' };
   },
   async run(_props, ctx) {
-    const picked = await ctx.host.pickFiles();
+    const picked = await ctx.host.pickFiles(undefined, ctx.origin);
     if (picked.length === 0) return { message: 'Cancelled.' };
     // The dialog is not a permission: files the command would refuse are refused here too.
     return upload(picked, ctx);

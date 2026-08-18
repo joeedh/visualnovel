@@ -141,13 +141,16 @@ export const notifyFollow = define({
 
     const target = linkTarget(note);
     if (!target) return { message: 'Marked read.' };
-    ctx.host.ui({
-      type: 'view',
-      action: 'open',
-      editor: target.editor,
-      where: 'elsewhere',
-      subject: target.subject ?? '',
-    });
+    ctx.host.ui(
+      {
+        type: 'view',
+        action: 'open',
+        editor: target.editor,
+        where: 'elsewhere',
+        subject: target.subject ?? '',
+      },
+      ctx.origin,
+    );
     return { message: `Marked read, showing ${target.editor}.` };
   },
 });

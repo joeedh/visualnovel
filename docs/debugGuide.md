@@ -202,7 +202,7 @@ ports held. Re-query the ports afterwards to confirm they're released. Don't bla
 
 ### Drive it from a terminal (CDP)
 
-The dev loop always opens Chrome's remote-debugging port on `127.0.0.1:9222`, and
+The dev loop always opens Chrome's remote-debugging port on `127.0.0.1`, and
 `scripts/vn-cdp.mjs` is the ergonomic client:
 
 ```sh
@@ -210,7 +210,22 @@ node scripts/vn-cdp.mjs "view.open(editor=timeline)"  # any command DSL string
 node scripts/vn-cdp.mjs --catalog                  # the LIVE registry (never the file)
 node scripts/vn-cdp.mjs --history 5                # last commands + git provenance
 node scripts/vn-cdp.mjs --raw "<js expression>"    # evaluate anything in the renderer
+node scripts/vn-cdp.mjs --window 1 --raw "location.search"   # the second window
 ```
+
+**Which port, and which window.** `9222` is only the first choice: `scripts/vndesktop.mjs` probes
+9222–9241 and takes the first free one, so a second instance on a second project does not answer
+on the first one's port. It prints the port it took as a ready-to-paste
+`VN_CDP_PORT=<n> node scripts/vn-cdp.mjs …` line — read that rather than assuming. Setting
+`VN_CDP_PORT` yourself is honoured verbatim, empty included (which turns CDP off).
+
+A running app can have several windows, and each is its own page target. `--window <n>` picks the
+one whose url carries `?window=<n>` — the index main handed it, stable across the session and
+visible in `location.search`. Without the flag you get window 0. This matters more than it looks
+for the **two-call `window.__x` pattern** below: the two calls must land in the *same* renderer, or
+the second reads an `undefined` the first never set in that window. Pass the same `--window` to
+both, and remember that `window.__x`, `window.__drag` and `window.__vnDebug` are per-renderer —
+there is no shared scratch space between windows.
 
 This is the preferred way for an agent to poke the app: no screenshots, no window focus,
 exit code reflects command failure. Commands executed this way are recorded in

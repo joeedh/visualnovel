@@ -10,6 +10,11 @@
  *   node scripts/vn-cdp.mjs --history 5
  *   node scripts/vn-cdp.mjs --undo          # and --redo; refuses if the workspace moved
  *   node scripts/vn-cdp.mjs --raw "window.__vnDebug.explainPick(400, 300)"
+ *   node scripts/vn-cdp.mjs --window 1 "view.open(editor='script')"
+ *
+ * --window <n> picks which of the app's windows to talk to, defaulting to 0. It matters more
+ * than it looks: each window is a separate renderer with its own globals, so a scratch value
+ * parked on `window.__x` in one is simply not there in another.
  *
  * --raw evaluates the expression as-is instead of wrapping it in window.vn.exec(). It
  * crosses CDP with returnByValue, so the expression must end in a plain-data projection
@@ -17,10 +22,24 @@
  */
 import { connect, evaluate, pageTarget } from './cdp.mjs';
 
-const [arg, extra] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+
+// `--window <n>` may sit anywhere, because it says *where* rather than *what*.
+let windowIndex = 0;
+const at = argv.indexOf('--window');
+if (at !== -1) {
+  windowIndex = Number(argv[at + 1]);
+  if (!Number.isInteger(windowIndex) || windowIndex < 0) {
+    process.stderr.write('vn-cdp: --window takes a window index, e.g. --window 1\n');
+    process.exit(2);
+  }
+  argv.splice(at, 2);
+}
+
+const [arg, extra] = argv;
 if (!arg || (arg === '--raw' && !extra)) {
   process.stderr.write(
-    'usage: node scripts/vn-cdp.mjs "<command dsl>" | --catalog | --history [n] | --undo | --redo | --raw "<expr>"\n',
+    'usage: node scripts/vn-cdp.mjs [--window n] "<command dsl>" | --catalog | --history [n] | --undo | --redo | --raw "<expr>"\n',
   );
   process.exit(2);
 }
@@ -34,7 +53,7 @@ const BRIDGE = {
 };
 const expression = BRIDGE[arg] ?? `window.vn.exec(${JSON.stringify(arg)})`;
 
-const socket = await connect(await pageTarget());
+const socket = await connect(await pageTarget(windowIndex));
 try {
   const value = await evaluate(socket, expression);
   process.stdout.write(JSON.stringify(value, null, 2) + '\n');

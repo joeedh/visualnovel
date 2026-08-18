@@ -96,6 +96,7 @@ import {
   viewResetLayout,
   viewSaveLayout,
 } from './view.js';
+import { windowClose, windowNew, windowQuit } from './window.js';
 import {
   workspaceChooseDirectory,
   workspaceCreate,
@@ -208,6 +209,9 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     viewPalette,
     viewResetLayout,
     viewSaveLayout,
+    windowClose,
+    windowNew,
+    windowQuit,
     workspaceChooseDirectory,
     workspaceCreate,
     workspaceDoctree,

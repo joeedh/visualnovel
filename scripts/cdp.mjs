@@ -5,6 +5,10 @@
  *
  * Everything crosses with `returnByValue`, so an evaluated expression must end in a plain-data
  * projection — live objects and ResultSets do not survive the wire.
+ *
+ * The app can have several windows open, so a page target is chosen by index rather than taken
+ * off the top of the list: every window loads its own url with `?window=<n>` on it, and that
+ * query string is what CDP reports as the target's `url`.
  */
 export const CDP_PORT = process.env.VN_CDP_PORT ?? '9222';
 export const CDP_HOST = '127.0.0.1';
@@ -22,8 +26,15 @@ export async function connect(url) {
   return socket;
 }
 
-/** The first page target — the app has exactly one window. */
-export async function pageTarget() {
+/**
+ * The page target for one window, by the index the app gave it — window 0 unless asked.
+ *
+ * Picking `targets.find(t => t.type === 'page')` was deterministic only while a window was
+ * something the app had exactly one of. It is matched on `?window=<n>` instead, and an app old
+ * enough not to put the index on the url still answers for window 0, so the two-call
+ * `window.__x = …` / read-it-back debugging pattern keeps landing in one renderer.
+ */
+export async function pageTarget(index = 0) {
   let targets;
   try {
     targets = await (await fetch(`http://${CDP_HOST}:${CDP_PORT}/json/list`)).json();
@@ -32,8 +43,17 @@ export async function pageTarget() {
       `no CDP endpoint on ${CDP_HOST}:${CDP_PORT}. Start the app with VN_CDP_PORT=${CDP_PORT} set.`,
     );
   }
-  const page = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
-  if (!page) throw new Error('no page target — is a window open?');
+  const pages = targets.filter((t) => t.type === 'page' && t.webSocketDebuggerUrl);
+  if (pages.length === 0) throw new Error('no page target — is a window open?');
+
+  const wanted = new RegExp(`[?&]window=${index}(&|$)`);
+  const page =
+    pages.find((t) => wanted.test(String(t.url))) ??
+    (index === 0 && !pages.some((t) => /[?&]window=/.test(String(t.url))) ? pages[0] : undefined);
+  if (!page) {
+    const open = pages.map((t) => String(t.url).match(/[?&]window=(\d+)/)?.[1] ?? '?').join(', ');
+    throw new Error(`no window ${index} — open: ${open}`);
+  }
   return page.webSocketDebuggerUrl;
 }
 

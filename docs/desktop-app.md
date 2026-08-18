@@ -150,6 +150,24 @@ agent subscription, persistence, the layout watch and the report preview. The la
 the bridge on purpose — one subscribes to the invalidate feed and the other to `onExec`, and both
 are the bridge's.
 
+- **A window is a renderer, not an app instance.** One process runs one `WorkspaceSession`, one
+  `CommandStack` and one undo history; a window is a `BrowserWindow` with a mesh of panes in it,
+  and there can be several. `window.new` opens another, `window.close` closes the asking one, and
+  `window.quit` closes them all — the distinction Ctrl+W and Ctrl+Q used to blur. Each window is
+  handed an **index** at the lowest free slot, and everything it remembers — its mesh, its
+  selection, its layout template, its bounds — is keyed by that index and by the workspace
+  ([`desktopAppState.md`](desktopAppState.md)). The renderer learns which one it is from its own
+  url (`?window=<n>&ws=<scope>`) rather than over IPC, because restore happens before the first
+  paint. `window.new(editor=…)` rides the same url and is acted on once, after the remembered
+  arrangement is up, as an ordinary `view.open(where=elsewhere)` — so a window opened onto an
+  editor keeps the arrangement it had rather than replacing a pane with it. That same query string
+  is what makes a CDP page target selectable
+  (`node scripts/vn-cdp.mjs --window 1 …`). A command carries `ctx.origin` so main knows which
+  window asked, and each effect is broadcast or targeted by **type**: a workspace invalidation
+  reaches every window, a `command:ui` effect only the one that asked. Two processes on one
+  project are refused outright — see the lock in
+  [`desktopAppState.md`](desktopAppState.md#multiple-windows-of-the-same-workspace).
+  Full design: [`plans/multiple-windows.md`](plans/multiple-windows.md).
 - **A pane shows an editor, and the list of editors is written down once.**
   `apps/desktop/src/shared/editors.ts` holds all twelve (`branches`, `script`, `convo`, `timeline`,
   `tasklist`, `taskgraph`, `inspector`, `play`, `wiki`, `documents`, `asset`, `project`) with their
@@ -164,7 +182,9 @@ are the bridge's.
   not somewhere the author navigates to.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows an editor
   in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below` |
-  `elsewhere`); asking for one already open `here` is a focus, not a second copy. `elsewhere` is the
+  `elsewhere` | `window`); asking for one already open `here` is a focus, not a second copy.
+  `window` is the one value that is not a pane at all: it opens a second window showing the editor,
+  and so never reaches the mesh. `elsewhere` is the
   one that means *not on top of what I am looking at* — a pane already showing that editor is
   focused, otherwise the biggest non-chrome pane that is **not** the asking pane takes it, and only
   a mesh with nowhere else to put it splits the asking pane right. It is what a click in the

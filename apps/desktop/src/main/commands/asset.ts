@@ -94,13 +94,16 @@ export const assetUpload = define({
     const result = await ctx.host.session.uploadAsset(file, title, slot, replace);
     if (!result.ok) throw new Error(result.message);
     if (open && result.hash) {
-      ctx.host.ui({
-        type: 'view',
-        action: 'open',
-        editor: 'asset',
-        where: 'elsewhere',
-        subject: result.hash,
-      });
+      ctx.host.ui(
+        {
+          type: 'view',
+          action: 'open',
+          editor: 'asset',
+          where: 'elsewhere',
+          subject: result.hash,
+        },
+        ctx.origin,
+      );
     }
     return { message: result.message, data: result, written: result.written };
   },
@@ -150,13 +153,16 @@ export const assetReplace = define({
   },
   async run({ hash }, ctx) {
     // The chooser is not a permission: what the command would refuse is refused after it too.
-    const picked = await ctx.host.pickFiles({
-      title: 'Replace with a file',
-      buttonLabel: 'Replace',
-      extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
-      filterName: 'Images',
-      single: true,
-    });
+    const picked = await ctx.host.pickFiles(
+      {
+        title: 'Replace with a file',
+        buttonLabel: 'Replace',
+        extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
+        filterName: 'Images',
+        single: true,
+      },
+      ctx.origin,
+    );
     const file = picked[0];
     if (file === undefined) return { message: 'Cancelled.' };
 

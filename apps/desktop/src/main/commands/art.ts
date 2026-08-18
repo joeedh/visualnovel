@@ -102,13 +102,16 @@ export const artGenerate = define({
     // The same route a click on an asset in the document tree takes, so the picture lands in a
     // pane that is not the one that asked for it.
     if (open) {
-      ctx.host.ui({
-        type: 'view',
-        action: 'open',
-        editor: 'asset',
-        where: 'elsewhere',
-        subject: result.hash,
-      });
+      ctx.host.ui(
+        {
+          type: 'view',
+          action: 'open',
+          editor: 'asset',
+          where: 'elsewhere',
+          subject: result.hash,
+        },
+        ctx.origin,
+      );
     }
     return { message: result.message, data: result, written: result.written };
   },
@@ -142,13 +145,16 @@ export const artRedraw = define({
     const result = await ctx.host.session.redrawAsset(hash, prompt, title);
     if (!result.ok || !result.hash) throw new Error(result.message);
     if (open) {
-      ctx.host.ui({
-        type: 'view',
-        action: 'open',
-        editor: 'asset',
-        where: 'elsewhere',
-        subject: result.hash,
-      });
+      ctx.host.ui(
+        {
+          type: 'view',
+          action: 'open',
+          editor: 'asset',
+          where: 'elsewhere',
+          subject: result.hash,
+        },
+        ctx.origin,
+      );
     }
     return { message: result.message, data: result, written: result.written };
   },

@@ -25,6 +25,19 @@ export interface CommandContext<Host = unknown> {
    * `confirm: true` command refuses rather than assuming consent (same rule as tools).
    */
   confirm?(message: string): Promise<boolean>;
+  /**
+   * Who asked, as an opaque number carried for the length of one execution.
+   *
+   * The framework never learns what it means; the desktop is the half that says it is a window
+   * id, so a `view.*` effect can be answered by the window whose palette ran it. It is built as
+   * a per-execution shallow overlay on the shared context precisely because commands overlap —
+   * a mutable field would be clobbered by the next palette command while a `pipeline.run` was
+   * still going.
+   *
+   * Deliberately absent from `CommandRecord`: a window index means nothing to a reader of
+   * `commands.jsonl` a week later.
+   */
+  origin?: number;
 }
 
 /** What a command returns. Mirrors `ToolResult` minus the LLM-facing observation split. */

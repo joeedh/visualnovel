@@ -2,7 +2,17 @@ import { AreaFlags, Menu, createMenu, type Container, type Label, type MenuTempl
 import { isLive } from '../../api.js';
 import { EDITOR_IDS, EDITORS, editorTooltip, type EditorId } from '../../../src/shared/editors.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
-import { check, exec, move, onInvalidate, quit, report, say, toggleMode } from '../bridge.js';
+import {
+  check,
+  closeWindow,
+  exec,
+  move,
+  onInvalidate,
+  quit,
+  report,
+  say,
+  toggleMode,
+} from '../bridge.js';
 import { pickPaneToClose } from '../closepane.js';
 import type { VnContext } from '../context.js';
 import { currentLayoutFile, fetchLayouts } from '../layouts.js';
@@ -11,6 +21,7 @@ import { openCommandDialog } from '../dialog.js';
 import { openNotifications } from '../notifications.js';
 import { openPalette } from '../palette.js';
 import { openReportDialog } from '../report.js';
+import { paneToUse } from '../panes.js';
 import { panesOf } from '../view.js';
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
@@ -423,7 +434,12 @@ export class VnHeaderEditor extends VnEditor {
         tooltip: 'Switch the agent between reading only and being allowed to apply edits',
       },
       Menu.SEP,
-      { name: 'Quit', callback: () => quit(), hotkey: 'Ctrl+Q', tooltip: 'Close the window' },
+      {
+        name: 'Quit',
+        callback: () => void quit(),
+        hotkey: 'Ctrl+Q',
+        tooltip: 'Close every window and quit vnstudio',
+      },
     ];
   }
 
@@ -476,7 +492,46 @@ export class VnHeaderEditor extends VnEditor {
         callback: () => this.ctx.screen.splitTool(),
         tooltip: 'Drag a line across a pane to divide it in two.',
       },
+      Menu.SEP,
+      // A window is the fourth way to divide the screen, and it belongs beside the other three
+      // rather than in a menu of its own — an author reaching for "put this on the other
+      // monitor" is looking where they look for a split.
+      {
+        name: 'New Window',
+        callback: () => void exec('window.new'),
+        hotkey: 'Ctrl+Shift+N',
+        tooltip: 'Open another window onto this project — one app, panes across two monitors',
+      },
+      {
+        name: 'Close Window',
+        callback: () => void closeWindow(),
+        hotkey: 'Ctrl+W',
+        tooltip: 'Close this window; closing the last one quits',
+      },
+      {
+        name: 'Move Pane to New Window',
+        callback: () => void this.movePaneToWindow(),
+        tooltip: 'Reopen the active pane’s editor in a window of its own and close it here',
+      },
     ];
+  }
+
+  /**
+   * Two invocations rather than one command, on purpose: "move" is only ever `window.new` and
+   * then `view.close`, and a third command that did both would be a third thing to keep honest.
+   * The close comes second and only if the window opened, so a refused open leaves the pane.
+   */
+  private async movePaneToWindow(): Promise<void> {
+    const screen = (this.ctx as VnContext).state.screen;
+    const pane = screen ? panesOf(screen)[paneToUse(panesOf(screen))] : undefined;
+    if (!pane || !pane.editor) {
+      say('There is no pane to move.', true);
+      return;
+    }
+
+    const opened = await exec('window.new', { editor: pane.editor });
+    report(opened);
+    if (opened.ok) report(await exec('view.close'));
   }
 
   /** Hand the pick a live mesh, or say why there is nothing to point at. */

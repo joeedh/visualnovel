@@ -33,6 +33,7 @@ async function wouldOpen(
   path: string,
   current: string,
   busy: string | undefined,
+  takenElsewhere: (root: string) => Promise<boolean>,
 ): Promise<{ ok: true; note: string } | { ok: false; reason: string }> {
   const root = resolve(path);
   if (root === resolve(current)) return { ok: false, reason: `${root} is already open.` };
@@ -41,6 +42,13 @@ async function wouldOpen(
   const found = await inspectWorkspace(root);
   if (!found.directory) return { ok: false, reason: `${root} is not a directory.` };
   if (found.problem) return { ok: false, reason: found.problem };
+  // One instance per workspace: the undo shadow refs, the committer and the agent conversation
+  // are all per project, and two live stacks over one repo overwrite each other's snapshots in
+  // silence. So opening a project twice is refused, and running it anyway focuses the instance
+  // that has it rather than switching. This can race `run`, which is why `run` re-decides.
+  if (await takenElsewhere(root)) {
+    return { ok: false, reason: `${root} is already open in another window.` };
+  }
   return {
     ok: true,
     note: found.project
@@ -125,12 +133,16 @@ export const workspaceOpen = define({
   description:
     'Open a project directory, making it one if it is not yet: writes a minimal project.yaml, ' +
     'initializes a git repository and commits whatever is already there. Closes the current ' +
-    'project — its agent conversation and undo history go with it.',
+    'project — its agent conversation and undo history go with it. Refuses a project another ' +
+    'app instance already has open, and focuses that instance instead.',
   mutating: true,
   props: {
     path: prop.string('the project directory to open'),
   },
-  check: (props, ctx) => wouldOpen(props.path, ctx.root, ctx.host.session.busy()),
+  check: (props, ctx) =>
+    wouldOpen(props.path, ctx.root, ctx.host.session.busy(), (root) =>
+      ctx.host.workspaceIsOpenElsewhere(root),
+    ),
   async run(props, ctx) {
     const opened = await ctx.host.openWorkspace(resolve(props.path));
     return { message: `Opened ${opened.title} (${opened.root}).` };
@@ -152,11 +164,13 @@ export const workspacePick = define({
       : { ok: true as const, note: 'Opens a directory chooser.' };
   },
   async run(_props, ctx) {
-    const picked = await ctx.host.pickDirectory();
+    const picked = await ctx.host.pickDirectory(undefined, ctx.origin);
     if (!picked) return { message: 'Cancelled.' };
 
     // The dialog is not a permission: a folder the command would refuse is refused here too.
-    const verdict = await wouldOpen(picked, ctx.root, ctx.host.session.busy());
+    const verdict = await wouldOpen(picked, ctx.root, ctx.host.session.busy(), (root) =>
+      ctx.host.workspaceIsOpenElsewhere(root),
+    );
     if (!verdict.ok) throw new Error(verdict.reason);
     const opened = await ctx.host.openWorkspace(resolve(picked));
     return { message: `Opened ${opened.title} (${opened.root}).` };
@@ -172,10 +186,10 @@ export const workspaceChooseDirectory = define({
   mutating: false,
   props: {},
   async run(_props, ctx) {
-    const picked = await ctx.host.pickDirectory({
-      title: 'Choose a folder',
-      buttonLabel: 'Choose folder',
-    });
+    const picked = await ctx.host.pickDirectory(
+      { title: 'Choose a folder', buttonLabel: 'Choose folder' },
+      ctx.origin,
+    );
     return picked
       ? { message: `Chose ${picked}.`, data: { path: picked } }
       : { message: 'Cancelled.' };

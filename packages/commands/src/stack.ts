@@ -51,7 +51,7 @@ export class CommandStack<Host = unknown> {
   constructor(private readonly opts: CommandStackOptions<Host>) {}
 
   /** Parse and run a DSL invocation, e.g. `gate.approve(characterId='aiko')`. */
-  async execDsl(text: string, source: CommandSource): Promise<CommandOutcome> {
+  async execDsl(text: string, source: CommandSource, origin?: number): Promise<CommandOutcome> {
     let parsed;
     try {
       parsed = parseCommand(text);
@@ -59,13 +59,20 @@ export class CommandStack<Host = unknown> {
       const message = err instanceof DslError ? err.message : String(err);
       return { ok: false, error: `could not parse command: ${message}` };
     }
-    return this.exec(parsed.id, parsed.props, source);
+    return this.exec(parsed.id, parsed.props, source, origin);
   }
 
+  /**
+   * `origin` is who asked, carried for this execution only. It is a shallow overlay on the
+   * shared context rather than a field on it, because commands genuinely overlap: a mutable
+   * field would be clobbered by the next invocation while this one was still running. Absent
+   * means nobody in particular asked, and the host decides who to answer.
+   */
   async exec(
     id: string,
     raw: Record<string, unknown>,
     source: CommandSource,
+    origin?: number,
   ): Promise<CommandOutcome> {
     const command = this.opts.registry.get(id);
     if (!command) return { ok: false, error: `unknown command "${id}"` };
@@ -76,7 +83,8 @@ export class CommandStack<Host = unknown> {
     }
     const props = coerced.value;
 
-    const ctx = this.opts.context;
+    const ctx: CommandContext<Host> =
+      origin === undefined ? this.opts.context : { ...this.opts.context, origin };
     if (command.confirm) {
       if (!ctx.confirm) {
         return { ok: false, error: `"${id}" needs confirmation, but no gate is wired` };
@@ -152,6 +160,7 @@ export class CommandStack<Host = unknown> {
   async check(
     id: string,
     raw: Record<string, unknown>,
+    origin?: number,
   ): Promise<{ state: 'accept' | 'refuse' | 'undeclared'; message: string }> {
     const command = this.opts.registry.get(id);
     if (!command) return { state: 'refuse', message: `unknown command "${id}"` };
@@ -168,7 +177,9 @@ export class CommandStack<Host = unknown> {
     }
 
     try {
-      const result = await command.check(coerced.value as never, this.opts.context);
+      const ctx: CommandContext<Host> =
+        origin === undefined ? this.opts.context : { ...this.opts.context, origin };
+      const result = await command.check(coerced.value as never, ctx);
       return result.ok
         ? { state: 'accept', message: result.note }
         : { state: 'refuse', message: result.reason };

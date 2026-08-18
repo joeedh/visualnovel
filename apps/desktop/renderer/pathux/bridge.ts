@@ -176,12 +176,19 @@ export async function move(direction: 'undo' | 'redo'): Promise<void> {
 }
 
 /**
- * Quit. `Menu.setApplicationMenu(null)` took the stock Ctrl+Q with it, so the shell owns the
- * gesture — and `window.close()` is the right way to spend it: it runs the same `beforeunload`
- * guard the window's own close button does, so an unsaved draft still gets asked about.
+ * Quit the app, and close just this window.
+ *
+ * Both go through main, and Quit having to is the bug the second window exposed: it was
+ * `window.close()`, which closes the renderer that asked and leaves the others up — a Quit that
+ * quits nothing. Main closes them all, and each still runs its own `will-prevent-unload`, so an
+ * unsaved draft in *any* window is still asked about.
  */
-export function quit(): void {
-  window.close();
+export async function quit(): Promise<void> {
+  report(await exec('window.quit'));
+}
+
+export async function closeWindow(): Promise<void> {
+  report(await exec('window.close'));
 }
 
 /**

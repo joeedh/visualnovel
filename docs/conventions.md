@@ -1,5 +1,15 @@
 # Conventions
 
+<!-- toc -->
+
+- [Comments](#comments)
+- [Plans](#plans)
+- [Research](#research)
+- [Documentation](#documentation)
+- [Finishing a plan](#finishing-a-plan)
+
+<!-- tocstop -->
+
 How this repository is written, as opposed to what it does. Comment style, where plans and
 research are filed, how documentation is kept honest, and the checklist a plan passes before
 it counts as finished.

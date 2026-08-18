@@ -197,6 +197,10 @@ editors, the session store, the seeded workspace, and every behaviour below in f
 - **One workspace at a time, and opening another is a teardown** — but **creating one scaffolds
   where opening does not**, in its own dialog, into its own repository.
   ([`docs/plans/new-and-open-project.md`](docs/plans/new-and-open-project.md))
+- **A window is a renderer, not an app instance, and one instance owns a workspace** — `window.*`
+  plus `view.open(where=window)`, everything a window remembers keyed by its index, `ctx.origin`
+  saying which one asked, and a socket lock refusing a second process on the same project.
+  ([`docs/plans/multiple-windows.md`](docs/plans/multiple-windows.md))
 - **A model key is written to a file git cannot see, and recorded as `<secret>`**
   (`project.setKey`, deliberately not undoable).
 - **A layout template is an arrangement the project owns, and it is never merged** —

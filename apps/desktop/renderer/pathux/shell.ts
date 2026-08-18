@@ -12,7 +12,7 @@ import {
 } from 'pathux';
 import { installAgent } from './agent.js';
 import { defineShellApi } from './api.js';
-import { installBridge } from './bridge.js';
+import { exec, installBridge } from './bridge.js';
 import { editorNameProblems } from '../../src/shared/editors.js';
 import {
   DEFAULT_RECIPE,
@@ -92,6 +92,27 @@ class Shell implements ShellApp {
     // After the bridge, which is where `exec` and the invalidate feed come from.
     installLayoutWatch();
     installReportPreview();
+    this.showRequestedEditor();
+  }
+
+  /**
+   * `window.new(editor= subject=)` asks for a window that opens showing something in particular.
+   * Main cannot say so over IPC — this runs before the renderer has answered anything — so the
+   * request rides the url, and the window acts on it once, here, after its remembered
+   * arrangement is already up. It goes through `view.open` rather than switching an area by
+   * hand so that a window opened this way is recorded, and lands, exactly like a `view.open`
+   * anywhere else. `elsewhere` rather than `here`: the remembered arrangement is the point, and
+   * replacing whichever pane happened to be active would throw part of it away.
+   */
+  private showRequestedEditor(): void {
+    const params = new URLSearchParams(location.search);
+    const editor = params.get('editor');
+    if (!editor) return;
+    void exec('view.open', {
+      editor,
+      where: 'elsewhere',
+      subject: params.get('subject') ?? '',
+    });
   }
 
   /**

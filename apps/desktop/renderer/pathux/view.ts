@@ -87,7 +87,7 @@ function flashed(screen: VnScreen, effect: ViewEffect, correction: string | null
 type Split = { horiz: boolean; intoNew: boolean };
 
 /** Which way `splitArea` divides, and whether the *new* half is the one that gets the editor. */
-const SPLIT: Record<Exclude<OpenWhere, 'here' | 'elsewhere'>, Split> = {
+const SPLIT: Record<Exclude<OpenWhere, 'here' | 'elsewhere' | 'window'>, Split> = {
   left: { horiz: false, intoNew: false },
   right: { horiz: false, intoNew: true },
   above: { horiz: true, intoNew: false },
@@ -120,7 +120,7 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
       index = from;
       split = SPLIT.right;
     }
-  } else if (where !== 'here') {
+  } else if (where !== 'here' && where !== 'window') {
     split = SPLIT[where];
   }
   const target = areas[index] as ScreenArea;

@@ -12,6 +12,8 @@
   * [Undo is opt-in, and rests on shadow snapshots](#undo-is-opt-in-and-rests-on-shadow-snapshots)
   * [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
 - [The registered commands](#the-registered-commands)
+  * [The `window.` namespace](#the-window-namespace)
+  * [`origin` — which window asked](#origin--which-window-asked)
   * [The `doc.` namespace](#the-doc-namespace)
   * [The `prompt.` namespace](#the-prompt-namespace)
   * [Interactions: the gesture surface](#interactions-the-gesture-surface)
@@ -277,8 +279,8 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-Ninety-nine, in seventeen namespaces. Fifty-seven are `mutating`; fifty-eight declare a
-precondition; thirty-four are undoable; fourteen ask for confirmation. (The table below is every
+A hundred and six, in eighteen namespaces. Fifty-nine are `mutating`; sixty-four declare a
+precondition; thirty-six are undoable; fourteen ask for confirmation. (The table below is every
 one of them but `notify.*`, which [`notifications.md`](plans/notifications.md) states in full.)
 
 **Commands are the only write path.** The `story.*` branch mutators go through
@@ -377,7 +379,7 @@ none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 | `workspace.pick` ✍ ✓           | —                                 | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
 | `workspace.chooseDirectory`    | —                                 | Open the folder chooser and answer with what was chosen, touching nothing — what fills in a `directory` field. |
 | `workspace.recent`             | —                                 | The open project and the ones opened before it, most recent first. |
-| `view.open`                    | `editor`, `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`, default `here`), `subject` | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane. |
+| `view.open`                    | `editor`, `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`\|`window`, default `here`), `subject` | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane; `window` is not a pane at all — it opens a second window showing the editor. |
 | `view.focus`                   | `editor`, `subject`               | Makes the pane already showing an editor the active one.   |
 | `view.close`                   | —                                 | Collapses the active pane into its neighbour; the last pane is kept. |
 | `view.layout`                  | —                                 | Throws the remembered arrangement away and rebuilds the default one, ignoring the project's layout templates. The escape hatch; the menu offers `view.applyLayout` instead. |
@@ -454,6 +456,46 @@ is focused; otherwise the biggest non-chrome pane that is not the asking one tak
 mesh with nowhere else to put it splits the asking pane right. It exists because a click in the
 documents tree opens the Asset editor, and a sidebar that replaced itself with the thing it named
 would leave the author nothing to click next.
+
+**`where=window` is the one value that never reaches the mesh.** It short-circuits in main into
+`host.newWindow({editor, subject})` and answers with the new window's index, because there is no
+pane to split: the arrangement it lands in is whatever that window index last had, with the named
+editor put in front of it. It is a `view.*` value rather than a fourth `window.*` command so that
+"open the Asset editor over there" stays one act however far away *there* is.
+
+### The `window.` namespace
+
+| Command        | Props              | What it does                                                                                                                                                                       |
+| -------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `window.new`   | `editor`, `subject` | Open another window onto the same project. A second *view*, not a second app: one process, one `WorkspaceSession`, one undo history. Both props are optional; naming an editor opens showing it. |
+| `window.close` | —                  | Close the asking window. Its note says how many stay open, or that this is the last one and closing it quits.                                                                       |
+| `window.quit`  | —                  | Close every window and quit. The note counts them.                                                                                                                                  |
+
+None of the three is `mutating`: a window holds a mesh of panes and nothing else, so there is
+nothing to write, undo or commit. Both `close` and `quit` declare a `check` anyway — not to refuse,
+but because the consequence is worth reading before pressing, and a menu entry shows its command's
+note. `window.close` closes the window named by `ctx.origin`, falling back to the focused one.
+
+### `origin` — which window asked
+
+`exec`, `execDsl` and `check` all take an optional trailing `origin: number`, an **opaque** value
+the framework never interprets; the desktop app happens to pass a window index. It reaches a
+command as `ctx.origin`, and it is what lets `window.close` close the right window, `view.*` push
+its effect into the asking mesh, and `view.applyLayout` write the asking window's template key.
+`undefined` means nobody said — the agent, CDP, main itself — and every consumer treats that as
+"the focused window", because that is where an unaddressed effect would land anyway.
+
+It is applied as a **per-execution shallow overlay** on the context, never assigned to the shared
+one. Commands overlap: a mutable `context.origin` set before `run` reads correctly until two
+windows dispatch at once, at which point the second write lands while the first is still awaiting
+and its effect goes to the wrong window — a bug invisible in a single-window app and
+unreproducible by hand in a multi-window one. `packages/commands/src/tests/origin.test.ts` parks
+one command inside `run` while another goes through, and asserts both reads.
+
+`origin` is deliberately **absent from `CommandRecord`**. The journal records what was done to the
+project, and which window an author happened to be looking at is not that: it would make two
+identical acts diff differently, and it is meaningless on replay, where there are no windows.
+`source` already carries the distinction that matters — `ui` against `agent` against `cdp`.
 
 The `story.*` mutators are the same discipline one level down — each is one authorial act, so a
 drag in the branch editor or the coverage timeline is one command and one `CommandRecord`, never

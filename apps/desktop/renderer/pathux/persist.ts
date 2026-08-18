@@ -3,6 +3,11 @@
  * `.vndesktop/session.json` the React rooms used, under two new keys — the flat
  * `panel.<id>.width` keys retire with the rooms that wrote them.
  *
+ * Both keys are **per window and per workspace** (`../../src/shared/sessionkeys.ts`), because
+ * `session.json` is install-global and a mesh is the one thing every window has its own of.
+ * Which window this is arrives on the url rather than over IPC: restoring happens before the
+ * first paint, and `workspace.index()` has not come back yet.
+ *
  * The layout is nstructjs rather than hand-rolled JSON, through path.ux's own
  * `simple.saveFile`/`loadFile`: those stamp the struct schema into the blob, so a layout
  * written before path.ux changed a `STRUCT` still reads back instead of throwing. Nothing
@@ -11,12 +16,34 @@
  */
 import { DataPathWatcher, simple, type ContextLike } from 'pathux';
 import { api } from '../api.js';
+import {
+  LEGACY_KEYS,
+  layoutKey,
+  selectionKey,
+  windowIdentity,
+} from '../../src/shared/sessionkeys.js';
 import type { ShellApp } from './context.js';
 import { knownAreaNames } from './editor.js';
 import type { ShellState } from './state.js';
 
-const LAYOUT_KEY = 'pathux.layout';
-const SELECTION_KEY = 'pathux.selection';
+const ME = windowIdentity(location.search);
+
+const LAYOUT_KEY = layoutKey(ME.scope, ME.window);
+const SELECTION_KEY = selectionKey(ME.scope, ME.window);
+
+/**
+ * What an install written before windows were plural left behind, read as window 0.
+ *
+ * Only window 0 may inherit it, and only for a read — the first save writes the scoped key and
+ * the flat one is never written again. Without this an existing install would open, once, to a
+ * default screen with nothing selected, which reads as data loss even though nothing was lost.
+ */
+function stored(key: string, legacy: string): unknown {
+  const session = api.session.initial();
+  const own = session[key];
+  if (own !== undefined) return own;
+  return ME.window === 0 ? session[legacy] : undefined;
+}
 
 /** The header field is `static_string[4]`, so this is exactly four characters. */
 const MAGIC = 'VNSC';
@@ -125,9 +152,9 @@ export function loadScreen(shell: ShellApp, blob: object): boolean {
  * screen is in the document and `shell.screen` points at it — `loadFile` does both.
  */
 export function restoreLayout(shell: ShellApp): boolean {
-  const stored = api.session.initial()[LAYOUT_KEY];
-  if (stored === undefined || stored === null || typeof stored !== 'object') return false;
-  return loadScreen(shell, stored);
+  const blob = stored(LAYOUT_KEY, LEGACY_KEYS.layout);
+  if (blob === undefined || blob === null || typeof blob !== 'object') return false;
+  return loadScreen(shell, blob);
 }
 
 /**
@@ -140,7 +167,7 @@ export function restoreLayout(shell: ShellApp): boolean {
  * The walk is by shape rather than by path: `screen.sareas[].area` is path.ux's business, and a
  * scan for the field survives it moving.
  */
-function buildable(stored: object): boolean {
+function buildable(blob: object): boolean {
   const known = knownAreaNames();
   const seen = new Set<unknown>();
 
@@ -157,7 +184,7 @@ function buildable(stored: object): boolean {
     return Object.values(node).every(walk);
   };
 
-  return walk(stored);
+  return walk(blob);
 }
 
 export function saveSelection(ui: ShellState): void {
@@ -172,16 +199,11 @@ export function saveSelection(ui: ShellState): void {
 
 /** Restore the ids before the screen is built, so the first paint is the saved one. */
 export function restoreSelection(ui: ShellState): void {
-  const stored = api.session.initial()[SELECTION_KEY];
-  if (
-    stored === undefined ||
-    stored === null ||
-    typeof stored !== 'object' ||
-    Array.isArray(stored)
-  )
+  const saved = stored(SELECTION_KEY, LEGACY_KEYS.selection);
+  if (saved === undefined || saved === null || typeof saved !== 'object' || Array.isArray(saved))
     return;
 
-  const selection = stored as Partial<StoredSelection>;
+  const selection = saved as Partial<StoredSelection>;
   ui.sceneId = selection.sceneId ?? '';
   ui.shotId = selection.shotId ?? '';
   ui.characterId = selection.characterId ?? '';

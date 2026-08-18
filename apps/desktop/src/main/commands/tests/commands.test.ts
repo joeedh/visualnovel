@@ -33,6 +33,7 @@ describe('the desktop registry', () => {
       'story',
       'upload',
       'view',
+      'window',
       'workspace',
     ]);
   });
@@ -256,6 +257,9 @@ describe('the desktop registry', () => {
       'upload.pick',
       'view.resetLayout',
       'view.saveLayout',
+      // Neither writes anything; both say what pressing it costs, which is a window or all of them.
+      'window.close',
+      'window.quit',
       'workspace.create',
       'workspace.import',
       'workspace.open',
@@ -268,6 +272,10 @@ describe('the desktop registry', () => {
       'pipeline.stop',
       'report.agent',
       'report.openIssue',
+      // A window writes nothing, but closing one is not free either: the tooltip on a disabled
+      // or last-window control is this check's sentence, so both declare one.
+      'window.close',
+      'window.quit',
     ]);
   });
 

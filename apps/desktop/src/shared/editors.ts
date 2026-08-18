@@ -136,10 +136,23 @@ export function editorTooltip(id: EditorId): string {
  * Where `view.open` puts an editor: in the pane you are in, in a new one beside it, or
  * `elsewhere` — the biggest pane that is *not* the one asking, splitting only when there is no
  * other. That last one is what a sidebar wants: opening into itself would replace the sidebar.
+ *
+ * `window` is the odd one and is deliberately in the same list: to an author "put the script on
+ * the other monitor" is the same sentence as "put it below", and only the app knows a monitor is
+ * a whole second renderer. It never reaches the mesh — main answers it with `window.new` instead
+ * of pushing an effect — so the renderer's own table excludes it by type rather than by check.
  */
-export type OpenWhere = 'here' | 'left' | 'right' | 'above' | 'below' | 'elsewhere';
+export type OpenWhere = 'here' | 'left' | 'right' | 'above' | 'below' | 'elsewhere' | 'window';
 
-export const OPEN_WHERE = ['here', 'left', 'right', 'above', 'below', 'elsewhere'] as const;
+export const OPEN_WHERE = [
+  'here',
+  'left',
+  'right',
+  'above',
+  'below',
+  'elsewhere',
+  'window',
+] as const;
 
 /**
  * Where this build's registry and this list disagree. Both directions matter and only one of

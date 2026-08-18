@@ -1,6 +1,6 @@
 # Multiple Windows
 
-Status: **planned**
+Status: **implemented** (Steps 0–3; Step 4, torn-off editor windows, was cut)
 
 ## Context
 

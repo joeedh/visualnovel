@@ -19,6 +19,7 @@ import {
   Menu,
   net,
   protocol,
+  screen,
   shell,
 } from 'electron';
 import { existsSync } from 'node:fs';
@@ -37,6 +38,21 @@ import { categoryOfCommand, shouldFileCommand } from '../shared/notify.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
 import {
+  acquireWorkspace,
+  focusOwner,
+  workspaceIsTaken,
+  type InstanceLock,
+} from './instancelock.js';
+import {
+  clampBounds,
+  Pending,
+  WindowList,
+  Windows,
+  type RememberedWindow,
+  type WindowId,
+} from './windows.js';
+import { workspaceScope, windowsKey } from '../shared/sessionkeys.js';
+import {
   adoptGitAttributes,
   ensureRepo,
   inspectWorkspace,
@@ -46,6 +62,8 @@ import {
   seedWorkspace,
 } from './workspace.js';
 import type {
+  EventChannel,
+  EventChannels,
   InvokeChannel,
   InvokeChannels,
   PlanDecision,
@@ -100,44 +118,17 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-let win: BrowserWindow | null = null;
+/**
+ * Every window onto this workspace. A window is a *view*: one process, one session, one command
+ * stack, one project, N renderers. See `./windows.ts` for why the registry itself may not
+ * import `electron`.
+ */
+const windows = new Windows<BrowserWindow>();
 let session: WorkspaceSession | null = null;
 let stack: CommandStack<CommandHost> | null = null;
 let sessionStore: SessionStore | null = null;
-/**
- * A request main is blocked on until the renderer answers it. Plan approval, a clarifying
- * question and an always-confirm tool are the same shape, so they share one: an id, the promise
- * the agent turn is parked on, and the answer {@link abandon} gives when nobody is left to ask —
- * a window that closes or a workspace that is torn down mid-turn must *end* the turn, and a
- * promise that nothing will ever resolve hangs the agent for the life of the process.
- */
-class Pending<T> {
-  private readonly waiting = new Map<number, (value: T) => void>();
-  private seq = 0;
-
-  constructor(private readonly abandoned: T) {}
-
-  ask(send: (id: number) => void): Promise<T> {
-    return new Promise<T>((resolve) => {
-      const id = ++this.seq;
-      this.waiting.set(id, resolve);
-      send(id);
-    });
-  }
-
-  answer(id: number, value: T): void {
-    const resolve = this.waiting.get(id);
-    if (!resolve) return;
-    this.waiting.delete(id);
-    resolve(value);
-  }
-
-  abandon(): void {
-    const waiters = [...this.waiting.values()];
-    this.waiting.clear();
-    for (const resolve of waiters) resolve(this.abandoned);
-  }
-}
+/** The lock on the open project — one instance per workspace (`./instancelock.ts`). */
+let instanceLock: InstanceLock | null = null;
 
 const pendingPlans = new Pending<PlanDecision>({ approved: false });
 /** An unanswered question is silence, not a guess; an unanswered confirmation is a refusal. */
@@ -149,6 +140,37 @@ function abandonPending(): void {
   pendingPlans.abandon();
   pendingAsks.abandon();
   pendingConfirms.abandon();
+}
+
+/** One window closed. Only the turns parked on *that* window end; the others are still asked. */
+function abandonPendingBy(id: WindowId): void {
+  pendingPlans.by(id);
+  pendingAsks.by(id);
+  pendingConfirms.by(id);
+}
+
+/**
+ * Where a push goes when nobody asked for it: the focused window, falling back to the most
+ * recently focused one. Every *targeted* push resolves through here too, because a window that
+ * closed between the command starting and the effect landing must not swallow the answer.
+ */
+function windowFor(target?: WindowId): BrowserWindow | undefined {
+  const named = target === undefined ? undefined : windows.get(target);
+  return named ?? windows.focusedHandle();
+}
+
+/** A fact about the process, not an answer to a question: every window hears it. */
+function broadcast<C extends EventChannel>(channel: C, payload: EventChannels[C]): void {
+  for (const { handle } of windows.all()) handle.webContents.send(channel, payload);
+}
+
+/** An answer to a question one window asked. */
+function sendTo<C extends EventChannel>(
+  target: WindowId | undefined,
+  channel: C,
+  payload: EventChannels[C],
+): void {
+  windowFor(target)?.webContents.send(channel, payload);
 }
 
 let workspaceRoot: string | null = null;
@@ -228,16 +250,42 @@ async function resolveWorkspace(): Promise<void> {
  * stack and its undo journal, the repo map, and the undo revision. Undo never crosses a
  * workspace boundary, and nothing may cache the root across this call.
  */
+/** The project's name, remembered so a window opened later can be titled like the rest. */
+let projectTitle = '';
+
 /**
- * Name the window after the project. The header shows it too, but the taskbar and the window
+ * Name every window after the project. The header shows it too, but the taskbar and the window
  * switcher see only this — and three windows all called `vnstudio` is not a list.
+ *
+ * With more than one window that problem comes straight back, so each title gains its own
+ * ` (n)` while there is more than one, and loses it again when only one is left.
  */
-function nameWindow(title: string): void {
-  win?.setTitle(title ? `${title} — vnstudio` : 'vnstudio');
+function nameWindows(title: string = projectTitle): void {
+  projectTitle = title;
+  const base = title ? `${title} — vnstudio` : 'vnstudio';
+  const open = windows.all();
+  for (const { id, handle } of open) {
+    handle.setTitle(open.length > 1 ? `${base} (${id + 1})` : base);
+  }
 }
 
 async function switchWorkspace(root: string): Promise<{ root: string; title: string }> {
+  // Acquire the new root *before* releasing the old one, so a switch never drops a lock it might
+  // then fail to reclaim. `check` may have said yes a moment ago and been overtaken since, which
+  // is why this re-decides rather than trusting it.
+  const target = resolvePath(root);
+  const lock =
+    resolvePath(workspaceRoot ?? '') === target
+      ? instanceLock
+      : await acquireWorkspace(target, focusFrontWindow);
+  if (!lock) {
+    await focusOwner(target);
+    throw new Error(`${target} is already open in another window.`);
+  }
+
   const opened = await openWorkspace(root);
+  if (instanceLock && instanceLock !== lock) await instanceLock.release();
+  instanceLock = lock;
   // The agent being dropped may be parked on a question nobody is going to answer now.
   abandonPending();
   notifications().suspend();
@@ -249,13 +297,10 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   await openRepos();
   rememberWorkspace(getSessionStore(), opened.root);
   // Pushed directly rather than through the command host: the stack that is running the command
-  // asking for this switch is the one being discarded.
-  win?.webContents.send('command:ui', {
-    type: 'workspace',
-    root: opened.root,
-    title: opened.title,
-  });
-  nameWindow(opened.title);
+  // asking for this switch is the one being discarded. Every window remounts — the workspace is
+  // process-wide, so opening another project tears all of them down.
+  broadcast('command:ui', { type: 'workspace', root: opened.root, title: opened.title });
+  nameWindows(opened.title);
   return { root: opened.root, title: opened.title };
 }
 
@@ -308,35 +353,59 @@ function committer(): Committer {
  */
 installNotifications({
   file: () => (workspaceRoot ? new ProjectPaths(workspaceRoot).notificationsLog : undefined),
-  push: (note) => win?.webContents.send('notify:changed', { note }),
+  // Broadcast, in full: the note frame is per-window chrome, so an author looking at the other
+  // monitor should still see what happened, and every window's bell has a count to keep honest.
+  push: (note) => broadcast('notify:changed', { note }),
 });
 
+/**
+ * The window that started the current agent turn, remembered from `agent:run`'s sender. There is
+ * one conversation, so there is one in-flight turn — a plan prompt therefore has exactly one
+ * right place to land. A turn started by anything but a window (CDP, a schedule) leaves this
+ * undefined and the prompt goes to the focused window, like any other unaddressed push.
+ */
+let turnWindow: WindowId | undefined;
+
+/**
+ * Ask the window that started the turn, and **focus it**: `agent:event` broadcasts, so every
+ * window shows the agent thinking, and a prompt that landed unfocused on the other monitor would
+ * read as a hung turn on the one the author is actually looking at. A window that went away
+ * mid-turn falls back to the focused one rather than parking forever.
+ */
+function askWindow<T>(pending: Pending<T>, send: (id: number, win: BrowserWindow) => void) {
+  const target = windowFor(turnWindow);
+  if (!target) return Promise.resolve(pending.abandonedValue);
+  const id = windows.byHandle(target);
+  target.focus();
+  return pending.ask((requestId) => send(requestId, target), id);
+}
+
 const deps: SessionDeps = {
-  emitEvent: (event) => win?.webContents.send('agent:event', event),
+  emitEvent: (event) => broadcast('agent:event', event),
   requestPlan: (plan) =>
-    pendingPlans.ask((id) => {
+    askWindow(pendingPlans, (id, target) => {
       const request: PlanRequest = { id, plan };
-      win?.webContents.send('permission:plan', request);
+      target.webContents.send('permission:plan', request);
     }),
   requestAnswer: (question, choices) =>
-    pendingAsks.ask((id) => {
+    askWindow(pendingAsks, (id, target) => {
       const request: AskRequest = {
         id,
         question,
         ...(choices ? { choices: choices.options, multi: choices.multi } : {}),
       };
-      win?.webContents.send('permission:ask', request);
+      target.webContents.send('permission:ask', request);
     }),
   requestConfirm: (tool, detail) =>
-    pendingConfirms.ask((id) => {
+    askWindow(pendingConfirms, (id, target) => {
       const request: ConfirmRequest = { id, tool, detail };
-      win?.webContents.send('permission:confirm', request);
+      target.webContents.send('permission:confirm', request);
     }),
   appVersion: app.getVersion(),
   userData: app.getPath('userData'),
   openExternal: (url) => shell.openExternal(url),
   writeClipboard: (text) => clipboard.writeText(text),
-  pushBusy: (state) => win?.webContents.send('command:ui', { type: 'busy', ...state }),
+  pushBusy: (state) => broadcast('command:ui', { type: 'busy', ...state }),
 };
 
 function getSession(): WorkspaceSession {
@@ -356,7 +425,7 @@ function getSessionStore(): SessionStore {
  */
 async function openSessionStore(): Promise<void> {
   sessionStore = await SessionStore.open(undefined, (key, value: SessionValue) => {
-    win?.webContents.send('session:changed', { key, value });
+    broadcast('session:changed', { key, value });
   });
 }
 
@@ -385,20 +454,39 @@ function getStack(): CommandStack<CommandHost> {
     const host: CommandHost = {
       session: getSession(),
       state: getSessionStore(),
-      ui: (effect: UiEffect) => win?.webContents.send('command:ui', effect),
+      // Targeted: a `view.*` effect means *here*, in the window whose palette or menu ran the
+      // command. `windowFor` falls back to the focused window for the agent, CDP and main.
+      ui: (effect: UiEffect, target?: WindowId) => sendTo(target, 'command:ui', effect),
       openWorkspace: (next: string) => switchWorkspace(next),
-      pickDirectory: async (options) => {
-        if (!win) throw new Error('there is no window to show a directory chooser in');
-        const result = await dialog.showOpenDialog(win, {
+      workspaceIsOpenElsewhere: async (next: string) => {
+        const root = resolvePath(next);
+        if (workspaceRoot && resolvePath(workspaceRoot) === root) return false;
+        return workspaceIsTaken(root);
+      },
+      newWindow: async (options) => createWindow(options),
+      closeWindow: (target?: WindowId) => {
+        const target_ = windowFor(target);
+        if (!target_) return false;
+        target_.close();
+        return true;
+      },
+      quitApp: () => app.quit(),
+      windowCount: () => windows.size,
+      focusedWindow: () => windows.focused() ?? 0,
+      pickDirectory: async (options, target) => {
+        const parent = windowFor(target);
+        if (!parent) throw new Error('that window is gone');
+        const result = await dialog.showOpenDialog(parent, {
           title: options?.title ?? 'Open or create a VN project',
           buttonLabel: options?.buttonLabel ?? 'Open project',
           properties: ['openDirectory', 'createDirectory'],
         });
         return result.canceled ? undefined : result.filePaths[0];
       },
-      pickFiles: async (options) => {
-        if (!win) throw new Error('there is no window to show a file chooser in');
-        const result = await dialog.showOpenDialog(win, {
+      pickFiles: async (options, target) => {
+        const parent = windowFor(target);
+        if (!parent) throw new Error('that window is gone');
+        const result = await dialog.showOpenDialog(parent, {
           title: options?.title ?? 'Upload documents',
           buttonLabel: options?.buttonLabel ?? 'Upload',
           properties: options?.single ? ['openFile'] : ['openFile', 'multiSelections'],
@@ -418,7 +506,7 @@ function getStack(): CommandStack<CommandHost> {
         root,
         git,
         host,
-        log: (level, message) => win?.webContents.send('log', { level, message }),
+        log: (level, message) => broadcast('log', { level, message }),
         // TODO(desktop): route through the renderer once a confirm dialog exists; until
         // then a `confirm: true` command is reachable only from the UI's own affordances.
         confirm: () => Promise.resolve(true),
@@ -451,64 +539,91 @@ function getStack(): CommandStack<CommandHost> {
             source: record.source === 'agent' || record.source === 'cdp' ? record.source : 'ui',
           });
         }
-        host.ui({ type: 'undo', state: getStack().undoState(), revision: undoRevision });
+        // Broadcast: an undo is a worktree fact, not an answer. Ctrl+Z in window B undoes the
+        // edit made in window A, deliberately — undo here is a shadow snapshot of the whole
+        // worktree, so a per-window stack would be a lie about what it restores.
+        broadcast('command:ui', {
+          type: 'undo',
+          state: getStack().undoState(),
+          revision: undoRevision,
+        });
       },
     });
   }
   return stack;
 }
 
-/** Register against the channel map, so a handler can't drift from its declared signature. */
+/**
+ * Register against the channel map, so a handler can't drift from its declared signature.
+ *
+ * `origin` is which window asked — `undefined` for a sender that is not one of ours. Every
+ * `view.*` effect used to be broadcast-by-accident: there was one listener, so "the window that
+ * asked" and "the window there is" were the same window.
+ */
 function handle<C extends InvokeChannel>(
   channel: C,
   fn: (
+    origin: WindowId | undefined,
     ...args: Parameters<InvokeChannels[C]>
   ) => ReturnType<InvokeChannels[C]> | Promise<ReturnType<InvokeChannels[C]>>,
 ): void {
-  ipcMain.handle(channel, (_event, ...args) => fn(...(args as Parameters<InvokeChannels[C]>)));
+  ipcMain.handle(channel, (event, ...args) =>
+    fn(
+      windows.byHandle(BrowserWindow.fromWebContents(event.sender)),
+      ...(args as Parameters<InvokeChannels[C]>),
+    ),
+  );
 }
 
 function registerIpc(): void {
   handle('workspace:index', () => getSession().index());
   handle('workspace:doctree', () => getSession().docTree());
   handle('workspace:filetree', () => getSession().fileTree());
-  handle('agent:run', (input) => getSession().runAgent(input));
-  handle('agent:setMode', (mode) => getSession().setMode(mode));
-  handle('agent:setModel', (modelId) => getSession().setModel(modelId));
+  handle('agent:run', (origin, input) => {
+    // Remembered so a plan or a clarifying question lands where the turn was started.
+    turnWindow = origin;
+    return getSession().runAgent(input);
+  });
+  handle('agent:setMode', (_origin, mode) => getSession().setMode(mode));
+  handle('agent:setModel', (_origin, modelId) => getSession().setModel(modelId));
   handle('agent:clear', () => getSession().clearAgent());
-  handle('plan:decision', (payload) => pendingPlans.answer(payload.id, payload.decision));
-  handle('ask:answer', (payload) => pendingAsks.answer(payload.id, payload.answer));
-  handle('confirm:decision', (payload) => pendingConfirms.answer(payload.id, payload.allowed));
+  handle('plan:decision', (_origin, payload) => pendingPlans.answer(payload.id, payload.decision));
+  handle('ask:answer', (_origin, payload) => pendingAsks.answer(payload.id, payload.answer));
+  handle('confirm:decision', (_origin, payload) =>
+    pendingConfirms.answer(payload.id, payload.allowed),
+  );
   handle('pipeline:status', () => getSession().status());
-  handle('pipeline:run', (opts) => getSession().runPipeline(opts.mock));
-  handle('gate:candidates', (characterId) => getSession().gateCandidates(characterId));
-  handle('gate:approve', (payload) =>
+  handle('pipeline:run', (_origin, opts) => getSession().runPipeline(opts.mock));
+  handle('gate:candidates', (_origin, characterId) => getSession().gateCandidates(characterId));
+  handle('gate:approve', (_origin, payload) =>
     getSession().approveCharacter(payload.characterId, payload.hash),
   );
   handle('story:play', () => getSession().playable());
   handle('story:graph', () => getSession().storyGraph());
-  handle('story:coverage', (sceneId) => getSession().sceneCoverage(sceneId));
+  handle('story:coverage', (_origin, sceneId) => getSession().sceneCoverage(sceneId));
 
   // `catalogOf`, not a second `toCatalog` call: the two drifted, and the channel served a
   // catalog with no interactions while `commands.json` listed five.
   handle('command:catalog', () => catalogOf(registry));
-  handle('command:exec', (request) => {
+  handle('command:exec', (origin, request) => {
     const source = request.source ?? 'ui';
-    if (request.dsl !== undefined) return getStack().execDsl(request.dsl, source);
+    if (request.dsl !== undefined) return getStack().execDsl(request.dsl, source, origin);
     if (request.id === undefined) {
       return Promise.resolve({ ok: false as const, error: 'command:exec needs an id or a dsl' });
     }
-    return getStack().exec(request.id, request.props ?? {}, source);
+    return getStack().exec(request.id, request.props ?? {}, source, origin);
   });
-  handle('command:check', (request) => getStack().check(request.id, request.props ?? {}));
-  handle('command:history', (limit) => getStack().history(limit));
+  handle('command:check', (origin, request) =>
+    getStack().check(request.id, request.props ?? {}, origin),
+  );
+  handle('command:history', (_origin, limit) => getStack().history(limit));
   handle('command:undo', () => getStack().undo());
   handle('command:redo', () => getStack().redo());
 
   handle('notify:list', () => notifications().list());
-  handle('notify:post', (input) => notifications().post(input));
+  handle('notify:post', (_origin, input) => notifications().post(input));
 
-  handle('session:set', (payload) => getSessionStore().set(payload.key, payload.value));
+  handle('session:set', (_origin, payload) => getSessionStore().set(payload.key, payload.value));
   // Synchronous on purpose (so the preload can hand the renderer its state before first
   // paint) and therefore registered directly: `handle` above is `ipcMain.handle`-only.
   ipcMain.on('session:snapshot:sync', (event) => {
@@ -543,12 +658,90 @@ function registerAssetProtocol(): void {
   });
 }
 
-function createWindow(): void {
-  win = new BrowserWindow({
+/** The scope segment every one of this workspace's session keys hangs off. */
+function scope(): string {
+  return workspaceScope(workspace());
+}
+
+/**
+ * The remembered arrangement, rewritten from the live set and frozen at `before-quit` — a quit
+ * closes every window in a cascade, which would otherwise rewrite the list down to nothing.
+ * Frozen per workspace rather than per process, since an instance only ever owns one.
+ */
+let windowList: WindowList | null = null;
+
+function getWindowList(): WindowList {
+  if (!windowList) {
+    // The cast is the JSON boundary: `RememberedWindow` is plain data all the way down, but
+    // `SessionValue` is an index-signature type and a named interface does not satisfy one.
+    windowList = new WindowList((open) =>
+      getSessionStore().set(windowsKey(scope()), open as unknown as SessionValue),
+    );
+  }
+  return windowList;
+}
+
+/** Where each open window is, in the order the indices run. */
+function liveWindows(): RememberedWindow[] {
+  return windows.all().map(({ id, handle }) => ({ id, bounds: handle.getBounds() }));
+}
+
+/** Coalesced the same way the session store's own flush is: a drag is one write, not sixty. */
+const BOUNDS_DEBOUNCE_MS = 400;
+let boundsTimer: ReturnType<typeof setTimeout> | undefined;
+
+function rememberWindows(): void {
+  if (boundsTimer !== undefined) clearTimeout(boundsTimer);
+  boundsTimer = setTimeout(() => {
+    boundsTimer = undefined;
+    getWindowList().rewrite(liveWindows());
+  }, BOUNDS_DEBOUNCE_MS);
+  boundsTimer.unref?.();
+}
+
+/** Bring the front window forward — what a second instance's hand-off asks this one to do. */
+function focusFrontWindow(): void {
+  const front = windows.focusedHandle();
+  if (!front) return;
+  if (front.isMinimized()) front.restore();
+  front.show();
+  front.focus();
+}
+
+/**
+ * The windows this workspace had open last time, clamped onto the displays that exist now. A
+ * window whose monitor is gone would otherwise be restored invisible, which is indistinguishable
+ * from one that never opened.
+ */
+function rememberedWindows(): RememberedWindow[] {
+  const stored = getSessionStore().snapshot()[windowsKey(scope())];
+  if (!Array.isArray(stored)) return [];
+  const displays = screen.getAllDisplays();
+  const out: RememberedWindow[] = [];
+  for (const entry of stored) {
+    const row = entry as Partial<RememberedWindow>;
+    if (typeof row?.id !== 'number' || !row.bounds) continue;
+    const { x, y, width, height } = row.bounds;
+    if ([x, y, width, height].some((n) => typeof n !== 'number')) continue;
+    out.push({ id: row.id, bounds: clampBounds({ x, y, width, height }, displays) });
+  }
+  return out.sort((a, b) => a.id - b.id);
+}
+
+/** What a new window may be opened straight onto - `window.new(editor= subject=)`. */
+interface NewWindowOptions {
+  editor?: string;
+  subject?: string;
+  bounds?: { x: number; y: number; width: number; height: number };
+}
+
+function createWindow(options: NewWindowOptions = {}): WindowId {
+  const win = new BrowserWindow({
     width: 1360,
     height: 860,
     minWidth: 880,
     minHeight: 620,
+    ...(options.bounds ?? {}),
     backgroundColor: '#0E1116',
     title: 'vnstudio',
     webPreferences: {
@@ -557,26 +750,51 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   });
-  if (DEV_URL) void win.loadURL(DEV_URL);
-  else void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'));
+  const id = windows.add(win);
+
+  // A window knows its own index - and its workspace - from its URL. The preload can read
+  // `location.search` before first paint, which is why `session.initial()` is `sendSync` at all,
+  // and for free the index lands in the CDP target list, which is what makes `--window` work.
+  const query: Record<string, string> = { window: String(id), ws: scope() };
+  if (options.editor) query.editor = options.editor;
+  if (options.subject) query.subject = options.subject;
+  if (DEV_URL) {
+    const url = new URL(DEV_URL);
+    for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+    void win.loadURL(url.toString());
+  } else {
+    void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'), { query });
+  }
+
+  win.on('focus', () => windows.touch(id));
+  win.on('moved', rememberWindows);
+  win.on('resized', rememberWindows);
   win.on('closed', () => {
-    win = null;
-    // Every request out there was addressed to a window that is gone. Deny and answer nothing,
-    // so an agent turn parked on one ends instead of holding the process open.
-    abandonPending();
+    windows.remove(id);
+    // Only *this* window's requests. With one window "that window closed" and "there is nobody
+    // left" were the same fact; with four, ending every parked turn would be a bug.
+    abandonPendingBy(id);
+    if (windows.size === 0) abandonPending();
+    // Closing a window deliberately means it does not come back, so the list is rewritten from
+    // what is left - unless a quit already froze it.
+    getWindowList().rewrite(liveWindows());
+    nameWindows();
   });
 
   // The stock menu is gone (see `app.whenReady`), and with it F12. The renderer cannot open its
-  // own devtools, so the accelerator is caught here instead of being lost with the menu.
+  // own devtools, so the accelerator is caught here instead of being lost with the menu. On
+  // *this* window: it is registered per window, and reaching for a module global was already
+  // wrong before a second window could exist to prove it.
   win.webContents.on('before-input-event', (_event, input) => {
-    if (input.type === 'keyDown' && input.key === 'F12') win?.webContents.toggleDevTools();
+    if (input.type === 'keyDown' && input.key === 'F12') win.webContents.toggleDevTools();
   });
 
   // The wiki pane's `beforeunload` guard refuses to unload while a draft is unsaved. Electron
-  // *cancels* such a close outright unless somebody answers this event — which is why the window
-  // could not be closed at all — and `preventDefault` here means "unload anyway".
+  // *cancels* such a close outright unless somebody answers this event - which is why the window
+  // could not be closed at all - and `preventDefault` here means "unload anyway". Asked once per
+  // window, including during the cascade a quit produces.
   win.webContents.on('will-prevent-unload', (event) => {
-    const leave = dialog.showMessageBoxSync(win!, {
+    const leave = dialog.showMessageBoxSync(win, {
       type: 'warning',
       buttons: ['Cancel', 'Discard and close'],
       defaultId: 0,
@@ -587,30 +805,53 @@ function createWindow(): void {
     });
     if (leave === 1) event.preventDefault();
   });
+
+  nameWindows();
+  return id;
 }
 
 void app.whenReady().then(async () => {
   // No stock menu: this shell has its own bar, and the File/Edit/View scaffolding named things
-  // it does not have. Quit and DevTools are the two accelerators worth keeping — they come back
-  // as `Ctrl+Q` in the renderer's keymap and F12 in `createWindow`.
+  // it does not have. Quit and DevTools are the two accelerators worth keeping - they come back
+  // as `window.quit` on Ctrl+Q in the renderer's keymap and F12 in `createWindow`.
   Menu.setApplicationMenu(null);
   // The session store first: it is global per install, and it is where the recents list the
   // workspace is resolved from lives.
   await openSessionStore();
   await resolveWorkspace();
-  // Also in `openWorkspace`, but neither `--project` nor the recents branch goes through it —
+
+  // The lock is taken *after* the workspace resolves, and that ordering is the whole point: the
+  // root is not known until then, and `resolveWorkspace` can put up an interactive picker, so an
+  // author may pick a repo that turns out to be taken. Handing off from after the picker is what
+  // VS Code does too.
+  instanceLock = await acquireWorkspace(workspace(), focusFrontWindow);
+  if (!instanceLock) {
+    // Exit **before creating any window**, so the author sees the existing instance come forward
+    // rather than a window that flashes and disappears.
+    await focusOwner(workspace());
+    app.exit(0);
+    return;
+  }
+
+  // Also in `openWorkspace`, but neither `--project` nor the recents branch goes through it -
   // and those are the normal launch paths, so without this the layout files never land.
   await ensureLayouts(workspace());
   await openRepos();
   rememberWorkspace(getSessionStore(), workspace());
   registerAssetProtocol();
   registerIpc();
-  createWindow();
+
+  // Restore the arrangement this workspace was left in - each window at its own index, so each
+  // one comes back into its own layout, selection and template rather than a default screen.
+  const remembered = rememberedWindows();
+  if (remembered.length === 0) createWindow();
+  else for (const entry of remembered) createWindow({ bounds: entry.bounds });
+
   // Read rather than remembered: the launch paths that skip `openWorkspace` (`--project`, the
   // recents branch) never learned the title, and this is the one place all of them meet.
-  nameWindow((await inspectWorkspace(workspace())).title ?? '');
+  nameWindows((await inspectWorkspace(workspace())).title ?? '');
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (windows.size === 0) createWindow();
   });
 });
 
@@ -618,10 +859,17 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Quitting is synchronous, so hold it open for the one flush that may still be debounced — but
+// Quitting is synchronous, so hold it open for the one flush that may still be debounced - but
 // bounded: losing a remembered panel width is a smaller failure than a quit that never lands.
 const QUIT_FLUSH_MS = 2000;
 let flushingOnQuit = false;
+app.on('before-quit', () => {
+  // A quit closes every window in a cascade, and the `closed` handler rewrites the list from
+  // what is left - so without this the arrangement would be rewritten down to nothing on the way
+  // out. Snapshot the open set first, then stop writing for the rest of the process.
+  if (boundsTimer !== undefined) clearTimeout(boundsTimer);
+  if (sessionStore && workspaceRoot) getWindowList().freeze(liveWindows());
+});
 app.on('before-quit', (event) => {
   if (flushingOnQuit || !sessionStore) return;
   flushingOnQuit = true;
