@@ -286,8 +286,14 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   context is a **map, not content**. **The request is a conversation shaped to be cached, and the
   native path is the default** — a byte-stable prefix, four `cache_control` breakpoints, and
   anything that changes mid-conversation **appended as a `{"role":"system"}` message** rather than
-  edited in. [`docs/vnauthor.md`](docs/vnauthor.md),
-  [`docs/plans/prompt-caching-and-deferred-tool-loading.md`](docs/plans/prompt-caching-and-deferred-tool-loading.md).
+  edited in. **A turn is bounded by what it spends** — a per-turn token ceiling checked between
+  steps, not a step count — and **a long document is changed in part**: `edit_file` against a
+  per-conversation read ledger, `insertLines` for a run of prose, create tools that take the edit
+  tools' whole field set. The turns a decision hangs on — plans, verdicts, shortlists, refused
+  arguments — are in the durable thread, which is what `report.agent` reads.
+  [`docs/vnauthor.md`](docs/vnauthor.md),
+  [`docs/plans/prompt-caching-and-deferred-tool-loading.md`](docs/plans/prompt-caching-and-deferred-tool-loading.md),
+  [`docs/plans/improving-the-authoring-agent.md`](docs/plans/improving-the-authoring-agent.md).
 - **`@vn/bible`** — retrieval over `wiki/`. `query` is budgeted and is the only door; a missing
   `wiki/` is an empty bible, not an error. [`docs/story-bible.md`](docs/story-bible.md).
 - **`@vn/testkit`** — real projects on disk through the real scheduler with mock providers.

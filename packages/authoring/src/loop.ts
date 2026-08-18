@@ -302,7 +302,7 @@ export class Agent {
     this.mode = mode;
   }
 
-  /** What one turn may spend from here on. Mid-turn it changes nothing; the meter is per run. */
+  /** What one turn may spend. The loop reads it each step, so a change lands mid-turn too. */
   setBudget(choice: BudgetChoice): void {
     this.budgetChoice = choice;
     this.budget = budgetTokens(choice);

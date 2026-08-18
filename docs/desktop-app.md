@@ -547,6 +547,15 @@ the same events** to write the transcript — see the threads bullet below.
   therefore starts a new thread rather than continuing what was read. Undo cannot take a
   transcript back — its shadow snapshots exclude `vngen/state`, which is the point of putting
   them there.
+- **The turns a decision hangs on are in it.** Main records both sides of every permission door at
+  its own `permission()` seam — the plan with its steps and files, the verdict as the author's turn
+  with whatever feedback came with it, a question with the shortlist it offered — and the loop files
+  arguments the schema refused as a `blocked` event carrying what was passed. It records them
+  **through the shared `convo.ts` reducers**, so the file and the screen still cannot drift: the
+  renderer's own `permission:plan`/`permission:ask` handlers put the same items in the pane. A bare
+  `decided(convo)` clears the card and writes nothing, because the renderer clears it knowing only
+  `approved` while main knows the real decision. What this buys is `report.agent`: the diagnostic
+  reads the thread, and a conversation that went wrong went wrong at exactly these turns.
 - **The composer is built once and never rebuilt.** It is what the author is typing into and where a
   seed lands, so it outlives every redraw of the transcript above it — and it stops its own keydown.
 - **An upload opens a conversation, and it opens on a question.** **Upload Files…** in the app menu

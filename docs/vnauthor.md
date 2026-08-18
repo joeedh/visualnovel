@@ -66,6 +66,15 @@ agent honors.
   approves a proposed plan. Approving a plan switches to **execute mode**, where edits apply,
   `validate_inputs` runs, and `git_commit` is **blocked while error-severity diagnostics remain**
   (soft/style issues only warn). One commit per approved plan.
+- **A turn is bounded by what it spends, not by how many steps it took.** `BUDGET_CHOICES`
+  (50k…5m, `unlimited`; default 200k) is a **per-turn** ceiling on non-cached tokens, set beside
+  `effort` in the convo bar and by `agent.setBudget`. The meter is checked **between** steps, like
+  `stop()`, because a `tool_use` the transcript never answers is a request the API refuses to
+  continue; at 80% the loop appends a `{"role":"system"}` message telling the agent to stop
+  starting work and land what it has; running out emits a final naming the spend, the ceiling and
+  what was written since the last commit. `MAX_ITERATIONS` survives as a runaway backstop rather
+  than a policy — a backend that reports no usage spends nothing against any budget — so
+  `unlimited` means an unlimited budget, not an unbounded loop.
 - **Always-confirm.** `git_revert`/`git_restore` and the first run of a script-bearing skill
   route through the permission gate regardless of mode.
 - **Asking with a shortlist is its own tool, over the same door.** `ask_choice` sits beside
@@ -107,13 +116,25 @@ agent honors.
   `AICONTEXT.md`; `regenerate_context` rebuilds the map. The map states facts and the author states
   policy, so the author wins — the two are separately labelled sections of the system message, and
   a file at the generated path without the generator's banner is ignored rather than trusted.
+  **The desktop host keeps the map current without walking the project every turn**: it starts a
+  session stale (so the first turn covers opening a workspace that has never had one written) and
+  goes stale again whenever a finished turn wrote under `characters/`, `locations/`, `scenes/` or
+  `wiki/` — the four directories the map is derived from. Rebuilding it is best-effort and never
+  throws: a map that could not be regenerated is a worse prompt, not a failed turn.
+- **What the agent wrote is what gets committed.** The loop unions `git_commit`'s `paths` with the
+  paths the tools actually reported writing rather than letting the argument replace them. The
+  record is complete and the model's memory is not — which is how an `AICONTEXT.md` the agent
+  updated and then forgot about went uncommitted — but a path named on purpose is still honoured.
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter
   so untouched prose and branch markers are preserved.
-- **Prose edits are the desktop's edits.** `edit_scene` names the same eleven acts the `story.*`
+- **Prose edits are the desktop's edits.** `edit_scene` names the same twelve acts the `story.*`
   commands do — and `set_outfit` the two outfit commands — running the same `@vn/scriptedit`
   decisions, so a refusal an author sees mid-drag is the refusal the agent gets, and the storyboard
-  consequence is accounted for once. Ten of the eleven are prose; `setHeading` is the one that moves
+  consequence is accounted for once. **Drafting a run of prose is one call**: `insertLines` folds
+  over `insertLine` inside `@vn/scriptedit`, so ids stay allocated by the one prose write path, a
+  bad line anywhere in the run inserts none of it and says which line it was, and the whole run is
+  a single write rather than forty. Eleven of the twelve are prose; `setHeading` is the one that moves
   a scene somewhere else, and it says in its own result that the rendered art will be drawn again
   and that the prose it left behind is the agent's to rewrite. **Wiring is the second half and a
   second tool**: `edit_branches` runs `branchops`' four rewires, which is what makes `newScene`'s
@@ -122,7 +143,7 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 37 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 38 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -136,19 +157,34 @@ whatever the mode).
 | Wardrobe | `set_outfit` **M** |
 | Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
-| Raw write | `write_file` **M** |
+| Raw write | `write_file` **M**, `edit_file` **M** |
 | Context | `update_context` **M**, `regenerate_context` **M** |
 | Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
 | Git (write) | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C** |
 | Skills | `discover_skills`, `run_skill` **M** (**C** on the first run of a script-bearing skill) |
 
-Two absences are deliberate. **Editing is typed per entity** rather than a generic
-`edit_file`: `edit_character`/`edit_location` route through `@vn/model`'s serializers, so the
-round-trip guarantee holds by construction and `write_file` stays the escape hatch for files
-with no schema. Both edit tools patch the sheet the workspace index actually loaded — a character
-tagged `type: character` under `wiki/` is edited where it lives, never at the conventional path —
-while the `create_*` tools do write to the conventional directory, because that is where a sheet
-that does not exist yet goes. But **not for scenes**: `write_file` refuses a `scenes/` path outright and names
+**A long document is changed in part, not restated.** `edit_file` replaces exact strings and
+writes through the same `writeDocFile` the Wiki pane saves through, so bad front-matter earns the
+same refusal in both. It rests on a **read ledger** — `ToolContext.seen`, owned by the loop and
+cleared with the conversation — recording what each `read_file` showed and the hash it showed it
+at: an edit to a file this conversation never read is refused, and so is one to a file that moved
+since. Every hunk lands in memory and the file is written once, so a refusal half-way through
+leaves the bytes exactly as the model last read them. It is the escape hatch's partial twin, not a
+way around the typed tools: a `scenes/`, `characters/` or `locations/` path is refused by name.
+
+**Editing an entity is typed** rather than done with `edit_file`: `edit_character`/`edit_location`
+route through `@vn/model`'s serializers, so the round-trip guarantee holds by construction. Both
+edit tools patch the sheet the workspace index actually loaded — a character tagged
+`type: character` under `wiki/` is edited where it lives, never at the conventional path — while
+the `create_*` tools do write to the conventional directory, because that is where a sheet that
+does not exist yet goes. **A create tool takes the whole sheet**: its arguments are the edit tool's
+minus `id` (slugged from the name), routed through the same `applyCharacterEdit`/`applyLocationEdit`,
+so a created sheet is validated by exactly what would have validated an edited one and a character
+does not have to be created and then immediately edited. Given no fields at all, `create_character`
+still writes the template — and says which of the three it did, because a sheet of placeholders and
+a sheet with an empty body are different things to whoever draws from it next.
+
+Two things stay out of the model's hands. **Scene prose**: `write_file` refuses a `scenes/` path outright and names
 `edit_scene` instead, because a chunk written whole is a chunk with no proof: duplicate line ids, a
 lost heading, a scene id that stopped matching its filename, and stranded storyboards, none of which
 anything downstream would notice. And **nothing lets the model change its own mode** — there is no

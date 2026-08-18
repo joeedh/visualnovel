@@ -1,5 +1,7 @@
 # Improving the authoring agent
 
+Status: **shipped**.
+
 What to change in `vnauthor` and its desktop host, derived from
 [`../research/agent-transcript-review-test4.md`](../research/agent-transcript-review-test4.md) —
 an adversarial read of the four saved conversations in `examples/test4`. The review says what went
@@ -408,3 +410,32 @@ plan and should be written with it rather than copied:
 5. **§3.5** — the prompt, written once §1 and §2 exist so it can describe them.
 6. **§3.2** and **§3.4** — the two shape changes to the tool surface.
 7. **§3.6** — host plumbing.
+
+## As shipped
+
+All seven steps are built, in that order. Where the code differs from the specification above:
+
+- **The budget is read every step, not captured at the start of a turn.** `Agent.setBudget` takes
+  effect mid-turn — the loop reads `this.budget` at each check — so raising the ceiling on a turn
+  that is running is honoured rather than deferred to the next one.
+- **`insertLines` lives in `@vn/scriptedit`, not in the tool layer.** It is a fold over
+  `insertLine`, so ids stay allocated by the one prose write path and `planSceneEdit` still sees a
+  single atomic plan. A failure names the line by its position in the run (`line 2 of 7: …
+  Nothing was inserted.`) and writes nothing.
+- **The create tools derive their shape from the edit tools** — `characterEditShape.omit({id: true})`
+  plus a required `name` the id is slugged from — and route the fields through the same
+  `applyCharacterEdit`/`applyLocationEdit`, so a created sheet is validated by exactly what would
+  have validated an edited one. `createdHow` says which of the three things it did: from a
+  description, from fields with no description, or as an empty template.
+- **`git_commit`'s `paths` argument is unioned with what was written, not substituted for it.** The
+  plan said the loop should stage what the agent edited; a model that passes a list is now added to
+  rather than believed, because the record is complete and the memory is not.
+- **The host records permission turns through the shared `convo.ts` reducers** rather than through
+  main-only ones, which keeps the one-reducer-two-derivations invariant: `proposed`/`decided`/
+  `queried` are called at main's `permission()` seam and again by the renderer's own
+  `permission:*` handlers. `decided(convo)` with no decision stays a bare clear, because the
+  renderer knows only `approved` while main knows the whole verdict.
+- **The project map is refreshed at turn start behind a stale flag**, not on every turn: a session
+  starts stale (so opening a workspace that has never had one written is covered), and a finished
+  turn that wrote under `characters/`, `locations/`, `scenes/` or `wiki/` marks it stale again.
+  Rebuilding is best-effort and never throws.
