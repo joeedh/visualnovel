@@ -240,7 +240,8 @@ hardest:
 - **The thirteen editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
   **`registerEditor(cls, 'vn.Name')`** is the only way to register one — a hand-written name is
   minified. That list also carries each editor's `claims` predicate, ranked in
-  `renderer/pathux/route.ts`.
+  `renderer/pathux/route.ts`, and a `pins` field for the one selection an editor can be **pinned**
+  off — declared once, and `registerEditor` splices the struct fields that persist it.
 - **`src/shared/` is in the browser bundle**, so what it imports must be node-free; neither
   `tsgo` pass catches a violation, only `vite build`.
 - **A raw DOM surface goes in the shadow root via `VnEditor.appendSurface`** with its own sheet

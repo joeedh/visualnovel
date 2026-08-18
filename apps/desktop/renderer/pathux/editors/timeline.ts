@@ -207,6 +207,7 @@ export class TimelineEditor extends VnEditor {
     ]) as MenuTemplate;
     const picker = this.bar.menu(this.ui.sceneId || 'scene…', menu);
     picker.description = 'Which scene this timeline covers. Every pane follows the choice.';
+    this.pinToggle(this.bar);
 
     const summary = this.bar.label(this.summary());
     summary.style['padding'] = '0px 8px';

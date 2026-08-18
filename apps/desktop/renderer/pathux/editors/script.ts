@@ -353,6 +353,7 @@ export class ScriptEditor extends VnEditor {
     ]) as MenuTemplate;
     const picker = this.bar.menu(this.ui.sceneId || 'scene…', menu);
     picker.description = 'Which scene this editor shows. Every pane follows the choice.';
+    this.pinToggle(this.bar);
 
     const shown = this.shown;
     const count = this.bar.label(this.failure || (shown ? `${shown.lines.length} line(s)` : ''));

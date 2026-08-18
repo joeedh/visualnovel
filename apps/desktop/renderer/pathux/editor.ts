@@ -1,6 +1,24 @@
-import { Area, AreaFlags, ColumnFrame, UIBase, contextWrangler, nstructjs } from 'pathux';
-import { EDITOR_IDS, editorTooltip, type EditorId } from '../../src/shared/editors.js';
+import {
+  Area,
+  AreaFlags,
+  ColumnFrame,
+  UIBase,
+  contextWrangler,
+  nstructjs,
+  type Container,
+} from 'pathux';
+import {
+  EDITOR_IDS,
+  PIN_NOUN,
+  editorTooltip,
+  pinFieldOf,
+  type EditorId,
+  type PinField,
+} from '../../src/shared/editors.js';
 import type { VnContext } from './context.js';
+import { VN_ICONS, whenIconsSettled } from './icons.js';
+import { pinnedView } from './pin.js';
+import type { VnScreen } from './screen.js';
 import type { ShellState } from './state.js';
 import { closeStruct, type StructField } from './structfields.js';
 
@@ -12,12 +30,96 @@ export class VnEditor extends Area {
   container!: ColumnFrame;
 
   /**
+   * Whether this pane has been pinned off the selection, and what it is holding. Plain fields
+   * rather than accessors because they are struct fields: `registerEditor` declares both on a
+   * pinnable editor, and `Area.loadSTRUCT` reads the whole struct with one `reader(this)`.
+   */
+  pinned = false;
+  pinnedTo = '';
+
+  /**
    * The shell's UI state, as one narrowing rather than a type parameter: `Area<VnContext>`
    * makes the whole screen mesh generic, and its `ScreenArea`/`ScreenBorder` back-references
    * then stop being assignable in either direction.
+   *
+   * A pinned pane reads a {@link pinnedView} of it instead — the same object behind it, one field
+   * answered from the pin — so every `this.ui.sceneId` in every editor keeps working and nothing
+   * has to learn a second way to ask what it is looking at.
    */
   get ui(): ShellState {
-    return (this.ctx as VnContext).ui;
+    const live = (this.ctx as VnContext).ui;
+    const field = this.pinField;
+    if (!this.pinned || !field) return live;
+    return pinnedView(live, {
+      field,
+      get: () => this.pinnedTo,
+      set: (value) => {
+        this.pinnedTo = value;
+      },
+    });
+  }
+
+  /** Which selection field this pane can be pinned to — `undefined` for one that follows none. */
+  get pinField(): PinField | undefined {
+    const cls = this.constructor as unknown as { define(): { areaname: string } };
+    return pinFieldOf(cls.define().areaname);
+  }
+
+  /**
+   * The pin, for a pinnable editor's own header row. A toggle rather than two buttons, drawn as
+   * the pin icon while the sheet has one and as a checkbox until it does, and it says what it
+   * *does* rather than what it is called — "Pin" alone tells an author nothing about following.
+   *
+   * Pinning snapshots what the pane is on right now, which is the only value that could be meant;
+   * unpinning is a jump back to whatever the rest of the app is looking at, and the editor's own
+   * `update()` notices that the way it notices any other selection change.
+   */
+  protected pinToggle(row: Container): void {
+    const field = this.pinField;
+    if (!field) return;
+
+    // Its own row, so it can be drawn a second time without disturbing the bar around it: a
+    // header built once — the wiki's — is built before the icon sheet has decoded, and would
+    // otherwise keep the text fallback for the life of the app.
+    const holder = row.row();
+    this.drawPin(holder, field);
+    if (VN_ICONS.pin < 0)
+      whenIconsSettled(() => {
+        holder.clear();
+        this.drawPin(holder, field);
+        holder.flushUpdate();
+      });
+  }
+
+  private drawPin(row: Container, field: PinField): void {
+    const noun = PIN_NOUN[field];
+
+    const say = (on: boolean): string =>
+      on
+        ? `Pinned to this ${noun}. Click to follow the selection again.`
+        : `Keep this pane on this ${noun} while the rest of the app moves on.`;
+
+    const toggle =
+      VN_ICONS.pin >= 0
+        ? row.iconcheck(undefined, VN_ICONS.pin)
+        : row.check(undefined, `pin ${noun}`);
+    toggle.checked = this.pinned;
+    toggle.description = say(this.pinned);
+    toggle.on_change = (next: unknown) => {
+      const on = next === true;
+      if (on === this.pinned) return;
+      // Read before the flag flips: `this.ui` is the live state while `pinned` is still false,
+      // and the pin has to start life holding what the pane is already showing.
+      if (on) this.pinnedTo = this.ui[field];
+      this.pinned = on;
+      toggle.description = say(on);
+      // The pin is saved with the pane, and nothing about the mesh's *shape* moved — so it has
+      // to say so itself, the way the documents editor's mode does. Through the screen's own
+      // hook rather than `persist.layoutChanged`, because persistence already imports this
+      // module for `knownAreaNames` and the arrow between the two may only go one way.
+      ((this.ctx as VnContext).screen as VnScreen | undefined)?.onLayoutChange?.();
+      this.announce();
+    };
   }
 
   /**
@@ -173,10 +275,18 @@ export function registerEditor(
   fields: readonly StructField[] = [],
 ): void {
   VnEditor.register(cls);
-  cls.STRUCT = closeStruct(nstructjs.STRUCT.inherit(cls, VnEditor, structName), fields);
+  const areaname = (cls.define() as { areaname: string }).areaname;
+  // The pin's two fields are spliced in from the one declaration in `shared/editors.ts` rather
+  // than typed into five `registerEditor` calls, for the reason the struct name and the tab's
+  // sentence are: an editor becomes pinnable by declaring `pins`, and a pin that survived a
+  // restart in four panes but not the fifth would be the kind of gap nobody thinks to test for.
+  const pin: StructField[] = pinFieldOf(areaname) ? ['pinned : bool', 'pinnedTo : string'] : [];
+  cls.STRUCT = closeStruct(nstructjs.STRUCT.inherit(cls, VnEditor, structName), [
+    ...fields,
+    ...pin,
+  ]);
   nstructjs.register(cls);
 
-  const areaname = (cls.define() as { areaname: string }).areaname;
   editors.set(areaname, cls);
   describe(cls, areaname);
 }

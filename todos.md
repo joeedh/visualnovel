@@ -89,7 +89,7 @@
 	 tooltip should explain this, e.g. 'Show the asset in the asset editor; click again to see history'.
 [x]: Do not explain in tooltips in the document editor how clicking an item displays it in every editor 
      of that type, just say it opens it in that editor.
-[ ]: Editors that operate on active things should have a blender-style pin icon to prevent them from changing
+[x]: Editors that operate on active things should have a blender-style pin icon to prevent them from changing
      to a different thing when it becomes active.  We should support serializing this in pinnable editor
 	 STRUCT scripts.
 [x]: Use an agent to write a report on a less technical mode in the desktop app that would automatically 

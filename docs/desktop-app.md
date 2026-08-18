@@ -331,6 +331,27 @@ are the bridge's.
   being a DOM node, so path.ux's `TabBar` carries one tooltip and swaps it as the pointer crosses
   tabs; `TabItem.tooltip` used to be written by `addTab` and read by nobody.
 
+- **An editor that follows a selection can be pinned off it.** Blender's idea, and the same icon:
+  a pane holding one scene while the author reads another is how two parts of a story get compared
+  at all. An editor becomes pinnable by declaring **one** field in `EDITORS` — `pins: 'sceneId'`
+  for Script and Coverage, `'docPath'` for Wiki, `'assetHash'` for Asset, `'taskHash'` for
+  Inspector — and everything else follows from that declaration: `VnEditor.pinToggle` draws the
+  toggle with a sentence built from the field's noun, and `registerEditor` splices
+  `pinned : bool; pinnedTo : string` into the struct, so a pin survives a restart in five panes or
+  in none rather than in four. **One field, not the whole selection**: a pinned Coverage holds its
+  scene and still follows the selected shot, which is what makes a pinned pane a second view of the
+  project rather than a photograph of one.
+  - **The pin is a lens over `ui`, not a copy of it.** `VnEditor.get ui()` returns a `pinnedView`
+    proxy (`pathux/pin.ts`) answering the pinned field from the pin and everything else from the
+    live state, so no editor learns a second way to ask what it is looking at and none of the
+    `this.ui.<field>` reads changed. **A write through a pinned pane moves both** — the scene
+    picker in a pinned Script still works, and a selection is one thing the whole app shares.
+  - Toggling it reports through `VnScreen.onLayoutChange`, because nothing about the mesh's shape
+    moved and the pin would otherwise never be written down. It is drawn in its own row so it can
+    be **drawn again** once the icon sheet settles (`whenIconsSettled`): the wiki's header is built
+    in `init()`, before the first `decode()` resolves, and would otherwise keep the text fallback
+    for the life of the app.
+
 ### Surfaces, shadow roots and stylesheets
 
 `VnEditor` is a `ColumnFrame` inside the area's shadow root with path.ux's header above it. Two

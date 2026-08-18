@@ -423,6 +423,7 @@ invoke('pipeline:run', { mock })
 | Pane layout | `.vndesktop/session.json` (`pathux.<ws>.window.<n>.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
 | Selected scene/shot/character/document | `.vndesktop/session.json` (`pathux.<ws>.window.<n>.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
 | A field a pane remembers (the documents editor's mode) | `.vndesktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
+| Whether a pane is pinned, and to what | `.vndesktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The pin toggle, via `VnScreen.onLayoutChange` |
 | Which layout template the window shows | `.vndesktop/session.json` (`pathux.<ws>.window.<n>.template`) | ✓ Survives restart | `view.layouts`, the layout watch | `view.applyLayout` / `saveLayout` / `resetLayout`, in main |
 | The layout templates themselves | `.vnstudio/layouts/*.json` (the **project** repo) | ✓ On disk, committed | `view.layouts` / `view.applyLayout` | `view.saveLayout`, `view.resetLayout`, `ensureLayouts` |
 | The conversation on screen | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |

@@ -6,8 +6,12 @@ export class VnScreen extends Screen {
    * Fired whenever the mesh changes shape. Every split, join, border drag and window
    * resize passes through `regenBorders`, so this is the one seam persistence needs — it is
    * not part of `STRUCT` and does not survive a reload, so the shell re-attaches it.
+   *
+   * A pane that changed something it *remembers* rather than its shape — an editor's pin —
+   * calls it directly, because to persistence the two are the same event: the blob is saved
+   * whole either way.
    */
-  onLayoutChange: (() => void) | undefined;
+  onLayoutChange?: () => void;
 
   static override define() {
     return { tagname: 'vn-screen-x' };

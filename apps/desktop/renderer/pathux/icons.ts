@@ -10,7 +10,11 @@
 import { iconmanager, setIconMap } from 'pathux';
 
 /** Ids allocated for this app's icons. `-1` until — and if — the image decodes. */
-export const VN_ICONS: { filter: number; collapse: number } = { filter: -1, collapse: -1 };
+export const VN_ICONS: { filter: number; collapse: number; pin: number } = {
+  filter: -1,
+  collapse: -1,
+  pin: -1,
+};
 
 /** A funnel, drawn to the sheet's 32px tile. Inline so nothing is fetched at runtime. */
 const FILTER_SVG =
@@ -29,10 +33,22 @@ const COLLAPSE_SVG =
   '<path d="M9 5l7 7 7-7"/><path d="M4 16h24"/><path d="M9 27l7-7 7 7"/>' +
   '</g></svg>';
 
+/**
+ * A drawing pin seen from the side, head up and point down — the shape Blender's pin has, because
+ * this is the same idea and an author who knows one should recognise the other. Same 32px tile.
+ */
+const PIN_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+  '<g fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" ' +
+  'stroke-linejoin="round">' +
+  '<path d="M12 4h8v8l4 5H8l4-5z"/><path d="M16 17v11"/>' +
+  '</g></svg>';
+
 /** One icon to register: what to call it, the name a `setIconMap` entry uses, and its drawing. */
 const CUSTOM: { key: keyof typeof VN_ICONS; name: string; map: string; svg: string }[] = [
   { key: 'filter', name: 'vn-filter', map: 'VN_FILTER', svg: FILTER_SVG },
   { key: 'collapse', name: 'vn-collapse', map: 'VN_COLLAPSE', svg: COLLAPSE_SVG },
+  { key: 'pin', name: 'vn-pin', map: 'VN_PIN', svg: PIN_SVG },
 ];
 
 /**
@@ -44,6 +60,12 @@ const CUSTOM: { key: keyof typeof VN_ICONS; name: string; map: string; svg: stri
  */
 export function registerCustomIcons(): void {
   const map: Record<string, number> = {};
+  let outstanding = CUSTOM.length;
+  const settle = (): void => {
+    if (--outstanding > 0) return;
+    settled = true;
+    for (const waiter of waiting.splice(0)) waiter();
+  };
   for (const icon of CUSTOM) {
     const image = new Image(32, 32);
     image.src = `data:image/svg+xml;utf8,${encodeURIComponent(icon.svg)}`;
@@ -57,6 +79,24 @@ export function registerCustomIcons(): void {
       .catch(() => {
         // Left at -1 on purpose: callers fall back to a labelled button.
         console.warn(`the ${icon.name} icon did not decode; falling back to a text button`);
-      });
+      })
+      .finally(settle);
   }
+}
+
+/** Whether every icon has landed or failed. Nothing changes after this. */
+let settled = false;
+const waiting: (() => void)[] = [];
+
+/**
+ * Run `cb` once the ids have stopped changing — every icon has decoded or given up.
+ *
+ * For a control built **once**: a bar rebuilt on every update picks the icon up by itself, but
+ * one built in `init()` is built before the first `decode()` resolves, so its text fallback would
+ * be permanent. Registering after everything has settled runs `cb` straight away, so a caller
+ * does not have to ask which it is.
+ */
+export function whenIconsSettled(cb: () => void): void {
+  if (settled) cb();
+  else waiting.push(cb);
 }

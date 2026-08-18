@@ -13,6 +13,10 @@ import type { DocNodeKind } from './ipc.js';
  * Each entry also declares what it will show for a clicked document-tree node — see
  * {@link EditorClaim}. An editor added without one is visibly claim-less in the same file that
  * names it, rather than silently unreachable from the tree.
+ *
+ * An entry with `pins` follows one selection field, and so can be **pinned** off it — see
+ * {@link PinField}. An editor with no `pins` shows the same thing whatever is selected and has
+ * nothing a pin could hold still.
  */
 export const EDITORS = [
   {
@@ -26,6 +30,7 @@ export const EDITORS = [
     title: 'Script',
     what: "one scene's lines",
     claims: (node: ClaimNode) => (node.kind === 'scene' ? 'primary' : undefined),
+    pins: 'sceneId',
   },
   { id: 'convo', title: 'Convo', what: 'the vnauthor conversation' },
   {
@@ -36,6 +41,9 @@ export const EDITORS = [
       if (node.kind === 'shot') return 'primary';
       return node.kind === 'scene' ? 'secondary' : undefined;
     },
+    // The scene, not the shot: a pinned Coverage still highlights whichever shot is selected —
+    // holding both still would make its own rows unclickable.
+    pins: 'sceneId',
   },
   { id: 'tasklist', title: 'Tasks', what: 'the pipeline task list' },
   {
@@ -48,7 +56,7 @@ export const EDITORS = [
   },
   // The Inspector claims nothing on purpose: its subject is `ui.taskHash`, and no document-tree
   // node names a task — a click that opened it would land on an empty pane.
-  { id: 'inspector', title: 'Inspector', what: 'what is selected, in detail' },
+  { id: 'inspector', title: 'Inspector', what: 'what is selected, in detail', pins: 'taskHash' },
   { id: 'play', title: 'Play', what: 'the runner' },
   {
     id: 'skills',
@@ -79,6 +87,7 @@ export const EDITORS = [
       }
       return node.kind === 'file' && isTextPath(node.path) ? 'primary' : undefined;
     },
+    pins: 'docPath',
   },
   { id: 'documents', title: 'Documents', what: "the project's documents and what links to them" },
   {
@@ -86,6 +95,7 @@ export const EDITORS = [
     title: 'Asset',
     what: 'one generated asset, and the art notes behind it',
     claims: (node: ClaimNode) => (node.kind === 'asset' ? 'primary' : undefined),
+    pins: 'assetHash',
   },
   { id: 'project', title: 'Project', what: 'project.yaml — art style, models, image params' },
 ] as const;
@@ -138,6 +148,34 @@ export function isTextPath(path: string | undefined): boolean {
 
 /** An editor's area name — the value `view.open`, `view.focus` and a stored layout all use. */
 export type EditorId = (typeof EDITORS)[number]['id'];
+
+/**
+ * The selection field a pinnable editor follows — and, pinned, stops following.
+ *
+ * One field per editor rather than a set, and it is always the one naming *which thing* the pane
+ * is about. A pane that froze the rest of the selection with it would stop responding to its own
+ * rows: Coverage holds the scene and still follows the shot, which is what makes a pinned pane a
+ * second view of the project rather than a photograph of one.
+ */
+export type PinField = 'sceneId' | 'docPath' | 'assetHash' | 'taskHash';
+
+/** What a pinned editor is holding, in the author's words. Used in the pin's own tooltip. */
+export const PIN_NOUN: Record<PinField, string> = {
+  sceneId: 'scene',
+  docPath: 'document',
+  assetHash: 'asset',
+  taskHash: 'task',
+};
+
+/**
+ * Which field this editor can be pinned to, if any. The pin button, the struct fields that
+ * remember it across a restart, and the frozen read all ask this one question, so an editor
+ * becomes pinnable by declaring `pins` and nothing else.
+ */
+export function pinFieldOf(id: string): PinField | undefined {
+  const editor = EDITORS.find((entry) => entry.id === id);
+  return editor && 'pins' in editor ? editor.pins : undefined;
+}
 
 /**
  * The editors that claim anything, in `EDITORS` order — which is the tie-break the router falls

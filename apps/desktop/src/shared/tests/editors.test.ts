@@ -7,9 +7,11 @@ import {
   EDITOR_IDS,
   EDITORS,
   OPEN_WHERE,
+  PIN_NOUN,
   editorNameProblems,
   editorTitle,
   editorTooltip,
+  pinFieldOf,
 } from '../editors.js';
 
 describe('the editor vocabulary', () => {
@@ -49,6 +51,32 @@ describe('the editor vocabulary', () => {
       // Not a direction: `window` is where main opens a second renderer instead of splitting.
       'window',
     ]);
+  });
+});
+
+/**
+ * The pin is drawn, persisted and described from this one declaration, so what is asserted here
+ * is that the declaration is complete: a field nobody can name a noun for would ship a toggle
+ * whose tooltip says `undefined`.
+ */
+describe('what an editor can be pinned to', () => {
+  it('answers only for an editor that declared it', () => {
+    expect(pinFieldOf('script')).toBe('sceneId');
+    expect(pinFieldOf('timeline')).toBe('sceneId');
+    expect(pinFieldOf('wiki')).toBe('docPath');
+    expect(pinFieldOf('asset')).toBe('assetHash');
+    expect(pinFieldOf('inspector')).toBe('taskHash');
+    // Convo follows nothing, and an unregistered name is not an error.
+    expect(pinFieldOf('convo')).toBeUndefined();
+    expect(pinFieldOf('nope')).toBeUndefined();
+  });
+
+  it('has a noun for every field an editor declares', () => {
+    for (const editor of EDITORS) {
+      const field = pinFieldOf(editor.id);
+      if (field === undefined) continue;
+      expect(PIN_NOUN[field]).toBeTruthy();
+    }
   });
 });
 

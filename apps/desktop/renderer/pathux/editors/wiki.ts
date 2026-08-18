@@ -68,6 +68,9 @@ export class WikiEditor extends VnEditor {
     this.saveBtn.description = 'Write this document back to disk, and commit it';
     const reload = bar.button('⟳', () => void this.buf.reload());
     reload.description = 'Re-read this document from disk (discards an unsaved draft)';
+    // Built once, like the rest of this bar: the toggle keeps its own state, so it does not need
+    // to be redrawn when the document changes underneath it.
+    this.pinToggle(bar);
     bar.flushUpdate();
 
     this.adoptStyle(WIKI_CSS);

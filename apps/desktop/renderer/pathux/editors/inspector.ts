@@ -133,6 +133,7 @@ export class InspectorEditor extends VnEditor {
     this.bar.label(task ? subjectOf(task) : '—').style['padding'] = '0px 8px';
     this.bar.button('Refresh', () => void this.load()).description =
       'Re-read this task, its attempts and its prompt from disk';
+    this.pinToggle(this.bar);
     this.bar.flushUpdate();
   }
 

@@ -512,6 +512,7 @@ export class AssetEditor extends VnEditor {
 
     this.bar.clear();
     this.bar.label('ASSET').style['padding'] = '0px 8px';
+    this.pinToggle(this.bar);
 
     // A concept is approved by nothing and planned by nothing, so neither button can ever act on
     // one; a greyed pair beside a working Redraw reads as breakage. The bar carries the act this
