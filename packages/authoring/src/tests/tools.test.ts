@@ -1690,3 +1690,61 @@ describe('write_file and the read ledger', () => {
     }
   });
 });
+
+/**
+ * A tool that reports a result the caller cannot act on is worse than one that finds nothing: the
+ * negative reads as "not in the project", and the citation reads as a path that does not resolve.
+ */
+describe('tools that say what they looked at', () => {
+  it('search names its scope when it finds nothing, and points at the two it skipped', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const r = await run('search', { query: 'submarine' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('characters/, locations/, scenes/');
+      expect(r.output).toContain('search_bible');
+      expect(r.output).toContain('list_archive');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('search_bible cites a path read_file can resolve', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await fs.mkdir(join(dir, 'wiki', 'history'), { recursive: true });
+      await fs.writeFile(
+        join(dir, 'wiki', 'history', 'founding.md'),
+        '# The founding\n\nThe school was raised over a filled canal.\n',
+      );
+      const r = await run('search_bible', { query: 'canal' }, ctx);
+      expect(r.output).toContain('wiki/history/founding.md');
+
+      // The point of the prefix: the cited path is one the very next call can hand to read_file.
+      const cited = r.output.split(':')[0] as string;
+      const back = await run('read_file', { path: cited }, ctx);
+      expect(back.ok).toBe(true);
+      expect(back.output).toContain('filled canal');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('the create tools say which of their two behaviours they took', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const described = await run(
+        'create_character',
+        { name: 'Ren', description: 'A rooftop regular.' },
+        ctx,
+      );
+      expect(described.output).toContain('from the description you gave');
+
+      const blank = await run('create_location', { name: 'Rooftop' }, ctx);
+      expect(blank.output).toContain('as an empty template');
+      expect(blank.output).toContain('no description was given');
+    } finally {
+      await cleanup();
+    }
+  });
+});

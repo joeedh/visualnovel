@@ -233,6 +233,9 @@ const listWorkspaceTool: Tool<Record<string, never>> = {
 
 const INPUT_GLOBS = ['characters', 'locations', 'scenes', 'screenplay'];
 
+/** What `search` walks, said once so the description and the no-match sentence cannot disagree. */
+const SEARCH_SCOPE = `${INPUT_GLOBS.map((g) => `${g}/`).join(', ')}, AICONTEXT.md and project.yaml`;
+
 /** Recursively collect text input files under the workspace's authored directories. */
 async function collectInputFiles(root: string): Promise<string[]> {
   const out: string[] = [];
@@ -254,7 +257,10 @@ async function collectInputFiles(root: string): Promise<string[]> {
 
 const searchTool: Tool<{ query: string; regex?: boolean }> = {
   name: 'search',
-  description: 'Search input files for a string or regex; returns file:line matches.',
+  description:
+    'Search the authored inputs for a string or regex; returns file:line matches. Its scope is ' +
+    `${SEARCH_SCOPE} — the story bible (wiki/) and archive/ are searched by search_bible and ` +
+    'list_archive instead.',
   mutating: false,
   args: z.object({ query: z.string().min(1), regex: z.boolean().optional() }),
   async run(a, ctx) {
@@ -273,7 +279,15 @@ const searchTool: Tool<{ query: string; regex?: boolean }> = {
           matches.push({ file: rel(ctx.workspace.root, file), line: i + 1, text: text.trim() });
       });
     }
-    if (matches.length === 0) return ok(`No matches for "${a.query}".`, { data: [] });
+    if (matches.length === 0) {
+      // A negative result that says what it looked at is a redirect; one that does not is a dead
+      // end, and the agent that reads it concludes the fact is nowhere in the project.
+      return ok(
+        `No matches for "${a.query}" in ${SEARCH_SCOPE}. The story bible (wiki/) and archive/ ` +
+          'are not searched — try search_bible or list_archive.',
+        { data: [] },
+      );
+    }
     const body = matches.map((m) => `${m.file}:${m.line}: ${m.text}`).join('\n');
     return ok(body, { data: matches });
   },
@@ -299,7 +313,8 @@ const listArchiveTool: Tool<Record<string, never>> = {
 const searchBibleTool: Tool<{ query: string; limit?: number }> = {
   name: 'search_bible',
   description:
-    'Search the story bible (wiki/) for relevant passages; returns ranked file:line excerpts.',
+    'Search the story bible (wiki/) for relevant passages; returns ranked file:line excerpts. ' +
+    'The paths it reports are workspace-relative, so a hit can be handed straight to read_file.',
   mutating: false,
   args: z.object({
     query: z.string().min(1).describe('what you want to know, in words'),
@@ -310,7 +325,12 @@ const searchBibleTool: Tool<{ query: string; limit?: number }> = {
     const excerpts = await bible.query(a.query, a.limit === undefined ? {} : { limit: a.limit });
     if (excerpts.length === 0)
       return ok(`Nothing in the bible matches "${a.query}".`, { data: [] });
-    return ok(formatExcerpts(excerpts), { data: excerpts });
+    // The bible numbers its files from its own root, which is a path read_file cannot resolve.
+    // Prefixing here rather than in `@vn/bible` keeps the excerpt what it is and the citation
+    // usable: a hit is now something to paste, not something to reconstruct.
+    const wiki = rel(ctx.workspace.root, ctx.workspace.paths.wikiDir);
+    const cited = excerpts.map((e) => ({ ...e, file: `${wiki}/${e.file}` }));
+    return ok(formatExcerpts(cited), { data: cited });
   },
 };
 
@@ -526,10 +546,18 @@ const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
   },
 };
 
+/** Which of the two things a create tool just did, said the same way by both of them. */
+const describedOrTemplate = (description?: string): string =>
+  description
+    ? 'from the description you gave'
+    : 'as an empty template — no description was given, so its body is placeholders for someone ' +
+      'who knows it to fill in';
+
 const createCharacterTool: Tool<{ name: string; description?: string }> = {
   name: 'create_character',
   description:
-    'Scaffold a new characters/<id>/character.md from a name. Without a description it is a template of placeholders for the author to fill in.',
+    'Scaffold a new characters/<id>/character.md from a name. Without a description it is a ' +
+    'template of placeholders for the author to fill in; the result says which of the two it wrote.',
   mutating: true,
   args: z.object({ name: z.string().min(1), description: z.string().optional() }),
   async run(a, ctx) {
@@ -542,7 +570,9 @@ const createCharacterTool: Tool<{ name: string; description?: string }> = {
     if (await exists(file)) return fail(`character ${id} already exists`);
     const text = a.description ? docToMarkdown(doc) : newCharacterTemplate(a.name);
     await writeFileAtomic(file, text);
-    return ok(`Created character ${id}.`, {
+    // Which of the two it did, in the observation rather than only in the file. A uniform
+    // "Created" is what lets a later turn call a written sheet a placeholder and rewrite it.
+    return ok(`Created character ${id} ${describedOrTemplate(a.description)}.`, {
       written: [rel(ctx.workspace.root, file)],
       data: { id },
     });
@@ -551,7 +581,9 @@ const createCharacterTool: Tool<{ name: string; description?: string }> = {
 
 const createLocationTool: Tool<{ name: string; description?: string }> = {
   name: 'create_location',
-  description: 'Scaffold a new locations/<id>.md from a name.',
+  description:
+    'Scaffold a new locations/<id>.md from a name. Without a description it is an empty sheet ' +
+    'for the author to fill in; the result says which of the two it wrote.',
   mutating: true,
   args: z.object({ name: z.string().min(1), description: z.string().optional() }),
   async run(a, ctx) {
@@ -561,7 +593,7 @@ const createLocationTool: Tool<{ name: string; description?: string }> = {
     const file = ctx.workspace.paths.locationFile(id);
     if (await exists(file)) return fail(`location ${id} already exists`);
     await writeFileAtomic(file, docToMarkdown(doc));
-    return ok(`Created location ${id}.`, {
+    return ok(`Created location ${id} ${describedOrTemplate(a.description)}.`, {
       written: [rel(ctx.workspace.root, file)],
       data: { id },
     });
