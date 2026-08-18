@@ -74,8 +74,9 @@ repo — [`asset-stores.md`](asset-stores.md). Everything else generated lives u
 - `state/` — `tasks.jsonl`, reviews
 
 In a user's own project `vngen/` is **committed**. It is the reproducible output of a run, not
-something to gitignore. `examples/sample` is the one exception: it is a template this repo ships,
-so it stays inputs-only.
+something to gitignore. `templates/basic` is the one exception: it is a template this repo ships,
+so it stays inputs-only. Anything you actually run lives under `examples/`, which is gitignored
+whole — that is what the directory is for.
 
 **A project the app initializes gets a `.gitignore` before its first commit** — `keys`,
 `node_modules`, `.DS_Store`, and deliberately **not** `vngen/`, which is the whole reason the file
@@ -98,22 +99,23 @@ thing that decides: [`pipeline-contracts.md`](pipeline-contracts.md#scenes-shots
 
 ## The sample project
 
-[`examples/sample`](../examples/sample) is a small branching VN, and a **read-only template**: the
+[`templates/basic`](../templates/basic) is a small branching VN, and a **read-only template**: the
 desktop app copies it rather than running in it (see
 [`desktop-app.md`](desktop-app.md#seeded-workspace-examplesmysamplerepo)). The CLI has no such
-indirection, so a real run against it writes generated art into the source tree — point it at a
-copy if you want to keep `git status` legible.
+indirection — it runs wherever you point it — so copy it first. `examples/` is gitignored whole and
+exists for exactly this, which keeps a real run's ~100 MB of generated art out of `git status`.
 
 Preview offline, then generate:
 
 ```sh
 pnpm build
-node apps/cli/dist/cli.js graph  examples/sample
-node apps/cli/dist/cli.js run    examples/sample --mock      # dry run: previews planned work
+cp -r templates/basic examples/walkthrough
+node apps/cli/dist/cli.js graph  examples/walkthrough
+node apps/cli/dist/cli.js run    examples/walkthrough --mock  # dry run: previews planned work
 # a real run needs a Gemini key (see above); it generates portraits, then halts at the gate:
-node apps/cli/dist/cli.js run    examples/sample
-node apps/cli/dist/cli.js approve examples/sample            # interactively approve portraits
-node apps/cli/dist/cli.js run    examples/sample             # clears the gate, renders shots
-node apps/cli/dist/cli.js status examples/sample
-node apps/cli/dist/cli.js export examples/sample             # write the playable (story.play.json)
+node apps/cli/dist/cli.js run    examples/walkthrough
+node apps/cli/dist/cli.js approve examples/walkthrough        # interactively approve portraits
+node apps/cli/dist/cli.js run    examples/walkthrough         # clears the gate, renders shots
+node apps/cli/dist/cli.js status examples/walkthrough
+node apps/cli/dist/cli.js export examples/walkthrough         # write the playable (story.play.json)
 ```

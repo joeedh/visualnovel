@@ -1,5 +1,5 @@
 /**
- * The shipped template, through the path a first launch actually takes: seed `examples/sample`
+ * The shipped template, through the path a first launch actually takes: seed `templates/basic`
  * into a scratch workspace, then open it. Every other session test builds its project with
  * testkit, so this is the only thing that fails when the *committed* sample stops loading —
  * a broken heading, a scene chunk whose front-matter disagrees with its filename, a `start:`
@@ -12,7 +12,7 @@ import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { seedWorkspace } from '../workspace.js';
 import { setNext } from '@vn/scriptedit';
 
-const TEMPLATE = resolve(__dirname, '../../../../../examples/sample');
+const TEMPLATE = resolve(__dirname, '../../../../../templates/basic');
 
 const deps: SessionDeps = {
   emitEvent: () => {},
@@ -22,7 +22,7 @@ const deps: SessionDeps = {
   pushBusy: () => {},
 };
 
-describe('examples/sample, seeded and opened', () => {
+describe('templates/basic, seeded and opened', () => {
   let parent: string;
   let session: WorkspaceSession;
 

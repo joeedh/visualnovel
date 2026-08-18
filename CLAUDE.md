@@ -211,7 +211,7 @@ vngen run | approve | status | graph | export | cost | import | screenplay   [di
 ```
 
 Flags, `--mock` semantics, key resolution, the on-disk project layout, and the
-`examples/sample` walkthrough: [`docs/cli.md`](docs/cli.md). Two things worth knowing before
+`templates/basic` walkthrough: [`docs/cli.md`](docs/cli.md). Two things worth knowing before
 running anything: `--mock` writes no assets and needs no keys, and in a real project `vngen/` is
 **committed** — it is the reproducible output of a run, not something to gitignore.
 

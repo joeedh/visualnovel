@@ -160,17 +160,20 @@ function workspace(): string {
 }
 
 /**
- * Seed and open `examples/mySampleRepo` beside the template, so a run never writes into the
- * source tree. A packaged build has no repo-relative `examples/`, so the scratch workspace goes
- * under `userData` — and a missing template then fails by name rather than as a bare ENOENT
- * somewhere downstream.
+ * Seed and open `examples/mySampleRepo`, so a run never writes into the template it was copied
+ * from. The two live in different trees on purpose: `templates/basic` is committed, the whole of
+ * `examples/` is gitignored, so a seeded workspace cannot dirty the checkout. **The presence of
+ * the template is what says this is a source checkout** — `examples/` is ignored and a fresh
+ * clone has none — and a packaged build, having neither, puts the scratch workspace under
+ * `userData` and then fails by name rather than as a bare ENOENT somewhere downstream.
  */
 async function seedSample(): Promise<string> {
-  const examples = join(__dirname, '..', '..', '..', '..', 'examples');
-  const target = existsSync(examples)
-    ? join(examples, 'mySampleRepo')
+  const repo = join(__dirname, '..', '..', '..', '..');
+  const template = join(repo, 'templates', 'basic');
+  const target = existsSync(template)
+    ? join(repo, 'examples', 'mySampleRepo')
     : join(app.getPath('userData'), 'mySampleRepo');
-  const result = await seedWorkspace(join(examples, 'sample'), target);
+  const result = await seedWorkspace(template, target);
   if (result.seeded) console.log(`[vnstudio] seeded a new workspace at ${result.root}`);
   return result.root;
 }

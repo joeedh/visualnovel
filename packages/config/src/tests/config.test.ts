@@ -202,7 +202,7 @@ describe('secretDirsFor', () => {
   it("includes the project's keys/ then the enclosing repo root's keys/", async () => {
     const root = await mkdtemp(join(tmpdir(), 'vn-repo-'));
     await mkdir(join(root, '.git'), { recursive: true });
-    const project = join(root, 'examples', 'sample');
+    const project = join(root, 'templates', 'basic');
     await mkdir(project, { recursive: true });
     const dirs = await secretDirsFor(project);
     expect(dirs).toEqual([join(project, 'keys'), join(root, 'keys')]);

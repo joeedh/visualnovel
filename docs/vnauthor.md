@@ -53,10 +53,10 @@ Offline smoke test:
 
 ```sh
 pnpm build
-printf '/skills\n/status\n/exit\n' | node apps/authoring/dist/vnauthor.js examples/sample --mock
+printf '/skills\n/status\n/exit\n' | node apps/authoring/dist/vnauthor.js templates/basic --mock
 ```
 
-[`examples/sample/AICONTEXT.md`](../examples/sample/AICONTEXT.md) shows project guidance the
+[`templates/basic/AICONTEXT.md`](../templates/basic/AICONTEXT.md) shows project guidance the
 agent honors.
 
 ## How it works
@@ -312,4 +312,4 @@ Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md` (f
 `name`, `description`, `when-to-use`). A pure-prose skill returns its body as guidance; a skill
 with a `run.{mjs,js,cjs,sh}` script runs a vetted command — and **each run is permissioned**
 (always-confirm), executing in the workspace root with the workspace path as its first argument.
-See [`examples/sample/.aiagent/skills/new-character`](../examples/sample/.aiagent/skills/new-character).
+See [`templates/basic/.aiagent/skills/new-character`](../templates/basic/.aiagent/skills/new-character).

@@ -36,7 +36,7 @@ const charDoc = (id: string, name: string) => {
   return { id, file: `/p/characters/${id}/character.md`, doc: parseFrontMatter(text), text };
 };
 
-// A small branching story that mirrors examples/sample's shape: narration + attributed
+// A small branching story that mirrors templates/basic's shape: narration + attributed
 // dialogue, a choice fork, a linear next, and a two-character scene.
 function sampleModel(): ProjectModel {
   return buildModel({

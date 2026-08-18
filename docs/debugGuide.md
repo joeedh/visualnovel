@@ -107,7 +107,7 @@ the scene, so fixing one leaves the symptom identical.
 
 **Run `git status` at the end of a live session, not just at the end of the code.** Every
 command executed over CDP appends a `CommandRecord` to `commands.jsonl` in whatever workspace
-the app was pointed at — including a committed tree like `examples/sample`, where generated
+the app was pointed at — including a committed tree like `templates/basic`, where generated
 provenance does not belong.
 
 ## Reproducing offline
@@ -132,7 +132,7 @@ provenance does not belong.
   suspecting the derivation. On-disk task state comes from `@vn/testkit` — a throwaway jest
   test that builds `makeProject` fixtures and prints their paths (one gate-halted, one through
   `approveAll()`), then `$env:VN_PROJECT=<dir>` before the dev loop. **Never** point a run at
-  `examples/sample` to get tasks: its committed `vngen/` tree is authored output, and
+  `templates/basic` to get tasks: its committed `vngen/` tree is authored output, and
   fabricated provenance there is worse than no fixture.
 - **A UI for a rare state is unfalsifiable until you can produce the state.** The refine-loop
   inspector renders multi-attempt `shot_image` tasks and no ordinary run produces one. Both
@@ -429,12 +429,12 @@ interactivity; use CDP when you need reproducibility or you're an agent.
 - Provider-shaped bugs: reproduce with `RecordedChatBackend` fixtures rather than hitting
   the network in a loop.
 - **`git diff --no-index` verifies a fixture that isn't a repo.** A scratchpad copy of
-  `examples/sample` can still answer "did the editor change only branch markers", and an
+  `templates/basic` can still answer "did the editor change only branch markers", and an
   empty diff after an unwire-then-rewire is a stronger round-trip test than anything available
   from inside the app:
 
   ```sh
-  git diff --no-index -- examples/sample/scenes "$SCRATCH/branchdemo/scenes"
+  git diff --no-index -- templates/basic/scenes "$SCRATCH/branchdemo/scenes"
   ```
 
 - **Windows, if you build a git-backed temp dir by hand** (`@vn/testkit`'s `initRepo` already

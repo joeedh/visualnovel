@@ -382,7 +382,7 @@ after) and left `greet.json` byte-identical.
   `packages/providers/src/placeholder.ts`), so brackets, thumbnails and drag geometry _are_
   reviewable in mock mode — distinct shots are visibly distinct. What a placeholder still
   cannot tell you is whether coverage boundaries land where the **art** implies, so a real
-  non-mock run of `examples/sample` remains the acceptance check, not the development loop.
+  non-mock run of `templates/basic` remains the acceptance check, not the development loop.
 
 ## Acceptance on a real run
 

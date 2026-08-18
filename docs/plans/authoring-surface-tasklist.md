@@ -67,7 +67,7 @@ nothing. Wave C is the two features that consume the rest.
 
 - [x] `inspectCreate` / `createWorkspace` in `apps/desktop/src/main/workspace.ts`
 - [x] Three-file skeleton (`project.yaml` with `start: opening`, `scenes/opening.md`,
-      `wiki/index.md`) — not a copy of `examples/sample`
+      `wiki/index.md`) — not a copy of `templates/basic`
 - [x] `workspace.create` command, with the non-empty refusal and the inside-a-repo warning
 - [x] `workspace.test.ts`: the created project loads a model with **zero** error diagnostics
 - [x] Menu: New Project…, Open Project…, a Recents submenu built from `workspace.recent`

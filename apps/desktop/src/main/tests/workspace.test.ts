@@ -23,7 +23,7 @@ import {
   type RecentStore,
 } from '../workspace.js';
 
-/** A template shaped like `examples/sample`: authored inputs plus a previous run's output. */
+/** A template shaped like `templates/basic`: authored inputs plus a previous run's output. */
 async function makeTemplate(dir: string): Promise<void> {
   await mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
   await mkdir(join(dir, 'screenplay'), { recursive: true });

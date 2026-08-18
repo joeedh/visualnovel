@@ -102,7 +102,7 @@ the file byte-identical.
 - **The re-parse assertion earns its keep.** A note-only line is *not* blank to the parser, so
   a heading directly beneath one is not a heading — deleting that note **creates a scene**.
   That case is a test, and it refuses (`branch_patch_verify`).
-- The sweep over `examples/sample` runs six edit shapes against every scene and requires each
+- The sweep over `templates/basic` runs six edit shapes against every scene and requires each
   to land the intended graph exactly while leaving every other scene's wiring untouched.
 
 ## Wave 2 — shared graph primitives
@@ -347,8 +347,8 @@ discrete.
   where a bug is expensive and a test is cheap. Splice gets its own cases: the four rules
   above, plus a splice whose two-scene patch fails partway and leaves the file untouched.
 - The patcher's re-parse assertion is itself the integration test; run it over
-  `examples/sample`'s screenplay with a generated sweep of edits.
-- Live: rewire `examples/sample`, then confirm `vngen graph examples/sample` agrees with
+  `templates/basic`'s screenplay with a generated sweep of edits.
+- Live: rewire `templates/basic`, then confirm `vngen graph templates/basic` agrees with
   what the editor showed, and `git diff` shows only marker lines changed.
 
 ```sh
@@ -359,7 +359,7 @@ node scripts/vn-cdp.mjs --raw "window.__vnDebug.explainPick(400, 300)"
 
 - **Silent screenplay corruption** — mitigated by the re-parse assertion. Do not skip it,
   and do not downgrade it to a warning.
-- **Auto-layout on a real script may be unusable.** `examples/sample` is small; a 60-scene
+- **Auto-layout on a real script may be unusable.** `templates/basic` is small; a 60-scene
   script with heavy convergence is the real test. Build the layout against a synthetic large
   graph before trusting it.
 - **The one-screenplay-file assumption** is true today (`worktree.ts:43`) but is an
@@ -401,7 +401,7 @@ image per scene.
 - [x] Five `story.*` commands registered, in the catalog, driveable from CDP
 - [x] Drag-to-splice works, refuses a target with choices for a visible reason, and animates
       the relayout
-- [x] Branch editor renders `examples/sample` correctly, dead scenes dashed
+- [x] Branch editor renders `templates/basic` correctly, dead scenes dashed
 - [x] An edge rewire changes only marker lines in `git diff`
 - [x] `vngen graph` and the editor agree on the same project
 - [x] `CLAUDE.md` + [`../command-system.md`](../command-system.md) updated with the new

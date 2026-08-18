@@ -39,10 +39,10 @@ So three things are missing, and only one of them is interesting.
   files, must not litter it. But "create a new project here" is an explicit request for a project,
   and handing back one that cannot build a model is a worse answer than a two-file skeleton.
   The split keeps both promises.
-- **The skeleton is three files, and it is not `examples/sample`.** `project.yaml` (title +
+- **The skeleton is three files, and it is not `templates/basic`.** `project.yaml` (title +
   `start: opening`), `scenes/opening.md` (front-matter `scene: opening` over a one-heading, two-
   line Fountain body), and `wiki/index.md` (an empty story-bible page with a heading). No cast, no
-  locations, no art style. `examples/sample` is a *story* — seeding it would give every new
+  locations, no art style. `templates/basic` is a *story* — seeding it would give every new
   project someone else's characters, and the author would spend their first ten minutes deleting
   them. Character and location sheets are created by `doc.create`, which already puts them in
   their conventional homes.
@@ -154,7 +154,7 @@ disabled-looking `(none)` entry rather than an empty submenu.
 All four were verified live over CDP against the running app: `workspace.create` on a fresh path
 produced `project.yaml` + `scenes/opening.md` + `wiki/index.md` under one `New project` commit and
 the app came back open on it; `workspace.index` on the result reported one scene, the mined
-location `a_room`, `entry: opening` and `diagnostics: []`; the same command on `examples/sample`
+location `a_room`, `entry: opening` and `diagnostics: []`; the same command on `templates/basic`
 refused by naming `workspace.open`, and on a fresh path inside this repo accepted with the
 inside-a-repo warning appended; the recents submenu held one entry per remembered root, labelled by
 basename, with the open project absent — and refetched itself when another was opened from it.

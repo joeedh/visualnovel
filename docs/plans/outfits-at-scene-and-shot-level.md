@@ -164,7 +164,7 @@ the array (default synthesized if absent, description `''`); `characterToDoc` an
 without the default still yields it, first; round-trip over a two-outfit character; a `default_outfit`
 naming an outfit the map does not define is a diagnostic naming both.
 
-`examples/sample`'s Aiko gains a second outfit, because a feature no fixture exercises is a feature
+`templates/basic`'s Aiko gains a second outfit, because a feature no fixture exercises is a feature
 the recorded corpus cannot cover.
 
 ### 2. Resolution, and prompts that say what the author wrote

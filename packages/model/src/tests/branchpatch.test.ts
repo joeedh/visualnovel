@@ -476,12 +476,12 @@ function expectLands(source: string, edit: SceneMarkerEdit, opts: { sceneId?: st
 
 /**
  * The re-parse assertion is the integration test, so drive it with a generated sweep over the
- * real shipped sample rather than hand-picked edits. `examples/sample` authors its scenes as
+ * real shipped sample rather than hand-picked edits. `templates/basic` authors its scenes as
  * chunks, which is one file per scene with the id forced from front-matter — the form the
  * desktop branch editor patches.
  */
-describe('applySceneMarkerEdit over examples/sample scene chunks', () => {
-  const dir = resolve(__dirname, '../../../../examples/sample/scenes');
+describe('applySceneMarkerEdit over templates/basic scene chunks', () => {
+  const dir = resolve(__dirname, '../../../../templates/basic/scenes');
   const ids = readdirSync(dir)
     .filter((name) => name.endsWith('.md'))
     .map((name) => name.slice(0, -'.md'.length));

@@ -261,7 +261,7 @@ stays `prop.secret`, so it is still redacted at `digestProps` and still delibera
   saying what a palette is and to ask the agent for one, instead of an empty palette block.
 
   The scaffold was `newCharacterDoc(name)` — `id` and `name` and nothing else — so every field the
-  schema knows was learned by reading a doc page or by copying `examples/sample`. It now ships
+  schema knows was learned by reading a doc page or by copying `templates/basic`. It now ships
   `status`, `default_outfit`, an `outfits` map, and `traits`, each filled with a placeholder shaped
   like the real thing rather than a plausible value: `everyday: what they wear in most scenes —
   silhouette, colour, one detail that is theirs`. A placeholder that reaches a prompt unedited draws
@@ -453,7 +453,7 @@ stays `prop.secret`, so it is still redacted at `digestProps` and still delibera
     reading retired every tooltip that restated its own label (`sendBtn.title = 'Send'`,
     `lid.title = line.id`, `row.title = text`).
 
-  Verified live over CDP against `examples/sample`: a walk of all 87 shadow roots finds 35
+  Verified live over CDP against `templates/basic`: a walk of all 87 shadow roots finds 35
   interactive elements, every one of which answers with a tooltip, and the app menu, the View menu,
   their four submenus and a tree right-click all render a sentence per row.
 
@@ -508,7 +508,7 @@ stays `prop.secret`, so it is still redacted at `digestProps` and still delibera
     palette, the agent and CDP can mean. The menu and the command deliberately differ, exactly as
     Split Area (a gesture) and `view.open`'s `left`/`right` (a command) already do.
 
-  Verified live over CDP against `examples/sample`: hovering the script and documents panes gives a
+  Verified live over CDP against `templates/basic`: hovering the script and documents panes gives a
   `rgb(229, 83, 75)` outline, a red wash, _Click to close this pane_ and a visible X; hovering the
   header gives `rgb(90, 98, 113)`, no X and _The menu bar is not a pane_; a click closes the pointed
   -at pane (`documents, convo, script, header` → `documents, script, header`); with one real pane

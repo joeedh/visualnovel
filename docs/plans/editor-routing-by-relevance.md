@@ -235,7 +235,7 @@ Differences between this plan as written and the code as shipped, all deliberate
 - **`.yml` joined the text suffixes.** Five extensions were named; a `.yml` that opened nothing
   while `.yaml` opened would be a distinction no author drew.
 
-Verified live over CDP against `examples/sample` in mock mode: clicking `greet` with no Script
+Verified live over CDP against `templates/basic` in mock mode: clicking `greet` with no Script
 pane open turned the biggest non-sidebar pane into Script; clicking it again focused rather than
 split; clicking `Aiko` and then `Classroom 2-B` focused the already-open Wiki pane on each sheet;
 clicking the childless `Assets` grouping did nothing at all.

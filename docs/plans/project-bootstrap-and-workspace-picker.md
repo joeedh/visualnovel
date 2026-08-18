@@ -20,7 +20,7 @@ Status: **shipped** (deviations in [As shipped](#as-shipped)); the as-shipped pa
 second half of that sentence: it initializes a repo when the directory is not already in a work
 tree, fills a committer identity only when git cannot answer for itself, and commits `-A` once.
 `seedWorkspace(template, target)` is how a first launch gets *something* to open — a scratch copy
-of `examples/sample`, because the template is read-only.
+of `templates/basic`, because the template is read-only.
 
 What is missing is the first half: a user cannot choose a directory, and the app cannot open one
 after launch. `workspaceRoot` is resolved once in `main/index.ts` and every consumer is a

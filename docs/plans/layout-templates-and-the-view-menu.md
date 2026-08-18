@@ -300,7 +300,7 @@ So `digest` now reaches the renderer — `CatalogProp.digest` in `@vn/commands`,
 - `apps/desktop/renderer/pathux/layouts.ts` — the window's side of a template: which one is
   showing, `currentLayoutFile`, `fetchLayouts`, and the fingerprint watch that follows the file.
 - `apps/desktop/src/main/tests/layouts.test.ts`, `apps/desktop/src/shared/tests/layouts.test.ts`.
-- `examples/sample/.gitattributes` — so a seeded workspace inherits the merge policy.
+- `templates/basic/.gitattributes` — so a seeded workspace inherits the merge policy.
 
 **Changed**
 

@@ -365,7 +365,7 @@ actually reaches a user in the desktop instead of being auto-allowed.
 
 1. `pnpm check` **and** `pnpm check:renderer`, `pnpm test`, `pnpm lint`, `pnpm build`.
 2. **Hash stability, again the key regression.** Moving `prompts.ts` must change no prompt: against
-   a copy of `examples/sample`, `vngen cost` reports the same task hashes before and after the move.
+   a copy of `templates/basic`, `vngen cost` reports the same task hashes before and after the move.
    Run this *before* touching anything else, so a later failure has one suspect.
 3. **The agent**: `pnpm vnauthor <copy> --mock` → `/makeimage create an aerial shot of the high
    school`. It reports the matched location, writes a placeholder PNG into `assets/objects/`, and

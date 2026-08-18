@@ -418,7 +418,7 @@ Others worth writing by name:
 - `adoptslot.test.ts`, `suspend.test.ts`, `refcycle.test.ts` pass **unchanged** — the nets for the
   two extractions.
 
-End to end over `examples/sample`: `story.decomposeAll()` under `--mock` must **refuse by name**;
+End to end over `templates/basic`: `story.decomposeAll()` under `--mock` must **refuse by name**;
 `asset.accept` on a frame whose plate is unapproved must refuse with the same sentence the greyed
 button showed.
 

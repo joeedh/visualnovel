@@ -299,13 +299,13 @@ Coming!
 });
 
 /**
- * `examples/sample` was converted by running `vngen import` on it, so the committed chunks are a
+ * `templates/basic` was converted by running `vngen import` on it, so the committed chunks are a
  * fixed point of the pair: export them and import the result, and the same bytes come back. That
  * is a stronger claim than "the scenes survive" — it pins the layout a user actually reads, and it
  * fails if either projection drifts.
  */
-describe('examples/sample is a fixed point of screenplay ↔ import', () => {
-  const root = resolve(__dirname, '../../../../examples/sample');
+describe('templates/basic is a fixed point of screenplay ↔ import', () => {
+  const root = resolve(__dirname, '../../../../templates/basic');
   const dir = join(root, 'scenes');
   const start = /^start:\s*(\S+)/m.exec(readFileSync(join(root, 'project.yaml'), 'utf8'))?.[1];
 

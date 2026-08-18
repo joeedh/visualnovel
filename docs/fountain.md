@@ -461,7 +461,7 @@ The city hums somewhere below.
   for stdout — and it refuses an `-o` inside `screenplay/`, where the project would report the
   file on every load from now on.
 
-`examples/sample` is the shipped worked example: it was converted by running `vngen import` on it,
+`templates/basic` is the shipped worked example: it was converted by running `vngen import` on it,
 and a test proves it is a fixed point — export it, import that, and the committed files come back
 byte for byte.
 

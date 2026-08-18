@@ -254,7 +254,7 @@ node-only, so the surface itself is verified live over CDP.
 ## Verification
 
 1. `pnpm check` **and** `pnpm check:renderer`, `pnpm test`, `pnpm lint`, `pnpm build`.
-2. **Hash stability** — the key regression. Against a copy of `examples/sample` with no art notes
+2. **Hash stability** — the key regression. Against a copy of `templates/basic` with no art notes
    authored: `node apps/cli/dist/cli.js cost <copy>` before and after the change must plan the
    same task hashes. The pipeline unit test asserts the same thing at the builder level.
 3. **Labels**: `node scripts/vn-cdp.mjs "workspace.doctree()"` — asset leaves read

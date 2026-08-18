@@ -419,8 +419,8 @@ to land the bus).
 5. **CDP, out of process:** with the dev loop running,
    `node scripts/vn-cdp.mjs "workspace.index()"` prints the index JSON;
    `node scripts/vn-cdp.mjs "view.room(name='play')"` visibly switches rooms.
-6. `git -C examples/sample rev-parse HEAD` matches the `gitHead` on records appended to
-   `examples/sample/vngen/state/commands.jsonl`.
+6. `git -C templates/basic rev-parse HEAD` matches the `gitHead` on records appended to
+   `templates/basic/vngen/state/commands.jsonl`.
 7. Confirm `vn.undo()` returns the explicit not-implemented outcome pointing at
    `docs/gitUndoOptions.md` rather than throwing or silently no-op'ing.
 8. Per CLAUDE.md § Finishing a plan: audit comments (no `CLAUDENOTE:` left) and update
@@ -433,7 +433,7 @@ to land the bus).
 All of it landed. `pnpm check` and `pnpm lint` are clean; `pnpm test` is 25 suites / 210 tests
 (from 24 / 204). Every verification step above passed, including the live checks: the catalog,
 `workspace.index()`, `view.room(name='play')` and `story.export()` all executed over CDP, the
-`gitHead` on each record matched `git -C examples/sample rev-parse HEAD` exactly, unknown
+`gitHead` on each record matched `git -C templates/basic rev-parse HEAD` exactly, unknown
 commands and invalid props were rejected with legible messages and a non-zero exit, and
 `--undo`/`--redo` returned the explicit refusal.
 

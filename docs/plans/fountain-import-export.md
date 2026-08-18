@@ -175,7 +175,7 @@ re-importing its output reproduces the project.
    diagnostic and the importer, not an alternative input form. Its 60-second "plans byte-identical
    work either way" test moved to the CLI suite as an imported-vs-hand-authored task-hash
    comparison, which is where `cmdImport` is actually reachable — and is the property step 7 needs.
-7. ✔ **Convert `examples/sample` by running the importer on it.** The conversion in
+7. ✔ **Convert `templates/basic` by running the importer on it.** The conversion in
    `scene-chunk-files.md` step 9 was by hand or by the writer; redoing it through `vngen import`
    is the real end-to-end proof, and the diff against the hand conversion is the test. Task hashes
    must not move — same stop condition, same reason. Done by rebuilding the pre-conversion project
@@ -222,7 +222,7 @@ Everything above is built. What a reader should take from it that the steps do n
   *reports* it. The old both-present hard error became a warning in the process, because a file that
   builds no scenes cannot contend with the ones that do — and that softening is what let the
   importer finish without a window where the project fails to load.
-- **The escape hatch is tested by the template.** `examples/sample` was converted by running the
+- **The escape hatch is tested by the template.** `templates/basic` was converted by running the
   importer, and it is a fixed point of the pair: export it, import that, and the committed bytes
   come back. That is the claim that makes the chunk format a working format rather than lock-in, and
   it now fails the build if either projection drifts.

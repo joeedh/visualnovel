@@ -145,7 +145,7 @@ Five deviations, each forced by the recorded fixture run rather than chosen up f
   Verified against a copy of the fixture with `build/assets` emptied.
 - Live with real assets: neither approach in the original plan works. A hand-written
   `tasks.jsonl` cannot produce viewable frames (the bytes must exist in the store), and
-  `examples/sample` must never carry fabricated provenance. What was used instead: a
+  `templates/basic` must never carry fabricated provenance. What was used instead: a
   throwaway project built by `@vn/testkit` and driven through the **real** `runPipeline` with
   a scripted reviewer backend that blocks the first N attempts of chosen shots, plus an image
   backend emitting real PNG bytes. That yields genuine three-attempt `done` and `needs_human`

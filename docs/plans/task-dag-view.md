@@ -108,7 +108,7 @@ land the static graph first.
 
 - `pnpm test` — ref-edge resolution (including refs with no producer), barrier placement,
   ghost derivation.
-- Live on `examples/sample` in mock mode: the gate barrier should appear with `aiko` pending,
+- Live on `templates/basic` in mock mode: the gate barrier should appear with `aiko` pending,
   and shot tasks should be ghosts, not absent.
 - Live after approving a portrait: barrier clears, ghosts become real nodes.
 - Synthetic 300-node fixture for layout performance before trusting it on a real project.
@@ -131,7 +131,7 @@ path whatsoever. FLOOR mutates through `pipeline.run` and `gate.approve` only.
 ## Done
 
 - [x] List/graph toggle in the floorbar; both drive the same inspector
-- [x] `deps` solid, ref-edges dashed, both correct on `examples/sample`
+- [x] `deps` solid, ref-edges dashed, both correct on `templates/basic`
 - [x] Gate rendered as a barrier in the graph, marked as derived, with `RESOLVE →`
 - [x] Not-yet-plannable work shown as ghosts, not omitted
 - [x] Pure derivation under test; acceptable at 300 nodes

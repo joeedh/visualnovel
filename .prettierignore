@@ -24,8 +24,8 @@ apps/desktop/prototype.html
 # Authored project inputs (character/location markdown) are serialized by @vn/parse's
 # round-trip YAML front-matter writer, not prettier. Don't let prettier fight that
 # serializer's style — the agent owns these files' formatting.
-examples/**/characters/**
-examples/**/locations/**
+templates/**/characters/**
+templates/**/locations/**
 
 # A run's output tree, written by @vn/store and @vn/pipeline. It's committed (it's the
 # reproducible result of a run), but its writers own its formatting — a prettier pass here

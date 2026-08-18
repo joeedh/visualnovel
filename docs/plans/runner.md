@@ -118,7 +118,7 @@ enforces it, mirroring how `@vn/authoring` is constrained).
    `tsconfig` path entry in root `tsconfig.json`, jest project in `jest.config.cjs`, and
    the `eslint-plugin-boundaries` element. Follow an existing leaf package (e.g.
    `@vn/store`) as the template.
-4. Tests: `buildPlayable` over `examples/sample` (mock/derived model) → assert beat order,
+4. Tests: `buildPlayable` over `templates/basic` (mock/derived model) → assert beat order,
    speaker attribution, choice/next wiring, and graceful handling of missing assets.
 
 ---
@@ -183,13 +183,13 @@ enforces it, mirroring how `@vn/authoring` is constrained).
 
 1. **Gates:** `pnpm check`, `pnpm test`, `pnpm lint` all green before and after.
 2. **Line ids / exporter (offline):** `pnpm build` then
-   `node apps/cli/dist/cli.js export examples/sample` → inspect
-   `examples/sample/vngen/build/story.play.json`: beats in reading order, `say` beats carry
+   `node apps/cli/dist/cli.js export templates/basic` → inspect
+   `templates/basic/vngen/build/story.play.json`: beats in reading order, `say` beats carry
    the right `who`, `show` beats appear where shots change, `choices`/`next`/`start` match
-   the story graph. Since `examples/sample` may lack real generated assets, confirm image
+   the story graph. Since `templates/basic` may lack real generated assets, confirm image
    refs are present where assets exist and cleanly omitted where they don't.
 3. **Runner (via `/run` skill / electron):** launch the desktop app (it opens
-   `examples/mySampleRepo`, seeded from `examples/sample` on first launch),
+   `examples/mySampleRepo`, seeded from `templates/basic` on first launch),
    switch to the **PLAY** room, and confirm: dialogue advances on click, speaker portraits
    render through `vnasset://` (or placeholder when absent), background swaps per shot,
    choices route to the correct next scene, Back rewinds, and Save→Reset→Load restores

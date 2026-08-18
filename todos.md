@@ -81,5 +81,6 @@
 [ ]: agent tools should show their arguments where it makes sense, e.g. read_file should show the 
      (relative to the project repo root) path of the file being read.
 [ ]: The tokens counter label should keep track of uncached tokens only.
-[ ]: 
+[ ]: the tasks editor should refresh itself automatically 
+
      

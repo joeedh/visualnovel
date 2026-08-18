@@ -193,7 +193,7 @@ history". Three-quarters right, and worth stating exactly:
 - The five new stack/journal cases were **mutation-checked** — the `mutating` guard, the drift
   check, and `applyTree`'s `from` seed were each broken in turn, and each test failed. A test
   that cannot fail is not evidence.
-- **Live over CDP**, against a throwaway workspace seeded from `examples/sample` (not
+- **Live over CDP**, against a throwaway workspace seeded from `templates/basic` (not
   `mySampleRepo` — that is the user's working copy). All confirmed:
   - `story.setNext` → undo → redo leaves `screenplay/script.fountain` byte-identical at each
     step (`git hash-object` compared: `9ec59d5…` → `84552a5…` → `9ec59d5…` → `84552a5…`).

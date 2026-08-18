@@ -1,7 +1,7 @@
 /**
  * Where the desktop app opens, and how a first launch gets something to open.
  *
- * `examples/sample` is a read-only **template**. A real run writes ~100 MB of generated art
+ * `templates/basic` is a read-only **template**. A real run writes ~100 MB of generated art
  * into `vngen/`, and doing that inside the source tree buries `git status` and leaves no way
  * to tell "the sample we ship" from "the copy I've been messing with". So the app seeds a
  * scratch copy with its own git repo — gitignored by the parent, hence not a submodule — and
@@ -265,7 +265,7 @@ export const START_SCENE = 'opening';
  * The files a new project is created with: three that make its model build, the shipped layout
  * templates, and the `.gitattributes` carrying both rules a project needs from us.
  *
- * Not a copy of `examples/sample`: that is somebody else's story, and an author's first ten
+ * Not a copy of `templates/basic`: that is somebody else's story, and an author's first ten
  * minutes should not go on deleting a cast. Not nothing either — with no `start:` and no scenes
  * the model builds with error diagnostics, so an empty project greets its author with a red count.
  *

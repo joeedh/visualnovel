@@ -101,7 +101,7 @@ today and stays one.
 
 `loadInputs` prefers `scenes/` when it exists and falls back to `screenplay/` when it does not.
 Not forever — [`fountain-import-export.md`](fountain-import-export.md) is what retires the
-fallback — but during this move it is what keeps `examples/sample`, every `@vn/testkit` fixture,
+fallback — but during this move it is what keeps `templates/basic`, every `@vn/testkit` fixture,
 and every existing user project working while the chunk path is built. **A project with both is an
 error**, not a merge: two sources of truth for one scene is the failure this whole direction
 exists to prevent.
@@ -232,7 +232,7 @@ surface. Before that plan lands they would be produced and rendered nowhere.
    sharing one file, and a script written as one file is what arrives with no line-id marks. The
    acceptance criterion for step 9 is proved here at fixture scale: a full approve-and-run in each
    format plans **identical task hashes**.
-9. ✔ **Convert `examples/sample`.** Five `scenes/<id>.md` files and `start: arrival`; each body is
+9. ✔ **Convert `templates/basic`.** Five `scenes/<id>.md` files and `start: arrival`; each body is
    the screenplay block it came from, minus the `[[scene:]]` marker, so the diff is a move rather
    than a rewrite. Converted by hand rather than by the step-4 writer, deliberately: the writer
    would also stamp `[[line:]]`/`[[nextline:]]` on every line, and the shipped template is more
@@ -290,12 +290,12 @@ surface. Before that plan lands they would be produced and rendered nowhere.
 
 All ten steps landed. `pnpm check`, `pnpm test` (762 tests, 65 suites) and `pnpm lint` are green.
 A `scenes/` project loads, builds, validates, exports and is written to by both prose patchers;
-`@vn/testkit` builds one by default; `examples/sample` is authored that way; and `screenplay/`
+`@vn/testkit` builds one by default; `templates/basic` is authored that way; and `screenplay/`
 still loads until [`fountain-import-export.md`](fountain-import-export.md) retires it.
 
 **The move cost nothing.** The acceptance criterion — converting a project's format must not
 regenerate a single asset — was checked twice: at fixture scale in step 8 (a full approve-and-run
-in each format plans identical task hashes) and on `examples/sample` in step 9 (both forms planned
+in each format plans identical task hashes) and on `templates/basic` in step 9 (both forms planned
 through two waves, sorted `kind + hash` identical; `vngen graph`, `vngen cost` and the exported
 `story.play.json` byte-identical). It holds because nothing in a task's `inputs` names a file.
 
@@ -325,7 +325,7 @@ through two waves, sorted `kind + hash` identical; `vngen graph`, `vngen cost` a
   `SceneChunkDoc` carries the file's bytes, so a rewire keeps the author's YAML — key order,
   spacing, comments — byte-exact. Round-tripping through `stringifyFrontMatter` silently drops
   comments, which is a real edit to a file the author owns.
-- **`examples/sample` was converted by hand.** The step-4 writer would also stamp
+- **`templates/basic` was converted by hand.** The step-4 writer would also stamp
   `[[line:]]`/`[[nextline:]]` on every line; a shipped template is more useful showing the *minimum*
   a chunk may be, and an unmarked body is exactly the input `assignLineIds` exists for. It also
   keeps the diff readable as a move.

@@ -1073,7 +1073,7 @@ one whose model will not build is a worse answer than three files. So `createWor
 skeleton — `project.yaml` (`title` + `start: opening`), `scenes/opening.md` (a Fountain slug line
 and two lines to write over), `wiki/index.md` (an empty story-bible page) — then `ensureRepo`
 commits it as `New project`, and only then opens it through the same `host.openWorkspace` every
-other path takes. The skeleton is not a copy of `examples/sample`: that is somebody else's story,
+other path takes. The skeleton is not a copy of `templates/basic`: that is somebody else's story,
 and the author would spend their first ten minutes deleting a cast. It is sized by one assertion —
 the created project builds a model with **no error diagnostics**, so the header's first count is
 zero rather than red.
@@ -1129,12 +1129,13 @@ handler resolves `ProjectPaths` per request for exactly that reason.
 ## Seeded workspace (`examples/mySampleRepo`)
 
 With nothing remembered and no `VN_PROJECT`, the app seeds **`examples/mySampleRepo`** from
-`examples/sample` (`apps/desktop/src/main/workspace.ts`).
+`templates/basic` (`apps/desktop/src/main/workspace.ts`).
 
 - **Why**: a real run writes ~100 MB into `vngen/`, and doing that in the source tree buries
   `git status` and erases the line between the sample we ship and the copy you've been messing
-  with. `examples/mySampleRepo` is **gitignored**, so its own git repo is invisible to the
-  parent — no submodule, no `gitlink`, no `--recursive` clone.
+  with. The whole of `examples/` is **gitignored**, so a seeded workspace's own git repo is
+  invisible to the parent — no submodule, no `gitlink`, no `--recursive` clone. The committed
+  template lives in `templates/`, which is a different tree on purpose.
 - **Seeding copies inputs only** — everything in the template except `vngen/` (a fresh
   workspace has not been run) and `keys/` (secrets) — then `git init`s and commits them as
   `Sample project inputs`. A local `user.*` is set only when git can't already answer who the
@@ -1145,5 +1146,6 @@ With nothing remembered and no `VN_PROJECT`, the app seeds **`examples/mySampleR
   cannot misfire. A copy seeded before the template became one file per scene therefore still
   holds the `screenplay/` form, which no longer loads: run `workspace.import` on it, or delete
   the directory to get the current template.
-- Packaged builds have no repo-relative `examples/`, so the scratch workspace falls back to
-  `app.getPath('userData')/mySampleRepo`; a missing template then fails by name.
+- **The template is what says this is a source checkout.** `examples/` is ignored and a fresh
+  clone has none, so `seedSample` probes for `templates/basic` instead; a packaged build, having
+  neither, falls back to `app.getPath('userData')/mySampleRepo` and then fails by name.

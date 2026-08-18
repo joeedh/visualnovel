@@ -182,7 +182,7 @@ Each keeps `pnpm check`, `pnpm test`, and `pnpm lint` green.
 5. **M5 — skills + native tool-calling (Path B).** Skill discovery/run with
    permissioning; `chatWithTools` in the backends behind the same interface.
 6. **M6 — docs + sample.** Extend `CLAUDE.md`; add a sample `AICONTEXT.md` and an example
-   skill under `examples/sample`.
+   skill under `templates/basic`.
 
 ---
 

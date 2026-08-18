@@ -249,7 +249,7 @@ She bows.
   // Real authored prose, stripped back to what an author types: the sample ships the marks
   // `vngen import` stamped, and un-marking them is the only way to sweep this writer over it.
   it('leaves the sample scene chunks meaning exactly what they did', () => {
-    const dir = join(__dirname, '../../../../examples/sample/scenes');
+    const dir = join(__dirname, '../../../../templates/basic/scenes');
     const ids = readdirSync(dir)
       .filter((name) => name.endsWith('.md'))
       .map((name) => name.slice(0, -'.md'.length));

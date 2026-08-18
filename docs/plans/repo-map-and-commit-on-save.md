@@ -293,7 +293,7 @@ All six steps landed as written. Four things came out differently:
 
 - **A repo the project doesn't own is refused, and that was not in the plan.** Wiring the desktop
   app surfaced a hazard the plan missed: `openGit(projectRoot).isRepo()` is true when the project
-  merely *sits inside* a repo — `--project examples/sample` inside this monorepo, say — so the
+  merely *sits inside* a repo — `--project templates/basic` inside this monorepo, say — so the
   session's opening `-A` checkpoint would have committed the entire monorepo worktree under
   "Changes made outside the app". `RepoRef.owned` (`root === resolve(dir)`) is the answer: the app
   reports the repo, warns, and declines to write history it doesn't own. Undo is unaffected, since

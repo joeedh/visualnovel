@@ -143,7 +143,7 @@ Not-quiet is the point of the change, so none of these are warnings-in-a-log.
    and that every line's `kind`/`speaker`/`text` is unchanged. Any other divergence discards the
    patch and returns a diagnostic. Tests: the placement rule per element kind, idempotency (running
    it twice changes nothing), a file where insertion would break a cue (discarded, reported), and
-   the no-op property on `examples/sample`.
+   the no-op property on `templates/basic`.
 
 5. **`story.assignLineIds` command.** `mutating: true`, `undoable: true` (screenplay is the
    document data class the shadow-snapshot undo already covers), and a `check` that runs the same
