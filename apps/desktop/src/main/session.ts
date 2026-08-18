@@ -240,7 +240,10 @@ import {
   answered,
   answeredQuestion,
   asked,
+  decided,
   emptyConvo,
+  proposed,
+  queried,
   received,
   type Convo,
 } from '../shared/convo.js';
@@ -541,6 +544,18 @@ function entityDiagnostic(path: string, doc: FrontMatterDoc): string | undefined
 }
 const TREE_MAX_FILES = 5000;
 
+/** The four directories the project map is derived from — a write to any of them dates it. */
+const MAPPED_DIRS = ['characters/', 'locations/', 'scenes/', 'wiki/'];
+
+/** Whether a finished turn wrote anything the project map is built out of. */
+function wroteAuthoredInput(events: readonly AgentEvent[]): boolean {
+  return events.some(
+    (e) =>
+      e.type === 'tool' &&
+      (e.result.written ?? []).some((p) => MAPPED_DIRS.some((dir) => p.startsWith(dir))),
+  );
+}
+
 /**
  * Every file under `dir` as workspace-relative `/` paths. Bounded rather than exhaustive: a
  * project holding a copied asset library should slow the sidebar down, not the main process.
@@ -624,6 +639,18 @@ export class WorkspaceSession {
   /** The thread being written to. Opened by the first turn, never by opening the app. */
   private thread: ThreadHeader | undefined;
   /**
+   * Ids for the plan and question cards main reduces for the transcript. They are inert here —
+   * the card the author clicks is the renderer's — but the reducers are shared, so they are given
+   * distinct ones rather than a repeated zero.
+   */
+  private cardSeq = 1;
+  /**
+   * Whether the project map is owed a rewrite before the next turn reads it. True to begin with,
+   * because a workspace that was never mapped is the common case — `examples/test4` has no
+   * `AICONTEXT.generated.md` and never did, so every thread re-derived the cast from searches.
+   */
+  private mapStale = true;
+  /**
    * Appends, in order. Half the calls that add a transcript line happen inside a synchronous
    * `onEvent`, so the writes queue behind one promise instead of racing; `runAgent` waits it out
    * before returning, which is what makes the file complete the moment a turn is.
@@ -702,12 +729,25 @@ export class WorkspaceSession {
    */
   private permission(): Permission {
     return {
-      approvePlan: (plan) => this.deps.requestPlan(plan),
+      // A plan and its verdict are the decisive turns of a conversation and neither reaches the
+      // loop's event stream as a transcript line — so both are recorded here, at the seam that
+      // asks. The renderer runs the same two reducers on its own copy.
+      approvePlan: async (plan) => {
+        const id = this.cardSeq++;
+        this.record((convo) => proposed(convo, { id, plan }));
+        const decision = await this.deps.requestPlan(plan);
+        this.record((convo) => decided(convo, decision));
+        return decision;
+      },
       confirmAction: (tool, args) => this.deps.requestConfirm(tool, confirmDetail(tool, args)),
       // The author's answer is the one turn of theirs that never passes through `run`, and the
-      // loop does not emit it — so a transcript that did not record it here would lose it. A
-      // declined confirmation needs no such care: the loop emits that as a `blocked` event.
+      // loop does not emit it — so a transcript that did not record it here would lose it. The
+      // question goes down with it, options and all: "the second one" is unreadable without the
+      // list it picked from. A declined confirmation needs no such care: that is a `blocked` event.
       ask: async (question, choices) => {
+        const id = this.cardSeq++;
+        const list = choices ? { choices: choices.options, multi: choices.multi } : {};
+        this.record((convo) => queried(convo, { id, question, ...list }));
         const answer = await this.deps.requestAnswer(question, choices);
         this.record((convo) => answeredQuestion(convo, answer));
         return answer;
@@ -808,6 +848,21 @@ export class WorkspaceSession {
   }
 
   /**
+   * Rewrite the map if a turn made it wrong, before the next turn is composed. It never throws:
+   * a file at that path the generator did not write is somebody's own note, and the answer to
+   * that is to leave it alone and say so — not to fail the turn it was about to help.
+   */
+  private async refreshProjectMap(): Promise<void> {
+    if (!this.mapStale) return;
+    this.mapStale = false;
+    try {
+      await this.writeGeneratedContext();
+    } catch (err) {
+      console.warn(`[vnstudio] could not rewrite the project map: ${String(err)}`);
+    }
+  }
+
+  /**
    * Ranked passages from the story bible. Held on one `Workspace` so the index survives between
    * searches — every other method here rebuilds, because every other method reads authored input
    * that a command may just have written.
@@ -826,6 +881,7 @@ export class WorkspaceSession {
   async runAgent(input: string, scene?: string): Promise<RunResult> {
     return this.while('an agent turn', async () => {
       const agent = await this.ensureAgent();
+      await this.refreshProjectMap();
       // The project map is a file, and this session outlives every rewrite of it — including the
       // agent's own `update_context`. Re-read it per turn so the map above the tool output is not
       // an older, more authoritative-looking answer than the tools give. Section by section, so a
@@ -837,6 +893,7 @@ export class WorkspaceSession {
       try {
         const result = await agent.run(input, focus);
         this.record((convo) => answered(convo, result.final));
+        if (wroteAuthoredInput(result.events)) this.mapStale = true;
         return result;
       } finally {
         // The turn is not over until what it said is on disk; a crash a moment later must not

@@ -15,7 +15,7 @@
  * clearing carries the counter over, so a cleared conversation never reuses an id.
  */
 import { charge } from '@vn/types';
-import type { AgentEvent, AskRequest, ConfirmRequest, PlanRequest } from './ipc.js';
+import type { AgentEvent, AskRequest, ConfirmRequest, PlanDecision, PlanRequest } from './ipc.js';
 
 /** What a tool was called with and what came back — the half of a turn `text` cannot hold. */
 export interface ToolDetail {
@@ -247,7 +247,12 @@ export function received(convo: Convo, event: AgentEvent): Convo {
         output: event.result.output,
       });
     case 'blocked':
-      return push(convo, 'blocked', `${event.tool} blocked — ${event.reason}`);
+      return push(
+        convo,
+        'blocked',
+        `${event.tool} blocked — ${event.reason}`,
+        event.args === undefined ? undefined : { args: stringifyArgs(event.args), ok: false },
+      );
     case 'usage': {
       const tokens: Convo['tokens'] = {
         input: convo.tokens.input + event.input,
@@ -272,17 +277,44 @@ export function received(convo: Convo, event: AgentEvent): Convo {
   }
 }
 
+/**
+ * A plan card, and the transcript line that says one was offered. The card is transient — it is
+ * answered and gone — and a thread that held only the answer read as a decision about nothing,
+ * which is precisely the turn a report on a bad conversation needs to see.
+ */
 export function proposed(convo: Convo, request: PlanRequest): Convo {
-  return { ...convo, plan: request };
+  const { summary, steps, files, risks } = request.plan;
+  const detail = [
+    steps.length ? `Steps:\n${steps.map((s) => `- ${s}`).join('\n')}` : '',
+    files.length ? `Files: ${files.join(', ')}` : '',
+    risks?.length ? `Risks:\n${risks.map((r) => `- ${r}`).join('\n')}` : '',
+  ].filter(Boolean);
+  const text = [`Proposed a plan: ${summary}`, ...detail].join('\n\n');
+  return { ...push(convo, 'agent', text), plan: request };
 }
 
-/** The plan card is answered and gone; what the decision *means* is the agent's to say. */
-export function decided(convo: Convo): Convo {
-  return { ...convo, plan: null };
+/**
+ * The plan card is answered and gone. The decision is the author's turn, so it is written as one;
+ * what it *means* is still the agent's to say.
+ */
+export function decided(convo: Convo, decision?: PlanDecision): Convo {
+  const next: Convo = { ...convo, plan: null };
+  if (!decision) return next;
+  const said = decision.approved ? 'Approved the plan.' : 'Declined the plan.';
+  const why = decision.feedback?.trim();
+  return push(next, 'user', why ? `${said} ${why}` : said);
 }
 
+/**
+ * A question the agent asked, in the transcript beside the answer to it. The option list goes
+ * down with it: an answer of "the second one" is unreadable without the list it picked from.
+ */
 export function queried(convo: Convo, request: AskRequest): Convo {
-  return { ...convo, question: request };
+  const options = request.choices?.length
+    ? `\n${request.choices.map((c) => `- ${c}`).join('\n')}` +
+      (request.multi ? '\n(more than one may be picked)' : '')
+    : '';
+  return { ...push(convo, 'agent', `${request.question}${options}`), question: request };
 }
 
 /**

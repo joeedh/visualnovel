@@ -1188,12 +1188,20 @@ const regenerateContextTool: Tool<Record<string, never>> = {
 
 const updateContextTool: Tool<{ rule: string }> = {
   name: 'update_context',
-  description: 'Persist a durable instruction into AICONTEXT.md.',
+  description:
+    'Persist a durable instruction into AICONTEXT.md. Returns the file as it now stands, so ' +
+    'what you wrote is visible without reading it back.',
   mutating: true,
   args: z.object({ rule: z.string().min(1) }),
   async run(a, ctx) {
     const file = await updateContext(ctx.workspace.root, a.rule);
-    return ok(`Recorded rule in AICONTEXT.md.`, { written: [rel(ctx.workspace.root, file)] });
+    // The file, not a receipt for it: the rule lands in a file the agent did not write in full,
+    // and a receipt is exactly what makes the next call a read_file of what it just did.
+    const text = await readText(file);
+    return ok(`Recorded rule in AICONTEXT.md, which now reads:\n\n${text}`, {
+      written: [rel(ctx.workspace.root, file)],
+      data: text,
+    });
   },
 };
 
@@ -1248,9 +1256,17 @@ const gitDiffTool: Tool<{ ref?: string; staged?: boolean }> = {
 
 const gitCommitTool: Tool<{ message: string; paths?: string[] }> = {
   name: 'git_commit',
-  description: 'Stage and commit the approved change set with a message.',
+  description:
+    'Stage and commit the approved change set with a message. Send the message alone: what you ' +
+    'wrote this plan is already tracked, and a remembered list of paths can only be shorter.',
   mutating: true,
-  args: z.object({ message: z.string().min(1), paths: z.array(z.string()).optional() }),
+  args: z.object({
+    message: z.string().min(1),
+    paths: z
+      .array(z.string())
+      .optional()
+      .describe('rarely needed: extra paths to commit beyond the ones you wrote'),
+  }),
   async run(a, ctx) {
     if (!(await ctx.git.isRepo())) return fail('Not a git repository (offer git_init).');
     const hash = await ctx.git.commit({ message: a.message, paths: a.paths });

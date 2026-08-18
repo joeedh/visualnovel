@@ -593,6 +593,10 @@ describe('editing tools', () => {
       expect(r.ok).toBe(true);
       const text = await fs.readFile(join(dir, 'AICONTEXT.md'), 'utf8');
       expect(text).toContain('Aiko is shy.');
+      // The file back, not a receipt for it: a receipt is what makes the next call a read_file
+      // of what this one just did, and the rule lands in a file the agent did not write in full.
+      expect(r.output).toContain(text);
+      expect(r.data).toBe(text);
     } finally {
       await cleanup();
     }

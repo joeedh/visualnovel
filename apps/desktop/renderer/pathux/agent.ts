@@ -82,7 +82,7 @@ export async function ask(text: string): Promise<void> {
 export async function decide(approved: boolean): Promise<void> {
   const request = state.plan;
   if (!request) return;
-  set(decided(state));
+  set(decided(state, { approved }));
   void api.invoke('plan:decision', { id: request.id, decision: { approved } });
   // Approving *is* the switch into execute mode; the agent will say so too, but the badge
   // should not lag the click that caused it.

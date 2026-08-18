@@ -386,6 +386,32 @@ describe('always-confirm gate', () => {
   });
 });
 
+describe('arguments the schema refused', () => {
+  // The model is told; the thread was not. A report on a bad conversation reads the thread, and a
+  // turn spent arguing with a schema is exactly the turn it needs to see.
+  it('is filed as a blocked event carrying what was passed', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const agent = agentWith(
+        ctx,
+        [
+          JSON.stringify({ tool: 'edit_scene', args: { op: 'nudgeLine', scene: 'arrival' } }),
+          JSON.stringify({ final: 'Gave up.' }),
+        ],
+        scriptPermission(),
+        'execute',
+      );
+      const res = await agent.run('fix a line');
+      const blocked = res.events.find((e) => e.type === 'blocked');
+      expect(blocked).toMatchObject({ tool: 'edit_scene', args: { op: 'nudgeLine' } });
+      expect(blocked && 'reason' in blocked ? blocked.reason : '').toContain('invalid arguments');
+      expect(res.events.some((e) => e.type === 'tool')).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
 describe('commit gate', () => {
   it('blocks git_commit while error-severity diagnostics remain', async () => {
     const { ctx, dir, cleanup } = await tempProject(BROKEN_SCENE);

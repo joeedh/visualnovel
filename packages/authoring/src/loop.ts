@@ -75,7 +75,10 @@ export type AgentEvent =
   | { type: 'tool'; tool: string; args: unknown; result: ToolResult }
   | { type: 'plan'; plan: Plan; decision: PlanDecision }
   | { type: 'mode'; mode: AgentMode }
-  | { type: 'blocked'; tool: string; reason: string }
+  // `args` is present where there were any to show — a call the schema refused never ran, so
+  // there is no `tool` event for it, and without the arguments the refusal names a field nobody
+  // can see. It is the same evidence a `tool` event carries, for a call that did not happen.
+  | { type: 'blocked'; tool: string; reason: string; args?: unknown }
   // What one step cost. Emitted only when the provider reported it, so a host that adds these up
   // shows either a real total or none — never a plausible one that never moves. The cache split
   // is carved out of `input` rather than added beside it, and absent where the provider said
@@ -553,6 +556,8 @@ export class Agent {
       const detail = parsed.error.issues.map(
         (i) => `${i.path.join('.') || '(root)'}: ${i.message}`,
       );
+      const reason = `invalid arguments — ${detail.join('; ')}`;
+      emit({ type: 'blocked', tool: name, reason, args });
       return `Error: invalid arguments for "${name}": ${detail.join('; ')}`;
     }
 
@@ -575,10 +580,12 @@ export class Agent {
       // Scope the commit to exactly what the agent edited this plan. Without this the bare
       // `git commit` stages nothing (and fails), and would otherwise risk sweeping in
       // unrelated dirty files when the workspace sits inside a larger repo.
+      //
+      // A list the model passed is *added to* what it actually wrote, never substituted for it:
+      // the record is complete and the memory is not, which is how an AICONTEXT.md the agent
+      // updated and then forgot about went uncommitted.
       const commitArgs = parsed.data as { message: string; paths?: string[] };
-      if (!commitArgs.paths || commitArgs.paths.length === 0) {
-        commitArgs.paths = [...this.editedPaths];
-      }
+      commitArgs.paths = [...new Set([...this.editedPaths, ...(commitArgs.paths ?? [])])];
     }
 
     const result = await tool.run(parsed.data, this.ctx);

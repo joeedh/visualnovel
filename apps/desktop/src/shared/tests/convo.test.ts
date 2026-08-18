@@ -245,6 +245,33 @@ describe('the plan card', () => {
     expect(asking.plan).toBe(plan);
     expect(decided(asking).plan).toBeNull();
   });
+
+  // The card is transient. A thread that kept only what happened next read as a decision about
+  // nothing, and it is the turn a report on a bad conversation most needs to see.
+  test('the plan goes into the transcript, steps and files and all', () => {
+    const [item] = proposed(emptyConvo(opening), plan).feed;
+    expect(item?.role).toBe('agent');
+    expect(item?.text).toContain(plan.plan.summary);
+    for (const step of plan.plan.steps) expect(item?.text).toContain(step);
+    for (const file of plan.plan.files) expect(item?.text).toContain(file);
+  });
+
+  test('the verdict is filed as the author’s turn, with what they said about it', () => {
+    const approved = decided(proposed(emptyConvo(opening), plan), { approved: true });
+    expect(approved.feed[1]).toMatchObject({ role: 'user', text: 'Approved the plan.' });
+
+    const declined = decided(proposed(emptyConvo(opening), plan), {
+      approved: false,
+      feedback: 'Too many files.',
+    });
+    expect(declined.feed[1]?.text).toBe('Declined the plan. Too many files.');
+  });
+
+  // The renderer clears the card in one place and main records the verdict in another; only one
+  // of them knows the decision, so a bare call must stay a bare clear.
+  test('clearing the card without a decision writes nothing down', () => {
+    expect(decided(proposed(emptyConvo(opening), plan)).feed).toHaveLength(1);
+  });
 });
 
 describe('a question the agent asked', () => {
@@ -257,12 +284,24 @@ describe('a question the agent asked', () => {
   test('answering files the answer as the author’s own turn', () => {
     const convo = answeredQuestion(queried(emptyConvo(opening), question), 'Mori');
     expect(convo.question).toBeNull();
-    expect(convo.feed).toEqual([{ id: 1, role: 'user', text: 'Mori' }]);
+    expect(convo.feed).toEqual([
+      { id: 1, role: 'agent', text: question.question },
+      { id: 2, role: 'user', text: 'Mori' },
+    ]);
   });
 
   test('an empty answer is still an answer, and says so', () => {
     const convo = answeredQuestion(queried(emptyConvo(opening), question), '   ');
-    expect(convo.feed).toEqual([{ id: 1, role: 'user', text: '(no answer)' }]);
+    expect(convo.feed[1]).toEqual({ id: 2, role: 'user', text: '(no answer)' });
+  });
+
+  // "The second one" is unreadable without the list it picked from.
+  test('the options go down with the question', () => {
+    const withChoices: AskRequest = { ...question, choices: ['Mori', 'the station'], multi: true };
+    const [item] = queried(emptyConvo(opening), withChoices).feed;
+    expect(item?.text).toContain('- Mori');
+    expect(item?.text).toContain('- the station');
+    expect(item?.text).toContain('more than one');
   });
 });
 
