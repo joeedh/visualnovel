@@ -627,6 +627,57 @@ describe('edit_scene', () => {
     }
   });
 
+  it('drafts a run of prose in one call, in the order it was given', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'edit_scene',
+        {
+          op: 'insertLines',
+          scene: 'arrival',
+          after: 'arrival:L1',
+          lines: [
+            { speaker: 'REN', text: 'You are in my seat.' },
+            { kind: 'narration', text: 'Aiko does not look up.' },
+            { speaker: 'AIKO', text: 'I know.' },
+          ],
+        },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['scenes/arrival.md']);
+      const text = await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8');
+      expect(text.indexOf('You are in my seat.')).toBeLessThan(
+        text.indexOf('Aiko does not look up.'),
+      );
+      expect(text.indexOf('Aiko does not look up.')).toBeLessThan(text.indexOf('I know.'));
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('writes none of a run when one line of it is refused', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'edit_scene',
+        {
+          op: 'insertLines',
+          scene: 'arrival',
+          after: '',
+          lines: [{ kind: 'narration', text: 'Fine.' }, { text: 'Who says this?' }],
+        },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('line 2 of 2');
+      expect(r.output).toContain('Nothing was inserted.');
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('creates a scene chunk from a heading', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {

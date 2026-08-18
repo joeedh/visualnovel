@@ -212,6 +212,45 @@ export function insertLine(
 }
 
 /**
+ * Insert a run of lines, in order, each after the one before it — a scene drafted in one act
+ * rather than in forty. It is a fold over {@link insertLine} and deliberately nothing more: ids
+ * stay allocated by the scene, every refusal is that function's, and a run that fails anywhere
+ * returns nothing to write, so the caller's plan writes nothing at all.
+ */
+export function insertLines(
+  state: ScriptState,
+  args: {
+    scene: string;
+    after: string;
+    lines: readonly { kind: SceneLine['kind']; speaker: string; text: string }[];
+  },
+): LineOp {
+  if (args.lines.length === 0) return refuse('Nothing to insert.');
+
+  let scenes = state.scenes;
+  let after = args.after;
+  const added: string[] = [];
+  for (const [i, line] of args.lines.entries()) {
+    const before = new Set((scenes.get(args.scene)?.lines ?? []).map((l) => l.id));
+    const op = insertLine({ ...state, scenes }, { scene: args.scene, after, ...line });
+    if (!op.ok) {
+      return refuse(`line ${i + 1} of ${args.lines.length}: ${op.error} Nothing was inserted.`);
+    }
+    const written = op.writes[0] as Scene;
+    const fresh = written.lines.find((l) => !before.has(l.id)) as SceneLine;
+    added.push(fresh.id);
+    after = fresh.id;
+    scenes = new Map(scenes).set(args.scene, written);
+  }
+
+  const where = args.after ? `after ${args.after}` : `at the top of ${args.scene}`;
+  const span = added.length === 1 ? added[0] : `${added[0]}–${added[added.length - 1]}`;
+  return done(`Inserted ${added.length} line(s) (${span}) ${where}.`, {
+    writes: [scenes.get(args.scene) as Scene],
+  });
+}
+
+/**
  * Remove a line. Its id is retired and never handed out again, so a shot that covered it
  * covers one line fewer — possibly none, which is a state the timeline shows rather than an
  * error. An empty scene is legitimate: the chunk stays, with no lines in it.

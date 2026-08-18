@@ -26,6 +26,7 @@ import {
   deleteLine,
   deleteScene,
   insertLine,
+  insertLines,
   mergeScene,
   moveLine,
   newScene,
@@ -605,10 +606,13 @@ const createLocationTool: Tool<{ name: string; description?: string }> = {
 /**
  * The eleven acts, named exactly as the desktop's `story.*` commands are, because they *are* those
  * commands' decisions: an agent transcript and a command history should read as the same vocabulary.
+ * `insertLines` is the twelfth and has no button behind it — a person types one line at a time and
+ * a model drafts forty, and `@vn/scriptedit` still allocates every id.
  */
 const SCENE_OPS = [
   'setLineText',
   'insertLine',
+  'insertLines',
   'deleteLine',
   'moveLine',
   'moveShot',
@@ -640,6 +644,16 @@ const sceneEditShape = z.object({
   line: z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
   shot: z.string().optional().describe('moveShot: the shot id to move, e.g. arrival__beat1'),
   text: z.string().optional().describe('setLineText, insertLine'),
+  lines: z
+    .array(
+      z.object({
+        kind: z.enum(LINE_KINDS).optional().describe('defaults to dialogue'),
+        speaker: z.string().optional().describe('the character cue; omit for narration'),
+        text: z.string().min(1),
+      }),
+    )
+    .optional()
+    .describe('insertLines: a run of lines to add in order, each after the one before it'),
   after: z
     .string()
     .optional()
@@ -673,6 +687,7 @@ type SceneEditArgs = z.infer<typeof sceneEditShape>;
 const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   setLineText: ['line', 'text'],
   insertLine: ['scene', 'text'],
+  insertLines: ['scene', 'lines'],
   deleteLine: ['line'],
   moveLine: ['line'],
   moveShot: ['scene', 'shot'],
@@ -704,6 +719,17 @@ async function sceneDecider(
       return (s) => setLineText(s, { line, text });
     case 'insertLine':
       return (s) => insertLine(s, { scene, after, kind: a.kind ?? 'dialogue', speaker, text });
+    case 'insertLines':
+      return (s) =>
+        insertLines(s, {
+          scene,
+          after,
+          lines: (a.lines ?? []).map((l) => ({
+            kind: l.kind ?? 'dialogue',
+            speaker: l.speaker ?? '',
+            text: l.text,
+          })),
+        });
     case 'deleteLine':
       return (s) => deleteLine(s, { line });
     case 'moveLine':
@@ -737,7 +763,9 @@ const editSceneTool: Tool<SceneEditArgs> = {
     'split or merge a scene; reorder a shot, which moves the lines it covers. The only way to ' +
     'change a scenes/<id>.md — write_file refuses them. Reports what the edit costs the ' +
     'storyboard; moveShot costs it nothing, since no coverage and no covered prose changes. ' +
-    'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in.',
+    'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in. ' +
+    'Drafting a run of prose is insertLines, one call for the whole run — do not call insertLine ' +
+    'forty times.',
   mutating: true,
   args: sceneEditShape,
   async run(a, ctx) {

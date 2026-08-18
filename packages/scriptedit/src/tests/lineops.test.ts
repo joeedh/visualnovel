@@ -5,6 +5,7 @@ import {
   deleteLine,
   deleteScene,
   insertLine,
+  insertLines,
   mergeScene,
   moveLine,
   newScene,
@@ -156,6 +157,64 @@ describe('insertLine', () => {
     );
     expect(error(insertLine(state(), { ...base, kind: 'narration', speaker: 'REN' }))).toBe(
       'A narration line is not spoken by anyone.',
+    );
+  });
+});
+
+describe('insertLines', () => {
+  it('lands the run in order, each line after the one before it', () => {
+    const op = insertLines(state(), {
+      scene: 'arrival',
+      after: 'arrival:L1',
+      lines: [
+        { kind: 'dialogue', speaker: 'REN', text: 'Move up.' },
+        { kind: 'narration', speaker: '', text: 'Aiko does not move.' },
+        { kind: 'dialogue', speaker: 'AIKO', text: 'No.' },
+      ],
+    });
+    const scene = written(op, 'arrival');
+    expect(ids(scene)).toEqual([
+      'arrival:L1',
+      'arrival:L3',
+      'arrival:L4',
+      'arrival:L5',
+      'arrival:L2',
+    ]);
+    expect(scene.nextLineId).toBe(6);
+    expect(op.ok && op.message).toBe(
+      'Inserted 3 line(s) (arrival:L3–arrival:L5) after arrival:L1.',
+    );
+  });
+
+  it('writes the scene once, however many lines the run holds', () => {
+    const op = insertLines(state(), {
+      scene: 'arrival',
+      after: '',
+      lines: [
+        { kind: 'narration', speaker: '', text: 'One.' },
+        { kind: 'narration', speaker: '', text: 'Two.' },
+      ],
+    });
+    expect(op.ok && op.writes.length).toBe(1);
+    expect(op.ok && op.message).toContain('at the top of arrival');
+  });
+
+  it('writes nothing at all when a line anywhere in the run is refused', () => {
+    const op = insertLines(state(), {
+      scene: 'arrival',
+      after: '',
+      lines: [
+        { kind: 'narration', speaker: '', text: 'Fine.' },
+        { kind: 'dialogue', speaker: '', text: 'Who says this?' },
+      ],
+    });
+    expect(error(op)).toBe('line 2 of 2: A dialogue line needs a speaker. Nothing was inserted.');
+    expect(op.ok).toBe(false);
+  });
+
+  it('refuses an empty run rather than reporting a successful no-op', () => {
+    expect(error(insertLines(state(), { scene: 'arrival', after: '', lines: [] }))).toBe(
+      'Nothing to insert.',
     );
   });
 });
