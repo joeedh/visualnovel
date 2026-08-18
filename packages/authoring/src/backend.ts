@@ -160,6 +160,20 @@ function renderTranscript(messages: AgentMessage[]): string {
     .join('\n\n');
 }
 
+/** What attempt 2 and on append: the same prompt plus what was wrong with the last answer. */
+const REPAIR =
+  'Your previous reply was not a single JSON object. Reply with the JSON object only — no ' +
+  'prose around it, no code fence.';
+
+/** Whether unparseable output was a fumbled tool call rather than an answer written in prose. */
+function looksLikeToolCall(raw: string): boolean {
+  return raw.trim() === '' || /"tool"\s*:/.test(raw);
+}
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /**
  * Path A: structured ReAct over a plain `ChatBackend`. Builds a one-shot prompt from the
  * transcript + tool catalog + protocol, then parses the model's JSON into an `AgentTurn`
@@ -189,13 +203,25 @@ export class StructuredAgentBackend implements AgentBackend {
 
     const attempts = this.opts.attempts ?? 3;
     let lastErr: unknown;
+    let lastRaw = '';
     // Every attempt is a call the author pays for, so the receipt accumulates across the retries
     // and rides out on whichever turn is finally returned — including the one that gave up.
     let spent: TokenUsage | undefined;
     for (let i = 0; i < attempts; i++) {
       try {
-        const reply = await this.reply({ system, prompt });
+        // A repeat of a prompt that already failed is a request for the same answer. From the
+        // second attempt on, say what was wrong with the last one.
+        const reply = await this.reply({
+          system,
+          prompt:
+            i === 0
+              ? prompt
+              : `${prompt}
+
+${REPAIR}`,
+        });
         spent = plus(spent, reply.usage);
+        lastRaw = reply.text;
         const parsed = parseStructured(reply.text, turnSchema);
         const turn: AgentTurn = { message: parsed.thought };
         if (parsed.final !== undefined) turn.final = parsed.final;
@@ -208,9 +234,13 @@ export class StructuredAgentBackend implements AgentBackend {
         lastErr = err;
       }
     }
-    // Degrade gracefully: surface the parse failure as a final message rather than throw.
-    const why = lastErr instanceof Error ? lastErr.message : String(lastErr);
-    const failed: AgentTurn = { final: `I couldn't produce a valid action (${why}).` };
+    // A model that answered in prose finished its turn: the JSON envelope is our bookkeeping,
+    // not its intent, and discarding the answer loses the only thing the author asked for. Text
+    // reaching for a tool is the other case — there the model meant to act and got it wrong, and
+    // handing the author a half-typed call as an answer would be worse than saying so.
+    const failed: AgentTurn = looksLikeToolCall(lastRaw)
+      ? { final: `I couldn't produce a valid action (${errorText(lastErr)}).` }
+      : { final: lastRaw };
     if (spent) failed.usage = spent;
     return failed;
   }

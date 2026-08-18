@@ -170,6 +170,45 @@ describe('StructuredAgentBackend', () => {
     expect(turn.final).toBeDefined();
     expect(turn.actions).toBeUndefined();
   });
+
+  it('keeps a prose answer rather than throwing it away for the envelope', async () => {
+    const answered = 'Ember takes the west road because the bridge is out.';
+    const chat: ChatBackend = { modelId: 'mock-text', message: () => Promise.resolve(answered) };
+    const turn = await new StructuredAgentBackend(chat, { attempts: 1 }).next(
+      'sys',
+      MESSAGES,
+      TOOLS,
+    );
+    expect(turn.final).toBe(answered);
+  });
+
+  it('still says so when the unparseable output was reaching for a tool', async () => {
+    const chat: ChatBackend = {
+      modelId: 'mock-text',
+      message: () => Promise.resolve('{"tool": "read_file", "args": {'),
+    };
+    const turn = await new StructuredAgentBackend(chat, { attempts: 1 }).next(
+      'sys',
+      MESSAGES,
+      TOOLS,
+    );
+    expect(turn.final).toContain("couldn't produce a valid action");
+  });
+
+  it('tells the second attempt what was wrong with the first', async () => {
+    const prompts: string[] = [];
+    const chat: ChatBackend = {
+      modelId: 'mock-text',
+      message: (req) => {
+        prompts.push(req.prompt);
+        return Promise.resolve(prompts.length === 1 ? 'not json' : '{"final":"ok"}');
+      },
+    };
+    const turn = await new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS);
+    expect(turn.final).toBe('ok');
+    expect(prompts[0]).not.toContain('was not a single JSON object');
+    expect(prompts[1]).toContain('was not a single JSON object');
+  });
 });
 
 /**
