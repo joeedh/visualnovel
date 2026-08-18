@@ -508,7 +508,8 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   checkbox checked** — `[ ]:` becomes `[x]:` as part of finishing the work, not later. Leave
   the wording, ordering and whitespace of the entry alone: it is hand-written, it is
   deliberately outside prettier's idea of markdown, and reformatting it loses the author's
-  own shorthand.
+  own shorthand.  When executing the todo list items, items that create documents (including
+  plans) should be executed in subagents.
 
 ### Research
 

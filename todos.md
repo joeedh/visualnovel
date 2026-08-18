@@ -1,63 +1,4 @@
-[x]: the asset editor should have a 'seed' field 
-[x]: the 'close pane' view menu should invoke the interactive pane closing pathux
-     tool where the user selects an editor to close with the mouse (the editor is highlighted
-	 with a border and maybe big red X) then clicks to close it.  if it doesn't exist write it.
-[x]: The recent projects menu is empty, fix it.
-[x]: popup dialogs should have a more visually distinctive border 
-     and reasonable width limit (currently some popups can take up the whole screen).
-[x]: the add model key dialog should have a dropdown to select anthropic vs google gemini
-[x]: the agent should show a running total of tokens used to the user similar 
-     to how claude code shorts total tokens.
-[x]: when creating a character the default template should include the full character sheet
-     with example values (outfit, traits, etc) except for palettes.  instead there should be 
-	 a note explaining what palettes and how to make the agent create it.
-[x]: the run pipeline command should popup a bigger and more substantial dialog.  it should have 
-     an accurate count.  when the pipeline is running the run button should be disabled, also 
-	 the main header should have a little rotating busy icon (you should be able to use a normal
-	 iconsheet svg icon with a css animation) with a tooltip explaining the pipeline is running 
-	 and how many tasks are left.
-[x]: the document tree's arrays need to be 3x larger, they are too small.
-[x]: the pipeline should render character portraits even if the characters aren't used in a scene yet. 
-     it should also do the same with locations.
-[x]: On asking the model 'how do I write a dialog line so it's picked up by the pipeline' I got the error
-     'I couldn't produce a valid action (no JSON found in model output)' fix it
-[x]: When a user writes a new line of dialog themselves, the speaker defaults to narrator.  The text 
-     (if there is any) is visually indistingushably from the background, thus the user has no idea 
-	 how to set the speaker.  fix this.
-[x]: the agent model text in the main header should have a tooltip 'current agent model - set in convo
-     tab'.
-[ ]: character model sheets should reference 
-[x]: clicking 'regenerate' on an asset should automatically run the pipeline if the asset is 
-     the only task.
-[x]: the main menu should have a 'run pipeline' button.  it simply starts the pipeline (no popup).
-     the existing run pipeline menu entry is unchanged, but should be renamed to 'run pipeline (adv)'.
-[x]: remove the double confirmation where the user clicks 'run pipeline' then has to click 
-     'confirm - run pipeline' again.
-[x]: when running the pipeline there should be a red stop icon in the main header.
-[x]: double clicking a location in the document tree should show it in a wiki editor (making 
-     one active if necassary).  if a proper location sheet file doesn't exist then one should 
-	 be created.
-[x]: make sure all menu items in the app (including context menus) have tooltips.
-[x]: give the model a multichoice user input tool where the user picks choices from 
-     a list (along with 'type answer here' and 'chat about this').
-[x]: the 'new scene' context menu item in the document tree doesn't work
-[x]: a scene's location should be editable.  the user should be warned about the consequences
-     and told they can use the agent to mitigate them.
-[x]: the llm's list_workspace tool apparently doesn't update after a new location sheet is created.
-[x]: the agent got a bit confused when creating a new scene, it failed to link the scene into the graph.  
-     test it, see if you can reproduce this and fix it.  search the conversation history for the test3 repo.  
-[x]: the name of the project should be shown in the app's title bar 
-[x]: document tree failed to update after manually connecting two scenes in the branches editor.
-[x]: document tree also failed to update when the agent created a scene.
-[x]: the convo editor should have a 'stop' button to interrupt the agent, only shown when the agent is working.
-[x]: the project name in the main header should have a rounded outline 
-[x]: clicking run pipeline (in the main menu or the header button) should display a message 
-     if it cannot run (e.g. the agent is running?).
-[x]: when an asset becomes stale it should not be marked as 'accepted' in the document tree.
-[x]: can the document tree's asset subtree use asset slots instead of hashes to prune out old/rejected
-     assets?
-[x]: you should be able to right click a line and get a menu with 'open shot asset'.
-[x]: the agent should be provided the active scene (if it's not already).
+
 
 [ ]: the agent had an error again (in the git_commit tool), search the transcripts for project test4 at august 17th, 2026
 [ ]: the document tree isn't always refreshed after the agent creates a wiki page
@@ -82,5 +23,74 @@
      (relative to the project repo root) path of the file being read.
 [ ]: The tokens counter label should keep track of uncached tokens only.
 [ ]: the tasks editor should refresh itself automatically 
-
-     
+[ ]: agent threads should remember which model and effort level they're on 
+[ ]: the multichoice user input tool for the agent should allow you navigate to previous/next 
+     questions and have a final 'submit answers' button, similar to claude code's behaviour
+[ ]: the user should be informed about api errors and given the option to select another model provider,
+     or automatically retry 10 times with whatever backoff semantics the model providers recommend.
+	 if the choose to retry the main header should show the current retry number and a notification
+	 should be issued on success or failure (make sure the retry count is cleared from the header
+	 properly when it's done).
+[ ]: unapproved assets in the document tree should list assets in topological order, with 
+     roots at the top so users can easily see what needs to be approved immediately.
+[ ]: unapproved assets should split between pure slot assets that need parent assets approved 
+     before they can be created (pick a name for the subtree header) and existing assets that 
+	 need review.
+[ ]: the convo editor lacks a create new thread button (didn't this used to exist?).
+[ ]: make sure clearing a conversation thread commits the existing thread first so 
+     it remains in the project repo's git history.  also let's add thread metadata
+	 to keep track of which git commits contains a thread's pre-cleared contents
+	 so the debug agent can discover them.
+[ ]: the agent should be able to approve assets.  create a specific tool for this, the tool 
+     should use haiku to read the most recent user prompts from the thread transcript 
+	 to ensure the user specifically asked for this.  the full list of valid approvable 
+	 assets should then be fed to haiku which will then filter it according to the user's instructions
+	 (e.g. 'approve all location assets', 'approx X character' etc).  the final approval list 
+	 will be displayed to the user for approval prior to execution.
+[ ]: make sure the nature of how art style works (e.g. any style fields in the schema, the way prompt chunks work and 
+     how they are inherited, etc) is explained to the agent in the system prompt.
+[ ]: when the user invokes the pipeline and a tasks editor isn't open, a floating popup screen area with 
+     a tasks editor should be created.  note that this may require adding support for floating popup screen 
+	 areas to path.ux.  they should have a titlebar to move around, be resizable and have a close button.
+	 there should be an api to interrupt closing to e.g. display unsaved work warnings or 
+	 whatever (we won't need it but the capability should exist).  it should be a simple event 
+	 handler.
+[ ]: the tasks editor never shows running tasks
+[ ]: if you click the warnings label (turn it into a button) on the main menu bar it should popup a 
+     dialog box showing the warnings.
+[ ]: when the document tree truncates a subtree with '... and X more' you should be able to click 
+     on it to show the truncated items.
+[ ]: pressure test the tasks editor to make sure all of its functionality works
+[ ]: asks editor: add a checkbox to 'show only completed tasks'.  also add a 'clear finished tasks'
+     button.
+[ ]: the system used to make a specific type of editor visible should try to avoid screen areas with 
+     active conversation editors.
+[ ]: change path.ux so the little 'x' close buttons on area tabs is optional, if they're 
+     disabled path.ux should automatically append 'right click->close to close' (pick 
+	 the best wording) to the each editor tab's tooltip.
+[ ]: disable the little 'x' close buttons on area tabs.
+[ ]: use an agent to add support in path.ux for multiline tab bars.  the idea is that when there are 
+     too many tabs to display in the available width/height (depending on whether we are horizontal or
+     vertical) additional tab rows are created. this should be an optional 
+     features of tab containers, used by the screen area tab bar.  the agent should branch both path.ux
+	 and it's path-controller submodule, write a plan, pressure test the plan, and then implement it.
+	 I'll review the result and merge it to path.ux's master later before we push anything to git.
+[ ]: after the above item completes, also make it so if tab bars do not have multiline enabled 
+     they will support scrolling horizontally via mousescroll events, right clicking and dragging,
+	 or a two-finger multitouch gesture (the latter may have to abort an in-progress tab drag).
+	 do not display a physical scrollbar.
+[ ]: the document tree should have a 'close all' icon button.  create an appropriate icon.
+[ ]: write a plan to fully support anthropic, gemini, openai and grok models for the agent, and also 
+     supporting more image model providers (e.g. openai, propose one more).
+[ ]: write a research report on supporting local models, either physically on the same machine or a server the 
+     user has on their home network.  the report should include local image models.
+[ ]: Make the assets subtree show assets by slot.  Clicking a slot opens its most recent asset in 
+     the asset editor.  Clicking it again will expand a subtree of prior generated assets.  the 
+	 tooltip should explain this, e.g. 'Show the asset in the asset editor; click again to see history'.
+[ ]: Do not explain in tooltips in the document editor how clicking an item displays it in every editor 
+     of that type, just say it opens it in that editor.
+[ ]: Editors that operate on active things should have a blender-style pin icon to prevent them from changing
+     to a different thing when it becomes active.  We should support serializing this in pinnable editor
+	 STRUCT scripts.
+[ ]: Use an agent to write a report on a less technical mode in the desktop app that would automatically 
+     approve assets. Think about any other simplifications.  This mode would be for people to play around with.

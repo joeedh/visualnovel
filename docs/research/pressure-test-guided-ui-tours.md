@@ -11,7 +11,7 @@ error moves.
 - [1. Three editors bypass `bridge.exec`, and the tour advances on it](#1-three-editors-bypass-bridgeexec-and-the-tour-advances-on-it)
 - [2. The two graph editors have no click to wire, and no node to hit-test](#2-the-two-graph-editors-have-no-click-to-wire-and-no-node-to-hit-test)
 - [3. The props are not known when the anchor is recorded](#3-the-props-are-not-known-when-the-anchor-is-recorded)
-- [4. Three of the five rules in §1's table are not `Action`-shaped](#4-three-of-the-five-rules-in-1s-table-are-not-action-shaped)
+- [4. Three of the five rules in §1's table are not `Action`-shaped](#4-three-of-the-five-rules-in-%C2%A71s-table-are-not-action-shaped)
 - [5. Menus are transient — and `menuFor` is the map the plan went looking for](#5-menus-are-transient--and-menufor-is-the-map-the-plan-went-looking-for)
 - [6. `@vn/debug2d` has not solved shadow piercing](#6-vndebug2d-has-not-solved-shadow-piercing)
 - [7. `anchors.json` cannot be both committed and under `dist/`](#7-anchorsjson-cannot-be-both-committed-and-under-dist)
