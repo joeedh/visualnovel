@@ -55,14 +55,14 @@ Plan 6 is deliberately not scheduled.
 
 ### 1 — Onboarding editor and user-level keys
 
-- [ ] path.ux: `setAreaMenuFilter` + `makeAreasEnum(filter?)`, tests, submodule commit
-- [ ] `@vn/config`: `userConfigDir` / `userKeysDir`, `secretDirsFor` opt-out, testkit + jest guards
-- [ ] `project.setKey` scope prop; `project.keyStatus`
-- [ ] `offered?: false` in `EDITORS`, the shell's filter install, the View submenu narrowing
-- [ ] `docs/api-keys.md` — **an H2 per vendor slugged to its `KEY_VENDORS` id, each with the fenced
+- [x] path.ux: `setAreaMenuFilter` + `makeAreasEnum(filter?)`, tests, submodule commit
+- [x] `@vn/config`: `userConfigDir` / `userKeysDir`, `secretDirsFor` opt-out, testkit + jest guards
+- [x] `project.setKey` scope prop; `project.keyStatus`
+- [x] `offered?: false` in `EDITORS`, the shell's filter install, the View submenu narrowing
+- [x] `docs/api-keys.md` — **an H2 per vendor slugged to its `KEY_VENDORS` id, each with the fenced
       yaml block plan 5 checks**; then the onboarding editor rendering it
-- [ ] The File menu entry, and the first-run notification
-- [ ] Docs, including the three `CLAUDE.md` additions
+- [x] The File menu entry, and the first-run notification
+- [x] Docs, including the three `CLAUDE.md` additions
 
 ### 3a — `ci.yml` (wave A, ahead of everything it guards)
 
