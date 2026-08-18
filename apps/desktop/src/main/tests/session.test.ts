@@ -18,7 +18,7 @@ import { discoverSkills, newSkillTemplate, skillRoots } from '@vn/authoring';
 import { openGit } from '@vn/git';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
-import type { Plan, PlanDecision } from '../../shared/ipc.js';
+import type { AskQuestion, Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
 
@@ -26,7 +26,7 @@ import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
 const deps: SessionDeps = {
   emitEvent: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
-  requestAnswer: () => Promise.resolve(''),
+  requestAnswer: () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),
   pushBusy: () => {},
 };
@@ -1407,19 +1407,19 @@ describe('WorkspaceSession — the agent asks the author', () => {
   ): {
     approvePlan: (plan: Plan) => Promise<PlanDecision>;
     confirmAction: (tool: string, args: unknown) => Promise<boolean>;
-    ask: (question: string) => Promise<string>;
+    ask: (form: AskQuestion[]) => Promise<string[]>;
   } => (session as unknown as { permission: () => never }).permission();
 
   it('routes a question to the renderer and hands back what was typed', async () => {
     const asked: string[] = [];
     const session = new WorkspaceSession('.', true, {
       ...deps,
-      requestAnswer: (question) => {
-        asked.push(question);
-        return Promise.resolve('Call her Aiko.');
+      requestAnswer: (questions) => {
+        asked.push(...questions.map((q) => q.question));
+        return Promise.resolve(questions.map(() => 'Call her Aiko.'));
       },
     });
-    expect(await doors(session).ask('What name?')).toBe('Call her Aiko.');
+    expect(await doors(session).ask([{ question: 'What name?' }])).toEqual(['Call her Aiko.']);
     expect(asked).toEqual(['What name?']);
   });
 

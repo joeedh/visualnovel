@@ -14,6 +14,21 @@ import {
   type FeedItem,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
+import {
+  answersOf,
+  answersOnPick,
+  blankPages,
+  goTo,
+  isFirst,
+  isLast,
+  isPicked,
+  pageLabel,
+  pageOf,
+  pick,
+  startForm,
+  type,
+  type AskForm,
+} from '../../rules/askform.js';
 import type { AskRequest, ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
 
 /**
@@ -126,6 +141,30 @@ const SURFACE_CSS = `
   border-color: var(--sodium);
   background: rgba(244, 162, 76, 0.12);
 }
+
+/* Where the author is in a form of several. It sits in the card's own head rather than above the
+   question, so the question itself is still the first thing read. */
+.cv-surface .plan.ask .plan-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cv-surface .ask-page {
+  color: var(--mist-dim);
+  letter-spacing: 0.08em;
+}
+/* Paging goes left, away from the button that ends the form: a mis-aimed click should not
+   submit a form the author was only stepping through. */
+.cv-surface .ask-nav {
+  display: flex;
+  gap: 9px;
+  margin-right: auto;
+}
+.cv-surface .ask-nav button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 `;
 
 /**
@@ -170,12 +209,16 @@ export class ConvoEditor extends VnEditor {
   private drawn = -1;
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
-  /** The question id whose box already took focus, so a redraw does not steal the caret back. */
-  private focusedAsk = -1;
-  /** What the question box holds. The transcript is rebuilt wholesale; the half-typed answer isn't. */
-  private askDraft = '';
-  /** Which of a multi-pick question's choices are ticked. Same reason: a redraw must not clear it. */
-  private askPicked: string[] = [];
+  /** The form page whose box already took focus, so a redraw does not steal the caret back. */
+  private focusedAsk = '';
+  /**
+   * The form being filled in — which page, what is ticked on each, what is typed beside it. The
+   * transcript is rebuilt wholesale and a half-answered form is not: it is the author's work, and
+   * an event arriving mid-answer must not throw it away. Cleared when the answers go back.
+   */
+  private askForm: AskForm | null = null;
+  /** The live **Submit answers** button, so typing can keep its tooltip's blank count true. */
+  private sendAct: HTMLButtonElement | null = null;
 
   static override define() {
     return {
@@ -593,48 +636,40 @@ export class ConvoEditor extends VnEditor {
    * The agent asked something and its turn is parked on the answer. It wears the plan card's
    * shape because it is the same kind of moment — the conversation stopped, waiting on the author
    * — and the box takes focus on arrival, since nothing else on this pane is worth typing into.
+   *
+   * A request carries a *form*: usually one question, sometimes several the model wants settled
+   * together. Several are drawn one page at a time with **‹ Back** / **Next ›** between them and
+   * one **Submit answers** at the end, because a wall of four questions is read as a chore while
+   * one question with a pager is read as a question. One question draws exactly as it always did.
    */
   private askCard(request: AskRequest): HTMLElement {
+    const form = this.formFor(request);
+    const page = pageOf(form);
     const card = el('div', 'plan ask');
-    card.appendChild(el('div', 'plan-head', 'VNAUTHOR ASKS'));
+    const head = el('div', 'plan-head', 'VNAUTHOR ASKS');
+    const where = pageLabel(form);
+    if (where) {
+      const pager = el('span', 'ask-page', where);
+      pager.title = 'The agent asked these together; answer them all, then submit once.';
+      head.appendChild(pager);
+    }
+    card.appendChild(head);
 
     const body = el('div', 'plan-body');
-    body.appendChild(el('div', 'plan-sum', request.question));
+    body.appendChild(el('div', 'plan-sum', page?.question ?? ''));
 
-    const choices = request.choices ?? [];
-    const first = choices.length ? this.drawChoices(body, choices, request.multi === true) : null;
+    const choices = page?.choices ?? [];
+    const first = choices.length ? this.drawChoices(body, form, choices) : null;
+    const field = this.drawAnswerBox(body, form, choices.length > 0);
 
-    const field = document.createElement('input');
-    field.className = 'ask-input';
-    field.placeholder = choices.length
-      ? 'Or type an answer of your own…'
-      : 'Answer, or press Enter to say nothing…';
-    field.title = choices.length
-      ? 'Answer in your own words instead of picking from the list.'
-      : 'Answer the question. Sending an empty box says you have nothing to add.';
-    field.value = this.askDraft;
-    field.addEventListener('input', () => (this.askDraft = field.value));
-    field.addEventListener('keydown', (event) => {
-      event.stopPropagation();
-      if (event.key === 'Enter') this.reply();
-    });
-    body.appendChild(field);
-
-    const acts = el('div', 'plan-acts');
-    const send = document.createElement('button');
-    send.className = 'btn primary';
-    send.textContent = 'Answer →';
-    send.title = choices.length
-      ? 'Send what you picked, plus anything you typed.'
-      : 'Send this answer and let the agent carry on.';
-    send.addEventListener('click', () => this.reply());
-    acts.appendChild(send);
-    if (choices.length) acts.appendChild(this.chatButton());
-    body.appendChild(acts);
-
+    body.appendChild(this.drawActs(form, choices.length > 0));
     card.appendChild(body);
-    if (this.focusedAsk !== request.id) {
-      this.focusedAsk = request.id;
+
+    // Per *page*, not per request: paging to question 3 should put the caret on question 3, and
+    // an event that redraws the card mid-answer should leave it where the author put it.
+    const here = `${request.id}:${form.at}`;
+    if (this.focusedAsk !== here) {
+      this.focusedAsk = here;
       // The card is not in the document until `rebuild` has appended it. With a list, the list is
       // what the author came to read, so the caret starts there rather than in the box.
       queueMicrotask(() => (first ?? field).focus());
@@ -642,27 +677,46 @@ export class ConvoEditor extends VnEditor {
     return card;
   }
 
+  /** The form for this request, started on arrival and kept until the answers go back. */
+  private formFor(request: AskRequest): AskForm {
+    if (!this.askForm || this.askForm.questions !== request.questions) {
+      this.askForm = startForm(request.questions);
+    }
+    return this.askForm;
+  }
+
+  /** Apply a transition to the form and redraw the card around it. */
+  private page(next: AskForm): void {
+    this.askForm = next;
+    this.rebuild();
+  }
+
   /**
-   * The shortlist. One pick answers on the click — there is nothing else to say — while a
-   * multi-pick toggles and waits for **Answer →**, because the second choice is the whole point.
+   * The shortlist. On a lone single-pick question a click answers outright — there is nothing
+   * else to say — while every other shape ticks and waits, because a form has more pages to fill
+   * in and a multi-pick's second choice is the whole point.
    *
    * Returns the first row so the card can start the focus there.
    */
-  private drawChoices(body: HTMLElement, choices: string[], multi: boolean): HTMLButtonElement {
+  private drawChoices(body: HTMLElement, form: AskForm, choices: string[]): HTMLButtonElement {
+    const multi = pageOf(form)?.multi === true;
+    const outright = answersOnPick(form);
     const list = el('div', 'ask-choices');
     const rows = choices.map((choice) => {
       const row = document.createElement('button');
       row.textContent = choice;
       row.title = multi
         ? `Include “${choice}” in your answer. Pick as many as apply.`
-        : `Answer “${choice}”.`;
-      if (multi && this.askPicked.includes(choice)) row.classList.add('picked');
+        : outright
+          ? `Answer “${choice}”.`
+          : `Answer “${choice}” to this question. The rest of the form stays as you left it.`;
+      if (isPicked(form, choice)) row.classList.add('picked');
       row.addEventListener('click', () => {
-        if (!multi) return this.sendAnswer(choice);
-        this.askPicked = this.askPicked.includes(choice)
-          ? this.askPicked.filter((c) => c !== choice)
-          : [...this.askPicked, choice];
-        row.classList.toggle('picked');
+        if (outright) return this.sendAnswers([choice]);
+        // Picking the last question's answer must not submit: on the last page the pick simply
+        // stands, and Submit is the one thing that ends the form.
+        const picked = pick(this.askForm ?? form, choice);
+        this.page(multi ? picked : goTo(picked, picked.at + 1));
       });
       list.appendChild(row);
       return row;
@@ -671,32 +725,135 @@ export class ConvoEditor extends VnEditor {
     return rows[0]!;
   }
 
+  /** The free-text box under the list, or instead of it where the question offered none. */
+  private drawAnswerBox(body: HTMLElement, form: AskForm, listed: boolean): HTMLInputElement {
+    const field = document.createElement('input');
+    field.className = 'ask-input';
+    field.placeholder = listed
+      ? 'Or type an answer of your own…'
+      : 'Answer, or press Enter to say nothing…';
+    field.title = listed
+      ? 'Answer in your own words instead of picking from the list.'
+      : 'Answer the question. Sending an empty box says you have nothing to add.';
+    field.value = form.typed[form.at] ?? '';
+    // Typing does not redraw — that would take the caret away mid-word — so what was typed is
+    // written into the form on every keystroke instead, where a redraw will find it again.
+    field.addEventListener('input', () => {
+      this.askForm = type(this.askForm ?? form, field.value);
+      // The tooltip counts what is still blank, and typing is exactly what stops one being blank.
+      if (this.sendAct) this.sendAct.title = this.sendTitle(this.askForm, listed);
+    });
+    field.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key !== 'Enter') return;
+      const now = this.askForm ?? form;
+      if (isLast(now)) this.reply();
+      else this.page(goTo(now, now.at + 1));
+    });
+    body.appendChild(field);
+    return field;
+  }
+
+  /** Back / Next on the left, and the one button that ends the form on the right. */
+  private drawActs(form: AskForm, listed: boolean): HTMLElement {
+    const acts = el('div', 'plan-acts');
+    if (form.questions.length > 1) {
+      const nav = el('div', 'ask-nav');
+      nav.appendChild(
+        this.navButton('‹ Back', isFirst(form), 'Go back to the previous question.', () =>
+          this.page(goTo(this.askForm ?? form, form.at - 1)),
+        ),
+      );
+      nav.appendChild(
+        this.navButton('Next ›', isLast(form), 'Go on to the next question.', () =>
+          this.page(goTo(this.askForm ?? form, form.at + 1)),
+        ),
+      );
+      acts.appendChild(nav);
+    }
+
+    const send = document.createElement('button');
+    send.className = 'btn primary';
+    send.textContent = form.questions.length > 1 ? 'Submit answers' : 'Answer →';
+    send.title = this.sendTitle(form, listed);
+    send.addEventListener('click', () => this.reply());
+    this.sendAct = send;
+    acts.appendChild(send);
+    if (listed) acts.appendChild(this.chatButton(form));
+    return acts;
+  }
+
+  /**
+   * What the one button that ends the form promises. Blank is a real answer — "nothing to add" is
+   * what the tool exists to hear — so what is still empty is said out loud rather than used to
+   * grey the button out. Recomputed on every keystroke, because a stale count is a lie about the
+   * thing the author just typed.
+   */
+  private sendTitle(form: AskForm, listed: boolean): string {
+    if (form.questions.length === 1) {
+      return listed
+        ? 'Send what you picked, plus anything you typed.'
+        : 'Send this answer and let the agent carry on.';
+    }
+    const blank = blankPages(form);
+    if (!blank.length) return 'Send all your answers and let the agent carry on.';
+    return (
+      `Send all ${form.questions.length} answers. Question${blank.length > 1 ? 's' : ''} ` +
+      `${blank.join(', ')} will go back blank, which the agent reads as “nothing to add”.`
+    );
+  }
+
+  private navButton(
+    text: string,
+    disabled: boolean,
+    title: string,
+    onClick: () => void,
+  ): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.className = 'btn';
+    button.textContent = text;
+    button.disabled = disabled;
+    // A greyed control says why, and here the why is simply where the author is in the form.
+    button.title = disabled
+      ? text.startsWith('‹')
+        ? 'This is the first question.'
+        : 'This is the last question.'
+      : title;
+    button.addEventListener('click', onClick);
+    return button;
+  }
+
   /**
    * The way out of a list that does not have the answer on it. It **answers** rather than
    * dismissing the card: the turn is parked on this reply, so a card that closed without one
    * would hang. What it sends is the author's own position, and the transcript shows it as theirs.
+   *
+   * On a form it fills in every question the author has *not* answered, and leaves the ones they
+   * have — declining to pick is a thing you can mean about some of a form and not the rest.
    */
-  private chatButton(): HTMLButtonElement {
+  private chatButton(form: AskForm): HTMLButtonElement {
     const chat = document.createElement('button');
     chat.className = 'btn';
     chat.textContent = 'Chat about this';
-    chat.title = 'Answer that you would rather talk it through than pick from the list.';
-    chat.addEventListener('click', () =>
-      this.sendAnswer('None of those — let us talk it through before I pick.'),
-    );
+    chat.title =
+      form.questions.length > 1
+        ? 'Answer every question you have left blank with “let us talk it through” and send.'
+        : 'Answer that you would rather talk it through than pick from the list.';
+    chat.addEventListener('click', () => {
+      const said = 'None of those — let us talk it through before I pick.';
+      this.sendAnswers(answersOf(this.askForm ?? form).map((a) => (a === '' ? said : a)));
+    });
     return chat;
   }
 
-  /** What **Answer →** sends: the picks, then anything typed beside them. */
+  /** What **Answer →** / **Submit answers** sends: every page's picks, then what was typed. */
   private reply(): void {
-    const typed = this.askDraft.trim();
-    this.sendAnswer([...this.askPicked, ...(typed ? [typed] : [])].join(', '));
+    if (this.askForm) this.sendAnswers(answersOf(this.askForm));
   }
 
-  private sendAnswer(text: string): void {
-    this.askDraft = '';
-    this.askPicked = [];
-    answer(text);
+  private sendAnswers(answers: string[]): void {
+    this.askForm = null;
+    answer(answers);
   }
 
   /**

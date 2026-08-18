@@ -106,34 +106,44 @@ describe('terminalPermission', () => {
 
   it('numbers a shortlist and answers with the option the number named', async () => {
     const { channel, out } = scriptChannel(['2']);
-    const answer = await terminalPermission(channel).ask('Which outfit?', {
-      options: ['uniform', 'track'],
-      multi: false,
-    });
+    const answer = await terminalPermission(channel).ask([
+      { question: 'Which outfit?', choices: ['uniform', 'track'] },
+    ]);
     expect(out.join('\n')).toContain('2. track');
-    expect(answer).toBe('track');
+    expect(answer).toEqual(['track']);
   });
 
   it('resolves every number of a multi-pick, and only when every one is a number', async () => {
-    const picked = await terminalPermission(scriptChannel(['1,3']).channel).ask('Which scenes?', {
-      options: ['arrival', 'greet', 'ending'],
-      multi: true,
-    });
-    expect(picked).toBe('arrival, ending');
+    const picked = await terminalPermission(scriptChannel(['1,3']).channel).ask([
+      { question: 'Which scenes?', choices: ['arrival', 'greet', 'ending'], multi: true },
+    ]);
+    expect(picked).toEqual(['arrival, ending']);
     // One bad index and the whole line is the author's own words, not a half-read list.
-    const typed = await terminalPermission(scriptChannel(['1, the last one']).channel).ask('?', {
-      options: ['arrival', 'greet'],
-      multi: true,
-    });
-    expect(typed).toBe('1, the last one');
+    const typed = await terminalPermission(scriptChannel(['1, the last one']).channel).ask([
+      { question: '?', choices: ['arrival', 'greet'], multi: true },
+    ]);
+    expect(typed).toEqual(['1, the last one']);
   });
 
   it('lets the author type past the list, which is how they say none of these', async () => {
-    const answer = await terminalPermission(scriptChannel(['neither — let us talk']).channel).ask(
-      'Which outfit?',
-      { options: ['uniform', 'track'], multi: false },
-    );
-    expect(answer).toBe('neither — let us talk');
+    const answer = await terminalPermission(scriptChannel(['neither — let us talk']).channel).ask([
+      { question: 'Which outfit?', choices: ['uniform', 'track'] },
+    ]);
+    expect(answer).toEqual(['neither — let us talk']);
+  });
+
+  // A terminal has no Back button, so a form is put one question at a time. The numbering is the
+  // only thing telling the author how much is left.
+  it('puts a form one question at a time, saying where in it they are', async () => {
+    const { channel, out } = scriptChannel(['1', 'quietly']);
+    const answers = await terminalPermission(channel).ask([
+      { question: 'Which outfit?', choices: ['uniform', 'track'] },
+      { question: 'How does she say it?' },
+    ]);
+    expect(answers).toEqual(['uniform', 'quietly']);
+    const said = out.join('\n');
+    expect(said).toContain('Question 1 of 2');
+    expect(said).toContain('Question 2 of 2');
   });
 });
 

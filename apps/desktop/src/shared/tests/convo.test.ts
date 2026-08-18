@@ -297,33 +297,51 @@ describe('the plan card', () => {
 });
 
 describe('a question the agent asked', () => {
-  const question: AskRequest = { id: 7, question: 'Which café — Mori or the station one?' };
+  const asking = 'Which café — Mori or the station one?';
+  const question: AskRequest = { id: 7, questions: [{ question: asking }] };
 
   test('arrives as a card', () => {
     expect(queried(emptyConvo(opening), question).question).toBe(question);
   });
 
   test('answering files the answer as the author’s own turn', () => {
-    const convo = answeredQuestion(queried(emptyConvo(opening), question), 'Mori');
+    const convo = answeredQuestion(queried(emptyConvo(opening), question), ['Mori']);
     expect(convo.question).toBeNull();
     expect(convo.feed).toEqual([
-      { id: 1, role: 'agent', text: question.question },
+      { id: 1, role: 'agent', text: asking },
       { id: 2, role: 'user', text: 'Mori' },
     ]);
   });
 
   test('an empty answer is still an answer, and says so', () => {
-    const convo = answeredQuestion(queried(emptyConvo(opening), question), '   ');
+    const convo = answeredQuestion(queried(emptyConvo(opening), question), ['   ']);
     expect(convo.feed[1]).toEqual({ id: 2, role: 'user', text: '(no answer)' });
   });
 
   // "The second one" is unreadable without the list it picked from.
   test('the options go down with the question', () => {
-    const withChoices: AskRequest = { ...question, choices: ['Mori', 'the station'], multi: true };
+    const withChoices: AskRequest = {
+      id: 7,
+      questions: [{ question: asking, choices: ['Mori', 'the station'], multi: true }],
+    };
     const [item] = queried(emptyConvo(opening), withChoices).feed;
     expect(item?.text).toContain('- Mori');
     expect(item?.text).toContain('- the station');
     expect(item?.text).toContain('more than one');
+  });
+
+  // A form is one turn each way: the questions sit together, and so do the answers, so the reply
+  // is directly beneath the thing it answers rather than three lines below it.
+  test('a form of several is one line of questions and one of numbered answers', () => {
+    const form: AskRequest = {
+      id: 8,
+      questions: [{ question: 'Which café?' }, { question: 'What time?' }],
+    };
+    const convo = answeredQuestion(queried(emptyConvo(opening), form), ['Mori', '']);
+    expect(convo.feed).toEqual([
+      { id: 1, role: 'agent', text: 'Which café?\n\nWhat time?' },
+      { id: 2, role: 'user', text: '1. Mori\n2. (no answer)' },
+    ]);
   });
 });
 

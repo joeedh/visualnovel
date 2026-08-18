@@ -9,7 +9,7 @@ import {
   focusOnScene,
   type AgentBackend,
   type AgentMessage,
-  type AskChoices,
+  type AskQuestion,
   StructuredAgentBackend,
   type SystemSection,
   type ToolSpec,
@@ -106,8 +106,8 @@ function scriptPermission(over: Partial<Permission> = {}): Permission & {
       confirms.push(tool);
       return over.confirmAction ? over.confirmAction(tool, args) : true;
     },
-    async ask(question, choices): Promise<string> {
-      return over.ask ? over.ask(question, choices) : 'ok';
+    async ask(form): Promise<string[]> {
+      return over.ask ? over.ask(form) : form.map(() => 'ok');
     },
   };
 }
@@ -480,7 +480,7 @@ describe('ask_user', () => {
   it('routes a question through the permission host and feeds the answer back', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
-      const permission = scriptPermission({ ask: () => Promise.resolve('Call her Aiko.') });
+      const permission = scriptPermission({ ask: () => Promise.resolve(['Call her Aiko.']) });
       const agent = agentWith(
         ctx,
         [
@@ -507,12 +507,12 @@ describe('ask_choice', () => {
     ctx: ToolContext,
     args: unknown,
     reply = 'ok',
-  ): Promise<{ asked: [string, AskChoices | undefined][]; observed: string }> {
-    const asked: [string, AskChoices | undefined][] = [];
+  ): Promise<{ asked: AskQuestion[][]; observed: string }> {
+    const asked: AskQuestion[][] = [];
     const permission = scriptPermission({
-      ask: (question, choices) => {
-        asked.push([question, choices]);
-        return Promise.resolve(reply);
+      ask: (form) => {
+        asked.push([...form]);
+        return Promise.resolve(form.map(() => reply));
       },
     });
     const prompts: string[] = [];
@@ -539,7 +539,9 @@ describe('ask_choice', () => {
         question: 'Which outfit?',
         choices: ['uniform', 'track'],
       });
-      expect(asked).toEqual([['Which outfit?', { options: ['uniform', 'track'], multi: false }]]);
+      expect(asked).toEqual([
+        [{ question: 'Which outfit?', choices: ['uniform', 'track'], multi: false }],
+      ]);
     } finally {
       await cleanup();
     }
@@ -553,7 +555,7 @@ describe('ask_choice', () => {
         choices: ['arrival', 'greet', 'ending'],
         multi: true,
       });
-      expect(asked[0]?.[1]?.multi).toBe(true);
+      expect(asked[0]?.[0]?.multi).toBe(true);
     } finally {
       await cleanup();
     }
@@ -580,6 +582,105 @@ describe('ask_choice', () => {
         said,
       );
       expect(observed).toContain(`OBSERVATION: User answered: ${said}`);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  // The point of a form: three things settled in one parked turn rather than three.
+  it('puts several questions as one form and pairs each answer with its question', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const { asked, observed } = await askWith(ctx, {
+        questions: [
+          { question: 'Which outfit?', choices: ['uniform', 'track'] },
+          { question: 'Which scenes?', choices: ['arrival', 'ending'], multi: true },
+        ],
+      });
+      expect(asked[0]).toHaveLength(2);
+      expect(asked[0]?.[1]?.question).toBe('Which scenes?');
+      // Numbered against the questions, because "ok, ok" says nothing on its own.
+      expect(observed).toContain('1. Which outfit?');
+      expect(observed).toContain('2. Which scenes?');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  // Caught live: a form whose last question was open failed the whole schema, so the agent got a
+  // usage error instead of a card and the author was asked nothing at all.
+  it('takes an open question inside a form, so an aside need not cost a second turn', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const { asked, observed } = await askWith(ctx, {
+        questions: [
+          { question: 'Which outfit?', choices: ['uniform', 'track'] },
+          { question: 'Anything else I should know?' },
+        ],
+      });
+      expect(asked[0]).toHaveLength(2);
+      expect(asked[0]?.[1]).toEqual({ question: 'Anything else I should know?', multi: false });
+      expect(observed).toContain('2. Anything else I should know?');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  // Only inside a form: on its own, a question with no shortlist is `ask_user`, and letting
+  // `ask_choice` be a second door to it would make the tool list read as two names for one thing.
+  it('still refuses a lone question with no choices', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const { asked, observed } = await askWith(ctx, { question: 'Anything else?' });
+      expect(asked).toHaveLength(0);
+      expect(observed).toContain('at least two "choices"');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses a form longer than the cap rather than interviewing the author', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const one = { question: 'Which outfit?', choices: ['uniform', 'track'] };
+      const { asked, observed } = await askWith(ctx, { questions: [one, one, one, one, one] });
+      expect(asked).toHaveLength(0);
+      expect(observed).toContain('"questions" array of up to 4');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  // A host is free to answer short — the desktop card pads, but a CDP script or a future host
+  // need not — and the turn has to resume either way.
+  it('pads a short answer rather than pairing an answer with the wrong question', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const permission = scriptPermission({ ask: () => Promise.resolve(['only this']) });
+      const prompts: string[] = [];
+      const chat = new RecordedChatBackend('mock', (req, call) => {
+        prompts.push(req.prompt);
+        return call === 0
+          ? JSON.stringify({
+              tool: 'ask_choice',
+              args: {
+                questions: [
+                  { question: 'First?', choices: ['a', 'b'] },
+                  { question: 'Second?', choices: ['c', 'd'] },
+                ],
+              },
+            })
+          : JSON.stringify({ final: 'done' });
+      });
+      const agent = new Agent({
+        backend: new StructuredAgentBackend(chat),
+        ctx,
+        permission,
+        system: 'SYS',
+      });
+      await agent.run('ask me two things');
+      expect(prompts[1]).toContain('1. First?\n   only this');
+      expect(prompts[1]).toContain('2. Second?\n   (no answer)');
     } finally {
       await cleanup();
     }

@@ -24,7 +24,7 @@
 [x]: The tokens counter label should keep track of uncached tokens only.
 [x]: the tasks editor should refresh itself automatically 
 [x]: agent threads should remember which model and effort level they're on 
-[ ]: the multichoice user input tool for the agent should allow you navigate to previous/next 
+[x]: the multichoice user input tool for the agent should allow you navigate to previous/next 
      questions and have a final 'submit answers' button, similar to claude code's behaviour
 [ ]: the user should be informed about api errors and given the option to select another model provider,
      or automatically retry 10 times with whatever backoff semantics the model providers recommend.

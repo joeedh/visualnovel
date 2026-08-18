@@ -17,7 +17,7 @@ const TEMPLATE = resolve(__dirname, '../../../../../templates/basic');
 const deps: SessionDeps = {
   emitEvent: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
-  requestAnswer: () => Promise.resolve(''),
+  requestAnswer: () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),
   pushBusy: () => {},
 };

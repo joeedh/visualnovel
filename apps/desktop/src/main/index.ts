@@ -133,8 +133,12 @@ let sessionStore: SessionStore | null = null;
 let instanceLock: InstanceLock | null = null;
 
 const pendingPlans = new Pending<PlanDecision>({ approved: false });
-/** An unanswered question is silence, not a guess; an unanswered confirmation is a refusal. */
-const pendingAsks = new Pending<string>('');
+/**
+ * An unanswered form is silence, not a guess; an unanswered confirmation is a refusal. The
+ * abandoned value is empty rather than one blank per question, because `answersFor` pads it out
+ * to the form the loop still holds.
+ */
+const pendingAsks = new Pending<string[]>([]);
 const pendingConfirms = new Pending<boolean>(false);
 
 /** Nobody is left to ask: end every parked turn rather than leaving one blocked forever. */
@@ -389,13 +393,9 @@ const deps: SessionDeps = {
       const request: PlanRequest = { id, plan };
       target.webContents.send('permission:plan', request);
     }),
-  requestAnswer: (question, choices) =>
+  requestAnswer: (questions) =>
     askWindow(pendingAsks, (id, target) => {
-      const request: AskRequest = {
-        id,
-        question,
-        ...(choices ? { choices: choices.options, multi: choices.multi } : {}),
-      };
+      const request: AskRequest = { id, questions: [...questions] };
       target.webContents.send('permission:ask', request);
     }),
   requestConfirm: (tool, detail) =>
@@ -596,7 +596,7 @@ function registerIpc(): void {
   handle('agent:setModel', (_origin, modelId) => getSession().setModel(modelId));
   handle('agent:clear', () => getSession().clearAgent());
   handle('plan:decision', (_origin, payload) => pendingPlans.answer(payload.id, payload.decision));
-  handle('ask:answer', (_origin, payload) => pendingAsks.answer(payload.id, payload.answer));
+  handle('ask:answer', (_origin, payload) => pendingAsks.answer(payload.id, payload.answers));
   handle('confirm:decision', (_origin, payload) =>
     pendingConfirms.answer(payload.id, payload.allowed),
   );

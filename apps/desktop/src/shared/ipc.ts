@@ -12,6 +12,7 @@ import type { PromptView } from './prompt.js';
 import type {
   AgentEvent,
   AgentMode,
+  AskQuestion,
   Plan,
   PlanDecision,
   RunResult,
@@ -149,6 +150,7 @@ export interface CommandCheck {
 export type {
   AgentEvent,
   AgentMode,
+  AskQuestion,
   CharacterEntry,
   Plan,
   PlanDecision,
@@ -192,18 +194,16 @@ export interface PlanRequest {
 }
 
 /**
- * A question the agent asked the author, waiting on an answer main is blocked for.
+ * A form the agent put to the author, waiting on answers main is blocked for.
  *
- * `choices` is a shortlist to click rather than type. It changes how the card is drawn and
- * nothing else: the answer that goes back is a string either way, and the author may always
- * type something the list does not offer.
+ * `questions` is never empty and usually holds one — a single question is a one-page form, and
+ * the card draws it exactly as it always did. A question's `choices` is a shortlist to click
+ * rather than type; it changes how the page is drawn and nothing else, since the answer that
+ * goes back is a string either way and the author may always type something the list omits.
  */
 export interface AskRequest {
   id: number;
-  question: string;
-  choices?: string[];
-  /** Whether more than one choice may be picked. Meaningless without `choices`. */
-  multi?: boolean;
+  questions: AskQuestion[];
 }
 
 /**
@@ -628,8 +628,11 @@ export interface InvokeChannels {
   'agent:setModel': (modelId: string) => string;
   'agent:clear': () => void;
   'plan:decision': (payload: { id: number; decision: PlanDecision }) => void;
-  /** The author's answer to `permission:ask`. Empty is an answer, not an absence of one. */
-  'ask:answer': (payload: { id: number; answer: string }) => void;
+  /**
+   * The author's answers to `permission:ask`, one per question and in the form's own order.
+   * Empty is an answer, not an absence of one.
+   */
+  'ask:answer': (payload: { id: number; answers: string[] }) => void;
   /** Yes or no to `permission:confirm`. A window that closes denies rather than hangs. */
   'confirm:decision': (payload: { id: number; allowed: boolean }) => void;
   'pipeline:status': () => PipelineStatus;

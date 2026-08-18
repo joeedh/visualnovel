@@ -80,12 +80,27 @@ agent honors.
 - **Asking with a shortlist is its own tool, over the same door.** `ask_choice` sits beside
   `ask_user` in `CONTROL_TOOLS` — a distinct name, because the failure being corrected is a model
   asking an open question when the sensible answers can be listed — but both reach one
-  `Permission.ask(question, choices?)`. The shortlist is how the question is _put_, not what comes
+  `Permission.ask(form)`. The shortlist is how the question is _put_, not what comes
   back: the answer is a string either way, the author may always type past the list, and the
   observation reads `User answered: …` regardless, so the model has to read it rather than
   pattern-match a click. A shortlist of fewer than two is refused, being a leading question. In the
   terminal the list is numbered and anything that is not a run of valid numbers is taken as the
   author's own words.
+- **A question is a page of a form, and one question is a one-page form.** `Permission.ask` takes
+  an array of `AskQuestion` and returns one answer per question, positionally — so `ask_user`, a
+  lone `ask_choice` and a `{questions: […]}` form are one shape rather than three doors, and a
+  single question draws and reads exactly as it did before forms existed. `ask_choice` accepts up
+  to `MAX_ASK_QUESTIONS` (4) at once, because a model that wants more than that has stopped asking
+  and started interviewing. **Inside a form a question may omit its `choices`** and be answered in
+  the author's own words: on its own that question is `ask_user`, but a form is one parked turn,
+  and making the model ask the listed questions here and the open one separately would spend a
+  second turn to learn nothing extra. What the model reads back is numbered against the questions,
+  because `ok, ok` says nothing on its own; an unanswered one reads `(no answer)`.
+- **A host that miscounts must not hang a parked turn.** `answersFor` pads a short reply and drops
+  a long one — neither throws, because the model reads these as prose and a missing answer says
+  "nothing" perfectly well. That is what lets the terminal put a form one question at a time (it
+  has no Back button, so the numbering is all it can offer) while the desktop card pages through
+  it, without either host owing the loop any arithmetic.
 - **Agent backend seam, and Path B is the default.** The loop targets an internal
   `AgentBackend`; `StructuredAgentBackend` (Path A) drives tools as zod-validated JSON over the text
   seam, `NativeAgentBackend` (Path B) drives them through the vendor tool protocol. The loop is the

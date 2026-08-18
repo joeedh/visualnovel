@@ -142,7 +142,7 @@ import {
   type AgentBackend,
   type AgentEvent,
   type AgentMode,
-  type AskChoices,
+  type AskQuestion,
   type GeneratedContextState,
   type GeneratedCounts,
   type Permission,
@@ -286,10 +286,11 @@ export interface SessionDeps {
   emitEvent(event: AgentEvent): void;
   requestPlan(plan: Plan): Promise<PlanDecision>;
   /**
-   * The author's answer to a clarifying question. Empty is an answer — silence, said out loud.
-   * `choices` is a shortlist the card offers to click; what comes back is a string regardless.
+   * The author's answers to a form, one per question and in its order. Empty is an answer —
+   * silence, said out loud. A question's `choices` is a shortlist the card offers to click; what
+   * comes back is a string regardless.
    */
-  requestAnswer(question: string, choices?: AskChoices): Promise<string>;
+  requestAnswer(questions: readonly AskQuestion[]): Promise<string[]>;
   /** Yes or no to an always-confirm tool. `detail` is the English sentence the card reads out. */
   requestConfirm(tool: string, detail: string): Promise<boolean>;
   /** The app build, so a bug report names the code a maintainer should read. Absent in tests. */
@@ -752,13 +753,13 @@ export class WorkspaceSession {
       // loop does not emit it — so a transcript that did not record it here would lose it. The
       // question goes down with it, options and all: "the second one" is unreadable without the
       // list it picked from. A declined confirmation needs no such care: that is a `blocked` event.
-      ask: async (question, choices) => {
+      ask: async (form) => {
         const id = this.cardSeq++;
-        const list = choices ? { choices: choices.options, multi: choices.multi } : {};
-        this.record((convo) => queried(convo, { id, question, ...list }));
-        const answer = await this.deps.requestAnswer(question, choices);
-        this.record((convo) => answeredQuestion(convo, answer));
-        return answer;
+        const questions = [...form];
+        this.record((convo) => queried(convo, { id, questions }));
+        const answers = await this.deps.requestAnswer(questions);
+        this.record((convo) => answeredQuestion(convo, answers));
+        return answers;
       },
     };
   }

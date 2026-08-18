@@ -15,7 +15,14 @@
  * clearing carries the counter over, so a cleared conversation never reuses an id.
  */
 import { charge } from '@vn/types';
-import type { AgentEvent, AskRequest, ConfirmRequest, PlanDecision, PlanRequest } from './ipc.js';
+import type {
+  AgentEvent,
+  AskQuestion,
+  AskRequest,
+  ConfirmRequest,
+  PlanDecision,
+  PlanRequest,
+} from './ipc.js';
 
 /** What a tool was called with and what came back — the half of a turn `text` cannot hold. */
 export interface ToolDetail {
@@ -414,26 +421,41 @@ export function decided(convo: Convo, decision?: PlanDecision): Convo {
   return push(next, 'user', why ? `${said} ${why}` : said);
 }
 
-/**
- * A question the agent asked, in the transcript beside the answer to it. The option list goes
- * down with it: an answer of "the second one" is unreadable without the list it picked from.
- */
-export function queried(convo: Convo, request: AskRequest): Convo {
-  const options = request.choices?.length
-    ? `\n${request.choices.map((c) => `- ${c}`).join('\n')}` +
-      (request.multi ? '\n(more than one may be picked)' : '')
+/** One question of a form as the transcript reads it: the question, then what it offered. */
+function questionText(item: AskQuestion): string {
+  const options = item.choices?.length
+    ? `\n${item.choices.map((c) => `- ${c}`).join('\n')}` +
+      (item.multi ? '\n(more than one may be picked)' : '')
     : '';
-  return { ...push(convo, 'agent', `${request.question}${options}`), question: request };
+  return `${item.question}${options}`;
 }
 
 /**
- * The answer is the author's own turn, so it goes into the transcript as one. A card that
+ * A form the agent put, in the transcript beside the answers to it. Each option list goes down
+ * with its question: an answer of "the second one" is unreadable without the list it picked from.
+ * A form of several is **one** line rather than one per question, so that the author's reply —
+ * also one line — sits directly beneath the thing it answers.
+ */
+export function queried(convo: Convo, request: AskRequest): Convo {
+  const text = request.questions.map(questionText).join('\n\n');
+  return { ...push(convo, 'agent', text), question: request };
+}
+
+/**
+ * The answers are the author's own turn, so they go into the transcript as one. A card that
  * vanished leaving only the question behind reads as unanswered, and the agent's next sentence
  * then makes no sense. An empty answer is a real answer — "nothing to add" — and says so.
+ *
+ * A form of several is numbered, because the answers are positional and nothing else in the line
+ * says which question a bare "yes" belongs to.
  */
-export function answeredQuestion(convo: Convo, answer: string): Convo {
-  const said = answer.trim() === '' ? '(no answer)' : answer;
-  return { ...push(convo, 'user', said), question: null };
+export function answeredQuestion(convo: Convo, answers: readonly string[]): Convo {
+  const said = (text: string): string => (text.trim() === '' ? '(no answer)' : text.trim());
+  const text =
+    answers.length <= 1
+      ? said(answers[0] ?? '')
+      : answers.map((a, i) => `${i + 1}. ${said(a)}`).join('\n');
+  return { ...push(convo, 'user', text), question: null };
 }
 
 export function confirmAsked(convo: Convo, request: ConfirmRequest): Convo {

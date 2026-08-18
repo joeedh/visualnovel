@@ -90,15 +90,18 @@ export async function decide(approved: boolean): Promise<void> {
 }
 
 /**
- * Answer the question card. Like `decide`, a reply rather than a command: main is parked inside
- * the agent's turn, so nothing about this is undoable and there is no provenance to record.
- * The empty string is allowed through — "nothing to add" is what the tool exists to hear.
+ * Answer the question card — one answer per question of the form, in its order. Like `decide`, a
+ * reply rather than a command: main is parked inside the agent's turn, so nothing about this is
+ * undoable and there is no provenance to record. The empty string is allowed through — "nothing
+ * to add" is what the tool exists to hear — and a short array is padded with it, because the card
+ * is the only thing standing between the agent and a turn that never resumes.
  */
-export function answer(text: string): void {
+export function answer(answers: string[]): void {
   const request = state.question;
   if (!request) return;
-  set(answeredQuestion(state, text));
-  void api.invoke('ask:answer', { id: request.id, answer: text.trim() });
+  const trimmed = request.questions.map((_, i) => (answers[i] ?? '').trim());
+  set(answeredQuestion(state, trimmed));
+  void api.invoke('ask:answer', { id: request.id, answers: trimmed });
 }
 
 /** Answer the confirm card. A denial is a refusal the tool reports; nothing else happens. */

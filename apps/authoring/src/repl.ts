@@ -17,7 +17,7 @@ import {
   skillRoots,
   systemSections,
   uploadSuggestions,
-  type AskChoices,
+  type AskQuestion,
   type Permission,
   type Plan,
 } from '@vn/authoring';
@@ -118,15 +118,29 @@ export function terminalPermission(channel: Channel): Permission {
       );
       return isYes(answer ?? '');
     },
-    async ask(question, choices) {
-      if (!choices?.options.length) return ((await channel.ask(cyan(`${question} `))) ?? '').trim();
-      channel.write(cyan(question));
-      choices.options.forEach((opt, i) => channel.write(`  ${i + 1}. ${opt}`));
-      const how = choices.multi ? 'numbers, comma-separated' : 'a number';
-      const raw = ((await channel.ask(cyan(`Pick ${how}, or just answer: `))) ?? '').trim();
-      return pickedOr(raw, choices);
+    // A form is put one question at a time here, and there is no going back: a terminal has no
+    // Back button, and the line above the cursor has already scrolled. The desktop pane is where
+    // a form is a form; this stays the degraded-but-never-wrong reading of the same request.
+    async ask(form) {
+      const answers: string[] = [];
+      for (const [i, item] of form.entries()) {
+        if (form.length > 1) channel.write(dim(`Question ${i + 1} of ${form.length}`));
+        answers.push(await askOne(channel, item));
+      }
+      return answers;
     },
   };
+}
+
+/** One question of a form, put to the terminal. Free text where there is no shortlist. */
+async function askOne(channel: Channel, item: AskQuestion): Promise<string> {
+  const options = item.choices ?? [];
+  if (!options.length) return ((await channel.ask(cyan(`${item.question} `))) ?? '').trim();
+  channel.write(cyan(item.question));
+  options.forEach((opt, i) => channel.write(`  ${i + 1}. ${opt}`));
+  const how = item.multi ? 'numbers, comma-separated' : 'a number';
+  const raw = ((await channel.ask(cyan(`Pick ${how}, or just answer: `))) ?? '').trim();
+  return pickedOr(raw, item);
 }
 
 /**
@@ -134,15 +148,14 @@ export function terminalPermission(channel: Channel): Permission {
  * valid numbers is the author's own words and comes back untouched, which is what makes "type
  * your own" and "let's talk about it" need no affordance of their own in a terminal.
  */
-function pickedOr(raw: string, choices: AskChoices): string {
+function pickedOr(raw: string, item: AskQuestion): string {
+  const options = item.choices ?? [];
   if (!raw) return raw;
   const parts = raw.split(',').map((p) => p.trim());
-  if (!choices.multi && parts.length > 1) return raw;
+  if (!item.multi && parts.length > 1) return raw;
   const picked = parts.map((p) => {
     const n = Number(p);
-    return Number.isInteger(n) && n >= 1 && n <= choices.options.length
-      ? choices.options[n - 1]
-      : undefined;
+    return Number.isInteger(n) && n >= 1 && n <= options.length ? options[n - 1] : undefined;
   });
   return picked.every((p) => p !== undefined) ? picked.join(', ') : raw;
 }

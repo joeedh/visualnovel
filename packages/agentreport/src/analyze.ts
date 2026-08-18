@@ -142,9 +142,12 @@ function unattended(): Permission {
   return {
     approvePlan: async () => ({ approved: true }),
     confirmAction: async () => false,
-    ask: async () =>
-      'Nobody is here to answer — this is an automated analysis of a saved conversation. ' +
-      'Conclude from the evidence you have, and say in the report what you could not determine.',
+    ask: async (form) =>
+      form.map(
+        () =>
+          'Nobody is here to answer — this is an automated analysis of a saved conversation. ' +
+          'Conclude from the evidence you have, and say in the report what you could not determine.',
+      ),
   };
 }
 

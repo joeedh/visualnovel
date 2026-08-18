@@ -53,20 +53,29 @@ export interface PlanDecision {
 export interface Permission {
   approvePlan(plan: Plan): Promise<PlanDecision>;
   confirmAction(tool: string, args: unknown): Promise<boolean>;
-  ask(question: string, choices?: AskChoices): Promise<string>;
+  /**
+   * Put a form to the author and get one answer per question, positionally. A host that answers
+   * short is padded and one that answers long is truncated by {@link answersFor}, because a turn
+   * parked on an answer must not hang on a host's arithmetic.
+   */
+  ask(form: readonly AskQuestion[]): Promise<string[]>;
 }
 
 /**
- * A shortlist offered with a question. It is a parameter of `ask` rather than a second door
- * because the answer is a string either way: the list is how the question is *put*, not what
- * comes back — the author may always type something that is not on it, and the agent is told
- * verbatim what they said. A host that ignores it asks the question as plain text, which is
- * degraded but never wrong.
+ * One question of an ask form.
+ *
+ * `choices` is a shortlist offered *with* the question rather than a second kind of question,
+ * because the answer is a string either way: the list is how the question is put, not what comes
+ * back — the author may always type something that is not on it, and the agent is told verbatim
+ * what they said. A host that ignores it asks the question as plain text, which is degraded but
+ * never wrong.
  */
-export interface AskChoices {
-  options: string[];
-  /** Whether more than one may be picked. */
-  multi: boolean;
+export interface AskQuestion {
+  question: string;
+  /** A shortlist to pick from rather than type. Absent or empty means free text. */
+  choices?: string[];
+  /** Whether more than one may be picked. Meaningless without `choices`. */
+  multi?: boolean;
 }
 
 /** A streamed event describing one thing the loop did (for the REPL / test assertions). */
@@ -126,6 +135,13 @@ export interface AgentOptions {
   onEvent?: (event: AgentEvent) => void;
 }
 
+/**
+ * A form is a handful of questions, not a survey. The author can get on with nothing while one is
+ * up, so a model that wants more than this has stopped asking and started interviewing — what it
+ * needs is to go and read the project.
+ */
+const MAX_ASK_QUESTIONS = 4;
+
 const CONTROL_TOOLS: ToolSpec[] = [
   {
     name: 'propose_plan',
@@ -142,7 +158,12 @@ const CONTROL_TOOLS: ToolSpec[] = [
   {
     name: 'ask_choice',
     description:
-      'Ask the user a question and offer a shortlist of answers. args: {question, choices[], multi?}. ' +
+      'Ask the user a question and offer a shortlist of answers. args: {question, choices[], multi?} ' +
+      `for one question, or {questions: [{question, choices?[], multi?}, …]} for up to ${MAX_ASK_QUESTIONS} ` +
+      'at once — the author pages through those with Back/Next and submits them together, so ask ' +
+      'everything you need to settle in one call rather than parking the turn once per question. ' +
+      'Inside a form a question may leave out its choices and be answered in the author’s own ' +
+      'words, so an open question does not have to cost a second turn. ' +
       'Prefer this over ask_user whenever the sensible answers can be listed — it is far less work ' +
       'to answer. The user may still type something that is not on the list, or say they would ' +
       'rather talk it through; either way you get their answer verbatim.',
@@ -228,11 +249,50 @@ const askSchema = z.object({ question: z.string().min(1) });
 
 // Two is the floor: a "shortlist" of one is a leading question, and the author would have to
 // reach for the text box to disagree with it.
-const choiceSchema = z.object({
+const oneChoiceSchema = z.object({
   question: z.string().min(1),
   choices: z.array(z.string().min(1)).min(2),
   multi: z.boolean().default(false),
 });
+
+/**
+ * A question *inside a form* may omit its shortlist. On its own that would be `ask_user` and this
+ * tool would be the wrong door, but a form is one parked turn: making the model ask the listed
+ * questions here and the open one separately would cost a second turn to learn nothing extra.
+ */
+const formItemSchema = oneChoiceSchema.extend({
+  choices: oneChoiceSchema.shape.choices.optional(),
+});
+
+/**
+ * Either shape is accepted, because both are honest: one question is the common case and should
+ * not have to be wrapped in an array to be asked.
+ */
+const choiceSchema = z.union([
+  oneChoiceSchema,
+  z.object({ questions: z.array(formItemSchema).min(1).max(MAX_ASK_QUESTIONS) }),
+]);
+
+/**
+ * The answers, made to match the form: a host that answered short leaves the rest unanswered, and
+ * one that answered long has the surplus dropped. Neither is a throw — the model reads these as
+ * prose, and a missing answer says "nothing" perfectly well.
+ */
+export function answersFor(form: readonly AskQuestion[], given: readonly string[]): string[] {
+  return form.map((_, i) => given[i] ?? '');
+}
+
+/**
+ * What the model is told the author said. One question keeps the bare sentence it has always had;
+ * a form repeats each question above its answer, because "yes, no, the second one" is unreadable
+ * against a list of questions the model asked several steps ago.
+ */
+export function askObservation(form: readonly AskQuestion[], answers: readonly string[]): string {
+  if (form.length === 1) return `User answered: ${answers[0] ?? ''}`;
+  const said = (text: string): string => (text.trim() === '' ? '(no answer)' : text.trim());
+  const lines = form.map((q, i) => `${i + 1}. ${q.question}\n   ${said(answers[i] ?? '')}`);
+  return `User answered:\n${lines.join('\n')}`;
+}
 
 /**
  * Drives a ReAct conversation: the backend proposes one action per step, the loop gates
@@ -621,23 +681,32 @@ export class Agent {
   private async handleAskUser(args: unknown): Promise<string> {
     const parsed = askSchema.safeParse(args);
     if (!parsed.success) return `Error: ask_user needs a non-empty "question".`;
-    const answer = await this.permission.ask(parsed.data.question);
-    return `User answered: ${answer}`;
+    return this.putForm([{ question: parsed.data.question }]);
   }
 
   /**
-   * The same door as `ask_user`, with a shortlist attached. What comes back is still whatever the
-   * author said — a choice they clicked, something they typed instead, or that they would rather
-   * discuss it — so the observation is worded no differently and the model has to read it.
+   * The same door as `ask_user`, with a shortlist attached and — when the model has more than one
+   * thing to settle — several questions behind it, which the author answers as one form. What
+   * comes back is still whatever the author said: a choice they clicked, something they typed
+   * instead, or that they would rather discuss it. So the observation is worded no differently
+   * and the model has to read it.
    */
   private async handleAskChoice(args: unknown): Promise<string> {
     const parsed = choiceSchema.safeParse(args);
     if (!parsed.success) {
-      return `Error: ask_choice needs a non-empty "question" and at least two "choices".`;
+      return (
+        `Error: ask_choice needs a non-empty "question" with at least two "choices", or a ` +
+        `"questions" array of up to ${MAX_ASK_QUESTIONS} questions, each with a "question" and ` +
+        `optionally two or more "choices".`
+      );
     }
-    const { question, choices, multi } = parsed.data;
-    const answer = await this.permission.ask(question, { options: choices, multi });
-    return `User answered: ${answer}`;
+    const data = parsed.data;
+    return this.putForm('questions' in data ? data.questions : [data]);
+  }
+
+  /** Put a form to the host, and turn what came back into the model's observation. */
+  private async putForm(form: AskQuestion[]): Promise<string> {
+    return askObservation(form, answersFor(form, await this.permission.ask(form)));
   }
 
   /** Error-severity diagnostics currently in the project (the commit gate). */

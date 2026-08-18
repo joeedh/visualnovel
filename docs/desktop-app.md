@@ -572,8 +572,26 @@ the same events** to write the transcript — see the threads bullet below.
   `choices` asks the question as plain text: degraded, never broken. The card's three ways out are
   the list, the box (*"Or type an answer of your own…"*), and **Chat about this** — which *answers*
   with a sentence saying so rather than dismissing, because main is parked on `ask:answer` and a
-  card that closed without one would hang the turn. A multi-pick's ticks live in `askPicked` beside
-  `askDraft`, for the same reason: a redraw must not clear what the author has chosen so far.
+  card that closed without one would hang the turn.
+- **The card is a form the author pages through, and one question is a one-page form.**
+  `AskRequest` carries `questions[]` and `ask:answer` carries `answers[]`, so a form is one parked
+  turn and one line of the transcript each way — the questions together, then the answers numbered
+  under them. Everything the author has filled in lives in an `AskForm` (`renderer/rules/askform.ts`,
+  pure and unit-tested): the page they are on, what is ticked per page, what is typed per page. It
+  is state on the editor rather than in the card, because a redraw must not clear what the author
+  has chosen so far — and **every handler must read the live form, not the one it was drawn with**:
+  typing deliberately does not redraw (that would take the caret away mid-word), so a Back/Next
+  closed over the drawn form silently discards the words just typed. Found exactly that way,
+  driving the card over CDP.
+- **‹ Back / Next › sit on the left, away from the one button that ends the form.** A mis-aimed
+  click near Submit must not submit half a form. For the same reason a pick on the last page does
+  not send — it stands, and **Submit answers** is the only thing that ends a form — while a pick on
+  any earlier page turns the page, and a lone single-pick question still answers outright, because
+  there is nothing else to say. **Blank is a real answer**, so it never greys the button out: the
+  Submit tooltip names the questions that will go back empty and what the agent will read them as,
+  and it is recomputed on every keystroke, because a stale count is a lie about the thing the
+  author just typed. **Chat about this** fills in only the questions still blank — declining to
+  pick is a thing you can mean about some of a form and not the rest.
 - **Clearing follows the command, not the button.** The store watches the registry through
   `bridge.onExec`, so `agent.clear` from the pane and from the palette empty the transcript
   identically — as do `agent.newThread` and `agent.openThread`. Named gap: `window.vn`/CDP goes
