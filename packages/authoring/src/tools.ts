@@ -547,57 +547,104 @@ const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
   },
 };
 
-/** Which of the two things a create tool just did, said the same way by both of them. */
-const describedOrTemplate = (description?: string): string =>
-  description
-    ? 'from the description you gave'
-    : 'as an empty template — no description was given, so its body is placeholders for someone ' +
-      'who knows it to fill in';
+/**
+ * A create tool takes exactly what its `edit_*` sibling takes, minus the `id` it is about to
+ * allocate — because the alternative is what the agent actually did: hand-write the sheet in raw
+ * YAML through `write_file`, since the tool that owned the directory could only be told a name.
+ */
+const characterCreateShape = characterEditShape.omit({ id: true }).extend({
+  name: z.string().min(1).describe('the display name; the id is slugged from it'),
+});
+const locationCreateShape = locationEditShape.omit({ id: true }).extend({
+  name: z.string().min(1).describe('the display name; the id is slugged from it'),
+});
 
-const createCharacterTool: Tool<{ name: string; description?: string }> = {
+/** What a create tool just made, said in the terms it was asked in. */
+const createdHow = (description: string | undefined, fields: string[]): string => {
+  const set = fields.length > 0 ? ` with ${fields.join(', ')} set` : '';
+  if (description) return `from the description you gave${set}`;
+  if (fields.length > 0)
+    return (
+      `with${set.slice(5)}, and no description — its body is empty, so there is nothing yet ` +
+      'for the image model to draw from'
+    );
+  return (
+    'as an empty template — no description was given, so its body is placeholders for someone ' +
+    'who knows it to fill in'
+  );
+};
+
+/** The fields a create call actually carried, in schema order, for both the edit and the report. */
+const givenFields = <T extends object>(rest: T): [string, unknown][] =>
+  Object.entries(rest).filter(([, v]) => v !== undefined);
+
+const createCharacterTool: Tool<z.infer<typeof characterCreateShape>> = {
   name: 'create_character',
   description:
-    'Scaffold a new characters/<id>/character.md from a name. Without a description it is a ' +
-    'template of placeholders for the author to fill in; the result says which of the two it wrote.',
+    'Scaffold a new characters/<id>/character.md. Takes every field edit_character takes, so a ' +
+    'character known in full is written in one call rather than created and then edited. Given ' +
+    'nothing but a name it writes a template of placeholders for the author to fill in; the ' +
+    'result says which of the two it wrote.',
   mutating: true,
-  args: z.object({ name: z.string().min(1), description: z.string().optional() }),
+  args: characterCreateShape,
   async run(a, ctx) {
-    // Described, and the sheet says what was described; undescribed, and it is the template, whose
-    // placeholders are there to be edited by whoever knows the character — which is not us.
-    const doc = newCharacterDoc(a.name, a.description ?? '');
+    const { name, description, ...rest } = a;
+    const given = givenFields(rest);
+    const doc = newCharacterDoc(name, description ?? '');
     const id = String(doc.data['id']);
-    if (!id) return fail(`"${a.name}" does not name a character`);
+    if (!id) return fail(`"${name}" does not name a character`);
     const file = ctx.workspace.paths.characterFile(id);
     if (await exists(file)) return fail(`character ${id} already exists`);
-    const text = a.description ? docToMarkdown(doc) : newCharacterTemplate(a.name);
+
+    // Told nothing, it is the template, whose placeholders are there to be edited by whoever knows
+    // the character — which is not us. Told anything, the fields go through `applyCharacterEdit`,
+    // so a created sheet is validated by exactly what would have validated an edited one.
+    let text = newCharacterTemplate(name);
+    if (description || given.length > 0) {
+      const res = applyCharacterEdit(doc, Object.fromEntries(given) as CharacterEdit);
+      if (!res.ok) return fail(`rejected: ${res.diagnostic.message}`);
+      text = docToMarkdown(res.value.doc);
+    }
     await writeFileAtomic(file, text);
-    // Which of the two it did, in the observation rather than only in the file. A uniform
+    // Which of the three it did, in the observation rather than only in the file. A uniform
     // "Created" is what lets a later turn call a written sheet a placeholder and rewrite it.
-    return ok(`Created character ${id} ${describedOrTemplate(a.description)}.`, {
-      written: [rel(ctx.workspace.root, file)],
-      data: { id },
-    });
+    return ok(
+      `Created character ${id} ${createdHow(
+        description,
+        given.map(([k]) => k),
+      )}.`,
+      { written: [rel(ctx.workspace.root, file)], data: { id } },
+    );
   },
 };
 
-const createLocationTool: Tool<{ name: string; description?: string }> = {
+const createLocationTool: Tool<z.infer<typeof locationCreateShape>> = {
   name: 'create_location',
   description:
-    'Scaffold a new locations/<id>.md from a name. Without a description it is an empty sheet ' +
-    'for the author to fill in; the result says which of the two it wrote.',
+    'Scaffold a new locations/<id>.md. Takes every field edit_location takes, so a location known ' +
+    'in full is written in one call rather than created and then edited. Given nothing but a name ' +
+    'it is an empty sheet for the author to fill in; the result says which of the two it wrote.',
   mutating: true,
-  args: z.object({ name: z.string().min(1), description: z.string().optional() }),
+  args: locationCreateShape,
   async run(a, ctx) {
-    const doc = newLocationDoc(a.name, a.description ?? '');
+    const { name, description, ...rest } = a;
+    const given = givenFields(rest);
+    const doc = newLocationDoc(name, description ?? '');
     const id = String(doc.data['id']);
-    if (!id) return fail(`"${a.name}" does not name a location`);
+    if (!id) return fail(`"${name}" does not name a location`);
     const file = ctx.workspace.paths.locationFile(id);
     if (await exists(file)) return fail(`location ${id} already exists`);
-    await writeFileAtomic(file, docToMarkdown(doc));
-    return ok(`Created location ${id} ${describedOrTemplate(a.description)}.`, {
-      written: [rel(ctx.workspace.root, file)],
-      data: { id },
-    });
+
+    const res = applyLocationEdit(doc, Object.fromEntries(given) as LocationEdit);
+    if (!res.ok) return fail(`rejected: ${res.diagnostic.message}`);
+    await writeFileAtomic(file, docToMarkdown(res.value.doc));
+    return ok(
+      `Created location ${id} ${createdHow(
+        description,
+        given.map(([k]) => k),
+      )}.`,
+      { written: [rel(ctx.workspace.root, file)], data: { id } },
+    );
   },
 };
 
