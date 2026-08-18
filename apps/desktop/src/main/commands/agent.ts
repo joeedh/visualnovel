@@ -99,15 +99,16 @@ export const agentSetBudget = define({
   id: 'agent.setBudget',
   title: 'Set agent turn budget',
   description:
-    'Cap what one agent turn may spend, in tokens the cache did not serve. Persists between sessions.',
+    'How many non-cached tokens one turn may spend before the agent is asked to wrap up. Cache ' +
+    'reads do not count. `unlimited` removes the ceiling.',
   mutating: false,
-  props: { budget: prop.oneOf(BUDGET_CHOICES, 'what one turn may spend') },
+  props: { budget: prop.oneOf(BUDGET_CHOICES, 'the ceiling to bind') },
   async run({ budget }, ctx) {
     const bound = await ctx.host.session.setBudget(budget as BudgetChoice);
     // Kept in the install's session file rather than the project's: it is a spending decision
     // about this machine and this author, not something a collaborator inherits with the repo.
     ctx.host.state.set(BUDGET_KEY, bound);
-    return { message: `One agent turn may now spend ${bound} non-cached tokens.` };
+    return { message: `Agent turn budget is now ${bound}.` };
   },
 });
 

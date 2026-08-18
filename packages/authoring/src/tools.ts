@@ -56,6 +56,8 @@ import {
   readDocFile,
   readShots,
   resolveInWorkspace,
+  workspacePath,
+  writeDocFile,
   writeShots,
 } from '@vn/store';
 import { exists, readText, writeFileAtomic } from '@vn/util';
@@ -97,10 +99,22 @@ export interface PipelineControl {
   run(): Promise<{ ran: number; failed: number; blockedOnGate: boolean }>;
 }
 
+/**
+ * What the agent was last shown of each workspace file, keyed by workspace-relative path: the hash
+ * it read at, and whether it saw all of it. It is a record of the conversation, not of the disk —
+ * nothing watches the filesystem, and a write compares a fresh read against what is written here.
+ */
+export type ReadLedger = Map<string, { hash: string; whole: boolean }>;
+
 /** Execution context handed to every tool. */
 export interface ToolContext {
   workspace: Workspace;
   git: Git;
+  /**
+   * The read ledger, owned by the agent loop and cleared with the conversation. Absent in bare
+   * contexts, in which case `edit_file` refuses — an edit against a file nobody read is a guess.
+   */
+  seen?: ReadLedger;
   /**
    * Ask the host to confirm an irreversible/elevated action (e.g. running a script-bearing
    * skill). Wired by the agent loop to the permission gate; absent in bare contexts, in
@@ -194,7 +208,11 @@ const readFileTool: Tool<{ path: string; offset?: number; limit?: number }> = {
     const read = await readDocFile(ctx.workspace.root, a.path);
     if (!read.ok) return fail(read.reason);
     const text = read.file.text;
-    if (a.offset === undefined && a.limit === undefined) return ok(text, { data: text });
+    const whole = a.offset === undefined && a.limit === undefined;
+    // The one respect in which reading is not pure: it records what was shown, so `edit_file` can
+    // refuse an edit made against a file this conversation never saw. The output is unchanged.
+    ctx.seen?.set(read.file.path, { hash: read.file.hash, whole });
+    if (whole) return ok(text, { data: text });
     const lines = text.split('\n');
     const start = Math.max(0, a.offset ?? 0);
     const slice = lines.slice(start, a.limit ? start + a.limit : undefined);
@@ -860,21 +878,185 @@ const setOutfitTool: Tool<z.infer<typeof outfitShape>> = {
   },
 };
 
+/**
+ * The validated writer a path belongs to, or null where nobody owns it. `guardedDir` answers for
+ * `scenes/` on behalf of every surface; the two entity directories are this agent's own rule,
+ * because a sheet hand-written as raw YAML is a sheet no schema ever saw.
+ */
+function ownedElsewhere(path: string): string | null {
+  if (guardedDir(path)) return 'edit_scene';
+  const top = path.split('/')[0];
+  if (top === 'characters') return 'create_character / edit_character';
+  if (top === 'locations') return 'create_location / edit_location';
+  return null;
+}
+
 const writeFileTool: Tool<{ path: string; content: string }> = {
   name: 'write_file',
   description:
-    'Create or overwrite a workspace file. Execute mode only, and never a scene: scenes/ belongs ' +
-    'to edit_scene.',
+    'Create or overwrite a workspace file, whole. Execute mode only. To change part of a file ' +
+    'that already exists, use edit_file — an overwrite of a file this conversation has not read ' +
+    'is refused. Never for scenes/ (edit_scene), characters/ or locations/ (their own tools).',
   mutating: true,
   args: z.object({ path: z.string(), content: z.string() }),
   async run(a, ctx) {
     const abs = resolveInWorkspace(ctx.workspace.root, a.path);
     if (!abs) return fail(`path "${a.path}" is outside the workspace`);
-    if (guardedDir(rel(ctx.workspace.root, abs))) {
-      return fail(`${a.path} is written by edit_scene, not write_file`);
+    const path = workspacePath(ctx.workspace.root, abs);
+    const owner = ownedElsewhere(path);
+    if (owner) return fail(`${path} is written by ${owner}, not write_file`);
+
+    // No ledger entry means "I expect no file here", which is how a creation saves and how an
+    // unread overwrite earns `already exists` instead of quietly replacing what it never read.
+    const seen = ctx.seen?.get(path);
+    const written = await writeDocFile(
+      ctx.workspace.root,
+      path,
+      a.content,
+      seen?.hash ?? '',
+      'edit_scene',
+    );
+    if (!written.ok) return fail(written.reason);
+    ctx.seen?.set(path, { hash: written.hash, whole: true });
+    return ok(`Wrote ${path} (${written.bytes.toLocaleString()} bytes).`, { written: [path] });
+  },
+};
+
+const CONTEXT_LINES = 3;
+
+/** A quoted fragment, short enough to read in a refusal. */
+function clip(text: string, max = 60): string {
+  const oneLine = text.replace(/\n/g, '\\n');
+  return oneLine.length <= max ? `"${oneLine}"` : `"${oneLine.slice(0, max)}…"`;
+}
+
+/** How many times `needle` occurs in `hay`, non-overlapping. */
+function occurrences(hay: string, needle: string): number {
+  if (needle === '') return 0;
+  let n = 0;
+  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) n++;
+  return n;
+}
+
+/**
+ * One change as the model reads it back: three lines of context each side, the old lines marked
+ * `-` and the new ones `+`. Whole lines, not the matched fragment — a bare `- in spring` says
+ * nothing about where it sat. Rendered against the text as it stood when that edit landed, which
+ * is the only version whose line numbers mean anything. Returning the whole file instead would
+ * hand back everything the tool exists to save, and a model shown a whole file tends to rewrite it.
+ */
+function renderHunk(
+  text: string,
+  index: number,
+  edit: { old: string; new: string },
+  ordinal: number,
+  count: number,
+): string {
+  const lines = text.split('\n');
+  const at = text.slice(0, index).split('\n').length - 1;
+  // Widen the match out to line boundaries either side, so both halves read as lines of the file.
+  const from = text.lastIndexOf('\n', index - 1) + 1;
+  const after = index + edit.old.length;
+  const breakAt = text.indexOf('\n', after);
+  const to = breakAt === -1 ? text.length : breakAt;
+  const removed = text.slice(from, to).split('\n');
+  const added = (text.slice(from, index) + edit.new + text.slice(after, to)).split('\n');
+
+  const head = lines.slice(Math.max(0, at - CONTEXT_LINES), at).map((l) => `  ${l}`);
+  const past = at + removed.length;
+  const tail = lines.slice(past, Math.min(lines.length, past + CONTEXT_LINES)).map((l) => `  ${l}`);
+  const more = count > 1 ? ` (and ${count - 1} more like it)` : '';
+  return [
+    `@@ edit ${ordinal}, line ${at + 1}${more}`,
+    ...head,
+    ...removed.map((l) => `- ${l}`),
+    ...added.map((l) => `+ ${l}`),
+    ...tail,
+  ]
+    .join('\n')
+    .trimEnd();
+}
+
+const editFileTool: Tool<{
+  path: string;
+  edits: { old: string; new: string; all?: boolean }[];
+}> = {
+  name: 'edit_file',
+  description:
+    'Replace exact strings in a workspace file, leaving the rest untouched — the way to change ' +
+    'part of a long document without restating it. Each `old` must appear exactly once unless ' +
+    '`all` is set. Read the file first: an edit to a file you have not read, or that changed ' +
+    'since you read it, is refused. Not for scenes/ (edit_scene), characters/ or locations/ ' +
+    '(their own tools).',
+  mutating: true,
+  args: z.object({
+    path: z.string(),
+    edits: z
+      .array(z.object({ old: z.string(), new: z.string(), all: z.boolean().optional() }))
+      .min(1),
+  }),
+  async run(a, ctx) {
+    const abs = resolveInWorkspace(ctx.workspace.root, a.path);
+    if (!abs) return fail(`path "${a.path}" is outside the workspace`);
+    const path = workspacePath(ctx.workspace.root, abs);
+    const owner = ownedElsewhere(path);
+    if (owner) return fail(`${path} is written by ${owner}, not edit_file`);
+
+    const seen = ctx.seen?.get(path);
+    if (!seen) {
+      return fail(
+        `${path} has not been read this conversation — read_file it first, so an edit is made ` +
+          'against what is actually there.',
+      );
     }
-    await writeFileAtomic(abs, a.content);
-    return ok(`Wrote ${a.path}.`, { written: [rel(ctx.workspace.root, abs)] });
+    const read = await readDocFile(ctx.workspace.root, path);
+    if (!read.ok) return fail(read.reason);
+    if (read.file.hash !== seen.hash) {
+      return fail(
+        `${path} changed since you read it (read at ${seen.hash.slice(0, 12)}, now ` +
+          `${read.file.hash.slice(0, 12)}) — read_file it again and reapply.`,
+      );
+    }
+
+    // Every edit lands in memory first and the result is written once, so a refusal half-way
+    // through leaves the file exactly as the model last read it and the call is safe to retry.
+    const original = read.file.text;
+    let text = original;
+    const hunks: string[] = [];
+    for (const [i, edit] of a.edits.entries()) {
+      const found = occurrences(text, edit.old);
+      if (found === 0) {
+        return fail(
+          `edit ${i + 1}: ${clip(edit.old)} does not appear in ${path} — matching is exact, ` +
+            'including whitespace and indentation. Nothing was written.',
+        );
+      }
+      if (found > 1 && !edit.all) {
+        return fail(
+          `edit ${i + 1}: ${clip(edit.old)} appears ${found} times in ${path} — extend it until ` +
+            'it is unique, or pass all: true. Nothing was written.',
+        );
+      }
+      const index = text.indexOf(edit.old);
+      hunks.push(renderHunk(text, index, edit, i + 1, edit.all ? found : 1));
+      text = edit.all
+        ? text.split(edit.old).join(edit.new)
+        : text.slice(0, index) + edit.new + text.slice(index + edit.old.length);
+    }
+
+    if (text === original) return ok(`${path} already reads exactly this way — nothing written.`);
+
+    // The same writer the Wiki pane saves through, so front-matter that will not parse and a
+    // dropped `type:` tag earn the same refusal here as they do there.
+    const written = await writeDocFile(ctx.workspace.root, path, text, seen.hash, 'edit_scene');
+    if (!written.ok) return fail(written.reason);
+    ctx.seen?.set(path, { hash: written.hash, whole: seen.whole });
+
+    const summary =
+      `Edited ${path} — ${a.edits.length} change(s), ` +
+      `${Buffer.byteLength(original, 'utf8').toLocaleString()} → ` +
+      `${written.bytes.toLocaleString()} bytes.`;
+    return ok(`${summary}\n\n${hunks.join('\n\n')}`, { written: [path] });
   },
 };
 
@@ -1421,6 +1603,7 @@ export const ALL_TOOLS: Tool[] = [
   viewImageTool,
   regenerateAssetTool,
   writeFileTool,
+  editFileTool,
   updateContextTool,
   regenerateContextTool,
   discoverSkillsTool,

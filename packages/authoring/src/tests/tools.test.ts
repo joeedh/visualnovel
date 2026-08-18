@@ -1478,3 +1478,215 @@ describe('registry metadata', () => {
     expect(sig).toContain('status?: "draft"|"candidates"|"approved"|"locked"');
   });
 });
+
+/**
+ * `edit_file`: partial writes to the documents no validated writer owns. The ledger is the whole
+ * story — the tool refuses anything it cannot prove the model was looking at, and a refusal
+ * anywhere in a batch means nothing at all was written.
+ */
+describe('edit_file', () => {
+  const WIKI =
+    '# The Third District\n\nThe district burned in spring.\n\nNobody rebuilt the district.\n';
+
+  async function wikiProject(): Promise<{
+    ctx: ToolContext;
+    dir: string;
+    cleanup: () => Promise<void>;
+  }> {
+    const made = await tempProject();
+    await fs.mkdir(join(made.dir, 'wiki'), { recursive: true });
+    await fs.writeFile(join(made.dir, 'wiki', 'district.md'), WIKI);
+    return { ...made, ctx: { ...made.ctx, seen: new Map() } };
+  }
+
+  const read = (ctx: ToolContext, dir: string) =>
+    run('read_file', { path: 'wiki/district.md' }, ctx).then(() =>
+      fs.readFile(join(dir, 'wiki', 'district.md'), 'utf8'),
+    );
+
+  it('replaces a fragment and reports it back as a diff, not as the file', async () => {
+    const { ctx, dir, cleanup } = await wikiProject();
+    try {
+      await read(ctx, dir);
+      const r = await run(
+        'edit_file',
+        {
+          path: 'wiki/district.md',
+          edits: [{ old: 'in spring', new: 'in the last week of March' }],
+        },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['wiki/district.md']);
+      expect(await fs.readFile(join(dir, 'wiki', 'district.md'), 'utf8')).toContain(
+        'The district burned in the last week of March.',
+      );
+      // Whole lines, three of context each side, and never the whole document back.
+      expect(r.output).toContain('- The district burned in spring.');
+      expect(r.output).toContain('+ The district burned in the last week of March.');
+      expect(r.output).toContain('  # The Third District');
+      expect(r.output).not.toContain('- Nobody rebuilt the district.');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses a file this conversation has not read', async () => {
+    const { ctx, dir, cleanup } = await wikiProject();
+    try {
+      const r = await run(
+        'edit_file',
+        { path: 'wiki/district.md', edits: [{ old: 'burned', new: 'flooded' }] },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('has not been read this conversation');
+      expect(await fs.readFile(join(dir, 'wiki', 'district.md'), 'utf8')).toBe(WIKI);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses a file that changed since it was read, naming both hashes', async () => {
+    const { ctx, dir, cleanup } = await wikiProject();
+    try {
+      await read(ctx, dir);
+      await fs.writeFile(join(dir, 'wiki', 'district.md'), `${WIKI}\nSomeone else wrote this.\n`);
+      const r = await run(
+        'edit_file',
+        { path: 'wiki/district.md', edits: [{ old: 'burned', new: 'flooded' }] },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('changed since you read it');
+      expect(r.output).toContain('read_file it again');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses an ambiguous match unless `all` says it meant all of them', async () => {
+    const { ctx, dir, cleanup } = await wikiProject();
+    try {
+      await read(ctx, dir);
+      const ambiguous = await run(
+        'edit_file',
+        { path: 'wiki/district.md', edits: [{ old: 'district', new: 'block' }] },
+        ctx,
+      );
+      expect(ambiguous.ok).toBe(false);
+      expect(ambiguous.output).toContain('appears 2 times');
+      expect(ambiguous.output).toContain('Nothing was written');
+      expect(await fs.readFile(join(dir, 'wiki', 'district.md'), 'utf8')).toBe(WIKI);
+
+      const all = await run(
+        'edit_file',
+        { path: 'wiki/district.md', edits: [{ old: 'district', new: 'block', all: true }] },
+        ctx,
+      );
+      expect(all.ok).toBe(true);
+      expect(all.output).toContain('and 1 more like it');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('writes nothing when any edit in the batch misses', async () => {
+    const { ctx, dir, cleanup } = await wikiProject();
+    try {
+      await read(ctx, dir);
+      const r = await run(
+        'edit_file',
+        {
+          path: 'wiki/district.md',
+          edits: [
+            { old: 'spring', new: 'autumn' },
+            { old: 'a sentence that is not there', new: 'anything' },
+          ],
+        },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('edit 2');
+      expect(r.output).toContain('matching is exact');
+      // The first edit applied in memory only, so the file is still what the model last read.
+      expect(await fs.readFile(join(dir, 'wiki', 'district.md'), 'utf8')).toBe(WIKI);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('leaves the ledger current, so a second edit needs no second read', async () => {
+    const { ctx, dir, cleanup } = await wikiProject();
+    try {
+      await read(ctx, dir);
+      await run(
+        'edit_file',
+        { path: 'wiki/district.md', edits: [{ old: 'spring', new: 'autumn' }] },
+        ctx,
+      );
+      const second = await run(
+        'edit_file',
+        { path: 'wiki/district.md', edits: [{ old: 'autumn', new: 'winter' }] },
+        ctx,
+      );
+      expect(second.ok).toBe(true);
+      expect(await fs.readFile(join(dir, 'wiki', 'district.md'), 'utf8')).toContain('in winter');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses the three directories a validated writer owns, naming it', async () => {
+    const { ctx, cleanup } = await wikiProject();
+    try {
+      for (const [path, owner] of [
+        ['scenes/arrival.md', 'edit_scene'],
+        ['characters/aiko/character.md', 'edit_character'],
+        ['locations/classroom.md', 'edit_location'],
+      ] as const) {
+        const r = await run('edit_file', { path, edits: [{ old: 'a', new: 'b' }] }, ctx);
+        expect(r.ok).toBe(false);
+        expect(r.output).toContain(owner);
+      }
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('write_file and the read ledger', () => {
+  it('creates a file it has never read, then refuses to overwrite one it has not', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    const seen: ToolContext = { ...ctx, seen: new Map() };
+    try {
+      const created = await run(
+        'write_file',
+        { path: 'wiki/notes.md', content: '# Notes\n\nNothing yet.\n' },
+        seen,
+      );
+      expect(created.ok).toBe(true);
+      expect(await fs.readFile(join(dir, 'wiki', 'notes.md'), 'utf8')).toContain('Nothing yet.');
+
+      // A fresh conversation has read nothing, so the same call now collides with what it made.
+      const blind = await run(
+        'write_file',
+        { path: 'wiki/notes.md', content: 'replaced' },
+        { ...ctx, seen: new Map() },
+      );
+      expect(blind.ok).toBe(false);
+      expect(blind.output).toContain('already exists');
+      expect(await fs.readFile(join(dir, 'wiki', 'notes.md'), 'utf8')).toContain('Nothing yet.');
+
+      // The one that wrote it kept its ledger entry, so it may overwrite its own work.
+      const again = await run(
+        'write_file',
+        { path: 'wiki/notes.md', content: '# Notes\n\nSomething now.\n' },
+        seen,
+      );
+      expect(again.ok).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  });
+});

@@ -21,6 +21,7 @@ import { joinSections, type SystemSection } from './context.js';
 import {
   createRegistry,
   describeToolParams,
+  type ReadLedger,
   type Tool,
   type ToolContext,
   type ToolResult,
@@ -249,6 +250,8 @@ export class Agent {
   private readonly messages: AgentMessage[] = [];
   /** Workspace-relative paths the agent has written since the last commit (commit scope). */
   private readonly editedPaths = new Set<string>();
+  /** What the agent has been shown of each file this conversation — `edit_file`'s staleness check. */
+  private readonly seen: ReadLedger = new Map();
   private mode: AgentMode;
   /** The mode the transcript last stated. Differs from {@link mode} exactly when one is owed. */
   private filedMode?: AgentMode;
@@ -265,6 +268,9 @@ export class Agent {
     // the host already supplied one.
     this.ctx = {
       ...opts.ctx,
+      // The ledger belongs to the conversation, so the agent owns it rather than the host: a
+      // context passed in fresh each turn would forget every read between one turn and the next.
+      seen: this.seen,
       confirm:
         opts.ctx.confirm ??
         ((message: string) => opts.permission.confirmAction('run_skill', { message })),
@@ -312,6 +318,7 @@ export class Agent {
   clear(): void {
     this.messages.length = 0;
     this.editedPaths.clear();
+    this.seen.clear();
     this.mode = 'plan';
     // Nothing has been stated to a transcript that no longer exists, and the next
     // `refreshSystem` rebuilds the prompt outright rather than superseding into thin air.
