@@ -235,9 +235,30 @@ describe('writeSkill', () => {
   it('refuses an id that is not one', async () => {
     const { root, cleanup } = await tempWorkspace({});
     try {
-      const res = await writeSkill(root, { ...INPUT, id: '' });
-      expect(res.ok).toBe(false);
-      expect((res as { reason: string }).reason).toContain('Latin');
+      // An id names one directory, whatever else it is — this refusal holds even for `overwrite`.
+      for (const id of ['', '.', '..', 'a/b']) {
+        const res = await writeSkill(root, { ...INPUT, id }, { overwrite: true });
+        expect(res.ok).toBe(false);
+        expect((res as { reason: string }).reason).toContain('not a skill id');
+      }
+      const unconventional = await writeSkill(root, { ...INPUT, id: 'Pace_A_Scene' });
+      expect(unconventional.ok).toBe(false);
+      expect((unconventional as { reason: string }).reason).toContain('Latin');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('lets an unconventional id that already exists be rewritten', async () => {
+    // `isSkillId` gates creation only: `edit_skill` resolves through `discoverSkills`, which
+    // reads whatever the directory is called, so a hand-made id stays editable.
+    const { root, cleanup } = await tempWorkspace({
+      Pace_A_Scene: { 'SKILL.md': '---\nname: Old\ndescription: Old.\n---\n\nOld.\n' },
+    });
+    try {
+      const res = await writeSkill(root, { ...INPUT, id: 'Pace_A_Scene' }, { overwrite: true });
+      expect(res.ok).toBe(true);
+      expect((await discoverSkills(skillRoots(root)))[0]!.name).toBe('Pace a Scene');
     } finally {
       await cleanup();
     }

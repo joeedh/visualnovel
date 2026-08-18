@@ -270,7 +270,16 @@ export async function writeSkill(
   input: SkillInput,
   opts: { overwrite?: boolean; preserve?: Record<string, unknown> } = {},
 ): Promise<SkillWriteResult> {
-  if (!isSkillId(input.id)) {
+  // Whatever else it is, an id names one directory and never a path.
+  if (!input.id || input.id === '.' || input.id === '..' || basename(input.id) !== input.id) {
+    return {
+      ok: false,
+      reason: `"${input.id}" is not a skill id: it names a directory, not a path.`,
+    };
+  }
+  // `isSkillId` gates creation only. Overwriting means the directory was found by discovery,
+  // which reads whatever it is actually called, so its name is not this function's to judge.
+  if (!opts.overwrite && !isSkillId(input.id)) {
     return {
       ok: false,
       reason: `"${input.id}" is not a skill id: give the skill a name with Latin letters or digits in it.`,

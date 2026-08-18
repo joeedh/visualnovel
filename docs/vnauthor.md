@@ -143,7 +143,7 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 38 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 40 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -157,11 +157,11 @@ whatever the mode).
 | Wardrobe | `set_outfit` **M** |
 | Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
-| Raw write | `write_file` **M**, `edit_file` **M** |
+| Raw write | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`) |
 | Context | `update_context` **M**, `regenerate_context` **M** |
 | Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
 | Git (write) | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C** |
-| Skills | `discover_skills`, `run_skill` **M** (**C** on the first run of a script-bearing skill) |
+| Skills | `discover_skills`, `create_skill` **M**, `edit_skill` **M**, `run_skill` **M** (**C** on the first run of a script-bearing skill) |
 
 **A long document is changed in part, not restated.** `edit_file` replaces exact strings and
 writes through the same `writeDocFile` the Wiki pane saves through, so bad front-matter earns the
@@ -184,10 +184,15 @@ does not have to be created and then immediately edited. Given no fields at all,
 still writes the template — and says which of the three it did, because a sheet of placeholders and
 a sheet with an empty body are different things to whoever draws from it next.
 
-Two things stay out of the model's hands. **Scene prose**: `write_file` refuses a `scenes/` path outright and names
-`edit_scene` instead, because a chunk written whole is a chunk with no proof: duplicate line ids, a
-lost heading, a scene id that stopped matching its filename, and stranded storyboards, none of which
-anything downstream would notice. And **nothing lets the model change its own mode** — there is no
+Three things stay out of the model's hands. **Scene prose**: `write_file` and `edit_file` both
+refuse a `scenes/` path outright and name `edit_scene` instead, because a chunk written whole is a
+chunk with no proof: duplicate line ids, a lost heading, a scene id that stopped matching its
+filename, and stranded storyboards, none of which anything downstream would notice. **Nor
+`.aiagent/skills/`**, which `create_skill` and `edit_skill` own for the same reason turned the
+other way: those two write prose, and a raw write that could reach the directory would put a
+`run.mjs` there — or rewrite the one already sitting beside a skill — that `run_skill` then offers
+to execute behind a confirm card reading identically whether a human vetted the file last year or
+the agent wrote it ninety seconds ago. And **nothing lets the model change its own mode** — there is no
 `enter_plan_mode`/`exit_plan_mode` tool. Mode is owned by the REPL and the permission gate,
 which is what makes plan mode a guarantee rather than a request.
 
@@ -349,3 +354,21 @@ Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md` (f
 with a `run.{mjs,js,cjs,sh}` script runs a vetted command — and **each run is permissioned**
 (always-confirm), executing in the workspace root with the workspace path as its first argument.
 See [`templates/basic/.aiagent/skills/new-character`](../templates/basic/.aiagent/skills/new-character).
+
+**The agent can write a skill, and what it writes is prose.** `create_skill` scaffolds
+`.aiagent/skills/<id>/SKILL.md` from a name, a description, an optional _when to use_ and a body;
+`edit_skill` changes one field of an existing skill, carrying forward front-matter it does not
+model — a `script:` a person added, most of all — and losing YAML _comments_, because the file is
+re-emitted in canonical key order rather than spliced. Neither has a `script` argument, and their
+schemas are `.strict()`, so passing one is a parse error before the tool is entered; `write_file`
+refuses every path under `.aiagent/skills/` and names those two instead. A script-bearing skill
+stays fully supported — it just has to be added by a person, because `run_skill`'s confirm card
+says only which script wants to run, which is a sentence that reads the same whether the file was
+vetted a year ago or written ninety seconds ago. `git_restore` and `git_revert` are deliberately
+not gated: they are `confirm: true` and their cards name the file, so a person approves that
+specific resurrection.
+
+A skill also stops degrading silently: `discover_skills` appends `(!)` and says what is wrong when
+a skill has no description, no body, or a `script:` naming a file that is not there — the last of
+which is the dangerous one, because `findScript` then falls through to the `run.mjs` scan and a
+different script runs under the name nobody wrote down.

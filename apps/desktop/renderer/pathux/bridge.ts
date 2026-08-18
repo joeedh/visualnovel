@@ -107,9 +107,14 @@ const invalidators = new Set<() => void>();
 
 /**
  * Watch for "the project on disk may have moved under you": any mutating command that succeeded,
- * plus an undo or a redo, which restores files no command in this session ran. Coarser than
- * {@link onExec} on purpose — a surface that redraws the whole workspace wants the union of the
- * two, and re-deriving it from the exec feed alone would miss the undo half entirely.
+ * an undo or a redo, which restores files no command in this session ran, **and any agent tool
+ * call that reported having written something**. Coarser than {@link onExec} on purpose — a
+ * surface that redraws the whole workspace wants the union of the three, and re-deriving it from
+ * the exec feed alone would miss both the undo half and the agent entirely.
+ *
+ * That last one makes a tool's `written` load-bearing rather than informational: the `agent:event`
+ * handler below fires this only when it is non-empty, so a mutating tool that reports nothing
+ * leaves every tree in the app showing the state before it ran.
  */
 export function onInvalidate(listener: () => void): () => void {
   invalidators.add(listener);

@@ -76,7 +76,15 @@ import type { ArtGen } from './art.js';
 import { listArchive } from './archive.js';
 import { updateContext } from './context.js';
 import { formatIndex, Workspace } from './workspace.js';
-import { discoverSkills, runSkill, skillRoots } from './skills.js';
+import {
+  discoverSkills,
+  runSkill,
+  skillId,
+  skillRoots,
+  skillWriteRefusal,
+  writeSkill,
+  PROJECT_SKILLS_DIR,
+} from './skills.js';
 
 /** What a tool returns: a text observation for the loop + optional structured data. */
 export interface ToolResult {
@@ -1013,6 +1021,12 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     const owner = ownedElsewhere(path);
     if (owner) return fail(`${path} is written by ${owner}, not write_file`);
 
+    // Prose only. `git_restore` and `git_revert` still take an arbitrary path and are
+    // deliberately *not* gated here: both are `confirm: true` and their cards name the file,
+    // so a person approves that specific resurrection. This gate is about authoring a script.
+    const refusal = skillWriteRefusal(path);
+    if (refusal) return fail(refusal);
+
     // No ledger entry means "I expect no file here", which is how a creation saves and how an
     // unread overwrite earns `already exists` instead of quietly replacing what it never read.
     const seen = ctx.seen?.get(path);
@@ -1108,6 +1122,12 @@ const editFileTool: Tool<{
     const path = workspacePath(ctx.workspace.root, abs);
     const owner = ownedElsewhere(path);
     if (owner) return fail(`${path} is written by ${owner}, not edit_file`);
+
+    // The same gate `write_file` earns, for the same reason: a skill is prose the agent writes
+    // through `create_skill`/`edit_skill`, and an edit is another way to author a `run.mjs` —
+    // worse, one that changes a script a person already vetted.
+    const skillRefusal = skillWriteRefusal(path);
+    if (skillRefusal) return fail(skillRefusal);
 
     const seen = ctx.seen?.get(path);
     if (!seen) {
@@ -1315,10 +1335,140 @@ const discoverSkillsTool: Tool<Record<string, never>> = {
         const tags = [s.script ? 'script' : 'guide', s.whenToUse ? `when: ${s.whenToUse}` : '']
           .filter(Boolean)
           .join('; ');
-        return `- ${s.id} "${s.name}" [${tags}]: ${s.description}`;
+        // A skill that degraded — no description, no body, a `script:` naming a missing file —
+        // reads as fine in a catalogue that only prints what parsed. Say what is wrong with it.
+        const issues = s.issues.length ? ` (!) ${s.issues.join('; ')}` : '';
+        return `- ${s.id} "${s.name}" [${tags}]: ${s.description}${issues}`;
       })
       .join('\n');
-    return ok(body, { data: skills.map((s) => ({ id: s.id, name: s.name, script: !!s.script })) });
+    return ok(body, {
+      data: skills.map((s) => ({
+        id: s.id,
+        name: s.name,
+        script: !!s.script,
+        issues: s.issues,
+      })),
+    });
+  },
+};
+
+/**
+ * Writing a skill, in two tools that share one rule: **prose only**.
+ *
+ * Three independent facts make `run_skill`'s confirm card unspoofable through them, and a
+ * reviewer will try all three:
+ *
+ * 1. The card is ``Skill "${skill.id}" wants to run a script: ${skill.script}`` — the directory
+ *    name and the *resolved absolute path*, neither of which is anywhere in an `edit_skill` patch.
+ * 2. Both `args` schemas are `.strict()`, so a `script` argument is a parse error before `run()`
+ *    is entered rather than a field to be filtered inside it.
+ * 3. The desktop agent is built with no `registry` (`session.ts`), so `doc.write` — the one other
+ *    path to a `run.mjs` — is not among its tools, and `write_file` is gated below.
+ *
+ * `git_restore` and `git_revert` still take an arbitrary path and could bring a deleted `run.mjs`
+ * back. That is deliberate, not an oversight: both are `confirm: true` and, unlike `run_skill`'s
+ * card, theirs **name the file**, so a person approves that specific resurrection. "Prose only"
+ * means the agent cannot *author* a script, not that no tool can move bytes.
+ */
+const createSkillTool: Tool<{
+  name: string;
+  description: string;
+  whenToUse?: string;
+  body: string;
+  id?: string;
+}> = {
+  name: 'create_skill',
+  description:
+    'Write a new skill — a reusable playbook at .aiagent/skills/<id>/SKILL.md that ' +
+    'discover_skills offers back later. Use it when the author asks for a repeatable procedure. ' +
+    'Prose only: there is deliberately no script argument, because a skill that runs a script ' +
+    'has to be added by a person.',
+  mutating: true,
+  args: z
+    .object({
+      name: z.string().min(1).describe('what the skill is called; the id is derived from it'),
+      description: z.string().min(1).describe('one sentence — this is what a later you decides by'),
+      whenToUse: z.string().optional().describe('the situation that should call for this skill'),
+      body: z.string().min(1).describe('the procedure, as steps to follow'),
+      id: z.string().optional().describe('override the derived id (lowercase, hyphenated)'),
+    })
+    .strict(),
+  async run(a, ctx) {
+    const id = a.id?.trim() ? a.id.trim() : skillId(a.name);
+    if (!id) {
+      return fail(
+        `"${a.name}" does not name a skill: a skill id is a directory name, so give it a ` +
+          'name with Latin letters or digits in it.',
+      );
+    }
+    const res = await writeSkill(ctx.workspace.root, {
+      id,
+      name: a.name,
+      description: a.description,
+      whenToUse: a.whenToUse,
+      body: a.body,
+    });
+    if (!res.ok) return fail(res.reason);
+    return ok(`Created skill ${res.id}.`, {
+      written: [rel(ctx.workspace.root, res.file)],
+      data: { id: res.id },
+    });
+  },
+};
+
+const editSkillTool: Tool<{
+  id: string;
+  name?: string;
+  description?: string;
+  whenToUse?: string;
+  body?: string;
+}> = {
+  name: 'edit_skill',
+  description:
+    'Change one or more fields of an existing skill. Omitted fields are left alone, and ' +
+    'front-matter this tool does not model — a `script:` a person added, say — is carried ' +
+    'forward. YAML *comments* are not: the file is re-emitted in canonical key order.',
+  mutating: true,
+  args: z
+    .object({
+      id: z.string().min(1),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      whenToUse: z.string().optional(),
+      body: z.string().optional(),
+    })
+    .strict(),
+  async run(a, ctx) {
+    const skills = await discoverSkills(skillRoots(ctx.workspace.root, ctx.skillDirs));
+    const skill = skills.find((s) => s.id === a.id || s.name === a.id);
+    if (!skill) return fail(`no such skill: ${a.id}`);
+    // `ctx.skillDirs` roots can point outside the workspace, and `writeSkill` resolves an id
+    // against *this* project — so editing one of those would silently fork it into the project.
+    const inProject = relative(join(ctx.workspace.root, PROJECT_SKILLS_DIR), skill.dir);
+    if (inProject !== skill.id) {
+      return fail(
+        `skill ${skill.id} lives outside this project (${skill.dir}); edit_skill only writes .aiagent/skills/.`,
+      );
+    }
+    const res = await writeSkill(
+      ctx.workspace.root,
+      {
+        id: skill.id,
+        name: a.name ?? skill.name,
+        description: a.description ?? skill.description,
+        whenToUse: a.whenToUse ?? skill.whenToUse,
+        body: a.body ?? skill.body,
+      },
+      { overwrite: true, preserve: skill.raw },
+    );
+    if (!res.ok) return fail(res.reason);
+    // `written` is load-bearing: the desktop invalidates its trees off `agent:event` only when
+    // it is non-empty, so an edit that reported nothing would leave both panes showing the old
+    // description until something else wrote.
+    return ok(`Updated skill ${res.id}.`, {
+      written: [rel(ctx.workspace.root, res.file)],
+      data: { id: res.id },
+    });
   },
 };
 
@@ -1730,6 +1880,8 @@ export const ALL_TOOLS: Tool[] = [
   updateContextTool,
   regenerateContextTool,
   discoverSkillsTool,
+  createSkillTool,
+  editSkillTool,
   runSkillTool,
   gitStatusTool,
   gitLogTool,
