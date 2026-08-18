@@ -24,6 +24,7 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Tasks, Task Graph and Inspector](#tasks-task-graph-and-inspector)
 - [Play](#play)
 - [Wiki](#wiki)
+- [Skills](#skills)
 - [Documents](#documents)
 - [Asset](#asset)
 - [Project](#project)
@@ -169,9 +170,9 @@ are the bridge's.
   [`desktopAppState.md`](desktopAppState.md#multiple-windows-of-the-same-workspace).
   Full design: [`plans/multiple-windows.md`](plans/multiple-windows.md).
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all twelve (`branches`, `script`, `convo`, `timeline`,
-  `tasklist`, `taskgraph`, `inspector`, `play`, `wiki`, `documents`, `asset`, `project`) with their
-  titles. It is in
+  `apps/desktop/src/shared/editors.ts` holds all thirteen (`branches`, `script`, `convo`,
+  `timeline`, `tasklist`, `taskgraph`, `inspector`, `play`, `skills`, `wiki`, `documents`, `asset`,
+  `project`) with their titles. It is in
   `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
@@ -856,6 +857,45 @@ own ([`command-system.md`](command-system.md#the-doc-namespace)).
   saying so, which is the feature; **which** notes merely *mention* the subject is `bible.search`,
   ranked and budgeted, and is deliberately a different question.
 
+## Skills
+
+`editors/skills.ts` — the playbooks under `.aiagent/skills`, as the files inside them beside the one
+being edited. It is the pane that shows what is **in** a skill: the document tree carries identity,
+one row per skill ([`document-tree.md`](document-tree.md)), and the content is here.
+
+- **The text half is `DocBuffer`, the same module Wiki's is** (`pathux/docbuffer.ts`). Every rule in
+  the Wiki bullets above — the `seenHash` refusal, the draft that outlives the pane, the
+  `beforeunload` guard, `⟳` discarding and saying so, a clean buffer following a write it did not
+  make — is that module's and holds here unchanged. What this pane owns is the tree beside it, its
+  expansion, and the hint. A skill file is tracked (`.aiagent` is not in `DEFAULT_IGNORES`), so
+  Ctrl+S commits like any other document.
+- **The hint is the feature, not decoration.** A skill is the one thing in the app the **agent** can
+  author, and nothing else on screen says so. The sentence and its button therefore sit above the
+  tree and are drawn whether or not any skill exists — an empty pane is exactly when they are
+  needed, and every project created in the app starts with no `.aiagent/` at all.
+- **The button opens the agent *form*, not a turn.** `openCommandDialog('agent.run', { input })`
+  with a first sentence that ends mid-clause (`… It should: `), so the author finishes it before
+  anything runs. `agent.run` is mutating and plan-first, so what comes back first is a proposed
+  plan they still approve — which is why the tooltip promises the form rather than a file.
+- **Its own channel, not a filter over the file tree.** `workspace:skilltree` walks
+  `.aiagent/skills` alone: the file tree is capped across the whole project, so on a large one the
+  skills could be truncated away and this pane would draw nothing with no way to say why. No skills
+  directory at all is `[]`, and the tree says "No skills yet." over the hint that fixes it.
+- **Two watchers, both disposed on remove.** `onWrote` for the file in the box — `create_skill` and
+  `edit_skill` from Convo, `doc.create kind='skill'` from the tree, an undo — and `onInvalidate` for
+  the tree beside it, because a *new* skill changes the tree without touching the open file at all.
+  The agent's writes are not commands, so `onInvalidate` is what covers them; it is why `edit_skill`
+  returns its written paths.
+- **It follows `ui.docPath` only under `.aiagent/skills/`.** One selection serves every pane, so a
+  wiki note picked elsewhere must not blank this one. Its own tree clicks publish `ui.docPath` like
+  any other pane, which is also how a skill clicked in the document tree lands here.
+- **No asset strip, deliberately.** Every binding in the manifest names a character, a location, a
+  scene or a shot — nothing binds to a skill file and nothing ever will — so `renderAssetStrip` here
+  would be permanently empty, which is worse than absent.
+- **It remembers no fields.** Its subject is the shared selection and its expansion is a view of a
+  tree the next workspace may not have, so `registerEditor(SkillsEditor, 'vn.SkillsEditor')` takes
+  no field list.
+
 ## Documents
 
 `editors/documents.ts` — the sidebar, as a pane rather than as fixed chrome, so it can be torn out,
@@ -893,9 +933,16 @@ with tests beside them.
   | `shot` | Coverage | — |
   | `character`, `location` | Wiki — *only if the entity has a sheet* | — |
   | `wiki` | Wiki | — |
-  | `file` | Wiki, when the path reads as text | — |
+  | `skill` | Skills | — |
+  | `file` | Skills under `.aiagent/skills/`, else Wiki when the path reads as text | — |
   | `asset` | Asset | — |
   | `branch`, `assetkind`, `wikidir`, `dir`, `more` | — | — |
+
+  The `file` row is the one place two editors claim the same node as `primary`: a `SKILL.md` is
+  text, so Wiki claims it too. The tie breaks on `EDITORS` order, and the `skills` entry is listed
+  **before** `wiki` for it — a skill opened in a plain text box would let an author edit the
+  front-matter the Skills pane answers for. Visibility still outranks that, and correctly so: with
+  Wiki up and Skills closed the click lands in Wiki, where the author is looking.
 
   A claim is a predicate over the **node**, not a map from its kind, for two reasons the table
   shows: an entity with no sheet has nothing for Wiki to open, and in file mode a `.png` is a

@@ -34,6 +34,7 @@ import './editors/graph.js';
 import './editors/inspector.js';
 import './editors/project.js';
 import './editors/script.js';
+import './editors/skills.js';
 import './editors/tasks.js';
 import './editors/timeline.js';
 import './editors/wiki.js';

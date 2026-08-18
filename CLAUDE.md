@@ -188,7 +188,7 @@ running anything: `--mock` writes no assets and needs no keys, and in a real pro
 The pipeline is presentation-agnostic — it stops at `manifest.json`. `@vn/export` projects the
 model + manifest into a small in-house **playable** (`story.play.json`), and the Electron app
 plays it. This is deliberately **not** an external DSL export.
-Format: [`docs/playable-format.md`](docs/playable-format.md). The app — shell, canvas, the twelve
+Format: [`docs/playable-format.md`](docs/playable-format.md). The app — shell, canvas, the thirteen
 editors, the session store, the seeded workspace, and every behaviour below in full:
 [`docs/desktop-app.md`](docs/desktop-app.md); what persists where:
 [`docs/desktopAppState.md`](docs/desktopAppState.md); the document tree, asset naming and
@@ -237,7 +237,7 @@ no React, no room vocabulary. path.ux is a git submodule at `vendor/path.ux`, so
 needs `git submodule update --init --recursive` (`pnpm doctor` says so by name). Five rules bite
 hardest:
 
-- **The twelve editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
+- **The thirteen editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
   **`registerEditor(cls, 'vn.Name')`** is the only way to register one — a hand-written name is
   minified. That list also carries each editor's `claims` predicate, ranked in
   `renderer/pathux/route.ts`.

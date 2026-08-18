@@ -51,6 +51,21 @@ export const EDITORS = [
   { id: 'inspector', title: 'Inspector', what: 'what is selected, in detail' },
   { id: 'play', title: 'Play', what: 'the runner' },
   {
+    id: 'skills',
+    title: 'Skills',
+    what: 'the playbooks the agent can follow, and can write',
+    // Listed **before** Wiki on purpose. Both claim a `.md` file as `primary`, so a skill file
+    // clicked in file mode is a tie — and the tie breaks on this list's order, which is what makes
+    // the router's ordering total. Skills wins it because a `SKILL.md` opened in a plain text box
+    // would let an author edit front-matter this pane is the one that answers for. Visibility
+    // still comes first, and correctly so: with Wiki up and Skills closed, the click lands where
+    // the author is already looking.
+    claims: (node: ClaimNode) => {
+      if (node.kind === 'skill') return 'primary';
+      return node.kind === 'file' && underSkills(node.path) ? 'primary' : undefined;
+    },
+  },
+  {
     id: 'wiki',
     title: 'Wiki',
     what: 'one markdown document',
@@ -91,6 +106,22 @@ export interface ClaimNode {
 
 /** What an editor will show for a clicked document-tree node, and how well. */
 export type EditorClaim = (node: ClaimNode) => ClaimTier | undefined;
+
+/**
+ * Where a project's skills live, workspace-relative and forward-slashed.
+ *
+ * Deliberately **not** `@vn/authoring`'s `PROJECT_SKILLS_DIR`, which is a `join()` and therefore
+ * `.aiagent\skills` on Windows. It is here rather than in the renderer because a *claim* needs
+ * it, and this file is the browser bundle's — so the one spelling serves the claim, the Skills
+ * pane's rules and both their tests. Two spellings of one directory is the cost of a node-free
+ * shared module; a claim that matched on exactly one platform is worse.
+ */
+export const SKILLS_DIR = '.aiagent/skills';
+
+/** Whether a workspace-relative path names something inside a skill. */
+export function underSkills(path: string | undefined): boolean {
+  return path !== undefined && path.startsWith(`${SKILLS_DIR}/`);
+}
 
 const TEXT_SUFFIXES = ['.md', '.txt', '.fountain', '.yaml', '.yml', '.json'] as const;
 

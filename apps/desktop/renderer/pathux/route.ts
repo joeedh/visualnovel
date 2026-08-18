@@ -32,6 +32,7 @@ export type Route =
  */
 export const SUBJECT_OF: Partial<Record<EditorId, 'docPath' | 'assetHash'>> = {
   wiki: 'docPath',
+  skills: 'docPath',
   documents: 'docPath',
   asset: 'assetHash',
 };
