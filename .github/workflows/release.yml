@@ -1,0 +1,171 @@
+# Turn a tag into a draft release. Plan: `docs/plans/release-ci-workflow.md`, which argues every
+# choice below in prose.
+#
+# The shape is gate → build → publish, and the seams between them are the point. Checks run once,
+# on one runner, before any packaging starts; and the release is created as a *draft*, because
+# publishing is what makes every installed copy's update check start offering the build. That is
+# the irreversible act, and it should be a person's.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Deliberately no `cancel-in-progress`. A branch pushed twice does not need the first run's
+# answer; a tag pushed twice is two releases, and neither should be left half-made.
+concurrency:
+  group: release-${{ github.ref }}
+
+# Read-only by default. Only `publish` widens it, and only to what creating a release needs.
+permissions:
+  contents: read
+
+jobs:
+  # Its own job rather than a step inside `gate`, so a mistyped tag is a red tick that says
+  # "version" rather than one that says "gate". It needs no submodules, no install and no cache,
+  # so it answers in seconds — which is the whole reason to separate it.
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # It asserts; it never writes. A workflow that bumped the version would have to commit and
+      # push to `master`, and `master` is linear and rebased onto by hand — a bot pushing to it
+      # is a merge commit waiting to happen. Bumping the version is a normal reviewed commit, and
+      # the tag comes after it.
+      - name: Assert the tag matches apps/desktop/package.json
+        run: |
+          declared=$(node -p "require('./apps/desktop/package.json').version")
+          tagged="${GITHUB_REF_NAME#v}"
+          if [ "$declared" != "$tagged" ]; then
+            echo "::error::tag $GITHUB_REF_NAME says $tagged, apps/desktop/package.json says $declared"
+            exit 1
+          fi
+          echo "$GITHUB_REF_NAME matches apps/desktop/package.json ($declared)"
+
+  # The same steps as `ci.yml`'s `check` job, run once. Running them inside each matrix leg would
+  # pay three times to learn one fact; not running them at all would let a tag produce an
+  # installer from a tree that does not typecheck.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm lint
+
+  build:
+    needs: [version, gate]
+    timeout-minutes: 45
+
+    strategy:
+      # One leg failing should not cancel the others: knowing that Windows built and macOS did
+      # not is more useful than knowing the matrix stopped.
+      fail-fast: false
+      matrix:
+        # Windows only, for now. Adding `macos-latest` is this one line — and is worth doing the
+        # day signing is sorted, because an unsigned dmg is a support burden rather than a
+        # release. See `docs/plans/code-signing-and-notarization.md`.
+        os: [windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # `pnpm package` runs `pnpm build`, which runs `pnpm doctor` first and fails by name
+      # without the submodule.
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `scripts/package.desktop.mjs` passes `--publish never` itself, so a matrix leg cannot
+      # upload even by accident. Three legs racing to write one release is exactly what the
+      # separate `publish` job below exists to prevent.
+      - run: pnpm package
+
+      # Named files rather than the directory: `apps/desktop/release/` also holds `win-unpacked/`
+      # and electron-builder's own debug dump, neither of which belongs in a release. The globs
+      # for targets we do not build yet cost nothing and mean the matrix line above really is the
+      # only edit. `latest*.yml` is the update feed — without it an installed copy's update check
+      # has nothing to read. `if-no-files-found: error` because a packaging change that quietly
+      # stopped emitting an installer would otherwise reach a draft release as an empty one.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.exe.blockmap
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/latest*.yml
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # The one job here that writes anything, and this is the whole of what it may write.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          merge-multiple: true
+          path: artifacts
+
+      # `--draft`: someone reads the notes, checks the installer size looks sane, and publishes
+      # by hand. `--generate-notes` reads the commits since the last tag, which is legible
+      # precisely because the history is linear and the noise was squashed out on the way in.
+      #
+      # Written to be re-runnable: a leg that failed on somebody else's outage gets re-run, and
+      # `gh release create` refuses a tag it already has. So an existing *draft* is topped up
+      # with `--clobber`. An already *published* release is refused instead — replacing the
+      # assets people are downloading is not something a re-run should be able to do quietly.
+      - name: Create or update the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -l artifacts
+          draft=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || echo missing)
+          case "$draft" in
+            missing)
+              gh release create "$GITHUB_REF_NAME" artifacts/* --draft --title "$GITHUB_REF_NAME" --generate-notes --repo "$GITHUB_REPOSITORY"
+              ;;
+            true)
+              echo "topping up the existing draft"
+              gh release upload "$GITHUB_REF_NAME" artifacts/* --clobber --repo "$GITHUB_REPOSITORY"
+              ;;
+            *)
+              echo "::error::$GITHUB_REF_NAME is already published — refusing to replace assets people are downloading"
+              exit 1
+              ;;
+          esac

@@ -104,10 +104,13 @@ Plan 6 is deliberately not scheduled.
 
 ### 3b — `release.yml`
 
-- [ ] `.github/workflows/release.yml`, tag-triggered, `submodules: recursive`
-- [ ] The green gate runs once, first, and separately from the build matrix
-- [ ] Assert the tag matches the version rather than writing it
-- [ ] Upload artifacts to a **draft** release; publishing stays a human act
+- [x] `.github/workflows/release.yml`, tag-triggered, `submodules: recursive`
+- [x] The green gate runs once, first, and separately from the build matrix
+- [x] Assert the tag matches the version rather than writing it
+- [x] Upload artifacts to a **draft** release; publishing stays a human act
+- [ ] Tag something and watch it run. Blocked on the same unpushed submodule as 3a — and the two
+      lines nothing local can stand in for are the draft release itself and the installer that
+      comes out of a Windows runner rather than this machine
 
 ### 4 — In-app update checks
 

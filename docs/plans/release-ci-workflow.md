@@ -1,6 +1,6 @@
 # Release CI workflow
 
-Status: **planned**. Plan 3 of [`shipping-the-app-tasklist.md`](shipping-the-app-tasklist.md).
+Status: **shipped**. Plan 3 of [`shipping-the-app-tasklist.md`](shipping-the-app-tasklist.md).
 Depends on [`packaging-the-desktop-app.md`](packaging-the-desktop-app.md), which is what this
 automates.
 
@@ -95,6 +95,49 @@ releases-API check read release assets **unauthenticated**. On a private repo th
 token shipped inside the app, which is not a thing we will do. So either the repo is public
 before releases start, or updates need a feed we host — and hosting a feed is a much larger
 plan than any of these.
+
+## As shipped
+
+Both workflows exist, and `ci.yml` grew a second job of its own along the way (plan 5's link
+check — see [`auditing-the-api-key-instructions.md`](auditing-the-api-key-instructions.md)).
+The release side is four jobs rather than three, and everything the plan said about the version
+assertion turned out to apply to publishing too.
+
+- **The version assertion is its own job, not a step in the gate.** The plan drew it hanging off
+  `gate`; it is `version`, running in parallel. It needs no submodules, no install and no cache,
+  so a mistyped tag fails in seconds — and, more to the point, it fails as a red tick labelled
+  *version* rather than as one labelled *gate*, which would read as "the tests broke". `build`
+  needs both.
+
+- **It asserts and never writes, and the same reasoning made `publish` refuse.** A re-run had to
+  work — a matrix leg that failed on somebody else's outage is exactly the case for one — but
+  `gh release create` refuses a tag it already has. So an existing **draft** is topped up with
+  `gh release upload --clobber`, and an already **published** release is refused by name.
+  Replacing the assets people are downloading is not something a re-run should be able to do
+  quietly, and "the draft is still a draft" is the check that separates the two.
+
+- **The build matrix uploads named files, not the output directory.** `apps/desktop/release/`
+  also holds `win-unpacked/` and electron-builder's own debug dump. The list carries globs for
+  targets not built yet (`*.dmg`, `*.zip`, `*.AppImage`) so that adding `macos-latest` really is
+  the one line the plan promised, and `if-no-files-found: error`, because a packaging change that
+  quietly stopped emitting an installer would otherwise reach a draft release as an empty one.
+
+- **`latest*.yml` is in that list and it is not optional.** Without the update feed an installed
+  copy's update check has nothing to read, which makes plan 4 a no-op against a release that
+  otherwise looks complete. A local `pnpm package` confirms electron-builder writes `latest.yml`
+  even under `--publish never`, and that the name inside it matches the installer on disk
+  byte-for-byte — the `artifactName` line in `electron-builder.yml` is what makes that true.
+
+- **No leg can publish even by accident.** `scripts/package.desktop.mjs` passes `--publish never`
+  itself rather than the workflow passing it, so the property holds for a developer's local run
+  as well.
+
+**Owed.** No tag has been pushed. The version assertion was exercised locally in both directions
+(a matching tag passes and names the version; `v0.2.0` against `0.1.0` fails and names both), and
+the publish step's three branches were exercised against a stubbed `gh`. What that cannot stand
+in for is the draft release itself and an installer built on a Windows runner rather than this
+machine — and the first run of either workflow is blocked on the same unpushed `vendor/path.ux`
+commit as `ci.yml`.
 
 ## Acceptance
 

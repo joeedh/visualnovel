@@ -93,7 +93,9 @@ about how it fits the rest of the toolchain:
 - **`apps/desktop/package.json`'s `version` is the app version.** The root and every package stay
   at `0.0.0` — they are private and unpublished, so versioning them buys nothing. A release tag is
   *asserted* against that field rather than written into it, and a build made between releases
-  reports `0.1.0 (dev <sha>)` via `src/main/version.ts`.
+  reports `0.1.0 (dev <sha>)` via `src/main/version.ts`. So cutting a release is two acts in
+  order: bump that field in an ordinary reviewed commit, then tag it `v<version>` — and
+  `release.yml`'s `version` job fails by name if the two disagree.
 
 Two paths inside a packaged app are not what a checkout would suggest, and both cost an evening
 once: `__dirname` resolves *inside* `app.asar`, which is a file — so anything derived from it and
@@ -146,8 +148,8 @@ a node-side type erases cleanly — only `vite build` fails, with
 
 ## Continuous integration
 
-Two workflows, and the split between them is the point: a job blocks only where its verdict is
-unambiguous.
+Three workflows, and how each one is allowed to fail is the point: a job blocks only where its
+verdict is unambiguous.
 
 - **`ci.yml` runs on every push and pull request.** Its `check` job is `pnpm check`, `pnpm test`
   and `pnpm lint` as three separate steps, so a failure names the gate without anyone opening the
@@ -159,6 +161,13 @@ unambiguous.
   because it is the one gate that can go red on somebody else's outage, so it should read as its
   own tick rather than as "the tests broke"; and because nothing it touches is compiled through
   the renderer, it takes no submodules and so runs whatever state `vendor/path.ux` is in.
+- **`release.yml` runs on a `v*` tag**, and is four jobs: a `version` job that asserts the tag
+  against `apps/desktop/package.json` and never writes it, the same green `gate` as `ci.yml` run
+  once rather than once per matrix leg, a Windows `build` matrix that packages and uploads, and a
+  `publish` job that makes a **draft** release. Publishing is what makes every installed copy's
+  update check start offering the build, so it is the irreversible act and stays a person's.
+  Details, and why `publish` refuses an already-published tag:
+  [`plans/release-ci-workflow.md`](plans/release-ci-workflow.md).
 - **`key-docs-audit.yml` runs weekly** — `pnpm audit:keydocs`, which asks a model whether the
   _words_ around those links are still true. Advisory: it exits 0 in every path there is, and
   turns drift into one issue rather than a red tick. A model comparing prose to prose will be
@@ -170,7 +179,7 @@ unambiguous.
   same reason from the other end. Whether a vendor hides its console behind a login is not a fact
   about our file. Both counts are printed every run, because the number going up is the signal
   that the check is quietly ceasing to be one.
-- Why each is shaped this way, in full:
+- Why the two key-doc tiers are shaped this way, in full:
   [`plans/auditing-the-api-key-instructions.md`](plans/auditing-the-api-key-instructions.md).
 
 ## Format and package manager
