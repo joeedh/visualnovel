@@ -1,12 +1,12 @@
 /**
- * Writing an art-notes rung. A real project on disk, because the point of this file is which
- * bytes land where: an entity rung goes through `apply*Edit` into the sheet, a shot rung into
+ * Writing an art rung — notes or seed. A real project on disk, because the point of this file is
+ * which bytes land where: an entity rung goes through `apply*Edit` into the sheet, a shot rung into
  * `work/shots/<sceneId>.json`, and neither may quietly lose what was sitting beside it.
  */
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
-import { artNotesOf, setArtNotes } from '../setnotes.js';
+import { artNotesOf, artSeedOf, setArtNotes, setArtSeed } from '../setnotes.js';
 
 async function depsOf(p: TestProject) {
   const { config } = await p.reload();
@@ -169,6 +169,72 @@ describe('setArtNotes', () => {
       await expect(setArtNotes(deps, { target: 'character:nobody', notes: 'x' })).rejects.toThrow(
         'No such art-notes rung',
       );
+    } finally {
+      await p.cleanup();
+    }
+  });
+});
+
+describe('the seed half', () => {
+  it('refuses a value an image backend cannot take, before it looks the rung up', async () => {
+    const p = await fixture();
+    try {
+      const deps = await depsOf(p);
+      const bad = async (seed: number) => await artSeedOf(deps, { target: 'character:aiko', seed });
+      expect(await bad(-1)).toMatchObject({ code: 'BAD_SEED' });
+      expect(await bad(1.5)).toMatchObject({
+        code: 'BAD_SEED',
+        reason: '"1.5" is not a seed; expected a whole number of 0 or more.',
+      });
+      // 0 is a seed like any other; only `null` clears one.
+      expect(await artSeedOf(deps, { target: 'character:aiko', seed: 0 })).toMatchObject({
+        ok: true,
+      });
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('shares the rung refusals with the notes half', async () => {
+    const p = await fixture();
+    try {
+      const deps = await depsOf(p);
+      expect(await artSeedOf(deps, { target: 'scene:rooftop', seed: 1 })).toMatchObject({
+        code: 'BAD_TARGET',
+      });
+      expect(await artSeedOf(deps, { target: 'character:aiko/tuxedo', seed: 1 })).toMatchObject({
+        code: 'NO_SUCH_RUNG',
+        reason: 'No such art-notes rung: character:aiko/tuxedo.',
+      });
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('writes a seed at each of the two files, and clears it back to inheriting', async () => {
+    const p = await fixture();
+    try {
+      const deps = await depsOf(p);
+      const seedOf = async () => (await p.reload()).model.characters.get('aiko')?.seed;
+
+      const plan = await setArtSeed(deps, { target: 'character:aiko/gala', seed: 0 });
+      expect(plan.note).toBe('Set Aiko — gala to seed 0.');
+      expect((await p.reload()).model.characters.get('aiko')?.outfits[1]?.seed).toBe(0);
+
+      await setArtSeed(deps, { target: 'character:aiko', seed: 42 });
+      expect(await seedOf()).toBe(42);
+      await setArtSeed(deps, { target: 'character:aiko', seed: null });
+      expect(await seedOf()).toBeUndefined();
+
+      const shot = await setArtSeed(deps, { target: 'shot:rooftop/s1', seed: 9 });
+      expect(shot.file).toBe(p.paths.shotsFile('rooftop'));
+      // The authored half of the shot has to survive: the seed is one field beside the rest.
+      expect((await readShots(p.paths, 'rooftop'))?.shots[0]).toMatchObject({
+        camera: 'slow push in',
+        seed: 9,
+      });
+      await setArtSeed(deps, { target: 'shot:rooftop/s1', seed: null });
+      expect((await readShots(p.paths, 'rooftop'))?.shots[0]?.seed).toBeUndefined();
     } finally {
       await p.cleanup();
     }

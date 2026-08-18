@@ -39,6 +39,7 @@ import { SessionStore } from './sessionstore.js';
 import {
   adoptGitAttributes,
   ensureRepo,
+  inspectWorkspace,
   openWorkspace,
   recentWorkspaces,
   rememberWorkspace,
@@ -224,6 +225,14 @@ async function resolveWorkspace(): Promise<void> {
  * stack and its undo journal, the repo map, and the undo revision. Undo never crosses a
  * workspace boundary, and nothing may cache the root across this call.
  */
+/**
+ * Name the window after the project. The header shows it too, but the taskbar and the window
+ * switcher see only this — and three windows all called `vnstudio` is not a list.
+ */
+function nameWindow(title: string): void {
+  win?.setTitle(title ? `${title} — vnstudio` : 'vnstudio');
+}
+
 async function switchWorkspace(root: string): Promise<{ root: string; title: string }> {
   const opened = await openWorkspace(root);
   // The agent being dropped may be parked on a question nobody is going to answer now.
@@ -243,6 +252,7 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
     root: opened.root,
     title: opened.title,
   });
+  nameWindow(opened.title);
   return { root: opened.root, title: opened.title };
 }
 
@@ -305,9 +315,13 @@ const deps: SessionDeps = {
       const request: PlanRequest = { id, plan };
       win?.webContents.send('permission:plan', request);
     }),
-  requestAnswer: (question) =>
+  requestAnswer: (question, choices) =>
     pendingAsks.ask((id) => {
-      const request: AskRequest = { id, question };
+      const request: AskRequest = {
+        id,
+        question,
+        ...(choices ? { choices: choices.options, multi: choices.multi } : {}),
+      };
       win?.webContents.send('permission:ask', request);
     }),
   requestConfirm: (tool, detail) =>
@@ -319,6 +333,7 @@ const deps: SessionDeps = {
   userData: app.getPath('userData'),
   openExternal: (url) => shell.openExternal(url),
   writeClipboard: (text) => clipboard.writeText(text),
+  pushBusy: (state) => win?.webContents.send('command:ui', { type: 'busy', ...state }),
 };
 
 function getSession(): WorkspaceSession {
@@ -413,7 +428,13 @@ function getStack(): CommandStack<CommandHost> {
       }),
       committer: committer(),
       onRecord: async (record) => {
-        if (record.stack) undoRevision++;
+        // The revision is what tells the renderer "files moved and you did not move them". An
+        // undo/redo always qualifies; so does any mutating command that did not come from the
+        // renderer's own `exec` — the agent, CDP, or main itself — because for those nothing on
+        // that side invalidated, and the document tree would sit on a project that has changed.
+        // A `ui` one is deliberately left out: `exec` already invalidated, and this would count
+        // it twice.
+        if (record.stack || (record.mutating && record.source !== 'ui')) undoRevision++;
         await appendJsonl(paths.commandsLog, record);
         // Every command, whoever ran it and however it ended — the palette, a menu, the agent,
         // CDP. One hook here is what makes "all notifications go through this system" true
@@ -582,6 +603,9 @@ void app.whenReady().then(async () => {
   registerAssetProtocol();
   registerIpc();
   createWindow();
+  // Read rather than remembered: the launch paths that skip `openWorkspace` (`--project`, the
+  // recents branch) never learned the title, and this is the one place all of them meet.
+  nameWindow((await inspectWorkspace(workspace())).title ?? '');
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

@@ -9,6 +9,7 @@ import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, type Asset, type AssetKind, type ProjectModel, type Shot } from '@vn/types';
 import { isBaseKind } from '@vn/store';
 import { assetApproved, type SlotGraph } from '@vn/artgen';
+import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
 import type { DocNode, DocTree, EntityLinks } from '../shared/ipc.js';
 
@@ -172,7 +173,24 @@ function assetLabelOf(input: DocTreeInput, asset: Asset): string {
   return input.assetLabels?.get(asset.hash) ?? `${asset.hash.slice(0, 8)}.${asset.ext}`;
 }
 
+/**
+ * The frames whose scene has moved on since they were drawn. Accepting a frame says "this is the
+ * picture I want"; drift says the words it illustrates have changed underneath it — so a drifted
+ * frame is still the accepted one and is no longer a true `accepted` badge. Re-derived here on
+ * every read, like everywhere else drift is asked about; never a stored flag.
+ */
+function driftedImages(input: DocTreeInput): Set<string> {
+  const stale = new Set<string>();
+  for (const scene of input.model.scenes.values()) {
+    for (const shot of input.shots.get(scene.id) ?? []) {
+      if (shot.image !== undefined && driftOf(scene, shot) === 'drifted') stale.add(shot.image);
+    }
+  }
+  return stale;
+}
+
 function assetBranch(input: DocTreeInput, cap: number): DocNode {
+  const stale = driftedImages(input);
   const byKind = new Map<AssetKind, Asset[]>();
   for (const asset of input.manifest) {
     const list = byKind.get(asset.kind);
@@ -190,7 +208,7 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
           // document-opening route, which reads a file as text.
           assets.map((a) =>
             node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
-              ...(a.accepted ? { badge: 'accepted' } : {}),
+              ...(stale.has(a.hash) ? { badge: 'stale' } : a.accepted ? { badge: 'accepted' } : {}),
             }),
           ),
           cap,

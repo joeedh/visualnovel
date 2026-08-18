@@ -188,6 +188,13 @@ export function promptOverrideIsEmpty(o: PromptOverride | undefined): boolean {
 }
 
 /**
+ * An authored image seed, at any rung that carries one. Non-negative and whole because that is
+ * what an image backend takes; a fractional or negative seed is a typo, and coercing it would
+ * quietly draw a different picture than the one written down.
+ */
+const imageSeed = z.number().int().nonnegative();
+
+/**
  * The long form of a wardrobe entry or a location variant: what it is, plus how it should look.
  * `.strict()` because a misspelled key here would silently drop art direction from a prompt.
  */
@@ -195,6 +202,7 @@ const outfitEntry = z
   .object({
     description: z.string().default(''),
     art_notes: z.string().optional(),
+    seed: imageSeed.optional(),
     prompt_override: promptOverrideSchema.optional(),
   })
   .strict();
@@ -204,6 +212,7 @@ const variantEntry = z
     id: z.string().min(1),
     description: z.string().default(''),
     art_notes: z.string().optional(),
+    seed: imageSeed.optional(),
     prompt_override: promptOverrideSchema.optional(),
   })
   .strict();
@@ -229,6 +238,8 @@ export const characterFrontMatter = z.object({
   traits: z.array(z.string()).default([]),
   /** Free-form art direction appended to every prompt this character reaches. */
   art_notes: z.string().optional(),
+  /** Image seed for every prompt this character reaches; an outfit entry's own seed is narrower. */
+  seed: imageSeed.optional(),
   /** Overrides the derived *portrait* prompt. A sheet's override lives on its outfit entry. */
   prompt_override: promptOverrideSchema.optional(),
   approved_portrait: z.string().optional(),
@@ -251,6 +262,8 @@ export const locationFrontMatter = z.object({
   variants: z.array(z.union([z.string(), variantEntry])).default(['day']),
   /** Free-form art direction appended to every plate of this location. */
   art_notes: z.string().optional(),
+  /** Image seed for every plate of this location; a variant entry's own seed is narrower. */
+  seed: imageSeed.optional(),
 });
 export type LocationFrontMatter = z.infer<typeof locationFrontMatter>;
 
@@ -423,6 +436,8 @@ export const shotsFileSchema = z.object({
         camera: z.string().optional(),
         /** Authored art direction for this frame; in the prompt, so editing it re-renders it. */
         artNotes: z.string().optional(),
+        /** Authored image seed for this frame; in the task hash, so editing it re-renders it. */
+        seed: imageSeed.optional(),
         /**
          * The author's override of this frame's derived prompt. Authored, so it sits at top level
          * beside `artNotes` and **never** inside `shotData`, which a run rewrites wholesale.

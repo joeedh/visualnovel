@@ -13,6 +13,7 @@ import {
   applyLocationEdit,
   computeReachable,
   newCharacterDoc,
+  newCharacterTemplate,
   newLocationDoc,
   successors,
   toMermaid,
@@ -28,10 +29,17 @@ import {
   mergeScene,
   moveLine,
   newScene,
+  removeChoice,
+  setChoice,
+  setHeading,
   setLineText,
+  setNext,
   setSpeaker,
+  spliceScene,
   splitScene,
+  type BranchOp,
   type LineOp,
+  type SceneMap,
   type ScriptState,
 } from '@vn/scriptedit';
 import {
@@ -502,15 +510,20 @@ const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
 
 const createCharacterTool: Tool<{ name: string; description?: string }> = {
   name: 'create_character',
-  description: 'Scaffold a new characters/<id>/character.md from a name.',
+  description:
+    'Scaffold a new characters/<id>/character.md from a name. Without a description it is a template of placeholders for the author to fill in.',
   mutating: true,
   args: z.object({ name: z.string().min(1), description: z.string().optional() }),
   async run(a, ctx) {
+    // Described, and the sheet says what was described; undescribed, and it is the template, whose
+    // placeholders are there to be edited by whoever knows the character — which is not us.
     const doc = newCharacterDoc(a.name, a.description ?? '');
     const id = String(doc.data['id']);
+    if (!id) return fail(`"${a.name}" does not name a character`);
     const file = ctx.workspace.paths.characterFile(id);
     if (await exists(file)) return fail(`character ${id} already exists`);
-    await writeFileAtomic(file, docToMarkdown(doc));
+    const text = a.description ? docToMarkdown(doc) : newCharacterTemplate(a.name);
+    await writeFileAtomic(file, text);
     return ok(`Created character ${id}.`, {
       written: [rel(ctx.workspace.root, file)],
       data: { id },
@@ -526,6 +539,7 @@ const createLocationTool: Tool<{ name: string; description?: string }> = {
   async run(a, ctx) {
     const doc = newLocationDoc(a.name, a.description ?? '');
     const id = String(doc.data['id']);
+    if (!id) return fail(`"${a.name}" does not name a location`);
     const file = ctx.workspace.paths.locationFile(id);
     if (await exists(file)) return fail(`location ${id} already exists`);
     await writeFileAtomic(file, docToMarkdown(doc));
@@ -539,7 +553,7 @@ const createLocationTool: Tool<{ name: string; description?: string }> = {
 // ── Scene prose (execute mode) ──────────────────────────────────────────────
 
 /**
- * The ten acts, named exactly as the desktop's `story.*` commands are, because they *are* those
+ * The eleven acts, named exactly as the desktop's `story.*` commands are, because they *are* those
  * commands' decisions: an agent transcript and a command history should read as the same vocabulary.
  */
 const SCENE_OPS = [
@@ -550,6 +564,7 @@ const SCENE_OPS = [
   'moveShot',
   'setSpeaker',
   'newScene',
+  'setHeading',
   'deleteScene',
   'splitScene',
   'mergeScene',
@@ -571,7 +586,7 @@ const sceneEditShape = z.object({
   scene: z
     .string()
     .optional()
-    .describe('insertLine, moveShot, newScene, deleteScene, splitScene, mergeScene'),
+    .describe('insertLine, moveShot, newScene, setHeading, deleteScene, splitScene, mergeScene'),
   line: z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
   shot: z.string().optional().describe('moveShot: the shot id to move, e.g. arrival__beat1'),
   text: z.string().optional().describe('setLineText, insertLine'),
@@ -587,7 +602,13 @@ const sceneEditShape = z.object({
     .string()
     .optional()
     .describe('insertLine, setSpeaker: the character cue; empty makes the line narration'),
-  heading: z.string().optional().describe('newScene: e.g. INT. CLASSROOM - EVENING'),
+  heading: z
+    .string()
+    .optional()
+    .describe(
+      'newScene, setHeading: e.g. INT. CLASSROOM - EVENING. setHeading moves the scene, so its ' +
+        'rendered shots are drawn again and its prose is left describing the old place',
+    ),
   at: z.string().optional().describe('splitScene: the line id that starts the second half'),
   into: z.string().optional().describe('splitScene: the new scene id; mergeScene: the absorber'),
 });
@@ -607,6 +628,7 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   moveShot: ['scene', 'shot'],
   setSpeaker: ['line'],
   newScene: ['scene', 'heading'],
+  setHeading: ['scene', 'heading'],
   deleteScene: ['scene'],
   splitScene: ['scene', 'at', 'into'],
   mergeScene: ['scene', 'into'],
@@ -614,7 +636,7 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
 
 /**
  * The one `@vn/scriptedit` decision an op names, with the tool's defaults filled in. Async only
- * because `moveShot`'s rule needs the scene's storyboard, which is read off disk; the other nine
+ * because `moveShot`'s rule needs the scene's storyboard, which is read off disk; the other ten
  * are pure and resolve immediately.
  */
 async function sceneDecider(
@@ -642,6 +664,8 @@ async function sceneDecider(
       return (s) => setSpeaker(s, { line, speaker });
     case 'newScene':
       return (s) => newScene(s, { scene, heading: a.heading ?? '' });
+    case 'setHeading':
+      return (s) => setHeading(s, { scene, heading: a.heading ?? '' });
     case 'deleteScene':
       return (s) => deleteScene(s, { scene });
     case 'splitScene':
@@ -662,7 +686,8 @@ const editSceneTool: Tool<SceneEditArgs> = {
     'Edit scene prose: retype, insert, delete, move or re-attribute a line; create, delete, ' +
     'split or merge a scene; reorder a shot, which moves the lines it covers. The only way to ' +
     'change a scenes/<id>.md — write_file refuses them. Reports what the edit costs the ' +
-    'storyboard; moveShot costs it nothing, since no coverage and no covered prose changes.',
+    'storyboard; moveShot costs it nothing, since no coverage and no covered prose changes. ' +
+    'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in.',
   mutating: true,
   args: sceneEditShape,
   async run(a, ctx) {
@@ -676,6 +701,110 @@ const editSceneTool: Tool<SceneEditArgs> = {
     const { written, removed } = await applyScenePlan(input, plan);
     const paths = [...written, ...removed].map((file) => rel(ctx.workspace.root, file));
     return ok(scenePlanMessage(plan), { written: paths, data: { paths, fallout: plan.fallout } });
+  },
+};
+
+// ── Branch wiring (execute mode) ────────────────────────────────────────────
+
+const BRANCH_OPS = ['setChoice', 'removeChoice', 'setNext', 'spliceScene'] as const;
+
+type BranchOpName = (typeof BRANCH_OPS)[number];
+
+const branchEditShape = z.object({
+  op: z.enum(BRANCH_OPS).describe('which rewire; the arguments each one needs are listed below'),
+  scene: z
+    .string()
+    .min(1)
+    .describe('the scene being wired; for spliceScene, the one going in the middle'),
+  goto: z
+    .string()
+    .optional()
+    .describe('setChoice: where the choice leads. setNext: the continuation; omit to clear it'),
+  label: z.string().optional().describe('setChoice: what the player reads on the button'),
+  index: z
+    .number()
+    .int()
+    .optional()
+    .describe('setChoice: which choice to replace, omit to append. removeChoice: which to drop'),
+  from: z.string().optional().describe('spliceScene: the scene whose outgoing edge is being cut'),
+  edge: z
+    .number()
+    .int()
+    .optional()
+    .describe("spliceScene: which of `from`'s choices to splice into; omit for its next"),
+});
+
+type BranchEditArgs = z.infer<typeof branchEditShape>;
+
+/** As with {@link SCENE_OP_ARGS}, only *absence* is checked; the rules judge everything else. */
+const BRANCH_OP_ARGS: Record<BranchOpName, readonly (keyof BranchEditArgs)[]> = {
+  setChoice: ['goto', 'label'],
+  removeChoice: ['index'],
+  setNext: [],
+  spliceScene: ['from'],
+};
+
+const branchDecider =
+  (a: BranchEditArgs) =>
+  (scenes: SceneMap): BranchOp => {
+    const scene = a.scene;
+    switch (a.op) {
+      case 'setChoice':
+        return setChoice(scenes, {
+          scene,
+          goto: a.goto ?? '',
+          label: a.label ?? '',
+          ...(a.index === undefined ? {} : { index: a.index }),
+        });
+      case 'removeChoice':
+        return removeChoice(scenes, { scene, index: a.index ?? 0 });
+      case 'setNext':
+        return setNext(scenes, { scene, ...(a.goto === undefined ? {} : { goto: a.goto }) });
+      case 'spliceScene':
+        return spliceScene(scenes, {
+          scene,
+          from: a.from ?? '',
+          ...(a.edge === undefined ? {} : { edge: a.edge }),
+        });
+    }
+  };
+
+/**
+ * The agent's one way to say what leads where — the same `@vn/scriptedit` rules the branch editor
+ * runs mid-drag, so a rewire it is refused is refused in the same sentence an author would read.
+ *
+ * It exists because `newScene` ends with *nothing points at it yet* and, until this tool, that was
+ * a dead end: `write_file` refuses `scenes/`, `edit_scene` writes prose, and a scene nothing reaches
+ * is a scene the story does not have. Creating one is deliberately still **two** acts rather than a
+ * `goto` argument on `newScene` — where a new scene belongs is a separate authorial decision, and
+ * `spliceScene` (put it *between* two scenes) is the answer often enough that folding one of the
+ * four in would make the other three look optional.
+ */
+const editBranchesTool: Tool<BranchEditArgs> = {
+  name: 'edit_branches',
+  description:
+    'Wire the story graph: add or replace a choice, drop one, set or clear a scene’s linear ' +
+    'continuation, or splice a scene into an existing edge so A→B becomes A→C→B. This is how a ' +
+    'scene created by edit_scene is linked in — until something points at it, the story never ' +
+    'reaches it. A goto may name a scene that does not exist yet; that is a dangling edge the ' +
+    'editor reports, not an error.',
+  mutating: true,
+  args: branchEditShape,
+  async run(a, ctx) {
+    const missing = BRANCH_OP_ARGS[a.op].filter((name) => a[name] === undefined);
+    if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
+
+    const { op, sources } = await ctx.workspace.branchEdit(branchDecider(a));
+    if (!op.ok) return fail(op.error);
+
+    const plan = planMarkerEdit(sources, op.edits);
+    if (!plan.ok) return fail(plan.message);
+    if (plan.patches.length === 0)
+      return ok(`${op.message} (already wired that way — nothing written)`);
+
+    const files = await applyMarkerPlan(plan.patches);
+    const paths = files.map((file) => rel(ctx.workspace.root, file));
+    return ok(op.message, { written: paths, data: { paths } });
   },
 };
 
@@ -1281,6 +1410,7 @@ export const ALL_TOOLS: Tool[] = [
   createCharacterTool,
   createLocationTool,
   editSceneTool,
+  editBranchesTool,
   setOutfitTool,
   generateImageTool,
   listImagesTool,

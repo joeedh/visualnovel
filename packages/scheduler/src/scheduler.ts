@@ -30,6 +30,28 @@ export interface RunOptions {
   now?: () => string;
   /** Plan + preview only; never spend on generation. */
   dryRun?: boolean;
+  /**
+   * Called as the wave loop turns. A run is one blocking round trip otherwise, so a surface
+   * saying how much work is left cannot be built from the return value — by the time it has
+   * one, there is nothing left to report.
+   */
+  onProgress?: (progress: RunProgress) => void;
+  /**
+   * Stop the run. Checked between waves and before a task starts, never during one: a runner
+   * interrupted mid-call would leave a `running` node and a half-written attempt, and the log
+   * of those transitions is what makes a run resumable.
+   */
+  signal?: AbortSignal;
+}
+
+/** Where a run has got to, as {@link RunOptions.onProgress} sees it. */
+export interface RunProgress {
+  /** Tasks that reached a terminal state this run. */
+  ran: number;
+  /** Tasks the last planning pass asked for that are not finished — including those in flight. */
+  pending: number;
+  /** Tasks in flight at this moment. */
+  running: number;
 }
 
 /** Outcome of a scheduler run. */
@@ -59,6 +81,11 @@ export interface RunSummary {
    * reason is an unavailable base root; a run reporting one did no work and could not.
    */
   refused?: string;
+  /**
+   * True when the run stopped because it was asked to rather than because nothing was left
+   * ready. Everything it did finish is recorded, so the next run resumes from there.
+   */
+  stopped?: boolean;
 }
 
 /**
@@ -104,7 +131,7 @@ function inputRefHashes(task: AnyTask): string[] {
  * the run crash-safe and resumable: re-running replays the log and skips `done` work.
  */
 export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
-  const { model, graph, store, providers, config, paths, logger, now, dryRun } = opts;
+  const { model, graph, store, providers, config, paths, logger, now, dryRun, onProgress } = opts;
   const deps: RunDeps = { model, store, providers, logger, now };
   const runners: Record<TaskKind, Runner> = createRunners(config);
   const ran: AnyTask[] = [];
@@ -176,8 +203,23 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     };
   }
 
-  // Plan → run ready wave → replan, until no task is ready.
-  for (;;) {
+  // The unfinished half of what the current plan asked for. Derived from the plan rather than
+  // from `graph.all()`, which carries orphans `tasks.jsonl` was never pruned of — a progress
+  // count that included those would never reach zero.
+  let planned = new Set(firstPass.map((t) => t.hash));
+  let running = 0;
+  const unfinished = () =>
+    [...planned].filter((hash) => {
+      const status = graph.get(hash)?.status;
+      return status === 'pending' || status === 'running';
+    }).length;
+  const progress = () => onProgress?.({ ran: ran.length, pending: unfinished(), running });
+
+  progress();
+
+  // Plan → run ready wave → replan, until no task is ready or the run is asked to stop.
+  let stopped = false;
+  while (!opts.signal?.aborted) {
     plannedNow = await planTasks({
       model,
       graph,
@@ -187,10 +229,19 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       logger,
       base: store.base,
     });
+    planned = new Set(plannedNow.map((t) => t.hash));
     const ready = graph.ready();
     if (ready.length === 0) break;
+    progress();
 
     await pool(ready, config.concurrency, async (task) => {
+      // The cap means most of a wave is still queued when a stop arrives, so this is where the
+      // bulk of it is refused — `pool` has no way to drop what it has not started.
+      if (opts.signal?.aborted) {
+        stopped = true;
+        return;
+      }
+      running++;
       graph.setStatus(task.hash, 'running');
       await logTask(paths, graph.get(task.hash)!);
       logger?.info('task.start', { hash: task.hash, kind: task.kind });
@@ -224,6 +275,8 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       }
       await logTask(paths, finished);
       ran.push(finished);
+      running--;
+      progress();
       logger?.[result.status === 'failed' ? 'error' : 'info']('task.end', {
         hash: task.hash,
         kind: task.kind,
@@ -232,6 +285,8 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       });
     });
   }
+  if (opts.signal?.aborted) stopped = true;
+  progress();
 
   const gate = gateStatus(model);
   return {
@@ -244,5 +299,6 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     failed: live(plannedNow, 'failed'),
     needsHuman: live(plannedNow, 'needs_human'),
     base: store.base,
+    ...(stopped ? { stopped } : {}),
   };
 }

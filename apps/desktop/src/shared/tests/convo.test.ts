@@ -86,6 +86,34 @@ describe('what an event does to the conversation', () => {
   });
 });
 
+/**
+ * The running total. It is the one event that changes the conversation without saying anything
+ * in it — a receipt is not a line of the transcript, and a thread reopened months later should
+ * not read as though the agent announced its own bill three times.
+ */
+describe('what a step cost', () => {
+  const spent = (input: number, output: number): AgentEvent => ({ type: 'usage', input, output });
+
+  test('adds up across the steps of a turn', () => {
+    let convo = received(emptyConvo(opening), spent(1200, 300));
+    convo = received(convo, spent(1500, 90));
+    expect(convo.tokens).toEqual({ input: 2700, output: 390 });
+  });
+
+  test('is not a transcript line', () => {
+    const convo = received(emptyConvo(opening), spent(10, 2));
+    expect(convo.feed).toEqual([]);
+    expect(convo.line).toBe(opening);
+    expect(convo.seq).toBe(0);
+  });
+
+  test('starts again with the conversation, and a replayed one has none of its own', () => {
+    const convo = received(emptyConvo(opening), spent(10, 2));
+    expect(cleared(convo, 'Cleared.').tokens).toEqual({ input: 0, output: 0 });
+    expect(replayed(convo, [], 'Reopened.').tokens).toEqual({ input: 0, output: 0 });
+  });
+});
+
 describe('a turn', () => {
   test('shows the author’s own words before the agent has read them', () => {
     const convo = asked(emptyConvo(opening), 'give Aiko a jacket');

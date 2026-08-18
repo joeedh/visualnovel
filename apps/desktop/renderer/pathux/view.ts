@@ -149,9 +149,18 @@ function focus(screen: VnScreen, editor: EditorId): string | null {
 function close(screen: VnScreen): string | null {
   const index = paneToClose(panesOf(screen));
   if (index === NO_PANE) return 'This is the only pane — closing it would leave nothing.';
+  collapsePane(screen, index);
+  return null;
+}
+
+/**
+ * Collapse one pane and re-solve. Exported for the interactive picker, which chose an index the
+ * author pointed at rather than the one the rules would have picked — the collapse itself, and the
+ * settling that has to follow it, are the same act either way.
+ */
+export function collapsePane(screen: VnScreen, index: number): void {
   screen.collapseArea((screen.sareas as ScreenArea[])[index] as ScreenArea);
   settle(screen);
-  return null;
 }
 
 /**

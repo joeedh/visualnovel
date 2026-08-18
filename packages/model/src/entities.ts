@@ -48,6 +48,7 @@ export function characterFromDoc(doc: FrontMatterDoc): EntityResult<Character> {
     defaultOutfit: fm.default_outfit,
     outfits: wardrobeOf(fm.id, fm.default_outfit, fm.outfits),
     artNotes: fm.art_notes,
+    seed: fm.seed,
     approvedPortrait: fm.approved_portrait,
   };
   // The sheet's own override is the *portrait*'s; a model sheet's lives on the outfit it wears.
@@ -73,6 +74,7 @@ function wardrobeOf(
       characterId,
       description: entry.description,
       artNotes: entry.art_notes,
+      seed: entry.seed,
     };
     if (entry.prompt_override) outfit.promptOverride = promptOverrideFrom(entry.prompt_override);
     return outfit;
@@ -147,7 +149,12 @@ export function sceneFromDoc(doc: FrontMatterDoc, id: string): EntityResult<Load
  */
 function variantOf(v: LocationFrontMatter['variants'][number]): LocationVariant {
   if (typeof v === 'string') return { id: v, description: '' };
-  const variant: LocationVariant = { id: v.id, description: v.description, artNotes: v.art_notes };
+  const variant: LocationVariant = {
+    id: v.id,
+    description: v.description,
+    artNotes: v.art_notes,
+    seed: v.seed,
+  };
   if (v.prompt_override) variant.promptOverride = promptOverrideFrom(v.prompt_override);
   return variant;
 }
@@ -176,6 +183,7 @@ export function locationFromDoc(doc: FrontMatterDoc): EntityResult<Location> {
     palette: fm.palette,
     variants: fm.variants.map(variantOf),
     artNotes: fm.art_notes,
+    seed: fm.seed,
     mined: false,
   };
   return { ok: true, value: location };

@@ -345,6 +345,35 @@ All six stages are built, and every decision above held. Ten things the plan did
   under a half-typed note in another rung would discard it, so a dirty set gates the subscription
   and a `token` counter drops a slow read for an asset the author has already left.
 
+## Afterwards: the seed rides the same rungs
+
+Added later, under [`the-todos-sweep.md`](the-todos-sweep.md) — recorded here because it reuses
+every mechanism above rather than adding one.
+
+An **image seed** is authored at the same five rungs art notes are: `ArtRung` grows `seed`, the
+rung box grows a narrow number field in its heading, and `art.setSeed` writes it through
+`locateRung` — the refusals `art.setNotes` already gives, factored out so both halves say the same
+sentence. `Character`, `Outfit`, `Location`, `LocationVariant` and `Shot` each gain `seed?: number`,
+serialized the way `artNotes` is: an entry that authored none grows no key, and the short form
+stays short.
+
+Two differences follow from it being a number rather than a paragraph, and neither is optional:
+
+- **It is not art direction.** Notes say how the picture should look; a seed asks for a *different*
+  picture of the same words. Hence the box beside the notes rather than under them, and its own
+  tooltip.
+- **Zero is a seed.** Every "did the author write one?" test is `=== undefined`, never falsiness —
+  which is why `setOrClear` could not be reused (`setSeed` in the serializer exists for this),
+  `null` clears at the model, `-1` is the command prop's sentinel, and an empty box is "inherit" in
+  the editor, placeheld by `AssetInfo.configSeed` so it names what it inherits.
+
+The chain — character → outfit, location → variant, a shot alone, falling back to
+`config.image_params.seed` — is written down **once**, in `seedFor` (`packages/artgen/src/prompts.ts`),
+and applied *inside* `portraitInputs` / `locationInputs` / `modelSheetInputs` / `shotInputs`. No
+planner call site changed, which is the point: adoption and `promoteConcept` build their inputs
+through the same four functions, and a disagreement here would strand a shot on a plate nothing
+planned.
+
 ## Out of scope
 
 - Editing a prompt directly — the reason is in Context.

@@ -14,10 +14,38 @@ export const agentRun = define({
   title: 'Run agent turn',
   description: 'Send one turn to the authoring agent and return its result.',
   mutating: true,
-  props: { input: prop.string('what to ask the agent') },
-  async run({ input }, ctx) {
-    const result = await ctx.host.session.runAgent(input);
+  props: {
+    input: prop.string('what to ask the agent'),
+    // Filled by the composer from the selection. Optional because the palette and CDP have no
+    // selection to speak of, and a turn with no scene in view is a turn like any other.
+    scene: prop.string('the scene the author has open, so "this scene" means that one', {
+      default: '',
+    }),
+  },
+  async run({ input, scene }, ctx) {
+    const result = await ctx.host.session.runAgent(input, scene || undefined);
     return { message: result.final, data: result };
+  },
+});
+
+export const agentStop = define({
+  id: 'agent.stop',
+  title: 'Stop agent turn',
+  description: 'End the turn in progress after the step it is on. What it already did is kept.',
+  // The turn it interrupts owns whatever was written, and is where the undo point already is.
+  mutating: false,
+  props: {},
+  check(_props, ctx) {
+    const busy = ctx.host.session.busy();
+    if (busy !== 'an agent turn')
+      return Promise.resolve({ ok: false, reason: 'The agent is idle.' });
+    return Promise.resolve({ ok: true, note: 'The turn ends after the step it is on.' });
+  },
+  run(_props, ctx) {
+    const asked = ctx.host.session.stopAgent();
+    return Promise.resolve({
+      message: asked ? 'Stopping after the step in progress.' : 'The agent is idle.',
+    });
   },
 });
 

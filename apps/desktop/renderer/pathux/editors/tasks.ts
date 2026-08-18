@@ -117,8 +117,10 @@ export class TaskListEditor extends VnEditor {
 
     // A run spends money and writes assets, so it goes through the palette's form and its
     // confirmation rather than off a bare button — `pipeline.run` is gated on the command.
-    this.bar.button('▸ Run', () => openCommandDialog('pipeline.run'));
-    this.bar.button('Refresh', () => void this.load());
+    this.bar.button('▸ Run', () => openCommandDialog('pipeline.run')).description =
+      'Open the run form, where the flags are spelled out before anything is spent';
+    this.bar.button('Refresh', () => void this.load()).description =
+      'Re-read what has run, what is running and what is ready';
     this.bar.flushUpdate();
   }
 
@@ -157,6 +159,7 @@ export class TaskListEditor extends VnEditor {
 
     const cta = document.createElement('button');
     cta.textContent = 'RESOLVE →';
+    cta.title = `Approve ${character}'s portrait, which is what the rest of the run is waiting on`;
     Object.assign(cta.style, {
       marginLeft: 'auto',
       cursor: 'pointer',
@@ -203,6 +206,7 @@ export class TaskListEditor extends VnEditor {
     box.appendChild(head);
     box.appendChild(subject(subjectOf(task), TOKENS.paper));
 
+    box.title = `Inspect this ${task.kind} — every other pane follows the pick`;
     box.addEventListener('click', () => this.select(task));
     return box;
   }

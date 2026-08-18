@@ -49,12 +49,14 @@ export function wardrobeEntries(outfits: readonly Outfit[]): NonNullable<Charact
   return Object.fromEntries(
     outfits.map((o) => {
       const override = overrideData(o.promptOverride);
-      if (o.artNotes === undefined && !override) return [o.id, o.description];
+      if (o.artNotes === undefined && o.seed === undefined && !override)
+        return [o.id, o.description];
       return [
         o.id,
         {
           description: o.description,
           ...(o.artNotes === undefined ? {} : { art_notes: o.artNotes }),
+          ...(o.seed === undefined ? {} : { seed: o.seed }),
           ...(override ? { prompt_override: override } : {}),
         },
       ];
@@ -81,6 +83,7 @@ function wardrobeData(character: Character): Record<string, unknown> | undefined
     outfits[0]?.id === character.defaultOutfit &&
     !outfits[0]?.description &&
     !outfits[0]?.artNotes &&
+    outfits[0]?.seed === undefined &&
     promptOverrideIsEmpty(outfits[0]?.promptOverride);
   if (outfits.length === 0 || synthesized) return undefined;
   return wardrobeEntries(outfits);
@@ -89,11 +92,17 @@ function wardrobeData(character: Character): Record<string, unknown> | undefined
 /** A variant as front-matter: the bare id unless it has something more to say. */
 function variantData(variant: LocationVariant): NonNullable<LocationEdit['variants']>[number] {
   const override = overrideData(variant.promptOverride);
-  if (!variant.description && variant.artNotes === undefined && !override) return variant.id;
+  const bare =
+    !variant.description &&
+    variant.artNotes === undefined &&
+    variant.seed === undefined &&
+    !override;
+  if (bare) return variant.id;
   return {
     id: variant.id,
     ...(variant.description ? { description: variant.description } : {}),
     ...(variant.artNotes === undefined ? {} : { art_notes: variant.artNotes }),
+    ...(variant.seed === undefined ? {} : { seed: variant.seed }),
     ...(override ? { prompt_override: override } : {}),
   };
 }
@@ -110,6 +119,7 @@ export function characterToDoc(character: Character): FrontMatterDoc {
       traits: character.traits,
       palette: character.palette,
       art_notes: character.artNotes,
+      seed: character.seed,
       prompt_override: overrideData(character.promptOverride),
       approved_portrait: character.approvedPortrait,
     }),
@@ -128,6 +138,7 @@ export function locationToDoc(location: Location): FrontMatterDoc {
       palette: location.palette,
       variants: location.variants.map(variantData),
       art_notes: location.artNotes,
+      seed: location.seed,
     }),
     body: location.description,
   };
@@ -195,8 +206,12 @@ function needsForcedAction(text: string): boolean {
   return looksLikeCue(t);
 }
 
-/** The scene heading, written from the fields the heading was read into. */
-function headingOf(scene: Scene): string {
+/**
+ * The scene heading, written from the fields the heading was read into. Exported because a surface
+ * offering to *edit* the heading has to show the one the file holds — a scene carries no `heading`
+ * field, so this is the only place it exists.
+ */
+export function headingOf(scene: Scene): string {
   const name = scene.location.replace(/[-_]/g, ' ').toUpperCase();
   const variant = (scene.locationVariant ?? 'day').replace(/[-_]/g, ' ').toUpperCase();
   // No prefix means the heading was forced, and a forced heading has to stay forced — without
@@ -300,12 +315,19 @@ export interface CharacterEdit {
   outfits?: Record<
     string,
     | string
-    | { description?: string; art_notes?: string; prompt_override?: PromptOverrideFrontMatter }
+    | {
+        description?: string;
+        art_notes?: string;
+        seed?: number;
+        prompt_override?: PromptOverrideFrontMatter;
+      }
   >;
   traits?: string[];
   palette?: string[];
   /** Art direction for every prompt this character reaches; `''` clears it. */
   artNotes?: string;
+  /** Image seed for every prompt this character reaches; `null` clears it. */
+  seed?: number | null;
   /** The *portrait*'s prompt override; one that says nothing removes the key. */
   promptOverride?: PromptOverride;
   approvedPortrait?: string;
@@ -315,6 +337,16 @@ export interface CharacterEdit {
 function setOrClear(data: Record<string, unknown>, key: string, value: unknown): void {
   if (value) data[key] = value;
   else delete data[key];
+}
+
+/**
+ * Write a seed, or remove the key when the edit clears it with `null`. Deliberately not
+ * {@link setOrClear}: 0 is a seed like any other, and falsiness would drop the one an author
+ * typed in favour of the config's.
+ */
+function setSeed(data: Record<string, unknown>, seed: number | null): void {
+  if (seed === null) delete data['seed'];
+  else data['seed'] = seed;
 }
 
 /** A patched doc plus the entity it re-validated to. */
@@ -340,6 +372,7 @@ export function applyCharacterEdit(
   if (edit.traits !== undefined) data['traits'] = edit.traits;
   if (edit.palette !== undefined) data['palette'] = edit.palette;
   if (edit.artNotes !== undefined) setOrClear(data, 'art_notes', edit.artNotes);
+  if (edit.seed !== undefined) setSeed(data, edit.seed);
   if (edit.promptOverride !== undefined) {
     setOrClear(data, 'prompt_override', overrideData(edit.promptOverride));
   }
@@ -365,11 +398,14 @@ export interface LocationEdit {
         id: string;
         description?: string;
         art_notes?: string;
+        seed?: number;
         prompt_override?: PromptOverrideFrontMatter;
       }
   )[];
   /** Art direction for every plate of this location; `''` clears it. */
   artNotes?: string;
+  /** Image seed for every plate of this location; `null` clears it. */
+  seed?: number | null;
 }
 
 /** Apply a partial edit to an existing `locations/<id>.md` doc, re-validating the result. */
@@ -384,6 +420,7 @@ export function applyLocationEdit(
   if (edit.palette !== undefined) data['palette'] = edit.palette;
   if (edit.variants !== undefined) data['variants'] = edit.variants;
   if (edit.artNotes !== undefined) setOrClear(data, 'art_notes', edit.artNotes);
+  if (edit.seed !== undefined) setSeed(data, edit.seed);
   const body = edit.description !== undefined ? edit.description : doc.body;
   const next: FrontMatterDoc = { data, body };
   const res = locationFromDoc(next);
@@ -394,6 +431,42 @@ export function applyLocationEdit(
 /** Build a fresh character.md doc from minimal fields (new-character scaffold). */
 export function newCharacterDoc(name: string, description = ''): FrontMatterDoc {
   return { data: compact({ id: slug(name), name }), body: description };
+}
+
+/**
+ * The sheet an author gets when they ask for a character and say nothing else: every field the
+ * schema knows, filled with placeholders shaped like the real thing, so the shape is learned by
+ * editing rather than by reading a doc page.
+ *
+ * Written as **text** rather than through `newCharacterDoc`, because the one field that cannot
+ * carry an example is `palette` — a colour name is a hard parse error — so it needs a YAML comment
+ * saying what a palette is and who to ask for one. Comments do not survive `applyCharacterEdit`,
+ * which re-stringifies a plain object; this is read-once scaffolding and that is the intent.
+ */
+export function newCharacterTemplate(name: string): string {
+  return `---
+id: ${slug(name)}
+name: ${JSON.stringify(name)}
+status: draft
+default_outfit: everyday
+outfits:
+  everyday: what they wear in most scenes — silhouette, colour, one detail that is theirs
+  formal: the same person dressed for an occasion the story cares about
+# A palette is the two to five colours the art keeps returning to for this character,
+# written as quoted hex strings — "#a02828" — because a colour *name* will not parse.
+# Ask the agent ("give ${name} a palette") and it will read the description below and
+# fill these in. An empty palette is fine: it lets the image model choose.
+palette: []
+traits:
+  - one adjective per line
+  - how they carry themselves
+  - what they want
+---
+
+Describe them here: age, build, hair and eye colour, and anything the art has to get
+right every time. This paragraph is the description the image model is given, so write
+what can be seen — backstory belongs in a wiki note.
+`;
 }
 
 /** Build a fresh locations/<id>.md doc from minimal fields (new-location scaffold). */

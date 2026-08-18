@@ -11,8 +11,8 @@
  * - **always-confirm:** any `confirm: true` tool (revert/restore) routes through the
  *   permission gate regardless of mode.
  *
- * Control tools (`propose_plan`, `ask_user`) are handled by the loop, not the registry —
- * they drive the state machine rather than touch the workspace.
+ * Control tools (`propose_plan`, `ask_user`, `ask_choice`) are handled by the loop, not the
+ * registry — they drive the state machine rather than touch the workspace.
  */
 import { z } from 'zod';
 import type { AgentBackend, AgentMessage, ToolSpec } from './backend.js';
@@ -50,7 +50,20 @@ export interface PlanDecision {
 export interface Permission {
   approvePlan(plan: Plan): Promise<PlanDecision>;
   confirmAction(tool: string, args: unknown): Promise<boolean>;
-  ask(question: string): Promise<string>;
+  ask(question: string, choices?: AskChoices): Promise<string>;
+}
+
+/**
+ * A shortlist offered with a question. It is a parameter of `ask` rather than a second door
+ * because the answer is a string either way: the list is how the question is *put*, not what
+ * comes back — the author may always type something that is not on it, and the agent is told
+ * verbatim what they said. A host that ignores it asks the question as plain text, which is
+ * degraded but never wrong.
+ */
+export interface AskChoices {
+  options: string[];
+  /** Whether more than one may be picked. */
+  multi: boolean;
 }
 
 /** A streamed event describing one thing the loop did (for the REPL / test assertions). */
@@ -60,6 +73,9 @@ export type AgentEvent =
   | { type: 'plan'; plan: Plan; decision: PlanDecision }
   | { type: 'mode'; mode: AgentMode }
   | { type: 'blocked'; tool: string; reason: string }
+  // What one step cost. Emitted only when the provider reported it, so a host that adds these up
+  // shows either a real total or none — never a plausible one that never moves.
+  | { type: 'usage'; input: number; output: number }
   | { type: 'final'; text: string };
 
 /** The result of a single `run(userInput)` turn-of-conversation. */
@@ -98,6 +114,15 @@ const CONTROL_TOOLS: ToolSpec[] = [
     description: 'Ask the user a clarifying question and receive their answer. args: {question}',
     mutating: false,
   },
+  {
+    name: 'ask_choice',
+    description:
+      'Ask the user a question and offer a shortlist of answers. args: {question, choices[], multi?}. ' +
+      'Prefer this over ask_user whenever the sensible answers can be listed — it is far less work ' +
+      'to answer. The user may still type something that is not on the list, or say they would ' +
+      'rather talk it through; either way you get their answer verbatim.',
+    mutating: false,
+  },
 ];
 
 const planSchema = z.object({
@@ -109,6 +134,14 @@ const planSchema = z.object({
 
 const askSchema = z.object({ question: z.string().min(1) });
 
+// Two is the floor: a "shortlist" of one is a leading question, and the author would have to
+// reach for the text box to disagree with it.
+const choiceSchema = z.object({
+  question: z.string().min(1),
+  choices: z.array(z.string().min(1)).min(2),
+  multi: z.boolean().default(false),
+});
+
 /**
  * Drives a ReAct conversation: the backend proposes one action per step, the loop gates
  * and dispatches it, and the observation feeds the next step. Conversation state persists
@@ -118,7 +151,7 @@ export class Agent {
   private backend: AgentBackend;
   private readonly ctx: ToolContext;
   private readonly permission: Permission;
-  private readonly system: string;
+  private system: string;
   private readonly registry: Map<string, Tool>;
   private readonly maxSteps: number;
   private readonly onEvent?: (event: AgentEvent) => void;
@@ -126,6 +159,8 @@ export class Agent {
   /** Workspace-relative paths the agent has written since the last commit (commit scope). */
   private readonly editedPaths = new Set<string>();
   private mode: AgentMode;
+  /** Set by {@link stop}, cleared when a turn starts. Read between steps, never inside one. */
+  private stopped = false;
 
   constructor(opts: AgentOptions) {
     this.backend = opts.backend;
@@ -171,11 +206,29 @@ export class Agent {
   }
 
   /**
+   * End the turn in progress after the step it is on. A tool call already dispatched still
+   * finishes and its observation is still recorded: the transcript is what the next turn reads,
+   * and a hole in it is worse than one step the author did not want.
+   */
+  stop(): void {
+    this.stopped = true;
+  }
+
+  /**
    * Swap the model backend mid-session (e.g. after `/model` or `/effort`). Conversation
    * history, mode, and tracked edits are preserved — only the next turn's model changes.
    */
   setBackend(backend: AgentBackend): void {
     this.backend = backend;
+  }
+
+  /**
+   * Recompose the system message. The project map inside it is a snapshot of a file, so an agent
+   * that outlives a rewrite of that file — which `update_context` and the desktop's own commands
+   * both do — would otherwise keep quoting the version it was built with.
+   */
+  setSystem(system: string): void {
+    this.system = system;
   }
 
   /** The tool catalog advertised to the backend (registry + control tools). */
@@ -189,19 +242,37 @@ export class Agent {
     return [...fromRegistry, ...CONTROL_TOOLS];
   }
 
-  /** Run one user turn to completion (a final message), driving tool calls in between. */
-  async run(userInput: string): Promise<RunResult> {
+  /**
+   * Run one user turn to completion (a final message), driving tool calls in between.
+   *
+   * `focus` is what the host knew when the turn started — the scene on screen, typically. It is
+   * filed as a `context` message ahead of the user's, so "rewrite this line" has a *this*; a host
+   * that knows nothing passes nothing, and the transcript reads exactly as it did before.
+   */
+  async run(userInput: string, focus?: string): Promise<RunResult> {
     const events: AgentEvent[] = [];
     const emit = (event: AgentEvent): void => {
       events.push(event);
       this.onEvent?.(event);
     };
 
+    if (focus) this.messages.push({ role: 'context', content: focus });
     this.messages.push({ role: 'user', content: userInput });
     const tools = this.toolSpecs();
+    this.stopped = false;
 
     for (let step = 0; step < this.maxSteps; step++) {
+      // Between steps, so a stop lands after the tool in flight rather than during it.
+      if (this.stopped) {
+        const text = 'Stopped at your request.';
+        this.messages.push({ role: 'assistant', content: text });
+        emit({ type: 'final', text });
+        return { final: text, mode: this.mode, events };
+      }
+
       const turn = await this.backend.next(this.system, this.messages, tools, this.mode);
+      // Before the narration: the call is already paid for whether or not it said anything useful.
+      if (turn.usage) emit({ type: 'usage', ...turn.usage });
 
       const narration: string[] = [];
       if (turn.message) narration.push(turn.message);
@@ -233,6 +304,7 @@ export class Agent {
   ): Promise<string> {
     if (name === 'propose_plan') return this.handleProposePlan(args, emit);
     if (name === 'ask_user') return this.handleAskUser(args);
+    if (name === 'ask_choice') return this.handleAskChoice(args);
 
     const tool = this.registry.get(name);
     if (!tool) return `Error: unknown tool "${name}". Use only the listed tools.`;
@@ -312,6 +384,21 @@ export class Agent {
     const parsed = askSchema.safeParse(args);
     if (!parsed.success) return `Error: ask_user needs a non-empty "question".`;
     const answer = await this.permission.ask(parsed.data.question);
+    return `User answered: ${answer}`;
+  }
+
+  /**
+   * The same door as `ask_user`, with a shortlist attached. What comes back is still whatever the
+   * author said — a choice they clicked, something they typed instead, or that they would rather
+   * discuss it — so the observation is worded no differently and the model has to read it.
+   */
+  private async handleAskChoice(args: unknown): Promise<string> {
+    const parsed = choiceSchema.safeParse(args);
+    if (!parsed.success) {
+      return `Error: ask_choice needs a non-empty "question" and at least two "choices".`;
+    }
+    const { question, choices, multi } = parsed.data;
+    const answer = await this.permission.ask(question, { options: choices, multi });
     return `User answered: ${answer}`;
   }
 

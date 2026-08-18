@@ -155,6 +155,13 @@ with the failure it prevents: [`docs/pipeline-contracts.md`](docs/pipeline-contr
   result back so the next note answers the picture rather than the prompt.
   ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/asset-names-and-the-asset-editor.md),
   [`docs/plans/agent-art-revision.md`](docs/plans/agent-art-revision.md))
+- **The image seed rides those same five rungs, and it is the one thing art notes cannot say** —
+  a different picture of the same words. `art.setSeed` writes it through `art.setNotes`'s own
+  refusals, the narrowest authored rung wins, and `config.image_params.seed` is the floor. The
+  chain lives in exactly one place, `seedFor`, called _inside_ the four `*Inputs` builders so the
+  planner, adoption and `promoteConcept` cannot disagree on a task hash. **Zero is a seed**, so
+  every test is `=== undefined` — `null` clears one at the model, `-1` at the command, an empty
+  box in the editor — and authoring none leaves every existing hash byte-identical.
 - **A concept is a picture the pipeline never asked for**: bound to what it sketches, never
   planned, consumed, exported or `accepted`, and its `sourceTask` hashes the request.
 - **A concept's prompt is authored, so it is the one prompt an author may edit** — `art.redraw`
@@ -167,8 +174,14 @@ with the failure it prevents: [`docs/pipeline-contracts.md`](docs/pipeline-contr
   (`replace`). `promoteConcept` is one caller.
   ([`docs/plans/adopting-an-uploaded-asset.md`](docs/plans/adopting-an-uploaded-asset.md),
   [`docs/plans/on-demand-concept-images.md`](docs/plans/on-demand-concept-images.md))
-- **No scene edit invalidates art, so drift is reported instead** — `Shot.proseHash` beside the
-  image, `driftOf` re-derived on every read; never a stored flag, never the task hash.
+- **No _prose_ edit invalidates art, so drift is reported instead** — `Shot.proseHash` beside the
+  image, `driftOf` re-derived on every read; never a stored flag, never the task hash. **A scene's
+  heading is the exception, and it is priced separately.** A location is in a shot's task inputs
+  twice — its name in `buildShotPrompt`, its plate's hash leading `refs` — so `story.setHeading`
+  re-renders the scene rather than letting it drift, which is what the check says before it runs.
+  Every shot is restaged onto the new variant (`relocated` → `restaged`), because `Shot.location` is
+  a persisted variant the new location may not declare and the planner skips a plateless shot in
+  silence.
 - **Line ids are allocated and written down, and reading never writes.** Persisting is the
   undoable `story.assignLineIds`, which re-parses its own patch and discards it unless the scenes
   come back identical.
@@ -249,6 +262,12 @@ plays it. This is deliberately **not** an external DSL export.
   the edit a conversation made never deletes the conversation that explains it. **Reopening a
   thread is read-only**: the pane replays it and says the model was not shown it.
   ([`docs/plans/conversation-threads.md`](docs/plans/conversation-threads.md))
+- **What a turn cost travels as an event, and it counts calls rather than turns** — an optional
+  `ChatBackend.messageWithUsage` each real backend derives its `message` from, carried out as
+  `AgentTurn.usage` → `AgentEvent` `{ type: 'usage' }` → `Convo.tokens` → a label in the convo bar
+  and a line under each `vnauthor` reply. A retried step was billed every attempt, so it is summed
+  every attempt; a backend that keeps no receipt shows **no total**, never `0`. It adds no
+  `FeedItem`, so nothing about it reaches the thread on disk.
 - **Every notification is durable, and one hook files them all** — `vngen/state/notifications.jsonl`,
   versioned **per line** because git union-merges it, with `r`/`h` as single ASCII digits patched at
   a byte offset (never decode the file to a string — an earlier line's `…` shifts every index). The
@@ -368,7 +387,10 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   approved plan, edits round-trip through `@vn/model`'s serializers, and context precedence is
   input contract > `AICONTEXT.md` > `AICONTEXT.generated.md` > defaults. The generated half is a
   **map, not content**: cast, locations, story graph, and the bible's table of contents — never a
-  line of what any file says. [`docs/vnauthor.md`](docs/vnauthor.md).
+  line of what any file says. **What the host had on screen is a `context` message, never a system
+  line** — it was true at that turn and not the others — and it is resolved against the live index
+  (`focusOnScene`), so a stale selection says nothing rather than asserting a scene that is gone.
+  [`docs/vnauthor.md`](docs/vnauthor.md).
 - **`@vn/bible`** — retrieval over `wiki/`. `openBible(dir)` takes a directory, `query` is
   budgeted and is the only door, and a missing `wiki/` is an empty bible, not an error.
   [`docs/story-bible.md`](docs/story-bible.md).
@@ -408,7 +430,9 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
 - **Two mechanisms, one rule.** A path.ux widget takes `.description`; a raw DOM node in an
   `appendSurface` root takes `.title`. Command-backed controls default to the registry's own
   text (the entry's `title`, a prop's `description`), so a command with a vague description is
-  fixed in the definition rather than papered over at the call site.
+  fixed in the definition rather than papered over at the call site. **A pane tab is neither**: it
+  is painted on the docker's canvas, so its sentence comes from `define().description`, which
+  `registerEditor` splices in from `EDITORS`'s `what` — the same sentence View ▸ Editors offers.
 
 ### Comments
 

@@ -111,6 +111,13 @@ export interface Convo {
    * actually meant. Nothing writes them to a thread: a suggestion is not something anyone said.
    */
   suggestions: readonly string[];
+  /**
+   * What this conversation has cost, in tokens the provider billed — the running total the
+   * composer's bar shows. It counts *calls*, not turns: a step the backend had to retry was paid
+   * for every time. Nothing writes it to a thread, so a reopened one starts at zero and says so;
+   * the number is about the money being spent now.
+   */
+  tokens: { input: number; output: number };
   /** Feed ids issued so far. */
   seq: number;
 }
@@ -124,6 +131,7 @@ export function emptyConvo(line: string): Convo {
     confirm: null,
     busy: false,
     suggestions: [],
+    tokens: { input: 0, output: 0 },
     seq: 0,
   };
 }
@@ -187,6 +195,14 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       });
     case 'blocked':
       return push(convo, 'blocked', `${event.tool} blocked — ${event.reason}`);
+    case 'usage':
+      return {
+        ...convo,
+        tokens: {
+          input: convo.tokens.input + event.input,
+          output: convo.tokens.output + event.output,
+        },
+      };
     case 'message':
     case 'final':
       return { ...push(convo, 'agent', event.text), line: event.text };

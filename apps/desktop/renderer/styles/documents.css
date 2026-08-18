@@ -67,12 +67,17 @@
   background: none;
 }
 
+/* Three times the glyph it was, in a box clamped to the row: the triangle overflows its own line
+   box rather than making every row taller, so the tree keeps its density and gains a target. */
 .dt-twisty {
   flex: 0 0 auto;
-  width: 12px;
+  width: 20px;
+  height: 14px;
+  line-height: 14px;
   text-align: center;
   color: var(--mist-dim);
-  font-size: 9px;
+  font-size: 27px;
+  overflow: visible;
   user-select: none;
 }
 

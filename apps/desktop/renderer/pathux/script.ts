@@ -17,8 +17,9 @@
 import { scriptMoveLine } from '../../src/shared/interactions.js';
 import { noticeForVerdict, type Notice } from '../../src/shared/lineedit.js';
 import { moveStateOf } from '../rules/script.js';
+import type { MenuEntry } from './contextmenu.js';
 import type { Invocation, Verdict } from '@vn/commands';
-import type { SceneCoverage } from '../../src/shared/ipc.js';
+import type { CoverageShot, SceneCoverage } from '../../src/shared/ipc.js';
 
 /** A line picked up by its gutter. */
 export interface Drag {
@@ -62,4 +63,32 @@ export function dropOf(drag: Drag): Invocation | null {
 /** Nothing to say where the drop is not a candidate; otherwise the verdict's own sentence. */
 export function noticeOf(drag: Drag | null): Notice | null {
   return drag?.verdict ? noticeForVerdict(drag.verdict) : null;
+}
+
+/** The shot whose coverage includes this line, or `null`. A line is covered by at most one. */
+export function shotCovering(shots: readonly CoverageShot[], lineId: string): CoverageShot | null {
+  return shots.find((s) => s.coversLines.includes(lineId)) ?? null;
+}
+
+/**
+ * What right-clicking a line offers. One entry today: the frame drawn from the shot that covers it.
+ *
+ * Both ways of having no picture are said rather than hidden — an author asking "where is the art
+ * for this line?" is owed the answer, and "no shot covers it" and "its shot has not been drawn" are
+ * different answers with different next moves. Neither is a question a command can be asked: there
+ * is no hash to name, which is what {@link MenuEntry.refused} is for.
+ */
+export function lineMenu(scene: SceneCoverage, lineId: string): MenuEntry[] {
+  const label = 'Open shot asset';
+  const shot = shotCovering(scene.shots, lineId);
+  if (!shot) {
+    return [{ label, id: 'view.open', refused: `No shot covers ${lineId} yet.` }];
+  }
+  if (!shot.image) {
+    return [
+      { label, id: 'view.open', refused: `${shot.id} covers ${lineId} but has not been drawn.` },
+    ];
+  }
+  const props = { editor: 'asset', where: 'elsewhere', subject: shot.image.hash };
+  return [{ label, id: 'view.open', props }];
 }

@@ -1,5 +1,6 @@
 import {
   NO_PANE,
+  paneClosable,
   paneElsewhere,
   paneShowing,
   paneToClose,
@@ -80,5 +81,25 @@ describe('which pane a close collapses', () => {
 
   test('none, because the last pane is kept', () => {
     expect(paneToClose([header, pane('script', { active: true })])).toBe(NO_PANE);
+  });
+});
+
+describe('whether a picked pane may be closed', () => {
+  test('an ordinary pane may, when it is not the last', () => {
+    expect(paneClosable([header, pane('script'), pane('convo')], 2)).toBe(true);
+  });
+
+  test('the header may not, however it is pointed at', () => {
+    expect(paneClosable([header, pane('script'), pane('convo')], 0)).toBe(false);
+  });
+
+  test('the last pane may not, which is the rule paneToClose states as NO_PANE', () => {
+    const panes = [header, pane('script')];
+    expect(paneClosable(panes, 1)).toBe(false);
+    expect(paneToClose(panes)).toBe(NO_PANE);
+  });
+
+  test('a pane that is not there may not', () => {
+    expect(paneClosable([header, pane('script'), pane('convo')], 7)).toBe(false);
   });
 });

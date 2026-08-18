@@ -3,7 +3,14 @@
  * shipped one-directional and untested, which is how an editor can be registered, offered in
  * path.ux's own pane menu, and unreachable from `view.*` at the same time.
  */
-import { EDITOR_IDS, EDITORS, OPEN_WHERE, editorNameProblems, editorTitle } from '../editors.js';
+import {
+  EDITOR_IDS,
+  EDITORS,
+  OPEN_WHERE,
+  editorNameProblems,
+  editorTitle,
+  editorTooltip,
+} from '../editors.js';
 
 describe('the editor vocabulary', () => {
   it('names every editor once', () => {
@@ -13,6 +20,20 @@ describe('the editor vocabulary', () => {
   it('falls back to the id for a title it has not got', () => {
     expect(editorTitle('wiki')).toBe('Wiki');
     expect(editorTitle('nope' as (typeof EDITOR_IDS)[number])).toBe('nope');
+  });
+
+  /**
+   * The tab, the menu entry and the palette all hover the same sentence, and it is this one — so
+   * it has to say what the editor shows rather than read its title back.
+   */
+  it('says what each editor shows, never just its name', () => {
+    expect(editorTooltip('script')).toBe("Show one scene's lines in this pane");
+
+    for (const editor of EDITORS) {
+      const tooltip = editorTooltip(editor.id);
+      expect(tooltip).toContain(editor.what);
+      expect(tooltip).not.toBe(`Show ${editor.title} in this pane`);
+    }
   });
 
   // `where` is a `oneOf` prop built from this, so a direction missing here is a direction no

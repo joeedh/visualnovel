@@ -7,6 +7,7 @@ import {
   docToMarkdown,
   locationFromDoc,
   locationToDoc,
+  newCharacterTemplate,
   sceneToFountain,
   splitScenes,
 } from '../index.js';
@@ -173,6 +174,62 @@ describe('art notes', () => {
       description: '',
       artNotes: 'long shadows',
     });
+  });
+});
+
+/**
+ * The seed rides the same five rungs art notes do, and is written the same way — with one
+ * difference that has to be pinned separately: 0 is a seed, so `null` and not falsiness is how
+ * an author clears one.
+ */
+describe('image seeds', () => {
+  const seeded = parseFrontMatter(
+    `---\nid: ren\nname: Ren\ndefault_outfit: uniform\nseed: 7\noutfits:\n  uniform: grey blazer\n  gala:\n    description: floor-length navy dress\n    seed: 0\n---\n\nRen.\n`,
+  );
+
+  it('round-trips a sheet seed and an outfit seed of zero', () => {
+    const a = characterFromDoc(seeded);
+    if (!a.ok) throw new Error('expected ok');
+    expect(a.value.seed).toBe(7);
+    expect(a.value.outfits[1]).toEqual({
+      id: 'gala',
+      characterId: 'ren',
+      description: 'floor-length navy dress',
+      seed: 0,
+    });
+    // A seed of 0 is authored direction, so the entry stays long rather than collapsing to a string.
+    const outfits = characterToDoc(a.value).data['outfits'] as Record<string, unknown>;
+    expect(outfits['uniform']).toBe('grey blazer');
+    expect(outfits['gala']).toEqual({ description: 'floor-length navy dress', seed: 0 });
+    const b = characterFromDoc(characterToDoc(a.value));
+    if (!b.ok) throw new Error('expected ok');
+    expect(b.value).toEqual(a.value);
+  });
+
+  it('never grows a seed key on a sheet that authored none', () => {
+    const a = characterFromDoc(charDoc);
+    const l = locationFromDoc(locDoc);
+    if (!a.ok || !l.ok) throw new Error('setup');
+    expect(characterToDoc(a.value).data['seed']).toBeUndefined();
+    expect(locationToDoc(l.value).data['seed']).toBeUndefined();
+    expect(locationToDoc(l.value).data['variants']).toEqual(['day', 'sunset']);
+  });
+
+  it('sets a seed of zero through an edit, and only null removes the key', () => {
+    const set = applyCharacterEdit(charDoc, { seed: 0 });
+    if (!set.ok) throw new Error('expected ok');
+    expect(set.value.doc.data['seed']).toBe(0);
+    expect(set.value.value.seed).toBe(0);
+    const cleared = applyCharacterEdit(set.value.doc, { seed: null });
+    if (!cleared.ok) throw new Error('expected ok');
+    expect(cleared.value.doc.data['seed']).toBeUndefined();
+    expect(cleared.value.value.seed).toBeUndefined();
+  });
+
+  it('sets a variant-level seed through an edit', () => {
+    const res = applyLocationEdit(locDoc, { variants: ['day', { id: 'sunset', seed: 3 }] });
+    if (!res.ok) throw new Error('expected ok');
+    expect(res.value.value.variants[1]).toEqual({ id: 'sunset', description: '', seed: 3 });
   });
 });
 
@@ -383,5 +440,45 @@ describe('sceneToFountain', () => {
     });
     const { scenes } = splitScenes(parseFountain(fountain));
     expect(scenes[0]!.next).toBe('b');
+  });
+});
+
+describe('the new-character template', () => {
+  const doc = parseFrontMatter(newCharacterTemplate('Ada Lovelace'));
+
+  it('parses as a character, so a scaffolded sheet is never a broken one', () => {
+    const res = characterFromDoc(doc);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.value.id).toBe('ada_lovelace');
+    expect(res.value.name).toBe('Ada Lovelace');
+    expect(res.value.status).toBe('draft');
+  });
+
+  it('ships example outfits and traits, and the default outfit is one of them', () => {
+    const res = characterFromDoc(doc);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.value.defaultOutfit).toBe('everyday');
+    expect(res.value.outfits.map((o) => o.id)).toContain('everyday');
+    expect(res.value.traits.length).toBeGreaterThan(0);
+    expect(res.value.description).not.toBe('');
+  });
+
+  it('ships no palette, and says in the file itself how to get one', () => {
+    const res = characterFromDoc(doc);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.value.palette).toEqual([]);
+    // A colour name is a parse error, which is exactly why the note is there instead.
+    expect(newCharacterTemplate('Ada Lovelace')).toContain('# A palette is');
+  });
+
+  it('survives a name YAML would otherwise read as something else', () => {
+    const res = characterFromDoc(parseFrontMatter(newCharacterTemplate('Kite: no. 3')));
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.value.name).toBe('Kite: no. 3');
+    expect(res.value.id).toBe('kite_no_3');
   });
 });

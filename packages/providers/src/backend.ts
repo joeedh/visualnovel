@@ -29,10 +29,27 @@ export interface ToolCall {
   args: unknown;
 }
 
+/**
+ * What one call cost, as the vendor reported it. Input counts everything billed as input —
+ * Anthropic bills cache reads and cache writes separately, and a total that dropped them would
+ * be quietly wrong on the side that matters.
+ */
+export interface TokenUsage {
+  input: number;
+  output: number;
+}
+
+/** A plain text turn, plus what it was billed at. */
+export interface ChatReply {
+  text: string;
+  usage?: TokenUsage;
+}
+
 /** The reply to a native function-calling turn: free text and/or tool calls. */
 export interface ChatToolReply {
   text?: string;
   toolCalls: ToolCall[];
+  usage?: TokenUsage;
 }
 
 /**
@@ -49,6 +66,13 @@ export interface ChatBackend {
   readonly modelId: string;
   message(req: ChatRequest): Promise<string>;
   chatWithTools?(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply>;
+  /**
+   * The same turn as {@link message}, plus what it cost. Optional rather than folded into
+   * `message`'s return: every other caller wants the text and nothing else, and a backend that
+   * cannot say what it was billed — a mock, a recorded fake — is still a backend. A caller that
+   * asks and is not answered shows no total, which is honest.
+   */
+  messageWithUsage?(req: ChatRequest): Promise<ChatReply>;
 }
 
 /** The low-level seam for image generation/editing. */

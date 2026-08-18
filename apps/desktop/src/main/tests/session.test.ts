@@ -18,7 +18,7 @@ import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
 import type { Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
-import { setChoice, setNext, spliceScene } from '../../shared/branchops.js';
+import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
 
 // The three permission doors answer the way an abandoned window does: no plan, no answer, no.
 const deps: SessionDeps = {
@@ -26,6 +26,7 @@ const deps: SessionDeps = {
   requestPlan: () => Promise.resolve({ approved: false }),
   requestAnswer: () => Promise.resolve(''),
   requestConfirm: () => Promise.resolve(false),
+  pushBusy: () => {},
 };
 
 const sessionFor = (p: TestProject) => new WorkspaceSession(p.dir, true, deps);
@@ -1200,6 +1201,32 @@ describe('WorkspaceSession — over a generated project', () => {
     // The task that made those bytes is now an orphan: the planner wants a different hash, so
     // re-running it would buy back the picture the author just edited away from.
     expect(await session.previewRegenerate(info.hash)).toMatchObject({ ok: false });
+  });
+
+  it('writes a seed on the same rung, and offers the config seed as what it inherits', async () => {
+    expect(await session.previewArtSeed('location:classroom/day', 12)).toMatchObject({ ok: true });
+    expect(await session.setArtSeed('location:classroom/day', 12)).toMatchObject({
+      ok: true,
+      written: ['locations/classroom.md'],
+    });
+    expect(await p.read('locations/classroom.md')).toContain('seed: 12');
+    const info = (await session.assetInfo(await plate()))!;
+    expect(info.rungs.find((r) => r.target === 'location:classroom/day')!.seed).toBe(12);
+
+    // `null` is the only clear: a seed of 0 is one an author chose.
+    expect(await session.setArtSeed('location:classroom/day', null)).toMatchObject({ ok: true });
+    expect(await p.read('locations/classroom.md')).not.toContain('seed:');
+  });
+
+  it('refuses a seed an image backend cannot take, and a rung that is not there', async () => {
+    expect(await session.previewArtSeed('location:classroom/day', -3)).toMatchObject({ ok: false });
+    expect(await session.previewArtSeed('location:classroom/midnight', 1)).toMatchObject({
+      ok: false,
+    });
+    expect(await session.setArtSeed('character:nobody', 1)).toMatchObject({
+      ok: false,
+      written: [],
+    });
   });
 
   it('refuses a rung that does not exist rather than creating one, and writes nothing', async () => {

@@ -38,6 +38,21 @@ export function menuIsOpen(): boolean {
 }
 
 /**
+ * What each command says it does, for the rows with no refusal to state. Fetched once and kept:
+ * the catalog is fixed for the life of the window, and a right-click should not wait on IPC that
+ * would answer the same thing every time.
+ */
+let describes: Record<string, string> | undefined;
+
+async function commandDescriptions(): Promise<Record<string, string>> {
+  if (!describes) {
+    const catalog = await api.invoke('command:catalog');
+    describes = Object.fromEntries(catalog.commands.map((c) => [c.id, c.description]));
+  }
+  return describes;
+}
+
+/**
  * Show the menu these entries describe. An empty list opens nothing at all, rather than an empty
  * box — a node kind with nothing to offer says so by offering nothing.
  */
@@ -50,18 +65,21 @@ export async function showContextMenu(
 ): Promise<void> {
   if (entries.length === 0) return;
 
-  const verdicts = await Promise.all(
-    entries.map((entry) =>
-      needsCheck(entry)
-        ? api.invoke('command:check', { id: entry.id, props: entry.props ?? {} })
-        : Promise.resolve(undefined),
+  const [verdicts, says] = await Promise.all([
+    Promise.all(
+      entries.map((entry) =>
+        needsCheck(entry)
+          ? api.invoke('command:check', { id: entry.id, props: entry.props ?? {} })
+          : Promise.resolve(undefined),
+      ),
     ),
-  );
+    commandDescriptions(),
+  ]);
 
   // Every row carries an explicit id in the last slot: `createMenu` reads `item[5]` for any row
   // longer than four, so a row with a tooltip and no id is registered under `undefined` and its
   // callback is never found.
-  const templ: MenuTemplate = entriesWithVerdicts(entries, verdicts).map((item, index) =>
+  const templ: MenuTemplate = entriesWithVerdicts(entries, verdicts, says).map((item, index) =>
     item.separator
       ? Menu.SEP
       : ([

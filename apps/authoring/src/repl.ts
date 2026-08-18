@@ -9,12 +9,15 @@ import { relative } from 'node:path';
 import { createInterface, emitKeypressEvents, type Interface } from 'node:readline';
 import {
   archiveUpload,
+  composeSystem,
   describeUpload,
   discoverSkills,
   formatIndex,
   formatSubject,
+  loadContext,
   skillRoots,
   uploadSuggestions,
+  type AskChoices,
   type Permission,
   type Plan,
 } from '@vn/authoring';
@@ -31,7 +34,7 @@ import {
   type AuthoringSession,
   type EffortChoice,
 } from './agent.js';
-import { bold, cyan, dim, renderEvent, renderPlan, green, yellow } from './render.js';
+import { bold, cyan, dim, renderEvent, renderPlan, renderTokens, green, yellow } from './render.js';
 
 /**
  * A line-oriented terminal abstraction (so tests can swap in a scripted channel).
@@ -112,10 +115,33 @@ export function terminalPermission(channel: Channel): Permission {
       );
       return isYes(answer ?? '');
     },
-    async ask(question) {
-      return ((await channel.ask(cyan(`${question} `))) ?? '').trim();
+    async ask(question, choices) {
+      if (!choices?.options.length) return ((await channel.ask(cyan(`${question} `))) ?? '').trim();
+      channel.write(cyan(question));
+      choices.options.forEach((opt, i) => channel.write(`  ${i + 1}. ${opt}`));
+      const how = choices.multi ? 'numbers, comma-separated' : 'a number';
+      const raw = ((await channel.ask(cyan(`Pick ${how}, or just answer: `))) ?? '').trim();
+      return pickedOr(raw, choices);
     },
   };
+}
+
+/**
+ * Turn `2` — or `1,3` for a multi-pick — into the options it names. Anything that is not a run of
+ * valid numbers is the author's own words and comes back untouched, which is what makes "type
+ * your own" and "let's talk about it" need no affordance of their own in a terminal.
+ */
+function pickedOr(raw: string, choices: AskChoices): string {
+  if (!raw) return raw;
+  const parts = raw.split(',').map((p) => p.trim());
+  if (!choices.multi && parts.length > 1) return raw;
+  const picked = parts.map((p) => {
+    const n = Number(p);
+    return Number.isInteger(n) && n >= 1 && n <= choices.options.length
+      ? choices.options[n - 1]
+      : undefined;
+  });
+  return picked.every((p) => p !== undefined) ? picked.join(', ') : raw;
 }
 
 function describeArgs(args: unknown): string {
@@ -184,12 +210,20 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   const channel = opts.channel ?? terminalChannel();
   const permission = terminalPermission(channel);
 
+  // What the session has cost so far. Accumulated here rather than asked of the agent, because a
+  // `usage` event is the only place the number exists — nothing stores it.
+  const spent = { input: 0, output: 0 };
+
   let session: AuthoringSession;
   try {
     session = await createAuthoringAgent(opts.dir, permission, {
       mock: opts.mock,
       native: opts.native,
       onEvent: (event) => {
+        if (event.type === 'usage') {
+          spent.input += event.input;
+          spent.output += event.output;
+        }
         const line = renderEvent(event);
         if (line !== undefined) channel.write(line);
       },
@@ -347,9 +381,14 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
         continue;
       }
 
+      // The project map inside the system message is a snapshot of a file the agent's own
+      // `update_context` rewrites, so it is re-read per turn rather than frozen at startup.
+      session.agent.setSystem(composeSystem(await loadContext(opts.dir)));
       const result = await session.agent.run(line);
       channel.write('');
       channel.write(result.final);
+      const tokens = renderTokens(spent.input, spent.output);
+      if (tokens !== undefined) channel.write(tokens);
       channel.write('');
     }
   } finally {

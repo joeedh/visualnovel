@@ -63,6 +63,7 @@ describe('the desktop registry', () => {
       'art.promote',
       'art.redraw',
       'art.setNotes',
+      'art.setSeed',
       'asset.accept',
       'asset.adopt',
       'asset.regenerate',
@@ -98,6 +99,7 @@ describe('the desktop registry', () => {
       'story.screenplay',
       'story.setChoice',
       'story.setCoverage',
+      'story.setHeading',
       'story.setLineText',
       'story.setNext',
       'story.setOutfit',
@@ -143,6 +145,7 @@ describe('the desktop registry', () => {
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
       'art.setNotes',
+      'art.setSeed',
       'doc.create',
       'doc.rename',
       'doc.write',
@@ -167,6 +170,7 @@ describe('the desktop registry', () => {
       'story.removeChoice',
       'story.setChoice',
       'story.setCoverage',
+      'story.setHeading',
       'story.setLineText',
       'story.setNext',
       'story.setOutfit',
@@ -184,17 +188,24 @@ describe('the desktop registry', () => {
    * A check is a precondition on an *act* — something with a cost that running it would incur.
    * That is usually a write, so it is usually a mutator; `agent.run` is the one mutator without
    * one, because what it would do is decided by a model rather than by state this process can
-   * read. The two `report.*` commands are the converse: neither writes anything into the project,
-   * but one spends a minute of a real model's time on a real key and the other opens a public
-   * issue tracker on text — so "run it and find out" is the wrong answer to both.
+   * read.
+   *
+   * Three non-mutators declare one anyway. The two `report.*` commands write nothing into the
+   * project, but one spends a minute of a real model's time on a real key and the other opens a
+   * public issue tracker on text — so "run it and find out" is the wrong answer to both. The two
+   * stops are the converse: they interrupt an act rather than performing one, so there *is* state
+   * to read — whether a run or a turn is in progress — and the answer is what greys the Stop
+   * button and says why.
    */
-  it('declares a precondition on what an act would cost', () => {
+  it('declares a precondition on what an act would cost, and on the two interrupters', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
       'agent.renameThread',
+      'agent.stop',
       'art.generate',
       'art.promote',
       'art.redraw',
       'art.setNotes',
+      'art.setSeed',
       'asset.accept',
       'asset.adopt',
       'asset.regenerate',
@@ -206,6 +217,7 @@ describe('the desktop registry', () => {
       'gate.approve',
       'notify.deleteAll',
       'pipeline.run',
+      'pipeline.stop',
       'project.setArtStyle',
       'project.setKey',
       'prompt.addRef',
@@ -232,6 +244,7 @@ describe('the desktop registry', () => {
       'story.screenplay',
       'story.setChoice',
       'story.setCoverage',
+      'story.setHeading',
       'story.setLineText',
       'story.setNext',
       'story.setOutfit',
@@ -251,6 +264,8 @@ describe('the desktop registry', () => {
     ]);
     // A checked non-mutator is the exception, so it is listed by name rather than allowed by rule.
     expect(commands.filter((c) => c.check && !c.mutating).map((c) => c.id)).toEqual([
+      'agent.stop',
+      'pipeline.stop',
       'report.agent',
       'report.openIssue',
     ]);

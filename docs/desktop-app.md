@@ -192,13 +192,25 @@ are the bridge's.
   changes.
 - **The View menu is two submenus and two acts.** **Editors** is every editor by name, each entry a
   `view.open`; **Layout** is the project's [layout templates](#layout-templates) plus Save Current
-  Layout As… and Reset View Layout…; then Close Pane and Split Area, the latter moved down from the
-  app menu because it is a view act. A submenu is a `Menu` instance in the parent template, and it
+  Layout As… and Reset View Layout…; then Close Pane… and Split Area, the latter moved down from the
+  app menu because it is a view act. **Both of those two are gestures rather than commands**, because
+  which pane, and where the line falls, are answers only a pointer can give: Split Area is path.ux's
+  own `splitTool`, and Close Pane… is `closepane.ts`'s picker — the pane under the cursor is outlined
+  in vermilion and crossed out, a click collapses it, Escape cancels. It is written in the app rather
+  than reached for in path.ux (which has a `removeAreaTool`) because this app has two rules about
+  which pane may go — the header is not a pane, and the last pane is kept — and they live in
+  `panes.ts` as `paneClosable`. A pane that may not go is still outlined, in mist and with the reason
+  written across it, since a picker that ignores the pointer is indistinguishable from a broken one.
+  `view.close` is unchanged and still collapses the *active* pane, for the palette, the agent and
+  CDP, where there is no pointer and the active pane is the only one that can be meant.
+  A submenu is a `Menu` instance in the parent template, and it
   needs `.title` set explicitly — `createMenu` files the title under `name` while the row a parent
   draws reads `.title`, so without it the entry is a blank full-width strip. Entries use path.ux's
   object form (`{name, callback, tooltip, id}`) rather than the positional tuple, because every one
   of them must carry a tooltip and counting commas to reach the fifth slot is how `recentMenu` put
-  a project path in it by accident.
+  a project path in it by accident. The tuple has a worse trap than a misplaced string: `createMenu`
+  reads `item[5]` as the id for **any** row longer than four slots, so a tooltip in slot 4 with no id
+  in slot 5 files the callback under `undefined` and the entry silently does nothing when clicked.
 - **`bridge.ts` is the one seam to main.** Every fact the shell shows is pushed in from
   `workspace:index`, the agent event stream and `command:ui`; every act leaves as
   `command:exec`, so provenance, undo and history are identical whether the header, the palette, an
@@ -271,7 +283,12 @@ are the bridge's.
   unknown struct name — or an unknown **area** name — by silently falling back to the first
   registered area class, so every remembered pane comes back as the same editor. `registerEditor`
   does both halves of registration under a written-down name, and `restoreLayout` discards a
-  layout naming an editor this build has not got rather than mis-restoring it.
+  layout naming an editor this build has not got rather than mis-restoring it. It also **splices
+  the pane tab's tooltip in**, from `EDITORS`'s own `what` through `editorTooltip(id)` — the same
+  sentence the View ▸ Editors entry offers, because switching to an editor by tab and by menu are
+  one act and must not be described twice. A tab is painted on the docker's canvas rather than
+  being a DOM node, so path.ux's `TabBar` carries one tooltip and swaps it as the pointer crosses
+  tabs; `TabItem.tooltip` used to be written by `addTab` and read by nobody.
 
 ### Surfaces, shadow roots and stylesheets
 
@@ -416,6 +433,14 @@ unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` wi
   merge would give), and commits on a second gesture. The editable fields in the strip are the
   invocation's props. A new scene is **two** commands (`newScene` then `setNext`), because undoing
   the wire should not also delete the prose.
+- **The slugline is the control that moves the scene.** The heading at the top of the page is a
+  button that opens `openCommandDialog('story.setHeading', …)`, prefilled with the heading the file
+  holds — which is why `SceneCoverage` carries a `heading` at all: the pane had only the raw
+  `location` slug, and a control offering to edit a heading has to show one. It is a dialog rather
+  than the strip's confirm because the cost depends on what is typed: `CommandForm` rechecks on
+  every keystroke, so the sentence naming the shots that will be **re-rendered** (not drifted — a
+  location is in a shot's task inputs) is on screen as the author types, along with the reminder
+  that the prose still describes the old place and the agent is what rewrites it.
 - **Affordances are the rules, not guesses at them.** A split is offered at every line but the
   first, since `splitScene` refuses a split that would empty the head; merge is offered only where
   the scene's single `next` is the boundary at the bottom of the pane; "continue to a new scene"
@@ -458,6 +483,13 @@ the same events** to write the transcript — see the threads bullet below.
   so a turn the author types and a turn the palette runs are one act with one record.
   `plan:decision` stays a channel on purpose: it is the reply to a request main is already blocked
   on, not an act of its own.
+- **What the author was looking at travels with what they asked.** The composer fills `agent.run`'s
+  `scene` prop from `shell().ui.sceneId`, so the selection lands in the provenance record beside the
+  question — it is part of what they meant. Main **resolves** it against the live index rather than
+  trusting it (`focusOnScene`), so a selection pointing at a scene deleted since contributes nothing
+  instead of a sentence about a scene that is gone; the prop defaults to `''` because the palette
+  and CDP have no selection. It reaches the agent as a `context` message, not as part of the system
+  prompt, and emits no `FeedItem` — a thread records what was said, not the context for saying it.
 - **The agent's permission gate has three doors, and the pane answers all three.** Beside the plan
   card are a **question card** (`ask_user`: the question, a one-line box focused on arrival, Enter
   answers — an empty answer is allowed, because "nothing to add" is a real answer) and a **confirm
@@ -471,6 +503,15 @@ the same events** to write the transcript — see the threads bullet below.
   Teardown — the window closing, or `workspace.open` replacing the session mid-turn — resolves
   every parked door with its safe default rather than leaving the turn hung: no plan, no answer,
   no.
+- **A shortlist is how a question is drawn, not a second door.** `ask_choice` reaches the same
+  `permission:ask` / `ask:answer` pair with `choices` (and `multi`) alongside the question, so the
+  card grows a column of full-width answer rows — an answer is read before it is clicked — above
+  the text field it already had. What goes back is a string in every case, so a host that ignores
+  `choices` asks the question as plain text: degraded, never broken. The card's three ways out are
+  the list, the box (*"Or type an answer of your own…"*), and **Chat about this** — which *answers*
+  with a sentence saying so rather than dismissing, because main is parked on `ask:answer` and a
+  card that closed without one would hang the turn. A multi-pick's ticks live in `askPicked` beside
+  `askDraft`, for the same reason: a redraw must not clear what the author has chosen so far.
 - **Clearing follows the command, not the button.** The store watches the registry through
   `bridge.onExec`, so `agent.clear` from the pane and from the palette empty the transcript
   identically — as do `agent.newThread` and `agent.openThread`. Named gap: `window.vn`/CDP goes
@@ -526,6 +567,20 @@ the same events** to write the transcript — see the threads bullet below.
   menu and says why; the setting is **kept** rather than cleared, so switching back to a model
   that honours it needs no second gesture — but a level the new model does not offer is stepped
   down, in main and in the mirrored shell state alike, by the same pure `resolveEffort`.
+- **The bar also says what the conversation has cost**, in tokens the provider billed, `842` /
+  `12.3k` / `1.4M` at a glance with the exact figures in the tooltip. It counts **calls, not
+  turns** — a step the backend had to retry was paid for every attempt — and it reads `—` rather
+  than `0` until a provider reports something, a mock backend and a backend that does not say
+  being indistinguishable at zero. The receipt travels as an `AgentEvent` (`{ type: 'usage' }`)
+  like everything else the agent does, from an **optional** `ChatBackend.messageWithUsage` each
+  real backend derives its `message` from; a backend that keeps no receipt shows no total. It adds
+  no `FeedItem`, so nothing about it reaches the thread on disk and a reopened conversation starts
+  at zero. The label is retitled in place rather than keyed into `stateKey()`: rebuilding the bar
+  would close the model or effort menu mid-turn.
+- **The composer's stop button is shown only while a turn is in flight**, in `--vermilion`, taking
+  Send's shape beside it, and `exec`s `agent.stop` through the registry — so interrupting from here
+  and from the palette are one act with one record. An idle composer has nothing to interrupt, and
+  a permanently greyed square would say otherwise.
 - **The dialogue box is bounded and the transcript is what grows.** `.convo` is
   `grid-template-rows: 1fr auto`, so an unbounded line takes the pane and the transcript gets what
   is left — a long narration turn once cut it to a couple of hundred pixels and put the plan card
@@ -823,8 +878,12 @@ with tests beside them.
   string, so an editor whose subject cannot travel opens on the selection it already sees.
   A node that claims nothing keeps today's behaviour: the click selects, and a grouping expands.
 - **New… scaffolds a document and opens it.** Kind plus a name, straight into `doc.create`, which
-  shares `newCharacterDoc`/`newLocationDoc` with the agent's create tools — one authorial act, one
-  answer. The tree refetches on any successful mutating command (`onExec`) and on undo, so the new
+  shares `newCharacterTemplate`/`newLocationDoc` with the agent's create tools — one authorial act,
+  one answer. A character's is a **full sheet of placeholders**, because the shape is best learned by
+  editing it; its `palette` is empty under a YAML comment saying what a palette is and to ask the
+  agent for one, since a colour name will not parse and so cannot be exampled. That comment is why
+  the template is text rather than a `FrontMatterDoc`, and why it does not survive the first edit.
+  The tree refetches on any successful mutating command (`onExec`) and on undo, so the new
   file is there without a remount. That refetch is deliberately coarse: a tree is one cached
   `loadProject` away, and a stale tree is worse than a redundant fetch.
 

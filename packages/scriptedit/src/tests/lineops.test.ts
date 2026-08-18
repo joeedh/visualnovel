@@ -8,6 +8,7 @@ import {
   mergeScene,
   moveLine,
   newScene,
+  setHeading,
   setLineText,
   setSpeaker,
   splitScene,
@@ -249,6 +250,55 @@ describe('newScene', () => {
       'Scene ids are slugs — "The Roof" would be "the_roof".',
     );
     expect(error(newScene(state(), { scene: 'garden', heading: '' }))).toMatch(/needs a heading/);
+  });
+});
+
+describe('setHeading', () => {
+  it('moves the scene, leaving every line id and the wiring alone', () => {
+    const op = setHeading(state(), { scene: 'arrival', heading: 'EXT. WALLED GARDEN - DAWN' });
+    const scene = written(op, 'arrival');
+    expect(scene).toMatchObject({
+      location: 'walled_garden',
+      locationVariant: 'dawn',
+      headingPrefix: 'EXT.',
+      next: 'rooftop',
+    });
+    expect(ids(scene)).toEqual(['arrival:L1', 'arrival:L2']);
+    expect(op).toMatchObject({ retired: [], moved: [], retyped: [] });
+  });
+
+  it('restages the scene, because a shot pinned to the old variant would get no plate', () => {
+    const op = setHeading(state(), { scene: 'arrival', heading: 'EXT. WALLED GARDEN - DAWN' });
+    expect(op.ok && op.relocated).toEqual([['arrival', 'dawn']]);
+  });
+
+  it('drops a prefix the new heading does not have', () => {
+    const op = setHeading(state(), { scene: 'arrival', heading: '.THE VOID - LATER' });
+    expect(written(op, 'arrival').headingPrefix).toBeUndefined();
+  });
+
+  it('says what the art will cost and who can fix the prose', () => {
+    const op = setHeading(state(), { scene: 'arrival', heading: 'EXT. WALLED GARDEN - DAWN' });
+    expect(op.ok && op.message).toMatch(/was classroom \(evening\)/);
+    expect(op.ok && op.message).toMatch(/ask the agent/);
+  });
+
+  it('refuses an unknown scene, an empty heading, and a heading that names nowhere', () => {
+    expect(error(setHeading(state(), { scene: 'nowhere', heading: 'INT. X - DAY' }))).toBe(
+      'No scene "nowhere".',
+    );
+    expect(error(setHeading(state(), { scene: 'arrival', heading: '' }))).toMatch(
+      /needs a heading/,
+    );
+    expect(error(setHeading(state(), { scene: 'arrival', heading: 'INT.' }))).toMatch(
+      /names no location/,
+    );
+  });
+
+  it('refuses the heading it already has, rather than rehashing the scene for nothing', () => {
+    expect(
+      error(setHeading(state(), { scene: 'arrival', heading: 'INT. CLASSROOM - EVENING' })),
+    ).toBe('arrival is already set in classroom (evening).');
   });
 });
 

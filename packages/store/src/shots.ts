@@ -85,6 +85,7 @@ export async function readShots(
     };
     if (s.camera !== undefined) shot.camera = s.camera;
     if (s.artNotes !== undefined) shot.artNotes = s.artNotes;
+    if (s.seed !== undefined) shot.seed = s.seed;
     if (s.promptOverride) shot.promptOverride = promptOverrideFrom(s.promptOverride);
     if (s.shotData?.prompt !== undefined) shot.prompt = s.shotData.prompt;
     if (s.shotData?.image !== undefined) shot.image = s.shotData.image;
@@ -108,6 +109,7 @@ function serialize(sceneId: string, shots: readonly Shot[]): string {
       subjects: s.subjects,
       ...(s.camera !== undefined ? { camera: s.camera } : {}),
       ...(s.artNotes !== undefined ? { artNotes: s.artNotes } : {}),
+      ...(s.seed !== undefined ? { seed: s.seed } : {}),
       // An override that says nothing is not written: it would change nothing about the prompt,
       // and a shots file that grows an inert key stops rewriting byte-identically.
       ...(promptOverrideIsEmpty(s.promptOverride)

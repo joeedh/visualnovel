@@ -62,12 +62,16 @@ function set(next: Convo): void {
  * Send one turn. Through `agent.run` rather than the `agent:run` channel the React shell used,
  * so a turn the author types and a turn the palette runs are the same command with the same
  * provenance.
+ *
+ * The selected scene rides along as a prop, so it is in the provenance record beside what was
+ * asked — what the author was looking at is part of what they meant. Main resolves it against the
+ * project and drops it if it no longer names anything.
  */
 export async function ask(text: string): Promise<void> {
   const input = text.trim();
   if (!input || state.busy) return;
   set(asked(state, input));
-  const outcome = await exec('agent.run', { input });
+  const outcome = await exec('agent.run', { input, scene: shell().ui.sceneId });
   set(answered(state, outcome.ok ? outcome.record.message : null));
 }
 

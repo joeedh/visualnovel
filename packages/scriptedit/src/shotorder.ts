@@ -187,6 +187,7 @@ export function moveShot(
       retired: [],
       moved: [],
       retyped: [],
+      relocated: [],
     };
   };
 }

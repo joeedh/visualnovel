@@ -67,6 +67,15 @@ agent honors.
   (soft/style issues only warn). One commit per approved plan.
 - **Always-confirm.** `git_revert`/`git_restore` and the first run of a script-bearing skill
   route through the permission gate regardless of mode.
+- **Asking with a shortlist is its own tool, over the same door.** `ask_choice` sits beside
+  `ask_user` in `CONTROL_TOOLS` — a distinct name, because the failure being corrected is a model
+  asking an open question when the sensible answers can be listed — but both reach one
+  `Permission.ask(question, choices?)`. The shortlist is how the question is _put_, not what comes
+  back: the answer is a string either way, the author may always type past the list, and the
+  observation reads `User answered: …` regardless, so the model has to read it rather than
+  pattern-match a click. A shortlist of fewer than two is refused, being a leading question. In the
+  terminal the list is numbered and anything that is not a run of valid numbers is taken as the
+  author's own words.
 - **Agent backend seam.** The loop targets an internal `AgentBackend`; `StructuredAgentBackend`
   (Path A) drives tools as zod-validated JSON over the text seam, `NativeAgentBackend` (Path B)
   drives them through the vendor tool protocol. The loop is the arg-validation authority, so
@@ -80,15 +89,19 @@ agent honors.
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter
   so untouched prose and branch markers are preserved.
-- **Prose edits are the desktop's edits.** `edit_scene` names the same ten acts the `story.*`
+- **Prose edits are the desktop's edits.** `edit_scene` names the same eleven acts the `story.*`
   commands do — and `set_outfit` the two outfit commands — running the same `@vn/scriptedit`
   decisions, so a refusal an author sees mid-drag is the refusal the agent gets, and the storyboard
-  consequence is accounted for once. See
+  consequence is accounted for once. Ten of the eleven are prose; `setHeading` is the one that moves
+  a scene somewhere else, and it says in its own result that the rendered art will be drawn again
+  and that the prose it left behind is the agent's to rewrite. **Wiring is the second half and a
+  second tool**: `edit_branches` runs `branchops`' four rewires, which is what makes `newScene`'s
+  own _"nothing points at it yet"_ actionable rather than a dead end. See
   [`command-system.md`](command-system.md#from-the-agent).
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 36 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 37 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -98,6 +111,7 @@ whatever the mode).
 | Domain & validation | `validate_inputs`, `parse_fountain`, `story_graph`, `extract_entities` |
 | Entity editing | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M** |
 | Scene prose | `edit_scene` **M** |
+| Branch wiring | `edit_branches` **M** |
 | Wardrobe | `set_outfit` **M** |
 | Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
@@ -212,6 +226,26 @@ keeps the bible reached by query. The table of contents is the point — it turn
 `Casualties` heading before it queries. The file is budgeted (8000 characters, spent cast-first),
 and a section that could not print every row says how many it dropped and which tool answers the
 rest. The same act is the desktop's `workspace.reindex`.
+
+**The map is a snapshot, and it says so.** Both hosts recompose the system message per turn
+(`Agent.setSystem`, beside `setBackend`), so an agent that outlives a rewrite of the file — its own
+`regenerate_context`, or the desktop's `workspace.reindex` — stops quoting the version it was built
+with. Its header names `list_workspace` as what is true now, because nothing re-reads the map
+between turns of the same turn, and a stale list that looks authoritative is worse than no list.
+
+**`list_workspace` names the file every row was found in**, and says of a location with no sheet
+that it was mined from the screenplay. Locations are merged by the slug `parseHeading` derives, so
+authoring a sheet for a place the script already mentions converts a row instead of adding one —
+without the path, the before and the after are the same two lines.
+
+**What the host had on screen is a message, not a system line.** `Agent.run(input, focus?)` files
+the host's `focus` as a `context` message ahead of the user's — a fourth `AgentMessage.role` that
+`renderTranscript` upper-cases to `CONTEXT:`, so both backends carry it unchanged. It is a message
+because it was true at _that_ turn and not at the others, and the system message is recomposed per
+turn, so putting it there would let the last selection rewrite every earlier one. `focusOnScene`
+builds the sentence from the live `WorkspaceIndex` and returns `undefined` for an id nothing
+answers to, so a stale selection says **nothing** rather than asserting a scene that is gone. The
+REPL passes no focus and reads exactly as it did before.
 
 `search` and `search_bible` are separate on purpose. `search` scans the authored input files —
 a bounded set, so it can afford to be exhaustive and unranked. `search_bible` queries `wiki/`,

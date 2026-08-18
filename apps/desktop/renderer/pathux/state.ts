@@ -43,6 +43,11 @@ export class ShellState {
    * none of it is persisted, because all of it is re-read at boot.
    */
   projectTitle = '';
+  /**
+   * The open project's root. Two projects may share a title, so anything caching per project —
+   * the header's recents list is the one — keys on this rather than on what it is called.
+   */
+  projectRoot = '';
   model = 'claude-opus-4-8';
   /** How hard the model is asked to think. Mirrors `WorkspaceSession.effort`, same default. */
   effort: EffortChoice = DEFAULT_EFFORT;
@@ -59,4 +64,14 @@ export class ShellState {
   canRedo = false;
   undoLabel = '';
   redoLabel = '';
+
+  /**
+   * What long-running work main has in flight, named the way its refusals are ('a pipeline run',
+   * 'an agent turn'), and empty when the session is idle. Everything that must not be started
+   * twice reads this rather than keeping a flag of its own.
+   */
+  busyWhat = '';
+  /** How that work is going. Both zero when nothing is running, and while a turn has no count. */
+  busyRan = 0;
+  busyPending = 0;
 }

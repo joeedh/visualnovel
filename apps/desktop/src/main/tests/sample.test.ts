@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { seedWorkspace } from '../workspace.js';
-import { setNext } from '../../shared/branchops.js';
+import { setNext } from '@vn/scriptedit';
 
 const TEMPLATE = resolve(__dirname, '../../../../../examples/sample');
 
@@ -19,6 +19,7 @@ const deps: SessionDeps = {
   requestPlan: () => Promise.resolve({ approved: false }),
   requestAnswer: () => Promise.resolve(''),
   requestConfirm: () => Promise.resolve(false),
+  pushBusy: () => {},
 };
 
 describe('examples/sample, seeded and opened', () => {

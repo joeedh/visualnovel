@@ -171,10 +171,12 @@ export const assetRegenerate = define({
   title: 'Regenerate asset',
   description:
     "Put this asset's task back to pending so the next run re-renders it. With `run` the " +
-    'pipeline is run for real straight afterwards. A fixed image seed makes a plain re-roll ' +
-    'deterministic — art notes are how the picture actually changes.',
+    'pipeline is run for real straight afterwards — and it is run anyway when the requeue left ' +
+    'exactly one task plannable, because a one-task run is not worth a second trip. A fixed ' +
+    'image seed makes a plain re-roll deterministic — art notes are how the picture actually ' +
+    'changes.',
   mutating: true,
-  // Requeuing costs nothing by itself, but `run` spends a real image call, and the gate is on
+  // Requeuing costs nothing by itself, but running spends a real image call, and the gate is on
   // the command rather than the props.
   confirm: true,
   props: {
@@ -185,15 +187,36 @@ export const assetRegenerate = define({
     return verdict(await ctx.host.session.previewRegenerate(hash));
   },
   async run({ hash, run }, ctx) {
-    const queued = await ctx.host.session.regenerateAsset(hash);
+    const { session } = ctx.host;
+    const queued = await session.regenerateAsset(hash);
     if (!queued.ok) throw new Error(queued.message);
-    if (!run) return { message: queued.message, data: queued, written: queued.written };
-    const result = await ctx.host.session.runPipeline(false);
+
+    const why = run ? 'asked for' : autoRunReason(await session.runPreconditions(false));
+    if (!why) return { message: queued.message, data: queued, written: queued.written };
+
+    const result = await session.runPipeline(false);
     const failed = result.failed ? `, ${result.failed} failed` : '';
     return {
       message: `${queued.message} ${result.ran} task(s) ran${failed}.`,
-      data: { queued, run: result },
+      data: { queued, run: result, why },
       written: [...queued.written, 'vngen/build/'],
     };
   },
 });
+
+/**
+ * Whether a requeue runs the pipeline on its own, and why — `''` for "it does not".
+ *
+ * The author's own reading: one queued task is a re-roll, and sending them to the run dialog to
+ * press Run is ceremony. Anything wider stays a decision, a gate is a halt rather than a run, and
+ * a run that cannot resolve its keys is not started — `runPreconditions` names the source that
+ * failed, never the value.
+ */
+export function autoRunReason(pre: {
+  pending: number;
+  blockedOnGate: boolean;
+  keyError: string | null;
+}): string {
+  const alone = pre.pending === 1 && !pre.blockedOnGate && pre.keyError === null;
+  return alone ? 'the only task' : '';
+}

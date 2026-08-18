@@ -61,4 +61,15 @@ export function paneToClose(panes: readonly Pane[]): number {
   return paneToUse(panes);
 }
 
+/**
+ * Whether *this* pane may be collapsed — the same two rules `paneToClose` applies, asked of a pane
+ * the author picked rather than of the mesh. A picker needs the verdict per pane, because it has to
+ * say no while the pointer is still moving.
+ */
+export function paneClosable(panes: readonly Pane[], index: number): boolean {
+  const pane = panes[index];
+  if (!pane || pane.chrome) return false;
+  return panes.filter((other) => !other.chrome).length >= 2;
+}
+
 const area = (pane: Pane): number => pane.width * pane.height;

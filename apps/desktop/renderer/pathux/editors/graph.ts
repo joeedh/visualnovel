@@ -170,8 +170,9 @@ export class TaskGraphEditor extends VnEditor {
     this.bar.button('Fit', () => {
       this.fitted = false;
       this.fitOnce();
-    });
-    this.bar.button('Refresh', () => void this.load());
+    }).description = 'Zoom out until the whole graph is on screen';
+    this.bar.button('Refresh', () => void this.load()).description =
+      'Re-read the task log and replan what is ready';
     this.bar.flushUpdate();
   }
 

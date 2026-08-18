@@ -29,7 +29,7 @@ import {
   noticeOf,
   type Drag,
 } from '../branch.js';
-import { refreshWorkspace } from '../bridge.js';
+import { exec, refreshWorkspace } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
 import { TOKENS } from '../tokens.js';
@@ -304,7 +304,8 @@ export class BranchEditor extends VnEditor {
     ).style['padding'] = '0px 8px';
 
     if (!this.naming) {
-      this.bar.button('+ scene', () => this.startNaming());
+      this.bar.button('+ scene', () => this.startNaming()).description =
+        'Name a new scene and add it to the graph, unconnected';
       const scene = this.ui.sceneId;
       if (scene && this.sceneById.has(scene)) {
         // Hover asks the command, the click runs it — so a scene something still points at says
@@ -318,8 +319,9 @@ export class BranchEditor extends VnEditor {
     this.bar.button('Fit', () => {
       this.fitted = false;
       this.fitOnce();
-    });
-    this.bar.button('Refresh', () => void this.load());
+    }).description = 'Zoom out until the whole graph is on screen';
+    this.bar.button('Refresh', () => void this.load()).description =
+      'Re-read the scenes and their connections from disk';
     this.bar.flushUpdate();
   }
 
@@ -618,6 +620,7 @@ export class BranchEditor extends VnEditor {
     const field = (className: string, label: string, value: string, set: (v: string) => void) => {
       const input = el('input', className) as HTMLInputElement;
       input.setAttribute('aria-label', label);
+      input.title = `${label}. Enter writes the scene, Escape gives up.`;
       input.value = value;
       input.addEventListener('input', () => set(input.value));
       input.addEventListener('keydown', keys);
@@ -632,8 +635,10 @@ export class BranchEditor extends VnEditor {
     });
 
     const go = el('button', 'go', 'Write it');
+    go.title = 'Create the scene file and put it on the graph, connected to nothing';
     go.addEventListener('click', () => void this.write());
     const no = el('button', 'no', 'Cancel');
+    no.title = 'Abandon the new scene. Nothing is written.';
     no.addEventListener('click', () => {
       this.naming = null;
       this.redraw();
@@ -652,6 +657,7 @@ export class BranchEditor extends VnEditor {
     this.selected = edge.id;
 
     const input = el('input', 'edge-input') as HTMLInputElement;
+    input.title = 'What this choice reads as in the game. Enter renames it, Escape leaves it.';
     input.value = edge.label ?? '';
     input.addEventListener('pointerdown', (event) => event.stopPropagation());
     // Enter and Escape finish the edit themselves; `blur()` does nothing when the input is not the
@@ -695,7 +701,10 @@ export class BranchEditor extends VnEditor {
   }
 
   private async run(invocation: Invocation, fallback: string): Promise<boolean> {
-    const outcome = await api.invoke('command:exec', { ...invocation, source: 'ui' });
+    // Through the bridge, not `command:exec` directly: connecting two cards rewrites a scene, and
+    // every surface watching for that — the document tree above all — hears it from `exec`'s
+    // invalidate. Invoking the channel by hand wrote the file and told no one.
+    const outcome = await exec(invocation.id, invocation.props);
     if (!outcome.ok) {
       this.say({ tone: 'refused', text: outcome.error });
       return false;
@@ -748,7 +757,9 @@ function sceneCard(
   if (ghost) classes.push('carried');
 
   const box = el('article', classes.join(' '));
-  box.title = scene.reachable ? scene.id : `${scene.id} — unreachable`;
+  box.title = scene.reachable
+    ? `${scene.id} — click to select it, drag it to lay the graph out`
+    : `${scene.id} — nothing reaches this scene; click to select it, drag it to move it`;
 
   const head = el('header');
   head.appendChild(el('span', 'id', scene.id));

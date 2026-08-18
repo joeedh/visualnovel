@@ -392,3 +392,17 @@ export function rememberWorkspace(state: RecentStore, root: string): string[] {
   state.set(RECENT_KEY, next);
   return next;
 }
+
+/**
+ * The remembered projects that are still there, healing the store as it reads. A project moved
+ * or deleted outside the app leaves an entry that can only be offered and then refused, and with
+ * ten slots a handful of those is a menu whose every live entry has been pushed off the end.
+ *
+ * `exists` is injected so the pruning is testable without a filesystem; main passes `existsSync`.
+ */
+export function liveWorkspaces(state: RecentStore, exists: (path: string) => boolean): string[] {
+  const all = recentWorkspaces(state);
+  const live = all.filter((root) => exists(root));
+  if (live.length !== all.length) state.set(RECENT_KEY, live);
+  return live;
+}

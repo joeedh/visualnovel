@@ -182,9 +182,15 @@ class NotificationList {
         : row.button('Filter', () => openFilters());
     funnel.description = 'Choose which kinds of notification this list shows.';
 
-    row.menu('⋯', [
-      ['Delete all notifications permanently…', () => openCommandDialog('notify.deleteAll')],
+    const more = row.menu('⋯', [
+      {
+        name: 'Delete all notifications permanently…',
+        callback: () => openCommandDialog('notify.deleteAll'),
+        tooltip: 'Erase the whole log from disk. This cannot be undone.',
+        id: 'deleteAll',
+      },
     ]);
+    more.description = 'The acts that are not one click.';
   }
 
   /**
@@ -250,6 +256,7 @@ class FilterPopup {
     // Drawn from the union itself, so a category added to `@vn/types` cannot go unfilterable.
     for (const category of NOTIFICATION_CATEGORIES) {
       const box = this.body.check(undefined, category);
+      box.description = `Show ${category} notifications in the list.`;
       box.checked = on.has(category);
       box.on_change = (ticked: unknown) => {
         const next = new Set(filter.categories);

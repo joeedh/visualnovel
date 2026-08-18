@@ -1,8 +1,9 @@
-import { AreaFlags, Menu, createMenu, type Container, type MenuTemplate } from 'pathux';
+import { AreaFlags, Menu, createMenu, type Container, type Label, type MenuTemplate } from 'pathux';
 import { isLive } from '../../api.js';
-import { EDITOR_IDS, EDITORS, type EditorId } from '../../../src/shared/editors.js';
+import { EDITOR_IDS, EDITORS, editorTooltip, type EditorId } from '../../../src/shared/editors.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
-import { exec, move, onInvalidate, quit, report, say, toggleMode } from '../bridge.js';
+import { check, exec, move, onInvalidate, quit, report, say, toggleMode } from '../bridge.js';
+import { pickPaneToClose } from '../closepane.js';
 import type { VnContext } from '../context.js';
 import { currentLayoutFile, fetchLayouts } from '../layouts.js';
 import { VnEditor, registerEditor } from '../editor.js';
@@ -31,6 +32,27 @@ function act(id: string): void {
 }
 
 /**
+ * Start a run without a form. Both plain doors — the app menu's entry and the header's button —
+ * come through here, so the refusal an author sees is the same sentence whichever they clicked,
+ * and it is the command's own: `check` first, because a refused `exec` says nothing a surface
+ * can show *before* the work would have started.
+ *
+ * `mock` follows whether this is a live app: a browser preview has no keys and no main process,
+ * and a dry run is the only thing it could honestly do.
+ */
+function runPipelineNow(): void {
+  const props = { mock: !isLive };
+  void check('pipeline.run', props).then((verdict) => {
+    if (verdict.state === 'refuse') {
+      say(verdict.message, true);
+      return;
+    }
+    say(verdict.message || 'Running the pipeline…');
+    void exec('pipeline.run', props).then(report);
+  });
+}
+
+/**
  * The app header: the brand (which is also the app menu), the View menu, the project's name,
  * undo/redo, and the badges saying which model, mode and run-mode are live. The React `Topbar`'s
  * three room buttons are not here and will not be: a pane shows an editor, so the nav is a list
@@ -45,10 +67,13 @@ export class VnHeaderEditor extends VnEditor {
   /** What the bar last drew. Rebuilding on a change beats a widget-per-field push. */
   private drawn = '';
 
+  /** The busy indicator while a run is on, so its tooltip can be retitled without a rebuild. */
+  private spinner: Label | undefined;
+
   /** The remembered projects, and the one that is open, as `workspace.recent` last answered. */
   private recents: string[] = [];
   private current = '';
-  /** Which project title the list above was fetched for — the guard that keeps it one fetch. */
+  /** Which project root the list above was fetched for — the guard that keeps it one fetch. */
   private recentsFor = '\0';
 
   /** The project's layout templates, and which one the window is showing. */
@@ -125,6 +150,7 @@ export class VnHeaderEditor extends VnEditor {
 
     const key = this.stateKey();
     if (key !== this.drawn) this.rebuild();
+    else this.sayProgress();
   }
 
   /** Every fact the bar draws, in one string. Cheap to compare, and impossible to forget. */
@@ -141,17 +167,20 @@ export class VnHeaderEditor extends VnEditor {
       ui.canRedo,
       ui.undoLabel,
       ui.redoLabel,
+      ui.busyWhat,
       this.layoutRevision,
     ].join('|');
   }
 
   /**
    * Refetch the remembered projects, once per project the header finds itself in. `workspace.open`
-   * is what changes the list, and it also changes the title — so the title is the cheap signal
-   * that the list is stale, and the guard is what keeps `rebuild` from fetching forever.
+   * is what changes the list, and it also changes which root is open — so the root is the cheap
+   * signal that the list is stale, and the guard is what keeps `rebuild` from fetching forever.
    */
   private refreshRecents(): void {
-    const key = this.ui.projectTitle;
+    // Keyed on the root, not the title: two projects may be called the same thing, and the list
+    // the second one showed would then be the first one's, forever.
+    const key = this.ui.projectRoot;
     if (this.recentsFor === key) return;
     this.recentsFor = key;
 
@@ -189,10 +218,14 @@ export class VnHeaderEditor extends VnEditor {
     const ui = this.ui;
 
     this.bar.clear();
-    this.bar.menu('VN STUDIO', this.appMenu());
-    this.bar.menu('View', this.viewMenu());
-    this.bar.menu('Help', this.helpMenu());
-    this.badge(`project ${ui.projectTitle || '—'}`);
+    this.bar.menu('VN STUDIO', this.appMenu()).description =
+      'Open, create and export a project, and everything that acts on the workspace as a whole.';
+    this.bar.menu('View', this.viewMenu()).description =
+      'Split and close panes, and switch between the saved window layouts.';
+    this.bar.menu('Help', this.helpMenu()).description =
+      'The docs, and what to do about an agent that misbehaved.';
+    this.badge(`project ${ui.projectTitle || '—'}`, true);
+    this.runControls();
 
     const undo = this.bar.button('⟲', () => void move('undo'));
     undo.description = ui.undoLabel ? `Undo ${ui.undoLabel}` : 'Nothing to undo';
@@ -209,9 +242,22 @@ export class VnHeaderEditor extends VnEditor {
       this.badge(`${shown} ${kind}${shown === 1 ? '' : 's'}`);
     }
 
-    this.badge(ui.model);
-    this.badge(isLive ? 'live' : 'preview');
-    this.bar.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => void toggleMode());
+    this.badge(ui.model, false, 'current agent model - set in convo tab');
+    this.badge(
+      isLive ? 'live' : 'preview',
+      false,
+      isLive
+        ? 'A real run: this window can call models and write assets'
+        : 'A browser preview: every run is a dry run, and no model is called',
+    );
+    const mode = this.bar.button(
+      ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE',
+      () => void toggleMode(),
+    );
+    mode.description =
+      ui.agentMode === 'plan'
+        ? 'Plan mode: the agent reads but never writes. Click to let it apply edits.'
+        : 'Execute mode: the agent may apply edits. Click to make it read-only again.';
 
     const bell = this.bar.button(ui.unread ? `🔔 ${ui.unread}` : '🔔', () => openNotifications());
     bell.description = ui.unread
@@ -221,64 +267,188 @@ export class VnHeaderEditor extends VnEditor {
     this.bar.flushUpdate();
   }
 
-  /** A row packs its labels flush, so each one carries its own gutter. */
-  private badge(text: string): void {
-    this.bar.label(text).style['padding'] = '0px 8px';
-  }
+  /**
+   * The run button, and — only while one is running — the spinner and the stop button. All three
+   * read `ui.busy*`, which main pushes on both edges of the work and on every task between, so
+   * none of them keeps a flag of its own that a crashed run could leave set.
+   */
+  private runControls(): void {
+    const busy = this.ui.busyWhat;
 
-  private appMenu(): MenuTemplate {
-    return [
-      ['Command Palette…', () => openPalette(), '/'],
-      Menu.SEP,
-      ['Undo', () => void move('undo'), 'Ctrl+Z'],
-      ['Redo', () => void move('redo'), 'Ctrl+Shift+Z'],
-      Menu.SEP,
-      // Not fired from the menu: `pipeline.run` asks before it writes, so the menu opens a dialog
-      // on its form. `mock` is seeded from whether this is a live app — a preview has no keys and
-      // no main process, and a dry run is the only thing it could honestly do.
-      ['Run Pipeline…', () => openCommandDialog('pipeline.run', { mock: !isLive }), undefined],
-      // A folder to browse for, a title, and the checkbox that turns the two into a folder the OS
-      // chooser could not have named. Checked here rather than in the command, whose own default
-      // has always been "the project goes here".
-      ['New Project…', () => openCommandDialog('workspace.create', { newFolder: true }), undefined],
-      // These two take no argument and ask for no confirmation, so the palette would be an empty
-      // form the author dismisses with the same click. They run, and say what they answered — the
-      // chooser `workspace.pick` opens is its own confirmation.
-      ['Open Project…', () => act('workspace.pick'), undefined],
-      this.recentMenu(),
-      ['Reindex Project', () => act('workspace.reindex'), undefined],
-      // A key is an argument no menu can supply, so this opens the form like the two above. What
-      // it collects is written to a gitignored file and recorded as `<secret>`.
-      ['Provide Model Key…', () => openCommandDialog('project.setKey'), undefined],
-      Menu.SEP,
-      // Not fired from the menu either: `upload.pick` is `confirm`, and the dialog is where a
-      // command says what it is about to do before the OS chooser takes over the screen.
-      ['Upload Files…', () => openCommandDialog('upload.pick'), undefined],
-      Menu.SEP,
-      ['Plan ⇄ Execute', () => void toggleMode(), 'Shift+Tab'],
-      Menu.SEP,
-      ['Quit', () => quit(), 'Ctrl+Q'],
-    ] as MenuTemplate;
+    const run = this.bar.button('▶ Run', () => runPipelineNow());
+    run.disabled = busy !== '';
+    run.description = busy
+      ? `Cannot start: ${busy} is already in progress.`
+      : isLive
+        ? 'Plan and render everything that is ready, to the next gate'
+        : 'Preview what a run would do. This window cannot call a model.';
+
+    this.spinner = undefined;
+    if (busy !== 'a pipeline run') return;
+
+    const spinner = this.bar.label('◴');
+    this.spinner = spinner;
+    this.sayProgress();
+    // Turned by the Web Animations API rather than a `@keyframes` rule: keyframe names are looked
+    // up in the element's own tree scope, and this label sits several nested shadow roots below
+    // the one `adoptStyle` reaches. `setCSSAfter` for the box, which the theme rewrites each pass.
+    spinner.setCSSAfter(() => {
+      spinner.style['padding'] = '0px 8px';
+      spinner.style['display'] = 'inline-block';
+    });
+    spinner.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], {
+      duration: 1600,
+      iterations: Infinity,
+    });
+
+    const stop = this.bar.button('■', () => void exec('pipeline.stop').then(report));
+    stop.description = 'Stop the run after the task it is on. Finished work is kept.';
+    stop.setCSSAfter(() => (stop.style['color'] = 'var(--vermilion, #e5534b)'));
   }
 
   /**
-   * The projects opened before this one, as a submenu of `workspace.open` invocations. Built from
+   * Retitle the spinner from the counts. Deliberately not part of {@link stateKey}: a task
+   * finishing would then rebuild the whole bar, and the rotation would restart from zero every
+   * few seconds — the one thing a busy indicator must not do.
+   */
+  private sayProgress(): void {
+    const ui = this.ui;
+    if (!this.spinner) return;
+    const left = ui.busyPending;
+    this.spinner.description =
+      `The pipeline is running — ${ui.busyRan} task(s) done, ` +
+      `${left} ${left === 1 ? 'task' : 'tasks'} left.`;
+  }
+
+  /** A row packs its labels flush, so each one carries its own gutter. */
+  private badge(text: string, outlined = false, tooltip?: string): void {
+    const label = this.bar.label(text);
+    if (tooltip) label.description = tooltip;
+    // `setCSSAfter` for the outline for the same reason the note frame's margin needs it: the box
+    // is rewritten from the theme on every `flushUpdate`, which drops a plain border write.
+    if (outlined) {
+      label.setCSSAfter(() => {
+        label.style['padding'] = '1px 10px';
+        label.style['border'] = '1px solid var(--vn-badge-border, rgba(255,255,255,0.35))';
+        label.style['borderRadius'] = '10px';
+      });
+      return;
+    }
+    label.style['padding'] = '0px 8px';
+  }
+
+  /**
+   * The app menu. Every entry is written in **object** form, because the array form has no slot
+   * for a tooltip — an entry that will not say what it does is the same unfinished control a
+   * button without one is, and half this menu opens a dialog the author cannot preview.
+   */
+  private appMenu(): MenuTemplate {
+    return [
+      {
+        name: 'Command Palette…',
+        callback: () => openPalette(),
+        hotkey: '/',
+        tooltip: 'Search every command by name and fill in its arguments',
+      },
+      Menu.SEP,
+      {
+        name: 'Undo',
+        callback: () => void move('undo'),
+        hotkey: 'Ctrl+Z',
+        tooltip: 'Put the project back the way it was before the last act',
+      },
+      {
+        name: 'Redo',
+        callback: () => void move('redo'),
+        hotkey: 'Ctrl+Shift+Z',
+        tooltip: 'Reapply the act that was just undone',
+      },
+      Menu.SEP,
+      // Fired, not formed: the plain entry and the header's button are one door, and neither asks
+      // a question. `runPipelineNow` checks first so a refusal is shown before anything starts.
+      {
+        name: 'Run Pipeline',
+        callback: () => runPipelineNow(),
+        tooltip: 'Plan and render everything that is ready, to the next gate',
+      },
+      // The advanced door: `pipeline.run`'s own form, where the flags live. `mock` is seeded from
+      // whether this is a live app — a preview has no keys, and a dry run is all it could do.
+      {
+        name: 'Run Pipeline (adv)…',
+        callback: () => openCommandDialog('pipeline.run', { mock: !isLive }),
+        tooltip: 'Start a run with the flags spelled out — dry run, scene filter, task limit',
+      },
+      // A folder to browse for, a title, and the checkbox that turns the two into a folder the OS
+      // chooser could not have named. Checked here rather than in the command, whose own default
+      // has always been "the project goes here".
+      {
+        name: 'New Project…',
+        callback: () => openCommandDialog('workspace.create', { newFolder: true }),
+        tooltip: 'Scaffold a project in a new folder and open it, closing this one',
+      },
+      // These two take no argument and ask for no confirmation, so the palette would be an empty
+      // form the author dismisses with the same click. They run, and say what they answered — the
+      // chooser `workspace.pick` opens is its own confirmation.
+      {
+        name: 'Open Project…',
+        callback: () => act('workspace.pick'),
+        tooltip: 'Choose a project folder and open it, closing this one',
+      },
+      this.recentMenu(),
+      {
+        name: 'Reindex Project',
+        callback: () => act('workspace.reindex'),
+        tooltip: 'Rebuild the map the authoring agent reads: cast, locations, story graph, bible',
+      },
+      // A key is an argument no menu can supply, so this opens the form like the two above. What
+      // it collects is written to a gitignored file and recorded as `<secret>`.
+      {
+        name: 'Provide Model Key…',
+        callback: () => openCommandDialog('project.setKey'),
+        tooltip: 'Store an API key in this project, in a file git is told to ignore',
+      },
+      Menu.SEP,
+      // Not fired from the menu either: `upload.pick` is `confirm`, and the dialog is where a
+      // command says what it is about to do before the OS chooser takes over the screen.
+      {
+        name: 'Upload Files…',
+        callback: () => openCommandDialog('upload.pick'),
+        tooltip: 'Copy files into the project archive, verbatim, under a dated folder',
+      },
+      Menu.SEP,
+      {
+        name: 'Plan ⇄ Execute',
+        callback: () => void toggleMode(),
+        hotkey: 'Shift+Tab',
+        tooltip: 'Switch the agent between reading only and being allowed to apply edits',
+      },
+      Menu.SEP,
+      { name: 'Quit', callback: () => quit(), hotkey: 'Ctrl+Q', tooltip: 'Close the window' },
+    ];
+  }
+
+  /**
+   * The projects this install has opened, as a submenu of `workspace.open` invocations. Built from
    * `workspace.recent` and from nothing the renderer remembers on its own — a second answer here
    * is how a menu starts offering a project main does not know about.
    *
-   * The open project is left out rather than checked: `workspace.open` refuses it by name, and an
-   * entry that cannot be taken is worse than one that is not offered.
+   * The open one is **kept**, ticked and inert. Dropping it read as the bug it caused: a list of
+   * one project renders `(none)`, which is a menu that looks empty and is telling the truth.
    */
   private recentMenu(): Menu {
-    const others = this.recents.filter((root) => root !== this.current);
-    const items: MenuTemplate = others.length
-      ? others.map((root) => ({
-          name: projectName(root),
-          callback: () => void exec('workspace.open', { path: root }),
-          tooltip: `Close this project and open ${root}`,
-          id: root,
-        }))
-      : [{ name: '(none)', callback: () => {}, tooltip: 'No other project has been opened yet' }];
+    const items: MenuTemplate = this.recents.length
+      ? this.recents.map((root) => {
+          const open = root === this.current;
+          return {
+            name: open ? `${projectName(root)} ✓` : projectName(root),
+            callback: open ? () => {} : () => void exec('workspace.open', { path: root }),
+            tooltip: open
+              ? `${root} is the project you have open`
+              : `Close this project and open ${root}`,
+            id: root,
+          };
+        })
+      : [{ name: '(none)', callback: () => {}, tooltip: 'No project has been opened yet' }];
 
     return this.submenu('Recent Projects', 'Reopen a project you worked on before', items);
   }
@@ -293,10 +463,13 @@ export class VnHeaderEditor extends VnEditor {
       this.editorsMenu(),
       this.layoutMenu(),
       Menu.SEP,
+      // Both are gestures rather than commands: which pane, and where the line falls, are answers
+      // only a pointer can give. `view.close` still exists for the palette, the agent and CDP,
+      // where there is no pointer and the active pane is the only pane that can be meant.
       {
-        name: 'Close Pane',
-        callback: () => void exec('view.close'),
-        tooltip: 'Collapse this pane into its neighbour. The last pane is kept.',
+        name: 'Close Pane…',
+        callback: () => this.closePane(),
+        tooltip: 'Point at a pane to close it — it is outlined and crossed out. Escape cancels.',
       },
       {
         name: 'Split Area',
@@ -304,6 +477,16 @@ export class VnHeaderEditor extends VnEditor {
         tooltip: 'Drag a line across a pane to divide it in two.',
       },
     ];
+  }
+
+  /** Hand the pick a live mesh, or say why there is nothing to point at. */
+  private closePane(): void {
+    const screen = (this.ctx as VnContext).state.screen;
+    if (!screen) {
+      say('There is no window to close a pane in.', true);
+      return;
+    }
+    pickPaneToClose(screen, say);
   }
 
   /**
@@ -335,7 +518,7 @@ export class VnHeaderEditor extends VnEditor {
       EDITORS.map((editor) => ({
         name: editor.title,
         callback: () => void exec('view.open', { editor: editor.id }),
-        tooltip: `Show ${editor.what} in this pane`,
+        tooltip: editorTooltip(editor.id),
         id: editor.id,
       })),
     );

@@ -123,6 +123,16 @@ export function editorTitle(id: EditorId): string {
 }
 
 /**
+ * What an editor says on hover, wherever it is offered. The Editors menu and the pane tab that
+ * switches to it are the same act, so they say the same sentence, and it is written once — in
+ * `what`, which is the half a reader could not have guessed from the title.
+ */
+export function editorTooltip(id: EditorId): string {
+  const editor = EDITORS.find((entry) => entry.id === id);
+  return `Show ${editor ? editor.what : editorTitle(id)} in this pane`;
+}
+
+/**
  * Where `view.open` puts an editor: in the pane you are in, in a new one beside it, or
  * `elsewhere` — the biggest pane that is *not* the one asking, splitting only when there is no
  * other. That last one is what a sidebar wants: opening into itself would replace the sidebar.

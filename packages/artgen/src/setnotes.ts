@@ -1,5 +1,5 @@
 /**
- * Writing an art-notes rung: the refusals, and the two files a note can land in.
+ * Writing an art rung — notes or seed: the refusals, and the two files either can land in.
  *
  * The rung vocabulary is `artnotes.ts`; this is the half that touches disk. An entity rung goes
  * through `@vn/model`'s `apply*Edit` into the sheet the model was built from — the same path
@@ -69,12 +69,37 @@ export async function artNotesOf(
   deps: SetNotesDeps,
   req: SetNotesRequest,
 ): Promise<Decided<SetNotesPlan>> {
-  const parsed = parseArtTarget(req.target);
+  const located = await locateRung(deps, req.target);
+  if (!located.ok) return located;
+  const { target, rung, file } = located.plan;
+
+  const notes = resolveNotes(rung.notes, req);
+  const said = noteSentence(req.mode ?? 'replace', notes, rung.label);
+  return { ok: true, plan: { target, rung, notes, file, note: said } };
+}
+
+/** A rung found on disk: what it says today, and the file that says it. */
+interface LocatedRung {
+  target: ArtTarget;
+  rung: ArtRung;
+  /** The file the write lands in — a sheet, or a scene's storyboard. */
+  file: string;
+  model: ProjectModel;
+  docs: EntityDoc[];
+}
+
+/**
+ * Every refusal a rung write can give before the field being written matters: the target is not a
+ * rung, the thing it names does not exist, or the sheet is not on disk. One place, because notes
+ * and seeds are the same five rungs and a second copy would drift into two vocabularies.
+ */
+async function locateRung(deps: SetNotesDeps, address: string): Promise<Decided<LocatedRung>> {
+  const parsed = parseArtTarget(address);
   if (!parsed) {
     return {
       ok: false,
       code: 'BAD_TARGET',
-      reason: `"${req.target}" names no art-notes rung; expected character:<id>[/<outfit>], location:<id>[/<variant>] or shot:<sceneId>/<shotId>.`,
+      reason: `"${address}" names no art-notes rung; expected character:<id>[/<outfit>], location:<id>[/<variant>] or shot:<sceneId>/<shotId>.`,
     };
   }
   const { model, docs } = await loadFor(deps, parsed);
@@ -91,16 +116,14 @@ export async function artNotesOf(
     }
   }
   const rung = rungAt(parsed, { model, shots });
+  // The rung vocabulary is named for the field that came first; a seed rides the same five rungs,
+  // and one wording for the refusal is what keeps both hosts saying the same sentence.
   if (!rung)
-    return { ok: false, code: 'NO_SUCH_RUNG', reason: `No such art-notes rung: ${req.target}.` };
+    return { ok: false, code: 'NO_SUCH_RUNG', reason: `No such art-notes rung: ${address}.` };
 
-  const notes = resolveNotes(rung.notes, req);
-  const said = noteSentence(req.mode ?? 'replace', notes, rung.label);
   if (parsed.kind === 'shot') {
-    return {
-      ok: true,
-      plan: { target: parsed, rung, notes, file: deps.paths.shotsFile(parsed.sceneId), note: said },
-    };
+    const file = deps.paths.shotsFile(parsed.sceneId);
+    return { ok: true, plan: { target: parsed, rung, file, model, docs } };
   }
   const found = entityDoc(docs, parsed.id);
   if (!found) {
@@ -110,7 +133,7 @@ export async function artNotesOf(
       reason: `No sheet on disk for ${parsed.kind} "${parsed.id}".`,
     };
   }
-  return { ok: true, plan: { target: parsed, rung, notes, file: found.file, note: said } };
+  return { ok: true, plan: { target: parsed, rung, file: found.file, model, docs } };
 }
 
 /**
@@ -157,6 +180,127 @@ export async function setArtNotes(deps: SetNotesDeps, req: SetNotesRequest): Pro
   return plan;
 }
 
+export interface SetSeedRequest {
+  /** A rung, in the same vocabulary {@link SetNotesRequest.target} uses. */
+  target: string;
+  /** The seed to author, or `null` to clear the rung back to whatever it inherits. */
+  seed: number | null;
+}
+
+/** What writing a seed would do. The mirror of {@link SetNotesPlan}, one field over. */
+export interface SetSeedPlan {
+  target: ArtTarget;
+  /** The rung as it stands, before the write. */
+  rung: ArtRung;
+  /** The seed that will be authored there; `null` removes it. */
+  seed: number | null;
+  file: string;
+  note: string;
+}
+
+/**
+ * Every refusal writing a seed can give. The rung refusals are {@link locateRung}'s; the one this
+ * adds is the value — an image backend takes a whole non-negative number, and rounding a typo
+ * would quietly draw a different picture than the one written down.
+ */
+export async function artSeedOf(
+  deps: SetNotesDeps,
+  req: SetSeedRequest,
+): Promise<Decided<SetSeedPlan>> {
+  if (req.seed !== null && (!Number.isInteger(req.seed) || req.seed < 0)) {
+    return {
+      ok: false,
+      code: 'BAD_SEED',
+      reason: `"${req.seed}" is not a seed; expected a whole number of 0 or more.`,
+    };
+  }
+  const located = await locateRung(deps, req.target);
+  if (!located.ok) return located;
+  const { target, rung, file } = located.plan;
+  const note =
+    req.seed === null
+      ? `Cleared the seed on ${rung.label}.`
+      : `Set ${rung.label} to seed ${req.seed}.`;
+  return { ok: true, plan: { target, rung, seed: req.seed, file, note } };
+}
+
+/**
+ * Write one rung's seed, and answer with the plan that was carried out. Re-decides against a fresh
+ * load for the same reason {@link setArtNotes} does.
+ */
+export async function setArtSeed(deps: SetNotesDeps, req: SetSeedRequest): Promise<SetSeedPlan> {
+  const decided = await artSeedOf(deps, req);
+  if (!decided.ok) throw new VnError(decided.code, decided.reason);
+  const { plan } = decided;
+  const target = plan.target;
+  const seed = plan.seed ?? undefined;
+
+  if (target.kind === 'shot') {
+    const { model } = await loadFor(deps, target);
+    const scene = model.scenes.get(target.sceneId);
+    if (!scene) throw new VnError('NO_SCENE', `No scene "${target.sceneId}".`);
+    const loaded = await readShots(deps.paths, scene.id, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded)
+      throw new VnError('NO_SHOTS', `Scene "${scene.id}" has no storyboard to write to.`);
+    const next = loaded.shots.map((s) => (s.id === target.shotId ? withSeed(s, seed) : s));
+    await writeShots(deps.paths, scene.id, next);
+    return plan;
+  }
+
+  const { model, docs } = await loadFor(deps, target);
+  const found = entityDoc(docs, target.id);
+  if (!found) throw new VnError('NO_SHEET', `No sheet on disk for ${target.kind} "${target.id}".`);
+  const edited =
+    target.kind === 'character'
+      ? applyCharacterEdit(
+          found.doc,
+          characterSeedEdit(model.characters.get(target.id)?.outfits ?? [], target, plan.seed),
+        )
+      : applyLocationEdit(
+          found.doc,
+          locationSeedEdit(model.locations.get(target.id)?.variants ?? [], target, plan.seed),
+        );
+  if (!edited.ok) throw new VnError('EDIT_REJECTED', `Edit rejected: ${edited.diagnostic.message}`);
+  await writeFileAtomic(found.file, docToMarkdown(edited.value.doc));
+  return plan;
+}
+
+/** A shot with its seed set, or removed when the rung is cleared. */
+function withSeed(shot: Shot, seed: number | undefined): Shot {
+  const { seed: _drop, ...rest } = shot;
+  return seed === undefined ? rest : { ...rest, seed };
+}
+
+/** {@link characterNotesEdit}, one field over: an outfit rung still resends the whole wardrobe. */
+function characterSeedEdit(
+  outfits: readonly Outfit[],
+  target: Extract<ArtTarget, { kind: 'character' }>,
+  seed: number | null,
+): CharacterEdit {
+  if (!target.outfit) return { seed };
+  return {
+    outfits: wardrobeEntries(
+      outfits.map((o) => (o.id === target.outfit ? withOutfit(o, { seed: seed ?? undefined }) : o)),
+    ),
+  };
+}
+
+/** The same for a location. */
+function locationSeedEdit(
+  variants: readonly LocationVariant[],
+  target: Extract<ArtTarget, { kind: 'location' }>,
+  seed: number | null,
+): LocationEdit {
+  if (!target.variant) return { seed };
+  return {
+    variants: variantEntries(
+      variants.map((v) =>
+        v.id === target.variant ? withVariant(v, { seed: seed ?? undefined }) : v,
+      ),
+    ),
+  };
+}
+
 /** The model and the sheets a rung is looked up in, off one load. */
 async function loadFor(
   deps: SetNotesDeps,
@@ -200,6 +344,8 @@ function withArtNotes(shot: Shot, notes: string): Shot {
 function withOutfit(outfit: Outfit, patch: Partial<Outfit>): Outfit {
   const next = { ...outfit, ...patch };
   if (!next.artNotes) delete next.artNotes;
+  // Not falsiness: 0 is a seed like any other, and only an absent one means "inherit".
+  if (next.seed === undefined) delete next.seed;
   if (!next.promptOverride) delete next.promptOverride;
   return next;
 }
@@ -208,6 +354,7 @@ function withOutfit(outfit: Outfit, patch: Partial<Outfit>): Outfit {
 function withVariant(variant: LocationVariant, patch: Partial<LocationVariant>): LocationVariant {
   const next = { ...variant, ...patch };
   if (!next.artNotes) delete next.artNotes;
+  if (next.seed === undefined) delete next.seed;
   if (!next.promptOverride) delete next.promptOverride;
   return next;
 }

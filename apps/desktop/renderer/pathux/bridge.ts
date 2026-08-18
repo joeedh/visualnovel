@@ -12,6 +12,7 @@ import { resolveEffort, type EffortChoice } from '@vn/types';
 import { api } from '../api.js';
 import type {
   AgentEvent,
+  CommandCheck,
   CommandOutcome,
   Notification,
   NotificationInput,
@@ -81,6 +82,7 @@ export async function refreshWorkspace(): Promise<void> {
   const index = await api.invoke('workspace:index');
   const ui = shell().ui;
   ui.projectTitle = index.title ?? '';
+  ui.projectRoot = index.root ?? '';
   // Errors displace warnings in the badge, so the two are counted apart and the worse one wins.
   ui.errors = index.diagnostics.filter((d) => d.severity === 'error').length;
   ui.warnings = index.diagnostics.length - ui.errors;
@@ -153,6 +155,15 @@ export async function exec(
   if (outcome.ok) wrote(outcome.record.written ?? []);
   if (outcome.ok && outcome.record.mutating) invalidate();
   return outcome;
+}
+
+/**
+ * Ask a command whether it would run, without running it. The same door the palette's form and
+ * the tree's right-click menus use, so a surface that wants the refusal *before* the click gets
+ * the command's own sentence rather than one it invented.
+ */
+export function check(id: string, props: Record<string, PropValue> = {}): Promise<CommandCheck> {
+  return api.invoke('command:check', { id, props });
 }
 
 /**
@@ -235,6 +246,11 @@ export function installBridge(app: ShellApp): void {
       // Nothing said here: whichever command opened it is mutating, so main filed its sentence
       // and pushed it back. This effect is only "re-read the project you are now in".
       void refreshWorkspace();
+    } else if (effect.type === 'busy') {
+      ui.busyWhat = effect.what ?? '';
+      ui.busyRan = effect.ran;
+      ui.busyPending = effect.pending;
+      touch();
     } else if (effect.type === 'view') {
       // The command already said what it meant to do; the mesh answers only when it disagrees,
       // and that answer displaces the optimistic sentence rather than following it.
@@ -250,8 +266,12 @@ export function installBridge(app: ShellApp): void {
       touch();
     } else if (event.type === 'tool') {
       // The agent's half of "the files moved". Nothing else reports it: a tool call is not a
-      // command, so `exec` never sees it and `onInvalidate` never fires.
-      wrote(event.result.written ?? []);
+      // command, so `exec` never sees it. Both feeds fire, because a surface that redraws the whole
+      // workspace — the document tree — watches the coarse one and would otherwise sit on a project
+      // the agent has since added a scene to.
+      const written = event.result.written ?? [];
+      wrote(written);
+      if (written.length > 0) invalidate();
     }
   });
 

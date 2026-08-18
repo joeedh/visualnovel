@@ -66,9 +66,28 @@ export function renderEvent(event: AgentEvent): string | undefined {
       return dim(`  → switched to ${event.mode} mode`);
     case 'blocked':
       return yellow(`  ⊘ ${event.tool} blocked: ${event.reason}`);
+    case 'usage':
+      return undefined; // a receipt is not narration — the REPL prints the running total
     case 'final':
       return undefined; // printed by the REPL as the assistant's reply
   }
+}
+
+/**
+ * The running total, printed under a reply. It counts calls rather than turns — a step the model
+ * had to be asked twice for was billed twice — and says nothing at all until a provider reports
+ * something, because a mock backend and a backend that does not say are both zero.
+ */
+export function renderTokens(input: number, output: number): string | undefined {
+  const total = input + output;
+  if (total === 0) return undefined;
+  const short =
+    total < 1000
+      ? String(total)
+      : total < 1_000_000
+        ? `${(total / 1000).toFixed(1)}k`
+        : `${(total / 1_000_000).toFixed(2)}M`;
+  return dim(`  ${short} tokens this session (${input} in, ${output} out)`);
 }
 
 function renderDecision(decision: PlanDecision): string {

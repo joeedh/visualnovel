@@ -15,6 +15,7 @@ const deps: SessionDeps = {
   requestPlan: () => Promise.resolve({ approved: false }),
   requestAnswer: () => Promise.resolve(''),
   requestConfirm: () => Promise.resolve(false),
+  pushBusy: () => {},
 };
 
 const ROOT = process.platform === 'win32' ? 'C:\\proj' : '/proj';
@@ -170,6 +171,24 @@ describe('buildDocTree', () => {
     expect(kinds[1]!.children!.map((n) => n.label)).toEqual(['bbbbbbbb.png']);
     // An asset is addressed by hash, so no click can route it down the document-opening path.
     expect(kinds[0]!.children![0]!.path).toBeUndefined();
+  });
+
+  it('calls a frame stale rather than accepted once its scene moved on', () => {
+    const base = makeInput();
+    const drifted = buildDocTree({
+      ...base,
+      manifest: base.manifest.map((a) => (a.kind === 'shot_image' ? { ...a, accepted: true } : a)),
+      shots: new Map<string, Shot[] | null>([
+        [
+          'arrival',
+          [scene('arrival', { image: 'b'.repeat(64), proseHash: 'what it used to say' })],
+        ],
+      ]),
+    });
+    const kinds = branch(drifted.roots, 'branch:assets').children!;
+    expect(kinds[1]!.children![0]!.badge).toBe('stale');
+    // The portrait keeps its badge: drift is a fact about a shot, not about everything accepted.
+    expect(kinds[0]!.children![0]!.badge).toBe('accepted');
   });
 
   it('counts what a cap dropped instead of quietly shortening the branch', () => {

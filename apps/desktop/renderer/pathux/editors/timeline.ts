@@ -194,16 +194,26 @@ export class TimelineEditor extends VnEditor {
     this.bar.clear();
     this.bar.label('COVERAGE').style['padding'] = '0px 8px';
 
+    // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
+    // `item[5]` for any row longer than four and would otherwise file the callback under undefined.
     const scenes = this.story?.scenes ?? [];
     const menu: MenuTemplate = scenes.map((s) => [
       `${s.id} · ${s.location}`,
       () => this.openScene(s.id),
       undefined,
+      undefined,
+      `Show the shot coverage of ${s.id}, set in ${s.location}.`,
+      s.id,
     ]) as MenuTemplate;
-    this.bar.menu(this.ui.sceneId || 'scene…', menu);
+    const picker = this.bar.menu(this.ui.sceneId || 'scene…', menu);
+    picker.description = 'Which scene this timeline covers. Every pane follows the choice.';
 
-    this.bar.label(this.summary()).style['padding'] = '0px 8px';
-    this.bar.button('Refresh', () => void this.load());
+    const summary = this.bar.label(this.summary());
+    summary.style['padding'] = '0px 8px';
+    summary.description =
+      'Shots in this scene, lines no shot covers, and shots drawn from prose that has since changed.';
+    const refresh = this.bar.button('Refresh', () => void this.load());
+    refresh.description = 'Re-read the shots and their images from disk.';
     this.bar.flushUpdate();
   }
 
@@ -326,6 +336,7 @@ export class TimelineEditor extends VnEditor {
     if (this.editing === line.id) box.appendChild(this.lineEditor(line));
     else {
       const text = el('div', 'text', line.text);
+      text.title = 'Click to retype this line';
       text.addEventListener('click', () => this.openEditor(line));
       box.appendChild(text);
     }
@@ -344,6 +355,7 @@ export class TimelineEditor extends VnEditor {
     input.value = this.draft;
     input.spellcheck = true;
     input.setAttribute('aria-label', `Retype ${line.id}`);
+    input.title = `Retype ${line.id} — Enter writes it, Escape leaves the line alone`;
     input.addEventListener('input', () => {
       this.draft = input.value;
       sizer.dataset['value'] = this.draft;
@@ -433,6 +445,7 @@ export class TimelineEditor extends VnEditor {
 
     if (last) box.appendChild(this.handle(shotId, 'end'));
 
+    box.title = `${shotId} — click to select it, drag to move it among the other shots`;
     // Not prevented, unlike the handles': a bracket is also the click target that selects a
     // shot, and a grab that never moves must still read as that click.
     box.addEventListener('pointerdown', () => {
@@ -446,10 +459,9 @@ export class TimelineEditor extends VnEditor {
   private handle(shotId: string, edge: Edge): HTMLElement {
     const button = document.createElement('button');
     button.className = `tl-edge ${edge}`;
-    button.setAttribute(
-      'aria-label',
-      `Drag the ${edge === 'start' ? 'first' : 'last'} covered line`,
-    );
+    const which = edge === 'start' ? 'first' : 'last';
+    button.setAttribute('aria-label', `Drag the ${which} covered line`);
+    button.title = `Drag to move the ${which} line this shot covers`;
     button.addEventListener('pointerdown', (event) => {
       // Prevented so it never takes focus off an open editor — which means the drag has to be
       // refused rather than the editor silently committed under it. See `canGrab`.
@@ -503,10 +515,10 @@ export class TimelineEditor extends VnEditor {
 
     const select = document.createElement('select');
     select.className = 'wd-pick';
-    select.setAttribute(
-      'aria-label',
-      `What ${row.character} wears ${row.level === 'scene' ? 'in the scene' : 'in this shot'}`,
-    );
+    const where = row.level === 'scene' ? 'in the scene' : 'in this shot';
+    select.setAttribute('aria-label', `What ${row.character} wears ${where}`);
+    // Changing it re-renders: the outfit is in the shot prompt, unlike every other scene edit.
+    select.title = `Dress ${row.character} ${where}. Every frame they appear in is drawn again.`;
     // The fallback is named in the option itself: "inherit" alone makes the author open the
     // other level to find out what they would be inheriting.
     select.appendChild(option(INHERIT, `inherit — ${sourceLabel(row.inherits)}`));

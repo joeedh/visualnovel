@@ -7,10 +7,12 @@
  * rewires are legal, which silently produce an edge the runner would ignore — and those are
  * exactly what wants a node test rather than an Electron session.
  *
- * It is in `shared/` rather than `main/` because the branch editor runs these *same functions*
- * mid-drag to decide whether a drop would be accepted. The refusal the author reads while
- * dragging is then produced by the code that will run on drop, not by a second copy of the
- * rules that could disagree with it.
+ * It is in this package rather than in the app for the same reason `lineops.ts` is. The branch
+ * editor runs these *same functions* mid-drag, so the refusal an author reads while dragging is
+ * produced by the code that will run on drop — and the agent's `edit_branches` runs them too, so
+ * the one thing it can do after `newScene` says *nothing points at it yet* is the thing the app
+ * would do. A package may not import an app; while these rules were in `apps/desktop/src/shared/`,
+ * the agent could create a scene and then had no way to wire it in.
  */
 import type { Choice, Scene } from '@vn/types';
 import type { SceneMarkerEdit } from '@vn/model';

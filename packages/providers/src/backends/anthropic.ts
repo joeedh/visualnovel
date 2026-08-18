@@ -1,6 +1,13 @@
 import { Buffer } from 'node:buffer';
 import { DEFAULT_EFFORT, resolveEffort, type EffortChoice } from '@vn/types';
-import type { ChatBackend, ChatRequest, ChatToolReply, ToolSchema } from '../backend.js';
+import type {
+  ChatBackend,
+  ChatReply,
+  ChatRequest,
+  ChatToolReply,
+  TokenUsage,
+  ToolSchema,
+} from '../backend.js';
 import { callWithRetry } from './transient.js';
 
 // Room for the answer. Thinking gets more because `max_tokens` caps thinking + text together.
@@ -13,6 +20,19 @@ const MIME: Record<string, string> = {
   jpeg: 'image/jpeg',
   webp: 'image/webp',
 };
+
+/**
+ * What the response says it cost. Cache reads and cache writes are billed input, so they are
+ * input here too; `undefined` when the field is missing rather than zero, so a backend that
+ * stopped reporting shows no total instead of a plausible one that never moves.
+ */
+function usageOf(res: any): TokenUsage | undefined {
+  const u = res?.usage;
+  if (!u) return undefined;
+  const input =
+    (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+  return { input, output: u.output_tokens ?? 0 };
+}
 
 /**
  * Claude vision/text backend (report §8). The SDK is imported lazily so the package is
@@ -53,35 +73,42 @@ export function createAnthropicChat(
     return clientPromise;
   };
 
+  const messageWithUsage = async (req: ChatRequest): Promise<ChatReply> => {
+    const anthropic = await client();
+    const content: any[] = [];
+    for (const img of req.images ?? []) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: MIME[img.ext.toLowerCase()] ?? 'image/png',
+          data: Buffer.from(img.bytes).toString('base64'),
+        },
+      });
+    }
+    content.push({ type: 'text', text: req.prompt });
+    return callWithRetry(`Claude request failed (${modelId})`, async () => {
+      const res = await anthropic.messages.create({
+        model: modelId,
+        system: req.system,
+        messages: [{ role: 'user', content }],
+        ...tuning(),
+      });
+      const text = (res.content ?? [])
+        .filter((b: any) => b.type === 'text')
+        .map((b: any) => b.text)
+        .join('\n') as string;
+      const usage = usageOf(res);
+      return usage ? { text, usage } : { text };
+    });
+  };
+
   return {
     modelId,
-    async message(req: ChatRequest): Promise<string> {
-      const anthropic = await client();
-      const content: any[] = [];
-      for (const img of req.images ?? []) {
-        content.push({
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: MIME[img.ext.toLowerCase()] ?? 'image/png',
-            data: Buffer.from(img.bytes).toString('base64'),
-          },
-        });
-      }
-      content.push({ type: 'text', text: req.prompt });
-      return callWithRetry(`Claude request failed (${modelId})`, async () => {
-        const res = await anthropic.messages.create({
-          model: modelId,
-          system: req.system,
-          messages: [{ role: 'user', content }],
-          ...tuning(),
-        });
-        return (res.content ?? [])
-          .filter((b: any) => b.type === 'text')
-          .map((b: any) => b.text)
-          .join('\n') as string;
-      });
-    },
+    // The text path is the usage path with the receipt dropped, so there is one request builder
+    // and one retry policy rather than two that drift.
+    message: async (req: ChatRequest) => (await messageWithUsage(req)).text,
+    messageWithUsage,
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
       const anthropic = await client();
       const content: any[] = [];
@@ -116,7 +143,7 @@ export function createAnthropicChat(
         const toolCalls = blocks
           .filter((b: any) => b.type === 'tool_use')
           .map((b: any) => ({ id: b.id, name: b.name, args: b.input }));
-        return { text: text || undefined, toolCalls } as ChatToolReply;
+        return { text: text || undefined, toolCalls, usage: usageOf(res) } as ChatToolReply;
       });
     },
   };

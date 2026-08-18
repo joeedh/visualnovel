@@ -3,9 +3,11 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
-import { RecordedChatBackend } from '@vn/providers';
+import { RecordedChatBackend, type ChatBackend } from '@vn/providers';
 import {
   Agent,
+  focusOnScene,
+  type AskChoices,
   StructuredAgentBackend,
   Workspace,
   type Permission,
@@ -100,8 +102,8 @@ function scriptPermission(over: Partial<Permission> = {}): Permission & {
       confirms.push(tool);
       return over.confirmAction ? over.confirmAction(tool, args) : true;
     },
-    async ask(question): Promise<string> {
-      return over.ask ? over.ask(question) : 'ok';
+    async ask(question, choices): Promise<string> {
+      return over.ask ? over.ask(question, choices) : 'ok';
     },
   };
 }
@@ -135,6 +137,120 @@ describe('read-only plan flow', () => {
       const toolEvents = res.events.filter((e) => e.type === 'tool');
       expect(toolEvents).toHaveLength(1);
       expect(toolEvents[0]).toMatchObject({ tool: 'list_workspace' });
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('what the turn cost', () => {
+  it('is one event per model call, before whatever that call decided', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      // Two calls: the tool step and the one that finishes. Each is billed, each is reported.
+      const chat: ChatBackend = {
+        modelId: 'mock-usage',
+        message: () => Promise.reject(new Error('the usage path should be preferred')),
+        messageWithUsage: (() => {
+          const answers = [
+            JSON.stringify({ thought: 'look around', tool: 'list_workspace', args: {} }),
+            JSON.stringify({ final: 'one character.' }),
+          ];
+          let i = 0;
+          return () =>
+            Promise.resolve({
+              text: answers[Math.min(i++, 1)]!,
+              usage: { input: 900, output: 40 },
+            });
+        })(),
+      };
+      const agent = new Agent({
+        backend: new StructuredAgentBackend(chat),
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+      });
+      const res = await agent.run('what is in this project?');
+      expect(res.events.filter((e) => e.type === 'usage')).toEqual([
+        { type: 'usage', input: 900, output: 40 },
+        { type: 'usage', input: 900, output: 40 },
+      ]);
+      // The receipt lands before the step it paid for, so a total never lags the transcript.
+      expect(res.events[0]).toMatchObject({ type: 'usage' });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('says nothing at all when the backend keeps no receipt', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const agent = agentWith(ctx, [JSON.stringify({ final: 'ok' })], scriptPermission());
+      const res = await agent.run('hello');
+      expect(res.events.some((e) => e.type === 'usage')).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('what the host knew when the turn started', () => {
+  /** Run one turn and hand back every prompt the model was actually sent. */
+  async function promptsFor(ctx: ToolContext, focus?: string): Promise<string[]> {
+    const prompts: string[] = [];
+    const chat = new RecordedChatBackend('mock', (req) => {
+      prompts.push(req.prompt);
+      return JSON.stringify({ final: 'ok' });
+    });
+    const agent = new Agent({
+      backend: new StructuredAgentBackend(chat),
+      ctx,
+      permission: scriptPermission(),
+      system: 'SYS',
+    });
+    await agent.run('rewrite the last line', focus);
+    return prompts;
+  }
+
+  it('files the focus as its own labelled message, ahead of what was asked', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const [prompt] = await promptsFor(ctx, 'The author is looking at scene "arrival".');
+      expect(prompt).toContain('CONTEXT: The author is looking at scene "arrival".');
+      // Ahead of it, so "the last line" is read with the scene already in hand.
+      expect(prompt!.indexOf('CONTEXT:')).toBeLessThan(prompt!.indexOf('USER:'));
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('adds nothing when the host knew nothing', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const [prompt] = await promptsFor(ctx);
+      expect(prompt).not.toContain('CONTEXT:');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('focusOnScene names the scene, its cast and the file it is in', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const focus = focusOnScene(await ctx.workspace.index(), 'arrival');
+      expect(focus).toContain('scene "arrival"');
+      expect(focus).toContain('location classroom');
+      expect(focus).toContain('cast aiko');
+      expect(focus).toContain('scenes/arrival.md');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('focusOnScene says nothing about a scene the project does not have', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      expect(focusOnScene(await ctx.workspace.index(), 'deleted-yesterday')).toBeUndefined();
     } finally {
       await cleanup();
     }
@@ -345,6 +461,95 @@ describe('ask_user', () => {
       );
       const res = await agent.run('rename the lead');
       expect(res.final).toBe('Got it.');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('ask_choice', () => {
+  /**
+   * Run one `ask_choice` turn. Reports what the permission host was offered, and the prompt the
+   * *next* step was built from — which is where a control tool's observation shows up, there being
+   * no `tool` event for one.
+   */
+  async function askWith(
+    ctx: ToolContext,
+    args: unknown,
+    reply = 'ok',
+  ): Promise<{ asked: [string, AskChoices | undefined][]; observed: string }> {
+    const asked: [string, AskChoices | undefined][] = [];
+    const permission = scriptPermission({
+      ask: (question, choices) => {
+        asked.push([question, choices]);
+        return Promise.resolve(reply);
+      },
+    });
+    const prompts: string[] = [];
+    const chat = new RecordedChatBackend('mock', (req, call) => {
+      prompts.push(req.prompt);
+      return call === 0
+        ? JSON.stringify({ tool: 'ask_choice', args })
+        : JSON.stringify({ final: 'done' });
+    });
+    const agent = new Agent({
+      backend: new StructuredAgentBackend(chat),
+      ctx,
+      permission,
+      system: 'SYS',
+    });
+    await agent.run('what should she wear?');
+    return { asked, observed: prompts[1] ?? '' };
+  }
+
+  it('hands the shortlist to the host beside the question', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const { asked } = await askWith(ctx, {
+        question: 'Which outfit?',
+        choices: ['uniform', 'track'],
+      });
+      expect(asked).toEqual([['Which outfit?', { options: ['uniform', 'track'], multi: false }]]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('passes multi through, so a host knows whether more than one may be picked', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const { asked } = await askWith(ctx, {
+        question: 'Which scenes?',
+        choices: ['arrival', 'greet', 'ending'],
+        multi: true,
+      });
+      expect(asked[0]?.[1]?.multi).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses a shortlist of one rather than asking a leading question', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const { asked, observed } = await askWith(ctx, { question: 'Sure?', choices: ['yes'] });
+      expect(asked).toHaveLength(0);
+      expect(observed).toContain('at least two "choices"');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('feeds back whatever the author said, whether it was on the list or not', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const said = 'None of those — let us talk it through before I pick.';
+      const { observed } = await askWith(
+        ctx,
+        { question: 'Which outfit?', choices: ['uniform', 'track'] },
+        said,
+      );
+      expect(observed).toContain(`OBSERVATION: User answered: ${said}`);
     } finally {
       await cleanup();
     }

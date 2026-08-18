@@ -201,9 +201,11 @@
   caret-color: var(--sodium);
   outline: none;
 }
+/* Paper, like the script column: the italic is what says narration, and the same line has to look
+   the same in both rooms. */
 .tl-line.narration .text,
 .tl-line.lyric .text {
-  color: var(--mist);
+  color: var(--paper);
   font-style: italic;
 }
 .tl-line.parenthetical .text {

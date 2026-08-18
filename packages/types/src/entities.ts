@@ -47,6 +47,8 @@ export interface Outfit {
   description: string;
   /** Art direction for this outfit alone — see {@link Character.artNotes}. */
   artNotes?: string;
+  /** Image seed for this outfit's sheets — see {@link Character.seed}. */
+  seed?: number;
   /**
    * Override of this outfit's derived model-sheet prompt. The angle is recorded only on the task,
    * never on a rung, so one override covers all four angles of the sheet — surfaces say so.
@@ -77,6 +79,15 @@ export interface Character {
    */
   artNotes?: string;
   /**
+   * The image seed every prompt this character reaches is drawn with, overriding
+   * `config.image_params.seed`. In {@link ImageParams}, so it is in the task hash: setting one
+   * re-keys what it reaches and the next run redraws exactly that. A seed is a dice roll rather
+   * than art direction — it is how an author asks for *a different picture of the same words*,
+   * which is the one thing {@link artNotes} cannot say. `@vn/artgen`'s `seedFor` is the only
+   * place the narrowest-rung-wins chain is written down.
+   */
+  seed?: number;
+  /**
    * Override of this character's derived **portrait** prompt — the one picture this rung names.
    * A sheet's override lives on its {@link Outfit}, which is the rung that names that picture.
    */
@@ -92,6 +103,8 @@ export interface LocationVariant {
   description: string;
   /** Art direction for this variant alone — see {@link Character.artNotes}. */
   artNotes?: string;
+  /** Image seed for this variant's plate — see {@link Character.seed}. */
+  seed?: number;
   /** Override of this variant's derived plate prompt — the one picture this rung names. */
   promptOverride?: PromptOverride;
   /** Establishing/reference image once generated. */
@@ -109,6 +122,8 @@ export interface Location {
   variants: LocationVariant[];
   /** Art direction for every plate of this location — see {@link Character.artNotes}. */
   artNotes?: string;
+  /** Image seed for every plate of this location — see {@link Character.seed}. */
+  seed?: number;
   /** True when mined from the screenplay rather than user-authored. */
   mined: boolean;
 }
@@ -178,6 +193,8 @@ export interface Shot {
   /** Art direction for this frame alone — see {@link Character.artNotes}. Authored, like
    * {@link camera}, and in the prompt, so editing it re-renders this shot and nothing else. */
   artNotes?: string;
+  /** Image seed for this frame alone — see {@link Character.seed}. Authored, like {@link artNotes}. */
+  seed?: number;
   /** Override of this frame's derived prompt. Authored, like {@link artNotes}. */
   promptOverride?: PromptOverride;
   /** Dialogue line ids this shot covers. */

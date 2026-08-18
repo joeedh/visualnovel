@@ -17,13 +17,14 @@ import type { CatalogEntry, PropValue } from '../../src/shared/ipc.js';
 import { shell } from './bridge.js';
 import { CommandForm } from './commandform.js';
 import { paragraph } from './paragraph.js';
+import { INSET, onPopupClosed, popupLeft, stylePopup } from './popup.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
 
 const WIDTH = 620;
 /** What prose may fill, leaving the popup's own inset either side. */
-const PROSE = WIDTH - 24;
+const PROSE = WIDTH - INSET;
 const TOP = 56;
 
 let open: Palette | undefined;
@@ -41,18 +42,16 @@ class Palette {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the palette on');
 
-    const x = Math.max(8, Math.round(screen.size[0] / 2 - WIDTH / 2));
+    const x = popupLeft(screen, WIDTH);
     this.popup = screen.popup(screen as unknown as UIBase, x, TOP, false) as Popup;
-    this.popup.style['width'] = `${WIDTH}px`;
+    stylePopup(this.popup, screen, WIDTH, TOP);
 
-    // Escape and a click outside both go straight to the popup's own `end`, so the module's
-    // idea of what is open has to hang off that rather than off `closePalette`.
-    const end = this.popup.end.bind(this.popup);
-    this.popup.end = () => {
+    // Escape and a click outside never reach `closePalette`, so the module's idea of what is
+    // open hangs off the popup actually going away.
+    onPopupClosed(this.popup, () => {
       open = undefined;
       this.form?.detach();
-      end();
-    };
+    });
 
     const col = this.popup.col();
     const search = col.row();
@@ -61,7 +60,12 @@ class Palette {
       this.query = String(text);
       this.renderList();
     });
-    box.style['width'] = `${WIDTH - 60}px`;
+    // Relative, not `WIDTH - 60`: the popup is capped to the window, so a fixed box is what
+    // pushed the search field out past the border on a narrow screen. The 8px is the `›` beside
+    // it, so the field ends on the popup's padding rather than short of it.
+    box.style['width'] = 'calc(100% - 8px)';
+    box.style['maxWidth'] = '100%';
+    box.description = 'Narrow the list. Every word you type has to appear in the id or the title.';
 
     this.listCol = col.col();
     this.listCol.style['overflowY'] = 'auto';

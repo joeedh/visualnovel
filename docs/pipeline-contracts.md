@@ -265,7 +265,7 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
   runs in `prompt.addRef`'s precondition and refuses with the whole path named. Hashes cannot cycle
   today, but bindings can, and a cycle in this graph does not error at run time — it leaves tasks
   that are never ready, which reads as a run that quietly does nothing.
-- **No edit to a scene invalidates art — which is why drift has to be reported.**
+- **No edit to a scene's _prose_ invalidates art — which is why drift has to be reported.**
   `buildShotPrompt` reads neither `coversLines` nor line text (prose reaches only the P7 reviewer
   spec, which never enters a task's `inputs`), so retyping a covered line rehashes nothing and
   re-renders nothing: the frame goes on illustrating words the scene no longer contains, and by
@@ -283,6 +283,22 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
   the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it —
   see [`desktop-app.md`](desktop-app.md#coverage-timeline-floor). Plan:
   [`plans/line-editing-in-floor.md`](plans/line-editing-in-floor.md).
+- **A scene's heading is the one scene edit that _does_ invalidate art, and it is priced before it
+  runs.** A location reaches a shot's task inputs twice — `buildShotPrompt` bakes `location.name`
+  into the prompt, and the plate asset's hash leads the shot's `refs` — so rewriting a heading
+  rehashes every shot in the scene and the next run **re-renders** them rather than reporting drift.
+  That is the exact inverse of the contract above, so `ShotFallout` counts it separately: `restaged`,
+  never folded into `drifted`. `setHeading` (`packages/scriptedit/src/lineops.ts`) is where it lives
+  — the heading is not a `SceneLine` but `location` + `locationVariant` + `headingPrefix`, which
+  `headingOf` reassembles and `parseHeading` reads back, so no line id moves and no coverage changes.
+  It also **restages every shot in the scene** onto the new heading's variant, through the `relocated`
+  channel on `LineOp`: `Shot.location` is a variant id persisted in `work/shots/<sceneId>.json`
+  (which wins forever once written), and the planner's `locationTask(…, shot.location, …)` `continue`s
+  past a shot whose variant the new location does not declare — skipping it in silence, permanently.
+  What nothing here can fix is the prose, which still describes the old place; the op's own message
+  says so and names the agent. Surfaces show the cost rather than confirming it: `story.setHeading`
+  is deliberately not `confirm: true`, because a confirm command is never checked and the check
+  **is** the warning.
 - **Line ids are allocated and written down, and reading never writes.** `Shot.coversLines`
   binds art to `${sceneId}:L<n>`, so an id derived from position silently re-points every shot
   below an inserted line — money spent, nothing reported. `splitScenes` therefore prefers a

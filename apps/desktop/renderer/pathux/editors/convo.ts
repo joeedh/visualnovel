@@ -1,8 +1,8 @@
 import { Menu, createMenu, startMenu } from 'pathux';
-import type { Button, Container, MenuTemplate, MenuTemplateCustom } from 'pathux';
+import type { Button, Container, Label, MenuTemplate, MenuTemplateCustom } from 'pathux';
 import { TEXT_MODELS, effortChoicesFor, effortLabel } from '@vn/types';
 import { allow, answer, ask, convo, decide, revision, takeSeed } from '../agent.js';
-import { exec, setEffort, setModel, toggleMode } from '../bridge.js';
+import { exec, report, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 import STUDIO_CSS from '../../styles/studio.css?inline';
@@ -32,6 +32,23 @@ const SURFACE_CSS = `
 }
 .cv-surface button { font-family: inherit; color: inherit; cursor: pointer; }
 .cv-surface .composer .send:disabled { opacity: 0.45; cursor: default; }
+
+/* Stop takes Send's shape and stands where the eye is already going, but only while a turn is in
+   flight — an idle composer has nothing to interrupt, and a permanently greyed square would say
+   otherwise. Vermilion, the one colour this shell spends on stopping things. */
+.cv-surface .composer .stop {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-soft);
+  border: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+  place-items: center;
+  color: var(--vermilion);
+  font-size: 13px;
+}
+.cv-surface .composer .stop:hover {
+  border-color: var(--vermilion);
+}
 
 /* A plan is the machine proposing, so it is signal. A question and a confirmation are the
    author's own turn to take — sodium, the same warm the header uses for the human side. */
@@ -82,6 +99,31 @@ const SURFACE_CSS = `
   color: var(--paper);
   border-color: var(--sodium);
 }
+
+/* The shortlist on an ask card. Full-width rows rather than chips: these are answers, and an
+   answer is read before it is clicked, so it gets a line of its own. */
+.cv-surface .ask-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.cv-surface .ask-choices button {
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-size: 13.5px;
+  padding: 9px 13px;
+  text-align: left;
+}
+.cv-surface .ask-choices button:hover {
+  border-color: var(--sodium);
+}
+.cv-surface .ask-choices button.picked {
+  border-color: var(--sodium);
+  background: rgba(244, 162, 76, 0.12);
+}
 `;
 
 /**
@@ -109,12 +151,19 @@ export class ConvoEditor extends VnEditor {
    */
   private input!: HTMLInputElement;
   private sendBtn!: HTMLButtonElement;
+  /** Shown only while a turn is in flight; `agent.stop` refuses an idle agent by name anyway. */
+  private stopBtn!: HTMLButtonElement;
   /** The one word said while a turn is in flight; a CSS animation does the rest. */
   private workingEl!: HTMLDivElement;
   /** Where `Convo.suggestions` are drawn. Empty for every conversation nobody seeded. */
   private chipsEl!: HTMLDivElement;
   /** Kept because the thread menu opens under it, and only the button knows where that is. */
   private threadsBtn!: Button;
+  /**
+   * The running token total. Retitled in place rather than keyed into {@link stateKey}: a step
+   * finishing would otherwise rebuild the whole bar mid-turn, closing any menu open over it.
+   */
+  private tokensLbl?: Label;
   private drawn = -1;
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
@@ -122,6 +171,8 @@ export class ConvoEditor extends VnEditor {
   private focusedAsk = -1;
   /** What the question box holds. The transcript is rebuilt wholesale; the half-typed answer isn't. */
   private askDraft = '';
+  /** Which of a multi-pick question's choices are ticked. Same reason: a redraw must not clear it. */
+  private askPicked: string[] = [];
 
   static override define() {
     return {
@@ -171,14 +222,27 @@ export class ConvoEditor extends VnEditor {
 
     this.bar.clear();
     this.bar.label('VNAUTHOR').style['padding'] = '0px 8px';
-    this.bar.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => void toggleMode());
+    const mode = this.bar.button(
+      ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE',
+      () => void toggleMode(),
+    );
+    mode.description =
+      ui.agentMode === 'plan'
+        ? 'Plan mode: the agent reads and proposes, and edits nothing. Click to let it edit.'
+        : 'Execute mode: the agent edits files. Click to go back to reading only.';
 
+    // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
+    // `item[5]` for any row longer than four and would otherwise file the callback under undefined.
     const models: MenuTemplate = TEXT_MODELS.map((id) => [
       id,
       () => void setModel(id),
       undefined,
+      undefined,
+      `Answer with ${id} from the next turn on.`,
+      id,
     ]) as MenuTemplate;
-    this.bar.menu(ui.model || 'model…', models);
+    const model = this.bar.menu(ui.model || 'model…', models);
+    model.description = 'Which model answers. Switching takes effect on the next turn.';
 
     // Only what this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable thinks
     // unconditionally, so it is never offered `no thinking`.
@@ -187,6 +251,9 @@ export class ConvoEditor extends VnEditor {
       effortLabel(choice),
       () => void setEffort(choice),
       undefined,
+      undefined,
+      `Think at ${effortLabel(choice)} from the next turn on.`,
+      choice,
     ]) as MenuTemplate;
     const effort = this.bar.menu(`effort: ${effortLabel(ui.effort)}`, efforts);
     effort.description = 'How hard the model thinks before answering. Higher costs more.';
@@ -197,14 +264,37 @@ export class ConvoEditor extends VnEditor {
       effort.description = `${ui.model || 'this model'} has no reasoning-effort setting.`;
     }
 
+    this.tokensLbl = this.bar.label('');
+    this.tokensLbl.setCSSAfter(() => (this.tokensLbl!.style['padding'] = '0px 8px'));
+    this.sayTokens();
+
     this.threadsBtn = this.bar.button('Threads', () => void this.showThreads());
     this.threadsBtn.description =
       'Saved conversations. Reopening one is read-only — the agent is not shown it.';
 
     // Through the registry: the transcript follows `agent.clear` itself, so clearing from here
     // and clearing from the palette are one act with one record.
-    this.bar.button('Clear', () => void exec('agent.clear'));
+    const clear = this.bar.button('Clear', () => void exec('agent.clear'));
+    clear.description =
+      'Forget this conversation and start again in plan mode. The thread stays saved.';
     this.bar.flushUpdate();
+  }
+
+  /**
+   * The running total, the way a terminal agent shows one: what has been spent on this
+   * conversation, not on this turn. It reads `—` until a provider reports something, because a
+   * mock backend and a backend that does not say are both `0`, and `0` would look like a bug.
+   */
+  private sayTokens(): void {
+    if (!this.tokensLbl) return;
+    const { input, output } = convo().tokens;
+    const total = input + output;
+    this.tokensLbl.text = total === 0 ? 'tokens —' : `tokens ${compact(total)}`;
+    this.tokensLbl.description =
+      total === 0
+        ? 'What this conversation has cost so far. Nothing counted yet.'
+        : `${input.toLocaleString()} in, ${output.toLocaleString()} out, this conversation. ` +
+          'Retried steps are counted every time. Clearing the conversation resets it.';
   }
 
   /**
@@ -233,7 +323,14 @@ export class ConvoEditor extends VnEditor {
       thread.id,
     ]);
     if (rows.length === 0)
-      rows.push(['(nothing saved yet)', () => {}, undefined, undefined, '', 'none']);
+      rows.push([
+        '(nothing saved yet)',
+        () => {},
+        undefined,
+        undefined,
+        'A conversation is saved once you have said something in it.',
+        'none',
+      ]);
 
     const templ: MenuTemplate = [
       ...rows,
@@ -274,6 +371,7 @@ export class ConvoEditor extends VnEditor {
     this.input = document.createElement('input');
     this.input.name = 'composer';
     this.input.placeholder = 'Reply to vnauthor, or ask for a change…';
+    this.input.title = 'Say what you want changed. Enter sends it; the agent answers with a plan.';
     // The shell keymap is a bubble-phase window listener, so a composer that does not stop its
     // own keys opens the palette on the first `/` the author types.
     this.input.addEventListener('keydown', (event) => {
@@ -285,16 +383,26 @@ export class ConvoEditor extends VnEditor {
     const slash = document.createElement('button');
     slash.className = 'cmdbtn';
     slash.textContent = '/';
-    slash.title = 'Commands & skills (/)';
+    slash.title = 'Open the palette and run a command by name (/)';
     slash.addEventListener('click', () => openPalette());
     composer.appendChild(slash);
 
     this.sendBtn = document.createElement('button');
     this.sendBtn.className = 'send';
     this.sendBtn.textContent = '↑';
-    this.sendBtn.title = 'Send';
+    this.sendBtn.title = 'Send what is in the box to the agent';
     this.sendBtn.addEventListener('click', () => this.send());
     composer.appendChild(this.sendBtn);
+
+    // Through the registry like everything else, so interrupting from here and interrupting from
+    // the palette are one act with one record — and the refusal, if the turn ended in the
+    // meantime, is the command's own sentence.
+    this.stopBtn = document.createElement('button');
+    this.stopBtn.className = 'stop';
+    this.stopBtn.textContent = '■';
+    this.stopBtn.title = 'Stop the agent after the step it is on. What it already did is kept.';
+    this.stopBtn.addEventListener('click', () => void exec('agent.stop').then(report));
+    composer.appendChild(this.stopBtn);
 
     stage.appendChild(composer);
     return stage;
@@ -316,7 +424,9 @@ export class ConvoEditor extends VnEditor {
     const state = convo();
 
     this.lineEl.textContent = state.line;
+    this.sayTokens();
     this.sendBtn.disabled = state.busy;
+    this.stopBtn.style.display = state.busy ? 'grid' : 'none';
     this.workingEl.style.display = state.busy ? 'block' : 'none';
     this.drawChips(state.suggestions);
 
@@ -351,6 +461,7 @@ export class ConvoEditor extends VnEditor {
     for (const text of suggestions) {
       const chip = document.createElement('button');
       chip.textContent = text;
+      chip.title = 'Put this in the composer to edit before you send it — clicking sends nothing.';
       chip.addEventListener('click', () => {
         this.input.value = text;
         this.input.focus();
@@ -392,18 +503,33 @@ export class ConvoEditor extends VnEditor {
     body.appendChild(steps);
 
     const acts = el('div', 'plan-acts');
-    acts.appendChild(this.decideBtn('Reject', 'btn', false));
-    acts.appendChild(this.decideBtn('Approve →', 'btn primary', true));
+    acts.appendChild(
+      this.decideBtn(
+        'Reject',
+        'btn',
+        false,
+        'Turn this plan down. Nothing is written; say why next.',
+      ),
+    );
+    acts.appendChild(
+      this.decideBtn(
+        'Approve →',
+        'btn primary',
+        true,
+        'Let the agent carry the plan out and commit it.',
+      ),
+    );
     body.appendChild(acts);
 
     card.appendChild(body);
     return card;
   }
 
-  private decideBtn(label: string, className: string, approved: boolean): HTMLElement {
+  private decideBtn(label: string, className: string, approved: boolean, tip: string): HTMLElement {
     const button = document.createElement('button');
     button.className = className;
     button.textContent = label;
+    button.title = tip;
     button.addEventListener('click', () => void decide(approved));
     return button;
   }
@@ -420,9 +546,17 @@ export class ConvoEditor extends VnEditor {
     const body = el('div', 'plan-body');
     body.appendChild(el('div', 'plan-sum', request.question));
 
+    const choices = request.choices ?? [];
+    const first = choices.length ? this.drawChoices(body, choices, request.multi === true) : null;
+
     const field = document.createElement('input');
     field.className = 'ask-input';
-    field.placeholder = 'Answer, or press Enter to say nothing…';
+    field.placeholder = choices.length
+      ? 'Or type an answer of your own…'
+      : 'Answer, or press Enter to say nothing…';
+    field.title = choices.length
+      ? 'Answer in your own words instead of picking from the list.'
+      : 'Answer the question. Sending an empty box says you have nothing to add.';
     field.value = this.askDraft;
     field.addEventListener('input', () => (this.askDraft = field.value));
     field.addEventListener('keydown', (event) => {
@@ -435,22 +569,78 @@ export class ConvoEditor extends VnEditor {
     const send = document.createElement('button');
     send.className = 'btn primary';
     send.textContent = 'Answer →';
+    send.title = choices.length
+      ? 'Send what you picked, plus anything you typed.'
+      : 'Send this answer and let the agent carry on.';
     send.addEventListener('click', () => this.reply());
     acts.appendChild(send);
+    if (choices.length) acts.appendChild(this.chatButton());
     body.appendChild(acts);
 
     card.appendChild(body);
     if (this.focusedAsk !== request.id) {
       this.focusedAsk = request.id;
-      // The card is not in the document until `rebuild` has appended it.
-      queueMicrotask(() => field.focus());
+      // The card is not in the document until `rebuild` has appended it. With a list, the list is
+      // what the author came to read, so the caret starts there rather than in the box.
+      queueMicrotask(() => (first ?? field).focus());
     }
     return card;
   }
 
+  /**
+   * The shortlist. One pick answers on the click — there is nothing else to say — while a
+   * multi-pick toggles and waits for **Answer →**, because the second choice is the whole point.
+   *
+   * Returns the first row so the card can start the focus there.
+   */
+  private drawChoices(body: HTMLElement, choices: string[], multi: boolean): HTMLButtonElement {
+    const list = el('div', 'ask-choices');
+    const rows = choices.map((choice) => {
+      const row = document.createElement('button');
+      row.textContent = choice;
+      row.title = multi
+        ? `Include “${choice}” in your answer. Pick as many as apply.`
+        : `Answer “${choice}”.`;
+      if (multi && this.askPicked.includes(choice)) row.classList.add('picked');
+      row.addEventListener('click', () => {
+        if (!multi) return this.sendAnswer(choice);
+        this.askPicked = this.askPicked.includes(choice)
+          ? this.askPicked.filter((c) => c !== choice)
+          : [...this.askPicked, choice];
+        row.classList.toggle('picked');
+      });
+      list.appendChild(row);
+      return row;
+    });
+    body.appendChild(list);
+    return rows[0]!;
+  }
+
+  /**
+   * The way out of a list that does not have the answer on it. It **answers** rather than
+   * dismissing the card: the turn is parked on this reply, so a card that closed without one
+   * would hang. What it sends is the author's own position, and the transcript shows it as theirs.
+   */
+  private chatButton(): HTMLButtonElement {
+    const chat = document.createElement('button');
+    chat.className = 'btn';
+    chat.textContent = 'Chat about this';
+    chat.title = 'Answer that you would rather talk it through than pick from the list.';
+    chat.addEventListener('click', () =>
+      this.sendAnswer('None of those — let us talk it through before I pick.'),
+    );
+    return chat;
+  }
+
+  /** What **Answer →** sends: the picks, then anything typed beside them. */
   private reply(): void {
-    const text = this.askDraft;
+    const typed = this.askDraft.trim();
+    this.sendAnswer([...this.askPicked, ...(typed ? [typed] : [])].join(', '));
+  }
+
+  private sendAnswer(text: string): void {
     this.askDraft = '';
+    this.askPicked = [];
     answer(text);
   }
 
@@ -467,21 +657,38 @@ export class ConvoEditor extends VnEditor {
     body.appendChild(el('div', 'plan-sum', request.detail));
 
     const acts = el('div', 'plan-acts');
-    acts.appendChild(this.allowBtn('Deny', 'btn', false));
-    acts.appendChild(this.allowBtn('Allow →', 'btn primary', true));
+    acts.appendChild(
+      this.allowBtn(
+        'Deny',
+        'btn',
+        false,
+        `Refuse ${request.tool}. The agent is told and carries on.`,
+      ),
+    );
+    acts.appendChild(
+      this.allowBtn('Allow →', 'btn primary', true, `Let ${request.tool} go ahead, this once.`),
+    );
     body.appendChild(acts);
 
     card.appendChild(body);
     return card;
   }
 
-  private allowBtn(label: string, className: string, allowed: boolean): HTMLElement {
+  private allowBtn(label: string, className: string, allowed: boolean, tip: string): HTMLElement {
     const button = document.createElement('button');
     button.className = className;
     button.textContent = label;
+    button.title = tip;
     button.addEventListener('click', () => allow(allowed));
     return button;
   }
+}
+
+/** A token count at a glance: `842`, `12.3k`, `1.4M`. The exact figures are in the tooltip. */
+function compact(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(2)}M`;
 }
 
 function el(tag: string, className: string, text?: string): HTMLElement {

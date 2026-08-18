@@ -29,6 +29,13 @@ export interface MenuEntry {
    * refusal that would earn is about the blank the author is on their way to filling in.
    */
   form?: boolean;
+  /**
+   * A refusal the surface already knows, drawn exactly as a checked one and never run. For an act
+   * whose precondition is about *what the entry would name* rather than about the project: a line
+   * no shot covers has no asset to open, and there is no id to ask a command about. Not a licence
+   * to pre-judge what `check` would say — a command that can answer is asked.
+   */
+  refused?: string;
 }
 
 /** One item as it will be drawn: what it says, whether clicking it acts, and the sentence behind. */
@@ -39,7 +46,10 @@ export interface ResolvedEntry {
   separator: boolean;
   /** False only for a declared refusal. `undeclared` is not permission, but it is not a refusal. */
   enabled: boolean;
-  /** The command's own sentence, or `''` where it stated none. */
+  /**
+   * The row's tooltip: a refusal is its own sentence, and everything else falls back to what the
+   * registry says the command does. `''` only where neither exists.
+   */
   message: string;
 }
 
@@ -48,7 +58,7 @@ const REFUSED = '⃠ ';
 
 /** Whether `check` is worth asking for this entry, which is also what gives the verdict its slot. */
 export function needsCheck(entry: MenuEntry): boolean {
-  return entry.id !== MENU_SEP && !entry.form;
+  return entry.id !== MENU_SEP && !entry.form && entry.refused === undefined;
 }
 
 /**
@@ -59,14 +69,29 @@ export function needsCheck(entry: MenuEntry): boolean {
  * A refusal is **shown**, not hidden: path.ux's menu template has no per-item disabled state, and
  * hiding the option would leave the author guessing why the one they remember is gone. The refusal
  * sentence is the whole value of `check`, and it should reach the surface that asked.
+ *
+ * `describes` maps a command id to what the registry says it does. It is the tooltip of every row
+ * that has no refusal to state — a right-click entry is a command, so a vague one is fixed in the
+ * definition rather than written out again here.
  */
 export function entriesWithVerdicts(
   entries: readonly MenuEntry[],
   verdicts: readonly (CommandCheck | undefined)[],
+  describes: Readonly<Record<string, string>> = {},
 ): ResolvedEntry[] {
   return entries.map((entry, index) => {
     if (entry.id === MENU_SEP) {
       return { entry, label: entry.label, separator: true, enabled: false, message: '' };
+    }
+    const says = describes[entry.id] ?? '';
+    if (entry.refused !== undefined) {
+      return {
+        entry,
+        label: `${REFUSED}${entry.label}`,
+        separator: false,
+        enabled: false,
+        message: entry.refused,
+      };
     }
     const check = verdicts[index];
     const refused = check?.state === 'refuse';
@@ -75,7 +100,7 @@ export function entriesWithVerdicts(
       label: refused ? `${REFUSED}${entry.label}` : entry.label,
       separator: false,
       enabled: !refused,
-      message: check && check.state !== 'undeclared' ? check.message : '',
+      message: check && check.state !== 'undeclared' && check.message ? check.message : says,
     };
   });
 }

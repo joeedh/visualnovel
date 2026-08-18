@@ -14,7 +14,9 @@ import {
   setSceneOutfit,
   setShotOutfit,
   wardrobesOf,
+  type BranchOp,
   type LineOp,
+  type SceneMap,
   type SceneOutfitOp,
   type ScriptState,
   type ShotOutfitOp,
@@ -23,7 +25,7 @@ import { sourcesOf, type SceneEditInput, type SceneSource } from '@vn/scriptedit
 import { loadConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
 import { exists, readText, VnError, writeFileAtomic } from '@vn/util';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import type { BaseAssets, CharacterStatus, Diagnostic, ProjectModel } from '@vn/types';
 import {
   countsOf,
@@ -299,6 +301,19 @@ export class Workspace {
   }
 
   /**
+   * A rewire decided against the scenes as they load, plus the files its patch would target.
+   * `decide` is passed in rather than the edits for the reason `session.editBranches` takes one:
+   * the decision and the patch must see the same load, or the rule answers about a graph the
+   * writer is no longer editing.
+   */
+  async branchEdit(
+    decide: (scenes: SceneMap) => BranchOp,
+  ): Promise<{ op: BranchOp; sources: SceneSource[] }> {
+    const { model, inputs } = await this.load();
+    return { op: decide(model.scenes), sources: sourcesOf(inputs) };
+  }
+
+  /**
    * The scene-marker outfit rule, plus the files its patch would target — off one load, for the
    * same reason {@link sceneEditInput} is: the marker is spliced into the bytes the rule read.
    * Same shape as the desktop's `session.sceneOutfitRule`, deliberately.
@@ -357,20 +372,53 @@ export class Workspace {
   }
 }
 
-/** Render an index as a compact human/agent-readable summary. */
+/**
+ * What the author had open, as the one sentence a turn's `context` message carries.
+ *
+ * Resolved against the index rather than passed through, so a scene id nothing knows about — a
+ * stale selection, a scene deleted since — says **nothing** instead of asserting a scene that is
+ * not there. A host with no selection and a host with a bad one therefore look the same, which is
+ * the honest answer in both cases.
+ */
+export function focusOnScene(index: WorkspaceIndex, sceneId: string): string | undefined {
+  const scene = index.scenes.find((s) => s.id === sceneId);
+  if (!scene) return undefined;
+  const cast = scene.characters.length ? `cast ${scene.characters.join(', ')}` : 'no cast';
+  const file = scene.file ? ` in ${relative(index.root, scene.file).split(sep).join('/')}` : '';
+  return (
+    `The author is looking at scene "${scene.id}" (location ${scene.location}; ${cast})${file}. ` +
+    'Read it before answering anything about "this scene", "here", or "the current scene" — those ' +
+    'mean that one unless they name another.'
+  );
+}
+
+/**
+ * Render an index as a compact human/agent-readable summary.
+ *
+ * Every row that has a sheet **names it**. Without that, authoring `locations/rooftop.md` for a
+ * place the screenplay already mentions changed nothing on screen — `mergeMinedLocations` keys on
+ * the same slug, so the row was converted rather than added, and the only visible difference was
+ * a dropped `(mined)`. To a model re-reading its own transcript that is indistinguishable from the
+ * tool not having noticed the write. The file is the proof that it did.
+ */
 export function formatIndex(index: WorkspaceIndex): string {
+  const at = (file: string | undefined): string =>
+    file ? ` — ${relative(index.root, file).split(sep).join('/')}` : '';
   const lines = [`# ${index.title}`, ''];
   lines.push(`Characters (${index.characters.length}):`);
-  for (const c of index.characters) lines.push(`  - ${c.id} "${c.name}" [${c.status}]`);
+  for (const c of index.characters)
+    lines.push(`  - ${c.id} "${c.name}" [${c.status}]${at(c.file)}`);
   lines.push(`Locations (${index.locations.length}):`);
   for (const l of index.locations)
-    lines.push(`  - ${l.id} "${l.name}"${l.mined ? ' (mined)' : ''}`);
+    lines.push(
+      `  - ${l.id} "${l.name}"${l.file ? at(l.file) : ' (mined from the screenplay — no sheet yet)'}`,
+    );
   lines.push(`Scenes (${index.scenes.length}):`);
   for (const s of index.scenes) {
     const flags = [s.reachable ? '' : 'unreachable', s.choices ? `${s.choices} choices` : '']
       .filter(Boolean)
       .join(', ');
-    lines.push(`  - ${s.id} @${s.location}${flags ? ` (${flags})` : ''}`);
+    lines.push(`  - ${s.id} @${s.location}${flags ? ` (${flags})` : ''}${at(s.file)}`);
   }
   if (index.bibleFiles > 0)
     lines.push(

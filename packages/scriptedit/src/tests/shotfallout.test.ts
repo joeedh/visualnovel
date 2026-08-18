@@ -7,6 +7,7 @@ import {
   insertLine,
   mergeScene,
   moveLine,
+  setHeading,
   setLineText,
   splitScene,
   type AppliedLineOp,
@@ -264,6 +265,43 @@ describe('an edit with no coverage consequence', () => {
     const out = shotFallout(split(), stored({}));
     expect(out.writes.size).toBe(0);
     expect(out.removes).toEqual([]);
+    expect(out.note).toBe('');
+  });
+});
+
+describe('a scene that changed place', () => {
+  const moved = () =>
+    applied(setHeading(state(), { scene: 'arrival', heading: 'EXT. PIER - DAWN' }));
+
+  it('restages every shot onto the new variant, so each one still has a plate to wait for', () => {
+    const shots = stored({
+      arrival: [
+        shot('arrival__establishing', 'arrival', ['arrival:L1'], 'aaa'),
+        shot('arrival__beat1', 'arrival', ['arrival:L3']),
+      ],
+    });
+    const out = shotFallout(moved(), shots);
+
+    expect(out.restaged).toEqual(['arrival__establishing', 'arrival__beat1']);
+    expect(out.writes.get('arrival')?.map((s) => s.location)).toEqual(['dawn', 'dawn']);
+    // Coverage is untouched: a heading is not a line, so nothing detaches or drifts.
+    expect(out).toMatchObject({ carried: [], detached: [], orphaned: [], drifted: [] });
+  });
+
+  it('prices the ones already rendered, because a location is in a shot’s task inputs', () => {
+    const shots = stored({
+      arrival: [shot('arrival__establishing', 'arrival', ['arrival:L1'], 'aaa')],
+    });
+    expect(shotFallout(moved(), shots).note).toMatch(/1 already rendered/);
+  });
+
+  it('says nothing and writes nothing when the shots are already staged there', () => {
+    const shots = stored({
+      arrival: [{ ...shot('arrival__establishing', 'arrival', ['arrival:L1']), location: 'dawn' }],
+    });
+    const out = shotFallout(moved(), shots);
+    expect(out.restaged).toEqual([]);
+    expect(out.writes.size).toBe(0);
     expect(out.note).toBe('');
   });
 });

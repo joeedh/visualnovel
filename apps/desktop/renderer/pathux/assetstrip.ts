@@ -52,7 +52,7 @@ export function renderAssetStrip(
  */
 function cell(asset: EntityLinks['assets'][number], handlers: AssetStripHandlers): HTMLElement {
   const box = el('div', `as-cell${asset.accepted ? ' accepted' : ''}`);
-  box.title = `${asset.label}${asset.accepted ? ' · accepted' : ''}`;
+  box.title = `${asset.label}${asset.accepted ? ' · accepted' : ''} — open it in the asset editor`;
   const img = document.createElement('img');
   img.src = `vnasset://${asset.hash}.${asset.ext}`;
   img.alt = asset.kind;

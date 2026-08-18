@@ -27,21 +27,20 @@ import {
   mergeScene,
   moveLine,
   newScene,
+  removeChoice,
+  setChoice,
+  setHeading,
   setLineText,
+  setNext,
   setSpeaker,
+  spliceScene,
   splitScene,
+  type BranchOp,
   type LineOp,
+  type SceneMap,
   type ScriptState,
 } from '@vn/scriptedit';
 import type { Scene } from '@vn/types';
-import {
-  removeChoice,
-  setChoice,
-  setNext,
-  spliceScene,
-  type BranchOp,
-  type SceneMap,
-} from '../../shared/branchops.js';
 import { setCoverage as decideCoverage } from '../../shared/coverage.js';
 import { scenesOf } from '../../shared/interactions.js';
 import type { CommandHost } from './host.js';
@@ -367,6 +366,27 @@ export const storyNewScene = define({
   },
   run({ scene, heading }, ctx) {
     return edit(ctx, (state) => newScene(state, { scene, heading }));
+  },
+});
+
+export const storySetHeading = define({
+  id: 'story.setHeading',
+  title: 'Set a scene’s heading',
+  description:
+    'Move a scene somewhere else by rewriting its Fountain heading. No line id changes, but the ' +
+    'location is in every shot’s task inputs, so the scene’s rendered art is drawn again — the ' +
+    'check says how much, and the prose it leaves behind is the agent’s to rewrite.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene to move'),
+    heading: prop.string('the new Fountain heading, e.g. EXT. ROOFTOP - NIGHT'),
+  },
+  check({ scene, heading }, ctx) {
+    return previewEdit(ctx, (state) => setHeading(state, { scene, heading }));
+  },
+  run({ scene, heading }, ctx) {
+    return edit(ctx, (state) => setHeading(state, { scene, heading }));
   },
 });
 

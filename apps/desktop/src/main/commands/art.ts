@@ -42,6 +42,37 @@ export const artSetNotes = define({
   },
 });
 
+export const artSetSeed = define({
+  id: 'art.setSeed',
+  title: 'Set image seed',
+  description:
+    'Set the image seed on one rung — the same five `art.setNotes` writes. The seed is part of ' +
+    'what an image was drawn with, so setting one re-keys the tasks that rung reaches and the ' +
+    'next run draws them again. It is how to ask for a different picture of the same words; ' +
+    'what the picture should *look* like is art notes. A rung with no seed inherits the one ' +
+    'above it, and the project config is the floor.',
+  mutating: true,
+  undoable: true,
+  props: {
+    target: prop.string('the rung to write: kind:id[/outfit|variant|shotId]'),
+    // -1 rather than a second prop: 0 is a real seed, so no in-range value is free to mean "none".
+    seed: prop.number('the seed; -1 clears it, leaving the rung to inherit', { default: -1 }),
+  },
+  async check({ target, seed }, ctx) {
+    return verdict(await ctx.host.session.previewArtSeed(target, seedOrClear(seed)));
+  },
+  async run({ target, seed }, ctx) {
+    const result = await ctx.host.session.setArtSeed(target, seedOrClear(seed));
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+/** The prop's sentinel as the session states it: `null` is "author no seed here". */
+function seedOrClear(seed: number): number | null {
+  return seed < 0 ? null : seed;
+}
+
 export const artGenerate = define({
   id: 'art.generate',
   title: 'Draw a concept image',

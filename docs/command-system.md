@@ -334,6 +334,7 @@ none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 | `story.moveLine` ✍ ↺ ✓         | `line`, `after` (default `''`)    | Reorder within the scene. What `script.moveLine` commits.  |
 | `story.setSpeaker` ✍ ↺ ✓       | `line`, `speaker` (default `''`)  | Empty `speaker` makes the line narration.                  |
 | `story.newScene` ✍ ↺ ✓         | `scene`, `heading`                | A `scenes/<id>.md` with a heading and no lines; nothing points at it yet. |
+| `story.setHeading` ✍ ↺ ✓       | `scene`, `heading`                | Move a scene somewhere else. No line id changes, but a location is in every shot's task inputs, so the check says how many rendered shots will be drawn again — and the prose it leaves behind is the agent's to rewrite. Deliberately not `confirm`: the check **is** the warning. |
 | `story.deleteScene` ✍ ↺ ✓      | `scene`                           | Refuses while anything still points at it, naming what.    |
 | `story.splitScene` ✍ ↺ ✓       | `scene`, `at`, `into`             | `at` starts the second half; shots follow their lines, keeping their ids. |
 | `story.mergeScene` ✍ ↺ ✓       | `scene`, `into`                   | Only across a `next` boundary; `scene`'s file and storyboard are removed. |
@@ -501,8 +502,8 @@ write path and it is `story.*`.
   mid-thought must not be trapped by a half-typed field.
 - **`doc.create` scaffolds, it does not compose.** A kind and a name become a sheet in its
   conventional home — `characters/<id>/character.md` and `locations/<id>.md` from
-  `newCharacterDoc`/`newLocationDoc`, the same scaffolds `vnauthor`'s create tools use; a note is
-  `wiki/<id>.md` holding a heading and nothing else, because `wiki/` is free-form and an empty
+  `newCharacterTemplate`/`newLocationDoc`, the same scaffolds `vnauthor`'s create tools use; a note
+  is `wiki/<id>.md` holding a heading and nothing else, because `wiki/` is free-form and an empty
   front-matter block would be a shape the author has to delete. It refuses over an existing path
   rather than merging into one.
 
@@ -841,7 +842,10 @@ is the sentence the agent gets back, and the storyboard fallout is accounted for
 `set_outfit` is the same arrangement over `story.setSceneOutfit` / `story.setOutfit` — one tool
 because the two differ by a word in the author's sentence, and the same rules underneath, which is
 also why the marker write path moved out of `session.editBranches` and into `@vn/scriptedit`'s
-`planMarkerEdit` / `applyMarkerPlan`: the agent may not import an app.
+`planMarkerEdit` / `applyMarkerPlan`: the agent may not import an app. `edit_branches` is the same
+arrangement over `story.setChoice` / `story.removeChoice` / `story.setNext` / `story.spliceScene`,
+and it is why `branchops` followed the marker write path into the package: while those rules were
+app-local the agent could create a scene and then had no way to point anything at it.
 Routing the tool loop through the registry later would buy provenance in `commands.jsonl` — not
 different behaviour. See [`vnauthor.md`](vnauthor.md#tools).
 

@@ -84,3 +84,65 @@ describe('StructuredAgentBackend', () => {
     expect(turn.action).toBeUndefined();
   });
 });
+
+/**
+ * What a step cost. The number is shown to the author as a running total, so what it counts has
+ * to be calls rather than turns: a step the model fumbled twice was paid for three times, and a
+ * total that hid the fumbles would understate the bill exactly when it matters.
+ */
+describe('the receipt', () => {
+  /** A text backend that reports usage, replaying one answer per call. */
+  function usageChat(answers: string[]): ChatBackend {
+    let i = 0;
+    return {
+      modelId: 'mock-usage',
+      message: () => Promise.reject(new Error('the usage path should be preferred')),
+      messageWithUsage: () => {
+        const text = answers[Math.min(i++, answers.length - 1)]!;
+        return Promise.resolve({ text, usage: { input: 10, output: 3 } });
+      },
+    };
+  }
+
+  it('is absent when the backend does not keep one', async () => {
+    const chat: ChatBackend = {
+      modelId: 'mock-text',
+      message: () => Promise.resolve('{"final":"done"}'),
+    };
+    const turn = await new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS, 'plan');
+    expect(turn.usage).toBeUndefined();
+  });
+
+  it('rides out on the turn that finally parsed, summed over every attempt', async () => {
+    const good = '{"thought":"look","tool":"read_file","args":{}}';
+    const turn = await new StructuredAgentBackend(usageChat(['nope', 'still nope', good])).next(
+      'sys',
+      MESSAGES,
+      TOOLS,
+      'plan',
+    );
+    expect(turn.action).toBeDefined();
+    expect(turn.usage).toEqual({ input: 30, output: 9 });
+  });
+
+  it('is still reported by the turn that gave up', async () => {
+    const turn = await new StructuredAgentBackend(usageChat(['not json']), { attempts: 2 }).next(
+      'sys',
+      MESSAGES,
+      TOOLS,
+      'plan',
+    );
+    expect(turn.final).toBeDefined();
+    expect(turn.usage).toEqual({ input: 20, output: 6 });
+  });
+
+  it('comes through the native path too', async () => {
+    const chat = toolChat({
+      text: 'all done',
+      toolCalls: [],
+      usage: { input: 120, output: 40 },
+    });
+    const turn = await new NativeAgentBackend(chat).next('sys', MESSAGES, TOOLS, 'execute');
+    expect(turn.usage).toEqual({ input: 120, output: 40 });
+  });
+});

@@ -2,7 +2,7 @@
  * The pure half of the `story.*` prose commands: turn one authorial act ("retype this line",
  * "split the scene here") into the scenes to write whole and the chunks to remove.
  *
- * It is the sibling of the desktop's `branchops.ts` — that module decides which *wires* are legal,
+ * It is the sibling of `branchops.ts` — that module decides which *wires* are legal,
  * this one decides which *edits* are — and it is pure for the same reason: a surface previewing a
  * gesture runs these functions, so the refusal shown mid-drag is the refusal the command would
  * give rather than a second copy of the rules. It is a *package* rather than app-local because
@@ -52,6 +52,12 @@ export type LineOp =
        * was made from text that no longer reads that way, and nothing will re-render it.
        */
       retyped: string[];
+      /**
+       * Scenes whose heading moved them somewhere else, `[sceneId, the new variant]`. Every shot
+       * in one is restaged to that variant, because a shot pinned to a variant the new location
+       * does not declare gets no plate — and a shot with no plate is skipped in silence forever.
+       */
+      relocated: [string, string][];
     }
   | { ok: false; error: string };
 
@@ -71,6 +77,7 @@ const done = (message: string, change: Partial<Omit<Applied, 'ok' | 'message'>> 
   retired: [],
   moved: [],
   retyped: [],
+  relocated: [],
   ...change,
 });
 
@@ -292,8 +299,8 @@ export function setSpeaker(state: ScriptState, args: { line: string; speaker: st
 }
 
 // ---------------------------------------------------------------------------
-// The four scene edits. These are where line ids can change scope, so these are where
-// the coverage consequence has to be stated before the author commits.
+// The five scene edits. These are where line ids can change scope — and where a scene can
+// change *place* — so these are where the consequence has to be stated before the author commits.
 // ---------------------------------------------------------------------------
 
 /**
@@ -326,6 +333,56 @@ export function newScene(state: ScriptState, args: { scene: string; heading: str
   return done(`Created ${id} (${mined.id}/${mined.variant}); nothing points at it yet.`, {
     writes: [scene],
   });
+}
+
+/**
+ * Move a scene somewhere else by rewriting its heading. The heading is not a line — it is
+ * `location` + `locationVariant` + `headingPrefix`, which `headingOf` reassembles — so no line id
+ * changes and no coverage moves. What *does* change is what the art depicts, and this is the one
+ * prose edit that is expensive:
+ *
+ * - **Every rendered shot in the scene will be drawn again.** Unlike retyping a line, the location
+ *   is in a shot's task inputs twice over — its name is in the prompt and its plate's hash leads
+ *   the refs — so the next run re-renders the scene rather than letting it drift. That is the
+ *   warning, and it is why the caller shows this one before it runs.
+ * - **The prose is not touched, so it still describes the old place.** Nothing here can fix that;
+ *   the message says so and names the agent, which is the thing that can.
+ *
+ * Every shot is restaged to the new variant (`relocated`) because a shot's variant was picked at
+ * the old location and the new one may not declare it — and a shot whose plate is never planned is
+ * skipped by the planner without a word.
+ */
+export function setHeading(state: ScriptState, args: { scene: string; heading: string }): LineOp {
+  const scene = state.scenes.get(args.scene);
+  if (!scene) return refuse(`No scene "${args.scene}".`);
+
+  const heading = args.heading.trim();
+  if (!heading) return refuse('A scene needs a heading, e.g. INT. CLASSROOM - EVENING.');
+  const mined = parseHeading(heading);
+  if (!mined.id) return refuse(`"${heading}" names no location.`);
+
+  const prefix = headingPrefixOf(heading);
+  const wasVariant = scene.locationVariant ?? 'day';
+  if (
+    mined.id === scene.location &&
+    mined.variant === wasVariant &&
+    (prefix || undefined) === scene.headingPrefix
+  ) {
+    return refuse(`${scene.id} is already set in ${mined.id} (${mined.variant}).`);
+  }
+
+  const moved: Scene = { ...scene, location: mined.id, locationVariant: mined.variant };
+  if (prefix) moved.headingPrefix = prefix;
+  else delete moved.headingPrefix;
+
+  // What it costs is counted from the shot files, which this is not given — so the price is the
+  // fallout note's clause and this says only what no other sentence will.
+  return done(
+    `${scene.id} is set in ${mined.id} (${mined.variant}) — it was ${scene.location} ` +
+      `(${wasVariant}). The prose still describes the old place; ask the agent to rewrite the ` +
+      `scene for ${mined.name}.`,
+    { writes: [moved], relocated: [[scene.id, mined.variant]] },
+  );
 }
 
 /**

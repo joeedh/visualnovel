@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeProject } from '@vn/testkit';
-import { renderDiff, renderEvent, renderPlan } from '../render.js';
+import { renderDiff, renderEvent, renderPlan, renderTokens } from '../render.js';
 import { runRepl, terminalPermission, type Channel } from '../repl.js';
 
 /** A scripted channel: feeds fixed answers, records everything written/asked. */
@@ -58,6 +58,17 @@ describe('render helpers', () => {
     expect(line).toContain('edit_character');
     expect(line).toContain('characters/aiko/character.md');
   });
+
+  it('says nothing about tokens until a provider has reported some', () => {
+    expect(renderTokens(0, 0)).toBeUndefined();
+    expect(renderEvent({ type: 'usage', input: 900, output: 40 })).toBeUndefined();
+  });
+
+  it('shows the running total at a glance, with the exact figures beside it', () => {
+    expect(renderTokens(900, 40)).toContain('940 tokens');
+    expect(renderTokens(11_900, 400)).toContain('12.3k tokens');
+    expect(renderTokens(11_900, 400)).toContain('(11900 in, 400 out)');
+  });
 });
 
 describe('terminalPermission', () => {
@@ -90,6 +101,38 @@ describe('terminalPermission', () => {
     });
     expect(yes).toBe(true);
     expect(no).toBe(false);
+  });
+
+  it('numbers a shortlist and answers with the option the number named', async () => {
+    const { channel, out } = scriptChannel(['2']);
+    const answer = await terminalPermission(channel).ask('Which outfit?', {
+      options: ['uniform', 'track'],
+      multi: false,
+    });
+    expect(out.join('\n')).toContain('2. track');
+    expect(answer).toBe('track');
+  });
+
+  it('resolves every number of a multi-pick, and only when every one is a number', async () => {
+    const picked = await terminalPermission(scriptChannel(['1,3']).channel).ask('Which scenes?', {
+      options: ['arrival', 'greet', 'ending'],
+      multi: true,
+    });
+    expect(picked).toBe('arrival, ending');
+    // One bad index and the whole line is the author's own words, not a half-read list.
+    const typed = await terminalPermission(scriptChannel(['1, the last one']).channel).ask('?', {
+      options: ['arrival', 'greet'],
+      multi: true,
+    });
+    expect(typed).toBe('1, the last one');
+  });
+
+  it('lets the author type past the list, which is how they say none of these', async () => {
+    const answer = await terminalPermission(scriptChannel(['neither — let us talk']).channel).ask(
+      'Which outfit?',
+      { options: ['uniform', 'track'], multi: false },
+    );
+    expect(answer).toBe('neither — let us talk');
   });
 });
 

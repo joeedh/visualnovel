@@ -67,6 +67,7 @@ export class PlayEditor extends VnEditor {
       fontFamily: TOKENS.sans,
       color: TOKENS.paper,
     });
+    this.stage.title = 'Click anywhere to advance to the next line';
     this.stage.addEventListener('click', () => this.stepForward());
     this.appendSurface(this.stage);
 
@@ -177,15 +178,20 @@ export class PlayEditor extends VnEditor {
 
     const backBtn = this.bar.button('◂ Back', () => this.go(back(this.history)));
     backBtn.disabled = this.history.length < 2;
+    backBtn.description =
+      this.history.length < 2
+        ? 'You are at the beginning; there is nothing to step back to.'
+        : 'Step back to the scene before this one';
 
-    this.bar.button('Save', () => this.save());
-    this.bar.button('Load', () => this.load());
+    this.bar.button('Save', () => this.save()).description =
+      'Remember where you are, so Load comes back here';
+    this.bar.button('Load', () => this.load()).description = 'Jump back to where Save left off';
     this.bar.button('Reset', () => {
       if (!this.play) return;
       this.history = startOf(this.play);
       this.notice = 'Restarted from the beginning.';
       this.rebuild();
-    });
+    }).description = 'Start the story again from its first scene';
 
     this.bar.flushUpdate();
   }
@@ -372,7 +378,11 @@ export class PlayEditor extends VnEditor {
 
       for (const choice of scene.choices) {
         panel.appendChild(
-          this.choiceButton(choice.label, () => this.go(choose(this.history, choice.goto))),
+          this.choiceButton(
+            choice.label,
+            `Take this branch — the story goes on at ${choice.goto}`,
+            () => this.go(choose(this.history, choice.goto)),
+          ),
         );
       }
       return panel;
@@ -380,7 +390,7 @@ export class PlayEditor extends VnEditor {
 
     if (scene.next) {
       panel.appendChild(
-        this.choiceButton('Continue ▸', () =>
+        this.choiceButton('Continue ▸', 'Play on to the scene this one leads to', () =>
           this.go(advance(this.play as Playable, this.history)),
         ),
       );
@@ -400,9 +410,10 @@ export class PlayEditor extends VnEditor {
     return panel;
   }
 
-  private choiceButton(label: string, onClick: () => void): HTMLElement {
+  private choiceButton(label: string, tip: string, onClick: () => void): HTMLElement {
     const btn = document.createElement('button');
     btn.textContent = label;
+    btn.title = tip;
     Object.assign(btn.style, {
       padding: '8px 18px',
       minWidth: '180px',

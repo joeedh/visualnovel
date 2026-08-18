@@ -26,9 +26,10 @@ import {
   assignLineIds,
   characterFromDoc,
   docToMarkdown,
+  headingOf,
   locationFromDoc,
   modelFromInputs,
-  newCharacterDoc,
+  newCharacterTemplate,
   newLocationDoc,
   sceneChunksFromScript,
   scriptFromScenes,
@@ -67,7 +68,6 @@ import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, sha256, writeFileAtomic } from '@vn/util';
 import {
   baseRefusal,
-  costPreview,
   decomposeAll,
   decomposeAllPreview,
   driftOf,
@@ -81,6 +81,7 @@ import {
   adoptionForSlot,
   adoptionOf,
   artNotesOf,
+  artSeedOf,
   assetPrereqs,
   assetSlotLabel,
   buildSlotGraph,
@@ -108,6 +109,7 @@ import {
   rungOf,
   rungsFor,
   setArtNotes as writeArtNotes,
+  setArtSeed as writeArtSeed,
   slotKey,
   slotLabel,
   slotOf,
@@ -127,11 +129,13 @@ import {
   Workspace,
   archiveUpload,
   composeSystem,
+  focusOnScene,
   loadContext,
   workspaceArtGen,
   type AgentBackend,
   type AgentEvent,
   type AgentMode,
+  type AskChoices,
   type GeneratedContextState,
   type GeneratedCounts,
   type Permission,
@@ -150,6 +154,7 @@ import {
   setSceneOutfit,
   setShotOutfit,
   wardrobesOf,
+  type BranchOp,
   type LineOp,
   type SceneOutfitOp,
   type ScriptState,
@@ -240,7 +245,6 @@ import {
   type ThreadRecord,
 } from './threads.js';
 import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
-import type { BranchOp } from '../shared/branchops.js';
 import { setCoverage } from '../shared/coverage.js';
 import { adviseRun, analysisEffort } from '../shared/advice.js';
 import { NO_SOURCE, analyseThread, makeRedactor, saveReport } from './agentreport.js';
@@ -260,8 +264,11 @@ class MockAgentBackend implements AgentBackend {
 export interface SessionDeps {
   emitEvent(event: AgentEvent): void;
   requestPlan(plan: Plan): Promise<PlanDecision>;
-  /** The author's answer to a clarifying question. Empty is an answer — silence, said out loud. */
-  requestAnswer(question: string): Promise<string>;
+  /**
+   * The author's answer to a clarifying question. Empty is an answer — silence, said out loud.
+   * `choices` is a shortlist the card offers to click; what comes back is a string regardless.
+   */
+  requestAnswer(question: string, choices?: AskChoices): Promise<string>;
   /** Yes or no to an always-confirm tool. `detail` is the English sentence the card reads out. */
   requestConfirm(tool: string, detail: string): Promise<boolean>;
   /** The app build, so a bug report names the code a maintainer should read. Absent in tests. */
@@ -278,6 +285,12 @@ export interface SessionDeps {
    */
   openExternal?(url: string): Promise<void>;
   writeClipboard?(text: string): void;
+  /**
+   * Tell the window what long-running work is in flight. Not routed through the command host:
+   * the effect is pushed *while* a command is still running, which is exactly when that host
+   * has not returned an outcome to attach anything to.
+   */
+  pushBusy(state: { what?: string; ran: number; pending: number }): void;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -582,6 +595,10 @@ export class WorkspaceSession {
 
   /** What long-running work is in flight, by name; empty when the session is idle. */
   private readonly inFlight = new Set<string>();
+  /** How the work above is going, as the scheduler last reported it. Zeroed when it ends. */
+  private progress = { ran: 0, pending: 0 };
+  /** Set for as long as a pipeline run is interruptible; `stopPipeline` is the one caller. */
+  private cancel: AbortController | undefined;
 
   /**
    * The conversation as main sees it, reduced by the functions the renderer runs — so what is
@@ -618,13 +635,47 @@ export class WorkspaceSession {
     return [...this.inFlight][0];
   }
 
+  /** What `busy()` says, plus how far along it is — the shape the window is pushed. */
+  busyState(): { what?: string; ran: number; pending: number } {
+    const what = this.busy();
+    return { ...(what ? { what } : {}), ...this.progress };
+  }
+
+  /** Push {@link busyState} to the window. Called on both edges, and on every step between. */
+  private announceBusy(): void {
+    this.deps.pushBusy(this.busyState());
+  }
+
   private async while<T>(what: string, run: () => Promise<T>): Promise<T> {
     this.inFlight.add(what);
+    this.announceBusy();
     try {
       return await run();
     } finally {
       this.inFlight.delete(what);
+      if (this.inFlight.size === 0) this.progress = { ran: 0, pending: 0 };
+      this.announceBusy();
     }
+  }
+
+  /**
+   * Ask the pipeline run in flight to stop. It stops at a task boundary, so this returns what
+   * was asked rather than what happened — the run's own outcome says that.
+   */
+  stopPipeline(): boolean {
+    if (!this.cancel) return false;
+    this.cancel.abort();
+    return true;
+  }
+
+  /**
+   * Ask the agent turn in flight to end. Same contract as {@link stopPipeline}: the step in
+   * progress finishes, so the transcript stays complete and the next turn reads a whole one.
+   */
+  stopAgent(): boolean {
+    if (this.busy() !== 'an agent turn' || !this.agent) return false;
+    this.agent.stop();
+    return true;
   }
 
   /**
@@ -640,8 +691,8 @@ export class WorkspaceSession {
       // The author's answer is the one turn of theirs that never passes through `run`, and the
       // loop does not emit it — so a transcript that did not record it here would lose it. A
       // declined confirmation needs no such care: the loop emits that as a `blocked` event.
-      ask: async (question) => {
-        const answer = await this.deps.requestAnswer(question);
+      ask: async (question, choices) => {
+        const answer = await this.deps.requestAnswer(question, choices);
         this.record((convo) => answeredQuestion(convo, answer));
         return answer;
       },
@@ -741,13 +792,23 @@ export class WorkspaceSession {
     return bible.query(query, limit === undefined ? {} : { limit });
   }
 
-  async runAgent(input: string): Promise<RunResult> {
+  /**
+   * One turn. `scene` is what the author had on screen when they hit send — resolved here against
+   * the project rather than trusted, so a selection that has since been deleted contributes
+   * nothing instead of a sentence about a scene that is gone.
+   */
+  async runAgent(input: string, scene?: string): Promise<RunResult> {
     return this.while('an agent turn', async () => {
       const agent = await this.ensureAgent();
+      // The project map is a file, and this session outlives every rewrite of it — including the
+      // agent's own `update_context`. Re-read it per turn so the map above the tool output is not
+      // an older, more authoritative-looking answer than the tools give.
+      agent.setSystem(composeSystem(await loadContext(this.dir)));
+      const focus = scene ? focusOnScene(await this.index(), scene) : undefined;
       await this.beginThread(input);
       this.record((convo) => asked(convo, input));
       try {
-        const result = await agent.run(input);
+        const result = await agent.run(input, focus);
         this.record((convo) => answered(convo, result.final));
         return result;
       } finally {
@@ -1171,6 +1232,9 @@ export class WorkspaceSession {
       prereqs,
       ...(unapproved ? { unapproved } : {}),
       rungs: rungsFor(asset, { model: project.model, shots }),
+      ...(project.config.image_params.seed === undefined
+        ? {}
+        : { configSeed: project.config.image_params.seed }),
       ...(view ? { promptView: view } : {}),
     };
   }
@@ -1356,6 +1420,31 @@ export class WorkspaceSession {
     const decided = await artNotesOf(deps, { target, notes });
     if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
     const plan = await writeArtNotes(deps, { target, notes });
+    return { ok: true, message: plan.note, written: [relPath(this.dir, plan.file)] };
+  }
+
+  /** What `art.setSeed` would do, without writing it. */
+  async previewArtSeed(
+    target: string,
+    seed: number | null,
+  ): Promise<{ ok: boolean; message: string }> {
+    const { config, paths } = await loadProject(this.dir);
+    const decided = await artSeedOf({ config, paths }, { target, seed });
+    return decided.ok
+      ? { ok: true, message: decided.plan.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /** Write one rung's image seed, into the same two files `setArtNotes` writes. */
+  async setArtSeed(
+    target: string,
+    seed: number | null,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const { config, paths } = await loadProject(this.dir);
+    const deps = { config, paths };
+    const decided = await artSeedOf(deps, { target, seed });
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const plan = await writeArtSeed(deps, { target, seed });
     return { ok: true, message: plan.note, written: [relPath(this.dir, plan.file)] };
   }
 
@@ -2534,9 +2623,10 @@ export class WorkspaceSession {
 
   /**
    * Where a scaffolded document would land and what it would say. The character and location
-   * templates are the same `newCharacterDoc` / `newLocationDoc` the agent's `create_character`
-   * calls, so one authorial act has one answer and the id is derived in exactly one place. The
-   * path is conventional; filing a sheet elsewhere is a move, not a different scaffolder.
+   * templates are the same `newCharacterTemplate` / `newLocationDoc` the agent's
+   * `create_character` calls, so one authorial act has one answer and the id is derived in exactly
+   * one place. The path is conventional; filing a sheet elsewhere is a move, not a different
+   * scaffolder.
    */
   private newDoc(
     kind: NewDocKind,
@@ -2551,11 +2641,18 @@ export class WorkspaceSession {
         ? { id, path: relPath(this.dir, join(paths.wikiDir, `${id}.md`)), text: `# ${name}\n` }
         : null;
     }
-    const doc = kind === 'character' ? newCharacterDoc(name) : newLocationDoc(name);
+    // A character gets the full template, which is text because its palette note is a YAML
+    // comment; a location is still front-matter alone, so it goes through the doc scaffolder.
+    if (kind === 'character') {
+      const id = slug(name);
+      if (!id) return null;
+      const path = relPath(this.dir, paths.characterFile(id));
+      return { id, path, text: newCharacterTemplate(name) };
+    }
+    const doc = newLocationDoc(name);
     const id = String(doc.data['id'] ?? '');
     if (!id) return null;
-    const file = kind === 'character' ? paths.characterFile(id) : paths.locationFile(id);
-    return { id, path: relPath(this.dir, file), text: docToMarkdown(doc) };
+    return { id, path: relPath(this.dir, paths.locationFile(id)), text: docToMarkdown(doc) };
   }
 
   /** Would the scaffold land? Mostly: is that name already taken. */
@@ -2952,6 +3049,7 @@ export class WorkspaceSession {
     return {
       sceneId,
       location: scene.location,
+      heading: headingOf(scene),
       lines: scene.lines.map((l) => ({
         id: l.id,
         kind: l.kind,
@@ -3202,21 +3300,26 @@ export class WorkspaceSession {
   }
 
   /**
-   * What a run would find, without planning one. Planning is not free and not read-only —
-   * `planTasks` mutates the graph and may call the decomposer — so this reports the *already
-   * planned* pending work and the gate, and separately whether the keys a real run needs
-   * resolve. Incremental planning means "nothing pending" is not "nothing to do", so the count
-   * is a report, never a refusal.
+   * What a run would find. The count is a **dry run against mock providers** — what `vngen cost`
+   * does — rather than a read of the replayed graph: `tasks.jsonl` holds only what earlier runs
+   * planned, so on a project that has never run it says zero while the work is not zero. Nothing
+   * is written; a dry run plans with `readOnlyShots` and requeues in memory.
+   *
+   * The number is still a floor, because planning is incremental and a wave that unlocks later
+   * work has not run. So it is reported, never refused — and the keys a real run needs are
+   * checked separately, since a dry run needs none.
    */
   async runPreconditions(mock: boolean): Promise<{
     pending: number;
+    byKind: Record<string, number>;
+    imageCalls: number;
+    reviewCalls: number;
     blockedOnGate: boolean;
     gatePending: string[];
     /** Why keys did not resolve — naming the source, never a value. Null when they did. */
     keyError: string | null;
   }> {
     const project = await loadProject(this.dir);
-    const gate = gateStatus(project.model);
     let keyError: string | null = null;
     if (!mock) {
       try {
@@ -3228,10 +3331,23 @@ export class WorkspaceSession {
         keyError = err instanceof Error ? err.message : String(err);
       }
     }
+    const summary = await runPipeline({
+      model: project.model,
+      graph: project.graph,
+      store: project.store,
+      providers: await buildProviders(project, true),
+      config: project.config,
+      paths: project.paths,
+      dryRun: true,
+      now: () => new Date().toISOString(),
+    });
     return {
-      pending: costPreview(project.graph, project.config).pendingTasks,
-      blockedOnGate: !gate.cleared,
-      gatePending: gate.pending,
+      pending: summary.preview.pendingTasks,
+      byKind: summary.preview.byKind,
+      imageCalls: summary.preview.imageCalls,
+      reviewCalls: summary.preview.reviewCalls,
+      blockedOnGate: summary.blockedOnGate,
+      gatePending: summary.gate.pending,
       keyError,
     };
   }
@@ -3284,6 +3400,8 @@ export class WorkspaceSession {
   async runPipeline(mock: boolean): Promise<PipelineRunResult> {
     // The whole method, loads included: `busy()` has to be true from the call, not from the
     // moment the scheduler starts, or a switch could land in the gap.
+    const cancel = new AbortController();
+    this.cancel = cancel;
     const { summary, assets } = await this.while('a pipeline run', async () => {
       const project = await loadProject(this.dir);
       const providers = await buildProviders(project, mock);
@@ -3296,11 +3414,18 @@ export class WorkspaceSession {
         paths: project.paths,
         dryRun: mock,
         now: () => new Date().toISOString(),
+        signal: cancel.signal,
+        onProgress: (p) => {
+          this.progress = { ran: p.ran, pending: p.pending };
+          this.announceBusy();
+        },
       });
       // Read the manifest inside the closure, while the project that ran is still in hand — the
       // labels below name pictures this run produced, and reloading to find them is a second read
       // of everything for a handful of hashes.
       return { summary: ran, assets: project.store.manifest() };
+    }).finally(() => {
+      if (this.cancel === cancel) this.cancel = undefined;
     });
     this.announceRun(summary, assets, mock);
     return {
@@ -3314,6 +3439,7 @@ export class WorkspaceSession {
       },
       failed: summary.failed.length,
       failures: summary.failed.map((t) => ({ hash: t.hash, kind: t.kind, error: t.error })),
+      ...(summary.stopped ? { stopped: true } : {}),
     };
   }
 
@@ -3321,9 +3447,8 @@ export class WorkspaceSession {
    * File what the run did: one notification per picture it produced, each linked to the asset
    * editor by the hash it made, and one for the run itself.
    *
-   * A run is one blocking round trip today, so these all arrive at the end. Live per-task
-   * progress would mean an `onTask` hook on `RunOptions` — a change to the pipeline spine for
-   * the same user-visible result — so it stays future work rather than a seam added on spec.
+   * These all arrive at the end, and deliberately: a notification is a durable record of what
+   * happened, so the count that moves while a run is in flight is the `busy` push instead.
    */
   private announceRun(summary: RunSummary, assets: readonly Asset[], mock: boolean): void {
     for (const task of summary.ran) {
@@ -3351,11 +3476,12 @@ export class WorkspaceSession {
     const ran = summary.ran.length;
     const how = mock ? 'Dry run' : 'Run';
     const gate = summary.blockedOnGate ? ', halted at the character gate' : '';
+    const ended = summary.stopped ? 'stopped' : 'finished';
     void notify({
       category: 'pipeline',
       level: summary.failed.length > 0 ? 'warn' : 'info',
       source: 'pipeline',
-      message: `${how} finished: ${ran} task${ran === 1 ? '' : 's'}, ${summary.failed.length} failed${gate}.`,
+      message: `${how} ${ended}: ${ran} task${ran === 1 ? '' : 's'}, ${summary.failed.length} failed${gate}.`,
     });
   }
 }

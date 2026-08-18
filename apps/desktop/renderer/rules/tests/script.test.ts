@@ -2,14 +2,17 @@ import { isSpeakable } from '@vn/scriptedit';
 import { TOP, scriptMoveLine } from '../../../src/shared/interactions.js';
 import {
   COMPOSED,
+  NARRATOR,
   attributionAfter,
   canContinue,
   castFor,
   checkOf,
+  composedCueText,
   continueFrom,
   cueChoices,
   cueFor,
   cueLabel,
+  cueSlotText,
   dropTarget,
   insertOf,
   insertedAfter,
@@ -293,6 +296,7 @@ describe('moveStateOf', () => {
   const coverage: SceneCoverage = {
     sceneId: 'a',
     location: 'gate',
+    heading: 'INT. GATE - DAY',
     lines,
     shots: [],
     cast: [],
@@ -329,6 +333,7 @@ describe('a drag, from a pointer position to an invocation', () => {
   const coverage: SceneCoverage = {
     sceneId: 'a',
     location: 'gate',
+    heading: 'INT. GATE - DAY',
     lines,
     shots: [],
     cast: [],
@@ -428,6 +433,28 @@ describe('the cue picker', () => {
       'a:L2',
       'a:L3',
     ]);
+  });
+
+  it('names the narrator on an unattributed line rather than showing an empty slot', () => {
+    // A blank slot reads as "there is no control here", and the control is the whole point.
+    expect(cueSlotText(cast, undefined)).toEqual({
+      label: NARRATOR,
+      title: expect.stringContaining('give it a speaker'),
+    });
+    expect(cueSlotText(cast, 'aiko').label).toBe('Aiko');
+    expect(cueSlotText(cast, 'aiko').title).toContain('change who does');
+  });
+
+  it('says what the composer will attribute, which is not something it can change', () => {
+    const dialogue: CoverageLine = { id: 'a:L2', kind: 'dialogue', speaker: 'aiko', text: 'Hi.' };
+    expect(composedCueText(cast, dialogue)).toEqual({
+      label: 'Aiko',
+      title: expect.stringContaining('like the one above it'),
+    });
+    // Under narration, and at the top of a scene, the new line is narration too.
+    expect(composedCueText(cast, lines[0] as CoverageLine).label).toBe(NARRATOR);
+    expect(composedCueText(cast, null).label).toBe(NARRATOR);
+    expect(composedCueText(cast, null).title).toContain('once the line exists');
   });
 });
 

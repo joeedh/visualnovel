@@ -530,6 +530,49 @@ describe('editing tools', () => {
     }
   });
 
+  it('list_workspace sees a location sheet created in the same session, and names the file', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const before = await run('list_workspace', {}, ctx);
+      expect(before.output).not.toContain('rooftop');
+      expect(await run('create_location', { name: 'Rooftop' }, ctx)).toMatchObject({ ok: true });
+      const after = await run('list_workspace', {}, ctx);
+      expect(after.output).toContain('locations/rooftop.md');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('list_workspace tells a mined location from an authored one, so writing the sheet shows', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      // `INT. CLASSROOM` mines the same id the sheet carries, so authoring one *converts* a row
+      // rather than adding one. Without the file the two states render identically.
+      await fs.rm(join(dir, 'locations', 'classroom.md'));
+      const mined = await run('list_workspace', {}, ctx);
+      expect(mined.output).toContain('no sheet yet');
+      expect(mined.output).not.toContain('locations/classroom.md');
+
+      expect(await run('create_location', { name: 'Classroom' }, ctx)).toMatchObject({ ok: true });
+      const authored = await run('list_workspace', {}, ctx);
+      expect(authored.output).toContain('locations/classroom.md');
+      expect(authored.output).not.toContain('no sheet yet');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('create_location refuses a name that slugs to nothing rather than writing locations/.md', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const r = await run('create_location', { name: '???' }, ctx);
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('does not name a location');
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('write_file refuses a scene chunk, which edit_scene owns', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
@@ -709,6 +752,132 @@ describe('edit_scene', () => {
       expect(r.ok).toBe(false);
       expect(r.output).toContain('no decomposition yet');
       expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+/**
+ * `edit_branches`: the agent's only way to say what leads where. The rules are `@vn/scriptedit`'s
+ * `branchops` and are tested there, so what is asserted here is the seam — and the bug it exists to
+ * fix, which is that a scene the agent created had nothing that could point at it.
+ */
+describe('edit_branches', () => {
+  it('links a scene the agent just created, which is the whole reason it exists', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const made = await run(
+        'edit_scene',
+        { op: 'newScene', scene: 'rooftop', heading: 'EXT. ROOFTOP - DUSK' },
+        ctx,
+      );
+      expect(made.ok).toBe(true);
+      // `newScene` says so itself; before `edit_branches` that sentence was a dead end. This is
+      // the reported bug, reproduced: a scene the agent made, that the story cannot get to.
+      expect(made.output).toContain('nothing points at it yet');
+      expect((await run('story_graph', {}, ctx)).output).toContain('Unreachable: rooftop');
+
+      const wired = await run(
+        'edit_branches',
+        { op: 'setNext', scene: 'rooftop', goto: 'ending' },
+        ctx,
+      );
+      expect(wired.ok).toBe(true);
+      expect(wired.written).toEqual(['scenes/rooftop.md']);
+      expect(await fs.readFile(join(dir, 'scenes', 'rooftop.md'), 'utf8')).toContain(
+        '[[next: ending]]',
+      );
+
+      const inbound = await run(
+        'edit_branches',
+        { op: 'setChoice', scene: 'arrival', goto: 'rooftop', label: 'Go up' },
+        ctx,
+      );
+      expect(inbound.ok).toBe(true);
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toContain(
+        '[[choice: "Go up" -> rooftop]]',
+      );
+
+      // The point of the fix: the graph now reaches it, and nothing dangles.
+      const graph = await run('story_graph', {}, ctx);
+      expect(graph.output).toContain('Unreachable: none');
+      expect(graph.output).toContain('Dangling: none');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('splices a scene into an existing edge as one two-scene patch', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      expect(
+        (
+          await run(
+            'edit_scene',
+            { op: 'newScene', scene: 'stairs', heading: 'INT. STAIRS - DAY' },
+            ctx,
+          )
+        ).ok,
+      ).toBe(true);
+      const r = await run(
+        'edit_branches',
+        { op: 'spliceScene', scene: 'stairs', from: 'greet' },
+        ctx,
+      );
+
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('Spliced stairs into greet → ending');
+      expect((r.written ?? []).sort()).toEqual(['scenes/greet.md', 'scenes/stairs.md']);
+      expect(await fs.readFile(join(dir, 'scenes', 'greet.md'), 'utf8')).toContain(
+        '[[next: stairs]]',
+      );
+      expect(await fs.readFile(join(dir, 'scenes', 'stairs.md'), 'utf8')).toContain(
+        '[[next: ending]]',
+      );
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('names the arguments an op needs instead of guessing them', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run('edit_branches', { op: 'setChoice', scene: 'arrival' }, ctx);
+      expect(r.ok).toBe(false);
+      expect(r.output).toBe('setChoice needs: goto, label');
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('passes a refusal through from the rules, untouched, and writes nothing', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      // `arrival` forks, and `next` is only followed by a scene with no choices — so the spliced
+      // edge would never be taken. `branchops` refuses in exactly those words.
+      const r = await run(
+        'edit_branches',
+        { op: 'spliceScene', scene: 'arrival', from: 'greet' },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('would never be taken');
+      expect(await fs.readFile(join(dir, 'scenes', 'greet.md'), 'utf8')).toBe(CHUNKS.greet);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('writes nothing when the wiring already says what it was asked to say', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run('edit_branches', { op: 'setNext', scene: 'greet', goto: 'ending' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('already wired that way');
+      expect(r.written).toBeUndefined();
+      expect(await fs.readFile(join(dir, 'scenes', 'greet.md'), 'utf8')).toBe(CHUNKS.greet);
     } finally {
       await cleanup();
     }

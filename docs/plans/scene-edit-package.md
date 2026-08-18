@@ -151,7 +151,10 @@ refusing `scenes/`.
 - **No behaviour change.** Not one message, refusal or file layout. A diff that changes what an edit
   *does* belongs in plan 5, where it can be reviewed as a decision rather than as a move.
 - **Moving `branchops.ts`.** It has no second caller yet. Moving it "while we're here" would put a
-  module in a package on speculation.
+  module in a package on speculation. _(It got one: the agent could create a scene and then had
+  nothing that could point at it, so `branchops.ts` followed into `@vn/scriptedit` and
+  `edit_branches` is the second caller. See
+  [`the-todos-sweep.md`](the-todos-sweep.md), F lines 47–48.)_
 - **The agent tool itself.** Plan 5 step 6, immediately after this.
 - **A `Shot`-aware model build.** The model still carries no shots; `apply.ts` reads them off disk
   exactly as `planSceneEdit` does today.

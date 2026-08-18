@@ -37,6 +37,22 @@ export function imageParams(config: ProjectConfig): ImageParams {
   };
 }
 
+/**
+ * `params` with the narrowest authored seed applied — the only place that chain is written down.
+ *
+ * Rungs are passed widest-first (character then outfit; location then variant; a shot alone) and
+ * the last one that authored a seed wins, falling back to `config.image_params.seed`. A rung that
+ * authored none returns `params` untouched, so every existing task keeps the hash it had — the
+ * same guarantee {@link artClause} gives.
+ *
+ * Every builder below calls it, so the planner, adoption and `promoteConcept` all agree without
+ * each having to know the chain — a disagreement here strands a shot on a plate nothing planned.
+ */
+export function seedFor(params: ImageParams, ...rungs: (number | undefined)[]): ImageParams {
+  const authored = rungs.filter((s): s is number => s !== undefined).at(-1);
+  return authored === undefined ? params : { ...params, seed: authored };
+}
+
 /** The art-style preamble injected into every image prompt for style consistency (§5). */
 export function stylePreamble(config: ProjectConfig): string {
   const style = config.art_style.trim();
@@ -143,7 +159,8 @@ export function portraitInputs(
     characterId: character.id,
     prompt: buildPortraitPrompt(character, config),
     refs: portraitRefs(character, config),
-    params,
+    // A portrait is the character rung and nothing narrower — it wears no outfit of its own.
+    params: seedFor(params, character.seed),
   };
 }
 
@@ -239,7 +256,7 @@ export function locationInputs(
     variant,
     prompt: buildLocationPrompt(location, variant, config),
     refs: locationRefs(location, variant, config),
-    params,
+    params: seedFor(params, location.seed, location.variants.find((v) => v.id === variant)?.seed),
   };
 }
 
@@ -355,7 +372,8 @@ export function modelSheetInputs(
     angle,
     prompt: buildModelSheetPrompt(character, outfit, angle, config),
     refs: [portrait, ...modelSheetRefs(character, outfit, angle, config)],
-    params,
+    // The angle is not a rung, so one outfit seed covers all four sheets — as its notes do.
+    params: seedFor(params, character.seed, character.outfits.find((o) => o.id === outfit)?.seed),
   };
 }
 
@@ -448,7 +466,8 @@ export function shotInputs(
     shotId: shot.id,
     prompt: buildShotPrompt(shot, scene, model, config),
     refs: [...upstream, ...shotRefs(shot, scene, model, config)],
-    params,
+    // A frame is its own rung: the cast it draws is carried in as references, not as a seed.
+    params: seedFor(params, shot.seed),
   };
 }
 

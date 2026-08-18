@@ -7,7 +7,7 @@
  * `directory` draws, when `confirm` needs a second click, or whether an `undeclared` check is a
  * yes. `coerceProps` in main stays the authority on the values themselves.
  */
-import type { Container, MenuTemplateCustom, MenuTemplateEntry, TextBox } from 'pathux';
+import type { Button, Container, MenuTemplateEntry, TextBox } from 'pathux';
 import { api } from '../api.js';
 import { blankProps, bulkSize, fieldText, fieldValue } from '../rules/catalog.js';
 import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
@@ -55,6 +55,8 @@ export class CommandForm {
   private verdictCol: Container | undefined;
   /** The form's first text field, so a surface opened on a command lands in it. */
   private firstField: TextBox | undefined;
+  /** The button that runs it, kept so a fresh verdict can arm or disarm it without a redraw. */
+  private runButton: Button | undefined;
   /** A detached form's check may still be in flight; its answer must not redraw a dead column. */
   private live = true;
   /**
@@ -88,13 +90,8 @@ export class CommandForm {
     this.opts.buttons?.(row);
 
     const label = this.opts.runLabel ?? 'run';
-    const run = row.button(this.buttonText(label), () => void this.run());
-    run.disabled = this.running;
-    run.description = this.running
-      ? 'Running. This can take a while; closing the form does not stop it.'
-      : this.entry.confirm
-        ? 'this command asks before it writes'
-        : this.entry.title;
+    this.runButton = row.button(this.buttonText(label), () => void this.run());
+    this.armRun();
 
     this.col.flushUpdate();
   }
@@ -120,6 +117,26 @@ export class CommandForm {
     if (!this.live) return;
     this.check = check;
     this.renderVerdict();
+    this.armRun();
+  }
+
+  /**
+   * Follow the verdict with the button. A command that has declared it will refuse is not worth a
+   * click, and the greyed button says exactly why — the refusal, verbatim. `undeclared` arms it:
+   * absence of a check is not a refusal, only an absence of one.
+   */
+  private armRun(): void {
+    const run = this.runButton;
+    if (!run) return;
+    const refused = this.check?.state === 'refuse';
+    run.disabled = this.running || refused;
+    run.description = this.running
+      ? 'Running. This can take a while; closing the form does not stop it.'
+      : refused
+        ? this.check!.message
+        : this.entry.confirm
+          ? 'this command asks before it writes'
+          : this.entry.title;
   }
 
   /**
@@ -131,8 +148,18 @@ export class CommandForm {
     if (!col) return;
     col.clear();
     if (this.check && this.check.state !== 'undeclared') {
+      // One paragraph per line: a check that answers in several sentences means the breaks it
+      // wrote, and a single label draws them as one unreadable strip.
       const mark = this.check.state === 'accept' ? '✓' : '✕';
-      paragraph(col, `${mark} ${this.check.message}`, this.opts.width);
+      const lines = this.check.message.split('\n');
+      lines.forEach((line, i) => {
+        const text = i === 0 ? `${mark} ${line}` : `   ${line}`;
+        const label = paragraph(col, text, this.opts.width);
+        label.description =
+          this.check?.state === 'accept'
+            ? 'What this command would do if you ran it now'
+            : 'Why this command will not run';
+      });
     }
     col.flushUpdate();
   }
@@ -149,7 +176,8 @@ export class CommandForm {
     if (rows && rows.length === 0) return undefined;
 
     const row = this.col.row();
-    row.label(`${prop.name}${prop.required ? ' *' : ''}`);
+    const name = row.label(`${prop.name}${prop.required ? ' *' : ''}`);
+    name.description = prop.required ? `${prop.description} (required)` : prop.description;
     const value = this.values[prop.name];
 
     // Bulk content the caller composed — a serialized mesh, a whole document. A text field over
@@ -184,17 +212,22 @@ export class CommandForm {
     }
 
     if (prop.kind === 'enum') {
+      const chosen = String(value ?? '');
+      // `▾` because a path.ux menu button is drawn as a plain button: without it the field reads
+      // as a label saying what the value already is, and nothing says it can be changed.
       const menu = row.menu(
-        String(value ?? ''),
+        chosen ? `${chosen} ▾` : 'choose… ▾',
         (prop.values ?? []).map(
-          (option): MenuTemplateCustom => [
-            option,
-            () => {
+          (option): MenuTemplateEntry => ({
+            name: option === chosen ? `${option} ✓` : option,
+            callback: () => {
               this.values[prop.name] = option;
               this.render();
               void this.recheck();
             },
-          ],
+            tooltip: `Set ${prop.name} to ${option}`,
+            id: option,
+          }),
         ),
       );
       menu.description = prop.hint ?? prop.description;

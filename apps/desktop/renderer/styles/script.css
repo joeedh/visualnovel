@@ -72,15 +72,29 @@
   min-height: 0;
   padding: 18px 22px 40px;
 }
+/* A button that reads as a slugline: it is the affordance for `story.setHeading`, so it has to
+   look clickable on hover without turning the top of the page into a control. */
 .sc-heading {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--ink-line);
+  border-radius: 0;
+  cursor: pointer;
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--signal);
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--ink-line);
+  padding: 0 0 14px;
   margin-bottom: 14px;
+}
+
+.sc-heading:hover {
+  color: var(--sodium);
+  border-bottom-color: var(--sodium);
 }
 
 .sc-line {
@@ -120,13 +134,24 @@
 .sc-line .who:hover {
   text-decoration: underline dotted;
 }
-/* A narration line has nobody to name, so its slot stays out of the way until it is wanted. */
+/* A narration line names the narrator rather than showing nothing. It stays quiet — this is the
+   one cue an author did not write — but a slot that is invisible until hovered is a control nobody
+   finds, and finding it is the whole point of the row saying who speaks. */
 .sc-line .who.none {
-  color: var(--ink-line);
-  opacity: 0;
+  color: var(--mist-dim);
 }
 .sc-line:hover .who.none {
-  opacity: 1;
+  color: var(--sodium);
+}
+/* The composer's cue is a statement, not a control: the line does not exist yet, so there is
+   nothing for `setSpeaker` to act on. */
+.sc-line .who.hint {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mist-dim);
 }
 .sc-line .who.picking {
   background: var(--ink-sunken);
@@ -143,9 +168,11 @@
   color: var(--paper);
   white-space: pre-wrap;
 }
+/* Narration is prose the reader will see, so it is paper like every other line — the italic is
+   what distinguishes it. Dimming it made a line the author had just written look like nothing. */
 .sc-line.narration .text,
 .sc-line.lyric .text {
-  color: var(--mist);
+  color: var(--paper);
   font-style: italic;
 }
 .sc-line.parenthetical .text {
@@ -201,6 +228,11 @@
   color: inherit;
   caret-color: var(--sodium);
   outline: none;
+}
+/* An empty composer would otherwise be a blank row with a caret in it. */
+.sc-grow > textarea::placeholder {
+  color: var(--mist-dim);
+  font-style: italic;
 }
 /* A row that is not a line yet: no id to show, because no id has been allocated. */
 .sc-line.new .lid {

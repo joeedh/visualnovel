@@ -13,13 +13,14 @@ import type { PropValue } from '../../src/shared/ipc.js';
 import { shell } from './bridge.js';
 import { CommandForm, type Choices } from './commandform.js';
 import { paragraph } from './paragraph.js';
+import { INSET, onPopupClosed, popupLeft, stylePopup } from './popup.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
 
 const WIDTH = 520;
 /** What prose may fill, leaving the popup's own inset either side. */
-const PROSE = WIDTH - 24;
+const PROSE = WIDTH - INSET;
 
 let open: Dialog | undefined;
 
@@ -32,17 +33,15 @@ class Dialog {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang a dialog on');
 
-    const x = Math.max(8, Math.round(screen.size[0] / 2 - WIDTH / 2));
+    const x = popupLeft(screen, WIDTH);
     const y = Math.max(56, Math.round(screen.size[1] * 0.22));
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
-    this.popup.style['width'] = `${WIDTH}px`;
+    stylePopup(this.popup, screen, WIDTH, y);
 
-    const end = this.popup.end.bind(this.popup);
-    this.popup.end = () => {
+    onPopupClosed(this.popup, () => {
       open = undefined;
       this.form?.detach();
-      end();
-    };
+    });
 
     this.body = this.popup.col();
 
@@ -54,8 +53,10 @@ class Dialog {
         return;
       }
 
-      this.body.label(entry.title);
-      paragraph(this.body, entry.description, PROSE);
+      const heading = this.body.label(entry.title);
+      heading.description = entry.id;
+      const what = paragraph(this.body, entry.description, PROSE);
+      what.description = entry.description;
 
       this.form = new CommandForm(
         this.body.col(),

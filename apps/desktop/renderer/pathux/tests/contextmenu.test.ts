@@ -19,6 +19,17 @@ describe('needsCheck', () => {
     // on their way to filling in.
     expect(needsCheck({ label: 'Promote…', id: 'art.promote', form: true })).toBe(false);
   });
+
+  it('does not ask about an entry the surface already refused', () => {
+    // There is nothing to ask *about*: the props it would carry are the ones that do not exist.
+    expect(
+      needsCheck({
+        label: 'Open shot asset',
+        id: 'view.open',
+        refused: 'No shot covers a:L1 yet.',
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('entriesWithVerdicts', () => {
@@ -66,6 +77,44 @@ describe('entriesWithVerdicts', () => {
       [undefined],
     );
     expect(resolved[0]).toMatchObject({ label: 'Notes…', enabled: true, message: '' });
+  });
+
+  it('draws a surface’s own refusal exactly like a checked one', () => {
+    const resolved = entriesWithVerdicts(
+      [{ label: 'Open shot asset', id: 'view.open', refused: 'No shot covers a:L1 yet.' }],
+      [undefined],
+    );
+    const only = resolved[0]!;
+    expect(only.enabled).toBe(false);
+    expect(only.label).toContain('Open shot asset');
+    expect(only.label).not.toBe('Open shot asset');
+    expect(only.message).toBe('No shot covers a:L1 yet.');
+  });
+
+  it('lets that refusal stand even where a verdict landed in its slot', () => {
+    const resolved = entriesWithVerdicts(
+      [{ label: 'Open shot asset', id: 'view.open', refused: 'a:S2 has not been drawn.' }],
+      [accept],
+    );
+    expect(resolved[0]!.enabled).toBe(false);
+    expect(resolved[0]!.message).toBe('a:S2 has not been drawn.');
+  });
+
+  it('falls back to what the registry says the command does', () => {
+    const says = { 'view.open': 'Show a different editor in this pane' };
+    const resolved = entriesWithVerdicts(entries, answered, says);
+    // Undeclared is not a sentence, so the row still says something rather than nothing.
+    expect(resolved[3]!.message).toBe('Show a different editor in this pane');
+    // A form entry is never checked at all, and gets the same fallback.
+    expect(
+      entriesWithVerdicts([{ label: 'Open…', id: 'view.open', form: true }], [undefined], says)[0]!
+        .message,
+    ).toBe('Show a different editor in this pane');
+  });
+
+  it('prefers a refusal to the description, because the refusal is the news', () => {
+    const says = { 'asset.accept': 'Mark this asset approved' };
+    expect(entriesWithVerdicts(entries, answered, says)[1]!.message).toBe('that is `gate.approve`');
   });
 
   it('keeps verdicts positional, so no entry can take its neighbour’s answer', () => {

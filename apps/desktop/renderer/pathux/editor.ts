@@ -1,4 +1,5 @@
 import { Area, AreaFlags, ColumnFrame, UIBase, contextWrangler, nstructjs } from 'pathux';
+import { EDITOR_IDS, editorTooltip, type EditorId } from '../../src/shared/editors.js';
 import type { VnContext } from './context.js';
 import type { ShellState } from './state.js';
 import { closeStruct, type StructField } from './structfields.js';
@@ -137,7 +138,25 @@ export function registerEditor(
   VnEditor.register(cls);
   cls.STRUCT = closeStruct(nstructjs.STRUCT.inherit(cls, VnEditor, structName), fields);
   nstructjs.register(cls);
-  editors.set((cls.define() as { areaname: string }).areaname, cls);
+
+  const areaname = (cls.define() as { areaname: string }).areaname;
+  editors.set(areaname, cls);
+  describe(cls, areaname);
+}
+
+/**
+ * Give the class's `define()` the sentence `shared/editors.ts` already writes down, which is what
+ * path.ux's docker puts on the pane tab. It is spliced here, like the struct name above, rather
+ * than typed into twelve `define()`s: the Editors menu offers the same sentence from the same
+ * list, and a tab that said something else would be two answers to one question. Chrome is in no
+ * list and gets none — the header bar has no tab to hover.
+ */
+function describe(cls: typeof VnEditor, areaname: string): void {
+  if (!(EDITOR_IDS as readonly string[]).includes(areaname)) return;
+
+  const description = editorTooltip(areaname as EditorId);
+  const define = cls.define.bind(cls);
+  cls.define = () => ({ ...define(), description });
 }
 
 VnEditor.STRUCT = closeStruct(nstructjs.STRUCT.inherit(VnEditor, Area, 'vn.VnEditor'));

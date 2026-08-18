@@ -8,6 +8,7 @@
  * running it again; and `workspace.open`/`pick`/`create` write into a *different* tree than the
  * one the undo journal snapshots, so a shadow ref in the old repo could not restore it anyway.
  */
+import { existsSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { defineFor, prop } from '@vn/commands';
 import { GENERATED_CONTEXT_FILE } from '@vn/authoring';
@@ -18,7 +19,7 @@ import {
   createWorkspace,
   inspectCreate,
   inspectWorkspace,
-  recentWorkspaces,
+  liveWorkspaces,
 } from '../workspace.js';
 
 const define = defineFor<CommandHost>();
@@ -189,12 +190,14 @@ export const workspaceRecent = define({
     'install rather than per project — it has to be readable before any project is open.',
   mutating: false,
   props: {},
-  async run(_props, ctx) {
-    const recent = recentWorkspaces(ctx.host.state);
-    return {
+  run(_props, ctx) {
+    // Pruned here rather than at the menu: this half can stat, and a list that heals as it is
+    // read is one the ten slots stay spent on projects that are actually there.
+    const recent = liveWorkspaces(ctx.host.state, existsSync);
+    return Promise.resolve({
       message: `${recent.length} remembered project(s); ${ctx.root} is open.`,
       data: { current: ctx.root, recent },
-    };
+    });
   },
 });
 

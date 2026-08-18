@@ -15,9 +15,10 @@ import {
   agentSetEffort,
   agentSetMode,
   agentSetModel,
+  agentStop,
   agentThreads,
 } from './agent.js';
-import { artGenerate, artPromote, artRedraw, artSetNotes } from './art.js';
+import { artGenerate, artPromote, artRedraw, artSetNotes, artSetSeed } from './art.js';
 import {
   assetAccept,
   assetAdopt,
@@ -41,7 +42,7 @@ import {
   notifyMarkRead,
   notifyUnhide,
 } from './notify.js';
-import { pipelineRun, pipelineStatus } from './pipeline.js';
+import { pipelineRun, pipelineStatus, pipelineStop } from './pipeline.js';
 import {
   promptAddRef,
   promptCheck,
@@ -74,6 +75,7 @@ import {
   storyScreenplay,
   storySetChoice,
   storySetCoverage,
+  storySetHeading,
   storySetLineText,
   storySetNext,
   storySetOutfit,
@@ -121,11 +123,13 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     agentSetEffort,
     agentSetMode,
     agentSetModel,
+    agentStop,
     agentThreads,
     artGenerate,
     artPromote,
     artRedraw,
     artSetNotes,
+    artSetSeed,
     assetAccept,
     assetAdopt,
     assetInfo,
@@ -152,6 +156,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     notifyUnhide,
     pipelineRun,
     pipelineStatus,
+    pipelineStop,
     promptAddRef,
     promptCheck,
     promptClear,
@@ -184,6 +189,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storyScreenplay,
     storySetChoice,
     storySetCoverage,
+    storySetHeading,
     storySetLineText,
     storySetNext,
     storySetOutfit,

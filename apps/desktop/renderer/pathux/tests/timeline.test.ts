@@ -29,6 +29,7 @@ const SHOTS: CoverageShot[] = [
 const data: SceneCoverage = {
   sceneId: 's',
   location: 'roof',
+  heading: 'EXT. ROOF - NIGHT',
   lines: LINES,
   shots: SHOTS,
   cast: [],

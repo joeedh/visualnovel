@@ -625,7 +625,7 @@ export class AssetEditor extends VnEditor {
       el(
         'div',
         'as-hint',
-        'Notes are appended to the prompt, widest rung first. Ctrl+S or leaving the box saves — and re-renders what that rung reaches on the next run.',
+        'Notes are appended to the prompt, widest rung first; the seed beside each is what that rung is drawn with, and an empty one inherits. Ctrl+S or leaving a box saves — and re-renders what that rung reaches on the next run.',
       ),
     );
   }
@@ -946,6 +946,7 @@ export class AssetEditor extends VnEditor {
     const text = document.createElement('textarea');
     text.spellcheck = false;
     text.setAttribute('aria-label', 'The prompt this asset is generated from');
+    text.title = 'Say the whole prompt yourself. Ctrl+S or leaving the box saves it.';
     text.value = this.customDraft ?? view.custom ?? view.text;
     text.addEventListener('input', () => {
       this.customDraft = text.value;
@@ -1076,6 +1077,7 @@ export class AssetEditor extends VnEditor {
     const input = document.createElement('input');
     input.className = 'as-promote-id';
     input.setAttribute('aria-label', 'The variant id this becomes the plate for');
+    input.title = 'Which variant of the location these bytes become the plate for';
     input.placeholder = 'variant id, e.g. dawn';
     input.value = this.variant;
     input.addEventListener('input', () => (this.variant = input.value));
@@ -1087,6 +1089,7 @@ export class AssetEditor extends VnEditor {
     strip.appendChild(input);
 
     const go = el('button', 'as-promote-go', 'Promote');
+    go.title = 'Make this sketch the plate for that variant, so the next run adopts it';
     go.addEventListener('click', () => void this.promote());
     strip.appendChild(go);
 
@@ -1109,6 +1112,7 @@ export class AssetEditor extends VnEditor {
   private replaceStrip(slot: string): HTMLElement {
     const strip = el('div', 'as-replace');
     const go = el('button', 'as-replace-go', 'Replace with a file…');
+    go.title = `Choose a file and let it stand in for ${slot} from now on`;
     go.addEventListener('click', () => void this.replace());
     strip.appendChild(go);
     strip.appendChild(el('span', 'as-replace-what', slot));
@@ -1137,6 +1141,7 @@ export class AssetEditor extends VnEditor {
     text.value = this.draft;
     text.spellcheck = false;
     text.setAttribute('aria-label', 'The prompt this concept is drawn from');
+    text.title = 'Edit the words this sketch is drawn from. Redraw sends them.';
     text.addEventListener('input', () => {
       this.draft = text.value;
       this.promptDirty = true;
@@ -1152,6 +1157,7 @@ export class AssetEditor extends VnEditor {
     name.value = this.titleDraft;
     name.placeholder = 'name for this sketch';
     name.setAttribute('aria-label', 'What to call this sketch');
+    name.title = 'Name the sketch Redraw files. Enter draws it.';
     name.addEventListener('input', () => (this.titleDraft = name.value));
     name.addEventListener('keydown', (event) => {
       event.stopPropagation();
@@ -1160,6 +1166,7 @@ export class AssetEditor extends VnEditor {
     row.appendChild(name);
 
     const go = el('button', 'as-redraw-go', 'Redraw');
+    go.title = 'Spend one image call on this prompt and file the result as a new sketch';
     go.addEventListener('click', () => void this.redraw());
     row.appendChild(go);
     strip.appendChild(row);
@@ -1182,11 +1189,13 @@ export class AssetEditor extends VnEditor {
     const head = el('div', 'as-rung-head');
     head.appendChild(el('span', 'as-rung-label', rung.label));
     head.appendChild(el('span', 'as-rung-target', rung.target));
+    head.appendChild(this.seedField(rung));
     box.appendChild(head);
 
     const text = document.createElement('textarea');
     text.value = rung.notes ?? '';
     text.spellcheck = false;
+    text.title = `Say how ${rung.label} should look. Appended to the prompt, so saving re-renders what this rung reaches on the next run.`;
     text.placeholder = 'e.g. sodium streetlight raking across the formwork';
     text.addEventListener('input', () => {
       this.dirty.add(rung.target);
@@ -1206,6 +1215,70 @@ export class AssetEditor extends VnEditor {
     });
     box.appendChild(text);
     return box;
+  }
+
+  /**
+   * The seed box that sits in a rung's heading. Narrow, and beside the notes rather than under
+   * them, because it is not art direction: it asks for a different picture of the same words.
+   *
+   * Empty is the whole vocabulary for "inherit" — 0 is a seed like any other — so the placeholder
+   * is what would be used instead, and the tooltip says where that comes from.
+   */
+  private seedField(rung: ArtRungInfo): HTMLElement {
+    const inherited = this.info?.configSeed;
+    const field = document.createElement('input');
+    field.type = 'number';
+    field.min = '0';
+    field.step = '1';
+    field.className = 'as-rung-seed';
+    field.value = rung.seed === undefined ? '' : String(rung.seed);
+    field.placeholder = inherited === undefined ? 'seed' : String(inherited);
+    field.setAttribute('aria-label', `Image seed for ${rung.label}`);
+    field.title =
+      `Draw ${rung.label} from this seed instead. Saving re-renders what this rung reaches on ` +
+      'the next run — same words, different picture. Empty inherits ' +
+      (inherited === undefined ? 'the wider rung, then the model’s own choice.' : `${inherited}.`);
+
+    const key = `seed:${rung.target}`;
+    field.addEventListener('input', () => {
+      this.dirty.add(key);
+      field.classList.add('dirty');
+    });
+    field.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        void this.commitSeed(rung, field.value, field);
+      }
+    });
+    field.addEventListener('blur', () => {
+      if (this.dirty.has(key)) void this.commitSeed(rung, field.value, field);
+    });
+    return field;
+  }
+
+  /** Commit one rung's seed. An empty box clears it, which is the rung inheriting again. */
+  private async commitSeed(rung: ArtRungInfo, text: string, field: HTMLElement): Promise<void> {
+    const key = `seed:${rung.target}`;
+    const typed = text.trim();
+    const seed = typed === '' ? -1 : Number(typed);
+    if (typed !== '' && (!Number.isInteger(seed) || seed < 0)) {
+      return this.complain('A seed is a whole number of 0 or more; empty the box to inherit one.');
+    }
+    if (seed === (rung.seed ?? -1)) {
+      this.dirty.delete(key);
+      field.classList.remove('dirty');
+      return;
+    }
+
+    const outcome = await exec('art.setSeed', { target: rung.target, seed });
+    this.dirty.delete(key);
+    report(outcome);
+    if (!outcome.ok) return;
+
+    field.classList.remove('dirty');
+    // The seed is in the task hash, so what the pane says about this asset has moved under it.
+    void this.load(this.shown);
   }
 }
 

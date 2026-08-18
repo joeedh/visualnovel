@@ -1,5 +1,6 @@
 /**
- * Art notes: which rung a note is written at, and which rungs reach a given asset.
+ * Art rungs: which rung an authored field is written at, and which rungs reach a given asset. Two
+ * fields ride the same five rungs — art notes, and the image seed.
  *
  * A note is authored input — the one thing an author can say about how generated art should
  * *look* — and it goes into the prompt, so setting one re-keys the tasks it reaches. There are
@@ -24,6 +25,12 @@ export interface ArtRung {
   label: string;
   /** What is authored there today; absent means the rung exists but says nothing. */
   notes?: string;
+  /**
+   * The image seed authored at this rung; absent means it inherits. The other field a rung
+   * carries, and not the same kind of thing: notes say how the picture should look, a seed only
+   * asks for a different one of the same words. `seedFor` resolves the chain.
+   */
+  seed?: number;
 }
 
 /** `art.setNotes`'s target string for a rung. The inverse of {@link parseArtTarget}. */
@@ -72,23 +79,33 @@ export function rungAt(target: ArtTarget, ctx: ArtNotesContext): ArtRung | undef
   if (target.kind === 'character') {
     const character = ctx.model.characters.get(target.id);
     if (!character) return undefined;
-    if (!target.outfit) return rung(address, character.name, character.artNotes);
+    if (!target.outfit) return rung(address, character.name, character);
     const outfit = character.outfits.find((o) => o.id === target.outfit);
-    return outfit && rung(address, `${character.name} — ${outfit.id}`, outfit.artNotes);
+    return outfit && rung(address, `${character.name} — ${outfit.id}`, outfit);
   }
   if (target.kind === 'location') {
     const location = ctx.model.locations.get(target.id);
     if (!location) return undefined;
-    if (!target.variant) return rung(address, location.name, location.artNotes);
+    if (!target.variant) return rung(address, location.name, location);
     const variant = location.variants.find((v) => v.id === target.variant);
-    return variant && rung(address, `${location.name} — ${variant.id}`, variant.artNotes);
+    return variant && rung(address, `${location.name} — ${variant.id}`, variant);
   }
   const shot = ctx.shots?.get(target.sceneId)?.find((s) => s.id === target.shotId);
-  return shot && rung(address, `${target.sceneId} · ${shot.id}`, shot.artNotes);
+  return shot && rung(address, `${target.sceneId} · ${shot.id}`, shot);
 }
 
-function rung(target: string, label: string, notes: string | undefined): ArtRung {
-  return notes === undefined ? { target, label } : { target, label, notes };
+/** Absent fields stay absent: a rung that authored nothing must not grow keys saying so. */
+function rung(
+  target: string,
+  label: string,
+  authored: { artNotes?: string; seed?: number },
+): ArtRung {
+  return {
+    target,
+    label,
+    ...(authored.artNotes === undefined ? {} : { notes: authored.artNotes }),
+    ...(authored.seed === undefined ? {} : { seed: authored.seed }),
+  };
 }
 
 /**

@@ -18,9 +18,11 @@
  * - **A shot's own id is part of its task hash**, so nothing here renames one. A shot carried into
  *   `rooftop` keeps the id it was minted with (`arrival__beat1`) precisely so its generated image
  *   is still the answer to the task that produced it.
- * - **Nothing here invalidates art, so drift has to be reported.** No prose reaches a shot's task
- *   inputs, which is why editing is affordable at all — and also why a rendered frame goes on
- *   illustrating text the author replaced until they ask for a new one. `drifted` is that count.
+ * - **No *prose* edit invalidates art, so drift has to be reported.** No line's text reaches a
+ *   shot's task inputs, which is why editing is affordable at all — and also why a rendered frame
+ *   goes on illustrating text the author replaced until they ask for a new one. `drifted` is that
+ *   count. A scene's *heading* is the exception and the reason `restaged` is priced separately: a
+ *   location **is** in a shot's task inputs, so moving a scene re-renders it.
  */
 import type { Shot } from '@vn/types';
 import { sceneIdOf, type AppliedLineOp } from './lineops.js';
@@ -45,6 +47,12 @@ export interface ShotFallout {
   orphaned: string[];
   /** Shots dropped with the file of a scene that stopped existing. */
   discarded: string[];
+  /**
+   * Shots whose scene changed place, restaged onto the new heading's variant. This is the one
+   * consequence in this module that *does* rehash: a location is in a shot's task inputs, so a
+   * rendered one here is re-rendered rather than left to drift.
+   */
+  restaged: string[];
   /**
    * Rendered shots whose covered prose changed. Nothing re-renders them — the task hash does not
    * see line text — so the frame keeps depicting the old words until the author regenerates it.
@@ -71,6 +79,7 @@ export function scenesTouchedBy(op: AppliedLineOp): string[] {
     ids.add(sceneIdOf(to));
   }
   for (const id of [...op.retired, ...op.retyped]) ids.add(sceneIdOf(id));
+  for (const [sceneId] of op.relocated) ids.add(sceneId);
   ids.delete('');
   return [...ids];
 }
@@ -94,6 +103,7 @@ function rewrite(op: AppliedLineOp, shot: Shot): string[] {
 export function shotFallout(op: AppliedLineOp, shots: ShotsByScene): ShotFallout {
   const gone = new Set(op.removes);
   const retyped = new Set(op.retyped);
+  const staging = new Map(op.relocated);
 
   // Every surviving scene that has a file starts with an empty list, so one that loses its last
   // shot is visible as emptied rather than simply never mentioned.
@@ -112,6 +122,7 @@ export function shotFallout(op: AppliedLineOp, shots: ShotsByScene): ShotFallout
   const orphaned: string[] = [];
   const discarded: string[] = [];
   const drifted: string[] = [];
+  const restaged: string[] = [];
 
   for (const [sceneId, owned] of shots) {
     for (const shot of owned) {
@@ -139,7 +150,16 @@ export function shotFallout(op: AppliedLineOp, shots: ShotsByScene): ShotFallout
         if (lost > 0) detached.push([shot.id, lost]);
         if (lines.length === 0 && shot.coversLines.length > 0) orphaned.push(shot.id);
       }
-      listFor(home).push({ ...shot, sceneId: home, coversLines: lines });
+      // Restaging is keyed by the scene the shot ends up in, so a shot carried into a scene that
+      // moved is staged where it lands rather than where it came from.
+      const variant = staging.get(home);
+      if (variant !== undefined && variant !== shot.location) restaged.push(shot.id);
+      listFor(home).push({
+        ...shot,
+        sceneId: home,
+        coversLines: lines,
+        ...(variant !== undefined ? { location: variant } : {}),
+      });
     }
   }
 
@@ -155,7 +175,7 @@ export function shotFallout(op: AppliedLineOp, shots: ShotsByScene): ShotFallout
   }
   const removes = [...op.removes.filter((id) => shots.has(id)), ...emptied];
 
-  const fallout = { writes, removes, carried, detached, orphaned, discarded, drifted };
+  const fallout = { writes, removes, carried, detached, orphaned, discarded, drifted, restaged };
   return { ...fallout, note: noteFor(shots, { ...fallout, emptied }) };
 }
 
@@ -167,7 +187,11 @@ function unchanged(before: readonly Shot[], after: readonly Shot[]): boolean {
     before.length === after.length &&
     before.every((shot, i) => {
       const now = after[i] as Shot;
-      return shot.id === now.id && sameLines(shot.coversLines, now.coversLines);
+      return (
+        shot.id === now.id &&
+        shot.location === now.location &&
+        sameLines(shot.coversLines, now.coversLines)
+      );
     })
   );
 }
@@ -204,6 +228,15 @@ function noteFor(shots: ShotsByScene, parts: NoteParts): string {
   }
   if (parts.discarded.length > 0) {
     clauses.push(`${parts.discarded.length} shot(s) go with it${priced(parts.discarded)}`);
+  }
+  if (parts.restaged.length > 0) {
+    const rendered = renderedIn(shots, parts.restaged);
+    clauses.push(
+      rendered > 0
+        ? `${parts.restaged.length} shot(s) are set somewhere else now, ${rendered} already ` +
+            `rendered — a location is in a shot's task inputs, so those will be drawn again`
+        : `${parts.restaged.length} shot(s) are set somewhere else now`,
+    );
   }
   if (parts.drifted.length > 0) {
     clauses.push(

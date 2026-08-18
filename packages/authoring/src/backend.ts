@@ -8,11 +8,17 @@
  */
 import { z } from 'zod';
 import { parseStructured } from '@vn/providers';
-import type { ChatBackend, ToolSchema } from '@vn/providers';
+import type { ChatBackend, ChatReply, TokenUsage, ToolSchema } from '@vn/providers';
 
-/** A message in the running transcript handed to the backend. */
+/**
+ * A message in the running transcript handed to the backend.
+ *
+ * `context` is what the *host* knew when the turn started — which scene the author had open, say.
+ * It is a message rather than part of the system prompt because it was true at that turn and not
+ * at the others, and a transcript is the only place that distinction survives.
+ */
 export interface AgentMessage {
-  role: 'user' | 'assistant' | 'observation';
+  role: 'user' | 'assistant' | 'observation' | 'context';
   content: string;
 }
 
@@ -39,6 +45,17 @@ export interface AgentTurn {
   action?: AgentAction;
   /** When set, the turn is the final answer to the user and the loop ends. */
   final?: string;
+  /**
+   * What this step cost, when the provider said. A step that was retried carries the sum of
+   * every attempt: each one was a call, and each one was billed.
+   */
+  usage?: TokenUsage;
+}
+
+/** Add up two receipts. `undefined` throughout means nothing was reported, not that it was free. */
+function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage | undefined {
+  if (!b) return a;
+  return { input: (a?.input ?? 0) + b.input, output: (a?.output ?? 0) + b.output };
 }
 
 /** The protocol the loop targets; swap implementations to change tool-call mechanics. */
@@ -123,22 +140,35 @@ export class StructuredAgentBackend implements AgentBackend {
 
     const attempts = this.opts.attempts ?? 3;
     let lastErr: unknown;
+    // Every attempt is a call the author pays for, so the receipt accumulates across the retries
+    // and rides out on whichever turn is finally returned — including the one that gave up.
+    let spent: TokenUsage | undefined;
     for (let i = 0; i < attempts; i++) {
       try {
-        const raw = await this.chat.message({ system, prompt });
-        const parsed = parseStructured(raw, turnSchema);
+        const reply = await this.reply({ system, prompt });
+        spent = plus(spent, reply.usage);
+        const parsed = parseStructured(reply.text, turnSchema);
         const turn: AgentTurn = { message: parsed.thought };
         if (parsed.final !== undefined) turn.final = parsed.final;
         else if (parsed.tool !== undefined) turn.action = { tool: parsed.tool, args: parsed.args };
+        if (spent) turn.usage = spent;
         return turn;
       } catch (err) {
         lastErr = err;
       }
     }
     // Degrade gracefully: surface the parse failure as a final message rather than throw.
-    return {
+    const failed: AgentTurn = {
       final: `I couldn't produce a valid action (${lastErr instanceof Error ? lastErr.message : String(lastErr)}).`,
     };
+    if (spent) failed.usage = spent;
+    return failed;
+  }
+
+  /** One text turn, with the receipt when the backend keeps one. */
+  private async reply(req: { system: string; prompt: string }): Promise<ChatReply> {
+    if (this.chat.messageWithUsage) return this.chat.messageWithUsage(req);
+    return { text: await this.chat.message(req) };
   }
 }
 
@@ -179,11 +209,11 @@ export class NativeAgentBackend implements AgentBackend {
 
     const reply = await this.chat.chatWithTools!({ system, prompt }, schemas);
     const call = reply.toolCalls[0];
-    if (call) {
-      const turn: AgentTurn = { action: { tool: call.name, args: call.args } };
-      if (reply.text) turn.message = reply.text;
-      return turn;
-    }
-    return { final: reply.text ?? '' };
+    const turn: AgentTurn = call
+      ? { action: { tool: call.name, args: call.args } }
+      : { final: reply.text ?? '' };
+    if (call && reply.text) turn.message = reply.text;
+    if (reply.usage) turn.usage = reply.usage;
+    return turn;
   }
 }

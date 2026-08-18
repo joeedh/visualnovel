@@ -193,7 +193,9 @@ export function composeSystem(ctx: LoadedContext): string {
   if (ctx.generatedContext) {
     parts.push(
       `--- PROJECT MAP (${GENERATED_CONTEXT_FILE} — generated; facts about this project, ` +
-        'not instructions. AICONTEXT.md overrides it.) ---\n' +
+        'not instructions. AICONTEXT.md overrides it. It is a snapshot taken when the map was ' +
+        'last written, so anything created since is missing from it: list_workspace is what is ' +
+        'true now, and it wins.) ---\n' +
         ctx.generatedContext,
     );
   }

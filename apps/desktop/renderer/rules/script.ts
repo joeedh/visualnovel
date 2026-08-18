@@ -283,6 +283,41 @@ export function cueChoices(cast: readonly CastMember[], speaker?: string): CueCh
   return choices;
 }
 
+/** What the column calls a line nobody says. Never a cue — no cast member is spelled this way. */
+export const NARRATOR = 'narrator';
+
+/**
+ * What a line's cue slot reads and what it says on hover. An unattributed line names the narrator
+ * rather than showing nothing: a blank slot reads as "there is no control here", which is how an
+ * author ends up with a scene of narration and no idea a speaker was ever theirs to set.
+ */
+export function cueSlotText(
+  cast: readonly CastMember[],
+  speaker?: string,
+): { label: string; title: string } {
+  const label = cueLabel(cast, speaker);
+  return label
+    ? { label, title: `${label} says this line — click to change who does` }
+    : { label: NARRATOR, title: 'Nobody says this line — click to give it a speaker' };
+}
+
+/**
+ * The same, for the composer row — which has no line yet, so this states what the insert will
+ * attribute rather than offering to change it. {@link attributionAfter} is what decides.
+ */
+export function composedCueText(
+  cast: readonly CastMember[],
+  above: CoverageLine | null,
+): { label: string; title: string } {
+  const label = cueLabel(cast, attributionAfter(above).speaker);
+  return label
+    ? { label, title: `${label} will say this line, like the one above it` }
+    : {
+        label: NARRATOR,
+        title: 'This will be narration — say who speaks it once the line exists',
+      };
+}
+
 /** `story.setSpeaker` as the column asks for it. An empty `speaker` makes the line narration. */
 export const setSpeakerOf = (line: string, cue: string): Invocation => ({
   id: 'story.setSpeaker',

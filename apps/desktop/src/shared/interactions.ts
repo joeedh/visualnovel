@@ -3,7 +3,8 @@
  * take it, and the command each drop commits.
  *
  * Every decision here delegates to the same rule module the matching `story.*` command runs in
- * main — `branchops` for the branch editor, `coverage` for the timeline, `lineops` for the script.
+ * main — `@vn/scriptedit`'s `branchops` for the branch editor and `lineops` for the script,
+ * `coverage` for the timeline.
  * So the sentence shown while a card hovers over a wire it cannot be spliced into is produced by
  * the function that would have refused the drop, and `interaction.targets` answers with that same
  * sentence without anything being attempted.
@@ -13,9 +14,18 @@
  * `docs/plans/interaction-model.md`.
  */
 import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
-import { moveLine, planShotMove, sceneIdOf, type ScriptState } from '@vn/scriptedit';
-import { removeChoice, setChoice, setNext, spliceScene } from './branchops.js';
-import type { BranchOp, SceneMap } from './branchops.js';
+import {
+  moveLine,
+  planShotMove,
+  removeChoice,
+  sceneIdOf,
+  setChoice,
+  setNext,
+  spliceScene,
+  type BranchOp,
+  type SceneMap,
+  type ScriptState,
+} from '@vn/scriptedit';
 import { resolveDrag, setCoverage, spansFor, type Edge } from './coverage.js';
 import type { CoverageLine, CoverageShot, PropValue, StoryEdge, StoryGraph } from './ipc.js';
 import { effectiveOrder, moveChunk, TOP_CHUNK, type PromptOrderState } from './promptops.js';

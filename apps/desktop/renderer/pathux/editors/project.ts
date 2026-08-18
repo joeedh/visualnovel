@@ -47,6 +47,7 @@ export class ProjectEditor extends VnEditor {
     const bar = (this.header as Container).row();
     bar.label('PROJECT').style['padding'] = '0px 8px';
     this.applyBtn = bar.button('Apply', () => void this.apply());
+    this.applyBtn.description = 'Write these settings back to project.yaml';
     const reload = bar.button('⟳', () => void this.load());
     reload.description = 'Re-read project.yaml (discards an unapplied edit)';
     bar.flushUpdate();
@@ -65,6 +66,8 @@ export class ProjectEditor extends VnEditor {
     this.styleBox.className = 'pj-style';
     this.styleBox.spellcheck = false;
     this.styleBox.placeholder = 'e.g. soft anime, cel shaded, warm palette';
+    this.styleBox.title =
+      'The sentence every image prompt opens with. Applying it re-keys every image task.';
     this.styleBox.addEventListener('input', () => this.touched());
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
     // keys opens the palette on the first `/` of a sentence.

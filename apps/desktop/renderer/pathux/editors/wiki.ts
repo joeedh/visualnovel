@@ -67,6 +67,7 @@ export class WikiEditor extends VnEditor {
     const bar = (this.header as Container).row();
     bar.label('DOCUMENT').style['padding'] = '0px 8px';
     this.saveBtn = bar.button('Save', () => void this.save());
+    this.saveBtn.description = 'Write this document back to disk, and commit it';
     const reload = bar.button('⟳', () => void this.reload());
     reload.description = 'Re-read this document from disk (discards an unsaved draft)';
     bar.flushUpdate();
@@ -84,6 +85,8 @@ export class WikiEditor extends VnEditor {
 
     this.text = document.createElement('textarea');
     this.text.className = 'wk-text';
+    this.text.title =
+      'Edit the document as markdown, front-matter and all. Ctrl+S saves and commits.';
     this.text.spellcheck = false;
     this.text.style.display = 'none';
     this.text.addEventListener('input', () => this.touched());

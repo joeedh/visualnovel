@@ -1,6 +1,6 @@
 import { TOP } from '../../../src/shared/interactions.js';
-import { aim, dropOf, grabLine, noticeOf } from '../script.js';
-import type { CoverageLine, SceneCoverage } from '../../../src/shared/ipc';
+import { aim, dropOf, grabLine, lineMenu, noticeOf, shotCovering } from '../script.js';
+import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../src/shared/ipc';
 
 const lines: CoverageLine[] = [
   { id: 'a:L1', kind: 'narration', text: 'The gate stands open.' },
@@ -11,6 +11,7 @@ const lines: CoverageLine[] = [
 const scene: SceneCoverage = {
   sceneId: 'a',
   location: 'GATE',
+  heading: 'INT. GATE - DAY',
   lines,
   shots: [],
   cast: [],
@@ -61,5 +62,50 @@ describe('aiming it at an insertion point', () => {
   test('off the page there is nothing under the pointer at all', () => {
     expect(aim(aim(held, TOP), null).verdict).toBeNull();
     expect(noticeOf(null)).toBeNull();
+  });
+});
+
+describe('what right-clicking a line offers', () => {
+  const shot = (id: string, covers: string[], image?: CoverageShot['image']): CoverageShot => ({
+    id,
+    framing: 'medium',
+    subjects: [],
+    outfits: {},
+    coversLines: covers,
+    status: 'accepted',
+    image,
+    drift: 'current',
+  });
+  const drawn = shot('a:S1', ['a:L1', 'a:L2'], { hash: 'abc123', ext: 'png' });
+  const bare = shot('a:S2', ['a:L3']);
+  const covered: SceneCoverage = { ...scene, shots: [drawn, bare] };
+
+  test('a line is covered by the one shot whose bracket includes it', () => {
+    expect(shotCovering(covered.shots, 'a:L2')).toBe(drawn);
+    expect(shotCovering(covered.shots, 'a:L3')).toBe(bare);
+    expect(shotCovering(covered.shots, 'a:L9')).toBeNull();
+  });
+
+  test('a drawn shot opens its frame by hash, elsewhere', () => {
+    expect(lineMenu(covered, 'a:L1')).toEqual([
+      {
+        label: 'Open shot asset',
+        id: 'view.open',
+        props: { editor: 'asset', where: 'elsewhere', subject: 'abc123' },
+      },
+    ]);
+  });
+
+  test('a shot with no frame yet says so rather than vanishing', () => {
+    const [entry] = lineMenu(covered, 'a:L3');
+    expect(entry?.props).toBeUndefined();
+    expect(entry?.refused).toContain('a:S2');
+    expect(entry?.refused).toContain('has not been drawn');
+  });
+
+  test('a line no shot covers is a different answer, and it is also said', () => {
+    // Two ways of having no picture, two next moves: decompose the scene, or run it.
+    const [entry] = lineMenu(scene, 'a:L1');
+    expect(entry?.refused).toBe('No shot covers a:L1 yet.');
   });
 });

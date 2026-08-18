@@ -2,7 +2,7 @@
  * The pure half of `story.setCoverage`: which lines a shot is on screen for, plus the geometry
  * a drag resolves against.
  *
- * It is in `shared/` for the same reason `branchops.ts` is — the timeline runs these functions
+ * It is in `shared/` for the same reason `@vn/scriptedit` is pure — the timeline runs these functions
  * mid-drag to draw what a drop would produce, so the preview and the commit are the same rule
  * rather than two copies that can disagree. `spansFor`/`resolveDrag` live here rather than in
  * the renderer because `timeline.cover` (`interactions.ts`) enumerates its targets with them,

@@ -17,6 +17,7 @@ const shot = (outfits: Record<string, string>, subjects = ['aiko', 'ren']): Cove
 const coverage = (cast: CoverageCast[], shots: CoverageShot[]): SceneCoverage => ({
   sceneId: 'club',
   location: 'club_room',
+  heading: 'INT. CLUB ROOM - DAY',
   lines: [],
   shots,
   cast,

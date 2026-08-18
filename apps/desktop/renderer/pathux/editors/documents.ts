@@ -220,9 +220,13 @@ export class DocumentsEditor extends VnEditor {
     // reading the header's own PLAN/EXECUTE button already established.
     this.bar.button(files ? 'FILES' : 'DOCUMENTS', () =>
       this.setMode(files ? 'documents' : 'files'),
-    );
-    this.bar.button('New…', () => this.showNewRow());
-    this.bar.button('Refresh', () => void this.load());
+    ).description = files
+      ? 'Showing every file on disk. Click to group by what the documents are instead.'
+      : 'Showing cast, locations and scenes. Click to see the folders they live in instead.';
+    this.bar.button('New…', () => this.showNewRow()).description =
+      'Add a character, location, scene or page to this project';
+    this.bar.button('Refresh', () => void this.load()).description =
+      'Re-read the project from disk';
     this.bar.flushUpdate();
   }
 
@@ -268,6 +272,8 @@ export class DocumentsEditor extends VnEditor {
 
     this.newKind = document.createElement('select');
     this.newKind.className = 'dt-new-kind';
+    this.newKind.title =
+      'Which kind of document to scaffold — it decides the folder and the fields';
     for (const kind of ['character', 'location', 'note'] as const) {
       const option = document.createElement('option');
       option.value = kind;
@@ -278,6 +284,7 @@ export class DocumentsEditor extends VnEditor {
     this.newName = document.createElement('input');
     this.newName.className = 'dt-new-name';
     this.newName.placeholder = 'name';
+    this.newName.title = 'Name the document — Enter writes it and opens it, Escape gives up';
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
     // keys opens the palette on the first `/` of a name.
     this.newName.addEventListener('keydown', (event) => {
@@ -310,6 +317,17 @@ export class DocumentsEditor extends VnEditor {
     if (!outcome.ok) return;
 
     this.hideNewRow();
+    this.openDoc((outcome.data as { path: string }).path);
+  }
+
+  /**
+   * Give a mined location the sheet it never had, and open it. The id `doc.create` derives from the
+   * name is the id the heading was mined through — both are `slug(name)` — so this is that
+   * location's sheet rather than a second location standing beside it.
+   */
+  private async writeSheet(name: string): Promise<void> {
+    const outcome = await exec('doc.create', { kind: 'location', name });
+    if (!outcome.ok) return;
     this.openDoc((outcome.data as { path: string }).path);
   }
 
@@ -353,6 +371,9 @@ export class DocumentsEditor extends VnEditor {
     line.style.paddingLeft = `${4 + row.depth * 13}px`;
 
     const twisty = el('span', 'dt-twisty', row.expandable ? (row.expanded ? '▾' : '▸') : '');
+    if (row.expandable) {
+      twisty.title = row.expanded ? 'Hide what is under this' : 'Show what is under this';
+    }
     line.appendChild(twisty);
     line.appendChild(el('span', 'dt-label', node.label));
     if (node.badge) {
@@ -361,12 +382,22 @@ export class DocumentsEditor extends VnEditor {
       line.appendChild(badge);
     }
     const renamable = renameOf(node);
-    // A path is the useful thing to say where there is one; `note` is what a row with no file says
-    // instead — a slot's own sentence — because no row may hover silently.
+    // A path is the useful thing to say where there is one; the rest is what a row with no file
+    // says instead, because no row may hover silently. A location mined from a heading has no
+    // sheet, so its second click writes one rather than renaming.
+    const sheetless = node.kind === 'location' && node.path === undefined;
     if (node.path) {
       line.title = renamable ? `${node.path} — double-click the name to rename it` : node.path;
     } else if (node.note) {
       line.title = node.note;
+    } else if (sheetless) {
+      line.title = 'Only a heading names this place — double-click to write its sheet';
+    } else if (group) {
+      line.title = 'Show or hide what is filed under this heading';
+    } else if (inert) {
+      line.title = 'More than the tree will draw at once — narrow it, or open the folder itself';
+    } else {
+      line.title = `Select this ${node.kind} — every pane showing one follows the click`;
     }
 
     if (!inert) {
@@ -384,7 +415,9 @@ export class DocumentsEditor extends VnEditor {
           this.lastClick.id === node.id && event.timeStamp - this.lastClick.at < DOUBLE_CLICK_MS;
         this.lastClick = again ? { id: '', at: -1 } : { id: node.id, at: event.timeStamp };
         this.pick(row);
-        if (again && renamable) this.beginRename(node.id, renamable);
+        if (!again) return;
+        if (renamable) this.beginRename(node.id, renamable);
+        else if (sheetless) void this.writeSheet(node.label);
       });
       line.addEventListener('contextmenu', (event) => {
         event.preventDefault();
@@ -419,7 +452,9 @@ export class DocumentsEditor extends VnEditor {
     if (links.sheet) {
       const label = links.wiki ? 'in the story bible' : 'sheet';
       this.panel.appendChild(
-        this.linkRow(`${label} · ${links.sheet}`, () => this.openDoc(links.sheet!)),
+        this.linkRow(`${label} · ${links.sheet}`, `Open ${links.sheet}`, () =>
+          this.openDoc(links.sheet!),
+        ),
       );
     }
 
@@ -433,7 +468,7 @@ export class DocumentsEditor extends VnEditor {
       this.panel.appendChild(el('div', 'dt-section', 'SCENES'));
       for (const scene of links.scenes) {
         this.panel.appendChild(
-          this.linkRow(scene, () =>
+          this.linkRow(scene, `Select ${scene} — every pane follows the pick`, () =>
             this.publish({ ...this.selection(), sceneId: scene, shotId: '' }),
           ),
         );
@@ -444,7 +479,7 @@ export class DocumentsEditor extends VnEditor {
       this.panel.appendChild(el('div', 'dt-section', 'SHOTS'));
       for (const { scene, shot } of links.shots) {
         this.panel.appendChild(
-          this.linkRow(shot, () =>
+          this.linkRow(shot, `Select this shot of ${scene}`, () =>
             this.publish({ ...this.selection(), sceneId: scene, shotId: shot }),
           ),
         );
@@ -452,9 +487,9 @@ export class DocumentsEditor extends VnEditor {
     }
   }
 
-  private linkRow(text: string, onClick: () => void): HTMLElement {
+  private linkRow(text: string, tip: string, onClick: () => void): HTMLElement {
     const row = el('div', 'dt-link', text);
-    row.title = text;
+    row.title = tip;
     row.addEventListener('click', onClick);
     return row;
   }

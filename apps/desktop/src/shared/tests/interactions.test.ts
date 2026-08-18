@@ -23,7 +23,7 @@ import { TOP_CHUNK } from '../promptops.js';
 import { UNRESOLVED } from '@vn/commands';
 import { splitScenes } from '@vn/model';
 import { parseFountain } from '@vn/parse';
-import type { SceneMap } from '../branchops.js';
+import type { SceneMap } from '@vn/scriptedit';
 import type { CoverageShot, StoryEdge } from '../ipc.js';
 import type { ScriptState } from '@vn/scriptedit';
 

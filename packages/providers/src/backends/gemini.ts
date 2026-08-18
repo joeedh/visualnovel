@@ -3,10 +3,12 @@ import type { ImageParams, ImageResult } from '@vn/types';
 import { ProviderError } from '@vn/util';
 import type {
   ChatBackend,
+  ChatReply,
   ChatRequest,
   ChatToolReply,
   ImageBackend,
   ImageInput,
+  TokenUsage,
   ToolSchema,
 } from '../backend.js';
 import { isPlaceholderImage } from '../placeholder.js';
@@ -91,26 +93,46 @@ function extractImage(res: any, modelId: string): ImageResult {
   throw new ProviderError(`Gemini returned no image (${modelId})`);
 }
 
+/**
+ * What the response says it cost. Thinking is billed as output, so it is counted there;
+ * `undefined` when the metadata is missing rather than zero, so a total that stopped arriving
+ * reads as "not said" instead of "free".
+ */
+function usageOf(res: any): TokenUsage | undefined {
+  const u = res?.usageMetadata;
+  if (!u) return undefined;
+  return {
+    input: u.promptTokenCount ?? 0,
+    output: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0),
+  };
+}
+
 /** Gemini text/vision backend (report §8). */
 export function createGeminiChat(
   apiKey: string,
   modelId: string,
   client: GeminiClient = lazyClient(apiKey),
 ): ChatBackend {
+  const messageWithUsage = async (req: ChatRequest): Promise<ChatReply> => {
+    const ai = await client();
+    const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
+    return callWithRetry(`Gemini request failed (${modelId})`, async () => {
+      const res = await ai.models.generateContent({
+        model: modelId,
+        contents: [{ role: 'user', parts }],
+        config: req.system ? { systemInstruction: req.system } : undefined,
+      });
+      const text = (res.text ?? '') as string;
+      const usage = usageOf(res);
+      return usage ? { text, usage } : { text };
+    });
+  };
+
   return {
     modelId,
-    async message(req: ChatRequest): Promise<string> {
-      const ai = await client();
-      const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
-      return callWithRetry(`Gemini request failed (${modelId})`, async () => {
-        const res = await ai.models.generateContent({
-          model: modelId,
-          contents: [{ role: 'user', parts }],
-          config: req.system ? { systemInstruction: req.system } : undefined,
-        });
-        return (res.text ?? '') as string;
-      });
-    },
+    // One request builder and one retry policy: the text path is this with the receipt dropped.
+    message: async (req: ChatRequest) => (await messageWithUsage(req)).text,
+    messageWithUsage,
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
       const ai = await client();
       const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
@@ -139,7 +161,7 @@ export function createGeminiChat(
         const toolCalls = replyParts
           .filter((p: any) => p.functionCall)
           .map((p: any) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} }));
-        return { text: text || undefined, toolCalls } as ChatToolReply;
+        return { text: text || undefined, toolCalls, usage: usageOf(res) } as ChatToolReply;
       });
     },
   };

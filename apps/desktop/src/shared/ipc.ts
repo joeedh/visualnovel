@@ -123,7 +123,14 @@ export type UiEffect =
    * so this is a remount and not a refresh — the session, the command history and the undo
    * stack were all torn down with the old root.
    */
-  | { type: 'workspace'; root: string; title: string };
+  | { type: 'workspace'; root: string; title: string }
+  /**
+   * Long-running work started, moved, or ended. `what` names it the way a refusal does ("a
+   * pipeline run", "an agent turn") and is absent when the session went idle. Pushed rather
+   * than polled: the header disables its run button and the convo editor shows its stop button
+   * off exactly the fact `WorkspaceSession.busy()` already keeps.
+   */
+  | { type: 'busy'; what?: string; ran: number; pending: number };
 
 /** Either form of invocation accepted over `command:exec`: structured, or a DSL string. */
 export interface CommandExecRequest {
@@ -184,10 +191,19 @@ export interface PlanRequest {
   plan: Plan;
 }
 
-/** A question the agent asked the author, waiting on an answer main is blocked for. */
+/**
+ * A question the agent asked the author, waiting on an answer main is blocked for.
+ *
+ * `choices` is a shortlist to click rather than type. It changes how the card is drawn and
+ * nothing else: the answer that goes back is a string either way, and the author may always
+ * type something the list does not offer.
+ */
 export interface AskRequest {
   id: number;
   question: string;
+  choices?: string[];
+  /** Whether more than one choice may be picked. Meaningless without `choices`. */
+  multi?: boolean;
 }
 
 /**
@@ -226,6 +242,8 @@ export interface PipelineRunResult {
    */
   failed: number;
   failures: { hash: string; kind: TaskKind; error?: string }[];
+  /** True when the author stopped the run. What it finished is recorded; the rest is pending. */
+  stopped?: boolean;
 }
 
 /** A portrait candidate offered for a character at the approval gate. */
@@ -337,6 +355,11 @@ export interface CoverageCast {
 export interface SceneCoverage {
   sceneId: string;
   location: string;
+  /**
+   * The slugline as the file holds it, reassembled by `headingOf`. A scene has no `heading` field,
+   * so a surface that offers to edit one has nowhere else to read the current value from.
+   */
+  heading: string;
   lines: CoverageLine[];
   shots: CoverageShot[];
   /** Who is in the scene and what they own; the scene half of the outfit strip. */
@@ -379,7 +402,7 @@ export interface DocNode {
   label: string;
   /** Workspace-relative, `/` separators. Absent for a grouping, and for an entity with no sheet. */
   path?: string;
-  /** One word, never a sentence: `unreachable`, `draft`, `mined`, `base`, `accepted`. */
+  /** One word, never a sentence: `unreachable`, `draft`, `mined`, `base`, `accepted`, `stale`. */
   badge?: string;
   /**
    * The row's tooltip, where the path is not the useful thing to say — a slot's `blocked` sentence.
@@ -417,12 +440,14 @@ export interface EntityLinks {
   shots: { scene: string; shot: string }[];
 }
 
-/** One rung of the art-notes chain as a surface shows it — see `main/artnotes.ts`. */
+/** One rung of the art rung chain as a surface shows it — see `main/artnotes.ts`. */
 export interface ArtRungInfo {
   /** `art.setNotes`'s address for this rung: `character:aiko/gala`, `location:cafe/night`. */
   target: string;
   label: string;
   notes?: string;
+  /** The seed authored here; absent means the rung inherits, down to the project config. */
+  seed?: number;
 }
 
 /** Everything the asset editor draws: what the bytes are, what made them, and what to edit. */
@@ -477,6 +502,11 @@ export interface AssetInfo {
   unapproved?: string;
   /** The art-notes rungs that reach this asset, widest first. */
   rungs: ArtRungInfo[];
+  /**
+   * The project-wide seed from `project.yaml`, which every rung falls back to. Shown as the
+   * placeholder in an empty seed box, so "inherits" says what it inherits.
+   */
+  configSeed?: number;
   /**
    * The composed prompt: the clauses, what the override does to them, and the string that would
    * be sent. Folded in here so the pane makes one round trip and there is one invalidation path.
