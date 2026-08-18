@@ -49,10 +49,22 @@ moves the original aside as `.fountain.imported` — both are written up in full
 `--mock` makes `run` a **dry run**: it plans, writes the story graph, and previews the work (like
 `cost`) but calls no model and writes no assets — no API keys needed.
 
-Without `--mock`, `run` constructs real Gemini/Claude clients and requires a Gemini key: the env
-var named in `project.yaml`, or a secret file under `<dir>/keys/`, or a shared `keys/` at the
-enclosing repo root, consulted after the project's own. `vnauthor` resolves model and keys exactly
-the same way ([`vnauthor.md`](vnauthor.md#running-it)).
+Without `--mock`, `run` constructs real Gemini/Claude clients and requires a Gemini key. Four
+places are consulted, and the **first** that answers wins:
+
+1. The environment variable named in `project.yaml` (`config.keys.<vendor>`).
+2. A secret file under `<dir>/keys/`.
+3. A shared `keys/` at the enclosing repo root.
+4. `<user config dir>/keys/` — `%LOCALAPPDATA%\vnauthor` on Windows,
+   `~/Library/Application Support/vnauthor` on macOS, `$XDG_CONFIG_HOME/vnauthor` (else
+   `~/.config/vnauthor`) on Linux. `$VNAUTHOR_HOME` overrides all three, and a pre-existing
+   `~/.vnauthor` is still read when the native directory does not exist.
+
+So a project carrying its own key wins over the one set up once for the machine, and a set
+environment variable wins over both — which is the honest answer to "why is it still asking me"
+after a key was just pasted. `vnauthor` resolves model and keys exactly the same way
+([`vnauthor.md`](vnauthor.md#running-it)); getting a key in the first place is
+[`api-keys.md`](api-keys.md).
 
 `vngen run --mock` writes no assets at all. Mock providers used *directly* — tests, `@vn/testkit`
 — do emit **marked placeholder PNGs**, and a real backend refuses any reference carrying that

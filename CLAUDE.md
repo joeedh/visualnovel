@@ -188,7 +188,7 @@ running anything: `--mock` writes no assets and needs no keys, and in a real pro
 The pipeline is presentation-agnostic — it stops at `manifest.json`. `@vn/export` projects the
 model + manifest into a small in-house **playable** (`story.play.json`), and the Electron app
 plays it. This is deliberately **not** an external DSL export.
-Format: [`docs/playable-format.md`](docs/playable-format.md). The app — shell, canvas, the thirteen
+Format: [`docs/playable-format.md`](docs/playable-format.md). The app — shell, canvas, the fourteen
 editors, the session store, the seeded workspace, and every behaviour below in full:
 [`docs/desktop-app.md`](docs/desktop-app.md); what persists where:
 [`docs/desktopAppState.md`](docs/desktopAppState.md); the document tree, asset naming and
@@ -202,7 +202,11 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   saying which one asked, and a socket lock refusing a second process on the same project.
   ([`docs/plans/multiple-windows.md`](docs/plans/multiple-windows.md))
 - **A model key is written to a file git cannot see, and recorded as `<secret>`**
-  (`project.setKey`, deliberately not undoable).
+  (`project.setKey`, deliberately not undoable), at one of two scopes — this project, or every
+  project on this machine. **Setup is that box with the steps above it**: the fourteenth editor,
+  rendering `docs/api-keys.md` itself rather than a copy of it, and the only door to the outside
+  names a _field_ of that guide rather than a URL.
+  ([`docs/plans/onboarding-editor-and-user-level-keys.md`](docs/plans/onboarding-editor-and-user-level-keys.md))
 - **A layout template is an arrangement the project owns, and it is never merged** —
   `.vnstudio/layouts/<slug>.json`, marked `-merge`; a conflicted one is refused by name.
   ([`docs/plans/layout-templates-and-the-view-menu.md`](docs/plans/layout-templates-and-the-view-menu.md))
@@ -240,14 +244,21 @@ editors, the session store, the seeded workspace, and every behaviour below in f
 
 The renderer is a **path.ux screen mesh** — panes subdivide the window, each showing one editor;
 no React, no room vocabulary. path.ux is a git submodule at `vendor/path.ux`, so a fresh clone
-needs `git submodule update --init --recursive` (`pnpm doctor` says so by name). Five rules bite
+needs `git submodule update --init --recursive` (`pnpm doctor` says so by name). Six rules bite
 hardest:
 
-- **The thirteen editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
+- **The fourteen editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
   **`registerEditor(cls, 'vn.Name')`** is the only way to register one — a hand-written name is
   minified. That list also carries each editor's `claims` predicate, ranked in
   `renderer/pathux/route.ts`, and a `pins` field for the one selection an editor can be **pinned**
   off — declared once, and `registerEditor` splices the struct fields that persist it.
+- **`offered: false` means named but not listed** — reachable by `view.open`, by the palette and by
+  a saved layout, absent from the two menus an author _browses_ editors in. `OFFERED_EDITOR_IDS`
+  narrows View ▸ Editors; path.ux's **`setAreaMenuFilter`**, installed once by the shell, is what
+  keeps it out of the pane header's own dropdown, which path.ux builds from its registry rather
+  than from ours. Deliberately not `AreaFlags.HIDDEN`: hidden is a property of the editor, not
+  listed is a property of this application. Setup is the only one today, and it stops being a pane
+  at all once a preferences window has somewhere to be.
 - **`src/shared/` is in the browser bundle**, so what it imports must be node-free; neither
   `tsgo` pass catches a violation, only `vite build`.
 - **A raw DOM surface goes in the shadow root via `VnEditor.appendSurface`** with its own sheet
@@ -322,6 +333,19 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   key _values_ must never be logged or committed. `project.yaml` records only model ids and
   env-var names.
   `resolveKeys` throws errors naming the _source_ (env var / file), never the value.
+- **A key is read from four places, first answer wins** — the env var named in `project.yaml`, the
+  project's own `keys/`, the enclosing repo root's, then the user-level one. So a project carrying
+  its own key wins over the machine's, and a set environment variable wins over a file that was
+  just written, which is the honest answer to "why is it still asking me".
+  ([`docs/api-keys.md`](docs/api-keys.md))
+- **User-level state lives in one directory, and it is not in a repo** — `%LOCALAPPDATA%\vnauthor`
+  on Windows, `~/Library/Application Support/vnauthor` on macOS, `$XDG_CONFIG_HOME/vnauthor` (else
+  `~/.config/vnauthor`) on Linux, all from `userConfigDir` in `@vn/config`. `$VNAUTHOR_HOME`
+  overrides it — that is how the platform branch stays testable, and jest sets it per worker — and
+  a pre-existing `~/.vnauthor` is still _read_ when the native directory is absent, never written.
+  Local rather than Roaming, deliberately: an API key should not follow the user to another
+  machine. **Any future settings system writes there too**, so settings and keys never end up in
+  two homes.
 - **Imports** use explicit `.js` extensions on relative paths (ESM + `verbatimModuleSyntax`).
   jest's `moduleNameMapper` strips them; esbuild and `tsgo` resolve them.
 - **Validation at the boundary.** Parse files and machine-consumed LLM output through the

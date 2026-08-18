@@ -28,6 +28,7 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Documents](#documents)
 - [Asset](#asset)
 - [Project](#project)
+- [Setup](#setup)
 - [Remembered UI state (`.vndesktop/session.json`)](#remembered-ui-state-vndesktopsessionjson)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
@@ -170,17 +171,28 @@ are the bridge's.
   [`desktopAppState.md`](desktopAppState.md#multiple-windows-of-the-same-workspace).
   Full design: [`plans/multiple-windows.md`](plans/multiple-windows.md).
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all thirteen (`branches`, `script`, `convo`,
+  `apps/desktop/src/shared/editors.ts` holds all fourteen (`branches`, `script`, `convo`,
   `timeline`, `tasklist`, `taskgraph`, `inspector`, `play`, `skills`, `wiki`, `documents`, `asset`,
-  `project`) with their titles. It is in
+  `project`, `onboarding`) with their titles. It is in
   `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
   boot if the two ever disagree. Each entry also declares what it will show for a clicked
-  document-tree node (see [Documents](#documents)), so a thirteenth editor that forgets to is
+  document-tree node (see [Documents](#documents)), so a fifteenth editor that forgets to is
   visibly claim-less in the same file that names it rather than silently unreachable from the tree.
   The header bar is deliberately absent from the list — it is chrome,
   not somewhere the author navigates to.
+- **An editor can be named without being listed** — `offered: false` on its entry, which today
+  only Setup carries. `view.open(editor='onboarding')` still works, the palette still finds it,
+  and a saved layout that holds it still restores; what the flag removes is the two places an
+  author *browses* editors. `OFFERED_EDITOR_IDS` narrows View ▸ Editors, and the shell installs
+  `isOfferedEditor` as path.ux's `setAreaMenuFilter`, which is what keeps it out of the pane
+  header's own change-editor dropdown — a menu path.ux builds from its registry rather than from
+  ours, so nothing on our side could have filtered it. This is deliberately **not**
+  `AreaFlags.HIDDEN`: hidden is a property of the editor, and being uninteresting to browse is a
+  property of *this* application. `EDITOR_IDS` still covers all fourteen, so `view.*`'s props are
+  unaffected. Once a Setup that is really a preferences window has somewhere to be, it stops
+  being a pane at all and the flag goes with it.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows an editor
   in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below` |
   `elsewhere` | `window`); asking for one already open `here` is a focus, not a second copy.
@@ -1181,6 +1193,58 @@ and `view.open(editor=project)` carries nothing. It is where an asset's style cl
   block: those are env-var *names* and safe to print, but a settings pane listing them is one
   screenshot away from looking like it lists their values.
 
+## Setup
+
+`editors/onboarding.ts` — the fourteenth editor, and the answer to "I installed this, now what".
+It is the one pane an author is expected to visit once: how to get a key from each provider, which
+of theirs are set, and a box to paste one into. It is a **singleton** like Project, and it is
+`offered: false` (above), so it is named but not browsable and it claims no document-tree node —
+no node names an API key, and a click that opened this pane would have landed on a subject it
+knows nothing about.
+
+- **The walkthrough is [`docs/api-keys.md`](api-keys.md), rendered — not retyped.**
+  `app.keyGuide` reads that one file through `main/resources.ts`, which tries `$VN_RESOURCES`,
+  then Electron's `process.resourcesPath` (where packaging will put it), then the repo root — so
+  the same command answers from a checkout and from an installed app, and the pane cannot drift
+  from the doc because there is nothing to drift from. `shared/markdown.ts` parses the subset the
+  file uses (headings, paragraphs, lists, tables, fenced code, and inline `code`/**strong**/links)
+  and `shared/apikeys.ts` projects it into a `KeyGuide`: an intro, one section per vendor keyed by
+  its heading slug, and the remaining sections as notes. `keyGuideProblems` names what a section is
+  missing rather than throwing, so a doc edited badly degrades to a pane that says so.
+- **A vendor's metadata is a yaml fence in its own section** — the env var name, whether there is a
+  free tier, and the console/docs/billing URLs. That is what makes the file both readable prose and
+  the pane's data source; there is no second table to keep in step with it.
+- **The renderer never hands the OS a URL.** `app.openKeyLink(provider, link)` names a *field* —
+  `GUIDE_URL_FIELDS` is `console | docs | billing`, the entire set of pages this app will ever
+  open — and main looks the address up in the guide it shipped with. So the pane cannot be talked
+  into opening an address it was handed, and inline prose links render as a non-navigating
+  `span.ob-link` with the address in the tooltip, because there is no navigation inside a shadow
+  root either way. A field the guide leaves empty greys its button with that as the reason.
+- **Status is `project.keyStatus`, which never says the key.** Per vendor: whether one resolved and
+  **which of the four rungs answered**, by name — an environment variable, this project's `keys/`,
+  the enclosing repo's, or the user-level one. A set environment variable shadowing a file that was
+  just written gets its own warning line, because "I pasted it and nothing changed" is otherwise
+  unanswerable.
+- **The paste box is `project.setKey` with a scope**, defaulting to **every project** — the answer
+  that is right the second time. The input is `type="password"`, stops its own keydown so `/` does
+  not open the palette, and is cleared whatever the answer; the value reaches one file and nowhere
+  else, and the command history records `<secret>`. A line under the box names the file it will be
+  written to before it is written.
+- **Test key is `project.testKey`**, one small real call, because a key can resolve and still be
+  revoked, mistyped, or on an account with no credit — and without it the first news of that is a
+  run failing much later. It is a non-mutator that declares a `check` anyway, so the greyed button
+  shows its own refusal verbatim: mock mode makes no calls, or no key resolves yet.
+- **Every control carries a tooltip and every disabled one carries its command's refusal.** Both
+  buttons and the Save button read `check(...)` rather than deciding for themselves, so the pane
+  cannot invent a sentence the command would not have said.
+- **It is reached from File ▸ Set Up API Keys…**, which opens the pane `elsewhere` rather than
+  `project.setKey`'s bare form: a box asking for a credential is no use to someone who does not
+  have one yet, and the pane is that box with the steps above it. The form is still in the palette
+  for anyone who only wants it. On a **first run** with a key missing, `noticeMissingKeys` posts one
+  durable notification linking here — skipped under `--mock`, which calls no provider, and posted
+  at most once per project, guarded by scanning the log for an existing notification pointing at
+  this editor, since the notification log dedupes by id rather than by message.
+
 ## Remembered UI state (`.vndesktop/session.json`)
 
 The layout, the selection (and anything else the shell should remember) live in a flat key/value
@@ -1278,14 +1342,22 @@ checking it, because `workspace.open` refuses that root by name. Browsing is
 `Cancelled.` when there is none — so the Browse button is an invocation like every other button in
 the app rather than a renderer-only capability, and CDP can reach the same act.
 
-**Provide Model Key…** is in the same menu and opens the same kind of dialog, because a key is an
-argument no menu can supply: a provider dropdown and the key itself. `project.setKey` writes
-`keys/<gemini.txt|claude.txt>` — the first filename `resolveKeys` looks for, so what is written is
-what is read — and adds `keys` to `.gitignore` before writing, because commit-on-save runs
-`git commit -A` and a key git can see is committed within the second. The key is a `secret` prop,
-so the history records `<secret>`; the field is **not masked**, because path.ux has no password
-widget and a raw input smuggled into one row of a path.ux form would be the only such thing in the
-app and would not take the theme. When the provider's environment variable is set, the check and
+**Set Up API Keys…** is in the same menu, and it is the one entry that opens a **pane** rather than
+a dialog: `view.open(editor='onboarding', where='elsewhere')`. It used to raise `project.setKey`'s
+bare form — a provider dropdown and the key itself — and that form is still in the palette, but a
+box asking for a credential is no use to someone who does not have one yet, and [Setup](#setup) is
+the same box with the steps for getting there above it. It is also where the key field is finally
+**masked**: the pane owns a shadow root, so a `type="password"` input is an ordinary element there
+rather than the one raw widget smuggled into a path.ux form.
+
+Wherever it is invoked from, `project.setKey` writes `keys/<gemini.txt|claude.txt>` — the first
+filename `resolveKeys` looks for, so what is written is what is read. At `scope=project` that is
+inside the project, and `keys` is added to `.gitignore` **before** the write, because commit-on-save
+runs `git commit -A` and a key git can see is committed within the second; at `scope=user` it is the
+user-level directory, which no repository contains and which therefore has no snapshot to worry
+about. The key is a `secret` prop, so the history records `<secret>`, and the command is
+deliberately **not undoable** — an undo point is a git snapshot, and snapshotting a credential is
+the one thing it exists to avoid. When the provider's environment variable is set, the check and
 the result both say so — the variable wins, so the file would go unused.
 
 **A switch is a teardown, not a refresh.** The session (with its agent conversation), the command
