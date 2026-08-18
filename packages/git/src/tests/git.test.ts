@@ -88,6 +88,23 @@ describe('@vn/git', () => {
     }
   });
 
+  it('names the newest commit that touched a path, and nothing for one history never saw', async () => {
+    const { git, dir, cleanup } = await tempRepo();
+    try {
+      await write(dir, 'a.md', 'a\n');
+      const first = await git.commit({ message: 'Add a', paths: ['a.md'] });
+      await write(dir, 'b.md', 'b\n');
+      await git.commit({ message: 'Add b', paths: ['b.md'] });
+
+      // The newest commit touching a.md is still the first one — a later commit elsewhere in the
+      // tree does not count as having saved it.
+      expect(await git.lastCommitFor('a.md')).toBe(first);
+      expect(await git.lastCommitFor('never-written.md')).toBeNull();
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('writes trailers as a block below the subject', async () => {
     const { git, dir, cleanup } = await tempRepo();
     try {

@@ -66,6 +66,23 @@ export interface ThreadHeader {
    */
   model?: string;
   effort?: string;
+  /**
+   * Where this conversation was put into git, oldest first. Written when a thread is closed, so a
+   * transcript the author has moved on from is recoverable from history rather than only from the
+   * file it may since have been edited out of.
+   */
+  archived?: ThreadArchive[];
+}
+
+/**
+ * One commit that holds a thread as it stood at a moment. The commit is what a diagnostic reads:
+ * `git show <commit>:vngen/state/threads/<id>.jsonl` is the conversation as it was before whatever
+ * happened next, and `git log --grep='Vn-Thread: <id>'` finds every such commit even where this
+ * record is missing — the record is the fast path, not the only one.
+ */
+export interface ThreadArchive {
+  commit: string;
+  at: string;
 }
 
 /** A whole saved conversation: the header plus every transcript line, in order. */
@@ -97,6 +114,8 @@ export function threadDetail(thread: ThreadHeader): string {
   if (thread.model) parts.push(thread.model);
   if (thread.effort) parts.push(`effort: ${thread.effort}`);
   if (thread.commit) parts.push(thread.commit.slice(0, 8));
+  const saved = thread.archived?.[thread.archived.length - 1];
+  if (saved) parts.push(`saved in git as ${saved.commit.slice(0, 8)}`);
   return parts.join(' · ');
 }
 

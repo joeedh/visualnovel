@@ -254,11 +254,13 @@ import {
 } from '../shared/convo.js';
 import {
   appendItem,
+  archiveThread,
   bindThread,
   listThreads,
   openThread,
   readThread,
   retitleThread,
+  threadFile,
   titleFrom,
   type ThreadHeader,
   type ThreadRecord,
@@ -1002,13 +1004,50 @@ export class WorkspaceSession {
 
   /**
    * Start over. The thread is closed rather than deleted — a conversation that happened stays on
-   * disk, and the next turn opens a new one.
+   * disk, and the next turn opens a new one — and it is committed on the way out, so that what
+   * stays on disk also stays in history.
    */
   async clearAgent(): Promise<void> {
     (await this.ensureAgent()).clear();
     await this.writes;
+    await this.commitThread();
     this.thread = undefined;
     this.convo = emptyConvo('');
+  }
+
+  /**
+   * Put the conversation being closed into the project's history, and write down where it landed.
+   *
+   * Clearing is the moment a transcript stops being watched: nothing appends to that file again,
+   * and the next thing to touch `vngen/state/` may well be an author tidying it. A commit here is
+   * what makes "what did the agent do last Tuesday" answerable at all — the `Vn-Thread` trailer
+   * is how a diagnostic finds it (`git log --grep`), and the pointer written back into the thread
+   * is how it finds it without searching.
+   *
+   * Never fatal. A project that is not a repo, a repo with no committer identity, a read-only
+   * volume: none of those are reasons to refuse to start a new conversation.
+   */
+  private async commitThread(): Promise<void> {
+    const thread = this.thread;
+    if (!thread) return;
+    const paths = new ProjectPaths(this.dir);
+    try {
+      const git = openGit(this.dir);
+      if (!(await git.isRepo())) return;
+      const file = threadFile(paths, thread.id);
+      // Nothing to commit means commit-on-save already recorded this transcript, so the answer is
+      // the commit that did — the pointer is about where the conversation *is*, not about who put
+      // it there.
+      const sha =
+        (await git.commit({
+          message: `Close conversation: ${thread.title}`,
+          paths: [file],
+          trailers: { 'Vn-Thread': thread.id },
+        })) ?? (await git.lastCommitFor(file));
+      if (sha) await archiveThread(paths, thread.id, sha);
+    } catch (err) {
+      console.warn(`[vnstudio] could not commit the conversation just closed: ${String(err)}`);
+    }
   }
 
   /**

@@ -6,6 +6,7 @@ import type { FeedItem } from '../../shared/convo.js';
 import {
   NEW_THREAD_TITLE,
   appendItem,
+  archiveThread,
   bindThread,
   listThreads,
   openThread,
@@ -113,6 +114,22 @@ describe('threads', () => {
     await bindThread(paths, id, {});
     const after = await count();
     expect(after).toBe(before);
+  });
+
+  it('remembers every commit its contents were saved in, oldest first', async () => {
+    const { id } = await openThread(paths, { title: 'closed twice' });
+    await appendItem(paths, id, item(1, 'user', 'hello'));
+    expect((await readThread(paths, id)).archived).toBeUndefined();
+
+    await archiveThread(paths, id, 'a'.repeat(40));
+    await archiveThread(paths, id, 'b'.repeat(40));
+
+    expect((await readThread(paths, id)).archived).toMatchObject([
+      { commit: 'a'.repeat(40) },
+      { commit: 'b'.repeat(40) },
+    ]);
+    // The listing reads it too — a row can say a conversation is in history without being opened.
+    expect((await listThreads(paths))[0]!.archived).toHaveLength(2);
   });
 
   it('lists newest first', async () => {

@@ -222,6 +222,25 @@ constraint rather than rediscovering it.
 - **`FeedItem.at` was always written and never read back.** `appendItem` has stamped every line
   since Stage 1; the reader simply dropped the field. Carrying it through `readThread` is what lets
   a thread be joined to the acts that ran while it was open, and it works on old files unchanged.
+- **A thread remembers what it was had on, and comes back on it.** `ThreadHeader` carries
+  `model` and `effort`, written at line 0 and again as a `binding` record whenever the author
+  switches mid-conversation — appended for the same reason a retitle is, with the newest winning
+  and a rebind naming one field leaving the other alone. Reopening rebinds the live agent, because
+  a conversation reads as the model that wrote it: answering the next question on whatever the
+  *last* conversation happened to leave bound is the one arrangement nobody means.
+- **A tool line says what it acted on.** `received()` stores `toolSummary(tool, args)` rather than
+  the bare tool name — the first field present from a fixed list, clamped — so a transcript of
+  forty `read_file` lines is readable. Stored rather than rendered, so a saved thread and a report
+  carry it too; the whole call is still in `detail.args`.
+- **Closing a conversation commits it, and the thread says where it landed.** Clearing is the
+  moment a transcript stops being watched, so `clearAgent` commits the thread file with a
+  `Vn-Thread: <id>` trailer and then appends an `archived` record naming the commit. The pointer
+  is written *after*, which is the only order available — a commit cannot name itself — so it is
+  deliberately not inside the commit it points at; that costs one dirty line until the next sweep
+  and buys a reader who never has to search history to find out whether a transcript was saved.
+  Where commit-on-save got there first there is nothing new to commit, and the pointer is
+  `git.lastCommitFor` instead: the question is where the conversation *is*, not who put it there.
+  None of it is fatal — a project that is not a repo is still a project you can think in.
 - **Undo was already safe, for a second reason.** `vngen/state` is outside the shadow snapshot as
   the plan says, and the stack also refuses to undo past a non-undoable command — so an
   `agent.run` between an edit and an undo stops the undo rather than rolling the transcript back.

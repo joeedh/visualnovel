@@ -15,9 +15,15 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { appendJsonl, ensureDir } from '@vn/util';
 import type { ProjectPaths } from '@vn/store';
-import type { FeedItem, ThreadHeader, ThreadRecord, ToolDetail } from '../shared/convo.js';
+import type {
+  FeedItem,
+  ThreadArchive,
+  ThreadHeader,
+  ThreadRecord,
+  ToolDetail,
+} from '../shared/convo.js';
 
-export type { ThreadHeader, ThreadRecord };
+export type { ThreadArchive, ThreadHeader, ThreadRecord };
 
 /** The title a thread is created with, before a first turn names it. */
 export const NEW_THREAD_TITLE = 'New conversation';
@@ -45,7 +51,8 @@ type ThreadLine =
   | ({ v: 1; type: 'thread' } & ThreadHeader)
   | ({ type: 'item'; at: string } & FeedItem)
   | { type: 'title'; title: string; at: string }
-  | { type: 'binding'; model?: string; effort?: string; at: string };
+  | { type: 'binding'; model?: string; effort?: string; at: string }
+  | ({ type: 'archived' } & ThreadArchive);
 
 export function threadsDir(paths: ProjectPaths): string {
   return join(paths.state, 'threads');
@@ -130,6 +137,12 @@ function headerOf(id: string, parsed: ThreadLine[]): ThreadHeader | undefined {
     if (line.model !== undefined) bound.model = line.model;
     if (line.effort !== undefined) bound.effort = line.effort;
   }
+  // Every archive, not the last one: a thread closed, reopened by a later feature and closed
+  // again has two commits worth reading, and which of them holds the line a diagnostic is after
+  // is exactly what nobody knows in advance.
+  const archived = parsed
+    .filter((line) => line.type === 'archived')
+    .map(({ commit: sha, at }) => ({ commit: sha, at }));
   return {
     id,
     title: last ? last.title : title,
@@ -137,6 +150,7 @@ function headerOf(id: string, parsed: ThreadLine[]): ThreadHeader | undefined {
     ...(commit === undefined ? {} : { commit }),
     ...(bound.model === undefined ? {} : { model: bound.model }),
     ...(bound.effort === undefined ? {} : { effort: bound.effort }),
+    ...(archived.length === 0 ? {} : { archived }),
   };
 }
 
@@ -160,7 +174,10 @@ export async function listThreads(paths: ProjectPaths): Promise<ThreadHeader[]> 
     // Tool args are in the file too, so this filter lets the odd item line through to be parsed
     // and then dropped by `headerOf`. That is a wasted parse, not a wrong answer.
     const keep = (raw: string) =>
-      raw.includes('"thread"') || raw.includes('"title"') || raw.includes('"binding"');
+      raw.includes('"thread"') ||
+      raw.includes('"title"') ||
+      raw.includes('"binding"') ||
+      raw.includes('"archived"');
     const header = headerOf(id, await lines(threadFile(paths, id), keep));
     if (header) headers.push(header);
   }
@@ -258,6 +275,25 @@ export async function bindThread(
     type: 'binding',
     ...(binding.model === undefined ? {} : { model: binding.model }),
     ...(binding.effort === undefined ? {} : { effort: binding.effort }),
+    at: now.toISOString(),
+  });
+}
+
+/**
+ * Write down which commit holds this thread. Appended after the commit has been made, which is
+ * the only order available — a commit cannot name itself — so the pointer line is deliberately
+ * *not* inside the commit it points at. That costs one dirty line until the next sweep and buys a
+ * reader who never has to search history to find out whether a transcript was ever saved.
+ */
+export async function archiveThread(
+  paths: ProjectPaths,
+  id: string,
+  commit: string,
+  now = new Date(),
+): Promise<void> {
+  await appendJsonl(threadFile(paths, id), {
+    type: 'archived',
+    commit,
     at: now.toISOString(),
   });
 }

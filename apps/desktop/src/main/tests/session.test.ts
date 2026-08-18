@@ -15,6 +15,7 @@ import {
   splitScene,
 } from '@vn/scriptedit';
 import { discoverSkills, newSkillTemplate, skillRoots } from '@vn/authoring';
+import { openGit } from '@vn/git';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
 import type { Plan, PlanDecision } from '../../shared/ipc.js';
@@ -1485,6 +1486,42 @@ describe('WorkspaceSession — conversation threads', () => {
     await session.runAgent('second');
     const { threads } = await session.threads();
     expect(threads.map((t) => t.title)).toEqual(['second', 'first']);
+  });
+
+  // Its own project: every other test here is happy without a repo, and `git: true` costs an
+  // init and a commit per case.
+  it('commits the conversation it closes, and writes down which commit holds it', async () => {
+    const repo = await makeProject({ title: 'Threads', script: SCRIPTS.linear, git: true });
+    try {
+      const session = sessionFor(repo);
+      await session.runAgent('first');
+      const [live] = (await session.threads()).threads;
+      await session.clearAgent();
+
+      const [closed] = (await session.threads()).threads;
+      const sha = closed!.archived?.[0]?.commit;
+      expect(sha).toMatch(/^[0-9a-f]{40}$/);
+
+      // The commit really holds the transcript, which is the whole point: a thread edited away
+      // afterwards is still readable out of history.
+      const git = openGit(repo.dir);
+      expect(await git.show(`${sha}:vngen/state/threads/${live!.id}.jsonl`)).toContain('first');
+      // And it is findable without the pointer at all — `git log --grep` on the trailer.
+      expect(await git.show(sha!)).toContain(`Vn-Thread: ${live!.id}`);
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it('starting a new conversation is not blocked by a project git cannot commit', async () => {
+    // No repo: the commit is a courtesy, so it fails silently and the thread is still closed.
+    const session = sessionFor(p);
+    await session.runAgent('first');
+    await session.clearAgent();
+
+    const [closed] = (await session.threads()).threads;
+    expect(closed!.archived).toBeUndefined();
+    expect((await session.threads()).active).toBeUndefined();
   });
 
   it('reopening a thread ends the live one, so the next turn is not written into it', async () => {

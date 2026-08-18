@@ -231,6 +231,17 @@ export class Git {
       });
   }
 
+  /**
+   * The newest commit that touched `path`, or null where history has never recorded it. The
+   * question `commit` cannot answer: a file already committed by somebody else's sweep produces
+   * no new commit, and a caller that wanted to know *where it landed* still needs an answer.
+   */
+  async lastCommitFor(path: string): Promise<string | null> {
+    const r = await this.run(['log', '-n1', '--format=%H', '--', path]);
+    const sha = r.stdout.trim();
+    return r.code === 0 && sha.length > 0 ? sha : null;
+  }
+
   /** Show a commit (metadata + patch). */
   async show(ref: string): Promise<string> {
     return this.ok(['show', ref]);
