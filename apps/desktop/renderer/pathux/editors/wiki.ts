@@ -1,14 +1,14 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
-import { exec, onInvalidate, onWrote } from '../bridge.js';
+import { onInvalidate, onWrote } from '../bridge.js';
+import { DocBuffer } from '../docbuffer.js';
 import { assetGroups } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
-import { touches } from '../../../src/shared/writes.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
-import type { DocFile, DocSaveResult, DocTree } from '../../../src/shared/ipc.js';
+import type { DocTree } from '../../../src/shared/ipc.js';
 
 /**
  * One markdown document, as text. The story bible, a character sheet, a location sheet — whatever
@@ -44,12 +44,12 @@ export class WikiEditor extends VnEditor {
   private tree: DocTree | undefined;
   private unwatchTree: (() => void) | undefined;
 
-  /** The document in the box, which trails `ui.docPath` by one async read. */
-  private shown = '';
-  private seenHash = '';
-  private dirty = false;
-  /** Rising with every load, so a slow read for a document the author already left is dropped. */
-  private token = 0;
+  /**
+   * The document in the box, which trails `ui.docPath` by one async read. The draft it files, the
+   * `seenHash` refusal it earns and the quit guard behind it are `docbuffer.ts`'s — this pane owns
+   * the widgets and nothing about the text.
+   */
+  private readonly buf = new DocBuffer(() => this.paint());
   private unwatch: (() => void) | undefined;
 
   static override define() {
@@ -66,9 +66,9 @@ export class WikiEditor extends VnEditor {
 
     const bar = (this.header as Container).row();
     bar.label('DOCUMENT').style['padding'] = '0px 8px';
-    this.saveBtn = bar.button('Save', () => void this.save());
+    this.saveBtn = bar.button('Save', () => void this.buf.save());
     this.saveBtn.description = 'Write this document back to disk, and commit it';
-    const reload = bar.button('⟳', () => void this.reload());
+    const reload = bar.button('⟳', () => void this.buf.reload());
     reload.description = 'Re-read this document from disk (discards an unsaved draft)';
     bar.flushUpdate();
 
@@ -89,7 +89,9 @@ export class WikiEditor extends VnEditor {
       'Edit the document as markdown, front-matter and all. Ctrl+S saves and commits.';
     this.text.spellcheck = false;
     this.text.style.display = 'none';
-    this.text.addEventListener('input', () => this.touched());
+    this.text.addEventListener('input', () => {
+      this.buf.text = this.text.value;
+    });
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
     // keys opens the palette on the first `/` of a sentence. Ctrl+S is caught here for the same
     // reason: it is the save gesture, and the browser's own is not.
@@ -97,7 +99,7 @@ export class WikiEditor extends VnEditor {
       event.stopPropagation();
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
-        void this.save();
+        void this.buf.save();
       }
     });
     this.surface.appendChild(this.text);
@@ -117,12 +119,9 @@ export class WikiEditor extends VnEditor {
     this.appendSurface(this.surface);
 
     // A file this pane is showing can be written by something else entirely — `gate.approve`
-    // rewrites `character.md`, and so does the agent, whose writes are not commands at all. A
-    // clean buffer follows; a dirty one does not, and its next save earns the changed-underneath
-    // refusal, which is the honest outcome.
-    this.unwatch = onWrote((paths) => {
-      if (!this.dirty && this.shown && touches(paths, this.shown)) void this.load(this.shown);
-    });
+    // rewrites `character.md`, and so does the agent, whose writes are not commands at all. What
+    // a clean and a dirty buffer each do about that is `DocBuffer.wrote`.
+    this.unwatch = onWrote((paths) => this.buf.wrote(paths));
 
     // Generating a portrait while the character's sheet is open should make the portrait appear,
     // and generation is not a write to *this* file — so the strip follows the coarser signal.
@@ -143,117 +142,7 @@ export class WikiEditor extends VnEditor {
   override update() {
     super.update();
 
-    if (this.ui.docPath !== this.shown) void this.load(this.ui.docPath);
-  }
-
-  // -------------------------------------------------------------------------
-  // Reading and writing
-  // -------------------------------------------------------------------------
-
-  /**
-   * Show a document. A buffer the author had typed into and not saved is restored instead of
-   * re-read: a pane that switched editors and came back would otherwise eat the edit silently,
-   * and `on_remove` cannot veto its own removal to ask about it.
-   */
-  private async load(path: string): Promise<void> {
-    const mine = ++this.token;
-    this.shown = path;
-    this.note('');
-
-    if (path === '') {
-      this.seenHash = '';
-      this.dirty = false;
-      this.paint();
-      return;
-    }
-
-    const draft = drafts.get(path);
-    if (draft) {
-      this.seenHash = draft.seenHash;
-      this.text.value = draft.text;
-      this.dirty = true;
-      this.paint();
-      return;
-    }
-
-    const outcome = await exec('doc.read', { path });
-    if (mine !== this.token) return;
-    if (!outcome.ok) {
-      this.seenHash = '';
-      this.text.value = '';
-      this.dirty = false;
-      this.note(outcome.error, true);
-      this.paint();
-      return;
-    }
-
-    const file = outcome.data as DocFile;
-    this.seenHash = file.hash;
-    this.text.value = file.text;
-    this.dirty = false;
-    this.paint();
-  }
-
-  /**
-   * Re-read from disk. Over a dirty buffer this drops the draft — that is what reload means, and
-   * refusing would leave the author with no way back to what is on the file. It is an explicit
-   * gesture, so it only says what it did rather than asking first.
-   */
-  private async reload(): Promise<void> {
-    const path = this.shown;
-    if (path === '') return;
-    const discarded = this.dirty;
-    drafts.delete(path);
-    this.dirty = false;
-    await this.load(path);
-    // A read that failed already said so, and that sentence is the more useful one.
-    if (discarded && this.noteEl.textContent === '') {
-      this.note('reloaded — unsaved draft discarded');
-    }
-  }
-
-  /**
-   * Ctrl+S, and the header button. `seenHash` is what the read returned, so a file something else
-   * rewrote underneath is refused by content rather than overwritten — the editor holds no
-   * authoritative buffer and never claims to.
-   */
-  private async save(): Promise<void> {
-    if (this.shown === '') return;
-    if (!this.dirty) {
-      this.note('no changes');
-      return;
-    }
-
-    const path = this.shown;
-    const outcome = await exec('doc.write', {
-      path,
-      text: this.text.value,
-      seenHash: this.seenHash,
-    });
-    if (!outcome.ok) {
-      // `exec` already put the refusal in the note frame; the footer keeps it in front of the
-      // author, whose next act is to decide what to do about the file rather than retype it.
-      this.note(outcome.error, true);
-      return;
-    }
-    if (this.shown !== path) return;
-
-    const saved = outcome.data as DocSaveResult;
-    this.seenHash = saved.hash;
-    this.dirty = false;
-    drafts.delete(path);
-    // No sentence from here: `doc.save` is mutating, so main filed it and pushed it back, and the
-    // push is what says it. A second one here would show the same save twice.
-    this.note(saved.diagnostic ?? '');
-    this.paint();
-  }
-
-  private touched(): void {
-    if (this.shown === '') return;
-    this.dirty = true;
-    drafts.set(this.shown, { text: this.text.value, seenHash: this.seenHash });
-    this.note('');
-    this.paint();
+    if (this.ui.docPath !== this.buf.path) void this.buf.open(this.ui.docPath);
   }
 
   // -------------------------------------------------------------------------
@@ -281,20 +170,20 @@ export class WikiEditor extends VnEditor {
     openNode(this.ctx?.screen as VnScreen | undefined, assetNode(hash));
   }
 
-  private note(text: string, bad = false): void {
-    this.noteEl.textContent = text;
-    this.noteEl.className = bad ? 'wk-note bad' : 'wk-note';
-    this.noteEl.title = text;
-  }
-
   private paint(): void {
-    const open = this.shown !== '';
+    const open = this.buf.path !== '';
     this.empty.style.display = open ? 'none' : 'flex';
     this.text.style.display = open ? 'block' : 'none';
-    this.pathEl.textContent = open ? this.shown : '';
+    // Only when it actually differs: assigning `value` moves the caret, and the buffer already
+    // holds what the author is typing.
+    if (this.text.value !== this.buf.text) this.text.value = this.buf.text;
+    this.pathEl.textContent = open ? this.buf.path : '';
     this.pathEl.title = this.pathEl.textContent;
-    this.badge.style.display = this.dirty ? 'inline-block' : 'none';
-    this.saveBtn.disabled = !this.dirty;
+    this.badge.style.display = this.buf.dirty ? 'inline-block' : 'none';
+    this.saveBtn.disabled = !this.buf.dirty;
+    this.noteEl.textContent = this.buf.note;
+    this.noteEl.className = this.buf.bad ? 'wk-note bad' : 'wk-note';
+    this.noteEl.title = this.buf.note;
     this.paintStrip();
   }
 
@@ -304,12 +193,12 @@ export class WikiEditor extends VnEditor {
    * a subject has no key, and gets the sentence.
    */
   private paintStrip(): void {
-    if (this.shown === '') {
+    if (this.buf.path === '') {
       this.strip.style.display = 'none';
       return;
     }
     this.strip.style.display = 'block';
-    const key = this.tree?.pathIndex[this.shown];
+    const key = this.tree?.pathIndex[this.buf.path];
     const links = key === undefined ? undefined : this.tree?.backlinks[key];
     renderAssetStrip(this.strip, links ? assetGroups(links) : [], EMPTY, {
       onPick: (hash) => this.openAsset(hash),
@@ -318,24 +207,11 @@ export class WikiEditor extends VnEditor {
 }
 
 /**
- * Unsaved text, by path, outliving the pane that holds it. Saving is an explicit act (decision 10
- * of the plan) so an unsaved buffer is a real state the author is in, and losing it to a pane
- * switch would make the explicit act a trap rather than a choice.
- */
-const drafts = new Map<string, { text: string; seenHash: string }>();
-
-/**
  * No asset binds to a plain lore note, and none ever will: every binding in the manifest names a
  * character, a location, a scene or a shot. So this is the honest answer for most of the bible,
  * and saying it is better than a strip that is sometimes missing for no stated reason.
  */
 const EMPTY = 'Nothing has been drawn from this page.';
-
-// The one place a draft can still be lost: quitting. `on_remove` cannot refuse, but this can —
-// `preventDefault` alone is the prompt in Chromium 119+, which Electron 33 is well past.
-window.addEventListener('beforeunload', (event) => {
-  if (drafts.size > 0) event.preventDefault();
-});
 
 function el(tag: string, className: string, text?: string): HTMLElement {
   const node = document.createElement(tag);
