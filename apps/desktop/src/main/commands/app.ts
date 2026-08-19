@@ -9,6 +9,8 @@
 import { defineFor, prop } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
 import { GUIDE_URL_FIELDS, keyGuideProblems } from '../../shared/apikeys.js';
+import { notify } from '../notifications.js';
+import { announcementFor } from '../updates.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -53,6 +55,48 @@ export const appOpenKeyLink = define({
   },
   async run({ provider, link }, ctx) {
     const result = await ctx.host.session.openKeyLink(provider, link);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message };
+  },
+});
+
+export const appCheckForUpdates = define({
+  id: 'app.checkForUpdates',
+  title: 'Check for updates',
+  description:
+    'Ask GitHub whether a newer VN Studio has been released, and say so. It downloads nothing ' +
+    'and installs nothing — an update you want is one you fetch from the releases page yourself. ' +
+    'Nothing calls this on your behalf: there is no scheduled check, so the app does not reach ' +
+    'the network until you ask it to.',
+  mutating: false,
+  props: {
+    quiet: prop.boolean(
+      'say nothing unless there is actually an update — what a background check would pass',
+      { default: false },
+    ),
+  },
+  async run({ quiet }, ctx) {
+    const check = await ctx.host.session.checkForUpdates();
+    // The verdict is always returned; only the durable notification is conditional. A failed
+    // check is deliberately not a thrown error — see `announcementFor`.
+    const announcement = announcementFor(check, quiet);
+    if (announcement) await notify(announcement);
+    return { message: check.message, data: check };
+  },
+});
+
+export const appOpenReleases = define({
+  id: 'app.openReleases',
+  title: 'Open the releases page',
+  description:
+    'Open VN Studio’s releases page in your browser, where the notes for each version and the ' +
+    'installers are the same page. The address comes from the repository this build was made ' +
+    'from, so — like every other link the app opens — it is one the app already knew rather ' +
+    'than one it was handed.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const result = await ctx.host.session.openReleases();
     if (!result.ok) throw new Error(result.message);
     return { message: result.message };
   },

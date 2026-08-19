@@ -238,7 +238,7 @@ export class VnHeaderEditor extends VnEditor {
     this.bar.menu('View', this.viewMenu()).description =
       'Split and close panes, and switch between the saved window layouts.';
     this.bar.menu('Help', this.helpMenu()).description =
-      'The docs, and what to do about an agent that misbehaved.';
+      'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.';
     this.badge(`project ${ui.projectTitle || '—'}`, true);
     this.runControls();
 
@@ -577,12 +577,22 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * One entry, for now. It cannot be a bare `openCommandDialog`: the conversation list is this
+   * The report entry cannot be a bare `openCommandDialog`: the conversation list is this
    * project's and the model list carries advice, so the dialog is opened by a function that
-   * fetches both first.
+   * fetches both first. The update check is the opposite — no arguments, one sentence back — so
+   * it is fired through `act`, whose `report` is what voices "you are up to date". This menu is
+   * also the *only* thing that ever starts a check: nothing here is scheduled.
    */
   private helpMenu(): MenuTemplate {
     return [
+      {
+        name: 'Check for Updates…',
+        callback: () => act('app.checkForUpdates'),
+        tooltip:
+          'Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there ' +
+          'is one, the notification takes you to the page.',
+      },
+      Menu.SEP,
       {
         name: 'Report a Difficult Agent…',
         callback: () => void openReportDialog(),

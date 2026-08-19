@@ -9,7 +9,7 @@
  * single exception of the one that destroys the file.
  */
 import { defineFor, prop } from '@vn/commands';
-import { linkTarget } from '../../shared/notify.js';
+import { LINK_COMMANDS, linkCommand, linkTarget } from '../../shared/notify.js';
 import { notifications } from '../notifications.js';
 import type { CommandHost } from './host.js';
 
@@ -125,19 +125,42 @@ export const notifyDeleteAll = define({
 
 /**
  * Clicking a notification: read, then go where it points. A notification with no link — or with
- * one naming an editor this build does not have — is still marked read, and says it went nowhere
- * rather than refusing: the click did do something.
+ * one naming an editor this build does not have, or a command it does not allow — is still marked
+ * read, and says it went nowhere rather than refusing: the click did do something.
+ *
+ * A link naming a command is followed *first*, through the same session method the command itself
+ * wraps — one implementation, two thin doors, exactly as `app.openKeyLink` sits over
+ * `session.openKeyLink`. That is what keeps a notification from ever being a URL: the log names
+ * an act and the app still derives the destination. `linkCommand` narrows against a short
+ * allow-list, because these lines arrive from other people's clones.
  */
 export const notifyFollow = define({
   id: 'notify.follow',
   title: 'Open what a notification is about',
-  description: 'Mark one notification read and show the editor it links to, if it links anywhere.',
+  description:
+    'Mark one notification read and follow where it points — the editor it links to, or the act ' +
+    'it names — if it points anywhere.',
   mutating: false,
   props: { id: prop.string('the notification’s id') },
   async run({ id }, ctx) {
     const note = await find(id);
     if (!note) throw new Error(`No notification ${id}.`);
     await notifications().setFlags(id, { read: true });
+
+    const command = linkCommand(note);
+    if (command !== undefined) {
+      switch (command) {
+        case LINK_COMMANDS.releases: {
+          const opened = await ctx.host.session.openReleases();
+          if (!opened.ok) throw new Error(opened.message);
+          return { message: `Marked read. ${opened.message}` };
+        }
+      }
+      // Adding an entry to `LINK_COMMANDS` without teaching this switch to follow it is a
+      // compile error here rather than a link that silently goes nowhere.
+      const unfollowable: never = command;
+      throw new Error(`No way to follow ${String(unfollowable)}.`);
+    }
 
     const target = linkTarget(note);
     if (!target) return { message: 'Marked read.' };

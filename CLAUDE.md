@@ -250,6 +250,12 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   survive into an app image, and `pnpm smoke` to prove the two lazily-imported SDKs resolved. A
   machine without git gets an app that **opens** and a durable note saying why saving does not.
   ([`docs/plans/packaging-the-desktop-app.md`](docs/plans/packaging-the-desktop-app.md))
+- **Nothing checks for an update until asked, and a notification may name an act rather than a
+  place** — Help ▸ Check for Updates… is the only thing that starts a check
+  (`app.checkForUpdates`; nothing is scheduled, and it downloads nothing), and the notice it files
+  links a **command** off a short allow-list rather than a URL, because the rule that no part of
+  the app opens an address it was handed holds hardest for a file git union-merges across clones.
+  ([`docs/plans/in-app-update-checks.md`](docs/plans/in-app-update-checks.md))
 
 The renderer is a **path.ux screen mesh** — panes subdivide the window, each showing one editor;
 no React, no room vocabulary. path.ux is a git submodule at `vendor/path.ux`, so a fresh clone

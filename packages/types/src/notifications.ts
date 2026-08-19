@@ -34,16 +34,33 @@ export const NOTIFICATION_SOURCES = ['ui', 'main', 'agent', 'pipeline', 'cdp'] a
 export type NotificationSource = (typeof NOTIFICATION_SOURCES)[number];
 
 /**
- * Where a notification points. Deliberately the argument shape of the `view.open` command, so
- * following a link invents nothing — it runs the command the palette and the menu already run.
+ * Where a notification points, and it points by naming an **act**, never an address.
  *
- * `editor` is a bare string here and not the desktop's `EditorId`: that union lives in
- * `apps/desktop/src/shared/editors.ts`, which this package sits below and must not import. The
- * desktop narrows it on the way out and refuses a link naming an editor this build lacks.
+ * Two shapes, because there are two kinds of destination. `editor` (+ `subject`) is deliberately
+ * the argument shape of the `view.open` command, so following a link invents nothing — it runs
+ * the command the palette and the menu already run. `command` names a whole command instead, for
+ * a notification whose destination is not a pane: today only the releases page, reached through
+ * `app.openReleases`, which derives its own URL.
+ *
+ * **Neither may be a URL, and that is the constraint rather than an accident.** `app.openKeyLink`
+ * states the rule it shares: naming a *field* rather than an address is why no part of the app
+ * can ask the OS to open one it was handed. A notification is a line of a file git union-merges
+ * across clones and branches, so it is exactly the input that must not be able to.
+ *
+ * Both are bare strings here and not the desktop's `EditorId` or a command id: those live in
+ * `apps/desktop/src/shared/`, which this package sits below and must not import. The desktop
+ * narrows each on the way out — an editor against `EDITOR_IDS`, a command against a short
+ * allow-list — and a link it cannot narrow leaves the row a plain unlinked message.
+ *
+ * Both fields are optional, which is what lets this widen without a `NOTIFICATION_VERSION` bump:
+ * every line an older build wrote still parses, and a line *this* build writes with only a
+ * `command` fails an older build's stricter schema and is skipped, which is what
+ * `migrateNotification` already does with anything it cannot use.
  */
 export const NotificationLinkSchema = z.object({
-  editor: z.string().min(1),
+  editor: z.string().min(1).optional(),
   subject: z.string().optional(),
+  command: z.string().min(1).optional(),
 });
 export type NotificationLink = z.infer<typeof NotificationLinkSchema>;
 

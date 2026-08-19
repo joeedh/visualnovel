@@ -103,3 +103,35 @@ export function linkTarget(note: Notification): { editor: EditorId; subject?: st
     ...(note.link?.subject === undefined ? {} : { subject: note.link.subject }),
   };
 }
+
+/**
+ * The commands a notification is allowed to name, by the thing it wants rather than by id — so a
+ * caller writes `LINK_COMMANDS.releases` and the id lives in exactly one place.
+ *
+ * **An allow-list, not "any registered command", and the reason is where the log comes from.**
+ * `vngen/state/notifications.jsonl` is tracked and git union-merges it, so lines arrive from
+ * clones, branches and other people's builds. A link that could name any command would let one
+ * of those lines ask a click to start a paid pipeline run or empty the log. This is the same move
+ * {@link linkTarget} makes against `EDITOR_IDS`, with a stronger reason: an unknown editor is a
+ * pane that does not exist, an unknown command is an act nobody intended.
+ *
+ * Everything listed here must be non-mutating, argument-free, and something a person clicking a
+ * notification obviously meant to do.
+ */
+export const LINK_COMMANDS = {
+  /** VN Studio's releases page — where an update notice sends the author. */
+  releases: 'app.openReleases',
+} as const;
+
+export type LinkCommand = (typeof LINK_COMMANDS)[keyof typeof LINK_COMMANDS];
+
+const LINKABLE = new Set<string>(Object.values(LINK_COMMANDS));
+
+/**
+ * The command a link names, if it names one this build both has and allows. Checked before
+ * {@link linkTarget} by `notify.follow`, because a link carrying both is a link about an act.
+ */
+export function linkCommand(note: Notification): LinkCommand | undefined {
+  const id = note.link?.command;
+  return id && LINKABLE.has(id) ? (id as LinkCommand) : undefined;
+}

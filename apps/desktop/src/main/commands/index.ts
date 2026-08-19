@@ -6,7 +6,7 @@
  * where backend logic lives, and commands only add naming, typed props, and provenance.
  */
 import { CommandRegistry } from '@vn/commands';
-import { appKeyGuide, appOpenKeyLink } from './app.js';
+import { appCheckForUpdates, appKeyGuide, appOpenKeyLink, appOpenReleases } from './app.js';
 import {
   agentClear,
   agentNewThread,
@@ -125,8 +125,10 @@ export type { CommandHost } from './host.js';
 export function createDesktopRegistry(): CommandRegistry<CommandHost> {
   const registry = new CommandRegistry<CommandHost>();
   registry.registerAll([
+    appCheckForUpdates,
     appKeyGuide,
     appOpenKeyLink,
+    appOpenReleases,
     agentClear,
     agentNewThread,
     agentOpenThread,

@@ -74,6 +74,17 @@ invents nothing: it runs the command the palette and the menu already run. `edit
 desktop narrows it on the way out (`linkTarget` in `src/shared/notify.ts`) and refuses a link
 naming an editor this build does not have.
 
+**Since [`in-app-update-checks.md`](in-app-update-checks.md), a link may name a whole command
+instead** — `"link":{"command":"app.openReleases"}` — for a notification whose destination is not
+a pane. The rule under both shapes is the same and is the point: a link names an **act**, never an
+address. `app.openReleases` derives its own URL from `ISSUE_REPO`, so the log says what to do and
+the app still decides where that goes; `app.openKeyLink` states the same rule for the Setup pane's
+buttons. `linkCommand` narrows against a short allow-list rather than against the whole registry,
+because this file is tracked and git union-merges it — a line asking a click to start a paid
+`pipeline.run` can arrive from somebody else's branch. Both fields are optional, which is what let
+this widen with no `v` bump: an old line still parses, and a new one an old build cannot read is
+skipped exactly like anything else it cannot use.
+
 ### Versioning is per line
 
 `v` is on each line, not on the file. The log is union-merged by git, so two builds' lines end up
@@ -266,7 +277,7 @@ already reasons for threads.
 | `notify.unhide` | `id` | the Undo behind the "archived" row |
 | `notify.clear` | `ids` | hides each — the visible set, computed by the list |
 | `notify.deleteAll` | — | `confirm: true`, `mutating`; truncates the file |
-| `notify.follow` | `id` | marks read, then opens the link's editor |
+| `notify.follow` | `id` | marks read, then follows the link — its editor, or the act it names |
 
 `notify.clear` takes the visible ids rather than recomputing the filter in main. That is what
 keeps "respects the active filter" honest: the filter lives in the session store, and the list is

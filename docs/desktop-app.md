@@ -318,7 +318,15 @@ are the bridge's.
   a dialog titled with the command, with Cancel beside the button, and **no search box and no
   list** — the author picked it off a menu, so offering to find it again is noise. Both are screen
   popups, so both are inside the mesh; neither is an OS window.
-- **The Help menu is one entry, and it opens two dialogs in turn.** Report a Difficult Agent…
+- **The Help menu is the only thing that ever starts an update check.** Check for Updates…
+  (`app.checkForUpdates`) asks GitHub whether a newer release exists, compares it against
+  `apps/desktop/package.json`'s version, and says so on screen — nothing is scheduled, so the app
+  makes no request until an author asks for one. An update that *is* found also earns a durable
+  notification, because that is the one verdict worth surviving the frame; "you are up to date" is
+  said and not filed. The check is fired through `act` rather than a form: it takes no arguments
+  the author would fill in, and `report` is what voices the answer. Full write-up:
+  [`plans/in-app-update-checks.md`](plans/in-app-update-checks.md).
+- **The Help menu's other entry opens two dialogs in turn.** Report a Difficult Agent…
   (`pathux/report.ts`) is not a bare `openCommandDialog`: three of `report.agent`'s five fields have
   a vocabulary the command cannot carry — the conversations in *this* project, the models a key
   might be set for, and the efforts the chosen model offers — so the function fetches the threads

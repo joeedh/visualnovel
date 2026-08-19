@@ -1,6 +1,11 @@
 # Shipping the app — tasklist
 
-Status: **planned**
+Status: **shipped**. All five scheduled plans are built and in the codebase; each one's own page
+records what it deviated from. What is left unticked below is not code — it is the handful of
+acceptance runs that need a machine or a push this branch does not have: the public path.ux commit
+that unblocks every CI job, a clean VM for the installer, a real model key for tier 2 of the audit,
+and a tag, which is also what makes the update check's `available` verdict observable. They are
+listed where they belong rather than collected here, because each is the last line of a plan.
 
 Everything between "the app runs from a checkout" and "someone who is not us has it installed and
 updating." Five scheduled plans and one deferred by decision. This page is the running order and
@@ -114,12 +119,25 @@ Plan 6 is deliberately not scheduled.
 
 ### 4 — In-app update checks
 
-- [ ] `app.checkForUpdates` as a registered command, reachable from Help and the palette
-- [ ] The releases feed read, the semver compare, and what it does when offline
-- [ ] Reuse `ISSUE_REPO` from `@vn/agentreport`; do not add a second repo constant
-- [ ] A prerelease newer than the running version is not offered
-- [ ] The notification, and the browser hand-off to the release page
-- [ ] A periodic check, off by default until someone asks for it
+- [x] `app.checkForUpdates` as a registered command, reachable from Help and the palette
+- [x] The releases feed read, the semver compare, and what it does when offline — the deciding
+      half is `apps/desktop/src/main/updates.ts`, so it is tested without a network; nothing in
+      `tests/updates.test.ts` spends the 60-an-hour budget a CI runner shares by IP
+- [x] Reuse `ISSUE_REPO` from `@vn/agentreport`; do not add a second repo constant
+- [x] A prerelease newer than the running version is not offered — `releases/latest` excludes
+      them, which is the reason for that endpoint
+- [x] The notification, and the browser hand-off to the release page — `NotificationLink` grew a
+      `command` field so a notification can name an **act** rather than an address, narrowed by an
+      allow-list; `app.openReleases` derives its own URL. See the plan's
+      [As shipped](in-app-update-checks.md#as-shipped)
+- [x] A periodic check, off by default until someone asks for it — nobody has, so it is not built:
+      `quiet` exists and behaves, and nothing calls it. The app makes no request until the author
+      picks the menu entry
+- [ ] Watch the `available` verdict happen: the notification it posts and the click that opens the
+      page are argued for by unit tests over the payload shape rather than by having occurred.
+      Blocked on 3b's first tag — `releases/latest` answers 404 today, so every real run takes the
+      `unreachable` path (which *was* exercised against the live endpoint). The Help entry itself
+      is also owed a live CDP check; this worktree's launcher never opened a renderer target
 
 The repo must be public for an unauthenticated feed read; it already is
 (`joeedh/visualnovel`), so this constrains nothing today — but it is why the repo cannot go
