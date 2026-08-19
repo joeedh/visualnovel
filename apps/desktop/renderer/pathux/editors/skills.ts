@@ -62,9 +62,6 @@ export class SkillsEditor extends VnEditor {
   /** Rising with every fetch, so a slow walk for a workspace that has moved on is dropped. */
   private token = 0;
 
-  private unwatch: (() => void) | undefined;
-  private unwatchTree: (() => void) | undefined;
-
   static override define() {
     return {
       tagname: 'vn-skills-editor-x',
@@ -96,21 +93,22 @@ export class SkillsEditor extends VnEditor {
     // A file this pane is showing can be written by something that is not this pane: `create_skill`
     // and `edit_skill` from the Convo pane, `doc.create kind='skill'` from the document tree, an
     // undo. What a clean and a dirty buffer each do about that is `DocBuffer.wrote`.
-    this.unwatch = onWrote((paths) => this.buf.wrote(paths));
+    this.watch(
+      () => onWrote((paths) => this.buf.wrote(paths)),
+      // Which paths moved while the pane was off screen is unknowable, so the one it is showing is
+      // re-read on the same terms.
+      () => this.buf.wrote([this.buf.path]),
+    );
     // And the tree beside it, which a *new* skill changes without touching the open file at all.
-    // Coarse on purpose: a walk is cheap and a stale tree is worse than a redundant fetch.
-    this.unwatchTree = onInvalidate(() => void this.loadTree());
+    // Coarse on purpose: a walk is cheap and a stale tree is worse than a redundant fetch — which
+    // is also why coming back on screen just walks it again rather than reasoning about the gap.
+    this.watch(
+      () => onInvalidate(() => void this.loadTree()),
+      () => void this.loadTree(),
+    );
     void this.loadTree();
 
     this.paint();
-  }
-
-  override on_remove() {
-    this.unwatch?.();
-    this.unwatch = undefined;
-    this.unwatchTree?.();
-    this.unwatchTree = undefined;
-    super.on_remove();
   }
 
   override update() {
