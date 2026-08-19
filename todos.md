@@ -9,7 +9,7 @@
 [x]: the new wiki context menu item doesn't refresh the tree on creation
 [x]: the notifications popup needs a vertical scrollbar.  if there's a large number of items 
      they are simply drawn on top of each other in a tangled mess.
-[ ]: make sure path.ux's help picker works.  it just shows tooltips under the active mouse.
+[x]: make sure path.ux's help picker works.  it just shows tooltips under the active mouse.
      it's designed to help show tooltips when using multitouch input.
 [x]: modify the system prompt so when the user asks the agent to create things with a category,
      that category is mentioned in the associated wiki pages.  for example 'create 4 love interests'
