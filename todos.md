@@ -80,7 +80,7 @@
 	 or a two-finger multitouch gesture (the latter may have to abort an in-progress tab drag).
 	 do not display a physical scrollbar.
 [x]: the document tree should have a 'close all' icon button.  create an appropriate icon.
-[ ]: write a plan to fully support anthropic, gemini, openai and grok models for the agent, and also 
+[x]: write a plan to fully support anthropic, gemini, openai and grok models for the agent, and also 
      supporting more image model providers (e.g. openai, propose one more).
 [ ]: write a research report on supporting local models, either physically on the same machine or a server the 
      user has on their home network.  the report should include local image models.
