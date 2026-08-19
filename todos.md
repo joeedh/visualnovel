@@ -75,7 +75,7 @@
      features of tab containers, used by the screen area tab bar.  the agent should branch both path.ux
 	 and it's path-controller submodule, write a plan, pressure test the plan, and then implement it.
 	 I'll review the result and merge it to path.ux's master later before we push anything to git.
-[ ]: after the above item completes, also make it so if tab bars do not have multiline enabled 
+[x]: after the above item completes, also make it so if tab bars do not have multiline enabled 
      they will support scrolling horizontally via mousescroll events, right clicking and dragging,
 	 or a two-finger multitouch gesture (the latter may have to abort an in-progress tab drag).
 	 do not display a physical scrollbar.
