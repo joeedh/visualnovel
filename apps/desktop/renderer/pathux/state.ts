@@ -80,4 +80,12 @@ export class ShellState {
   /** How that work is going. Both zero when nothing is running, and while a turn has no count. */
   busyRan = 0;
   busyPending = 0;
+
+  /**
+   * A model call that failed and is being tried again: which attempt of how many the author
+   * allowed. Both zero the moment it is over, whichever way it went — a counter left standing on
+   * "3 of 10" is a claim that something is still happening.
+   */
+  retryAttempt = 0;
+  retryOf = 0;
 }

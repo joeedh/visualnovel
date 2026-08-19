@@ -28,10 +28,20 @@ export async function pool<T, R>(
 /**
  * Retry an async op with exponential backoff. Throws the last error on exhaustion, and
  * immediately when `shouldRetry` rules an error out — the default retries everything.
+ *
+ * `delayFor` is what the *failure itself* said to wait — a `retry-after`, typically. It wins over
+ * the computed backoff when it answers a number, because a provider that names a delay is telling
+ * us when its own limit resets, and guessing shorter buys another 429 while guessing longer wastes
+ * the difference.
  */
 export async function retry<T>(
   fn: (attempt: number) => Promise<T>,
-  opts: { attempts?: number; baseMs?: number; shouldRetry?: (err: unknown) => boolean } = {},
+  opts: {
+    attempts?: number;
+    baseMs?: number;
+    shouldRetry?: (err: unknown) => boolean;
+    delayFor?: (err: unknown, attempt: number) => number | undefined;
+  } = {},
 ): Promise<T> {
   const attempts = opts.attempts ?? 3;
   const baseMs = opts.baseMs ?? 250;
@@ -42,7 +52,9 @@ export async function retry<T>(
     } catch (err) {
       lastErr = err;
       if (attempt >= attempts || !(opts.shouldRetry?.(err) ?? true)) break;
-      await new Promise((resolve) => setTimeout(resolve, baseMs * 2 ** (attempt - 1)));
+      const asked = opts.delayFor?.(err, attempt);
+      const wait = asked === undefined ? baseMs * 2 ** (attempt - 1) : asked;
+      await new Promise((resolve) => setTimeout(resolve, wait));
     }
   }
   throw lastErr;

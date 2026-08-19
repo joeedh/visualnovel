@@ -40,6 +40,8 @@ import {
   workspaceArtGen,
   type AgentBackend,
   type AgentEvent,
+  type ApiFailure,
+  type ApiRecovery,
   type Permission,
   type ToolContext,
 } from '@vn/authoring';
@@ -114,6 +116,8 @@ export async function createAuthoringAgent(
     /** What one turn may spend, in non-cached tokens. Defaults to {@link DEFAULT_BUDGET}. */
     budget?: BudgetChoice;
     onEvent?: (e: AgentEvent) => void;
+    /** What to do when a call to the model fails; absent lets the error out, as it always did. */
+    onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
   } = {},
 ): Promise<AuthoringSession> {
   const workspace = new Workspace(dir);
@@ -132,6 +136,7 @@ export async function createAuthoringAgent(
     system: composeSystem(context),
     ...(opts.budget ? { budget: opts.budget } : {}),
     onEvent: opts.onEvent,
+    ...(opts.onApiError ? { onApiError: opts.onApiError } : {}),
   });
   return { agent, ctx, model };
 }

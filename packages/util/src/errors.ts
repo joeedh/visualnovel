@@ -34,7 +34,19 @@ export class ProviderError extends VnError {
  * connection. Only the backend can tell the two apart, since it is the layer that sees the
  * status code; everything above branches on this class.
  */
-export class RetryableProviderError extends ProviderError {}
+export class RetryableProviderError extends ProviderError {
+  /**
+   * How long the provider asked us to wait before trying again, in milliseconds — its own
+   * `retry-after`, where it sent one. Absent means it did not say, not that there is no wait:
+   * every vendor's guidance is to back off exponentially when they have not named a delay.
+   */
+  readonly retryAfterMs?: number;
+
+  constructor(message: string, options?: { cause?: unknown; retryAfterMs?: number }) {
+    super(message, options);
+    if (options?.retryAfterMs !== undefined) this.retryAfterMs = options.retryAfterMs;
+  }
+}
 
 /** Structured model output could not be parsed/validated after retries. */
 export class StructuredOutputError extends VnError {

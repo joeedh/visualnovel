@@ -330,6 +330,14 @@ export function installBridge(app: ShellApp): void {
     if (event.type === 'mode') {
       app.ui.agentMode = event.mode;
       touch();
+    } else if (event.type === 'api') {
+      // `retrying` is the only phase with a wait ahead of it. The other three are the story
+      // ending — the card going up, the call working, the turn giving up — so all of them clear
+      // the counter rather than leaving a number nothing is going to move again.
+      const counting = event.phase === 'retrying';
+      app.ui.retryAttempt = counting ? event.attempt : 0;
+      app.ui.retryOf = counting ? event.of : 0;
+      touch();
     } else if (event.type === 'tool') {
       // The agent's half of "the files moved". Nothing else reports it: a tool call is not a
       // command, so `exec` never sees it. Both feeds fire, because a surface that redraws the whole

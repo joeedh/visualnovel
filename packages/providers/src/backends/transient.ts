@@ -50,10 +50,58 @@ export function isTransient(err: unknown): boolean {
   return named !== undefined && retryableStatus(Number(named));
 }
 
-/** Wrap an SDK failure, choosing the class from whether another attempt could help. */
+/** One header off whatever the SDK put the response headers in — an object, or a `Headers`. */
+function headerOf(err: unknown, name: string): string | undefined {
+  const bags = [
+    (err as { headers?: unknown })?.headers,
+    (err as { responseHeaders?: unknown })?.responseHeaders,
+    (err as { response?: { headers?: unknown } })?.response?.headers,
+  ];
+  for (const bag of bags) {
+    if (!bag || typeof bag !== 'object') continue;
+    const get = (bag as { get?: unknown }).get;
+    if (typeof get === 'function') {
+      const value = (get as (k: string) => unknown).call(bag, name);
+      if (typeof value === 'string') return value;
+      continue;
+    }
+    // A plain object: header names are case-insensitive, so match that way rather than trusting
+    // whichever casing this SDK happened to preserve.
+    for (const [key, value] of Object.entries(bag as Record<string, unknown>)) {
+      if (key.toLowerCase() === name && typeof value === 'string') return value;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * What the provider said to wait, in ms. `Retry-After` is either a count of seconds or an
+ * HTTP-date, and both are in the wild — Anthropic sends seconds, and a proxy in front of any of
+ * them may send the date. A value that is absent, unparseable or in the past says nothing, and
+ * the caller falls back to its own backoff.
+ */
+export function retryAfterMs(err: unknown, now = Date.now()): number | undefined {
+  const raw = headerOf(err, 'retry-after')?.trim();
+  if (!raw) return undefined;
+  if (/^\d+(\.\d+)?$/.test(raw)) return Math.round(Number(raw) * 1000);
+  const at = Date.parse(raw);
+  if (Number.isNaN(at)) return undefined;
+  return at > now ? at - now : undefined;
+}
+
+/**
+ * Wrap an SDK failure, choosing the class from whether another attempt could help — and carrying
+ * the provider's own `retry-after` where it sent one, because the layer that knows when a limit
+ * resets is the response, and nothing above here can see it.
+ */
 export function providerError(what: string, err: unknown): ProviderError {
-  const Cls = isTransient(err) ? RetryableProviderError : ProviderError;
-  return new Cls(`${what}: ${causeMessage(err)}`, { cause: err });
+  const message = `${what}: ${causeMessage(err)}`;
+  if (!isTransient(err)) return new ProviderError(message, { cause: err });
+  const after = retryAfterMs(err);
+  return new RetryableProviderError(message, {
+    cause: err,
+    ...(after === undefined ? {} : { retryAfterMs: after }),
+  });
 }
 
 /**
@@ -74,6 +122,9 @@ export function callWithRetry<T>(what: string, fn: () => Promise<T>): Promise<T>
       attempts: ATTEMPTS,
       baseMs: BASE_MS,
       shouldRetry: (err) => err instanceof RetryableProviderError,
+      // The vendors all say the same thing: honour `retry-after` when it is there, back off
+      // exponentially when it is not. This is the first half; `baseMs` above is the second.
+      delayFor: (err) => (err instanceof RetryableProviderError ? err.retryAfterMs : undefined),
     },
   );
 }

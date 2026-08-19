@@ -4,11 +4,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
 import { RecordedChatBackend, type ChatBackend } from '@vn/providers';
+import { ProviderError, RetryableProviderError } from '@vn/util';
 import {
   Agent,
+  apiBackoffMs,
   focusOnScene,
   type AgentBackend,
   type AgentMessage,
+  type AgentEvent,
+  type ApiFailure,
+  type ApiRecovery,
   type AskQuestion,
   StructuredAgentBackend,
   type SystemSection,
@@ -299,6 +304,160 @@ describe('setBackend', () => {
     } finally {
       await cleanup();
     }
+  });
+});
+
+describe('a call to the model that failed', () => {
+  /** A backend that throws the first `fails` times it is called, then answers. */
+  function brittleBackend(fails: number, answer = 'made it'): AgentBackend & { calls: number } {
+    const backend = {
+      calls: 0,
+      next(): Promise<{ final: string }> {
+        backend.calls++;
+        if (backend.calls <= fails) {
+          return Promise.reject(new RetryableProviderError('chat: 429 rate limited'));
+        }
+        return Promise.resolve({ final: answer });
+      },
+    };
+    return backend;
+  }
+
+  /** Run one turn against `backend`, with `recover` answering every failure. */
+  async function runWith(
+    ctx: ToolContext,
+    backend: AgentBackend,
+    recover?: (failure: ApiFailure) => Promise<ApiRecovery>,
+  ): Promise<{ events: AgentEvent[]; final?: string; error?: string }> {
+    const events: AgentEvent[] = [];
+    const agent = new Agent({
+      backend,
+      ctx,
+      permission: scriptPermission(),
+      system: 'SYS',
+      onEvent: (event) => events.push(event),
+      ...(recover ? { onApiError: recover } : {}),
+    });
+    try {
+      return { events, final: (await agent.run('hello')).final };
+    } catch (err) {
+      return { events, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  const api = (events: AgentEvent[]): Extract<AgentEvent, { type: 'api' }>[] =>
+    events.filter((e): e is Extract<AgentEvent, { type: 'api' }> => e.type === 'api');
+
+  it('lets the error out when the host has nothing to say about it', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const { error, events } = await runWith(ctx, brittleBackend(1));
+      expect(error).toContain('429');
+      // Still reported, so a host that only listens knows why the turn ended.
+      expect(api(events).map((e) => e.phase)).toEqual(['failed', 'gaveup']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('retries on the host’s say-so and carries the turn on', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const asked: number[] = [];
+      const { final, events } = await runWith(ctx, brittleBackend(2), (failure) => {
+        asked.push(failure.attempt);
+        return Promise.resolve({ do: 'retry', times: 1, waitMs: 0 });
+      });
+      expect(final).toBe('made it');
+      // Asked once per grant, and a grant of one is spent by the attempt that follows it.
+      expect(asked).toEqual([1, 2]);
+      expect(api(events).map((e) => e.phase)).toEqual([
+        'failed',
+        'retrying',
+        'failed',
+        'retrying',
+        'recovered',
+      ]);
+      expect(api(events).at(-1)?.attempt).toBe(2);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('spends a whole grant before asking again, counting it as it goes', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const asked: number[] = [];
+      const { final, events } = await runWith(ctx, brittleBackend(3), (failure) => {
+        asked.push(failure.attempt);
+        return Promise.resolve({ do: 'retry', times: 3, waitMs: 0 });
+      });
+      expect(final).toBe('made it');
+      expect(asked).toEqual([1]);
+      const counted = api(events)
+        .filter((e) => e.phase === 'retrying')
+        .map((e) => `${e.attempt}/${e.of}`);
+      expect(counted).toEqual(['1/3', '2/3', '3/3']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('tells the host what the provider said to wait', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const seen: ApiFailure[] = [];
+      const backend: AgentBackend = {
+        next: () =>
+          Promise.reject(
+            new RetryableProviderError('chat: 429 slow down', { retryAfterMs: 4_000 }),
+          ),
+      };
+      await runWith(ctx, backend, (failure) => {
+        seen.push(failure);
+        return Promise.resolve({ do: 'stop' });
+      });
+      expect(seen[0]?.waitMs).toBe(4_000);
+      expect(seen[0]?.transient).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('gives up on a host that says stop, and says the failure was terminal', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const seen: ApiFailure[] = [];
+      const backend: AgentBackend = {
+        next: () => Promise.reject(new ProviderError('chat: 401 bad key')),
+      };
+      const { error, events } = await runWith(ctx, backend, (failure) => {
+        seen.push(failure);
+        return Promise.resolve({ do: 'stop' });
+      });
+      expect(seen[0]?.transient).toBe(false);
+      expect(error).toContain('401');
+      expect(api(events).map((e) => e.phase)).toEqual(['failed', 'gaveup']);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('the backoff a retry waits', () => {
+  it('doubles, and stops doubling', () => {
+    expect(apiBackoffMs(1)).toBe(1_000);
+    expect(apiBackoffMs(2)).toBe(2_000);
+    expect(apiBackoffMs(3)).toBe(4_000);
+    expect(apiBackoffMs(20)).toBe(60_000);
+  });
+
+  it('does what the provider asked for instead, capped the same way', () => {
+    expect(apiBackoffMs(1, 8_000)).toBe(8_000);
+    expect(apiBackoffMs(5, 200)).toBe(200);
+    expect(apiBackoffMs(1, 10 * 60_000)).toBe(60_000);
+    // Nothing said, or a nonsense wait, is not an instruction to retry immediately.
+    expect(apiBackoffMs(2, 0)).toBe(2_000);
   });
 });
 

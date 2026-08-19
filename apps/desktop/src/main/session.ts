@@ -124,10 +124,12 @@ import {
 } from '@vn/artgen';
 import { chatBackendFor, chatVendorFor, createMockProviders, createProviders } from '@vn/providers';
 import {
+  API_RETRIES,
   Agent,
   NativeAgentBackend,
   StructuredAgentBackend,
   Workspace,
+  apiRecoveryQuestion,
   archiveUpload,
   PROJECT_SKILLS_DIR,
   composeSystem,
@@ -135,6 +137,7 @@ import {
   focusOnScene,
   loadContext,
   newSkillTemplate,
+  readApiPlan,
   skillId,
   skillRoots,
   systemSections,
@@ -142,6 +145,8 @@ import {
   type AgentBackend,
   type AgentEvent,
   type AgentMode,
+  type ApiFailure,
+  type ApiRecovery,
   type AskQuestion,
   type GeneratedContextState,
   type GeneratedCounts,
@@ -201,6 +206,7 @@ import {
   DEFAULT_BUDGET,
   DEFAULT_EFFORT,
   EFFORT_CHOICES,
+  TEXT_MODELS,
   bindsTo,
   resolveEffort,
   type BudgetChoice,
@@ -835,9 +841,61 @@ export class WorkspaceSession {
       onEvent: (event) => {
         this.record((convo) => received(convo, event));
         this.deps.emitEvent(event);
+        if (event.type === 'api') this.announceApi(event);
       },
+      onApiError: (failure) => this.recoverApi(failure),
     });
     return this.agent;
+  }
+
+  /**
+   * A call to the model failed. Put it to the author with what can be done about it, once — the
+   * answer buys a *grant* of attempts, and the loop spends them without asking again.
+   *
+   * A second failure with the grant already spent is not a second question. The author said what
+   * they wanted, it did not work, and a card offering the same three answers to the same failure
+   * is a way of not taking no for an answer. It ends the turn instead; the conversation is intact,
+   * so sending it again is one keystroke.
+   */
+  private async recoverApi(failure: ApiFailure): Promise<ApiRecovery> {
+    if (failure.attempt > 1) return { do: 'stop' };
+    // Every curated model except the one that just failed. Switching to it would be a way of
+    // asking the same question twice.
+    const others = TEXT_MODELS.filter((id) => id !== this.model);
+    const question = apiRecoveryQuestion(failure, this.model, others);
+    const [answer = ''] = await this.deps.requestAnswer([question]);
+    const plan = readApiPlan(answer, others);
+    if (plan.do === 'switch') {
+      // Before the retry rather than after it: the loop re-reads the backend every attempt, so a
+      // model swapped here is the one the next attempt is made against. One try on it, because a
+      // model the author picked failing is news, and worth telling them rather than grinding on.
+      await this.setModel(plan.model);
+      return { do: 'retry', times: 1 };
+    }
+    return plan.do === 'retry' ? { do: 'retry', times: API_RETRIES } : { do: 'stop' };
+  }
+
+  /**
+   * File what became of it. Only the two ends of the story are notifications — a retry in flight
+   * is what the header's counter is for, and a durable record per attempt would bury the one line
+   * that says how it came out.
+   */
+  private announceApi(event: Extract<AgentEvent, { type: 'api' }>): void {
+    const tries = (n: number): string => `${n} failed attempt${n === 1 ? '' : 's'}`;
+    if (event.phase === 'recovered') {
+      void notify({
+        category: 'agent',
+        source: 'agent',
+        message: `The model answered after ${tries(event.attempt)}.`,
+      });
+    } else if (event.phase === 'gaveup') {
+      void notify({
+        category: 'error',
+        level: 'error',
+        source: 'agent',
+        message: `Gave up on the model after ${tries(event.attempt)}: ${event.message}`,
+      });
+    }
   }
 
   // ---- IPC-facing methods ----

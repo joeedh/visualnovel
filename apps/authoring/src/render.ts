@@ -66,6 +66,23 @@ export function renderEvent(event: AgentEvent): string | undefined {
       return dim(`  → switched to ${event.mode} mode`);
     case 'blocked':
       return yellow(`  ⊘ ${event.tool} blocked: ${event.reason}`);
+    case 'api':
+      // `failed` says nothing: the question that follows it quotes the same message, and printing
+      // both puts the failure on screen twice. The rest are the only news there is while the
+      // author waits.
+      switch (event.phase) {
+        case 'retrying':
+          return yellow(
+            `  ⟳ retrying (${event.attempt}/${event.of})` +
+              (event.waitMs ? dim(` after ${Math.round(event.waitMs / 100) / 10}s`) : ''),
+          );
+        case 'recovered':
+          return green(`  ✓ the model answered after ${event.attempt} failed attempt(s)`);
+        case 'gaveup':
+          return red(`  ✗ gave up after ${event.attempt} attempt(s)`);
+        default:
+          return undefined;
+      }
     case 'usage':
       return undefined; // a receipt is not narration — the REPL prints the running total
     case 'final':

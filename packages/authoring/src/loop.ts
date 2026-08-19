@@ -16,7 +16,8 @@
  */
 import { z } from 'zod';
 import { budgetTokens, charge, DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
-import type { AgentAction, AgentBackend, AgentMessage, ToolSpec } from './backend.js';
+import { RetryableProviderError } from '@vn/util';
+import type { AgentAction, AgentBackend, AgentMessage, AgentTurn, ToolSpec } from './backend.js';
 import { joinSections, type SystemSection } from './context.js';
 import {
   createRegistry,
@@ -78,6 +79,43 @@ export interface AskQuestion {
   multi?: boolean;
 }
 
+/**
+ * A call to the model that failed, as the host is told about it.
+ *
+ * `attempt` counts the failures of *this step*, so `1` is the first thing that went wrong and
+ * anything higher means the attempts the host last granted are spent. `waitMs` is what the loop
+ * would wait on its own — the provider's `retry-after` where it sent one, and an exponential
+ * backoff where it did not.
+ */
+export interface ApiFailure {
+  message: string;
+  /** Whether another attempt could plausibly get a different answer: a 429, a 5xx, a dead socket. */
+  transient: boolean;
+  attempt: number;
+  waitMs: number;
+}
+
+/**
+ * What the host wants done about it.
+ *
+ * There is no `switch model` here on purpose: the loop has never known what a model is, and the
+ * host that does can swap the backend itself ({@link Agent.setBackend}) before answering `retry`.
+ * The next attempt reads the field, so the swap lands on it.
+ */
+export type ApiRecovery =
+  | {
+      do: 'retry';
+      /** How many more attempts, before the host is asked again. */
+      times: number;
+      /**
+       * Wait this long before each of them, instead of the loop's own backoff and instead of
+       * anything the provider asked for. Absent leaves both in charge, which is the usual case.
+       */
+      waitMs?: number;
+    }
+  /** Give up: the error leaves `run` and the caller reports it as it always did. */
+  | { do: 'stop' };
+
 /** A streamed event describing one thing the loop did (for the REPL / test assertions). */
 export type AgentEvent =
   | { type: 'message'; text: string }
@@ -100,6 +138,18 @@ export type AgentEvent =
       cacheRead?: number;
       cacheWrite?: number;
       cacheEstimated?: boolean;
+    }
+  // How a call to the model is going when it does not simply work. `failed` is one attempt gone
+  // and the host about to be asked; `retrying` is attempt `attempt` of `of` about to be made, and
+  // is the only phase a counter should be *up* for; `recovered` and `gaveup` both end the story,
+  // so a surface that shows one clears on either. `attempt` on those two is how many failed.
+  | {
+      type: 'api';
+      phase: 'failed' | 'retrying' | 'recovered' | 'gaveup';
+      attempt: number;
+      of: number;
+      message: string;
+      waitMs?: number;
     }
   | { type: 'final'; text: string };
 
@@ -133,6 +183,13 @@ export interface AgentOptions {
   maxIterations?: number;
   /** Optional live event sink (the REPL renders these as they happen). */
   onEvent?: (event: AgentEvent) => void;
+  /**
+   * What to do when the call to the model fails. Absent is the behaviour there has always been:
+   * the error leaves `run` and the caller reports it. A host that implements it can offer the
+   * author the choice instead — retry, or swap the backend and retry — without the loop knowing
+   * anything about providers.
+   */
+  onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
 }
 
 /**
@@ -193,6 +250,44 @@ const ALWAYS_LOADED = new Set([
  * *budget*; it is still backstopped.
  */
 const MAX_ITERATIONS = 200;
+
+/** Where a retry's own backoff starts and where it stops growing. */
+const RETRY_BASE_MS = 1_000;
+const RETRY_CAP_MS = 60_000;
+
+/**
+ * The backstop on retrying one step. Not a policy knob — the policy is whatever the host answers
+ * — but a host that keeps saying `retry` to a failure that is never going to clear would
+ * otherwise spend the author's evening asking a dead endpoint the same question.
+ */
+const MAX_API_ATTEMPTS = 50;
+
+/**
+ * How long to wait before attempt `attempt` of the same step, in ms.
+ *
+ * `after` is what the provider itself asked for and wins outright, because the response is the
+ * only thing that knows when a limit resets. Otherwise it is the doubling every vendor's guidance
+ * describes, capped so a long grant cannot end up sleeping for an hour.
+ *
+ * Deliberately without jitter, which that guidance also calls for: jitter is there to keep a
+ * *fleet* of clients from retrying in lockstep, and there is one conversation here. What it would
+ * buy instead is a wait no test can pin.
+ */
+export function apiBackoffMs(attempt: number, after?: number): number {
+  if (after !== undefined && after > 0) return Math.min(RETRY_CAP_MS, after);
+  return Math.min(RETRY_CAP_MS, RETRY_BASE_MS * 2 ** Math.max(0, attempt - 1));
+}
+
+/** What the provider said to wait, where the backend kept it. */
+function retryAfterOf(err: unknown): number | undefined {
+  return err instanceof RetryableProviderError ? err.retryAfterMs : undefined;
+}
+
+function failureText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** What the model is told as the ceiling comes into view. The instruction, not the number alone. */
 function budgetWarning(left: number): string {
@@ -310,6 +405,7 @@ export class Agent {
   private budgetChoice: BudgetChoice;
   private readonly maxIterations: number;
   private readonly onEvent?: (event: AgentEvent) => void;
+  private readonly onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
   private readonly messages: AgentMessage[] = [];
   /** Workspace-relative paths the agent has written since the last commit (commit scope). */
   private readonly editedPaths = new Set<string>();
@@ -346,6 +442,7 @@ export class Agent {
     this.budget = budgetTokens(this.budgetChoice);
     this.maxIterations = opts.maxIterations ?? MAX_ITERATIONS;
     this.onEvent = opts.onEvent;
+    this.onApiError = opts.onApiError;
   }
 
   /** The mode the machine is currently in. */
@@ -507,7 +604,7 @@ export class Agent {
       // is a request the API will refuse to continue.
       if (spent >= this.budget) return this.ranOut(this.spentSentence(spent), emit, events);
 
-      const turn = await this.backend.next(this.system, this.messages, tools);
+      const turn = await this.nextTurn(tools, emit);
       // Before the narration: the call is already paid for whether or not it said anything useful.
       if (turn.usage) {
         spent += charge(turn.usage);
@@ -569,6 +666,76 @@ export class Agent {
    * the last commit, because falling out of a loop is otherwise indistinguishable from finishing
    * and the host files whatever comes back as the turn's answer.
    */
+  /**
+   * One call to the model, with whatever the host wants done about a failure.
+   *
+   * The host is asked once per *grant*, not once per attempt: it answers with a number of tries,
+   * the loop spends them with the backoff the providers ask for, and only when they run out is it
+   * asked again — which is what lets "retry ten times" be one decision the author makes rather
+   * than ten. A host that implements nothing gets what it always got: the error, unchanged.
+   *
+   * The backend is re-read every attempt, so a host that swapped it — a different model, a
+   * different vendor — is retried against the new one without saying so.
+   */
+  private async nextTurn(tools: ToolSpec[], emit: (event: AgentEvent) => void): Promise<AgentTurn> {
+    /** Attempts granted and not yet spent, how big that grant was, and how many have failed. */
+    let left = 0;
+    let of = 0;
+    let failures = 0;
+    /** A wait the host named when it granted the attempts, which then holds for all of them. */
+    let asked: number | undefined;
+
+    for (;;) {
+      try {
+        const turn = await this.backend.next(this.system, this.messages, tools);
+        if (failures > 0) {
+          emit({ type: 'api', phase: 'recovered', attempt: failures, of, message: '' });
+        }
+        return turn;
+      } catch (err) {
+        failures++;
+        const message = failureText(err);
+        let wait = apiBackoffMs(failures, retryAfterOf(err));
+
+        if (left === 0) {
+          emit({ type: 'api', phase: 'failed', attempt: failures, of, message });
+          const recovery =
+            this.onApiError && failures < MAX_API_ATTEMPTS
+              ? await this.onApiError({
+                  message,
+                  transient: err instanceof RetryableProviderError,
+                  attempt: failures,
+                  waitMs: wait,
+                })
+              : ({ do: 'stop' } as const);
+          if (recovery.do !== 'retry' || recovery.times < 1) {
+            emit({ type: 'api', phase: 'gaveup', attempt: failures, of, message });
+            throw err;
+          }
+          left = recovery.times;
+          of = recovery.times;
+          asked = recovery.waitMs;
+        }
+
+        // The host's wait wins over both the provider's and ours: it was told what we were going
+        // to wait and answered with a different number, which is only meaningful if it is used.
+        if (asked !== undefined) wait = asked;
+
+        left--;
+        emit({ type: 'api', phase: 'retrying', attempt: of - left, of, message, waitMs: wait });
+        if (wait > 0) await sleep(wait);
+        // A stop during the wait ends the turn instead of spending the rest of the grant. The
+        // attempt has not been made yet, so this is the same "after the step it is on" the outer
+        // loop honours — and it ends with the sentence a stop always ends with rather than an
+        // error, because the author asking for it to be over is not a failure.
+        if (this.stopped) {
+          emit({ type: 'api', phase: 'gaveup', attempt: failures, of, message });
+          return { final: 'Stopped at your request.' };
+        }
+      }
+    }
+  }
+
   private ranOut(why: string, emit: (event: AgentEvent) => void, events: AgentEvent[]): RunResult {
     const written = this.editedPaths.size
       ? ` Written since the last commit: ${[...this.editedPaths].join(', ')}.`

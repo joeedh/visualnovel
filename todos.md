@@ -26,7 +26,7 @@
 [x]: agent threads should remember which model and effort level they're on 
 [x]: the multichoice user input tool for the agent should allow you navigate to previous/next 
      questions and have a final 'submit answers' button, similar to claude code's behaviour
-[ ]: the user should be informed about api errors and given the option to select another model provider,
+[x]: the user should be informed about api errors and given the option to select another model provider,
      or automatically retry 10 times with whatever backoff semantics the model providers recommend.
 	 if the choose to retry the main header should show the current retry number and a notification
 	 should be issued on success or failure (make sure the retry count is cleared from the header

@@ -174,6 +174,8 @@ export class VnHeaderEditor extends VnEditor {
       ui.undoLabel,
       ui.redoLabel,
       ui.busyWhat,
+      ui.retryAttempt,
+      ui.retryOf,
       this.layoutRevision,
     ].join('|');
   }
@@ -257,6 +259,7 @@ export class VnHeaderEditor extends VnEditor {
     }
 
     this.badge(ui.model, false, 'current agent model - set in convo tab');
+    this.retryBadge();
     this.badge(
       isLive ? 'live' : 'preview',
       false,
@@ -318,6 +321,24 @@ export class VnHeaderEditor extends VnEditor {
     const stop = this.bar.button('■', () => void exec('pipeline.stop').then(report));
     stop.description = 'Stop the run after the task it is on. Finished work is kept.';
     stop.setCSSAfter(() => (stop.style['color'] = 'var(--vermilion, #e5534b)'));
+  }
+
+  /**
+   * The retry counter, beside the model it is retrying. Drawn only while a retry is actually in
+   * hand — which is what makes it a badge rather than a control: there is nothing to click,
+   * because the author already answered the card that started it, and the way to end it early is
+   * the Stop button the turn already has.
+   */
+  private retryBadge(): void {
+    const ui = this.ui;
+    if (ui.retryAttempt < 1) return;
+    this.badge(
+      `⟳ retry ${ui.retryAttempt}/${ui.retryOf}`,
+      false,
+      `The model call failed and is being tried again — attempt ${ui.retryAttempt} of ` +
+        `${ui.retryOf}. The turn carries on from where it was if one succeeds, and stops if ` +
+        `none of them do.`,
+    );
   }
 
   /**

@@ -8,3 +8,4 @@ export * from './tools.js';
 export * from './skills.js';
 export * from './backend.js';
 export * from './loop.js';
+export * from './apierror.js';

@@ -8,15 +8,20 @@
 import { relative } from 'node:path';
 import { createInterface, emitKeypressEvents, type Interface } from 'node:readline';
 import {
+  API_RETRIES,
+  apiRecoveryQuestion,
   archiveUpload,
   describeUpload,
   discoverSkills,
   formatIndex,
   formatSubject,
   loadContext,
+  readApiPlan,
   skillRoots,
   systemSections,
   uploadSuggestions,
+  type ApiFailure,
+  type ApiRecovery,
   type AskQuestion,
   type Permission,
   type Plan,
@@ -247,6 +252,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
         const line = renderEvent(event);
         if (line !== undefined) channel.write(line);
       },
+      onApiError: (failure) => recoverApi(failure),
     });
   } catch (err) {
     channel.write(`Failed to open workspace: ${err instanceof Error ? err.message : String(err)}`);
@@ -284,6 +290,35 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       );
       return false;
     }
+  }
+
+  /**
+   * A call to the model failed. Same question the desktop's card puts, and the same shortlist —
+   * put here as the numbered list every other question in this REPL uses.
+   *
+   * Only the first failure asks. Once the grant the author gave is spent, saying so and stopping
+   * is the answer: the transcript is intact, so trying again is one more line typed at the prompt.
+   */
+  async function recoverApi(failure: ApiFailure): Promise<ApiRecovery> {
+    if (failure.attempt > 1) return { do: 'stop' };
+    channel.write('');
+    const others = opts.mock ? [] : TEXT_MODELS.filter((id) => id !== currentModel);
+    const answer = await askOne(channel, apiRecoveryQuestion(failure, currentModel, others));
+    const plan = readApiPlan(answer, others);
+    if (plan.do === 'switch') {
+      // One attempt on it: a model the author picked failing is news, not something to grind on.
+      if (
+        !(await applySettings(
+          plan.model,
+          resolveEffort(plan.model, currentEffort) ?? currentEffort,
+        ))
+      ) {
+        return { do: 'stop' };
+      }
+      channel.write(green(`Model set to ${plan.model}.`));
+      return { do: 'retry', times: 1 };
+    }
+    return plan.do === 'retry' ? { do: 'retry', times: API_RETRIES } : { do: 'stop' };
   }
 
   async function handleModel(arg: string): Promise<void> {

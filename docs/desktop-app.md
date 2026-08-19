@@ -219,6 +219,14 @@ are the bridge's.
   with the labels `command:undo` pushes, an error-or-warning count, the model, `live`/`preview`, and
   the PLAN ⇄ EXECUTE toggle. It rebuilds when — and only when — the string of everything it draws
   changes.
+- **A model call being tried again is counted in the header, and the counter is a claim about
+  now.** When the author grants a retry after a failed call, the header shows `⟳ retry n/of`
+  beside the model and clears it the instant the turn moves on — whether the model came back,
+  the grant ran out, or the author stopped. Only the `retrying` phase counts; `failed`, `recovered`
+  and `gaveup` all zero it, because a badge left standing on "3 of 10" says something is still
+  happening. The choice itself is an ask card in the convo pane, and the end of it is a durable
+  notification either way; the question, the ten, and everything below the host is
+  [`vnauthor.md`](vnauthor.md#how-it-works).
 - **The problem count opens the problems.** The badge is a button: it lists what validation said,
   errors before warnings, each row hovering its code and the entity it named. The badge still shows
   **one** number — errors displace warnings, the worse one wins it — while the list shows both, so

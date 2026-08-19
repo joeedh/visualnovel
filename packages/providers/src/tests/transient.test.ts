@@ -4,7 +4,8 @@
  * jest's CJS runtime rejects outright (see `scripts/jest-esbuild.cjs`).
  */
 import { ProviderError, RetryableProviderError } from '@vn/util';
-import { createGeminiImage, isTransient, type GeminiClient } from '../index.js';
+import { providerError } from '../backends/transient.js';
+import { createGeminiImage, isTransient, retryAfterMs, type GeminiClient } from '../index.js';
 
 /** An SDK error the way the vendors raise it: a numeric status beside the message. */
 function httpError(status: number, message: string): Error {
@@ -100,5 +101,52 @@ describe('createGeminiImage — retry in place', () => {
       /not a valid PNG/,
     );
     expect(sdk.calls()).toBe(0);
+  });
+});
+
+describe('what the provider said to wait', () => {
+  const NOW = Date.UTC(2026, 0, 1, 12, 0, 0);
+
+  it('reads a count of seconds, however the SDK filed the headers', () => {
+    expect(retryAfterMs({ headers: { 'retry-after': '30' } }, NOW)).toBe(30_000);
+    expect(retryAfterMs({ responseHeaders: { 'Retry-After': '1.5' } }, NOW)).toBe(1_500);
+    expect(retryAfterMs({ response: { headers: { 'RETRY-AFTER': '2' } } }, NOW)).toBe(2_000);
+  });
+
+  it('reads a `Headers` object, which is what a fetch-based SDK hands over', () => {
+    const headers = new Headers({ 'retry-after': '5' });
+    expect(retryAfterMs({ headers }, NOW)).toBe(5_000);
+  });
+
+  it('reads an HTTP-date as the time to wait until', () => {
+    const at = new Date(NOW + 20_000).toUTCString();
+    expect(retryAfterMs({ headers: { 'retry-after': at } }, NOW)).toBe(20_000);
+  });
+
+  // Each of these says nothing, which is different from saying zero: the caller falls back to
+  // its own backoff rather than trying again immediately.
+  it('says nothing when the header is absent, unreadable or already past', () => {
+    expect(retryAfterMs({})).toBeUndefined();
+    expect(retryAfterMs({ headers: { 'retry-after': 'soon' } }, NOW)).toBeUndefined();
+    expect(retryAfterMs({ headers: { 'retry-after': '' } }, NOW)).toBeUndefined();
+    const gone = new Date(NOW - 20_000).toUTCString();
+    expect(retryAfterMs({ headers: { 'retry-after': gone } }, NOW)).toBeUndefined();
+  });
+
+  it('travels on the wrapped error, and only on the retryable one', () => {
+    const limited = providerError(
+      'chat',
+      Object.assign(new Error('rate limited'), { status: 429, headers: { 'retry-after': '7' } }),
+    );
+    expect(limited).toBeInstanceOf(RetryableProviderError);
+    expect((limited as RetryableProviderError).retryAfterMs).toBe(7_000);
+
+    // A terminal failure has no wait to carry, whatever the response happened to include.
+    const refused = providerError(
+      'chat',
+      Object.assign(new Error('bad key'), { status: 401, headers: { 'retry-after': '7' } }),
+    );
+    expect(refused).toBeInstanceOf(ProviderError);
+    expect(refused).not.toBeInstanceOf(RetryableProviderError);
   });
 });

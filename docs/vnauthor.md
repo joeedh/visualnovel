@@ -75,6 +75,26 @@ agent honors.
   what was written since the last commit. `MAX_ITERATIONS` survives as a runaway backstop rather
   than a policy — a backend that reports no usage spends nothing against any budget — so
   `unlimited` means an unlimited budget, not an unbounded loop.
+- **A call to the model that failed is the author's decision, and it is asked once per grant.**
+  When `backend.next` throws, the loop asks its host (`onApiError`) what to do and offers three
+  answers: retry automatically up to ten times, switch to another model and try again, or stop.
+  Both hosts put the same question through the same shortlist door — the desktop as an ask card,
+  `vnauthor` as a numbered list — because the wording lives in `@vn/authoring`'s `apierror.ts`
+  rather than in either of them. The answer is a **grant**: "retry ten times" is one decision that
+  buys ten attempts, not ten cards, and the host is only asked again when the grant runs out. A
+  second failure after a spent grant stops instead of asking twice — the transcript is intact, so
+  re-sending is one keystroke.
+  - **The loop still knows nothing about models.** `ApiRecovery` has no `switch` case; a host that
+    wants a different provider swaps the backend (`Agent.setBackend`, or `session.setModel`) and
+    then answers `retry`, because every attempt re-reads the field.
+  - **The wait is the provider's where it named one.** `retry-after` — seconds or an HTTP-date —
+    is read off the response in `@vn/providers` and carried on `RetryableProviderError`; absent, the
+    wait doubles from a second and stops at a minute. No jitter: jitter de-synchronises a fleet, and
+    there is one conversation here.
+  - **Progress is visible and its end is reported.** The desktop header shows `⟳ retry n/of` while
+    attempts are being spent and clears it the moment the turn moves on either way, and a
+    notification says whether the model came back or was given up on. `vnauthor` prints the same
+    three lines inline.
 - **Always-confirm.** `git_revert`/`git_restore` and the first run of a script-bearing skill
   route through the permission gate regardless of mode.
 - **Asking with a shortlist is its own tool, over the same door.** `ask_choice` sits beside
