@@ -294,7 +294,11 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   `SKILL.md`, and both raw writers refuse every other path under `.aiagent/skills/`, so the script
   `run_skill` asks to confirm is always one a person put there. The turns a decision hangs on —
   plans, verdicts, shortlists, refused arguments — are in the durable thread, which is what
-  `report.agent` reads. [`docs/vnauthor.md`](docs/vnauthor.md),
+  `report.agent` reads.
+  **Approval is the one act whose authority is the author's own words**: `approve_assets` takes no
+  arguments, a second small model reads what the author typed — never a word the agent wrote —
+  against the host's list, and the author confirms the result.
+  [`docs/vnauthor.md`](docs/vnauthor.md),
   [`docs/plans/prompt-caching-and-deferred-tool-loading.md`](docs/plans/prompt-caching-and-deferred-tool-loading.md),
   [`docs/plans/improving-the-authoring-agent.md`](docs/plans/improving-the-authoring-agent.md),
   [`docs/plans/skills-editor-and-agent-authored-skills.md`](docs/plans/skills-editor-and-agent-authored-skills.md).

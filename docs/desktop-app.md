@@ -573,6 +573,17 @@ the same events** to write the transcript — see the threads bullet below.
   Teardown — the window closing, or `workspace.open` replacing the session mid-turn — resolves
   every parked door with its safe default rather than leaving the turn hung: no plan, no answer,
   no.
+- **The agent may approve art, and what it may approve is decided by re-reading the author.**
+  `approve_assets` is wired to a `ToolContext.approval` seam this app owns — `session.approvable()`,
+  the same upstream-first walk the tree's *Awaiting approval* group is a projection of;
+  `session.approveOne()`, which routes a portrait to `gate.approve` and everything else to
+  `asset.accept`; and a **second, small model** (`TRIAGE_MODEL`, resolved by
+  `session.triageBackend()` on the project's own key, `null` under `--mock`). That model is shown
+  the author's own recent turns and the list — never a word the agent wrote — and answers which
+  pictures the request covered, which is then narrowed again in code to hashes the list actually
+  held. The author sees the resulting list on an ordinary confirm card before anything is written.
+  Why a *second* model: this is a check on the agent, and running it on the model being checked is
+  not a check. Full write-up: [`vnauthor.md`](vnauthor.md#approving-art-on-the-authors-say-so).
 - **A shortlist is how a question is drawn, not a second door.** `ask_choice` reaches the same
   `permission:ask` / `ask:answer` pair with `choices` (and `multi`) alongside the question, so the
   card grows a column of full-width answer rows — an answer is read before it is clicked — above

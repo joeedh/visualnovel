@@ -1333,6 +1333,30 @@ describe('WorkspaceSession — over a generated project', () => {
       ok: false,
     });
   });
+
+  /**
+   * What the agent's `approve_assets` is allowed to reach. The list is the project's answer rather
+   * than the agent's, so the two things worth pinning are that nothing already blessed is on it and
+   * that approving through it is the same act as approving by hand.
+   */
+  it('lists what is waiting for approval, and approves one through its own door', async () => {
+    const waiting = await session.approvable();
+    expect(waiting.length).toBeGreaterThan(0);
+    // A picture the pipeline never asked for is never waiting on anyone, so a concept is never here.
+    expect(waiting.some((a) => a.kind === 'concept')).toBe(false);
+    for (const row of waiting) {
+      // The name the author would read, not the hash, and the door that matches the kind.
+      expect(row.label).not.toBe(row.hash);
+      expect(row.door).toBe(row.kind === 'portrait' ? 'gate' : 'accept');
+      if (row.door === 'accept') expect((await session.assetInfo(row.hash))!.accepted).toBe(false);
+    }
+
+    const ready = waiting.find((a) => a.door === 'accept' && !a.blocked);
+    expect(ready).toBeDefined();
+    expect(await session.approveOne(ready!)).toMatchObject({ ok: true });
+    expect((await session.assetInfo(ready!.hash))!.accepted).toBe(true);
+    expect((await session.approvable()).map((a) => a.hash)).not.toContain(ready!.hash);
+  });
 });
 
 /**

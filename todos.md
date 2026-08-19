@@ -41,7 +41,7 @@
      it remains in the project repo's git history.  also let's add thread metadata
 	 to keep track of which git commits contains a thread's pre-cleared contents
 	 so the debug agent can discover them.
-[ ]: the agent should be able to approve assets.  create a specific tool for this, the tool 
+[x]: the agent should be able to approve assets.  create a specific tool for this, the tool 
      should use haiku to read the most recent user prompts from the thread transcript 
 	 to ensure the user specifically asked for this.  the full list of valid approvable 
 	 assets should then be fed to haiku which will then filter it according to the user's instructions

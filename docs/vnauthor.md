@@ -13,6 +13,7 @@ validated input files in a clean commit. Design:
 - [Tools](#tools)
   * [Concept images](#concept-images)
   * [Revising planned art](#revising-planned-art)
+  * [Approving art on the author's say-so](#approving-art-on-the-authors-say-so)
 - [The archive](#the-archive)
 - [Skills](#skills)
 
@@ -178,7 +179,7 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 40 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 41 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -192,6 +193,7 @@ whatever the mode).
 | Wardrobe | `set_outfit` **M** |
 | Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
+| Approval | `approve_assets` **M** (confirms its own list) |
 | Raw write | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`) |
 | Context | `update_context` **M**, `regenerate_context` **M** |
 | Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
@@ -349,6 +351,39 @@ a bounded set, so it can afford to be exhaustive and unranked. `search_bible` qu
 which is unbounded, so it is ranked and capped at a character budget; there is no tool that
 returns a bible file whole. `list_workspace` reports the bible only as a file count, so the
 agent learns one exists without paying for it. See [`story-bible.md`](story-bible.md).
+
+### Approving art on the author's say-so
+
+`approve_assets` is the one act where the *authority* is the author's own words rather than the
+agent's argument for them, because approval is what everything downstream is drawn from and a
+cleared gate is a run that keeps going. It is built so that one specific mistake cannot happen: the
+agent deciding, mid-turn and for reasons of its own, that the author would surely want all of this
+approved. Three checks, in order, each of which can only *narrow* what the one before it allowed:
+
+- **The list is the project's, not the model's.** The host enumerates what is approvable right now
+  — `ToolContext.approval`, wired in the desktop app to the same walk the document tree's
+  *Awaiting approval* group is a projection of, upstream first — and nothing outside that list can
+  be approved however it is named. As with `regenerate_asset`, `vnauthor`'s REPL has no such host
+  and the tool refuses by naming the one that does.
+- **A small model reads what the author actually typed.** Not what the agent says they meant: the
+  triage prompt carries the author's own recent turns (`SAID_WINDOW`, six) and the list, and
+  *nothing the assistant said*, with the rule spelt out that being asked is not evidence. It
+  answers two questions at once because they are one question — did they ask, and which of these
+  did they mean — and the answer is narrowed again in code, because a hallucinated hash that
+  happens to match something is an approval nobody asked for. The model is fixed at
+  `TRIAGE_MODEL` rather than following the conversation's: this is a check *on* the agent, and
+  running it on the model being checked is not a check. A mocked session has no model, and
+  `offlineTriage` stands in and says in its own words that it matched text without one.
+- **The author confirms the final list.** Every picture by name, what approving it would do, and
+  the triage model's sentence for why it is on the list at all — a list of ten hashes with no
+  account of where it came from is not something anyone can consent to.
+
+**The tool takes no arguments.** That is the point rather than an omission: an argument is
+something the agent fills in, and there is nothing here for it to aim. What is blocked upstream is
+shown to the triage model and held back *after* it, listed under its own heading with the sentence
+saying what it is waiting on — filtering it out first would make “approve everything” quietly mean
+“approve some of it”. What survives is approved in the order the host listed it, which is upstream
+first, so one call can approve a plate and the frame drawn from it.
 
 ## The archive
 

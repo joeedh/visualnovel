@@ -52,6 +52,15 @@ import {
 } from '@vn/scriptedit/write';
 import { loadConfig } from '@vn/config';
 import {
+  SAID_WINDOW,
+  approvalCard,
+  offlineTriage,
+  triageApprovals,
+  type Approvable,
+  type ApprovalControl,
+  type ApprovalTriage,
+} from './approve.js';
+import {
   AssetStore,
   guardedDir,
   readDocFile,
@@ -145,6 +154,18 @@ export interface ToolContext {
    * as it is in the REPL — `regenerate_asset` refuses and names the host that can.
    */
   pipeline?: PipelineControl;
+  /**
+   * Approving generated art, wired by the host that owns the manifest. Absent — as it is in the
+   * REPL — `approve_assets` refuses and names the host that can.
+   */
+  approval?: ApprovalControl;
+  /**
+   * The author's own turns this conversation, oldest first, supplied by the agent loop. It is the
+   * transcript rather than the disk on purpose: what the author said *to this agent* is what any
+   * question about their consent is about. Absent in bare contexts, where `approve_assets`
+   * refuses — a tool whose authority is the author's words cannot run where there are none.
+   */
+  said?: () => readonly string[];
 }
 
 /** A registered tool: a typed, gated shim over a reused function. */
@@ -1851,6 +1872,88 @@ const regenerateAssetTool: Tool<{ hash: string; run?: boolean }> = {
   },
 };
 
+const approveAssetsTool: Tool<Record<string, never>> = {
+  name: 'approve_assets',
+  description:
+    "Approve the pictures the author asked you to approve. Takes no arguments on purpose: what gets approved is decided by re-reading what the author themselves typed, not by anything you pass in, so there is nothing here to aim. Call it when they ask for artwork to be approved or accepted \u2014 'approve the location art', \"accept Aiko's sheet\", 'approve all of it' \u2014 and not otherwise; asking to see a picture or to draw one is not this. A second model reads their recent messages and picks from the list of what is approvable, and the author sees that list and confirms it before anything is written. It refuses, by name, when they did not ask.",
+  mutating: true,
+  args: z.object({}),
+  async run(_a, ctx) {
+    if (!ctx.approval) {
+      return fail(
+        'approving art writes the manifest and the character gate, which vnauthor does not do \u2014 open the project in the desktop app.',
+      );
+    }
+    if (!ctx.said) {
+      return fail('there is no conversation to read, so there is nothing that counts as consent.');
+    }
+    if (!ctx.confirm) {
+      return fail('nobody is here to confirm an approval, so nothing may be approved.');
+    }
+
+    const assets = await ctx.approval.list();
+    if (assets.length === 0) {
+      return ok(
+        'Nothing is waiting for approval \u2014 every rendered picture is already approved.',
+      );
+    }
+    // What is blocked upstream is shown to the triage model and held back after it, rather than
+    // filtered out before: leaving it out would make "approve everything" quietly mean "approve
+    // some of it", and the author would read a shorter list with no account of the difference.
+    const triage = await runTriage(ctx.approval, { said: ctx.said().slice(-SAID_WINDOW), assets });
+    if (!triage.asked) {
+      return fail(
+        `You did not ask me to approve anything. ${triage.reason} Ask for it in your own words and I will.`,
+      );
+    }
+
+    const chosen = assets.filter((a) => triage.hashes.includes(a.hash));
+    if (chosen.length === 0) {
+      return fail(`Nothing waiting for approval matches what you asked for. ${triage.reason}`);
+    }
+    const held = chosen.filter((a) => a.blocked);
+    const ready = chosen.filter((a) => !a.blocked);
+    const heldLines = held.map((a) => `  \u2022 ${a.label}: ${a.blocked ?? ''}`).join('\n');
+    if (ready.length === 0) {
+      return fail(`Everything you named is waiting on something upstream:\n${heldLines}`);
+    }
+
+    const card =
+      approvalCard(triage, ready) +
+      (held.length ? `\n\nHeld back, waiting on something upstream:\n${heldLines}` : '');
+    if (!(await ctx.confirm(card))) return ok('Nothing approved \u2014 you said no.');
+
+    const done: string[] = [];
+    const refused: string[] = [];
+    // In the order the host listed them, which is upstream first: approving a plate is what makes
+    // the frame drawn from it approvable, so the order is what lets one call finish a chain.
+    for (const item of ready) {
+      const result = await ctx.approval.approve(item);
+      (result.ok ? done : refused).push(`${item.label}: ${result.message}`);
+    }
+    const part = (what: string, rows: string[]): string =>
+      rows.length ? `${what} ${rows.length}:\n${rows.map((r) => `  \u2022 ${r}`).join('\n')}` : '';
+    return {
+      ok: done.length > 0,
+      output: [part('Approved', done), part('Refused', refused)].filter(Boolean).join('\n\n'),
+      written: ['vngen/build/manifest.json'],
+      data: { approved: done.length, refused: refused.length },
+    };
+  },
+};
+
+/**
+ * The triage call. A host with no model for it \u2014 a mocked session \u2014 answers `null`, and the
+ * offline matcher stands in and says in its own `reason` that no model read anything.
+ */
+async function runTriage(
+  approval: ApprovalControl,
+  req: { said: readonly string[]; assets: readonly Approvable[] },
+): Promise<ApprovalTriage> {
+  const backend = await approval.triage();
+  return backend ? triageApprovals(backend, req) : offlineTriage(req);
+}
+
 /** Escape a string for use as a literal regex (search default). */
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1882,6 +1985,7 @@ export const ALL_TOOLS: Tool[] = [
   setArtNotesTool,
   viewImageTool,
   regenerateAssetTool,
+  approveAssetsTool,
   writeFileTool,
   editFileTool,
   updateContextTool,

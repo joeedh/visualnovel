@@ -82,6 +82,7 @@ import {
   adoptionOf,
   artNotesOf,
   artSeedOf,
+  assetApproved,
   assetPrereqs,
   assetSlotLabel,
   buildSlotGraph,
@@ -122,10 +123,17 @@ import {
   type PromptRung,
   type Suspension,
 } from '@vn/artgen';
-import { chatBackendFor, chatVendorFor, createMockProviders, createProviders } from '@vn/providers';
+import {
+  chatBackendFor,
+  chatVendorFor,
+  createMockProviders,
+  createProviders,
+  type ChatBackend,
+} from '@vn/providers';
 import {
   API_RETRIES,
   Agent,
+  TRIAGE_MODEL,
   NativeAgentBackend,
   StructuredAgentBackend,
   Workspace,
@@ -146,6 +154,7 @@ import {
   type AgentEvent,
   type AgentMode,
   type ApiFailure,
+  type Approvable,
   type ApiRecovery,
   type AskQuestion,
   type GeneratedContextState,
@@ -821,6 +830,13 @@ export class WorkspaceSession {
       art: workspaceArtGen(workspace, { mock: this.mock }),
       // The capability `vnauthor` does not have: the same two calls `asset.regenerate` makes, so
       // an agent-started re-render takes the busy flag a pipeline run takes.
+      // The author's own words are the authority for an approval, so the seam carries the model
+      // that reads them alongside the two acts it gates.
+      approval: {
+        list: () => this.approvable(),
+        approve: (item) => this.approveOne(item),
+        triage: () => this.triageBackend(),
+      },
       pipeline: {
         regenerate: (hash) => this.regenerateAsset(hash),
         run: async () => {
@@ -1403,6 +1419,88 @@ export class WorkspaceSession {
    * Every suspended asset, upstream first, with the sentence for each. Derived on every call —
    * suspension is a walk over the manifest and the rungs, never a stored flag (§13).
    */
+  /**
+   * Every picture that could be approved right now, upstream first \u2014 the same walk the document
+   * tree's *Awaiting approval* group is a projection of, so the agent and the tree can never
+   * disagree about what is waiting. A row that is blocked is still listed, with the sentence
+   * saying what it is waiting on: the frontier is more useful than the subset of it that happens
+   * to be actionable this second.
+   */
+  async approvable(): Promise<Approvable[]> {
+    const project = await loadProject(this.dir);
+    const manifest = project.store.manifest();
+    const labels = labelContext(project.model, project.graph);
+    const shots = await readAllShots(project);
+    const slots = buildSlotGraph({
+      ...labels,
+      assets: manifest,
+      shots,
+      config: project.config,
+      graph: project.graph,
+    });
+    const names = labelAssets(manifest, labels);
+    const byHash = new Map(manifest.map((a) => [a.hash, a]));
+    const out: Approvable[] = [];
+    const seen = new Set<string>();
+    for (const key of slots.order) {
+      const slot = slots.nodes.get(key);
+      if (!slot) continue;
+      for (const hash of slot.candidates) {
+        const asset = byHash.get(hash);
+        // One row per picture, as the tree does it: a sheet bound to two outfits is still one
+        // thing to approve, and the first slot that names it is the one it is listed under.
+        if (!asset || seen.has(hash) || assetApproved(asset, project.model)) continue;
+        seen.add(hash);
+        const label = names.get(hash) ?? hash;
+        const characterId = asset.satisfies[0]?.characterId;
+        // A portrait's own refusal is the gate's, not the accept rule's, so only the accept door
+        // asks about prerequisites \u2014 the same asymmetry `assetInfo` draws.
+        const blocked =
+          asset.kind === 'portrait'
+            ? undefined
+            : prereqRefusal(label, assetPrereqs(asset, { ...labels, assets: manifest, shots }));
+        out.push({
+          hash,
+          kind: asset.kind,
+          label,
+          slot: slot.label,
+          door: asset.kind === 'portrait' ? 'gate' : 'accept',
+          ...(characterId === undefined ? {} : { characterId }),
+          ...(blocked === undefined ? {} : { blocked }),
+        });
+      }
+    }
+    return out;
+  }
+
+  /** Approve one of them through whichever door it belongs to. */
+  async approveOne(item: Approvable): Promise<{ ok: boolean; message: string }> {
+    if (item.door !== 'gate') return this.acceptAsset(item.hash);
+    if (!item.characterId) {
+      return {
+        ok: false,
+        message: `${item.label} is a portrait of nobody \u2014 nothing to clear.`,
+      };
+    }
+    return this.approveCharacter(item.characterId, item.hash);
+  }
+
+  /**
+   * The small model that reads the author's own words before art is approved on their say-so.
+   * Fixed at {@link TRIAGE_MODEL} rather than following the conversation's model: this is a check
+   * *on* the agent, and running it on the model being checked is not a check. `null` in a mocked
+   * session, where {@link offlineTriage} stands in and says so.
+   */
+  private async triageBackend(): Promise<ChatBackend | null> {
+    if (this.mock) return null;
+    const config = await loadConfig(this.dir);
+    const keys = await resolveKeys(config, {
+      secretsDirs: await secretDirsFor(this.dir),
+      require: [chatVendorFor(TRIAGE_MODEL)],
+    });
+    return chatBackendFor(TRIAGE_MODEL, keys).backend;
+  }
+
   async suspensions(): Promise<Suspension[]> {
     const project = await loadProject(this.dir);
     const shots = await readAllShots(project);

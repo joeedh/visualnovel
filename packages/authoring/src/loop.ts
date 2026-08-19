@@ -430,6 +430,12 @@ export class Agent {
       // The ledger belongs to the conversation, so the agent owns it rather than the host: a
       // context passed in fresh each turn would forget every read between one turn and the next.
       seen: this.seen,
+      // The author's own turns, read live rather than copied: a tool that asks what they said
+      // must see what they said this turn, not what the context held when the agent was built.
+      said: () =>
+        this.messages
+          .filter((m) => m.role === 'user' && typeof m.content === 'string')
+          .map((m) => m.content as string),
       confirm:
         opts.ctx.confirm ??
         ((message: string) => opts.permission.confirmAction('run_skill', { message })),
