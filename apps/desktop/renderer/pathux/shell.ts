@@ -3,6 +3,7 @@ import {
   ScreenArea,
   ToolStack,
   UIBase,
+  cconst,
   nstructjs,
   setIconManager,
   setIconMap,
@@ -309,6 +310,13 @@ function checkEditorNames(): void {
  * registered against the same screen.
  */
 export function startShell(): void {
+  // No close-X on a pane tab. The X sits inside the tab, a few pixels from where a tab is picked
+  // up to be dragged, so the gesture that reorders a bar is the gesture that empties it — and the
+  // editor that vanishes is only findable again through the `+` menu, which is not where anyone
+  // looks for something they did not mean to lose. Closing stays on the tab's context menu, and
+  // path.ux appends where it went to every tab's tooltip.
+  cconst.loadConstants({ closableAreaTabs: false });
+
   // Theme before icons and before any widget builds its CSS — `setCSS` reads the live
   // theme once per element, so an override applied later leaves the first frame light.
   installTheme();

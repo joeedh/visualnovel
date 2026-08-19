@@ -65,10 +65,10 @@
      button.
 [x]: the system used to make a specific type of editor visible should try to avoid screen areas with 
      active conversation editors.
-[ ]: change path.ux so the little 'x' close buttons on area tabs is optional, if they're 
+[x]: change path.ux so the little 'x' close buttons on area tabs is optional, if they're 
      disabled path.ux should automatically append 'right click->close to close' (pick 
 	 the best wording) to the each editor tab's tooltip.
-[ ]: disable the little 'x' close buttons on area tabs.
+[x]: disable the little 'x' close buttons on area tabs.
 [ ]: use an agent to add support in path.ux for multiline tab bars.  the idea is that when there are 
      too many tabs to display in the available width/height (depending on whether we are horizontal or
      vertical) additional tab rows are created. this should be an optional 
