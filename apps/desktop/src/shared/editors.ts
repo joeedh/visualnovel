@@ -210,8 +210,22 @@ export function editorTooltip(id: EditorId): string {
  * the other monitor" is the same sentence as "put it below", and only the app knows a monitor is
  * a whole second renderer. It never reaches the mesh — main answers it with `window.new` instead
  * of pushing an effect — so the renderer's own table excludes it by type rather than by check.
+ *
+ * `popup` is the other one that is not a place in the mesh: a floating window over it, with a
+ * titlebar to move it by and a close button. Nothing the author arranged moves to make room for
+ * one, which is why it is what an editor the *app* decided to show — the task list, when a run
+ * starts — opens in. It is in the same list because to an author it is still an answer to
+ * "where does it go".
  */
-export type OpenWhere = 'here' | 'left' | 'right' | 'above' | 'below' | 'elsewhere' | 'window';
+export type OpenWhere =
+  | 'here'
+  | 'left'
+  | 'right'
+  | 'above'
+  | 'below'
+  | 'elsewhere'
+  | 'window'
+  | 'popup';
 
 export const OPEN_WHERE = [
   'here',
@@ -221,6 +235,7 @@ export const OPEN_WHERE = [
   'below',
   'elsewhere',
   'window',
+  'popup',
 ] as const;
 
 /**

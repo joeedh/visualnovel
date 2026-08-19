@@ -49,7 +49,7 @@
 	 will be displayed to the user for approval prior to execution.
 [x]: make sure the nature of how art style works (e.g. any style fields in the schema, the way prompt chunks work and 
      how they are inherited, etc) is explained to the agent in the system prompt.
-[ ]: when the user invokes the pipeline and a tasks editor isn't open, a floating popup screen area with 
+[x]: when the user invokes the pipeline and a tasks editor isn't open, a floating popup screen area with 
      a tasks editor should be created.  note that this may require adding support for floating popup screen 
 	 areas to path.ux.  they should have a titlebar to move around, be resizable and have a close button.
 	 there should be an api to interrupt closing to e.g. display unsaved work warnings or 

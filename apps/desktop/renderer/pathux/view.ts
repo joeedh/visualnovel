@@ -92,10 +92,18 @@ function flashed(screen: VnScreen, effect: ViewEffect, correction: string | null
   return correction;
 }
 
+/**
+ * How big a popup opens, in pixels, before the screen clamps it.
+ *
+ * Big enough to read a list of tasks in, small enough to leave the mesh behind it visible — a
+ * popup that covers the window is a modal dialog wearing a titlebar.
+ */
+const POPUP_SIZE: [number, number] = [520, 420];
+
 type Split = { horiz: boolean; intoNew: boolean };
 
 /** Which way `splitArea` divides, and whether the *new* half is the one that gets the editor. */
-const SPLIT: Record<Exclude<OpenWhere, 'here' | 'elsewhere' | 'window'>, Split> = {
+const SPLIT: Record<Exclude<OpenWhere, 'here' | 'elsewhere' | 'window' | 'popup'>, Split> = {
   left: { horiz: false, intoNew: false },
   right: { horiz: false, intoNew: true },
   above: { horiz: true, intoNew: false },
@@ -109,9 +117,21 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
   const areas = screen.sareas as ScreenArea[];
   // Already open and asked for a pane rather than a split is a focus: an author who says "show me
   // the script" while looking at it means "put me back in it", not "show it twice".
-  if (where === 'here' || where === 'elsewhere') {
+  if (where === 'here' || where === 'elsewhere' || where === 'popup') {
     const showing = paneShowing(panesOf(screen), editor);
     if (showing !== NO_PANE) return focus(screen, editor);
+  }
+
+  // A popup is a window of its own rather than a place in the mesh, so it neither splits nor
+  // covers anything: nothing the author arranged moves to make room for it.
+  if (where === 'popup') {
+    const sarea = screen.popupArea(cls as unknown as Parameters<VnScreen['popupArea']>[0], {
+      title: editorTitle(editor),
+      width: Math.min(POPUP_SIZE[0], screen.size[0] * 0.9),
+      height: Math.min(POPUP_SIZE[1], screen.size[1] * 0.9),
+    });
+    activate(screen, sarea as unknown as ScreenArea);
+    return null;
   }
 
   const panes = panesOf(screen);
@@ -152,7 +172,11 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
 function focus(screen: VnScreen, editor: EditorId): string | null {
   const index = paneShowing(panesOf(screen), editor);
   if (index === NO_PANE) return `No pane is showing ${editorTitle(editor)}.`;
-  activate(screen, (screen.sareas as ScreenArea[])[index] as ScreenArea);
+  const sarea = (screen.sareas as ScreenArea[])[index] as ScreenArea;
+  activate(screen, sarea);
+  // A tiled pane is always as visible as it is going to get; a popup may be behind another one,
+  // and focusing something the author cannot see is not focusing it.
+  if (sarea.floating) sarea.bringToFront();
   return null;
 }
 
@@ -181,6 +205,7 @@ export function panesOf(screen: VnScreen): Pane[] {
   return (screen.sareas as ScreenArea[]).map((sarea) => ({
     editor: areaNameOf(sarea),
     chrome: Boolean(sarea.area && sarea.area.flag & AreaFlags.HIDDEN),
+    floating: Boolean(sarea.floating),
     active: screen.sareas.active === sarea,
     width: sarea.size[0] ?? 0,
     height: sarea.size[1] ?? 0,

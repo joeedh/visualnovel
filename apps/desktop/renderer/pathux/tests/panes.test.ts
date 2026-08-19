@@ -12,6 +12,7 @@ import {
 const pane = (editor: string, over: Partial<Pane> = {}): Pane => ({
   editor,
   chrome: false,
+  floating: false,
   active: false,
   width: 400,
   height: 400,

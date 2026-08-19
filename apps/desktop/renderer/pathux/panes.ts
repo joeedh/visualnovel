@@ -22,15 +22,34 @@ export interface Pane {
   editor: string;
   /** Chrome (the header) rather than somewhere the author navigates to. */
   chrome: boolean;
+  /**
+   * A floating popup window rather than a tile in the mesh.
+   *
+   * It is on screen and it shows an editor, so {@link paneShowing} finds it — asking for the
+   * Tasks editor while a Tasks popup is up means that one. Everything else here is about
+   * arranging the mesh, and a popup is not in the mesh: splitting one, collapsing one, or
+   * covering one with a different editor are all things the author never asked for.
+   */
+  floating: boolean;
   active: boolean;
   width: number;
   height: number;
 }
 
+/** Whether this pane is a tile the arranging rules below may move, split, cover or collapse. */
+function arrangeable(pane: Pane): boolean {
+  return !pane.chrome && !pane.floating;
+}
+
 /** No pane. Returned rather than thrown: every caller has something to say about it. */
 export const NO_PANE = -1;
 
-/** The pane showing an editor, or `NO_PANE`. The first, if the author opened two. */
+/**
+ * The pane showing an editor, or `NO_PANE`. The first, if the author opened two.
+ *
+ * Floating popups count. This is the question "is it on screen already", and the answer a popup
+ * gives is yes — which is what stops a second popup being made for an editor already in one.
+ */
 export function paneShowing(panes: readonly Pane[], editor: string): number {
   return panes.findIndex((pane) => !pane.chrome && pane.editor === editor);
 }
@@ -44,10 +63,10 @@ export function paneShowing(panes: readonly Pane[], editor: string): number {
  * {@link paneToShowIn}, which is the one that steps around a transcript.
  */
 export function paneToUse(panes: readonly Pane[]): number {
-  const usable = panes.filter((pane) => !pane.chrome);
+  const usable = panes.filter(arrangeable);
   if (usable.length === 0) return NO_PANE;
 
-  const active = panes.findIndex((pane) => !pane.chrome && pane.active);
+  const active = panes.findIndex((pane) => arrangeable(pane) && pane.active);
   if (active !== NO_PANE) return active;
 
   const biggest = usable.reduce((a, b) => (area(b) > area(a) ? b : a));
@@ -61,11 +80,11 @@ export function paneToUse(panes: readonly Pane[]): number {
  * scene over the sentence being read.
  */
 export function paneToShowIn(panes: readonly Pane[]): number {
-  const usable = panes.filter((pane) => !pane.chrome);
+  const usable = panes.filter(arrangeable);
   if (usable.length === 0) return NO_PANE;
 
   const room = sparing(usable);
-  const active = panes.findIndex((pane) => !pane.chrome && pane.active && room.includes(pane));
+  const active = panes.findIndex((pane) => arrangeable(pane) && pane.active && room.includes(pane));
   if (active !== NO_PANE) return active;
 
   const biggest = room.reduce((a, b) => (area(b) > area(a) ? b : a));
@@ -78,7 +97,7 @@ export function paneToShowIn(panes: readonly Pane[]): number {
  * caller splits instead. Never chrome, so a two-pane window with a header still has an answer.
  */
 export function paneElsewhere(panes: readonly Pane[], from: number): number {
-  const others = panes.filter((pane, index) => !pane.chrome && index !== from);
+  const others = panes.filter((pane, index) => arrangeable(pane) && index !== from);
   if (others.length === 0) return NO_PANE;
   const room = sparing(others);
   return panes.indexOf(room.reduce((a, b) => (area(b) > area(a) ? b : a)));
@@ -89,7 +108,7 @@ export function paneElsewhere(panes: readonly Pane[], from: number): number {
  * header is a window with no way back, and refusing is friendlier than emptying the screen.
  */
 export function paneToClose(panes: readonly Pane[]): number {
-  if (panes.filter((pane) => !pane.chrome).length < 2) return NO_PANE;
+  if (panes.filter(arrangeable).length < 2) return NO_PANE;
   return paneToUse(panes);
 }
 
@@ -100,8 +119,8 @@ export function paneToClose(panes: readonly Pane[]): number {
  */
 export function paneClosable(panes: readonly Pane[], index: number): boolean {
   const pane = panes[index];
-  if (!pane || pane.chrome) return false;
-  return panes.filter((other) => !other.chrome).length >= 2;
+  if (!pane || !arrangeable(pane)) return false;
+  return panes.filter(arrangeable).length >= 2;
 }
 
 /** The candidates worth covering: everything, minus the conversations, unless that is all of it. */

@@ -47,6 +47,8 @@ describe('the editor vocabulary', () => {
       'elsewhere',
       'here',
       'left',
+      // Not a direction either: `popup` floats over the mesh rather than taking a place in it.
+      'popup',
       'right',
       // Not a direction: `window` is where main opens a second renderer instead of splitting.
       'window',

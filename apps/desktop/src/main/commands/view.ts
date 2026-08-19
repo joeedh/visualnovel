@@ -47,6 +47,7 @@ const WHERE: Record<OpenWhere, string> = {
   below: 'below',
   elsewhere: 'in another pane',
   window: 'in a new window',
+  popup: 'in a floating window',
 };
 
 /** What the optional subject is, said once — both `view.*` verbs take it and mean the same. */
@@ -61,9 +62,10 @@ export const viewOpen = define({
   id: 'view.open',
   title: 'Show an editor',
   description:
-    'Show an editor: in the active pane, in a new pane split off it, or `elsewhere` — the ' +
-    'biggest pane that is not the active one. Already open and asked for `here` or ' +
-    '`elsewhere`, it is focused rather than opened twice.',
+    'Show an editor: in the active pane, in a new pane split off it, `elsewhere` — the ' +
+    'biggest pane that is not the active one — or `popup`, a floating window over the mesh. ' +
+    'Already open and asked for `here`, `elsewhere` or `popup`, it is focused rather than ' +
+    'opened twice.',
   mutating: false,
   props: {
     editor: prop.oneOf(EDITOR_IDS, 'which editor to show'),

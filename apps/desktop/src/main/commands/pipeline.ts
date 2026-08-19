@@ -58,6 +58,12 @@ export const pipelineRun = define({
     return { ok: true, note: lines.join('\n') };
   },
   async run({ mock }, ctx) {
+    // Before the await, not after: a run is the one command whose whole output is a list that
+    // fills in while it happens, and a task list that arrives once it is over is a receipt. The
+    // renderer focuses the pane already showing the list rather than making a second one, so an
+    // author who keeps the Tasks editor docked never sees a popup at all.
+    ctx.host.ui({ type: 'view', action: 'open', editor: 'tasklist', where: 'popup' }, ctx.origin);
+
     const result = await ctx.host.session.runPipeline(mock);
     const what = mock
       ? `${result.preview.pendingTasks} pending task(s) previewed`

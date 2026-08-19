@@ -6,6 +6,7 @@ import { routeFor, type Route } from '../route.js';
 const pane = (editor: string): Pane => ({
   editor,
   chrome: false,
+  floating: false,
   active: false,
   width: 400,
   height: 400,
