@@ -1,5 +1,29 @@
 # A less technical mode
 
+<!-- toc -->
+
+- [What the technical surface actually is](#what-the-technical-surface-actually-is)
+  * [One barrier, and it is not the one the word "approval" suggests](#one-barrier-and-it-is-not-the-one-the-word-approval-suggests)
+  * [What the runner already decides on its own](#what-the-runner-already-decides-on-its-own)
+  * [Where `accepted` does bite](#where-accepted-does-bite)
+  * [The surface an author meets](#the-surface-an-author-meets)
+- [What "automatically approve assets" would actually mean](#what-automatically-approve-assets-would-actually-mean)
+  * [It is one act, performed at most twice](#it-is-one-act-performed-at-most-twice)
+  * [Where it has to sit so it cannot forge provenance](#where-it-has-to-sit-so-it-cannot-forge-provenance)
+  * [What a run loses when nobody looks](#what-a-run-loses-when-nobody-looks)
+- [The other simplifications](#the-other-simplifications)
+  * [The editors: this is a layout, not a mode](#the-editors-this-is-a-layout-not-a-mode)
+  * [The tree](#the-tree)
+  * [The agent](#the-agent)
+  * [The defaults](#the-defaults)
+  * [Errors, for someone who cannot read a slot key](#errors-for-someone-who-cannot-read-a-slot-key)
+- [What must not be simplified away](#what-must-not-be-simplified-away)
+- [A recommended shape](#a-recommended-shape)
+  * [The smallest honest first version](#the-smallest-honest-first-version)
+- [Open questions](#open-questions)
+
+<!-- tocstop -->
+
 _Research, internal. Nothing here is shipped and nothing here is a plan; it is the answer to
 "what would a mode for someone who just wants to play with this actually have to change", worked
 against the code as it stands in August 2026. Every claim below is a claim about a file in this
