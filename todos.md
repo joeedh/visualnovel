@@ -69,7 +69,7 @@
      disabled path.ux should automatically append 'right click->close to close' (pick 
 	 the best wording) to the each editor tab's tooltip.
 [x]: disable the little 'x' close buttons on area tabs.
-[ ]: use an agent to add support in path.ux for multiline tab bars.  the idea is that when there are 
+[x]: use an agent to add support in path.ux for multiline tab bars.  the idea is that when there are 
      too many tabs to display in the available width/height (depending on whether we are horizontal or
      vertical) additional tab rows are created. this should be an optional 
      features of tab containers, used by the screen area tab bar.  the agent should branch both path.ux
