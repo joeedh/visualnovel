@@ -82,7 +82,7 @@
 [x]: the document tree should have a 'close all' icon button.  create an appropriate icon.
 [x]: write a plan to fully support anthropic, gemini, openai and grok models for the agent, and also 
      supporting more image model providers (e.g. openai, propose one more).
-[ ]: write a research report on supporting local models, either physically on the same machine or a server the 
+[x]: write a research report on supporting local models, either physically on the same machine or a server the 
      user has on their home network.  the report should include local image models.
 [x]: Make the assets subtree show assets by slot.  Clicking a slot opens its most recent asset in 
      the asset editor.  Clicking it again will expand a subtree of prior generated assets.  the 
