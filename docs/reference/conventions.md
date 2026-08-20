@@ -2,7 +2,6 @@
 
 <!-- toc -->
 
-- [Comments](#comments)
 - [Plans](#plans)
 - [Research](#research)
 - [Documentation](#documentation)
@@ -10,27 +9,15 @@
 
 <!-- tocstop -->
 
-How this repository is written, as opposed to what it does. Comment style, where plans and
-research are filed, how documentation is kept honest, and the checklist a plan passes before
-it counts as finished.
+How this repository is written, as opposed to what it does. Where plans and research are
+filed, how documentation is kept honest, and the checklist a plan passes before it counts as
+finished.
 
-Two conventions deliberately stay in [`../../CLAUDE.md`](../../CLAUDE.md) rather than moving here —
-**git history** (`master` is linear; a branch lands by rebasing) and **tooltips** (every
-interactive element carries one). Both are rules that have to be in hand while the work is
-happening, not looked up afterwards.
-
-## Comments
-
-- **Non-doc comments use `//`.** Doc comments use proper `/** … */` brackets. Don't use
-  `/* … */` for ordinary inline commentary.
-- **Non-doc comments are at most 3 lines.** A longer block comment is allowed sparingly —
-  budget roughly one per 500 lines of a file — for genuinely load-bearing context that
-  can't be stated in three lines.
-- **Doc comments stay reasonably concise.** Say what the thing is and any non-obvious
-  contract; don't restate the signature or narrate the implementation.
-- **Temporary comments are marked `CLAUDENOTE:`.** Any scratch/working comment Claude
-  writes gets that prefix, and all of them must be removed before the final commit of a
-  plan (or at the end of the plan, whichever comes first).
+Three conventions deliberately stay in [`../../CLAUDE.md`](../../CLAUDE.md) rather than moving
+here — **comments** (plain declarative prose, no epigrams), **git history** (`master` is
+linear; a branch lands by rebasing) and **tooltips** (every interactive element carries one).
+All three are rules that have to be in hand while the work is happening, not looked up
+afterwards.
 
 ## Plans
 
