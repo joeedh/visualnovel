@@ -23,7 +23,7 @@ import { createHash } from 'node:crypto';
 import { createConnection, createServer, type Server, type Socket } from 'node:net';
 import { unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, posix, win32 } from 'node:path';
 
 /** What the arriving instance sends, and the only message the owner answers. */
 export const FOCUS_MESSAGE = 'focus';
@@ -35,9 +35,15 @@ const HANDOFF_MS = 2000;
  * The endpoint a workspace's owner listens on. A digest rather than the path itself, because a
  * project root is longer than a pipe name may be and contains separators that are not legal in
  * one. Case-normalized on Windows, where two spellings of one directory are one directory.
+ *
+ * `platform` decides which rules to resolve *under*, so the resolver is picked explicitly rather
+ * than taken from `node:path`'s default export: a bare `resolve` follows the host, which makes
+ * `lockAddress(root, 'win32')` mean something different on a Linux runner than on Windows — it
+ * leaves the backslashes in `C:\DEV\Story` as ordinary characters and prepends the cwd, so the
+ * two spellings of one directory stop agreeing.
  */
 export function lockAddress(root: string, platform: string = process.platform): string {
-  const canonical = platform === 'win32' ? resolve(root).toLowerCase() : resolve(root);
+  const canonical = platform === 'win32' ? win32.resolve(root).toLowerCase() : posix.resolve(root);
   const hash = createHash('sha256').update(canonical).digest('hex').slice(0, 16);
   return platform === 'win32'
     ? `\\\\.\\pipe\\vnstudio-${hash}`

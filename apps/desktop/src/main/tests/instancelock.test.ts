@@ -27,6 +27,16 @@ describe('lockAddress', () => {
     expect(lockAddress('C:/dev/story', 'win32')).toBe(lockAddress('C:\\DEV\\Story', 'win32'));
     expect(lockAddress('C:/dev/story', 'win32')).not.toBe(lockAddress('C:/dev/other', 'win32'));
   });
+
+  // Pinned, because the `platform` argument is a claim about which rules apply and not about
+  // which machine is asking: resolved under the host's rules instead, a Windows root read on a
+  // Linux runner keeps its backslashes and picks up that runner's cwd. The two assertions above
+  // agree with each other under either mistake, so only a constant catches it — and it catches it
+  // on every machine rather than on the one that happens to disagree.
+  it('answers the same on every host, because the platform is an argument', () => {
+    expect(lockAddress('C:/dev/story', 'win32')).toBe('\\\\.\\pipe\\vnstudio-fb8a5d7e99c96a22');
+    expect(lockAddress('/home/a/story', 'linux')).toMatch(/vnstudio-7e897f1fc5575733\.sock$/);
+  });
 });
 
 describe('acquireWorkspace', () => {
