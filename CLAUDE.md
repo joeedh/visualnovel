@@ -464,7 +464,7 @@ four conventions below stay here because they are rules you need while the work 
 - **A comment that explains a name is a renaming request.** If the sentence's work is
   translating an identifier — what `snapMode` means, what a bare `-1` means — rename the
   identifier or introduce a named constant, then delete the sentence. Comment a name only when
-  the name cannot be fixed.  Try to avoid names longer then three words or 25 characters
+  the name cannot be fixed. Try to avoid names longer then three words or 25 characters
   (10 characters or less is preferred).
 - **Comment the consequence, not the arguments.** Options passed at a call site (`capture`,
   `passive`, a flag, a lifetime) are already on screen. Say what the reader cannot see: what
@@ -483,8 +483,8 @@ four conventions below stay here because they are rules you need while the work 
   bare predicate — "Pointer ids currently down.", "Detected via the presence of multiple pointer
   ids." — to a full sentence that re-supplies the subject the declaration already names. A doc
   comment that reads as a standalone paragraph is usually rationale in disguise.
-- **An inline `//` note is a fragment with no terminal period; a `/** … */` doc comment is a
-  punctuated sentence.** One line each, unless the fact genuinely needs two.
+- **An inline `//` note is a fragment with no terminal period; a `/** … \*/` doc comment is a
+  punctuated sentence.\*\* One line each, unless the fact genuinely needs two.
 - **Non-doc comments use `//`.** Doc comments use proper `/** … */` brackets. Don't use
   `/* … */` for ordinary inline commentary.
 - **Non-doc comments are at most 3 lines.** A longer block comment is allowed sparingly —
