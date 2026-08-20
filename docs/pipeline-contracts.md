@@ -95,12 +95,15 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
   slot is approved when the character's `approvedPortrait` names it — that is the P3 gate, read
   from the model — and every other slot when the asset filling it has `accepted === true`.
   Conflating them is the bug the approval frontier exists to prevent.
-- **Decomposing every scene is an explicit act, and a fallback is never persisted.**
+- **Getting a storyboard is an explicit act, and a fallback is never persisted.**
   `work/shots/<sceneId>.json` wins forever once written and an **absent** file is the only signal
-  meaning "decompose this scene", so `decomposeAll` (behind `vngen decompose` and
-  `story.decomposeAll`) is additive with no `force`, skips a scene the model does not answer for
-  and names it instead of writing `deterministicShots`, and refuses mock or unresolved keys by
-  name. `decomposeSceneChecked` exists solely to make that last distinction reportable: inside one
+  meaning "decompose this scene" — a signal the batch reads and a hand-placed first shot
+  (`story.newShot`, the agent's `edit_scene op=newShot`, `write_storyboard`) removes by writing
+  the file, which ends decomposition for that scene just as permanently. `decomposeAll` (behind
+  `vngen decompose` and `story.decomposeAll`) is additive with no `force`, skips a scene the model
+  does not answer for and names it instead of writing `deterministicShots`, and refuses mock or
+  unresolved keys by name. `decomposeScene` answering with a `source` and a `reason` instead of
+  throwing exists solely to make that last distinction reportable: inside one
   run, one scene at a time, the silent fallback is the deterministic-fallback contract working;
   sixty scenes at once with a bad key would baseline the project permanently. Plan:
   [`plans/the-full-slot-graph-and-approving-upstream-first.md`](plans/the-full-slot-graph-and-approving-upstream-first.md).
@@ -183,7 +186,11 @@ package layering that carries them is in [`../CLAUDE.md`](../CLAUDE.md), package
 - **Shot decompositions are persisted, not re-derived.** P5 is an LLM step, so re-running it
   would produce different shot ids — hence different task hashes — and regenerate art for no
   reason. The planner writes each scene's decomposition to `work/shots/<sceneId>.json` and
-  prefers it forever after; it only calls `decomposeScene` when no file exists. The file is
+  prefers it forever after; it only calls `decomposeScene` when no file exists — and a file a
+  hand-placed shot created is preferred exactly the same way, which is how making a first shot by
+  hand ends decomposition for a scene. (`decomposeScene` and its gauntlet live in `@vn/artgen`'s
+  `storyboard.ts` — generative policy shared with the agent's `propose_storyboard`, which cannot
+  import the pipeline — and `@vn/pipeline`'s `p5.ts` re-exports them.) The file is
   human-editable, and a malformed one throws rather than being silently re-decomposed over.
   Authored fields sit at the top level; what a run produced is nested under **`shotData`** and
   rewritten wholesale each pass — `tasks.jsonl` and `manifest.json` stay the authority, so a

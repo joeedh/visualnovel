@@ -39,7 +39,9 @@ export interface DecomposeAllOptions {
  * - **Reachable scenes only.** A dead branch costs a model call and renders nothing.
  * - **A scene with a file is kept, and there is no `force`.** `work/shots/<sceneId>.json` wins
  *   forever; re-decomposing is non-deterministic, so it would change shot ids, hence task
- *   identities, hence re-render art that is already paid for.
+ *   identities, hence re-render art that is already paid for. A file a hand-placed first shot
+ *   created (`story.newShot`, the agent's `write_storyboard`) is kept exactly the same way —
+ *   writing it is how making shots by hand ends decomposition for a scene.
  * - **A baseline is reported, not written.** An absent file is the only signal that means
  *   "decompose this scene", so persisting a fallback is permanent. One scene inside a run is the
  *   deterministic-fallback contract working; sixty at once with one bad key would silently baseline

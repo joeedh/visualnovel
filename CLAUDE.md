@@ -147,9 +147,11 @@ you can act on it.
   `shot:`, edges by `refsOfSlot`), and **approval flows upstream first** — `assetApproved`,
   `assetPrereqs`, `prereqRefusal`, one sentence in three places.
   ([`docs/plans/the-full-slot-graph-and-approving-upstream-first.md`](docs/plans/the-full-slot-graph-and-approving-upstream-first.md))
-- **Decomposing every scene is an explicit act, and a fallback is never persisted** — an absent
-  `work/shots/<sceneId>.json` is the only signal meaning "decompose this". A decomposition, once
+- **Getting a storyboard is an explicit act, and a fallback is never persisted** — an absent
+  `work/shots/<sceneId>.json` is the only signal meaning "decompose this", and a first shot
+  placed by hand writes that file, ending decomposition the same way. A storyboard, once
   written, wins forever, and **a shot's order is where its lines sit**.
+  ([`docs/plans/creating-shots-by-hand-and-by-agent.md`](docs/plans/creating-shots-by-hand-and-by-agent.md))
 - **A terminal task records why, is retried once, and is reported from the live plan.**
 - **What a character wears is inherited** — `outfitFor`: shot override → the scene's
   `[[outfit:]]` marker → `character.defaultOutfit`. Unlike other scene edits it **does** re-render.

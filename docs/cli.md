@@ -31,8 +31,9 @@ vngen screenplay [dir] [-o f|-][--clean]  project the scenes back to one Fountai
 
 `decompose` is the one verb that **refuses `--mock` by name**. Decomposition writes
 `vngen/work/shots/<sceneId>.json`, an absent one is the only signal that means "decompose this
-scene", and a mock provider yields the deterministic baseline — so a mock run would permanently
-baseline the whole project. It is additive with no `force` (the file wins forever, and moving shot
+scene" (a first shot placed by hand writes the same file, so a scene storyboarded that way is
+skipped like any other), and a mock provider yields the deterministic baseline — so a mock run
+would permanently baseline the whole project. It is additive with no `force` (the file wins forever, and moving shot
 ids would move task identities and re-render paid-for art), it skips a scene the model does not
 answer for rather than writing a fallback, and it is the only verb that asks for the **text** key
 rather than the image one: it draws nothing, so refusing it for a missing Gemini key would be a

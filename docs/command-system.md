@@ -281,19 +281,21 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-A hundred and fifteen, in nineteen namespaces. Sixty are `mutating`; sixty-six declare a
-precondition; thirty-six are undoable; fourteen ask for confirmation. (The table below is every
+A hundred and seventeen, in nineteen namespaces. Sixty-two are `mutating`; sixty-eight declare a
+precondition; thirty-eight are undoable; fourteen ask for confirmation. (The table below is every
 one of them but `notify.*`, which [`notifications.md`](plans/notifications.md) states in full.)
 
 **Commands are the only write path.** The `story.*` branch mutators go through
 `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the scene
 editors through `session.editScene(decide)`, so no surface writes scene prose by another route.
 The same holds for the shot decompositions: outside the planner, `work/shots/<sceneId>.json` is
-written by `story.setCoverage`, `story.setOutfit`, `art.setNotes` (a shot rung), the `prompt.*`
-chunk editors, `editScene` — which carries a shot's coverage across a split, merge or delete rather
-than stranding it — and `story.decomposeAll`, the one that creates a storyboard where there was
-none. `vnauthor`'s `set_outfit` is not another one: it runs the same
-`@vn/scriptedit` rules and gets the same refusals.
+written by `story.newShot` and `story.deleteShot`, `story.setCoverage`, `story.setOutfit`,
+`art.setNotes` (a shot rung), the `prompt.*` chunk editors, `editScene` — which carries a shot's
+coverage across a split, merge or delete rather than stranding it — and `story.decomposeAll`. Two
+of those create a storyboard where there was none: `story.decomposeAll` by asking the model, and
+`story.newShot` by hand — either way the file, once written, wins forever. `vnauthor`'s `set_outfit`
+and its shot tools are not more routes: they run the same `@vn/scriptedit` rules and get the same
+refusals.
 
 | Command                        | Props                             | Notes                                                     |
 | ------------------------------ | --------------------------------- | --------------------------------------------------------- |
@@ -328,6 +330,8 @@ none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 | `story.removeChoice` ✍ ↺ ✓     | `scene`, `index`                  | Deletes the marker line; the prose is untouched.           |
 | `story.setNext` ✍ ↺ ✓          | `scene`, `goto` (default `''`)    | Empty `goto` clears the `[[next:]]` marker.                |
 | `story.spliceScene` ✍ ↺ ✓      | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch.    |
+| `story.newShot` ✍ ↺ ✓         | `scene`, `lines`, `framing` (default `medium`) | Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. |
+| `story.deleteShot` ✍ ↺ ✓      | `scene`, `shot`                   | The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again. |
 | `story.setCoverage` ✍ ↺ ✓      | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
 | `story.moveShot` ✍ ↺ ✓         | `scene`, `shot`, `after` (default `''`) | Reorder a shot by moving the lines it covers; empty `after` means the top. A shot other shots draw inside is refused by name. |
 | `story.setSceneOutfit` ✍ ↺ ✓   | `scene`, `character`, `outfit` (default `''`) | Writes the scene's `[[outfit:]]` marker; empty clears it. Every shot that does not override it re-renders. |
@@ -343,7 +347,7 @@ none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 | `story.deleteScene` ✍ ↺ ✓      | `scene`                           | Refuses while anything still points at it, naming what.    |
 | `story.splitScene` ✍ ↺ ✓       | `scene`, `at`, `into`             | `at` starts the second half; shots follow their lines, keeping their ids. |
 | `story.mergeScene` ✍ ↺ ✓       | `scene`, `into`                   | Only across a `next` boundary; `scene`'s file and storyboard are removed. |
-| `story.decomposeAll` ✍ ↺ ⚠ ✓  | —                                 | Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this". `check` refuses mock or unresolved keys with `pipeline.run`'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch. |
+| `story.decomposeAll` ✍ ↺ ⚠ ✓  | —                                 | Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this" (so a scene begun by hand with `story.newShot` already has its file, and is left alone like any other). `check` refuses mock or unresolved keys with `pipeline.run`'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch. |
 | `prompt.info`                  | `hash`                            | The prompt one asset would be generated from: the clauses the builders derived, what the author has done to them, and the one string that gets sent. The same projection the Asset editor draws, so an agent and the pane never disagree about what a picture was asked for. |
 | `prompt.setChunk` ✍ ↺ ✓        | `hash`, `chunk`, `op` (`replace`\|`append`\|`mute`\|`clear`), `text` (default `''`) | One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches. |
 | `prompt.moveChunk` ✍ ↺ ✓       | `hash`, `chunk`, `after` (default `''`) | Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order. |
@@ -900,6 +904,12 @@ also why the marker write path moved out of `session.editBranches` and into `@vn
 arrangement over `story.setChoice` / `story.removeChoice` / `story.setNext` / `story.spliceScene`,
 and it is why `branchops` followed the marker write path into the package: while those rules were
 app-local the agent could create a scene and then had no way to point anything at it.
+The storyboard tools keep the pattern: `edit_scene`'s `newShot` / `deleteShot` ops and
+`set_coverage` run the same `@vn/scriptedit` rules as `story.newShot` / `story.deleteShot` /
+`story.setCoverage`, and `propose_storyboard` / `write_storyboard` call the same `@vn/artgen`
+decomposer-and-gauntlet `story.decomposeAll` does — sharing the decision while the registry stays
+out of reach, so `story.decomposeAll` itself (a command with no tool wrapping it) is still
+something the agent cannot invoke.
 Routing the tool loop through the registry later would buy provenance in `commands.jsonl` — not
 different behaviour. See [`vnauthor.md`](vnauthor.md#tools).
 
