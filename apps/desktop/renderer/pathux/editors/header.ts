@@ -237,6 +237,8 @@ export class VnHeaderEditor extends VnEditor {
       'Open, create and export a project, and everything that acts on the workspace as a whole.';
     this.bar.menu('View', this.viewMenu()).description =
       'Split and close panes, and switch between the saved window layouts.';
+    this.bar.menu('Edit', this.editMenu()).description =
+      'Undo and redo, and the one act that approves and renders the art in a single pass.';
     this.bar.menu('Help', this.helpMenu()).description =
       'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.';
     this.badge(`project ${ui.projectTitle || '—'}`, true);
@@ -548,6 +550,42 @@ export class VnHeaderEditor extends VnEditor {
         name: 'Move Pane to New Window',
         callback: () => void this.movePaneToWindow(),
         tooltip: 'Reopen the active pane’s editor in a window of its own and close it here',
+      },
+    ];
+  }
+
+  /**
+   * Undo, redo, and the pass that finishes the art.
+   *
+   * Undo and redo are also on the app menu and on two buttons in this same bar — three doors to
+   * one act, deliberately: an author looking for undo looks under Edit, and a menu called Edit
+   * that did not have it would read as broken. What is *only* here is `pipeline.approveAndRun`,
+   * because it is the one act that changes the project wholesale rather than a piece of it.
+   */
+  private editMenu(): MenuTemplate {
+    return [
+      {
+        name: 'Undo',
+        callback: () => void move('undo'),
+        hotkey: 'Ctrl+Z',
+        tooltip: 'Put the project back the way it was before the last act',
+      },
+      {
+        name: 'Redo',
+        callback: () => void move('redo'),
+        hotkey: 'Ctrl+Shift+Z',
+        tooltip: 'Reapply the act that was just undone',
+      },
+      Menu.SEP,
+      // Formed rather than fired: the command is `confirm`, and its dialog is where it says how
+      // many pictures it is about to approve and how many tasks it is about to run — which is the
+      // one thing an author wants to read before an unattended pass spends real model calls.
+      {
+        name: 'Approve & Generate All…',
+        callback: () => openCommandDialog('pipeline.approveAndRun'),
+        tooltip:
+          'Approve every picture that is waiting and run the pipeline, repeatedly, until nothing ' +
+          'is left to approve or generate. Spends real model calls.',
       },
     ];
   }

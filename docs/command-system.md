@@ -279,7 +279,7 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 ## The registered commands
 
-A hundred and six, in eighteen namespaces. Fifty-nine are `mutating`; sixty-four declare a
+A hundred and fifteen, in nineteen namespaces. Sixty are `mutating`; sixty-six declare a
 precondition; thirty-six are undoable; fourteen ask for confirmation. (The table below is every
 one of them but `notify.*`, which [`notifications.md`](plans/notifications.md) states in full.)
 
@@ -315,7 +315,8 @@ none. `vnauthor`'s `set_outfit` is not another one: it runs the same
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
 | `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
 | `pipeline.status`              | —                                 | Task counts, gate-pending characters, gate-blocked state.  |
-| `pipeline.run` ✍ ⚠ ✓          | `mock` (default `true`)           | Confirmed, like every command that spends money.           |
+| `pipeline.run` ✍ ✓              | `mock` (default `true`)           | Plan and execute to the next gate. Deliberately **not** confirmed: every door to it is already a click on the words "run pipeline", and the `check` note carries the upper bound in image and review calls. |
+| `pipeline.approveAndRun` ✍ ⚠ ✓ | —                                 | Approve everything waiting, run, and repeat until nothing is left of either — a whole art pass as one act. Each round unlocks the next rung of the slot graph, so it takes at most `MAX_ROUNDS` (twelve) of them and stops early on convergence, on a round that approved nothing and failed everything, or on `pipeline.stop`. At the character gate it approves **one** portrait per character: candidates there are alternatives, not separate pictures. Confirmed because it is the one command that both approves art and spends money without asking again in between. |
 | `story.play`                   | —                                 | Build the playable in memory; writes nothing.              |
 | `story.export` ✍ ✓             | —                                 | Write `vngen/build/story.play.json` (`vngen export`).      |
 | `story.screenplay` ✍ ✓         | `clean` (default `false`)         | Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way. |

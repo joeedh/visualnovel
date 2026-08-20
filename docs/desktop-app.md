@@ -236,7 +236,8 @@ are the bridge's.
   `MenuBarEditor` makes, so the mesh owns its geometry and the header survives the layout
   round-trip like everything else. It is 34px, locked at both ends, and `ensureHeader` puts it back
   on **every** boot (a stored layout may predate it), squeezing what was there into the space below
-  in proportion. It holds the app menu, the View menu, the Help menu, the project badge, undo/redo
+  in proportion. It holds the app menu, the View menu, the Edit menu, the Help menu, the project
+  badge, undo/redo
   with the labels `command:undo` pushes, an error-or-warning count, the model, `live`/`preview`, and
   the PLAN ⇄ EXECUTE toggle. It rebuilds when — and only when — the string of everything it draws
   changes.
@@ -322,6 +323,17 @@ are the bridge's.
   a dialog titled with the command, with Cancel beside the button, and **no search box and no
   list** — the author picked it off a menu, so offering to find it again is noise. Both are screen
   popups, so both are inside the mesh; neither is an OS window.
+- **The Edit menu is Undo, Redo, and the one act that is a whole art pass.** It sits between View
+  and Help and holds Undo (`Ctrl+Z`) and Redo (`Ctrl+Shift+Z`) — the two acts an author looks for
+  under a menu with that name, and the same pair the header's arrows run — plus **Approve &
+  Generate All…**, which opens `pipeline.approveAndRun`'s dialog. That command approves every
+  picture waiting, runs the pipeline, and repeats until neither half moves: each round unlocks the
+  next rung of the slot graph, so an approved portrait clears the gate and an approved sheet lets
+  its plates plan. It is a menu entry rather than a button because it spends real model calls and
+  approves art on the author's behalf; the confirmation card counts what is waiting and what is
+  planned before anything is spent, and Stop pipeline ends it after the task in progress. Its
+  loop, its round cap and what it approves at the gate are in
+  [`command-system.md`](command-system.md#the-registered-commands).
 - **The Help menu is the only thing that ever starts an update check.** Check for Updates…
   (`app.checkForUpdates`) asks GitHub whether a newer release exists, compares it against
   `apps/desktop/package.json`'s version, and says so on screen — nothing is scheduled, so the app

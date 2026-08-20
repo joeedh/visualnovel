@@ -44,7 +44,7 @@ import {
   notifyMarkRead,
   notifyUnhide,
 } from './notify.js';
-import { pipelineRun, pipelineStatus, pipelineStop } from './pipeline.js';
+import { pipelineApproveAndRun, pipelineRun, pipelineStatus, pipelineStop } from './pipeline.js';
 import {
   promptAddRef,
   promptCheck,
@@ -169,6 +169,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     notifyList,
     notifyMarkRead,
     notifyUnhide,
+    pipelineApproveAndRun,
     pipelineRun,
     pipelineStatus,
     pipelineStop,
