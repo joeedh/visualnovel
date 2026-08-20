@@ -433,6 +433,11 @@ four conventions below stay here because they are rules you need while the work 
   - **Double negatives** — "the palette cannot be relied on not to". State the positive claim.
   - **Pronouns and ellipses that point outside the sentence** — "the second case", "asking
     twice is how…" — each sentence should carry its own referents.
+  - **"Clause A, else B" constructions** — "Resolve a push's destination: the named window
+    when it still exists, else the focused window falling back to the most recently focused
+    one." Spell out the cases as ordinary sentences instead: "Pushes to the named window if it
+    still exists. Otherwise pushes to the focused window, or the most recently focused window
+    if none is focused."
 - **Non-doc comments use `//`.** Doc comments use proper `/** … */` brackets. Don't use
   `/* … */` for ordinary inline commentary.
 - **Non-doc comments are at most 3 lines.** A longer block comment is allowed sparingly —

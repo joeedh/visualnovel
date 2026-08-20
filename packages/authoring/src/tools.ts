@@ -329,8 +329,8 @@ const searchTool: Tool<{ query: string; regex?: boolean }> = {
       });
     }
     if (matches.length === 0) {
-      // A negative result that says what it looked at is a redirect; one that does not is a dead
-      // end, and the agent that reads it concludes the fact is nowhere in the project.
+      // A no-match result names what it searched and where else to look; without that, the agent
+      // reading it would conclude the fact is nowhere in the project.
       return ok(
         `No matches for "${a.query}" in ${SEARCH_SCOPE}. The story bible (wiki/) and archive/ ` +
           'are not searched — try search_bible or list_archive.',
@@ -374,9 +374,9 @@ const searchBibleTool: Tool<{ query: string; limit?: number }> = {
     const excerpts = await bible.query(a.query, a.limit === undefined ? {} : { limit: a.limit });
     if (excerpts.length === 0)
       return ok(`Nothing in the bible matches "${a.query}".`, { data: [] });
-    // The bible numbers its files from its own root, which is a path read_file cannot resolve.
-    // Prefixing here rather than in `@vn/bible` keeps the excerpt what it is and the citation
-    // usable: a hit is now something to paste, not something to reconstruct.
+    // The bible names its files from its own root, a path read_file cannot resolve. Prefixing
+    // here rather than in `@vn/bible` leaves the excerpt untouched and turns the citation into
+    // a path the agent can paste straight into read_file.
     const wiki = rel(ctx.workspace.root, ctx.workspace.paths.wikiDir);
     const cited = excerpts.map((e) => ({ ...e, file: `${wiki}/${e.file}` }));
     return ok(formatExcerpts(cited), { data: cited });
@@ -607,7 +607,7 @@ const locationCreateShape = locationEditShape.omit({ id: true }).extend({
   name: z.string().min(1).describe('the display name; the id is slugged from it'),
 });
 
-/** What a create tool just made, said in the terms it was asked in. */
+/** Describe what a create tool just made, in the terms the call asked for it. */
 const createdHow = (description: string | undefined, fields: string[]): string => {
   const set = fields.length > 0 ? ` with ${fields.join(', ')} set` : '';
   if (description) return `from the description you gave${set}`;
@@ -644,9 +644,9 @@ const createCharacterTool: Tool<z.infer<typeof characterCreateShape>> = {
     const file = ctx.workspace.paths.characterFile(id);
     if (await exists(file)) return fail(`character ${id} already exists`);
 
-    // Told nothing, it is the template, whose placeholders are there to be edited by whoever knows
-    // the character — which is not us. Told anything, the fields go through `applyCharacterEdit`,
-    // so a created sheet is validated by exactly what would have validated an edited one.
+    // With no fields given, the sheet is the placeholder template, to be filled in by whoever
+    // knows the character. With any field given, the fields go through `applyCharacterEdit`, so
+    // a created sheet is validated exactly as an edited one would be.
     let text = newCharacterTemplate(name);
     if (description || given.length > 0) {
       const res = applyCharacterEdit(doc, Object.fromEntries(given) as CharacterEdit);
@@ -654,8 +654,8 @@ const createCharacterTool: Tool<z.infer<typeof characterCreateShape>> = {
       text = docToMarkdown(res.value.doc);
     }
     await writeFileAtomic(file, text);
-    // Which of the three it did, in the observation rather than only in the file. A uniform
-    // "Created" is what lets a later turn call a written sheet a placeholder and rewrite it.
+    // The observation says which of the three cases happened, not only the file: a uniform
+    // "Created" would let a later turn call a fully written sheet a placeholder and rewrite it.
     return ok(
       `Created character ${id} ${createdHow(
         description,
@@ -699,13 +699,13 @@ const createLocationTool: Tool<z.infer<typeof locationCreateShape>> = {
 // ── Scene prose (execute mode) ──────────────────────────────────────────────
 
 /**
- * The thirteen acts, named exactly as the desktop's `story.*` commands are, because they *are*
- * those commands' decisions: an agent transcript and a command history should read as the same
- * vocabulary. `insertLines` and `deleteLines` have no button behind them — a person types or
- * removes one line at a time and a model rewrites forty, and `@vn/scriptedit` still allocates
- * every id. `newShot` and `deleteShot` write the storyboard rather than prose — they are here,
- * not their own tools, because to the author making a shot IS a scene edit, and the vocabulary
- * rule above outranks which file the write lands in.
+ * The scene ops, named exactly as the desktop's `story.*` commands are, because each op invokes
+ * the same decision its command does: an agent transcript and a command history should read as
+ * the same vocabulary. `insertLines` and `deleteLines` have no button behind them — a person
+ * types or removes one line at a time while a model rewrites forty, and `@vn/scriptedit` still
+ * allocates every id. `newShot` and `deleteShot` write the storyboard rather than prose — they are here,
+ * not their own tools, because the author experiences making a shot as a scene edit, and the
+ * shared-vocabulary rule above outranks which file the write lands in.
  */
 const SCENE_OPS = [
   'setLineText',
@@ -798,9 +798,10 @@ const sceneEditShape = z.object({
 type SceneEditArgs = z.infer<typeof sceneEditShape>;
 
 /**
- * What each op cannot be attempted without. Only *absence* is checked here — whether a line may be
- * empty, whether a dialogue line needs a speaker, whether a scene may be deleted are all judgments
- * `@vn/scriptedit` already makes, and making them twice is how two answers start to disagree.
+ * The arguments each op cannot be attempted without. Only *absence* is checked here — whether a
+ * line may be empty, whether a dialogue line needs a speaker, and whether a scene may be deleted
+ * are judgments `@vn/scriptedit` already makes, and making them twice here would let the two
+ * answers disagree.
  */
 const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   setLineText: ['line', 'text'],
@@ -1007,12 +1008,12 @@ const branchDecider =
  * The agent's one way to say what leads where — the same `@vn/scriptedit` rules the branch editor
  * runs mid-drag, so a rewire it is refused is refused in the same sentence an author would read.
  *
- * It exists because `newScene` ends with *nothing points at it yet* and, until this tool, that was
- * a dead end: `write_file` refuses `scenes/`, `edit_scene` writes prose, and a scene nothing reaches
- * is a scene the story does not have. Creating one is deliberately still **two** acts rather than a
- * `goto` argument on `newScene` — where a new scene belongs is a separate authorial decision, and
- * `spliceScene` (put it *between* two scenes) is the answer often enough that folding one of the
- * four in would make the other three look optional.
+ * It exists because `newScene` leaves the new scene with nothing pointing at it, and until this
+ * tool that was a dead end: `write_file` refuses `scenes/`, `edit_scene` writes prose, and a
+ * scene nothing reaches never appears in the story. Creating one deliberately stays **two** acts
+ * rather than a `goto` argument on `newScene` — where a new scene belongs is a separate
+ * authorial decision, and `spliceScene` (put it *between* two scenes) is the right answer often
+ * enough that folding one of the four ops into `newScene` would make the other three look optional.
  */
 const editBranchesTool: Tool<BranchEditArgs> = {
   name: 'edit_branches',
@@ -1055,9 +1056,10 @@ const outfitShape = z.object({
 });
 
 /**
- * Both levels of the outfit chain in one tool, because they are one authorial sentence — "put Aiko
- * in her tracksuit for the club scene" and "...for this one frame" differ by a word, and the file
- * each lands in is a consequence, not a choice the author makes. `shot` picks the level: absent, a
+ * Both levels of the outfit chain in one tool, because the author states both the same way —
+ * "put Aiko in her tracksuit for the club scene" and "...for this one frame" differ by a word,
+ * and the file each lands in is a consequence rather than a choice the author makes. `shot`
+ * picks the level: absent, a
  * `[[outfit:]]` marker is spliced into the scene chunk; present, the subject's override is written
  * to the storyboard, which re-hashes that shot.
  *
@@ -1294,9 +1296,9 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
 };
 
 /**
- * The validated writer a path belongs to, or null where nobody owns it. `guardedDir` answers for
- * `scenes/` on behalf of every surface; the two entity directories are this agent's own rule,
- * because a sheet hand-written as raw YAML is a sheet no schema ever saw.
+ * The validated writer a path belongs to, or null when no tool owns it. `guardedDir` covers
+ * `scenes/` for every surface; the two entity directories are this agent's own rule, because a
+ * sheet hand-written as raw YAML bypasses the schema entirely.
  */
 function ownedElsewhere(path: string): string | null {
   if (guardedDir(path)) return 'edit_scene';
@@ -1328,8 +1330,9 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     const refusal = skillWriteRefusal(path);
     if (refusal) return fail(refusal);
 
-    // No ledger entry means "I expect no file here", which is how a creation saves and how an
-    // unread overwrite earns `already exists` instead of quietly replacing what it never read.
+    // A missing ledger entry asserts that no file exists at the path: a creation then succeeds,
+    // and an unread overwrite is refused with `already exists` instead of quietly replacing a
+    // file the conversation never read.
     const seen = ctx.seen?.get(path);
     const written = await writeDocFile(
       ctx.workspace.root,
@@ -1340,8 +1343,8 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     );
     if (!written.ok) return fail(written.reason);
     ctx.seen?.set(path, { hash: written.hash, whole: true });
-    // Said on the way out rather than refused on the way in: the file is already correct prose,
-    // and a rejected write would cost a whole second generation of it to fix a line break.
+    // Warned after the write rather than refused before it: the file is already correct prose,
+    // and rejecting the write would cost a whole second generation just to fix a line break.
     const long = wrapWarning(a.content);
     return ok(`Wrote ${path} (${written.bytes.toLocaleString()} bytes).${long}`, {
       written: [path],
@@ -1521,8 +1524,8 @@ const updateContextTool: Tool<{ rule: string }> = {
   args: z.object({ rule: z.string().min(1) }),
   async run(a, ctx) {
     const file = await updateContext(ctx.workspace.root, a.rule);
-    // The file, not a receipt for it: the rule lands in a file the agent did not write in full,
-    // and a receipt is exactly what makes the next call a read_file of what it just did.
+    // Return the whole file rather than a receipt: the rule lands in a file the agent did not
+    // write in full, and a bare receipt would make the next call a read_file of what it just did.
     const text = await readText(file);
     return ok(`Recorded rule in AICONTEXT.md, which now reads:\n\n${text}`, {
       written: [rel(ctx.workspace.root, file)],
@@ -1641,8 +1644,8 @@ const discoverSkillsTool: Tool<Record<string, never>> = {
         const tags = [s.script ? 'script' : 'guide', s.whenToUse ? `when: ${s.whenToUse}` : '']
           .filter(Boolean)
           .join('; ');
-        // A skill that degraded — no description, no body, a `script:` naming a missing file —
-        // reads as fine in a catalogue that only prints what parsed. Say what is wrong with it.
+        // A degraded skill — no description, no body, a `script:` naming a missing file — would
+        // read as fine in a catalogue that prints only what parsed, so its issues are appended.
         const issues = s.issues.length ? ` (!) ${s.issues.join('; ')}` : '';
         return `- ${s.id} "${s.name}" [${tags}]: ${s.description}${issues}`;
       })
@@ -1900,8 +1903,9 @@ const editImageTool: Tool<{ hash: string; prompt?: string; title?: string }> = {
       return fail('image generation is not available in this session; nothing was drawn.');
     }
     try {
-      // A 64-char hash is passed straight through so `redrawConcept` can refuse a derived asset by
-      // name; anything shorter is a prefix, and an ambiguous one is a question, not a guess.
+      // A 64-char hash is passed straight through so `redrawConcept` can refuse a derived asset
+      // by name; anything shorter is a prefix, and an ambiguous prefix is refused with its
+      // candidates rather than resolved by guessing.
       let hash = a.hash;
       if (hash.length < 64) {
         const matches = (await ctx.art.list()).filter((c) => c.hash.startsWith(hash));
@@ -1952,7 +1956,8 @@ function parseAssetSubject(ref: string): AssetSubject | undefined {
   return undefined;
 }
 
-/** An asset named by hash or by a prefix of one. An ambiguous prefix is a question, not a guess. */
+/** Find an asset by hash or by a prefix of one. An ambiguous prefix is refused with its
+ *  candidates rather than resolved by guessing. */
 function findAsset(
   assets: readonly Asset[],
   said: string,
@@ -2203,8 +2208,8 @@ const approveAssetsTool: Tool<Record<string, never>> = {
 
     const done: string[] = [];
     const refused: string[] = [];
-    // In the order the host listed them, which is upstream first: approving a plate is what makes
-    // the frame drawn from it approvable, so the order is what lets one call finish a chain.
+    // Approved in the order the host listed them, which is upstream first: approving a plate
+    // makes the frame drawn from it approvable, so this order lets one call finish a whole chain.
     for (const item of ready) {
       const result = await ctx.approval.approve(item);
       (result.ok ? done : refused).push(`${item.label}: ${result.message}`);
@@ -2221,7 +2226,7 @@ const approveAssetsTool: Tool<Record<string, never>> = {
 };
 
 /**
- * The triage call. A host with no model for it \u2014 a mocked session \u2014 answers `null`, and the
+ * The triage call. A host with no model for it — a mocked session — answers `null`, and the
  * offline matcher stands in and says in its own `reason` that no model read anything.
  */
 async function runTriage(

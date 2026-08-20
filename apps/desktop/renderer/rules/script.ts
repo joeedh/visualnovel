@@ -3,11 +3,11 @@
  * asks it what a gesture means and then runs the command it names, so the mapping from an
  * authorial act to a `CommandRecord` is testable in node.
  *
- * The rule the whole module exists to hold: this surface's model is a **list of lines**, not a
+ * The central rule this module holds: this surface's model is a **list of lines**, not a
  * buffer, so a keystroke either belongs to the textarea or names one command. Nothing here
  * decides whether an edit is *legal* — `@vn/scriptedit` does, through the command, and its
- * sentence is what the author reads. What is decided here is which command an act asks for, and
- * whether an act happened at all.
+ * sentence is what the author reads. This module only decides which command an act asks for,
+ * and whether an act happened at all.
  */
 import type { Invocation } from '@vn/commands';
 import type { ScriptState } from '@vn/scriptedit';
@@ -35,10 +35,10 @@ export interface ScriptScene {
  * Which row's editor is open: an existing line being retyped, or a line that does not exist yet
  * being composed after `after` (`''` = the top of the scene).
  *
- * The composer is the answer to a rule the plan got wrong. `story.insertLine` refuses a line with
- * no text ("A line needs some text"), and it has to — an empty line has no lossless Fountain
- * form. So Enter cannot create the line and then let the author type into it. It opens a row that
- * is not a line yet, and committing that row is the insert.
+ * The composer exists because `story.insertLine` refuses a line with no text ("A line needs some
+ * text"), and must — an empty line has no lossless Fountain form. Enter therefore cannot create
+ * the line first and let the author type into it; instead it opens a row that is not a line yet,
+ * and committing that row performs the insert.
  */
 export type Editing = { row: 'line'; line: CoverageLine } | { row: 'new'; after: string };
 
@@ -51,8 +51,8 @@ export interface Draft {
 }
 
 /**
- * Where the editor goes once an act's commands have run. A caret lands at the end of whatever
- * opens — every continuation here is the author still moving the way they were typing.
+ * Where the editor goes once an act's commands have run. The caret lands at the end of whatever
+ * opens, so each continuation keeps the author typing where the act left them.
  */
 export type Continue =
   | { open: 'none' }
@@ -62,9 +62,9 @@ export type Continue =
   | { open: 'line'; line: string };
 
 /**
- * Stands in for the id of the line an `insertLine` just created, which no pure function can know
- * — only the reload does, and {@link insertedAfter} is how. Safe as a sentinel because every real
- * line id is `<scene>:L<n>`.
+ * Sentinel for the id of the line an `insertLine` just created. No pure function can know that
+ * id — it is recovered after the reload, by {@link insertedAfter}. Safe as a sentinel because
+ * every real line id is `<scene>:L<n>`.
  */
 export const COMPOSED = 'composed';
 
@@ -201,9 +201,9 @@ export function nextEditing(
 export type ScriptRow = { line: CoverageLine } | { compose: string };
 
 /**
- * The column's rows, with the composer spliced in where it belongs. A composer whose `after` names
- * no line in the scene is dropped rather than floated to the end — the line it was anchored to is
- * gone, and a row that has forgotten where it is would insert somewhere the author did not point.
+ * The column's rows, with the composer spliced in where it belongs. A composer whose `after`
+ * names no line in the scene is dropped rather than floated to the end: its anchor line is gone,
+ * and keeping the row would insert somewhere the author did not point.
  */
 export function scriptRows(lines: readonly CoverageLine[], editing: Editing | null): ScriptRow[] {
   const after = editing?.row === 'new' ? editing.after : null;
@@ -287,9 +287,9 @@ export function cueChoices(cast: readonly CastMember[], speaker?: string): CueCh
 export const NARRATOR = 'narrator';
 
 /**
- * What a line's cue slot reads and what it says on hover. An unattributed line names the narrator
- * rather than showing nothing: a blank slot reads as "there is no control here", which is how an
- * author ends up with a scene of narration and no idea a speaker was ever theirs to set.
+ * What a line's cue slot reads and what it says on hover. An unattributed line names the
+ * narrator rather than showing nothing: a blank slot looks like the absence of a control, which
+ * leaves an author with a scene of narration and no idea a speaker was ever theirs to set.
  */
 export function cueSlotText(
   cast: readonly CastMember[],
@@ -340,8 +340,8 @@ export interface RowBox {
  * {@link TOP} above the first row's midpoint, otherwise the row whose lower half holds the
  * pointer.
  *
- * Midpoints rather than the gaps between rows, because that gap is a hairline — an insertion
- * point the author can only hit by accident is not one they can aim at.
+ * Midpoints are used rather than the gaps between rows because the gap is only a hairline —
+ * too small a target for the author to aim at deliberately.
  */
 export function dropTarget(rows: readonly RowBox[], y: number): string {
   let target = TOP;
@@ -377,8 +377,8 @@ export function moveStateOf(coverage: SceneCoverage): ScriptState {
 
 /**
  * The lines a split may be offered at: every line but the first. Splitting at the first would
- * leave the head empty, which `splitScene` refuses — and an affordance that can only be refused
- * is worse than no affordance.
+ * leave the head empty, which `splitScene` refuses, so offering it would only ever produce a
+ * refusal.
  */
 export function splitBoundaries(lines: readonly CoverageLine[]): string[] {
   return lines.slice(1).map((l) => l.id);
@@ -390,8 +390,8 @@ export function splitBoundaries(lines: readonly CoverageLine[]): string[] {
  * `arrival_2_2`.
  *
  * The separator is an underscore because that is what `slug` produces, and `splitScene` refuses
- * anything that isn't already its own slug. A proposal, not a decision — whether the id is free is
- * still the command's answer.
+ * anything that is not already its own slug. This is only a proposal — whether the id is free is
+ * still decided by the command.
  */
 export function proposeSceneId(base: string, taken: Iterable<string>): string {
   const used = new Set(taken);
@@ -418,9 +418,9 @@ export function mergeTarget(story: StoryGraph, sceneId: string): string | null {
 }
 
 /**
- * Whether a new scene may be written as this one's continuation — only from a leaf. A scene that
- * already goes somewhere would have that wire replaced, and putting a scene *between* two others
- * is the branch editor's splice: a gesture that exists, is judged, and says what it does.
+ * Whether a new scene may be written as this one's continuation — only from a leaf. On a scene
+ * that already goes somewhere, continuing would replace that wire; putting a scene *between* two
+ * others is the branch editor's splice gesture, which already exists and states its own cost.
  */
 export function canContinue(story: StoryGraph, sceneId: string): boolean {
   return !story.edges.some((e) => e.from === sceneId);

@@ -91,9 +91,9 @@ export type UiEffect =
    * `ui.docPath`. Optional because most editors read their subject off the selection they already
    * observe; without it, opening a document editor on a file would be two acts that race.
    *
-   * `flash` outlines the pane once when it lands. For a command that moved the author somewhere
-   * they did not click — `upload.pick` opening a conversation — where a pane that was already
-   * open and already focused is the case it exists for, since nothing else about it would move.
+   * `flash` outlines the pane once when it lands. It is for commands that move the author
+   * somewhere they did not click — `upload.pick` opening a conversation — and matters most when
+   * the pane was already open and focused, because nothing else about it would visibly change.
    */
   | {
       type: 'view';
@@ -127,10 +127,10 @@ export type UiEffect =
    */
   | { type: 'workspace'; root: string; title: string }
   /**
-   * Long-running work started, moved, or ended. `what` names it the way a refusal does ("a
+   * Long-running work started, moved, or ended. `what` names the work in plain words ("a
    * pipeline run", "an agent turn") and is absent when the session went idle. Pushed rather
-   * than polled: the header disables its run button and the convo editor shows its stop button
-   * off exactly the fact `WorkspaceSession.busy()` already keeps.
+   * than polled: the header's run button and the conversation editor's stop button both follow
+   * the same fact `WorkspaceSession.busy()` already keeps.
    */
   | { type: 'busy'; what?: string; ran: number; pending: number }
   /**
@@ -235,9 +235,9 @@ export interface PipelineStatus {
   gatePending: string[];
   blockedOnGate: boolean;
   /**
-   * Every picture the project implies, in `SlotGraph.order` — upstream before downstream. This is
-   * what makes the graph whole: `tasks` can only ever hold what was plannable at the last wave, so
-   * a view drawing it alone has to guess at the rest, and the Task Graph pane used to.
+   * Every picture the project implies, in `SlotGraph.order` — upstream before downstream. `tasks`
+   * holds only what was plannable at the last wave, so a view drawn from tasks alone would have
+   * to guess at the rest; this list is the whole graph.
    */
   slots: SlotNode[];
 }
@@ -276,7 +276,7 @@ export interface StoryScene {
   location: string;
   synopsis?: string;
   characters: string[];
-  /** How many screenplay lines it holds; the card shows weight, not the prose. */
+  /** How many screenplay lines it holds; the card shows the count rather than the prose. */
   lines: number;
   /** Reachable from the entry scene. An unreachable scene is drawn dashed. */
   reachable: boolean;
@@ -292,7 +292,7 @@ export interface StoryEdge {
   from: string;
   to: string;
   kind: 'choice' | 'next';
-  /** The decision text, typeset on the wire. Choices only. */
+  /** The decision text, already formatted before it is sent. Choices only. */
   label?: string;
   /** Position in `from`'s choice list. Choices only. */
   index?: number;
@@ -416,8 +416,8 @@ export type DocNodeKind =
   | 'more';
 
 /**
- * One node of the sidebar's tree. Identity, not content — and deliberately not an action: there
- * is no command that selects a scene or a shot yet, so what a click does stays the shell's.
+ * One node of the sidebar's tree. It carries identity, not content, and is deliberately not an
+ * action: no command selects a scene or a shot yet, so what a click does is decided by the shell.
  */
 export interface DocNode {
   /**
@@ -432,8 +432,9 @@ export interface DocNode {
   /** One word, never a sentence: `unreachable`, `draft`, `mined`, `base`, `accepted`, `stale`, `script`. */
   badge?: string;
   /**
-   * The row's tooltip, where the path is not the useful thing to say — a slot's `blocked` sentence.
-   * A pathless row otherwise carries no hover text at all, which the tooltip rule forbids.
+   * The row's tooltip, for rows where the path is not the useful thing to say — for example a
+   * slot's `blocked` sentence. Without it a pathless row would carry no hover text at all, which
+   * the tooltip rule forbids.
    */
   note?: string;
   children?: DocNode[];
@@ -506,8 +507,8 @@ export interface AssetInfo {
   stale: boolean;
   /**
    * A reference this was drawn from has moved, or something it references is itself suspended
-   * (§13). Derived on every read, never stored, and the sentence is the whole point: the pane
-   * offers re-approve or regenerate rather than deciding for the author.
+   * (§13). Derived on every read, never stored. The value is the sentence the pane shows: the
+   * pane offers re-approve or regenerate rather than deciding for the author.
    */
   suspended?: string;
   /**
@@ -566,8 +567,8 @@ export interface ProjectView {
   imageTasks: number;
 }
 
-/** Where a key was found, or would be written: the two rungs an author can act on, plus the two
- *  they can only be told about. */
+/** The two places `project.setKey` can write a key. Keys also resolve from an env var and from
+ *  the enclosing repo's `keys/`, but those sources are only reported, never written. */
 export type KeyScope = 'project' | 'user';
 
 /**
@@ -600,14 +601,15 @@ export interface KeyStatusView {
 }
 
 /**
- * The sidebar's default view: five branches plus the backlinks behind them. One shape because it
- * is one walk — the scene → shot tree and "which shots is Aiko in" read the same storyboards.
+ * The sidebar's default view: five branches plus the backlinks behind them. Both come from one
+ * walk — the scene → shot tree and "which shots is Aiko in" read the same storyboards — so they
+ * travel as one shape.
  */
 export interface DocTree {
   roots: DocNode[];
   /**
-   * Keyed by node id (`character:aiko`, `location:gate`, `scene:arrival`), so a panel is a lookup
-   * rather than a second convention.
+   * Keyed by node id (`character:aiko`, `location:gate`, `scene:arrival`), so a panel finds its
+   * subject's links by lookup rather than through a second key convention.
    */
   backlinks: Record<string, EntityLinks>;
   /**
@@ -619,8 +621,9 @@ export interface DocTree {
 }
 
 /**
- * What `doc.read` hands back. Re-exported rather than restated: the reader owns the shape, and a
- * surface holding a second copy of it is how a hash stops meaning the same thing at both ends.
+ * What `doc.read` hands back. Re-exported rather than restated: the reader owns the shape, and
+ * restating it here would let the two copies drift until a hash no longer meant the same thing
+ * at both ends.
  */
 export type { DocFile } from '@vn/store';
 
@@ -693,11 +696,11 @@ export interface InvokeChannels {
   'agent:system': () => AgentSystem;
   'plan:decision': (payload: { id: number; decision: PlanDecision }) => void;
   /**
-   * The author's answers to `permission:ask`, one per question and in the form's own order.
-   * Empty is an answer, not an absence of one.
+   * The author's answers to `permission:ask`, one per question and in the form's own order. An
+   * empty string is a deliberate answer, not a missing one.
    */
   'ask:answer': (payload: { id: number; answers: string[] }) => void;
-  /** Yes or no to `permission:confirm`. A window that closes denies rather than hangs. */
+  /** Yes or no to `permission:confirm`. A window that closes before answering counts as no. */
   'confirm:decision': (payload: { id: number; allowed: boolean }) => void;
   'pipeline:status': () => PipelineStatus;
   'pipeline:run': (opts: { mock: boolean }) => PipelineRunResult;
@@ -721,8 +724,8 @@ export interface InvokeChannels {
   'command:exec': (request: CommandExecRequest) => CommandOutcome;
   'command:history': (limit?: number) => CommandRecord[];
   /**
-   * Would that invocation run? A read, never a gate — `command:exec` re-decides for itself.
-   * `undeclared` is the honest answer for a command that states no precondition.
+   * Reports whether an invocation would run. A read, never a gate — `command:exec` re-decides
+   * for itself. `undeclared` is the answer for a command that states no precondition.
    */
   'command:check': (request: { id: string; props?: Record<string, PropValue> }) => CommandCheck;
   /** Restores a snapshot; refuses (never guesses) if the workspace moved — see `@vn/commands`. */

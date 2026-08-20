@@ -5,8 +5,8 @@
  * `webContents.send`.
  *
  * Runs for real by default: pass `--mock` to skip model calls (mock providers, no key
- * required). The workspace is `--project <dir>` if given, else a scratch repo seeded from the
- * bundled sample (see `./workspace.ts`). `VN_MOCK=1` / `VN_PROJECT=<dir>` are equivalent
+ * required). The workspace is `--project <dir>` when that flag is given. Without it, the app
+ * opens a scratch repo seeded from the bundled sample (see `./workspace.ts`). `VN_MOCK=1` / `VN_PROJECT=<dir>` are equivalent
  * fallbacks for callers that pass env instead of argv (e.g. `scripts/dev.desktop.mjs`); a CLI
  * flag wins over its env-var counterpart when both are given.
  */
@@ -147,14 +147,14 @@ let instanceLock: InstanceLock | null = null;
 
 const pendingPlans = new Pending<PlanDecision>({ approved: false });
 /**
- * An unanswered form is silence, not a guess; an unanswered confirmation is a refusal. The
- * abandoned value is empty rather than one blank per question, because `answersFor` pads it out
- * to the form the loop still holds.
+ * An abandoned form yields no answers rather than guessed ones, and an abandoned confirmation
+ * counts as a refusal. The abandoned value is an empty array rather than one blank per question
+ * because `answersFor` pads it out to the form the loop still holds.
  */
 const pendingAsks = new Pending<string[]>([]);
 const pendingConfirms = new Pending<boolean>(false);
 
-/** Nobody is left to ask: end every parked turn rather than leaving one blocked forever. */
+/** End every parked turn when nobody is left to ask, rather than leaving one blocked forever. */
 function abandonPending(): void {
   pendingPlans.abandon();
   pendingAsks.abandon();
@@ -169,21 +169,22 @@ function abandonPendingBy(id: WindowId): void {
 }
 
 /**
- * Where a push goes when nobody asked for it: the focused window, falling back to the most
- * recently focused one. Every *targeted* push resolves through here too, because a window that
- * closed between the command starting and the effect landing must not swallow the answer.
+ * Resolve a push's destination. Pushes to the named window if it still exists. Otherwise pushes
+ * to the focused window, or to the most recently focused window if none is focused. Targeted
+ * pushes resolve through here too, so a window that closed between the command starting and the
+ * effect landing cannot swallow the answer.
  */
 function windowFor(target?: WindowId): BrowserWindow | undefined {
   const named = target === undefined ? undefined : windows.get(target);
   return named ?? windows.focusedHandle();
 }
 
-/** A fact about the process, not an answer to a question: every window hears it. */
+/** Send a process-wide fact to every window, as opposed to an answer to one window's question. */
 function broadcast<C extends EventChannel>(channel: C, payload: EventChannels[C]): void {
   for (const { handle } of windows.all()) handle.webContents.send(channel, payload);
 }
 
-/** An answer to a question one window asked. */
+/** Send an answer to the one window that asked the question. */
 function sendTo<C extends EventChannel>(
   target: WindowId | undefined,
   channel: C,
@@ -202,11 +203,11 @@ function workspace(): string {
 
 /**
  * Seed and open `examples/mySampleRepo`, so a run never writes into the template it was copied
- * from. The two live in different trees on purpose: `templates/basic` is committed, the whole of
- * `examples/` is gitignored, so a seeded workspace cannot dirty the checkout. **The presence of
- * the template is what says this is a source checkout** — `examples/` is ignored and a fresh
+ * from. The two live in different trees on purpose: `templates/basic` is committed and the whole
+ * of `examples/` is gitignored, so a seeded workspace cannot dirty the checkout. A source
+ * checkout is detected by the presence of the template — `examples/` is ignored, so a fresh
  * clone has none — and a packaged build, having neither, puts the scratch workspace under
- * `userData` and then fails by name rather than as a bare ENOENT somewhere downstream.
+ * `userData`, where a failure is reported by name rather than as a bare ENOENT downstream.
  */
 async function seedSample(): Promise<string> {
   const repo = join(__dirname, '..', '..', '..', '..');
@@ -220,8 +221,8 @@ async function seedSample(): Promise<string> {
 }
 
 /**
- * "The app requests the user to pick a directory for the project" — a native directory dialog,
- * shown on a first run only. A folder that cannot be opened is reported and asked again rather
+ * A native directory dialog asking the user to pick the project's directory, shown on a first
+ * run only. A folder that cannot be opened is reported and asked again rather
  * than falling through to the sample, which would look like the pick was ignored.
  */
 async function promptForWorkspace(): Promise<string | undefined> {
@@ -263,21 +264,15 @@ async function resolveWorkspace(): Promise<void> {
   workspaceRoot = picked ?? (await seedSample());
 }
 
-/**
- * Open a different project without restarting. Everything workspace-shaped in this module is a
- * singleton, so all of it is dropped: the session (with its agent conversation), the command
- * stack and its undo journal, the repo map, and the undo revision. Undo never crosses a
- * workspace boundary, and nothing may cache the root across this call.
- */
 /** The project's name, remembered so a window opened later can be titled like the rest. */
 let projectTitle = '';
 
 /**
- * Name every window after the project. The header shows it too, but the taskbar and the window
- * switcher see only this — and three windows all called `vnstudio` is not a list.
+ * Name every window after the project. The header shows the title too, but the taskbar and the
+ * window switcher see only this — and three windows all called `vnstudio` cannot be told apart.
  *
- * With more than one window that problem comes straight back, so each title gains its own
- * ` (n)` while there is more than one, and loses it again when only one is left.
+ * Identical project titles have the same problem, so each title gains a ` (n)` suffix while
+ * more than one window is open, and loses it again when only one is left.
  */
 function nameWindows(title: string = projectTitle): void {
   projectTitle = title;
@@ -288,6 +283,12 @@ function nameWindows(title: string = projectTitle): void {
   }
 }
 
+/**
+ * Open a different project without restarting. Everything workspace-shaped in this module is a
+ * singleton, so all of it is dropped: the session (with its agent conversation), the command
+ * stack and its undo journal, the repo map, and the undo revision. Undo never crosses a
+ * workspace boundary, and nothing may cache the root across this call.
+ */
 async function switchWorkspace(root: string): Promise<{ root: string; title: string }> {
   // Acquire the new root *before* releasing the old one, so a switch never drops a lock it might
   // then fail to reclaim. `check` may have said yes a moment ago and been overtaken since, which
@@ -342,9 +343,8 @@ const ownedRepos: Git[] = [];
 async function openRepos(): Promise<void> {
   const root = workspace();
   // Everything down to the checkpoint spawns `git`, and on a machine without it the first call
-  // throws before any window exists — an app that never appears, which is a worse answer than
-  // one that opens and cannot save. So the doctor's finding is a branch rather than a try/catch:
-  // a catch would have to guess which git failures meant "no git", and get it wrong.
+  // would throw before any window exists, so the app would never appear. Branching on the
+  // doctor's finding beats a try/catch, which would have to guess which failures mean "no git".
   if (gitHealth().ok) {
     await ensureRepo(root);
     const refs = await new Workspace(root).repos();
@@ -352,18 +352,17 @@ async function openRepos(): Promise<void> {
       if (ref.owned) ownedRepos.push(openGit(ref.root));
       else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
     }
-    // Here rather than in `openWorkspace`, because that runs only for an explicit
-    // `workspace.open` — a project reached from the recents list or `VN_PROJECT` would never get
-    // the attribute. Not when the project sits inside a larger repo: that history is somebody
-    // else's, as above.
+    // Done here rather than in `openWorkspace`, which runs only for an explicit `workspace.open`
+    // — a project reached from the recents list or `VN_PROJECT` would never get the attribute.
+    // Skipped when the project sits inside a larger repo: that history is somebody else's, as above.
     if (refs.some((ref) => ref.role === 'project' && ref.owned)) await adoptGitAttributes(root);
     const committed = await committer().checkpoint('Changes made outside the app');
     for (const c of committed) {
       console.log(`[vnstudio] checkpoint ${c.sha.slice(0, 8)} in ${c.repo}`);
     }
   }
-  // Only now: the checkpoint above is what a notification written earlier would have been
-  // swept into, under a subject that has nothing to do with it.
+  // Opened only after the checkpoint: a notification written earlier would have been swept
+  // into that commit under a subject that has nothing to do with it.
   await notifications().open();
   await noticeMissingGit();
   await noticeMissingKeys();
@@ -388,9 +387,9 @@ async function askAboutGit(): Promise<void> {
 }
 
 /**
- * The startup doctor's finding, filed where it outlives the dialog that already said it. A
- * dismissed modal leaves no trace, and this is the sort of news an author reads once and then
- * needs to find again a day later.
+ * File the startup doctor's finding as a durable notification. The dialog has already said it,
+ * but a dismissed modal leaves no trace, and this is the sort of news an author reads once and
+ * then needs to find again a day later.
  */
 async function noticeMissingGit(): Promise<void> {
   if (gitHealth().ok) return;
@@ -410,13 +409,13 @@ async function noticeMissingGit(): Promise<void> {
  *
  * A brand-new install looks completely healthy — it opens, it draws a tree, the palette is full —
  * right up to the first run, which fails somewhere deep in a task with a message about a provider.
- * This is the earlier, plainer version of that news, and it carries the pane that fixes it.
+ * This notice states the same fact earlier and more plainly, and links the pane that fixes it.
  *
- * Filed rather than shown: a notification is durable, so an author who dismisses the note frame
- * still has it in the bell. It is posted at most once per project, and the guard is the log
- * itself — nothing else remembers, and a second copy every launch would be nagging rather than
- * news. Under `--mock` there is nothing to warn about: a mock run calls no provider, which is
- * exactly the state someone trying the app out is in.
+ * Filed as a notification rather than shown as a dialog because a notification is durable: an
+ * author who dismisses the note frame still has it in the bell. It is posted at most once per
+ * project, guarded by the notification log itself — nothing else remembers, and a second copy
+ * every launch would be nagging rather than news. Under `--mock` there is nothing to warn about:
+ * a mock run calls no provider, which is exactly the state someone trying the app out is in.
  */
 async function noticeMissingKeys(): Promise<void> {
   if (MOCK) return;
@@ -426,8 +425,8 @@ async function noticeMissingKeys(): Promise<void> {
   const missing = view?.vendors.filter((vendor) => !vendor.resolved) ?? [];
   if (missing.length === 0) return;
 
-  // Said once, whether or not it was read: the log dedupes by id, so "have I said this" is a
-  // question only the notifications already in it can answer.
+  // Posted once per project, whether or not it was read: the notification log is the only
+  // record of having said it, so the guard reads the log.
   const already = await notifications().list();
   if (already.some((note) => note.link?.editor === 'onboarding')) return;
 
@@ -457,7 +456,7 @@ function committer(): Committer {
 installNotifications({
   file: () => (workspaceRoot ? new ProjectPaths(workspaceRoot).notificationsLog : undefined),
   // Broadcast, in full: the note frame is per-window chrome, so an author looking at the other
-  // monitor should still see what happened, and every window's bell has a count to keep honest.
+  // monitor should still see what happened, and every window's bell count must stay current.
   push: (note) => broadcast('notify:changed', { note }),
 });
 
@@ -646,10 +645,9 @@ function getStack(): CommandStack<CommandHost> {
         // it twice.
         if (record.stack || (record.mutating && record.source !== 'ui')) undoRevision++;
         await appendJsonl(paths.commandsLog, record);
-        // Every command, whoever ran it and however it ended — the palette, a menu, the agent,
-        // CDP. One hook here is what makes "all notifications go through this system" true
-        // without a call at each of the thirty places that used to `say()` their own outcome.
-        // A refusal reaches this as a throw, so it arrives with `status: 'error'` and its reason.
+        // Files every command's outcome, whoever ran it — the palette, a menu, the agent, CDP.
+        // This one hook replaces a `say()` call at each of the thirty places that used to report
+        // their own outcome. A refusal arrives as a throw, with `status: 'error'` and its reason.
         if (shouldFileCommand(record)) {
           await notify({
             category: record.status === 'ok' ? categoryOfCommand(record.id) : 'error',
@@ -658,9 +656,9 @@ function getStack(): CommandStack<CommandHost> {
             source: record.source === 'agent' || record.source === 'cdp' ? record.source : 'ui',
           });
         }
-        // Broadcast: an undo is a worktree fact, not an answer. Ctrl+Z in window B undoes the
-        // edit made in window A, deliberately — undo here is a shadow snapshot of the whole
-        // worktree, so a per-window stack would be a lie about what it restores.
+        // Broadcast, because an undo is a fact about the worktree rather than an answer to one
+        // window. Ctrl+Z in window B deliberately undoes an edit made in window A: undo is a
+        // shadow snapshot of the whole worktree, so a per-window stack would misstate what it restores.
         broadcast('command:ui', {
           type: 'undo',
           state: getStack().undoState(),
@@ -902,18 +900,17 @@ function createWindow(options: NewWindowOptions = {}): WindowId {
     nameWindows();
   });
 
-  // The stock menu is gone (see `app.whenReady`), and with it F12. The renderer cannot open its
-  // own devtools, so the accelerator is caught here instead of being lost with the menu. On
-  // *this* window: it is registered per window, and reaching for a module global was already
-  // wrong before a second window could exist to prove it.
+  // Removing the stock menu (see `app.whenReady`) also removed F12, and the renderer cannot open
+  // its own devtools, so the accelerator is caught here. Registered per window on purpose: a
+  // module global would target the wrong window once more than one exists.
   win.webContents.on('before-input-event', (_event, input) => {
     if (input.type === 'keyDown' && input.key === 'F12') win.webContents.toggleDevTools();
   });
 
-  // The wiki pane's `beforeunload` guard refuses to unload while a draft is unsaved. Electron
-  // *cancels* such a close outright unless somebody answers this event - which is why the window
-  // could not be closed at all - and `preventDefault` here means "unload anyway". Asked once per
-  // window, including during the cascade a quit produces.
+  // The wiki pane's `beforeunload` guard refuses to unload while a draft is unsaved, and Electron
+  // cancels such a close outright unless this event is answered (the window could not be closed
+  // at all); `preventDefault` here means "unload anyway". Asked once per window, including
+  // during the cascade a quit produces.
   win.webContents.on('will-prevent-unload', (event) => {
     const leave = dialog.showMessageBoxSync(win, {
       type: 'warning',
@@ -962,10 +959,9 @@ void app.whenReady().then(async () => {
   await openSessionStore();
   await resolveWorkspace();
 
-  // The lock is taken *after* the workspace resolves, and that ordering is the whole point: the
-  // root is not known until then, and `resolveWorkspace` can put up an interactive picker, so an
-  // author may pick a repo that turns out to be taken. Handing off from after the picker is what
-  // VS Code does too.
+  // The lock is taken after the workspace resolves, deliberately: the root is not known until
+  // then, and `resolveWorkspace` can put up an interactive picker, so an author may pick a repo
+  // that turns out to be taken. VS Code also hands off after its picker.
   instanceLock = await acquireWorkspace(workspace(), focusFrontWindow);
   if (!instanceLock) {
     // Exit **before creating any window**, so the author sees the existing instance come forward
@@ -989,8 +985,8 @@ void app.whenReady().then(async () => {
   if (remembered.length === 0) createWindow();
   else for (const entry of remembered) createWindow({ bounds: entry.bounds });
 
-  // Read rather than remembered: the launch paths that skip `openWorkspace` (`--project`, the
-  // recents branch) never learned the title, and this is the one place all of them meet.
+  // The title is read from the workspace rather than remembered: the launch paths that skip
+  // `openWorkspace` (`--project`, the recents branch) never learned it, and every path meets here.
   nameWindows((await inspectWorkspace(workspace())).title ?? '');
   app.on('activate', () => {
     if (windows.size === 0) createWindow();

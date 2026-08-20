@@ -56,9 +56,9 @@ export interface Permission {
   approvePlan(plan: Plan): Promise<PlanDecision>;
   confirmAction(tool: string, args: unknown): Promise<boolean>;
   /**
-   * Put a form to the author and get one answer per question, positionally. A host that answers
-   * short is padded and one that answers long is truncated by {@link answersFor}, because a turn
-   * parked on an answer must not hang on a host's arithmetic.
+   * Put a form to the author and get one answer per question, positionally. {@link answersFor}
+   * pads a short answer list and truncates a long one, so a host that miscounts cannot hang the
+   * turn that is waiting on the answers.
    */
   ask(form: readonly AskQuestion[]): Promise<string[]>;
 }
@@ -67,10 +67,10 @@ export interface Permission {
  * One question of an ask form.
  *
  * `choices` is a shortlist offered *with* the question rather than a second kind of question,
- * because the answer is a string either way: the list is how the question is put, not what comes
- * back — the author may always type something that is not on it, and the agent is told verbatim
- * what they said. A host that ignores it asks the question as plain text, which is degraded but
- * never wrong.
+ * because the answer is a string either way: the list only shapes how the question is presented.
+ * The author may always type something that is not on it, and the agent is told verbatim what
+ * they said. A host that ignores the list asks the question as plain text, which is degraded but
+ * still correct.
  */
 export interface AskQuestion {
   question: string;
@@ -93,9 +93,10 @@ export interface ApiFailure {
   /** Whether another attempt could plausibly get a different answer: a 429, a 5xx, a dead socket. */
   transient: boolean;
   /**
-   * The same judgement, refined: `transient` here means what `transient` above means, and the
-   * other three split what it lumps together as terminal. A host offers different things for a
-   * rejected key and a rejected body, and this is the one field that tells them apart.
+   * A finer version of the same judgement: the `transient` kind matches the boolean above, and
+   * the other three kinds split what the boolean lumps together as terminal. A host offers
+   * different recovery for a rejected key than for a rejected body, and this field tells them
+   * apart.
    */
   kind: FaultKind;
   attempt: number;
@@ -105,9 +106,9 @@ export interface ApiFailure {
 /**
  * What the host wants done about it.
  *
- * There is no `switch model` here on purpose: the loop has never known what a model is, and the
+ * There is deliberately no `switch model` option: the loop knows nothing about models, and a
  * host that does can swap the backend itself ({@link Agent.setBackend}) before answering `retry`.
- * The next attempt reads the field, so the swap lands on it.
+ * The next attempt re-reads the backend field, so the swap takes effect.
  */
 export type ApiRecovery =
   | {
@@ -129,15 +130,14 @@ export type AgentEvent =
   | { type: 'tool'; tool: string; args: unknown; result: ToolResult }
   | { type: 'plan'; plan: Plan; decision: PlanDecision }
   | { type: 'mode'; mode: AgentMode }
-  // `args` is present where there were any to show — a call the schema refused never ran, so
-  // there is no `tool` event for it, and without the arguments the refusal names a field nobody
-  // can see. It is the same evidence a `tool` event carries, for a call that did not happen.
+  // `args` carries the refused call's arguments when there were any. A call the schema refused
+  // never ran, so no `tool` event exists for it — without the arguments here, the refusal would
+  // name a field the reader cannot see.
   | { type: 'blocked'; tool: string; reason: string; args?: unknown }
-  // What one step cost. Emitted only when the provider reported it, so a host that adds these up
-  // shows either a real total or none — never a plausible one that never moves. The cache split
-  // is carved out of `input` rather than added beside it, and absent where the provider said
-  // nothing, which is not the same as a cache that missed. `cacheEstimated` marks a split that is
-  // a matched-prefix count rather than a billed one — Gemini's implicit cache.
+  // What one step cost, emitted only when the provider reported it, so a host summing these
+  // shows a real total or none. The cache split is carved out of `input`, and is absent when the
+  // provider said nothing (not the same as a cache miss); `cacheEstimated` marks a matched-prefix
+  // count rather than a billed one — Gemini's implicit cache.
   | {
       type: 'usage';
       input: number;
@@ -146,10 +146,10 @@ export type AgentEvent =
       cacheWrite?: number;
       cacheEstimated?: boolean;
     }
-  // How a call to the model is going when it does not simply work. `failed` is one attempt gone
-  // and the host about to be asked; `retrying` is attempt `attempt` of `of` about to be made, and
-  // is the only phase a counter should be *up* for; `recovered` and `gaveup` both end the story,
-  // so a surface that shows one clears on either. `attempt` on those two is how many failed.
+  // Progress of a model call that is failing. `failed` means one attempt is gone and the host is
+  // about to be asked; `retrying` means attempt `attempt` of `of` is about to be made and is the
+  // only phase to show a counter for; `recovered` and `gaveup` both end the sequence, so a
+  // surface showing either state clears on both. On those two, `attempt` is how many failed.
   | {
       type: 'api';
       phase: 'failed' | 'retrying' | 'recovered' | 'gaveup';
@@ -200,9 +200,9 @@ export interface AgentOptions {
 }
 
 /**
- * A form is a handful of questions, not a survey. The author can get on with nothing while one is
- * up, so a model that wants more than this has stopped asking and started interviewing — what it
- * needs is to go and read the project.
+ * The most questions one form may hold. The author can do nothing else while a form is up, so a
+ * model that wants more than this should go and read the project instead of interviewing the
+ * author.
  */
 const MAX_ASK_QUESTIONS = 4;
 
@@ -264,8 +264,8 @@ const RETRY_CAP_MS = 60_000;
 
 /**
  * The backstop on retrying one step. Not a policy knob — the policy is whatever the host answers
- * — but a host that keeps saying `retry` to a failure that is never going to clear would
- * otherwise spend the author's evening asking a dead endpoint the same question.
+ * — but without it a host that keeps answering `retry` could retry a permanent failure
+ * indefinitely.
  */
 const MAX_API_ATTEMPTS = 50;
 
@@ -276,9 +276,9 @@ const MAX_API_ATTEMPTS = 50;
  * only thing that knows when a limit resets. Otherwise it is the doubling every vendor's guidance
  * describes, capped so a long grant cannot end up sleeping for an hour.
  *
- * Deliberately without jitter, which that guidance also calls for: jitter is there to keep a
- * *fleet* of clients from retrying in lockstep, and there is one conversation here. What it would
- * buy instead is a wait no test can pin.
+ * Deliberately without jitter, which that guidance also calls for: jitter keeps a *fleet* of
+ * clients from retrying in lockstep, and there is only one conversation here. Here jitter would
+ * only make the wait impossible for a test to pin down.
  */
 export function apiBackoffMs(attempt: number, after?: number): number {
   if (after !== undefined && after > 0) return Math.min(RETRY_CAP_MS, after);
@@ -296,7 +296,7 @@ function failureText(err: unknown): string {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** What the model is told as the ceiling comes into view. The instruction, not the number alone. */
+/** What the model is told as the budget nears its ceiling: the instruction to wrap up, not just the number. */
 function budgetWarning(left: number): string {
   return (
     `BUDGET: about ${left.toLocaleString()} tokens remain this turn. Stop starting new work. ` +
@@ -305,7 +305,7 @@ function budgetWarning(left: number): string {
   );
 }
 
-/** How the mode is stated to the model. The whole sentence, so re-filing it re-states the rule. */
+/** The mode as stated to the model. A complete sentence, so filing it again restates the whole rule. */
 function modeMessage(mode: AgentMode): string {
   return mode === 'plan'
     ? 'MODE: plan (read-only). Mutating tools are blocked until a plan is approved. This ' +
@@ -349,8 +349,8 @@ const planSchema = z.object({
 
 const askSchema = z.object({ question: z.string().min(1) });
 
-// Two is the floor: a "shortlist" of one is a leading question, and the author would have to
-// reach for the text box to disagree with it.
+// At least two choices: a "shortlist" of one is a leading question, and disagreeing with it
+// would force the author into the text box.
 const oneChoiceSchema = z.object({
   question: z.string().min(1),
   choices: z.array(z.string().min(1)).min(2),
@@ -358,8 +358,8 @@ const oneChoiceSchema = z.object({
 });
 
 /**
- * A question *inside a form* may omit its shortlist. On its own that would be `ask_user` and this
- * tool would be the wrong door, but a form is one parked turn: making the model ask the listed
+ * A question *inside a form* may omit its shortlist. Asked on its own, an open question belongs
+ * to `ask_user` — but a form parks the turn once either way, so making the model ask the listed
  * questions here and the open one separately would cost a second turn to learn nothing extra.
  */
 const formItemSchema = oneChoiceSchema.extend({
@@ -367,8 +367,8 @@ const formItemSchema = oneChoiceSchema.extend({
 });
 
 /**
- * Either shape is accepted, because both are honest: one question is the common case and should
- * not have to be wrapped in an array to be asked.
+ * Both shapes are accepted: one question is the common case and should not have to be wrapped
+ * in an array to be asked.
  */
 const choiceSchema = z.union([
   oneChoiceSchema,
@@ -376,9 +376,9 @@ const choiceSchema = z.union([
 ]);
 
 /**
- * The answers, made to match the form: a host that answered short leaves the rest unanswered, and
- * one that answered long has the surplus dropped. Neither is a throw — the model reads these as
- * prose, and a missing answer says "nothing" perfectly well.
+ * The answers, adjusted to match the form: a short answer list leaves the rest unanswered, and a
+ * long one has the surplus dropped. Neither case throws — the model reads the answers as prose,
+ * and an empty string reads as "no answer".
  */
 export function answersFor(form: readonly AskQuestion[], given: readonly string[]): string[] {
   return form.map((_, i) => given[i] ?? '');
@@ -408,7 +408,7 @@ export class Agent {
   private system: string;
   private readonly registry: Map<string, Tool>;
   private budget: number;
-  /** Which choice {@link budget} came from — what a sentence about running out quotes. */
+  /** Which choice {@link budget} came from, quoted in the message a budget-exhausted turn ends with. */
   private budgetChoice: BudgetChoice;
   private readonly maxIterations: number;
   private readonly onEvent?: (event: AgentEvent) => void;
@@ -419,7 +419,8 @@ export class Agent {
   /** What the agent has been shown of each file this conversation — `edit_file`'s staleness check. */
   private readonly seen: ReadLedger = new Map();
   private mode: AgentMode;
-  /** The mode the transcript last stated. Differs from {@link mode} exactly when one is owed. */
+  /** The mode the transcript last stated. Differs from {@link mode} exactly when a mode message
+   *  still needs to be filed. */
   private filedMode?: AgentMode;
   /** The system-prompt sections this conversation was started with, by name. */
   private sections = new Map<string, string>();
@@ -493,8 +494,8 @@ export class Agent {
     this.editedPaths.clear();
     this.seen.clear();
     this.mode = 'plan';
-    // Nothing has been stated to a transcript that no longer exists, and the next
-    // `refreshSystem` rebuilds the prompt outright rather than superseding into thin air.
+    // The transcript is gone, so no mode or section has been stated to it; the next
+    // `refreshSystem` rebuilds the prompt outright instead of filing supersede messages.
     this.filedMode = undefined;
     this.pendingSystem.length = 0;
   }
@@ -574,13 +575,6 @@ export class Agent {
   }
 
   /**
-   * Run one user turn to completion (a final message), driving tool calls in between.
-   *
-   * `focus` is what the host knew when the turn started — the scene on screen, typically. It is
-   * filed as a `context` message ahead of the user's, so "rewrite this line" has a *this*; a host
-   * that knows nothing passes nothing, and the transcript reads exactly as it did before.
-   */
-  /**
    * Answer any `tool_use` the transcript left hanging. A crash between the assistant message and
    * its observations — the process died, an old build let a tool's throw escape the loop — leaves
    * calls no `tool_result` answers, and a native API refuses the whole conversation from then on:
@@ -623,6 +617,13 @@ export class Agent {
     }
   }
 
+  /**
+   * Run one user turn to completion (a final message), driving tool calls in between.
+   *
+   * `focus` is what the host knew when the turn started — the scene on screen, typically. It is
+   * filed as a `context` message ahead of the user's, so "rewrite this line" has a referent; a
+   * host that knows nothing passes nothing, and the transcript reads exactly as it did before.
+   */
   async run(userInput: string, focus?: string): Promise<RunResult> {
     const events: AgentEvent[] = [];
     const emit = (event: AgentEvent): void => {
@@ -633,8 +634,8 @@ export class Agent {
     this.repairDanglingCalls();
     if (focus) this.messages.push({ role: 'context', content: focus });
     this.messages.push({ role: 'user', content: userInput });
-    // After the user's message, never before it: a system message may not open a conversation,
-    // and must follow a user turn. Sections first, mode last — policy is what should read last.
+    // Filed after the user's message, never before it: a system message may not open a
+    // conversation and must follow a user turn. Sections first, mode last, so policy reads last.
     for (const content of this.pendingSystem.splice(0)) {
       this.messages.push({ role: 'system', content });
     }
@@ -662,7 +663,8 @@ export class Agent {
       if (spent >= this.budget) return this.ranOut(this.spentSentence(spent), emit, events);
 
       const turn = await this.nextTurn(tools, emit);
-      // Before the narration: the call is already paid for whether or not it said anything useful.
+      // Charged before the narration is read: the call is paid for whether or not it said
+      // anything useful.
       if (turn.usage) {
         spent += charge(turn.usage);
         emit({ type: 'usage', ...turn.usage });
@@ -719,9 +721,9 @@ export class Agent {
         });
       }
 
-      // After the observations, never between a call and its answer. Filed as a `{role: 'system'}`
-      // message like everything else that changes mid-conversation, so it costs one cache write
-      // and invalidates nothing.
+      // Filed after the observations, never between a call and its answer. Like everything else
+      // that changes mid-conversation it is a `{role: 'system'}` message, so it costs one cache
+      // write and invalidates nothing.
       if (!warned && spent >= this.budget * 0.8) {
         warned = true;
         this.messages.push({
@@ -739,11 +741,6 @@ export class Agent {
     );
   }
 
-  /**
-   * How a turn that could not finish reports. It names what was spent and what is on disk since
-   * the last commit, because falling out of a loop is otherwise indistinguishable from finishing
-   * and the host files whatever comes back as the turn's answer.
-   */
   /**
    * One call to the model, with whatever the host wants done about a failure.
    *
@@ -803,10 +800,9 @@ export class Agent {
         left--;
         emit({ type: 'api', phase: 'retrying', attempt: of - left, of, message, waitMs: wait });
         if (wait > 0) await sleep(wait);
-        // A stop during the wait ends the turn instead of spending the rest of the grant. The
-        // attempt has not been made yet, so this is the same "after the step it is on" the outer
-        // loop honours — and it ends with the sentence a stop always ends with rather than an
-        // error, because the author asking for it to be over is not a failure.
+        // A stop during the wait ends the turn instead of spending the rest of the grant — the
+        // attempt has not started, matching the outer loop's stop-between-steps rule. It ends
+        // with the usual stop sentence rather than an error: a requested stop is not a failure.
         if (this.stopped) {
           emit({ type: 'api', phase: 'gaveup', attempt: failures, of, message });
           return { final: 'Stopped at your request.' };
@@ -815,6 +811,11 @@ export class Agent {
     }
   }
 
+  /**
+   * Report a turn that could not finish. The message names what was spent and what is on disk
+   * since the last commit, because falling out of a loop is otherwise indistinguishable from
+   * finishing and the host files whatever comes back as the turn's answer.
+   */
   private ranOut(why: string, emit: (event: AgentEvent) => void, events: AgentEvent[]): RunResult {
     const written = this.editedPaths.size
       ? ` Written since the last commit: ${[...this.editedPaths].join(', ')}.`
@@ -931,11 +932,11 @@ export class Agent {
   }
 
   /**
-   * The same door as `ask_user`, with a shortlist attached and — when the model has more than one
-   * thing to settle — several questions behind it, which the author answers as one form. What
-   * comes back is still whatever the author said: a choice they clicked, something they typed
-   * instead, or that they would rather discuss it. So the observation is worded no differently
-   * and the model has to read it.
+   * The same flow as `ask_user`, with a shortlist attached and — when the model has more than
+   * one thing to settle — several questions answered as one form. What comes back is still
+   * whatever the author said: a choice they clicked, something they typed instead, or that they
+   * would rather discuss it. The observation is therefore worded the same way as `ask_user`'s,
+   * and the model has to read it rather than assume a listed choice was picked.
    */
   private async handleAskChoice(args: unknown): Promise<string> {
     const parsed = choiceSchema.safeParse(args);

@@ -1,9 +1,29 @@
 {
   "v": 1,
   "files": {
+    "apps/desktop/renderer/rules/script.ts": {
+      "auditedAt": "2026-08-20T15:50:34.606Z",
+      "blob": "8563e5d48a604fb019fc8b3fd5258856c1f7a918"
+    },
+    "apps/desktop/src/main/index.ts": {
+      "auditedAt": "2026-08-20T15:50:34.606Z",
+      "blob": "19681903064f12ab30fad61f205c0884b0d9060f"
+    },
     "apps/desktop/src/main/session.ts": {
       "auditedAt": "2026-08-20T10:05:23.375Z",
       "blob": "41899054faea7b2a67bfc38065c9b437d08a0937"
+    },
+    "apps/desktop/src/shared/ipc.ts": {
+      "auditedAt": "2026-08-20T15:50:34.606Z",
+      "blob": "8b73789db96067dd811552e4e6083f193e13c81e"
+    },
+    "packages/authoring/src/loop.ts": {
+      "auditedAt": "2026-08-20T15:50:34.606Z",
+      "blob": "e538ef4d18ca0b7f7659a505b4678f23519e1dc0"
+    },
+    "packages/authoring/src/tools.ts": {
+      "auditedAt": "2026-08-20T15:50:34.606Z",
+      "blob": "110ab780592bdf6f9836435a449d46f115f2d097"
     }
   }
 }
