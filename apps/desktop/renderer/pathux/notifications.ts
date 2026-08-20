@@ -1,10 +1,10 @@
 /**
- * The notification bell's other half: the renderer's cached copy of the log, the popup that
- * lists it, and the popup that filters it.
+ * The renderer's half of the notification bell: a cached copy of the log, the popup that lists
+ * it, and the popup that filters it.
  *
- * Nothing here decides *what* a notification is or which ones are shown — that is
+ * Nothing here decides what a notification is or which ones are shown. That lives in
  * `src/shared/notify.ts`, which both processes share and which the node-only jest project can
- * test. This file is the live half: one fetch, one cached list, and the widgets over it.
+ * test. This file holds one fetch, one cached list, and the widgets over it.
  *
  * Every change to a notification leaves as a `notify.*` command, like every other mutation.
  */
@@ -40,9 +40,9 @@ export interface Anchor {
 /**
  * Put a `WIDTH`-wide popup under `anchor`, right edges aligned, and keep it on screen.
  *
- * Right-aligned rather than left: both controls that open one sit at the right end of a bar, and a
- * 460px box starting at the bell would hang off the edge of the window. Without an anchor — the
- * palette, the agent, anything with no pointer behind it — it falls back to the top right corner.
+ * Right edges are aligned rather than left ones because both controls that open a popup sit at the
+ * right end of a bar, and a `WIDTH`-wide box starting at the bell would hang off the edge of the
+ * window. A caller with no anchor to give (the palette, the agent) gets the top right corner.
  */
 function place(
   screenWidth: number,
@@ -63,8 +63,8 @@ function restoreFilter(): NotificationFilter {
   const stored = api.session.initial()[FILTER_KEY];
   if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return DEFAULT_FILTER;
   const saved = stored as { categories?: unknown; showHidden?: unknown };
-  // Narrowed against the union rather than trusted: a stored category this build dropped would
-  // otherwise sit in the filter forever, invisible in the popup and quietly hiding rows.
+  // Narrowed against the union rather than trusted, because a stored category this build dropped
+  // would otherwise sit in the filter forever, invisible in the popup and still hiding rows
   const known = new Set<string>(NOTIFICATION_CATEGORIES);
   const categories = Array.isArray(saved.categories)
     ? saved.categories.filter(
@@ -100,7 +100,7 @@ export async function refreshNotifications(): Promise<void> {
   list?.render();
 }
 
-/** One notification arrived, or one's flags moved. Same answer either way: refetch. */
+/** Refetches, whether a notification arrived or an existing one's flags changed. */
 export function notificationsChanged(): void {
   void refreshNotifications();
 }
@@ -121,9 +121,8 @@ class NotificationList {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the notifications on');
 
-    // Under the bell that opened it. It used to be pinned to the top right corner on a guessed
-    // `y = 40`, which is the header's height in one theme and a few hundred pixels away from the
-    // bell in any window whose chrome is taller.
+    // Hung under the bell that opened it, since a fixed `y` lands far from the bell in a window
+    // whose chrome is taller than the header
     const [x, y] = place(screen.size[0], anchor, 40);
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
     this.popup.style['width'] = `${WIDTH}px`;
@@ -151,14 +150,12 @@ class NotificationList {
     this.header(shown);
     const rows = this.body.col();
     rows.style['overflowY'] = 'auto';
-    // Bounded by the window as well as by a number: 420px is taller than a short screen, and a
-    // list that runs off the bottom has no scrollbar the author can reach.
+    // Bounded by the window as well as by a fixed height, because 420px is taller than a short
+    // screen and a list that runs off the bottom has no scrollbar the author can reach
     rows.style['maxHeight'] = 'min(420px, 60vh)';
-    // The other half of that bound, and the one whose absence tangled the list. A flex item's
-    // `min-height` is `auto`, which is its *content* height — so a scroller full of rows refuses
-    // to shrink, `overflow-y` never engages, and the overflow is taken out of its siblings
-    // instead: the header and the rows either side of it drawn through each other. Explicit `0`
-    // is what lets the scrollbar do the job the max-height asked for.
+    // A flex item's `min-height` is `auto`, meaning its content height, so without an explicit `0`
+    // a scroller full of rows refuses to shrink, `overflow-y` never engages, and the overflow is
+    // taken out of its siblings: the header and the rows are drawn through each other
     rows.style['minHeight'] = '0px';
 
     if (shown.length === 0) {
@@ -171,9 +168,9 @@ class NotificationList {
   }
 
   /**
-   * What the list draws. The filter's answer, **plus the rows ×'d in this popup** — dropping one
-   * the moment it is hidden is what would make the × delete a row instead of archiving it, and
-   * there would be nowhere left to offer the Undo. They keep their place until the popup closes.
+   * What the list draws: everything the filter admits, plus the rows ×'d in this popup. Dropping
+   * a row the moment it is hidden would make the × read as a delete and leave nowhere to offer
+   * the Undo, so an ×'d row keeps its place until the popup closes.
    */
   private showing(): Notification[] {
     const all = visibleNotifications(cached, { ...filter, showHidden: true });
@@ -191,16 +188,15 @@ class NotificationList {
 
   private header(shown: readonly Notification[]): void {
     const row = this.body.row();
-    // Never squeezed: the list below it is the part that scrolls, and a header allowed to shrink
-    // is the first thing the rows are drawn on top of.
+    // The list below is the part that scrolls, and a header allowed to shrink is the first thing
+    // the rows are drawn on top of
     row.style['flexShrink'] = '0';
     row.label(`NOTIFICATIONS · ${shown.length}`);
 
     // An already-archived row is still drawn, offering its Undo; Clear has nothing to do to it.
     const live = shown.filter((note) => !note.h);
-    // Clear hides; it does not leave a row behind. An × is one deliberate act on one notification
-    // and gets its Undo — a Clear that turned the whole list into Undo buttons would have cleared
-    // nothing. `notify.unhide` is still there for anyone who wants a specific one back.
+    // Clear archives without leaving Undo rows behind, unlike ×, which is one deliberate act on
+    // one notification. `notify.unhide` brings a specific notification back.
     const clear = row.button('Clear', () => {
       this.archived.clear();
       void act('notify.clear', { ids: live.map((n) => n.id) });
@@ -246,9 +242,9 @@ class NotificationList {
    */
   private row(rows: Container, note: Notification): void {
     const row = rows.row();
-    // A `colframe-x` is a flex column, and a flex child shrinks before its parent scrolls — so a
-    // long list squeezed every row to a few pixels and drew all of them through each other
-    // instead of overflowing. Refusing to shrink is what turns the max-height into a scrollbar.
+    // A `colframe-x` is a flex column and a flex child shrinks before its parent scrolls, so
+    // without this a long list squeezes every row to a few pixels and draws them through each
+    // other instead of overflowing
     row.style['flexShrink'] = '0';
     if (this.archived.has(note.id)) {
       row.label('archived');
@@ -317,8 +313,8 @@ class FilterPopup {
       };
     }
 
-    // Off, not on: "clear, then tick the one you want" is the fast path an author asks for, and
-    // a button that turned everything back on would be the thing the default already is.
+    // Turns every category off rather than on, so an author can clear and then tick the one they
+    // want; the default already has every category on
     const clear = this.body.button('Clear filters', () => this.apply([]));
     clear.description = 'Turn every category off, so one can be ticked back on by itself.';
 
@@ -344,7 +340,7 @@ export function rectOf(widget: unknown): Anchor | undefined {
   return { right: box.right, bottom: box.bottom };
 }
 
-/** Open the list. Idempotent, like the palette — the bell clicked twice is one popup. */
+/** Opens the list, or closes it if it is already open, so the bell never stacks two popups. */
 export function openNotifications(anchor?: Anchor): void {
   if (list) {
     list.close();

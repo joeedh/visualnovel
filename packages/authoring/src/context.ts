@@ -1,7 +1,7 @@
 /**
  * Context assembly (authoring-agent plan §6.2, report §3). Precedence is
- * **built-in system prompt (the input contract) > `AICONTEXT.md` (+ nested + `@import`)
- * > `AICONTEXT.generated.md` (the project map) > inferred defaults**. The system prompt is the
+ * built-in system prompt (the input contract) > `AICONTEXT.md` (+ nested + `@import`)
+ * > `AICONTEXT.generated.md` (the project map) > inferred defaults. The system prompt is the
  * agent's always-on domain knowledge so it never writes malformed input; `AICONTEXT.md` is the
  * author's durable project guidance, loaded the way Claude Code loads `CLAUDE.md`; the generated
  * file states facts and so loses to the author, who states policy. `updateContext` turns a chat
@@ -209,9 +209,9 @@ export interface LoadedContext {
   /** The user's project guidance (AICONTEXT.md + nested + imports), or '' if none. */
   projectContext: string;
   /**
-   * The generated project map (`AICONTEXT.generated.md`), or '' if there is none — or if what is
-   * at that path lacks the generator's banner, which reads as "nobody generated this" rather than
-   * as context nobody vouched for.
+   * The generated project map (`AICONTEXT.generated.md`), or '' if there is none. A file at that
+   * path without the generator's banner counts as nothing having been generated, so it is left
+   * out rather than loaded as context.
    */
   generatedContext: string;
   /** Absolute paths of every context file that contributed, in load order. */
@@ -271,7 +271,7 @@ export async function loadContext(
   const out = { files: [] as string[], chunks: [] as string[] };
 
   // Claimed before anything resolves, so an `@import` of the generated file cannot inline it into
-  // the author's context as well: it is loaded once, below, as its own labelled section.
+  // the author's context. It is loaded once, as its own labelled section
   const generatedFile = resolve(join(root, GENERATED_CONTEXT_FILE));
   visited.add(generatedFile);
 
@@ -281,8 +281,8 @@ export async function loadContext(
   let generatedContext = '';
   if (await exists(generatedFile)) {
     const text = await readText(generatedFile);
-    // No `@import` resolution: it is generated, so it has nothing to import the generator could
-    // not have inlined.
+    // The generated file's `@import` lines are left alone: the generator could have inlined
+    // anything the file imports
     if (isGenerated(text)) {
       generatedContext = text.trim();
       out.files.push(generatedFile);
@@ -330,8 +330,8 @@ export interface SystemSection {
 
 /**
  * The system message in parts: built-in prompt, then the generated map, then the author's
- * context — in that order and separately labelled, so the section that states policy is the one
- * that reads last and says so.
+ * context, each separately labelled. The author's context states policy, so it reads last, and the
+ * map's own label says the author's context overrides it.
  */
 export function systemSections(ctx: LoadedContext): SystemSection[] {
   const parts: SystemSection[] = [{ name: 'BUILT-IN', text: ctx.systemPrompt }];
@@ -355,7 +355,7 @@ export function systemSections(ctx: LoadedContext): SystemSection[] {
   return parts;
 }
 
-/** The sections joined, which is what a fresh conversation's system prompt is. */
+/** The sections joined into the system prompt a fresh conversation starts with. */
 export function composeSystem(ctx: LoadedContext): string {
   return joinSections(systemSections(ctx));
 }

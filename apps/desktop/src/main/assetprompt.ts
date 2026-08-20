@@ -1,12 +1,11 @@
 /**
- * The prompt an asset would be generated with *today*, re-derived from the current inputs.
+ * The prompt an asset would be generated with now, re-derived from the current inputs.
  *
- * The planner does this on every pass and folds the result into the task hash, so an asset whose
- * recorded prompt no longer matches this one was rendered from words the project has since
- * changed — which is exactly what an art-notes edit produces, and the one thing the asset editor
- * has to be able to say out loud. Deliberately a re-derivation rather than a stored flag: the
- * builders are the authority on what a prompt is, and a flag would go stale the first time one
- * of them improved.
+ * The planner derives the same prompt on every pass and folds it into the task hash, so an asset
+ * whose recorded prompt no longer matches was rendered from words the project has since changed.
+ * An art-notes edit produces exactly that, and the asset editor reports it. This is a
+ * re-derivation rather than a stored flag because the builders are the authority on what a prompt
+ * is, and a flag would go stale as soon as a builder changed.
  */
 import type { ProjectConfig } from '@vn/config';
 import {
@@ -30,13 +29,13 @@ export interface DerivePromptContext {
 }
 
 /**
- * The clauses `asset`'s prompt is built from today, or `undefined` on the same terms as
- * {@link derivePrompt}. The builders' own order, with no override applied — `composePrompt` is
- * what turns these into what would be sent.
+ * The clauses `asset`'s prompt is built from now, or `undefined` on the same terms as
+ * {@link derivePrompt}. The chunks come back in the builders' own order with no override applied;
+ * `composePrompt` turns them into the text that would be sent.
  */
 export function deriveChunks(asset: Asset, ctx: DerivePromptContext): PromptChunk[] | undefined {
-  // A concept has no builder and no task: its prompt was a sentence somebody typed once, so there
-  // is nothing to re-derive and it can never be stale.
+  // A concept has no builder and no task. Its prompt was authored rather than derived, so there is
+  // nothing to re-derive and it never goes stale
   if (asset.kind === 'concept') return undefined;
   const binding = asset.satisfies[0];
   if (!binding) return undefined;
@@ -71,12 +70,11 @@ export function deriveChunks(asset: Asset, ctx: DerivePromptContext): PromptChun
 
 /**
  * The prompt for `asset` as the builders would write it now, or `undefined` when the project no
- * longer describes this asset at all (its character was deleted, its storyboard is gone). Absent
- * is not "unchanged" — a caller comparing against the recorded prompt must treat it as unknown.
+ * longer describes this asset at all (its character was deleted, its storyboard is gone). A caller
+ * comparing against the recorded prompt must read `undefined` as unknown rather than as unchanged.
  *
- * The author's override is part of "as the builders would write it now": it is what the planner
- * folds into the task hash, so a derivation that ignored it would report every overridden asset
- * as drifting from itself.
+ * The author's override is included, because the planner folds it into the task hash. A derivation
+ * that ignored the override would report every overridden asset as drifting from itself.
  */
 export function derivePrompt(asset: Asset, ctx: DerivePromptContext): string | undefined {
   const chunks = deriveChunks(asset, ctx);

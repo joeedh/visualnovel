@@ -4,10 +4,10 @@ import { shotDecompositionSchema } from '@vn/types';
 /**
  * Scene decomposition (report §P5) — the prompt, the parse, and the deterministic fallback.
  *
- * This is generative *policy* with no pipeline dependency, which is why it lives here: the
- * pipeline's `decomposeAll`, the desktop app and the authoring agent's `propose_storyboard` all
- * need the same call, and the agent may not import the pipeline. Persistence stays with the
- * callers — nothing in this module writes a shots file.
+ * This is generative policy with no pipeline dependency. The pipeline's `decomposeAll`, the desktop
+ * app and the authoring agent's `propose_storyboard` all need the same call, and the agent may not
+ * import the pipeline. Persistence stays with the callers — nothing in this module writes a shots
+ * file.
  */
 
 /** Namespaced shot id so shot ids are unique across scenes (used as the task subject). */
@@ -18,11 +18,10 @@ export function shotId(sceneId: string, raw: string): string {
 /**
  * A storyboard and where it came from.
  *
- * The provenance is the whole point of the type. A baseline inside a run is the deterministic
- * fallback contract working as designed; a baseline written to `work/shots/` is permanent, because
- * an absent file is the signal that means "decompose this". One scene at a time nobody
- * notices, and a batch over a whole project with one bad key silently baselines everything — so a
- * caller that persists has to be able to tell the two apart, and now it can.
+ * A baseline inside a run is the deterministic fallback contract working as designed. A baseline
+ * written to `work/shots/` is permanent, because an absent file is the signal that means
+ * "decompose this", and a batch over a whole project with one bad key would silently baseline every
+ * scene. A caller that persists therefore needs to tell the two apart.
  */
 export interface Decomposition {
   shots: Shot[];
@@ -41,10 +40,10 @@ function baseline(scene: Scene, model: ProjectModel, reason: string): Decomposit
  * a runnable storyboard: one establishing shot of the scene's location plus one medium
  * shot per character present. Every shot defaults to the scene's primary location variant.
  *
- * The establishing shot carries the scene's cast, not an empty frame: it covers the
- * narration and action beats, and those describe the characters doing things. An empty
- * subject list would order a bare plate whose own lines contradict it — which the P2
- * location reference already produces anyway. A cast-less scene still gets a bare plate.
+ * The establishing shot carries the scene's cast rather than an empty frame, because it covers the
+ * narration and action beats and those describe the characters doing things. An empty subject list
+ * would order a bare plate whose own lines contradict it, and the P2 location reference already
+ * produces such a plate. A cast-less scene still gets a bare plate.
  */
 export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
   const location = model.locations.get(scene.location);
@@ -60,15 +59,14 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       sceneId: scene.id,
       framing: 'establishing',
       location: variant,
-      // No outfit: a decomposer does not choose clothes. Absent means inherit, so a later
-      // scene marker or a change of default reaches this shot instead of being shadowed.
+      // A decomposer does not choose clothes, so no outfit is set. Absent means inherit, so a
+      // later scene marker or a change of default reaches this shot instead of being shadowed.
       subjects: scene.characters.map((characterId) => ({ characterId })),
       coversLines: establishingLines,
       status: 'pending',
     },
   ];
   scene.characters.forEach((characterId, i) => {
-    // A character's medium shot covers that character's dialogue lines.
     const coversLines = scene.lines
       .filter((l) => l.kind === 'dialogue' && l.speaker === characterId)
       .map((l) => l.id);
@@ -88,11 +86,11 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
 /**
  * Resolve a decomposition's `characterId` to a character the model actually has.
  *
- * The planner needs an approved portrait per subject and skips a shot whose subject it cannot
- * find — silently and forever, since the decomposition is persisted. So an invented id is not a
- * cosmetic error: it is a shot that never renders and never says why. Ids are lowercase slugs, so
- * matching case-insensitively resolves the common miss (prose says `Aiko`, the sheet is `aiko`)
- * without guessing; anything else is dropped, like an invented line id.
+ * The planner needs an approved portrait per subject and silently skips a shot whose subject it
+ * cannot find. The skip is permanent, because the decomposition is persisted, so an invented id is
+ * a shot that never renders and never says why. Ids are lowercase slugs, so matching
+ * case-insensitively resolves the common miss (prose says `Aiko`, the sheet is `aiko`) without
+ * guessing. Anything else is dropped, like an invented line id.
  */
 function resolveSubject(raw: string, model: ProjectModel): string | undefined {
   if (model.characters.has(raw)) return raw;
@@ -132,8 +130,8 @@ export async function decomposeScene(
 ): Promise<Decomposition> {
   const location = model.locations.get(scene.location);
   const variants = location?.variants.map((v) => v.id) ?? ['day'];
-  // The identified lines, each prefixed with its id: `coversLines` asks for line ids, so
-  // handing over flattened prose and expecting ids back is unanswerable.
+  // Each line is prefixed with its id, because `coversLines` asks for line ids and flattened
+  // prose gives the model nothing to answer with.
   const lines = scene.lines.map(
     (l) => `[${l.id}] ${l.speaker ? `${l.kind}/${l.speaker}` : l.kind}: ${l.text}`,
   );
@@ -167,8 +165,8 @@ export async function decomposeScene(
  * variant the scene's location has, subjects resolved to characters the model actually holds,
  * invented line ids dropped, and the coverage backstop applied.
  *
- * Public because `write_storyboard` runs the same gauntlet over the shot list the agent restates:
- * a proposal approved in conversation must be repaired at persist time the way the batch would
+ * Public because `write_storyboard` applies the same repairs to the shot list the agent restates.
+ * A proposal approved in conversation must be repaired at persist time the way the batch would
  * have repaired it, or the two paths write different storyboards from the same answer.
  */
 export function realizeDecomposition(
@@ -201,15 +199,14 @@ export function realizeDecomposition(
 }
 
 /**
- * Guarantee the storyboard actually binds to the screenplay. Coverage is what makes a shot
- * reachable — the exporter emits a `show` beat only where the covering shot changes — so a
- * decomposition that binds nothing renders every one of its images and displays none of them.
- * That is not a stylistic difference from the baseline; it is an unplayable scene, and it is
- * what a model returns when asked for line ids it was never shown.
+ * Guarantee the storyboard actually binds to the screenplay. The exporter emits a `show` beat only
+ * where the covering shot changes, so a decomposition that binds no lines renders every one of its
+ * images and displays none of them, which leaves the scene unplayable. A model asked for line ids
+ * it was never shown returns exactly that.
  *
- * Exported with the module: callers that build shots some other way (a hand-made storyboard is
- * `@vn/scriptedit`'s business, not this backstop's) mostly want {@link realizeDecomposition},
- * which ends here.
+ * Exported so that callers building shots some other way can reach it (a hand-made storyboard is
+ * `@vn/scriptedit`'s business rather than this backstop's). Most callers want
+ * {@link realizeDecomposition}, which ends here.
  *
  * `coversLines` is not part of a shot's task hash (`buildShotPrompt` ignores it), so repairing
  * coverage here rehashes nothing.
@@ -219,8 +216,8 @@ export function withCoverage(shots: Shot[], scene: Scene, model: ProjectModel): 
   if (!scene.lines.some((l) => covered.has(l.id))) {
     return baseline(scene, model, 'the decomposition bound none of the scene’s lines');
   }
-  // A scene has to open on something: with the first line uncovered there is no `show` before
-  // the first beat, so the runner starts on a blank frame no matter how good the rest is.
+  // A scene has to open on something. With the first line uncovered there is no `show` before
+  // the first beat, so the runner starts on a blank frame however good the rest is.
   const first = scene.lines[0];
   if (first && !covered.has(first.id) && shots[0]) shots[0].coversLines.unshift(first.id);
   return { shots, source: 'model' };

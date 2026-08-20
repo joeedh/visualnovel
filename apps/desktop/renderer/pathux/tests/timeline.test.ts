@@ -50,8 +50,8 @@ const cov = spansFor(LINES, SHOTS);
 describe('what a grab captures', () => {
   it('judges the whole scene once, so no pointer move re-decides anything', () => {
     const drag = grabEdge(data, 's__a', 'end');
-    // Every row the drop would change, and only those: the rows `s__a` already ends on are not
-    // targets at all, which is how "changes nothing" stays distinct from "refused".
+    // Only the rows the drop would change are targets. The rows `s__a` already ends on are not
+    // targets, which keeps "changes nothing" distinct from "refused"
     expect([...drag.verdicts.keys()].sort()).toEqual(['s:L1', 's:L3', 's:L4']);
     expect(drag.lines).toBeNull();
     expect(drag.verdict).toBeNull();
@@ -61,8 +61,8 @@ describe('what a grab captures', () => {
     const reorder = grabShot(data, 's__b');
     expect(reorder.target).toBe('s__b');
     expect(reorder.verdict).toBeNull();
-    // Not `s__a`: `s__b` already sits after it, so that drop is a noop and never a target — the
-    // same distinction the edge drag draws between "changes nothing" and "refused".
+    // `s__a` is not a target because `s__b` already sits after it, so that drop changes nothing.
+    // This is the same distinction the edge drag draws between "changes nothing" and "refused"
     expect([...reorder.verdicts.keys()].sort()).toEqual(['s__c', TOP]);
   });
 
@@ -79,7 +79,7 @@ describe('what a grab captures', () => {
 
 describe('aiming a drag at a row', () => {
   it('carries the geometry and the verdict for that row together', () => {
-    // Retracting `s__a`'s end onto row 0 releases `s:L2`, which becomes a gap — allowed.
+    // Retracting `s__a`'s end onto row 0 releases `s:L2` into a gap, which is allowed
     const drag = aimDrag(grabEdge(data, 's__a', 'end'), cov, 0);
     expect(drag.lines).toEqual(['s:L1']);
     expect(drag.verdict?.accept).toBe(true);
@@ -120,8 +120,8 @@ describe('the gutter sweep that makes a shot', () => {
   });
 
   it('carries the id the write would actually mint, off the persisted mark', () => {
-    // The mark outranks derivation: shot4 even though only a/b/c exist, because a retired id must
-    // never be re-minted.
+    // The persisted mark outranks derivation, so the id is shot4 even though only a, b and c
+    // exist. A retired id must never be re-minted.
     const marked: SceneCoverage = { ...data, nextShot: 4 };
     const aimed = aimCreate(grabGutter(marked, 's:L1'), cov, 0);
     expect(aimed.verdict?.accept).toBe(true);
@@ -129,7 +129,7 @@ describe('the gutter sweep that makes a shot', () => {
   });
 
   it('keeps a refusal and its sweep together, so a refused drop is still drawn', () => {
-    // Claiming every line would leave all three shots covering nothing — refused by the same
+    // Claiming every line would leave all three shots covering nothing. The refusal is the same
     // sentence a coverage drag gets.
     const aimed = aimCreate(grabGutter(data, 's:L1'), cov, 3);
     expect(aimed.lines).toEqual(['s:L1', 's:L2', 's:L3', 's:L4']);
@@ -162,7 +162,7 @@ describe('what the author is told', () => {
       text: 's__a covers 1 line(s).',
     });
 
-    // The command's own refusal, verbatim — not a sentence this layer composed.
+    // The text is the command's own refusal, verbatim, rather than a sentence composed here
     expect(noticeOf(aimDrag(grabEdge(data, 's__a', 'end'), cov, 2))).toEqual({
       tone: 'refused',
       text: 'That would leave s__b covering nothing. Move its coverage somewhere else first.',

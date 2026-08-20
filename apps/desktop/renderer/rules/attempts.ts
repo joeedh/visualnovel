@@ -1,7 +1,7 @@
 /**
- * The pure half of the refine-loop inspector: turn a task's recorded attempts into the
- * causal chain that actually ran. `shot_image` folds P7's generate → critique → refine into
- * one runner, so this is the only place the loop is legible.
+ * Turns a task's recorded attempts into the causal chain that ran, as the pure half of the
+ * refine-loop inspector. `shot_image` folds P7's generate → critique → refine into one runner, so
+ * this is the only place the loop is legible.
  */
 import type { Defect, DefectReport, Task, TaskAttempt } from '../../src/shared/ipc';
 
@@ -18,14 +18,14 @@ const SEVERITY_RANK: Record<Defect['severity'], number> = { blocking: 0, major: 
 const defectKey = (d: Defect): string => `${d.severity}|${d.category}|${d.description}`;
 
 /**
- * Flatten one attempt's reviews for display. `blocking` is computed exactly as `mergeReports`
- * in `@vn/providers` computes it — the UI must not disagree with the verdict the runner acted
- * on. Order is blocking-first via a *stable* sort, so within a severity the reviewers'
- * original order survives.
+ * Flatten one attempt's reviews for display. `blocking` is computed exactly as `mergeReports` in
+ * `@vn/providers` computes it, because the UI must not disagree with the verdict the runner acted
+ * on. Order is blocking-first via a stable sort, so within a severity the reviewers' original
+ * order survives.
  *
- * The dedupe is display-only, and a real divergence from the runner: `mergeReports` keeps
- * both copies when two reviewers report the same defect, so the `Corrections:` clause can
- * name the same fix twice. Showing it twice would just look like a rendering bug.
+ * The dedupe is display-only and diverges from the runner: `mergeReports` keeps both copies when
+ * two reviewers report the same defect, so the `Corrections:` clause can name the same fix twice.
+ * Showing it twice would look like a rendering bug.
  */
 export function mergeAttemptReviews(reviews: DefectReport[]): {
   defects: MergedDefect[];
@@ -49,12 +49,12 @@ export function mergeAttemptReviews(reviews: DefectReport[]): {
 }
 
 /**
- * The `Corrections:` clause `refinePrompt` added to produce `next` — the causal step between
- * two attempts, or null if there isn't one.
+ * The `Corrections:` clause `refinePrompt` added to produce `next`, which is the causal step
+ * between two attempts. Null when there is none.
  *
- * A suffix diff would be wrong: `refinePrompt` strips any prior clause before appending the
- * new one, so attempt 3's clause *replaces* attempt 2's rather than extending it. Read the
- * clause off `next` directly instead of diffing.
+ * A suffix diff would be wrong: `refinePrompt` strips any prior clause before appending the new
+ * one, so attempt 3's clause replaces attempt 2's rather than extending it. The clause is read off
+ * `next` directly instead of diffing.
  */
 export function correctionDelta(prev: TaskAttempt | undefined, next: TaskAttempt): string | null {
   if (!next.prompt) return null;
@@ -65,10 +65,10 @@ export function correctionDelta(prev: TaskAttempt | undefined, next: TaskAttempt
 }
 
 /**
- * True when the loop re-ran on a byte-identical prompt. It happens for real: when every
- * reviewer repeats the same critique, `refinePrompt` strips the old `Corrections:` clause and
- * appends the same one, so nothing changed and the attempt could only burn the retry budget.
- * Worth naming in the UI, because a silent gap between two identical frames reads as a bug.
+ * True when the loop re-ran on a byte-identical prompt. This happens when every reviewer repeats
+ * the same critique: `refinePrompt` strips the old `Corrections:` clause and appends the same one,
+ * so nothing changed and the attempt could only burn the retry budget. The UI names it, because a
+ * silent gap between two identical frames reads as a bug.
  */
 export function promptRepeated(prev: TaskAttempt | undefined, next: TaskAttempt): boolean {
   return prev !== undefined && prev.prompt !== undefined && prev.prompt === next.prompt;
@@ -107,10 +107,10 @@ export interface TriageSummary {
 }
 
 /**
- * Why a task stopped, or null if it hasn't stopped badly. The two terminal-but-not-done states
- * read differently: `needs_human` means the reviewers kept blocking, so the defects *are* the
- * answer; `failed` usually means a task threw, which leaves neither reviews nor defects — there
- * the recorded `error` is the only account of it.
+ * Why a task stopped, or null if it has not stopped badly. The two terminal-but-not-done states
+ * read differently. `needs_human` means the reviewers kept blocking, so the defects are the
+ * answer. `failed` usually means a task threw, which leaves neither reviews nor defects, so the
+ * recorded `error` is the only account of it.
  */
 export function triageOf(task: Task): TriageSummary | null {
   if (task.status !== 'needs_human' && task.status !== 'failed') return null;

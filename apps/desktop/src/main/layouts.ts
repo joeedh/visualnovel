@@ -17,22 +17,22 @@ import {
 
 /**
  * Reading and writing `.vnstudio/layouts/`. The format itself lives in `shared/layouts.ts`
- * because the renderer needs it too; this half is the I/O, so the commands stay the thin
- * wrappers over it that the rest of `commands/` is.
+ * because the renderer needs it too. This half is the I/O, so the commands over it stay as thin
+ * as the rest of `commands/`.
  */
 
 function fileFor(root: string, slug: string): string {
   return join(root, LAYOUT_DIR, `${slug}.json`);
 }
 
-/** Cheap and stable: same bytes, same fingerprint, on any machine. */
+/** The same bytes give the same fingerprint on any machine. */
 function fingerprint(text: string): string {
   return sha256(text).slice(0, 16);
 }
 
 /**
- * The porcelain codes that mean a merge left this path unresolved. Pure so the merge policy is
- * testable without a repo — `git status` gives these two characters and nothing else says it.
+ * Whether this pair of porcelain status codes means a merge left the path unresolved. Pure so
+ * the merge policy is testable without a repo; `git status` is the only source of these codes.
  */
 export function isConflictCode(x: string, y: string): boolean {
   const code = `${x}${y}`;
@@ -69,8 +69,8 @@ async function slugsOnDisk(root: string): Promise<string[]> {
 
 /**
  * Every template the project has, shipped ones first and in their own order. A shipped layout
- * with no file still appears — the recipe answers for it — so the feature works on day one in
- * a project that predates it.
+ * with no file still appears, answered for by its built-in definition, so the feature works in a
+ * project that predates it.
  */
 export async function listLayouts(root: string, git?: Git): Promise<LayoutSummary[]> {
   const conflicted = await conflictedPaths(git);
@@ -152,8 +152,8 @@ export async function writeLayout(root: string, file: LayoutFile): Promise<strin
 }
 
 /**
- * Put the shipped layouts back. `all` additionally deletes the author's own, which "reset" does
- * not promise on its own — hence two words rather than one flag.
+ * Put the shipped layouts back. The `all` scope additionally deletes the author's own layouts,
+ * which "reset" alone does not promise, so the scope is a named value rather than a boolean flag.
  */
 export async function resetLayouts(root: string, scope: 'shipped' | 'all'): Promise<string[]> {
   const written: string[] = [];
@@ -197,9 +197,9 @@ export async function ensureLayouts(root: string): Promise<string[]> {
 }
 
 /**
- * Make sure the project tells git not to merge layouts. Appends: a `.gitattributes` an author
- * wrote is theirs, and this adds only the one rule it needs — not this repo's own
- * `* text=auto eol=lf`, for the reason `ensureGitAttributes` gives.
+ * Make sure the project tells git not to merge layouts. Appends rather than replaces, because a
+ * `.gitattributes` an author wrote is theirs. Only the one rule needed is added, not this repo's
+ * own `* text=auto eol=lf` (for the reason `ensureGitAttributes` gives).
  */
 export async function ensureLayoutAttributes(root: string): Promise<boolean> {
   const path = join(root, '.gitattributes');

@@ -1,16 +1,16 @@
 /**
  * The two tools the analyst gets when the author lets it read the requests the app actually sent.
  *
- * These exist for one class of failure: a provider that rejects a body *by position* —
+ * These exist for one class of failure: a provider that rejects a body by position —
  * `messages.1.content.0: unexpected "tool_use_id"` — where the position means nothing without the
  * body, and nothing else keeps the body. `@vn/providers`' capture ring keeps it; this reads it.
  *
- * **They deliberately cannot hand back a long verbatim span.** The capture is the author's whole
- * conversation as it went over the wire — their fiction, their file contents — and it is not in
- * the report and must not get into it. So the default answer is a *structural outline* and not
- * content; a path returns one node's string values, decoded, redacted and capped per read; and
- * base64 blocks are refused by kind rather than merely being expensive. The prompt asks for the
- * same restraint, but that is the second layer, not the mechanism.
+ * They deliberately cannot hand back a long verbatim span. The capture holds the author's whole
+ * conversation as it went over the wire — their fiction, their file contents — which is not in the
+ * report and must not get into it. The default answer is a structural outline rather than content;
+ * a path returns one node's string values, decoded, redacted and capped per read; and base64
+ * blocks are refused by kind rather than merely being expensive. The prompt asks for the same
+ * restraint, but that is a second layer on top of this mechanism.
  *
  * The snapshot is frozen (`captureSnapshot()`) before the analysis starts, because the analyst
  * takes many turns to read one of these and a live ring would evict entries — possibly the one it
@@ -28,8 +28,8 @@ const fail = (output: string): ToolResult => ({ ok: false, output });
 /**
  * Characters of decoded content one `read_request` may hand back.
  *
- * Small on purpose. It is enough to see which tool call carried the wrong id and not enough to
- * reconstruct a scene, which is the whole trade this tool makes.
+ * Small on purpose: enough to see which tool call carried the wrong id, and not enough to
+ * reconstruct a scene.
  */
 export const MAX_VALUE = 2_000;
 
@@ -39,7 +39,7 @@ const OPAQUE = new Set(['image', 'document']);
 export interface RequestToolOptions {
   /** The frozen ring. */
   snapshot: CaptureSnapshot;
-  /** Everything handed back goes through it, like everything else the analyst is shown. */
+  /** Everything handed back goes through this redactor, like everything else the analyst sees. */
   redactor: Redactor;
   /** Shared with the source tools when both are on, so one analysis has one budget. */
   budget?: Budget;
@@ -61,7 +61,7 @@ function firstLine(text: string): string {
 
 /**
  * One line describing a content block: what kind it is, what it is called, and how big — never
- * what it says. This is what answers a positional error, and it answers it without content.
+ * what it says. Answers a positional error without returning any content.
  */
 function describeBlock(block: unknown): string {
   if (typeof block === 'string') return `text, ${block.length} chars`;
@@ -101,8 +101,9 @@ function describeMessage(path: string, message: unknown): string[] {
 /**
  * The shape of a request, top to bottom.
  *
- * Every line is addressed by the JSON Pointer that would reach it, so the outline is also the map
- * for the next call — and `messages.1.content.0` in a provider's error reads straight off it.
+ * Every line is addressed by the JSON Pointer that would reach it, so a following call can name a
+ * node straight from the outline, and `messages.1.content.0` in a provider's error reads straight
+ * off it.
  */
 function outline(body: unknown): string {
   if (typeof body !== 'object' || body === null) return `The body is ${typeof body}.`;
@@ -136,9 +137,9 @@ function outline(body: unknown): string {
 /**
  * Walk a JSON Pointer (RFC 6901), or say where it stopped.
  *
- * A pointer that misses is a refusal naming the segment that failed rather than an empty answer:
- * the analyst is reading positions out of an error message, and "there is no such node" is a fact
- * about the request worth as much as the node would have been.
+ * A pointer that misses returns a refusal naming the segment that failed rather than an empty
+ * answer. The analyst is reading positions out of an error message, and "there is no such node" is
+ * a fact about the request worth as much as the node would have been.
  */
 function walk(body: unknown, pointer: string): { node?: unknown; why?: string } {
   if (pointer === '' || pointer === '/') return { node: body };
@@ -183,8 +184,7 @@ function strings(node: unknown, at: string, into: { path: string; value: string 
     node.forEach((item, i) => strings(item, `${at}/${i}`, into));
   } else if (typeof node === 'object' && node !== null) {
     for (const [key, value] of Object.entries(node)) {
-      // The one thing never worth walking into: a base64 payload is not text, and the outline
-      // has already said how big it is.
+      // A base64 payload is not text, and the outline has already said how big it is
       if (opaque(node) && key === 'source') continue;
       strings(value, `${at}/${key}`, into);
     }
@@ -278,8 +278,8 @@ function readTool(opts: RequestToolOptions): Tool<{ seq: number; path?: string }
       const lines = found.map(({ path, value }) => {
         const clipped = value.length > cap;
         const shown = opts.redactor.apply(clipped ? value.slice(0, cap) : value);
-        // A silent truncation is worse than a refusal: the analyst would report on what is not
-        // there. So a shortened value says so, in the line it shortened.
+        // A shortened value says so in its own line, so the analyst does not report on text
+        // that is not there
         return clipped
           ? `${path}  (${value.length} chars, first ${cap} shown)\n${shown}`
           : `${path}\n${shown}`;

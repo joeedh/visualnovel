@@ -1,8 +1,8 @@
 /**
  * Attribution resolver chain (research §3-DOM): `data-dbg-id` → React fiber name →
- * tag/class path. Pure over the snapshot tree; the fiber *extraction* (the fragile part)
- * already happened in snapshot.ts. Resolvers may fail or throw — the chain degrades to
- * 'unknown' rather than ever throwing.
+ * tag/class path. Pure over the snapshot tree; the fragile fiber extraction already
+ * happened in snapshot.ts. A resolver may fail or throw, and the chain then degrades to
+ * 'unknown' rather than throwing.
  */
 import type { OwnerRef } from '../types.js';
 import type { SnapNode } from './snapshot.js';

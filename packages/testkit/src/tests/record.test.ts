@@ -9,8 +9,8 @@ const PARAMS: ImageParams = { modelId: 'test-image-1' };
 const ART = (tag: string) => new TextEncoder().encode(`pretend this is art: ${tag}`);
 
 /**
- * The audit half of the refresh script — free, offline, and the only half a suite may run.
- * `recordCorpus` is deliberately untested: it exists to spend money.
+ * The audit half of the refresh script: free, offline, and the only half a suite may run.
+ * `recordCorpus` is deliberately untested because it spends real money.
  */
 describe('checkCorpus', () => {
   let cacheDir: string;
@@ -53,7 +53,7 @@ describe('checkCorpus', () => {
     const text = formatReport(report);
     expect(text).toContain('nothing asked for (2)');
     expect(text).toContain('indexed but missing on disk (1)');
-    // The chain constraint makes an orphan list unreliable while anything is missing; say so.
+    // The report warns that an orphan list is unreliable while entries are still missing.
     expect(text).toContain('Treat the orphan list as suspect');
   }, 30_000);
 });

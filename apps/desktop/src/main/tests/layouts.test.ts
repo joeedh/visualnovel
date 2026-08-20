@@ -59,8 +59,8 @@ describe('ensureLayouts', () => {
     expect(text.split(LAYOUT_ATTRIBUTE)).toHaveLength(2);
   });
 
-  // Only the rule layouts need. This repo's own `* text=auto eol=lf` is a policy for this repo,
-  // not one to install in somebody's project.
+  // Writes only the rule layouts need. This repo's own `* text=auto eol=lf` is a policy for this
+  // repo, not one to install in somebody's project.
   it('creates a .gitattributes carrying the layout rule and nothing else', async () => {
     await ensureLayoutAttributes(root);
     const text = await readFile(join(root, '.gitattributes'), 'utf8');
@@ -206,7 +206,7 @@ function runGit(args: string[]): Promise<number> {
   });
 }
 
-// The whole point of the `-merge` attribute, checked against real git rather than believed.
+// Checks the `-merge` attribute against real git rather than assuming it works.
 describe('the merge policy', () => {
   it('makes git conflict a layout instead of merging one, and leaves ours in the worktree', async () => {
     await runGit(['init', '-b', 'main']);
@@ -244,7 +244,7 @@ describe('the merge policy', () => {
     expect(text).not.toContain('<<<<<<<');
     expect(JSON.parse(text).title).toBe('Mine');
 
-    // ...and the app says so rather than applying it.
+    // The app reports the conflict rather than applying the layout.
     const read = await readLayout(root, 'writing', git);
     expect(read.ok).toBe(false);
     expect(!read.ok && read.reason).toContain('mid-merge');
@@ -252,7 +252,7 @@ describe('the merge policy', () => {
       (await listLayouts(root, git)).find((item) => item.slug === 'writing')?.problem,
     ).toContain('pick a side');
 
-    // The sentence those two refusals tell the author to type, taken at its word.
+    // Runs the commands those two refusals tell the author to type.
     expect(await runGit(['checkout', '--ours', path])).toBe(0);
     expect(await runGit(['add', path])).toBe(0);
     const resolved = await readLayout(root, 'writing', git);

@@ -87,7 +87,7 @@ describe('openBible', () => {
     const bible = await openBible(root);
     const [hit] = await bible.query('rung');
     expect(hit?.heading).toBe('The Bell');
-    // 1-based, and counted over the whole file so it matches what an editor shows.
+    // 1-based, and counted over the whole file so it matches what an editor shows
     expect(hit?.line).toBe(5);
   });
 

@@ -151,7 +151,7 @@ describe('approveAction', () => {
     });
   });
 
-  // The mirror of the concept case: a concept has no downstream, an upload has no upstream.
+  // A concept has no downstream and an upload has no upstream, so both are refused
   it('refuses an upload, which nothing generated', () => {
     expect(approveAction(info({ kind: 'reference', label: 'moodboard.png' }))).toEqual({
       ok: false,
@@ -159,13 +159,13 @@ describe('approveAction', () => {
     });
   });
 
-  // Main's sentence, shown verbatim — a disabled control's tooltip is its refusal, and this one
-  // has to be the same words `asset.accept` gives when the palette or the agent reaches it.
+  // The refusal is main's own sentence, shown verbatim: a disabled control's tooltip must carry
+  // the same words `asset.accept` gives when the palette or the agent reaches it
   it('refuses while anything it was drawn from is unapproved, in main’s own words', () => {
     const waiting =
       'Approve what this was drawn from first: cafe — night plate is not approved yet.';
     expect(approveAction(info({ unapproved: waiting }))).toEqual({ ok: false, reason: waiting });
-    // Ahead of the portrait split, so the gate button is greyed for the same reason.
+    // The unapproved check runs ahead of the portrait split, so the gate button greys out too
     expect(approveAction(portrait({ unapproved: waiting }))).toEqual({
       ok: false,
       reason: waiting,
@@ -181,8 +181,8 @@ describe('approveAction', () => {
 });
 
 describe('promptEditable', () => {
-  // The whole prompt, not an empty box: an author edits the sentence they were given, and the
-  // style preamble the generator wrapped it in survives unless they delete it themselves.
+  // The box starts with the whole prompt rather than empty, so the style preamble the generator
+  // wrapped it in survives unless the author deletes it
   it('hands back the concept’s recorded prompt and name to start from', () => {
     expect(
       promptEditable(concept({ prompt: 'Subject: Café Mori. from above', title: 'aerial' })),

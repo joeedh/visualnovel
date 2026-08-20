@@ -108,7 +108,6 @@ export function parseFountain(input: string): FountainScript {
       continue;
     }
 
-    // Page break: 3+ '='.
     if (/^={3,}$/.test(trimmed)) {
       elements.push({ type: 'page_break', line: srcLine() });
       i++;
@@ -136,7 +135,6 @@ export function parseFountain(input: string): FountainScript {
       i++;
       continue;
     }
-    // Centered: >text<
     if (/^>.*<$/.test(trimmed)) {
       elements.push({ type: 'centered', text: trimmed.slice(1, -1).trim(), line: srcLine() });
       i++;
@@ -201,14 +199,13 @@ export function parseFountain(input: string): FountainScript {
       continue;
     }
 
-    // Forced action with '!'.
     if (line.startsWith('!')) {
       elements.push({ type: 'action', text: line.slice(1), line: srcLine() });
       i++;
       continue;
     }
 
-    // Default: action.
+    // Anything left over is action
     elements.push({ type: 'action', text: line, line: srcLine() });
     i++;
   }

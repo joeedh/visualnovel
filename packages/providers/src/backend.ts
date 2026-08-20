@@ -40,9 +40,9 @@ export interface ToolCall {
  * Anthropic bills cache reads and cache writes separately, and a total that dropped them would
  * be quietly wrong on the side that matters.
  *
- * `cacheRead` and `cacheWrite` are that split, carved back *out* of `input` rather than added
- * beside it: a total stays a total, and a caller that wants to know whether the cache is working
- * asks for the parts. Absent means the vendor said nothing, which is not the same as zero.
+ * `cacheRead` and `cacheWrite` are that split, carved back out of `input` rather than added beside
+ * it, so the total stays a total and a caller that wants to know whether the cache is working asks
+ * for the parts. Absent means the vendor said nothing, which is not the same as zero.
  */
 export interface TokenUsage {
   input: number;
@@ -52,10 +52,10 @@ export interface TokenUsage {
   /** Of `input`, what was billed at the cache-write rate. */
   cacheWrite?: number;
   /**
-   * The split above is what the provider *matched*, not a line on the bill. Gemini's implicit
-   * cache is the case: it reports a matched prefix, bills no cache-write at all, and says nothing
-   * whatever for the first calls of a conversation — so an absent count there is silence, not a
-   * miss. Absent means the figures are billing facts, which is what Anthropic's are.
+   * Set when the split above is what the provider matched rather than a line on the bill. Gemini's
+   * implicit cache reports a matched prefix, bills no cache-write at all, and reports nothing for
+   * the first calls of a conversation, so an absent count there does not mean a miss. Absent means
+   * the figures are billing facts, as Anthropic's are.
    */
   cacheEstimated?: boolean;
 }
@@ -82,11 +82,10 @@ export interface ChatToolReply {
  */
 export interface ChatTurn {
   role: 'user' | 'assistant' | 'system';
-  /** Text, or the provider-native blocks a previous reply handed back. */
   content: string | unknown[];
   /**
-   * Cache the prefix ending at this turn. The backend maps it to the vendor's marker, or ignores
-   * it — a request that cannot be cached is still a request.
+   * Cache the prefix ending at this turn. A backend maps it to the vendor's marker, or ignores it
+   * when the vendor has none. Ignoring it never fails the request.
    */
   cache?: boolean;
 }
@@ -96,7 +95,7 @@ export interface ChatConvoReply extends ChatToolReply {
   /**
    * The assistant message's content blocks exactly as received — thinking, text, tool_use,
    * server_tool_use, tool_search_tool_result, in order. The caller echoes this verbatim;
-   * rebuilding it from `text` + `toolCalls` is a 400.
+   * rebuilding it from `text` + `toolCalls` gets a 400.
    */
   raw: unknown[];
 }
@@ -123,16 +122,15 @@ export interface ChatBackend {
   chatWithTools?(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply>;
   /**
    * The same turn as {@link message}, plus what it cost. Optional rather than folded into
-   * `message`'s return: every other caller wants the text and nothing else, and a backend that
-   * cannot say what it was billed — a mock, a recorded fake — is still a backend. A caller that
-   * asks and is not answered shows no total, which is honest.
+   * `message`'s return: every other caller wants the text and nothing else, and a mock or recorded
+   * backend cannot say what it was billed. A caller that asks and is not answered shows no total.
    */
   messageWithUsage?(req: ChatRequest): Promise<ChatReply>;
   /**
    * A multi-turn tool-calling conversation, with cache breakpoints. Optional like
-   * {@link chatWithTools}, so a mock or recorded backend is still a backend — and the probe a
-   * host uses to pick the native agent path, because a backend that has only `chatWithTools` is
-   * still single-shot and still caches nothing.
+   * {@link chatWithTools}, so a mock or recorded backend can omit it. A host probes for
+   * this method to pick the native agent path, because a backend carrying only `chatWithTools` is
+   * single-shot and caches nothing.
    */
   chatConversation?(req: ChatConvoRequest, tools: ToolSchema[]): Promise<ChatConvoReply>;
 }

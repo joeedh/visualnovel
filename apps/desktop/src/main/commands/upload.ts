@@ -1,9 +1,9 @@
 /**
  * `/upload`: bringing the author's own documents in.
  *
- * A separate namespace from `asset.upload` on purpose — that brings an *image* into the
- * content-addressed store, this copies a *document* into `archive/` and hands the conversation a
- * question. Different noun, different destination, and one word between them.
+ * A separate namespace from `asset.upload` on purpose. `asset.upload` brings an image into the
+ * content-addressed store; this copies a document into `archive/` and hands the conversation a
+ * question about it.
  *
  * Neither is `undoable`. The copy is trivially reversible in Explorer, but the act also closes the
  * open conversation and starts a new one, and a shadow snapshot cannot put a conversation back —
@@ -73,7 +73,8 @@ export const uploadFiles = define({
     'in plan mode asking what to do with them. The archive is outside every directory the agent ' +
     'sweeps, so nothing here turns up in `search` or the story bible — it is read by name only.',
   mutating: true,
-  // It copies bytes into the repo from paths the author named — the bar `asset.upload` clears.
+  // Confirmed because it copies bytes into the repo from paths the author named, which is the same
+  // bar `asset.upload` meets.
   confirm: true,
   props: { paths: prop.stringList('the files to upload (absolute paths)') },
   check: ({ paths }, ctx) => wouldUpload(paths, ctx.host.session.busy()),

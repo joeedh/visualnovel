@@ -1,11 +1,10 @@
 /**
- * Opening a context menu on the screen. The rules are `contextmenu.ts`'s; this is the half that
- * touches path.ux, so it lives in its own module and the resolution stays testable in node — the
- * same split `route.ts`/`open.ts` and `structfields.ts` already use.
+ * Puts a context menu on the screen. The entry rules live in `contextmenu.ts`; only this module
+ * touches path.ux, which keeps the resolution testable in node — the same split `route.ts`,
+ * `open.ts` and `structfields.ts` use.
  *
- * `startMenu` is synchronous, so every check is awaited before anything is drawn. They are
- * read-only previews over state main already holds; if one ever became slow enough to notice, the
- * fix is that check, not a menu that lies while it loads.
+ * `startMenu` is synchronous, so every check is awaited before anything is drawn. The checks are
+ * read-only previews over state main already holds.
  */
 import {
   Menu,
@@ -27,20 +26,19 @@ import {
 import { openCommandDialog } from './dialog.js';
 
 /**
- * Whether a path.ux menu is up right now. Beside the one place that opens one, because it is the
- * only other thing that knows how to ask.
+ * Whether a path.ux menu is up right now.
  *
- * A surface underneath a menu needs this at **pointer-down**: the wrangler closes on mouse-up, so
- * by the time the dismissing `click` arrives the menu is gone and the click looks like a first one.
+ * A surface underneath a menu must ask on pointer-down. The wrangler closes the menu on mouse-up,
+ * so by the time the dismissing `click` arrives the menu is gone and the click looks like a first
+ * one.
  */
 export function menuIsOpen(): boolean {
   return menuWrangler.menu !== undefined;
 }
 
 /**
- * What each command says it does, for the rows with no refusal to state. Fetched once and kept:
- * the catalog is fixed for the life of the window, and a right-click should not wait on IPC that
- * would answer the same thing every time.
+ * What each command says it does, used for the rows that carry no refusal. Fetched once and kept,
+ * because the catalog is fixed for the life of the window.
  */
 let describes: Record<string, string> | undefined;
 
@@ -53,8 +51,7 @@ async function commandDescriptions(): Promise<Record<string, string>> {
 }
 
 /**
- * Show the menu these entries describe. An empty list opens nothing at all, rather than an empty
- * box — a node kind with nothing to offer says so by offering nothing.
+ * Show the menu these entries describe. An empty list opens nothing rather than an empty box.
  */
 export async function showContextMenu(
   ctx: VnContext,
@@ -96,9 +93,8 @@ export async function showContextMenu(
 }
 
 /**
- * What clicking one does. A refusal reports the command's own sentence instead of executing, and
- * a failure of the command itself is already reported by `exec` — one error path, not a second
- * convention for the one surface that happens to be a menu.
+ * Handles a click on one row. A refused entry reports the command's own sentence instead of
+ * executing. A failure of the command itself is reported by `exec`.
  */
 function take(item: ResolvedEntry): void {
   if (!item.enabled) {

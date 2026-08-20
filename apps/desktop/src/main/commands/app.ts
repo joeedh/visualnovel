@@ -1,10 +1,10 @@
 /**
- * The app itself as commands — the few acts that are about VN Studio rather than about the
- * project it happens to have open.
+ * The app itself as commands, covering the few acts that are about VN Studio rather than about the
+ * project it has open.
  *
  * They are commands for the same reason everything else is: the Setup pane, the palette, CDP and
- * the agent then reach one implementation, and a pane that fetched its own words over a bespoke
- * channel would be a second way to ask the same question.
+ * the agent all reach one implementation, instead of a pane fetching its own words over a bespoke
+ * channel.
  */
 import { defineFor, prop } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
@@ -28,8 +28,8 @@ export const appKeyGuide = define({
     const guide = await ctx.host.session.keyGuide();
     const problems = keyGuideProblems(guide, KEY_VENDORS);
     return {
-      // A guide that is missing a section is still returned — the pane draws what there is. The
-      // message is what says so, because the alternative is a pane that is quietly short.
+      // A guide missing a section is still returned and the pane draws what there is. The message
+      // reports the gap so the pane is not silently short
       message:
         problems.length === 0
           ? `${guide.vendors.length} provider(s).`
@@ -78,7 +78,7 @@ export const appCheckForUpdates = define({
   async run({ quiet }, ctx) {
     const check = await ctx.host.session.checkForUpdates();
     // The verdict is always returned; only the durable notification is conditional. A failed
-    // check is deliberately not a thrown error — see `announcementFor`.
+    // check is reported in the verdict rather than thrown; see `announcementFor`
     const announcement = announcementFor(check, quiet);
     if (announcement) await notify(announcement);
     return { message: check.message, data: check };

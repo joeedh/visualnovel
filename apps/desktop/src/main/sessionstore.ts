@@ -2,13 +2,13 @@
  * Persisted desktop UI state: a flat key/value file the shell uses for things that should
  * outlive a launch (panel widths today). Global per install, not per workspace.
  *
- * Not to be confused with `WorkspaceSession` — that is the *backend* session (agent,
- * project model, pipeline). This is only remembered UI state, and it is reachable from a
- * command as `ctx.host.state` for exactly that reason.
+ * Not to be confused with `WorkspaceSession`, which is the backend session (agent, project
+ * model, pipeline). This is only remembered UI state, and it is reachable from a command as
+ * `ctx.host.state` for exactly that reason.
  *
- * Multiple app instances may hold the same file open, so writes are: taken under a
+ * Multiple app instances may hold the same file open, so a write is taken under a
  * cross-process lock, merged per key against what is on disk, and written atomically.
- * Two instances setting *different* keys both survive; the same key is last-flush-wins.
+ * Two instances setting different keys both survive; the same key is last-flush-wins.
  */
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
@@ -33,13 +33,13 @@ const log = createLogger().child({ mod: 'sessionstore' });
  * Where the store lives: `<user config dir>/desktop`, the same home `userConfigDir` gives keys,
  * so the app has one place for user-level state rather than two.
  *
- * It used to be `apps/desktop/.vndesktop`, derived from `__dirname` — which in a packaged app is
- * inside `app.asar`, a *file*, so the store's `mkdir` failed `ENOTDIR` before the first window
- * and the app hung with nothing on screen. A path relative to the bundle is a path relative to
- * a read-only archive, and no amount of care about the rest of packaging survives that.
+ * It used to be `apps/desktop/.vndesktop`, derived from `__dirname`, which in a packaged app is
+ * inside `app.asar` — a file, so the store's `mkdir` failed with ENOTDIR before the first window
+ * and the app hung with nothing on screen. A path relative to the bundle is a path relative to a
+ * read-only archive.
  *
- * `VN_DESKTOP_HOME` overrides it, which is what lets a test isolate the store; a development run
- * shares the installed app's, because a second home is how a recents list quietly forks in two.
+ * `VN_DESKTOP_HOME` overrides the location, which is how a test isolates the store. A development
+ * run shares the installed app's directory, so the recents list does not fork in two.
  */
 export function resolveSessionDir(): string {
   return process.env.VN_DESKTOP_HOME ?? join(userConfigDir(), 'desktop');
@@ -89,8 +89,8 @@ export class SessionStore {
 
   /**
    * Open (and create) the store directory, loading whatever is already on disk. `onChange`
-   * fires on every `set` whoever made it — the app hangs the renderer broadcast off it, so
-   * a command that writes state moves the UI without having to remember to say so.
+   * fires on every `set`, whatever made it. The app hangs the renderer broadcast off it, so a
+   * command that writes state moves the UI without having to announce the change itself.
    */
   static async open(
     dir: string = resolveSessionDir(),

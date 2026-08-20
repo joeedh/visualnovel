@@ -40,7 +40,7 @@ describe('viewport', () => {
     expect(zoomAt(IDENTITY, { x: 0, y: 0 }, 0.001).scale).toBe(DEFAULT_ZOOM.min);
   });
 
-  // The rule the whole hit-test layer depends on: slop is screen pixels, geometry is world.
+  // The hit-test layer depends on this rule: slop is in screen pixels, geometry in world units.
   it('converts a screen distance into fewer world units as it zooms in', () => {
     expect(screenToWorldDistance({ x: 0, y: 0, scale: 2 }, 8)).toBe(4);
     expect(screenToWorldDistance({ x: 0, y: 0, scale: 0.5 }, 8)).toBe(16);
@@ -72,8 +72,8 @@ describe('viewport', () => {
     expect(transformOf({ x: 3, y: 4, scale: 2 })).toBe('translate(3 4) scale(2)');
   });
 
-  // The two syntaxes are not interchangeable: CSS needs units and a comma, and it drops an
-  // unparseable transform silently — the HTML layer just sits at world coordinates.
+  // The two syntaxes are not interchangeable: CSS needs units and a comma, and an unparseable
+  // transform is dropped without an error, leaving the HTML layer at world coordinates.
   it('emits the CSS form with units and a comma, not the SVG one', () => {
     expect(cssTransformOf({ x: 3, y: 4, scale: 2 })).toBe('translate(3px, 4px) scale(2)');
   });

@@ -2,11 +2,11 @@
  * The reference graph, and the cycle check over it (`docs/plans/archive/chunked-prompts.md` §14).
  *
  * Enforcement is over references, not `Task.deps` — `deps` is incomplete and is not hashed, so a
- * ref cycle is invisible to `topoOrder`. And the cycle is over **logical slots, not hashes**: "Aiko's
+ * ref cycle is invisible to `topoOrder`. The cycle is over logical slots rather than hashes: "Aiko's
  * portrait references Aiko's gala sheet" closes a loop even though no hash repeats, because the
- * sheet's prompt already references the portrait. Left unchecked its failure mode is the worst one
- * available — `doneOutput` answers `undefined`, the shot is skipped, and the plan-run-replan loop
- * starves in silence — so the check runs at write time and the refusal names the path.
+ * sheet's prompt already references the portrait. Left unchecked, `doneOutput` answers `undefined`,
+ * the shot is skipped, and the plan-run-replan loop starves in silence, so the check runs at write
+ * time and the refusal names the path.
  */
 import type { Asset, RefBinding } from '@vn/types';
 import { outfitFor } from '@vn/model';
@@ -14,9 +14,10 @@ import { overrideAt, type PromptRung, type RungContext } from './resolve.js';
 import { SHEET_FRONT } from './prompts.js';
 
 /**
- * One slot, as a string, so the walk can use a `Set`. Angles stay distinct: they are two pictures.
+ * One slot, as a string, so the walk can use a `Set`. Angles stay distinct, because two angles of
+ * one outfit are two different pictures.
  *
- * It doubles as the **address** an author types (`prompt.addRef(ref=plate:cafe/night)`), which is
+ * It doubles as the address an author types (`prompt.addRef(ref=plate:cafe/night)`), which is
  * why {@link parseSlot} is written directly against it: one spelling, and a round-trip test.
  */
 export function slotKey(b: RefBinding): string {
@@ -52,7 +53,7 @@ export function slotLabel(b: RefBinding): string {
 
 /**
  * A slot address back into a binding — the inverse of {@link slotKey}, and the way a command names
- * one. A bare hex string is an `asset` binding: an upload or a concept *is* its own identity, so
+ * one. A bare hex string is an `asset` binding: an upload or a concept is its own identity, so
  * pinning it names no slot and can never drift.
  */
 export function parseSlot(text: string): RefBinding | undefined {
@@ -87,8 +88,8 @@ export function parseSlot(text: string): RefBinding | undefined {
 /**
  * The slot an asset itself fills — what a cycle check starts from. The mirror of `rungOf`, but a
  * binding rather than a rung, because a sheet's angle is part of the picture and only the rung
- * collapses the four. `angle` is injected for the same reason `BindingContext.angleOf` is: it lives
- * in the task's inputs and never in `satisfies`.
+ * collapses the angles together. `angle` is injected for the same reason `BindingContext.angleOf`
+ * is: it lives in the task's inputs and never in `satisfies`.
  */
 export function slotOf(asset: Asset, angle?: string): RefBinding | undefined {
   const b = asset.satisfies[0];
@@ -121,7 +122,7 @@ export function slotOf(asset: Asset, angle?: string): RefBinding | undefined {
   }
 }
 
-/** The rung whose override governs a slot. Four angles of one outfit share one rung (§2). */
+/** The rung whose override governs a slot. The three angles of one outfit share one rung (§2). */
 function rungFor(b: RefBinding): PromptRung | undefined {
   switch (b.kind) {
     case 'portrait':
@@ -222,7 +223,7 @@ export function refCycle(
   return path ? [from, ...path] : undefined;
 }
 
-/** Representative angle for a sheet slot: an outfit's four sheets share one rung and one set of edges. */
+/** Representative angle for a sheet slot: an outfit's three sheets share one rung and one set of edges. */
 const ANY_ANGLE = SHEET_FRONT;
 
 /** Every slot an author attached a reference at — the only slots a cycle can pass through. */
@@ -257,7 +258,7 @@ export function firstCycle(ctx: RungContext): RefBinding[] | undefined {
   return undefined;
 }
 
-/** The refusal sentence for a cycle, naming every hop — `topoOrder`'s wording is not a model. */
+/** The refusal sentence for a cycle. Names every hop, where `topoOrder`'s cycle error names none. */
 export function cycleRefusal(path: readonly RefBinding[]): string {
   return `that reference would close a loop: ${path.map(slotLabel).join(' → ')}`;
 }

@@ -1,16 +1,15 @@
 /**
- * The debug agent: what actually reads the bad conversation and says what went wrong.
+ * The debug agent that reads the bad conversation and says what went wrong.
  *
- * Two paths, deliberately different in kind. Without the source it is one structured call and no
- * loop — there is nothing to look up, so a loop would only be an opportunity to wander. With the
- * source it is the ordinary authoring loop pointed at a registry holding read tools and nothing
- * else, because that loop already gates, validates and caps, and re-implementing it here would be
- * a second thing to get wrong. It picks its backend the same way the ordinary hosts do, so the
- * transcript it re-reads every iteration is cached rather than re-sent.
+ * There are two paths. Without the source it makes one structured call and no loop, since there is
+ * nothing to look up. With the source it runs the ordinary authoring loop against a registry
+ * holding read tools and nothing else, because that loop already gates, validates and caps calls.
+ * It picks its backend the same way the ordinary hosts do, so the transcript it re-reads every
+ * iteration is cached rather than re-sent.
  *
- * Everything the analyst is shown has been through the redactor first, and everything it writes
- * goes back through it before anyone sees it. The prompt asks for general terms as well; that is
- * the second layer, not the mechanism.
+ * Everything the analyst is shown passes through the redactor first, and everything it writes
+ * passes through it again before anyone sees it. The prompt also asks for general terms, which is
+ * a second layer rather than the mechanism.
  */
 import { ConfigError } from '@vn/util';
 import { secretFileFor, type ResolvedKeys } from '@vn/config';
@@ -54,10 +53,10 @@ const SYSTEM = [
 ].join('\n');
 
 /**
- * How a run that has tools ends. Split out of the source paragraph below because it is the loop's
- * own protocol rather than a permission: a run with the request tools and no source needs it just
- * as much, and folding the two together meant such a run would finish without filing a report and
- * silently fall back to the single call.
+ * How a run that has tools ends. This is the loop's own protocol rather than a permission, so it is
+ * kept separate from the source paragraph below: a run with the request tools and no source needs
+ * it just as much, and folding the two together would leave such a run finishing without a report
+ * and silently falling back to the single call.
  */
 const LOOP_PROTOCOL = [
   '',
@@ -73,12 +72,12 @@ const SOURCE_ACCESS = [
 ].join('\n');
 
 /**
- * What the request tools are for, and the one rule about them that is not enforceable by code.
+ * What the request tools are for, plus the one rule about them that code cannot enforce.
  *
  * The capture is the author's own conversation as it went over the wire, read on the author's own
- * key, and it is not in the report and must not get into it. The tools themselves are built so a
- * long verbatim span cannot be obtained — an outline by default, one capped and redacted value at
- * a time — and this paragraph is the second layer rather than the mechanism.
+ * key; it is not in the report and must not get into it. The tools return an outline by default and
+ * one capped, redacted value at a time, so a long verbatim span is unreachable through them. This
+ * paragraph is a second layer rather than the mechanism.
  */
 const REQUEST_ACCESS = [
   '',
@@ -91,7 +90,7 @@ const REQUEST_ACCESS = [
   'find structurally: which block, of what type, in what position. Never quote its content.',
 ].join('\n');
 
-/** The prompt: the evidence, plus whatever the author said they were trying to do. */
+/** The evidence, plus whatever the author said they were trying to do. */
 function userPrompt(evidence: Evidence, wanted: string | undefined, redactor: Redactor): string {
   const parts = [redactor.apply(toMarkdown(evidence))];
   const said = wanted?.trim();
@@ -140,8 +139,8 @@ export function analystBackend(
         `set $${config.keys[vendor]} or put ${secretFileFor(vendor)} in the project's keys/ directory`,
     );
   }
-  // A diagnosis never records itself: the analyst runs many turns, and every one of them would
-  // push an entry into the request ring it may be reading from.
+  // Recording is off because the analyst runs many turns, and every one of them would push an
+  // entry into the request ring it may be reading from
   return chatBackendFor(modelId, keys, effort, { record: false }).backend;
 }
 
@@ -176,9 +175,9 @@ export interface AnalyzeOptions {
 }
 
 /**
- * Nobody is at the keyboard. A plan is approved because the loop parks forever otherwise and the
- * registry holds nothing that could act on one; a confirmation is **refused**, because a tool that
- * asks for one is asking a person, and there isn't one.
+ * Nobody is at the keyboard. Plans are approved because the loop would park forever otherwise and
+ * the registry holds nothing that could act on one. Confirmations are refused, because a tool that
+ * asks for one is asking a person who is not there.
  */
 function unattended(): Permission {
   return {
@@ -229,10 +228,9 @@ function submitTool(sink: { report?: Analysis }): Tool<Analysis> {
 /**
  * The looping path, run whenever the analyst has anything to read.
  *
- * What it may read is whichever registries were handed in — the source tools, the request tools,
- * or both — and the system prompt is assembled to match, so the analyst is never told it can read
- * something it has no tool for. The switch is the registry rather than a flag: a run with tools is
- * a loop, and that is the only fact either branch turns on.
+ * The analyst reads whichever registries were handed in: the source tools, the request tools, or
+ * both. The system prompt is assembled to match, so the analyst is never told it can read something
+ * it has no tool for. The branch turns on whether any tools were handed in rather than on a flag.
  */
 async function analyzeWithTools(
   opts: AnalyzeOptions,
@@ -250,16 +248,16 @@ async function analyzeWithTools(
     LOOP_PROTOCOL,
   ].join('');
 
-  // The same probe the desktop app and vnauthor use: the native path when the backend offers a
-  // conversation seam, so each iteration reads the transcript out of cache instead of re-paying
-  // for it, and the structured path otherwise.
+  // The same probe the desktop app and vnauthor use. Takes the native path when the backend offers
+  // a conversation seam, so each iteration reads the transcript out of cache instead of re-paying
+  // for it, and the structured path when it does not
   const chat = opts.backend;
   const agent = new Agent({
     backend: chat.chatConversation
       ? new NativeAgentBackend(chat)
       : new StructuredAgentBackend(chat),
-    // Six tools, all of them needed: deferring them would buy no context back and would hide
-    // submit_report itself behind tool search, which ends the run without a report.
+    // Every tool here is needed. Deferring them would buy no context back and would hide
+    // submit_report behind tool search, which ends the run without a report
     deferTools: false,
     ctx,
     permission: unattended(),
@@ -285,8 +283,8 @@ export async function analyze(opts: AnalyzeOptions): Promise<Report> {
   const model = opts.backend.modelId;
   const ctx = opts.source?.ctx ?? opts.ctx;
 
-  // Tools, and somewhere to run them: a detail-only run has no source root, so its context comes
-  // in beside the tools rather than with them.
+  // A detail-only run has no source root, so its context comes in beside the tools rather than
+  // with them
   if ((opts.source || opts.detail) && ctx) {
     const { analysis, why } = await analyzeWithTools(opts, ctx);
     if (analysis) {

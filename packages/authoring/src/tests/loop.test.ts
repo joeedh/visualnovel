@@ -158,7 +158,7 @@ describe('what the turn cost', () => {
   it('is one event per model call, before whatever that call decided', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
-      // Two calls: the tool step and the one that finishes. Each is billed, each is reported.
+      // There are two calls, the tool step and the one that finishes; each is billed and reported
       const chat: ChatBackend = {
         modelId: 'mock-usage',
         message: () => Promise.reject(new Error('the usage path should be preferred')),
@@ -228,7 +228,7 @@ describe('what the host knew when the turn started', () => {
     try {
       const [prompt] = await promptsFor(ctx, 'The author is looking at scene "arrival".');
       expect(prompt).toContain('CONTEXT: The author is looking at scene "arrival".');
-      // Ahead of it, so "the last line" is read with the scene already in hand.
+      // The context sits ahead of the request, so "the last line" is read with the scene in hand
       expect(prompt!.indexOf('CONTEXT:')).toBeLessThan(prompt!.indexOf('USER:'));
     } finally {
       await cleanup();
@@ -458,7 +458,8 @@ describe('the backoff a retry waits', () => {
     expect(apiBackoffMs(1, 8_000)).toBe(8_000);
     expect(apiBackoffMs(5, 200)).toBe(200);
     expect(apiBackoffMs(1, 10 * 60_000)).toBe(60_000);
-    // Nothing said, or a nonsense wait, is not an instruction to retry immediately.
+    // A missing or nonsensical wait falls back to the doubling schedule rather than retrying at
+    // once
     expect(apiBackoffMs(2, 0)).toBe(2_000);
   });
 });
@@ -548,8 +549,8 @@ describe('always-confirm gate', () => {
 });
 
 describe('arguments the schema refused', () => {
-  // The model is told; the thread was not. A report on a bad conversation reads the thread, and a
-  // turn spent arguing with a schema is exactly the turn it needs to see.
+  // The model is told, but the thread is not. A report on a bad conversation reads the thread,
+  // and a turn spent arguing with a schema is one that report needs to see.
   it('is filed as a blocked event carrying what was passed', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
@@ -617,8 +618,8 @@ describe('commit gate', () => {
       const res = await agent.run('approve aiko and commit');
       expect(res.events.some((e) => e.type === 'blocked')).toBe(false);
 
-      // Exactly one commit, containing only the edited character file — untracked siblings
-      // (locations, scenes, project.yaml) must NOT be swept in.
+      // Exactly one commit, containing only the edited character file. Untracked siblings
+      // (locations, scenes, project.yaml) must not be swept in.
       const log = execFileSync('git', ['log', '--oneline'], { cwd: dir }).toString().trim();
       expect(log.split('\n')).toHaveLength(1);
       expect(log).toContain('Approve Aiko');
@@ -661,8 +662,8 @@ describe('ask_user', () => {
 describe('ask_choice', () => {
   /**
    * Run one `ask_choice` turn. Reports what the permission host was offered, and the prompt the
-   * *next* step was built from — which is where a control tool's observation shows up, there being
-   * no `tool` event for one.
+   * following step was built from, which is where a control tool's observation shows up because
+   * a control tool raises no `tool` event.
    */
   async function askWith(
     ctx: ToolContext,
@@ -748,7 +749,7 @@ describe('ask_choice', () => {
     }
   });
 
-  // The point of a form: three things settled in one parked turn rather than three.
+  // A form settles several questions in one parked turn rather than one turn each
   it('puts several questions as one form and pairs each answer with its question', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
@@ -760,7 +761,7 @@ describe('ask_choice', () => {
       });
       expect(asked[0]).toHaveLength(2);
       expect(asked[0]?.[1]?.question).toBe('Which scenes?');
-      // Numbered against the questions, because "ok, ok" says nothing on its own.
+      // Answers are numbered against the questions, because "ok, ok" says nothing on its own
       expect(observed).toContain('1. Which outfit?');
       expect(observed).toContain('2. Which scenes?');
     } finally {
@@ -768,8 +769,8 @@ describe('ask_choice', () => {
     }
   });
 
-  // Caught live: a form whose last question was open failed the whole schema, so the agent got a
-  // usage error instead of a card and the author was asked nothing at all.
+  // This failed live: a form whose last question was open failed the whole schema, so the agent
+  // got a usage error instead of a card and the author was asked nothing at all.
   it('takes an open question inside a form, so an aside need not cost a second turn', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
@@ -787,8 +788,8 @@ describe('ask_choice', () => {
     }
   });
 
-  // Only inside a form: on its own, a question with no shortlist is `ask_user`, and letting
-  // `ask_choice` be a second door to it would make the tool list read as two names for one thing.
+  // An open question is taken only inside a form. On its own, a question with no shortlist is
+  // `ask_user`, and accepting it here would make the tool list read as two names for one thing.
   it('still refuses a lone question with no choices', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
@@ -812,8 +813,8 @@ describe('ask_choice', () => {
     }
   });
 
-  // A host is free to answer short — the desktop card pads, but a CDP script or a future host
-  // need not — and the turn has to resume either way.
+  // A host is free to answer short (the desktop card pads, but a CDP script or a future host
+  // need not) and the turn has to resume either way
   it('pads a short answer rather than pairing an answer with the wrong question', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
@@ -1001,7 +1002,7 @@ describe('the tool catalog', () => {
         'read_file',
         'search',
       ]);
-      // Everything else defers, which is the whole point: the catalog is most of the prefix.
+      // Everything else defers, because the catalog is most of the prefix
       expect(backend.seen[0]!.tools.length).toBeGreaterThan(loaded.length);
     } finally {
       await cleanup();
@@ -1213,8 +1214,8 @@ describe('a tool that throws mid-turn', () => {
       expect(res.final).toBe('recovered');
       const failed = events.find((e) => e.type === 'tool' && !e.result.ok);
       expect(failed).toBeDefined();
-      // The next step's transcript answers the call — same id, and marching orders that say
-      // verify what landed, then retry; nothing about committing.
+      // The next step's transcript answers the call under the same id, with instructions to
+      // verify what landed and then retry, and nothing about committing.
       const seen = calls[1]!;
       const answer = seen.find((m) => m.role === 'observation' && m.toolUseId === 'toolu_boom');
       expect(answer).toBeDefined();
@@ -1256,8 +1257,7 @@ describe('repairing a thread a crash left mid-call', () => {
       const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
       await expect(agent.run('go')).rejects.toThrow('connection reset');
 
-      // The next turn is what the issue's thread could never have: it heals the hole instead of
-      // dying on the same 400 forever.
+      // The next turn fills the missing result in instead of failing on the same 400 every time
       const res = await agent.run('again');
       expect(res.final).toBe('carried on');
       const seen = calls[2]!;
@@ -1266,7 +1266,7 @@ describe('repairing a thread a crash left mid-call', () => {
       expect(fix).toBeGreaterThan(-1);
       expect(fix).toBeLessThan(ask);
       expect(String(seen[fix]!.content)).toContain('interrupted before it could report a result');
-      // Repair is idempotent: the one hole got one answer.
+      // Repair is idempotent: the one unanswered call got exactly one answer
       const fixes = seen.filter((m) => m.role === 'observation' && m.toolUseId === 'toolu_lost');
       expect(fixes).toHaveLength(1);
     } finally {

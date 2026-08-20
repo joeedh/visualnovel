@@ -77,8 +77,8 @@ describe('picking', () => {
 });
 
 describe('submitting', () => {
-  // Blank is a real answer — "nothing to add" is what the tool exists to hear — so the count is
-  // for the button's sentence, not a gate on it.
+  // Blank is a real answer, so the count only feeds the button's sentence and does not gate
+  // submitting
   it('names the pages still blank, one-based', () => {
     let form = pick(startForm(FORM), 'Bitter');
     expect(blankPages(form)).toEqual([2, 3]);

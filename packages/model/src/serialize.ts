@@ -5,7 +5,7 @@
  * malformed front-matter or Fountain. The contract is `fromDoc(toDoc(x)) ≡ x` for the
  * fields that survive a doc round-trip (proven by the property tests).
  *
- * Edits go through `apply*Edit`, which patches an *existing* doc — preserving untouched
+ * Edits go through `apply*Edit`, which patches an existing doc — preserving untouched
  * front-matter keys and prose — and re-validates the result through the `@vn/types`
  * schemas before returning, so a bad edit fails loudly instead of being written.
  */
@@ -30,20 +30,20 @@ function compact(data: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined));
 }
 
-/** An override worth writing, in its front-matter form — or nothing when it says nothing. */
+/** An override in its front-matter form; an empty override yields `undefined`. */
 function overrideData(o: PromptOverride | undefined): PromptOverrideFrontMatter | undefined {
   return promptOverrideIsEmpty(o) ? undefined : promptOverrideToDoc(o!);
 }
 
 /**
- * A wardrobe in the form both `characterToDoc` and `CharacterEdit.outfits` want.
+ * A wardrobe in the form `characterToDoc` and `CharacterEdit.outfits` both take.
  *
  * Exported because an edit that touches one outfit has to resend the whole map, so a caller
  * rebuilding it by hand drops whatever key it did not think about — which is how art notes and a
  * prompt override come to erase each other. Every writer goes through this instead.
  *
- * The long form only when there is art direction or a prompt override to carry: a wardrobe that is
- * descriptions alone stays the one-line-per-outfit map it was authored as.
+ * The long form is used only for an outfit carrying art direction or a prompt override; a wardrobe
+ * of descriptions alone stays the one-line-per-outfit map it was authored as.
  */
 export function wardrobeEntries(outfits: readonly Outfit[]): NonNullable<CharacterEdit['outfits']> {
   return Object.fromEntries(
@@ -64,7 +64,7 @@ export function wardrobeEntries(outfits: readonly Outfit[]): NonNullable<Charact
   );
 }
 
-/** The same for a location's variants, resent whole for the same reason. */
+/** A location's variants in the same form, resent whole for the same reason as a wardrobe. */
 export function variantEntries(
   variants: readonly LocationVariant[],
 ): NonNullable<LocationEdit['variants']> {
@@ -72,9 +72,9 @@ export function variantEntries(
 }
 
 /**
- * The wardrobe as front-matter, or `undefined` when there is nothing to say — a lone default with
- * no description is what `characterFromDoc` synthesizes, so writing it back would grow a key in
- * every character sheet on its first edit.
+ * The wardrobe as front-matter. Returns `undefined` when there is nothing to write: a lone default
+ * with no description is what `characterFromDoc` synthesizes, so writing it back would grow a key
+ * in every character sheet on its first edit.
  */
 function wardrobeData(character: Character): Record<string, unknown> | undefined {
   const outfits = character.outfits;
@@ -89,7 +89,7 @@ function wardrobeData(character: Character): Record<string, unknown> | undefined
   return wardrobeEntries(outfits);
 }
 
-/** A variant as front-matter: the bare id unless it has something more to say. */
+/** A variant as front-matter, reduced to the bare id when it carries nothing else. */
 function variantData(variant: LocationVariant): NonNullable<LocationEdit['variants']>[number] {
   const override = overrideData(variant.promptOverride);
   const bare =
@@ -148,8 +148,8 @@ export function locationToDoc(location: Location): FrontMatterDoc {
 export interface SceneWriteOptions {
   /**
    * Write the `[[scene: id]]` marker (default true). A chunk file carries its id in
-   * front-matter, so writing the marker as well would give one id two homes — and reading it
-   * back warns, since the marker is the single-file form's mechanism.
+   * front-matter, so writing the marker as well would record one id in two places. Reading such
+   * a chunk back warns, because the marker belongs to the single-file form.
    */
   sceneMarker?: boolean;
 }
@@ -160,7 +160,7 @@ export function docToMarkdown(doc: FrontMatterDoc): string {
 }
 
 // Mirrors `SCENE_PREFIX` and the character-cue test in `@vn/parse`'s fountain.ts. Duplicated
-// rather than exported from there for the same reason `branchpatch.ts` duplicates the first:
+// rather than exported from there for the same reason `branchpatch.ts` duplicates `SCENE_PREFIX`:
 // this is one caller's need, and the parser is on the hot path for every consumer.
 const SCENE_PREFIX = /^(int\.?\/ext\.?|int\.?|ext\.?|est\.?|i\/e)[ .]/i;
 const CUE_SHAPE = /^[A-Z0-9][A-Z0-9 .'`-]*(\([^)]*\))?\s*\^?$/;
@@ -172,9 +172,9 @@ function localOf(id: string): string {
 }
 
 /**
- * The allocator to write when the scene carries none. Derived the way `splitScenes` derives
- * it — past every id in use — so a scene that has never been through a read still gets a mark
- * that cannot hand out an id twice.
+ * The allocator to write when the scene carries no `nextLineId`. Derived the way `splitScenes`
+ * derives it (past every id in use) so a scene that has never been through a read still gets a
+ * mark that cannot hand out an id twice.
  */
 function nextLineIdOf(scene: Scene): number {
   let max = 0;
@@ -208,8 +208,8 @@ function needsForcedAction(text: string): boolean {
 
 /**
  * The scene heading, written from the fields the heading was read into. Exported because a surface
- * offering to *edit* the heading has to show the one the file holds — a scene carries no `heading`
- * field, so this is the only place it exists.
+ * offering to edit the heading has to show the heading the file holds — a scene carries no
+ * `heading` field, so this is the only place it exists.
  */
 export function headingOf(scene: Scene): string {
   const name = scene.location.replace(/[-_]/g, ' ').toUpperCase();
@@ -230,7 +230,7 @@ export function headingOf(scene: Scene): string {
  * placement `assignLineIds` uses, so a scene this wrote and a scene an author marked by hand
  * are the same file. A human-facing (unmarked) rendering is a separate concern.
  *
- * Three blank-line rules govern the body, because `parseFountain` tests blankness on the *raw*
+ * Three blank-line rules govern the body, because `parseFountain` tests blankness on the raw
  * line and a `[[…]]` marker line is not blank:
  *
  * - a cue always gets a blank line above it, including as the scene's first element;
@@ -328,7 +328,7 @@ export interface CharacterEdit {
   artNotes?: string;
   /** Image seed for every prompt this character reaches; `null` clears it. */
   seed?: number | null;
-  /** The *portrait*'s prompt override; one that says nothing removes the key. */
+  /** The portrait's prompt override; an empty override removes the key. */
   promptOverride?: PromptOverride;
   approvedPortrait?: string;
 }
@@ -438,7 +438,7 @@ export function newCharacterDoc(name: string, description = ''): FrontMatterDoc 
  * schema knows, filled with placeholders shaped like the real thing, so the shape is learned by
  * editing rather than by reading a doc page.
  *
- * Written as **text** rather than through `newCharacterDoc`, because the one field that cannot
+ * Written as text rather than through `newCharacterDoc`, because the one field that cannot
  * carry an example is `palette` — a colour name is a hard parse error — so it needs a YAML comment
  * saying what a palette is and who to ask for one. Comments do not survive `applyCharacterEdit`,
  * which re-stringifies a plain object; this is read-once scaffolding and that is the intent.

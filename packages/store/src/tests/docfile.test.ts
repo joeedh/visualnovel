@@ -1,6 +1,7 @@
 /**
- * The refusals a whole-document surface owes its caller. Both the agent's `read_file`/`write_file`
- * and the desktop's `doc.*` commands run this code, so a rule proved here is proved for both.
+ * The refusals a whole-document surface must return to its caller. Both the agent's
+ * `read_file`/`write_file` and the desktop's `doc.*` commands run this code, so a rule proved
+ * here is proved for both.
  */
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -84,8 +85,8 @@ describe('saving a document', () => {
 
   it('accepts a file rewritten with the bytes it already had', async () => {
     const { root, hash } = await seeded('one\n');
-    // What an undo leaves behind: `git read-tree -u --reset` rewrites every file, so the mtime
-    // moved and the content did not. Identical content is not a conflict.
+    // An undo runs `git read-tree -u --reset`, which rewrites every file, so the mtime moved and
+    // the content did not. Identical content is not a conflict.
     await writeFileAtomic(join(root, 'wiki', 'note.md'), 'one\n');
     const check = await checkDocWrite(root, 'wiki/note.md', 'two\n', hash, 'story.*');
     expect(check.ok).toBe(true);

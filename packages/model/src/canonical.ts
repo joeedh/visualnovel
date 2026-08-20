@@ -1,8 +1,7 @@
 /**
- * The comparison projection the prose writers rest on. `branchpatch.ts`, `lineids.ts` and the
- * screenplay importer all work the same way — write, re-parse, and refuse unless the scenes come
- * back identical — so they have to agree on what "identical" means, or one of them checks less
- * than it claims to.
+ * The comparison projection the prose writers use. `branchpatch.ts`, `lineids.ts` and the
+ * screenplay importer all work the same way: write, re-parse, and refuse unless the scenes come
+ * back identical. They share this projection so that all three agree on what "identical" means.
  */
 import type { Scene } from '@vn/types';
 

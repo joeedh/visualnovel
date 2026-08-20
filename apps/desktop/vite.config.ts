@@ -14,10 +14,9 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
-      // path.ux is a git submodule compiled from source, not a pnpm workspace member —
-      // one build pipeline, no prebuilt `dist/pathux.js` to keep in sync. `nstructjs` is
-      // its only runtime dependency, pinned here so it resolves to the copy this app
-      // installs rather than whichever one node resolution finds above `vendor/`.
+      // path.ux is a git submodule compiled from source rather than a pnpm workspace member, so
+      // there is no prebuilt `dist/pathux.js`. `nstructjs` is its only runtime dependency, pinned
+      // here so it resolves to the copy this app installs rather than one above `vendor/`
       pathux: resolve(__dirname, '../../vendor/path.ux/scripts/pathux.ts'),
       nstructjs: resolve(__dirname, 'node_modules/nstructjs'),
     },

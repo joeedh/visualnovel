@@ -118,7 +118,7 @@ describe('terminalPermission', () => {
       { question: 'Which scenes?', choices: ['arrival', 'greet', 'ending'], multi: true },
     ]);
     expect(picked).toEqual(['arrival, ending']);
-    // One bad index and the whole line is the author's own words, not a half-read list.
+    // One bad index makes the whole line the author's own words rather than a partly-read list
     const typed = await terminalPermission(scriptChannel(['1, the last one']).channel).ask([
       { question: '?', choices: ['arrival', 'greet'], multi: true },
     ]);

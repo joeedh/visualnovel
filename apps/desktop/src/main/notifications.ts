@@ -3,16 +3,16 @@
  * `vngen/state/notifications.jsonl`, holding every event the app has reported.
  *
  * It lives in the desktop app rather than `@vn/store` for the reason `threads.ts` gives: a
- * notification is not one of a *project's authored files*, so it does not belong in the package
- * that models those — even though `vngen/state/` is where this project keeps its append-only logs
+ * notification is not one of a project's authored files, so it does not belong in the package
+ * that models those, even though `vngen/state/` is where this project keeps its append-only logs
  * and the path itself is a `ProjectPaths` getter. Nothing here assumes the desktop.
  *
  * Two contracts are owned by this module and by nothing else:
  *
- * 1. **Flags are patched in place.** `"r"` (read) and `"h"` (hidden) are single ASCII digits in
+ * 1. Flags are patched in place. `"r"` (read) and `"h"` (hidden) are single ASCII digits in
  *    each line's head, so marking one read is a one-byte write at a computed offset rather than a
  *    rewrite of the file or another line appended to it.
- * 2. **The file is union-merged** (`merge=union` in the project's `.gitattributes`), so a line
+ * 2. The file is union-merged (`merge=union` in the project's `.gitattributes`), so a line
  *    whose flags both sides changed comes back twice. The reader dedupes by `id` and ORs the
  *    flags: read and hidden are monotonic, so the set bit is always the newer truth.
  */
@@ -62,9 +62,9 @@ function nextId(): string {
 }
 
 /**
- * Build a line. **The key order here is load-bearing**: `JSON.stringify` preserves insertion
- * order, and `v`/`r`/`h` must land in the line's pure-ASCII head where `patchFlag` can find them
- * ahead of any authored text. A test pins it.
+ * Build a line. The key order here is load-bearing: `JSON.stringify` preserves insertion order,
+ * and `v`/`r`/`h` must land in the line's pure-ASCII head where `patchFlag` can find them ahead
+ * of any authored text. A test pins that order.
  */
 export function buildNotification(
   input: NotificationInput,
@@ -86,7 +86,7 @@ export function buildNotification(
   };
 }
 
-/** Where each line starts and ends, in **bytes**. Tolerates `\r\n` and a missing final newline. */
+/** Where each line starts and ends, in bytes. Tolerates `\r\n` and a missing final newline. */
 function lineSpans(buf: Buffer): { start: number; end: number }[] {
   const spans: { start: number; end: number }[] = [];
   let start = 0;
@@ -102,8 +102,8 @@ function lineSpans(buf: Buffer): { start: number; end: number }[] {
 
 /**
  * Every notification the file holds, deduped and sorted oldest-first. A line that will not parse
- * is skipped rather than thrown over — see `migrateNotification` for why that is the right trade
- * here. Missing file → `[]`.
+ * is skipped rather than raising, for the reason `migrateNotification` gives. A missing file
+ * reads as an empty list.
  */
 export async function readNotifications(file: string): Promise<Notification[]> {
   let buf: Buffer;
@@ -120,7 +120,7 @@ export async function readNotifications(file: string): Promise<Notification[]> {
     try {
       parsed = JSON.parse(buf.toString('utf8', start, end));
     } catch {
-      continue; // A line that will not parse is a line that was never finished being written.
+      continue; // an unparseable line is one that was never finished being written
     }
     const note = migrateNotification(parsed);
     if (!note) continue;
@@ -151,11 +151,11 @@ export async function appendNotification(file: string, note: Notification): Prom
 /**
  * Flip `r` and/or `h` on every line carrying `id`, one byte per flag, in place.
  *
- * **Byte offsets, never character offsets.** Decoding the file to a string first would work on
- * the patched line — its head is ASCII — and be wrong about *where that line begins*: a string
- * index runs short by one for every extra byte of every multi-byte character above it, and this
- * app's own messages are full of them (`⟲`, `…`, em-dashes). One such character in an earlier
- * line and the write lands inside somebody else's message.
+ * The offsets are byte offsets, never character offsets. Decoding the file to a string first
+ * would work on the patched line, whose head is ASCII, but would place the start of that line
+ * wrongly: a string index runs short by one for every extra byte of every multi-byte character
+ * above it, and this app's own messages are full of such characters (`⟲`, `…`, em-dashes). One
+ * of them in an earlier line and the write lands inside somebody else's message.
  *
  * Every matching line is patched, not just the first: a union merge leaves duplicates behind, and
  * flagging all of them is what keeps the reader's OR from resurrecting the old value.
@@ -214,9 +214,9 @@ export async function truncateNotifications(file: string): Promise<void> {
 
 export interface NotificationDeps {
   /**
-   * The log of the project that is open **now**. Resolved per call and never captured: a captured
-   * root would write into the directory `workspace.create` is about to check for emptiness, and
-   * creating a project would start failing. `undefined` while no project is open.
+   * The log of the project that is open at this moment. Resolved per call and never captured: a
+   * captured root would write into the directory `workspace.create` is about to check for
+   * emptiness, and creating a project would start failing. `undefined` while no project is open.
    */
   file(): string | undefined;
   /**
@@ -258,7 +258,7 @@ export class NotificationHub {
     this.pending = [];
   }
 
-  /** File it, then show it. The event fires either way — a held note is still news. */
+  /** Write the note, then announce it. The event fires even when the note is only held. */
   async post(input: NotificationInput, now = new Date()): Promise<Notification> {
     const note = buildNotification(input, now);
     const file = this.deps.file();
@@ -276,9 +276,9 @@ export class NotificationHub {
   }
 
   /**
-   * Announced, not just written: the dialog refetches after its own `notify.*` command, but the
-   * palette, the agent and CDP reach the same commands, and a bell left counting an already-read
-   * notification is wrong however the flag moved.
+   * Announces the change as well as writing it. The dialog refetches after its own `notify.*`
+   * command, but the palette, the agent and CDP reach the same commands, and a bell left counting
+   * an already-read notification is wrong.
    */
   async setFlags(id: string, flags: { read?: boolean; hidden?: boolean }): Promise<boolean> {
     const moved = await this.writeFlags(id, flags);
@@ -300,7 +300,7 @@ export class NotificationHub {
     return file ? setNotificationFlags(file, id, flags) : false;
   }
 
-  /** Hide a set of ids in one act — what "Clear" is, over exactly what the dialog drew. */
+  /** Hide a set of ids in one act. "Clear" calls this with exactly the ids the dialog drew. */
   async hideAll(ids: readonly string[]): Promise<number> {
     let hidden = 0;
     for (const id of ids) if (await this.writeFlags(id, { hidden: true })) hidden++;

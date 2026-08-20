@@ -56,7 +56,7 @@ describe('planSceneEdit and a note the model does not keep', () => {
       if (plan.ok) throw new Error('expected a refusal');
       expect(plan.message).toContain('TODO: fix the ending');
       expect(plan.message).toContain('the model does not keep');
-      // The refusal is the whole point: nothing was written, so the note is still on disk.
+      // The refusal wrote nothing, so the file still carries the note
       expect(await fs.readFile(file, 'utf8')).toBe(text);
     } finally {
       await cleanup();
@@ -80,7 +80,7 @@ describe('planSceneEdit and a note the model does not keep', () => {
       await applyScenePlan({ paths, sources: [] }, plan);
       const after = await fs.readFile(file, 'utf8');
       expect(after).toContain('She does not hesitate.');
-      // A marker note is re-emitted in canonical form; that rewrite must not read as a loss.
+      // A marker note is re-emitted in canonical form; the rewrite is intentional, not a loss
       expect(after).toContain('[[next: s13]]');
     } finally {
       await cleanup();

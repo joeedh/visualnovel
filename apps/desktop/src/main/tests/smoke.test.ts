@@ -1,7 +1,7 @@
 /**
- * The packaged-build self-check, with the `import()` faked. What the real thing proves — that the
- * two SDKs are *in* the app image — only the packaged executable can say; what is testable here
- * is that the check does not call a resolved-but-wrong module a success.
+ * The packaged-build self-check, with `import()` faked. Only the packaged executable can prove
+ * the two SDKs are in the app image. What is testable here is that the check does not call a
+ * resolved-but-wrong module a success.
  */
 import { formatSmoke, runSmoke, SMOKE_PREFIX } from '../smoke.js';
 
@@ -30,7 +30,7 @@ describe('runSmoke', () => {
     expect(report.checks[1]).toMatchObject({ spec: '@google/genai', ok: true });
   });
 
-  // The failure a bare `await import(spec)` would miss: the file is there, and it is not the SDK.
+  // A bare `await import(spec)` would miss this failure, where the file resolves but is not the SDK
   it('fails a module that resolved to something without a constructor', async () => {
     const report = await runSmoke(async () => ({ default: 42 }));
     expect(report.ok).toBe(false);
@@ -49,7 +49,7 @@ describe('runSmoke', () => {
     expect(report.checks[0]!.detail).toBe('boom');
   });
 
-  // The key never leaves this module, so nothing that quotes it can carry one out.
+  // The placeholder key stays inside the smoke module, so the formatted line cannot carry it out
   it('says nothing about the placeholder key it constructed with', async () => {
     const line = formatSmoke(await runSmoke(good));
     expect(line.startsWith(SMOKE_PREFIX)).toBe(true);

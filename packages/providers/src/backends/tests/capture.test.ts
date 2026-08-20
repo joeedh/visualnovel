@@ -173,7 +173,7 @@ describe('capturing a request', () => {
       const capture = await captureRequest('convo', BODY);
       await expect(capture.failed(new Error('boom'))).resolves.toBeUndefined();
       expect(warn).toHaveBeenCalled();
-      // The ring is unaffected by the disk half failing — that is the point of it being separate.
+      // The ring is unaffected by the disk half failing
       expect(capturedRequests()).toHaveLength(1);
       warn.mockRestore();
     });

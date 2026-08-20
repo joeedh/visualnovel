@@ -1,28 +1,28 @@
 /**
  * Shadow snapshots for the command stack — `docs/history/gitUndoOptions.md` strategies D + E.
  *
- * Before and after every undoable command the journal captures the **document** tree into a
+ * Before and after every undoable command the journal captures the document tree into a
  * detached commit under `refs/vn/undo/<seq>/`. HEAD does not move, the index is not touched,
  * and nothing shows up in `git log`/`branch`/`status` or is ever pushed — though they are real
  * commits and `git log --all` does see them. Undo moves the working copy back to the `pre`
  * tree; redo moves it to the `post` tree.
  *
  * A project may span repos (the story bible or base assets in their own), so a journal holds
- * several: one act, one `seq`, one snapshot pair **per repo**. Drift is checked across all of
- * them before any is restored, so the common failure — a file edited in another editor — is a
- * clean refusal rather than a half-restore.
+ * several: one act, one `seq`, one snapshot pair per repo. Drift is checked across all of them
+ * before any is restored, so the common failure — a file edited in another editor — is a clean
+ * refusal rather than a half-restore.
  *
- * Two things it deliberately does not do. It does not snapshot generated output — `paths`
- * excludes `build/` and `state/`, because assets are content-addressed and immutable and
- * "undoing" them would mean deleting bytes a later run would pay to regenerate. And it never
- * guesses: if the working copy is not where the record says it left it, `check` refuses and
- * says so rather than restoring over an edit nobody asked it to discard.
+ * The journal deliberately does not snapshot generated output: callers scope `paths` to exclude
+ * `build/` and `state/`, because assets are content-addressed and immutable and "undoing" them
+ * would mean deleting bytes a later run would pay to regenerate. It also does not guess. If the
+ * working copy is not where the record says it left it, `check` refuses and says so rather than
+ * restoring over an edit nobody asked it to discard.
  */
 import type { Git } from '@vn/git';
 
 export interface UndoJournalOptions {
   /**
-   * The repos an act may touch. The first is the **primary** — the project — and is the one
+   * The repos an act may touch. The first is the primary one — the project — and is the one
    * `Snapshot`'s bare `commit`/`tree` refer to, so a single-repo journal reads exactly as it
    * did before multi-repo existed.
    */
@@ -53,8 +53,8 @@ export interface UndoPoint {
   pre: string;
   post: string;
   /**
-   * The two trees compared, not what the command claimed it wrote: false means the workspace
-   * is provably identical either side, in every repo.
+   * Compares the two trees rather than what the command claimed it wrote. False means the
+   * workspace is provably identical either side, in every repo.
    */
   changed: boolean;
   /** Per-repo commit pairs, present only when an act spanned more than one repo. */
@@ -100,7 +100,7 @@ export class UndoJournal {
 
   /**
    * The undo point a record carries, from the two snapshots bracketing an act. `repos` is
-   * written only when the act spanned more than one, so a single-repo project's records stay
+   * written only when the act spanned more than one repo, so a single-repo project's records stay
    * byte-identical to what it wrote before multi-repo existed.
    */
   point(pre: Snapshot, post: Snapshot): UndoPoint {
@@ -135,8 +135,8 @@ export class UndoJournal {
    * Whether every repo's working copy is still exactly where `point`'s `side` left it.
    *
    * This is the §7 guard, and it closes path-scoped restore's worst failure mode: an author
-   * who hand-edited a file since the command ran would otherwise have that edit eaten
-   * silently. Trees are content-addressed, so each comparison is one sha — and all of them
+   * who hand-edited a file since the command ran would otherwise have that edit silently
+   * discarded. Trees are content-addressed, so each comparison is one sha, and all of them
    * happen before any repo is touched.
    */
   async check(
@@ -198,8 +198,8 @@ export class UndoJournal {
 
   /**
    * Drop refs for all but the most recent `keep` commands, in every repo. Snapshots are cheap
-   * but not free, and an unbounded ref namespace would keep every tree an author ever passed
-   * through alive.
+   * but not free, and an unbounded ref namespace would keep alive every tree an author passed
+   * through.
    */
   async prune(): Promise<void> {
     for (const git of this.repos) {

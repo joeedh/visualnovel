@@ -61,9 +61,9 @@ describe('pick', () => {
   });
 
   /**
-   * The contract this module exists for. 8px of screen slop is 16 world units at half zoom and
-   * 4 at double — a wire stays equally easy to hit at any zoom. If slop were applied in world
-   * units instead, both of these would resolve the same way and one of them would be wrong.
+   * The default edge slop of 8 screen pixels is 16 world units at half zoom and 4 world units at
+   * double, so a wire is equally easy to hit at either zoom. If slop were applied in world units
+   * instead, both picks below would resolve the same way and one of them would be wrong.
    */
   it('scales hit slop in screen space, not world space', () => {
     const world = { x: 12, y: 134 };

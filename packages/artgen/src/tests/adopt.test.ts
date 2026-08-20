@@ -2,9 +2,9 @@
  * The adoption guard: bytes that already exist recorded as the output of the task that would have
  * produced them (`docs/plans/archive/chunked-prompts.md` §13).
  *
- * What is worth testing is the safety property, not the record shape: the identity is computed here
- * from inputs the caller derived, so there is no way to mark done a node the project no longer
- * describes, and a task already holding a real render is refused rather than overwritten.
+ * These tests cover the safety property rather than the record shape. The identity is computed here
+ * from inputs the caller derived, so only a node the project still describes can be marked done,
+ * and a task already holding a real render is refused rather than overwritten.
  */
 import { makeProject, SCRIPTS } from '@vn/testkit';
 import { loadGraph, makeTask } from '@vn/taskgraph';
@@ -35,7 +35,7 @@ describe('adoptionOf', () => {
       );
       if (!decided.ok) throw new Error(decided.reason);
 
-      // The identity is derived, never passed: the record lands where the planner will look.
+      // The identity is derived rather than passed in, so the record lands where the planner looks
       expect(decided.record.hash).toBe(makeTask(node.kind, inputs).hash);
       expect(decided.record.hash).not.toBe(node.hash);
       expect(decided.record.status).toBe('done');
@@ -62,8 +62,8 @@ describe('adoptionOf', () => {
     }
   });
 
-  // The refusal that matters. An unchanged identity means nothing about the project moved, so
-  // adopting would quietly replace work that really happened.
+  // An unchanged identity means nothing about the project moved, so adopting would replace work
+  // that really happened, without reporting it
   it('refuses to replace a real render at an identity that has not moved', async () => {
     const { p, asset, node } = await rendered();
     try {

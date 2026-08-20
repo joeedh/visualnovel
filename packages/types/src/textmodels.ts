@@ -1,7 +1,8 @@
 /**
  * Which text models the authoring surfaces offer, and what reasoning each of them will accept.
- * Here rather than in `@vn/providers` because both the `vnauthor` REPL and the desktop renderer
- * need the same answers, and only one of them can import a package that loads a vendor SDK.
+ * This lives here rather than in `@vn/providers` because both the `vnauthor` REPL and the desktop
+ * renderer need the same answers, and only one of the two can import a package that loads a
+ * vendor SDK.
  */
 
 /** The effort levels a surface may offer, in order. A tuple, so a command prop can name it. */
@@ -23,9 +24,9 @@ export const EFFORT_CHOICES = ['none', ...EFFORT_LEVELS] as const;
 export type EffortChoice = (typeof EFFORT_CHOICES)[number];
 
 /**
- * Where every surface starts. Deliberately a level and not the absence of one: on Opus 4.7/4.8
- * and Sonnet 4.6 a request with no `thinking` field runs with no thinking at all, so "leave the
- * knob off" was the least capable setting available rather than a neutral one.
+ * The choice every surface starts at. Deliberately a level rather than the absence of one: on
+ * Opus 4.7/4.8 and Sonnet 4.6 a request with no `thinking` field runs with no thinking at all,
+ * so omitting the field is the least capable setting rather than a neutral one.
  */
 export const DEFAULT_EFFORT: EffortChoice = 'low';
 
@@ -58,12 +59,13 @@ export function effortChoicesFor(modelId: string): readonly EffortChoice[] {
 }
 
 /**
- * The choice a model will actually honour: what was asked for, or the nearest thing it offers.
- * `undefined` when it offers nothing.
+ * The choice a model will actually honour. Returns the requested choice when the model offers it,
+ * otherwise the nearest weaker choice it does offer, falling back to its weakest choice when
+ * nothing weaker exists, and `undefined` when it offers no choices at all.
  *
- * A stored choice outlives the model that offered it — picking `xhigh` on Opus 4.8 and switching
- * to Sonnet 4.6 leaves a level the new model will not take — and the setting is deliberately kept
- * across a switch, so something has to step it down rather than refuse it.
+ * A stored choice outlives the model that offered it: picking `xhigh` on Opus 4.8 and switching to
+ * Sonnet 4.6 leaves a level the new model will not take. The setting is deliberately kept across a
+ * switch, so it is stepped down here rather than refused.
  */
 export function resolveEffort(modelId: string, choice: EffortChoice): EffortChoice | undefined {
   const offered = effortChoicesFor(modelId);
@@ -74,7 +76,7 @@ export function resolveEffort(modelId: string, choice: EffortChoice): EffortChoi
   return weaker[weaker.length - 1] ?? offered[0];
 }
 
-/** How a choice reads in a menu — `none` is a state, not a level, and says so. */
+/** How a choice reads in a menu. `none` reads as `no thinking`, a state rather than a level. */
 export function effortLabel(choice: EffortChoice): string {
   return choice === 'none' ? 'no thinking' : choice;
 }
@@ -85,14 +87,14 @@ export function supportsEffort(modelId: string): boolean {
 }
 
 /**
- * Whether a model accepts a `{"role": "system"}` message inside `messages[]`. It is how
- * turn-scoped truth — the plan/execute mode, a section of the system prompt that has since been
- * rewritten — is filed without recomposing the cached prefix.
+ * Whether a model accepts a `{"role": "system"}` message inside `messages[]`. Such a message files
+ * turn-scoped truth (the plan/execute mode, a section of the system prompt that has since been
+ * rewritten) without recomposing the cached prefix.
  *
- * A model-level predicate rather than a backend-level one, because all four curated Claude
- * entries go through the same `createAnthropicChat`: an unsupported model answers
- * `role 'system' is not supported on this model`, and the caller down-renders to a `user` turn
- * instead. That matters most on a mid-session model switch, which keeps the transcript.
+ * The predicate is model-level rather than backend-level because all four curated Claude entries go
+ * through the same `createAnthropicChat`. An unsupported model answers `role 'system' is not
+ * supported on this model`, and the caller down-renders to a `user` turn instead. That matters most
+ * on a mid-session model switch, which keeps the transcript.
  */
 export function supportsSystemRole(modelId: string): boolean {
   const id = modelId.toLowerCase();

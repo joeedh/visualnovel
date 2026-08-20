@@ -2,10 +2,10 @@
  * One command as its own dialog: a heading, what it does, its fields, its verdict, Cancel and the
  * button that runs it.
  *
- * The palette is a *finder* — a search box over every command and a scrolling list of them — and
- * an author who picked an entry off a menu has already found the command. What they need is the
- * form. It is the same `CommandForm` the palette hosts, so nothing about a field or a verdict is
- * decided twice.
+ * The palette is a finder — a search box over every command and a scrolling list of them — and an
+ * author who picked an entry off a menu has already found the command. What they need is the form.
+ * It is the same `CommandForm` the palette hosts, so nothing about a field or a verdict is decided
+ * twice.
  */
 import { UIBase, type Container } from 'pathux';
 import { api } from '../api.js';
@@ -57,10 +57,9 @@ class Dialog {
       heading.description = entry.id;
       const what = paragraph(this.body, entry.description, PROSE);
       what.description = entry.description;
-      // Why *this* dialog is on screen, when something other than the author opened it. It sits
-      // under the command's own sentence because the command reads the same however it was
-      // reached — what changed is the occasion, and the occasion is what the fields are already
-      // filled in for.
+      // The note says why this dialog is on screen when something other than the author opened it.
+      // It sits under the command's own description, which reads the same however the command was
+      // reached
       if (note) {
         const why = paragraph(this.body, note, PROSE);
         why.description = note;
@@ -96,14 +95,14 @@ class Dialog {
 }
 
 /**
- * Open a dialog on one command. Idempotent, like the palette — a menu entry clicked twice is one
- * dialog. Escape and a click outside close it, and so does Cancel.
+ * Open a dialog on one command. A call made while one is already open does nothing, so a menu
+ * entry clicked twice is one dialog. Escape, a click outside, and Cancel all close it.
  *
  * `choices` offers option lists for this opening only, for the fields whose vocabulary belongs to
  * the project rather than to the command — the conversations in it, the models a key is set for.
  *
  * `note` is one sentence saying why the dialog opened, for the openings the author did not ask
- * for: a form that appears by itself with boxes already ticked has to account for both.
+ * for: a form that appears on its own has to say why it opened and why its fields are filled in.
  */
 export function openCommandDialog(
   id: string,

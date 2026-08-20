@@ -1,15 +1,15 @@
 import { join } from 'node:path';
 
 /**
- * Where recorded fixture art lives: `packages/testkit/assets/`, `<key>.<ext>` beside an
- * `index.json`. Testkit-owned on purpose — **nothing may import `@vn/testkit`**, so the
- * corpus cannot leak into an app by accident. The desktop app needs no share of it: it gets
- * real art from its own seeded workspace, which is a real run.
+ * Where recorded fixture art lives: `packages/testkit/assets/`, one `<key>.<ext>` per recording
+ * beside an `index.json`. The corpus is owned by testkit because nothing may import
+ * `@vn/testkit`, so it cannot leak into an app by accident. The desktop app does not need a
+ * share of it; it gets real art from its own seeded workspace, which is a real run.
  *
- * `__dirname` rather than `import.meta.url`: testkit runs under jest, whose esbuild transform
- * emits CJS per file, so `__dirname` is `packages/testkit/src` and this resolves correctly.
- * It does **not** survive bundling — esbuild rewrites `__dirname` to the *output* file's
- * directory, so a bundle placed anywhere else silently reads and writes the wrong corpus.
+ * This uses `__dirname` rather than `import.meta.url` because testkit runs under jest, whose
+ * esbuild transform emits CJS per file, so `__dirname` is `packages/testkit/src` and resolves
+ * correctly. That does not survive bundling: esbuild rewrites `__dirname` to the output file's
+ * directory, so a bundle placed elsewhere silently reads and writes the wrong corpus.
  * `scripts/record-fixture-assets.mjs` therefore passes `cacheDir` explicitly rather than
  * relying on this default.
  */

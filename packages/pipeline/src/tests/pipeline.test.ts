@@ -140,8 +140,8 @@ describe('buildShotPrompt — the outfit it says', () => {
     return buildShotPrompt(shotOf(subjects), s, model([c], [s], [location('class')]), config);
   };
 
-  // The compatibility guarantee: a subject with no outfit produces the string P5 used to bake,
-  // so nothing rehashes and nothing re-renders on this feature's account.
+  // The compatibility guarantee is that a subject with no outfit produces the string P5 used to
+  // bake, so no task rehashes and nothing re-renders because outfits exist.
   it('resolves an unspecified outfit to the default, by the id it was baked as', () => {
     expect(build([{ characterId: 'aiko' }])).toContain('wearing uniform');
   });
@@ -266,7 +266,7 @@ describe('deterministicShots', () => {
       [scene('s1', ['aiko', 'ben'], 'class'), scene('s2', [], 'class')],
       [location('class')],
     );
-    // No `outfit`: the decomposer casts the shot, it does not dress it.
+    // No `outfit`: the decomposer casts the shot but does not dress it
     expect(deterministicShots(m.scenes.get('s1')!, m)[0]!.subjects).toEqual([
       { characterId: 'aiko' },
       { characterId: 'ben' },
@@ -333,7 +333,7 @@ describe('decomposeScene (LLM path)', () => {
     await decomposeScene(m.scenes.get('s1')!, m, providers);
     expect(seen).toContain('[s1:L1] narration: The room is quiet.');
     expect(seen).toContain('[s1:L2] dialogue/aiko: Hi.');
-    // The template must not model an empty answer — that is what the LLM copied.
+    // The template must not show an empty answer as an example, because the LLM copies it
     expect(seen).not.toContain('"coversLines":[]');
   });
 
@@ -361,8 +361,8 @@ describe('decomposeScene (LLM path)', () => {
       shotId('s1', 'establishing'),
       shotId('s1', 'beat1'),
     ]);
-    // The storyboard is the same as it always was; saying where it came from is what is new, and
-    // it is what lets `decomposeAll` decline to write this one down forever.
+    // The storyboard is the ordinary baseline; the `source` field is what lets `decomposeAll`
+    // decline to write this one down forever.
     expect(result).toMatchObject({ source: 'baseline', reason: expect.stringContaining('bound') });
   });
 
@@ -539,8 +539,8 @@ describe('planTasks (the outfits a run needs)', () => {
   const shots = (graph: TaskGraph) => graph.all().filter((t) => t.kind === 'shot_image');
 
   it('leaves an authored wardrobe nothing wears unplanned', async () => {
-    // The compatibility half: writing down a second outfit costs nothing until it is used, so a
-    // project that has never authored one plans exactly what it planned before this existed.
+    // Writing down a second outfit costs nothing until it is used, so a project that has never
+    // authored one plans exactly what it planned before wardrobes existed.
     expect(sheets(await planWaves(build()))).toEqual([
       'uniform/back',
       'uniform/front',
@@ -619,8 +619,8 @@ describe('planTasks (unavailable base assets)', () => {
       [location('class')],
     );
 
-  // The money case: a checkout without the base repo, where planning normally would regenerate
-  // every portrait and model sheet the project already paid for.
+  // The expensive case is a checkout without the base repo, where planning normally would
+  // regenerate every portrait and model sheet the project already paid for.
   it('plans nothing at all, because every shot references base art too', async () => {
     const graph = new TaskGraph();
     await planTasks({

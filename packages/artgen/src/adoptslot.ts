@@ -1,14 +1,14 @@
 /**
- * Adopting bytes as a slot's output — "this picture *is* the café's night plate", not "point at
- * this picture" (`docs/plans/archive/adopting-an-uploaded-asset.md`).
+ * Records bytes as a slot's output, so the slot becomes that picture rather than a pointer to it
+ * (`docs/plans/archive/adopting-an-uploaded-asset.md`).
  *
- * The generalization of `promoteConcept`, which was this act with one slot kind hard-coded. A slot
- * is a `RefBinding`, the address the reference graph, the cycle refusal and `prompt.addRef` already
- * speak, so nothing here invents a second way to say which picture.
+ * This generalizes `promoteConcept`, which performed the same act with one slot kind hard-coded. A
+ * slot is a `RefBinding`, the same address used by the reference graph, the cycle refusal and
+ * `prompt.addRef`, so there is no second way here to say which picture is meant.
  *
- * `adopt`'s safety property is not weakened: the task's inputs are derived here from the project as
- * it stands and handed over as inputs, never as a remembered hash, so an adoption cannot mark done
- * a task the project no longer describes.
+ * `adopt`'s safety property still holds: the task's inputs are derived here from the project as it
+ * stands and handed over as inputs rather than as a remembered hash, so an adoption cannot mark
+ * done a task the project no longer describes.
  */
 import type { Asset, AssetBinding, AssetRef, RefBinding, Scene, Shot, TaskGraph } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
@@ -44,7 +44,10 @@ export interface AdoptSlotRequest {
   bytes?: Uint8Array;
 }
 
-/** The three slots a picture can be adopted onto. A portrait is the gate's, and an asset is itself. */
+/**
+ * The three slots a picture can be adopted onto. A portrait is approved at the gate instead, and an
+ * `asset` binding names a hash rather than a slot.
+ */
 type SlotKind = 'location_ref' | 'model_sheet' | 'shot_image';
 
 /** What an adoption would do, once the model, the manifest and the graph have been asked. */
@@ -73,19 +76,21 @@ interface ShotStamp {
 }
 
 /**
- * A slot resolved against the project: the task it names, and — for a shot — the frame to stamp.
+ * A slot resolved against the project. Carries the task the slot names, and for a shot the frame to
+ * stamp.
  *
- * The identity half is {@link resolveSlot}'s, so adoption and the slot graph cannot disagree about
- * what task a picture is. The stamp is adoption's alone: nothing else rewrites the storyboard.
+ * {@link resolveSlot} supplies the identity half, so adoption and the slot graph cannot disagree
+ * about what task a picture is. The stamp belongs to adoption alone: nothing else rewrites the
+ * storyboard.
  *
- * Never a portrait: {@link resolve} turns that one away, so the narrowing `AdoptSlotPlan.kind`
- * needs is in the type rather than in an assertion.
+ * A portrait never appears here because {@link resolve} turns it away, so the narrowing that
+ * `AdoptSlotPlan.kind` needs comes from the type rather than from an assertion.
  */
 type Resolved =
   | { slot: Exclude<ResolvedSlot, { kind: 'portrait' | 'shot_image' }>; stamp?: undefined }
   | { slot: Extract<ResolvedSlot, { kind: 'shot_image' }>; stamp: ShotStamp };
 
-/** The manifest binding a slot writes. The angle is not one: it lives in the task's inputs (§8). */
+/** The manifest binding a slot writes. The angle is not part of it: it lives in task inputs (§8). */
 function bindingOf(slot: RefBinding): AssetBinding {
   switch (slot.kind) {
     case 'sheet':
@@ -100,8 +105,8 @@ function bindingOf(slot: RefBinding): AssetBinding {
 }
 
 /**
- * A slot against the project as loaded. The identity is {@link resolveSlot}'s; this is the loading
- * — the model, and for a shot the storyboard the frame will be stamped into.
+ * Resolve a slot against the project as loaded. {@link resolveSlot} decides identity; this function
+ * does the loading — the model, and for a shot the storyboard the frame will be stamped into.
  */
 async function resolve(
   deps: AdoptSlotDeps,
@@ -133,8 +138,8 @@ async function resolve(
   const decided = resolveSlot(slot, { model, shots, config: deps.config, graph });
   if (!decided.ok) return decided;
   const plan = decided.plan;
-  // Adoption's own refusal, in front of an identity that exists: a portrait *is* a task, it is just
-  // not one a picture is handed to. Approving one is the gate's act, and it releases scenes.
+  // A portrait is a real task, but not one a picture may be handed to: approving a portrait is the
+  // gate's act, and it releases scenes
   if (plan.kind === 'portrait') {
     return {
       ok: false,
@@ -152,8 +157,9 @@ async function resolve(
 }
 
 /**
- * Every refusal an adoption can give, and the record it would write. Asked again by
- * {@link adoptSlot} rather than trusted, so a check that has gone stale cannot let one through.
+ * Every refusal an adoption can give, and the record it would write. {@link adoptSlot} calls this
+ * again rather than trusting an earlier answer, so a check that has gone stale cannot let an
+ * adoption through.
  *
  * Async where `promotionOf` and `uploadOf` are not: a slot is resolved against the model, the shots
  * on disk and the graph, and none of those can be answered from the manifest alone.
@@ -207,7 +213,7 @@ export async function adoptionForSlot(
   };
 }
 
-/** The `done` record, written through `adopt` so the one guard stays the one guard. */
+/** Write the `done` record through `adopt`, so `adopt` stays the only guard on that write. */
 async function record(
   deps: AdoptSlotDeps,
   slot: Resolved['slot'],
@@ -264,8 +270,8 @@ export async function adoptSlot(
 
   // A stamp is taken for a shot slot and no other, so this is that branch.
   if (resolved.plan.stamp) {
-    // Beside the image, because that is the only place the hash means anything: a frame handed in
-    // by an artist is answerable for the lines it was drawn from exactly as a rendered one is.
+    // `proseHash` is stamped beside the image, so a frame handed in by an artist reports drift
+    // against the lines it was drawn from exactly as a rendered one does
     const { scene, shot, shots } = resolved.plan.stamp;
     shot.image = ref.hash;
     shot.proseHash = proseHash(scene, shot.coversLines);

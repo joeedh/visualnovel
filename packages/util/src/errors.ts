@@ -20,7 +20,7 @@ export class ValidationError extends VnError {
 
 /**
  * A provider call failed terminally: a content refusal, a malformed request, an unusable
- * reference image. Another attempt buys the same answer at another attempt's price.
+ * reference image. Another attempt returns the same failure and costs the same as the first.
  * {@link RetryableProviderError} is the transient case.
  */
 export class ProviderError extends VnError {
@@ -31,14 +31,14 @@ export class ProviderError extends VnError {
 
 /**
  * A provider call failed in a way another attempt could plausibly fix — a 429, a 5xx, a dropped
- * connection. Only the backend can tell the two apart, since it is the layer that sees the
- * status code; everything above branches on this class.
+ * connection. Only the backend can tell a retryable failure from a terminal one, since it is the
+ * layer that sees the status code; everything above branches on this class.
  */
 export class RetryableProviderError extends ProviderError {
   /**
-   * How long the provider asked us to wait before trying again, in milliseconds — its own
-   * `retry-after`, where it sent one. Absent means it did not say, not that there is no wait:
-   * every vendor's guidance is to back off exponentially when they have not named a delay.
+   * How long the provider asked us to wait before trying again, in milliseconds, taken from its
+   * own `retry-after` header when it sent one. Absent means the provider named no delay, and every
+   * vendor's guidance in that case is to back off exponentially.
    */
   readonly retryAfterMs?: number;
 

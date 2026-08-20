@@ -14,8 +14,9 @@ import {
   type EffortChoice,
 } from '@vn/providers';
 
-// The curated model list and what reasoning each model takes both live in `@vn/types`: the
-// desktop app offers the same menus and cannot import a package that loads a vendor SDK.
+// The curated model list and what reasoning each model takes both live in `@vn/types`, so the
+// desktop app can offer the same menus without importing a package that loads a vendor SDK.
+// `@vn/providers` re-exports them, which is the import used here.
 export {
   DEFAULT_EFFORT,
   EFFORT_CHOICES,
@@ -75,12 +76,11 @@ function chatBackendFor(
  * Build the agent backend for a project, or a mock when offline. `model`/`effort` override
  * the configured defaults (used by `/model` and `/effort`). Path B (provider-native
  * function-calling) is the default wherever the chosen `ChatBackend` can hold a conversation,
- * because it is the only path whose prefix caches; `noNative` is the escape hatch back to
- * Path A (structured ReAct over the text seam), which is also where a backend without
- * `chatConversation` lands anyway.
+ * because it is the only path whose prefix caches. `noNative` forces Path A (structured ReAct
+ * over the text seam), which is also where a backend without `chatConversation` lands.
  *
- * The probe is `chatConversation` and deliberately not `chatWithTools`: Gemini implements the
- * latter for a request that is still single-shot and still caches nothing.
+ * The probe is `chatConversation` rather than `chatWithTools`: Gemini implements the latter for
+ * a request that is still single-shot and still caches nothing.
  */
 export async function buildAgentBackend(
   dir: string,
@@ -117,7 +117,7 @@ export async function createAuthoringAgent(
     /** What one turn may spend, in non-cached tokens. Defaults to {@link DEFAULT_BUDGET}. */
     budget?: BudgetChoice;
     onEvent?: (e: AgentEvent) => void;
-    /** What to do when a call to the model fails; absent lets the error out, as it always did. */
+    /** What to do when a call to the model fails. Omitting it lets the error propagate. */
     onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
   } = {},
 ): Promise<AuthoringSession> {

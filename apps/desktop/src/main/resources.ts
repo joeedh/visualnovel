@@ -1,8 +1,8 @@
 /**
- * Files the *app* ships, as opposed to files the author wrote.
+ * Files the app ships, as opposed to files the author wrote.
  *
- * There is exactly one so far — `docs/guides/api-keys.md`, which the Setup pane renders — and it has
- * the awkward property of living at the repo root in a checkout and inside the installer's
+ * There is exactly one so far — `docs/guides/api-keys.md`, which the Setup pane renders — and it
+ * has the awkward property of living at the repo root in a checkout and inside the installer's
  * resources directory in a packaged build. Resolving that in one place means the pane asks for a
  * document by name and never learns which kind of build it is running in.
  */
@@ -11,10 +11,10 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /**
- * Where a shipped file might be, in the order a build is likely to be one of these.
+ * Candidate paths for a shipped file, in the order a build is likeliest to match.
  *
- * `process.resourcesPath` is Electron's and is undefined under plain node, which is what makes
- * this testable: a jest run falls through to the checkout, as does `pnpm dev`.
+ * `process.resourcesPath` is Electron's and is undefined under plain node, so a jest run falls
+ * through to the checkout, and so does `pnpm dev`.
  */
 function candidates(parts: string[]): string[] {
   const roots: string[] = [];
@@ -27,7 +27,7 @@ function candidates(parts: string[]): string[] {
   return roots.map((root) => join(root, ...parts));
 }
 
-/** The first candidate that exists, or `undefined` — never a path that is not there. */
+/** The first candidate that exists, or `undefined` when none of them do. */
 export function resourcePath(...parts: string[]): string | undefined {
   return candidates(parts).find((path) => existsSync(path));
 }

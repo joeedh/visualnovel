@@ -8,7 +8,8 @@ import type { ShotsFile } from '@vn/types';
 
 const FILE = 'vngen/work/shots/arrival.json';
 
-// Each case builds a project and drives two full scheduler passes over mock providers.
+// Each case builds a project and drives two full scheduler passes over mock providers, which the
+// default timeout is too short for.
 jest.setTimeout(30_000);
 
 /** Run → approve → run: the two passes it takes to get past the character gate. */

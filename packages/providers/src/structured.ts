@@ -51,7 +51,7 @@ function preview(raw: string): string {
  * Extract a JSON object/array from a model's raw text response. Tolerates ```json
  * code fences and leading/trailing prose, since models often wrap structured output.
  *
- * The raw text is tried **before** any fence: a reply that is already JSON routinely quotes a
+ * The raw text is tried before the fences: a reply that is already JSON routinely quotes a
  * fenced example inside one of its own strings (a Fountain snippet, a shell line), and reaching
  * for the first fence there discards the object and finds only the example's prose.
  */

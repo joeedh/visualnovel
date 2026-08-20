@@ -21,7 +21,7 @@ const scene = (id: string): StoryScene => ({
   reachable: true,
 });
 
-/** `a → b`, and `b` forks to `c` and `d`. So `a` continues linearly and `b` already chooses. */
+/** `a → b`, and `b` forks to `c` and `d`. So `a` has a linear continuation and `b` has choices. */
 const EDGES: StoryEdge[] = [
   { id: 'a#next', from: 'a', to: 'b', kind: 'next', dangling: false, inert: false },
   {

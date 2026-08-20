@@ -9,9 +9,9 @@ import type { ChunkEdit, ChunkRef, PromptOverride } from './prompt.js';
 const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'expected hex color');
 
 /**
- * The front-matter key that says what an authored document *is*, so an entity can be found by
- * content rather than by where it was filed. Named once here and imported everywhere: a string
- * literal at a call site is how the reader and the writer come to disagree about the key.
+ * The front-matter key that names what an authored document is, so an entity can be found by
+ * content rather than by where it was filed. Named once here and imported everywhere, because a
+ * string literal at a call site lets the reader and the writer disagree about the key.
  */
 export const ENTITY_TAG_KEY = 'type';
 
@@ -57,7 +57,10 @@ const refBinding = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('asset'), hash: z.string().min(1) }).strict(),
 ]);
 
-/** One reference image on one chunk. `from` absent is an upload: no slot, so it cannot drift. */
+/**
+ * One reference image on one chunk. A ref with no `from` is an upload: there is no slot behind it,
+ * so it cannot drift.
+ */
 const chunkRef = z
   .object({
     pin: z.string().min(1),
@@ -71,7 +74,7 @@ const chunkRef = z
  * An author's override of one derived image prompt (`docs/plans/archive/chunked-prompts.md`). Stored at
  * the rung that names the whole picture, so "which override applies" is a lookup, never a merge.
  *
- * **No `.default()` anywhere in here.** A default would make `compact()` keep an empty
+ * Nothing in here carries a `.default()`. A default would make `compact()` keep an empty
  * `prompt_override` key on every sheet's first edit, which is the failure the wardrobe's
  * `synthesized` check already exists to prevent. `.strict()` for the same reason `outfitEntry` is:
  * a misspelled key would silently drop an override from a prompt.
@@ -101,7 +104,7 @@ export type PromptOverrideFrontMatter = z.infer<typeof promptOverrideSchema>;
 /**
  * The written form of a chunk edit → the in-memory one. Written once here because two readers
  * (`@vn/model`'s entity docs and `@vn/store`'s shots file) both parse an override, and a second
- * spelling of this mapping is how one of them comes to drop an author's `of`.
+ * copy of this mapping could drop an author's `of` in one of them.
  */
 function editsFrom(
   raw: Record<string, string | { text: string; of?: string }> | undefined,
@@ -123,7 +126,7 @@ function refsOf(
   return kept.length ? Object.fromEntries(kept) : undefined;
 }
 
-/** Drop the keys an override left unsaid, so a written one never grows an empty block. */
+/** Drop the keys the override did not set, so a written override never grows an empty block. */
 function said<T extends object>(o: T): T {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 }
@@ -240,7 +243,7 @@ export const characterFrontMatter = z.object({
   art_notes: z.string().optional(),
   /** Image seed for every prompt this character reaches; an outfit entry's own seed is narrower. */
   seed: imageSeed.optional(),
-  /** Overrides the derived *portrait* prompt. A sheet's override lives on its outfit entry. */
+  /** Overrides the derived portrait prompt. A sheet's override lives on its outfit entry. */
   prompt_override: promptOverrideSchema.optional(),
   approved_portrait: z.string().optional(),
 });
@@ -287,9 +290,9 @@ export const projectConfig = z.object({
   title: z.string().min(1),
   art_style: z.string().default(''),
   /**
-   * The entry scene's id. Optional here rather than required because a project without it is an
-   * error diagnostic from the model, which can name the scene ids on offer as this schema cannot
-   * — and because a not-yet-imported project has no scene ids to name one of.
+   * The entry scene's id. Optional here rather than required, because a project missing it is
+   * reported as an error diagnostic by the model, which can list the available scene ids where
+   * this schema cannot. A project that has not been imported yet has no scene ids to choose from.
    */
   start: z.string().min(1).optional(),
   models: z
@@ -318,7 +321,7 @@ export const projectConfig = z.object({
   /**
    * Total run-level attempts at a task before the scheduler stops requeueing it, so the
    * default of 2 is one retry. Orthogonal to `max_refine_attempts`, which caps P7's
-   * critique→refine loop *within* a single run of one shot task.
+   * critique→refine loop within a single run of one shot task.
    */
   max_task_attempts: z.number().int().positive().default(2),
   /**
@@ -364,7 +367,7 @@ const shotFraming = z.enum(['wide', 'medium', 'close', 'establishing']);
 
 const shotSubject = z.object({
   characterId: z.string(),
-  /** Absent means inherit — see {@link ShotSubject.outfit}. Never defaulted, or it would not. */
+  /** Absent means inherit — see {@link ShotSubject.outfit}. A default would defeat inheritance. */
   outfit: z.string().optional(),
   pose: z.string().optional(),
   expression: z.string().optional(),
@@ -390,7 +393,7 @@ export type ShotDecomposition = z.infer<typeof shotDecompositionSchema>;
 /**
  * One prompt condensed from a chunk list by the LLM (`docs/plans/archive/chunked-prompts.md` §4).
  *
- * `omitted` is what the model *says* it could not fit. It is advisory and nothing rejects a
+ * `omitted` is what the model reports it could not fit. It is advisory and nothing rejects a
  * condensation over it — the authoritative answer is the local coverage check run over `prompt`.
  */
 export const condensedPromptSchema = z.object({
@@ -412,7 +415,7 @@ export const shotDataSchema = z.object({
    * Hash of the covered lines' text when `image` was produced, so a later load can tell that the
    * frame no longer illustrates what the scene says. Recorded with the bytes and never refreshed
    * without them — a rerun that reports the same image must not clear a drift the author has not
-   * acted on. Absent means unknown, which is what every shot rendered before this field reads as.
+   * acted on. Absent means unknown, and that is how every shot rendered before this field reads.
    */
   proseHash: z.string().optional(),
   status: z.enum(['pending', 'prompted', 'generated', 'accepted', 'needs_human']),
@@ -450,7 +453,7 @@ export const shotsFileSchema = z.object({
         seed: imageSeed.optional(),
         /**
          * The author's override of this frame's derived prompt. Authored, so it sits at top level
-         * beside `artNotes` and **never** inside `shotData`, which a run rewrites wholesale.
+         * beside `artNotes` and never inside `shotData`, which a run rewrites wholesale.
          */
         promptOverride: promptOverrideSchema.optional(),
         coversLines: z.array(z.string()).default([]),

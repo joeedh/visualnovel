@@ -1,10 +1,10 @@
 /**
  * What a linked reference points at today (`docs/plans/archive/chunked-prompts.md` §11).
  *
- * A `ChunkRef` pins a hash — that is what is fed to the model, and what the task hashes over — and
- * *separately* remembers the slot it came from. Keeping both is the whole design: a live lookup
- * would silently re-key every task downstream of an approval, so the pin stays put and the binding
- * is re-resolved only when something asks. This module is that lookup, and the comparison over it.
+ * A `ChunkRef` pins a hash, which is what is fed to the model and what the task hashes over, and it
+ * separately remembers the slot that hash came from. A live lookup would silently re-key every task
+ * downstream of an approval, so the pin stays put and the binding is re-resolved only on request.
+ * This module performs that re-resolution and the comparison against the pin.
  */
 import {
   bindsTo,
@@ -20,11 +20,11 @@ import { effectiveChunks } from './chunks.js';
 
 /**
  * The references an author attached to this prompt, in effective chunk order and within a chunk in
- * authored order — what a task's `refs` gets **after** everything the planner derived (§12).
+ * authored order. These are appended to a task's `refs` after everything the planner derived (§12).
  *
- * Derived-first is the only ordering that leaves a project authoring none byte-identical, because
+ * Derived refs must come first, or a project that authors none stops hashing byte-identically:
  * `canonicalJson` maps arrays positionally and `refs` is inside the task hash. A muted chunk
- * contributes nothing: its clause is not being sent, so neither is its evidence.
+ * contributes nothing, because its clause is not sent and neither are its references.
  */
 export function authoredRefs(
   chunks: readonly PromptChunk[],
@@ -47,7 +47,7 @@ export interface BindingContext {
   /**
    * The angle a model-sheet task was for. Injected because an angle is recorded in the task's
    * inputs and never in `Asset.satisfies`, so the manifest alone cannot tell four sheets apart;
-   * the same seam `labelAssets` uses. Absent, a `sheet` binding resolves only when the outfit
+   * the same seam `labelAssets` uses. Without it, a `sheet` binding resolves only when the outfit
    * has exactly one sheet.
    */
   angleOf?: (sourceTask: string | undefined) => string | undefined;
@@ -56,10 +56,10 @@ export interface BindingContext {
 /**
  * Pick the one asset a slot holds, or `undefined` when the answer is not certain.
  *
- * An accepted candidate wins outright — that is a human saying "this one". Failing that the slot
- * answers only when a single candidate serves it: the manifest is written hash-sorted, so among
- * equals list order carries no recency and guessing would be worse than declining. Every caller
- * treats "cannot say" as "make no claim", never as "the slot is empty".
+ * A single accepted candidate wins outright, since accepting one is a human choosing it. Otherwise
+ * the slot answers only when exactly one candidate serves it. The manifest is written hash-sorted,
+ * so list order among unaccepted candidates carries no recency to guess from. Every caller reads
+ * `undefined` as "no claim", never as "the slot is empty".
  */
 function pick(candidates: readonly Asset[]): string | undefined {
   const accepted = candidates.filter((a) => a.accepted);
@@ -72,14 +72,14 @@ function pick(candidates: readonly Asset[]): string | undefined {
  * Every asset bound to a slot, accepted or not — the set {@link pick} chooses from.
  *
  * Separate from {@link resolveBinding} because "which one is it" and "has anything been drawn for
- * this at all" are different questions and `pick` deliberately declines the first one whenever the
- * answer is not certain. A slot holding three unaccepted drafts resolves to `undefined` and would
- * read as empty; it is not, and the slot graph has to tell those two apart to say whether a picture
- * is awaiting approval or has yet to be rendered.
+ * this at all" are different questions, and `pick` declines the first whenever the answer is not
+ * certain. A slot holding three unaccepted drafts resolves to `undefined` even though bytes exist,
+ * and the slot graph has to tell those cases apart to say whether a picture is awaiting approval or
+ * has yet to be rendered.
  *
- * A `portrait` slot answers from the **manifest** here, unlike `resolveBinding`, which reads the
- * gate off the model. Both are right: the gate says which portrait is *the* portrait, and this says
- * what has been drawn for the character.
+ * A `portrait` slot answers from the manifest here, where `resolveBinding` reads the gate off the
+ * model. The gate says which portrait is the approved one; this says what has been drawn for the
+ * character.
  */
 export function candidatesFor(binding: RefBinding, ctx: BindingContext): Asset[] {
   switch (binding.kind) {
@@ -117,12 +117,11 @@ export function candidatesFor(binding: RefBinding, ctx: BindingContext): Asset[]
 /** The asset hash a binding names today, or `undefined` when nothing fills the slot. */
 export function resolveBinding(binding: RefBinding, ctx: BindingContext): string | undefined {
   switch (binding.kind) {
-    // An upload and a concept have no slot under them: the hash *is* the identity, so this is a
-    // fixed point by construction and can never drift.
+    // An upload and a concept have no slot under them; the hash is the identity, so it cannot drift
     case 'asset':
       return binding.hash;
-    // The portrait is the one slot the model states outright — the gate writes it onto the sheet,
-    // so the manifest never has to be consulted.
+    // The gate writes the approved portrait onto the character sheet, so the model answers this one
+    // and the manifest is not consulted
     case 'portrait':
       return ctx.model.characters.get(binding.characterId)?.approvedPortrait;
     default:
@@ -131,9 +130,9 @@ export function resolveBinding(binding: RefBinding, ctx: BindingContext): string
 }
 
 /**
- * Whether the slot has moved out from under a pinned reference — reported on screen, never acted
- * on. An unlinked reference has no slot and so never drifts; a slot that cannot be resolved makes
- * no claim either way, because "I don't know" must not read as "it changed".
+ * Whether the slot has moved out from under a pinned reference. This is reported on screen and
+ * never acted on. An unlinked reference has no slot and so never drifts, and a slot that cannot be
+ * resolved reports no drift, because an unknown answer must not read as a changed one.
  */
 export function refDrift(ref: ChunkRef, ctx: BindingContext): boolean {
   if (!ref.from) return false;

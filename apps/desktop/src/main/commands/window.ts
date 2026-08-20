@@ -1,12 +1,11 @@
 /**
- * Windows as commands. A window is a *renderer*, not a document: it holds a mesh of panes and
+ * Windows as commands. A window is a renderer, not a document: it holds a mesh of panes and
  * nothing else, so opening one is a view act with no undo, no provenance and nothing written.
  *
  * They live here rather than in `view.ts` because a `view.*` command pushes an effect into a
  * window that already exists, and these three are the ones that decide which windows there are.
- * Everything a window remembers — its mesh, its selection, its layout template — is keyed by the
- * index main hands it, so closing one and opening another is genuinely a new window rather than
- * the old one wearing its state.
+ * Everything a window remembers (its mesh, its selection, its layout template) is keyed by the
+ * index main hands it.
  */
 import { defineFor, prop } from '@vn/commands';
 import { EDITOR_IDS, editorTitle, type EditorId } from '../../shared/editors.js';
@@ -62,8 +61,8 @@ export const windowClose = define({
     );
   },
   run(_props, ctx) {
-    // No origin means the agent or CDP asked, and an unaddressed act lands where an unaddressed
-    // effect would — the focused window.
+    // No origin means the agent or CDP asked, so the focused window is closed, which is where an
+    // unaddressed effect lands too
     const closed = ctx.host.closeWindow(ctx.origin);
     if (!closed) throw new Error('there is no window to close');
     return Promise.resolve({ message: 'Closed the window.' });

@@ -2,7 +2,7 @@ import type { AssetBinding, Character, Location, ProjectModel } from '@vn/types'
 import type { ProjectConfig } from '@vn/config';
 import { artClause, paletteClause, stylePreamble } from './prompts.js';
 
-/** What a concept image is *of*, when it is of anything the project knows about. */
+/** What a concept image depicts, when it depicts something the project knows about. */
 export type ConceptSubject = { kind: 'location'; id: string } | { kind: 'character'; id: string };
 
 /** Parse a `location:cafe` / `character:aiko` reference; `undefined` for anything else. */
@@ -23,9 +23,9 @@ export function formatSubject(subject: ConceptSubject): string {
  * Guess what a sentence is about by matching every location's and character's name or id against
  * it, longest match winning so "the high school gym" beats "the high school".
  *
- * A convenience, never a contract: an author types prose, not ids, and both surfaces report what
- * this picked and take an explicit override. No match is not an error — an unbound concept is a
- * legitimate thing to want.
+ * This is a convenience rather than a contract. An author types prose rather than ids, and both
+ * surfaces report what was picked and take an explicit override. No match is a legitimate result,
+ * because an unbound concept is a legitimate thing to want.
  */
 export function matchSubject(model: ProjectModel, sentence: string): ConceptSubject | undefined {
   const haystack = sentence.toLowerCase();
@@ -33,7 +33,7 @@ export function matchSubject(model: ProjectModel, sentence: string): ConceptSubj
   const consider = (subject: ConceptSubject, ...terms: string[]): void => {
     for (const term of terms) {
       const needle = term.trim().toLowerCase();
-      // Two chars is below the noise floor: an id like "hs" matches half the English language.
+      // Terms under three characters are skipped, because an id like "hs" matches ordinary prose
       if (needle.length < 3 || !haystack.includes(needle)) continue;
       if (!best || needle.length > best.length) best = { subject, length: needle.length };
     }
@@ -62,7 +62,7 @@ export function subjectBinding(subject?: ConceptSubject): AssetBinding {
   return subject.kind === 'location' ? { locationId: subject.id } : { characterId: subject.id };
 }
 
-/** The inverse: what a recorded binding is *of*, when it names something at all. */
+/** What a recorded binding depicts, when it names something. Inverse of `subjectBinding`. */
 export function bindingSubject(binding: AssetBinding | undefined): ConceptSubject | undefined {
   if (binding?.locationId) return { kind: 'location', id: binding.locationId };
   if (binding?.characterId) return { kind: 'character', id: binding.characterId };
@@ -72,9 +72,9 @@ export function bindingSubject(binding: AssetBinding | undefined): ConceptSubjec
 /**
  * The prompt for one concept image.
  *
- * Same shape as every builder in `prompts.ts`, and for the same reason: the style preamble and the
- * closing framing sentence are what make the result look like this project rather than like stock
- * art. The subject's own sheet grounds it — a sketch of the café should be a sketch of *the* café —
+ * Built in the same shape as every builder in `prompts.ts`. The style preamble and the closing
+ * framing sentence are what make the result look like this project rather than like stock art. The
+ * subject's own sheet grounds it, so that a sketch of the café is a sketch of this project's café,
  * and the author's sentence goes last, where the model reads it strongest.
  */
 export function conceptPrompt(

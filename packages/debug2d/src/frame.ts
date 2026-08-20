@@ -1,7 +1,7 @@
 /**
- * Frame assembly plus `makeTestFrame()` — the synthetic-frame builder is deliberately
- * public-ish surface: this package's own tests use it, future invariants run over it
- * headlessly, and any downstream test would reach for it (research §13).
+ * Frame assembly plus `makeTestFrame()`. The synthetic-frame builder is deliberately part
+ * of the exported surface: this package's own tests use it, future invariants run over it
+ * headlessly, and downstream tests need it too (research §13).
  */
 import { IDENTITY, type Rect } from './geom.js';
 import { createSpaceRegistry } from './spaces.js';

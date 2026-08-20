@@ -3,8 +3,9 @@ import { ENTITY_TAG_KEY, ENTITY_TAGS, type Character } from '@vn/types';
 import { stringifyFrontMatter } from '@vn/parse';
 
 /**
- * Write this sheet at `wiki/<wiki>.md`, tagged, instead of in its conventional directory — how a
- * fixture exercises discovery by tag. The path's filename stem still has to agree with `id`.
+ * Writes this sheet at `wiki/<wiki>.md` with its tag instead of in its conventional directory,
+ * which is how a fixture exercises discovery by tag. The filename stem still has to agree
+ * with `id`.
  */
 interface WikiPlacement {
   wiki?: string;

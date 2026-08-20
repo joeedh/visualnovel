@@ -1,9 +1,8 @@
 /**
- * The retrieval seam. `query(text) → ranked excerpts` is deliberately the *only* way in:
- * there is no API here that returns a whole file, which is what makes "the bible is not
- * pasted into the context window" a property of the code rather than a habit. A grep index
- * satisfies this interface today; an embedding store could satisfy it without a caller
- * changing.
+ * The retrieval seam. `query(text) → ranked excerpts` is deliberately the only way in: there is
+ * no API here that returns a whole file, which is what makes "the bible is not pasted into the
+ * context window" a property of the code rather than a habit. A grep index satisfies this
+ * interface today; an embedding store could satisfy it without a caller changing.
  */
 
 /** One file in the bible, as the index sees it. */

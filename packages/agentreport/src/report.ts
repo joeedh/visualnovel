@@ -46,9 +46,9 @@ export type Analysis = z.infer<typeof analysisSchema>;
 /**
  * The same schema, typed as taking and producing `Analysis`.
  *
- * The defaulted arrays make zod's input type differ from its output — a model may omit
- * `evidence` and still be understood — and neither consumer wants to know that:
- * `withStructuredRetry` and the tool registry are both `ZodType<T>` with one `T` at both ends.
+ * The defaulted arrays make zod's input type differ from its output, since a model may omit
+ * `evidence` and still be understood. Both consumers need one `T` at both ends:
+ * `withStructuredRetry` and the tool registry are each typed `ZodType<T>`.
  */
 export const analysisArgs = analysisSchema as unknown as z.ZodType<Analysis>;
 

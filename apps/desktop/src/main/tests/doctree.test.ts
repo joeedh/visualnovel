@@ -149,7 +149,8 @@ describe('buildDocTree', () => {
     expect(scenes[0]!.children!.map((s) => s.id)).toEqual(['shot:arrival/arrival-s1']);
     expect(scenes[0]!.badge).toBeUndefined();
     expect(scenes[1]!.badge).toBe('unreachable');
-    // No storyboard on disk is not the same as an empty one, and neither is a broken file.
+    // A missing storyboard is different from an empty one, and different again from a file that
+    // would not parse.
     expect(scenes[1]!.children).toBeUndefined();
   });
 
@@ -216,8 +217,8 @@ describe('buildDocTree', () => {
     const shots = branch(capped.roots, 'branch:story').children![0]!.children!;
     expect(shots.map((n) => n.label)).toEqual(['s0', 's1', '… and 3 more']);
     expect(shots[2]!.kind).toBe('more');
-    // Counted *and* carried: the cap is about what the tree draws at rest, not about what it is
-    // allowed to know, so the rest is one click away rather than gone.
+    // The cap limits what the tree draws at rest rather than what it knows, so the dropped rows
+    // hang under the `more` node and stay one click away.
     expect(shots[2]!.children!.map((n) => n.label)).toEqual(['s2', 's3', 's4']);
   });
 });
@@ -260,7 +261,7 @@ describe('the Unapproved branch', () => {
     );
 
   it('is absent entirely without a slot graph, rather than empty', () => {
-    // A caller that has not built the graph must not be made to claim nothing is waiting.
+    // A caller that has not built the graph must not appear to claim that nothing is waiting.
     expect(buildDocTree(makeInput()).roots.map((n) => n.id)).not.toContain('branch:unapproved');
   });
 
@@ -308,7 +309,8 @@ describe('the Unapproved branch', () => {
   });
 
   it('reads a portrait’s approval off the gate, never off Asset.accepted', () => {
-    // `a` is `accepted: true` and still waiting: the P3 gate owns a look, and nothing else does.
+    // `a` is `accepted: true` and still waiting, because a portrait's approval comes from the P3
+    // gate and from nothing else.
     expect(treeWith(slots([portrait]))!.children![0]!.label).toBe('Awaiting approval (1)');
 
     const input = makeInput();
@@ -322,7 +324,8 @@ describe('the Unapproved branch', () => {
 
   it('files three unaccepted drafts as awaiting approval, never as unrendered', () => {
     // `pick` declines when candidates tie, so `hash === undefined` would report real bytes as
-    // unrendered. Zero candidates is the predicate, which is what keeps the two groups disjoint.
+    // unrendered. Having no candidates is the predicate instead, which keeps the two groups
+    // disjoint.
     const hashes = ['1', '2', '3'].map((n) => n.repeat(64));
     const drafts = hashes.map((hash) =>
       asset(hash, {
@@ -380,8 +383,8 @@ describe('the Skills branch', () => {
     expect(buildDocTree(makeInput()).roots.map((n) => n.id)).not.toContain('branch:skills');
   });
 
-  // The one branch drawn empty. A skill has to be findable before one exists, so `[]` and
-  // undefined are deliberately different answers.
+  // This is the one branch drawn empty. A skill has to be findable before one exists, so `[]` and
+  // `undefined` are deliberately different answers.
   it('is drawn empty when the caller looked and found none', () => {
     expect(skills([])).toEqual({
       id: 'branch:skills',
@@ -439,8 +442,7 @@ describe('the Skills branch', () => {
     expect(children.map((n) => n.badge)).toEqual([undefined, 'script']);
   });
 
-  // No row hovers silently, and a skill with no description is exactly the row an author needs
-  // told what it is.
+  // Every row carries a tooltip, and a skill with no description is the row that most needs one.
   it('says what a skill is when it does not say so itself', () => {
     const [leaf] = skills([skill({ description: '' })])!.children!;
     expect(leaf!.note).toBe('A playbook the agent can follow. Open it in the Skills pane.');
@@ -458,8 +460,8 @@ describe('the Skills branch', () => {
 /**
  * A project that re-rendered a portrait four times has four rows named `Aiko`, three of which
  * nobody will look at again. The slot graph already knows which one fills the slot, so the branch
- * asks it and draws one row per *slot*, with the takes it moved on from folded underneath —
- * dropped nowhere, because deleting one is a right-click on the row itself.
+ * asks it and draws one row per slot, with the earlier takes folded underneath. Nothing is
+ * dropped, because deleting a take is a right-click on its own row.
  */
 describe('the Assets branch, one row per slot', () => {
   const HASH_A = 'a'.repeat(64);
@@ -505,23 +507,23 @@ describe('the Assets branch, one row per slot', () => {
 
   it('folds an earlier take under the picture that replaced it, and counts rows', () => {
     const portraits = kinds(withOldTake())[0]!;
-    // One row, because one slot — the heading counts what it draws, and two takes of one portrait
-    // are one thing to look at.
+    // One row, because one slot. The heading counts the rows it draws, so two takes of one
+    // portrait count once.
     expect(portraits.label).toBe('Portraits (1)');
     expect(portraits.children!.map((n) => n.id)).toEqual([`asset:${HASH_A}`]);
 
     const current = portraits.children![0]!;
     expect(current.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
-    // The row has to say that a second click is what opens that — nothing else in the tree
-    // behaves this way, and a row that will not explain itself is the tooltip rule's own bug.
+    // The row's note has to say that a second click opens the earlier takes, since nothing else
+    // in the tree behaves this way.
     expect(current.note).toContain('click again to see history');
     expect(current.children![0]!.note).toContain('earlier take');
   });
 
   it('opens on the newest take where the slot could not choose between them', () => {
     // `pick` declines on a tie. Manifest order is the only record of when a picture was made, so
-    // the newest is what the row opens on — which is not a verdict: both candidates are still
-    // listed one per row in the Unapproved branch, where the choosing actually happens.
+    // the row opens on the newest. That is not a verdict: both candidates are still listed one
+    // per row in the Unapproved branch, where the choice is made.
     const portraits = kinds(withOldTake({ hash: undefined }))[0]!;
     expect(portraits.label).toBe('Portraits (1)');
     expect(portraits.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
@@ -598,8 +600,8 @@ describe('backlinks', () => {
     expect(Object.keys(backlinks)).toContain(characters[0]!.id);
   });
 
-  // A scene is a subject too — the frames drawn from it are what a pane showing its prose puts
-  // underneath, and the shot each one illustrates travels with it so they can be gathered by it.
+  // A scene is a subject too. A pane showing its prose puts the frames drawn from it underneath,
+  // and each frame carries the shot it illustrates so the frames can be grouped by shot.
   it('join a scene to the frames drawn from it, naming the shot each one is for', () => {
     expect(backlinks['scene:arrival']).toEqual({
       sheet: 'scenes/arrival.md',
@@ -630,8 +632,8 @@ describe('pathIndex', () => {
     expect(pathIndex['scenes/arrival.md']).toBe('scene:arrival');
   });
 
-  // The honest empty answer: no asset binds to a lore note, so it is in neither map and the pane
-  // showing it says as much rather than drawing somebody else's art.
+  // No asset binds to a lore note, so it is in neither map, and the pane showing it says so
+  // rather than drawing another subject's art.
   it('leaves a lore note out, it being nothing’s subject', () => {
     expect(pathIndex['wiki/history/canal.md']).toBeUndefined();
     expect(Object.keys(buildDocTree(makeInput()).backlinks)).not.toContain('wiki:history/canal.md');
@@ -654,8 +656,8 @@ describe('fileTree', () => {
     expect(roots[0]!.children!.map((n) => n.label)).toEqual(['f0.md', 'f1.md', '… and 2 more']);
   });
 
-  // A caller that walked one subdirectory still hands back ids a click can act on: the prefix goes
-  // on every id and path, while the *structure* comes from the paths as they arrived.
+  // A caller that walked one subdirectory still gets ids a click can act on. The prefix goes on
+  // every id and path, while the structure comes from the paths as they arrived.
   it('prefixes ids and paths without changing the shape they nest into', () => {
     const roots = fileTree(['lint/run.mjs', 'lint/SKILL.md'], DEFAULT_CAP, '.aiagent/skills/');
     expect(roots.map((n) => n.id)).toEqual(['dir:.aiagent/skills/lint']);
@@ -711,8 +713,8 @@ describe('WorkspaceSession — the tree over a real project', () => {
     expect(tree.backlinks['character:aiko']!.scenes.length).toBeGreaterThan(0);
   });
 
-  // The one thing the pure projection cannot check: `SkillEntry.file` is built by `relPath`, and
-  // on Windows the path it starts from is backslash-separated. A backslash here would ship a path
+  // The pure projection cannot check this. `SkillEntry.file` is built by `relPath`, and on
+  // Windows the path it starts from is backslash-separated; a backslash here would ship a path
   // `doc.read` refuses and no pane could open.
   it('finds the skills on disk, with a path a document command would take', async () => {
     const tree = await new WorkspaceSession(p.dir, true, deps).docTree();

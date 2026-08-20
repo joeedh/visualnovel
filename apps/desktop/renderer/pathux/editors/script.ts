@@ -44,10 +44,10 @@ import type { Invocation } from '@vn/commands';
 import type { CoverageLine, DocTree, SceneCoverage, StoryGraph } from '../../../src/shared/ipc.js';
 
 /**
- * What the room supplied and the pane does not. `script.css` is imported as-is — it is still the
- * React column's sheet, and one copy is the point — so this is only the frame around it: the reset
- * that does not cross the shadow boundary, and the notice, which was the bar's right edge and here
- * is a strip above the page (a path.ux label cannot carry the tone colours).
+ * The frame `script.css` does not supply. That sheet is imported as-is because it is still the
+ * React column's sheet and one copy is the point, so only two things are added here: a reset,
+ * because the page's own does not cross the shadow boundary, and the notice, which was the bar's
+ * right edge and here is a strip above the page (a path.ux label cannot carry the tone colours).
  */
 const SURFACE_CSS = `
 * { box-sizing: border-box; }
@@ -89,8 +89,8 @@ const INVITE =
 const EMPTY = 'No frames for this scene yet.';
 
 /**
- * The script pane: a scene as a screenplay page, and the surface where prose gets written. The
- * port of STUDIO's `ScriptEditor`, and the last of the three gesture editors.
+ * The script pane: a scene as a screenplay page, and the surface where prose gets written. Ported
+ * from STUDIO's `ScriptEditor`, and the last of the three gesture editors.
  *
  * Everything it decides is imported: `script.ts` for what a keystroke means, what a row is, and
  * which structural acts this scene can be offered at all; `lineedit.ts` for what a draft is as a
@@ -98,15 +98,15 @@ const EMPTY = 'No frames for this scene yet.';
  * moves the caret. There is no buffer here to diff — the model is a list of lines.
  *
  * Two things change in the port, both because the shell has them and the room did not. The scene
- * being written is the **shared** `ui.sceneId`, so a card picked in the branch pane opens here and
- * a line moved here is the coverage the timeline pane redraws. And an open row has to stop its own
- * keystrokes: the shell keymap is a window listener, so without that `/` opens the palette in the
+ * being written is the shared `ui.sceneId`, so a card picked in the branch pane opens here and a
+ * line moved here is the coverage the timeline pane redraws. An open row also has to stop its own
+ * keystrokes: the shell keymap is a window listener, so otherwise `/` opens the palette in the
  * middle of a sentence.
  *
- * Under the page sits what has been drawn *from* it, gathered by shot rather than by kind: the
- * frames beside the prose they illustrate, so an author writing a line can see what the block it
- * sits in already looks like. It is the same widget the wiki pane draws, and like there it is
- * read-only — a picture is picked, never accepted or regenerated, from here.
+ * Under the page sits what has been drawn from the scene, gathered by shot rather than by kind:
+ * the frames beside the prose they illustrate, so an author writing a line can see what the block
+ * it sits in already looks like. It is the same widget the wiki pane draws, and it is read-only
+ * here too — a picture is picked from here, never accepted or regenerated.
  */
 export class ScriptEditor extends VnEditor {
   private bar!: Container;
@@ -124,7 +124,7 @@ export class ScriptEditor extends VnEditor {
   private cast: CastMember[] = [];
   private failure = '';
   private drawn = '';
-  /** The scene `data` is for — or is on its way to being. Not `data.sceneId`: a fetch in flight. */
+  /** The scene `data` is for, or the one a fetch in flight will make it for. Not `data.sceneId`. */
   private loading = '';
   /** Bumped on every load, so a reload redraws even when nothing about the selection moved. */
   private revision = 0;
@@ -205,9 +205,10 @@ export class ScriptEditor extends VnEditor {
    * editor on the text it lands over. A right-click that retypes the line under it is exactly what
    * a right-click must not do.
    *
-   * Pointer-down is the only moment the question can be asked, a menu being gone by click time.
-   * Both listeners are capture-phase on the surface, so one latch covers every row and button under
-   * it, and the latch is *assigned* per pointer-down so a gesture that never clicks cannot arm it.
+   * Pointer-down is the only moment the question can be asked, because the menu is gone by click
+   * time. Both listeners are capture-phase on the surface, so one latch covers every row and button
+   * under it, and the latch is assigned per pointer-down so a gesture that never clicks cannot arm
+   * it.
    */
   private armDismissLatch(): void {
     this.surface.addEventListener(
@@ -243,7 +244,7 @@ export class ScriptEditor extends VnEditor {
   }
 
   /**
-   * What a redraw is *for*. Deliberately not the draft or a pending act's props: those change on
+   * What a redraw depends on. Deliberately not the draft or a pending act's props: those change on
    * every keystroke, and `update` runs every frame — a rebuild there would take the caret out of
    * the field being typed into.
    */
@@ -307,8 +308,9 @@ export class ScriptEditor extends VnEditor {
   }
 
   /**
-   * Refetch the tree the frames are read out of. A failure is silence: the pane's job is the prose,
-   * and a backlink panel that could not be built is not news an author can act on mid-sentence.
+   * Refetch the tree the frames are read out of. A failure is swallowed: the pane's job is the
+   * prose, and a backlink panel that could not be built is not news an author can act on
+   * mid-sentence.
    */
   private async loadTree(): Promise<void> {
     try {
@@ -321,7 +323,7 @@ export class ScriptEditor extends VnEditor {
 
   /** The scene now being written, or `null` while a fetch for another one is in flight. */
   private get shown(): SceneCoverage | null {
-    // Prose under another scene's heading, for the one frame between the click and the read, is
+    // Prose under another scene's heading (for the one frame between the click and the read) is
     // prose the author might start editing.
     return this.data && this.data.sceneId === this.ui.sceneId ? this.data : null;
   }
@@ -411,8 +413,8 @@ export class ScriptEditor extends VnEditor {
     this.surface.appendChild(page);
 
     // The heading as the scene's own slugline, so the pane reads as a screenplay page rather than
-    // as a list that happens to be in order — and it is where the scene is moved from, since the
-    // heading *is* the location. The dialog rechecks on every keystroke, so the price of the move
+    // as a list that happens to be in order. It is also where the scene is moved from, because the
+    // heading gives the location. The dialog rechecks on every keystroke, so the price of the move
     // is on screen before it is made.
     const heading = el('button', 'sc-heading', shown.heading);
     heading.title =
@@ -437,17 +439,17 @@ export class ScriptEditor extends VnEditor {
     const cuts = new Set(splitBoundaries(shown.lines));
     for (const row of scriptRows(shown.lines, this.editing)) {
       if ('compose' in row) {
-        // `scriptRows` emits a composer only for the open `new` row, so that is the editing this
-        // one is — passed by identity, which is how a late `check` knows it is still current.
+        // `scriptRows` emits a composer only for the open `new` row, so `this.editing` is the row
+        // it describes. It is passed by identity, which is how a late `check` knows it is current.
         if (this.editing?.row !== 'new') continue;
         const box = el('div', 'sc-line new');
         const plus = el('span', 'lid', '+');
         plus.title = 'A line that does not exist yet — it is written when you press Enter';
         box.appendChild(plus);
         const body = el('div', 'sc-body');
-        // The row states who it will be attributed to before it exists. Nothing here can *change*
-        // that — `setSpeaker` needs a line — but a composer that said nothing is how an author
-        // ends up with a scene of narration wondering where the speaker went.
+        // The row states who it will be attributed to before it exists. Nothing here can change
+        // that (`setSpeaker` needs a line), but a composer that said nothing is how an author ends
+        // up with a scene of narration wondering where the speaker went.
         const after = this.editing.after;
         const cue = composedCueText(this.cast, shown.lines.find((l) => l.id === after) ?? null);
         const hint = el('span', 'who hint', cue.label);
@@ -511,8 +513,8 @@ export class ScriptEditor extends VnEditor {
       );
     });
 
-    // The gutter is the handle: it is already the row's name, and a line's name is what a move
-    // is about.
+    // The gutter doubles as the drag handle: it already shows the row's name, and a line's name is
+    // what a move is about.
     const lid = el('span', 'lid', localLineId(line.id));
     lid.title = `${line.id} — drag this handle to move the line`;
     lid.addEventListener('pointerdown', (event) => this.grab(scene, line, event));
@@ -533,8 +535,8 @@ export class ScriptEditor extends VnEditor {
     }
     box.appendChild(body);
 
-    // A boundary is a property of the row below it, so the affordance lives on the row rather than
-    // between rows: "the second half starts here".
+    // A boundary is a property of the row below it, so the button sits on the row rather than
+    // between rows, marking where the second half starts.
     if (cut && this.pending === null) {
       const split = el('button', 'sc-cut', 'split here');
       split.title = 'Start a second scene at this line, and name it before anything is written';
@@ -601,7 +603,7 @@ export class ScriptEditor extends VnEditor {
   }
 
   /**
-   * The open row. The sizer carries the draft as `content`, so the row grows as you type without
+   * The open row. The sizer's `::after` echoes the draft, so the row grows as you type without
    * anything being measured — no frame exists where the layout disagrees with the caret.
    */
   private lineEditor(row: Editing, label: string): HTMLElement {
@@ -613,8 +615,8 @@ export class ScriptEditor extends VnEditor {
     input.spellcheck = true;
     input.setAttribute('aria-label', label);
     input.title = `${label} — Enter writes it, Escape leaves the line alone`;
-    // An empty composer is otherwise an empty row: nothing on screen says a line is being written,
-    // which is the whole of "I typed Enter and the page did not change".
+    // Without a placeholder an empty composer is an empty row, and nothing on screen says a line
+    // is being written.
     if (row.row === 'new') input.placeholder = 'Write the line, then Enter';
     input.addEventListener('input', () => {
       this.draft = input.value;
@@ -654,7 +656,7 @@ export class ScriptEditor extends VnEditor {
     return sizer;
   }
 
-  /** Everything that adds to the scene: a line, and the two acts that change where it *ends*. */
+  /** Everything that adds to the scene: a line, and the two acts that change where it ends. */
   private structure(scene: SceneCoverage): HTMLElement {
     const box = el('div', 'sc-struct');
     const scenes = this.story?.scenes ?? [];
@@ -770,8 +772,8 @@ export class ScriptEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /**
-   * Pick a line up by its gutter. Every insertion point is judged at the grab — a drag that
-   * re-asked per pointer move could change its mind about a drop the author is already over.
+   * Pick a line up by its gutter. Every insertion point is judged at the grab, because re-asking
+   * per pointer move could reverse the verdict for a drop the author is already over.
    */
   private grab(scene: SceneCoverage, line: CoverageLine, event: PointerEvent): void {
     // The gutter is inside a row that opens a menu, and a right-click there must not also pick the
@@ -806,7 +808,7 @@ export class ScriptEditor extends VnEditor {
       carried?.classList.remove('carried');
       this.dropEl?.remove();
       this.dropEl = undefined;
-      // A drop that changes nothing takes its sentence with it; a refused one keeps its reason.
+      // A drop with no verdict clears the notice. A refused drop keeps the reason it was given.
       if (!pending?.verdict) return this.say(null);
       const invoke = dropOf(pending);
       if (invoke) void this.act(null, [invoke], { open: 'none' });
@@ -859,7 +861,7 @@ export class ScriptEditor extends VnEditor {
   /**
    * Open a row. It deliberately does not clear the notice: the continuation an act opens carries
    * on from that act, and what the command said about it is still the last thing that happened.
-   * A row the *author* opens is a new act, so `openLine`/`compose` clear it themselves.
+   * A row the author opens is a new act, so `openLine`/`compose` clear it themselves.
    */
   private open(row: { editing: Editing; draft: string }): void {
     this.settled = false;
@@ -869,8 +871,8 @@ export class ScriptEditor extends VnEditor {
   }
 
   /**
-   * The precondition, asked as the author types — the count of frames that will go on illustrating
-   * the old prose comes from the command's own `check`, so the warning before the commit and the
+   * Ask the command's own `check` as the author types. The count of frames that will go on
+   * illustrating the old prose comes from that check, so the warning before the commit and the
    * message after it are one sentence rather than two guesses.
    */
   private scheduleCheck(row: Editing): void {
@@ -889,7 +891,7 @@ export class ScriptEditor extends VnEditor {
     }, 180);
   }
 
-  /** The same, for a structural act: the shots that detach are named *before* it runs. */
+  /** `scheduleCheck` for a structural act: the shots that detach are named before it runs. */
   private scheduleActCheck(): void {
     clearTimeout(this.checkTimer);
     const pending = this.pending;
@@ -1001,7 +1003,7 @@ export class ScriptEditor extends VnEditor {
     this.rebuild();
   }
 
-  /** Commit the pending act. A new scene is one the author asked for in order to write in it. */
+  /** Commit the pending act. */
   private async confirm(): Promise<void> {
     const asked = this.pending;
     const scene = this.ui.sceneId;

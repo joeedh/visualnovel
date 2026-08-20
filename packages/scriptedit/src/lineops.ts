@@ -2,26 +2,25 @@
  * The pure half of the `story.*` prose commands: turn one authorial act ("retype this line",
  * "split the scene here") into the scenes to write whole and the chunks to remove.
  *
- * It is the sibling of `branchops.ts` — that module decides which *wires* are legal,
- * this one decides which *edits* are — and it is pure for the same reason: a surface previewing a
- * gesture runs these functions, so the refusal shown mid-drag is the refusal the command would
- * give rather than a second copy of the rules. It is a *package* rather than app-local because
- * `vnauthor` needs the same answers, and a package cannot import an app.
+ * It is the sibling of `branchops.ts`: that module decides which wires are legal, this one decides
+ * which edits are. It is pure for the same reason: a surface previewing a gesture runs
+ * these functions, so the refusal shown mid-drag is the refusal the command would give rather
+ * than a second copy of the rules. It is a package rather than app-local because `vnauthor` needs
+ * the same answers, and a package cannot import an app.
  *
- * Two things every caller has to understand, because they are the whole reason these decisions
- * are worth reading before they run:
+ * Two things every caller has to understand:
  *
- * - **A line id is scene-scoped** (`arrival:L4`), so an id names its own scene and no prose op
- *   takes a scene as well. Within a scene every edit is safe: inserting allocates a fresh id,
- *   deleting retires one, reordering keeps them. Across a scene boundary an id cannot survive —
- *   but the renaming is known, so `splitScene` and `mergeScene` both hand back the mapping
- *   (`moved`) and `shotfallout.ts` walks coverage across it rather than dropping it.
- * - **Prose edits do not invalidate art — they let it drift.** `buildShotPrompt` never reads a
- *   line's text; only the P7 reviewer spec does, and that never enters a task's `inputs`. So
- *   retyping, re-attributing or reordering a covered line rehashes nothing and re-renders
- *   nothing: the frame keeps illustrating prose the scene no longer contains. The ids whose
- *   contribution changed come back in `retyped` so a command can *say* which rendered shots
- *   drifted; spending money to fix one stays the author's decision.
+ * - A line id is scene-scoped (`arrival:L4`), so an id names its own scene and no prose op takes
+ *   a scene as well. Within a scene every edit is safe: inserting allocates a fresh id, deleting
+ *   retires one, reordering keeps them. Across a scene boundary an id cannot survive, but the
+ *   renaming is known, so `splitScene` and `mergeScene` both hand back the mapping (`moved`) and
+ *   `shotfallout.ts` walks coverage across it rather than dropping it.
+ * - Prose edits do not invalidate art; they let it drift. `buildShotPrompt` never reads a line's
+ *   text; only the P7 reviewer spec does, and that never enters a task's `inputs`. So retyping,
+ *   re-attributing or reordering a covered line rehashes nothing and re-renders nothing: the
+ *   frame keeps illustrating prose the scene no longer contains. The ids whose contribution
+ *   changed come back in `retyped` so a command can report which rendered shots drifted; spending
+ *   money to fix one stays the author's decision.
  */
 import { headingPrefixOf, parseHeading, slug } from '@vn/model';
 import type { Scene, SceneLine } from '@vn/types';
@@ -45,7 +44,7 @@ export type LineOp =
       removes: string[];
       /** Line ids that stop existing. Every shot covering one silently stops covering it. */
       retired: string[];
-      /** Line ids that changed scene, `[old, new]`. Coverage *can* follow these. */
+      /** Line ids that changed scene, `[old, new]`. Coverage can follow these. */
       moved: [string, string][];
       /**
        * Line ids whose prose changed — retyped, re-attributed or reordered. Art covering one
@@ -55,13 +54,13 @@ export type LineOp =
       /**
        * Scenes whose heading moved them somewhere else, `[sceneId, the new variant]`. Every shot
        * in one is restaged to that variant, because a shot pinned to a variant the new location
-       * does not declare gets no plate — and a shot with no plate is skipped in silence forever.
+       * does not declare gets no plate, and a shot with no plate is skipped without a word.
        */
       relocated: [string, string][];
     }
   | { ok: false; error: string };
 
-/** An op that is going to happen — what `shotfallout.ts` reads the coverage consequence off. */
+/** An op that will be applied; `shotfallout.ts` reads the coverage consequence from it. */
 export type AppliedLineOp = Extract<LineOp, { ok: true }>;
 
 type Applied = AppliedLineOp;
@@ -91,9 +90,9 @@ export function sceneIdOf(lineId: string): string {
 const localOf = (lineId: string): string => lineId.slice(lineId.lastIndexOf(':') + 1);
 
 /**
- * The scene's allocator, derived past every id in use when the scene carries none. Exported for
- * `shotorder.ts`, which rewrites a scene's line order and must stamp the same high-water mark
- * every edit here does.
+ * The scene's next line id: its `nextLineId`, never below one past the highest id in use.
+ * Exported for `shotorder.ts`, which rewrites a scene's line order and must stamp the same
+ * high-water mark every edit here does.
  */
 export function nextIdOf(scene: Scene): number {
   let max = 0;
@@ -150,10 +149,10 @@ function referrers(state: ScriptState, sceneId: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// The five line edits. Each is one line of one scene; ids elsewhere never move.
+// The line edits. Each acts within a scene, so line ids in other scenes never move.
 // ---------------------------------------------------------------------------
 
-/** Replace one line's text. The id survives, so coverage does; the art it made now drifts. */
+/** Replace one line's text. The id survives, so coverage does too; the art made from it drifts. */
 export function setLineText(state: ScriptState, args: { line: string; text: string }): LineOp {
   const found = locate(state, args.line);
   if (typeof found === 'string') return refuse(found);
@@ -212,10 +211,10 @@ export function insertLine(
 }
 
 /**
- * Insert a run of lines, in order, each after the one before it — a scene drafted in one act
- * rather than in forty. It is a fold over {@link insertLine} and deliberately nothing more: ids
- * stay allocated by the scene, every refusal is that function's, and a run that fails anywhere
- * returns nothing to write, so the caller's plan writes nothing at all.
+ * Insert a run of lines, in order, each after the one before it, so a scene can be drafted in one
+ * call. It is a fold over {@link insertLine} and deliberately nothing more: ids stay allocated by
+ * the scene, every refusal is that function's, and a run that fails anywhere returns nothing to
+ * write, so the caller's plan writes nothing at all.
  */
 export function insertLines(
   state: ScriptState,
@@ -268,8 +267,8 @@ export function deleteLine(state: ScriptState, args: { line: string }): LineOp {
 }
 
 /**
- * Delete a run of lines in one act — the symmetric half of {@link insertLines}, and the reason a
- * rewritten scene costs two calls rather than forty-one. A fold over {@link deleteLine} and
+ * Delete a run of lines in one call — the symmetric half of {@link insertLines}, so rewriting a
+ * scene costs two calls rather than one per line. It is a fold over {@link deleteLine} and
  * deliberately nothing more: every refusal is that function's, and a run that fails anywhere
  * returns nothing to write, so the caller's plan removes nothing at all.
  *
@@ -327,8 +326,8 @@ export function moveLine(state: ScriptState, args: { line: string; after: string
 
 /**
  * Whether attribution means anything for a line of this kind — the kinds {@link setSpeaker} will
- * act on. Exported because a surface offering the edit has to decide *which rows get the
- * affordance* synchronously, and an affordance that can only be refused is worse than none.
+ * act on. Exported because a surface offering the edit has to decide synchronously which rows get
+ * the affordance.
  */
 export function isSpeakable(kind: SceneLine['kind']): boolean {
   return kind === 'dialogue' || kind === 'parenthetical' || kind === 'narration';
@@ -355,7 +354,7 @@ export function setSpeaker(state: ScriptState, args: { line: string; speaker: st
   }
 
   // Clearing attribution makes the line narration; giving a narration line a speaker makes it
-  // dialogue. A parenthetical stays one — it is a delivery note either way.
+  // dialogue. A parenthetical stays a parenthetical, since it is a delivery note either way
   const line: SceneLine = speaker
     ? { ...before, kind: before.kind === 'parenthetical' ? 'parenthetical' : 'dialogue', speaker }
     : { id: before.id, kind: 'narration', text: before.text };
@@ -370,8 +369,8 @@ export function setSpeaker(state: ScriptState, args: { line: string; speaker: st
 }
 
 // ---------------------------------------------------------------------------
-// The five scene edits. These are where line ids can change scope — and where a scene can
-// change *place* — so these are where the consequence has to be stated before the author commits.
+// The five scene edits. Line ids can change scope here, and a scene can change location, so these
+// are where the consequence has to be stated before the author commits.
 // ---------------------------------------------------------------------------
 
 /**
@@ -409,18 +408,18 @@ export function newScene(state: ScriptState, args: { scene: string; heading: str
 /**
  * Move a scene somewhere else by rewriting its heading. The heading is not a line — it is
  * `location` + `locationVariant` + `headingPrefix`, which `headingOf` reassembles — so no line id
- * changes and no coverage moves. What *does* change is what the art depicts, and this is the one
- * prose edit that is expensive:
+ * changes and no coverage moves. What changes is what the art depicts, and this is the one prose
+ * edit that is expensive:
  *
- * - **Every rendered shot in the scene will be drawn again.** Unlike retyping a line, the location
- *   is in a shot's task inputs twice over — its name is in the prompt and its plate's hash leads
- *   the refs — so the next run re-renders the scene rather than letting it drift. That is the
- *   warning, and it is why the caller shows this one before it runs.
- * - **The prose is not touched, so it still describes the old place.** Nothing here can fix that;
- *   the message says so and names the agent, which is the thing that can.
+ * - Every rendered shot in the scene will be drawn again. Unlike retyping a line, the location is
+ *   in a shot's task inputs twice over — its name is in the prompt and its plate's hash leads the
+ *   refs — so the next run re-renders the scene rather than letting it drift. That is the warning
+ *   the caller shows before running this.
+ * - The prose is not touched, so it still describes the old place. Nothing here can fix that; the
+ *   message says so and names the agent, which can.
  *
  * Every shot is restaged to the new variant (`relocated`) because a shot's variant was picked at
- * the old location and the new one may not declare it — and a shot whose plate is never planned is
+ * the old location and the new one may not declare it, and a shot whose plate is never planned is
  * skipped by the planner without a word.
  */
 export function setHeading(state: ScriptState, args: { scene: string; heading: string }): LineOp {
@@ -446,8 +445,8 @@ export function setHeading(state: ScriptState, args: { scene: string; heading: s
   if (prefix) moved.headingPrefix = prefix;
   else delete moved.headingPrefix;
 
-  // What it costs is counted from the shot files, which this is not given — so the price is the
-  // fallout note's clause and this says only what no other sentence will.
+  // The cost is counted from the shot files, which this function is not given, so the price is
+  // stated in the fallout note. This message says only what no other sentence will
   return done(
     `${scene.id} is set in ${mined.id} (${mined.variant}) — it was ${scene.location} ` +
       `(${wasVariant}). The prose still describes the old place; ask the agent to rewrite the ` +
@@ -479,8 +478,8 @@ export function deleteScene(state: ScriptState, args: { scene: string }): LineOp
 
 /**
  * One scene becomes two at a line boundary: `at` and everything below it move into a new chunk,
- * and the original continues to it. The branch out of the scene belongs to the *tail* — it is
- * where the scene now ends — so `choices` and `next` go with the new half.
+ * and the original continues to it. The branch out of the scene belongs to the tail, which is
+ * where the scene now ends, so `choices` and `next` go with the new half.
  *
  * Line ids keep their local part (`arrival:L7` → `rooftop:L7`), which is what lets a shot follow
  * its lines across the split. It is also why the new scene inherits the original's allocator
@@ -543,9 +542,9 @@ export function splitScene(
  * chunk is removed. Only a linear continuation is joinable — merging across a choice would
  * silently drop the decision — and only when nothing else points at the scene being absorbed.
  *
- * The absorbed lines are renumbered into the surviving scene's allocator — `arrival:L1` cannot
- * stay itself inside `rooftop` — but the renumbering is a *mapping*, so it comes back as `moved`
- * and coverage can follow it, exactly as it does across a split.
+ * The absorbed lines are renumbered into the surviving scene's allocator (`arrival:L1` cannot keep
+ * that id inside `rooftop`) but the renumbering is a mapping, so it comes back as `moved` and
+ * coverage can follow it, exactly as it does across a split.
  */
 export function mergeScene(state: ScriptState, args: { scene: string; into: string }): LineOp {
   const scene = state.scenes.get(args.scene);

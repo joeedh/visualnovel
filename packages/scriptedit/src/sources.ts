@@ -1,11 +1,11 @@
 /**
  * The authored files a scene edit patches, and the state it is decided against.
  *
- * The one contract here is the one every prose writer rests on: a source list is derived from the
- * *same* `loadInputs` result the model was built from, never from a second look at `scenes/`. So a
- * writer patches exactly the bytes the model was read from rather than whatever is on disk by the
- * time it writes. Both write paths — prose edits (`apply.ts`) and marker edits (`markers.ts`) —
- * take their targets from this one function for that reason.
+ * One contract governs this module, and every prose writer rests on it: a source list is derived
+ * from the same `loadInputs` result the model was built from, never from a second look at
+ * `scenes/`. So a writer patches exactly the bytes the model was read from rather than whatever is
+ * on disk by the time it writes. Both write paths — prose edits (`apply.ts`) and marker edits
+ * (`markers.ts`) — take their targets from this one function for that reason.
  */
 import { sceneFromDoc } from '@vn/model';
 import { splitFrontMatter, type LoadedInputs } from '@vn/parse';
@@ -24,7 +24,7 @@ export interface SceneSource {
   prefix: string;
   script: string;
   /**
-   * The scene as this file parses, **before** `buildModel` resolves anything: speakers are still
+   * The scene as this file parses, before `buildModel` resolves anything: speakers are still
    * the cues the author typed (`AIKO`, not `aiko`). A prose edit is decided and re-serialized
    * against this rather than against the model's scene, or writing it back would rewrite every
    * cue as the character id it resolved to.

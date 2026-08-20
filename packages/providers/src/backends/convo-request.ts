@@ -2,10 +2,10 @@
  * The cached, conversation-shaped Anthropic request body
  * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md`, workstreams B and E).
  *
- * Pure, and separate from the backend, because everything this plan claims about caching is a
- * claim about *where the breakpoints land* — and that is the one thing a test can check without
- * a key. Caching is a prefix match over `tools` → `system` → `messages`, so a single changed byte
- * anywhere invalidates everything after it.
+ * Pure, and separate from the backend, because what the plan claims about caching is a claim about
+ * where the breakpoints land, which is what a test can check without a key. Caching is a prefix
+ * match over `tools` → `system` → `messages`, so a single changed byte invalidates everything
+ * after it.
  */
 import { supportsSystemRole } from '@vn/types';
 import type { ChatConvoRequest, ChatTurn, ToolSchema } from '../backend.js';
@@ -82,8 +82,8 @@ function messagesOf(turns: ChatTurn[], modelId: string): WireMessage[] {
 
 /**
  * The tools block. Every definition is sent whatever its `defer` flag says — the API needs them
- * server-side to run the search — and the breakpoint goes on the last *non-deferred* one, because
- * a deferred tool carrying `cache_control` is a 400.
+ * server-side to run the search — and the breakpoint goes on the last tool that is not deferred,
+ * because a deferred tool carrying `cache_control` gets a 400.
  */
 function toolsOf(tools: ToolSchema[]): unknown[] {
   const anyDeferred = tools.some((t) => t.defer);
@@ -105,9 +105,8 @@ function toolsOf(tools: ToolSchema[]): unknown[] {
  * Build the request body for one conversation step.
  *
  * Four breakpoints, which is the maximum: the end of the tool catalog, the end of the system
- * prompt, and the rolling pair the caller marked in `turns`. The two prefix ones are not
- * redundant — the separate `tools` breakpoint is what makes an `AICONTEXT.md` edit a partial hit
- * rather than a total miss.
+ * prompt, and the rolling pair the caller marked in `turns`. The separate `tools` breakpoint makes
+ * an `AICONTEXT.md` edit a partial cache hit rather than a total miss.
  */
 export function buildConvoRequest(
   modelId: string,

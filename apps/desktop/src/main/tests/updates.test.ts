@@ -1,6 +1,6 @@
 /**
  * The update check's decisions, with no network anywhere in the file — and that is a rule rather
- * than a convenience. The GitHub API allows 60 unauthenticated requests an hour *per IP*, and a
+ * than a convenience. The GitHub API allows 60 unauthenticated requests an hour per IP, and a
  * CI runner shares one with every other job on it, so a test that reached the real endpoint would
  * spend a budget the app itself depends on.
  */
@@ -98,7 +98,7 @@ describe('checkAgainst', () => {
   });
 
   it('reports a build that does not know its own version', () => {
-    // What a session with no `appVersion` — a test harness, a preview — produces.
+    // A session with no `appVersion` (a test harness, a preview) produces this.
     const check = checkAgainst('', release('v0.4.0'));
     expect(check.state).toBe('unreadable');
   });
@@ -130,8 +130,8 @@ describe('announcementFor', () => {
   });
 
   it('never announces that nothing has changed', () => {
-    // Not even to a manual check: the command's own message says it on screen, and a durable
-    // line per "you are up to date" would bury the log the one time it has news.
+    // A manual check files nothing either: the command's own message says it on screen, and a
+    // durable line per "you are up to date" would bury the log the one time it has news.
     for (const running of ['0.4.0', '0.5.0']) {
       expect(announcementFor(checkAgainst(running, release('v0.4.0')), false)).toBeUndefined();
       expect(announcementFor(checkAgainst(running, release('v0.4.0')), true)).toBeUndefined();
@@ -151,7 +151,7 @@ describe('announcementFor', () => {
   it('links an act rather than an address', () => {
     const note = announcementFor(checkAgainst('0.3.1', release('v0.4.0')), false);
     expect(note?.link).toEqual({ command: LINK_COMMANDS.releases });
-    // The rule the whole shape exists for: nothing the app opens is a URL it was handed.
+    // The whole shape exists for one rule: nothing the app opens is a URL it was handed.
     expect(JSON.stringify(note?.link)).not.toContain('http');
   });
 
@@ -162,8 +162,8 @@ describe('announcementFor', () => {
   });
 
   it('refuses a link naming a command that is not allow-listed', () => {
-    // The reason the allow-list exists: `notifications.jsonl` is tracked and git union-merges it,
-    // so a line asking for `pipeline.run` can arrive from somebody else's branch.
+    // The allow-list exists because `notifications.jsonl` is tracked and git union-merges it, so
+    // a line asking for `pipeline.run` can arrive from somebody else's branch.
     expect(linkCommand({ link: { command: 'pipeline.run' } } as Notification)).toBeUndefined();
     expect(linkCommand({ link: { command: 'notify.deleteAll' } } as Notification)).toBeUndefined();
     expect(linkCommand({} as Notification)).toBeUndefined();

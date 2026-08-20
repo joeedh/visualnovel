@@ -1,13 +1,13 @@
 /**
  * Boundary validation for task provenance. `TaskAttempt.reviews` is `unknown[]` because it
  * comes back off `tasks.jsonl` as JSON; this is where it becomes `DefectReport[]` for the
- * renderer. A task that failed is exactly when the log is most likely to be ragged, so a
- * malformed entry drops rather than throwing — the inspector shows "no critique recorded".
+ * renderer. The log is most likely to be malformed when a task has failed, so a malformed entry is
+ * dropped rather than throwing, and the inspector shows "no critique recorded".
  */
 import { defectReportSchema, type DefectReport, type Task as PipelineTask } from '@vn/types';
 import type { Task } from '../shared/ipc.js';
 
-/** Keep only the entries that parse; a bad one costs its own review, not the attempt. */
+/** Keep only the entries that parse, so a bad entry costs its own review rather than the attempt. */
 function narrowReviews(reviews: unknown[] | undefined): DefectReport[] {
   if (!Array.isArray(reviews)) return [];
   const out: DefectReport[] = [];

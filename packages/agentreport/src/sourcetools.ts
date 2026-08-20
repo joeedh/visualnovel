@@ -1,10 +1,10 @@
 /**
  * The three tools the analyst gets when the author lets it read the source.
  *
- * They are read tools and nothing else. The one property that matters more than any convenience
- * here: an agent that has just read someone's private conversation must not also be a way to send
- * it anywhere. That is why `fetch_api_docs` takes a provider and a topic rather than a URL, and
- * why every other tool ends at the filesystem.
+ * They are read tools and nothing else. An agent that has just read someone's private conversation
+ * must not also be a way to send it somewhere, which matters more than any convenience here. That
+ * is why `fetch_api_docs` takes a provider and a topic rather than a URL, and why every other tool
+ * ends at the filesystem.
  */
 import { promises as fs } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -105,8 +105,9 @@ async function symlinked(root: string, abs: string): Promise<boolean> {
 }
 
 /**
- * The refusal a path earns before anything is opened, or nothing. Credentials answer first: the
- * general refusal below would also catch `keys/`, but it would say "build output" about a secret.
+ * The refusal a path earns before anything is opened, or `undefined` when there is none.
+ * Credentials are tested first because the general refusal would also catch `keys/`, but it would
+ * say "build output" about a secret.
  */
 function refuseByPolicy(where: Where, rel: string): string | undefined {
   if (where === 'project' && normalize(rel).split('/')[0] === 'keys') {
@@ -153,7 +154,7 @@ async function collect(root: string, where: Where): Promise<string[]> {
     }
   };
 
-  // A readable root may be a file — CLAUDE.md is one, and it is the most quotable thing here.
+  // A readable root may be a file, as CLAUDE.md is
   const add = async (name: string): Promise<void> => {
     const abs = join(root, name);
     let stat;
@@ -238,7 +239,8 @@ function grepTool(
       if (lines.length === 0) {
         return ok(`No matches in ${scanned} file(s) under ${where}.`);
       }
-      // A cap read as "that's all there is" produces a confidently wrong report, so say it.
+      // The note names the cap, because a cap read as "that's all there is" produces a
+      // confidently wrong report
       const note = truncated
         ? `\n\n(Stopped at ${MAX_MATCHES} matches with ${files.length - scanned} file(s) unscanned — there may be more. Narrow the pattern or pass a glob.)`
         : '';
@@ -284,8 +286,8 @@ function readTool(roots: Roots, budget: Budget): Tool<{ path: string; where?: Wh
 /**
  * The documentation the analyst may fetch, by provider and topic. A fixed list rather than a URL
  * argument: this is the one tool that talks to the network, and an arbitrary-URL fetch in the
- * hands of an agent holding a private transcript is an exfiltration channel. The list is what
- * closes it.
+ * hands of an agent holding a private transcript is an exfiltration channel, which the fixed list
+ * closes.
  */
 export const API_DOCS: Record<string, Record<string, string>> = {
   anthropic: {

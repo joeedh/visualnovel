@@ -28,11 +28,9 @@ describe('lockAddress', () => {
     expect(lockAddress('C:/dev/story', 'win32')).not.toBe(lockAddress('C:/dev/other', 'win32'));
   });
 
-  // Pinned, because the `platform` argument is a claim about which rules apply and not about
-  // which machine is asking: resolved under the host's rules instead, a Windows root read on a
-  // Linux runner keeps its backslashes and picks up that runner's cwd. The two assertions above
-  // agree with each other under either mistake, so only a constant catches it — and it catches it
-  // on every machine rather than on the one that happens to disagree.
+  // The `platform` argument says which rules apply, not which machine is asking: resolved under
+  // the host's rules, a Windows root read on a Linux runner keeps its backslashes and picks up
+  // that runner's cwd. Both assertions above pass under that mistake, so the value is pinned here.
   it('answers the same on every host, because the platform is an argument', () => {
     expect(lockAddress('C:/dev/story', 'win32')).toBe('\\\\.\\pipe\\vnstudio-fb8a5d7e99c96a22');
     expect(lockAddress('/home/a/story', 'linux')).toMatch(/vnstudio-7e897f1fc5575733\.sock$/);
@@ -45,8 +43,8 @@ describe('acquireWorkspace', () => {
     const first = await acquireWorkspace(dir, () => {});
     expect(first).not.toBeNull();
 
-    // A second instance on the same project must not open — this is the whole point: two stacks
-    // would overwrite each other's `refs/vn/undo/<seq>` snapshots in silence.
+    // A second instance on the same project must not open: two stacks would silently overwrite
+    // each other's `refs/vn/undo/<seq>` snapshots.
     expect(await acquireWorkspace(dir, () => {})).toBeNull();
     expect(await workspaceIsTaken(dir)).toBe(true);
 
@@ -79,7 +77,7 @@ describe('acquireWorkspace', () => {
     expect(focused).toBe(1);
 
     await owner!.release();
-    // Nobody home is not an error: the caller may take the lock after all rather than exiting.
+    // An unanswered address is not an error: the caller may take the lock rather than exiting.
     expect(await focusOwner(dir)).toBe(false);
   });
 });

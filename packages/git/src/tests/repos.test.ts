@@ -99,7 +99,7 @@ describe('RepoResolver', () => {
       expect(await resolver.rootOf(root)).toBeNull();
 
       await initRepo(root);
-      expect(await resolver.rootOf(root)).toBeNull(); // the cached answer, honestly stale
+      expect(await resolver.rootOf(root)).toBeNull(); // the cached answer, now stale
       resolver.forget();
       expect(await resolver.rootOf(root)).toBe(root);
     } finally {

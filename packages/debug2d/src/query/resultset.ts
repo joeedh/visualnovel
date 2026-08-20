@@ -1,7 +1,7 @@
 /**
  * The chainable result set. Ordering is part of the contract (research §5): every set is
- * sorted z **descending**, then FragId — golden tests and future invariants assert on
- * these, and a set that reorders between runs is a set nobody will assert on.
+ * sorted by z descending, then FragId, so golden tests and future invariants can assert
+ * on the order.
  */
 import { fmtNum, fmtRect, padCols } from '../explain/format.js';
 import type { Fragment, Frame, OwnerRef, SourceId } from '../types.js';
@@ -22,7 +22,8 @@ export class ResultSet {
   readonly frame: Frame;
   /** Sorted top-first: z descending, then FragId. */
   readonly fragments: readonly Fragment[];
-  /** Sources present in the frame that could not answer this query (never zeros). */
+  /** Sources present in the frame that could not answer this query, listed here rather
+   * than counted as zero hits. */
   readonly unsupported: readonly SourceId[];
   /** The query description, e.g. `at(412, 88) css` — the explain() header. */
   readonly desc: string;

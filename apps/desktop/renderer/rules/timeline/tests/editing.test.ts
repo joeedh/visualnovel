@@ -13,7 +13,7 @@ describe('the modes over one grid', () => {
   });
 
   // Clicking another line while one is open is not a mode clash: the first editor blurs, which
-  // commits it, and the second opens. Only the *other* gesture is locked out.
+  // commits it, and the second opens. Only the grab gesture is locked out
   it('lets a click move the editor from one line to another', () => {
     expect(canEdit({ editing: 's:L1', dragging: false, pending: false })).toBe(true);
   });

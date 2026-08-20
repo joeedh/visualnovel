@@ -1,10 +1,10 @@
 /**
  * Outfit resolution — the one place the inheritance chain is written down.
  *
- * An outfit is *optionally* specified at two levels, so an unspecified one is not empty, it is
- * inherited: a shot subject's own `outfit` overrides the scene's `[[outfit: aiko=uniform]]`
- * marker, which overrides the character's `default_outfit`. Nothing else may re-derive that
- * order — the prompt builders, the planner and the desktop all come here.
+ * An outfit is optional at two levels, and an unspecified one is inherited rather than empty: a
+ * shot subject's own `outfit` overrides the scene's `[[outfit: aiko=uniform]]` marker, which
+ * overrides the character's `default_outfit`. Nothing else may re-derive that order — the prompt
+ * builders, the planner and the desktop all come here.
  */
 import type { Character, Scene, ShotSubject } from '@vn/types';
 
@@ -38,9 +38,9 @@ export function outfitFor(
 
 /**
  * What a prompt says the character is wearing: the authored description when there is one, and
- * the outfit id when there is not. Keeping the id as the fallback is what makes an authored
- * wardrobe cost nothing to a project that has never written one — the prompt, and so the task
- * hash, is unchanged until an author describes the clothes.
+ * the outfit id when there is not. Falling back to the id costs a project that has never authored
+ * a wardrobe nothing: the prompt, and so the task hash, is unchanged until an author describes
+ * the clothes.
  */
 export function outfitText(character: Character | undefined, outfitId: string): string {
   const described = character?.outfits.find((o) => o.id === outfitId)?.description.trim();

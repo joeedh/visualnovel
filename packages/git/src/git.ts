@@ -1,7 +1,7 @@
 /**
  * A thin, non-interactive wrapper over the `git` CLI (authoring-agent plan §5, M1). It
  * spawns `git` via `execFile` (never a shell, so paths/messages with spaces or quotes are
- * safe) and returns structured results. It holds **no policy**: gating reverts/restores,
+ * safe) and returns structured results. It holds no policy: gating reverts/restores,
  * dirty-tree checks, and commit granularity all live in the agent. Every method is scoped
  * to one repo `root`.
  */
@@ -67,7 +67,7 @@ export interface RefInfo {
   sha: string;
 }
 
-/** Distinguishes scratch index files, so two processes on one repo cannot collide. */
+/** Distinguishes scratch index files within a process; the pid separates processes. */
 let scratchIndexCount = 0;
 
 /** A non-interactive handle to one git repository. */
@@ -110,8 +110,8 @@ export class Git {
 
   /**
    * The work-tree root containing `root`, or null when there is none. Unlike `isRepo` this
-   * answers *which* repo — a `root` inside a nested repository reports the inner one, which is
-   * what git itself would operate on.
+   * answers which repo: a `root` inside a nested repository reports the inner one, which is what
+   * git itself would operate on.
    */
   async topLevel(): Promise<string | null> {
     const r = await this.run(['rev-parse', '--show-toplevel']);
@@ -178,9 +178,8 @@ export class Git {
    * dirty files are not swept in. Returns the new commit hash, or null when there was
    * nothing to commit.
    *
-   * `trailers` are appended as a `Key: value` block after a blank line — the provenance seam
-   * commit-on-save writes a command's seq and invocation into. Mechanical, like everything
-   * else here: which trailers mean what is the caller's business.
+   * `trailers` are appended as a `Key: value` block after a blank line; commit-on-save writes a
+   * command's seq and invocation there. What a given trailer means is the caller's business.
    */
   async commit(opts: {
     message: string;
@@ -232,9 +231,9 @@ export class Git {
   }
 
   /**
-   * The newest commit that touched `path`, or null where history has never recorded it. The
-   * question `commit` cannot answer: a file already committed by somebody else's sweep produces
-   * no new commit, and a caller that wanted to know *where it landed* still needs an answer.
+   * The newest commit that touched `path`, or null where history has never recorded it.
+   * `commit` cannot answer this: a file already committed by somebody else's sweep produces no
+   * new commit, and a caller still needs to know where it landed.
    */
   async lastCommitFor(path: string): Promise<string | null> {
     const r = await this.run(['log', '-n1', '--format=%H', '--', path]);

@@ -13,13 +13,13 @@ import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
 
 /**
  * The task list: one card per node of the content-addressed graph, for scanning rather than for
- * structure. It is the React `TaskBoard` plus the gate bars that sat above it — the same
- * material the graph editor draws, in the shape you read down a column.
+ * structure. It carries the React `TaskBoard` and the gate bars that sat above it, showing the
+ * same material the graph editor draws as a single column.
  *
  * It does not own a selection. Clicking a card publishes `ui.taskHash` and, through the shared
- * rule, whatever authored ids the task names — so the inspector, the graph and the runner all
+ * rule, whatever authored ids the task names, so the inspector, the graph and the runner all
  * follow one click, and a task picked in the graph is highlighted here without either editor
- * knowing the other exists.
+ * referring to the other.
  */
 export class TaskListEditor extends VnEditor {
   private bar!: Container;
@@ -37,9 +37,9 @@ export class TaskListEditor extends VnEditor {
   /** Remembered per pane: whether the list is narrowed to what stopped and wants a person. */
   onlyFailed = false;
   /**
-   * Hashes the author cleared out of the *list*. Nothing is deleted: a `done` record is what
+   * Hashes the author cleared out of the list. Nothing is deleted: a `done` record is what
    * makes a run resumable, so pruning `tasks.jsonl` would re-render — and re-pay for — every
-   * picture it named. A task that comes back to life is drawn again.
+   * picture it named. Refresh empties this set and brings the cards back.
    */
   private cleared = new Set<string>();
 
@@ -61,7 +61,7 @@ export class TaskListEditor extends VnEditor {
     super.init();
 
     // A column of two rows rather than one long row: the bar carries a sentence of counts and
-    // five controls, and in one row the last of them falls off the end of a half-width pane.
+    // six controls, and in one row the last of them falls off the end of a half-width pane.
     this.bar = (this.header as Container).col();
 
     this.list = document.createElement('div');
@@ -76,10 +76,9 @@ export class TaskListEditor extends VnEditor {
     });
     this.appendSurface(this.list);
 
-    // Two feeds, because they answer different questions. `onInvalidate` is every mutating
-    // command and every undo — an approval, an adoption, a regenerate — and arrives once the work
-    // is over. `onBusy` is the only thing that moves *during* a run, which is what makes a task
-    // actually appear here as `running` rather than only after it has stopped being one.
+    // Two feeds, because they answer different questions. `onInvalidate` fires for every mutating
+    // command and every undo (an approval, an adoption, a regenerate) once the work is over.
+    // `onBusy` fires during a run, which is what shows a task here while it is still `running`.
     this.watch(
       () => onInvalidate(() => void this.load()),
       () => void this.load(),
@@ -109,7 +108,7 @@ export class TaskListEditor extends VnEditor {
     this.rebuild();
   }
 
-  /** What the two controls in the bar are set to, as the pure rules want to be asked. */
+  /** What the bar's controls are set to, in the shape the pure rules take. */
   private filter(): ListFilter {
     return {
       cleared: this.cleared,
@@ -165,7 +164,7 @@ export class TaskListEditor extends VnEditor {
     const hidden = tasks.length - this.showing().length;
 
     this.bar.clear();
-    // Row one is what the list *is*; row two is what to do about it.
+    // Row one describes the list; row two carries the controls that act on it.
     const top = this.bar.row();
     const low = this.bar.row();
 
@@ -193,9 +192,9 @@ export class TaskListEditor extends VnEditor {
       this.rebuild();
     };
 
-    // Its own tick rather than a third state of `only done`: the two are disjoint, so what an
-    // author wants while a wave is in flight is the *running* half, not a mode switch away from
-    // the one they left on. Ticking both shows nothing, and `emptyBecause` says so by name.
+    // Its own tick rather than a third state of `only done`: the two sets are disjoint, so an
+    // author watching a wave wants the running half without leaving the mode they set. Ticking
+    // both shows nothing, and `emptyBecause` says so by name.
     const moving = low.check(undefined, 'only running') as Check;
     moving.checked = this.onlyRunning;
     moving.description = 'Narrow the list to the tasks a wave is working on right now.';
@@ -206,8 +205,8 @@ export class TaskListEditor extends VnEditor {
     };
 
     // The list is where an author goes when a run did not produce what they expected, and a
-    // failure is a needle in a column of hundreds of `done` cards. `needs_human` rides this tick
-    // too — see `ListFilter.onlyFailed`.
+    // failure is a needle in a column of hundreds of `done` cards. This tick also keeps
+    // `needs_human` (see `ListFilter.onlyFailed`).
     const broke = low.check(undefined, 'only failed') as Check;
     broke.checked = this.onlyFailed;
     broke.description =
@@ -259,7 +258,7 @@ export class TaskListEditor extends VnEditor {
     for (const task of tasks) this.list.appendChild(this.taskCard(task, selection));
   }
 
-  /** The gate, as the one thing standing between the author and the rest of the run. */
+  /** The gate bar: the portrait approval the rest of the run is waiting on. */
   private gateBar(character: string): HTMLElement {
     const bar = card();
     Object.assign(bar.style, {
@@ -322,9 +321,8 @@ export class TaskListEditor extends VnEditor {
 
     box.appendChild(head);
     box.appendChild(subject(subjectOf(task), TOKENS.paper));
-    // A task that stopped records why, and this is the surface built for scanning — so the
-    // reason belongs on the card rather than one click away in the inspector's attempt list,
-    // which is not where an author looking for what went wrong starts.
+    // A task that stopped records why, and this list is the surface built for scanning, so the
+    // reason goes on the card rather than one click away in the inspector's attempt list.
     if (task.error) {
       const why = subject(task.error, TOKENS.vermilion);
       why.title = task.error;
@@ -341,15 +339,13 @@ export class TaskListEditor extends VnEditor {
   }
 
   /**
-   * The asset hash a task left behind, or `undefined` — whatever its status.
+   * The asset hash a task left behind, whatever its status. `undefined` if it drew nothing.
    *
-   * It used to answer only for a `done` task, on the reasoning that bytes from a task that
-   * stopped are bytes nothing downstream may use. True, and beside the point: *unusable* and
-   * *unviewable* are different, and a picture that was rejected is exactly what an author
-   * clicking a failed card is asking to see. A `needs_human` shot carries its last rejected
-   * frame as `output`, and a `failed` task that got far enough to render something carries it on
-   * the attempt that rendered it — so the last attempt with bytes is the fallback. Nothing here
-   * accepts anything; the asset editor is a window.
+   * Bytes from a task that stopped are unusable downstream but still viewable, and a rejected
+   * picture is what an author clicking a failed card is asking to see. A `needs_human` shot
+   * carries its last rejected frame as `output`, and a `failed` task that got far enough to
+   * render something carries it on the attempt that rendered it, so the last attempt with bytes
+   * is the fallback. Nothing here accepts anything; the asset editor only displays.
    */
   private static drewAsset(task: Task): string | undefined {
     if (task.output) return task.output;
@@ -372,11 +368,9 @@ export class TaskListEditor extends VnEditor {
     }
     this.announce();
 
-    // A finished task *is* its picture, and the list is where an author watches one arrive — so
-    // the click that picks it also puts it on screen. A rejected frame opens the same way: what
-    // an author wants after a failure is to look at what came out. Through `view.open` rather than by setting
-    // `ui.assetHash` here: the command is what finds or raises a pane, and what records the act.
-    // `elsewhere`, so the list the author is scanning is not the pane that gets replaced.
+    // The click that picks a finished task also puts its picture on screen, a rejected frame
+    // included. Routed through `view.open` rather than by setting `ui.assetHash` here, because the
+    // command finds or raises the pane and records the act; `elsewhere` keeps this list standing.
     const drew = TaskListEditor.drewAsset(task);
     if (drew) void exec('view.open', { editor: 'asset', where: 'elsewhere', subject: drew });
   }

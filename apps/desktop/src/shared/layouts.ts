@@ -9,19 +9,17 @@ import { EDITOR_IDS, type EditorId } from './editors.js';
  * template is the saved arrangement, not the live one. `pathux.template` is the pointer
  * between them.
  *
- * A template carries its arrangement in one of two forms, and which one says where it came
- * from:
+ * A template carries its arrangement in one of two forms, and the form says where it came from.
+ * A recipe is a declarative tree of splits and panes. The shipped layouts use it, because main
+ * writes those with no renderer in the loop (scaffolding a new project, ensuring an old one,
+ * resetting) and only a live screen can produce the other form. A screen is path.ux's own
+ * `simple.saveFile` blob. `Save Current Layout As…` writes that, because an author drags borders
+ * into arrangements no split grammar describes, and per-pane state (the Documents editor's mode)
+ * has no recipe representation at all.
  *
- * - a **recipe** — splits and panes, declarative. What the shipped layouts are, because main
- *   writes those with no renderer in the loop (scaffolding a new project, ensuring an old one,
- *   resetting) and only a live screen can produce the other form.
- * - a **screen** — path.ux's own `simple.saveFile` blob. What `Save Current Layout As…`
- *   writes, because an author drags borders into arrangements no split grammar describes, and
- *   per-pane state (the Documents editor's mode) has no recipe representation at all.
- *
- * This file is in the browser bundle, so it must stay node-free — hence a local `layoutSlug`
- * rather than `@vn/model`'s. Only `vite build` catches a violation here; neither `tsgo` pass
- * does.
+ * This file is in the browser bundle, so it must stay node-free, and `layoutSlug` is a local copy
+ * of `@vn/model`'s rather than an import. Only `vite build` catches a violation here; neither
+ * `tsgo` pass does.
  */
 
 /** Where templates live, workspace-relative. Also what `.gitattributes` names. */
@@ -30,7 +28,7 @@ export const LAYOUT_DIR = '.vnstudio/layouts';
 /** The envelope version — this file's shape, not the path.ux schema inside `screen`. */
 export const LAYOUT_FORMAT = 'layout/1';
 
-/** One pane: an editor stack in a single area, last one listed showing. */
+/** One pane: an editor stack in a single area. The editor listed last is the one showing. */
 export interface LayoutPane {
   pane: EditorId[];
 }
@@ -55,7 +53,10 @@ export interface LayoutFile {
   slug: string;
   title: string;
   description: string;
-  /** Every editor the arrangement holds, derived at write time. A summary and a pre-check. */
+  /**
+   * Every editor the arrangement holds, derived at write time. Read as a summary and checked
+   * before the template is applied.
+   */
   editors: EditorId[];
   source: 'shipped' | 'saved';
   recipe?: LayoutRecipe;
@@ -68,7 +69,7 @@ export interface LayoutSummary {
   title: string;
   description: string;
   source: 'shipped' | 'saved';
-  /** Changes when the file does. What a window compares to notice the file moved under it. */
+  /** Changes when the file does. A window compares it to notice the file changed on disk. */
   fingerprint: string;
   /** Set when the file is there but unusable. The row says so and applying it is refused. */
   problem?: string;
@@ -192,13 +193,17 @@ export function parseLayoutFile(
 
 /**
  * Whether a merge left both sides in the file. Templates are declared unmergeable, so this is
- * the expected state after a conflicting pull — and applying half a mesh is worse than saying so.
+ * the expected state after a conflicting pull, and such a template is refused rather than
+ * half-applied.
  */
 export function isConflicted(text: string): boolean {
   return /^<{7}( |$)/m.test(text) && /^>{7}( |$)/m.test(text);
 }
 
-/** Pretty-printed, trailing newline: the file is text even when what it holds is opaque. */
+/**
+ * Pretty-prints with a trailing newline, so the file stays readable text even when the
+ * arrangement it holds is an opaque blob.
+ */
 export function serializeLayoutFile(file: LayoutFile): string {
   return JSON.stringify(file, null, 2) + '\n';
 }
@@ -280,7 +285,7 @@ export function shippedLayoutFiles(): { path: string; text: string }[] {
   }));
 }
 
-/** The rule that tells git not to merge a layout, and the comment that says what to do instead. */
+/** The `.gitattributes` rule that tells git not to merge a layout. */
 export const LAYOUT_ATTRIBUTE = `${LAYOUT_DIR}/*.json text eol=lf -merge`;
 
 export const LAYOUT_ATTRIBUTES_BLOCK =

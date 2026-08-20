@@ -23,7 +23,7 @@ describe('retry', () => {
     expect(doomed.calls()).toBe(3);
   });
 
-  // The point of the predicate: a failure another attempt cannot fix costs one attempt.
+  // The predicate exists so that a failure another attempt cannot fix costs only one attempt
   it('stops immediately, and throws the same error, when shouldRetry says no', async () => {
     const f = flaky(99, new Error('terminal'));
     await expect(retry(f.fn, { attempts: 5, baseMs: 0, shouldRetry: () => false })).rejects.toThrow(

@@ -1,5 +1,5 @@
 /**
- * The command stack: the one execution path for every command, and the history of what ran.
+ * The one execution path for every command, and the history of what ran.
  *
  * Undo is opt-in per command and rests on shadow snapshots (`undo.ts`): with a journal wired,
  * a command marked `undoable` is bracketed by two captures of the document tree, and undo/redo
@@ -27,8 +27,8 @@ export interface CommandStackOptions<Host> {
   /** Enables undo/redo. Absent means the stack refuses both, as it did before undo landed. */
   journal?: UndoJournal;
   /**
-   * Enables commit-on-save. Absent means the stack moves no ref, as it did before it existed —
-   * which is what keeps a bare stack (tests, testkit, the CLI) out of the author's history.
+   * Enables commit-on-save. Absent means the stack moves no ref, which keeps a bare stack
+   * (tests, testkit, the CLI) out of the author's history.
    */
   committer?: Committer;
 }
@@ -149,13 +149,14 @@ export class CommandStack<Host = unknown> {
   }
 
   /**
-   * Would `id` run right now? The command's own precondition, asked without running it.
+   * Whether `id` would run right now, asking the command's own precondition without running it.
    *
-   * Three states, not two. `undeclared` is the answer for a command that has no check — absence
-   * of a precondition is not permission, and reporting it as an accept would put words in the
-   * command's mouth. Props are coerced first, so a check sees exactly what `run` would.
+   * There are three states rather than two. `undeclared` is the answer for a command that has no
+   * check — the absence of a precondition is not permission, and reporting it as an accept would
+   * claim more than the command stated. Props are coerced first, so a check sees exactly what
+   * `run` would.
    *
-   * Nothing here gates `exec`: a check is a report about now, and `run` re-decides.
+   * Nothing here gates `exec`: a check reports on the present state, and `run` decides again.
    */
   async check(
     id: string,
@@ -197,13 +198,13 @@ export class CommandStack<Host = unknown> {
   }
 
   /**
-   * The record undo would reverse: the most recent one that actually changed the workspace.
+   * The most recent record that changed the workspace, which is the one undo would reverse.
    *
    * Non-mutating records are skipped, so a `view.room` between two edits does not stand in the
    * way, and the stack's own undo/redo entries are skipped because they are history rather
-   * than undo points. So is a bracketed command that changed nothing (`undo.changed === false`):
-   * its two trees are identical, so reaching past it cannot skip over an edit. A candidate
-   * without snapshots at all is still *returned* — undo names it and refuses, rather than
+   * than undo points. A bracketed command that changed nothing (`undo.changed === false`) is
+   * skipped too: its two trees are identical, so reaching past it cannot skip over an edit. A
+   * candidate without snapshots is still returned — undo names it and refuses, rather than
    * quietly reaching past it to an older edit the author never pointed at.
    */
   undoCandidate(): CommandRecord | null {
@@ -260,7 +261,7 @@ export class CommandStack<Host = unknown> {
   /**
    * Move the working copy forward to the record's `post` snapshot.
    *
-   * Restoring the post-state, never replaying `invocation` — a replay is a *re-run*, and for
+   * This restores the post-state and never replays `invocation`: a replay is a re-run, and for
    * anything touching a model or reading changed inputs it would produce a different result
    * (`docs/history/gitUndoOptions.md` §7). The invocation stays on the record for exactly that use.
    */
@@ -326,7 +327,7 @@ export class CommandStack<Host = unknown> {
       status: 'ok',
       message: `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.invocation}.`,
     };
-    // Commit the restored tree as a *new* commit rather than moving a branch ref backwards: a
+    // Commit the restored tree as a new commit rather than moving a branch ref backwards: a
     // reset would discard the commit that is the only record of the save being undone.
     const commits = await this.commit(true, record);
     if (commits.length > 0) record.commits = commits;
@@ -381,8 +382,8 @@ export class CommandStack<Host = unknown> {
   }
 
   /**
-   * Provenance, not control flow: a project need not be a git repo, so failures here
-   * degrade to `{ head: null, dirty: false }` rather than failing the command.
+   * Records provenance rather than driving control flow. A project need not be a git repo, so
+   * failures here degrade to `{ head: null, dirty: false }` rather than failing the command.
    */
   private async gitState(): Promise<{ head: string | null; dirty: boolean }> {
     try {

@@ -1,11 +1,10 @@
 /**
  * The shell's one seam to the main process. Everything the header shows is pushed from here
- * into `ShellState`; everything a widget *does* leaves as a command over `command:exec`, so
- * the registry stays the only write path and a widget never reaches a bespoke IPC channel.
+ * into `ShellState`, and every action a widget takes leaves as a command over `command:exec`, so
+ * the registry stays the only write path and no widget reaches a bespoke IPC channel.
  *
- * The React shell kept this state in `App.tsx`'s hooks and passed it down. Here it is one
- * module holding one `ShellApp`, because a path.ux widget reads its context rather than its
- * props — there is nothing to thread it through.
+ * The state lives in this one module holding one `ShellApp` because a path.ux widget reads its
+ * context rather than its props, so there is nothing to thread it through.
  */
 import { message as note, error as noteError } from 'pathux';
 import {
@@ -61,20 +60,20 @@ export function say(text: string, bad = false): void {
 
 /**
  * File a notification the shell raised on its own — a notice that is not a command's outcome,
- * which main would otherwise never hear about. It is *not* shown from here: main pushes every
- * notification back over `notify:changed`, and that is what says it.
+ * which main would otherwise never hear about. Nothing is shown from here: main pushes every
+ * notification back over `notify:changed`, and that push is what displays it.
  */
 export function notify(input: NotificationInput): void {
-  // Swallowed rather than shown: with no project open there is no log to file it in, and a
-  // browser preview has no main process at all. Neither is worth a second failure on screen.
+  // The failure is swallowed rather than shown. With no project open there is no log to file it
+  // in, and a browser preview has no main process at all.
   void api.invoke('notify:post', { source: 'ui', ...input }).catch(() => {});
 }
 
 /**
- * Say what a command answered, **without saying it twice**. Main files every act and every
- * failure it heard about and pushes them back, and that push is already displayed; what the
- * shell still has to voice is the rest — a read that succeeded, and the handful of failures the
- * stack rejects before a record exists (an unknown command, bad props, a declined confirm).
+ * Say what a command answered, without saying it twice. Main files every act and every failure it
+ * heard about and pushes them back, and that push is already displayed. The shell reports the
+ * rest: a read that succeeded, and the handful of failures the stack rejects before a record
+ * exists (an unknown command, bad props, a declined confirm).
  */
 export function report(outcome: CommandOutcome): void {
   if (!outcome.ok) {
@@ -101,9 +100,9 @@ type ExecWatcher = (id: string, outcome: CommandOutcome) => void;
 const watchers = new Set<ExecWatcher>();
 
 /**
- * Watch what the shell runs. For state a command changes that no push reports — the agent's
- * transcript is the one — so a surface follows the *command* rather than the button on it, and
- * the palette running the same id has the same effect.
+ * Watch what the shell runs. This covers state a command changes that no push reports, such as the
+ * agent's transcript. A surface follows the command rather than the button on it, so the palette
+ * running the same id has the same effect.
  */
 export function onExec(watcher: ExecWatcher): () => void {
   watchers.add(watcher);
@@ -113,15 +112,15 @@ export function onExec(watcher: ExecWatcher): () => void {
 const invalidators = new Set<() => void>();
 
 /**
- * Watch for "the project on disk may have moved under you": any mutating command that succeeded,
- * an undo or a redo, which restores files no command in this session ran, **and any agent tool
- * call that reported having written something**. Coarser than {@link onExec} on purpose — a
- * surface that redraws the whole workspace wants the union of the three, and re-deriving it from
- * the exec feed alone would miss both the undo half and the agent entirely.
+ * Watch for the project on disk having moved: a mutating command that succeeded, an undo or a redo
+ * (which restores files no command in this session ran), and an agent tool call that reported
+ * having written something. Coarser than {@link onExec} on purpose, because a surface that redraws
+ * the whole workspace wants the union of the three, and re-deriving it from the exec feed alone
+ * would miss both the undo half and the agent entirely.
  *
- * That last one makes a tool's `written` load-bearing rather than informational: the `agent:event`
- * handler below fires this only when it is non-empty, so a mutating tool that reports nothing
- * leaves every tree in the app showing the state before it ran.
+ * The agent case makes a tool's `written` load-bearing rather than informational: the `agent:event`
+ * fires this only when `written` is non-empty, so a mutating tool that reports nothing leaves every
+ * tree in the app showing the state before it ran.
  */
 export function onInvalidate(listener: () => void): () => void {
   invalidators.add(listener);
@@ -137,10 +136,10 @@ type WroteWatcher = (paths: readonly string[]) => void;
 const scribes = new Set<WroteWatcher>();
 
 /**
- * Watch *which* files moved. Neither {@link onExec} nor {@link onInvalidate} answers that, and
+ * Watch which files moved. Neither {@link onExec} nor {@link onInvalidate} answers that, and
  * neither sees the agent at all — its writes never pass through `exec`, they arrive as
  * `agent:event` tool results carrying `ToolResult.written`. Both feed this, so an editor showing a
- * document follows it whoever rewrote it.
+ * document follows that document whoever rewrote it.
  */
 export function onWrote(watcher: WroteWatcher): () => void {
   scribes.add(watcher);
@@ -162,9 +161,9 @@ export interface BusyState {
 const busyWatchers = new Set<(state: BusyState) => void>();
 
 /**
- * Watch a run's progress. The one signal that moves *while* something is in flight: a command's
- * outcome — and so {@link onInvalidate} — arrives only once the run it started has finished, so a
- * pane that wants to show what is running right now has nothing else to follow.
+ * Watch a run's progress. This is the one signal that moves while something is in flight: a
+ * command's outcome (and so {@link onInvalidate}) arrives only once the run it started has
+ * finished, so a pane showing what is running right now has nothing else to follow.
  */
 export function onBusy(listener: (state: BusyState) => void): () => void {
   busyWatchers.add(listener);
@@ -189,18 +188,18 @@ export async function exec(
 }
 
 /**
- * Ask a command whether it would run, without running it. The same door the palette's form and
- * the tree's right-click menus use, so a surface that wants the refusal *before* the click gets
- * the command's own sentence rather than one it invented.
+ * Ask a command whether it would run, without running it. The palette's form and the tree's
+ * right-click menus use this too, so a surface that wants the refusal before the click gets the
+ * command's own sentence rather than an invented one.
  */
 export function check(id: string, props: Record<string, PropValue> = {}): Promise<CommandCheck> {
   return api.invoke('command:check', { id, props });
 }
 
 /**
- * Undo or redo. A refusal is the interesting outcome: undo declines rather than guessing when
- * the worktree drifted, and the author has to be told why. A refusal here carries no record —
- * the stack answers before it writes one — so `report` is what voices it.
+ * Undo or redo. Undo declines rather than guessing when the worktree drifted, and the author has
+ * to be told why. A refusal here carries no record, because the stack answers before it writes
+ * one, so `report` is what displays it.
  */
 export async function move(direction: 'undo' | 'redo'): Promise<void> {
   report(await api.invoke(direction === 'undo' ? 'command:undo' : 'command:redo'));
@@ -209,10 +208,9 @@ export async function move(direction: 'undo' | 'redo'): Promise<void> {
 /**
  * Quit the app, and close just this window.
  *
- * Both go through main, and Quit having to is the bug the second window exposed: it was
- * `window.close()`, which closes the renderer that asked and leaves the others up — a Quit that
- * quits nothing. Main closes them all, and each still runs its own `will-prevent-unload`, so an
- * unsaved draft in *any* window is still asked about.
+ * Both go through main. A renderer-side `window.close()` would close only the window that asked
+ * and leave the others up; main closes them all, and each still runs its own
+ * `will-prevent-unload`, so an unsaved draft in each window is still asked about.
  */
 export async function quit(): Promise<void> {
   report(await exec('window.quit'));
@@ -223,9 +221,9 @@ export async function closeWindow(): Promise<void> {
 }
 
 /**
- * The two session facts no `command:ui` effect reports. `agent.setMode` does emit an
- * `agent:event`, but the model does not, so both are mirrored from the outcome rather than
- * left to a push that may not come.
+ * Mode and model are the two session facts no `command:ui` effect reports. `agent.setMode` does
+ * emit an `agent:event`, but the model does not, so both are mirrored from the command's outcome
+ * rather than left to a push that may not come.
  */
 export async function toggleMode(): Promise<void> {
   const ui = shell().ui;
@@ -283,7 +281,7 @@ export function installBridge(app: ShellApp): void {
   host = app;
 
   // The one agent setting main restores from the install's session file, so the bar paints the
-  // budget in force rather than the default and then correcting itself.
+  // budget in force instead of showing the default and then correcting it.
   const storedBudget = api.session.initial()['agent.budget'];
   app.ui.budget =
     typeof storedBudget === 'string' ? (storedBudget as BudgetChoice) : DEFAULT_BUDGET;
@@ -298,9 +296,9 @@ export function installBridge(app: ShellApp): void {
       ui.canRedo = effect.state.canRedo;
       ui.undoLabel = effect.state.undoLabel ?? '';
       ui.redoLabel = effect.state.redoLabel ?? '';
-      // An undo/redo wrote files no editor here asked to write, so the whole surface is stale.
-      // This effect is pushed after *every* command though, and only `revision` tells the two
-      // apart — an ordinary command already invalidated from `exec`, and would count twice.
+      // An undo or redo wrote files no editor here asked to write, so the whole surface is stale.
+      // This effect is pushed after every command though, and only `revision` tells the two apart:
+      // an ordinary command already invalidated from `exec` and would otherwise count twice.
       void refreshWorkspace();
       if (effect.revision !== revision) {
         revision = effect.revision;
@@ -308,8 +306,8 @@ export function installBridge(app: ShellApp): void {
       }
       touch();
     } else if (effect.type === 'workspace') {
-      // Nothing said here: whichever command opened it is mutating, so main filed its sentence
-      // and pushed it back. This effect is only "re-read the project you are now in".
+      // Nothing is said here. Whichever command opened the workspace is mutating, so main filed
+      // its sentence and pushed it back; this effect only means re-read the current project.
       void refreshWorkspace();
     } else if (effect.type === 'busy') {
       ui.busyWhat = effect.what ?? '';
@@ -319,10 +317,9 @@ export function installBridge(app: ShellApp): void {
       for (const watcher of busyWatchers) watcher(state);
       touch();
     } else if (effect.type === 'agent' && effect.action === 'diagnose') {
-      // The API rejected what was sent rather than being unreachable, so the request itself is
-      // the evidence — and it is only in this process, only until the ring rolls over. Both
-      // reading boxes come ticked because this is the case they exist for; the author still
-      // presses the button, and may untick either.
+      // The API rejected what was sent rather than being unreachable, so the request itself is the
+      // evidence, and it lives only in this process until the ring rolls over. Both reading boxes
+      // come ticked because this is the case they exist for; the author may untick either.
       void openReportDialog({
         ...(effect.thread ? { thread: effect.thread } : {}),
         source: true,
@@ -349,18 +346,17 @@ That is a fault in what was ` +
       app.ui.agentMode = event.mode;
       touch();
     } else if (event.type === 'api') {
-      // `retrying` is the only phase with a wait ahead of it. The other three are the story
-      // ending — the card going up, the call working, the turn giving up — so all of them clear
-      // the counter rather than leaving a number nothing is going to move again.
+      // `retrying` is the only phase with a wait ahead of it. The other three are terminal — the
+      // card going up, the call working, the turn giving up — so all of them clear the counter
+      // rather than leaving a number nothing will move again.
       const counting = event.phase === 'retrying';
       app.ui.retryAttempt = counting ? event.attempt : 0;
       app.ui.retryOf = counting ? event.of : 0;
       touch();
     } else if (event.type === 'tool') {
-      // The agent's half of "the files moved". Nothing else reports it: a tool call is not a
-      // command, so `exec` never sees it. Both feeds fire, because a surface that redraws the whole
-      // workspace — the document tree — watches the coarse one and would otherwise sit on a project
-      // the agent has since added a scene to.
+      // A tool call is not a command, so `exec` never sees the agent's writes. Both feeds fire,
+      // because a surface that redraws the whole workspace (the document tree) watches the coarse
+      // one and would otherwise sit on a project the agent has since added a scene to.
       const written = event.result.written ?? [];
       wrote(written);
       if (written.length > 0) invalidate();
@@ -368,8 +364,8 @@ That is a fault in what was ` +
   });
 
   // Main files every notification and pushes it back, so the transient sentence and the durable
-  // record are the same event: the bell recounts, an open list redraws, and the note frame shows
-  // it once. A flag change carries no note — the count is stale, but nothing new was said.
+  // record are one event: the bell recounts, an open list redraws, and the note frame shows it
+  // once. A flag change carries no note, so the count changes but nothing new is said.
   api.on('notify:changed', (payload: { note?: Notification }) => {
     notificationsChanged();
     if (payload.note) say(payload.note.message, payload.note.level === 'error');

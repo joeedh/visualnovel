@@ -66,7 +66,7 @@ describe('archiving an upload', () => {
       ]);
       expect(batch.files.every((f) => f.readable)).toBe(true);
       expect(batch.files[0]!.bytes).toBe(44);
-      // Verbatim: the bytes on disk are the bytes the author handed over.
+      // The bytes on disk are the bytes the author handed over
       expect(await fs.readFile(join(dir, batch.files[0]!.stored), 'utf8')).toBe(
         '# Worldbuilding\n\nThe third district burned.\n',
       );
@@ -170,13 +170,13 @@ describe('what the agent can see of the archive', () => {
         AT,
       );
 
-      // The requirement, as a test: sweeps walk allow-lists that archive/ is not on…
+      // Sweeps walk allow-lists that archive/ is not on
       const found = await run('search', { query: 'lighthouse keeper' }, ctx);
       expect(found.data).toEqual([]);
       const bible = await run('search_bible', { query: 'lighthouse keeper' }, ctx);
       expect(bible.data).toEqual([]);
 
-      // …and read_file still serves it by name.
+      // read_file still serves it by name
       const read = await run('read_file', { path: batch.files[0]!.stored }, ctx);
       expect(read.ok).toBe(true);
       expect(read.output).toContain('lighthouse keeper');

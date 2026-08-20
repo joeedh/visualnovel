@@ -53,10 +53,10 @@ const WITH_NOTHING_OPEN: Record<DocNodeKind, EditorId | ''> = {
   wiki: 'wiki',
   assetkind: '',
   asset: 'asset',
-  // The one pane that can draw a picture with no bytes: a slot is a place in the graph.
+  // Taskgraph is the one pane that can draw a slot that has no bytes yet.
   slot: 'taskgraph',
-  // The pane that answers for a playbook. Wiki deliberately does not: a `SKILL.md` opened in a
-  // plain text box would let an author edit front-matter the Skills pane owns.
+  // Skills answers for a `SKILL.md`, and Wiki deliberately does not claim one: a plain text box
+  // would let an author edit the front-matter the Skills pane owns.
   skill: 'skills',
   dir: '',
   file: 'wiki',
@@ -126,9 +126,8 @@ describe('a claim looks at the node, not just its kind', () => {
     expect(opened(routeFor({ node: png, panes: documents }))).toBe('');
   });
 
-  // Both claim it as `primary`, so the tie breaks on `EDITORS` order — which is why the `skills`
-  // entry is listed before `wiki`. A `SKILL.md` in a plain text box would let an author edit the
-  // front-matter the Skills pane answers for.
+  // Skills and Wiki both claim a `SKILL.md` as `primary`, so the tie breaks on `EDITORS` order,
+  // which lists `skills` before `wiki`.
   test('a skill file clicked in file mode lands in Skills rather than Wiki', () => {
     const file = node('file', {
       id: 'file:.aiagent/skills/continuity-pass/SKILL.md',
@@ -137,7 +136,7 @@ describe('a claim looks at the node, not just its kind', () => {
     expect(opened(routeFor({ node: file, panes: documents }))).toBe('skills');
   });
 
-  // Visibility still comes first, and correctly so: the click lands where the author is looking.
+  // Visibility still comes first, so the click lands where the author is looking.
   test('but lands in Wiki when Wiki is up and Skills is not', () => {
     const file = node('file', {
       id: 'file:.aiagent/skills/continuity-pass/SKILL.md',

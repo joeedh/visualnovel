@@ -1,8 +1,8 @@
 /**
- * The neutral fragment IR (research §1). Everything above it — queries, explain,
- * invariants — is written once against these shapes and never learns which source
- * produced a fragment. The IR is *sufficient* for querying, not lossless: `raw` is the
- * typed escape hatch to the live Element / recorded op when the IR is not enough.
+ * The neutral fragment IR (research §1). Queries, explain and invariants are written once
+ * against these shapes and do not depend on which source produced a fragment. The IR is
+ * sufficient for querying but not lossless: `raw` gives typed access to the live Element or
+ * recorded op when the IR is not enough.
  */
 import type { Mat3, Rect, Vec2 } from './geom.js';
 
@@ -35,13 +35,13 @@ export type StyleSnapshot = {
   font?: { family: string; size: number; weight: number };
   /** For kind 'text'; truncated at capture (research §12). */
   text?: string;
-  /** DOM only: the *declared* z-index. Resolved paint order lives in `Fragment.z`. */
+  /** DOM only: the declared z-index. Resolved paint order lives in `Fragment.z`. */
   zIndex?: number;
 };
 
 /**
- * Hit-testability, first-class — paint is not pick. `pointer-events`, hit slop, and
- * `opacity: 0` (clickable while invisible) all pull the two apart.
+ * How a fragment is hit-tested, which is separate from how it is painted. `pointer-events`,
+ * hit slop, and `opacity: 0` (clickable while invisible) each pull the two apart.
  */
 export type PickSnapshot = {
   mode: 'auto' | 'none' | 'bounds' | 'painted';
@@ -58,13 +58,13 @@ export type OwnerRef = {
   parent?: string;
 };
 
-/** `by` matters: "clipped away **by `.rail`**" is the answer, not just the rect. */
+/** A clip rect together with the fragment that imposed it, so an explanation can name it. */
 export type ClipRef = { rect: Rect; by: FragId };
 
 /**
- * The ancestor that established the stacking context scoping this fragment's z-index,
- * and why. Retained during the stacking walk (free there, unrecoverable later) — it is
- * the fact behind explainPick's "z-index 999 ignored" line.
+ * The ancestor that established the stacking context scoping this fragment's z-index, and the
+ * reason it did. Recorded during the stacking walk because it costs nothing there and cannot be
+ * recovered afterwards; explainPick's "z-index 999 ignored" line reports it.
  */
 export type ZContextRef = { by: FragId; byLabel: string; reason: string };
 
@@ -87,14 +87,14 @@ export type Fragment = {
   zContext?: ZContextRef;
   /** Capture site, when the source and tier support it. */
   stack?: string;
-  /** Escape hatch: the Element, the recorded op, the fiber. Never crosses CDP. */
+  /** Typed access to the live Element, the recorded op or the fiber. Never crosses CDP. */
   raw?: unknown;
 };
 
 /**
- * What a source can actually do — the abstraction stays honest by declaring caps rather
- * than degrading the IR to the weakest backend. A query a source cannot answer returns
- * `{ unsupported: [SourceId] }`, never zeros.
+ * What a source can do. Each source declares its caps instead of the IR degrading to the
+ * weakest backend, and a query a source cannot answer returns `{ unsupported: [SourceId] }`
+ * rather than zeros.
  */
 export type SourceCaps = {
   exactZ: boolean;
@@ -131,9 +131,9 @@ export type Frame = {
   spaces: SpaceRegistry;
   caps: Record<SourceId, SourceCaps>;
   /**
-   * Load-bearing: canvas frames are *recorded* (fragments are exactly what was drawn);
-   * DOM frames are *sampled* (anything that changed and reverted between captures is
-   * invisible). Never let a consumer forget which one they hold.
+   * Canvas frames are recorded, so their fragments are exactly what was drawn. DOM frames are
+   * sampled, so a change that reverted between two captures is invisible. A consumer has to
+   * check which kind it holds.
    */
   fidelity: 'recorded' | 'sampled' | 'mixed';
   oracle?: OracleSample;

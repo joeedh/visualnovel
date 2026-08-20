@@ -1,6 +1,6 @@
 /**
- * Batch decomposition, on real projects: the contract under test is what ends up on disk, and a
- * hand-built model would prove nothing about a file that wins forever once it exists.
+ * Batch decomposition, run on real projects. The contract under test is what ends up on disk, and
+ * a hand-built model would prove nothing about a file that is preferred forever once it exists.
  */
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { createMockProviders } from '@vn/providers';
@@ -65,7 +65,7 @@ describe('decomposeAll', () => {
     try {
       const { model } = await p.reload();
       // The default mock text LLM echoes the prompt, which no schema accepts — the same shape a
-      // real run with a bad key has, and the failure this whole design exists to prevent.
+      // real run with a bad key has.
       const result = await decomposeAll({
         model,
         providers: createMockProviders(),
@@ -110,8 +110,8 @@ describe('decomposeAll', () => {
       await decomposeAll({ model, providers: answering(), paths: p.paths });
       const before = await shotsOf(p, 'arrival');
 
-      // A provider that throws if it is reached: keeping is not merely idempotent on disk, it must
-      // not cost anything either — re-decomposing would change shot ids and re-render paid-for art.
+      // This provider throws if it is reached. Keeping must cost nothing, not merely be idempotent
+      // on disk: re-decomposing would change shot ids and re-render paid-for art.
       const forbidden = createMockProviders();
       forbidden.text.structured = () => Promise.reject(new Error('should not have been asked'));
       const again = await decomposeAll({ model, providers: forbidden, paths: p.paths });
@@ -133,8 +133,8 @@ describe('decomposeAll', () => {
 
       expect(result.unreadable.map((u) => u.scene)).toEqual(['arrival']);
       expect(result.unreadable[0]!.error).toContain('arrival');
-      // Left exactly as it is: re-decomposing over what may be a hand-edit is the one behaviour
-      // that would make the file untrustworthy to edit.
+      // The file is left exactly as it is. Re-decomposing over what may be a hand-edit would make
+      // the file untrustworthy to edit.
       expect(await shotsOf(p, 'arrival')).toBe('{ not json');
       expect(result.decomposed).toEqual(['rooftop']);
     } finally {

@@ -1,11 +1,11 @@
 /**
- * What the prompt half of the asset editor decides before it draws: how a chunk reads, where its
+ * Decisions the prompt half of the asset editor makes before it draws: how a chunk reads, where its
  * `⇱` button goes, what the mode strip offers, and how holding reads as a sentence
  * (`docs/plans/archive/chunked-prompts.md` §7, §8, §9).
  *
- * Pure, because the desktop jest project is node-only and the pane itself can only be checked live
- * over CDP — so everything that is a *rule* rather than markup is tested here instead. Parallel to
- * `assetview.ts`, which does the same job for the rest of that pane.
+ * These functions are pure because the desktop jest project is node-only and the pane itself can
+ * only be checked live over CDP, so everything that is a rule rather than markup is tested here.
+ * Parallel to `assetview.ts`, which does the same job for the rest of that pane.
  */
 import type { ChunkOrigin } from '@vn/types';
 import { TOP_CHUNK } from '../../src/shared/promptops.js';
@@ -13,9 +13,9 @@ import type { PropValue } from '../../src/shared/ipc.js';
 import type { PromptChunkInfo, PromptView } from '../../src/shared/prompt.js';
 
 /**
- * Hue carries voice: `--sodium` when the words come verbatim out of a document an author edits,
- * `--signal` when the builders wrote the sentence. Twelve categories cannot be twelve hues, so
- * the category is carried by the tag and the rail's texture instead.
+ * The hue distinguishes who wrote the words. `--sodium` means they come verbatim out of a
+ * document an author edits, `--signal` means the builders wrote the sentence. Twelve categories
+ * cannot be twelve hues, so the tag and the rail's texture carry the category instead.
  */
 export function chunkVoice(chunk: PromptChunkInfo): 'sodium' | 'signal' {
   switch (chunk.category) {
@@ -29,9 +29,9 @@ export function chunkVoice(chunk: PromptChunkInfo): 'sodium' | 'signal' {
 }
 
 /**
- * The rail's texture. Twelve categories cannot be twelve hues *or* twelve textures, so this groups
- * them — the words the author wrote plainly, the words a builder assembled, the addenda bolted on
- * the end — and the mono tag names the exact one.
+ * The rail's texture. Twelve categories cannot be twelve hues or twelve textures, so this groups
+ * them into the words the author wrote plainly, the words a builder assembled, and the addenda
+ * appended at the end. The mono tag names the exact category.
  */
 export function chunkTexture(chunk: PromptChunkInfo): 'solid' | 'dash' | 'dot' {
   switch (chunk.category) {
@@ -85,7 +85,7 @@ export type OriginAction =
       kind: 'open';
       editor: string;
       subject: string;
-      /** `ShellState` fields to publish **before** the editor opens — see {@link originAction}. */
+      /** `ShellState` fields to publish before the editor opens — see {@link originAction}. */
       publish: Record<string, string>;
       label: string;
     }
@@ -93,12 +93,12 @@ export type OriginAction =
   | { ok: false; reason: string };
 
 /**
- * The routing table. Two shapes of answer, and the difference matters:
+ * The routing table, which answers with either an open or a scroll.
  *
- * A shot needs *two* selection fields, so it cannot be addressed by `view.open`'s single `subject`
- * — the pane publishes the selection and then opens, which is exactly `showTask()`'s pattern. The
- * ordering is load-bearing: the new pane reads the selection on its first `update()`, so a publish
- * after the open shows the previous one. A shot chunk must never route to `wiki`, because
+ * A shot needs two selection fields, so it cannot be addressed by `view.open`'s single `subject`.
+ * The pane publishes the selection and then opens, following `showTask()`'s pattern. The ordering
+ * is load-bearing: the new pane reads the selection on its first `update()`, so publishing after
+ * the open shows the previous selection. A shot chunk must never route to `wiki`, because
  * `doc.write` refuses `scenes/**` and prose has exactly one write path.
  */
 export function originAction(origin: ChunkOrigin): OriginAction {
@@ -164,10 +164,10 @@ export interface ModeButton {
 }
 
 /**
- * The three modes, as three commands. Nothing here sets a mode *field*: a mode is a consequence of
- * what is written, so `Chunks` clears whatever whole-prompt text is in force, `Custom` writes the
- * composed text whole (so the style preamble and the framing sentence survive the edit by default),
- * and `Agent` condenses. A disabled segment carries its refusal as its tooltip.
+ * The three modes, as three commands. Nothing here sets a mode field, because a mode is a
+ * consequence of what is written: `Chunks` clears whatever whole-prompt text is in force, `Custom`
+ * writes the composed text whole (so the style preamble and the framing sentence survive the edit
+ * by default), and `Agent` condenses. A disabled segment carries its refusal as its tooltip.
  */
 export function modeStrip(view: PromptView): ModeButton[] {
   const frozen = view.frozen;
@@ -212,10 +212,10 @@ export type CondenseAction =
   | { ok: false; reason: string };
 
 /**
- * Condensing from custom mode passes `force`, because the alternative — refusing — leaves an author
- * who wrote a custom prompt with no way back to an agent one. The refusal in
- * {@link condenseNeedsForce} is what the *command* says when the flag is absent; the button simply
- * supplies it and says what it will do with the text it is about to reconcile.
+ * Condensing from custom mode passes `force`, because refusing would leave an author who wrote a
+ * custom prompt with no way back to an agent one. {@link condenseNeedsForce} is what the command
+ * says when the flag is absent. The button supplies the flag and says what it will do with the
+ * text it is about to reconcile.
  */
 export function condenseAction(view: PromptView): CondenseAction {
   if (view.frozen) return { ok: false, reason: view.frozen };
@@ -248,8 +248,9 @@ const condenseInvocation = (view: PromptView): ModeButton['action'] => {
 };
 
 /**
- * The held banner, or none. Sibling to `driftNote`: it says what moved underneath rather than
- * merely that something did, and it says why the stale text is still the text being sent.
+ * The held banner, or an empty string when there is none. Like `driftNote`, the banner names what
+ * changed underneath rather than only that something did, and says why the stale text is still
+ * the text being sent.
  */
 export function heldNote(view: PromptView): string {
   if (!view.held) return '';
@@ -265,16 +266,16 @@ export interface RefChip {
   pin: string;
   ext: string;
   label: string;
-  /** The strip is greyed on a muted chunk — its clause is not being sent, so neither are these. */
+  /** Greyed on a muted chunk, because neither its clause nor its references are being sent. */
   muted: boolean;
   drift: boolean;
   title: string;
 }
 
 /**
- * The strip under a card. A reference is evidence for its clause, so a muted chunk still *shows*
- * its references — dropping them silently would leave an author wondering where they went — but
- * says they are not being sent.
+ * The strip under a card. A reference is evidence for its clause, so a muted chunk still shows its
+ * references (dropping them silently would leave an author wondering where they went) and says
+ * they are not being sent.
  */
 export function refStrip(chunk: PromptChunkInfo): RefChip[] {
   return (chunk.refs ?? []).map((ref) => ({
@@ -306,8 +307,8 @@ export interface ChunkRow {
  * {@link TOP_CHUNK} above the first card's midpoint, otherwise the last card whose midpoint the
  * pointer has passed.
  *
- * Midpoints rather than the gaps between cards, for the reason `shotDropTarget` gives: the gap is a
- * hairline, and an insertion point the author can only hit by accident is not one they can aim at.
+ * Uses midpoints rather than the gaps between cards, for the reason `shotDropTarget` gives: a gap
+ * is a hairline, so an author cannot aim at an insertion point defined by one.
  */
 export function chunkDropTarget(rows: readonly ChunkRow[], y: number): string {
   let target = TOP_CHUNK;
@@ -318,9 +319,9 @@ export function chunkDropTarget(rows: readonly ChunkRow[], y: number): string {
 }
 
 /**
- * The coverage marker on a card in custom or agent mode. In chunks mode every chunk *is* the
- * prompt, so there is nothing to check. The wording is deliberately passive: this is a word-match
- * heuristic, so a surface says "not found", never "the agent dropped it".
+ * The coverage marker on a card in custom or agent mode. In chunks mode every chunk already forms
+ * the prompt, so there is nothing to check. The wording is deliberately passive because this is a
+ * word-match heuristic: a surface says "not found", never "the agent dropped it".
  */
 export function coverageMark(
   view: PromptView,

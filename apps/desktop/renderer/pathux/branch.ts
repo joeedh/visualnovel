@@ -1,16 +1,15 @@
 /**
  * The branch canvas's three gestures, as state rather than as markup: what a grab captures, what
- * aiming it at a card or a wire makes of it, and what the author is told meanwhile.
+ * aiming it at a card or a wire makes of it, and what the author is told during the drag.
  *
  * Position is not semantic on that canvas — there is no `x`/`y` on a `Scene` and the layout is
- * automatic — so every drag *means* something instead of moving something, and the whole of what a
- * drag is is which verdict it is aimed at. That is the mid-gesture verdict contract made literal,
- * exactly as in `timeline.ts`: `targets` is pure and synchronous, so the gesture is judged **once**
- * at the grab and every pointer move reads the answer off by target id. The sentence shown mid-drag,
- * the drop that is allowed, and the one `interaction.targets` gives an agent are therefore one
- * verdict — and the commit is `verdict.invoke` verbatim.
+ * automatic — so a drag selects a verdict rather than moving anything. This is the mid-gesture
+ * verdict contract, the same as in `timeline.ts`: `targets` is pure and synchronous, so the gesture
+ * is judged once at the grab and every pointer move reads the answer off by target id. The sentence
+ * shown mid-drag, the drop that is allowed, and the one `interaction.targets` gives an agent are
+ * therefore the same verdict, and the commit is `verdict.invoke` verbatim.
  *
- * This lived inside the React `BranchEditor.tsx` and was never tested. It is pure, so here it is a
+ * This logic lived inside the React `BranchEditor.tsx` and was never tested. It is pure, so it is a
  * module with a `tests/` sibling like every other rule the shell runs.
  */
 import {
@@ -73,7 +72,7 @@ export interface Unwire {
   edge: string;
   at: Point;
   verdicts: Verdicts;
-  /** Pulled clear of the arrowhead — far enough to have meant it. */
+  /** Pulled clear of the arrowhead, far enough to count as deliberate. */
   armed: boolean;
   over: null;
   verdict: Verdict | null;
@@ -85,7 +84,7 @@ export type Drag = Press | Splice | Connect | Unwire;
 export interface Aim {
   /** The pointer in world units. */
   at: Point;
-  /** The scene card under it — never a stub, which is a dangling `goto` and not a scene. */
+  /** The scene card under the pointer. Never a stub, which is a dangling `goto` and not a scene. */
   node: string | null;
   /** The wire under it. */
   edge: string | null;
@@ -117,7 +116,7 @@ export function grabCard(state: BranchState, scene: string, at: Point): Press {
   };
 }
 
-/** A card's ⌄ handle pulled out: every scene says up front whether it would take the wire. */
+/** A card's ⌄ handle pulled out. Every scene is judged up front for whether it takes the wire. */
 export function grabHandle(state: BranchState, scene: string, at: Point): Connect {
   return {
     kind: 'connect',
@@ -148,8 +147,8 @@ export function aim(drag: Drag, to: Aim): Drag {
     case 'press': {
       const travelled = Math.hypot(to.at.x - drag.from.x, to.at.y - drag.from.y) * to.scale;
       if (travelled <= SLOP) return { ...drag, at: to.at };
-      // Promoted *and* re-aimed in the same move: one big jump of a drag has to land on the wire
-      // it ended over, not on whatever the next move happens to find.
+      // Promoted and re-aimed in the same move, so a large jump lands on the wire it ended over
+      // rather than on whatever the next move finds.
       return aim({ ...drag, kind: 'splice', over: null, verdict: null }, to);
     }
     case 'splice':
@@ -157,8 +156,8 @@ export function aim(drag: Drag, to: Aim): Drag {
     case 'connect':
       return { ...drag, at: to.at, over: to.node, verdict: verdictFor(drag.verdicts, to.node) };
     case 'unwire': {
-      // The gesture *is* leaving the arrowhead, so arming is what turns its one verdict on. Below
-      // the threshold the pointer has not yet said anything, and nothing is previewed.
+      // The gesture consists of leaving the arrowhead, so arming turns its one verdict on. Below
+      // the threshold nothing is previewed.
       const armed = to.away > GRAB;
       return {
         ...drag,
@@ -175,7 +174,7 @@ export function commitOf(drag: Drag): Invocation | null {
   return drag.verdict?.accept ? drag.verdict.invoke : null;
 }
 
-/** Nothing to say where the drop is not a candidate; otherwise the verdict's own sentence. */
+/** The verdict's own sentence. A drop that is not a candidate has nothing to say. */
 export function noticeOf(drag: Drag | null): Notice | null {
   return drag?.verdict ? noticeForVerdict(drag.verdict) : null;
 }
@@ -185,7 +184,7 @@ export function noticeOf(drag: Drag | null): Notice | null {
  * instead. A fresh choice is called "New choice" until it is named, so the editor puts the cursor
  * in its label rather than leaving the author to find it.
  *
- * `state` is the graph as it was *before* the drop, which is what says how many choices the scene
+ * `state` is the graph as it was before the drop, which is what says how many choices the scene
  * already had. The id is `story.graph`'s own `choiceEdgeId` shape, restated rather than imported:
  * that builder is main-side, and the renderer reads edge ids off the graph it is given.
  */

@@ -1,6 +1,6 @@
 /**
  * The startup doctor, and how a version is written down. Both are pure given their probe, which
- * is the whole reason the probe is a parameter.
+ * is why the probe is a parameter.
  */
 import { checkGit, gitHealth, gitVersionOf, noteGitHealth } from '../doctor.js';
 import { describeVersion } from '../version.js';
@@ -58,8 +58,8 @@ describe('describeVersion', () => {
 describe('the recorded finding', () => {
   afterEach(() => noteGitHealth({ ok: true }));
 
-  // Everything that asks runs after startup checked, so the default has to be the harmless one:
-  // a `false` before the probe ran would put the app in read-only mode on a machine with git.
+  // Callers run after startup has checked, so the default has to be the harmless one: reporting
+  // `false` before the probe ran would put the app in read-only mode on a machine that has git.
   it('reads ok until told otherwise', () => {
     expect(gitHealth()).toEqual({ ok: true });
   });
@@ -69,7 +69,8 @@ describe('the recorded finding', () => {
     expect(gitHealth().ok).toBe(false);
   });
 
-  // The separation exists for this: a checkGit in one test must not leave its answer behind.
+  // `checkGit` and `noteGitHealth` are separate so that a `checkGit` call in one test does not
+  // leave its answer behind.
   it('is not moved by checkGit alone', async () => {
     await checkGit(async () => ({ code: 1, stdout: '' }));
     expect(gitHealth()).toEqual({ ok: true });

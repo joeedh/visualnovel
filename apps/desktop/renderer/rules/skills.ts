@@ -2,11 +2,11 @@
  * What the Skills pane decides before it draws: which skill a path belongs to, and the sentence the
  * "ask the agent" button hands to the agent form.
  *
- * Pure, because the desktop jest project is node-only and the pane itself can only be checked live
- * over CDP — so everything that is a *rule* rather than markup is tested here instead, beside
- * `assetview.ts` for the same reason.
+ * This module is pure because the desktop jest project is node-only and the pane itself can only
+ * be checked live over CDP, so everything that is a rule rather than markup is tested here
+ * instead. `assetview.ts` sits alongside it for the same reason.
  *
- * `SKILLS_DIR` and `underSkills` are re-exported rather than defined: the Skills **claim** in
+ * `SKILLS_DIR` and `underSkills` are re-exported rather than defined: the Skills claim in
  * `src/shared/editors.ts` needs the same predicate, and one directory must not have two spellings
  * in one app. Everything this pane compares against came off the wire forward-slashed, which is
  * why neither of them is `@vn/authoring`'s `PROJECT_SKILLS_DIR`.
@@ -34,8 +34,8 @@ export function skillIdOf(path: string | undefined): string {
  *
  * It names the directory and the three front-matter keys because the agent's own `create_skill`
  * writes them, and an author reading the form should see what they are about to get before they
- * send it. Nothing here is the agent's instructions — those are the tool's description; this is
- * the human's first sentence, and it is editable.
+ * send it. The agent's instructions live in the tool's description rather than in this string,
+ * which is the author's first sentence and is editable.
  */
 export const NEW_SKILL_PROMPT =
   'Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use ' +

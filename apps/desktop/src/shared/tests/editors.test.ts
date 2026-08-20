@@ -27,8 +27,8 @@ describe('the editor vocabulary', () => {
   });
 
   /**
-   * The tab, the menu entry and the palette all hover the same sentence, and it is this one — so
-   * it has to say what the editor shows rather than read its title back.
+   * The tab, the menu entry and the palette all show this same sentence on hover, so it has to
+   * say what the editor shows rather than read its title back.
    */
   it('says what each editor shows, never just its name', () => {
     expect(editorTooltip('script')).toBe("Show one scene's lines in this pane");
@@ -49,10 +49,11 @@ describe('the editor vocabulary', () => {
       'elsewhere',
       'here',
       'left',
-      // Not a direction either: `popup` floats over the mesh rather than taking a place in it.
+      // Not a direction: `popup` floats over the mesh rather than taking a place in it.
       'popup',
       'right',
-      // Not a direction: `window` is where main opens a second renderer instead of splitting.
+      // Not a direction either: `window` is where main opens a second renderer instead of
+      // splitting.
       'window',
     ]);
   });
@@ -86,9 +87,9 @@ describe('what an editor can be pinned to', () => {
 
 /**
  * Named but not listed. Setup is reached from one File-menu entry and the system prompt from the
- * palette, both from nowhere an author browses, and the two halves of that are easy to get
- * half-right: narrowing the *vocabulary* instead of the offer would take the editor away from
- * `view.open`, the palette, CDP and any layout that already held it.
+ * palette, neither of which is a place an author browses editors. Narrowing the vocabulary
+ * instead of the offer would take the editor away from `view.open`, the palette, CDP and any
+ * layout that already held it.
  */
 describe('the offered subset', () => {
   /** In `EDITORS` order, which is the order `editorNameProblems` answers in. */
@@ -119,8 +120,8 @@ describe('the offered subset', () => {
       if (UNOFFERED.some((hidden) => hidden === id)) continue;
       expect(isOfferedEditor(id)).toBe(true);
     }
-    // The filter is installed application-wide and sees path.ux's own areas too. Whatever it has
-    // not been told about is not this list's to take away.
+    // The filter is installed application-wide and sees path.ux's own areas too. An area this
+    // list has never named stays offered.
     expect(isOfferedEditor('header')).toBe(true);
     expect(isOfferedEditor('some.pathux.area')).toBe(true);
   });
@@ -137,9 +138,9 @@ describe('editorNameProblems', () => {
   });
 
   /**
-   * The direction that was silent. A registered editor absent from `EDITORS` is not merely
-   * unreachable — path.ux's area switcher enumerates the area classes and offers it from the pane
-   * menu, so the author can be looking at an editor no command in the app can name.
+   * A registered editor absent from `EDITORS` is worse than unreachable: path.ux's area switcher
+   * enumerates the area classes and offers it from the pane menu, so the author can be looking at
+   * an editor no command in the app can name.
    */
   it('reports an editor registered under a name the list has not got', () => {
     expect(editorNameProblems([...EDITOR_IDS, 'sidebar'])).toEqual({

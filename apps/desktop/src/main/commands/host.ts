@@ -3,7 +3,7 @@ import type { SessionStore } from '../sessionstore.js';
 import type { UiEffect } from '../../shared/ipc.js';
 import type { WindowId } from '../windows.js';
 
-/** How a file chooser is dressed. Everything is optional: the defaults are the document upload. */
+/** Presentation of a file chooser. Everything is optional; the defaults are the document upload. */
 export interface FilePickOptions {
   title?: string;
   buttonLabel?: string;
@@ -15,7 +15,10 @@ export interface FilePickOptions {
   single?: boolean;
 }
 
-/** How a directory chooser is dressed. The defaults open a project; browsing for one does not. */
+/**
+ * Presentation of a directory chooser. The defaults are worded for opening a project, so a
+ * chooser that only browses for a folder overrides them.
+ */
 export interface DirectoryPickOptions {
   title?: string;
   buttonLabel?: string;
@@ -27,15 +30,15 @@ export interface DirectoryPickOptions {
  */
 export interface CommandHost {
   session: WorkspaceSession;
-  /** Persisted UI state. Named `state`, not `session`, to keep it distinct from the above. */
+  /** Persisted UI state. Named `state` to keep it distinct from the `session` field. */
   state: SessionStore;
   /**
    * Push a UI change to a renderer over the `command:ui` event channel.
    *
    * `target` is the window that asked — `ctx.origin` at every call site, because a `view.*`
-   * effect means *here*, in the window whose palette or menu ran the command. Omitted (or a
-   * window that has since closed) falls back to the focused window, which is what the agent,
-   * CDP and main itself get.
+   * effect applies to the window whose palette or menu ran the command. An omitted target (or one
+   * naming a window that has since closed) falls back to the focused window, which is what the
+   * agent, CDP and main itself get.
    */
   ui(effect: UiEffect, target?: WindowId): void;
   /**
@@ -47,7 +50,7 @@ export interface CommandHost {
   /**
    * Does another app instance already have `root` open? One instance per workspace is the rule
    * (`../instancelock.ts`), so opening a project twice is a refusal rather than a second copy.
-   * A report about this instant: `openWorkspace` re-acquires for real and refuses again.
+   * The answer describes this instant only; `openWorkspace` re-acquires for real and refuses again.
    */
   workspaceIsOpenElsewhere(root: string): Promise<boolean>;
   /** The native directory chooser. `undefined` when the user cancelled; throws with no window. */
@@ -71,9 +74,8 @@ export interface CommandHost {
   noteTurnWindow(origin: WindowId | undefined): void;
   /**
    * Which window an unaddressed effect would land in. A command run by the agent or by CDP has
-   * no `ctx.origin`, and anything it remembers *about a window* has to be remembered about the
-   * same one the effect reaches — otherwise `view.applyLayout` rearranges window 3 and writes
-   * window 0's template key.
+   * no `ctx.origin`, and per-window state has to be recorded against the same window the effect
+   * reaches — otherwise `view.applyLayout` rearranges window 3 and writes window 0's template key.
    */
   focusedWindow(): number;
   /**

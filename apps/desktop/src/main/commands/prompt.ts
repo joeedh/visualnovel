@@ -1,10 +1,10 @@
 /**
  * The prompt an asset is generated from, as commands (`docs/plans/archive/chunked-prompts.md` §5).
  *
- * A separate namespace from `art.*` on purpose: `art.setNotes` writes **authored input that feeds
- * the derivation** — it lands in the sheet and the builders read it back — while everything here
- * writes an **override of the derivation**, a block that says what to do to the clauses the
- * builders produced. Different act, different place on disk, different thing to undo.
+ * A separate namespace from `art.*` on purpose: `art.setNotes` writes authored input that feeds the
+ * derivation (it lands in the sheet and the builders read it back) while everything here writes an
+ * override of the derivation, a block that says what to do to the clauses the builders produced.
+ * Different act, different place on disk, different thing to undo.
  *
  * Every command names its asset by hash and the session resolves hash → owning rung, so no caller
  * has to know whether a picture's prompt lives on a character sheet, a location sheet or a
@@ -59,8 +59,8 @@ export const promptSetChunk = define({
   props: {
     hash: prop.string('the asset whose prompt to edit'),
     chunk: prop.string('the clause key, e.g. `subject` or `palette`'),
-    // Not digested: a clause is a sentence, and the history line reading back what was written is
-    // the record. Digesting is for a whole document (`prompt.setCustom`).
+    // A clause is a sentence, so it is not digested: the history line reading back what was
+    // written is the record. Digesting is for a whole document (`prompt.setCustom`).
     op: prop.oneOf(['replace', 'append', 'mute', 'clear'] as const, 'what to do to the clause'),
     text: prop.string('the words, for `replace` and `append`', { default: '' }),
   },

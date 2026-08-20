@@ -1,7 +1,7 @@
 /**
  * `gate.approve`'s refusals, which are the only thing an author sees when the tasks or graph
- * editor's `RESOLVE →` opens the form: both open it on a *character* and leave which portrait
- * to the author, so the form's first verdict is always a refusal about the empty `hash`.
+ * editor's `RESOLVE →` opens the form: both open it on a character and leave which portrait to
+ * the author, so the form's first verdict is always a refusal about the empty `hash`.
  */
 import { gateApprove } from '../gate.js';
 import type { CommandContext } from '@vn/commands';

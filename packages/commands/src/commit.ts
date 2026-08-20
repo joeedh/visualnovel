@@ -1,15 +1,14 @@
 /**
  * Commit-on-save: every act that changed something becomes a commit, in each repo it touched.
  *
- * The sibling of `UndoJournal`, and opt-in the same way — a stack with no committer moves no
- * ref, exactly as before this existed. The two compose without ordering constraints: a commit
- * moves a branch ref and the index and changes no file in the worktree, so it cannot perturb a
- * snapshot tree taken either side of it.
+ * This is opt-in the same way `UndoJournal` is, since a stack with no committer moves no ref.
+ * The two compose without ordering constraints: a commit moves a branch ref and the index and
+ * changes no file in the worktree, so it cannot perturb a snapshot tree taken either side of it.
  *
- * Scope is the whole worktree (`-A`) per repo, not the paths a command claimed it wrote — a
- * declared `written` set is unverified (`docs/history/gitUndoOptions.md` §3) and the invariant this
- * rests on is stronger anyway: the app opens on a clean worktree and every act ends with one,
- * so "everything dirty" and "what this act did" are the same set.
+ * Scope is the whole worktree (`-A`) per repo rather than the paths a command claimed it wrote.
+ * A declared `written` set is unverified (`docs/history/gitUndoOptions.md` §3). The whole worktree
+ * rests on a stronger invariant anyway: the app opens on a clean worktree and every act ends with
+ * one, so "everything dirty" and "what this act did" are the same set.
  */
 import type { Git } from '@vn/git';
 import type { CommandRecord } from './command.js';
@@ -23,7 +22,7 @@ export interface CommitResult {
 
 export interface CommitterOptions {
   /**
-   * The repos to commit in, newest map each call so a repo created since (project bootstrap,
+   * The repos to commit in, recomputed on each call so a repo created since (project bootstrap,
    * a `git init` in `wiki/`) is picked up without rebuilding the stack.
    */
   repos(): Promise<Git[]> | Git[];
@@ -45,8 +44,8 @@ function trailersOf(record: CommandRecord): Record<string, string> {
     'Vn-Invocation': record.invocation,
     'Vn-Source': record.source,
   };
-  // An undo is a new commit restoring an earlier tree, never a reset — so the trailer is what
-  // says which act it reverses; the reverted commit itself stays in the log.
+  // An undo is a new commit restoring an earlier tree rather than a reset, so the trailer
+  // records which act it reverses; the reverted commit itself stays in the log
   if (record.stack) {
     trailers[record.stack === 'undo' ? 'Vn-Undo' : 'Vn-Redo'] = String(
       record.props['target'] ?? '',
@@ -66,10 +65,10 @@ export class Committer {
   /**
    * Commit whatever is already there, attributed to nobody in particular.
    *
-   * Two uses, one mechanism: the bootstrap step that brings a picked directory under version
-   * control, and the open-time sweep that establishes the clean-worktree invariant by recording
-   * edits made outside the app (a CLI run, another editor) as their own event rather than
-   * folding them into the next authored act.
+   * Used by the bootstrap step that brings a picked directory under version control, and by the
+   * open-time sweep that establishes the clean-worktree invariant by recording edits made outside
+   * the app (a CLI run, another editor) as their own event rather than folding them into the next
+   * authored act.
    */
   async checkpoint(reason: string): Promise<CommitResult[]> {
     return this.run(subject(reason, 'Checkpoint'), { 'Vn-Checkpoint': 'true' });

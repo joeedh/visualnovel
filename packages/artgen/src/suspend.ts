@@ -2,14 +2,14 @@
  * Suspension: what a changed upstream asset does to everything downstream of it
  * (`docs/plans/archive/chunked-prompts.md` §13).
  *
- * An asset is suspended when a reference on it has drifted, **or** when anything it references is
- * suspended. Nothing about that is stored. A flag would need a cascade pass that can be interrupted
- * halfway and then disagrees with the disk; a walk on read cannot be, and it costs one pass over a
- * manifest that is already in memory.
+ * An asset is suspended when a reference on it has drifted, or when something it references is
+ * suspended. None of that is stored. A stored flag would need a cascade pass, which can be
+ * interrupted halfway and then disagree with the disk; a walk on read cannot be interrupted, and it
+ * costs one pass over a manifest that is already in memory.
  *
- * The point of suspending rather than regenerating is that the bytes stay: they are marked out of
- * date and the author picks re-approve or regenerate. Auto-cascade and suspension are the same fork
- * in the road, and the pinned reference (§13) is what buys the second one.
+ * Suspending rather than regenerating keeps the bytes: they are marked out of date and the author
+ * chooses between re-approving and regenerating. Auto-cascade is the alternative to suspension, and
+ * the pinned reference (§13) is what makes suspension possible.
  */
 import { refDrift, resolveBinding, type BindingContext } from './refs.js';
 import { slotLabel } from './refcycle.js';
@@ -33,9 +33,9 @@ const short = (hash: string): string => hash.slice(0, 8);
  * Every suspended asset, upstream before downstream — the order an agent clearing a subtree has to
  * work in, which is why this is a listing and not a per-asset predicate.
  *
- * A cycle that reached disk some other way is stepped over by the `visiting` guard rather than
- * hung on; naming it is `firstCycle`'s job, and the planner's. That redundancy is deliberate:
- * enforcement stops a cycle being written, the guard stops a corrupt project wedging the app.
+ * The `visiting` guard steps over a cycle that reached disk some other way instead of looping on
+ * it; reporting the cycle is `firstCycle`'s job and the planner's. That redundancy is deliberate:
+ * enforcement stops a cycle being written, and the guard stops a corrupt project wedging the app.
  */
 export function suspendedAssets(ctx: SuspendContext): Suspension[] {
   const byHash = new Map(ctx.assets.map((a) => [a.hash, a]));
@@ -65,8 +65,8 @@ export function suspendedAssets(ctx: SuspendContext): Suspension[] {
     }
 
     if (!found) {
-      // Whatever it was generated from, plus whatever an author attached: the first two are the
-      // manifest's own record, so an asset predating chunked prompts still cascades correctly.
+      // Upstream is what the asset was generated from plus what an author attached. `asset.refs`
+      // is the manifest's own record, so an asset predating chunked prompts still cascades
       const upstream = [...asset.refs, ...attached.map(({ ref }) => ref.pin)];
       for (const up of upstream) {
         const sus = walk(up);

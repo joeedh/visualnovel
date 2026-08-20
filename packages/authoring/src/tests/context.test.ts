@@ -84,7 +84,7 @@ describe('loadContext', () => {
       await fs.writeFile(join(dir, 'AICONTEXT.md'), 'Aiko is always called Aiko-san.\n');
       const ctx = await loadContext(dir);
       expect(ctx.generatedContext).toContain('- aiko "Aiko" [draft]');
-      // Two sections, not one blob: the map never lands inside the author's context.
+      // The map is its own section and never lands inside the author's context
       expect(ctx.projectContext).toBe('Aiko is always called Aiko-san.');
       expect(ctx.files).toHaveLength(2);
 
@@ -156,18 +156,18 @@ describe('composeSystem', () => {
 });
 
 describe('SYSTEM_PROMPT', () => {
-  // Proves each marker kind is *mentioned*, which is the failure this was written for: a kind was
-  // added to BranchMarker and the prompt's table was not. A row that goes stale rather than absent
-  // is residual risk no test can reach.
+  // Proves each marker kind is mentioned. The failure this was written for is a kind added to
+  // BranchMarker with no row added to the prompt's table. A row that goes stale rather than
+  // missing is residual risk no test can reach
   it('names every branch-marker kind', () => {
     for (const kind of BRANCH_MARKER_KINDS) {
       expect(SYSTEM_PROMPT).toContain(`[[${kind}:`);
     }
   });
 
-  // Characters, not tokens — the same unit the generated map (8,000) and a bible query (4,000) are
-  // budgeted in. Overflow fails the build rather than truncating: the prompt is the first segment
-  // of a byte-stable cached prefix, so it cannot be quietly trimmed.
+  // The budget is in characters rather than tokens, the same unit the generated map (8,000) and a
+  // bible query (4,000) use. Overflow fails the build rather than truncating, because the prompt
+  // is the first segment of a byte-stable cached prefix and cannot be quietly trimmed.
   it('stays inside its character budget', () => {
     expect(SYSTEM_PROMPT.length).toBeLessThanOrEqual(25_000);
   });

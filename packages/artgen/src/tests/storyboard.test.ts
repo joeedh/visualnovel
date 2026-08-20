@@ -1,8 +1,8 @@
 /**
- * `realizeDecomposition` directly — the gauntlet `decomposeScene` and `write_storyboard` share.
+ * `realizeDecomposition` directly, the checks `decomposeScene` and `write_storyboard` share.
  * Subject resolution and coverage repair are exercised through `decomposeScene` in the pipeline's
- * tests; what is asserted here is the part the export added: id namespacing that does not stack,
- * and the baseline answer for a list with nothing in it.
+ * tests. This file covers the parts the export added: id namespacing that does not stack, and the
+ * baseline answer for an empty shot list.
  */
 import type { ProjectModel, Scene } from '@vn/types';
 import { realizeDecomposition } from '../storyboard.js';

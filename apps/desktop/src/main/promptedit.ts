@@ -1,9 +1,10 @@
 /**
  * What one prompt edit does to a stored override (`docs/plans/archive/chunked-prompts.md` §5, §6).
  *
- * Pure: chunks and the current override in, the next override out — or the sentence refusing it.
- * The session owns loading and writing; this owns the rules, so `check` and `run` cannot disagree
- * and a node test can drive every refusal without a project on disk.
+ * The inputs are the chunks and the current override; the output is the next override, or the
+ * sentence refusing the edit. The session owns loading and writing and this file owns the rules, so
+ * `check` and `run` cannot disagree and a node test can drive every refusal without a project on
+ * disk.
  *
  * An override that ends up saying nothing comes back as `undefined`, which the writers turn into a
  * removed key rather than an empty block. That is what lets an author undo their way back to a
@@ -20,15 +21,15 @@ import {
 import { sha256 } from '@vn/util';
 import { moveChunk } from '../shared/promptops.js';
 
-/** One authorial act on a prompt. The commands' props, resolved to a shape with no strings left. */
+/** One authorial act on a prompt. The commands resolve their props into this shape first. */
 export type PromptEdit =
   | { op: 'chunk'; chunk: string; how: 'replace' | 'append' | 'mute' | 'clear'; text: string }
   | { op: 'move'; chunk: string; after: string }
   | { op: 'custom'; text: string }
   | { op: 'agent'; text: string; modelId?: string; at?: string }
   | { op: 'clear'; part: 'all' | 'chunks' | 'order' | 'custom' | 'agent' }
-  // The pin and the binding are both resolved by the caller: a slot needs the manifest and the
-  // cycle check needs the whole project, and neither belongs in a pure rule.
+  // The caller resolves both the pin and the binding. A slot needs the manifest and the cycle
+  // check needs the whole project, so neither belongs in a pure rule.
   | { op: 'addRef'; chunk: string; ref: ChunkRef }
   | { op: 'dropRef'; chunk: string; ref: string }
   | { op: 'repin'; chunk: string; ref: string; to: string; ext: string };
@@ -57,7 +58,7 @@ function settled(o: PromptOverride, note: string): PromptEditResult {
   if (next.append && !Object.keys(next.append).length) delete next.append;
   if (!next.custom) delete next.custom;
   if (next.refs) {
-    // A chunk key whose list went empty carries no meaning, and neither does a map of those.
+    // A chunk key with an empty list carries no meaning, and neither does a map of empty lists.
     const kept = Object.entries(next.refs).filter(([, list]) => list.length > 0);
     if (kept.length) next.refs = Object.fromEntries(kept);
     else delete next.refs;
@@ -65,7 +66,7 @@ function settled(o: PromptOverride, note: string): PromptEditResult {
   return promptOverrideIsEmpty(next) ? { ok: true, note } : { ok: true, note, override: next };
 }
 
-/** What the author's words are called on a card, for the sentence a refusal or a note prints. */
+/** A chunk key as it is written into a refusal or a note. */
 function said(chunk: string): string {
   return `"${chunk}"`;
 }
@@ -134,7 +135,8 @@ export function applyPromptEdit(
     }
 
     case 'move': {
-      // The same rule the drag gesture previews, so a drop and a typed command agree to the word.
+      // Applies the same rule the drag gesture previews, so a drop and a typed command agree to
+      // the word.
       const moved = moveChunk(
         {
           chunks: effectiveChunks(chunks, base).map((c) => ({
@@ -166,8 +168,8 @@ export function applyPromptEdit(
     }
 
     case 'agent': {
-      // The fingerprint is taken over the chunks *as the override leaves them*, so muting one
-      // after condensing holds the result rather than silently sending a prompt it never saw.
+      // The fingerprint covers the chunks as the override leaves them, so muting one after
+      // condensing holds the result rather than sending a prompt the author never saw.
       return settled(
         {
           ...base,
@@ -191,8 +193,8 @@ export function applyPromptEdit(
         };
       }
       const refs = base.refs?.[edit.chunk] ?? [];
-      // Positional: `refs` is inside the task hash, so the same picture twice on one chunk is a
-      // second slot in the list rather than a duplicate that costs nothing.
+      // `refs` is positional and sits inside the task hash, so the same picture twice on one
+      // chunk would be a second slot in the list rather than a duplicate that costs nothing.
       if (refs.some((r) => r.pin === edit.ref.pin)) {
         return {
           ok: false,

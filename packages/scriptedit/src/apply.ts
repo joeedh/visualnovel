@@ -1,15 +1,15 @@
 /**
- * The write path for a scene edit: decide, prove, price the storyboard — then, separately, write.
+ * The write path for a scene edit: decide the edit, prove it, price the storyboard, then write.
  *
- * Split in two on purpose. `planSceneEdit` touches nothing, so a command's `check` and its `run`
- * ask the *same* function what will happen and a preview cannot drift from the write. `applyScenePlan`
- * takes a plan that already proved itself and does the I/O.
+ * Deciding and writing are separate on purpose. `planSceneEdit` touches nothing, so a command's
+ * `check` and its `run` ask the same function what will happen and a preview cannot drift from
+ * the write. `applyScenePlan` takes a plan that already proved itself and does the I/O.
  *
- * Two things this does that a branch rewire does not have to. Scenes are **re-serialized** rather
- * than patched, because there is no surgical form of "insert a line" — which means the first prose
- * edit to a hand-authored chunk canonicalizes it, line-id marks included. And every scene is
- * validated *before* anything is written: the bytes must read back as the scene they were written
- * from, or the whole edit is refused with nothing touched.
+ * Two things here that a branch rewire does not have to do. Scenes are re-serialized rather than
+ * patched, because there is no surgical form of "insert a line", so the first prose edit to a
+ * hand-authored chunk canonicalizes it, line-id marks included. Every scene is validated before
+ * anything is written: the bytes must read back as the scene they were written from, or the whole
+ * edit is refused with nothing touched.
  */
 import { sceneFromDoc, sceneToDoc } from '@vn/model';
 import { parseBranchMarker, parseFountain, stringifyFrontMatter } from '@vn/parse';
@@ -96,11 +96,9 @@ export async function planSceneEdit(
     const source = input.sources.find((s) => s.id === scene.id);
 
     // A note the model cannot hold would vanish on write, and the round-trip check above cannot
-    // see it: both sides of that comparison come from the model. Compare against the source
-    // instead. Refused rather than warned, because the alternative is deleting an author's text
-    // during a write they did not ask for. Nothing the agent writes can produce one (`Scene` has
-    // no field for a note, so the round-trip refuses first) — a person, `vngen import` or
-    // `git_restore` is how one gets in.
+    // see it because both sides of that comparison come from the model, so this compares against
+    // the source file. Refusing the edit beats deleting an author's text; only a person,
+    // `vngen import` or `git_restore` can put such a note in the file.
     if (source !== undefined) {
       const before = strayNoteTexts(source.script);
       const after = strayNoteTexts(doc.body);
@@ -126,8 +124,8 @@ export async function planSceneEdit(
     if (text !== source.prefix + source.script) pending.push({ file: source.file, text });
   }
 
-  // The shots as they sit on disk, unfiltered: `readShots(knownLineIds)` would drop the very
-  // ids the edit is about to remap, which is the coverage this is here to carry.
+  // Shots are read unfiltered because `readShots(knownLineIds)` would drop the very ids the edit
+  // is about to remap, and remapping those is what this covers.
   const shots = new Map<string, readonly Shot[]>();
   for (const sceneId of scenesTouchedBy(op)) {
     const loaded = await readShots(input.paths, sceneId);

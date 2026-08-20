@@ -1,14 +1,14 @@
 /**
- * The command palette, as an app-level overlay: a screen popup rather than anything an editor
+ * The command palette, an app-level overlay. It is a screen popup rather than something an editor
  * owns, because the palette outlives whichever area happens to be focused.
  *
- * This is the **finder** — a search box over every command and a list of them, with the chosen
- * one's `CommandForm` underneath. A caller that already knows which command it wants opens
+ * This is the finder: a search box over every command and a list of them, with the chosen one's
+ * `CommandForm` underneath. A caller that already knows which command it wants opens
  * `openCommandDialog` instead; the form is the same class either way.
  *
- * The list is the **live** registry over `command:catalog`, never the generated `commands.json`,
- * so the palette cannot offer a command the app no longer has; execution goes through
- * `bridge.exec` and so through the same stack CDP and `window.vn` reach.
+ * The list is the live registry over `command:catalog`, never the generated `commands.json`, so
+ * the palette cannot offer a command the app no longer has. Execution goes through `bridge.exec`
+ * and so through the same stack CDP and `window.vn` reach.
  */
 import { UIBase, type Container, type TextBox } from 'pathux';
 import { api } from '../api.js';
@@ -46,8 +46,8 @@ class Palette {
     this.popup = screen.popup(screen as unknown as UIBase, x, TOP, false) as Popup;
     stylePopup(this.popup, screen, WIDTH, TOP);
 
-    // Escape and a click outside never reach `closePalette`, so the module's idea of what is
-    // open hangs off the popup actually going away.
+    // Escape and a click outside never reach `closePalette`, so the `open` guard is cleared when
+    // the popup is removed rather than when `close` is called
     onPopupClosed(this.popup, () => {
       open = undefined;
       this.form?.detach();
@@ -60,9 +60,9 @@ class Palette {
       this.query = String(text);
       this.renderList();
     });
-    // Relative, not `WIDTH - 60`: the popup is capped to the window, so a fixed box is what
-    // pushed the search field out past the border on a narrow screen. The 8px is the `›` beside
-    // it, so the field ends on the popup's padding rather than short of it.
+    // A fixed pixel width pushed the search field past the border on a narrow screen, because the
+    // popup itself is capped to the window. The 8px subtracted is the `›` label beside the field,
+    // so the field ends on the popup's padding rather than short of it
     box.style['width'] = 'calc(100% - 8px)';
     box.style['maxWidth'] = '100%';
     box.description = 'Narrow the list. Every word you type has to appear in the id or the title.';
@@ -79,8 +79,8 @@ class Palette {
       const entry = catalog.commands.find((c) => c.id === preselect);
       if (!entry) return;
       this.select(entry, overrides);
-      // The search box has the focus the constructor gave it, and the author who picked this
-      // command off a menu is not searching for it — they are here to fill its first blank.
+      // The constructor focused the search box, but an author who picked this command off a menu
+      // wants its first blank field instead
       this.form?.focusFirst();
     });
 

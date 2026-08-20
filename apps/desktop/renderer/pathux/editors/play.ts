@@ -24,19 +24,19 @@ import { TOKENS, alpha } from '../tokens.js';
  *
  * The stage is raw DOM rather than widgets on purpose — it is one image, one text box and a
  * few buttons, and path.ux guards non-widget children throughout `ui_base`, so a `<div>` in a
- * Container is a supported thing to do. The chrome (Back/Save/Load/Reset) *is* widgets, so it
- * themes and lays out with every other header in the shell.
+ * Container is a supported thing to do. The chrome (Back/Save/Load/Reset) is built from widgets,
+ * so it themes and lays out with every other header in the shell.
  *
- * What is new here: the frame carries the shot it came from, so watching the story moves
- * `ui.sceneId`/`ui.shotId` and every other editor follows along. That closes the "PLAY is a
- * dead end" item — the React runner could show you a frame but never say where it was.
+ * The frame carries the shot it came from, so watching the story moves `ui.sceneId`/`ui.shotId`
+ * and every other editor follows along. The React runner could not do that: it could show a
+ * frame but never say where in the story that frame was.
  */
 export class PlayEditor extends VnEditor {
   private bar!: Container;
   private stage!: HTMLDivElement;
 
   private play: Playable | undefined;
-  /** Why there is no playable, when there is none — a project without one is the normal case. */
+  /** Why there is no playable. A project without one is the normal case. */
   private failure = '';
   /** The whole navigation stack; the last entry is where we are, and Back pops it. */
   private history: Pos[] = [];
@@ -71,8 +71,8 @@ export class PlayEditor extends VnEditor {
     this.stage.addEventListener('click', () => this.stepForward());
     this.appendSurface(this.stage);
 
-    // Ahead of the screen keymap, and path.ux already declines to route a keystroke that
-    // landed in a textbox, so the React runner's tag-sniffing has nothing left to do.
+    // This keymap runs ahead of the screen keymap, and path.ux already declines to route a
+    // keystroke that landed in a textbox, so nothing here needs to sniff the target's tag.
     this.keymap = new KeyMap([
       new HotKey('Space', [], () => this.stepForward(), 'Advance'),
       new HotKey('Enter', [], () => this.stepForward(), 'Advance'),
@@ -160,7 +160,7 @@ export class PlayEditor extends VnEditor {
     return this.play && cur ? this.play.scenes[cur.sceneId] : undefined;
   }
 
-  /** The frame on stage — at the scene-end panel the last one stays up behind it. */
+  /** The frame on stage. At the scene-end panel the last frame stays up behind it. */
   private currentFrame(): Frame | undefined {
     const cur = this.history[this.history.length - 1];
     if (!cur) return undefined;
@@ -363,7 +363,8 @@ export class PlayEditor extends VnEditor {
     });
 
     if (scene.choices.length) {
-      // The panel eats the click so a choice is the only way on; the stage behind it advances.
+      // The panel stops the click, so a choice is the only way on. A click that reached the
+      // stage would advance instead.
       panel.addEventListener('click', (e) => e.stopPropagation());
       const prompt = document.createElement('div');
       prompt.textContent = 'What do you do?';

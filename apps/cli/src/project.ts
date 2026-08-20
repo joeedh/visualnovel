@@ -49,10 +49,9 @@ export function assertValid(model: ProjectModel): void {
 }
 
 /**
- * Build the provider bundle for a run. `--mock` (or no resolvable keys when explicitly
- * requested) yields deterministic offline providers so a sample project can be exercised
- * end-to-end without API access; otherwise real Gemini/Claude clients are constructed,
- * reading reference bytes back out of the asset store.
+ * Build the provider bundle for a run. `--mock` yields deterministic offline providers so a
+ * sample project can be exercised end-to-end without API access. Otherwise real Gemini/Claude
+ * clients are constructed, reading reference bytes back out of the asset store.
  */
 export async function buildProviders(
   project: LoadedProject,

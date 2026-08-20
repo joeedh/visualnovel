@@ -1,6 +1,6 @@
 /**
- * Suspension is derived and transitive (`docs/plans/archive/chunked-prompts.md` §13). Nothing here writes
- * a flag; every assertion is a walk over the same manifest twice, with one edit in between.
+ * Suspension is derived and transitive (`docs/plans/archive/chunked-prompts.md` §13). No flag is
+ * stored anywhere; each test builds a manifest, edits one pin, and re-derives.
  */
 import type { Asset, AssetKind, Location, ProjectModel, Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
@@ -24,7 +24,7 @@ function asset(
   };
 }
 
-/** A café whose `night` plate is what everything downstream was drawn from. */
+/** A café with a `night` plate and a `dawn` variant that pins it. */
 function cafe(pin: string | undefined, mute = false): Location {
   const l = location('cafe');
   l.variants = [
@@ -101,7 +101,7 @@ describe('suspendedAssets', () => {
     expect(found[0]!.reason).toBe(
       'its "variant" reference to cafe — night plate has moved — pinned oldnight, now newnight',
     );
-    // The frame authored nothing; it is suspended purely by what it was drawn from.
+    // The frame has no reference of its own; it is suspended only by what it was drawn from
     expect(found[1]!.via).toBe('plate-dawn');
     expect(found[1]!.reason).toContain('which is suspended');
   });
@@ -111,14 +111,14 @@ describe('suspendedAssets', () => {
   });
 
   it('clears when the chunk that carried the reference is muted', () => {
-    // The clause is not being sent, so neither is its evidence — and nothing downstream of it is
-    // out of date on account of a reference that no longer reaches the model.
+    // A muted chunk's references are not sent to the model, so a stale pin inside one leaves
+    // nothing downstream out of date
     expect(suspendedAssets(ctx('oldnightplate', true))).toEqual([]);
   });
 
   it('reports a reference loop already on disk instead of hanging on it', () => {
-    // Two plates pinned at each other: the write-time check refuses this, so it only exists in a
-    // hand-edited project — and the walk has to come back rather than recurse forever.
+    // Two plates pinned at each other. The write-time check refuses that, so it only occurs in a
+    // hand-edited project, and the walk must terminate rather than recurse forever.
     const c = ctx('oldnightplate');
     const night = c.model.locations.get('cafe')!.variants.find((v) => v.id === 'night')!;
     night.promptOverride = {

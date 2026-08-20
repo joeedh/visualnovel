@@ -1,9 +1,9 @@
 /**
  * The approval frontier for one asset.
  *
- * The rule's whole risk is the three arms that answer "approved" for something nobody ever
- * approved — a portrait, an upload, a concept — so most of this is about those: get one of them
- * wrong and Approve becomes permanently unreachable for everything drawn from one.
+ * Most of these cases cover the three arms that answer "approved" without anyone having approved
+ * the asset: a portrait, an upload and a concept. Getting one of those wrong makes Approve
+ * permanently unreachable for everything drawn from that asset.
  */
 import type { Asset, AssetKind, ProjectModel, Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
@@ -62,8 +62,8 @@ describe('assetPrereqs', () => {
   });
 
   it('answers a portrait from the gate, not from `accepted`', () => {
-    // `p-aiko` is unaccepted in the manifest and approved in the model. The model wins: the gate is
-    // what "approved" means for a portrait, and reading `accepted` here would deadlock every frame.
+    // `p-aiko` is unaccepted in the manifest and approved in the model. A portrait's approval
+    // comes from the character gate, and reading `accepted` here would deadlock every frame.
     const rows = assetPrereqs(FRAME, ctx([PLATE, PORTRAIT, FRAME]));
     expect(rows[1]!.note).toBe('Approved at the character gate.');
 
@@ -78,7 +78,7 @@ describe('assetPrereqs', () => {
   });
 
   it('refuses to let a draft portrait beside the approved one count', () => {
-    // Aiko is approved *with* `p-aiko`; these are different bytes for the same character.
+    // Aiko is approved with `p-aiko`; these are different bytes for the same character.
     const other = asset('p-aiko-2', 'portrait', [{ characterId: 'aiko' }], { accepted: true });
     const frame = { ...FRAME, refs: ['p-aiko-2'] };
     const rows = assetPrereqs(frame, ctx([other, frame]));
@@ -97,7 +97,7 @@ describe('assetPrereqs', () => {
   });
 
   it('counts the references an author attached, and drops a muted chunk with its evidence', () => {
-    // The pins hang at the frame's own rung — its shot — so this reads them out of `work/shots/`.
+    // Pins live at the frame's own rung (its shot), so they are read out of `work/shots/`.
     const pinned = asset('pin1', 'location_ref', [{ locationId: 'cafe', variant: 'dawn' }]);
     const shot = (mute?: string[]): Shot => ({
       id: 'arrival__a',
@@ -125,8 +125,8 @@ describe('assetPrereqs', () => {
     attached.shots = new Map([['arrival', [shot()]]]);
     expect(assetPrereqs(FRAME, attached).map((p) => p.hash)).toEqual(['plate1', 'p-aiko', 'pin1']);
 
-    // The clause is not being sent, so neither is its evidence — and nothing about the pin is in
-    // the way of approving a picture the model was never shown it for.
+    // A muted clause is not sent, so its pinned references are not sent either, and they cannot
+    // hold up approval of a picture the model never saw them for.
     const muted = ctx([PLATE, PORTRAIT, FRAME, pinned]);
     muted.shots = new Map([['arrival', [shot(['setting'])]]]);
     expect(assetPrereqs(FRAME, muted).map((p) => p.hash)).toEqual(['plate1', 'p-aiko']);

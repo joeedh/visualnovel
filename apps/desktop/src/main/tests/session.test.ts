@@ -28,7 +28,7 @@ import type { AskQuestion, Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
 
-// The three permission doors answer the way an abandoned window does: no plan, no answer, no.
+// The three permission doors answer as an abandoned window would: no plan, no answers, no consent
 const deps: SessionDeps = {
   emitEvent: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
@@ -40,8 +40,8 @@ const deps: SessionDeps = {
 const sessionFor = (p: TestProject) => new WorkspaceSession(p.dir, true, deps);
 
 /**
- * Bytes an ingest reads as a PNG and not as mock art: the signature, then filler. Ingest looks at
- * the magic number and the placeholder marker and nothing else, so nothing here has to decode.
+ * Bytes that ingest reads as a PNG rather than as mock art. Ingest checks the magic number and
+ * the placeholder marker and nothing else, so these bytes do not have to decode.
  */
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const realPng = (): Uint8Array =>
@@ -80,7 +80,7 @@ describe('WorkspaceSession — reading a project', () => {
     expect((await p.reload()).store.manifest()).toHaveLength(0);
   });
 
-  // What `workspace.open` refuses on: a session with work in flight is one nobody may replace.
+  // `workspace.open` refuses to replace a session with work in flight
   it('names the work in flight from the call, not from when the scheduler starts', async () => {
     const session = sessionFor(p);
     expect(session.busy()).toBeUndefined();
@@ -95,16 +95,16 @@ describe('WorkspaceSession — reading a project', () => {
     const play = await sessionFor(p).playable();
     expect(play.start).toBe('arrival');
     expect(play.characters['aiko']!.portrait).toBeUndefined();
-    // The session reads it off `project.yaml`; a build that forgets to is how the runner ends
-    // up staging portraits nobody asked for.
+    // The session reads this off `project.yaml`. A build that skips it leaves the runner staging
+    // portraits nobody asked for.
     expect(play.portraitOverlay).toBe(false);
   });
 });
 
 /**
- * The Wave 3 write path: `storyGraph` reads the wiring, `editBranches` rewires it. What is
- * asserted here is the *decision* — edges, reachability, refusals; which files a patch lands in
- * is the chunk-specific describe further down.
+ * The Wave 3 write path: `storyGraph` reads the wiring, `editBranches` rewires it. These cases
+ * assert the decision — edges, reachability, refusals. Which files a patch lands in is asserted
+ * by the chunk-specific describe further down.
  */
 describe('WorkspaceSession — branch editing', () => {
   const ROOFTOP = 'scenes/rooftop.md';
@@ -203,9 +203,9 @@ describe('WorkspaceSession — branch editing', () => {
 });
 
 /**
- * `story.assignLineIds`: the ids reading allocated, written down so an insertion can't move them.
- * A fixture chunk is born fully marked — `sceneToFountain` writes what it read — so every test
- * here strips the marks first to get the hand-authored starting point the command exists for.
+ * `story.assignLineIds` writes down the ids reading allocated, so an insertion cannot move them.
+ * A fixture chunk arrives fully marked because `sceneToFountain` writes what it read, so every
+ * test here strips the marks first to reach the hand-authored starting point the command is for.
  */
 describe('WorkspaceSession — line ids', () => {
   const ARRIVAL = 'scenes/arrival.md';
@@ -258,8 +258,8 @@ describe('WorkspaceSession — line ids', () => {
   });
 
   it('scopes to one scene, and holds ids still when a line is inserted above them', async () => {
-    // The whole point of the plan: with marks written, an insertion allocates a fresh id
-    // instead of shifting every id below it onto different prose.
+    // With marks written, an insertion allocates a fresh id instead of shifting every id after
+    // it onto different prose.
     await session.writeLineIds('arrival');
     const before = await lineIds('arrival');
 
@@ -282,8 +282,8 @@ describe('WorkspaceSession — line ids', () => {
 
 /**
  * The same write paths, seen from the files. One scene is one `scenes/<id>.md`, so a rewire that
- * spans two scenes spans two files — these assert on *which* files were written, and on the
- * front-matter surviving a patch that only ever meant to touch prose.
+ * spans two scenes spans two files. These cases assert which files were written, and that the
+ * front-matter survives a patch that only meant to touch prose.
  */
 describe('WorkspaceSession — scenes authored as chunks', () => {
   let p: TestProject;
@@ -299,8 +299,8 @@ describe('WorkspaceSession — scenes authored as chunks', () => {
   });
 
   /**
-   * Drop the `[[line:]]`/`[[nextline:]]` marks `sceneToFountain` wrote, leaving bodies that read
-   * like hand-authored ones — a fixture chunk is born fully marked, so nothing else would.
+   * Drops the `[[line:]]`/`[[nextline:]]` marks `sceneToFountain` wrote, leaving bodies that read
+   * like hand-authored ones. A fixture chunk arrives fully marked, so no other case would.
    */
   const unmark = async (): Promise<void> => {
     for (const id of ['arrival', 'greet', 'observe', 'rooftop']) {
@@ -337,7 +337,7 @@ describe('WorkspaceSession — scenes authored as chunks', () => {
   });
 
   it('patches only the chunks a rewire touches, front-matter untouched', async () => {
-    // A comment is the sharp case: re-serializing the YAML would drop it, splicing keeps it.
+    // Re-serializing the YAML would drop a hand-written comment; splicing keeps it
     const arrival = await p.read('scenes/arrival.md');
     await p.write('scenes/arrival.md', arrival.replace('---\n', '---\n# hand-written\n'));
     const greet = await p.read('scenes/greet.md');
@@ -353,7 +353,8 @@ describe('WorkspaceSession — scenes authored as chunks', () => {
     const patched = await p.read('scenes/arrival.md');
     expect(patched).toContain('# hand-written');
     expect(patched).toContain('scene: arrival');
-    // The id stays the front-matter's: a body that named itself could contradict its own file.
+    // The id stays in the front-matter, because a body that named itself could contradict its
+    // own file
     expect(patched).not.toContain('[[scene:');
     expect(await p.read('scenes/rooftop.md')).toContain('[[next: greet]]');
 
@@ -404,9 +405,9 @@ describe('WorkspaceSession — scenes authored as chunks', () => {
 });
 
 /**
- * `editScene`: the one write path for prose. Every case here is about the *file* — which chunk the
- * edit landed in, what it still says, and what stopped existing — because the decision itself is
- * already pinned by `@vn/scriptedit`'s `lineops.test.ts`.
+ * `editScene` is the one write path for prose. Every case here is about the file: which chunk the
+ * edit landed in, what it still says, and what stopped existing. The decision itself is already
+ * pinned by `@vn/scriptedit`'s `lineops.test.ts`.
  */
 describe('WorkspaceSession — prose editing', () => {
   const ROOFTOP = 'scenes/rooftop.md';
@@ -455,7 +456,7 @@ describe('WorkspaceSession — prose editing', () => {
     const text = await p.read(ROOFTOP);
     expect(text).toContain('# hand-written');
     expect(text).toContain('scene: rooftop');
-    // Re-serializing writes the marks: the first prose edit canonicalizes a hand-authored chunk.
+    // Re-serializing writes the marks, so the first prose edit canonicalizes a hand-authored chunk
     expect(text).toContain('[[line: L1]]');
     expect(text).toContain('[[nextline: 4]]');
   });
@@ -610,8 +611,8 @@ describe('WorkspaceSession — prose editing', () => {
       'vngen/work/shots/rooftop.json',
       'vngen/work/shots/reply.json',
     ]);
-    // Its id is part of its task hash, so it keeps the one it was minted with; only the file and
-    // the covered ids move, which is what keeps the generated image the answer to its own task.
+    // A shot's id is part of its task hash, so the shot keeps the id it was minted with. Only the
+    // file and the covered ids move, which keeps the generated image the answer to its own task.
     expect(await shotsOf('reply')).toEqual({ rooftop__beat1: ['reply:L3'] });
     expect(await shotsOf('rooftop')).toEqual({ rooftop__establishing: ['rooftop:L1'] });
     expect(result.message).toContain('1 shot(s) follow their lines into reply');
@@ -640,7 +641,8 @@ describe('WorkspaceSession — prose editing', () => {
 
     expect(preview.ok).toBe(true);
     expect(preview.message).toContain('will not re-render on their own');
-    // Saying it is all it does: the storyboard is untouched, because nothing about it changed.
+    // The edit writes only the scene, leaving the storyboard untouched because the line ids the
+    // shot covers did not change
     const result = await session.editScene((s) =>
       setLineText(s, { line: 'rooftop:L2', text: 'I got held up.' }),
     );
@@ -706,7 +708,8 @@ describe('WorkspaceSession — outfits', () => {
     expect(result).toMatchObject({ ok: true, written: ['scenes/arrival.md'] });
     expect(await p.read('scenes/arrival.md')).toContain('[[outfit: aiko=track]]');
 
-    // A noop rather than a plain refusal: the control offering it is dropped, not disabled.
+    // A noop rather than a plain refusal, so the control offering it is dropped rather than
+    // disabled
     expect(await session.previewSceneOutfit('arrival', 'aiko', 'track')).toMatchObject({
       ok: false,
       noop: true,
@@ -747,9 +750,9 @@ describe('WorkspaceSession — outfits', () => {
   });
 
   /**
-   * The timeline's outfit strip is built entirely from `story:coverage`, so what it can offer and
-   * what it says is in force are both this payload. A subject that inherits carries nothing — the
-   * strip resolves it, and a map that pre-filled the answer would erase the distinction.
+   * The timeline's outfit strip is built entirely from `story:coverage`, so this payload decides
+   * both what the strip can offer and what it says is in force. A subject that inherits carries
+   * nothing; the strip resolves it, and pre-filling the answer would erase the distinction.
    */
   it('carries the wardrobe and the overrides in the coverage the strip is built from', async () => {
     const before = await session.sceneCoverage('arrival');
@@ -770,9 +773,9 @@ describe('WorkspaceSession — outfits', () => {
 });
 
 /**
- * `workspace.import` and `story.screenplay`: the migration into the chunk form, and the way back
- * out of it. The import is asserted by what the *model* says afterwards — a conversion that lost
- * or renamed a scene would detach its shots, so "same graph" is the contract, not "same bytes".
+ * `workspace.import` and `story.screenplay` are the migration into the chunk form and the way back
+ * out of it. The import is asserted by what the model says afterwards. A conversion that lost or
+ * renamed a scene would detach its shots, so "same graph" is the contract, not "same bytes".
  */
 describe('WorkspaceSession — Fountain in and out', () => {
   let p: TestProject;
@@ -791,7 +794,7 @@ describe('WorkspaceSession — Fountain in and out', () => {
   it('imports a screenplay project into chunks with the same graph', async () => {
     p = await makeProject({ title: 'Import', script: SCRIPTS.diamond, format: 'screenplay' });
     session = sessionFor(p);
-    // Unimported, the screenplay builds nothing: the graph is empty and says why.
+    // Before the import the screenplay builds nothing, so the graph is empty and says why
     const before = await session.storyGraph();
     expect(before.scenes).toEqual([]);
     expect(before.diagnostics.map((d) => d.code)).toEqual(['legacy_screenplay']);
@@ -817,7 +820,7 @@ describe('WorkspaceSession — Fountain in and out', () => {
     // A directory has no document order, so the entry has to be written down.
     expect(await p.read('project.yaml')).toContain('start: arrival');
 
-    // The graph the import produced is the graph the same story authored as chunks gives.
+    // The import produces the same graph as the same story authored as chunks
     const after = await session.storyGraph();
     const authored = await makeProject({ title: 'Import', script: SCRIPTS.diamond });
     try {
@@ -839,7 +842,7 @@ describe('WorkspaceSession — Fountain in and out', () => {
     expect(preview.message).toContain('already holds 2 chunk(s)');
     expect(await session.importScreenplay()).toMatchObject({ ok: false, written: [] });
 
-    // Same refusal from the other side: chunks removed, there is no screenplay either.
+    // With the chunks removed there is no screenplay either, which refuses from the other side
     await fs.rm(join(p.dir, 'scenes'), { recursive: true });
     expect(await session.previewImport()).toMatchObject({
       ok: false,
@@ -860,7 +863,7 @@ describe('WorkspaceSession — Fountain in and out', () => {
     expect(text).toContain('[[choice: "Speak up" -> greet]]');
     expect(text).toContain('[[line: L1]]');
 
-    // Clean output is a reading copy: the ids and the branches go with the markers.
+    // Clean output is a reading copy, so the ids and the branches go with the markers
     const clean = await session.writeScreenplay(true);
     expect(clean.message).toContain('cannot be imported back');
     expect(await p.read('screenplay.fountain')).not.toContain('[[');
@@ -1005,13 +1008,13 @@ describe('WorkspaceSession — documents', () => {
       id: 'continuity-pass',
       path: '.aiagent/skills/continuity-pass/SKILL.md',
     });
-    // The same bytes `create_skill` writes: a reader cannot tell which made the file.
+    // The same bytes `create_skill` writes, so a reader cannot tell which path made the file
     const text = await fs.readFile(
       join(p.dir, '.aiagent', 'skills', 'continuity-pass', 'SKILL.md'),
       'utf8',
     );
     expect(text).toBe(newSkillTemplate('Continuity Pass'));
-    // And it is a skill the agent can find, not a file nothing reads.
+    // The scaffolded skill is one the agent can find, not a file nothing reads
     expect((await discoverSkills(skillRoots(p.dir))).map((skill) => skill.id)).toContain(
       'continuity-pass',
     );
@@ -1024,12 +1027,9 @@ describe('WorkspaceSession — documents', () => {
     expect(again.ok ? '' : again.reason).toBe('.aiagent/skills/twice-over/SKILL.md already exists');
   });
 
-  /*
-   * The asymmetry with the agent's `create_skill`, asserted rather than assumed. `writeSkill`
-   * refuses an existing **directory**; this goes through `checkDocWrite` and refuses an existing
-   * **file** — so a directory a human already put a vetted `run.mjs` in takes the author's
-   * scaffold and rejects the agent's, which is the right way round.
-   */
+  // `writeSkill` refuses an existing directory; this path goes through `checkDocWrite` and refuses
+  // an existing file. A directory a human put a vetted `run.mjs` in therefore takes the author's
+  // scaffold and rejects the agent's.
   it('scaffolds into a directory that holds only a script a human put there', async () => {
     const dir = join(p.dir, '.aiagent', 'skills', 'lint-fountain');
     await fs.mkdir(dir, { recursive: true });
@@ -1082,7 +1082,7 @@ describe('WorkspaceSession — project settings', () => {
     const result = await session.setProjectArtStyle('ink wash, muted');
     expect(result).toMatchObject({ ok: true, written: ['project.yaml'] });
     expect((await session.projectView()).artStyle).toBe('ink wash, muted');
-    // The splice is textual, so the rest of the file is the property worth pinning.
+    // The splice is textual, so the rest of the file has to survive it
     expect(await p.read('project.yaml')).toContain('title: Settings');
   });
 
@@ -1095,7 +1095,7 @@ describe('WorkspaceSession — project settings', () => {
     });
   });
 
-  // The count is the whole point of the confirmation: an art style is not art notes on one rung.
+  // The count is what the confirmation is for, because an art style is not art notes on one rung
   it('counts the image tasks a change would re-key', async () => {
     const preview = await session.previewArtStyle('something else');
     expect(preview.ok).toBe(true);
@@ -1149,8 +1149,8 @@ describe('WorkspaceSession — over a generated project', () => {
   });
 
   /**
-   * The whole claim of `story.moveShot` in one assertion: the order of `show` beats changes,
-   * and both frames still resolve to the images the run already paid for.
+   * Asserts the whole claim of `story.moveShot`: the order of `show` beats changes, and both
+   * frames still resolve to the images the run already paid for.
    */
   it('reorders a shot by moving its lines, and the playable follows without re-rendering', async () => {
     const before = (await session.playable()).scenes['arrival']!.beats;
@@ -1173,7 +1173,7 @@ describe('WorkspaceSession — over a generated project', () => {
     ]);
   });
 
-  /** The classroom plate, which every assertion below is about. */
+  /** The classroom plate the following assertions are about. */
   const plate = async (): Promise<string> => {
     const { store } = await p.reload();
     const found = store
@@ -1203,13 +1203,13 @@ describe('WorkspaceSession — over a generated project', () => {
     expect(await session.acceptAsset('not-a-real-hash')).toMatchObject({ ok: false });
   });
 
-  // A precondition is a sentence a surface may show, never a gate the act may lean on: `exec`
+  // A precondition is only a sentence a surface may show, not a gate the act may lean on. `exec`
   // re-decides for itself, so the refusal has to live where the writing happens.
   it('refuses a portrait and a concept in the act, not only in the check', async () => {
     const { store } = await p.reload();
     const portrait = store.manifest().find((a) => a.kind === 'portrait')!.hash;
-    // A portrait in this project may already be accepted — the gate ran. What the refusal has to
-    // leave alone is whatever that state was.
+    // A portrait in this project may already be accepted because the gate ran, so the refusal has
+    // to leave that state as it found it.
     const before = (await session.assetInfo(portrait))!.accepted;
     expect(await session.previewAccept(portrait)).toMatchObject({ ok: false });
     expect(await session.acceptAsset(portrait)).toMatchObject({ ok: false });
@@ -1249,7 +1249,7 @@ describe('WorkspaceSession — over a generated project', () => {
     expect(info.stale).toBe(true);
     expect(info.derived).toContain(notes);
     expect(info.rungs.find((r) => r.target === 'location:classroom/day')!.notes).toBe(notes);
-    // The task that made those bytes is now an orphan: the planner wants a different hash, so
+    // The task that made those bytes is now an orphan. The planner wants a different hash, so
     // re-running it would buy back the picture the author just edited away from.
     expect(await session.previewRegenerate(info.hash)).toMatchObject({ ok: false });
   });
@@ -1264,7 +1264,7 @@ describe('WorkspaceSession — over a generated project', () => {
     const info = (await session.assetInfo(await plate()))!;
     expect(info.rungs.find((r) => r.target === 'location:classroom/day')!.seed).toBe(12);
 
-    // `null` is the only clear: a seed of 0 is one an author chose.
+    // `null` is the only clear, because a seed of 0 is one an author chose
     expect(await session.setArtSeed('location:classroom/day', null)).toMatchObject({ ok: true });
     expect(await p.read('locations/classroom.md')).not.toContain('seed:');
   });
@@ -1292,9 +1292,9 @@ describe('WorkspaceSession — over a generated project', () => {
   });
 
   /**
-   * The whole of §15 through the session rather than through `@vn/artgen`: outside bytes come in,
-   * get attached to a clause, and come off again. An upload is the one reference that pins itself,
-   * so it is also the case that proves `from` is optional the whole way down.
+   * Covers §15 through the session rather than through `@vn/artgen`: outside bytes come in, get
+   * attached to a clause, and come off again. An upload is the one reference that pins itself, so
+   * it also proves `from` is optional the whole way down.
    */
   it('uploads an image, attaches it to a clause, and takes it off again', async () => {
     const file = join(p.dir, 'moodboard.png');
@@ -1306,7 +1306,7 @@ describe('WorkspaceSession — over a generated project', () => {
     const upload = (await session.assetInfo(up.hash!))!;
     expect(upload.kind).toBe('reference');
     expect(upload.accepted).toBe(false);
-    // Nothing generated it, so there is no work to bless — the mirror of the concept refusal.
+    // Nothing generated the upload, so there is no work to bless; the concept refusal mirrors this
     expect(await session.previewAccept(upload.hash)).toMatchObject({ ok: false });
     expect((await session.acceptAsset(upload.hash)).message).toContain('prompt.addRef');
 
@@ -1320,7 +1320,7 @@ describe('WorkspaceSession — over a generated project', () => {
       { pin: up.hash, ext: 'png', label: expect.stringContaining('Moodboard') },
     ]);
 
-    // A prefix addresses it, the way an author reads one off the screen.
+    // A prefix addresses the reference, the way an author reads one off the screen
     expect(await session.dropPromptRef(target, chunk, up.hash!.slice(0, 8))).toMatchObject({
       ok: true,
     });
@@ -1348,7 +1348,7 @@ describe('WorkspaceSession — over a generated project', () => {
   it('lists what is waiting for approval, and approves one through its own door', async () => {
     const waiting = await session.approvable();
     expect(waiting.length).toBeGreaterThan(0);
-    // A picture the pipeline never asked for is never waiting on anyone, so a concept is never here.
+    // A concept is left out, because the pipeline never asked for it and nothing waits on it
     expect(waiting.some((a) => a.kind === 'concept')).toBe(false);
     for (const row of waiting) {
       // The name the author would read, not the hash, and the door that matches the kind.
@@ -1368,8 +1368,8 @@ describe('WorkspaceSession — over a generated project', () => {
 /**
  * Adoption from the desktop side: an author who paid for a cleanup hands the file to the pane
  * showing the picture it stands in for, so the slot is read off that asset rather than typed.
- * Its own project, because replacing a plate writes a second `done` for that plate's task and the
- * assertions about *which* bytes are in the slot only mean anything on a run nothing else moved.
+ * These cases build their own project, because replacing a plate writes a second `done` for that
+ * plate's task and the assertions about which bytes are in the slot only hold on an untouched run.
  */
 describe('WorkspaceSession — replacing a picture with a file', () => {
   let p: TestProject;
@@ -1417,10 +1417,10 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
       written: expect.arrayContaining(['vngen/state/tasks.jsonl']),
     });
 
-    // One act: the bytes came in as a reference and left as the plate.
+    // In one act the bytes came in as a reference and left as the plate
     expect(await session.assetInfo(done.hash!)).toMatchObject({ kind: 'location_ref', slot });
-    // The picture it stood in for is still there to look at — it is only no longer the one in
-    // the slot, which is what makes the strip disappear from its pane.
+    // The superseded picture is still there to look at, and only its claim on the slot is gone,
+    // which is what makes the strip disappear from its pane.
     expect((await session.assetInfo(before))!.slot).toBeUndefined();
   });
 });
@@ -1496,8 +1496,8 @@ describe('WorkspaceSession — the agent asks the author', () => {
       waitMs: 0,
     });
     expect(choices).toContain('Stop, and look into what went wrong');
-    // The turn ends: a diagnosis reads the request that failed, and a retry would put a second
-    // one in front of it.
+    // The turn ends because a diagnosis reads the request that failed, and a retry would put a
+    // second request in front of it.
     expect(stopped).toEqual({ do: 'stop' });
     expect(offered).toEqual([{ message: '400 messages.1.content.0: unexpected `tool_use_id`' }]);
   });
@@ -1530,8 +1530,8 @@ describe('WorkspaceSession — the agent asks the author', () => {
 
 /**
  * A conversation is written down as it happens. The mock backend answers every turn with one
- * sentence, which is all this needs: what matters is that the turn, the answer and nothing else
- * end up in a file under `vngen/state/threads/`.
+ * sentence, which is all these cases need. What they assert is that the turn, the answer and
+ * nothing else end up in a file under `vngen/state/threads/`.
  */
 describe('WorkspaceSession — conversation threads', () => {
   let p: TestProject;
@@ -1576,8 +1576,8 @@ describe('WorkspaceSession — conversation threads', () => {
     expect(threads.map((t) => t.title)).toEqual(['second', 'first']);
   });
 
-  // Its own project: every other test here is happy without a repo, and `git: true` costs an
-  // init and a commit per case.
+  // This case builds its own project, because every other test here works without a repo and
+  // `git: true` costs an init and a commit per case.
   it('commits the conversation it closes, and writes down which commit holds it', async () => {
     const repo = await makeProject({ title: 'Threads', script: SCRIPTS.linear, git: true });
     try {
@@ -1590,11 +1590,11 @@ describe('WorkspaceSession — conversation threads', () => {
       const sha = closed!.archived?.[0]?.commit;
       expect(sha).toMatch(/^[0-9a-f]{40}$/);
 
-      // The commit really holds the transcript, which is the whole point: a thread edited away
-      // afterwards is still readable out of history.
+      // The commit holds the transcript, so a thread edited away afterwards is still readable
+      // out of history.
       const git = openGit(repo.dir);
       expect(await git.show(`${sha}:vngen/state/threads/${live!.id}.jsonl`)).toContain('first');
-      // And it is findable without the pointer at all — `git log --grep` on the trailer.
+      // The commit is findable without the pointer, by `git log --grep` on the trailer
       expect(await git.show(sha!)).toContain(`Vn-Thread: ${live!.id}`);
     } finally {
       await repo.cleanup();
@@ -1602,7 +1602,7 @@ describe('WorkspaceSession — conversation threads', () => {
   });
 
   it('starting a new conversation is not blocked by a project git cannot commit', async () => {
-    // No repo: the commit is a courtesy, so it fails silently and the thread is still closed.
+    // With no repo the commit is a courtesy, so it fails silently and the thread is still closed
     const session = sessionFor(p);
     await session.runAgent('first');
     await session.clearAgent();

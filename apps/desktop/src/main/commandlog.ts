@@ -5,9 +5,9 @@
  * lives beside it rather than in `@vn/commands`, which owns the record's shape and nothing about
  * where a host chooses to keep it.
  *
- * Nothing else in the app has needed this: provenance was written to be read by a person with a
- * text editor. A difficult-agent report is the first reader in code, and it wants the acting
- * record a transcript does not have.
+ * Nothing else in the app has needed this, because provenance was written to be read by a person
+ * with a text editor. The difficult-agent report is the first reader in code, and it needs the
+ * record of what was done, which a transcript does not carry.
  */
 import { readFile } from 'node:fs/promises';
 import type { CommandRecord } from '@vn/commands';
@@ -18,9 +18,9 @@ import { readThread } from './threads.js';
 /**
  * Every record the log holds that parses, in the order it was written.
  *
- * A half-written last line is what a crash mid-append leaves behind, and a line missing `seq` is
- * not a record at all — both are skipped rather than thrown over, for the same reason a thread
- * still lists when its final line was cut short.
+ * A crash mid-append leaves a half-written last line, and a line missing `seq` is not a record.
+ * Both are skipped rather than thrown over, the same way a thread still lists when its final line
+ * was cut short.
  */
 export async function readCommandLog(paths: ProjectPaths): Promise<CommandRecord[]> {
   let text: string;
@@ -38,14 +38,14 @@ export async function readCommandLog(paths: ProjectPaths): Promise<CommandRecord
       const record = JSON.parse(raw) as CommandRecord;
       if (typeof record.seq === 'number') out.push(record);
     } catch {
-      // A line that will not parse is a line that was never finished being written.
+      // A line that fails to parse was never finished being written
     }
   }
   return out;
 }
 
 /**
- * One conversation and the acts around it, ready for the analyst. The join itself is pure and
+ * One conversation and the commands around it, ready for the analyst. The join itself is pure and
  * lives in `@vn/agentreport`; this is the half that touches disk.
  */
 export async function evidenceFor(

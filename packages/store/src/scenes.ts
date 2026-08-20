@@ -1,12 +1,12 @@
 /**
  * Authored scene chunks — `scenes/<id>.md`, one file per scene.
  *
- * The store's half of the chunk mapping: bytes to a front-matter doc and back. Turning a doc
- * into a `Scene` is `@vn/model`'s `sceneFromDoc`, because `@vn/store` may not import the model
- * — the same seam `loadInputs` and `modelFromInputs` already split along.
+ * This module maps a chunk's bytes to a front-matter doc and back. Turning a doc into a `Scene`
+ * is `@vn/model`'s `sceneFromDoc`, because `@vn/store` may not import the model — the same seam
+ * `loadInputs` and `modelFromInputs` already split along.
  *
- * `shots.ts` is the behavioural model, including the two rules that make a committed,
- * hand-editable file safe: a malformed one throws rather than being silently rewritten, and a
+ * `shots.ts` holds the behavioural model, including the two rules that make a committed,
+ * hand-editable file safe: a malformed file throws rather than being silently rewritten, and a
  * rewrite that would change nothing does not touch the file.
  */
 import { promises as fs } from 'node:fs';
@@ -81,11 +81,10 @@ export async function writeSceneChunk(
 }
 
 /**
- * Delete one chunk — a scene that stopped existing. Returns whether there was a file to remove;
- * an absent one is not an error, because the caller's decision was made against a load that may
- * be a moment old. Nothing else in the tree is touched: `work/shots/<id>.json` outlives the scene
- * until its owner cleans it up with {@link deleteShots}, which is a separate decision because the
- * shots of a scene that stopped existing may have followed their lines somewhere else.
+ * Delete one chunk. Returns whether there was a file to remove; an absent file is not an error,
+ * because the caller's decision was made against a load that may be a moment old. Nothing else in
+ * the tree is touched, so `work/shots/<id>.json` outlives the scene until its owner removes it
+ * with {@link deleteShots}, which is a separate decision.
  */
 export async function deleteSceneChunk(paths: ProjectPaths, id: string): Promise<boolean> {
   const file = paths.sceneFile(id);

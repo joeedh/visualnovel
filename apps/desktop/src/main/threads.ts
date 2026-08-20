@@ -8,7 +8,7 @@
  * conversation made never deletes the conversation that explains it.
  *
  * It lives in the desktop app rather than `@vn/store` because a transcript is not one of a
- * *project's* authored files. Nothing in the format assumes the desktop, so when `vnauthor`'s REPL
+ * project's authored files. Nothing in the format assumes the desktop, so when `vnauthor`'s REPL
  * wants threads too this module moves down to `@vn/authoring` and both hosts read the same files.
  */
 import { readFile, readdir } from 'node:fs/promises';
@@ -28,20 +28,20 @@ export type { ThreadArchive, ThreadHeader, ThreadRecord };
 /** The title a thread is created with, before a first turn names it. */
 export const NEW_THREAD_TITLE = 'New conversation';
 
-/** Where a title stops being a label. The full text is in the transcript either way. */
+/** Longest title kept. The full text is in the transcript either way. */
 const TITLE_MAX = 60;
 
 /**
- * Where a transcript line stops. A tool line is already a digest, but a tool that reports a whole
- * file would otherwise put it in the log twice — once as the tool's own line and once as whatever
- * it wrote.
+ * Longest transcript line kept. A tool line is already a digest, but without this cap a tool that
+ * reports a whole file would put it in the log twice: once as the tool's own line and once as
+ * whatever it wrote.
  */
 const TEXT_MAX = 400;
 
 /**
- * Where the evidence stops. `full` and a tool's args and output are written for an analyst rather
- * than a reader, so they are allowed to be longer than a transcript line — but a thread is still a
- * log and not an archive, and these are the numbers that keep it one.
+ * Longest evidence kept. `full` and a tool's args and output are written for an analyst rather
+ * than a reader, so they are allowed to be longer than a transcript line. These caps are what keep
+ * a thread a log rather than an archive.
  */
 const FULL_MAX = 8000;
 const ARGS_MAX = 600;
@@ -97,9 +97,8 @@ function stamp(at: Date): string {
 }
 
 /**
- * Every line a file holds that parses. A half-written last line is what a crash mid-append leaves
- * behind, and a transcript that will not list because of it is worse than one missing its final
- * line — so a bad line is skipped, never thrown over.
+ * Every line a file holds that parses. A crash mid-append leaves a half-written last line, and a
+ * bad line is skipped rather than thrown over so the rest of the transcript still lists.
  */
 async function lines(file: string, keep?: (raw: string) => boolean): Promise<ThreadLine[]> {
   let text: string;
@@ -137,9 +136,9 @@ function headerOf(id: string, parsed: ThreadLine[]): ThreadHeader | undefined {
     if (line.model !== undefined) bound.model = line.model;
     if (line.effort !== undefined) bound.effort = line.effort;
   }
-  // Every archive, not the last one: a thread closed, reopened by a later feature and closed
-  // again has two commits worth reading, and which of them holds the line a diagnostic is after
-  // is exactly what nobody knows in advance.
+  // Keeps every archive record rather than only the last, because a thread closed, reopened by a
+  // later feature and closed again has two commits worth reading and either may hold the line a
+  // diagnostic wants
   const archived = parsed
     .filter((line) => line.type === 'archived')
     .map(({ commit: sha, at }) => ({ commit: sha, at }));
@@ -184,15 +183,15 @@ export async function listThreads(paths: ProjectPaths): Promise<ThreadHeader[]> 
   return headers;
 }
 
-/** One thread in full. A file with no header line is not a thread, and says so by name. */
+/** One thread in full. A file with no header line is not a thread; the throw names the id. */
 export async function readThread(paths: ProjectPaths, id: string): Promise<ThreadRecord> {
   const parsed = await lines(threadFile(paths, id));
   const header = headerOf(id, parsed);
   if (!header) throw new Error(`no such conversation: ${id}`);
 
   // Field by field rather than by spreading the line, so `type` stays in the file where it
-  // belongs. `full`, `detail` and `at` come back for whoever asked for the whole record; the
-  // screen reads `text` and is none the wiser.
+  // belongs. `full`, `detail` and `at` come back for whoever asked for the whole record, and the
+  // screen reads only `text`.
   const items = parsed
     .filter((line) => line.type === 'item')
     .map(({ id: itemId, role, text, full, detail, at }) => ({
@@ -281,9 +280,9 @@ export async function bindThread(
 
 /**
  * Write down which commit holds this thread. Appended after the commit has been made, which is
- * the only order available — a commit cannot name itself — so the pointer line is deliberately
- * *not* inside the commit it points at. That costs one dirty line until the next sweep and buys a
- * reader who never has to search history to find out whether a transcript was ever saved.
+ * the only order available (a commit cannot name itself) so the pointer line is deliberately
+ * outside the commit it points at. That costs one dirty line until the next sweep, and it means a
+ * reader never has to search history to find out whether a transcript was saved.
  */
 export async function archiveThread(
   paths: ProjectPaths,
@@ -299,8 +298,8 @@ export async function archiveThread(
 }
 
 /**
- * Rename a thread by appending, never by rewriting line 0 — the reader takes the last `title`
- * record. Editing the first line of an append log is how it stops being one.
+ * Rename a thread by appending, never by rewriting line 0; the reader takes the last `title`
+ * record. Rewriting line 0 would stop this being an append-only log.
  */
 export async function retitleThread(
   paths: ProjectPaths,

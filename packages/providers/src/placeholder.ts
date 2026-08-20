@@ -7,12 +7,12 @@
  * PNGs — solid colour plus a stripe, both derived from the seed, so distinct shots look
  * distinct at thumbnail size.
  *
- * The bytes carry a `tEXt` chunk keyed {@link PLACEHOLDER_KEYWORD}. That is what keeps the
- * old safety net: image backends reject a reference carrying it, so a mock asset still cannot
- * be laundered into a real run — and now the refusal names the actual reason.
+ * The bytes carry a `tEXt` chunk keyed {@link PLACEHOLDER_KEYWORD}. Image backends reject a
+ * reference carrying it, so a mock asset is still refused entry to a real run, and the refusal
+ * names the actual reason.
  */
 
-/** `tEXt` keyword every placeholder carries. Its presence is the whole detection rule. */
+/** `tEXt` keyword every placeholder carries. Detection tests for its presence and nothing else. */
 export const PLACEHOLDER_KEYWORD = 'vn-mock-placeholder';
 
 const SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];

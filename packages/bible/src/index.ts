@@ -1,11 +1,11 @@
 /**
  * `@vn/bible` — retrieval over the story bible (`wiki/`).
  *
- * The bible is an arbitrary markdown tree and is **never pasted into the agent's context**:
- * it is reached by query, under a character budget, one passage at a time. This package holds
- * the ranking policy that `@vn/store` (which only walks and reads) deliberately does not.
+ * The bible is an arbitrary markdown tree and is never pasted into the agent's context: it is
+ * reached by query, under a character budget, one passage at a time. This package holds the
+ * ranking policy that `@vn/store` (which only walks and reads) deliberately does not.
  *
- * Rooted at a **directory**, not a `ProjectPaths`: the bible may live in its own git repo, and
+ * Rooted at a directory rather than a `ProjectPaths`: the bible may live in its own git repo, and
  * nothing here may assume it shares one with the project.
  */
 import { resolve } from 'node:path';
@@ -49,8 +49,8 @@ class GrepBible implements Bible {
 }
 
 /**
- * Open the bible at `root`. A directory that does not exist is not an error — a project with
- * no `wiki/` has an empty bible, and every caller then behaves as it does today.
+ * Open the bible at `root`. A directory that does not exist is not an error: a project with no
+ * `wiki/` has an empty bible.
  */
 export function openBible(root: string): Promise<Bible> {
   return GrepBible.open(root);

@@ -62,10 +62,9 @@ describe('notifications log', () => {
     expect(read?.source).toBe('main');
   });
 
-  // The landmine this whole module is shaped around: a string index into the file is NOT a byte
-  // offset once anything above the patched line is multi-byte, and this app's own messages are
-  // full of `⟲`, `…` and em-dashes. So the non-ASCII goes *before* the line being patched, and
-  // the assertion is on the neighbour as much as on the flag.
+  // A string index into the file is not a byte offset once anything above the patched line is
+  // multi-byte, and this app's own messages are full of `⟲`, `…` and em-dashes. The non-ASCII
+  // therefore goes in the line ahead of the one being patched, and the neighbour is asserted too.
   it('patches one byte at a byte offset, past multi-byte text in an earlier line', async () => {
     const earlier = buildNotification(
       input({ message: '⟲ Undid “Rename scene” — 3 files…' }),

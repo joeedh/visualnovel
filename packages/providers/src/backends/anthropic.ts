@@ -27,10 +27,9 @@ const MIME: Record<string, string> = {
 
 /**
  * What the response says it cost. Cache reads and cache writes are billed input, so they are
- * input here too — and reported *beside* it as well, because a total is right for the bill and
- * useless for telling whether the cache is working. `undefined` when the field is missing rather
- * than zero, so a backend that stopped reporting shows no total instead of a plausible one that
- * never moves.
+ * counted in `input` and reported beside it as well, because the total alone cannot say whether
+ * the cache is working. A missing field reads as `undefined` rather than zero, so a backend that
+ * stopped reporting shows no total instead of a plausible one that never moves.
  */
 function usageOf(res: any): TokenUsage | undefined {
   const u = res?.usage;
@@ -82,8 +81,8 @@ export function createAnthropicChat(
   const tuning = (): Record<string, unknown> => {
     const choice = resolveEffort(modelId, opts.effort ?? DEFAULT_EFFORT);
     if (!choice) return { max_tokens: MAX_TOKENS };
-    // No `output_config` alongside: Opus 5 refuses disabled thinking above `high`, and the
-    // API's own effort default is `high`, so saying nothing is the one safe pairing.
+    // Opus 5 refuses disabled thinking above `high` and the API's own effort default is `high`,
+    // so `output_config` is left off when thinking is disabled
     if (choice === 'none') return { max_tokens: MAX_TOKENS, thinking: { type: 'disabled' } };
     return {
       max_tokens: MAX_TOKENS_THINKING,
@@ -141,8 +140,8 @@ export function createAnthropicChat(
 
   return {
     modelId,
-    // The text path is the usage path with the receipt dropped, so there is one request builder
-    // and one retry policy rather than two that drift.
+    // The text path drops the usage `messageWithUsage` returns, so there is one request builder
+    // and one retry policy rather than two that drift
     message: async (req: ChatRequest) => (await messageWithUsage(req)).text,
     messageWithUsage,
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
@@ -183,16 +182,16 @@ export function createAnthropicChat(
       }
     },
     /**
-     * The cached, multi-turn path. Everything about it that matters is in
-     * {@link buildConvoRequest}; here it is the round trip, and `raw` — the assistant's blocks
-     * exactly as received, because thinking blocks must come back complete and unmodified and
-     * rebuilding one from `text` + `toolCalls` is a 400.
+     * The cached, multi-turn path. The body is built by {@link buildConvoRequest}; this method is
+     * the round trip and `raw`, the assistant's blocks exactly as received, because thinking
+     * blocks must come back complete and unmodified and rebuilding one from `text` + `toolCalls`
+     * gets a 400.
      */
     async chatConversation(req: ChatConvoRequest, tools: ToolSchema[]): Promise<ChatConvoReply> {
       const anthropic = await client();
       const body = buildConvoRequest(modelId, req, tools, tuning());
-      // The one that matters most: its body is assembled rather than written out at the call
-      // site, so a positional 400 against it cannot be read anywhere but here.
+      // This body is assembled rather than written out at the call site, so the capture is the
+      // only place a positional 400 against it can be read
       const capture = await captureRequest('convo', body, { record: opts.record });
       try {
         return await callWithRetry(`Claude conversation failed (${modelId})`, async () => {

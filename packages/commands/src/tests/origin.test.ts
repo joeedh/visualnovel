@@ -1,7 +1,7 @@
 /**
  * `ctx.origin` — who asked, as a number the framework never interprets.
  *
- * It is a per-execution **overlay** rather than a field on the shared context, and these tests
+ * It is a per-execution overlay rather than a field on the shared context, and these tests
  * are the reason: commands overlap. A mutable `context.origin` set before `run` and read inside
  * it is correct exactly until two windows dispatch at once, at which point the second write
  * lands while the first command is still awaiting, and its effect goes to the wrong window. The

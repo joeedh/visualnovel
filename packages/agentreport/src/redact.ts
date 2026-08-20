@@ -1,14 +1,14 @@
 /**
- * Replacing everything personal, on the boundary rather than in a prompt.
+ * Replacing everything personal, at the boundary rather than in a prompt.
  *
- * Nothing reaches the debug agent unredacted — not the transcript, not the author's note, not a
- * tool result. Asking a model to anonymise usually works and occasionally does not, and
- * "occasionally" here means a character name in a public issue. The prompt still asks for general
- * terms, as a second layer; this is the mechanism.
+ * Everything that reaches the debug agent is redacted first: the transcript, the author's note and
+ * every tool result. Asking a model to anonymise usually works and occasionally does not, and a
+ * failure here means a character name in a public issue. The prompt still asks for general terms as
+ * a second layer; the code in this file is the mechanism.
  *
- * The pseudonym map is held in memory for the life of one report and never written down: it is
- * not sent to the model, not saved beside the report, and not in the issue. A report is not
- * de-anonymisable by whoever reads it.
+ * The pseudonym map is held in memory for the life of one report and never written down. It is not
+ * sent to the model, not saved beside the report, and not in the issue, so whoever reads a report
+ * cannot de-anonymise it.
  */
 
 import type { ProjectModel } from '@vn/types';
@@ -22,7 +22,7 @@ export interface NamedEntity {
   kind: 'character' | 'location' | 'item' | 'scene';
 }
 
-/** What the machine gives away, which the loaded project knows nothing about. */
+/** Identifying facts about the machine, which the loaded project does not carry. */
 export interface MachineFacts {
   /** The absolute project root. It and everything under it become `<project>/…`. */
   projectRoot?: string;
@@ -75,7 +75,7 @@ const AUTHOR = '<author>';
  */
 const MIN_ALIAS = 2;
 
-/** The exception: one character of a script written without spaces is a whole name, not a letter. */
+/** One character of a script written without spaces is a whole name rather than a letter. */
 function longEnough(alias: string): boolean {
   const chars = [...alias];
   return chars.length >= MIN_ALIAS || (chars.length === 1 && UNSPACED.test(chars[0]!));
@@ -109,21 +109,19 @@ const APOSTROPHE = "['’]";
 const APOSTROPHES = /['’]/gu;
 
 /**
- * A name with its apostrophes taken out, which is how one is compared here.
+ * A name with its apostrophes removed, which is the form names are compared in here.
  *
- * An apostrophe is punctuation a possessive moves around, and a name is what is left when it is
- * gone. `James's`, `James'` and the slip `Jame's` are all the same person to a reader, so they must
- * all be the same person to the matcher — a redaction that holds only for correctly typed
- * possessives is a redaction that leaks the moment someone types quickly.
+ * `James's`, `James'` and the mistyped `Jame's` all name the same person, so the matcher has to
+ * treat them as one. Matching only correctly typed possessives would leak on a typo.
  */
 function bare(text: string): string {
   return text.replace(APOSTROPHES, '');
 }
 
 /**
- * Scripts written without spaces. A boundary guard is what stops `Mori` matching inside
- * `Morison`, and there is no such thing to guard against in Japanese — requiring one there would
- * silently refuse to redact every name in a Japanese project, which is the failure that matters.
+ * Scripts written without spaces. A boundary guard stops `Mori` matching inside `Morison`, but
+ * these scripts have no word boundaries to guard on, and requiring one would leave every name in a
+ * Japanese project unredacted.
  */
 const UNSPACED =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
@@ -168,9 +166,9 @@ interface Alias {
 /**
  * The redactor for one report.
  *
- * Pseudonyms are assigned on **first appearance in the text**, not in source order, so `Character
- * A` is the first character the conversation mentions — which is what makes a redacted transcript
- * readable rather than a lookup exercise.
+ * Pseudonyms are assigned on first appearance in the text rather than in source order, so
+ * `Character A` is the first character the conversation mentions, which keeps a redacted transcript
+ * readable.
  */
 export function buildRedactor(sources: RedactionSources): Redactor {
   const aliases: Alias[] = [];

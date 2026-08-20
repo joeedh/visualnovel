@@ -1,20 +1,21 @@
 /**
  * Making and unmaking shots by hand: the pure halves of `story.newShot` and `story.deleteShot`.
  *
- * Decomposition is one door into a storyboard; these are the other. Both hosts — the desktop's
- * timeline and the authoring agent's tools — run these same rules, so a shot made by drag and a
- * shot made by an agent's `edit_scene` op are refused and priced by the same sentences.
+ * Decomposition is one way a storyboard comes into being; these functions are the other. Both
+ * hosts — the desktop's timeline and the authoring agent's tools — run these same rules, so a shot
+ * made by drag and a shot made by an agent's `edit_scene` op are refused and priced by the same
+ * sentences.
  *
  * Two postures carried over from elsewhere in the repo:
  *
- * - **A retired shot id is never reused.** A shot's task identity is `sha256(kind, inputs)` and
+ * - A retired shot id is never reused. A shot's task identity is `sha256(kind, inputs)` and
  *   the id is in the inputs, so recreating `scene__shot1` after deleting it would hash to an
  *   already-`done` task and silently inherit the deleted shot's frame. Ids come from a `nextShot`
- *   high-water mark persisted in the shots file — the `Scene.nextLineId` posture — which only
+ *   high-water mark persisted in the shots file (the `Scene.nextLineId` posture) which only
  *   ever rises. Older files (and every decomposed one) carry no mark, so it is derived by
  *   scanning existing ids; the scan covers model-minted `shot<n>` ids too, not just ours.
- * - **An orphan cannot be made, only become.** A new shot must claim at least one line; a shot
- *   covering nothing is a state the timeline reveals, never one a creation produces.
+ * - A new shot must claim at least one line. A shot covering nothing is a state the timeline
+ *   reveals, never one a creation produces.
  */
 
 import type { SceneLine, Shot, ShotSubject } from '@vn/types';
@@ -97,8 +98,8 @@ const nextShotOf = (board: ShotBoard<CoverShot> | null): number =>
  * Create a shot covering `args.lines`, allocating its id from the high-water mark.
  *
  * On an undecomposed scene (`board === null`) this creates the storyboard — which is a bigger
- * act than adding one shot, because a shots file, once written, wins forever: the scene will
- * never be decomposed, and every line the new shot did not claim stays uncovered until the
+ * act than adding one shot, because a shots file, once written, is never regenerated: the scene
+ * will never be decomposed, and every line the new shot did not claim stays uncovered until the
  * author covers it. The message says so; the command's `check` must too. `withCoverage`'s
  * first-line repair is a decomposer's backstop and deliberately does not run here.
  *
@@ -190,7 +191,7 @@ export function newShot<S extends CoverShot>(
  * restoring the one signal that means "decompose this scene"; an empty list is never written.
  *
  * The returned `nextShot` keeps the deleted id retired: it is the persisted mark, or the
- * derivation over the board *before* removal, so the very id just freed cannot be re-minted
+ * derivation over the board as it stood before removal, so the id just freed cannot be re-minted
  * and inherit the dead shot's frame.
  */
 export function deleteShot(board: ShotBoard, args: { shot: string }): DeleteShotOp {

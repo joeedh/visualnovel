@@ -54,8 +54,8 @@ describe('outfitText', () => {
     expect(outfitText(aiko, 'uniform')).toBe('navy winter uniform');
   });
 
-  /** This is what keeps a wardrobe free: until a description exists, every prompt is byte-identical
-      to the one the id produced, so no task rehashes and no art is re-rendered. */
+  // Until a description exists, every prompt is byte-identical to the one the id produced, so
+  // no task rehashes and no art is re-rendered, which is what makes adding a wardrobe free.
   it('says the id when there is not, and for an outfit the character never authored', () => {
     expect(outfitText(aiko, 'track')).toBe('track');
     expect(outfitText(aiko, 'swim')).toBe('swim');

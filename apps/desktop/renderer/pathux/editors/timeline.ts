@@ -44,10 +44,10 @@ import type { Invocation } from '@vn/commands';
 import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../src/shared/ipc.js';
 
 /**
- * What the room supplied and the pane does not. `timeline.css` is imported as-is — it is still
- * the React strip's sheet, and one copy is the point — so this is only the frame around it: the
- * reset that does not cross the shadow boundary, and the notice, which was a member of FLOOR's
- * bar and here is a strip above the script (a path.ux label cannot carry the tone colours).
+ * The frame around `timeline.css`, which is imported as-is because the React strip's sheet is kept
+ * as a single copy. Covers what the room supplied and the pane does not: the reset that does not
+ * cross the shadow boundary, and the notice, which was a member of FLOOR's bar and here is a strip
+ * above the script (a path.ux label cannot carry the tone colours).
  */
 const SURFACE_CSS = `
 * { box-sizing: border-box; }
@@ -110,19 +110,19 @@ const SURFACE_CSS = `
 
 /**
  * The coverage strip: a scene's screenplay down the page, and the shots that illustrate it as
- * brackets beside it. The port of FLOOR's `Timeline` — the first editor here with semantic drags,
+ * brackets beside it. The port of FLOOR's `Timeline`, the first editor here with semantic drags,
  * and so the one that proves the pane world's two gesture rulings.
  *
  * All four pure halves are imported, not rewritten: `coverage.ts` for the ghost geometry,
  * `drift.ts` for the wording, `editing.ts` for which gesture may start, `wardrobe.ts` for the
- * outfit rows — and the gesture state machine is `pathux/timeline.ts`, which is the one piece the
+ * outfit rows. The gesture state machine is `pathux/timeline.ts`, which is the one piece the
  * React version left untested inside its `.tsx`.
  *
  * Two things change in the port, both because the shell has them and the room did not. The scene
- * being read and the shot being inspected are the **shared** `ui.sceneId`/`ui.shotId`, so a shot
- * picked in the task graph opens its scene here; and the surface carries a real stylesheet rather
+ * being read and the shot being inspected are the shared `ui.sceneId`/`ui.shotId`, so a shot
+ * picked in the task graph opens its scene here. The surface carries a real stylesheet rather
  * than inline style, because the auto-growing line editor is a `::after` pseudo-element and the
- * drag handles are `:hover` states — neither has an inline form.
+ * drag handles are `:hover` states, and neither has an inline form.
  */
 export class TimelineEditor extends VnEditor {
   private bar!: Container;
@@ -134,7 +134,7 @@ export class TimelineEditor extends VnEditor {
   private coverage: Coverage = spansFor([], []);
   private failure = '';
   private drawn = '';
-  /** The scene `data` is for — or is on its way to being. Not `data.sceneId`: a fetch in flight. */
+  /** The scene `data` holds or is being fetched for. Not `data.sceneId`, which lags a fetch. */
   private loading = '';
   /** Bumped on every load, so a reload redraws even when nothing about the selection moved. */
   private revision = 0;
@@ -144,16 +144,16 @@ export class TimelineEditor extends VnEditor {
   private create: Create | null = null;
   private notice: Notice | null = null;
 
-  /** The write in flight, if any (`busy.ts`). The timer is what reveals the bar after the delay. */
+  /** The write in flight, if any (`busy.ts`). The timer reveals the bar after `BUSY_DELAY_MS`. */
   private busy: Busy = SETTLED;
   private busyTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** The line id whose editor is open, and the text in it. */
   private editing: string | null = null;
   private draft = '';
-  // Enter and Escape finish the edit themselves rather than delegating to `blur()`, which does
-  // nothing when the textarea is not the active element — so blur is the click-away path only,
-  // and this says the edit is settled and a late blur must not commit it a second time.
+  // Enter and Escape finish the edit themselves rather than calling `blur()`, which does nothing
+  // when the textarea is not the active element. Blur is therefore the click-away path only, and
+  // this flag marks the edit settled so a late blur leaves it alone
   private settled = false;
   private checkTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -192,10 +192,9 @@ export class TimelineEditor extends VnEditor {
     // under a held handle would replace the nodes the drag is aimed at. A selection changed by
     // the drop itself is picked up on release, when the strip reloads anyway.
     if (this.drag || this.reorder || this.create) return;
-    // A scene picked anywhere else in the shell — a shot clicked in the task list, a branch
-    // followed in STUDIO — arrives as a changed `ui.sceneId` and nothing else, so the strip has
-    // to notice it needs different data. Redrawing on it alone would draw the old scene's
-    // coverage under the new scene's name.
+    // A scene picked elsewhere in the shell (a shot clicked in the task list, a branch followed in
+    // STUDIO) arrives as a changed `ui.sceneId` and nothing else, so the strip has to refetch.
+    // Redrawing on that alone would draw the old scene's coverage under the new scene's name.
     if (this.story && this.ui.sceneId && this.ui.sceneId !== this.loading)
       return void this.loadScene();
     if (this.stateKey() !== this.drawn) this.rebuild();
@@ -273,9 +272,9 @@ export class TimelineEditor extends VnEditor {
     summary.style['padding'] = '0px 8px';
     summary.description =
       'Shots in this scene, lines no shot covers, and shots drawn from prose that has since changed.';
-    // The no-gaps door into `story.newShot`: the gutter drag needs a row to sweep, and a scene
-    // whose every line is covered still takes a hand-placed shot — one that claims its lines off
-    // the shots that hold them.
+    // A door into `story.newShot` for a scene with no gaps: the gutter drag needs a row to sweep,
+    // and a scene whose every line is covered still takes a hand-placed shot, which claims its
+    // lines off the shots that hold them.
     const add = this.bar.button('+ shot', () =>
       openCommandDialog('story.newShot', { scene: this.ui.sceneId }),
     );
@@ -300,7 +299,7 @@ export class TimelineEditor extends VnEditor {
     );
   }
 
-  /** Publishing the scene is the whole of it — `update` does the reading, however it changed. */
+  /** Publishes the scene and nothing more; `update` does the reading, however it changed. */
   private openScene(sceneId: string): void {
     if (sceneId === this.ui.sceneId) return;
     this.ui.sceneId = sceneId;
@@ -330,8 +329,8 @@ export class TimelineEditor extends VnEditor {
     if (this.failure) return void this.body.appendChild(el('div', 'tl-note', this.failure));
     if (!this.data) return void this.body.appendChild(el('div', 'tl-empty', 'Loading…'));
 
-    // Not a refusal to draw anything: correcting a line is exactly what an author wants to do
-    // *before* paying for art, so the script renders with no bracket columns.
+    // An undecomposed scene still renders its script, with no bracket columns: correcting a line
+    // is what an author wants to do before paying for art.
     if (!this.data.decomposed) {
       this.body.appendChild(this.undecomposedNote(this.data));
     }
@@ -343,7 +342,7 @@ export class TimelineEditor extends VnEditor {
     if (this.coverage.orphans.length > 0) {
       const box = el('div', 'tl-orphans');
       box.appendChild(el('span', 'tt', 'COVERS NOTHING'));
-      // Real, paid-for shots the runner will never display — the other half of a gap.
+      // Real, paid-for shots the runner will never display, because they cover no line
       for (const s of this.coverage.orphans) box.appendChild(el('span', 'orph', s.id));
       this.body.appendChild(box);
     }
@@ -458,8 +457,9 @@ export class TimelineEditor extends VnEditor {
     gutter.title =
       'Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.';
     gutter.addEventListener('pointerdown', (event) => {
-      // Prevented for the same reason a handle's is: the gutter must never take focus off an open
-      // editor, so a blocked grab is refused aloud rather than committing a half-typed line.
+      // Prevented for the same reason the drag handles prevent theirs: the gutter must never take
+      // focus off an open editor, so a blocked grab is refused aloud rather than committing a
+      // half-typed line.
       event.preventDefault();
       event.stopPropagation();
       if (!canGrab(this.mode())) return this.say(grabRefusal(this.mode()));
@@ -529,8 +529,8 @@ export class TimelineEditor extends VnEditor {
 
   /**
    * One contiguous run of a shot's coverage. A shot with holes draws several of these; only the
-   * outermost two carry drag handles, because the edge being dragged is the *shot's* first or
-   * last line — an interior hole belongs to whichever shot interleaves with this one.
+   * outermost two carry drag handles, because the edge being dragged is the shot's first or
+   * last line. An interior hole belongs to whichever shot interleaves with this one.
    */
   private bracket(
     span: ShotSpan,
@@ -584,15 +584,15 @@ export class TimelineEditor extends VnEditor {
     if (last) box.appendChild(this.handle(shotId, 'end'));
 
     box.title = `${shotId} — click to select it, drag to move it among the other shots`;
-    // Not prevented, unlike the handles': a bracket is also the click target that selects a
-    // shot, and a grab that never moves must still read as that click.
+    // The drag handles prevent their pointerdown and a bracket does not, because a bracket is
+    // also the click target that selects a shot, and a grab that never moves must read as a click.
     box.addEventListener('pointerdown', () => {
       if (!canGrab(this.mode())) return this.say(grabRefusal(this.mode()));
       this.select(shotId);
       this.beginReorder(shotId);
     });
-    // The bracket's other act: a right-click offers the commands about this one shot, each checked
-    // before it is drawn, and a refusal — deleting the last shot, say — shown rather than hidden.
+    // A right-click offers the commands about this one shot, each checked before it is drawn, with
+    // a refusal (deleting the last shot, say) shown rather than hidden.
     box.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -668,7 +668,7 @@ export class TimelineEditor extends VnEditor {
     select.className = 'wd-pick';
     const where = row.level === 'scene' ? 'in the scene' : 'in this shot';
     select.setAttribute('aria-label', `What ${row.character} wears ${where}`);
-    // Changing it re-renders: the outfit is in the shot prompt, unlike every other scene edit.
+    // Changing the outfit re-renders: the outfit is in the shot prompt, unlike other scene edits.
     select.title = `Dress ${row.character} ${where}. Every frame they appear in is drawn again.`;
     // The fallback is named in the option itself: "inherit" alone makes the author open the
     // other level to find out what they would be inheriting.
@@ -754,8 +754,8 @@ export class TimelineEditor extends VnEditor {
       this.grid?.classList.remove('dragging');
       held?.forEach((node) => node.classList.remove('dragging'));
       this.paintGesture();
-      // A drop that changes nothing takes its preview with it, rather than leaving a sentence on
-      // screen describing an edit that did not happen. A *refused* one keeps its reason.
+      // A drop that changes nothing clears its preview, rather than leaving a sentence on screen
+      // describing an edit that did not happen. A refused drop keeps its reason.
       if (!pending || (wasDrag && !(pending as Drag).lines)) {
         this.say(null);
         return;
@@ -781,7 +781,7 @@ export class TimelineEditor extends VnEditor {
   }
 
   /**
-   * The proposal, drawn *over* the committed strip and never applied to it: re-deriving coverage
+   * The proposal, drawn over the committed strip and never applied to it: re-deriving coverage
    * per pointer move re-lanes shots the author never touched. The strip changes on release.
    */
   private paintGesture(): void {
@@ -847,8 +847,9 @@ export class TimelineEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   private openEditor(line: CoverageLine): void {
-    // Mid-drag the refusal is silent — the click landed nowhere by design. Mid-write it speaks:
-    // the author clicked squarely on a line and deserves the sentence.
+    // Mid-write the refusal is spoken: the author clicked squarely on a line and gets the
+    // sentence. Mid-drag (`canEdit`, below) it is silent, because the click landed nowhere by
+    // design.
     if (this.busy.pending) return this.say(WRITE_PENDING);
     if (!canEdit(this.mode())) return;
     this.settled = false;
@@ -924,10 +925,10 @@ export class TimelineEditor extends VnEditor {
   }
 
   /**
-   * The write left. The lock is immediate — a grab, a retype or a wardrobe pick would be judged
-   * against rows the landing is about to replace — but the bar waits out {@link BUSY_DELAY_MS},
-   * so a fast command never flashes. {@link WRITE_PENDING} becomes every locked control's
-   * tooltip, because a control that will not act has to say why on hover.
+   * The write has been sent. The lock is immediate — a grab, a retype or a wardrobe pick would
+   * be judged against rows the landing is about to replace — but the bar waits out
+   * {@link BUSY_DELAY_MS}, so a fast command never flashes. {@link WRITE_PENDING} becomes every
+   * locked control's tooltip, because a control that will not act has to say why on hover.
    */
   private beginBusy(title: string): void {
     this.busy = beginWrite(title);

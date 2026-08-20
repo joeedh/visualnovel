@@ -29,9 +29,8 @@ export interface Args {
 }
 
 /**
- * Short flags that take the next argument as their value. The table is tiny and lives here on
- * purpose — a short flag not listed is a boolean, which is one rule instead of a parser that
- * guesses from what follows.
+ * Short flags that take the next argument as their value. A short flag not listed here is a
+ * boolean.
  */
 const VALUED_SHORT = new Set(['o']);
 
@@ -82,13 +81,14 @@ export async function cmdGraph(args: Args): Promise<number> {
 
 /**
  * `vngen import [dir]` — convert a `screenplay/*.fountain` project into one `scenes/<id>.md`
- * chunk per scene (fountain-import-export plan). One direction, once, and never over authored
- * work: it refuses if `scenes/` already holds chunks, and `sceneChunksFromScript` proves the
- * conversion reads back as the same scenes before a byte of it is written.
+ * chunk per scene (fountain-import-export plan). The conversion runs in one direction, once, and
+ * never over authored work: it refuses if `scenes/` already holds chunks, and
+ * `sceneChunksFromScript` proves the conversion reads back as the same scenes before a byte of it
+ * is written.
  *
- * The screenplay is not deleted — it moves to `<name>.fountain.imported`, an extension
- * `loadInputs` does not look at. That rename is done last, because until it happens the project
- * still reports the screenplay on every load; it is what finishes the import.
+ * The screenplay is not deleted. It moves to `<name>.fountain.imported`, an extension `loadInputs`
+ * does not look at, and that rename is done last because until it happens the project still
+ * reports the screenplay on every load.
  */
 export async function cmdImport(args: Args): Promise<number> {
   const dir = args.positional[0] ?? '.';
@@ -143,8 +143,8 @@ export async function cmdImport(args: Args): Promise<number> {
 
 /**
  * `vngen screenplay [dir] [-o <file>|-] [--clean]` — project the scenes back into one Fountain
- * screenplay (fountain-import-export plan). The escape hatch that keeps the chunk format from
- * being lock-in: read-only, stale the moment it is written, and no claim to be a mirror.
+ * screenplay (fountain-import-export plan). This keeps the chunk format from being lock-in; the
+ * output is read-only, is stale the moment it is written, and is not a mirror of the scenes.
  *
  * The default output sits at the project root, never in `screenplay/` — a `.fountain` in there is
  * the retired one-file form, which `loadInputs` reports for as long as it exists. `--clean`
@@ -238,7 +238,7 @@ export async function cmdStatus(args: Args): Promise<number> {
     }
   }
   // Suspension is derived, so this is a walk over the manifest rather than a stored count. The
-  // list itself is `asset.suspended` in the desktop app; here it is one number and a pointer.
+  // desktop app's `asset.suspended` lists them; this prints a count and where to look
   const suspended = suspendedAssets({
     model: project.model,
     assets: project.store.manifest(),
@@ -293,12 +293,12 @@ function printPreview(summary: RunSummary, header: string): void {
  * `vngen decompose [dir]` — ask the writing model for a storyboard for every reachable scene that
  * has none yet, so the whole graph exists before anything is rendered.
  *
- * **`--mock` is refused by name rather than honoured.** Mock providers give the deterministic
- * baseline for every scene, `decomposeAll` declines to write a baseline, and the run would report
- * nothing done — a flag that silently does nothing is worse than one that says why it will not.
+ * `--mock` is refused by name rather than honoured: mock providers give the deterministic baseline
+ * for every scene, `decomposeAll` declines to write a baseline, and the run would report nothing
+ * done.
  *
- * Exits 1 when any scene went unwritten: a fallback and an unreadable file are both things the
- * author has to act on before the next run freezes the wrong storyboard in.
+ * Exits 1 when any scene went unwritten, because a fallback and an unreadable file are both things
+ * the author has to act on before the next run freezes the wrong storyboard in.
  */
 export async function cmdDecompose(args: Args, logger: Logger): Promise<number> {
   if (args.flags['mock']) {
@@ -347,7 +347,7 @@ export async function cmdCost(args: Args, logger: Logger): Promise<number> {
  * does not exist, whether this run is what lost it or an earlier one was.
  *
  * `providers` is a test seam, the counterpart of {@link ApproveIO}: a real run resolves keys
- * and builds backends, which a test of the *reporting* has no way to stand in for.
+ * and builds backends, which a test of the reporting has no way to stand in for.
  */
 export async function cmdRun(
   args: Args,
@@ -380,8 +380,8 @@ export async function cmdRun(
   }
   if (printRefusal(summary)) return 1;
 
-  // Counted from the *plan*, not from `summary.ran`: a failure inherited from an earlier run
-  // transitions nothing this process can see, and used to report as a clean run.
+  // Counted from the plan rather than from `summary.ran`: a failure inherited from an earlier run
+  // transitions nothing this process can see
   const { failed, needsHuman } = summary;
   ok(`Ran ${summary.ran.length} task(s).`);
   if (summary.retried.length) ok(`  retried from an earlier run: ${summary.retried.length}`);
@@ -438,7 +438,7 @@ function terminalIO(): ApproveIO & { close(): void } {
   };
 }
 
-/** `yes` unless the answer is a clear no; blank takes the default. */
+/** A blank answer takes the default; anything else is true only for `y` or `yes`. */
 function answeredYes(answer: string, dflt: boolean): boolean {
   const t = answer.trim().toLowerCase();
   if (!t) return dflt;

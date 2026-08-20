@@ -77,11 +77,13 @@ describe('reading what the author asked for', () => {
     const prompt = backend.asked[0] ?? '';
     expect(prompt).toContain('approve the plates');
     expect(prompt).toContain(PLATE.hash);
-    // The assistant's side of the conversation is never in there: being asked is not evidence.
+    // The assistant's side of the conversation is never in the prompt, so the agent having asked
+    // is not evidence that the author did
     expect(prompt).not.toContain('assistant');
   });
 
-  // Two rules the model is told and the code enforces anyway, because both fail silently.
+  // The model is told not to approve where the author did not ask, and the code enforces that
+  // anyway because the failure is silent
   it('drops everything when the answer is that they did not ask', () => {
     const answered: ApprovalTriage = { asked: false, reason: 'no', hashes: [AIKO.hash] };
     expect(narrowTriage(answered, ALL).hashes).toEqual([]);
@@ -223,8 +225,8 @@ describe('the approve_assets tool', () => {
     try {
       const result = await run(ctx);
       expect(result.ok).toBe(true);
-      // Listed order, not the order the triage model happened to name them in: upstream first is
-      // what lets one call approve a plate and the frame drawn from it.
+      // Approval follows the listed order rather than the order the triage model named them in.
+      // Upstream first is what lets one call approve a plate and the frame drawn from it.
       expect(approval.approved).toEqual([PORTRAIT.hash, PLATE.hash]);
       expect(cards[0]).toContain('Approve 2 pictures?');
     } finally {

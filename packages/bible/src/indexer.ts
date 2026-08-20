@@ -42,11 +42,11 @@ export async function readIndexed(
   try {
     data = parseFrontMatter(text).data;
   } catch {
-    // Indexed as raw text: a note with a broken YAML fence is still a note.
+    // Indexed as raw text: a broken YAML fence does not stop the file being indexed
   }
 
-  // Lines are the *whole file's*, front-matter included, so a reported `file:line` is the line
-  // an editor shows.
+  // Lines cover the whole file, front matter included, so a reported `file:line` is the line
+  // an editor shows
   const lines = text.split('\n');
   const headings: string[] = [];
   const headingAt: (string | undefined)[] = [];

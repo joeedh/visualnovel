@@ -1,11 +1,10 @@
 /**
  * Where the desktop app opens, and how a first launch gets something to open.
  *
- * `templates/basic` is a read-only **template**. A real run writes ~100 MB of generated art
- * into `vngen/`, and doing that inside the source tree buries `git status` and leaves no way
- * to tell "the sample we ship" from "the copy I've been messing with". So the app seeds a
- * scratch copy with its own git repo — gitignored by the parent, hence not a submodule — and
- * works there.
+ * `templates/basic` is a read-only template. A real run writes about 100 MB of generated art
+ * into `vngen/`, and doing that inside the source tree buries `git status` and leaves no way to
+ * tell the shipped sample from a modified copy. The app seeds a scratch copy with its own git
+ * repo (gitignored by the parent, so it is not a submodule) and works there.
  */
 import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -28,8 +27,8 @@ const SKIP = new Set(['vngen', 'keys', '.git', 'node_modules']);
 const FALLBACK_IDENTITY = { name: 'VN Studio', email: 'vnstudio@localhost' };
 
 /**
- * What a project's `.gitignore` starts as. `vngen/` is deliberately **not** here: the generated
- * tree is committed on purpose. `keys` is the load-bearing line — commit-on-save runs
+ * What a project's `.gitignore` starts as. `vngen/` is deliberately absent, because the generated
+ * tree is committed on purpose. `keys` is the load-bearing line: commit-on-save runs
  * `git commit -A`, so a key git can see is committed within the second.
  */
 const DEFAULT_IGNORES = ['keys', 'node_modules', '.DS_Store'];
@@ -67,8 +66,8 @@ async function exists(path: string): Promise<boolean> {
 
 /**
  * Open `target`, creating it from `template` on first use. An existing directory is opened
- * **untouched** — never re-copied, never overwritten: it is the user's working copy and it is
- * the only thing between a stray reseed and a day's authoring. Resetting is deleting it.
+ * untouched: never re-copied, never overwritten, because it is the user's working copy and a
+ * stray reseed would cost a day's authoring. Resetting a workspace means deleting the directory.
  */
 export async function seedWorkspace(template: string, target: string): Promise<SeedResult> {
   if (await exists(target)) return { root: target, seeded: false };
@@ -90,28 +89,27 @@ export async function seedWorkspace(template: string, target: string): Promise<S
  * Bring `root` under version control, committing whatever is already there — "the app
  * initializes a git repository if necessary; it will automatically commit existing files".
  *
- * Idempotent, and it stops at the first question: a directory that is *already* in a work tree
- * is left entirely alone, whether or not it is that tree's root.
+ * Idempotent. A directory already inside a work tree is left alone, whether or not it is that
+ * tree's root.
  */
 export async function ensureRepo(root: string, message = 'Existing project files'): Promise<Git> {
   const git = openGit(root);
   if (await git.isRepo()) return git;
-  // On a machine with no git (`./doctor.ts`) this is where the app would die: `init` is the first
-  // spawn that throws rather than answering false, and it happens before any window exists. Hand
-  // back the handle instead — reads say "not a repo", writes refuse, and the author gets an app
-  // that opens and a notification saying why it cannot save. `initRepoAt` deliberately keeps
-  // throwing: *that* one is someone asking for a repository, not the app taking a precaution.
+  // Without git (`./doctor.ts`) `init` is the first spawn that throws rather than answering false,
+  // and it runs before any window exists. Returning the handle instead lets the app open: reads
+  // answer "not a repo", writes refuse, and a notification says why saving does not work
   if (!gitHealth().ok) return git;
   return initRepoAt(root, message);
 }
 
 /**
- * Whether the repository containing `root` is the project's *own*, rather than one the project
- * merely sits inside — `RepoRef.owned`, asked of a single directory and without loading a model.
+ * Whether the repository containing `root` belongs to the project itself, rather than one the
+ * project merely sits inside — `RepoRef.owned`, asked of a single directory and without loading
+ * a model.
  *
  * Scaffolding may write into a foreign work tree, because the file belongs to the project either
- * way; it must not **commit** there, on the grounds `openRepos()` gives — that history is somebody
- * else's. False for a directory in no work tree at all, which has no history to write to.
+ * way. It must not commit there, on the grounds `openRepos()` gives: that history belongs to
+ * somebody else. False for a directory in no work tree at all, which has no history to write to.
  */
 export async function ownsRepo(root: string): Promise<boolean> {
   const top = await openGit(root).topLevel();
@@ -119,10 +117,11 @@ export async function ownsRepo(root: string): Promise<boolean> {
 }
 
 /**
- * `ensureRepo`'s deliberate opposite: initialize a repository **at** `root` whatever encloses it,
- * because "create a new project here" is a request for a project and a project has a repo. A
- * nested one is a thing this codebase already understands — git does not descend into it, and
- * `Workspace.repos()` calls a project owning its own root `owned`, which is what commits it.
+ * Initialize a repository at `root` whatever encloses it, because creating a new project here is
+ * a request for a project and a project has a repo. A nested repository is understood elsewhere in
+ * this codebase: git does not descend into it, and `Workspace.repos()` calls a project owning its
+ * own root `owned`, which is what commits it. Unlike `ensureRepo`, this throws when git is missing,
+ * because the caller asked for a repository rather than taking a precaution.
  */
 export async function initRepoAt(root: string, message: string): Promise<Git> {
   const git = openGit(root);
@@ -133,7 +132,7 @@ export async function initRepoAt(root: string, message: string): Promise<Git> {
     await git.config('user.email', FALLBACK_IDENTITY.email);
     await git.config('user.name', FALLBACK_IDENTITY.name);
   }
-  // Same reason testkit sets it: the branch editor patches scene prose byte-exactly.
+  // The branch editor patches scene prose byte-exactly, so line endings must not be rewritten
   await git.config('core.autocrlf', 'false');
   // Before the first commit, so `keys` is ignored by the time anything can be committed.
   await ensureIgnored(root, DEFAULT_IGNORES);
@@ -182,8 +181,9 @@ export interface OpenResult {
  * Open the directory the user picked, making it a project if it is not one yet: the shortest
  * honest `project.yaml` (`title` is the only key without a default) and then `ensureRepo`.
  *
- * Not a copy of the template — an empty project is empty. A config that will not parse throws
- * rather than opening, so the failure names the file instead of surfacing three reads later.
+ * Nothing is copied from the template, so a project created this way starts empty. A config that
+ * will not parse throws rather than opening, so the failure names the file instead of surfacing
+ * three reads later.
  */
 export async function openWorkspace(root: string): Promise<OpenResult> {
   const found = await inspectWorkspace(root);
@@ -194,10 +194,9 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
   if (!found.project) {
     await writeFileAtomic(join(root, CONFIG_FILENAME), `title: ${JSON.stringify(title)}\n`);
   }
-  // Before `ensureRepo`, so a repository being initialized here takes these in its first commit;
-  // a repository that already exists gets its own commits below. Either way opening a project
-  // must not leave the worktree dirty — the app's open-time checkpoint would otherwise sweep
-  // these up under "Changes made outside the app", once, on every author's machine.
+  // Before `ensureRepo`, so a repository initialized here takes these in its first commit; a
+  // repository that already exists gets its own commits below. Opening a project must not leave
+  // the worktree dirty, or the open-time checkpoint sweeps these up as changes made outside the app
   const wroteLayouts = await ensureLayouts(root);
   const wroteAttributes = await ensureGitAttributes(root);
   const fresh = !(await openGit(root).isRepo());
@@ -217,19 +216,19 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
 }
 
 /**
- * The same guarantee for a project that is *reached* rather than opened. `openWorkspace` runs on
- * an explicit `workspace.open`, but the ordinary boot path resolves a root from the recents list
- * or `VN_PROJECT` and goes straight to the repos — so this is what reaches a project the author
- * simply reopened, and it is why the attribute is not a create-time-only affair.
+ * Gives the same guarantee to a project that is reached rather than opened. `openWorkspace` runs
+ * on an explicit `workspace.open`, but the ordinary boot path resolves a root from the recents
+ * list or `VN_PROJECT` and goes straight to the repos, so a project the author simply reopened
+ * gets the attribute here rather than only at create time.
  *
  * Commits what it wrote, for the reason `openWorkspace` gives: the app's open-time checkpoint
  * would otherwise sweep this file up under "Changes made outside the app".
  */
 export async function adoptGitAttributes(root: string): Promise<boolean> {
   if (!(await ensureGitAttributes(root))) return false;
-  // `isRepo` would be true of a project sitting inside a larger repo, and committing there is the
-  // one thing this must not do. Its caller asks the same question first; asking it here too is
-  // what keeps the answer with the write.
+  // `isRepo` would be true of a project sitting inside a larger repo, and this must not commit
+  // there. The caller asks the same question first; asking again here keeps the answer with the
+  // write
   if (await ownsRepo(root)) {
     await openGit(root).commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
   }
@@ -239,7 +238,7 @@ export async function adoptGitAttributes(root: string): Promise<boolean> {
 const GITATTRIBUTES_COMMIT = 'Union-merge the notification log';
 const LAYOUTS_COMMIT = 'Add the shipped layout templates';
 
-/** The one attribute a project needs from us, and why it needs it. */
+/** The one attribute a project needs from this app; `GITATTRIBUTES_TEXT` states why. */
 const GITATTRIBUTES_LINE = 'vngen/state/notifications.jsonl merge=union';
 const GITATTRIBUTES_TEXT =
   '# The notification log is append-only and its read/hidden flags are patched in place.\n' +
@@ -251,9 +250,10 @@ const GITATTRIBUTES_TEXT =
  * Give an existing project the union-merge attribute it was created without. Idempotent, and it
  * appends rather than writes: a `.gitattributes` is the user's file and may already say plenty.
  *
- * Deliberately *not* carrying this repo's own `* text=auto eol=lf`. `merge` and `text`/`eol` are
- * orthogonal attributes, so the line stands alone — and a project is the author's repository, not
- * somewhere to install our line-ending policy. `initRepoAt` already sets `core.autocrlf=false`.
+ * This deliberately does not carry this repo's own `* text=auto eol=lf`. `merge` and `text`/`eol`
+ * are orthogonal attributes, so the line stands alone, and a project is the author's repository
+ * rather than somewhere to install this app's line-ending policy. `initRepoAt` already sets
+ * `core.autocrlf=false`.
  */
 export async function ensureGitAttributes(root: string): Promise<boolean> {
   const path = join(root, '.gitattributes');
@@ -270,11 +270,11 @@ export const START_SCENE = 'opening';
 
 /**
  * The files a new project is created with: three that make its model build, the shipped layout
- * templates, and the `.gitattributes` carrying both rules a project needs from us.
+ * templates, and the `.gitattributes` carrying both rules a project needs from this app.
  *
- * Not a copy of `templates/basic`: that is somebody else's story, and an author's first ten
- * minutes should not go on deleting a cast. Not nothing either — with no `start:` and no scenes
- * the model builds with error diagnostics, so an empty project greets its author with a red count.
+ * `templates/basic` is deliberately not copied, so an author does not start by deleting a cast
+ * they did not write. An empty directory is not used either: with no `start:` and no scenes the
+ * model builds with error diagnostics, so an empty project would open with a red count.
  *
  * The layouts are here rather than left to `ensureLayouts` so they land in the first commit,
  * under the subject that says what they are.
@@ -315,9 +315,9 @@ export interface CreateInspection {
 }
 
 /**
- * Where a create lands: the folder that was chosen, or a child of it named from the title. The
- * two halves of "choose a parent and type a name" — separated so an OS chooser can answer one
- * and a textbox the other. Slugged, because a title is prose and a folder name is not.
+ * Where a create lands: the chosen folder, or a child of it named from the title. The parent and
+ * the name are separate arguments so an OS chooser can answer one and a textbox the other. The
+ * name is slugged, because a title is prose and a folder name is not.
  */
 export function createRoot(path: string, title: string, newFolder: boolean): string {
   const base = resolve(path);
@@ -351,14 +351,14 @@ export async function inspectCreate(root: string): Promise<CreateInspection> {
 }
 
 /**
- * Create a project at `root` and open it. Unlike `openWorkspace` this scaffolds: "create a new
- * project here" is an explicit request for a project, and one whose model will not build is a
- * worse answer than three files.
+ * Create a project at `root` and open it. Unlike `openWorkspace` this scaffolds, because creating
+ * a new project here is an explicit request for a project and a project whose model will not build
+ * is a worse answer than three files.
  *
  * The repo is initialized before the open so the first commit is the skeleton under its own
  * subject; `openWorkspace` then finds a `project.yaml` already there and only reads it. It is
- * `initRepoAt` rather than `ensureRepo` because the promise is a repository, not a repository
- * unless something already encloses this one.
+ * `initRepoAt` rather than `ensureRepo` because a create must produce a repository even when
+ * another repository already encloses this directory.
  */
 export async function createWorkspace(root: string, title: string): Promise<OpenResult> {
   if (!(await inspectCreate(root)).empty) {
@@ -379,9 +379,9 @@ export const RECENT_KEY = 'workspace.recent';
 export const RECENT_MAX = 10;
 
 /**
- * The recents list is in the *global* session store, not a project's own state — it is the one
- * thing that must be readable before any workspace is open. Only this much of `SessionStore` is
- * named, so the helpers stay testable against a plain object.
+ * The recents list lives in the global session store rather than a project's own state, because
+ * it must be readable before a workspace is open. Only this much of `SessionStore` is named, so
+ * the helpers stay testable against a plain object.
  */
 export interface RecentStore {
   get<T extends string[]>(key: string, fallback: T): T;
@@ -401,9 +401,9 @@ export function rememberWorkspace(state: RecentStore, root: string): string[] {
 }
 
 /**
- * The remembered projects that are still there, healing the store as it reads. A project moved
- * or deleted outside the app leaves an entry that can only be offered and then refused, and with
- * ten slots a handful of those is a menu whose every live entry has been pushed off the end.
+ * The remembered projects that are still there, pruning the store as it reads. A project moved or
+ * deleted outside the app leaves an entry that can only be offered and then refused, and with
+ * `RECENT_MAX` slots a few of those push every live entry off the end of the menu.
  *
  * `exists` is injected so the pruning is testable without a filesystem; main passes `existsSync`.
  */

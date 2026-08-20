@@ -103,7 +103,7 @@ describe('UndoJournal', () => {
       const post = (await journal.capture(1, 'post'))!;
       const point = journal.point(pre, post);
 
-      // The half `git restore` cannot do: undoing a creation means *deleting* the file, and
+      // The half `git restore` cannot do: undoing a creation means deleting the file, and
       // undoing a deletion means bringing it back.
       await move(journal, point, 'post', 'pre');
       await expect(read(dir, 'new.md')).rejects.toThrow(/ENOENT/);
@@ -137,8 +137,8 @@ describe('UndoJournal', () => {
     const { dir, journal, cleanup } = await tempWorkspace();
     try {
       const snap = (await journal.capture(1, 'post'))!;
-      // A pipeline run between the command and the undo must not block it: `build/` is not
-      // part of the document tree, so a new asset does not read as drift.
+      // A pipeline run between the command and the undo must not block it: `gen/` is excluded
+      // from the document tree, so a new asset does not read as drift.
       await fs.writeFile(join(dir, 'gen/new-asset.bin'), 'more output\n');
       expect((await journal.check(journal.point(snap, snap), 'post')).ok).toBe(true);
     } finally {

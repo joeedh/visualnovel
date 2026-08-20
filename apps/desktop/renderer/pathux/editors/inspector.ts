@@ -38,12 +38,12 @@ const SEVERITY_COLOUR: Record<string, string> = {
 
 /**
  * Per-task detail: identity, why it stopped if it stopped badly, and P7's generate → critique →
- * refine loop as a vertical spine. The rules are `rules/attempts.ts` untouched — the merge,
- * the `Corrections:` delta, the outcome and the triage all still have their own tests — so this
- * is the React `Inspector` + `AttemptLoop` markup and nothing else.
+ * refine loop drawn as a vertical spine. The rules live in `rules/attempts.ts` and have their own
+ * tests — the merge, the `Corrections:` delta, the outcome and the triage — so this file holds
+ * only the markup.
  *
  * Its subject is `ui.taskHash`, which every task surface publishes, so the inspector follows the
- * list and the graph without either of them knowing it is open.
+ * list and the graph without either of them tracking whether it is open.
  */
 export class InspectorEditor extends VnEditor {
   private bar!: Container;
@@ -87,8 +87,8 @@ export class InspectorEditor extends VnEditor {
   override update() {
     super.update();
 
-    // A hash the cached status has never heard of is a task planned since the last read, not a
-    // missing one — so the miss is what triggers the re-fetch, and it triggers it once.
+    // A hash the cached status does not contain is a task planned since the last read, not a
+    // missing one, so a miss triggers a re-fetch — once, guarded by `fetchedFor`.
     const hash = this.ui.taskHash;
     if (hash !== '' && hash !== this.fetchedFor && !this.task()) {
       this.fetchedFor = hash;
@@ -204,7 +204,7 @@ export class InspectorEditor extends VnEditor {
     return box;
   }
 
-  /** Why the loop gave up, named — not just that it did. */
+  /** Why the loop gave up, not just that it did. */
   private triage(triage: TriageSummary): HTMLElement {
     const box = card();
     Object.assign(box.style, {
@@ -264,8 +264,8 @@ export class InspectorEditor extends VnEditor {
     head.appendChild(hash);
     box.appendChild(head);
 
-    // Every attempt's bytes are in the store — only the clean one was `accept`ed, not the only
-    // one generated, so a rejected frame is still here to look at.
+    // Every attempt's bytes are in the store: `accept` marks the clean attempt rather than
+    // discarding the others, so a rejected frame is still here to look at.
     const url =
       attempt.output && attempt.outputExt
         ? `vnasset://${attempt.output}.${attempt.outputExt}`

@@ -2,12 +2,12 @@
  * The script column's one gesture: a line carried to another position in its own scene.
  *
  * Same contract as `branch.ts` and `timeline.ts` — `script.moveLine.targets` is pure and
- * synchronous, so the gesture is judged **once** at the grab and every pointer move reads the
- * answer off by insertion point. The sentence shown mid-drag, the drop that is allowed, and what
+ * synchronous, so the gesture is judged once at the grab and every pointer move reads the answer
+ * off by insertion point. The sentence shown mid-drag, the drop that is allowed, and what
  * `interaction.targets` tells an agent are one verdict, and the commit is `verdict.invoke`
  * verbatim.
  *
- * Where the pointer *is* stays the surface's problem: `dropTarget` turns measured rows into an
+ * Where the pointer is stays the surface's problem: `dropTarget` turns measured rows into an
  * insertion point, and this module takes that id. So the DOM read and the rule are separable, and
  * only the rule is tested here.
  *
@@ -34,8 +34,8 @@ export interface Drag {
 }
 
 /**
- * Pick a line up. Every insertion point is judged here, once — a drag that re-asked per pointer
- * move could change its mind about a drop the author is already over.
+ * Pick a line up. Every insertion point is judged here, once: a drag that re-asked per pointer
+ * move could give a different verdict for a drop the author is already over.
  */
 export function grabLine(scene: SceneCoverage, line: string): Drag {
   const judged = scriptMoveLine.targets(moveStateOf(scene), line);
@@ -49,7 +49,7 @@ export function grabLine(scene: SceneCoverage, line: string): Drag {
 
 /**
  * The drag re-aimed at the insertion point now under the pointer. An insertion point `targets`
- * did not judge is a drop that would reorder nothing: no rule, and nothing to say.
+ * did not judge is a drop that would reorder nothing, so it has no verdict and no notice.
  */
 export function aim(drag: Drag, over: string | null): Drag {
   return { ...drag, over, verdict: over === null ? null : (drag.verdicts.get(over) ?? null) };
@@ -60,7 +60,7 @@ export function dropOf(drag: Drag): Invocation | null {
   return drag.verdict?.accept ? drag.verdict.invoke : null;
 }
 
-/** Nothing to say where the drop is not a candidate; otherwise the verdict's own sentence. */
+/** The verdict's own sentence, or `null` where the drop is not a candidate. */
 export function noticeOf(drag: Drag | null): Notice | null {
   return drag?.verdict ? noticeForVerdict(drag.verdict) : null;
 }
@@ -73,10 +73,10 @@ export function shotCovering(shots: readonly CoverageShot[], lineId: string): Co
 /**
  * What right-clicking a line offers. One entry today: the frame drawn from the shot that covers it.
  *
- * Both ways of having no picture are said rather than hidden — an author asking "where is the art
- * for this line?" is owed the answer, and "no shot covers it" and "its shot has not been drawn" are
- * different answers with different next moves. Neither is a question a command can be asked: there
- * is no hash to name, which is what {@link MenuEntry.refused} is for.
+ * Both ways of having no picture are shown rather than hidden, because "no shot covers it" and
+ * "its shot has not been drawn" are different answers with different next moves. Neither case can
+ * be put to a command, because there is no hash to name, which is what {@link MenuEntry.refused}
+ * is for.
  */
 export function lineMenu(scene: SceneCoverage, lineId: string): MenuEntry[] {
   const label = 'Open shot asset';

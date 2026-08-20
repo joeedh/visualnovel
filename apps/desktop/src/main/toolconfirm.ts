@@ -21,7 +21,7 @@ function clip(text: string, max = 120): string {
 
 /**
  * The sentence for one always-confirm tool. An unknown tool still gets a sentence rather than a
- * blank: a new confirm-gated tool must never be *easier* to allow than the ones named here.
+ * blank, so a new confirm-gated tool is never easier to allow than the ones named here.
  */
 export function confirmDetail(tool: string, args: unknown): string {
   switch (tool) {

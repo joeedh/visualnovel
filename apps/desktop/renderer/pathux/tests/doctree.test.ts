@@ -76,8 +76,8 @@ describe('flattenTree', () => {
     expect(rows.map((row) => [row.node.id, row.depth])).toContainEqual(['shot:greet/greet__s1', 2]);
   });
 
-  // The twisty is drawn from `expandable`, so a childless node marked expanded must not get one:
-  // an author clicking a twisty that opens nothing is looking at a lie about the shape.
+  // The twisty is drawn from `expandable`, so a childless node marked expanded must not get one.
+  // A twisty that opens nothing misreports the shape of the tree.
   it('never calls a childless node expandable, even when the set names it', () => {
     const rows = flattenTree(TREE, new Set(['branch:wiki']));
     const wiki = rows.find((row) => row.node.id === 'branch:wiki')!;
@@ -113,8 +113,8 @@ describe('a counted `more`', () => {
       ['branch:story', 0],
       ['scene:a', 1],
       ['more:branch:story', 1],
-      // Siblings of `scene:a`, not children of the count — what a cap dropped is the rest of the
-      // list, and it is drawn at the indent the list is at.
+      // Siblings of `scene:a`, not children of the count. A cap drops the rest of the list, so
+      // those rows are drawn at the list's own indent.
       ['scene:b', 1],
       ['scene:c', 1],
     ]);
@@ -181,9 +181,9 @@ describe('selectionForNode', () => {
   });
 
   /**
-   * The clicks that must cost nothing. A branch and a `wikidir` are opened, and `more` stands for
-   * rows that were dropped — none of them is a place. An asset used to be in this list; it names
-   * `assetHash` now, which is the whole of the asset editor's subject.
+   * Kinds whose click changes no selection. A branch and a `wikidir` are opened rather than
+   * selected, and `more` stands for rows that were dropped. An asset is not in this list: it names
+   * `assetHash`, which is the whole of the asset editor's subject.
    */
   it('returns the very same selection for a node that names nothing', () => {
     for (const kind of ['branch', 'wikidir', 'dir', 'assetkind', 'more'] as const) {
@@ -193,8 +193,8 @@ describe('selectionForNode', () => {
   });
 
   /**
-   * An asset carries no `path` — it is bytes in the store, not a document — so its hash *is* the
-   * selection, and the document the author was reading is left alone underneath it.
+   * An asset carries no `path` (it is bytes in the store rather than a document) so its hash is
+   * the selection, and the document the author was reading stays open underneath.
    */
   it('names an asset by hash, leaving the open document where it was', () => {
     const asset = node('asset:a1b2c3d4', 'asset');
@@ -216,7 +216,7 @@ describe('selectionForNode', () => {
     });
   });
 
-  // A skill is its `SKILL.md` and nothing else — no id field of its own, the same as a wiki note.
+  // A skill has no id field of its own, so it is named by its `SKILL.md` path like a wiki note.
   it('names a skill by the document it is', () => {
     expect(selectionForNode(SKILL, NONE)).toEqual({
       ...NONE,
@@ -237,8 +237,8 @@ describe('nodeIsSelected', () => {
     expect(nodeIsSelected(TREE[0]!.children![1]!, sel)).toBe(false);
   });
 
-  // A character is selected by id, not by the file it happens to live in — so the sheet row in
-  // the file tree lights and the character row does not, which is the honest pair.
+  // A character is selected by id rather than by the file it lives in, so the sheet row in the
+  // file tree lights and the character row does not.
   it('lights a document node by path, and an entity node only by id', () => {
     const path = 'characters/aiko/character.md';
     const sel: Selection = { ...NONE, docPath: path };
@@ -376,9 +376,8 @@ describe('menuFor', () => {
   });
 
   it('offers the skills branch both ways to get a skill, and both as forms', () => {
-    // The branch is drawn even when empty, so this menu is the always-reachable way to make the
-    // first skill a project ever has. Neither entry can be run from the menu: one needs a name and
-    // the other needs a sentence.
+    // The branch is drawn even when empty, so this menu is how a project's first skill gets made.
+    // Neither entry can be run from the menu: one needs a name and the other needs a sentence.
     expect(menuFor(node('branch:skills', 'branch'))).toEqual([
       { label: 'New skill…', id: 'doc.create', props: { kind: 'skill' }, form: true },
       {
@@ -442,8 +441,8 @@ describe('menuFor', () => {
     }
   });
 
-  // The second entry is a form on purpose: "change this skill" with nothing said about how is a
-  // turn the author would only have to interrupt.
+  // The second entry is a form on purpose. Asking to change a skill without saying how starts a
+  // turn the author would have to interrupt.
   it('offers a skill the pane that owns it, and a first sentence for the agent', () => {
     expect(menuFor(SKILL)).toEqual([
       {
@@ -506,8 +505,8 @@ describe('renameOf', () => {
     }
   });
 
-  // It has a path and a label, so it looks renamable — but `doc.rename` rewrites `title:`, and a
-  // SKILL.md's name lives under `name:`. A double-click here would write a key nobody reads.
+  // A skill has a path and a label, so it looks renamable. `doc.rename` rewrites `title:` while a
+  // SKILL.md's name lives under `name:`, so a double-click here would write a key nobody reads.
   it('refuses a skill, whose name is not the key doc.rename writes', () => {
     expect(renameOf(SKILL)).toBeUndefined();
   });
@@ -544,8 +543,8 @@ describe('rowTitle', () => {
     }
   });
 
-  // A counted stand-in carries what it stood for, so its sentence is an offer rather than an
-  // apology — and it says the opposite thing once the offer has been taken up.
+  // A counted stand-in carries the rows it replaced, so its tooltip offers to show them, and
+  // offers to fold them away again once they are shown.
   it('offers to finish the list a cap cut short, and to fold it back', () => {
     const more = node('more:assetkind:portrait', 'more');
     expect(rowTitle(more, plain)).toBe('More than the tree draws at once — click to show the rest');

@@ -45,8 +45,8 @@ describe('entity discovery by tag', () => {
     expect(inputs.characterDocs).toEqual([]);
   });
 
-  // The bible is mostly prose. Only a tag makes a file an input; everything else in there is
-  // the story-bible plan's business and must not become a half-parsed entity.
+  // The bible is mostly prose. Only a tag makes a file an input; every other file belongs to the
+  // story bible and must not become a half-parsed entity.
   it('ignores untagged wiki files and wiki files tagged something else', async () => {
     const paths = await tempRoot();
     await writeFileAtomic(
@@ -124,7 +124,7 @@ describe('entity discovery by tag', () => {
     expect(inputs.diagnostics).toEqual([]);
   });
 
-  // One hand-edited sheet must not take the whole project's load down with it.
+  // One hand-edited sheet must not fail the whole project's load.
   it('diagnoses unparseable front-matter instead of throwing', async () => {
     const paths = await tempRoot();
     await writeFileAtomic(paths.characterFile('ada'), '---\nid: [unclosed\n---\n\nAda.\n');

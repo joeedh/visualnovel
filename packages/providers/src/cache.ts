@@ -1,9 +1,9 @@
 /**
- * Record/replay for image-model responses, so a fixture can hold **real** art without
- * anyone paying for it twice. Everything the node suites assert on is structural — task
- * counts, hashes, manifest entries — and `StubImageBackend`'s placeholders serve that
- * perfectly and for free. This exists for the other case: making a generated project
- * viewable, and the P7 refine loop reviewable, by someone who has never held an API key.
+ * Record/replay for image-model responses, so a fixture can hold real art without anyone
+ * paying for it twice. The node suites assert only on structure — task counts, hashes,
+ * manifest entries — which `StubImageBackend`'s placeholders already satisfy for free. The
+ * cache exists so that a generated project is viewable, and the P7 refine loop reviewable,
+ * by someone who has never held an API key.
  *
  * Plan: `docs/plans/archive/sample-workspace-and-asset-cache.md`.
  */
@@ -19,9 +19,9 @@ import { isPlaceholderImage } from './placeholder.js';
 export type ImageOp = 'generate' | 'edit';
 
 /**
- * The cache key: everything that determines the image, and nothing else.
+ * The cache key covers everything that determines the image and nothing else.
  *
- * Deliberately *not* a task hash — the backend never sees a task, and keying on the request
+ * It is deliberately not a task hash — the backend never sees a task, and keying on the request
  * means one recording serves every task kind that would have issued it. `params` carries
  * `modelId`, so a recording can never be replayed for a different model.
  */
@@ -95,9 +95,9 @@ export class AssetCache {
   }
 
   /**
-   * Record a response. Refuses placeholder bytes: the whole point of the cache is real art,
-   * and a recording run that fell back to mocks would otherwise bake them in permanently —
-   * indistinguishable from a genuine recording once committed.
+   * Record a response. Refuses placeholder bytes, because a recording run that fell back to
+   * mocks would otherwise bake them in permanently, indistinguishable from a genuine recording
+   * once committed.
    */
   async put(key: string, result: ImageResult, meta: RecordMeta): Promise<AssetCacheEntry> {
     if (isPlaceholderImage(result.bytes)) {
@@ -140,8 +140,8 @@ export class AssetCache {
 
 export interface CachedImageOptions {
   /**
-   * Write misses back into the cache. **Off by default** — only the deliberate, costed
-   * refresh run records, and it runs against real providers.
+   * Write misses back into the cache. Off by default — only the deliberate, costed refresh
+   * run records, and it runs against real providers.
    */
   record?: boolean;
   /** Recorded on each entry, so the refresh script can report orphans by fixture. */
@@ -149,9 +149,9 @@ export interface CachedImageOptions {
 }
 
 /**
- * One request as the backend saw it, in call order. This is the only place that knows which
- * keys a fixture actually asks for — the cache knows what it *holds* — so both halves of the
- * refresh report (reused vs. added, and which entries nothing asked for) derive from it.
+ * One request as the backend saw it, in call order. Only this log knows which keys a fixture
+ * asks for, while the cache knows only what it holds, so both halves of the refresh report
+ * (reused vs. added, and which entries nothing asked for) derive from it.
  */
 export interface ServedRequest {
   key: string;
@@ -167,7 +167,7 @@ export interface ServedRequest {
  * An `ImageBackend` that serves recorded bytes when it has them and delegates otherwise, so
  * nothing above the seam changes.
  *
- * A miss is honest, not fatal: it falls through to `inner` (placeholders, in a fixture), and
+ * A miss is not fatal. It falls through to `inner` (placeholders, in a fixture), and
  * because a reference's bytes are part of both the cache key and the task hash, everything
  * downstream of a missed link misses too. There is no half-real run in which a placeholder
  * is quietly presented as generated art.

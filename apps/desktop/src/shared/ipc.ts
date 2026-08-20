@@ -83,17 +83,17 @@ export type SessionValue =
 export type UiEffect =
   | { type: 'palette'; open: boolean }
   /**
-   * Where an editor goes and which pane is active. An effect names an **editor**, never a room:
-   * the shell is a mesh of panes an author arranges, so "show me the coverage strip" is a
-   * different act from "put it beside the script", and both are one command away.
+   * Where an editor goes and which pane is active. An effect names an editor, never a room,
+   * because the shell is a mesh of panes the author arranges.
    *
-   * `subject` is the document to show once it is there — a workspace-relative path, published as
-   * `ui.docPath`. Optional because most editors read their subject off the selection they already
-   * observe; without it, opening a document editor on a file would be two acts that race.
+   * `subject` is the document to show once the editor is there — a workspace-relative path,
+   * published as `ui.docPath`. It is optional because most editors read their subject off the
+   * selection they already observe; without it, opening a document editor on a file would be
+   * two acts that race.
    *
-   * `flash` outlines the pane once when it lands. It is for commands that move the author
-   * somewhere they did not click — `upload.pick` opening a conversation — and matters most when
-   * the pane was already open and focused, because nothing else about it would visibly change.
+   * `flash` outlines the pane once when it lands, for commands that move the author somewhere
+   * they did not click (`upload.pick` opening a conversation). It matters most when the pane was
+   * already open and focused, because nothing else about it would visibly change.
    */
   | {
       type: 'view';
@@ -107,17 +107,16 @@ export type UiEffect =
   | { type: 'view'; action: 'close' }
   | { type: 'view'; action: 'reset' }
   /**
-   * Rearrange the whole window to a layout template. Main reads the file and sends what it
-   * holds, because the renderer is the only half that can stand a mesh up and main is the only
-   * half that may read the project — and `fingerprint` is how the renderer knows whether the
-   * arrangement it is already showing is still the one on disk.
+   * Rearrange the whole window to a layout template. Main reads the file and sends its contents,
+   * because only main may read the project and only the renderer can build a mesh. `fingerprint`
+   * tells the renderer whether the arrangement it is already showing is still the one on disk.
    */
   | { type: 'view'; action: 'apply'; slug: string; fingerprint: string; layout: LayoutFile }
   /**
-   * Pushed after every command, so the undo/redo affordances stay honest whoever ran it — the
-   * palette, a drag, or CDP. `revision` counts undo/redo moves **only**: those are the writes
-   * a room did not make itself, so it is what a room remounts on. An ordinary command already
-   * refreshes the surface that issued it.
+   * Pushed after every command, whether it came from the palette, a drag or CDP, so the
+   * undo/redo affordances stay accurate. `revision` counts undo and redo moves and nothing else,
+   * since those are the writes a room did not make itself, and it is what a room remounts on. An
+   * ordinary command already refreshes the surface that issued it.
    */
   | { type: 'undo'; state: UndoState; revision: number }
   /**
@@ -128,9 +127,9 @@ export type UiEffect =
   | { type: 'workspace'; root: string; title: string }
   /**
    * Long-running work started, moved, or ended. `what` names the work in plain words ("a
-   * pipeline run", "an agent turn") and is absent when the session went idle. Pushed rather
-   * than polled: the header's run button and the conversation editor's stop button both follow
-   * the same fact `WorkspaceSession.busy()` already keeps.
+   * pipeline run", "an agent turn") and is absent when the session went idle. This is pushed
+   * rather than polled, so that the header's run button and the conversation editor's stop
+   * button both read the state `WorkspaceSession.busy()` already tracks.
    */
   | { type: 'busy'; what?: string; ran: number; pending: number }
   /**
@@ -138,10 +137,10 @@ export type UiEffect =
    * and not a bad key — and the author picked "look into what went wrong" on the card that
    * offered it.
    *
-   * Pushed rather than answered: `WorkspaceSession.while()` is a `Set` rather than a mutex, so a
-   * "last fault" the renderer came back and asked for could be overwritten by a second turn
-   * between the failure and the question. `message` is the provider's own sentence, shown on the
-   * dialog so it says why it opened.
+   * This is pushed rather than answered on request, because `WorkspaceSession.while()` is a `Set`
+   * rather than a mutex: a "last fault" the renderer came back and asked for could be overwritten
+   * by a second turn between the failure and the question. `message` is the provider's own
+   * sentence, shown on the dialog so it says why it opened.
    */
   | { type: 'agent'; action: 'diagnose'; thread?: string; message: string };
 
@@ -208,10 +207,10 @@ export interface PlanRequest {
 /**
  * A form the agent put to the author, waiting on answers main is blocked for.
  *
- * `questions` is never empty and usually holds one — a single question is a one-page form, and
- * the card draws it exactly as it always did. A question's `choices` is a shortlist to click
- * rather than type; it changes how the page is drawn and nothing else, since the answer that
- * goes back is a string either way and the author may always type something the list omits.
+ * `questions` is never empty and usually holds one, which the card draws as a one-page form. A
+ * question's `choices` is a shortlist to click rather than type; it changes how the page is drawn
+ * and nothing else, since the answer that goes back is a string either way and the author may
+ * always type something the list omits.
  */
 export interface AskRequest {
   id: number;
@@ -220,7 +219,7 @@ export interface AskRequest {
 
 /**
  * An always-confirm tool waiting for a yes. `detail` is an English sentence rather than the raw
- * arguments: what a tool's arguments *mean* is main's business, and the card only reads it out.
+ * arguments, because main interprets a tool's arguments and the card only reads the result out.
  */
 export interface ConfirmRequest {
   id: number;
@@ -237,7 +236,7 @@ export interface PipelineStatus {
   /**
    * Every picture the project implies, in `SlotGraph.order` — upstream before downstream. `tasks`
    * holds only what was plannable at the last wave, so a view drawn from tasks alone would have
-   * to guess at the rest; this list is the whole graph.
+   * to guess at the rest. This list covers the whole graph.
    */
   slots: SlotNode[];
 }
@@ -249,8 +248,8 @@ export interface PipelineRunResult {
   gatePending: string[];
   preview: { pendingTasks: number; imageCalls: number; reviewCalls: number };
   /**
-   * Tasks the current plan wants that are `failed`, including failures inherited from an
-   * earlier run — which `ran` cannot see, so a run that lost art used to report as clean.
+   * Tasks the current plan wants that are `failed`, including failures inherited from an earlier
+   * run. `ran` cannot see those, so a run that lost art would otherwise report as clean.
    */
   failed: number;
   failures: { hash: string; kind: TaskKind; error?: string }[];
@@ -311,7 +310,7 @@ export interface StoryGraph {
   start?: string;
   scenes: StoryScene[];
   edges: StoryEdge[];
-  /** Model diagnostics, so the editor can say *why* a scene is flagged. */
+  /** Model diagnostics, so the editor can say why a scene is flagged. */
   diagnostics: Diagnostic[];
 }
 
@@ -330,7 +329,7 @@ export interface CoverageShot {
   /** Character ids in frame; empty is a background plate. */
   subjects: string[];
   /**
-   * Per-subject outfit *overrides*, character id → outfit id. A subject absent from this map
+   * Per-subject outfit overrides, character id → outfit id. A subject absent from this map
    * inherits — an empty map is the normal state, not an unfilled one.
    */
   outfits: Record<string, string>;
@@ -347,17 +346,17 @@ export interface CoverageShot {
 }
 
 /**
- * The coverage geometry from `@vn/scriptedit`, specialized to this app's rich projections — the
+ * The coverage geometry from `@vn/scriptedit`, specialized to this app's rich projections. The
  * generic `spansFor` hands the same {@link CoverageShot} back with its drift, status and image
- * intact, and these aliases are the names the timeline annotates that with.
+ * intact, and the timeline annotates its spans under these names.
  */
 export type Coverage = PkgCoverage<CoverageLine, CoverageShot>;
 export type ShotSpan = PkgShotSpan<CoverageShot>;
 
 /**
- * One member of a scene's cast, with the clothes they could be put in. The wardrobe travels with
+ * One member of a scene's cast, with the clothes they could be put in. The wardrobe is sent with
  * the coverage because the strip's outfit controls have to offer exactly what the command would
- * accept — a select built from anything else would offer refusals.
+ * accept; a select built from anything else would offer refusals.
  */
 export interface CoverageCast {
   id: string;
@@ -493,9 +492,9 @@ export interface AssetInfo {
   /** The prompt recorded with the bytes, if the manifest kept one. */
   prompt?: string;
   /**
-   * The authored name, for the one kind that has one. A concept was asked for in a sentence and
-   * carries it; every other kind is named by what it serves, so its label is derived and this
-   * is absent.
+   * The authored name, for the one kind that has one. A concept is requested in a sentence and
+   * keeps that sentence as its name. Every other kind is named after what it serves, so its label
+   * is derived and this field is absent.
    */
   title?: string;
   /** The prompt the builders would write today; absent when the project no longer describes it. */
@@ -512,7 +511,7 @@ export interface AssetInfo {
    */
   suspended?: string;
   /**
-   * The picture this asset *is*, as a slot address — `plate:cafe/night`, `shot:greet/s2`. Absent
+   * The picture this asset is, as a slot address — `plate:cafe/night`, `shot:greet/s2`. Absent
    * when nothing plans these bytes (a concept, an upload) and absent once a later render has taken
    * the slot over: it names what these bytes fill now, not what they were once drawn for.
    */
@@ -538,8 +537,8 @@ export interface AssetInfo {
   /**
    * The composed prompt: the clauses, what the override does to them, and the string that would
    * be sent. Folded in here so the pane makes one round trip and there is one invalidation path.
-   * Named apart from `prompt`, which is the historical record the manifest kept — this is what
-   * would be sent *now*, and the two disagreeing is exactly what `stale` reports.
+   * Named apart from `prompt`, which is the historical record the manifest kept; this field is
+   * what would be sent now, and the two disagreeing is what `stale` reports.
    */
   promptView?: PromptView;
 }
@@ -549,7 +548,7 @@ export interface AssetInfo {
  * makes the art style consequential. Only `artStyle` is editable — everything else is shown so
  * the author can see what the run is configured with without leaving the shell.
  *
- * Deliberately without `keys`: those are env-var *names* and safe to print, but a settings pane
+ * `keys` is deliberately left out. Those are env-var names and safe to print, but a settings pane
  * that lists them is one screenshot away from looking like it lists their values.
  */
 export interface ProjectView {
@@ -613,9 +612,9 @@ export interface DocTree {
    */
   backlinks: Record<string, EntityLinks>;
   /**
-   * Workspace-relative document path → the backlink key for whatever that file *is*. The inverse
-   * of the key convention, so a surface holding only a path — an open editor knows its document
-   * and nothing else — need not re-derive one. A file that is not a subject is simply absent.
+   * Workspace-relative document path → the backlink key for the subject that file holds. The
+   * inverse of the key convention, so a surface holding only a path — an open editor knows its
+   * document and nothing else — need not re-derive one. A file that is not a subject is absent.
    */
   pathIndex: Record<string, string>;
 }
@@ -654,7 +653,7 @@ export interface BranchEditResult {
 
 /**
  * Outcome of a `story.*` prose edit. Separate from `BranchEditResult` because a prose edit can
- * change the scene *set* — a split adds a chunk, a delete or a merge removes one — so what
+ * change which scenes exist (a split adds a chunk, a delete or a merge removes one) so what
  * happened is not fully described by the files that were written.
  */
 export interface SceneEditResult {
@@ -710,7 +709,7 @@ export interface InvokeChannels {
   'story:play': () => Playable;
   /**
    * The branch structure for the editor. A read, so it gets a typed channel; every branch
-   * *mutation* goes through a `story.*` command instead, for one provenance record per act.
+   * mutation goes through a `story.*` command instead, for one provenance record per act.
    */
   'story:graph': () => StoryGraph;
   /**
@@ -735,7 +734,7 @@ export interface InvokeChannels {
   'session:set': (payload: { key: string; value: SessionValue }) => void;
   /**
    * Every notification the project holds, oldest first, already deduped across a union merge.
-   * A read; every *change* to one goes through a `notify.*` command like any other mutation.
+   * A read; every change to one goes through a `notify.*` command like any other mutation.
    */
   'notify:list': () => Notification[];
   /**

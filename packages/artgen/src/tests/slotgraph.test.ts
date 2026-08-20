@@ -1,9 +1,9 @@
 /**
  * The slot graph: every picture the project implies, before anything has drawn one.
  *
- * The property under most of this is that a slot exists whether or not it can state a task
- * identity — so the assertions are mostly about what is enumerated and what each node *says* about
- * why it has no hash yet, rather than about hashes, which only the planned half has.
+ * A slot exists whether or not it can state a task identity. Most assertions are therefore about
+ * what is enumerated and about the reason each node gives for having no hash yet, rather than
+ * about hashes, which only the planned half has.
  */
 import { projectConfig, type Asset, type AssetKind, type Shot } from '@vn/types';
 import { makeTask } from '@vn/taskgraph';
@@ -106,7 +106,7 @@ describe('buildSlotGraph', () => {
     );
     expect(plate.blocked).toBeUndefined();
 
-    // The frame's identity embeds its plate's *asset* hash, and nothing has rendered one.
+    // The frame's identity embeds its plate's asset hash, and nothing has rendered one.
     const frame = graph.nodes.get('shot:arrival/arrival__a')!;
     expect(frame.taskHash).toBeUndefined();
     expect(frame.blocked).toContain('has not been rendered');
@@ -118,7 +118,7 @@ describe('buildSlotGraph', () => {
     aiko.status = 'draft';
     delete aiko.approvedPortrait;
     const sheet = buildSlotGraph(c).nodes.get('sheet:aiko/default/front')!;
-    // The slot exists — that is the difference between a slot graph and a plan.
+    // The slot is still enumerated even though nothing can be planned for it yet.
     expect(sheet.taskHash).toBeUndefined();
     expect(sheet.blocked).toContain('has not been approved');
   });
@@ -148,8 +148,9 @@ describe('buildSlotGraph', () => {
   });
 
   it('answers a portrait from the gate and everything else from the manifest', () => {
-    // Aiko is approved with no portrait asset filed at all: approval is the model's word, not the
-    // manifest's, and reading `accepted` here would call an approved character unapproved.
+    // Aiko is approved with no portrait asset filed at all. Approval for a portrait comes from
+    // the model rather than the manifest, and reading `accepted` here would call an approved
+    // character unapproved.
     const graph = buildSlotGraph(ctx());
     expect(graph.nodes.get('portrait:aiko')!.approved).toBe(true);
 
@@ -163,8 +164,8 @@ describe('buildSlotGraph', () => {
   });
 
   it('reports drafts as candidates even when no one can say which is the slot', () => {
-    // Three unaccepted candidates: `pick` declines, so `hash` is unset — and a surface that read
-    // that as "nothing drawn" would file three real pictures under "not yet rendered".
+    // With three unaccepted candidates `pick` declines, so `hash` is unset. A surface reading that
+    // as "nothing drawn" would file three real pictures under "not yet rendered".
     const drafts = ['d1', 'd2', 'd3'].map((h) =>
       asset(h, 'location_ref', [{ locationId: 'cafe', variant: 'day' }]),
     );

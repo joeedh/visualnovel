@@ -1,5 +1,5 @@
 /**
- * The pure half of the notification system: what a notification is *about*, which ones are shown,
+ * The pure half of the notification system: what a notification is about, which ones are shown,
  * and how many are unread. In `shared/` because both sides need it — main derives a category when
  * it files a command's outcome, the renderer filters and counts the same list when it draws it —
  * and because that makes it the half a node-only jest project can actually test.
@@ -11,8 +11,8 @@ import { EDITOR_IDS, type EditorId } from './editors.js';
 
 /**
  * What a command's outcome is about, from the namespace it was registered under. A namespace with
- * no entry is `command` — an ordinary act, reported as one — rather than a thrown error: a new
- * command must never be unable to report itself just because this table has not caught up.
+ * no entry is `command` — an ordinary act, reported as one — rather than a thrown error, so a new
+ * command can still report itself while this table has not caught up.
  */
 const BY_NAMESPACE: Record<string, NotificationCategory> = {
   asset: 'asset',
@@ -32,16 +32,16 @@ export function categoryOfCommand(id: string): NotificationCategory {
 }
 
 /**
- * Which command outcomes are worth a line in the log: the ones that **did** something, plus every
+ * Which command outcomes are worth a line in the log: the ones that did something, plus every
  * failure whether it did anything or not.
  *
  * Non-mutating successes are excluded because most of them are the UI asking questions —
  * `workspace.recent` runs on every header rebuild, `command.check` before every menu is drawn —
- * and a log burying an author's twelve rendered assets under four hundred reads is not a log.
- * They still flash on screen; they are just not events.
+ * and they would bury an author's dozen rendered assets under hundreds of reads. They still flash
+ * on screen; they are just not events.
  *
- * `notify.*` is excluded outright, and that one is not a judgement call: archiving a notification
- * would file a notification, and `notify.deleteAll` would refill the log it had just emptied.
+ * `notify.*` is excluded outright because archiving a notification would file a notification, and
+ * `notify.deleteAll` would refill the log it had just emptied.
  */
 export function shouldFileCommand(record: {
   id: string;
@@ -77,9 +77,9 @@ export function visibleNotifications(
 }
 
 /**
- * What the bell says. Counted over the filter, so a count that says three and a list that shows
- * one cannot happen — but never over `showHidden`: an archived notification is dealt with, and
- * turning the checkbox on must not make the badge jump.
+ * What the bell says. Counted over the filter so the badge and the list always agree, but never
+ * over `showHidden`: an archived notification is dealt with, and turning that checkbox on must
+ * leave the badge where it is.
  */
 export function unreadCount(
   all: readonly Notification[],
@@ -108,12 +108,12 @@ export function linkTarget(note: Notification): { editor: EditorId; subject?: st
  * The commands a notification is allowed to name, by the thing it wants rather than by id — so a
  * caller writes `LINK_COMMANDS.releases` and the id lives in exactly one place.
  *
- * **An allow-list, not "any registered command", and the reason is where the log comes from.**
- * `vngen/state/notifications.jsonl` is tracked and git union-merges it, so lines arrive from
- * clones, branches and other people's builds. A link that could name any command would let one
- * of those lines ask a click to start a paid pipeline run or empty the log. This is the same move
- * {@link linkTarget} makes against `EDITOR_IDS`, with a stronger reason: an unknown editor is a
- * pane that does not exist, an unknown command is an act nobody intended.
+ * This is an allow-list rather than "any registered command", and the reason is where the log
+ * comes from. `vngen/state/notifications.jsonl` is tracked and git union-merges it, so lines
+ * arrive from clones, branches and other people's builds. A link that could name any command would
+ * let one of those lines ask a click to start a paid pipeline run or empty the log. This is the
+ * same move {@link linkTarget} makes against `EDITOR_IDS`, with a stronger reason: an unknown
+ * editor is a pane that does not exist, an unknown command is an act nobody intended.
  *
  * Everything listed here must be non-mutating, argument-free, and something a person clicking a
  * notification obviously meant to do.
@@ -128,8 +128,8 @@ export type LinkCommand = (typeof LINK_COMMANDS)[keyof typeof LINK_COMMANDS];
 const LINKABLE = new Set<string>(Object.values(LINK_COMMANDS));
 
 /**
- * The command a link names, if it names one this build both has and allows. Checked before
- * {@link linkTarget} by `notify.follow`, because a link carrying both is a link about an act.
+ * The command a link names, if it names one this build both has and allows. `notify.follow` checks
+ * this before {@link linkTarget}, so a link carrying both a command and an editor runs the command.
  */
 export function linkCommand(note: Notification): LinkCommand | undefined {
   const id = note.link?.command;

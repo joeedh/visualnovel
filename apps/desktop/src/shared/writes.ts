@@ -1,12 +1,12 @@
 /**
- * Which of a command's — or an agent turn's — writes concern the document a pane is showing.
+ * Which of a command's (or an agent turn's) writes concern the document a pane is showing.
  *
- * It is here rather than inline in the two editors because the question is not the same one for
- * both. The wiki pane knows its own path and can compare; the script pane has no path at all, only
- * a scene id, so "did that write touch the scene I am showing" has to be derived from where a scene
- * lives. Both lists arrive workspace-relative and forward-slashed (`ToolResult.written`,
- * `CommandRecord.written`) — but a path that took a detour through node's `path` on Windows comes
- * back with backslashes, so nothing here compares raw strings.
+ * The two panes ask different questions, which is why this lives here rather than inline in either
+ * editor. The wiki pane knows its own path and can compare directly. The script pane has only a
+ * scene id, so a hit has to be derived from where a scene lives. Both lists arrive
+ * workspace-relative and forward-slashed (`ToolResult.written`, `CommandRecord.written`), but a
+ * path that took a detour through node's `path` on Windows comes back with backslashes, so nothing
+ * here compares raw strings.
  */
 
 /** Workspace-relative, forward-slashed, no `./` prefix — the shape both sides are compared in. */

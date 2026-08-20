@@ -48,7 +48,7 @@ describe('framesOf', () => {
     expect(frames[0]?.shotId).toBe('a.s1');
     expect(frames[1]?.shotId).toBe('a.s1');
     expect(frames[2]?.shotId).toBe('a.s2');
-    // The second show has no image, so the frame it opens has no background.
+    // The second show has no image, so the frame it opens has no background
     expect(frames[2]?.bg).toBeUndefined();
   });
 

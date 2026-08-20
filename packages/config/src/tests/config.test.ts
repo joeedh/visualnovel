@@ -85,8 +85,9 @@ describe('setStartScene', () => {
     expect(await setStartScene(dir, 'arrival')).toBe(false);
   });
 
-  // A scene id is a filename stem, so it can be `1.2` or `true` — which YAML reads as a number
-  // and a bool unless the serializer quotes them. Written and read back is the property.
+  // A scene id is a filename stem, so it can be `1.2` or `true`, which YAML reads as a number and
+  // a bool unless the serializer quotes them. The property under test is that an id reads back
+  // exactly as it was written
   it('keeps an id YAML would otherwise read as something else a string', async () => {
     for (const id of ['1.2', 'true', 'no', '0755']) {
       const dir = await tempProject('title: T\n');
@@ -139,8 +140,8 @@ describe('setArtStyle', () => {
     expect(await setArtStyle(dir, 'ink')).toBe(false);
   });
 
-  // Prose has colons, hashes and newlines in it; the serializer is what keeps a style that would
-  // otherwise re-read as a mapping or a comment intact.
+  // Prose carries colons, hashes and newlines. The serializer quotes a style that would otherwise
+  // re-read as a mapping or a comment
   it('survives prose YAML would otherwise re-read as structure', async () => {
     for (const style of ['soft anime: cel shaded', '# not a comment', 'two\nlines']) {
       const dir = await tempProject('title: T\nconcurrency: 2\n');
@@ -189,7 +190,7 @@ describe('resolveKeys', () => {
     const rootKeys = join(dir, 'root-keys');
     await mkdir(projectKeys, { recursive: true });
     await mkdir(rootKeys, { recursive: true });
-    // gemini only at the project level, anthropic only at the (shared) root level.
+    // gemini at both levels so the project's copy wins; anthropic only at the shared root
     await writeFile(join(projectKeys, 'gemini.txt'), 'project-gemini\n');
     await writeFile(join(rootKeys, 'gemini.txt'), 'root-gemini\n');
     await writeFile(join(rootKeys, 'claude.txt'), 'root-claude\n');
@@ -240,7 +241,7 @@ describe('secretDirsFor', () => {
     const secretsDirs = await secretDirsFor(project, { env: { VNAUTHOR_HOME: home } });
     const keys = await resolveKeys(config, { secretsDirs });
     expect(keys.gemini).toBe('project-gemini');
-    // …and it does answer when the project carries nothing.
+    // the user rung does answer when the project carries nothing
     await writeFile(join(home, 'keys', 'claude.txt'), 'user-claude\n');
     expect((await resolveKeys(config, { secretsDirs })).anthropic).toBe('user-claude');
   });
@@ -290,7 +291,7 @@ describe('userConfigDir', () => {
     await mkdir(join(home, '.vnauthor'), { recursive: true });
     const dirs = userConfigDirs({ platform: 'linux', env: {}, home });
     expect(dirs).toEqual([join(home, '.config', 'vnauthor'), join(home, '.vnauthor')]);
-    // …but it is never the *write* target, so nothing has to be migrated later.
+    // the legacy directory is never the write target, so nothing has to be migrated later
     expect(userConfigDir({ platform: 'linux', env: {}, home })).toBe(
       join(home, '.config', 'vnauthor'),
     );

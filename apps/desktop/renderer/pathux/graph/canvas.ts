@@ -1,19 +1,17 @@
 /**
- * The shared graph surface as plain DOM: two co-transformed layers — SVG for wires, HTML for
- * nodes and labels — plus pan, zoom and pick routing. It is the port of
- * `renderer/graph/Canvas.tsx`, and it takes the pure modules with it unchanged: layout,
- * routing, hit-testing and the viewport algebra all still live in `renderer/graph/` with
- * their own tests, so this file is glue and nothing else.
+ * The shared graph surface as plain DOM: two co-transformed layers (SVG for wires, HTML for nodes
+ * and labels) plus pan, zoom and pick routing. Layout, routing, hit-testing and the viewport
+ * algebra live in `renderer/graph/` with their own tests, so this file is glue and nothing else.
  *
  * Nodes are HTML rather than SVG because they are typeset material (an index card, a choice
- * label in italic prose) and SVG text has no line wrapping. Both layers carry the *same*
- * viewport transform, so a wire and the card it touches cannot drift apart.
+ * label in italic prose) and SVG text has no line wrapping. Both layers carry the same viewport
+ * transform, so a wire and the card it touches cannot drift apart.
  *
- * All interaction resolves through `pick`, one source of truth for "what is under the
- * pointer" — the node layer is `pointer-events: none`, and a node element that needs a real
- * DOM target (a button on a card) opts that one element back in.
+ * All interaction resolves through `pick`, the single answer to what is under the pointer. The
+ * node layer is `pointer-events: none`, and a node element that needs a real DOM target (a button
+ * on a card) opts that one element back in.
  *
- * It is deliberately **not** a path.ux widget. Widgets are chrome; this is a viewport onto
+ * This is deliberately not a path.ux widget. Widgets are chrome; this is a viewport onto
  * world-space geometry with a transform of its own, and wrapping it in a `UIBase` would add a
  * second layout pass that has nothing to say about it. An editor owns one and appends
  * `element`. There is no teardown to remember: every listener is on `element` and the
@@ -144,8 +142,8 @@ export class GraphCanvas {
     });
     this.element.appendChild(this.layer);
 
-    // React's wheel handler is passive, so `preventDefault` there is a no-op and the window (or
-    // Electron's own zoom) eats the gesture. Native and non-passive is the only way to own it.
+    // Zooming has to consume the wheel event, or the window (or Electron's own zoom) takes the
+    // gesture instead
     this.element.addEventListener('wheel', this.onWheel, { passive: false });
     this.element.addEventListener('pointerdown', this.onPointerDown);
     this.element.addEventListener('pointermove', this.onPointerMove);
@@ -206,8 +204,8 @@ export class GraphCanvas {
       path.setAttribute('stroke', look.stroke);
       path.setAttribute('stroke-width', String(look.width ?? 1.5));
       if (look.dash) path.setAttribute('stroke-dasharray', look.dash);
-      // A back edge is the same relation drawn the wrong way up the ranks; fading it says so
-      // without inventing a second colour for it.
+      // A back edge is the same relation drawn the wrong way up the ranks, and fading it marks
+      // that without introducing a second colour
       const opacity = look.opacity ?? (edge.back ? 0.55 : 1);
       if (opacity !== 1) path.setAttribute('opacity', String(opacity));
       path.setAttribute('marker-end', this.arrow);
@@ -290,8 +288,8 @@ export class GraphCanvas {
     this.opts.onPick?.(hit, event);
     if (hit.type !== 'background' || event.defaultPrevented) return;
 
-    // The drag is armed before the capture is asked for: capture is an optimisation (it keeps
-    // the pan alive off the element), and a browser that refuses it must not cost panning.
+    // The drag is armed before capture is requested, so a browser that refuses capture can still
+    // pan; capture only keeps the pan alive once the pointer leaves the element
     this.pan = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
     this.element.setPointerCapture(event.pointerId);
   };

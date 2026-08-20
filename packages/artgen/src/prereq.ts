@@ -1,14 +1,14 @@
 /**
  * What has to be approved before a picture can be — the approval frontier, read off one asset.
  *
- * Approval flows **upstream first**: a frame composed from an unapproved plate is a frame nobody
- * has actually signed off on, because the thing under it may still be replaced. So `asset.accept`
+ * Approval flows upstream first: a frame composed from an unapproved plate is a frame nobody has
+ * actually signed off on, because the thing under it may still be replaced. So `asset.accept`
  * refuses while any direct prerequisite is unapproved, and the pane lists them so the author can
  * walk up the chain.
  *
- * **Direct prerequisites only**, and the induction is the reason: accepting anything already
- * required its own direct prerequisites to be approved, so the closure holds at accept time. The
- * pane stays short and every row is one click from actionable.
+ * Only direct prerequisites are read. Accepting anything already required its own direct
+ * prerequisites to be approved, so the closure holds at accept time. The pane stays short and every
+ * row is one click from actionable.
  *
  * Three things count as approved that nobody ever approved — an upload, a concept, and a hash the
  * manifest has never heard of. Each mirrors a refusal `previewAccept` already gives by name:
@@ -45,10 +45,10 @@ export interface Prereq {
  * Whether a human has blessed these bytes — the one predicate, so no two surfaces can disagree
  * about what "approved" means.
  *
- * **Asymmetric on purpose.** A portrait answers to the P3 gate and never to `accepted`, and twice
- * over: the character has to be approved *and* these have to be the bytes they were approved with,
- * so a draft filed beside the approved one does not count. A concept and an upload were never
- * approvable at all, so they count as approved rather than blocking forever.
+ * Asymmetric on purpose. A portrait answers to the P3 gate and never to `accepted`, and twice over:
+ * the character has to be approved and these have to be the bytes they were approved with, so a
+ * draft filed beside the approved one does not count. A concept and an upload were never approvable
+ * at all, so they count as approved rather than blocking forever.
  */
 export function assetApproved(asset: Asset, model: ProjectModel): boolean {
   switch (asset.kind) {
@@ -103,7 +103,7 @@ function prereqOf(hash: string, up: Asset | undefined, ctx: PrereqContext): Prer
     ...(slot ? { slot: slotKey(slot) } : {}),
     approved,
   };
-  // One verdict, four ways of saying it: the arms differ only in *why*, which is the row's tooltip.
+  // One verdict with four wordings: the arms differ only in the reason, which is the row's tooltip
   switch (up.kind) {
     case 'portrait':
       return {
@@ -128,8 +128,8 @@ function prereqOf(hash: string, up: Asset | undefined, ctx: PrereqContext): Prer
  * The one sentence Approve is refused with, or `undefined` when nothing is in the way.
  *
  * Owned here rather than by the pane because four surfaces reach `asset.accept` — the tree's
- * right-click, the palette, the agent and CDP — and a greyed button the command would happily
- * honour is a lie about the rule. The disabled control's tooltip is this string, verbatim.
+ * right-click, the palette, the agent and CDP — and a greyed button for a command that would in
+ * fact accept misstates the rule. The disabled control's tooltip is this string, verbatim.
  */
 export function prereqRefusal(label: string, prereqs: readonly Prereq[]): string | undefined {
   const waiting = prereqs.filter((p) => !p.approved);

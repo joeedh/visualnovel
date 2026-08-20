@@ -9,12 +9,12 @@ import type { Scene } from '@vn/types';
 import { hashParts } from '@vn/util';
 
 /**
- * Hash of what a shot's covered lines say, taken in **scene order** rather than `coversLines`
- * order — coverage is a set, and reordering the array is not a change to the prose.
+ * Hash of what a shot's covered lines say, taken in scene order rather than `coversLines` order —
+ * coverage is a set, and reordering the array is not a change to the prose.
  *
  * A coverage edit does move this hash, because it changes which words the frame is answerable for.
- * That is one question, not two: extending a bracket over another line makes the frame no longer
- * illustrate what it covers, in exactly the sense a retype does.
+ * Extending a bracket over another line makes the frame no longer illustrate what it covers, in
+ * exactly the sense a retype does.
  */
 export function proseHash(scene: Scene, coversLines: readonly string[]): string {
   const covered = new Set(coversLines);

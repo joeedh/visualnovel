@@ -38,8 +38,8 @@ describe('sceneFrontMatter', () => {
     expect(sceneFrontMatter.safeParse({ scene: '' }).success).toBe(false);
   });
 
-  // The fields below all live in the Fountain body. Accepting a front-matter copy of any of
-  // them would give the field two homes and two writers; scene-chunk-files.md picks the body.
+  // The fields below all live in the Fountain body. Accepting a front-matter copy of one would
+  // give that field two locations and two writers; scene-chunk-files.md picks the body
   it.each(['next', 'nextLineId', 'choices', 'location', 'heading', 'synopsis', 'characters'])(
     'refuses %s in front-matter — the body owns it',
     (key) => {

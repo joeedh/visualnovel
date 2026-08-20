@@ -67,9 +67,8 @@ export function renderEvent(event: AgentEvent): string | undefined {
     case 'blocked':
       return yellow(`  ⊘ ${event.tool} blocked: ${event.reason}`);
     case 'api':
-      // `failed` says nothing: the question that follows it quotes the same message, and printing
-      // both puts the failure on screen twice. The rest are the only news there is while the
-      // author waits.
+      // A `failed` phase prints nothing: the question that follows it quotes the same message,
+      // and printing both would put the failure on screen twice
       switch (event.phase) {
         case 'retrying':
           return yellow(
@@ -84,16 +83,16 @@ export function renderEvent(event: AgentEvent): string | undefined {
           return undefined;
       }
     case 'usage':
-      return undefined; // a receipt is not narration — the REPL prints the running total
+      return undefined; // the REPL prints the running total instead
     case 'final':
       return undefined; // printed by the REPL as the assistant's reply
   }
 }
 
 /**
- * The running total, printed under a reply. It counts calls rather than turns — a step the model
- * had to be asked twice for was billed twice — and says nothing at all until a provider reports
- * something, because a mock backend and a backend that does not say are both zero.
+ * The running total, printed under a reply. Counts API calls rather than turns, since a step the
+ * model had to be asked twice for was billed twice. Returns undefined until a provider reports
+ * something, because a mock backend and a backend that reports no usage both total zero.
  */
 export function renderTokens(input: number, output: number): string | undefined {
   const total = input + output;

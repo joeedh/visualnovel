@@ -16,7 +16,7 @@ export class ProjectPaths {
     return join(this.root, 'characters');
   }
   /**
-   * Where a *new* character sheet is created — never where an existing one is looked up.
+   * Where a new character sheet is created, never where an existing one is looked up.
    * Characters are discovered by their `type:` tag, so an existing one lives wherever the file
    * carrying that tag lives; `loadInputs` reports the real path on the `EntityDoc` and every
    * reader and writer takes it from there.
@@ -30,7 +30,7 @@ export class ProjectPaths {
   get locationsDir(): string {
     return join(this.root, 'locations');
   }
-  /** Where a *new* set-location sheet is created; see {@link characterFile} on lookup. */
+  /** Where a new set-location sheet is created; see {@link characterFile} on lookup. */
   locationFile(id: string): string {
     return join(this.locationsDir, `${id}.md`);
   }

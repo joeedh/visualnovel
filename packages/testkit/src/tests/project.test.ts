@@ -91,7 +91,7 @@ describe('makeProject — scenes as chunks', () => {
 
       const chunk = await p.read('scenes/arrival.md');
       expect(chunk).toContain('scene: arrival');
-      // The id lives in front-matter now; a body marker could rename the file it sits in.
+      // The id lives in front-matter; a body marker could rename the file it sits in.
       expect(chunk).not.toContain('[[scene:');
       expect(chunk).toContain('INT. CLASSROOM - AFTERNOON');
       await expect(fs.stat(p.paths.screenplayDir)).rejects.toThrow();
@@ -103,8 +103,8 @@ describe('makeProject — scenes as chunks', () => {
   it('writes the unimported screenplay form on request, scenes and all left unread', async () => {
     const p = await makeProject({ format: 'screenplay' });
     try {
-      // What a project that has not run `vngen import` yet looks like: the screenplay is on disk,
-      // `scenes/` does not exist, and the model has no scenes to show for it.
+      // Before `vngen import` runs, the screenplay is on disk, `scenes/` does not exist, and
+      // the model has no scenes.
       const { config, model } = await p.reload();
       expect(config.start).toBeUndefined();
       expect(model.scenes.size).toBe(0);
@@ -190,8 +190,8 @@ describe('TestProject.run — the gate, end to end on disk', () => {
       expect(graph.all().every((t) => t.status === 'done')).toBe(true);
       await expect(fs.stat(p.paths.approvedPortrait('aiko'))).resolves.toBeDefined();
 
-      // The split, through the real scheduler: base kinds landed in `assets/`, shot frames in
-      // `vngen/build/`, and one facade still reports the union.
+      // The real scheduler splits the two roots: base kinds land in `assets/` and shot frames
+      // in `vngen/build/`, while one facade still reports the union.
       const base = store.manifest().filter((a) => a.kind !== 'shot_image');
       const shots = store.manifest().filter((a) => a.kind === 'shot_image');
       expect(store.base).toMatchObject({ state: 'ready', count: base.length });

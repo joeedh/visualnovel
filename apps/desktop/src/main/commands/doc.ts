@@ -1,10 +1,10 @@
 /**
- * Authored markdown documents as commands: the wiki, character sheets, location sheets. The
+ * Commands over authored markdown documents: the wiki, character sheets, location sheets. The
  * namespace is `doc.*` rather than `wiki.*` because a character tagged `type:` under `wiki/` is
- * authored in either place — naming half of what these reach would be a lie about the other half.
+ * authored in either place, so a name covering only one of the two would misdescribe the other.
  *
  * `scenes/**` is refused outright. Prose has exactly one write path and it is `story.*`; a chunk
- * written whole is unvalidated, and the refusal is the same code the agent's `write_file` runs.
+ * written whole is unvalidated, and the agent's `write_file` refuses it through this same code.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import type { NewDocKind } from '../session.js';
@@ -14,7 +14,7 @@ const define = defineFor<CommandHost>();
 
 const NEW_DOC_KINDS = ['character', 'location', 'note', 'skill'] as const;
 
-/** A `DocResult` read as a precondition: the plan's own sentence either way. */
+/** Turns a `DocResult` into a check result, keeping its message in both cases. */
 function verdict(result: { ok: true; note: string } | { ok: false; reason: string }): CheckResult {
   return result.ok ? { ok: true, note: result.note } : { ok: false, reason: result.reason };
 }
@@ -117,9 +117,9 @@ export const docCreate = define({
   async run({ kind, name, open }, ctx) {
     const made = await ctx.host.session.createDoc(kind as NewDocKind, name);
     if (!made.ok) throw new Error(made.reason);
-    // A page scaffolded and then left unfindable is a page the author has to go looking for, so
-    // the same route a click in the document tree takes is run for them. All three kinds land in
-    // the Wiki editor: a sheet is markdown too, and `EDITORS` claims it there.
+    // Shows the new page by the same route a click in the document tree takes, so the author does
+    // not have to go looking for it. Every kind lands in the Wiki editor, because a sheet is
+    // markdown too and `EDITORS` claims it there
     if (open) {
       ctx.host.ui(
         { type: 'view', action: 'open', editor: 'wiki', where: 'elsewhere', subject: made.path },

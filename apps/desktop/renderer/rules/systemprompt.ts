@@ -1,5 +1,5 @@
 /**
- * What the system-prompt viewer says *about* the prompt, kept out of the editor so the arithmetic
+ * What the system-prompt viewer reports about the prompt, kept out of the editor so the arithmetic
  * is testable without a pane.
  *
  * The sections travel separately because that is how they are cached and superseded, but what the
@@ -20,12 +20,12 @@ export function joined(sections: readonly SystemSectionView[]): string {
   return sections.map((section) => section.text).join(SEPARATOR);
 }
 
-/** A rough token count. Deliberately rough — it is a sense of scale, and it says so. */
+/** A rough token count, meant as a sense of scale. {@link scaleOf} marks it with a tilde. */
 export function roughTokens(text: string): number {
   return Math.round(text.length / 4);
 }
 
-/** The sentence under the header: how big the thing the next turn carries actually is. */
+/** The sentence under the header, giving the size of the prompt the next turn carries. */
 export function scaleOf(sections: readonly SystemSectionView[], modelId: string): string {
   const text = joined(sections);
   const chars = text.length;

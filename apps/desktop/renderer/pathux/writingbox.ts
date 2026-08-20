@@ -1,11 +1,12 @@
 /**
- * Free text of more than a line: a plain `<textarea>` in a path.ux row's shadow root, the same way
- * every writing surface in this app draws one.
+ * A plain `<textarea>` in a path.ux row's shadow root, for free text of more than a line. Every
+ * writing surface in this app draws one this way.
  *
  * Deliberately not path.ux's `textarea()`, which is a `contentEditable` rich-text editor with a
- * bold/italic toolbar and `innerHTML` for a value — more widget than a note wants, and it stores
- * markup where a command expects a string. Two surfaces draw one (a `multiline` prop in a command
- * form, the report preview), so the styling and the keydown rule live here rather than in either.
+ * bold/italic toolbar and `innerHTML` for a value. That is more widget than a note needs, and it
+ * stores markup where a command expects a string. Two surfaces draw one (a `multiline` prop in a
+ * command form, the report preview), so the styling and the keydown rule live here rather than in
+ * either surface.
  */
 import type { Container } from 'pathux';
 import { TOKENS } from './tokens.js';

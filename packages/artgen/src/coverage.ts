@@ -1,11 +1,13 @@
 /**
- * Does a rewritten prompt still say what each chunk said? (`docs/plans/archive/chunked-prompts.md` §1, §4)
+ * Checks whether a rewritten prompt still says what each chunk said
+ * (`docs/plans/archive/chunked-prompts.md` §1, §4).
  *
  * A condensed or hand-written prompt is one string with no structure in it, so the only way to ask
- * whether a clause survived is to look for its words. That is a **heuristic**, and it is the whole
- * reason this module exists rather than trusting the model: a model asked "did you cover
- * everything?" answers yes. Its `omitted` list is advisory; this is the authoritative answer, and
- * even so nothing rejects a prompt over it. Every surface says "not found", never "it was dropped".
+ * whether a clause survived is to look for its words. That check is a heuristic, and it is the
+ * whole reason this module exists rather than trusting the model: a model asked "did you cover
+ * everything?" answers yes. The model's `omitted` list is advisory; this check is the authoritative
+ * answer, and even so nothing rejects a prompt over it. Every surface says "not found", never "it
+ * was dropped".
  */
 
 /** What a chunk contributed, for the purposes of the check. Any chunk shape satisfies it. */
@@ -19,13 +21,13 @@ export interface ChunkCoverage {
   found: boolean;
   /** The distinctive words the check looked for; empty when the chunk had none. */
   words: string[];
-  /** The ones it could not find. */
+  /** The words of that list the check could not find. */
   missing: string[];
 }
 
 /**
- * Words that carry no identity. Ordinary English function words, plus the **builders' own
- * connectives** — the label a builder prints in front of the author's words (`Palette: …`,
+ * Words that carry no identity. Ordinary English function words, plus the builders' own
+ * connectives — the label a builder prints in front of the author's words (`Palette: …`,
  * `Camera: …`, `Art direction: …`) and the negations it always appends (`No characters, no
  * text.`). Those recur in every prompt, so leaving them in would make every chunk look covered by
  * any prompt that happened to keep one prefix — and would report the scaffolding as lost the
@@ -57,7 +59,7 @@ export function contentWords(text: string): string[] {
 }
 
 /**
- * How much of a chunk has to survive to count. A condensation is *supposed* to compress, so
+ * How much of a chunk has to survive to count. A condensation is meant to compress, so
  * demanding every word back would report every successful rewrite as a loss; demanding one word
  * would pass on an accidental collision. A majority is the honest middle, and the number is here
  * rather than inline because it is a judgement call a reader should be able to find.

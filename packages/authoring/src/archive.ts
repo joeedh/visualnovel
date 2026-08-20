@@ -1,5 +1,5 @@
 /**
- * The archive: where an author's own documents land when they upload them.
+ * The archive, where an author's own documents land when they upload them.
  *
  * `archive/` sits at the project root and is deliberately outside every allow-list the agent
  * sweeps. `collectInputFiles` walks `characters/ locations/ scenes/ screenplay/`, entity discovery
@@ -8,9 +8,8 @@
  * it by name. That is the requested policy ("not indexable or searchable unless requested"), and it
  * costs nothing to hold as long as nothing here is added to those lists.
  *
- * Both surfaces reach this module — the desktop's `upload.*` commands and the REPL's `/upload` —
- * because two implementations of "where does an uploaded file go" is how one project ends up with
- * two archives.
+ * Both surfaces reach this module: the desktop's `upload.*` commands and the REPL's `/upload`. A
+ * second implementation of where an uploaded file goes would give one project two archives.
  */
 import { promises as fs } from 'node:fs';
 import { basename, extname, join, resolve } from 'node:path';
@@ -22,9 +21,9 @@ import type { Workspace } from './workspace.js';
 export const ARCHIVE_DIR = 'archive';
 
 /**
- * The most one uploaded file may weigh. Far above {@link MAX_DOC_BYTES} on purpose: the cap on
- * *reading* a document is about what fits in a context window, and this is about not copying a
- * disc image into a git repository by accident.
+ * The most one uploaded file may weigh. Far above {@link MAX_DOC_BYTES} on purpose. The cap on
+ * reading a document is about what fits in a context window; this one is about not copying a disc
+ * image into a git repository by accident.
  */
 export const MAX_UPLOAD_BYTES = 25_000_000;
 
@@ -50,10 +49,10 @@ export interface UploadBatch {
 }
 
 /**
- * Formats we know are containers rather than text. Named so the refusal says what would have to
- * exist for the file to be readable, rather than the blank "not a text file" a decode failure
- * gives. The converter that writes a text sidecar beside the original is the long-term plan; the
- * original stays untouched either way, which is why the layout does not have to change for it.
+ * Formats known to be containers rather than text. Naming them lets the refusal say what would
+ * have to exist for the file to be readable, rather than the blank "not a text file" a decode
+ * failure gives. A converter writing a text sidecar beside the original is the long-term plan; the
+ * original stays untouched either way, so the layout does not have to change for it.
  */
 const NO_CONVERTER: Record<string, string> = {
   '.docx': 'Word document',
@@ -129,10 +128,10 @@ export async function archiveUpload(
 }
 
 /**
- * Whether `read_file` would serve this file, decided against the bytes we just copied rather than
- * against an extension list. `readDocFile` refuses on two grounds — past {@link MAX_DOC_BYTES}, or
- * not strict UTF-8 — so asking the same two questions here means `readable` cannot claim something
- * the reader will then refuse, whatever the file is called.
+ * Whether `read_file` would serve this file. A container format is refused by extension; every
+ * other file is decided against the bytes just copied. `readDocFile` refuses on two grounds (past
+ * {@link MAX_DOC_BYTES}, or not strict UTF-8) so asking the same two questions here means
+ * `readable` cannot claim something the reader will then refuse, whatever the file is called.
  */
 function verdict(name: string, bytes: Buffer): { readable: boolean; note?: string } {
   const kind = NO_CONVERTER[extname(name).toLowerCase()];
@@ -161,8 +160,9 @@ function isText(bytes: Buffer): boolean {
 }
 
 /**
- * `archive/<yyyymmdd-hhmmss>-<slug>/`, unused. The slug is the first file's stem so the directory
- * is recognisable in Explorer; the stamp is local time, which is the clock the author uploaded by.
+ * A path of the form `archive/<yyyymmdd-hhmmss>-<slug>/` that does not exist yet. The slug is the
+ * first file's stem so the directory is recognisable in Explorer, and the stamp is local time,
+ * which is the clock the author uploaded by.
  */
 async function batchDir(root: string, at: Date, first: string): Promise<string> {
   const base = join(root, ARCHIVE_DIR, `${stamp(at)}-${slug(first)}`);
@@ -194,10 +194,10 @@ function mb(bytes: number): string {
 }
 
 /**
- * What just arrived, in one sentence — the seeded first line of the conversation an upload opens,
- * and what the REPL prints. Here rather than in either host because a file that was archived but
- * cannot be read is the fact an author most needs told, and telling them differently on each
- * surface is how one of the two ends up not telling them at all.
+ * What just arrived, in one sentence. It seeds the first line of the conversation an upload opens
+ * and is what the REPL prints. It lives here rather than in either host because a file that was
+ * archived but cannot be read is the fact an author most needs told, and a separate wording per
+ * surface risks one of them omitting it.
  */
 export function describeUpload(batch: UploadBatch): string {
   const parts: string[] = [];
@@ -224,9 +224,9 @@ export interface ArchivedBatch {
 }
 
 /**
- * What the archive holds, newest batch first. This is the *only* sweep of `archive/` in the
- * agent's reach: it names files so the author can be told what arrived and so `read_file` has
- * something to be pointed at, and it never opens one. A missing `archive/` is an empty list.
+ * What the archive holds, newest batch first. This is the only sweep of `archive/` the agent can
+ * reach. It names files so the author can be told what arrived and so `read_file` has something to
+ * be pointed at, and it never opens one. A missing `archive/` is an empty list.
  */
 export async function listArchive(workspace: Workspace): Promise<ArchivedBatch[]> {
   const root = workspace.root;
@@ -260,9 +260,9 @@ export async function listArchive(workspace: Workspace): Promise<ArchivedBatch[]
 }
 
 /**
- * Three or four ways to phrase the next prompt, chosen from the file list alone — extensions and
- * counts, never contents. Reading the documents to suggest a sentence the author is going to
- * rewrite anyway costs a model call to say something the shape of the batch already implies.
+ * Three or four ways to phrase the next prompt, chosen from the file list alone: extensions and
+ * counts, never contents. Reading the documents would cost a model call to produce a sentence the
+ * shape of the batch already implies and the author will rewrite anyway.
  */
 export function uploadSuggestions(batch: UploadBatch): string[] {
   const readable = batch.files.filter((f) => f.readable);
@@ -282,7 +282,7 @@ export function uploadSuggestions(batch: UploadBatch): string[] {
   return out;
 }
 
-/** A name that reads like a script. By filename only — the contents are nobody's business here. */
+/** Whether a name reads like a script. Decided from the filename; the contents are not read. */
 function looksLikeScript(stored: string): boolean {
   const name = basename(stored).toLowerCase();
   return extname(name) === '.fountain' || /scene|chapter|script|\bch\d/.test(name);

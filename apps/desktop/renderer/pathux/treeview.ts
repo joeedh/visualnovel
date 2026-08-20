@@ -1,21 +1,21 @@
 /**
  * The tree, as a widget any editor can draw. It takes flattened `DocRow`s and a handful of
- * callbacks, and knows nothing about what the nodes mean — the Documents pane supplies its five
+ * callbacks and knows nothing about what the nodes mean. The Documents pane supplies its five
  * branches, the Skills pane supplies its skills, and neither has to reimplement the three things
  * that make a DOM tree behave.
  *
- * Those three are the whole reason this is shared rather than copied:
+ * Those three are the reason this is shared rather than copied:
  *
- * - **The double click is counted, not listened for.** The first click rebuilds the rows, so by
+ * - The double click is counted rather than listened for. The first click rebuilds the rows, so by
  *   the time a `dblclick` would be dispatched the element both clicks landed on no longer exists.
  *   `countClick` is the rule, and the latch lives per root element so a rebuild cannot lose it.
- * - **The dismiss latch is capture-phase and armed on pointer-down**, which is the last moment a
+ * - The dismiss latch is capture-phase and armed on pointer-down, which is the last moment a
  *   context menu is still open. Without it a right-click's dismissal lands as an ordinary click on
- *   whatever row the pointer was resting over, and a right-click rearranges the tree.
- * - **No row hovers silently.** `RowLook.title` is required and must never be `''`; what a row
- *   says is a rule about node kinds, so it is `rowTitle` in `doctree.ts` rather than here.
+ *   the row the pointer was resting over, and a right-click rearranges the tree.
+ * - No row hovers silently. `RowLook.title` is required and must never be `''`. What a row says is
+ *   a rule about node kinds, so it lives in `rowTitle` in `doctree.ts` rather than here.
  *
- * `dataset.id` and `.tv-label` are **contract**: a host doing in-place rename finds the row by the
+ * `dataset.id` and `.tv-label` are contract: a host doing an in-place rename finds the row by the
  * first and replaces the second, because DOM identity does not survive a rebuild but a node id
  * does. `rowElementFor` is the supported way to do the lookup.
  */
@@ -55,8 +55,8 @@ export const NO_CLICK: ClickLatch = { id: '', at: -1 };
 
 /**
  * Whether this click is the second on one row, and the latch to carry forward. A counted second
- * click **resets** the latch rather than becoming the first of the next pair, so three clicks are
- * one rename and not two.
+ * click resets the latch rather than becoming the first of the next pair, so three clicks are one
+ * rename and not two.
  */
 export function countClick(
   last: ClickLatch,
@@ -76,14 +76,14 @@ const LATCHES = new WeakMap<HTMLElement, ClickLatch>();
 
 /**
  * Swallow the click that dismisses a context menu. path.ux closes a menu on mouse-up, so what
- * reaches the tree afterwards is an ordinary first click — and it selects, or toggles, whatever
- * row the pointer happened to be resting over. From the author's seat that is a right-click
- * rearranging the tree, which is exactly what a right-click must not do.
+ * reaches the tree afterwards is an ordinary first click, and it selects or toggles the row the
+ * pointer happened to be resting over. From the author's seat that is a right-click rearranging
+ * the tree, which is what a right-click must not do.
  *
  * Pointer-down is the only moment the question can be asked, because it is the last one at which
  * a menu is still open. Both listeners are capture-phase, so one latch covers every row and twisty
- * under `surface` — pass the **pane's** surface rather than the rows, and whatever else it hosts is
- * covered too. The latch is *assigned* on each pointer-down, so a gesture that never becomes a
+ * under `surface`; pass the pane's surface rather than the rows and whatever else it hosts is
+ * covered too. The latch is assigned on each pointer-down, so a gesture that never becomes a
  * click cannot leave it armed.
  */
 export function armDismissLatch(surface: HTMLElement, menuIsOpen: () => boolean): void {
@@ -122,8 +122,8 @@ export function renderTree(root: HTMLElement, rows: readonly DocRow[], h: TreeHa
 
 function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
   const { node } = row;
-  // A counted stand-in is a row like any other now that it carries what it stood for: it draws
-  // greyed, because it is a count rather than a thing, but it clicks.
+  // A counted stand-in behaves like any other row now that it carries what it stood for. It draws
+  // greyed because it is a count rather than a thing, but it still responds to a click.
   const counted = node.kind === 'more';
   const group = node.kind === 'branch' || node.kind === 'assetkind';
   const look = h.look(row);
@@ -146,14 +146,14 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
   line.appendChild(el('span', 'tv-label', node.label));
   if (node.badge) {
     const badge = el('span', 'tv-badge', node.badge);
-    // A fact about the disk rather than about the story: it must not look like the others.
+    // These badges are facts about the disk rather than about the story, so they must not look
+    // like the others
     if (node.badge === 'unreadable' || node.badge === 'unreachable') badge.classList.add('bad');
     line.appendChild(badge);
   }
 
-  // The twisty is its own target so a node that is both a place and a container — a scene
-  // with shots under it — can be opened without being selected, and selected without being
-  // opened. Everything else follows from whether the click named anything.
+  // The twisty is its own click target, so a node that is both a place and a container (a scene
+  // with shots under it) can be opened without being selected and selected without being opened.
   twisty.addEventListener('click', (event) => {
     event.stopPropagation();
     if (row.expandable) h.onToggle(node.id);
@@ -164,8 +164,8 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
     h.onClick(row);
     if (again) h.onSecondClick?.(row);
   });
-  // A host answers with nothing for a heading and a count, and shows nothing for an empty list —
-  // so the listener is unconditional and the host decides.
+  // The listener is unconditional and the host decides what a menu holds. A host answers with
+  // nothing for a heading or a count, and shows nothing for an empty list.
   line.addEventListener('contextmenu', (event) => {
     event.preventDefault();
     h.onMenu?.(row, event.clientX, event.clientY);

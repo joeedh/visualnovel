@@ -1,7 +1,7 @@
 /**
- * Golden tests: the explainPick text IS the product (research §6), so it is asserted
- * verbatim. A failing golden means the format changed — edit deliberately or fix the
- * regression; the friction is intended.
+ * Golden tests: the explainPick text is what this package delivers (research §6), so it is
+ * asserted verbatim. A failing golden means the format changed, so either edit the golden
+ * deliberately or fix the regression.
  */
 import { assembleFrame, makeTestFrame } from '../../frame.js';
 import { IDENTITY } from '../../geom.js';
@@ -100,7 +100,7 @@ describe('explainPickFrame', () => {
   });
 
   it('derives the flagship line mechanically from the stacking walk', () => {
-    // No hand-set zContext anywhere: the culprit comes out of fragmentsFromSnapshot.
+    // zContext is never set by hand here; fragmentsFromSnapshot derives the culprit
     const el = (
       id: string,
       style: SnapNode['style'],

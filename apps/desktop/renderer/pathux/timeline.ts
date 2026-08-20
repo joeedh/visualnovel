@@ -1,12 +1,12 @@
 /**
- * The coverage strip's three gestures, as state rather than as markup: what a grab captures, what
- * aiming it at a row makes of it, and what the author is told meanwhile.
+ * The coverage strip's three gestures, held as state rather than as markup: what a grab captures,
+ * what aiming it at a row makes of it, and what the author is told meanwhile.
  *
- * All three follow the same shape, and it is the mid-gesture verdict contract made literal: `targets`
- * is pure and synchronous, so the whole gesture is judged **once** at the grab and every pointer
- * move reads the answer off by row. The sentence shown mid-drag, the drop that is allowed, and the
- * one `interaction.targets` gives an agent are therefore one verdict — and the commit is
- * `verdict.invoke` verbatim. A drag is continuous; its commit is not.
+ * All three follow the same shape, which is how the mid-gesture verdict contract is implemented.
+ * `targets` is pure and synchronous, so the whole gesture is judged once at the grab and every
+ * pointer move reads the answer off by row. The sentence shown mid-drag, the drop that is allowed,
+ * and the one `interaction.targets` gives an agent are therefore one verdict, and the commit is
+ * `verdict.invoke` verbatim.
  *
  * This lived inside the React `Timeline.tsx` and was never tested. It is pure, so here it is a
  * module with a `tests/` sibling like every other rule the shell runs.
@@ -86,8 +86,8 @@ export function grabEdge(data: SceneCoverage | null, shotId: string, edge: Edge)
 
 /**
  * The reorder, judged in full when the bracket is picked up. The shot starts aimed at itself,
- * which is not a target, so a click that never moves resolves to no verdict and commits nothing —
- * which is what lets one pointerdown serve as both "select this shot" and "start dragging it".
+ * which is not a target, so a click that never moves resolves to no verdict and commits nothing.
+ * That is what lets one pointerdown serve as both "select this shot" and "start dragging it".
  */
 export function grabShot(data: SceneCoverage | null, shotId: string): Reorder {
   const verdicts = timelineReorder.targets(coverState(data), shotId);
@@ -100,9 +100,9 @@ export function grabShot(data: SceneCoverage | null, shotId: string): Reorder {
 }
 
 /**
- * The gutter gesture, judged in full when the cell is grabbed. The anchor row is itself a
- * target — a drag that never leaves its row commits a one-line shot, which is a real act, unlike
- * a reorder dropped on itself.
+ * The gutter gesture, judged in full when the cell is grabbed. The anchor row is itself a target,
+ * so a drag that never leaves its row commits a one-line shot. That is a real act, unlike a
+ * reorder dropped on itself.
  */
 export function grabGutter(data: SceneCoverage | null, lineId: string): Create {
   const verdicts = timelineCreate.targets(coverState(data), lineId);
@@ -115,8 +115,8 @@ export function grabGutter(data: SceneCoverage | null, lineId: string): Create {
 }
 
 /**
- * The edge drag re-aimed at one row. `resolveDrag` supplies the geometry the ghost needs — a
- * verdict says whether and why, not where — and the verdict for that row supplies everything else.
+ * The edge drag re-aimed at one row. `resolveDrag` supplies the geometry the ghost needs, since a
+ * verdict says whether and why rather than where. The verdict for that row supplies the rest.
  */
 export function aimDrag(drag: Drag, coverage: Coverage, row: number): Drag {
   const lines = resolveDrag(coverage, drag.shotId, drag.edge, row);
@@ -127,8 +127,9 @@ export function aimDrag(drag: Drag, coverage: Coverage, row: number): Drag {
 }
 
 /**
- * The gutter drag re-aimed at one row. The swept range is anchor-to-row inclusive, in row order —
- * the geometry the ghost draws — and the verdict for the aimed row says what committing it makes.
+ * The gutter drag re-aimed at one row. The swept range is anchor-to-row inclusive in row order,
+ * which is the geometry the ghost draws. The verdict for the aimed row says what committing it
+ * makes.
  */
 export function aimCreate(create: Create, coverage: Coverage, row: number): Create {
   const aimed = coverage.rows[row]?.line.id;
@@ -143,13 +144,13 @@ export function aimCreate(create: Create, coverage: Coverage, row: number): Crea
 /** The reorder re-aimed at one row, through the midpoint rule that names insertion points. */
 export function aimReorder(reorder: Reorder, spans: readonly ShotSpan[], row: number): Reorder {
   const target = shotDropTarget(spans, row);
-  // A shot dropped on itself is not a move, and `targets` never listed it — so no verdict, and
-  // nothing said. Reporting "that would change nothing" on every pass over its own rows is noise.
+  // A shot dropped on itself is not a move and `targets` never listed it, so there is no verdict
+  // and nothing is said. Reporting "that would change nothing" over its own rows is noise.
   const verdict = target === reorder.shotId ? null : (reorder.verdicts.get(target) ?? null);
   return { ...reorder, target, verdict };
 }
 
-/** Nothing to say where the drop is not a candidate; otherwise the verdict's own sentence. */
+/** The verdict's own sentence, or `null` where the drop is not a candidate. */
 export function noticeOf(gesture: { verdict: Verdict | null }): Notice | null {
   return gesture.verdict ? noticeForVerdict(gesture.verdict) : null;
 }

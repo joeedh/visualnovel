@@ -1,19 +1,17 @@
 /**
  * One markdown document, held as text: `doc.read` in, `doc.write` out, and the four rules that
- * make that safe. The Wiki pane and the Skills pane are both literally read → textarea → write, so
- * this is shared for correctness rather than for looks — every rule here loses an author's typing
- * when a copy of it drifts:
+ * make that safe. The Wiki pane and the Skills pane are both read → textarea → write, so this is
+ * shared for correctness rather than for looks — every rule here loses an author's typing when a
+ * copy of it drifts:
  *
- * - **A save is refused by content.** `seenHash` is what the read returned, so a file something
- *   else rewrote underneath is refused rather than overwritten. The buffer is never authoritative
- *   and never claims to be.
- * - **An unsaved draft outlives the pane.** Saving is an explicit act, so an unsaved buffer is a
- *   real state the author is in; losing it to a pane switch would make the explicit act a trap.
- *   The drafts map is module-level and there is exactly one of it.
- * - **The `beforeunload` guard counts that one map.** Two copies would each report their own
+ * - A save is refused by content. `seenHash` is what the read returned, so a file something else
+ *   rewrote underneath is refused rather than overwritten. The buffer is never authoritative.
+ * - An unsaved draft outlives the pane. Saving is an explicit act, so an unsaved buffer is a real
+ *   state the author is in. The drafts map is module-level and there is exactly one of it.
+ * - The `beforeunload` guard counts that one map. Two copies would each report their own
  *   `drafts.size`, and quitting with an unsaved draft in the other one would ask nothing.
- * - **A read that lost its race is dropped.** `token` rises per open, so a slow read for a
- *   document the author already left cannot land on top of the one they are looking at.
+ * - A read that lost its race is dropped. `token` rises per open, so a slow read for a document
+ *   the author already left cannot land on top of the one they are looking at.
  *
  * The `io` seam exists so tests need no module mock: the desktop jest project is node-only, and
  * `bridge.js` reaches `window` through `api.js`.
@@ -32,14 +30,13 @@ export interface DocIo {
 }
 
 /**
- * The real one: the two commands, over the command bridge.
+ * The real implementation: the two commands, over the command bridge.
  *
- * `bridge.js` is reached by `await import` rather than at the top of this file, and that is the
- * whole reason a test can construct a `DocBuffer` at all: `bridge.js` → `api.js` reads
- * `window.api` while its module body runs, and the desktop jest project is node-only. A static
- * import would make every `DocBuffer` test a module mock, which is exactly what the `io` seam
- * exists to avoid. Nothing is code-split by it in the app — every editor imports `bridge.js`
- * outright, so it is already in the shell chunk.
+ * `bridge.js` is reached by `await import` rather than at the top of this file so that a test can
+ * construct a `DocBuffer` at all: `bridge.js` → `api.js` reads `window.api` while its module body
+ * runs, and the desktop jest project is node-only. A static import would make every `DocBuffer`
+ * test a module mock, which is what the `io` seam exists to avoid. Nothing is code-split by it in
+ * the app — every editor imports `bridge.js` outright, so it is already in the shell chunk.
  */
 export const BRIDGE_IO: DocIo = {
   async read(path) {
@@ -64,14 +61,14 @@ export const BRIDGE_IO: DocIo = {
  */
 const drafts = new Map<string, { text: string; seenHash: string }>();
 
-/** How many documents have unsaved text in them. What the quit guard, and a test, ask. */
+/** How many documents have unsaved text in them. Read by the quit guard and by tests. */
 export function draftCount(): number {
   return drafts.size;
 }
 
-// The one place a draft can still be lost: quitting. `on_remove` cannot refuse, but this can —
-// `preventDefault` alone is the prompt in Chromium 119+, which Electron 33 is well past. Guarded
-// because this module is now importable by a test, and the desktop jest project is node-only.
+// Quitting is the one place a draft can still be lost: `on_remove` cannot refuse, but a
+// `beforeunload` listener can, and `preventDefault` alone is the prompt in Chromium 119+ (Electron
+// 33 is well past it). The `window` check is for the node-only jest project importing this module
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', (event) => {
     if (drafts.size > 0) event.preventDefault();
@@ -88,13 +85,13 @@ export class DocBuffer {
   /** Rising with every open, so a slow read for a document the author already left is dropped. */
   private token = 0;
 
-  /** `onChange` is "repaint": the buffer never touches the DOM, and the host owns every widget. */
+  /** `onChange` asks the host to repaint: the buffer never touches the DOM and owns no widget. */
   constructor(
     private readonly onChange: () => void,
     private readonly io: DocIo = BRIDGE_IO,
   ) {}
 
-  /** The document in the box, which trails what was asked for by one async read. */
+  /** The document last asked for, which `text` catches up to when the read lands. */
   get path(): string {
     return this.shown;
   }
@@ -182,7 +179,7 @@ export class DocBuffer {
     drafts.delete(path);
     this.isDirty = false;
     await this.open(path);
-    // A read that failed already said so, and that sentence is the more useful one.
+    // A read that failed already left its own message, which is the more useful one
     if (discarded && this.message === '') this.say('reloaded — unsaved draft discarded');
   }
 
@@ -204,15 +201,15 @@ export class DocBuffer {
       this.say(outcome.error, true);
       return false;
     }
-    // The author left while it was writing. The file is theirs and the write stands, but nothing
-    // about the document now on screen may be overwritten by an answer about a different one.
+    // The author left while the write was in flight. The write stands, but nothing about the
+    // document now on screen may be overwritten by an answer about a different one
     if (this.shown !== path) return true;
 
     this.seenHash = outcome.saved.hash;
     this.isDirty = false;
     drafts.delete(path);
-    // No sentence of our own on success: `doc.write` is mutating, so main filed it and pushed it
-    // back, and the push is what says it. A second one here would show the same save twice.
+    // Nothing is said here on success: `doc.write` is mutating, so main files the save and pushes
+    // it back, and that push carries the message. A second one would show the same save twice
     this.say(outcome.saved.diagnostic ?? '');
     return true;
   }
@@ -220,8 +217,8 @@ export class DocBuffer {
   /**
    * Something else wrote to disk. A file this pane is showing can be written by anything —
    * `gate.approve` rewrites `character.md`, and so does the agent, whose writes are not commands at
-   * all. A clean buffer follows; a dirty one does not, and its next save earns the
-   * changed-underneath refusal, which is the honest outcome.
+   * all. A clean buffer re-reads; a dirty one does not, and its next save gets the
+   * changed-underneath refusal.
    */
   wrote(paths: readonly string[]): void {
     if (!this.isDirty && this.shown !== '' && touches(paths, this.shown))

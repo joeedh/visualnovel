@@ -1,5 +1,5 @@
 /**
- * The web export: {@link Playable} → a static gamebook site.
+ * The web export. Renders a {@link Playable} as a static gamebook site.
  *
  * Pure and in-memory, the way {@link buildPlayable} is. It renders the beats a playable already
  * carries and never re-walks `Scene`/`Shot`, because the coverage rules (first shot covering a
@@ -31,7 +31,7 @@ export interface SiteBuild {
   assets: SiteAssetRef[];
 }
 
-/** Text destined for markup. Applied to every authored string without exception. */
+/** Escapes text for markup. Applied to every authored string. */
 function esc(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -48,7 +48,7 @@ function pageOf(sceneId: string): string {
   const safe = sceneId.replace(/[^A-Za-z0-9._-]/g, '-').replace(/^[.-]+/, '');
   const name = safe === '' ? 'scene' : safe;
   // `index` and `style` are the site's own two files. A scene named either gets a suffix so it
-  // cannot overwrite them. The suffix is derived from the name, so every link still resolves.
+  // cannot overwrite them. Links are formed through this same function, so they still resolve.
   return /^(index|style)$/i.test(name) ? `${name}-scene.html` : `${name}.html`;
 }
 
@@ -95,7 +95,7 @@ function renderBeat(playable: Playable, beat: Beat): string {
   return `<p class="narrate">${esc(beat.text)}</p>`;
 }
 
-/** The branch footer: the choices, or the single continuation, or nothing when this is an end. */
+/** The branch footer. Renders the choices, a single continuation link, or an ending marker. */
 function renderFooter(scene: PlayableScene): string {
   if (scene.choices.length > 0) {
     const items = scene.choices
@@ -152,8 +152,8 @@ function renderScene(
  * The contents page: where to start reading, the cast, and every scene by id.
  *
  * The cast is drawn from the portraits the playable carries. A light novel has no place to
- * overlay a portrait on a frame, so `portraitOverlay` is not consulted here — the portraits
- * become a character page instead of a compositing instruction.
+ * overlay a portrait on a frame, so `portraitOverlay` is not consulted here. The portraits are
+ * listed as a cast section rather than composited onto frames.
  */
 function renderIndex(playable: Playable, order: string[]): string {
   const cast = Object.values(playable.characters)

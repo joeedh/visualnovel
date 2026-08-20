@@ -2,13 +2,13 @@
  * Art rungs: which rung an authored field is written at, and which rungs reach a given asset. Two
  * fields ride the same five rungs — art notes, and the image seed.
  *
- * A note is authored input — the one thing an author can say about how generated art should
- * *look* — and it goes into the prompt, so setting one re-keys the tasks it reaches. There are
- * five rungs, and they are named with the document tree's `kind:key` vocabulary extended by one
- * `/sub` segment: `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`,
- * `shot:greet/s2`. Both hosts speak it — the desktop's `art.setNotes` and `vnauthor`'s
- * `set_art_notes` — which is why the vocabulary lives here rather than in either. Pure: every fact
- * comes from the caller; {@link setArtNotes} is the half that touches disk.
+ * A note is authored input, the one thing an author can say about how generated art should look,
+ * and it goes into the prompt, so setting one re-keys the tasks it reaches. There are five rungs,
+ * named with the document tree's `kind:key` vocabulary extended by one `/sub` segment:
+ * `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`.
+ * Both hosts use that vocabulary — the desktop's `art.setNotes` and `vnauthor`'s `set_art_notes` —
+ * which is why it lives here rather than in either host. Pure: every fact comes from the caller;
+ * {@link setArtNotes} is the half that touches disk.
  */
 import type { Asset, ProjectModel, Shot } from '@vn/types';
 
@@ -26,9 +26,9 @@ export interface ArtRung {
   /** What is authored there today; absent means the rung exists but says nothing. */
   notes?: string;
   /**
-   * The image seed authored at this rung; absent means it inherits. The other field a rung
-   * carries, and not the same kind of thing: notes say how the picture should look, a seed only
-   * asks for a different one of the same words. `seedFor` resolves the chain.
+   * The image seed authored at this rung; absent means it inherits. A seed is not the same kind of
+   * field as notes: notes say how the picture should look, a seed asks for a different picture from
+   * the same words. `seedFor` resolves the chain.
    */
   seed?: number;
 }
@@ -47,7 +47,8 @@ export function formatArtTarget(target: ArtTarget): string {
 
 /**
  * Parse an `art.setNotes` target, or `undefined` when it names no rung this vocabulary has.
- * Syntax only — whether the thing named exists is the caller's question, and a different refusal.
+ * Checks syntax only. Whether the thing named exists is the caller's question and a different
+ * refusal.
  */
 export function parseArtTarget(target: string): ArtTarget | undefined {
   const at = target.indexOf(':');
@@ -94,7 +95,7 @@ export function rungAt(target: ArtTarget, ctx: ArtNotesContext): ArtRung | undef
   return shot && rung(address, `${target.sceneId} · ${shot.id}`, shot);
 }
 
-/** Absent fields stay absent: a rung that authored nothing must not grow keys saying so. */
+/** Build a rung. Absent fields stay absent: a rung with nothing authored on it grows no keys. */
 function rung(
   target: string,
   label: string,
@@ -147,8 +148,8 @@ export function rungsFor(asset: Asset, ctx: ArtNotesContext): ArtRung[] {
       }
       break;
     case 'concept':
-      // The entity rung and no lower one: a concept is bound to a character or a location and
-      // never to an outfit or a variant, so there is no second rung to offer.
+      // A concept is bound to a character or a location and never to an outfit or a variant, so
+      // only the entity rung is offered
       if (binding.characterId) wanted.push({ kind: 'character', id: binding.characterId });
       else if (binding.locationId) wanted.push({ kind: 'location', id: binding.locationId });
       break;

@@ -1,6 +1,6 @@
 /**
  * Reading a picture back. The seam is a plain `ChatBackend`, so the test records what was actually
- * sent — one image, one question — and pins the two refusals that keep an answer honest.
+ * sent (one image and one question) and pins the refusal that keeps an answer honest.
  */
 import { SCRIPTS, makeProject } from '@vn/testkit';
 import { RecordedChatBackend, type ChatRequest } from '@vn/providers';

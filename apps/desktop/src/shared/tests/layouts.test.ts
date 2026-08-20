@@ -218,8 +218,8 @@ describe('shippedLayoutFiles', () => {
     ]);
   });
 
-  // Reset writes these bytes every time it runs. If they carried a timestamp, a reset that had
-  // already happened would still dirty the worktree, and you could never tell the two apart.
+  // Reset writes these bytes every time it runs. If they carried a timestamp, a reset that
+  // changed nothing would still dirty the worktree and look like one that did.
   it('is byte-stable across calls', () => {
     expect(shippedLayoutFiles()).toEqual(shippedLayoutFiles());
   });

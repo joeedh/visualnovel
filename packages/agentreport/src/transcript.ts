@@ -52,7 +52,7 @@ export interface Evidence {
   acts: CommandRecord[];
   /**
    * True when the thread predates the detailed format, so the report can say its evidence is
-   * thin rather than letting a maintainer read absence as innocence.
+   * thin rather than leaving a maintainer to read a missing detail as proof nothing happened.
    */
   thin: boolean;
   context: ReportContext;
@@ -61,10 +61,10 @@ export interface Evidence {
 /**
  * Every string in the evidence that says anything about the author, replaced.
  *
- * Applied **once, at the boundary**, so nothing downstream has to remember: the analyst's prompt,
- * the rendered issue body and the copy saved to disk are all derived from an already-clean value
+ * Applied once, at the boundary, so nothing downstream has to remember: the analyst's prompt, the
+ * rendered issue body and the copy saved to disk are all derived from an already-clean value
  * rather than each redacting for itself. Redaction is idempotent, so the second application in
- * `userPrompt` costs nothing and stays as the belt to this brace.
+ * `userPrompt` costs nothing and is kept as a second line of defence.
  *
  * Ids, sequence numbers, statuses and timestamps are left alone — they name nothing outside this
  * report. Everything `toMarkdown` renders is covered, and a field it starts rendering must be

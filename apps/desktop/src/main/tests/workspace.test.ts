@@ -64,7 +64,7 @@ describe('seedWorkspace', () => {
       'project.yaml',
       'screenplay',
     ]);
-    // `keys` before anything else: commit-on-save runs `git commit -A`.
+    // `keys` must be ignored before anything else, because commit-on-save runs `git commit -A`.
     expect(await readFile(join(target, '.gitignore'), 'utf8')).toContain('keys\n');
     expect(await readFile(join(target, 'project.yaml'), 'utf8')).toBe('title: Sample\n');
 
@@ -102,8 +102,8 @@ describe('ensureRepo', () => {
     await rm(root, { recursive: true, force: true, maxRetries: 3 });
   });
 
-  // What a machine without git gets: an app that opens, rather than one that dies on `git init`
-  // before its first window. `initRepoAt` still throws — see the comment there for why.
+  // A machine without git gets an app that opens rather than one that dies on `git init` before
+  // its first window. `initRepoAt` still throws — see the comment there for why.
   it('hands back a handle rather than initializing when git is absent', async () => {
     const dir = join(root, 'no-git');
     await mkdir(dir);
@@ -160,7 +160,7 @@ describe('openWorkspace', () => {
 
     const opened = await openWorkspace(dir);
     expect(opened).toEqual({ root: dir, created: true, title: 'my story' });
-    // The shortest honest config: every other key has a default.
+    // This is the shortest honest config, because every other key has a default.
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: "my story"\n');
     // Opening scaffolds the layout templates and the rule that keeps git from merging one.
     expect((await readdir(dir)).sort()).toEqual([
@@ -228,7 +228,7 @@ describe('openWorkspace', () => {
     await mkdir(dir);
 
     expect((await openWorkspace(dir)).created).toBe(true);
-    // The files belong to the project either way — it is the commits that are somebody else's.
+    // The files belong to the project either way; only the commits are somebody else's.
     expect(await readFile(join(dir, '.gitattributes'), 'utf8')).toContain('merge=union');
     expect(await readdir(join(dir, '.vnstudio', 'layouts'))).not.toEqual([]);
     expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
@@ -319,8 +319,8 @@ describe('inspectCreate', () => {
 
     await writeFile(join(root, 'notes.md'), 'the outer repo\n');
     await ensureRepo(root);
-    // The target is two levels below the repo root and neither level exists — the warning has to
-    // be available *before* the directory is made, or its symptom has no visible cause.
+    // The target is two levels below the repo root and neither level exists. The warning has to be
+    // available before the directory is made, or its symptom has no visible cause.
     const inside = await inspectCreate(join(root, 'projects', 'mine'));
     expect(inside.exists).toBe(false);
     expect(inside.insideRepo).toBeDefined();
@@ -359,7 +359,7 @@ describe('createWorkspace', () => {
     const config = await loadConfig(dir);
     expect(config).toMatchObject({ title: 'My Story', start: START_SCENE });
 
-    // The whole point of the skeleton: an author's first sight of a new project is not a red count.
+    // The skeleton exists so an author's first sight of a new project is not a red count.
     const model = modelFromInputs(await loadInputs(new ProjectPaths(dir)), {
       title: config.title,
       start: config.start,

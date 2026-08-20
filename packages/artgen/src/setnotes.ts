@@ -1,13 +1,13 @@
 /**
- * Writing an art rung — notes or seed: the refusals, and the two files either can land in.
+ * Writing an art rung's notes or seed: the refusals, and the two files either write can land in.
  *
- * The rung vocabulary is `artnotes.ts`; this is the half that touches disk. An entity rung goes
- * through `@vn/model`'s `apply*Edit` into the sheet the model was built from — the same path
- * `edit_character` takes, so one authorial act has one answer — and a shot rung goes into
+ * The rung vocabulary is defined in `artnotes.ts`; this module is the half that touches disk. An
+ * entity rung goes through `@vn/model`'s `apply*Edit` into the sheet the model was built from, the
+ * same path `edit_character` takes, so one authorial act has one answer. A shot rung goes into
  * `work/shots/<sceneId>.json`, one of the handful of writers that file has.
  *
- * Two layers, as everywhere else here: {@link artNotesOf} decides and {@link setArtNotes} re-asks
- * before writing, so an act never trusts that a check ran.
+ * The work is split in two layers: {@link artNotesOf} decides, and {@link setArtNotes} re-asks
+ * before writing rather than trusting that a check ran.
  */
 import type { LocationVariant, Outfit, ProjectModel, Shot } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
@@ -62,8 +62,8 @@ export interface SetNotesPlan {
 }
 
 /**
- * Every refusal writing a rung can give. Never creates an outfit, a variant or a shot — a note on
- * something that does not exist is a typo, and inventing the thing would hide it.
+ * Every refusal writing a rung can give. Never creates an outfit, a variant or a shot, because a
+ * note on something that does not exist is a typo and creating the thing would hide it.
  */
 export async function artNotesOf(
   deps: SetNotesDeps,
@@ -90,8 +90,9 @@ interface LocatedRung {
 
 /**
  * Every refusal a rung write can give before the field being written matters: the target is not a
- * rung, the thing it names does not exist, or the sheet is not on disk. One place, because notes
- * and seeds are the same five rungs and a second copy would drift into two vocabularies.
+ * rung, the thing it names does not exist, or the sheet is not on disk. Notes and seeds share these
+ * refusals because they share the same five rungs, and a second copy would drift into a second
+ * vocabulary.
  */
 async function locateRung(deps: SetNotesDeps, address: string): Promise<Decided<LocatedRung>> {
   const parsed = parseArtTarget(address);
@@ -116,8 +117,8 @@ async function locateRung(deps: SetNotesDeps, address: string): Promise<Decided<
     }
   }
   const rung = rungAt(parsed, { model, shots });
-  // The rung vocabulary is named for the field that came first; a seed rides the same five rungs,
-  // and one wording for the refusal is what keeps both hosts saying the same sentence.
+  // The refusal is worded for art notes because that field came first, and seeds use the same five
+  // rungs; one wording keeps both hosts refusing with the same sentence
   if (!rung)
     return { ok: false, code: 'NO_SUCH_RUNG', reason: `No such art-notes rung: ${address}.` };
 
@@ -199,8 +200,8 @@ export interface SetSeedPlan {
 }
 
 /**
- * Every refusal writing a seed can give. The rung refusals are {@link locateRung}'s; the one this
- * adds is the value — an image backend takes a whole non-negative number, and rounding a typo
+ * Every refusal writing a seed can give. {@link locateRung} supplies the rung refusals, and this
+ * adds one on the value: an image backend takes a whole non-negative number, and rounding a typo
  * would quietly draw a different picture than the one written down.
  */
 export async function artSeedOf(
@@ -334,7 +335,7 @@ function noteSentence(mode: NotesMode, notes: string, label: string): string {
   return mode === 'append' ? `Appended to art notes on ${label}.` : `Set art notes on ${label}.`;
 }
 
-/** A shot with its art notes set, or removed when the text is blank. `Shot` is flat, so this is it. */
+/** A shot with its art notes set, or removed when the text is blank. */
 function withArtNotes(shot: Shot, notes: string): Shot {
   const { artNotes: _drop, ...rest } = shot;
   return notes ? { ...rest, artNotes: notes } : rest;
@@ -344,7 +345,8 @@ function withArtNotes(shot: Shot, notes: string): Shot {
 function withOutfit(outfit: Outfit, patch: Partial<Outfit>): Outfit {
   const next = { ...outfit, ...patch };
   if (!next.artNotes) delete next.artNotes;
-  // Not falsiness: 0 is a seed like any other, and only an absent one means "inherit".
+  // Tested against undefined rather than falsiness: 0 is a valid seed, and only an absent seed
+  // means "inherit"
   if (next.seed === undefined) delete next.seed;
   if (!next.promptOverride) delete next.promptOverride;
   return next;
@@ -362,8 +364,8 @@ function withVariant(variant: LocationVariant, patch: Partial<LocationVariant>):
 /**
  * The character edit one rung's worth of notes amounts to. An outfit rung has to resend the whole
  * wardrobe — `applyCharacterEdit` replaces the map — so it is rebuilt through `wardrobeEntries`
- * from what the model already normalized, with the one entry changed. Rebuilding it by hand is
- * how a note comes to erase the prompt override sitting beside it.
+ * from what the model already normalized, with the one entry changed. Rebuilding the wardrobe by
+ * hand instead would erase the prompt override stored alongside the note.
  */
 function characterNotesEdit(
   outfits: readonly Outfit[],

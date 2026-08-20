@@ -210,7 +210,7 @@ describe('workspace index', () => {
 
       const index = await ctx.workspace.index();
       expect(index.screenplay).toBe(join(dir, 'screenplay', 'old.fountain'));
-      // The chunks still win, and the leftover only shows up as something to clean up.
+      // Scenes still come from the chunks, and the stray screenplay only shows up as a diagnostic.
       expect(index.scenes.map((s) => s.id).sort()).toEqual([
         'arrival',
         'ending',
@@ -269,7 +269,7 @@ Ren keeps the roof key.
       expect(text).toContain('status: approved');
       expect(text).toContain('type: character');
       expect(text).toContain('Ren keeps the roof key.');
-      // The conventional path is where a *new* sheet would go; nothing was created there.
+      // The conventional path is where a new sheet would go; nothing was created there.
       await expect(fs.access(join(dir, 'characters', 'ren'))).rejects.toThrow();
     } finally {
       await cleanup();
@@ -473,8 +473,8 @@ describe('editing tools', () => {
     }
   });
 
-  // How an author tweaks the look of generated art: the agent has no reach into the pipeline,
-  // so it says what the art should look like in the sheet, and the prompt builders pick it up.
+  // The agent has no reach into the pipeline, so an author tweaks the look of generated art by
+  // writing it into the sheet, and the prompt builders pick it up from there.
   it('edit_location sets art notes at the location and at one variant', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
@@ -546,7 +546,7 @@ describe('editing tools', () => {
   it('list_workspace tells a mined location from an authored one, so writing the sheet shows', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
-      // `INT. CLASSROOM` mines the same id the sheet carries, so authoring one *converts* a row
+      // `INT. CLASSROOM` mines the same id the sheet carries, so authoring one converts a row
       // rather than adding one. Without the file the two states render identically.
       await fs.rm(join(dir, 'locations', 'classroom.md'));
       const mined = await run('list_workspace', {}, ctx);
@@ -579,7 +579,7 @@ describe('editing tools', () => {
       const r = await run('write_file', { path: 'scenes/arrival.md', content: 'anything' }, ctx);
       expect(r.ok).toBe(false);
       expect(r.output).toContain('edit_scene');
-      // The refusal is the point: an unvalidated overwrite is what writes duplicate line ids.
+      // The chunk is left untouched, because an unvalidated overwrite writes duplicate line ids.
       expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
     } finally {
       await cleanup();
@@ -593,8 +593,8 @@ describe('editing tools', () => {
       expect(r.ok).toBe(true);
       const text = await fs.readFile(join(dir, 'AICONTEXT.md'), 'utf8');
       expect(text).toContain('Aiko is shy.');
-      // The file back, not a receipt for it: a receipt is what makes the next call a read_file
-      // of what this one just did, and the rule lands in a file the agent did not write in full.
+      // The whole file comes back rather than a receipt, because a receipt would make the next
+      // call a read_file of the file this one just wrote a rule into.
       expect(r.output).toContain(text);
       expect(r.data).toBe(text);
     } finally {
@@ -604,10 +604,10 @@ describe('editing tools', () => {
 });
 
 /**
- * `edit_scene`: the agent's only prose write path. What is asserted here is that it is the *same*
- * write path the desktop's `story.*` commands are — the decisions, the refusals and the storyboard
- * accounting all come from `@vn/scriptedit`, which has its own suites for each. So these cases are
- * about the seam: which file changed, what the tool refuses on its own, and what it reports.
+ * `edit_scene` is the agent's only prose write path, and it is the same write path the desktop's
+ * `story.*` commands use — the decisions, the refusals and the storyboard accounting all come from
+ * `@vn/scriptedit`, which has its own suites for each. These cases cover the seam: which file
+ * changed, what the tool refuses on its own, and what it reports.
  */
 describe('edit_scene', () => {
   it('retypes a line, writing only that chunk', async () => {
@@ -716,7 +716,8 @@ describe('edit_scene', () => {
     try {
       const r = await run('edit_scene', { op: 'deleteScene', scene: 'ending' }, ctx);
       expect(r.ok).toBe(false);
-      // The sentence is `lineops`': it names every referrer, which is what makes it actionable.
+      // `lineops` writes this sentence, and it names every referrer, which is what makes it
+      // actionable.
       expect(r.output).toContain('greet (next)');
       expect(r.output).toContain('observe (next)');
       expect(await fs.readFile(join(dir, 'scenes', 'ending.md'), 'utf8')).toBe(CHUNKS.ending);
@@ -755,8 +756,9 @@ describe('edit_scene', () => {
   });
 
   /**
-   * The one act whose rule needs the storyboard rather than only costing it something. It moves
-   * prose, so it writes the chunk — and it moves whole shots, so the storyboard is untouched.
+   * Reordering is the one act whose rule needs the storyboard rather than only costing it
+   * something. It moves prose, so it writes the chunk, and it moves whole shots, so the
+   * storyboard is untouched.
    */
   it('reorders a shot by moving the lines it covers, and leaves the storyboard alone', async () => {
     const { ctx, dir, cleanup } = await tempProject();
@@ -814,8 +816,8 @@ describe('edit_scene', () => {
 });
 
 /**
- * `edit_branches`: the agent's only way to say what leads where. The rules are `@vn/scriptedit`'s
- * `branchops` and are tested there, so what is asserted here is the seam — and the bug it exists to
+ * `edit_branches` is the agent's only way to say what leads where. The rules are `@vn/scriptedit`'s
+ * `branchops` and are tested there, so these cases cover the seam — and the bug the tool exists to
  * fix, which is that a scene the agent created had nothing that could point at it.
  */
 describe('edit_branches', () => {
@@ -828,8 +830,9 @@ describe('edit_branches', () => {
         ctx,
       );
       expect(made.ok).toBe(true);
-      // `newScene` says so itself; before `edit_branches` that sentence was a dead end. This is
-      // the reported bug, reproduced: a scene the agent made, that the story cannot get to.
+      // `newScene` reports that nothing points at the new scene, and before `edit_branches` there
+      // was no way to act on that. The reported bug is reproduced here: a scene the agent made
+      // that the story cannot get to.
       expect(made.output).toContain('nothing points at it yet');
       expect((await run('story_graph', {}, ctx)).output).toContain('Unreachable: rooftop');
 
@@ -854,7 +857,7 @@ describe('edit_branches', () => {
         '[[choice: "Go up" -> rooftop]]',
       );
 
-      // The point of the fix: the graph now reaches it, and nothing dangles.
+      // With the wiring in place the graph reaches rooftop, and nothing dangles.
       const graph = await run('story_graph', {}, ctx);
       expect(graph.output).toContain('Unreachable: none');
       expect(graph.output).toContain('Dangling: none');
@@ -940,12 +943,12 @@ describe('edit_branches', () => {
 });
 
 /**
- * `set_outfit`: one sentence, two files. The rules it runs are `@vn/scriptedit`'s and are tested
- * there, so what is asserted here is the seam — which level a `shot` argument picks, which file
- * that level writes, and that a refusal arrives verbatim rather than reworded.
+ * `set_outfit` writes one of two files from one sentence. The rules it runs are `@vn/scriptedit`'s
+ * and are tested there, so these cases cover the seam — which level a `shot` argument picks, which
+ * file that level writes, and that a refusal arrives verbatim rather than reworded.
  */
 describe('set_outfit', () => {
-  /** The wardrobe goes on through `edit_character`, which is how an author would author it. */
+  /** Dresses Aiko through `edit_character`, the same path an author would take. */
   const dressAiko = (ctx: ToolContext) =>
     run(
       'edit_character',
@@ -1036,7 +1039,7 @@ describe('set_outfit', () => {
   });
 });
 
-/** The seam, recorded rather than wired: a tool's job is what it asks for, not the picture. */
+/** Records what each art call asked for rather than drawing a picture. */
 function fakeArt(dir: string): {
   art: ArtGen;
   asked: ConceptRequest[];
@@ -1230,7 +1233,7 @@ describe('edit_image', () => {
     }
   });
 
-  // Two sketches under one prefix is a question, and asking costs nothing; guessing costs a
+  // Two sketches under one prefix are ambiguous, and asking costs nothing; guessing costs a
   // generation and produces the wrong picture.
   it('refuses an unknown prefix and an ambiguous one, spending nothing either way', async () => {
     const { ctx, dir, cleanup } = await tempProject();
@@ -1293,7 +1296,7 @@ async function plate(dir: string): Promise<string> {
   return ref.hash;
 }
 
-/** The pipeline capability, recorded: what a tool asked for, not what a scheduler would do. */
+/** Records what a tool asked the pipeline for rather than doing what a scheduler would. */
 function fakePipeline(): { pipeline: PipelineControl; queued: string[]; ran: () => number } {
   const queued: string[] = [];
   let runs = 0;
@@ -1413,7 +1416,7 @@ describe('art_notes and set_art_notes', () => {
     }
   });
 
-  // A note on a variant nobody declared is a typo; creating the variant would hide it.
+  // A note on a variant nobody declared means a typo, and creating the variant would hide it.
   it('refuses a rung that does not exist and a target it cannot parse', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
@@ -1475,8 +1478,8 @@ describe('view_image', () => {
 });
 
 describe('regenerate_asset', () => {
-  // The boundaries rule, as an answer: `@vn/authoring` cannot run a pipeline, so the tool names
-  // the host that can rather than failing with something the author cannot act on.
+  // The boundaries rule stops `@vn/authoring` from running a pipeline, so the tool names the host
+  // that can rather than failing with something the author cannot act on.
   it('refuses without the capability and names the host that has it', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
@@ -1528,7 +1531,7 @@ describe('skills', () => {
     try {
       const res = await run('create_skill', NEW_SKILL, ctx);
       expect(res.ok).toBe(true);
-      // Forward-slashed, because every workspace-relative path on the wire is.
+      // Forward-slashed, like every workspace-relative path on the wire.
       expect(res.written).toEqual(['.aiagent/skills/pace-a-scene/SKILL.md']);
 
       const listed = await run('discover_skills', {}, ctx);
@@ -1624,7 +1627,7 @@ describe('skills', () => {
       );
       expect(res.ok).toBe(false);
       expect(res.output).toContain('outside this project');
-      // And nothing was forked into the project on the way to refusing.
+      // Refusing also copied no skill into the project.
       expect(await run('discover_skills', {}, ctx)).toMatchObject({ data: [] });
     } finally {
       await fs.rm(outside, { recursive: true, force: true });
@@ -1653,8 +1656,8 @@ describe('skills', () => {
   it('edit_file cannot rewrite a script a person put beside a skill', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
-      // The case the gate is really for: the script is already there, vetted, and `run_skill`
-      // offers to execute it. An edit is the other way to author one.
+      // The gate exists for this case: the script is already there, vetted, and `run_skill` offers
+      // to execute it. An edit is the other way to author one.
       const skillDir = join(dir, '.aiagent', 'skills', 'x');
       await fs.mkdir(skillDir, { recursive: true });
       const script = join(skillDir, 'run.mjs');
@@ -1718,9 +1721,9 @@ describe('registry metadata', () => {
 });
 
 /**
- * `edit_file`: partial writes to the documents no validated writer owns. The ledger is the whole
- * story — the tool refuses anything it cannot prove the model was looking at, and a refusal
- * anywhere in a batch means nothing at all was written.
+ * `edit_file` makes partial writes to the documents no validated writer owns. The read ledger
+ * governs it: the tool refuses what it cannot prove the model was looking at, and one refusal in
+ * a batch means nothing at all was written.
  */
 describe('edit_file', () => {
   const WIKI =
@@ -1916,7 +1919,8 @@ describe('write_file and the read ledger', () => {
       expect(blind.output).toContain('already exists');
       expect(await fs.readFile(join(dir, 'wiki', 'notes.md'), 'utf8')).toContain('Nothing yet.');
 
-      // The one that wrote it kept its ledger entry, so it may overwrite its own work.
+      // The conversation that wrote the file kept its ledger entry, so it may overwrite its own
+      // work.
       const again = await run(
         'write_file',
         { path: 'wiki/notes.md', content: '# Notes\n\nSomething now.\n' },
@@ -1930,8 +1934,9 @@ describe('write_file and the read ledger', () => {
 });
 
 /**
- * A tool that reports a result the caller cannot act on is worse than one that finds nothing: the
- * negative reads as "not in the project", and the citation reads as a path that does not resolve.
+ * These tools name the scope they searched and cite paths that resolve. Without the scope an empty
+ * result reads as "not in the project", and without the prefix a citation reads as a path the
+ * caller cannot open.
  */
 describe('tools that say what they looked at', () => {
   it('search names its scope when it finds nothing, and points at the two it skipped', async () => {
@@ -1958,7 +1963,7 @@ describe('tools that say what they looked at', () => {
       const r = await run('search_bible', { query: 'canal' }, ctx);
       expect(r.output).toContain('wiki/history/founding.md');
 
-      // The point of the prefix: the cited path is one the very next call can hand to read_file.
+      // The prefix exists so the cited path is one the very next call can hand to read_file.
       const cited = r.output.split(':')[0] as string;
       const back = await run('read_file', { path: cited }, ctx);
       expect(back.ok).toBe(true);
@@ -2059,11 +2064,10 @@ describe('create tools with the full field set', () => {
 });
 
 /**
- * The storyboard tools: the seam between the agent and `@vn/scriptedit`'s shot rules plus
- * `@vn/artgen`'s realization gauntlet, both tested where they live. What is asserted here is
- * which file each act writes (and that refusals write nothing), that the `nextShot` mark
- * round-trips so a deleted id stays retired, and that a proposal is read back rather than
- * persisted.
+ * The storyboard tools sit at the seam between the agent and `@vn/scriptedit`'s shot rules plus
+ * `@vn/artgen`'s realization gauntlet, both tested where they live. These cases cover which file
+ * each act writes (and that refusals write nothing), that the `nextShot` mark round-trips so a
+ * deleted id stays retired, and that a proposal is read back rather than persisted.
  */
 describe('storyboard tools', () => {
   /** A text seam that answers with fixed JSON — or refuses to parse, like the mock echo does. */
@@ -2120,7 +2124,7 @@ describe('storyboard tools', () => {
       expect(del.ok).toBe(true);
       expect(del.output).toContain('become uncovered');
 
-      // The freed lines come back as a *new* frame: shot2 stays retired.
+      // The freed lines come back as a new frame, and shot2 stays retired.
       const again = await run(
         'edit_scene',
         { op: 'newShot', scene: 'ending', lineIds: ['ending:L2'] },

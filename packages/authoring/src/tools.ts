@@ -108,7 +108,7 @@ import {
   PROJECT_SKILLS_DIR,
 } from './skills.js';
 
-/** What a tool returns: a text observation for the loop + optional structured data. */
+/** A text observation for the loop, plus optional structured data. */
 export interface ToolResult {
   ok: boolean;
   /** Human/agent-readable observation. */
@@ -120,8 +120,8 @@ export interface ToolResult {
 }
 
 /**
- * Re-rendering a planned picture, as an injected capability. Deliberately not the scheduler: two
- * acts, queue and run, which is all an agent has any business asking for.
+ * Re-rendering a planned picture, as an injected capability. Deliberately not the scheduler: it
+ * offers two acts, queue and run, which is all an agent needs to ask for.
  */
 export interface PipelineControl {
   /** Put an asset's task back to `pending`. Refuses a concept, an upload, and an orphaned task. */
@@ -131,9 +131,10 @@ export interface PipelineControl {
 }
 
 /**
- * What the agent was last shown of each workspace file, keyed by workspace-relative path: the hash
- * it read at, and whether it saw all of it. It is a record of the conversation, not of the disk —
- * nothing watches the filesystem, and a write compares a fresh read against what is written here.
+ * What the agent was last shown of each workspace file, keyed by workspace-relative path. Each
+ * entry holds the hash it read at and whether it saw all of it. This records the conversation
+ * rather than the disk: nothing watches the filesystem, and a write compares a fresh read
+ * against what is written here.
  */
 export type ReadLedger = Map<string, { hash: string; whole: boolean }>;
 
@@ -143,7 +144,7 @@ export interface ToolContext {
   git: Git;
   /**
    * The read ledger, owned by the agent loop and cleared with the conversation. Absent in bare
-   * contexts, in which case `edit_file` refuses — an edit against a file nobody read is a guess.
+   * contexts, where `edit_file` refuses rather than edit a file the conversation never read.
    */
   seen?: ReadLedger;
   /**
@@ -162,26 +163,26 @@ export interface ToolContext {
   art?: ArtGen;
   /**
    * The structured-text model, wired by the host that knows the model id, where the keys are and
-   * whether this run is mocked — the seam `art` is, for the text half. Absent in bare contexts,
-   * in which case `propose_storyboard` refuses rather than assume an API key exists to spend.
+   * whether this run is mocked — the text-side counterpart of `art`. Absent in bare contexts,
+   * where `propose_storyboard` refuses rather than assume an API key exists to spend.
    */
   text?: TextLLM;
   /**
    * Re-rendering a planned asset, wired by the host that owns the pipeline. `@vn/authoring` may
-   * not import `@vn/pipeline` or `@vn/scheduler`, and this is why it does not have to: absent —
-   * as it is in the REPL — `regenerate_asset` refuses and names the host that can.
+   * not import `@vn/pipeline` or `@vn/scheduler`, so the host supplies this instead. When it is
+   * absent, as in the REPL, `regenerate_asset` refuses and names the host that can.
    */
   pipeline?: PipelineControl;
   /**
-   * Approving generated art, wired by the host that owns the manifest. Absent — as it is in the
-   * REPL — `approve_assets` refuses and names the host that can.
+   * Approving generated art, wired by the host that owns the manifest. When it is absent, as in
+   * the REPL, `approve_assets` refuses and names the host that can.
    */
   approval?: ApprovalControl;
   /**
-   * The author's own turns this conversation, oldest first, supplied by the agent loop. It is the
-   * transcript rather than the disk on purpose: what the author said *to this agent* is what any
-   * question about their consent is about. Absent in bare contexts, where `approve_assets`
-   * refuses — a tool whose authority is the author's words cannot run where there are none.
+   * The author's own turns this conversation, oldest first, supplied by the agent loop. It reads
+   * the transcript rather than the disk on purpose: consent is judged from what the author said
+   * to this agent. Absent in bare contexts, where `approve_assets` refuses because its authority
+   * comes from the author's words.
    */
   said?: () => readonly string[];
 }
@@ -252,14 +253,14 @@ const readFileTool: Tool<{ path: string; offset?: number; limit?: number }> = {
   mutating: false,
   args: z.object({ path: z.string(), offset: z.number().optional(), limit: z.number().optional() }),
   async run(a, ctx) {
-    // Bounded, text-only, outside-the-workspace refused: the same read `doc.read` performs, so a
-    // file too large to hand a human is also one the agent does not paste into its context.
+    // The same read `doc.read` performs: bounded, text-only, and refused outside the workspace.
+    // A file too large to hand a human is also one the agent does not paste into its context.
     const read = await readDocFile(ctx.workspace.root, a.path);
     if (!read.ok) return fail(read.reason);
     const text = read.file.text;
     const whole = a.offset === undefined && a.limit === undefined;
-    // The one respect in which reading is not pure: it records what was shown, so `edit_file` can
-    // refuse an edit made against a file this conversation never saw. The output is unchanged.
+    // Reading records what was shown, so `edit_file` can refuse an edit made against a file this
+    // conversation never saw. The output is unchanged.
     ctx.seen?.set(read.file.path, { hash: read.file.hash, whole });
     if (whole) return ok(text, { data: text });
     const lines = text.split('\n');
@@ -597,8 +598,8 @@ const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
 
 /**
  * A create tool takes exactly what its `edit_*` sibling takes, minus the `id` it is about to
- * allocate — because the alternative is what the agent actually did: hand-write the sheet in raw
- * YAML through `write_file`, since the tool that owned the directory could only be told a name.
+ * allocate. Back when the create tool could only be told a name, the agent bypassed it and
+ * hand-wrote the sheet in raw YAML through `write_file`.
  */
 const characterCreateShape = characterEditShape.omit({ id: true }).extend({
   name: z.string().min(1).describe('the display name; the id is slugged from it'),
@@ -798,7 +799,7 @@ const sceneEditShape = z.object({
 type SceneEditArgs = z.infer<typeof sceneEditShape>;
 
 /**
- * The arguments each op cannot be attempted without. Only *absence* is checked here — whether a
+ * The arguments each op cannot be attempted without. Only absence is checked here — whether a
  * line may be empty, whether a dialogue line needs a speaker, and whether a scene may be deleted
  * are judgments `@vn/scriptedit` already makes, and making them twice here would let the two
  * answers disagree.
@@ -823,7 +824,7 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
 
 /**
  * The one `@vn/scriptedit` decision an op names, with the tool's defaults filled in. Async only
- * because `moveShot`'s rule needs the scene's storyboard, which is read off disk; the other ten
+ * because `moveShot`'s rule needs the scene's storyboard, which is read off disk; the other ops
  * are pure and resolve immediately.
  */
 async function sceneDecider(
@@ -882,8 +883,8 @@ async function sceneDecider(
 
 /**
  * The agent's one prose write path, over the same decisions the palette and the branch editor run.
- * It exists so that `vnauthor` is not the writer that goes around them: a whole-file overwrite can
- * duplicate line ids and strand storyboards, and nothing downstream would notice.
+ * It exists so that `vnauthor` goes through them: a whole-file overwrite can duplicate line ids
+ * and strand storyboards, and nothing downstream would notice.
  */
 const editSceneTool: Tool<SceneEditArgs> = {
   name: 'edit_scene',
@@ -906,10 +907,9 @@ const editSceneTool: Tool<SceneEditArgs> = {
     const missing = SCENE_OP_ARGS[a.op].filter((name) => a[name] === undefined);
     if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
 
-    // The two storyboard ops write `work/shots/<scene>.json`, not prose, so they bypass the
-    // scene-plan machinery and follow `set_outfit`'s write path instead. The rules are
-    // `@vn/scriptedit`'s `shotcreate` module — the ones `story.newShot` and `story.deleteShot`
-    // run — so a refusal here is verbatim the one the Coverage strip would show.
+    // Both storyboard ops write `work/shots/<scene>.json` rather than prose, so they take
+    // `set_outfit`'s write path and run the `shotcreate` rules behind `story.newShot` and
+    // `story.deleteShot`. A refusal here is verbatim the one the Coverage strip shows.
     if (a.op === 'newShot') {
       const op = await ctx.workspace.newShot(a.scene ?? '', a.lineIds ?? [], a.framing);
       if (!op.ok) return fail(op.error);
@@ -971,7 +971,7 @@ const branchEditShape = z.object({
 
 type BranchEditArgs = z.infer<typeof branchEditShape>;
 
-/** As with {@link SCENE_OP_ARGS}, only *absence* is checked; the rules judge everything else. */
+/** As with {@link SCENE_OP_ARGS}, only absence is checked; the rules judge everything else. */
 const BRANCH_OP_ARGS: Record<BranchOpName, readonly (keyof BranchEditArgs)[]> = {
   setChoice: ['goto', 'label'],
   removeChoice: ['index'],
@@ -1005,15 +1005,15 @@ const branchDecider =
   };
 
 /**
- * The agent's one way to say what leads where — the same `@vn/scriptedit` rules the branch editor
- * runs mid-drag, so a rewire it is refused is refused in the same sentence an author would read.
+ * The agent's one way to say what leads where, over the same `@vn/scriptedit` rules the branch
+ * editor runs mid-drag, so a refused rewire is refused in the same sentence an author would read.
  *
- * It exists because `newScene` leaves the new scene with nothing pointing at it, and until this
- * tool that was a dead end: `write_file` refuses `scenes/`, `edit_scene` writes prose, and a
- * scene nothing reaches never appears in the story. Creating one deliberately stays **two** acts
- * rather than a `goto` argument on `newScene` — where a new scene belongs is a separate
- * authorial decision, and `spliceScene` (put it *between* two scenes) is the right answer often
- * enough that folding one of the four ops into `newScene` would make the other three look optional.
+ * It exists because `newScene` leaves the new scene with nothing pointing at it: `write_file`
+ * refuses `scenes/`, `edit_scene` writes prose, and a scene nothing reaches never appears in the
+ * story. Creating one deliberately stays two acts rather than a `goto` argument on `newScene` —
+ * where a new scene belongs is a separate authorial decision, and `spliceScene` (putting it
+ * between two scenes) is the right answer often enough that folding one of the four ops into
+ * `newScene` would make the other three look optional.
  */
 const editBranchesTool: Tool<BranchEditArgs> = {
   name: 'edit_branches',
@@ -1058,10 +1058,9 @@ const outfitShape = z.object({
 /**
  * Both levels of the outfit chain in one tool, because the author states both the same way —
  * "put Aiko in her tracksuit for the club scene" and "...for this one frame" differ by a word,
- * and the file each lands in is a consequence rather than a choice the author makes. `shot`
- * picks the level: absent, a
- * `[[outfit:]]` marker is spliced into the scene chunk; present, the subject's override is written
- * to the storyboard, which re-hashes that shot.
+ * and the file each lands in is a consequence rather than a choice the author makes. `shot` picks
+ * the level. When it is omitted, a `[[outfit:]]` marker is spliced into the scene chunk. When it
+ * names a shot, the subject's override is written to the storyboard, which re-hashes that shot.
  *
  * Both rules come from `@vn/scriptedit`, so a refusal here is verbatim the one `story.setOutfit` or
  * `story.setSceneOutfit` would give in the app.
@@ -1325,8 +1324,8 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     if (owner) return fail(`${path} is written by ${owner}, not write_file`);
 
     // Prose only. `git_restore` and `git_revert` still take an arbitrary path and are
-    // deliberately *not* gated here: both are `confirm: true` and their cards name the file,
-    // so a person approves that specific resurrection. This gate is about authoring a script.
+    // deliberately left ungated here: both are `confirm: true` and their cards name the file,
+    // so a person approves that specific restore. This gate is about authoring a script.
     const refusal = skillWriteRefusal(path);
     if (refusal) return fail(refusal);
 
@@ -1432,9 +1431,9 @@ const editFileTool: Tool<{
     const owner = ownedElsewhere(path);
     if (owner) return fail(`${path} is written by ${owner}, not edit_file`);
 
-    // The same gate `write_file` earns, for the same reason: a skill is prose the agent writes
-    // through `create_skill`/`edit_skill`, and an edit is another way to author a `run.mjs` —
-    // worse, one that changes a script a person already vetted.
+    // The same gate `write_file` has, for the same reason: a skill is prose the agent writes
+    // through `create_skill`/`edit_skill`, and an edit is another way to author a `run.mjs`,
+    // one that changes a script a person already vetted.
     const skillRefusal = skillWriteRefusal(path);
     if (skillRefusal) return fail(skillRefusal);
 
@@ -1662,22 +1661,21 @@ const discoverSkillsTool: Tool<Record<string, never>> = {
 };
 
 /**
- * Writing a skill, in two tools that share one rule: **prose only**.
+ * Writing a skill, in two tools that share one rule: prose only.
  *
- * Three independent facts make `run_skill`'s confirm card unspoofable through them, and a
- * reviewer will try all three:
+ * Three independent facts make `run_skill`'s confirm card unspoofable through them:
  *
  * 1. The card is ``Skill "${skill.id}" wants to run a script: ${skill.script}`` — the directory
- *    name and the *resolved absolute path*, neither of which is anywhere in an `edit_skill` patch.
+ *    name and the resolved absolute path, neither of which appears in an `edit_skill` patch.
  * 2. Both `args` schemas are `.strict()`, so a `script` argument is a parse error before `run()`
  *    is entered rather than a field to be filtered inside it.
  * 3. The desktop agent is built with no `registry` (`session.ts`), so `doc.write` — the one other
  *    path to a `run.mjs` — is not among its tools, and `write_file` is gated below.
  *
  * `git_restore` and `git_revert` still take an arbitrary path and could bring a deleted `run.mjs`
- * back. That is deliberate, not an oversight: both are `confirm: true` and, unlike `run_skill`'s
- * card, theirs **name the file**, so a person approves that specific resurrection. "Prose only"
- * means the agent cannot *author* a script, not that no tool can move bytes.
+ * back. That is deliberate: both are `confirm: true` and, unlike `run_skill`'s card, theirs name
+ * the file, so a person approves that specific restore. Prose only means the agent cannot author
+ * a script, not that no tool can move bytes.
  */
 const createSkillTool: Tool<{
   name: string;
@@ -1752,7 +1750,7 @@ const editSkillTool: Tool<{
     const skill = skills.find((s) => s.id === a.id || s.name === a.id);
     if (!skill) return fail(`no such skill: ${a.id}`);
     // `ctx.skillDirs` roots can point outside the workspace, and `writeSkill` resolves an id
-    // against *this* project — so editing one of those would silently fork it into the project.
+    // against this project, so editing one of those would silently fork it into the project.
     const inProject = relative(join(ctx.workspace.root, PROJECT_SKILLS_DIR), skill.dir);
     if (inProject !== skill.id) {
       return fail(

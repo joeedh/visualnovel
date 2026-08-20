@@ -13,17 +13,17 @@ describe('closeStruct', () => {
     );
   });
 
-  // The caller writes nstructjs's own syntax, and its own examples end in a semicolon — so both
-  // spellings have to mean the same field rather than one of them producing `mode : string;;`.
+  // The caller writes nstructjs syntax, and nstructjs's own examples end in a semicolon, so both
+  // spellings have to mean the same field rather than one producing `mode : string;;`
   it('is indifferent to a trailing semicolon or surrounding space', () => {
     expect(closeStruct('x{\n', ['  mode : string;  ', '', '  '])).toBe('x{\n  mode : string;\n}');
   });
 });
 
 /**
- * The reason the splice exists: a per-pane field has to survive being written into a saved
- * layout and read back out. Against the real nstructjs, not a golden string — the syntax it
- * accepts is the thing under test.
+ * The splice exists so a per-pane field survives being written into a saved layout and read back
+ * out. This runs against the real nstructjs rather than a golden string, because the syntax
+ * nstructjs accepts is what is under test.
  */
 describe('a spliced field, through nstructjs', () => {
   class Pane {

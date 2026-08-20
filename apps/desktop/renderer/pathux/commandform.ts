@@ -23,7 +23,7 @@ export interface ChoiceRow {
 }
 
 /**
- * Per-open option lists, keyed by prop name — a *function of the current values*, because one
+ * Per-open option lists, keyed by prop name. They are a function of the current values, because one
  * field's list can depend on another's (the effort a model offers depends on the model). An enum's
  * `values` are baked into the catalog at module load and stay that way: a list of this project's
  * conversations is not part of a command's vocabulary.
@@ -122,8 +122,8 @@ export class CommandForm {
 
   /**
    * Follow the verdict with the button. A command that has declared it will refuse is not worth a
-   * click, and the greyed button says exactly why — the refusal, verbatim. `undeclared` arms it:
-   * absence of a check is not a refusal, only an absence of one.
+   * click, and the greyed button says exactly why — the refusal, verbatim. `undeclared` arms it,
+   * because the absence of a check is not a refusal.
    */
   private armRun(): void {
     const run = this.runButton;
@@ -148,8 +148,8 @@ export class CommandForm {
     if (!col) return;
     col.clear();
     if (this.check && this.check.state !== 'undeclared') {
-      // One paragraph per line: a check that answers in several sentences means the breaks it
-      // wrote, and a single label draws them as one unreadable strip.
+      // One paragraph per line, because a check that answers in several sentences intends those
+      // line breaks, and a single label draws them as one unreadable strip.
       const mark = this.check.state === 'accept' ? '✓' : '✕';
       const lines = this.check.message.split('\n');
       lines.forEach((line, i) => {
@@ -169,8 +169,8 @@ export class CommandForm {
    * what a form opened on a command wants the focus in.
    */
   private field(prop: CatalogProp): TextBox | undefined {
-    // A host that offered a list and came back empty has said this prop has *no* choice to make
-    // here — the effort a model without a reasoning setting takes. Falling through to a text field
+    // A host that offered a list and came back empty means this prop has no choice to make here,
+    // such as the effort of a model without a reasoning setting. Falling through to a text field
     // would invite typing a value that model does not have, so the row is not drawn at all.
     const rows = this.opts.choices?.(this.values)[prop.name];
     if (rows && rows.length === 0) return undefined;
@@ -240,8 +240,8 @@ export class CommandForm {
     });
     box.description = prop.hint ?? prop.description;
 
-    // A directory is the one string the OS can say for itself. The field stays typeable — the
-    // chooser fills it in, it does not own it.
+    // A directory is the one string the OS can supply through a file dialog. The field stays
+    // typeable; the chooser fills it in rather than owning it.
     if (prop.kind === 'directory') {
       const browse = row.button('Browse…', () => void this.browse(prop.name, box));
       browse.description = 'Choose this folder in a file dialog';
@@ -251,9 +251,9 @@ export class CommandForm {
   }
 
   /**
-   * A prop the host offered a list for. The button shows the chosen row's *label* — an id is what
-   * the command takes, not what an author recognises — and each row carries its own tooltip, so
-   * the advice about a choice is readable before it is made rather than only after.
+   * A prop the host offered a list for. The button shows the chosen row's label, because an id is
+   * what the command takes rather than what an author recognises, and each row carries its own
+   * tooltip, so the advice about a choice is readable before the choice is made.
    */
   private chooser(row: Container, prop: CatalogProp, rows: ChoiceRow[], value: string): void {
     const chosen = rows.find((option) => option.value === value);
@@ -264,7 +264,7 @@ export class CommandForm {
           name: option.label,
           callback: () => {
             this.values[prop.name] = option.value;
-            // A dependent list is recomputed by drawing again; this is the whole mechanism.
+            // A dependent list is recomputed by drawing the form again.
             this.render();
             void this.recheck();
           },

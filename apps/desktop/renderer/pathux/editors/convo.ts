@@ -32,10 +32,10 @@ import {
 import type { AskRequest, ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
 
 /**
- * What the room supplied and the pane does not. `studio.css` is imported as-is — the transcript,
- * the dialogue box and the plan card are the React shell's, down to the sodium glow — so this is
- * only the frame: the reset that does not cross the shadow boundary, and `.convo` filling the
- * surface instead of a grid column of `.studio`.
+ * The frame around `studio.css`, which is imported as-is: the transcript, the dialogue box and the
+ * plan card are the React shell's, down to the sodium glow. This supplies the reset that does not
+ * cross the shadow boundary, and `.convo` filling the surface instead of a grid column of
+ * `.studio`.
  */
 const SURFACE_CSS = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -169,17 +169,17 @@ const SURFACE_CSS = `
 
 /**
  * The vnauthor conversation: the transcript, the plan card, the dialogue box and the composer.
- * The port of STUDIO's `Convo` + `useAgent`, and the last of the seven.
+ * The port of STUDIO's `Convo` + `useAgent`.
  *
- * It also *unnests*. In the React shell the branch and script editors were passed to this
- * component as a `surface` prop and rendered **inside** it, which is why they could not be open
- * at once and why the composer had to survive their swap. Here they are areas of the screen
- * mesh, so the conversation is a pane like any other and the author decides whether it shares
- * the window with the page it is about.
+ * The port also unnests. In the React shell the branch and script editors were passed to this
+ * component as a `surface` prop and rendered inside it, which is why they could not be open at
+ * once and why the composer had to survive their swap. Here they are areas of the screen mesh, so
+ * the conversation is a pane like any other and the author decides whether it shares the window
+ * with the page it is about.
  *
- * The conversation itself is not held here — `agent.ts` holds it, subscribed at boot — because
- * the agent streams whether or not this pane is open, and a pane opened afterwards has to show
- * what was already said.
+ * The conversation itself lives in `agent.ts`, subscribed at boot, rather than here: the agent
+ * streams whether or not this pane is open, and a pane opened afterwards has to show what was
+ * already said.
  */
 export class ConvoEditor extends VnEditor {
   private bar!: Container;
@@ -196,7 +196,7 @@ export class ConvoEditor extends VnEditor {
   private stopBtn!: HTMLButtonElement;
   /** The one word said while a turn is in flight; a CSS animation does the rest. */
   private workingEl!: HTMLDivElement;
-  /** Where `Convo.suggestions` are drawn. Empty for every conversation nobody seeded. */
+  /** Where `Convo.suggestions` are drawn. Empty unless the conversation was seeded with some. */
   private chipsEl!: HTMLDivElement;
   /** Kept because the thread menu opens under it, and only the button knows where that is. */
   private threadsBtn!: Button;
@@ -208,9 +208,10 @@ export class ConvoEditor extends VnEditor {
   private budgetMenu?: DropBox;
   private drawn = -1;
   /**
-   * What {@link sayBudget} last painted. The ceiling is deliberately outside {@link stateKey} — a
-   * bar rebuilt under an open menu closes it mid-choice — so nothing else notices the author
-   * picking one, and the label read the old number until the next turn bumped the revision.
+   * What {@link sayBudget} last painted. The ceiling is deliberately outside {@link stateKey},
+   * because a bar rebuilt under an open menu closes it mid-choice, so nothing else notices the
+   * author picking one and without this key the label would show the old number until the next
+   * turn bumped the revision.
    */
   private budgetKey = '';
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
@@ -223,7 +224,7 @@ export class ConvoEditor extends VnEditor {
    * an event arriving mid-answer must not throw it away. Cleared when the answers go back.
    */
   private askForm: AskForm | null = null;
-  /** The live **Submit answers** button, so typing can keep its tooltip's blank count true. */
+  /** The live Submit answers button, so typing can keep its tooltip's blank count true. */
   private sendAct: HTMLButtonElement | null = null;
   /**
    * The ask card's element, kept so a rebuild the author did not cause reattaches it rather than
@@ -286,7 +287,7 @@ export class ConvoEditor extends VnEditor {
     const ui = this.ui;
 
     this.bar.clear();
-    // Row one is what a turn is answered *with*; row two is what it costs and where it is kept.
+    // Row one is what a turn is answered with; row two is what it costs and where it is kept
     const top = this.bar.row();
     const low = this.bar.row();
 
@@ -310,8 +311,8 @@ export class ConvoEditor extends VnEditor {
     const model = top.menu(ui.model || 'model…', models);
     model.description = 'Which model answers. Switching takes effect on the next turn.';
 
-    // Only what this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable thinks
-    // unconditionally, so it is never offered `no thinking`.
+    // Offers only the levels this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable
+    // thinks unconditionally, so it is never offered `no thinking`
     const offered = effortChoicesFor(ui.model);
     const efforts: MenuTemplate = offered.map((choice) => [
       effortLabel(choice),
@@ -403,13 +404,13 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * The running total, the way a terminal agent shows one: what has been spent on this
-   * conversation, not on this turn. It reads `—` until a provider reports something, because a
-   * mock backend and a backend that does not say are both `0`, and `0` would look like a bug.
+   * The running total: what has been spent on this conversation, not on this turn. It reads `—`
+   * until a provider reports something, because a mock backend and a backend that does not report
+   * usage are both `0`, and `0` would look like a bug.
    *
-   * What it counts is the *uncached* half — fresh input plus output. Total input climbs by the
-   * whole cached prefix on every step of a long turn, so a counter reading it says a one-sentence
-   * answer cost forty thousand tokens. The full split is a hover away.
+   * It counts the uncached half, fresh input plus output. Total input climbs by the whole cached
+   * prefix on every step of a long turn, so a counter reading it would say a one-sentence answer
+   * cost forty thousand tokens. The full split is in the tooltip.
    */
   private sayTokens(): void {
     if (!this.tokensLbl) return;
@@ -420,16 +421,16 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * The saved conversations, as path.ux's *fancy* menu — the one boolean that turns a menu into a
-   * searchable one, which is all a list that only ever grows needs.
+   * The saved conversations, drawn as path.ux's searchable menu, which is what a list that only
+   * grows needs.
    *
    * The list is fetched on the click rather than held on the pane: threads are written by main as
    * a turn runs, so anything cached here would be a menu that does not list the conversation the
    * author is having.
    *
-   * Every row carries an explicit id in the last slot. `createMenu` reads `item[5]` for any row
-   * longer than four, so a row with a **tooltip** and no id is registered under `undefined` and
-   * its callback is never found — the click lands, the menu closes, and nothing happens.
+   * Every row carries an explicit id in the last slot. `createMenu` reads `item[5]` for a row
+   * longer than four, so a row with a tooltip and no id is registered under `undefined` and its
+   * callback is never found: the click lands, the menu closes, and nothing happens.
    */
   private async showThreads(): Promise<void> {
     const outcome = await exec('agent.threads');
@@ -480,8 +481,8 @@ export class ConvoEditor extends VnEditor {
     dbox.appendChild(el('div', 'nameplate', 'VNAUTHOR'));
     this.lineEl = el('div', 'line') as HTMLDivElement;
     dbox.appendChild(this.lineEl);
-    // Built once, shown while busy: a turn that says nothing for thirty seconds is otherwise
-    // indistinguishable from one that never started. One word, and `@keyframes` moves it.
+    // Built once and shown while busy: a turn that says nothing for half a minute is otherwise
+    // indistinguishable from one that never started. `@keyframes` animates the one word
     this.workingEl = el('div', 'working', 'working') as HTMLDivElement;
     dbox.appendChild(this.workingEl);
     stage.appendChild(dbox);
@@ -517,8 +518,8 @@ export class ConvoEditor extends VnEditor {
     composer.appendChild(this.sendBtn);
 
     // Through the registry like everything else, so interrupting from here and interrupting from
-    // the palette are one act with one record — and the refusal, if the turn ended in the
-    // meantime, is the command's own sentence.
+    // the palette are one act with one record. A turn that ended in the meantime is refused in
+    // the command's own words
     this.stopBtn = document.createElement('button');
     this.stopBtn.className = 'stop';
     this.stopBtn.textContent = '■';
@@ -553,8 +554,8 @@ export class ConvoEditor extends VnEditor {
     this.workingEl.style.display = state.busy ? 'block' : 'none';
     this.drawChips(state.suggestions);
 
-    // Detaching the reused ask card drops focus to the body even though the node survives, so
-    // where the author's caret was is put back once the card is in the document again.
+    // Detaching the reused ask card drops focus to the body even though the node survives, so the
+    // caret is restored once the card is back in the document
     const root = this.transcript.getRootNode() as Document | ShadowRoot;
     const active = root.activeElement as HTMLElement | null;
     const refocus = active && this.askCardEl?.contains(active) ? active : null;
@@ -582,9 +583,9 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * The openers, as chips. Clicking one **fills** the composer and focuses it — it does not send.
-   * The chip is there to teach the shape of a useful prompt, and sending it would remove the one
-   * moment where the author edits it into what they actually meant.
+   * The openers, as chips. Clicking one fills the composer and focuses it, and sends nothing. The
+   * chip teaches the shape of a useful prompt, and sending it would remove the moment where the
+   * author edits it into what they actually meant.
    */
   private drawChips(suggestions: readonly string[]): void {
     this.chipsEl.textContent = '';
@@ -608,8 +609,8 @@ export class ConvoEditor extends VnEditor {
       turn.appendChild(el('div', 'bubble', item.text));
       return turn;
     }
-    // A tool call and a refusal are the same shape — the verb carries the colour, so a blocked
-    // one reads as the same act, stopped.
+    // A tool call and a refusal use the same shape with the verb coloured differently, so a
+    // blocked call reads as the same act stopped
     const action = el('div', item.role === 'blocked' ? 'action blocked' : 'action');
     action.appendChild(el('span', item.role === 'agent' ? '' : 'verb', item.text));
     return action;
@@ -665,14 +666,14 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * The agent asked something and its turn is parked on the answer. It wears the plan card's
-   * shape because it is the same kind of moment — the conversation stopped, waiting on the author
-   * — and the box takes focus on arrival, since nothing else on this pane is worth typing into.
+   * The agent asked something and its turn is parked on the answer. It takes the plan card's shape
+   * because it is the same kind of moment, with the conversation stopped and waiting on the author,
+   * and the box takes focus on arrival since nothing else on this pane is worth typing into.
    *
-   * A request carries a *form*: usually one question, sometimes several the model wants settled
-   * together. Several are drawn one page at a time with **‹ Back** / **Next ›** between them and
-   * one **Submit answers** at the end, because a wall of four questions is read as a chore while
-   * one question with a pager is read as a question. One question draws exactly as it always did.
+   * A request carries a form: usually one question, sometimes several the model wants settled
+   * together. Several are drawn one page at a time with ‹ Back / Next › between them and one
+   * Submit answers at the end, because a wall of four questions reads as a chore while one
+   * question with a pager reads as a question. A single question draws as it always did.
    */
   private askCard(request: AskRequest): HTMLElement {
     const form = this.formFor(request);
@@ -697,8 +698,8 @@ export class ConvoEditor extends VnEditor {
     body.appendChild(this.drawActs(form, choices.length > 0));
     card.appendChild(body);
 
-    // Per *page*, not per request: paging to question 3 should put the caret on question 3, and
-    // an event that redraws the card mid-answer should leave it where the author put it.
+    // Keyed per page rather than per request: paging to question 3 puts the caret on question 3,
+    // and an event that redraws the card mid-answer leaves the caret where the author put it
     const here = `${request.id}:${form.at}`;
     if (this.focusedAsk !== here) {
       this.focusedAsk = here;
@@ -839,10 +840,10 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * What the one button that ends the form promises. Blank is a real answer — "nothing to add" is
-   * what the tool exists to hear — so what is still empty is said out loud rather than used to
-   * grey the button out. Recomputed on every keystroke, because a stale count is a lie about the
-   * thing the author just typed.
+   * What the one button that ends the form promises. A blank answer is a real answer (the tool
+   * exists to hear "nothing to add") so what is still empty is named in the tooltip rather than
+   * used to grey the button out. Recomputed on every keystroke, because a stale count would
+   * misstate what the author just typed.
    */
   private sendTitle(form: AskForm, listed: boolean): string {
     if (form.questions.length === 1) {
@@ -879,12 +880,12 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * The way out of a list that does not have the answer on it. It **answers** rather than
-   * dismissing the card: the turn is parked on this reply, so a card that closed without one
-   * would hang. What it sends is the author's own position, and the transcript shows it as theirs.
+   * The way out of a list that does not have the answer on it. It answers rather than dismissing
+   * the card, because the turn is parked on this reply and a card closed without one would hang.
+   * What it sends is the author's own position, and the transcript shows it as theirs.
    *
-   * On a form it fills in every question the author has *not* answered, and leaves the ones they
-   * have — declining to pick is a thing you can mean about some of a form and not the rest.
+   * On a form it fills in every question the author left unanswered and leaves the answered ones
+   * alone, since declining to pick can be meant about some of a form and not the rest.
    */
   private chatButton(form: AskForm): HTMLButtonElement {
     const chat = document.createElement('button');
@@ -901,7 +902,7 @@ export class ConvoEditor extends VnEditor {
     return chat;
   }
 
-  /** What **Answer →** / **Submit answers** sends: every page's picks, then what was typed. */
+  /** What Answer → and Submit answers send: every page's picks, then what was typed. */
   private reply(): void {
     if (this.askForm) this.sendAnswers(answersOf(this.askForm));
   }

@@ -1,13 +1,13 @@
 /**
- * The state of an ask form while the author is filling it in — the paging, the picks and the
- * typed-beside-them text, with none of the drawing.
+ * State of an ask form while the author is filling it in: the paging, the picks, and the text
+ * typed beside them. Drawing lives elsewhere.
  *
- * A form exists because a model that needs three things settled should not have to park its turn
- * three times: the author answers them together and submits once. One question is a one-page
- * form, so there is a single shape here rather than a question and a form that drift apart.
+ * One form covers several questions so a model that needs three things settled asks once instead
+ * of parking its turn three times. A single question is a one-page form, so there is one shape
+ * here rather than a separate question type.
  *
- * Everything is a pure transition on an immutable value: the pane holds one of these and swaps it,
- * which is what lets the paging be tested at all in a node-only jest project.
+ * Every function is a pure transition on an immutable value. The pane holds one of these and
+ * swaps it, which is what makes the paging testable in a node-only jest project.
  */
 import type { AskQuestion } from '../../src/shared/ipc.js';
 
@@ -17,7 +17,7 @@ export interface AskForm {
   readonly at: number;
   /** What is ticked on each page, in the order it was clicked. */
   readonly picked: readonly (readonly string[])[];
-  /** What was typed beside the list on each page — or instead of it, where there is none. */
+  /** What was typed beside the list on each page. On a page with no list it is the whole answer. */
   readonly typed: readonly string[];
 }
 
@@ -51,9 +51,8 @@ export function goTo(form: AskForm, at: number): AskForm {
 }
 
 /**
- * Tick a choice on the current page. A multi-pick toggles, because the second choice is the whole
- * point; a single-pick replaces, because picking again is changing your mind rather than adding
- * to it.
+ * Tick a choice on the current page. A multi-pick toggles the choice. A single-pick replaces
+ * whatever was picked before.
  */
 export function pick(form: AskForm, choice: string): AskForm {
   const multi = pageOf(form)?.multi === true;
@@ -76,8 +75,8 @@ export function type(form: AskForm, text: string): AskForm {
 }
 
 /**
- * One page's answer: what was picked, then anything typed beside it. Both, not either — a list
- * plus "…but only in the second act" is a real answer and the text box is there to allow it.
+ * One page's answer: what was picked, then anything typed beside it. Both are included, because a
+ * picked list plus a typed qualification is a single answer.
  */
 export function answerAt(form: AskForm, at: number): string {
   const typed = (form.typed[at] ?? '').trim();
@@ -90,23 +89,23 @@ export function answersOf(form: AskForm): string[] {
 }
 
 /**
- * Which pages are still blank, one-based, for the submit button's sentence. Blank is *allowed* —
- * saying nothing is an answer the tool exists to hear — so this names them rather than blocking.
+ * Which pages are still blank, one-based, for the submit button's sentence. A blank page is
+ * allowed, so this names the blank pages rather than blocking submission.
  */
 export function blankPages(form: AskForm): number[] {
   return form.questions.map((_, i) => i + 1).filter((n) => answerAt(form, n - 1) === '');
 }
 
 /**
- * Whether clicking a choice should answer the whole form there and then. Only for the shape where
- * there is provably nothing else to say: one question, one pick. Any form with a second page has
- * a Submit button, because an answer sent by a stray click cannot be taken back.
+ * Whether clicking a choice should submit the whole form immediately. True only for a single
+ * question with a single pick. A form with a second page gets a Submit button instead, because an
+ * answer sent by a stray click cannot be taken back.
  */
 export function answersOnPick(form: AskForm): boolean {
   return form.questions.length === 1 && pageOf(form)?.multi !== true;
 }
 
-/** Where the author is, said the way the card says it. Empty for a form of one. */
+/** The card's page label. Empty when the form has one question. */
 export function pageLabel(form: AskForm): string {
   return form.questions.length > 1 ? `Question ${form.at + 1} of ${form.questions.length}` : '';
 }

@@ -1,8 +1,8 @@
 /**
  * The impure shell of the DOM adapter: ALL browser reads happen here, in one batched
  * pass, and the output is a plain serializable snapshot tree. Every decision worth
- * testing (stacking, pick, attribution) lives in pure functions over that tree — jsdom
- * has no layout engine, so this file is kept as close to logic-free as CI's blind spot.
+ * testing (stacking, pick, attribution) lives in pure functions over that tree. jsdom
+ * has no layout engine, so CI cannot cover this file and it is kept close to logic-free.
  *
  * Browser objects are typed structurally (`ElementLike` …) because the root tsconfig
  * compiles packages without `lib.dom`; the renderer passes the real `document`.
@@ -109,7 +109,7 @@ export function snapshotDom(doc: DocumentLike): DomSnapshot {
   function visit(el: ElementLike): SnapNode | null {
     const tag = el.tagName.toLowerCase();
     if (SKIP_TAGS.has(tag)) return null;
-    // Self-exclusion: the debugger never captures its own overlay (research §3-DOM).
+    // The debugger never captures its own overlay (research §3-DOM)
     if (el.hasAttribute('data-dbg-overlay')) return null;
 
     const cs = win!.getComputedStyle(el);

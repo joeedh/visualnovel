@@ -1,7 +1,7 @@
 /**
- * On-demand concept images: what a sentence produces, what it binds to, and — the contract that
- * matters — that nothing downstream sees it. A concept has no task node and no place in any plan,
- * so a project that holds one must plan exactly what it planned before.
+ * On-demand concept images: what a sentence produces, what it binds to, and the contract that
+ * nothing downstream sees it. A concept has no task node and no place in any plan, so a project
+ * that holds one must plan exactly what it planned before.
  */
 import { makeProject, SCRIPTS } from '@vn/testkit';
 import type { AssetRef, ImageProvider, ImageResult, ProjectModel } from '@vn/types';
@@ -166,7 +166,7 @@ describe('generateConcept', () => {
     } finally {
       await p.cleanup();
     }
-    // Two full scheduler passes over a real project on disk; the default 5s is for pure tests.
+    // Two full scheduler passes over a real project on disk need more than jest's default timeout
   }, 30_000);
 });
 
@@ -189,7 +189,7 @@ describe('redrawConcept', () => {
       expect(calls[1]!.prompt).toBe(edited);
       const asset = store.manifest().find((a) => a.hash === again.ref.hash)!;
       expect(asset.kind).toBe('concept');
-      // The binding and the name carry: it is the same sketch, drawn again.
+      // The binding and the name carry over, because this is the same sketch drawn again
       expect(asset.satisfies).toEqual([{ locationId: 'rooftop' }]);
       expect(asset.title).toBe('an aerial shot of the rooftop at dawn');
       expect(asset.prompt).toBe(edited);

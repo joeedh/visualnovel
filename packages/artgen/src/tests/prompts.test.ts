@@ -176,8 +176,8 @@ describe('the override a builder resolves for itself', () => {
 
 describe('renderPrompt', () => {
   it("re-supplies the space paletteClause's leading one gets trimmed of", () => {
-    // `paletteClause` returns ` Palette: …` — the chunk trims it, and the join puts it back. Both
-    // spellings collapse to the same string, which is the whole byte-identity argument.
+    // `paletteClause` returns ` Palette: …`; the chunk trims that leading space and the join puts
+    // it back, so both spellings collapse to the same string.
     const c = character('aiko');
     const clause = paletteClause(c.palette);
     expect(clause.startsWith(' ')).toBe(true);

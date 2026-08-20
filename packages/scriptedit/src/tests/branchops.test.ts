@@ -151,7 +151,7 @@ describe('spliceScene', () => {
         {
           sceneId: 'arrival',
           choices: [
-            // Rule 4: the label stays with the decision, only its first stop changed.
+            // `spliceScene` rule 4: the label stays with the decision, only its first stop changed
             { label: 'Introduce yourself', goto: 'hallway' },
             { label: 'Look at the view', goto: 'rooftop' },
           ],
@@ -172,7 +172,8 @@ describe('spliceScene', () => {
     });
   });
 
-  // Rule 1: `next` is only followed when a scene has no choices, so this edge would be dead.
+  // `spliceScene` rule 1: `next` is only followed when a scene has no choices, so this edge would
+  // be dead
   it('refuses a middle scene that already forks', () => {
     const op = spliceScene(WITH_SPARE, { scene: 'crossroads', from: 'greet' });
     expect(op.ok).toBe(false);
@@ -180,7 +181,8 @@ describe('spliceScene', () => {
     expect(!op.ok && op.error).toContain('would never be taken');
   });
 
-  // Rule 2: nothing here touches hallway's inbound edges — only arrival's choice moves.
+  // `spliceScene` rule 2: the middle scene's other inbound edges are untouched; only the source
+  // scene's edge moves
   it('leaves the middle scene’s other inbound edges alone', () => {
     const inbound = scenes(
       { id: 'a', choices: [], next: 'b' },
@@ -192,7 +194,8 @@ describe('spliceScene', () => {
     expect(op.ok && op.edits.map((e) => e.sceneId)).toEqual(['a', 'c']);
   });
 
-  // Rule 3: a loop back to a hub is normal VN structure — only the degenerate drops refuse.
+  // `spliceScene` rule 3: a loop back to a hub is normal VN structure, so only the degenerate
+  // drops refuse
   it('allows a splice that creates a cycle', () => {
     const loop = scenes(
       { id: 'hub', choices: [], next: 'a' },
@@ -235,8 +238,8 @@ describe('spliceScene', () => {
     });
   });
 
-  // Splicing over an existing `next` drops an edge; the message is where the CommandRecord
-  // learns about it, so it is pinned rather than left to prose.
+  // Splicing over an existing `next` drops an edge, and the message is where the CommandRecord
+  // learns about it, so the exact wording is pinned here
   it('reports the next it replaced', () => {
     const chain = scenes(
       { id: 'a', choices: [], next: 'b' },

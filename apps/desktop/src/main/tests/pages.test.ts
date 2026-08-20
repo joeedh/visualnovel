@@ -27,7 +27,7 @@ describe('workflowYaml', () => {
     const yaml = workflowYaml('main', 'pages');
     expect(yaml).toContain('git cat-file -e FETCH_HEAD:.vn-pages');
     expect(yaml).toContain('::error::');
-    // The guard is only worth having if it precedes the destructive step.
+    // The marker check has to come before the force push
     expect(yaml.indexOf('cat-file')).toBeLessThan(yaml.indexOf('git push -f'));
   });
 

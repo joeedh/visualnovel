@@ -14,7 +14,7 @@ export async function logTask(paths: ProjectPaths, task: AnyTask): Promise<void>
   await appendJsonl(paths.tasksLog, task);
 }
 
-/** Rebuild a TaskGraph by replaying the status log; missing log → empty graph. */
+/** Rebuild a TaskGraph by replaying the status log. A missing log gives an empty graph. */
 export async function loadGraph(paths: ProjectPaths): Promise<TaskGraph> {
   const records = await readJsonl<AnyTask>(paths.tasksLog);
   const latest = new Map<string, AnyTask>();

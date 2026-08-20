@@ -10,9 +10,9 @@ import type { EditorId } from '../../src/shared/editors.js';
 
 /**
  * The one editor an automatic open steps around. A conversation is the only pane whose contents
- * the author *wrote* — everything else redraws from the project, so covering it costs a scroll
+ * the author wrote — everything else redraws from the project, so covering it costs a scroll
  * position at worst, while covering a transcript mid-turn hides the answer they are waiting for.
- * A preference, never a rule: a mesh with nowhere else still opens over it.
+ * This is a preference rather than a rule: a mesh with nowhere else still opens over it.
  */
 const SPOKEN_IN: EditorId = 'convo';
 
@@ -47,20 +47,20 @@ export const NO_PANE = -1;
 /**
  * The pane showing an editor, or `NO_PANE`. The first, if the author opened two.
  *
- * Floating popups count. This is the question "is it on screen already", and the answer a popup
- * gives is yes — which is what stops a second popup being made for an editor already in one.
+ * Floating popups count, because the question here is whether the editor is on screen already.
+ * That is what stops a second popup being made for an editor already in one.
  */
 export function paneShowing(panes: readonly Pane[], editor: string): number {
   return panes.findIndex((pane) => !pane.chrome && pane.editor === editor);
 }
 
 /**
- * The pane an `open` lands in: the active one, or — when the pointer is over chrome, or nowhere
- * at all — the biggest, which is the one the author is most likely looking at.
+ * The pane an `open` lands in. Uses the active pane. When the pointer is over chrome or over
+ * nothing, uses the biggest pane instead, which is the one the author is most likely looking at.
  *
- * This is "where the author is", and it answers a conversation pane like any other: closing the
- * pane the pointer is in, or splitting it, means *that* pane. Putting a different editor there is
- * {@link paneToShowIn}, which is the one that steps around a transcript.
+ * A conversation pane is answered like any other, because closing or splitting the pane the
+ * pointer is in means that pane. Putting a different editor there goes through
+ * {@link paneToShowIn}, which steps around a transcript.
  */
 export function paneToUse(panes: readonly Pane[]): number {
   const usable = panes.filter(arrangeable);
@@ -74,10 +74,9 @@ export function paneToUse(panes: readonly Pane[]): number {
 }
 
 /**
- * The pane an automatic open *replaces*: {@link paneToUse}, unless that would cover a
- * conversation and something else is free. The author pointing at the transcript is not a request
- * to lose it — a click in the tree while reading what the agent said would otherwise open the
- * scene over the sentence being read.
+ * The pane an automatic open replaces. Uses {@link paneToUse}, unless that would cover a
+ * conversation and another pane is free. A click in the tree while reading what the agent said
+ * would otherwise open the scene over the sentence being read.
  */
 export function paneToShowIn(panes: readonly Pane[]): number {
   const usable = panes.filter(arrangeable);
@@ -113,9 +112,9 @@ export function paneToClose(panes: readonly Pane[]): number {
 }
 
 /**
- * Whether *this* pane may be collapsed — the same two rules `paneToClose` applies, asked of a pane
- * the author picked rather than of the mesh. A picker needs the verdict per pane, because it has to
- * say no while the pointer is still moving.
+ * Whether the pane at `index` may be collapsed, by the same two rules `paneToClose` applies to the
+ * mesh. A picker needs the verdict per pane, because it has to say no while the pointer is still
+ * moving.
  */
 export function paneClosable(panes: readonly Pane[], index: number): boolean {
   const pane = panes[index];
@@ -123,7 +122,7 @@ export function paneClosable(panes: readonly Pane[], index: number): boolean {
   return panes.filter(arrangeable).length >= 2;
 }
 
-/** The candidates worth covering: everything, minus the conversations, unless that is all of it. */
+/** The candidates worth covering. Drops the conversation panes, unless they are all of them. */
 function sparing(candidates: readonly Pane[]): readonly Pane[] {
   const quiet = candidates.filter((pane) => pane.editor !== SPOKEN_IN);
   return quiet.length > 0 ? quiet : candidates;

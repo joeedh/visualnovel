@@ -17,9 +17,9 @@ import {
 import { scenesTouchedBy, shotFallout, type ShotsByScene } from '../shotfallout.js';
 
 /**
- * Four lines in `arrival`, two in `rooftop` that it continues to, and two in an `attic` nothing
- * points at — the only scene a delete can reach, since `deleteScene` refuses while it is a target.
- * Ids come from the real reader's allocator rather than being stamped by hand.
+ * Four lines in `arrival`, two in the `rooftop` it continues to, and two in an `attic` nothing
+ * points at. `attic` is the only scene a delete can reach, because `deleteScene` refuses while a
+ * scene is still a target. Ids come from the real reader's allocator rather than stamped by hand.
  */
 const SCRIPT = `INT. CLASSROOM - EVENING
 
@@ -67,7 +67,7 @@ const applied = (op: LineOp): AppliedLineOp => {
   return op;
 };
 
-/** A persisted shot: rendered when `image` is given, since drift only applies to real art. */
+/** A persisted shot. Passing `image` makes it rendered, since drift only applies to real art. */
 const shot = (id: string, sceneId: string, lines: string[], image?: string): Shot => ({
   id,
   sceneId,
@@ -122,7 +122,8 @@ describe('a shot whose lines all leave together', () => {
     const out = shotFallout(split(), shots);
 
     expect(out.carried).toEqual([['arrival__beat1', 'climb']]);
-    // `arrival` has no shots left, so its file goes: an absent one is the only "decompose me".
+    // `arrival` has no shots left, so its file is removed; an absent file is the only signal
+    // meaning decompose this scene
     expect(out.removes).toEqual(['arrival']);
     expect(out.writes.has('arrival')).toBe(false);
     expect(out.note).toMatch(/arrival has no shots left and will be decomposed again/);

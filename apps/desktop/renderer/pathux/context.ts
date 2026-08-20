@@ -17,8 +17,8 @@ export interface VnContext extends ContextLike<ShellApp, ToolStack> {
 }
 
 /**
- * The app object the overlays forward from; `AppState` in path.ux's own example. The last
- * two members are there for `simple.saveFile`/`loadFile`, which take an app-shaped thing and
+ * The app object the overlays forward from; `AppState` in path.ux's own example. `screen` and
+ * `screenClass` are there for `simple.saveFile`/`loadFile`, which take an app-shaped thing and
  * swap its screen for the one they read.
  */
 export interface ShellApp {
@@ -71,10 +71,7 @@ class VnOverlay extends ContextOverlay {
 
 Context.register(VnOverlay);
 
-/**
- * The context handed to the screen. The overlay supplies the members at runtime; the
- * `declare`s here are what let this satisfy path.ux's `ContextLike` contract.
- */
+/** The context handed to the screen. `VnOverlay` supplies its members at runtime. */
 export class ShellContext extends Context<VnOverlay> {
   constructor(app: ShellApp) {
     super(app);

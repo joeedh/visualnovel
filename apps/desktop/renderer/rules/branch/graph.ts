@@ -1,8 +1,8 @@
 /**
  * Projecting a `StoryGraph` into the neutral shapes `renderer/graph/` lays out.
  *
- * The inverse — `scenesOf`, which rebuilds each scene's `choices`/`next` from the edges being
- * drawn so a drop can be judged by the *real* `branchops` mid-drag — lives in
+ * The inverse is `scenesOf`, which rebuilds each scene's `choices`/`next` from the edges being
+ * drawn so a drop can be judged mid-drag by the real `branchops`. It lives in
  * `src/shared/interactions.ts` with the gestures that need it.
  */
 import type { StoryGraph } from '../../../src/shared/ipc';

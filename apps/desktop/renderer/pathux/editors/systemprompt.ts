@@ -9,15 +9,16 @@ import type { AgentSystem } from '../../../src/shared/ipc.js';
 /**
  * The system prompt the agent's next turn will carry, in its sections.
  *
- * Named but not listed (`offered: false` in `EDITORS`): it is somewhere to look when a turn
- * misbehaves, not somewhere to work, so it is reached by name — `view.open(editor='systemprompt')`
- * from the command palette — and stays out of the two menus an author browses editors in.
+ * Named but not listed (`offered: false` in `EDITORS`), so it is reached by name —
+ * `view.open(editor='systemprompt')` from the command palette — and stays out of the two menus an
+ * author browses editors in. It is a place to look when a turn misbehaves rather than a place to
+ * work.
  *
  * Read-only, and singular in the same way the Project pane is: the prompt is a property of the
  * workspace rather than of anything selected, so this pane has no subject and takes no pin. It
- * asks main for the prompt rather than reconstructing it, because the *point* of the pane is that
- * what it shows is the same assembly `runAgent` makes — a second implementation here could
- * disagree with the one that ships, and be wrong in exactly the case being investigated.
+ * asks main for the prompt rather than reconstructing it, so that what it shows is the same
+ * assembly `runAgent` makes. A second implementation here could disagree with the one that ships,
+ * and be wrong in exactly the case being investigated.
  */
 export class SystemPromptEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -119,7 +120,7 @@ export class SystemPromptEditor extends VnEditor {
 
     for (const section of view.sections) {
       // The author's own file is the one part of this a reader can go and change, so it is the
-      // one part drawn warm.
+      // one section given the `authored` styling
       const authored = section.name.startsWith('PROJECT CONTEXT');
       const card = el('div', authored ? 'sp-card authored' : 'sp-card');
       const head = el('h2', '', section.name);

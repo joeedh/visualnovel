@@ -50,11 +50,11 @@ interface ChunkDrag {
  * arrangement the inspector has with `ui.taskHash`, and for the same reason: the pane follows the
  * selection without the tree knowing it is open.
  *
- * The prompt is **read-only** for every kind but one. A derived prompt is folded into the task's
+ * The prompt is read-only for every kind but one. A derived prompt is folded into the task's
  * content hash and rewritten on every planning pass, so an editable one would freeze the asset
- * against every later improvement to the builders; the boxes underneath are its editable half —
+ * against every later improvement to the builders. The boxes underneath are its editable half:
  * art notes are authored input, appended to the derivation, and setting one re-keys the task, so
- * regenerating is `pipeline.run` and nothing more. A **concept** has no builder: its prompt is the
+ * regenerating is `pipeline.run` and nothing more. A concept has no builder — its prompt is the
  * sentence it was asked for, so the box holds it and `art.redraw` draws it again.
  */
 export class AssetEditor extends VnEditor {
@@ -107,9 +107,9 @@ export class AssetEditor extends VnEditor {
     this.surface.className = 'as-surface';
     this.appendSurface(this.surface);
 
-    // Anything that wrote could have been the art-notes edit this pane just ran, or an undo of
-    // one — either way the derived prompt and the drift flag are re-derived on read, so the
-    // honest move is to ask again rather than patch what is drawn.
+    // Any write could have been the art-notes edit this pane just ran, or an undo of one. The
+    // derived prompt and the drift flag are re-derived on read in both cases, so the pane asks
+    // again rather than patching what it drew.
     const reload = (): void => {
       if (this.shown !== '' && this.dirty.size === 0 && !this.promptDirty)
         void this.load(this.shown);
@@ -174,8 +174,8 @@ export class AssetEditor extends VnEditor {
 
   /**
    * A complaint this pane raised on its own — a refusal from a rule module, or a box left empty.
-   * Filed rather than merely shown: it is an event about an asset like the commands around it,
-   * and main pushes it back, which is what displays it.
+   * Filed rather than merely shown, because it is an event about an asset like the commands
+   * around it. Main pushes the notification back, and that push is what displays it.
    */
   private complain(message: string): void {
     notify({ category: 'asset', level: 'warn', message });
@@ -296,7 +296,7 @@ export class AssetEditor extends VnEditor {
     void this.load(this.shown);
   }
 
-  /** Every prompt edit is one command, and the pane re-reads: a chunk edit moves the whole prompt. */
+  /** Every prompt edit is one command, and the pane re-reads, since one clause moves the whole prompt. */
   private async runPrompt(id: string, props: Record<string, PropValue>): Promise<void> {
     const outcome = await exec(id, props);
     report(outcome);
@@ -318,7 +318,7 @@ export class AssetEditor extends VnEditor {
     await this.runPrompt('prompt.setChunk', { hash: this.shown, chunk, op, text });
   }
 
-  /** Commit one clause box. An empty box is a refusal from the command, so it never reaches it. */
+  /** Commit one clause box. The command refuses empty text, so an empty box is never sent to it. */
   private async commitChunk(
     chunk: string,
     how: 'replace' | 'append',
@@ -355,7 +355,7 @@ export class AssetEditor extends VnEditor {
   }
 
   /**
-   * Follow a chunk to the words behind it. A publish must land **before** the open: the new pane
+   * Follow a chunk to the words behind it. A publish must land before the open: the new pane
    * reads the selection on its first `update()`, so publishing after it shows the previous one.
    */
   private async openOrigin(action: OriginAction & { ok: true }): Promise<void> {
@@ -385,8 +385,9 @@ export class AssetEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /**
-   * The grab: every insertion point judged **once**, from the same pure rule the command runs, so
-   * a mid-gesture verdict is the verdict that would happen. Nothing moves until pointerup.
+   * Judge every insertion point once on the grab, from the same pure rule the command runs, so a
+   * mid-gesture verdict matches the verdict that would apply on commit. Nothing moves until
+   * pointerup.
    */
   private grabChunk(view: PromptView, chunk: string, rail: HTMLElement, event: PointerEvent): void {
     event.preventDefault();
@@ -521,8 +522,8 @@ export class AssetEditor extends VnEditor {
       this.bar.button('Redraw', () => void this.redraw()).description =
         'Draw this sketch again from the prompt below, as a new one beside it';
     } else if (info?.kind === 'reference') {
-      // An upload has neither act, for the opposite reason to a concept: nothing generated it, so
-      // there is no work to bless and no task to requeue. It counts by being pointed at.
+      // An upload has neither act, because nothing generated it: there is no output to approve
+      // and no task to requeue. It takes part by being pointed at from a prompt clause
       this.bar.label('uploaded').style['padding'] = '0px 8px';
     } else {
       const approve = this.bar.button(
@@ -586,15 +587,15 @@ export class AssetEditor extends VnEditor {
 
     this.surface.appendChild(this.head(info));
     this.surface.appendChild(this.frame(info));
-    // Only when there are rows: an empty strip on every portrait would say nothing that its
-    // absence does not, and `unapproved` is only ever set when one of these rows is pending.
+    // Drawn only when there are rows, since an empty strip on every portrait would add nothing,
+    // and `unapproved` is only ever set when one of these rows is pending.
     if (info.prereqs.length > 0) this.surface.appendChild(this.drawnFrom(info));
 
     const promotable = promoteAction(info);
     if (promotable.ok) this.surface.appendChild(this.promoteStrip(promotable.locationId));
 
-    // Mutually exclusive with the one above by construction: a concept fills no slot, and nothing
-    // that fills one is a concept.
+    // Mutually exclusive with the promote strip by construction: a concept fills no slot, and
+    // nothing that fills a slot is a concept.
     const replaceable = replaceAction(info);
     if (replaceable.ok) this.surface.appendChild(this.replaceStrip(replaceable.slot));
 
@@ -650,7 +651,8 @@ export class AssetEditor extends VnEditor {
     }
 
     if (view.frozen) {
-      // A concept's prompt is the box above; anything else frozen has only what the bytes recorded.
+      // Anything frozen that is not authored has only what the bytes recorded; a concept's prompt
+      // is already in the box above.
       if (!authored) {
         this.surface.appendChild(el('div', 'as-section', 'PROMPT · AS RECORDED'));
         this.surface.appendChild(el('div', 'as-prompt', view.text || 'No prompt was recorded.'));
@@ -667,7 +669,7 @@ export class AssetEditor extends VnEditor {
     if (view.mode === 'custom') this.surface.appendChild(this.customBox(view));
     this.surface.appendChild(this.chunkList(view));
 
-    // The footer the drag speaks through: the verdict for the insertion point under the pointer.
+    // The footer a drag writes into, holding the verdict for the insertion point under the pointer
     this.dragNote = el('div', 'as-note');
     this.surface.appendChild(this.dragNote);
     this.surface.appendChild(
@@ -715,7 +717,7 @@ export class AssetEditor extends VnEditor {
     return row;
   }
 
-  /** The condensation and the chunks have parted company, and the condensation is still what runs. */
+  /** Shown when the condensation no longer matches the chunks; the condensation is still what runs. */
   private heldBanner(view: PromptView): HTMLElement {
     const banner = el('div', 'as-held', heldNote(view));
     const action = condenseAction(view);
@@ -802,7 +804,7 @@ export class AssetEditor extends VnEditor {
       thumb.src = `vnasset://${chip.pin}.${chip.ext}`;
       thumb.alt = chip.label;
       thumb.draggable = false;
-      // Elsewhere, always: this pane is showing the picture the reference is *for*.
+      // Opens elsewhere because this pane is showing the picture the reference belongs to
       thumb.addEventListener(
         'click',
         () => void exec('view.open', { editor: 'asset', where: 'elsewhere', subject: chip.pin }),
@@ -1001,12 +1003,12 @@ export class AssetEditor extends VnEditor {
    * The approval frontier, under the picture it belongs to: everything these bytes were drawn
    * from, in the order the task fed them to the model, each saying whether it stands.
    *
-   * **Deliberately not the reference strip.** That one lists the bytes pinned to a single prompt
-   * clause — evidence, per clause, detachable, and a click opens the picture *elsewhere* because
-   * it is a second thing to look at. This lists what the whole picture rests on; nothing here
-   * detaches, and a click retargets **this** pane, because the job is to walk up the chain
-   * approving as you go and a new pane per hop litters the mesh. One `← back` chip makes that
-   * walk reversible without keeping a history nobody asked for.
+   * This is deliberately not the reference strip. That strip lists the detachable bytes pinned to
+   * a single prompt clause, and a click there opens the picture in another pane because it is a
+   * second thing to look at. This strip lists what the whole picture rests on. Nothing here
+   * detaches, and a click retargets this pane, because the job is to walk up the chain approving
+   * as you go and a new pane per hop litters the mesh. One `← back` chip makes that walk
+   * reversible without keeping a longer history.
    */
   private drawnFrom(info: AssetInfo): HTMLElement {
     const strip = el('div', 'as-from');
@@ -1017,8 +1019,8 @@ export class AssetEditor extends VnEditor {
       'The pictures this one was drawn from. Each has to be approved before this one can be.';
     head.appendChild(title);
 
-    // Self-clearing: any other way of changing the subject leaves `backFor` naming a picture that
-    // is no longer on screen, so the chip is only offered on the hop it can actually undo.
+    // The chip clears itself: changing the subject some other way leaves `backFor` naming a
+    // picture no longer on screen, so the chip is offered only on the hop it can undo.
     if (this.back !== '' && this.backFor === info.hash) {
       const back = button('as-from-back', '← back');
       back.title = 'Back to the picture you came here from';
@@ -1028,13 +1030,13 @@ export class AssetEditor extends VnEditor {
     strip.appendChild(head);
 
     for (const p of info.prereqs) strip.appendChild(this.prereqRow(info, p));
-    // The same sentence the greyed Approve carries, said out loud: an author reading the list
-    // should not have to hover a disabled button to learn which row is holding it up.
+    // The same sentence the greyed Approve carries, shown here so an author reading the list can
+    // see which row is holding approval up without hovering a disabled button.
     if (info.unapproved) strip.appendChild(el('div', 'as-from-note', info.unapproved));
     return strip;
   }
 
-  /** One prerequisite. Disabled when the manifest has no such bytes, so the tooltip is the refusal. */
+  /** One prerequisite. Disabled when the manifest has no such bytes, and the tooltip then says why. */
   private prereqRow(info: AssetInfo, p: Prereq): HTMLElement {
     const row = button(`as-from-row${p.approved ? ' ok' : ''}`, '');
     row.appendChild(el('span', 'as-from-mark', p.approved ? '✓' : '·'));
@@ -1062,8 +1064,8 @@ export class AssetEditor extends VnEditor {
 
   /**
    * The concept's one offer: name a variant and this becomes that plate. Kept beside the image
-   * rather than in the header bar because it needs a field, and because it is the only thing on
-   * the pane that changes what the asset *is*.
+   * rather than in the header bar because it needs a field, and because it is the only control on
+   * the pane that changes which kind the asset is.
    */
   private promoteStrip(locationId: string): HTMLElement {
     const strip = el('div', 'as-promote');
@@ -1128,7 +1130,7 @@ export class AssetEditor extends VnEditor {
    */
   private promptStrip(): HTMLElement {
     const strip = el('div', 'as-redraw');
-    // What a `request` chunk's `⇱` scrolls to: the box those words came out of.
+    // The `⇱` on a `request` chunk scrolls here, to the box those words came out of
     strip.dataset['anchor'] = 'request';
 
     const text = document.createElement('textarea');
@@ -1178,7 +1180,7 @@ export class AssetEditor extends VnEditor {
 
   private rungBox(rung: ArtRungInfo): HTMLElement {
     const box = el('div', 'as-rung');
-    // What an `art-notes` chunk's `⇱` scrolls to: the box those words came out of.
+    // The `⇱` on an `art-notes` chunk scrolls here, to the box those words came out of
     box.dataset['rung'] = rung.target;
 
     const head = el('div', 'as-rung-head');
@@ -1216,8 +1218,9 @@ export class AssetEditor extends VnEditor {
    * The seed box that sits in a rung's heading. Narrow, and beside the notes rather than under
    * them, because it is not art direction: it asks for a different picture of the same words.
    *
-   * Empty is the whole vocabulary for "inherit" — 0 is a seed like any other — so the placeholder
-   * is what would be used instead, and the tooltip says where that comes from.
+   * An empty box is the only way to say "inherit", since 0 is a seed like any other. The
+   * placeholder shows the seed that would be used instead, and the tooltip says where it comes
+   * from.
    */
   private seedField(rung: ArtRungInfo): HTMLElement {
     const inherited = this.info?.configSeed;

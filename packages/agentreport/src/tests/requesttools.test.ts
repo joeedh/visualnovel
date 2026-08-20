@@ -8,7 +8,7 @@ const redactor = buildRedactor({
   entities: [{ id: 'ember', name: 'Ember Vale', kind: 'character' }],
 });
 
-/** A body the shapes below are read out of: two messages, a tool result, and a picture. */
+/** The body these tests read shapes out of: two messages, a tool result, and a picture. */
 const BODY = {
   model: 'claude-x',
   max_tokens: 4096,
@@ -100,7 +100,7 @@ describe('read_request without a path', () => {
     const res = await call(tools, 'read_request', { seq: 1 });
     expect(res.ok).toBe(true);
     const out = res.output;
-    // A scalar field is measured, not quoted: even `model` is content until proven otherwise.
+    // A scalar field is measured rather than quoted, `model` included
     expect(out).toContain('/model  string, 8 chars');
     expect(out).toContain('/max_tokens  4096');
     expect(out).toContain('/messages  3 message(s)');
@@ -109,7 +109,7 @@ describe('read_request without a path', () => {
     expect(out).toContain('tool_use_id=tu_9');
     expect(out).toContain('of base64 — not readable');
     expect(out).toContain('/tools  2: read_file, write_file');
-    // The shape, never the prose.
+    // The outline reports shapes and sizes, never the text of a message
     expect(out).not.toContain('walks west');
     expect(out).not.toContain('You are an author');
   });

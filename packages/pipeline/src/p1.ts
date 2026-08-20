@@ -1,14 +1,14 @@
+/**
+ * P1 location breakdown (report §P1). The deterministic baseline (scene-heading mining) already
+ * populated `model.locations`; this step enriches a location with a short, authored-looking
+ * breakdown markdown used both as human-editable `work/` output and as grounding for the P2
+ * reference prompts. With a mock or echo text provider (or when no enrichment is requested) it
+ * emits a deterministic breakdown, so the pipeline runs end-to-end without burning API calls.
+ */
 import type { Location, Providers } from '@vn/types';
 import { minedLocationsSchema } from '@vn/types';
 
-/**
- * P1 location breakdown (report §P1). The deterministic baseline (scene-heading mining)
- * already populated `model.locations`; this step enriches a location with a short,
- * authored-looking breakdown markdown used both as human-editable `work/` output and as
- * grounding for the P2 reference prompts. It degrades gracefully: with a mock/echo text
- * provider (or no enrichment requested) it emits a deterministic breakdown so the
- * pipeline runs end-to-end without burning API calls.
- */
+/** The breakdown markdown derived from a location as it stands, with no provider call. */
 export function deterministicBreakdown(location: Location): string {
   const variants = location.variants.map(
     (v) => `- ${v.id}${v.description ? `: ${v.description}` : ''}`,

@@ -42,7 +42,7 @@ describe('character round-trip', () => {
     const a = characterFromDoc(charDoc);
     if (!a.ok) throw new Error('setup');
     expect(a.value.outfits).toEqual([{ id: 'uniform', characterId: 'ren', description: '' }]);
-    // And writing it back does not grow an `outfits:` key in every existing character sheet.
+    // Writing the sheet back does not grow an `outfits:` key in every existing character sheet.
     expect(characterToDoc(a.value).data['outfits']).toBeUndefined();
   });
 
@@ -318,7 +318,7 @@ describe('prompt overrides', () => {
       },
     });
     if (!withRefs.ok) throw new Error('expected ok');
-    // A reference list is the whole override here: refs alone must not read as "says nothing".
+    // A reference list is the whole override here, so refs alone must still count as one.
     expect(withRefs.value.doc.data['prompt_override']).toEqual({
       mode: 'chunks',
       refs: {

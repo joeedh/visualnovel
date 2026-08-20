@@ -4,8 +4,8 @@
  * A generated markdown file is read in a narrow pane and reviewed as a line diff, so a paragraph
  * on one 900-column line is a single unreadable hunk every time a word inside it changes. The
  * system prompt asks for 100 columns; this is how `write_file` tells the agent when it did not
- * manage it. It is a warning and never a refusal — three constructs are longer than the limit by
- * nature, and a rule that fought them would be a rule the agent learns to work around.
+ * manage it. The result is a warning and never a refusal, because three constructs are longer
+ * than the limit by nature.
  */
 
 /** The column the agent is asked to wrap at. One number, quoted by the system prompt. */
@@ -19,9 +19,9 @@ function unbreakable(line: string, limit: number): boolean {
 /**
  * The 1-based line numbers of lines the agent could have wrapped and did not.
  *
- * Exempt: anything inside a fenced code block (a break changes what the code says), a table row
- * (markdown tables are one row per line by definition), and a line held long by a single word —
- * a URL or a path — since there is nowhere to break it.
+ * Three kinds of line are exempt. A line inside a fenced code block, because a break changes what
+ * the code says. A table row, because markdown tables are one row per line by definition. A line
+ * held long by a single word (a URL or a path) because there is nowhere to break it.
  */
 export function overlongLines(text: string, limit = WRAP_COLUMNS): number[] {
   const over: number[] = [];

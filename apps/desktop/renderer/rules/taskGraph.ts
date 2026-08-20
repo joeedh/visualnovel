@@ -1,20 +1,19 @@
 /**
- * The task DAG, derived from a `PipelineStatus`. Everything the graph view draws that is *not*
- * literally in `Task[]` is computed here, in pure functions, because all three of those things
- * are inferences and an inference the app cannot test is one it should not draw.
+ * The task DAG, derived from a `PipelineStatus`. Everything the graph view draws that is not
+ * literally in `Task[]` is computed here, in pure functions, so each inference is testable.
  *
  * There are exactly three of them:
  *
- * 1. **The gate is not an edge.** It is a planner predicate (`sceneUnblocked`), so a blocked run
- *    has no edge explaining itself. A synthetic barrier node is inserted, and ranking-only edges
- *    force everything it holds up *below* it.
- * 2. **`deps` understates coupling.** A `shot_image` lists only its location plate as a dep; the
+ * 1. The gate is not an edge. It is a planner predicate (`sceneUnblocked`), so a blocked run has
+ *    no edge explaining itself. A synthetic barrier node is inserted, and ranking-only edges
+ *    force everything it holds up below it.
+ * 2. `deps` understates coupling. A `shot_image` lists only its location plate as a dep; the
  *    subject portraits reach it through `inputs.refs`. Both are drawn — deps solid, resolved
  *    refs dashed.
- * 3. **A slot and the task that fills it are one picture.** `status.slots` is every picture the
+ * 3. A slot and the task that fills it are drawn as one node. `status.slots` is every picture the
  *    project implies; `status.tasks` is only what was plannable at the last wave. Where a slot
  *    has a task the planner actually emitted, the two collapse into a single node keyed by the
- *    task hash — otherwise the future would be drawn twice, once as a promise and once as work.
+ *    task hash, rather than drawing the same future twice — once as a promise and once as work.
  *    An unplanned slot is an addressable picture with a real name, so nothing here estimates.
  */
 import type { PipelineStatus, SlotNode, StoryGraph, Task } from '../../src/shared/ipc';
@@ -36,9 +35,9 @@ export type TaskNodeView =
 export const slotNodeId = (key: string): string => `slot:${key}`;
 
 export interface TaskGraphModel {
-  /** Nodes plus *ranking* edges — what `layoutGraph` is given. */
+  /** Nodes plus ranking edges — what `layoutGraph` is given. */
   graph: Graph;
-  /** The edges actually drawn. A subset of `graph.edges`: the barrier's are structural only. */
+  /** The edges actually drawn: a subset of `graph.edges`, since the barrier's are structural. */
   edges: GraphEdge[];
   nodes: Map<string, TaskNodeView>;
   /** The slots drawn as themselves — pictures the project implies that nothing has planned. */
@@ -47,7 +46,7 @@ export interface TaskGraphModel {
   barrier: { pending: string[]; below: Set<string> } | null;
 }
 
-/** The human-facing subject of a task: what it is *of*, as opposed to what kind it is. */
+/** The human-facing subject of a task: what it is of, as opposed to what kind it is. */
 export function subjectOf(task: Task): string {
   const inputs = task.inputs;
   if ('shotId' in inputs) return inputs.shotId;
@@ -70,8 +69,8 @@ const refsOf = (task: Task): readonly { hash: string }[] =>
 /**
  * The dashed half of the edge set: an input reference resolved back to the task that produced
  * it. A ref with no producing task is skipped rather than drawn to nowhere — an author-supplied
- * reference image is exactly that case and is not a graph edge at all. A ref that is *also* a
- * dep is skipped too, so the pair renders once, solid: the scheduler orders on it.
+ * reference image is exactly that case and is not a graph edge at all. A ref that is also a dep
+ * is skipped, so the pair renders once as the solid dep edge the scheduler orders on.
  */
 export function buildRefEdges(tasks: readonly Task[]): GraphEdge[] {
   const producer = new Map<string, string>();
@@ -107,10 +106,10 @@ export function buildDepEdges(tasks: readonly Task[]): GraphEdge[] {
 }
 
 /**
- * Where each slot is drawn: its task's hash when the planner has actually emitted that task,
- * otherwise a `slot:` id of its own. A slot carrying a `taskHash` the graph has never seen is
- * still unplanned — the identity is computable from the project, which is not the same as work
- * having been filed for it.
+ * The node id each slot is drawn at. A slot whose task the planner has actually emitted is drawn
+ * at that task's hash; every other slot gets a `slot:` id of its own. A slot carrying a
+ * `taskHash` the graph has never seen is still unplanned — the identity is computable from the
+ * project, which is not the same as work having been filed for it.
  */
 export function slotNodeIds(status: PipelineStatus): Map<string, string> {
   const planned = new Set(status.tasks.map((t) => t.hash));
@@ -124,8 +123,8 @@ export function slotNodeIds(status: PipelineStatus): Map<string, string> {
 
 /**
  * The edges the slot graph knows and `deps`/`refs` cannot: what a picture will be drawn from,
- * before either end of it exists. A ref naming a slot outside the graph — an authored
- * `asset:<hash>` pin — is skipped rather than drawn to nowhere, exactly as `buildRefEdges` skips
+ * before either end of it exists. A ref naming a slot outside the graph (an authored
+ * `asset:<hash>` pin) is skipped rather than drawn to nowhere, exactly as `buildRefEdges` skips
  * an author-supplied image. A pair already carrying a dep or ref edge is skipped too, so a
  * coupling the planner has filed renders once, as the firmer of the two.
  */
@@ -148,14 +147,14 @@ export function buildSlotEdges(status: PipelineStatus, drawn: readonly GraphEdge
 /**
  * The synthetic gate barrier: who it is waiting on, and every node it holds up.
  *
- * A slot is held up when a portrait the gate is still pending sits anywhere upstream of it — which
- * is the gate predicate stated as reachability rather than guessed at per kind, and it is why the
- * sheets and shots of a pending character land below the line without either being named here. A
- * pending portrait is not below its own gate: it is the work the gate is waiting for.
+ * A slot is held up when a portrait the gate is still pending sits upstream of it. The gate
+ * predicate is stated as reachability rather than guessed at per kind, so the sheets and the shots
+ * of a pending character land below the line without being named here. A pending portrait is not
+ * below its own gate: it is the work the gate is waiting for.
  *
- * A real task lands below only in the case that walk cannot cover — a shot planned while its
- * subject was approved, whose approval was withdrawn afterwards. That one still reads the cast off
- * the story graph, because the task's own inputs no longer agree with the model.
+ * A real task lands below only in the case the slot walk cannot cover — a shot planned while its
+ * subject was approved, whose approval was withdrawn afterwards. For that case the cast is read
+ * off the story graph, because the task's own inputs no longer agree with the model.
  */
 export function barrierFor(
   status: PipelineStatus,
@@ -190,10 +189,10 @@ export function barrierFor(
 }
 
 /**
- * Compose the whole view model. The layout graph carries ranking-only edges into and out of the
- * barrier — every node above it points at it, and it points at every node it blocks — which is
- * what makes "blocked work is beneath the line" true of the layout rather than of a guess about
- * where to draw the line. Those edges are never routed; `edges` is the drawn set.
+ * Composes the whole view model. The layout graph carries ranking-only edges into and out of the
+ * barrier: every node above it points at it, and it points at every node it blocks, so blocked
+ * work sits beneath the line in the layout itself rather than at a guessed cutoff. Those edges are
+ * never routed; `edges` is the drawn set.
  */
 export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): TaskGraphModel {
   const barrier = barrierFor(status, story);

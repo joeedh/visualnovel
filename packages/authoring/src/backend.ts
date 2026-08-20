@@ -15,17 +15,17 @@ import type { ChatBackend, ChatReply, ChatTurn, TokenUsage, ToolSchema } from '@
 /**
  * A message in the running transcript handed to the backend.
  *
- * `context` is what the *host* knew when the turn started — which scene the author had open, say.
+ * `context` is what the host knew when the turn started — which scene the author had open, say.
  * It is a message rather than part of the system prompt because it was true at that turn and not
  * at the others, and a transcript is the only place that distinction survives.
  *
- * `system` is out-of-band truth filed the same way and for the same reason: the mode, or a
+ * `system` carries out-of-band truth filed as a message for the same reason: the mode, or a
  * section of the system prompt that has since been rewritten. Editing the prompt itself would
  * invalidate the whole cached prefix; appending a message does not.
  *
- * `content` is a string on every message the loop writes itself. It is the provider's own blocks
- * on an assistant turn that came back from a native backend — thinking blocks must be echoed
- * complete and unmodified, so the only safe transcript entry is the one that was received.
+ * `content` is a string on every message the loop writes itself. An assistant turn that came back
+ * from a native backend carries the provider's own blocks instead, because thinking blocks must be
+ * echoed complete and unmodified.
  */
 export interface AgentMessage {
   role: 'user' | 'assistant' | 'observation' | 'context' | 'system';
@@ -71,8 +71,8 @@ export interface AgentTurn {
    */
   raw?: unknown[];
   /**
-   * What this step cost, when the provider said. A step that was retried carries the sum of
-   * every attempt: each one was a call, and each one was billed.
+   * What this step cost, when the provider said. A step that was retried carries the sum of every
+   * attempt, because each attempt was a billed call.
    */
   usage?: TokenUsage;
 }
@@ -93,7 +93,7 @@ function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage 
   if (a?.cacheWrite !== undefined || b.cacheWrite !== undefined) {
     sum.cacheWrite = (a?.cacheWrite ?? 0) + (b.cacheWrite ?? 0);
   }
-  // One estimated attempt makes the sum an estimate: a total is only as exact as its vaguest term.
+  // One estimated attempt makes the whole sum an estimate
   if (a?.cacheEstimated || b.cacheEstimated) sum.cacheEstimated = true;
   return sum;
 }
@@ -102,7 +102,8 @@ function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage 
  * The protocol the loop targets; swap implementations to change tool-call mechanics.
  *
  * There is no `mode` parameter: the plan/execute mode is filed into `messages` as a `system`
- * turn, so switching it appends rather than rewriting a prompt every cached byte depends on.
+ * turn, so switching modes appends a message instead of rewriting the prompt the cached prefix
+ * depends on.
  */
 export interface AgentBackend {
   next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn>;
@@ -161,7 +162,7 @@ function renderTranscript(messages: AgentMessage[]): string {
     .join('\n\n');
 }
 
-/** What attempt 2 and on append: the same prompt plus what was wrong with the last answer. */
+/** Appended from the second attempt on, naming what was wrong with the previous answer. */
 const REPAIR =
   'Your previous reply was not a single JSON object. Reply with the JSON object only — no ' +
   'prose around it, no code fence.';
@@ -205,13 +206,13 @@ export class StructuredAgentBackend implements AgentBackend {
     const attempts = this.opts.attempts ?? 3;
     let lastErr: unknown;
     let lastRaw = '';
-    // Every attempt is a call the author pays for, so the receipt accumulates across the retries
-    // and rides out on whichever turn is finally returned — including the one that gave up.
+    // Every attempt is a call the author pays for, so the receipt accumulates across retries and
+    // is returned on whichever turn ends the loop, including a turn that gave up
     let spent: TokenUsage | undefined;
     for (let i = 0; i < attempts; i++) {
       try {
-        // A repeat of a prompt that already failed is a request for the same answer. From the
-        // second attempt on, say what was wrong with the last one.
+        // From the second attempt on, append what was wrong with the last answer; repeating the
+        // failed prompt unchanged would ask for the same answer again
         const reply = await this.reply({
           system,
           prompt:
@@ -234,16 +235,14 @@ ${REPAIR}`,
       } catch (err) {
         // A `ProviderError` is the API refusing the request, not the model answering badly.
         // Retrying an unchanged body buys the same refusal three times, and folding it into a
-        // `final` hands the author an API fault dressed as a normal turn — no card, `ok: true`,
-        // and nothing to diagnose it from.
+        // `final` reports an API fault as a normal turn: no card, `ok: true`, nothing to diagnose
         if (err instanceof ProviderError) throw err;
         lastErr = err;
       }
     }
-    // A model that answered in prose finished its turn: the JSON envelope is our bookkeeping,
-    // not its intent, and discarding the answer loses the only thing the author asked for. Text
-    // reaching for a tool is the other case — there the model meant to act and got it wrong, and
-    // handing the author a half-typed call as an answer would be worse than saying so.
+    // Prose that reached for no tool is the model finishing its turn, and it is returned as the
+    // answer because the JSON envelope is only our bookkeeping. Text that fumbled a tool call is
+    // reported as a failure instead, since a half-typed call is not an answer.
     const failed: AgentTurn = looksLikeToolCall(lastRaw)
       ? { final: `I couldn't produce a valid action (${errorText(lastErr)}).` }
       : { final: lastRaw };
@@ -266,8 +265,8 @@ function turnOf(m: AgentMessage): ChatTurn {
   if (m.role === 'assistant') return { role: 'assistant', content: m.content };
   if (m.role === 'system') return { role: 'system', content: m.content };
   if (m.role === 'observation') {
-    // A native call is answered by quoting its id back; an observation with no id is a
-    // host-authored note (a refusal, a cancellation) that belongs in the transcript as prose.
+    // A native call is answered by quoting its id back. An observation with no id is a
+    // host-authored note (a refusal, a cancellation) and belongs in the transcript as prose
     if (m.toolUseId) {
       return {
         role: 'user',
@@ -311,8 +310,8 @@ export class NativeAgentBackend implements AgentBackend {
     });
 
     const turns = messages.map(turnOf);
-    // Two rolling breakpoints: the tail, which writes, and the previous tail, which reads. A
-    // conversation that got shorter (it was cleared) has no prefix left worth reading.
+    // Two rolling breakpoints: the tail turn writes the cache and the previous tail reads it. A
+    // conversation that got shorter (it was cleared) has no prefix left worth reading
     if (messages.length <= this.prevBreak) this.prevBreak = -1;
     const last = turns.length - 1;
     if (last >= 0) {

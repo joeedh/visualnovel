@@ -17,7 +17,7 @@ import {
 
 const plate = (variant: string): RefBinding => ({ kind: 'plate', locationId: 'cafe', variant });
 
-/** A café whose variants can be wired to reference each other — a cheap four-node graph. */
+/** A café whose variants can be wired to reference each other, giving a small cheap graph. */
 function cafe(links: Record<string, RefBinding[]>): Location {
   const l = location('cafe');
   l.variants = ['dawn', 'day', 'night', 'dusk', 'noon'].map((id) => ({
@@ -81,8 +81,8 @@ describe('refsOfSlot', () => {
 
 describe('refCycle', () => {
   it('catches the direct case, and names the path the way the plan says', () => {
-    // A portrait referencing its own gala sheet: no hash repeats, but the sheet is *drawn from*
-    // the portrait, so the planner would starve waiting on an output that can never exist.
+    // A portrait referencing its own gala sheet. No hash repeats, but the sheet is drawn from the
+    // portrait, so the planner would starve waiting on an output that can never exist.
     const path = refCycle(
       { kind: 'portrait', characterId: 'aiko' },
       { kind: 'sheet', characterId: 'aiko', outfit: 'gala', angle: 'front' },
@@ -146,7 +146,7 @@ describe('parseSlot', () => {
     { kind: 'asset', hash: 'deadbeefcafe1234' },
   ];
 
-  // The address an author types *is* the walk's own key, so the round trip is the whole contract.
+  // The address an author types is the same string the walk keys on, so the round trip has to hold.
   it('round-trips every slot through slotKey', () => {
     for (const slot of SLOTS) expect(parseSlot(slotKey(slot))).toEqual(slot);
   });

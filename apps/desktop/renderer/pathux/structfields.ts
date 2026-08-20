@@ -1,12 +1,12 @@
 /**
- * Closing an editor's nstructjs struct script, with its own per-pane fields in it.
+ * Closes an editor's nstructjs struct script, declaring its own per-pane fields inside it.
  *
- * `STRUCT.inherit` hands back an **open** script — the struct name, a brace, and the parent's
- * fields — which every caller in path.ux closes by appending `'\n}'`. An editor that wants to
- * remember something of its own has to declare it between the two, and CLAUDE.md forbids writing
- * the struct by hand, so `registerEditor` splices it here instead.
+ * `STRUCT.inherit` hands back an open script (the struct name, a brace, and the parent's fields)
+ * which every caller in path.ux closes by appending `'\n}'`. An editor that remembers something of
+ * its own declares it between the two, and CLAUDE.md forbids writing the struct by hand, so
+ * `registerEditor` splices it in here.
  *
- * Its own module, with no `pathux` import, so the splice is testable in node against the real
+ * This module imports nothing from `pathux`, so the splice is testable in node against the real
  * nstructjs rather than only in a browser.
  */
 

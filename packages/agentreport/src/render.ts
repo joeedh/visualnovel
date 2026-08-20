@@ -1,15 +1,15 @@
 /**
- * The report as markdown — the body of the GitHub issue, and the thing the author reads and
- * edits before it is filed.
+ * The report as markdown: the body of the GitHub issue, which the author reads and edits before it
+ * is filed.
  *
- * One renderer for both analysis paths, so a report written after reading the source and one
- * written from the transcript alone are the same document with one line different. Pure: it is
- * handed a finished `Report` and finished `Evidence` and touches nothing.
+ * One renderer serves both analysis paths, so a report written after reading the source and one
+ * written from the transcript alone differ by a single line. It is pure, taking a finished `Report`
+ * and finished `Evidence` and reading nothing else.
  */
 import type { Report } from './report.js';
 import { toMarkdown, type Evidence } from './transcript.js';
 
-/** The title, which the filer prefixes so a maintainer can find every one of these at once. */
+/** Prefixed to every report title, so a maintainer can find all of them at once. */
 export const TITLE_PREFIX = 'AGENTREPORT:';
 
 /** A one-line title from the analysis, prefixed and trimmed to something a tab can hold. */

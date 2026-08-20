@@ -1,7 +1,7 @@
 /**
- * The art-notes rung vocabulary. Pure, so it is asserted against a hand-built model — the rungs
- * an asset offers are what both the asset editor's strip and the agent's `art_notes` show, and
- * this is the file that says they are the same list.
+ * The art-notes rung vocabulary. Pure, so it is asserted against a hand-built model. The rungs an
+ * asset offers are what both the asset editor's strip and the agent's `art_notes` show, and these
+ * tests are what pin the two to the same list.
  */
 import { character, location, model, scene } from '@vn/testkit';
 import type { Asset, AssetBinding, AssetKind, Shot } from '@vn/types';
@@ -101,8 +101,8 @@ describe('rungAt', () => {
     });
   });
 
-  // A rung that exists and says nothing is not the same answer as a rung that does not exist:
-  // the first is offered for an author to fill in, the second is a typo.
+  // A rung that exists with no notes answers differently from a rung that does not exist. An
+  // authored-but-empty rung is offered for an author to fill in; a missing rung is a typo.
   it('distinguishes a silent rung from a missing one', () => {
     expect(rungAt({ kind: 'location', id: 'cafe', variant: 'day' }, ctx)).toEqual({
       target: 'location:cafe/day',

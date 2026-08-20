@@ -73,8 +73,9 @@ export const reportOpenIssue = define({
   mutating: false,
   props: {
     title: prop.string('the issue title'),
-    // `digest: true` is about the *record*, not the form: a report is thousands of words of
-    // someone's conversation, and `commands.jsonl` is committed. The preview edits it elsewhere.
+    // `digest: true` is about the record, not the form: a report is thousands of words of
+    // someone's conversation, and `commands.jsonl` is committed. The report preview dialog is
+    // where the body is edited.
     body: prop.string('the report, as it will be filed', { digest: true }),
   },
   async check(props, ctx) {

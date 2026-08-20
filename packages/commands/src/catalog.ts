@@ -16,7 +16,7 @@ export interface CatalogProp {
   required: boolean;
   default?: PropValue;
   values?: readonly string[];
-  /** Bulk content (`digest.ts`). A form shows what it is, not a field to type it into. */
+  /** Bulk content (`digest.ts`). A form describes the value rather than offering a field for it. */
   digest?: boolean;
   /** Free text of more than a line. A form draws a box to write in. */
   multiline?: boolean;

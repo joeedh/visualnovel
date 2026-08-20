@@ -42,8 +42,7 @@ export type AABBMode = 'intersect' | 'contain' | 'center';
 export type AABBOpts = { space?: SpaceId; mode?: AABBMode };
 
 // Lazy per-frame index (research §12): nothing is built until the first spatial query
-// against a frame, then cached. A by-space grouping is enough at first-slice counts —
-// the laziness seam matters more than the structure behind it.
+// against a frame, then cached. A by-space grouping is enough at first-slice counts.
 const indexCache = new WeakMap<Frame, Map<SpaceId, Fragment[]>>();
 
 function spatialIndex(frame: Frame): Map<SpaceId, Fragment[]> {

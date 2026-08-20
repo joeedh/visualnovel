@@ -51,7 +51,7 @@ export function characterFromDoc(doc: FrontMatterDoc): EntityResult<Character> {
     seed: fm.seed,
     approvedPortrait: fm.approved_portrait,
   };
-  // The sheet's own override is the *portrait*'s; a model sheet's lives on the outfit it wears.
+  // the sheet's own override applies to the portrait; a model sheet's override lives on its outfit
   if (fm.prompt_override) character.promptOverride = promptOverrideFrom(fm.prompt_override);
   return { ok: true, value: character };
 }

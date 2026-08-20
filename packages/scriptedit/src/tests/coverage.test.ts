@@ -3,9 +3,9 @@ import { resolveDrag, setCoverage, spansFor, type CoverShot } from '../coverage.
 const LINES = ['s:L1', 's:L2', 's:L3', 's:L4', 's:L5', 's:L6'];
 
 /**
- * The deterministic decomposer's own shape: interleaved, non-contiguous coverage. Every shot
- * holds **two** lines, because a one-line shot is emptied by any claim that touches it and the
- * empty-a-neighbour refusal would then be the only thing these cases could exercise.
+ * Interleaved, non-contiguous coverage, matching what the deterministic decomposer produces.
+ * Every shot holds two lines, because a one-line shot is emptied by any claim that touches it,
+ * which would leave the empty-a-neighbour refusal as the only thing these cases exercise.
  */
 const shots = (): CoverShot[] => [
   { id: 's__establishing', coversLines: ['s:L1', 's:L4'] },
@@ -52,10 +52,10 @@ describe('setCoverage', () => {
   });
 
   /**
-   * The corruption this rule exists for, straight off `commands.jsonl`: an author dragged
-   * `arrival__establishing`'s start over `arrival__beat1` and back, which claimed `beat1`'s only
-   * line and then released it to nobody. `beat1` was left real, paid for, and covering nothing,
-   * and the return trip could not undo it — releasing does not give lines back.
+   * The corruption this rule prevents, recorded in `commands.jsonl`: an author dragged
+   * `arrival__establishing`'s start over `arrival__beat1` and back, claiming `beat1`'s only line
+   * and then releasing it to nobody. `beat1` was left paid for and covering nothing, and the
+   * return trip could not undo it, because releasing a line does not give it back.
    */
   it('refuses a claim that would leave another shot covering nothing', () => {
     const op = setCoverage(shots(), {
@@ -67,8 +67,8 @@ describe('setCoverage', () => {
   });
 
   it('still lets a shot give up every line of its own', () => {
-    // Only the side effect is refused. `resolveDrag` never asks for this, so it is reachable
-    // from the command DSL alone — an addressable act, not something a gesture does in passing.
+    // Only emptying a neighbour is refused. `resolveDrag` never asks for this, so it is
+    // reachable from the command DSL alone rather than from a drag gesture
     const op = setCoverage(shots(), { shot: 's__beat1', lines: [], lineOrder: LINES });
     expect(op.ok).toBe(true);
   });
@@ -86,7 +86,7 @@ describe('setCoverage', () => {
   it('reports released lines as uncovered rather than reassigning them', () => {
     const op = setCoverage(shots(), { shot: 's__establishing', lines: ['s:L4'], lineOrder: LINES });
     if (!op.ok) throw new Error(op.error);
-    // L1 belonged to no one else, so it is now a gap — the editor's alarming state.
+    // L1 belonged to no other shot, so it is now a gap
     expect(op.uncovered).toEqual(['s:L1']);
     expect(op.changed).toEqual([{ id: 's__establishing', coversLines: ['s:L4'] }]);
   });
@@ -124,9 +124,9 @@ describe('setCoverage', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The geometry. Its own fixture: four lines, and the decomposer's interleaving.
-// The line and shot shapes are richer than the package's own — the desktop's projections carry
-// prose and drift — which is exactly what `spansFor`'s generics exist to hand back unnarrowed.
+// The geometry, with its own fixture of four lines in the decomposer's interleaving. The line
+// and shot shapes here are richer than the package's own (the desktop's projections carry prose
+// and drift), which is what `spansFor`'s generics hand back unnarrowed.
 // ---------------------------------------------------------------------------
 
 interface RichLine {
@@ -178,7 +178,7 @@ describe('spansFor', () => {
       { shotId: 's__establishing', from: 3, to: 3 },
     ]);
     expect([est.first, est.last]).toEqual([0, 3]);
-    // The caller's own shot type comes back out: fields the rules never read stay visible.
+    // The caller's own shot type comes back out, so fields the rules never read stay visible
     expect(est.shot.drift).toBe('current');
   });
 

@@ -77,8 +77,8 @@ export interface RepoRef {
   /** The work-tree root git reports for that part — not the directory that was asked about. */
   root: string;
   /**
-   * True when the directory *is* that root. False means the project sits inside a larger repo
-   * (a monorepo checkout, say), whose history is somebody else's to write.
+   * True when the directory is that root. False means the project sits inside a larger repo
+   * (a monorepo checkout, for example) whose history the project does not own.
    */
   owned: boolean;
 }
@@ -116,7 +116,7 @@ export interface GeneratedContextState {
   /** Absolute path of `AICONTEXT.generated.md`, whether or not it exists. */
   file: string;
   exists: boolean;
-  /** True when the file carries the generator's banner — so ours to overwrite, and ours to load. */
+  /** True when the file carries the generator's banner, which makes it ours to overwrite and load. */
   generated: boolean;
 }
 
@@ -150,7 +150,8 @@ export class Workspace {
    *
    * Discovered through `git rev-parse`, never declared — a `repos:` block in `project.yaml`
    * would be a second source of truth, wrong the moment someone runs `git init` in `wiki/`.
-   * Resolved fresh each call for the same reason.
+   * Resolved on each call rather than cached, so a repository created after the workspace was
+   * opened is still reported.
    */
   async repos(): Promise<RepoRef[]> {
     const resolver = new RepoResolver();
@@ -180,7 +181,7 @@ export class Workspace {
       title = config.title;
       start = config.start;
     } catch {
-      // No (or invalid) project.yaml: the agent still operates, title is a placeholder.
+      // No (or invalid) project.yaml: the agent still operates, title is a placeholder
     }
     const model = modelFromInputs(inputs, { title, start });
     return { title, model, inputs };
@@ -189,8 +190,8 @@ export class Workspace {
   /** Build the lightweight index from the model. */
   async index(): Promise<WorkspaceIndex> {
     const { title, model, inputs } = await this.load();
-    // Both come from the load, not from a second look at the directory: which file is the
-    // screenplay is the loader's decision, and it is the only one that reports it.
+    // These come from the load, not from a second look at the directory: which file is the
+    // screenplay is the loader's decision, and the loader is the only thing that reports it
     const chunkFiles = new Map(inputs.sceneDocs.map((c) => [c.id, c.file]));
     const characterFiles = new Map(inputs.characterDocs.map((d) => [d.id, d.file]));
     const locationFiles = new Map(inputs.locationDocs.map((d) => [d.id, d.file]));
@@ -243,10 +244,10 @@ export class Workspace {
 
   /**
    * Regenerate `AICONTEXT.generated.md` from one load of the project plus the bible's table of
-   * contents. **Refuses** rather than overwrites a file at that path that does not carry the
-   * generator's banner: an author who wrote one there did not donate it. The output is a pure
-   * function of the project — no timestamp — so re-running over an unchanged project rewrites
-   * the same bytes and leaves git alone.
+   * contents. Refuses rather than overwrites a file at that path that does not carry the
+   * generator's banner, since an author wrote that one. The output is a pure function of the
+   * project — no timestamp — so re-running over an unchanged project rewrites the same bytes and
+   * leaves git alone.
    */
   async writeGeneratedContext(
     opts: { budget?: number } = {},
@@ -268,8 +269,8 @@ export class Workspace {
   }
 
   /**
-   * Everything a scene edit is decided and patched against, off **one** load — which is the
-   * contract, not an optimization: a writer must patch the files the model it decided against was
+   * Everything a scene edit is decided and patched against, off one load. That is the contract
+   * rather than an optimization: a writer must patch the files the model it decided against was
    * built from, or it re-decides which file is authoritative halfway through.
    */
   async sceneEditInput(): Promise<SceneEditInput> {
@@ -282,10 +283,9 @@ export class Workspace {
   }
 
   /**
-   * The decision behind `edit_scene`'s `moveShot`, which is the one act whose *rule* needs the
-   * storyboard: `planSceneEdit` hands its callback the script state and nothing else, so the shots
-   * are read here and curried in. Same shape as the desktop's `session.shotOrder`, deliberately —
-   * one authorial act, one answer.
+   * The decision behind `edit_scene`'s `moveShot`, the one act whose rule needs the storyboard:
+   * `planSceneEdit` hands its callback the script state and nothing else, so the shots are read
+   * here and curried in. Deliberately the same shape as the desktop's `session.shotOrder`.
    */
   async shotOrder(
     sceneId: string,
@@ -321,7 +321,7 @@ export class Workspace {
   /**
    * The scene-marker outfit rule, plus the files its patch would target — off one load, for the
    * same reason {@link sceneEditInput} is: the marker is spliced into the bytes the rule read.
-   * Same shape as the desktop's `session.sceneOutfitRule`, deliberately.
+   * Deliberately the same shape as the desktop's `session.sceneOutfitRule`.
    */
   async sceneOutfit(
     sceneId: string,
@@ -361,11 +361,10 @@ export class Workspace {
   }
 
   /**
-   * The new-shot rule, same shape as the desktop's `session.newShotRule` — one authorial act, one
-   * answer, however it is asked for. The board may be null: making the first shot by hand is what
-   * ends decomposition for the scene, and the rule prices that in its own message. The scene's
-   * location supplies the variant ids the default is validated against, the same way the model
-   * decomposer's answer is.
+   * The new-shot rule, deliberately the same shape as the desktop's `session.newShotRule`. The
+   * board may be null: making the first shot by hand is what ends decomposition for the scene, and
+   * the rule accounts for that in its own message. The scene's location supplies the variant ids
+   * the default is validated against, the same way the model decomposer's answer is.
    */
   async newShot(
     sceneId: string,
@@ -443,10 +442,9 @@ export class Workspace {
 /**
  * What the author had open, as the one sentence a turn's `context` message carries.
  *
- * Resolved against the index rather than passed through, so a scene id nothing knows about — a
- * stale selection, a scene deleted since — says **nothing** instead of asserting a scene that is
- * not there. A host with no selection and a host with a bad one therefore look the same, which is
- * the honest answer in both cases.
+ * Resolved against the index rather than passed through, so a scene id nothing knows about (a
+ * stale selection, or a scene deleted since) produces no sentence instead of asserting a scene
+ * that is not there. A host with no selection and a host with a bad one therefore look the same.
  */
 export function focusOnScene(index: WorkspaceIndex, sceneId: string): string | undefined {
   const scene = index.scenes.find((s) => s.id === sceneId);
@@ -463,11 +461,11 @@ export function focusOnScene(index: WorkspaceIndex, sceneId: string): string | u
 /**
  * Render an index as a compact human/agent-readable summary.
  *
- * Every row that has a sheet **names it**. Without that, authoring `locations/rooftop.md` for a
- * place the screenplay already mentions changed nothing on screen — `mergeMinedLocations` keys on
- * the same slug, so the row was converted rather than added, and the only visible difference was
- * a dropped `(mined)`. To a model re-reading its own transcript that is indistinguishable from the
- * tool not having noticed the write. The file is the proof that it did.
+ * Every row that has a sheet names it. Without that, authoring `locations/rooftop.md` for a place
+ * the screenplay already mentions changed nothing on screen — `mergeMinedLocations` keys on the
+ * same slug, so the row was converted rather than added, and the only visible difference was a
+ * dropped `(mined)`. To a model re-reading its own transcript that is indistinguishable from the
+ * tool not having noticed the write; naming the file shows that it did.
  */
 export function formatIndex(index: WorkspaceIndex): string {
   const at = (file: string | undefined): string =>

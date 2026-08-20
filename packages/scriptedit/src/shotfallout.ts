@@ -3,26 +3,26 @@
  * change, which shots follow their lines into another scene, which lose coverage, and which keep
  * art made from prose that no longer reads that way.
  *
- * It is the second half of a `lineops` decision and deliberately not part of it. `lineops` is
- * pure over the *scene set* and knows nothing about the storyboard; this module takes the op's
- * three id lists (`moved`, `retired`, `retyped`) plus the shots as they sit on disk and answers
- * the question an author needs answered before committing: what does this cost?
+ * This module is the second half of a `lineops` decision and deliberately not part of it.
+ * `lineops` is pure over the scene set and knows nothing about the storyboard; this module takes
+ * the op's three id lists (`moved`, `retired`, `retyped`) plus the shots as they sit on disk and
+ * answers the question an author needs answered before committing: what does this cost?
  *
  * Four rules carry the whole module:
  *
- * - **A shot follows its lines when all of them go to the same place.** Coverage is a set of line
+ * - A shot follows its lines when all of them go to the same place. Coverage is a set of line
  *   ids and `moved` maps every id a scene edit renames, so a shot covering only lines that left
- *   for one scene is *that scene's* shot now — it changes file, keeps its id, keeps its art.
- * - **A shot that straddles stays put and loses what left.** That is the honest signal a split is
- *   in the wrong place, and the count is what the check reports.
- * - **A shot's own id is part of its task hash**, so nothing here renames one. A shot carried into
- *   `rooftop` keeps the id it was minted with (`arrival__beat1`) precisely so its generated image
- *   is still the answer to the task that produced it.
- * - **No *prose* edit invalidates art, so drift has to be reported.** No line's text reaches a
- *   shot's task inputs, which is why editing is affordable at all — and also why a rendered frame
- *   goes on illustrating text the author replaced until they ask for a new one. `drifted` is that
- *   count. A scene's *heading* is the exception and the reason `restaged` is priced separately: a
- *   location **is** in a shot's task inputs, so moving a scene re-renders it.
+ *   for one scene now belongs to that scene: it changes file, keeps its id, keeps its art.
+ * - A shot that straddles two scenes stays put and loses the lines that left. That is the signal
+ *   a split is in the wrong place, and the count is what the check reports.
+ * - A shot's own id is part of its task hash, so nothing here renames one. A shot carried into
+ *   `rooftop` keeps the id it was minted with (`arrival__beat1`) so its generated image is still
+ *   the answer to the task that produced it.
+ * - No prose edit invalidates art, so drift is reported instead. No line's text reaches a shot's
+ *   task inputs, which is why editing is affordable at all, and also why a rendered frame goes on
+ *   illustrating text the author replaced until they ask for a new one. `drifted` is that count.
+ *   A scene's heading is the exception and the reason `restaged` is priced separately: a location
+ *   is in a shot's task inputs, so moving a scene re-renders it.
  */
 import type { Shot } from '@vn/types';
 import { sceneIdOf, type AppliedLineOp } from './lineops.js';
@@ -35,7 +35,7 @@ export interface ShotFallout {
   writes: Map<string, Shot[]>;
   /**
    * Scene ids whose shots file must go — either the scene stopped existing, or it has no shots
-   * left. An absent file is the *only* signal that means "decompose this scene", so removing an
+   * left. An absent file is the only signal that means "decompose this scene", so removing an
    * emptied one is how a scene gets a fresh storyboard instead of staying blank forever. The same
    * posture as `deleteShot` removing the last shot by hand (`shotcreate.ts`): an empty list is
    * never written, the file is deleted instead.
@@ -51,7 +51,7 @@ export interface ShotFallout {
   discarded: string[];
   /**
    * Shots whose scene changed place, restaged onto the new heading's variant. This is the one
-   * consequence in this module that *does* rehash: a location is in a shot's task inputs, so a
+   * consequence in this module that does rehash: a location is in a shot's task inputs, so a
    * rendered one here is re-rendered rather than left to drift.
    */
   restaged: string[];

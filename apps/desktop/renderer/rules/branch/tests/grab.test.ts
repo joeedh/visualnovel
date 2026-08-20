@@ -56,8 +56,8 @@ describe('grabAt', () => {
     expect(grabAt(layout.nodes, routes, far, 30, NONE)).toEqual({ kind: 'connect', scene: 'a' });
   });
 
-  // A wide enough radius puts both discs in range at once; wiring outward is the likelier
-  // intent, and the tie has to break the same way every time either way.
+  // A wide enough radius puts both discs in range at once. Wiring outward is the likelier
+  // intent, and the tie must break the same way every time.
   it('prefers a handle to an arrowhead when the two discs overlap', () => {
     const between = { x: handle.x, y: (handle.y + head.y) / 2 };
     const radius = Math.abs(head.y - handle.y);

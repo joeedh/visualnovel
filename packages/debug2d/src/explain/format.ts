@@ -1,7 +1,7 @@
 /**
  * Canonical text formatting for explain output. Floats are fixed-precision and column
  * layout is deterministic, so `explain()` strings are diffable and serve as goldens
- * (research §9) — format changes require golden edits, and that friction is intended.
+ * (research §9). A format change requires editing the goldens.
  */
 import type { Rect } from '../geom.js';
 

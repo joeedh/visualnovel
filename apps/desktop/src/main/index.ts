@@ -134,7 +134,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 /**
- * Every window onto this workspace. A window is a *view*: one process, one session, one command
+ * Every window onto this workspace. A window is a view: one process, one session, one command
  * stack, one project, N renderers. See `./windows.ts` for why the registry itself may not
  * import `electron`.
  */
@@ -161,7 +161,7 @@ function abandonPending(): void {
   pendingConfirms.abandon();
 }
 
-/** One window closed. Only the turns parked on *that* window end; the others are still asked. */
+/** One window closed. Only the turns parked on that window end; the others are still asked. */
 function abandonPendingBy(id: WindowId): void {
   pendingPlans.by(id);
   pendingAsks.by(id);
@@ -242,8 +242,9 @@ async function promptForWorkspace(): Promise<string | undefined> {
 }
 
 /**
- * Resolve the workspace once, before anything can ask for it: `--project` (or `VN_PROJECT`),
- * then the most recent project that still exists, then the picker, then the seeded sample.
+ * Resolve the workspace once, before anything can ask for it. `--project` (or `VN_PROJECT`) wins
+ * when it is given. Otherwise the most recent project that still exists is opened, failing that
+ * the picker is shown, and the seeded sample is the last resort.
  *
  * The picker therefore appears on a genuine first run only — whatever is opened is remembered,
  * including the sample, so cancelling is answered once and not every launch. `VN_NO_PICKER=1`
@@ -269,7 +270,8 @@ let projectTitle = '';
 
 /**
  * Name every window after the project. The header shows the title too, but the taskbar and the
- * window switcher see only this — and three windows all called `vnstudio` cannot be told apart.
+ * window switcher show only the window title, and three windows all called `vnstudio` cannot be
+ * told apart.
  *
  * Identical project titles have the same problem, so each title gains a ` (n)` suffix while
  * more than one window is open, and loses it again when only one is left.
@@ -290,7 +292,7 @@ function nameWindows(title: string = projectTitle): void {
  * workspace boundary, and nothing may cache the root across this call.
  */
 async function switchWorkspace(root: string): Promise<{ root: string; title: string }> {
-  // Acquire the new root *before* releasing the old one, so a switch never drops a lock it might
+  // Acquire the new root before releasing the old one, so a switch never drops a lock it might
   // then fail to reclaim. `check` may have said yes a moment ago and been overtaken since, which
   // is why this re-decides rather than trusting it.
   const target = resolvePath(root);
@@ -328,7 +330,7 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
  * The repos the app may write history in — the project's, plus the story bible's when `wiki/`
  * is its own. Resolved once, after the workspace exists.
  *
- * A repo appears here only when the directory *is* its root. A project opened inside a larger
+ * A repo appears here only when the directory is its own root. A project opened inside a larger
  * repo (a checkout of this monorepo, say) resolves to that repo, and committing `-A` there
  * would sweep in files that have nothing to do with the project — so commit-on-save stays off
  * rather than guessing at a scope. Undo is unaffected: shadow refs write nobody's history.
@@ -337,8 +339,9 @@ const ownedRepos: Git[] = [];
 
 /**
  * Bring the workspace under version control, then record anything changed outside the app as
- * its own event — a CLI run, another editor. That is what establishes the invariant every
- * later commit relies on: the app opens on a clean worktree, and every act ends with one.
+ * its own event — a CLI run, another editor. Recording those changes first establishes the
+ * invariant every later commit relies on: the app opens on a clean worktree, and every act ends
+ * with one.
  */
 async function openRepos(): Promise<void> {
   const root = workspace();
@@ -369,7 +372,7 @@ async function openRepos(): Promise<void> {
 }
 
 /**
- * The dialog, once, before a window exists — so the first thing a stranger sees on a machine
+ * Show the dialog once, before a window exists, so the first thing a stranger sees on a machine
  * without git is the reason rather than the symptom. Not fatal: the app opens anyway, because
  * someone who only wants to watch a generated VN should not need git to do it.
  */
@@ -407,15 +410,14 @@ async function noticeMissingGit(): Promise<void> {
 /**
  * Say once, per project, that this install cannot call a model yet.
  *
- * A brand-new install looks completely healthy — it opens, it draws a tree, the palette is full —
- * right up to the first run, which fails somewhere deep in a task with a message about a provider.
- * This notice states the same fact earlier and more plainly, and links the pane that fixes it.
+ * A brand-new install looks healthy right up to the first run, which fails somewhere deep in a
+ * task with a message about a provider. This notice states the same fact earlier and more plainly,
+ * and links the pane that fixes it.
  *
  * Filed as a notification rather than shown as a dialog because a notification is durable: an
  * author who dismisses the note frame still has it in the bell. It is posted at most once per
- * project, guarded by the notification log itself — nothing else remembers, and a second copy
- * every launch would be nagging rather than news. Under `--mock` there is nothing to warn about:
- * a mock run calls no provider, which is exactly the state someone trying the app out is in.
+ * project, guarded by the notification log itself, because nothing else remembers. Under `--mock`
+ * there is nothing to warn about, since a mock run calls no provider.
  */
 async function noticeMissingKeys(): Promise<void> {
   if (MOCK) return;
@@ -455,8 +457,8 @@ function committer(): Committer {
  */
 installNotifications({
   file: () => (workspaceRoot ? new ProjectPaths(workspaceRoot).notificationsLog : undefined),
-  // Broadcast, in full: the note frame is per-window chrome, so an author looking at the other
-  // monitor should still see what happened, and every window's bell count must stay current.
+  // Every window gets the whole note. The note frame is per-window chrome, so an author looking at
+  // the other monitor should still see what happened, and every window's bell count stays current.
   push: (note) => broadcast('notify:changed', { note }),
 });
 
@@ -469,7 +471,7 @@ installNotifications({
 let turnWindow: WindowId | undefined;
 
 /**
- * Ask the window that started the turn, and **focus it**: `agent:event` broadcasts, so every
+ * Ask the window that started the turn, and focus it. `agent:event` broadcasts, so every
  * window shows the agent thinking, and a prompt that landed unfocused on the other monitor would
  * read as a hung turn on the one the author is actually looking at. A window that went away
  * mid-turn falls back to the focused one rather than parking forever.
@@ -569,8 +571,8 @@ function getStack(): CommandStack<CommandHost> {
     const host: CommandHost = {
       session: getSession(),
       state: getSessionStore(),
-      // Targeted: a `view.*` effect means *here*, in the window whose palette or menu ran the
-      // command. `windowFor` falls back to the focused window for the agent, CDP and main.
+      // A `view.*` effect is targeted at the window whose palette or menu ran the command.
+      // `windowFor` falls back to the focused window for the agent, CDP and main.
       ui: (effect: UiEffect, target?: WindowId) => sendTo(target, 'command:ui', effect),
       openWorkspace: (next: string) => switchWorkspace(next),
       workspaceIsOpenElsewhere: async (next: string) => {
@@ -637,12 +639,9 @@ function getStack(): CommandStack<CommandHost> {
       }),
       committer: committer(),
       onRecord: async (record) => {
-        // The revision is what tells the renderer "files moved and you did not move them". An
-        // undo/redo always qualifies; so does any mutating command that did not come from the
-        // renderer's own `exec` — the agent, CDP, or main itself — because for those nothing on
-        // that side invalidated, and the document tree would sit on a project that has changed.
-        // A `ui` one is deliberately left out: `exec` already invalidated, and this would count
-        // it twice.
+        // The revision tells the renderer that files moved without it moving them. An undo or redo
+        // always counts, as does a mutating command from the agent, CDP or main, whose changes the
+        // renderer never invalidated. A `ui` command is left out because `exec` already invalidated.
         if (record.stack || (record.mutating && record.source !== 'ui')) undoRevision++;
         await appendJsonl(paths.commandsLog, record);
         // Files every command's outcome, whoever ran it — the palette, a menu, the agent, CDP.
@@ -756,8 +755,8 @@ function registerIpc(): void {
  * so the standard-scheme host lowercasing is harmless). A missing file simply fails the
  * request and the caller falls back to a placeholder.
  *
- * **Both roots**, in the order `AssetStore` reads them: base art — portraits, model sheets,
- * location plates — lives beside the inputs at `assets/objects/`, and only shot frames are
+ * Both roots are searched, in the order `AssetStore` reads them: base art (portraits, model
+ * sheets, location plates) lives beside the inputs at `assets/objects/`, and only shot frames are
  * under `vngen/build/assets/`. A url says nothing about which root it came from, and the
  * backlink panel's images are entirely the base kind (`docs/reference/asset-stores.md`).
  *
@@ -890,8 +889,8 @@ function createWindow(options: NewWindowOptions = {}): WindowId {
   win.on('resized', rememberWindows);
   win.on('closed', () => {
     windows.remove(id);
-    // Only *this* window's requests. With one window "that window closed" and "there is nobody
-    // left" were the same fact; with four, ending every parked turn would be a bug.
+    // Ends only this window's requests. With four windows open, ending every parked turn because
+    // one closed would be a bug.
     abandonPendingBy(id);
     if (windows.size === 0) abandonPending();
     // Closing a window deliberately means it does not come back, so the list is rewritten from
@@ -908,9 +907,8 @@ function createWindow(options: NewWindowOptions = {}): WindowId {
   });
 
   // The wiki pane's `beforeunload` guard refuses to unload while a draft is unsaved, and Electron
-  // cancels such a close outright unless this event is answered (the window could not be closed
-  // at all); `preventDefault` here means "unload anyway". Asked once per window, including
-  // during the cascade a quit produces.
+  // cancels the close outright unless this event is answered; `preventDefault` here means "unload
+  // anyway". Asked once per window, including during the cascade a quit produces.
   win.webContents.on('will-prevent-unload', (event) => {
     const leave = dialog.showMessageBoxSync(win, {
       type: 'warning',
@@ -964,7 +962,7 @@ void app.whenReady().then(async () => {
   // that turns out to be taken. VS Code also hands off after its picker.
   instanceLock = await acquireWorkspace(workspace(), focusFrontWindow);
   if (!instanceLock) {
-    // Exit **before creating any window**, so the author sees the existing instance come forward
+    // Exit before creating any window, so the author sees the existing instance come forward
     // rather than a window that flashes and disappears.
     await focusOwner(workspace());
     app.exit(0);

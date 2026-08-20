@@ -14,7 +14,7 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-/** Top-level paths the analyst may read. Everything else is not there as far as it knows. */
+/** Top-level paths the analyst may read. Every path outside them is refused. */
 export const READABLE = [
   'packages',
   'apps',
@@ -26,12 +26,12 @@ export const READABLE = [
 
 /**
  * Paths never walked or read, even under a readable root. `keys` is here as well as in the
- * project-side refusal: an analyst that has just read a private manuscript must not be one step
- * from a credential, and saying so twice costs a line.
+ * project-side refusal, because an analyst that has just read a private manuscript must not be one
+ * step from a credential.
  */
 export const DENY = ['node_modules', 'dist', '.git', 'keys', 'vendor/path.ux/scripts/lib'] as const;
 
-/** File kinds worth reading. Anything else is a binary or a build artefact by another name. */
+/** File kinds worth reading. Anything else is a binary or a build artefact. */
 export const TEXT_EXTENSIONS = [
   '.ts',
   '.tsx',
@@ -48,7 +48,7 @@ export const TEXT_EXTENSIONS = [
   '.fountain',
 ] as const;
 
-/** Workspace-relative and forward-slashed, which is the only form these predicates speak. */
+/** Workspace-relative and forward-slashed, which is the only form the predicates here accept. */
 export function normalize(path: string): string {
   return path.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+$/, '');
 }
@@ -100,8 +100,8 @@ async function looksLikeSource(dir: string): Promise<boolean> {
 }
 
 /**
- * Where the shipped source lives: the env override, then the unpacked resource an install ships,
- * then upward from `hint` (the caller's own directory) for a checkout.
+ * Where the shipped source lives. Checks `VN_SOURCE_ROOT` first, then the unpacked resource an
+ * install ships, then walks upward from `hint` (the caller's own directory) to find a checkout.
  *
  * `undefined` means a broken install, and the caller says so rather than quietly analysing less.
  */

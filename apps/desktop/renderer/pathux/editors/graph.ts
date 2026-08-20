@@ -22,22 +22,22 @@ import type { PipelineStatus, SlotNode, StoryGraph } from '../../../src/shared/i
 /**
  * The pipeline as a DAG. The derivation lives in `rules/taskGraph.ts` — what the gate barrier is,
  * what the ref edges are, and which slots the planner has not filed work for yet — so this editor
- * is markup over `GraphCanvas` and nothing more.
+ * is only markup over `GraphCanvas`.
  *
- * The gate is drawn as a rule across the layout rather than as a node with wires, because it is
- * not a dependency: it is a planner predicate, and a wire would claim a coupling the data does
- * not have. Its *position* is a real rank, though — see `taskGraphOf`.
+ * The gate is drawn as a rule across the layout rather than as a node with wires, because it is a
+ * planner predicate rather than a dependency and a wire would claim a coupling the data does not
+ * have. Its position is a real rank, though — see `taskGraphOf`.
  *
- * Selection is the shell's, not the editor's: clicking a shot task moves `ui.shotId`/`ui.sceneId`
- * and clicking a character task moves `ui.characterId`, and the highlight is derived back out of
- * those ids — so a shot picked here is the shot the runner plays, and vice versa.
+ * Selection belongs to the shell, not to this editor: clicking a shot task moves
+ * `ui.shotId`/`ui.sceneId` and clicking a character task moves `ui.characterId`, and the
+ * highlight is derived back out of those ids, so a shot picked here is the shot the runner plays.
  */
 export class TaskGraphEditor extends VnEditor {
   private bar!: Container;
   private canvas!: GraphCanvas;
 
   private status: PipelineStatus | undefined;
-  /** Only the barrier's one un-approved-after-planning case reads it; without it that case is lost. */
+  /** Read only by the barrier's un-approved-after-planning case, which is undetectable without it. */
   private story: StoryGraph | null = null;
   private failure = '';
 
@@ -51,7 +51,7 @@ export class TaskGraphEditor extends VnEditor {
    */
   tidy = false;
 
-  /** Fit once, when the first layout meets a sized surface — never again, or panning fights back. */
+  /** Fit once, when the first layout meets a sized surface; refitting later would undo panning. */
   private fitted = false;
   private drawn = '';
 
@@ -218,13 +218,13 @@ export class TaskGraphEditor extends VnEditor {
   private onPick(hit: GraphPick): void {
     if (hit.type !== 'node') return;
     const view = this.model?.nodes.get(hit.node.id);
-    // The barrier's own affordance is the approve button drawn on it, so a click on it does
-    // nothing here; a slot is a picture with a real address, so it moves the selection like a task.
+    // A slot is a picture with a real address, so it moves the selection the way a task does. The
+    // barrier's own affordance is the approve button drawn on it, so clicking it does nothing here.
     if (view?.kind === 'slot') return this.pickSlot(view.slot);
     if (view?.kind !== 'task') return;
 
-    // The hash moves for every task, including the ones that name no scene or character: the
-    // inspector's subject is the task itself, so a click on an export is still worth something.
+    // The hash moves for every task, including the ones that name no scene or character, because
+    // the inspector's subject is the task itself and a click on an export still selects one.
     this.ui.taskHash = view.task.hash;
 
     const current = this.selection();
@@ -240,9 +240,9 @@ export class TaskGraphEditor extends VnEditor {
   }
 
   /**
-   * A slot names a subject the way a task does, minus the task hash there is no task for. The
+   * A slot names a subject the way a task does, without a task hash because there is no task. The
    * asset hash moves too when something already fills the slot, so clicking an unapproved picture
-   * here lands it in the asset editor rather than merely highlighting a box.
+   * here opens it in the asset editor rather than only highlighting a box.
    */
   private pickSlot(slot: SlotNode): void {
     const binding = slot.binding;
@@ -276,7 +276,7 @@ export class TaskGraphEditor extends VnEditor {
     });
 
     box.appendChild(stamp('⟂ GATE', TOKENS.sodium));
-    // The gate is an inference, not an edge — say so on it rather than in a legend.
+    // The gate is an inference rather than an edge, and the node says so in place of a legend.
     box.appendChild(mono('derived', TOKENS.mistDim, 9.5));
 
     for (const character of pending) {
@@ -284,8 +284,8 @@ export class TaskGraphEditor extends VnEditor {
       cta.textContent = `${character} →`;
       cta.title = `Approve a portrait for ${character}`;
       Object.assign(cta.style, {
-        // The node layer is `pointer-events: none`; this is the one element that needs a real
-        // DOM target, so it opts itself back in.
+        // The node layer is `pointer-events: none`, and this button is the one element that needs
+        // a real DOM target.
         pointerEvents: 'auto',
         marginLeft: 'auto',
         maxWidth: '96px',
@@ -311,10 +311,10 @@ export class TaskGraphEditor extends VnEditor {
   }
 
   /**
-   * The gate's one affordance: name the character in the shared selection, then open the
-   * approval command on them. `gate.approve` also needs the candidate hash — which portrait is
-   * the author's judgement, not the graph's — so the command's own dialog is where it is answered,
-   * and this editor writes nothing.
+   * The gate's one affordance: put the character in the shared selection, then open the approval
+   * command on them. `gate.approve` also needs the candidate hash, and which portrait to approve
+   * is the author's judgement rather than the graph's, so the command's own dialog asks for it and
+   * this editor writes nothing.
    */
   private resolve(characterId: string): void {
     this.ui.characterId = characterId;
@@ -326,7 +326,10 @@ export class TaskGraphEditor extends VnEditor {
 /** How far past the outermost node the gate rule runs, so it reads as spanning the graph. */
 const RULE_OVERHANG = 64;
 
-/** Solid is what the scheduler orders on; dashed is what actually fed the prompt. */
+/**
+ * Solid edges are the dependencies the scheduler orders on; dashed edges are the refs that fed
+ * the prompt.
+ */
 function wireStyle(edge: EdgeRoute): EdgeStyle {
   if (edge.kind === 'dep') return { stroke: TOKENS.signalDeep, width: 1.5 };
   if (edge.kind === 'ref') return { stroke: TOKENS.mistDim, width: 1, dash: '4 4' };
@@ -364,8 +367,9 @@ function taskNode(view: Extract<TaskNodeView, { kind: 'task' }>, selected: boole
 }
 
 /**
- * A picture the project implies that no task has been filed for — hatched and dashed, so it never
- * reads as work in flight. It is one picture with a real address, not a cluster, so it says which.
+ * A picture the project implies that no task has been filed for. It is hatched and dashed so it
+ * never reads as work in flight, and it is labelled with its own subject because it stands for one
+ * picture with a real address rather than for a cluster.
  */
 function slotNode(view: Extract<TaskNodeView, { kind: 'slot' }>): HTMLElement {
   const slot = view.slot;

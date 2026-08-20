@@ -24,7 +24,7 @@ const chunks: PromptChunk[] = [
   },
 ];
 
-/** The result's override, or a failure the test wanted to succeed. */
+/** The result's override. Throws when the edit was refused. */
 function overrideOf(result: ReturnType<typeof applyPromptEdit>): PromptOverride | undefined {
   if (!result.ok) throw new Error(`expected an accept, got: ${result.reason}`);
   return result.override;
@@ -142,8 +142,8 @@ describe('applyPromptEdit — writes', () => {
     );
     expect(override?.mode).toBe('agent');
     expect(override?.agent?.of).toBe(chunkFingerprint(chunks, current));
-    // The mute is what makes the fingerprint differ from the unoverridden one; if it did not,
-    // muting a chunk after condensing would silently send a prompt the model never saw.
+    // The mute changes the fingerprint. Without that, muting a chunk after condensing would
+    // silently send a prompt the model never saw.
     expect(override?.agent?.of).not.toBe(chunkFingerprint(chunks, { mode: 'chunks' }));
   });
 
@@ -230,8 +230,8 @@ describe('applyPromptEdit — repin', () => {
     ]);
   });
 
-  // An upload names no slot, so it is a fixed point by construction — the refusal says so rather
-  // than letting an author pin it somewhere it can never drift back from.
+  // An upload names no slot, so it is a fixed point by construction. The refusal says so rather
+  // than letting an author pin it somewhere it cannot drift back from.
   it('refuses an unlinked reference', () => {
     const result = applyPromptEdit(chunks, pinned, {
       op: 'repin',
@@ -350,7 +350,7 @@ describe('applyPromptEdit — addRef and dropRef', () => {
     expect(override?.refs?.['subject']).toEqual([{ pin: 'anupload', ext: 'png' }]);
   });
 
-  // Dropping the last one must leave a sheet that looks untouched, not an empty block.
+  // Dropping the last reference must leave no override at all, not an empty refs block
   it('comes back to no override at all when the last reference goes', () => {
     const one: PromptOverride = {
       mode: 'chunks',

@@ -4,11 +4,11 @@
  * Two things about the shape are load-bearing and are stated here because nothing downstream can
  * infer them:
  *
- * - **`v` is per line, not per file.** The log is union-merged by git, so two builds' lines end up
- *   interleaved in one file and a file-level version field would be a lie about half of them.
- * - **`v`, `r` and `h` come first.** `r` (read) and `h` (hidden) are single ASCII digits patched
+ * - `v` is per line, not per file. The log is union-merged by git, so two builds' lines end up
+ *   interleaved in one file, and a file-level version field would describe half of them wrongly.
+ * - `v`, `r` and `h` come first. `r` (read) and `h` (hidden) are single ASCII digits patched
  *   in place at a computed byte offset, so they must sit in the line's pure-ASCII head, ahead of
- *   any authored text. Serializing must preserve that order.
+ *   authored text. Serializing must preserve that order.
  */
 import { z } from 'zod';
 
@@ -34,28 +34,28 @@ export const NOTIFICATION_SOURCES = ['ui', 'main', 'agent', 'pipeline', 'cdp'] a
 export type NotificationSource = (typeof NOTIFICATION_SOURCES)[number];
 
 /**
- * Where a notification points, and it points by naming an **act**, never an address.
+ * Where a notification points. A link names an act to perform rather than an address.
  *
- * Two shapes, because there are two kinds of destination. `editor` (+ `subject`) is deliberately
- * the argument shape of the `view.open` command, so following a link invents nothing — it runs
- * the command the palette and the menu already run. `command` names a whole command instead, for
- * a notification whose destination is not a pane: today only the releases page, reached through
- * `app.openReleases`, which derives its own URL.
+ * There are two shapes because there are two kinds of destination. `editor` (with `subject`) is
+ * the argument shape of the `view.open` command, so following a link runs the command the palette
+ * and the menu already run. `command` names a whole command instead, for a notification whose
+ * destination is not a pane: today only the releases page, reached through `app.openReleases`,
+ * which derives its own URL.
  *
- * **Neither may be a URL, and that is the constraint rather than an accident.** `app.openKeyLink`
- * states the rule it shares: naming a *field* rather than an address is why no part of the app
- * can ask the OS to open one it was handed. A notification is a line of a file git union-merges
- * across clones and branches, so it is exactly the input that must not be able to.
+ * Neither field may be a URL. `app.openKeyLink` states the same rule: because a link names a
+ * field rather than an address, no part of the app can ask the OS to open an address it was
+ * handed. A notification is a line of a file git union-merges across clones and branches, so it
+ * is exactly the kind of input that must not be able to name an address.
  *
- * Both are bare strings here and not the desktop's `EditorId` or a command id: those live in
- * `apps/desktop/src/shared/`, which this package sits below and must not import. The desktop
- * narrows each on the way out — an editor against `EDITOR_IDS`, a command against a short
- * allow-list — and a link it cannot narrow leaves the row a plain unlinked message.
+ * Both are bare strings here rather than the desktop's `EditorId` or a command id, because those
+ * live in `apps/desktop/src/shared/`, which this package sits below and must not import. The
+ * desktop narrows each on the way out, an editor against `EDITOR_IDS` and a command against a
+ * short allow-list. A link it cannot narrow leaves the row a plain unlinked message.
  *
- * Both fields are optional, which is what lets this widen without a `NOTIFICATION_VERSION` bump:
- * every line an older build wrote still parses, and a line *this* build writes with only a
- * `command` fails an older build's stricter schema and is skipped, which is what
- * `migrateNotification` already does with anything it cannot use.
+ * Both fields are optional, which lets this widen without a `NOTIFICATION_VERSION` bump: every
+ * line an older build wrote still parses, and a line written by this build with only a `command`
+ * fails an older build's stricter schema and is skipped, the same way `migrateNotification`
+ * skips anything it cannot use.
  */
 export const NotificationLinkSchema = z.object({
   editor: z.string().min(1).optional(),
@@ -98,20 +98,20 @@ export interface NotificationInput {
 
 /**
  * Lift a line written by an older build to the current shape, keyed by the `v` it was written at.
- * Empty at v1 and that is the point — the chain exists so the first schema change is an entry
- * here rather than a decision about what to do with everyone's existing log.
+ * Empty at v1. The chain exists so the first schema change is an entry here rather than a
+ * decision about what to do with existing logs.
  */
 const MIGRATIONS: Record<number, (line: Record<string, unknown>) => Record<string, unknown>> = {};
 
 /**
  * Parse one line, migrating it forward. Returns `undefined` rather than throwing for anything it
  * cannot use: a half-written line (what a crash mid-append leaves), a line that does not validate,
- * or one whose `v` is *newer* than this build knows.
+ * or a line whose `v` is newer than this build knows.
  *
- * This departs from the repo's usual `z.literal(1)`-and-throw (`@vn/store`'s `readShots`), and the
- * asymmetry is deliberate. A shot file that silently re-decomposes corrupts art, so it must throw.
- * A notification log that refuses to open because one line came from tomorrow's build loses every
- * other line with it — skipping is the smaller loss. `main/threads.ts` reasons the same way.
+ * This departs deliberately from the repo's usual `z.literal(1)`-and-throw (`@vn/store`'s
+ * `readShots`). A shot file that silently re-decomposes corrupts art, so it must throw. A
+ * notification log that refuses to open because one line came from a newer build loses every
+ * other line with it, so skipping is the smaller loss. `main/threads.ts` reasons the same way.
  */
 export function migrateNotification(raw: unknown): Notification | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;

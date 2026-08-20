@@ -1,16 +1,16 @@
 /**
- * One generated asset as commands: what it is, accepting it, re-rendering it.
+ * Commands over one generated asset: reading it, accepting it, re-rendering it.
  *
  * The namespace is deliberately generic — it addresses a hash, not a character or a shot — because
- * the manifest is the one place every kind of generated art meets. What an asset *should look
- * like* is not here: that is authored input, and it is `art.setNotes`.
+ * the manifest is the one place every kind of generated art meets. What an asset should look like
+ * is authored input instead, and lives in `art.setNotes`.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
 
-/** A session preview read as a precondition: the plan's own sentence either way. */
+/** Turns a session preview into a check result, keeping the preview's message in both cases. */
 function verdict(result: { ok: boolean; message: string }): CheckResult {
   return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
 }
@@ -76,7 +76,7 @@ export const assetUpload = define({
     'a repainted plate should. Mock placeholder art and anything that is not an image are ' +
     'refused by name.',
   mutating: true,
-  // It writes bytes into the repo from a path the author named, which is worth one confirmation.
+  // Writes bytes into the repo from a path the author named, which is worth one confirmation
   confirm: true,
   props: {
     file: prop.string('path to the image file (absolute, or relative to the project)'),
@@ -119,7 +119,7 @@ export const assetAdopt = define({
     'so is an upload or a concept, which are their own identity. Superseding a render that ' +
     'already holds the slot needs `replace`, and the old bytes stay in the store either way.',
   mutating: true,
-  // It changes what the project's art *is*, and with `replace` it supersedes real work.
+  // Makes existing bytes the project's art, and with `replace` it supersedes real work
   confirm: true,
   props: {
     hash: prop.string('the asset hash to adopt'),
@@ -145,14 +145,14 @@ export const assetReplace = define({
     'one these bytes fill now, so an asset a later render superseded is refused, as is anything ' +
     'nothing planned. Cancelling changes nothing.',
   mutating: true,
-  // It supersedes real work with a file from outside, which is the bar `asset.upload` clears too.
+  // Supersedes real work with a file from outside, which is the bar `asset.upload` clears too
   confirm: true,
   props: { hash: prop.string('the asset the chosen file replaces') },
   async check({ hash }, ctx) {
     return verdict(await ctx.host.session.previewReplace(hash));
   },
   async run({ hash }, ctx) {
-    // The chooser is not a permission: what the command would refuse is refused after it too.
+    // Choosing a file grants no permission; the same refusals apply after the chooser closes
     const picked = await ctx.host.pickFiles(
       {
         title: 'Replace with a file',
@@ -211,12 +211,11 @@ export const assetRegenerate = define({
 });
 
 /**
- * Whether a requeue runs the pipeline on its own, and why — `''` for "it does not".
+ * Why a requeue runs the pipeline on its own, or `''` when it does not.
  *
- * The author's own reading: one queued task is a re-roll, and sending them to the run dialog to
- * press Run is ceremony. Anything wider stays a decision, a gate is a halt rather than a run, and
- * a run that cannot resolve its keys is not started — `runPreconditions` names the source that
- * failed, never the value.
+ * A single queued task runs without asking, because it is a re-roll. More than one pending task
+ * stays the author's decision, a closed gate halts rather than runs, and a run whose keys do not
+ * resolve is not started. `runPreconditions` names the source that failed, never the value.
  */
 export function autoRunReason(pre: {
   pending: number;

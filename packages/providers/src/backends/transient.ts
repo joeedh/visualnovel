@@ -36,8 +36,8 @@ const STATUS_IN_TEXT = /\b(?:status|code)\b\W{0,4}(\d{3})\b/i;
 /**
  * Whether another attempt could plausibly get a different answer. The SDKs put the status in
  * more than one place and sometimes only in the message, so all of them are read. Anything
- * unrecognized is **terminal**: retrying a refusal costs three times as much for the same
- * refusal, which is the expensive direction to be wrong in.
+ * unrecognized is treated as terminal: retrying a refusal costs three times as much for the
+ * same refusal, which is the expensive direction to be wrong in.
  */
 export function isTransient(err: unknown): boolean {
   const e = err as { status?: unknown; code?: unknown; response?: { status?: unknown } };
@@ -53,20 +53,20 @@ export function isTransient(err: unknown): boolean {
 /**
  * What sort of fault this was, for a host deciding what to offer the author about it.
  *
- * A refinement of {@link isTransient} rather than a rival to it: `transient` means the same thing
+ * This refines {@link isTransient} rather than replacing it: `transient` means the same thing
  * here, and the other three split what `isTransient` lumps together as "terminal".
  *
  * - `transient` — a 429, a 5xx, a dead socket. Another attempt is worth making.
- * - `auth` — 401, 403, a {@link ConfigError}. The answer is the key, not a bug report.
+ * - `auth` — 401, 403, a {@link ConfigError}. The fix is the key rather than a bug report.
  * - `request` — a terminal 4xx that is neither: the body itself was rejected.
  * - `unknown` — unrecognized, and deliberately treated as no information.
  */
 export type FaultKind = 'transient' | 'auth' | 'request' | 'unknown';
 
-/** 4xx that mean "we do not believe who you are", as opposed to "we do not like what you sent". */
+/** 4xx that reject the caller's identity rather than the contents of the request. */
 const authStatus = (s: number): boolean => s === 401 || s === 403;
 
-/** Every status this error carries, wherever the SDK put it, in the message included. */
+/** Every status this error carries, wherever the SDK put it, including one named in the message. */
 function statuses(err: unknown): number[] {
   const e = err as { status?: unknown; code?: unknown; response?: { status?: unknown } };
   const found: number[] = [];
@@ -81,7 +81,7 @@ function statuses(err: unknown): number[] {
 /**
  * Classify a failure, unwrapping `cause` as far as it goes.
  *
- * The unwrapping is the whole of it. {@link providerError} wraps the SDK error as
+ * The unwrapping is what makes this work. {@link providerError} wraps the SDK error as
  * `new ProviderError(message, { cause: err })`, so by the time a host catches one the status is on
  * `.cause` — and Anthropic's own message, `400 {"type":"error",…}`, matches neither
  * {@link STATUS_IN_TEXT} (no "status"/"code" word before the number) nor anything else here. A
@@ -105,8 +105,8 @@ export function faultKind(err: unknown): FaultKind {
     if (isTransient(link)) return 'transient';
     const found = statuses(link);
     if (found.some(authStatus)) return 'auth';
-    // 4xx only. A status that is not a status — an `errno`, a vendor's own code — is common in
-    // the `code` field, and reading one as a rejection would offer a bug report for a typo.
+    // 4xx only. The `code` field often holds a number that is not an HTTP status — an `errno`,
+    // a vendor's own code — and reading one as a rejection would offer a bug report for a typo.
     if (found.some((s) => s >= 400 && s < 500)) return 'request';
     // Anthropic and Gemini both put the code at the head of the message with no word before it,
     // which is the one shape `STATUS_IN_TEXT` deliberately will not match.
@@ -161,8 +161,8 @@ export function retryAfterMs(err: unknown, now = Date.now()): number | undefined
 
 /**
  * Wrap an SDK failure, choosing the class from whether another attempt could help — and carrying
- * the provider's own `retry-after` where it sent one, because the layer that knows when a limit
- * resets is the response, and nothing above here can see it.
+ * the provider's own `retry-after` where it sent one, because only the response says when a limit
+ * resets and nothing above here can see it.
  */
 export function providerError(what: string, err: unknown): ProviderError {
   const message = `${what}: ${causeMessage(err)}`;
@@ -192,8 +192,8 @@ export function callWithRetry<T>(what: string, fn: () => Promise<T>): Promise<T>
       attempts: ATTEMPTS,
       baseMs: BASE_MS,
       shouldRetry: (err) => err instanceof RetryableProviderError,
-      // The vendors all say the same thing: honour `retry-after` when it is there, back off
-      // exponentially when it is not. This is the first half; `baseMs` above is the second.
+      // Every vendor asks for the same policy: honour `retry-after` where one was sent, and back
+      // off exponentially where none was. `delayFor` covers the first case and `baseMs` the second
       delayFor: (err) => (err instanceof RetryableProviderError ? err.retryAfterMs : undefined),
     },
   );

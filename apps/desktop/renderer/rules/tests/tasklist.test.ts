@@ -48,15 +48,15 @@ describe('showing', () => {
     expect(showing(TASKS, filter({ onlyRunning: true })).map((t) => t.hash)).toEqual(['d']);
   });
 
-  // The one tick an author reaches for after a run that did not produce what they expected — and
-  // a shot that exhausted its refinements is the likeliest answer, so it is kept by a tick named
-  // for failure rather than hidden by it.
+  // This is the tick an author reaches for after a run that did not produce what they expected,
+  // and a shot that exhausted its refinements is the likeliest answer, so a tick named for failure
+  // keeps it rather than hiding it
   it('keeps what stopped and wants a person, needs_human included', () => {
     expect(showing(TASKS, filter({ onlyFailed: true })).map((t) => t.hash)).toEqual(['b', 'e']);
   });
 
   // The ticks are independent rather than one four-state control, and no two of the statuses
-  // overlap — so any two on is a request for nothing, and answering nothing is correct.
+  // overlap, so two ticks on is a request for nothing and answering nothing is correct
   it('shows nothing when two status ticks are on', () => {
     expect(showing(TASKS, filter({ onlyDone: true, onlyRunning: true }))).toEqual([]);
     expect(showing(TASKS, filter({ onlyDone: true, onlyFailed: true }))).toEqual([]);
@@ -74,8 +74,8 @@ describe('emptyBecause', () => {
   });
 
   // The defect this module exists for: Clear takes out exactly what `only done` keeps, so with
-  // both on the filter used to be blamed — and told the author nothing had finished when the
-  // three tasks it had just cleared all had.
+  // both on, the filter used to be blamed, telling the author nothing had finished when what
+  // Clear had just removed included the tasks that had
   it('still blames Clear when the filter is on as well', () => {
     const cleared = new Set(['a', 'b', 'c', 'd', 'e']);
     expect(emptyBecause(TASKS, filter({ cleared, onlyDone: true }))).toContain(

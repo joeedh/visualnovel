@@ -1,7 +1,7 @@
 /**
- * What this file checks is *where the breakpoints land*, and nothing else — a cache hit cannot be
- * observed without a key and a bill, so `scripts/verify-prompt-cache.mjs` is where that is proved.
- * Here the claim is narrower and testable: the request body says what
+ * This file checks where the breakpoints land and nothing else. A cache hit cannot be observed
+ * without a key and a bill, so `scripts/verify-prompt-cache.mjs` is where that is proved.
+ * The claim here is narrower and testable: the request body says what
  * `docs/plans/archive/prompt-caching-and-deferred-tool-loading.md` says it says.
  */
 import type { ChatTurn, ToolSchema } from '../../backend.js';
@@ -23,7 +23,7 @@ type Message = { role: string; content: Block[] };
 const messages = (body: Record<string, unknown>): Message[] => body.messages as Message[];
 const tools = (body: Record<string, unknown>): Block[] => (body.tools ?? []) as Block[];
 
-/** The id the API gives a server-side tool call. Its prefix is what the pairing rule is about. */
+/** The id the API gives a server-side tool call. The pairing rule keys off its prefix. */
 const SRV = 'srvtoolu_01BQ5mmxtZsuMrBwkBkZ7k3W';
 
 /**
@@ -43,12 +43,12 @@ const SEARCHED: Block[] = [
 
 /**
  * The rule the API states as an error rather than as prose: every `tool_search_tool_result` pairs
- * with a `server_tool_use` of the same id **earlier in the same message**, and no `tool_result` is
+ * with a `server_tool_use` of the same id earlier in the same message, and no `tool_result` is
  * ever returned for a `srvtoolu_` id
  * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md:386`).
  *
- * Checked over the whole body rather than over the turn under test, because what separates a pair
- * is never the pair — it is a turn beside it that merged, or a marker that landed between them.
+ * Checked over the whole body rather than over the turn under test, because a pair is broken by
+ * something beside it: a turn that merged into it, or a marker that landed between the two blocks.
  */
 function expectPairedServerTools(body: Record<string, unknown>): void {
   for (const message of messages(body)) {
@@ -82,7 +82,7 @@ describe('the cached prefix', () => {
     expect(body.system).toEqual([
       { type: 'text', text: 'rules', cache_control: { type: 'ephemeral' } },
     ]);
-    // The last *non-deferred* tool, which is `search` — the deferred one after it may not carry one.
+    // The last non-deferred tool is `search`; the deferred one after it may not carry a breakpoint
     const marked = tools(body).filter((t) => t.cache_control);
     expect(marked).toHaveLength(1);
     expect(marked[0]!.name).toBe('search');
@@ -206,10 +206,10 @@ describe('the transcript', () => {
 });
 
 /**
- * The round trip a deferred tool costs: the model searches, the API answers inline, and the whole
- * exchange has to come back on the next step intact. What makes this worth its own block is that
- * the API validates it *positionally* — a pair broken by anything at all is a 400 naming a message
- * and a block index, and the transcript is re-sent every step, so one break repeats forever.
+ * A deferred tool costs a round trip: the model searches, the API answers inline, and the whole
+ * exchange has to come back on the next step intact. The API validates it positionally, so a
+ * broken pair is a 400 naming a message and a block index, and the transcript is re-sent every
+ * step, so one break repeats forever.
  */
 describe('a tool search echoed back', () => {
   /** The step after the search: the reply, then the answer to the one call it actually made. */
@@ -222,8 +222,8 @@ describe('a tool search echoed back', () => {
   it('keeps the result paired with the call that made it, and answers only the real call', () => {
     const body = buildConvoRequest(WITH_SYSTEM, { system: 's', turns: roundTrip() }, TOOLS);
     expectPairedServerTools(body);
-    // Not merely paired — identical. A re-rendered block is a changed byte, and the search
-    // result is the one block in a transcript nothing on our side could reconstruct.
+    // Pairing is not enough; the blocks have to come back identical. Re-rendering one changes
+    // its bytes, and the search result is the one block nothing on our side can reconstruct
     expect(messages(body)[1]!.content).toEqual(SEARCHED);
     expect(messages(body).map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
   });
@@ -263,8 +263,8 @@ describe('a tool search echoed back', () => {
     const withSystem: ChatTurn[] = [...roundTrip(), { role: 'system', content: 'BUDGET: 9,000' }];
     for (const model of [WITH_SYSTEM, WITHOUT_SYSTEM]) {
       const body = buildConvoRequest(model, { system: 's', turns: withSystem }, TOOLS);
-      // Down-rendered and merged for one model, a message of its own for the other — and in
-      // neither case does it land inside the assistant turn holding the pair.
+      // Down-rendered and merged for one model, a message of its own for the other. In both
+      // cases it stays outside the assistant turn holding the pair.
       expect(messages(body)[1]!.content).toEqual(SEARCHED);
       expectPairedServerTools(body);
     }

@@ -1,5 +1,5 @@
 /**
- * Pan/zoom for a graph canvas. The viewport is a similarity transform applied in *screen*
+ * Pan/zoom for a graph canvas. The viewport is a similarity transform applied in screen
  * space — `screen = world * scale + translate` — which is exactly what an SVG
  * `translate(tx,ty) scale(s)` does, so the numbers here and the numbers in the DOM cannot
  * drift apart.
@@ -35,10 +35,9 @@ export function toWorld(vp: Viewport, p: Point): Point {
 }
 
 /**
- * Convert a screen-space distance to world units. Hit slop is authored in screen pixels — a
- * target should be as easy to hit at any zoom — so it must be divided through by the scale
- * before it meets world geometry. Getting this backwards is the classic bug: unclickable
- * targets zoomed out, mushy ones zoomed in.
+ * Convert a screen-space distance to world units. Hit slop is authored in screen pixels, so that
+ * a target is equally easy to hit at every zoom level, and it must be divided by the scale before
+ * it meets world geometry.
  */
 export const screenToWorldDistance = (vp: Viewport, px: number): number => px / vp.scale;
 
@@ -48,8 +47,7 @@ export function panBy(vp: Viewport, dx: number, dy: number): Viewport {
 }
 
 /**
- * Zoom about a screen point — the world point under the cursor stays under the cursor, which
- * is the only zoom that feels like the content is being touched rather than pushed.
+ * Zoom about a screen point. The world point under the cursor stays under the cursor.
  */
 export function zoomAt(
   vp: Viewport,
@@ -102,8 +100,8 @@ export const transformOf = (vp: Viewport): string =>
 
 /**
  * The same transform for an HTML layer. It has to be built separately: CSS `translate()` needs
- * units and a comma, and a CSS transform the parser rejects is dropped *silently* — the layer
- * simply sits at world coordinates with no error anywhere.
+ * units and a comma, and the parser drops a CSS transform it rejects without reporting an error,
+ * leaving the layer at world coordinates.
  */
 export const cssTransformOf = (vp: Viewport): string =>
   `translate(${vp.x}px, ${vp.y}px) scale(${vp.scale})`;

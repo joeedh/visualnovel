@@ -42,7 +42,7 @@ describe('resolveOwner', () => {
     const exploding: OwnerResolver = () => {
       throw new Error('fiber layout changed');
     };
-    // A broken resolver is skipped; with nothing left to say, attribution is 'unknown'.
+    // A broken resolver is skipped; when no resolver returns an owner, attribution is 'unknown'
     expect(resolveOwner(el({ tag: '' }), undefined, [exploding, ...DEFAULT_RESOLVERS])).toEqual({
       id: 'unknown',
       label: 'unknown',

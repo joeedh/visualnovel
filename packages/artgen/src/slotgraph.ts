@@ -2,24 +2,24 @@
  * Every picture this project implies, whether or not anything has drawn one yet.
  *
  * `planTasks` is incremental by construction: a `shot_image`'s inputs embed its plate's and its
- * cast's **asset** hashes, and `taskHash` covers the whole inputs object, so a shot's identity does
- * not exist until those have rendered. A graph of task hashes is therefore structurally incapable of
- * showing the future, and a surface that wants to show one has to guess — which is what the Task
- * Graph pane's ghost clusters were.
+ * cast's asset hashes, and `taskHash` covers the whole inputs object, so a shot's identity does not
+ * exist until those have rendered. A graph of task hashes therefore cannot show work that has yet
+ * to be planned, and a surface that wants to show it has to guess, which is what the Task Graph
+ * pane's ghost clusters did.
  *
- * So the full graph is a graph of **slots**: the addresses `refcycle.ts` already speaks, which exist
- * before anything is rendered and survive a re-plan. The planner's real identity is attached to the
- * slots the project can currently state one for, and the ones it cannot carry the sentence saying
- * why — the same sentence adoption refuses with, because it is the same question.
+ * The full graph is instead a graph of slots: the addresses `refcycle.ts` already speaks, which
+ * exist before anything is rendered and survive a re-plan. A slot the project can state a planner
+ * identity for carries that identity. A slot it cannot carries the sentence saying why instead,
+ * which is the sentence adoption refuses with, because it answers the same question.
  *
  * Three contracts, each load-bearing:
  *
- * - **Sheets are enumerated for every used outfit whether or not the gate has cleared.** That is
- *   exactly the difference between a slot graph and a plan. It follows that this is **not** a
- *   prediction of what `planTasks` emits this wave — `vngen cost` remains that answer.
- * - **Shots come only from persisted decompositions.** A scene with no `work/shots/<id>.json` has no
- *   shot slots, and none are fabricated: decomposing is an explicit act with a price, never a read.
- * - **`hash` and `candidates` are different answers and both are needed.** See {@link SlotNode}.
+ * - Sheets are enumerated for every used outfit whether or not the gate has cleared. That is the
+ *   difference between a slot graph and a plan, and it means this is not a prediction of what
+ *   `planTasks` emits this wave — `vngen cost` remains that answer.
+ * - Shots come only from persisted decompositions. A scene with no `work/shots/<id>.json` has no
+ *   shot slots, and none are fabricated, because decomposing is an explicit act with a price.
+ * - `hash` and `candidates` are different answers and both are needed. See {@link SlotNode}.
  *
  * The reverse index lives here rather than on `TaskGraph` deliberately: `Task.deps` is documented
  * incomplete and is not hashed, so inverting it would answer a question nobody asks.
@@ -51,12 +51,12 @@ import { isApproved } from './gate.js';
 /** A decision that either carries a plan or names, in a sentence, why there is none. */
 export type Decided<T> = { ok: false; code: string; reason: string } | { ok: true; plan: T };
 
-/** What stating a slot's identity reads — deliberately not the manifest, which it never consults. */
+/** The fields stating a slot's identity reads. The manifest is deliberately not among them. */
 export interface SlotResolveContext extends RungContext {
   config: ProjectConfig;
   /**
-   * The task graph as loaded. Optional, and its absence is meaningful: without it no `shot:` slot
-   * can state an identity, and the graph is pure shape — which is all a caller that has not read
+   * The task graph as loaded. Its absence is meaningful: without it no `shot:` slot can state an
+   * identity and the result is pure shape, which is all a caller that has not read
    * `state/tasks.jsonl` is entitled to.
    */
   graph?: { get(hash: string): AnyTask | undefined };
@@ -72,7 +72,10 @@ export type ResolvedSlot =
   | { kind: 'model_sheet'; inputs: TaskInputs['model_sheet'] }
   | { kind: 'shot_image'; inputs: TaskInputs['shot_image'] };
 
-/** The task identity a resolved slot has. Switched rather than generic: the pair has to correlate. */
+/**
+ * The task identity a resolved slot has. Written as a switch rather than a generic so that a kind
+ * and its inputs stay correlated.
+ */
 export function slotTaskHash(r: ResolvedSlot): string {
   switch (r.kind) {
     case 'portrait':
@@ -137,10 +140,10 @@ function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decide
  * The planner's own identity for a slot, computed from the project as it stands — or the sentence
  * saying why the project cannot state one yet.
  *
- * Pure: everything it reads is already loaded by the caller, which is what lets a whole-graph pass
- * call it once per slot. `adoptSlot` is the other caller and loads the model, the manifest and the
- * shots itself before calling; the `portrait:` refusal it gives belongs to *adoption*, not to
- * identity, so it stays there rather than here.
+ * Pure, because everything it reads is already loaded by the caller, which is what lets a
+ * whole-graph pass call it once per slot. `adoptSlot` is the other caller and loads the model, the
+ * manifest and the shots itself before calling. Its `portrait:` refusal belongs to adoption rather
+ * than to identity, so it stays there rather than here.
  */
 export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<ResolvedSlot> {
   const params = imageParams(ctx.config);
@@ -238,7 +241,7 @@ export interface SlotNode {
   /** The planner's identity, where the project can state one. */
   taskHash?: string;
   status?: TaskStatus;
-  /** {@link resolveSlot}'s own sentence, when it cannot. */
+  /** {@link resolveSlot}'s sentence saying why no identity can be stated. */
   blocked?: string;
   /**
    * The asset that settles this slot — `resolveBinding`'s answer, which declines whenever the
@@ -246,16 +249,17 @@ export interface SlotNode {
    */
   hash?: string;
   /**
-   * Every manifest asset bound here, accepted or not. **Empty is what "not yet rendered" means**,
-   * and `hash === undefined` is not: a portrait resolves off the gate and so is unset before
+   * Every manifest asset bound here, accepted or not. An empty list is what "not yet rendered"
+   * means, and `hash === undefined` is not: a portrait resolves off the gate and so is unset before
    * approval even with three drafts filed, and `pick` declines when two unaccepted candidates tie.
-   * Either would report real bytes as unrendered.
+   * Either case would report real bytes as unrendered.
    */
   candidates: string[];
   /**
-   * Whether a human has blessed what fills this slot. **Asymmetric, deliberately**: a `portrait:`
-   * answers to the P3 gate (`isApproved`), everything else to `Asset.accepted`. Two different acts
-   * wearing one word, and conflating them is the bug this graph exists to prevent.
+   * Whether a human has approved what fills this slot. The test is deliberately asymmetric: a
+   * `portrait:` answers to the P3 gate (`isApproved`) and every other kind to `Asset.accepted`.
+   * These are two different acts under one word, and conflating them is the bug this graph exists
+   * to prevent.
    */
   approved: boolean;
 }
@@ -307,8 +311,8 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
       key,
       binding,
       label: slotLabel(binding),
-      // Not filtered to enumerated keys: an edge to an authored `asset:<hash>` pin is real, and a
-      // consumer treats a key `nodes` has no entry for as an opaque upstream.
+      // Left unfiltered by enumerated keys, because an edge to an authored `asset:<hash>` pin is
+      // real; a consumer treats a key `nodes` has no entry for as an opaque upstream
       refs: refsOfSlot(binding, ctx).map(slotKey),
       ...(task ? { taskHash: task } : {}),
       ...(status ? { status } : {}),
@@ -327,8 +331,8 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
     for (const ref of node.refs) dependents.set(ref, [...(dependents.get(ref) ?? []), node.key]);
 
   // Post-order depth-first, so an upstream is emitted before everything drawn from it. The
-  // `visiting` guard is the one `suspendedAssets` uses and for its reason: enforcement stops a
-  // cycle being *written*, and this stops a project that somehow holds one wedging the app.
+  // `visiting` guard is the one `suspendedAssets` uses, for the same reason: enforcement stops a
+  // cycle being written, and this stops a project that somehow holds one from wedging the app.
   const order: string[] = [];
   const done = new Set<string>();
   const visiting = new Set<string>();

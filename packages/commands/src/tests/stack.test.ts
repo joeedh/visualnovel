@@ -89,7 +89,7 @@ const guarded = define({
   },
 });
 
-/** A precondition and the run it does *not* gate: `check` refuses, `run` goes ahead anyway. */
+/** A precondition and the run it does not gate: `check` refuses, `run` goes ahead anyway. */
 const checked = define({
   id: 'demo.checked',
   title: 'Checked',
@@ -358,12 +358,12 @@ describe('CommandStack.check', () => {
   });
 });
 
-/**
- * The workspace as one value, so the stack's bookkeeping can be tested without a repo. The
- * journal's own git behaviour is exercised against a real one in `undo.test.ts`.
- */
 const ROOT = '/ws';
 
+/**
+ * The workspace as one value, so the stack's bookkeeping can be tested without a repo. The
+ * journal's own git behaviour is exercised against a real repo in `undo.test.ts`.
+ */
 class FakeJournal {
   private n = 0;
   readonly trees = new Map<string, string>();
@@ -517,7 +517,7 @@ describe('undo/redo', () => {
     expect(await stack.exec('demo.editFails', {}, 'ui')).toMatchObject({ ok: false });
     expect(world.value).toBe('half-written');
 
-    // No post-state was captured, so there is nothing to restore *to*. Undo reaches back to
+    // No post-state was captured, so there is nothing to restore to. Undo reaches back to
     // the last command that completed — and the drift check is what catches the debris.
     const failed = stack.history()[1]!;
     expect(failed).toMatchObject({ status: 'error' });
@@ -609,7 +609,7 @@ describe('undo/redo', () => {
   it('refuses when the workspace moved since the command ran', async () => {
     const { stack, world } = undoSetup();
     await stack.exec('demo.edit', { to: 'w1' }, 'ui');
-    world.value = 'hand-edited'; // an author, an editor, another process
+    world.value = 'hand-edited'; // a change from outside the stack: another editor or process
 
     const outcome = await stack.undo();
     expect(outcome.ok).toBe(false);
@@ -653,7 +653,7 @@ describe('undo/redo', () => {
     await stack.undo();
     await stack.exec('demo.look', {}, 'ui');
 
-    // Only a new *act* invalidates the branch a redo belongs to. Looking around is not one.
+    // Only a new act invalidates the branch a redo belongs to. Looking around is not one.
     expect(stack.undoState()).toMatchObject({ canRedo: true, redoLabel: "demo.edit(to='w1')" });
     expect(await stack.redo()).toMatchObject({ ok: true });
     expect(world.value).toBe('w1');

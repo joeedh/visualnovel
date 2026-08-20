@@ -235,7 +235,7 @@ describe('writeSkill', () => {
   it('refuses an id that is not one', async () => {
     const { root, cleanup } = await tempWorkspace({});
     try {
-      // An id names one directory, whatever else it is — this refusal holds even for `overwrite`.
+      // An id names one directory and never a path, so this refusal holds even for `overwrite`
       for (const id of ['', '.', '..', 'a/b']) {
         const res = await writeSkill(root, { ...INPUT, id }, { overwrite: true });
         expect(res.ok).toBe(false);
@@ -341,8 +341,8 @@ describe('skillIssues', () => {
       expect(by('mute').issues.join(' ')).toContain('no description');
       expect(by('empty').issues.join(' ')).toContain('no instructions');
 
-      // The dangerous one: `script:` names a file that is not there, so the scan finds a
-      // different script and runs it under the confirm card's name.
+      // `script:` names a file that is not there, so the scan finds a different script and runs
+      // it under the confirm card's name.
       const stale = by('stale').issues.join(' ');
       expect(stale).toContain('build.mjs');
       expect(stale).toContain('run.mjs');

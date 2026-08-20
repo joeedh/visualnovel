@@ -25,9 +25,9 @@ describe('stopReason', () => {
     expect(stopReason(round({ approved: 0, ran: 0 }), 0)).toContain('everything is generated');
   });
 
-  // The same standstill, told honestly: a project whose last tasks are failed or `needs_human`
-  // has stopped moving too, and "everything is generated" is a claim the author disproves by
-  // opening the art.
+  // A project whose last tasks are failed or flagged `needs_human` has stopped moving too, so it
+  // must not be reported as everything generated — the author would disprove that by opening the
+  // art.
   it('does not call a standstill with failures a finished project', () => {
     const why = stopReason(round({ approved: 0, ran: 0, failed: 3 }), 0);
     expect(why).toContain('needs a person');
@@ -113,9 +113,9 @@ describe('toApprove', () => {
     expect(toApprove(rows)).toHaveLength(2);
   });
 
-  // The bug this whole rule exists for: a finished project still lists the takes that lost, and a
-  // pass that approved them would change every settled answer and be offered the old one next
-  // round, forever, while the pipeline it ran between rounds had nothing to do.
+  // A finished project still lists the takes that lost. A pass that approved them would change
+  // every settled answer, be offered the old one again next round forever, and leave the pipeline
+  // it ran between rounds with nothing to do.
   it('leaves a settled slot alone, whichever door it answers to', () => {
     const rows = [
       item({ hash: 'a', settled: true }),

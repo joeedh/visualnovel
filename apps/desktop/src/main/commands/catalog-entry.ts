@@ -11,7 +11,7 @@ import { createDesktopRegistry, type CommandHost } from './index.js';
  * `commands.json`. Two call sites drifted once — the channel omitted the interactions — so there
  * is now only one.
  *
- * Verifying here is deliberate: it is the earliest place both registries exist, and it runs at
+ * Verification runs here because this is the earliest place both registries exist, and it runs at
  * build time, so an interaction naming a command the app does not have fails the bundle rather
  * than the first agent that asks.
  */

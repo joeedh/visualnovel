@@ -20,7 +20,7 @@ export interface OrderChunk {
 
 /** What the gesture is judged against: the chunks in derivation order, and the mode in force. */
 export interface PromptOrderState {
-  /** Derivation order — what the builder emitted, *before* any stored `order` is applied. */
+  /** Derivation order — what the builder emitted, before any stored `order` is applied. */
   chunks: readonly OrderChunk[];
   order?: readonly string[];
   mode: 'chunks' | 'custom' | 'agent';
@@ -59,7 +59,7 @@ export function enabledChunks(chunks: readonly OrderChunk[]): OrderChunk[] {
 /**
  * Move `chunk` so it sits directly after `after` — or first, when `after` is empty.
  *
- * Returns the **complete** key order rather than a partial one. The stored form tolerates a partial
+ * Returns the complete key order rather than a partial one. The stored form tolerates a partial
  * list (see {@link effectiveOrder}), but a gesture that writes only the two keys it touched would
  * leave the rest to derivation order and quietly undo an earlier move.
  *

@@ -2,21 +2,21 @@
  * The pure half of `story.setCoverage`: which lines a shot is on screen for, plus the geometry
  * a drag resolves against.
  *
- * It lives here — like every rule in this package — because two hosts run the same sentence: the
- * desktop's timeline runs these functions mid-drag to draw what a drop would produce and
- * `story.setCoverage` commits with them, and the authoring agent's `set_coverage` must be the same
- * decision rather than a copy that can disagree. (It began life in the desktop's `shared/`, which
- * only one of those hosts can import.)
+ * These rules live in this package because two hosts must reach the same decision: the desktop's
+ * timeline runs these functions mid-drag to draw what a drop would produce and
+ * `story.setCoverage` commits with them, and the authoring agent's `set_coverage` must reach that
+ * same decision rather than a copy that can disagree. (The rules started in the desktop's
+ * `shared/`, which only one of those hosts can import.)
  *
- * One invariant, and it is the whole point: **no line is covered by two shots.** The exporter
- * picks the first shot covering a line, so a doubly-covered line silently prefers whichever
- * shot happens to be first and the second shot's frame is never seen. Assigning a line to a
- * shot therefore takes it away from whatever held it before.
+ * The invariant is that no line is covered by two shots. The exporter picks the first shot
+ * covering a line, so a doubly-covered line silently prefers whichever shot happens to be first
+ * and the second shot's frame is never seen. Assigning a line to a shot therefore takes it away
+ * from whatever held it before.
  *
- * Coverage is a *set*, not a range. The deterministic decomposer interleaves — the establishing
+ * Coverage is a set, not a range. The deterministic decomposer interleaves — the establishing
  * shot takes every narration line while each medium shot takes one character's dialogue — so
- * non-contiguous coverage is the normal case, not an edge case: a shot draws as a list of
- * contiguous *segments*, and crossing extents are separated into lanes.
+ * non-contiguous coverage is the normal case: a shot draws as a list of contiguous segments, and
+ * crossing extents are separated into lanes.
  *
  * The line and shot shapes are structural and deliberately minimal — an id, and the covered line
  * ids — because that is all the rules read. The geometry is generic over them, so a caller with a
@@ -24,7 +24,7 @@
  * own type back out of `spansFor` instead of a narrowed one.
  */
 
-/** Just enough of a scene line to place coverage on: the rules read nothing but the id. */
+/** The part of a scene line the coverage rules read. */
 export interface CoverLine {
   id: string;
 }
@@ -51,17 +51,15 @@ const refuse = (error: string): CoverageOp => ({ ok: false, error });
 /**
  * Assign `lines` to `shot`, taking each of them off every other shot.
  *
- * `lineOrder` is the scene's line ids in screenplay order; it both validates the request (a
- * shot may not bind a line the scene does not have — the same rule `decomposeScene` applies to
- * an LLM's answer) and orders the result, so a file's `coversLines` always reads down the page.
+ * `lineOrder` is the scene's line ids in screenplay order. It validates the request (a shot may
+ * not bind a line the scene does not have — the same rule `decomposeScene` applies to an LLM's
+ * answer) and orders the result, so a file's `coversLines` always reads down the page.
  *
- * Lines the shot gives up are simply released. They become gaps, which the timeline draws as
- * uncovered — the one state this editor exists to reveal — rather than being quietly handed to
- * a neighbour the author did not name.
+ * Lines a shot no longer covers are released rather than reassigned. They become gaps, which the
+ * timeline draws as uncovered, instead of being handed to a neighbour the author did not name.
  *
- * Refuses a claim that would leave another shot covering nothing: releasing does not give lines
- * back, so a drag that swept over a neighbour and returned would destroy it. Revealing a shot
- * that covers nothing is this surface's job; manufacturing one is not.
+ * Refuses a claim that would leave another shot covering nothing, because releasing does not give
+ * lines back and a drag that swept over a neighbour and returned would destroy it.
  */
 export function setCoverage(
   shots: readonly CoverShot[],
@@ -85,18 +83,17 @@ export function setCoverage(
       : { id: shot.id, coversLines: shot.coversLines.filter((id) => !claimed.has(id)) },
   );
   const before = new Map(shots.map((s) => [s.id, s.coversLines]));
-  // The dragged shot leads, then the ones it took from in scene order — so a caller reading
-  // `changed` sees the act before its consequences.
+  // The dragged shot comes first, so a caller reading `changed` sees it before the shots it took
+  // lines from
   const changed = next
     .filter((s) => !sameLines(before.get(s.id)!, s.coversLines))
     .sort((a, b) => Number(b.id === target.id) - Number(a.id === target.id));
 
   if (!changed.length) return refuse(`${target.id} already covers exactly those lines.`);
 
-  // Emptying a *neighbour* is a deletion in disguise, and a drag sweeps across its neighbours on
-  // the way to anywhere. Releasing does not give lines back, so dragging an edge over a shot and
-  // returning would leave it real, paid for, and permanently undisplayable. The dragged shot may
-  // still empty itself (`resolveDrag` never asks for that); this refuses only the side effect.
+  // Releasing does not give lines back, so dragging an edge over a neighbour and returning would
+  // leave that shot real, paid for, and permanently undisplayable. A shot may still empty itself
+  // (`resolveDrag` never asks for that); only the side effect on a neighbour is refused
   const emptied = changed.filter(
     (s) => s.id !== target.id && s.coversLines.length === 0 && before.get(s.id)!.length > 0,
   );
@@ -147,7 +144,7 @@ export interface Segment {
 export interface ShotSpan<S extends CoverShot = CoverShot> {
   shot: S;
   segments: Segment[];
-  /** Extent of the whole shot; `-1` when it covers nothing at all. */
+  /** Inclusive row indices of the whole shot, including rows it does not cover between them. */
   first: number;
   last: number;
   /** Which column the brackets are drawn in. Shots with crossing extents never share one. */
@@ -161,7 +158,7 @@ export interface Coverage<L extends CoverLine = CoverLine, S extends CoverShot =
   /** Shots covering nothing: real, addressable, and never displayed by the runner. */
   orphans: S[];
   lanes: number;
-  /** Row indices no shot covers — the state this editor exists to reveal. */
+  /** Row indices no shot covers. */
   gaps: number[];
   /** Row indices more than one shot claims; the exporter would show only the first. */
   overlaps: number[];
@@ -243,9 +240,9 @@ export type Edge = 'start' | 'end';
  * Which lines the dragged shot asks for once its `edge` is dropped on row `target`.
  *
  * Extending claims every line in the new region; retracting releases every line beyond the
- * new boundary. Lines the shot did **not** cover inside its own extent are left alone in both
- * directions — those holes belong to the shots that interleave with it, and a drag of one edge
- * is not a statement about them.
+ * new boundary. Lines the shot did not already cover inside its own extent are left alone in both
+ * directions, because those holes belong to the shots that interleave with it and a drag of one
+ * edge says nothing about them.
  *
  * Returns `null` when the drop changes nothing.
  */

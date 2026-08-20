@@ -1,15 +1,14 @@
 /**
- * What one asset rests on: the pictures that were fed to the model that made it.
+ * The pictures that were fed to the model that made an asset.
  *
- * Two halves, and both are needed. `Asset.refs` is the manifest's own record of what the task sent,
- * so an asset that predates chunked prompts still answers; the author's attached references live at
- * the prompt rung instead, and a muted chunk contributes none of them because its clause is not
- * being sent.
+ * Two sources are combined, and both are needed. `Asset.refs` is the manifest's own record of what
+ * the task sent, so an asset predating chunked prompts still answers. The author's attached
+ * references live at the prompt rung instead, and a muted chunk contributes none of them because
+ * its clause is not sent.
  *
- * This is deliberately a **hash** walk, not a slot walk. It says what these bytes were drawn from,
- * which is a question about history and is therefore answerable for a concept and an upload too —
- * neither of which fills a slot. "Has the slot moved since" is a different question with its own
- * walk and its own sentence, and that is `suspend.ts`.
+ * This walk is over hashes rather than slots. It answers what these bytes were drawn from, a
+ * question about history, so it also answers for a concept and an upload, neither of which fills
+ * a slot. Whether the slot has moved since is a separate question, answered in `suspend.ts`.
  */
 import type { Asset, ChunkRef } from '@vn/types';
 import { overrideAt, rungOf, type RungContext } from './resolve.js';
@@ -31,9 +30,9 @@ export function attachedRefs(asset: Asset, ctx: RungContext): { chunk: string; r
 /**
  * Every hash this asset was drawn from — what it was generated from, plus what an author attached.
  *
- * Derived-first, matching the order a task's `refs` are composed in, so a surface listing these
- * shows a frame's plate before its portraits before the author's pins. Not deduped: a caller that
- * cares says so, and suspension's walk is memoized anyway.
+ * Derived references come first, matching the order a task's `refs` are composed in, so a surface
+ * listing these shows a frame's plate, then its portraits, then the author's pins. The result is
+ * not deduped; a caller that needs that does it itself, and suspension's walk is memoized anyway.
  */
 export function upstreamOf(asset: Asset, ctx: RungContext): string[] {
   return [...asset.refs, ...attachedRefs(asset, ctx).map(({ ref }) => ref.pin)];

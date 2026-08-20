@@ -17,7 +17,7 @@ describe('orderDiagnostics', () => {
       warn('d', { severity: 'error', code: 'E2' }),
     ];
     expect(orderDiagnostics(list).map((d) => d.message)).toEqual(['b', 'd', 'a', 'c']);
-    // The list it was given is not the list it returns: the header holds the fetched array.
+    // Returns a new array rather than sorting in place, because the header holds the fetched one
     expect(list.map((d) => d.message)).toEqual(['a', 'b', 'c', 'd']);
   });
 });

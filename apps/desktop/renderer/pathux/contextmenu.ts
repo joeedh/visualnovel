@@ -1,11 +1,11 @@
 /**
  * What a right-click offers, and whether the author may take it.
  *
- * An entry is an **invocation**, not a callback: a command id and its props, resolved through
+ * An entry is an invocation, not a callback: a command id and its props, resolved through
  * `stack.check` before the menu opens and through `exec` when it is clicked. A menu item that is
  * not a command has no place here — if an action is worth a right-click it is worth being in the
- * palette, the catalog and the provenance log, and three bespoke `contextmenu` handlers that call
- * `exec` and hope are exactly how a surface starts offering what the command would refuse.
+ * palette, the catalog and the provenance log, and a bespoke `contextmenu` handler that calls
+ * `exec` without checking is how a surface starts offering what the command would refuse.
  *
  * Pure, with no `pathux` import, so the resolution rules are testable in node. Opening the menu on
  * a screen is `showmenu.ts`.
@@ -25,26 +25,26 @@ export interface MenuEntry {
    * argument a menu cannot supply (a variant id, a line of prose), and one that is `confirm: true`,
    * because the palette is where a command says what it is about to do before it does it.
    *
-   * Such an entry is deliberately **not** checked — its props are incomplete by design, and the
-   * refusal that would earn is about the blank the author is on their way to filling in.
+   * Such an entry is deliberately not checked: its props are incomplete by design, so the refusal
+   * a check would return is about the blank the author is on their way to filling in.
    */
   form?: boolean;
   /**
-   * A refusal the surface already knows, drawn exactly as a checked one and never run. For an act
-   * whose precondition is about *what the entry would name* rather than about the project: a line
-   * no shot covers has no asset to open, and there is no id to ask a command about. Not a licence
+   * A refusal the surface already knows, drawn exactly as a checked one and never run. Set it when
+   * the precondition is about what the entry would name rather than about the project: a line no
+   * shot covers has no asset to open, so there is no id to ask a command about. It is not a licence
    * to pre-judge what `check` would say — a command that can answer is asked.
    */
   refused?: string;
 }
 
-/** One item as it will be drawn: what it says, whether clicking it acts, and the sentence behind. */
+/** One item as it will be drawn: its label, whether clicking it acts, and the sentence for it. */
 export interface ResolvedEntry {
   entry: MenuEntry;
   /** What the menu draws — the label, marked when the command refused it. */
   label: string;
   separator: boolean;
-  /** False only for a declared refusal. `undeclared` is not permission, but it is not a refusal. */
+  /** False only for a declared refusal. `undeclared` is not permission, but it leaves this true. */
   enabled: boolean;
   /**
    * The row's tooltip: a refusal is its own sentence, and everything else falls back to what the
@@ -56,7 +56,7 @@ export interface ResolvedEntry {
 /** U+20E0, combining enclosing no-symbol: the label reads as struck through rather than missing. */
 const REFUSED = '⃠ ';
 
-/** Whether `check` is worth asking for this entry, which is also what gives the verdict its slot. */
+/** Whether `check` is worth asking for this entry. The same test fixes its slot in `verdicts`. */
 export function needsCheck(entry: MenuEntry): boolean {
   return entry.id !== MENU_SEP && !entry.form && entry.refused === undefined;
 }
@@ -66,9 +66,9 @@ export function needsCheck(entry: MenuEntry): boolean {
  * `entries` — `undefined` wherever {@link needsCheck} said not to ask — so an entry and its verdict
  * cannot drift apart the way a filtered second list would.
  *
- * A refusal is **shown**, not hidden: path.ux's menu template has no per-item disabled state, and
- * hiding the option would leave the author guessing why the one they remember is gone. The refusal
- * sentence is the whole value of `check`, and it should reach the surface that asked.
+ * A refusal is shown rather than hidden: path.ux's menu template has no per-item disabled state,
+ * and hiding the option would leave the author guessing why the one they remember is gone. The
+ * refusal sentence is the whole value of `check`, and it should reach the surface that asked.
  *
  * `describes` maps a command id to what the registry says it does. It is the tooltip of every row
  * that has no refusal to state — a right-click entry is a command, so a vague one is fixed in the

@@ -97,8 +97,8 @@ describe('moveShot', () => {
     expect(op.removes).toEqual([]);
     expect(op.retired).toEqual([]);
     expect(op.moved).toEqual([]);
-    // The one that matters. `moveLine` reports drift because it moves a line between blocks;
-    // moving a whole block cannot, and this is the claim the command's description makes.
+    // `moveLine` reports drift because it moves a line between blocks. Moving a whole block
+    // reports none, which is the claim the command's description makes
     expect(op.retyped).toEqual([]);
   });
 
@@ -108,8 +108,8 @@ describe('moveShot', () => {
 });
 
 describe('moveShot — the prose each shot covers', () => {
-  // The property behind "nothing drifts": a move permutes blocks, so no shot's covered lines
-  // change or change order among themselves, so no `proseHash` can move.
+  // A move permutes whole blocks, so no shot's covered lines change or change order among
+  // themselves, which is why no `proseHash` moves
   it.each([
     ['arrival__establishing', 'arrival__beat1'],
     ['arrival__establishing', 'arrival__beat2'],
@@ -127,8 +127,8 @@ describe('moveShot — the prose each shot covers', () => {
 });
 
 describe('moveShot — an interleaved shot', () => {
-  // The establishing shot takes the narration while a medium shot takes the dialogue between:
-  // the deterministic decomposer's normal output, and the case that has no single position.
+  // The establishing shot takes the narration while a medium shot takes the dialogue in between.
+  // This is the deterministic decomposer's normal output, and such a shot has no single position
   const interleaved = [shot('arrival__establishing', ['L1', 'L4']), shot('arrival__beat1', ['L2'])];
 
   it('refuses to move, naming what draws inside it', () => {
@@ -142,7 +142,7 @@ describe('moveShot — an interleaved shot', () => {
     const shots = [...interleaved, shot('arrival__beat2', ['L5', 'L6'])];
     const before = state().scenes.get('arrival') as Scene;
     const op = move(shots, 'arrival__beat2', 'arrival__beat1');
-    // beat2's pair lands between L2 and L3; the establishing shot's hole widens, and that is all.
+    // beat2's pair lands between L2 and L3, which only widens the establishing shot's gap
     expect(order(op)).toEqual(ids([1, 2, 5, 6, 3, 4]));
     const scene = written(op);
     expect(coveredTexts(scene, interleaved[0] as Shot)).toEqual(

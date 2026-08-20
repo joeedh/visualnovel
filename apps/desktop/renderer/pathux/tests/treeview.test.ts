@@ -27,8 +27,8 @@ describe('countClick', () => {
     expect(second.next).toEqual({ id: 'character:ren', at: 120 });
   });
 
-  // Three clicks are one rename, not two: a counted second click resets the latch rather than
-  // becoming the first of the next pair.
+  // A counted second click resets the latch rather than becoming the first of the next pair, so
+  // three clicks are one rename rather than two
   test('a counted second click resets the latch', () => {
     const first = countClick(NO_CLICK, 'character:aiko', 100);
     const second = countClick(first.next, 'character:aiko', 200);

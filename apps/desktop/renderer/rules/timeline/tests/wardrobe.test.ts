@@ -45,7 +45,8 @@ describe('outfitRows', () => {
     expect(rows[0]).toMatchObject({
       value: 'track',
       effective: { id: 'track', origin: 'scene' },
-      // Clearing the marker goes to the sheet, never to a shot: the shot level is below it.
+      // Clearing the marker falls back to the character sheet, never to a shot; the shot level
+      // sits below the scene level
       inherits: { id: 'uniform', origin: 'default' },
     });
   });
@@ -65,7 +66,7 @@ describe('outfitRows', () => {
     expect(rows[2]).toMatchObject({ shot: 'club__beat1', value: INHERIT });
   });
 
-  // The chain the whole feature is: the subject's own outfit, then the marker, then the sheet.
+  // Resolution order is the subject's own outfit, then the scene marker, then the character sheet
   it('resolves a subject through every level, and says which one answered', () => {
     const data = coverage([{ ...AIKO, marked: 'track' }, REN], [shot({ ren: 'uniform' })]);
     const rows = outfitRows(data, 'club__beat1');
@@ -107,7 +108,7 @@ describe('shadowedMarker', () => {
     // aiko's override hides the scene's "track"; ren's hides nothing — there is no marker for them.
     expect(shadowedMarker(shots[0]!)).toBe('track');
     expect(shadowedMarker(shots[1]!)).toBeNull();
-    // A scene row is never shadowing, and neither is a shot row that says nothing.
+    // A scene row never shadows, and a shot row left at INHERIT does not either
     expect(shadowedMarker(rows[0]!)).toBeNull();
     expect(shadowedMarker({ ...shots[0]!, value: INHERIT })).toBeNull();
   });

@@ -2,11 +2,11 @@
  * The workspace as commands: which project is open, what is in it, the map the agent reads, and
  * the one-time migration into the chunk format.
  *
- * No mutator here is `undoable`. `workspace.import` restructures the whole worktree, which is what
- * a shadow snapshot is worst at, and the `.imported` rename it leaves behind is a reversal the
- * author can perform themselves; `workspace.reindex` writes one derived file, and undoing it means
- * running it again; and `workspace.open`/`pick`/`create` write into a *different* tree than the
- * one the undo journal snapshots, so a shadow ref in the old repo could not restore it anyway.
+ * No mutator here is `undoable`. `workspace.import` restructures the whole worktree, which a
+ * shadow snapshot handles worst, and the `.imported` rename it leaves behind is a reversal the
+ * author can perform themselves. `workspace.reindex` writes one derived file, and undoing it means
+ * running it again. `workspace.open`, `pick` and `create` write into a different tree than the one
+ * the undo journal snapshots, so a shadow ref in the old repo could not restore it anyway.
  */
 import { existsSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
@@ -42,10 +42,9 @@ async function wouldOpen(
   const found = await inspectWorkspace(root);
   if (!found.directory) return { ok: false, reason: `${root} is not a directory.` };
   if (found.problem) return { ok: false, reason: found.problem };
-  // One instance per workspace: the undo shadow refs, the committer and the agent conversation
-  // are all per project, and two live stacks over one repo overwrite each other's snapshots in
-  // silence. So opening a project twice is refused, and running it anyway focuses the instance
-  // that has it rather than switching. This can race `run`, which is why `run` re-decides.
+  // One instance per workspace, because two live stacks over one repo silently overwrite each
+  // other's undo snapshots. Opening a project a second time focuses the instance that already has
+  // it rather than switching, and `run` re-decides because this check can race `run`.
   if (await takenElsewhere(root)) {
     return { ok: false, reason: `${root} is already open in another window.` };
   }
@@ -63,7 +62,7 @@ async function wouldOpen(
  * is there because git calls a nested one an embedded repository the first time the outer repo is
  * asked to add it.
  *
- * Every sentence names the **resolved** root, so an author with `newFolder` checked reads where
+ * Every sentence names the resolved root, so an author with `newFolder` checked reads where
  * the project actually lands rather than being asked to apply the naming rule themselves.
  */
 async function wouldCreate(
@@ -167,7 +166,7 @@ export const workspacePick = define({
     const picked = await ctx.host.pickDirectory(undefined, ctx.origin);
     if (!picked) return { message: 'Cancelled.' };
 
-    // The dialog is not a permission: a folder the command would refuse is refused here too.
+    // A folder chosen in the dialog still gets the refusal `workspace.open` would have given it
     const verdict = await wouldOpen(picked, ctx.root, ctx.host.session.busy(), (root) =>
       ctx.host.workspaceIsOpenElsewhere(root),
     );
@@ -205,8 +204,8 @@ export const workspaceRecent = define({
   mutating: false,
   props: {},
   run(_props, ctx) {
-    // Pruned here rather than at the menu: this half can stat, and a list that heals as it is
-    // read is one the ten slots stay spent on projects that are actually there.
+    // Pruned here rather than at the menu because main can stat the paths, which keeps the
+    // remembered slots spent on projects that still exist
     const recent = liveWorkspaces(ctx.host.state, existsSync);
     return Promise.resolve({
       message: `${recent.length} remembered project(s); ${ctx.root} is open.`,

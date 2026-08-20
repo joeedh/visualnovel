@@ -7,7 +7,7 @@ interface Chunk {
   crc: number;
 }
 
-/** Walk the chunk list. Reaching the end exactly is itself the check on every length field. */
+/** Walk the chunk list. Landing exactly on the end validates every length field. */
 function chunks(png: Uint8Array): Chunk[] {
   const buf = Buffer.from(png);
   expect([...buf.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -46,8 +46,8 @@ describe('placeholderPng', () => {
   });
 
   it('holds a zlib stream node can inflate, whose pixels come from the seed', () => {
-    // Hand-rolled stored-deflate blocks and adler32: inflating with a real implementation is
-    // the only check that says so. inflateSync validates the checksum too.
+    // The stream is hand-rolled stored-deflate blocks and adler32, so inflating it with a real
+    // implementation is the only way to verify it. inflateSync validates the checksum too.
     const [, , idat] = chunks(placeholderPng('0011223344556677'));
     const raw = inflateSync(idat!.data);
     const stride = 1 + 64 * 3;

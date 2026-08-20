@@ -5,15 +5,14 @@ import PROJECT_CSS from '../../styles/project.css?inline';
 import type { ProjectView } from '../../../src/shared/ipc.js';
 
 /**
- * `project.yaml`, as the run reads it. A singleton pane — it has no subject, because a workspace
- * has one config — so it is deliberately absent from `SUBJECT_OF` and `view.open(editor=project)`
- * carries nothing.
+ * `project.yaml`, as the run reads it. A singleton pane with no subject (a workspace has one
+ * config), so it is deliberately absent from `SUBJECT_OF` and `view.open(editor=project)` carries
+ * nothing.
  *
- * One field is editable and the rest are shown. The art style is the sentence every image prompt
- * opens with, so it is the one setting an author reaches for repeatedly; the model ids and image
- * params are read-only here because changing them is a deliberate, file-level act and a pane that
- * made it a two-click affair would invite it. Applying goes through `project.setArtStyle`, which
- * is `confirm: true` and says how many image tasks it re-keys before it writes.
+ * The art style is the one editable field, because it is the sentence every image prompt opens
+ * with. The model ids and image params are read-only here because changing them is a deliberate,
+ * file-level act. Applying goes through `project.setArtStyle`, which is `confirm: true` and says
+ * how many image tasks it re-keys before it writes.
  */
 export class ProjectEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -88,8 +87,8 @@ export class ProjectEditor extends VnEditor {
     this.appendSurface(this.surface);
 
     // Opening another workspace, importing, or an undo of this pane's own write all move the file
-    // under it; a draft the author has not applied does not follow, and its next apply earns the
-    // "already says that" or the real refusal, which is the honest outcome.
+    // under the pane. A draft the author has not applied does not follow the file, and applying it
+    // later earns either the "already says that" answer or the real refusal.
     const refollow = (): void => {
       if (!this.dirty) void this.load();
     };

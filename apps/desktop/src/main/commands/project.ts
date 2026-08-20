@@ -51,7 +51,7 @@ export const projectSetArtStyle = define({
   mutating: true,
   undoable: true,
   // Every other document mutator changes one document's words. This one changes what the project
-  // looks like, and the bill arrives at the next run.
+  // looks like, and the next run redraws the whole library for it.
   confirm: true,
   props: {
     style: prop.string('the art style; empty clears it', { default: '' }),
@@ -111,8 +111,8 @@ export const projectTestKey = define({
     'mistyped, or on an account with no credit, and without this the first news of that arrives ' +
     'much later as a run failing. It costs a fraction of a cent, and under `--mock` it does ' +
     'nothing, because a mock run never calls a provider.',
-  // It writes nothing. It does spend, which the description says, because a command that quietly
-  // costs money is one an author should have been told about rather than have to infer.
+  // Writes nothing of its own. It does spend money, which the description states so that an author
+  // is not left to infer the cost.
   mutating: false,
   props: {
     provider: prop.oneOf(KEY_VENDORS, 'which provider’s key to try'),

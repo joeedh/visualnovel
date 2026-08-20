@@ -35,7 +35,7 @@ class Scripted implements ChatBackend {
 /**
  * A backend that implements the conversation seam, so the analyst's probe selects the native path.
  * It answers with one `submit_report` call and then plain text, and keeps every request it was
- * handed. `message` throws: taking it is the failure this fake exists to catch.
+ * handed. `message` throws, because taking the structured path is the failure this fake catches.
  */
 class Native implements ChatBackend {
   readonly modelId = 'claude-sonnet-5';
@@ -217,8 +217,8 @@ describe('with the source', () => {
 });
 
 /**
- * The requests without the source: the author may let the analyst read what was sent without
- * handing it the repository, so the tool loop has to be reachable by either door on its own.
+ * The author may let the analyst read what was sent without handing it the repository, so the tool
+ * loop has to be reachable from the captured requests alone as well as from the source alone.
  */
 describe('with the requests but not the source', () => {
   const listed: number[] = [];

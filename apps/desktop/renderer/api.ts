@@ -176,7 +176,7 @@ const MOCK_GRAPH: StoryGraph = {
 };
 
 /**
- * The same story as a document tree. Only the four authored branches: the assets branch is a
+ * The same story as a document tree, carrying the authored branches only. The assets branch is a
  * projection of a manifest a preview has not got, and an empty one would misrepresent the shape.
  */
 const MOCK_DOCTREE: DocTree = {
@@ -318,8 +318,9 @@ const MOCK_FILETREE: DocNode[] = [
 ];
 
 /**
- * What is inside the two mock skills — the tree the Skills pane draws, whose ids are already the
- * workspace-relative paths `doc.read` would take. The second has the script its badge claims.
+ * The contents of the two mock skills, as the Skills pane draws them. Every node carries the
+ * workspace-relative path `doc.read` would take, and `lint-fountain` carries the script its
+ * badge claims.
  */
 const MOCK_SKILLTREE: DocNode[] = [
   {
@@ -359,8 +360,8 @@ const MOCK_SKILLTREE: DocNode[] = [
 ];
 
 /**
- * The browser preview has no main process to persist to, so the session store's role is
- * played by `localStorage` — enough that the resizable panels behave identically there.
+ * The browser preview has no main process to persist to, so `localStorage` stands in for the
+ * session store. That is enough for the resizable panels to behave identically there.
  */
 const PREVIEW_SESSION = 'vn.session';
 
@@ -389,8 +390,8 @@ const fallback: DesktopApi = {
         return Promise.resolve(MOCK_SKILLTREE);
       case 'pipeline:status':
         return Promise.resolve(MOCK_STATUS);
-      // A preview has no project, so no AICONTEXT.md and no map — but the built-in half of the
-      // prompt is a constant, and saying so beats an empty pane.
+      // A preview has no project, so there is no AICONTEXT.md and no map. The built-in half of
+      // the prompt is a constant, so the pane shows that rather than nothing
       case 'agent:system':
         return Promise.resolve({
           sections: [{ name: 'BUILT-IN', text: '(preview) no project open' }],
@@ -415,20 +416,20 @@ const fallback: DesktopApi = {
         return Promise.resolve({ version: 1, source: '(preview)', commands: [] });
       case 'command:history':
         return Promise.resolve([]);
-      // A preview has no project, and the log lives in one. An empty list is the honest answer:
-      // the bell draws zero unread and the dialog says nothing has happened yet.
+      // A preview has no project, and the log lives in one. An empty list leaves the bell at
+      // zero unread and the dialog reporting that nothing has happened yet
       case 'notify:list':
         return Promise.resolve([]);
       case 'notify:post':
         return Promise.reject(new Error('(preview) no notification log'));
       case 'command:exec':
         return Promise.resolve({ ok: false, error: '(preview) no command stack' });
-      // Not `refuse`: a preview has no precondition to consult, and dressing that up as a
-      // verdict would put a sentence in the palette no command ever said.
+      // Answers `undeclared` rather than `refuse`, because a preview has no precondition to
+      // consult and a refusal would show the palette a sentence no command produced
       case 'command:check':
         return Promise.resolve({ state: 'undeclared', message: '(preview) no command stack' });
-      // Undo restores a git snapshot of the workspace, and a browser preview has no
-      // workspace — the affordances stay disabled here rather than pretending.
+      // Undo restores a git snapshot of the workspace, and a browser preview has no workspace,
+      // so both controls stay disabled here
       case 'command:undo':
       case 'command:redo':
         return Promise.resolve({ ok: false, error: '(preview) no workspace to restore' });

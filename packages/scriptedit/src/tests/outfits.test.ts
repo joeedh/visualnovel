@@ -45,8 +45,8 @@ describe('wardrobesOf', () => {
     const map = wardrobesOf(
       new Map([
         ['aiko', character('aiko', 'uniform', ['uniform', 'track'])],
-        // A sheet whose map never mentions the default: the fallback still has to be nameable,
-        // or clearing an override would refuse the value it clears to.
+        // This sheet's outfit list never mentions its default. The default still has to be
+        // nameable, or clearing an override would refuse the value it clears to
         ['ren', character('ren', 'uniform', ['coat'])],
       ]),
     );
@@ -102,8 +102,8 @@ describe('setSceneOutfit', () => {
     expect(noCharacter).toMatchObject({ ok: false, error: 'No character "kaito".' });
   });
 
-  // `noop`, not a plain refusal: a UI offering the wardrobe as a list drops the entry that is
-  // already in force rather than rendering it as something the author may click and be told off for.
+  // A `noop` is reported rather than a plain refusal, so a UI listing the wardrobe can drop the
+  // entry already in force instead of offering it and then refusing the click
   it('marks a change that would change nothing as a noop, in both directions', () => {
     const same = setSceneOutfit(scenes(sceneOf({ aiko: 'track' })), WARDROBES, {
       scene: 'club',
@@ -148,7 +148,7 @@ describe('setShotOutfit', () => {
       },
     );
     if (!op.ok) throw new Error(op.error);
-    // The property is gone, not set to '': absent is what `outfitFor` reads as "inherit".
+    // The property is removed rather than set to '', because `outfitFor` reads absent as inherit
     expect(op.shots[0]!.subjects).toEqual([{ characterId: 'aiko' }]);
     expect(op.shots[0]!.subjects[0]).not.toHaveProperty('outfit');
     expect(op.message).toContain('"track"');

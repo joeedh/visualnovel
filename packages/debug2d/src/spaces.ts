@@ -1,15 +1,15 @@
 /**
  * Space registry (research §1-Spaces). `device` is the common root: every space registers
  * a labeled step chain toward it, and conversion composes through it. `chain()` returns
- * the labeled steps rather than the composed matrix because the labels ARE the answer —
- * a double-applied DPI scale is invisible in a composed matrix and obvious in a chain.
+ * the labeled steps rather than the composed matrix so that the labels stay readable: a
+ * double-applied DPI scale is invisible in a composed matrix and obvious in a chain.
  */
 import type { Mat3, Rect } from './geom.js';
 import { IDENTITY, applyToRect, invert, mul } from './geom.js';
 import type { SpaceId, SpaceRegistry, TransformStep } from './types.js';
 
 export type SpaceDef = {
-  /** The space this step maps *into*; every chain must eventually reach `device`. */
+  /** The space this step maps into; every chain must eventually reach `device`. */
   parent: SpaceId;
   label: string;
   /** A thunk re-reads live state (pan/zoom) at query time. */

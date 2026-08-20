@@ -1,10 +1,10 @@
 /**
  * What one agent turn may spend, and how a receipt is charged against it.
  *
- * Here rather than in `@vn/authoring` for the reason `textmodels.ts` is here: the loop that
- * enforces the ceiling, the REPL flag that sets it, the command that binds it and the renderer
- * menu that offers it all need the same answers, and only one of those may import a package that
- * loads a vendor SDK.
+ * This lives here rather than in `@vn/authoring` for the same reason `textmodels.ts` does. The
+ * loop that enforces the ceiling, the REPL flag that sets it, the command that binds it and the
+ * renderer menu that offers it all need the same answers, and only one of those may import a
+ * package that loads a vendor SDK.
  */
 
 /** The budget choices, in the order the menu offers them. `unlimited` removes the ceiling. */
@@ -22,8 +22,8 @@ export const BUDGET_CHOICES = [
 export type BudgetChoice = (typeof BUDGET_CHOICES)[number];
 
 /**
- * Where every surface starts: enough to draft several scenes, small enough that a runaway costs
- * less than a coffee.
+ * The starting choice on every surface. Enough to draft several scenes, and small enough that a
+ * runaway turn stays cheap.
  */
 export const DEFAULT_BUDGET: BudgetChoice = '200k';
 
@@ -50,12 +50,11 @@ export interface Charged {
 /**
  * What one receipt spends against the budget: fresh input plus output, cache reads excluded.
  *
- * Three decisions in that. **Cache reads are free of the budget** — a long turn re-sends its
- * whole cached prefix on every step, so a total-input meter would kill a 40-step turn that had
- * added almost nothing. **Cache writes are counted**, being tokens the model had never seen,
- * sent for the first time and billed above the base rate. And **a provider that reports no split
- * spends its whole input**, because absent means the vendor said nothing, which for this purpose
- * is the same as no cache having been read.
+ * Cache reads do not count against the budget: a long turn re-sends its whole cached prefix on
+ * every step, so a total-input meter would kill a 40-step turn that had added almost nothing.
+ * Cache writes do count, being tokens the model had never seen, sent for the first time and
+ * billed above the base rate. A provider that reports no split spends its whole input, since an
+ * absent split means the vendor said nothing and no cache read can be assumed.
  */
 export function charge(u: Charged): number {
   return u.input - (u.cacheRead ?? 0) + u.output;

@@ -17,8 +17,8 @@ describe('writeFileAtomic', () => {
       expect(await fs.readFile(file, 'utf8')).toBe('hello');
       expect(await fs.readdir(dir)).toEqual(['scene.md']);
 
-      // A rename onto a directory fails, which is the shape of failure the `finally` is for: the
-      // temp is written and the rename does not happen.
+      // A rename onto a directory fails, so the temp is written and the rename does not happen,
+      // which is the case the `finally` cleans up after
       const blocked = join(dir, 'taken');
       await fs.mkdir(join(blocked, 'inside'), { recursive: true });
       await expect(writeFileAtomic(blocked, 'nope')).rejects.toThrow();
@@ -32,8 +32,8 @@ describe('writeFileAtomic', () => {
   it('retries a rename refused by a transient lock, and succeeds when it lifts', async () => {
     const { dir, cleanup } = await tempDir();
     try {
-      // The Windows shape of failure: antivirus or a watcher holds the destination open for a
-      // few milliseconds and the rename comes back EPERM, though both paths are fine.
+      // On Windows antivirus or a watcher holds the destination open for a few milliseconds and
+      // the rename comes back EPERM, though both paths are fine
       const file = join(dir, 'scene.md');
       const real = fs.rename.bind(fs);
       let refusals = 2;
@@ -82,8 +82,8 @@ describe('writeFileAtomic', () => {
   it('gives two concurrent writers of the same path their own temp file', async () => {
     const { dir, cleanup } = await tempDir();
     try {
-      // Same path, same data length — the case the old sha1(path + length) suffix collided on,
-      // so one writer's rename pulled the file out from under the other's.
+      // Same path, same data length is the case the old sha1(path + length) suffix collided on,
+      // where one writer's rename moved the shared temp file out from under the other
       const file = join(dir, 'scene.md');
       await Promise.all([writeFileAtomic(file, 'aaaaa'), writeFileAtomic(file, 'bbbbb')]);
       expect(['aaaaa', 'bbbbb']).toContain(await fs.readFile(file, 'utf8'));

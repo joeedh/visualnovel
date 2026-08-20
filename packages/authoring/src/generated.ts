@@ -1,9 +1,9 @@
 /**
- * The generated half of the agent's context (`AICONTEXT.generated.md`) — a **map, not content**:
- * what characters, locations, scenes and bible notes exist, and which file each lives in. No line
- * of anything the author wrote appears here; the agent reads a file, or queries the bible, for
- * that. Pure projection + rendering, so the budget and the truncation lines are testable without
- * a project on disk; {@link Workspace.writeGeneratedContext} is the impure half.
+ * The generated half of the agent's context (`AICONTEXT.generated.md`) — a map rather than
+ * content: what characters, locations, scenes and bible notes exist, and which file each lives
+ * in. No line of anything the author wrote appears here; the agent reads a file, or queries the
+ * bible, for that. Pure projection + rendering, so the budget and truncation lines are testable
+ * without a project on disk; {@link Workspace.writeGeneratedContext} is the impure half.
  */
 import { relative } from 'node:path';
 import type { BibleFile } from '@vn/bible';
@@ -14,9 +14,9 @@ import type { CharacterStatus, ProjectModel } from '@vn/types';
 export const GENERATED_CONTEXT_FILE = 'AICONTEXT.generated.md';
 
 /**
- * The prefix that marks a file as ours. Matched instead of the whole banner so a later version
- * of it still recognizes a file this version wrote — a version bump must not turn "mine, replace
- * it" into "someone else's, refuse".
+ * The prefix that marks a file as ours. Matched instead of the whole banner so a later version of
+ * the banner still recognizes a file this version wrote, rather than treating it as someone
+ * else's and refusing to replace it.
  */
 export const GENERATED_MARK = '<!-- vn:generated-context';
 
@@ -104,8 +104,8 @@ export function projectMap(
   const sceneFiles = new Map(inputs.sceneDocs.map((d) => [d.id, rel(d.file)]));
 
   const characters: MappedCharacter[] = [...model.characters.values()].map((c) => {
-    // The default leads whether or not the sheet describes it — an outfit id with no description
-    // is still an outfit, which is what makes a wardrobe free to author.
+    // The default outfit leads the list whether or not the sheet describes it, because an outfit
+    // id with no description is still an outfit
     const rest = c.outfits.map((o) => o.id).filter((id) => id !== c.defaultOutfit);
     return {
       id: c.id,
@@ -158,7 +158,10 @@ export function countsOf(map: ProjectMap): GeneratedCounts {
   };
 }
 
-/** A budgeted block: a heading that always renders, rows that may not, and what to say if not. */
+/**
+ * A budgeted block: the heading always renders, rows may be dropped, and `more` reports how many
+ * were dropped.
+ */
 interface Section {
   heading: string;
   rows: string[];
@@ -201,7 +204,8 @@ function sceneRow(s: MappedScene): string {
 function bibleRow(f: BibleFile): string {
   const parts = [`- ${f.file} "${f.title}"`];
   if (f.tags.length) parts.push(`[${f.tags.join(', ')}]`);
-  // Six headings is enough to aim a query at; the whole outline of a long note is not.
+  // Six headings is enough to aim a query at, and the map does not carry a long note's whole
+  // outline
   if (f.headings.length) {
     const shown = f.headings.slice(0, 6).join(', ');
     parts.push(f.headings.length > 6 ? `${shown}, …` : shown);
@@ -260,8 +264,8 @@ export function renderGeneratedContext(map: ProjectMap, opts: { budget?: number 
       kept.push(row);
       used += row.length + 1;
     }
-    // The heading and the counted line are never budgeted away: a section that admits it is
-    // partial is what sends the agent to the tool, and silence is the one answer it must not give.
+    // The heading and its count always render, even when every row was dropped: a section that
+    // says it is partial is what sends the agent to the tool that lists the rest
     out.push('', section.heading, '', ...kept);
     const dropped = section.rows.length - kept.length;
     if (dropped > 0) out.push(section.more(dropped));

@@ -1,6 +1,6 @@
 /**
  * A binding → what fills that slot today (`docs/plans/archive/chunked-prompts.md` §11). The pin is what
- * the model is fed; this is only ever the comparison shown beside it.
+ * the model is fed; what a binding resolves to is only ever the comparison shown beside it.
  */
 import type { Asset, AssetKind, ChunkRef } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
@@ -56,7 +56,7 @@ describe('resolveBinding', () => {
     expect(resolveBinding({ kind: 'shot', sceneId: 'arrival', shotId: 'arrival__a' }, c)).toBe(
       'frame',
     );
-    // The degenerate one: an upload or a concept has no slot, so its hash answers for itself.
+    // An upload or a concept has no slot, so its own hash is the answer.
     expect(resolveBinding({ kind: 'asset', hash: 'uploaded' }, c)).toBe('uploaded');
   });
 
@@ -72,7 +72,7 @@ describe('resolveBinding', () => {
   });
 
   it('declines rather than guesses when several assets serve one slot', () => {
-    // Two sheets, no angle lookup to tell them apart: the manifest is hash-sorted, so picking
+    // Two sheets and no angle lookup to tell them apart. The manifest is hash-sorted, so picking
     // one would be picking arbitrarily.
     const blind: BindingContext = { ...ctx(), angleOf: undefined };
     expect(

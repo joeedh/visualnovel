@@ -1,13 +1,12 @@
 /**
  * The assets that reference something, as a strip any editor can draw under itself.
  *
- * It takes **groups**, not a subject: a host that knows how to find the art for the thing it is
+ * It takes groups rather than a subject: a host that knows how to find the art for the thing it is
  * showing supplies them, and this file knows nothing about characters, scenes or the manifest.
- * That is what makes the second consumer cheap and keeps the first one honest.
  *
- * It is read-only on purpose. Accept, regenerate and delete are the asset editor's and the context
- * menu's job; a cross-reference view that also mutates would need `stack.check` plumbing in every
- * host, and would be two features wearing one coat.
+ * It is read-only on purpose. Accept, regenerate and delete belong to the asset editor and the
+ * context menu; a cross-reference view that also mutated would need `stack.check` plumbing in
+ * every host.
  */
 import type { EntityLinks } from '../../src/shared/ipc.js';
 import type { AssetGroup } from './doctree.js';
@@ -16,15 +15,14 @@ import ASSETSTRIP_CSS from '../styles/assetstrip.css?inline';
 export { ASSETSTRIP_CSS };
 
 export interface AssetStripHandlers {
-  /** A cell was clicked. The host decides what that means — every one of them routes. */
+  /** A cell was clicked. The host decides what that means; every host routes. */
   onPick(hash: string): void;
 }
 
 /**
- * Draw `groups` into `root`, replacing whatever was there. An empty group list draws `empty` — the
- * host's own sentence, because "nothing draws from this page" is a true answer worth saying, and is
- * how an author sees that a note nothing is generated from is exactly that. A host with somewhere
- * better to say it passes `''` and gets nothing at all.
+ * Draw `groups` into `root`, replacing whatever was there. An empty group list draws `empty`, the
+ * host's own sentence, so an author can see that nothing is generated from this page. A host with
+ * a better place to say that passes `''` and gets nothing drawn.
  */
 export function renderAssetStrip(
   root: HTMLElement,
@@ -47,8 +45,8 @@ export function renderAssetStrip(
 }
 
 /**
- * One stored image, by hash. Portraits and model sheets are base art, which is why the `vnasset://`
- * handler consults both roots — before that this strip drew empty frames.
+ * One stored image, by hash. Portraits and model sheets are base art, so the `vnasset://` handler
+ * consults both asset roots. Without the second root this strip draws empty frames.
  */
 function cell(asset: EntityLinks['assets'][number], handlers: AssetStripHandlers): HTMLElement {
   const box = el('div', `as-cell${asset.accepted ? ' accepted' : ''}`);

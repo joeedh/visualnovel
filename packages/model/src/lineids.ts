@@ -6,11 +6,11 @@
  * `[[line: L4]]` marks plus the scene's `[[nextline: n]]` allocator, so a later insertion
  * cannot re-point an existing shot's coverage.
  *
- * It is a sibling of `branchpatch.ts` and works the same way — only whole marker lines are
- * added, every other byte is left as authored, and the safety net is total: the patched text
- * is re-parsed and must reproduce the same scenes, line for line, or the patch is discarded.
- * The hazard here is specific and real: a note line above a `CHARACTER` cue turns the cue
- * into an action paragraph and silently un-speaks the dialogue below it.
+ * It is a sibling of `branchpatch.ts` and works the same way: only whole marker lines are added,
+ * every other byte is left as authored, and the patched text is re-parsed and must reproduce the
+ * same scenes, line for line, or the patch is discarded. The hazard that check exists for is a
+ * note line above a `CHARACTER` cue, which turns the cue into an action paragraph and silently
+ * un-speaks the dialogue below it.
  */
 import type { Diagnostic, Scene } from '@vn/types';
 import { parseBranchMarker, parseFountain, type FountainScript } from '@vn/parse';
@@ -20,7 +20,7 @@ import { splitScenes } from './scenes.js';
 /** The patched source plus anything that went wrong. On any error the text is unchanged. */
 export interface LineIdPatchResult {
   text: string;
-  /** How many `[[line:]]` marks were written; 0 means the file already said everything. */
+  /** How many `[[line:]]` marks were written; 0 means every line was already marked. */
   assigned: number;
   diagnostics: Diagnostic[];
 }
@@ -39,9 +39,9 @@ interface Slot {
   line: number;
   marked: boolean;
   /**
-   * The mark has to go *on* the element's line rather than above it. True only for an
-   * unforced transition (`CUT TO:`), which the parser recognizes by the blank line above it —
-   * the one a mark would fill, turning it into an action paragraph.
+   * True when the mark has to go on the element's own line rather than above it. Only an
+   * unforced transition (`CUT TO:`) needs this: the parser recognizes it by the blank line
+   * above, which a mark would fill, turning the transition into an action paragraph.
    */
   inline: boolean;
 }
@@ -128,9 +128,9 @@ function scan(
 }
 
 /**
- * The element list with the marks this writer adds removed, so the two sides of the safety
- * net are comparable. Catches damage the scene projection cannot see — a broken transition
- * or heading — since those elements never become `SceneLine`s.
+ * The element list with the marks this writer adds removed, so the parse before a patch and the
+ * parse after it are comparable. Catches damage the scene projection cannot see (a broken
+ * transition or heading) because those elements never become `SceneLine`s.
  */
 function skeleton(script: FountainScript): string {
   return JSON.stringify(
@@ -206,8 +206,8 @@ export function assignLineIds(text: string, sceneId?: string): LineIdPatchResult
         const current = lines[slot.line]?.text ?? '';
         rewritten.set(slot.line, current.replace(/^(\s*)/, `$1${mark}`));
       } else {
-        // Insert *before* the element by anchoring to the previous line: the output pass
-        // appends after a line, and the element's own line must stay below its mark.
+        // insert before the element by anchoring to the previous line: the output pass appends
+        // after a line, and the element's own line must stay below its mark
         addAfter(slot.line - 1, `${indentOf(slot.line)}${mark}`);
       }
       assigned++;

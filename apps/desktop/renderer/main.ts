@@ -1,7 +1,7 @@
 import './styles/index.css';
 
-// Statically false in `vite build`, so the entire @vn/debug2d package is dropped from
-// the production bundle — strippability enforced by the bundler, not by discipline.
+// Statically false in `vite build`, so the bundler drops the entire @vn/debug2d package
+// from the production bundle.
 if (import.meta.env.DEV) {
   void import('./debug/install').then((m) => m.installDebug());
 }

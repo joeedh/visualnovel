@@ -13,7 +13,7 @@ import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
 import type { DocNode, DocTree, EntityLinks } from '../shared/ipc.js';
 
-/** Most children a branch prints before it says how many it dropped. */
+/** Most children a branch prints before the remainder is folded into a counted `more` node. */
 export const DEFAULT_CAP = 50;
 
 /** Everything the tree is built from — all of it already loaded by the caller. */
@@ -37,15 +37,15 @@ export interface DocTreeInput {
    */
   assetLabels?: ReadonlyMap<string, string>;
   /**
-   * Every picture the project implies, from `buildSlotGraph`. **Optional**: without it the tree is
-   * exactly what it was, and the Unapproved root is simply absent rather than empty — a caller that
-   * has not built the graph must not be made to claim nothing is waiting.
+   * Every picture the project implies, from `buildSlotGraph`. Optional: when it is absent the
+   * Unapproved root is left out rather than drawn empty, so a caller that has not built the graph
+   * never claims nothing is waiting.
    */
   slots?: SlotGraph;
   /**
-   * The project's skills, if the caller looked for them. **Optional, and `[]` is not the same as
-   * absent**: undefined leaves the branch out entirely (which is what every caller that knows
-   * nothing about skills wants), while an empty array draws an empty heading on purpose — see
+   * The project's skills, if the caller looked for them. An empty array is not the same as absent:
+   * undefined leaves the branch out entirely (which is what a caller that knows nothing about
+   * skills wants), while an empty array draws an empty heading on purpose — see
    * {@link skillsBranch}.
    */
   skills?: readonly SkillEntry[];
@@ -53,9 +53,9 @@ export interface DocTreeInput {
 }
 
 /**
- * One skill, as the tree needs it. Deliberately **not** `@vn/authoring`'s `Skill`, which carries
- * the whole instruction body and absolute paths on disk — neither belongs on the wire, and a tree
- * that shipped the body would put every playbook in the renderer on every read.
+ * One skill, as the tree needs it. Deliberately not `@vn/authoring`'s `Skill`, which carries the
+ * whole instruction body and absolute paths on disk; neither belongs on the wire, and a tree that
+ * shipped the body would put every playbook in the renderer on every read.
  */
 export interface SkillEntry {
   /** The skill directory's name, which is its id everywhere else. */
@@ -84,11 +84,9 @@ const node = (
  * Apply the cap, appending one counted node when it bit. The count is in the shape rather than
  * left to the renderer, so a truncated branch cannot be drawn as a complete one.
  *
- * The remainder rides *under* that node rather than being dropped: the cap is about what a tree
- * draws at rest, not about what it is allowed to know, and an author who wants the other three
- * hundred scenes has nowhere else to ask. The renderer expands it in place — a `more` node is a
- * continuation of the list it ends, not a container — so paying for it is one click, and the
- * shape stays a shape a caller that never expands anything can ignore.
+ * The remainder becomes that node's children rather than being dropped, so the cap limits what is
+ * drawn at rest rather than what the tree carries. The renderer expands a `more` node in place as
+ * a continuation of the list it ends, and a caller that never expands anything can ignore it.
  */
 function capped(id: string, children: DocNode[], cap: number): DocNode[] {
   if (children.length <= cap) return children;
@@ -121,8 +119,8 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
             shots.map((s) => node(`shot:${scene.id}/${s.id}`, 'shot', s.id, { badge: s.framing })),
             cap,
           );
-    // Unreadable outranks unreachable: one is a fact about the story, the other about the disk,
-    // and the disk is the one somebody has to go fix.
+    // An unreadable storyboard outranks an unreachable scene, because a disk problem is the one
+    // somebody has to go fix
     const badge =
       shots === null
         ? 'unreadable'
@@ -201,15 +199,15 @@ function wikiBranch(input: DocTreeInput): DocNode {
 }
 
 /**
- * The skills, as leaves. **No file children**: the doc tree is identity, not content
- * (`docs/reference/document-tree.md`), and a skill is one thing with an id, a name and a description — the
- * same granularity as a character. What is *inside* the directory is the Skills pane's own tree.
+ * The skills, as leaves with no file children: the doc tree carries identity rather than content
+ * (`docs/reference/document-tree.md`), so a skill is one row with an id, a name and a description,
+ * the same granularity as a character. The directory's contents are the Skills pane's own tree.
  *
- * **Drawn even when empty**, which no other branch is. A skill has to be findable before one
- * exists, and the heading's own right-click menu is the only always-reachable way to make the
- * first: `skeleton()` writes no `.aiagent/` at all, so every project created in the app starts
- * here, and an absent branch would hide the feature from exactly the authors who have not read
- * `docs/`. The caller still decides — `input.skills` undefined means it did not look.
+ * This branch is drawn even when empty, which no other branch is. A skill has to be findable
+ * before one exists, and the heading's right-click menu is the only reliably reachable way to make
+ * the first one: `skeleton()` writes no `.aiagent/`, so every project created in the app starts
+ * with none. An undefined `input.skills` still means the caller did not look, and leaves the
+ * branch out.
  */
 function skillsBranch(input: DocTreeInput, cap: number): DocNode | undefined {
   const skills = input.skills;
@@ -218,8 +216,8 @@ function skillsBranch(input: DocTreeInput, cap: number): DocNode | undefined {
     node(`skill:${skill.id}`, 'skill', skill.name, {
       path: skill.file,
       ...(skill.script ? { badge: 'script' } : {}),
-      // A skill with no description still hovers: the sentence says what the row *is*, which is
-      // the one thing an author looking at an unfamiliar playbook needs before opening it.
+      // A skill with no description still gets a tooltip, so an author looking at an unfamiliar
+      // playbook is told what the row is before opening it
       note: skill.description || 'A playbook the agent can follow. Open it in the Skills pane.',
     }),
   );
@@ -234,10 +232,10 @@ function assetLabelOf(input: DocTreeInput, asset: Asset): string {
 }
 
 /**
- * The frames whose scene has moved on since they were drawn. Accepting a frame says "this is the
- * picture I want"; drift says the words it illustrates have changed underneath it — so a drifted
- * frame is still the accepted one and is no longer a true `accepted` badge. Re-derived here on
- * every read, like everywhere else drift is asked about; never a stored flag.
+ * The frames whose scene has moved on since they were drawn. Acceptance records that the picture
+ * is wanted; drift records that the prose it illustrates has changed since, so a drifted frame is
+ * still accepted but no longer earns the `accepted` badge. Drift is re-derived on every read here
+ * as everywhere else, never stored as a flag.
  */
 function driftedImages(input: DocTreeInput): Set<string> {
   const stale = new Set<string>();
@@ -250,16 +248,14 @@ function driftedImages(input: DocTreeInput): Set<string> {
 }
 
 /**
- * The manifest, filed the way it was *made*: one row per **slot** — the address a picture has,
- * `aiko portrait`, `cafe — night plate` — showing what fills that slot now, with every earlier take
- * of the same slot folded underneath it. A slot rendered eight times is one row and not eight,
- * which is the difference between a list an author reads and a wall of near-identical thumbnails
- * told apart only by a hash.
+ * The manifest, filed by slot: one row per slot address (`aiko portrait`, `cafe — night plate`)
+ * showing what fills it now, with every earlier take of the same slot folded underneath. A slot
+ * rendered eight times is one row rather than eight near-identical thumbnails told apart by hash.
  *
  * A picture no slot claims is listed on its own beneath the slots of its kind. The graph enumerates
- * slots, so its silence about a concept, an upload, a reference or a base-root asset is not a
- * verdict — pruning on silence would bury every sketch in the project. With no graph passed at all
- * this is exactly the flat list it always was.
+ * slots only, so its silence about a concept, an upload, a reference or a base-root asset says
+ * nothing about them, and pruning on that silence would bury every sketch in the project. Without a
+ * graph this produces a flat list.
  */
 function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const stale = driftedImages(input);
@@ -289,18 +285,17 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   for (const key of input.slots?.order ?? []) {
     const slot = input.slots?.nodes.get(key);
     if (!slot) continue;
-    // Only takes no earlier slot spoke for: one picture can satisfy two slots, and filing it twice
-    // would make one render read as two.
+    // Only takes that no earlier slot claimed: one picture can satisfy two slots, and filing it
+    // twice would make one render read as two
     const takes = slot.candidates
       .filter((hash) => byHash.has(hash) && !claimed.has(hash))
       .sort((a, b) => madeAt.get(a)! - madeAt.get(b)!);
     if (takes.length === 0) continue;
     for (const hash of takes) claimed.add(hash);
 
-    // What fills the slot: what it resolved to, else the newest take. `pick` declines whenever the
-    // answer is not certain, and a row still has to open on something — which is not a verdict on
-    // the drafts, because choosing between them happens in the Unapproved branch, where all of
-    // them are still listed one per row.
+    // The slot shows what it resolved to, or the newest take when `pick` declined for want of
+    // certainty. That choice does not judge the drafts: choosing between them happens in the
+    // Unapproved branch, which still lists all of them one per row.
     const current =
       slot.hash !== undefined && takes.includes(slot.hash) ? slot.hash : takes.at(-1)!;
     const past = takes.filter((hash) => hash !== current).reverse();
@@ -334,8 +329,7 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const groups = [...byKind.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     // The heading counts rows rather than pictures, because rows are what it heads: a kind with
-    // one slot rendered nine times is one thing to look at, and saying nine would be a count of
-    // something the branch does not draw.
+    // one slot rendered nine times counts as one, since the other eight are not drawn
     .map(([kind, rows]) =>
       node(`assetkind:${kind}`, 'assetkind', `${ASSET_KIND_LABELS[kind]} (${rows.length})`, {
         badge: isBaseKind(kind) ? 'base' : 'project',
@@ -349,9 +343,9 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
  * Everything still standing between this project and a finished set of pictures, in two groups the
  * slot graph makes disjoint by construction.
  *
- * A second index into nodes that already exist rather than a new kind of thing: an *Awaiting
- * approval* row reuses the `asset:<hash>` id the Assets branch uses, so selection, routing and the
- * right-click menu all work here with no renderer change. Only *Not yet rendered* is new, because
+ * This branch indexes nodes that already exist rather than introducing new ones: an "Awaiting
+ * approval" row reuses the `asset:<hash>` id the Assets branch uses, so selection, routing and the
+ * right-click menu all work here with no renderer change. Only "Not yet rendered" is new, because
  * a slot with nothing in it is the one row in the tree that has no bytes behind it.
  *
  * Both groups walk `SlotGraph.order` — upstream before downstream — so the top of each list is what
@@ -369,9 +363,9 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
   for (const key of slots.order) {
     const slot = slots.nodes.get(key);
     if (!slot) continue;
-    // Zero candidates, deliberately — not `hash === undefined`. `pick` declines whenever the answer
-    // is not certain, so a slot holding three drafts resolves to nothing and would read as
-    // unrendered; those three drafts are what the other group is listing.
+    // The test is zero candidates rather than `hash === undefined`, because `pick` declines for
+    // want of certainty: a slot holding three drafts resolves to nothing and would read as
+    // unrendered, while those three drafts are what the other group lists
     if (slot.candidates.length === 0) {
       unrendered.push(
         node(`slot:${key}`, 'slot', slot.label, {
@@ -414,7 +408,7 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
   });
 }
 
-/** What a backlink entry is *about*. One of the three things a document in this project can be. */
+/** What a backlink entry is about: one of the three things a document in this project can be. */
 type Subject = { characterId: string } | { locationId: string } | { sceneId: string };
 
 /** Whether a scene names this subject at all — its cast, its setting, or its own id. */
@@ -450,8 +444,8 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
   const assets = input.manifest
     .filter((a) => bindsTo(a, binding))
     .map((a) => {
-      // Only a scene asks which shot: for a character the same frame can satisfy several, and the
-      // strip that groups by shot is the scene's.
+      // The shot is recorded only for a scene: for a character the same frame can satisfy several,
+      // and the strip that groups by shot is the scene's
       const shotId =
         'sceneId' in binding
           ? a.satisfies.find((b) => b.sceneId === binding.sceneId)?.shotId
@@ -466,8 +460,8 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
         ...(shotId !== undefined ? { shotId } : {}),
       };
     });
-  // The bible link is the sheet's own path when the sheet lives under wiki/. Which *other* notes
-  // mention it is `bible.search` — ranked and budgeted — not a precomputed index.
+  // The bible link is the sheet's own path when the sheet lives under wiki/. Finding the other
+  // notes that mention it is `bible.search`, which is ranked and budgeted, not an index built here
   const wiki = sheet?.startsWith(`${input.wikiDir}/`) ? sheet : undefined;
   return {
     ...(sheet !== undefined ? { sheet } : {}),
@@ -480,11 +474,11 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
 
 export function buildDocTree(input: DocTreeInput): DocTree {
   const cap = input.cap ?? DEFAULT_CAP;
-  // Immediately before Assets: it is a lens on the same nodes, so it sits next to them, and the
-  // four roots that were here keep the order the sidebar has always drawn them in.
+  // Placed immediately before Assets because it is a second view of the same nodes; the other
+  // roots keep the order the sidebar has always drawn them in
   const unapproved = unapprovedBranch(input, cap);
-  // Skills sit with the other authored input, after Wiki — and before Unapproved, because nothing
-  // may come between the two lenses on the manifest.
+  // Skills sit with the other authored input, after Wiki and before Unapproved, so that nothing
+  // comes between Unapproved and Assets
   const skills = skillsBranch(input, cap);
   const roots = [
     storyBranch(input, cap),
@@ -524,8 +518,8 @@ export function buildDocTree(input: DocTreeInput): DocTree {
     backlinks[`location:${l.id}`] = linksFor(input, { locationId: l.id }, sheet);
     claim(sheet, `location:${l.id}`);
   }
-  // A scene is a subject too: what illustrates it is the same question asked of a different key,
-  // and it is the one that lets a pane showing prose show the frames drawn from it.
+  // A scene is a subject too, backlinked under its own key, which is what lets a pane showing
+  // prose also show the frames drawn from that prose
   for (const s of input.model.scenes.values()) {
     const sheet = sceneFiles.get(s.id);
     backlinks[`scene:${s.id}`] = linksFor(input, { sceneId: s.id }, sheet);
@@ -539,9 +533,9 @@ export function buildDocTree(input: DocTreeInput): DocTree {
  * tree on purpose: it answers "what is on disk", shares nothing with it but the node type, and is
  * walked only when the sidebar asks for that mode.
  *
- * `base` is prepended to every id and path while the **structure** still comes from the paths as
- * given. That is what lets a caller walk one subdirectory and still hand back rows a click can act
- * on: the ids come out `file:.aiagent/skills/<id>/SKILL.md`, which is the workspace-relative path
+ * `base` is prepended to every id and path while the structure still comes from the paths as
+ * given. That lets a caller walk one subdirectory and still hand back rows a click can act on: the
+ * ids come out `file:.aiagent/skills/<id>/SKILL.md`, which is the workspace-relative path
  * `doc.read` takes, so `selectionForNode` and `nodeIsSelected` work on them with no new rule.
  */
 export function fileTree(

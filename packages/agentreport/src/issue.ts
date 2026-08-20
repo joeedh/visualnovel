@@ -1,15 +1,16 @@
 /**
- * The report as a GitHub issue URL: where it is filed, what fits in a link, and the assertion
- * that the link is the one we meant to open.
+ * The report as a GitHub issue URL: where it is filed, what fits in a link, and the check that the
+ * link is the one intended.
  *
- * Pure and in the package rather than in the app, because none of it depends on the host — but
- * *opening* the URL does, and that stays in main where `shell.openExternal` lives.
+ * This is pure and lives in the package rather than in the app because none of it depends on the
+ * host. Opening the URL does depend on the host, and that stays in main where `shell.openExternal`
+ * lives.
  */
 
 /**
  * The repository issues are filed against, fixed at build time rather than read from the git
- * remote. A packaged app has no checkout to read one from, and a contributor's fork points at the
- * fork — a report filed there is a report nobody sees.
+ * remote. A packaged app has no checkout to read one from, and a contributor's fork would point at
+ * the fork, where nobody would see the report.
  */
 export const ISSUE_REPO = 'joeedh/visualnovel';
 
@@ -81,9 +82,8 @@ function shrink(text: string, budget: number): string {
 /**
  * The report, cut down to something a URL will carry, and whether anything was lost.
  *
- * A `truncated` body ends with a line telling the author the whole thing is on their clipboard —
- * which is the caller's job to have put there, and the reason the note is worded as an
- * instruction rather than an apology.
+ * A `truncated` body ends with a line telling the author the whole report is on their clipboard.
+ * Putting it there is the caller's job.
  */
 export function fitBody(report: string, limit = BODY_BUDGET): { body: string; truncated: boolean } {
   if (cost(report) <= limit) return { body: report, truncated: false };
@@ -98,14 +98,14 @@ export function fitBody(report: string, limit = BODY_BUDGET): { body: string; tr
   }
   if (cost(kept) > budget) kept = shrink(kept, budget);
 
-  // The budget is a promise, so a limit too small even for the note takes the note down with it.
+  // `limit` is never exceeded, so a limit too small even for the note truncates the note as well
   const body = `${kept}${note}`;
   return { body: cost(body) <= limit ? body : shrink(body, limit), truncated: true };
 }
 
 /**
- * Refuse a URL that is not the new-issue form. The body is text a model wrote, and a composed
- * string must never reach `shell.openExternal` on trust — this is where that trust is checked.
+ * Refuses a URL that is not the new-issue form. The body is text a model wrote, and a composed
+ * string must never reach `shell.openExternal` unchecked.
  */
 export function assertIssueUrl(url: URL): void {
   if (url.origin !== ISSUE_ORIGIN || url.pathname !== ISSUE_PATH) {

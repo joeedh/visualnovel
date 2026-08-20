@@ -94,12 +94,12 @@ describe('shots file', () => {
     await writeShots(paths, 'arrival', [overridden]);
 
     const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
-    // Top level, beside artNotes: an override is something a human wrote, not run output.
+    // An override is authored rather than run output, so it sits at the top level beside artNotes.
     expect(raw.shots[0].promptOverride.mute).toEqual(['camera']);
     expect(raw.shots[0].shotData).toBeUndefined();
 
     expect((await readShots(paths, 'arrival'))?.shots).toEqual([overridden]);
-    // Self-testing: a second write of what was just read must find the bytes identical.
+    // A second write of what was just read must produce identical bytes.
     expect(await writeShots(paths, 'arrival', [overridden])).toBe(false);
   });
 
@@ -149,8 +149,8 @@ describe('shots file', () => {
   it('preserves an existing mark when the caller says nothing about it', async () => {
     const paths = await tempPaths();
     await writeShots(paths, 'arrival', [shot()], { nextShot: 4 });
-    // The planner, fallout and outfit writers all rewrite shots they loaded; none of them may
-    // drop the mark on the way through — that would quietly resurrect id reuse.
+    // The planner, fallout and outfit writers all rewrite shots they loaded, and dropping the
+    // mark on the way through would allow id reuse.
     await writeShots(paths, 'arrival', [shot({ framing: 'wide' })]);
     expect((await readShots(paths, 'arrival'))?.nextShot).toBe(4);
     // And preserving it keeps the unchanged rerun byte-identical.
@@ -162,7 +162,7 @@ describe('shots file', () => {
     await writeShots(paths, 'arrival', [shot()]);
 
     expect(await deleteShots(paths, 'arrival')).toBe(true);
-    // Absent, not empty: an empty list would be a permanent blank storyboard.
+    // The file is absent rather than empty; an empty list would be a permanent blank storyboard.
     expect(await readShots(paths, 'arrival')).toBeNull();
     expect(await deleteShots(paths, 'arrival')).toBe(false);
   });

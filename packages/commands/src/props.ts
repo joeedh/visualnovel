@@ -6,12 +6,12 @@
  */
 
 /**
- * `directory` is a string everywhere that matters — it coerces, serializes and schematizes as
- * one. It is its own kind so a form knows the OS can fill it in, rather than inferring that
- * from a property happening to be spelled `path`.
+ * `directory` coerces, serializes and schematizes as a string. It is its own kind so a form knows
+ * the OS can fill it in, rather than inferring that from a property happening to be spelled
+ * `path`.
  *
- * `secret` is the same trick for the opposite reason: a credential, which the history must
- * record as `<secret>` rather than as itself (`digest.ts`).
+ * `secret` is also a string, and is its own kind because the history must record it as `<secret>`
+ * rather than as its value (`digest.ts`).
  */
 export type PropKind =
   | 'string'
@@ -48,8 +48,8 @@ export interface Prop<T extends PropValue = PropValue, Req extends boolean = boo
   multiline?: boolean;
   /**
    * The hover sentence, where `description` cannot be it. A checkbox draws its description as its
-   * *label*, which leaves nowhere for the tooltip every control owes the author — so a prop whose
-   * label and explanation are different things says both. Defaults to `description`.
+   * label, which leaves nowhere to put its tooltip, so a prop whose label and explanation differ
+   * declares both. Defaults to `description`.
    */
   hint?: string;
 }
@@ -60,7 +60,7 @@ type ValueOf<P> = P extends Prop<infer T, boolean> ? T : never;
 
 /**
  * The runtime props object a command's `run` receives. Every key is present: `coerceProps`
- * has already filled in the defaults, so optionality belongs to the *raw* input, not here.
+ * has already filled in the defaults, so optionality belongs to the raw input rather than here.
  * `Req` still matters — the catalog reads it off the spec to build the JSON-Schema
  * `required` list — but no consumer needs it at the type level.
  */

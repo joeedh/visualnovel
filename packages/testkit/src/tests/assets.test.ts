@@ -7,14 +7,14 @@ import { SCRIPTS, makeProject } from '../index.js';
 
 const REAL_ART = new TextEncoder().encode('pretend this is 2 MB of generated art');
 
-/** `store.read` hands back a Buffer; compare contents, not the box around them. */
+/** `store.read` hands back a Buffer; compare decoded contents rather than the container type. */
 const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
 /**
- * The cache is opt-in and read-only from a fixture's side, so these prove the two things that
- * would make it dishonest: that a recording is actually served (the key the pipeline's request
- * produces has to match the key the recorder wrote), and that anything unrecorded degrades to
- * a placeholder rather than to something that merely looks generated.
+ * The cache is opt-in and read-only from a fixture's side. These tests cover two properties: a
+ * recording is actually served (the key the pipeline's request produces matches the key the
+ * recorder wrote), and an unrecorded request degrades to a placeholder rather than to something
+ * that merely looks generated.
  */
 describe('makeProject({ assets: "cached" })', () => {
   let cacheDir: string;
@@ -63,7 +63,7 @@ describe('makeProject({ assets: "cached" })', () => {
       const portrait = store.manifest().find((a) => a.kind === 'portrait');
 
       expect(text(await store.read({ hash: plate!.hash, ext: plate!.ext }))).toBe(text(REAL_ART));
-      // Nothing recorded the portrait, so it is a placeholder — and says so in its bytes.
+      // Nothing recorded the portrait, so its bytes are a marked placeholder.
       expect(
         isPlaceholderImage(await store.read({ hash: portrait!.hash, ext: portrait!.ext })),
       ).toBe(true);

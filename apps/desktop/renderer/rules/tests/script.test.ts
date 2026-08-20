@@ -71,8 +71,8 @@ describe('keyAct on an open line', () => {
     });
   });
 
-  // The editor still moves: an author who clicked in, changed nothing and hit Enter asked for a
-  // new line, and an undo point that undoes nothing is not the price of getting one.
+  // An author who clicked in, changed nothing and hit Enter asked for a new line, so the composer
+  // opens without recording an undo point that would undo nothing
   it('opens the composer with no steps when the draft says what the line already said', () => {
     expect(keyAct(scene, editing, at('Um… hello.'), 'Enter')).toEqual({
       act: 'run',
@@ -106,10 +106,8 @@ describe('keyAct on an open line', () => {
     });
   });
 
-  /**
-   * The rule that keeps this from becoming a buffer: Backspace at the start of a line that still
-   * says something is not "merge me into the line above" — it is a mis-hit.
-   */
+  // Backspace at the start of a line that still says something is a mis-hit, not a request to
+  // merge it into the line above
   it('does nothing on Backspace at the start of a line that still says something', () => {
     expect(keyAct(scene, editing, at('Um… hello.', 0), 'Backspace')).toEqual({ act: 'type' });
   });
@@ -261,8 +259,8 @@ describe('scriptRows', () => {
     expect(scriptRows(lines, null)).toHaveLength(lines.length);
   });
 
-  // The line it was anchored to is gone, and a row that has forgotten where it is would insert
-  // somewhere the author never pointed.
+  // The line it was anchored to is gone, and a composer with no anchor would insert somewhere the
+  // author never pointed
   it('drops a composer anchored to a line that is no longer there', () => {
     expect(scriptRows(lines, { row: 'new', after: 'a:L9' })).toHaveLength(lines.length);
   });
@@ -307,10 +305,8 @@ describe('moveStateOf', () => {
     expect(moveStateOf(coverage).scenes.get('a')?.nextLineId).toBeUndefined();
   });
 
-  /**
-   * The point of the synthetic state: the *real* interaction judges a drag against it, so a
-   * verdict drawn during the gesture is the one `story.moveLine` would produce.
-   */
+  // The real interaction judges a drag against this synthetic state, so a verdict drawn during the
+  // gesture is the one `story.moveLine` would produce
   it('is enough for script.moveLine to judge a drag', () => {
     const verdicts = scriptMoveLine.targets(moveStateOf(coverage), 'a:L2');
     expect(verdicts.find((v) => v.target === TOP)).toEqual({
@@ -324,11 +320,9 @@ describe('moveStateOf', () => {
   });
 });
 
-/**
- * The composition the column performs per pointer move, with the DOM read stubbed out: measured
- * rows → `dropTarget` → the verdict judged on the grab. Nothing else decides anything, which is
- * why the surface can stay thin.
- */
+// The composition the column performs per pointer move, with the DOM read stubbed out: measured
+// rows → `dropTarget` → the verdict judged on the grab. Nothing else decides anything, so the
+// surface stays thin
 describe('a drag, from a pointer position to an invocation', () => {
   const coverage: SceneCoverage = {
     sceneId: 'a',
@@ -436,7 +430,7 @@ describe('the cue picker', () => {
   });
 
   it('names the narrator on an unattributed line rather than showing an empty slot', () => {
-    // A blank slot reads as "there is no control here", and the control is the whole point.
+    // A blank slot reads as if there were no control there, so the narrator is named instead
     expect(cueSlotText(cast, undefined)).toEqual({
       label: NARRATOR,
       title: expect.stringContaining('give it a speaker'),

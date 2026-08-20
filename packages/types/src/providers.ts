@@ -51,7 +51,7 @@ export interface ShotSpec {
   framing?: string;
 }
 
-/** Reads an image back and reports defects vs. the spec (Gemini AND Claude). */
+/** Reads an image back and reports defects against the spec (Gemini and Claude). */
 export interface VisionReviewer {
   /** Stable id, e.g. `gemini` or `claude`. */
   readonly id: string;

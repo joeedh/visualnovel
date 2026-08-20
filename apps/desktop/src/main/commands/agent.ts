@@ -1,7 +1,6 @@
 /**
- * The authoring agent as commands. `agent.run` is marked mutating because a turn in execute
- * mode can edit files — but the agent keeps its own plan/execute gate, which this does not
- * bypass: the command is just another way to hand it a turn.
+ * The authoring agent as commands. `agent.run` is marked mutating because a turn in execute mode
+ * can edit files. The agent keeps its own plan/execute gate, and these commands do not bypass it.
  */
 import { defineFor, prop } from '@vn/commands';
 import {
@@ -23,15 +22,15 @@ export const agentRun = define({
   props: {
     input: prop.string('what to ask the agent'),
     // Filled by the composer from the selection. Optional because the palette and CDP have no
-    // selection to speak of, and a turn with no scene in view is a turn like any other.
+    // selection, and a turn runs the same way with no scene in view
     scene: prop.string('the scene the author has open, so "this scene" means that one', {
       default: '',
     }),
   },
   async run({ input, scene }, ctx) {
-    // The window whose composer sent this turn is where the turn's cards belong. Without this
-    // note the ask went to whichever window held focus when it fired — usually right, until the
-    // author is reading in another window, at which point the card lands where they are not.
+    // The turn's cards belong to the window whose composer sent it. Without this note an ask goes
+    // to whichever window holds focus, which lands the card away from the author once they are
+    // reading in another window
     ctx.host.noteTurnWindow(ctx.origin);
     const result = await ctx.host.session.runAgent(input, scene || undefined);
     return { message: result.final, data: result };
@@ -42,7 +41,7 @@ export const agentStop = define({
   id: 'agent.stop',
   title: 'Stop agent turn',
   description: 'End the turn in progress after the step it is on. What it already did is kept.',
-  // The turn it interrupts owns whatever was written, and is where the undo point already is.
+  // The interrupted turn accounts for whatever it wrote, and already holds the undo point
   mutating: false,
   props: {},
   check(_props, ctx) {
@@ -87,8 +86,8 @@ export const agentSetEffort = define({
   title: 'Set agent effort',
   description: 'Set how hard the model thinks, or `none` to switch thinking off.',
   mutating: false,
-  // Every choice is accepted, not just the ones the current model offers: the menu is what
-  // filters, and a level the model will not take is stepped down at the wire, not refused.
+  // Every choice is accepted, not just the ones the current model offers. The menu does the
+  // filtering, and a level the model will not take is stepped down at the wire rather than refused
   props: { effort: prop.oneOf(EFFORT_CHOICES, 'the reasoning to bind') },
   async run({ effort }, ctx) {
     const bound = await ctx.host.session.setEffort(effort as EffortChoice);
@@ -109,8 +108,8 @@ export const agentSetBudget = define({
   props: { budget: prop.oneOf(BUDGET_CHOICES, 'the ceiling to bind') },
   async run({ budget }, ctx) {
     const bound = await ctx.host.session.setBudget(budget as BudgetChoice);
-    // Kept in the install's session file rather than the project's: it is a spending decision
-    // about this machine and this author, not something a collaborator inherits with the repo.
+    // Kept in the install's session file rather than the project's, because the ceiling is a
+    // spending decision about this machine and author that a collaborator does not inherit
     ctx.host.state.set(BUDGET_KEY, bound);
     return { message: `Agent turn budget is now ${bound}.` };
   },
@@ -129,10 +128,9 @@ export const agentClear = define({
 });
 
 /**
- * The four thread commands. None is `undoable`: `vngen/state` is outside the undo snapshot by
- * design, so a journal entry claiming to restore a transcript could not — and `agent.renameThread`
- * is `mutating` only because it writes a file, which is also why it is the only one of the four
- * that is.
+ * The four thread commands. None is `undoable`, because `vngen/state` sits outside the undo
+ * snapshot, so a journal entry could not actually restore a transcript. `agent.renameThread` is
+ * the only one marked `mutating`, and only because it writes a file.
  */
 export const agentThreads = define({
   id: 'agent.threads',
@@ -171,7 +169,7 @@ export const agentOpenThread = define({
   },
 });
 
-/** What renaming would hit — the open thread when no id is named, and nothing when none is. */
+/** Decides what a rename would target: the named thread, or the open one when no id is given. */
 async function wouldRename(
   id: string,
   title: string,

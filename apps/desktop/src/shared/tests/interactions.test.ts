@@ -156,9 +156,9 @@ describe('relabel', () => {
 });
 
 /**
- * The interactions add no rules — they enumerate targets and hand each one to the decision
- * above. So these assert the enumeration and that the verdict is verbatim what the drop
- * would have produced; the rules themselves are `branchops.test.ts`'s business.
+ * The interactions add no rules: they enumerate targets and hand each one to the decision
+ * functions above. These tests assert the enumeration, and that the verdict is verbatim what the
+ * drop would have produced. The rules themselves are covered by `branchops.test.ts`.
  */
 describe('the branch interactions', () => {
   const nextEdge: StoryEdge = {

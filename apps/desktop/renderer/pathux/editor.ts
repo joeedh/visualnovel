@@ -24,7 +24,7 @@ import { closeStruct, type StructField } from './structfields.js';
 
 /**
  * Base class for every editor in the shell: a column container inside the area's shadow
- * root, with path.ux's own header above it. Ports subclass this, not `Area`.
+ * root, with path.ux's own header above it. Editors subclass this, not `Area`.
  */
 export class VnEditor extends Area {
   container!: ColumnFrame;
@@ -42,9 +42,9 @@ export class VnEditor extends Area {
    * makes the whole screen mesh generic, and its `ScreenArea`/`ScreenBorder` back-references
    * then stop being assignable in either direction.
    *
-   * A pinned pane reads a {@link pinnedView} of it instead — the same object behind it, one field
-   * answered from the pin — so every `this.ui.sceneId` in every editor keeps working and nothing
-   * has to learn a second way to ask what it is looking at.
+   * A pinned pane reads a {@link pinnedView} of it instead: the same object behind it, with one
+   * field answered from the pin. Every `this.ui.sceneId` in every editor keeps working, so no
+   * editor needs a second way to ask what it is looking at.
    */
   get ui(): ShellState {
     const live = (this.ctx as VnContext).ui;
@@ -66,21 +66,21 @@ export class VnEditor extends Area {
   }
 
   /**
-   * The pin, for a pinnable editor's own header row. A toggle rather than two buttons, drawn as
-   * the pin icon while the sheet has one and as a checkbox until it does, and it says what it
-   * *does* rather than what it is called — "Pin" alone tells an author nothing about following.
+   * The pin, for a pinnable editor's own header row. One toggle rather than two buttons. It draws
+   * as the pin icon once the icon sheet has one, and as a checkbox until then. Its tooltip says
+   * what pinning does, because "Pin" alone tells an author nothing about following.
    *
-   * Pinning snapshots what the pane is on right now, which is the only value that could be meant;
-   * unpinning is a jump back to whatever the rest of the app is looking at, and the editor's own
-   * `update()` notices that the way it notices any other selection change.
+   * Pinning snapshots what the pane is on at that moment. Unpinning jumps back to what the rest of
+   * the app is looking at, and the editor's own `update()` sees that as an ordinary selection
+   * change.
    */
   protected pinToggle(row: Container): void {
     const field = this.pinField;
     if (!field) return;
 
-    // Its own row, so it can be drawn a second time without disturbing the bar around it: a
-    // header built once — the wiki's — is built before the icon sheet has decoded, and would
-    // otherwise keep the text fallback for the life of the app.
+    // The toggle gets its own row so it can be redrawn without disturbing the bar around it. The
+    // wiki's header is built once, before the icon sheet has decoded, and would otherwise keep
+    // the text fallback for the life of the app.
     const holder = row.row();
     this.drawPin(holder, field);
     if (VN_ICONS.pin < 0)
@@ -108,15 +108,14 @@ export class VnEditor extends Area {
     toggle.on_change = (next: unknown) => {
       const on = next === true;
       if (on === this.pinned) return;
-      // Read before the flag flips: `this.ui` is the live state while `pinned` is still false,
-      // and the pin has to start life holding what the pane is already showing.
+      // Read before the flag flips, because `this.ui` is the live state while `pinned` is still
+      // false and the pin must start out holding what the pane is already showing
       if (on) this.pinnedTo = this.ui[field];
       this.pinned = on;
       toggle.description = say(on);
-      // The pin is saved with the pane, and nothing about the mesh's *shape* moved — so it has
-      // to say so itself, the way the documents editor's mode does. Through the screen's own
-      // hook rather than `persist.layoutChanged`, because persistence already imports this
-      // module for `knownAreaNames` and the arrow between the two may only go one way.
+      // The pin is saved with the pane and the mesh's shape did not change, so the save is asked
+      // for here. It goes through the screen's own hook rather than `persist.layoutChanged`,
+      // because persistence already imports this module and that dependency goes only one way.
       ((this.ctx as VnContext).screen as VnScreen | undefined)?.onLayoutChange?.();
       this.announce();
     };
@@ -151,10 +150,10 @@ export class VnEditor extends Area {
   }
 
   /**
-   * Whether this editor's header carries a note frame. False everywhere but the menu bar:
-   * `sendNote` broadcasts to **every** `noteframe-x` on screen, so with one per editor a single
-   * sentence appeared thirteen times at once. Notifications have one home now — the bar, beside
-   * the bell that keeps them — and `getNoteFrames` finds exactly one place to put them.
+   * Whether this editor's header carries a note frame. False everywhere but the menu bar, because
+   * `sendNote` broadcasts to every `noteframe-x` on screen and one frame per editor showed a
+   * single sentence thirteen times at once. Keeping the only frame on the bar, beside the bell
+   * that holds the notifications, leaves `getNoteFrames` exactly one place to put them.
    */
   protected get wantsNoteArea(): boolean {
     return false;
@@ -163,13 +162,12 @@ export class VnEditor extends Area {
   /**
    * Register a subscription that follows this editor on and off the screen.
    *
-   * path.ux calls `init()` **once** and `remove()` — and so `on_remove()` — every time a tab
-   * switch detaches the editor, without ever calling `init()` again when the tab comes back. A
-   * watcher unsubscribed in a hand-written `on_remove` is therefore gone for good: the pane draws
-   * whatever it held the moment it was first hidden and never hears another word, which is why a
-   * document tree stopped following the agent after the author looked at anything else. Watches
-   * registered here are dropped on the way out and re-made on the way back in, and `onReturn`
-   * runs on the way back so the pane catches up on what it missed while it was off screen.
+   * path.ux calls `init()` once, and calls `remove()` (and so `on_remove()`) every time a tab
+   * switch detaches the editor, without calling `init()` again when the tab comes back. A watcher
+   * unsubscribed in a hand-written `on_remove` is therefore gone for good, leaving the pane
+   * showing whatever it held when it was first hidden. Watches registered here are dropped on the
+   * way out and re-made on the way back in, and `onReturn` runs on the way back so the pane can
+   * catch up on what changed while it was off screen.
    *
    * `arm` is called immediately, so this belongs in `init()` like the subscription it replaces.
    */
@@ -189,7 +187,8 @@ export class VnEditor extends Area {
 
   override on_area_active(): void {
     super.on_area_active();
-    // Also the first activation, where every watch is already armed and this is a no-op.
+    // Runs on the first activation too, where every watch is already armed and the loop does
+    // nothing
     for (const watch of this.watches) {
       if (watch.off) continue;
       watch.off = watch.arm();
@@ -201,8 +200,8 @@ export class VnEditor extends Area {
    * Put a raw DOM surface — a play stage, a graph canvas — under the column container, filling
    * what the header leaves. It cannot go through `container.appendChild`: that routes a `UIBase`
    * into the container's shadow root but hands anything else to `super.appendChild`, which lands
-   * it in the **light** DOM, and a path.ux widget has no `<slot>`. The node is then in the tree,
-   * findable, clickable from script, and never laid out or drawn.
+   * it in the light DOM, and a path.ux widget has no `<slot>`. Such a node is in the tree,
+   * findable and clickable from script, but is never laid out or drawn.
    */
   protected appendSurface(element: HTMLElement): void {
     this.container.style['height'] = '100%';
@@ -229,18 +228,18 @@ export class VnEditor extends Area {
 const editors = new Map<string, typeof VnEditor>();
 
 /**
- * Every area name this build can build. path.ux has no public view of its own registry, and
- * `restoreLayout` needs one: a stored layout naming an editor a later build **removed** hits
- * the same silent fallback `registerEditor` describes, so the shell checks the names itself.
+ * Every area name this build can build. path.ux exposes no view of its own registry and
+ * `restoreLayout` needs one: a stored layout naming an editor a later build removed hits the
+ * same silent fallback `registerEditor` describes, so the shell checks the names itself.
  */
 export function knownAreaNames(): ReadonlySet<string> {
   return new Set(editors.keys());
 }
 
 /**
- * The area names an author can actually switch a pane to — everything above except chrome.
- * `AreaFlags.HIDDEN` is the flag path.ux's own area-switcher skips, so it is the same line the
- * boot check has to draw: the header bar is registered like any editor and named in no list.
+ * The area names an author can switch a pane to: every registered name except chrome.
+ * `AreaFlags.HIDDEN` is the flag path.ux's own area-switcher skips, so the boot check uses the
+ * same test. The header bar is registered like an editor and appears in no list.
  */
 export function switchableAreaNames(): string[] {
   return [...editors]
@@ -257,12 +256,12 @@ export function editorClass(areaname: string): typeof VnEditor | undefined {
 }
 
 /**
- * Register an editor: its area name with path.ux, and its `STRUCT` with nstructjs under a
- * **written-down** name. Both halves have to happen and `structName` is the reason this is a
+ * Register an editor: its area name with path.ux, and its `STRUCT` with nstructjs under a name
+ * written down by hand. Both halves have to happen, and `structName` is the reason this is a
  * function — `STRUCT.inherit` defaults to `cls.name`, which esbuild minifies to a letter or
  * two that changes with the build. A layout saved by one build then names a struct the next
  * build does not have, and `ScreenArea.loadSTRUCT` does not fail loudly: it falls back to the
- * *first registered* area class, so every remembered pane comes back as the same editor.
+ * first registered area class, so every remembered pane comes back as the same editor.
  *
  * `fields` is what a pane remembers of its own — one declaration per line of nstructjs, spliced
  * inside the struct the parent's fields already fill. Anything declared here must exist on the
@@ -276,10 +275,9 @@ export function registerEditor(
 ): void {
   VnEditor.register(cls);
   const areaname = (cls.define() as { areaname: string }).areaname;
-  // The pin's two fields are spliced in from the one declaration in `shared/editors.ts` rather
-  // than typed into five `registerEditor` calls, for the reason the struct name and the tab's
-  // sentence are: an editor becomes pinnable by declaring `pins`, and a pin that survived a
-  // restart in four panes but not the fifth would be the kind of gap nobody thinks to test for.
+  // The pin's two fields are spliced in from the one `pins` declaration in `shared/editors.ts`
+  // rather than typed into each `registerEditor` call, so a pinnable editor cannot end up with a
+  // pin that fails to survive a restart while the other panes' pins do.
   const pin: StructField[] = pinFieldOf(areaname) ? ['pinned : bool', 'pinnedTo : string'] : [];
   cls.STRUCT = closeStruct(nstructjs.STRUCT.inherit(cls, VnEditor, structName), [
     ...fields,
@@ -294,9 +292,8 @@ export function registerEditor(
 /**
  * Give the class's `define()` the sentence `shared/editors.ts` already writes down, which is what
  * path.ux's docker puts on the pane tab. It is spliced here, like the struct name above, rather
- * than typed into twelve `define()`s: the Editors menu offers the same sentence from the same
- * list, and a tab that said something else would be two answers to one question. Chrome is in no
- * list and gets none — the header bar has no tab to hover.
+ * than typed into each `define()`, so the tab and the Editors menu show the same sentence from
+ * the same list. Chrome is in no list and gets no sentence; the header bar has no tab to hover.
  */
 function describe(cls: typeof VnEditor, areaname: string): void {
   if (!(EDITOR_IDS as readonly string[]).includes(areaname)) return;

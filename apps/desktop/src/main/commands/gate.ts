@@ -1,4 +1,4 @@
-/** The character-approval gate (P3) as commands: inspect candidates, approve one. */
+/** Commands over the character-approval gate (P3): inspect candidates, approve one. */
 import { defineFor, prop } from '@vn/commands';
 import type { CommandHost } from './host.js';
 
@@ -32,9 +32,9 @@ export const gateApprove = define({
     const state = await ctx.host.session.gateCandidacy(characterId, hash);
     if (!state.character) return { ok: false, reason: `No character "${characterId}".` };
     if (!state.candidate) {
-      // An empty hash is the ordinary way in, not a typo: the tasks and graph editors open this
-      // form on a *character* and leave which portrait to the author. "has no candidate ''" reads
-      // like a lookup that failed, so the unanswered field is named instead.
+      // An empty hash is ordinary rather than a typo, because the tasks and graph editors open
+      // this form on a character and leave the choice of portrait to the author. "has no candidate
+      // ''" would read as a failed lookup, so the refusal names the unanswered field instead
       if (!hash) {
         return {
           ok: false,
@@ -51,8 +51,8 @@ export const gateApprove = define({
     if (state.suspended) {
       return { ok: false, reason: `${hash.slice(0, 8)} is suspended: ${state.suspended}.` };
     }
-    // Already approved is not a refusal: approving a second candidate is how an author
-    // changes their mind, and the command supports it.
+    // Already approved is not a refusal, because an author changes their mind by approving a
+    // second candidate and the command supports that
     return {
       ok: true,
       note: state.approved

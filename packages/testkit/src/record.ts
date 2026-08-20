@@ -2,13 +2,11 @@
  * Record and audit the fixture asset corpus. Driven by `scripts/record-fixture-assets.mjs`;
  * it lives here rather than in the script so it is typechecked and inside the layering graph.
  *
- * **Only the image backend is real.** Text and vision stay mocked, and that is the whole
- * design: P5 shot decomposition is an LLM step, so a recording made against a real text model
- * would carry shot descriptions no replaying fixture ever asks for again — every image prompt
- * downstream would miss, and the corpus would be dead bytes. Mocking text pins the run to the
- * deterministic baseline decomposition, which is exactly what a replay produces. The cost is
- * that a recorded P7 loop is one attempt deep; the cache exists to hold real *art*, and
- * replayability and LLM nondeterminism cannot both be had.
+ * Only the image backend is real; text and vision stay mocked. P5 shot decomposition is an LLM
+ * step, so a recording made against a real text model would carry shot descriptions no replaying
+ * fixture asks for again, every image prompt downstream would miss, and the corpus would be dead
+ * bytes. Mocking text pins the run to the deterministic baseline decomposition, which is what a
+ * replay produces. The cost is that a recorded P7 loop is one attempt deep.
  *
  * Plan: `docs/plans/archive/sample-workspace-and-asset-cache.md`.
  */
@@ -75,9 +73,9 @@ async function runFixture(
   log: (line: string) => void,
 ): Promise<{ project: TestProject; failed: FailedTask[] }> {
   const failed: FailedTask[] = [];
-  // A failure's message is only ever *logged* — the scheduler does not store it on the task —
-  // so collect it here. `ran` counts every terminal task, failures included, and a paid run
-  // that generated nothing must not read as a clean one.
+  // The scheduler logs a failure's message rather than storing it on the task, so collect it
+  // here. `ran` counts every terminal task, failures included, and a paid run that generated
+  // nothing must not read as a clean one.
   const collector: Logger = {
     debug: () => undefined,
     info: () => undefined,
@@ -147,8 +145,8 @@ function summarize(
 }
 
 /**
- * Record a fixture against the **real** image model. Costs money, needs a Gemini key, and is
- * meant to be run by a human who decided to spend it — never by a suite.
+ * Record a fixture against the real image model. Costs money, needs a Gemini key, and is meant
+ * to be run by a human who decided to spend it, never by a suite.
  */
 export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusReport> {
   const fixture = opts.fixture ?? 'linear';
@@ -162,10 +160,9 @@ export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusRepo
   try {
     const config = await loadConfig(probe.dir);
     const keys = await resolveKeys(config, {
-      // A test project is a closed world, which is the whole point of testkit — so the user-level
-      // rung is opted out of here rather than inherited. This function spends real money on a
-      // real model, and the one thing worse than it failing on CI for want of a key is it
-      // succeeding on a developer's machine because their own key was lying one directory up.
+      // A test project is a closed world, so the user-level rung is opted out of here rather
+      // than inherited. This function spends real money, and it must not succeed on a
+      // developer's machine by picking up their own key from an enclosing directory.
       secretsDirs: await secretDirsFor(process.cwd(), { includeUser: false }),
       require: ['gemini'],
     });
@@ -187,9 +184,8 @@ export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusRepo
  * Audit the corpus without spending anything: replay the fixture against the cache with a
  * placeholder backend behind it, then compare what was asked for against what is held.
  *
- * **Reports, never gates.** A stale entry costs a fixture its real art and nothing else — a
- * suite that failed here would put a paid re-record in the way of an ordinary prompt change,
- * which is exactly when you least want it.
+ * Reports rather than gates. A stale entry costs a fixture its real art and nothing else, and a
+ * suite that failed here would put a paid re-record in the way of an ordinary prompt change.
  */
 export async function checkCorpus(opts: CorpusOptions = {}): Promise<CorpusReport> {
   const fixture = opts.fixture ?? 'linear';

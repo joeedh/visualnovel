@@ -3,8 +3,8 @@
  * is a directory under `.aiagent/skills/<id>/` containing `SKILL.md` (front-matter `name`,
  * `description`, `when-to-use`) and an optional script. Skills are reusable authoring
  * playbooks: a pure-prose skill returns its body as guidance for the agent; a script-bearing
- * skill runs a vetted command — and the **first/each run is permissioned** (the plan's
- * always-confirm rule), because a script can do arbitrary work.
+ * skill runs a vetted command, and every run is permissioned (the plan's always-confirm rule)
+ * because a script can do arbitrary work.
  *
  * The writer lives here, beside the reader, so the two cannot drift: `readSkill` parses with
  * `@vn/parse`'s `parseFrontMatter` and `skillDoc` emits through its exact inverse,
@@ -104,9 +104,9 @@ export async function readSkill(dir: string, id: string): Promise<Skill | null> 
 
 /**
  * What a skill silently degraded over, in the order a reader should fix them. Every one of these
- * is a case {@link readSkill} papers over — a missing `name` becomes the directory id, a missing
- * `description` becomes `''` — so without this list the agent's own catalogue would show a skill
- * that looks fine and reads as nothing.
+ * is a case {@link readSkill} papers over (a missing `name` becomes the directory id, a missing
+ * `description` becomes `''`), so without this list the agent's own catalogue would list a skill
+ * that looks complete but carries no usable text.
  */
 export function skillIssues(skill: Skill): string[] {
   const issues: string[] = [];
@@ -166,11 +166,11 @@ const MODELED_KEYS = ['name', 'description', 'when-to-use', 'whenToUse'];
 /**
  * A hyphenated skill id from a name; `''` when nothing survives.
  *
- * Deliberately **ASCII-only**, unlike `@vn/model`'s `slug` — which keeps `\p{Letter}\p{Number}`
- * and would happily mint a wholly non-Latin directory name, and which hyphenates with
- * underscores besides. A skill id becomes a directory that a `run.mjs` is resolved against and
- * handed to `execFile`, so it stays in the portable set; a name that slugs to `''` is refused
- * with a message asking for a Latin id rather than calling the name invalid.
+ * Deliberately ASCII-only, unlike `@vn/model`'s `slug`, which keeps `\p{Letter}\p{Number}` (so it
+ * would mint a wholly non-Latin directory name) and which hyphenates with underscores besides.
+ * A skill id becomes a directory that a `run.mjs` is resolved against and handed to `execFile`, so
+ * it stays in the portable set; a name that slugs to `''` is refused with a message asking for a
+ * Latin id rather than calling the name invalid.
  */
 export function skillId(name: string): string {
   return (
@@ -188,7 +188,7 @@ export function skillId(name: string): string {
 }
 
 /**
- * Whether `id` is a well-formed skill id. This gates **creation only**: `edit_skill` resolves
+ * Whether `id` is a well-formed skill id. This gates creation only: `edit_skill` resolves
  * through `discoverSkills`, which reads whatever the directory is actually called, so a
  * hand-made id this would refuse to mint stays editable. Keep that asymmetry.
  */
@@ -209,11 +209,11 @@ export interface SkillInput {
  * The canonical `SKILL.md`: the four modeled keys in a fixed order, then whatever `preserve`
  * carries that this file does not model (a human's `script:`, most of all).
  *
- * This re-serializes where `renameInText` splices, and the difference is the document: a wiki
- * page's front-matter is open-ended and hand-ordered, so re-emitting it would reflow keys the
- * author chose; a `SKILL.md` has four known keys whose order this function owns, so canonical
- * output is the point. What re-emitting still loses is **comments**, including one above a
- * human's `script:`. That cost is accepted and stated in `edit_skill`'s description.
+ * This re-serializes where `renameInText` splices, because the documents differ. A wiki page's
+ * front-matter is open-ended and hand-ordered, so re-emitting it would reflow keys the author
+ * chose. A `SKILL.md` has four known keys whose order this function owns, so canonical output is
+ * the point. Re-emitting loses comments, including one above a human's `script:`; that cost is
+ * accepted and stated in `edit_skill`'s description.
  */
 export function skillDoc(
   input: SkillInput,
@@ -261,16 +261,16 @@ export type SkillWriteResult =
   | { ok: false; reason: string };
 
 /**
- * Write `<root>/.aiagent/skills/<id>/SKILL.md`. Refuses an existing **directory** unless
- * `overwrite` — a directory is the unit a skill occupies, and one already holding a vetted
- * `run.mjs` is not somewhere a new skill gets scaffolded on top of.
+ * Write `<root>/.aiagent/skills/<id>/SKILL.md`. Refuses an existing directory unless `overwrite`:
+ * a directory is the unit a skill occupies, and one already holding a vetted `run.mjs` must not
+ * have a new skill scaffolded on top of it.
  */
 export async function writeSkill(
   root: string,
   input: SkillInput,
   opts: { overwrite?: boolean; preserve?: Record<string, unknown> } = {},
 ): Promise<SkillWriteResult> {
-  // Whatever else it is, an id names one directory and never a path.
+  // An id names one directory and never a path
   if (!input.id || input.id === '.' || input.id === '..' || basename(input.id) !== input.id) {
     return {
       ok: false,
@@ -304,7 +304,7 @@ const SKILL_WRITE_REFUSAL =
 /**
  * Non-null when `write_file` must refuse this workspace-relative path.
  *
- * Normalizes and **lowercases**: `rel` forward-slashes but does not case-fold, and
+ * Normalizes and lowercases, because `rel` forward-slashes but does not case-fold, and
  * `.AIAGENT/skills/x` is the same directory as `.aiagent/skills/x` on Windows and on default
  * macOS. `..` is resolved first, so `characters/../.aiagent/skills/x/run.mjs` is caught too.
  */

@@ -1,14 +1,14 @@
 /**
  * Entity discovery — which files on disk are character and set-location sheets.
  *
- * Discovery is by the `type:` tag in front-matter, not by path: an author who files a character
- * under `wiki/cast/ada.md` has written a character, not a file nothing reads. Three surfaces and
- * no more — `characters/`, `locations/`, and a walk of `wiki/**` — because discovery everywhere
- * would make every stray markdown file a potential entity and would put the cost of the walk on
- * every load.
+ * Discovery is by the `type:` tag in front-matter rather than by path, so a character filed under
+ * `wiki/cast/ada.md` is still discovered. Only three surfaces are searched — `characters/`,
+ * `locations/`, and a walk of `wiki/**` — because searching everywhere would make every stray
+ * markdown file a potential entity and would put the cost of that walk on every load.
  *
- * Turning a doc into a `Character`/`Location` is `@vn/model`'s job, as it is for scene chunks:
- * this module decides *which files*, and says out loud when two of them claim the same identity.
+ * Turning a doc into a `Character`/`Location` is `@vn/model`'s job, as it is for scene chunks.
+ * This module decides which files qualify, and reports a diagnostic when two of them claim the
+ * same identity.
  */
 import { promises as fs } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -19,7 +19,7 @@ import { taggedKind } from './docfile.js';
 import type { ProjectPaths } from './paths.js';
 import { listWikiFiles } from './tree.js';
 
-/** A discovered sheet, with the surface it came from — which is what breaks a duplicate tie. */
+/** A discovered sheet, with the surface it came from, which breaks a duplicate tie. */
 interface Candidate {
   kind: EntityTag;
   doc: EntityDoc;
@@ -29,8 +29,8 @@ interface Candidate {
 
 /**
  * Read one sheet: bytes, front-matter, and the id the file's own name implies. Unparseable YAML
- * is a diagnostic naming the file rather than a thrown error — one hand-edited sheet must not
- * take the whole project's load down with it.
+ * produces a diagnostic naming the file rather than a thrown error, so one hand-edited sheet does
+ * not fail the whole project's load.
  */
 async function readCandidate(
   file: string,
@@ -53,7 +53,7 @@ async function readCandidate(
 }
 
 /**
- * A conventional sheet's tag comes from its directory. Stating the *other* kind there is a
+ * A conventional sheet's tag comes from its directory. Stating the opposite kind there is a
  * conflict rather than an override: moving a file is how a document changes kind, and honouring
  * the tag would make `locations/` hold a character while every location path still named it.
  */
@@ -107,7 +107,7 @@ async function fromLocationsDir(
 }
 
 /** `wiki/**\/*.md` carrying an entity tag — the id is the filename stem. Untagged files are not
- * inputs; they are the story bible's own business and are passed over in silence. */
+ * inputs; they belong to the story bible and are skipped without a diagnostic. */
 async function fromWiki(paths: ProjectPaths, diagnostics: Diagnostic[]): Promise<Candidate[]> {
   const found: Candidate[] = [];
   for (const file of await listWikiFiles(paths)) {
@@ -122,10 +122,9 @@ async function fromWiki(paths: ProjectPaths, diagnostics: Diagnostic[]): Promise
 }
 
 /**
- * One doc per id, ordered by id. Two files claiming the same identity is never silent and never a
- * guess: the conventional directory wins over the wiki, wiki ties go to the lexicographically
- * first path, and the losing file is named in a warning so the author can delete the copy they
- * did not mean to keep.
+ * One doc per id, ordered by id. When two files claim the same identity the conventional directory
+ * wins over the wiki, wiki ties go to the lexicographically first path, and the losing file is
+ * named in a warning so the author can delete the copy they did not mean to keep.
  */
 function dedupe(candidates: Candidate[], kind: EntityTag, diagnostics: Diagnostic[]): EntityDoc[] {
   const byId = new Map<string, Candidate[]>();

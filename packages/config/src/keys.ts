@@ -20,8 +20,8 @@ const SECRET_FILES: Record<keyof ResolvedKeys, string[]> = {
 };
 
 /**
- * Where a vendor's key is *written*: the first filename `resolveKeys` looks for, so what a
- * writer puts down is what a reader picks up. The later names are read-only aliases.
+ * The filename a vendor's key is written to. It is the first name `resolveKeys` looks for, so a
+ * reader picks up what a writer put down. The later names are read-only aliases.
  */
 export function secretFileFor(vendor: keyof ResolvedKeys): string {
   return SECRET_FILES[vendor][0]!;
@@ -34,9 +34,8 @@ export function secretFileFor(vendor: keyof ResolvedKeys): string {
 const USER_DIR_NAME = 'vnauthor';
 
 /**
- * What {@link userConfigDir} reads the world through. Both are injectable so the platform table
- * below is testable without a machine per row — which is the only reason this function is not
- * simply two lines of `process`.
+ * What {@link userConfigDir} reads the world through. Every field is injectable, so the platform
+ * table below is testable without a machine per row.
  */
 export interface UserDirEnv {
   /** Defaults to `process.platform`. */
@@ -50,8 +49,8 @@ export interface UserDirEnv {
 /** The platform-conventional directory, with no override and no legacy fallback applied. */
 function nativeConfigDir({ platform, env, home }: Required<UserDirEnv>): string {
   if (platform === 'win32') {
-    // Local, deliberately, not Roaming: `%APPDATA%` follows a domain user between machines, and
-    // an API key is exactly what should not be copied off the machine it was pasted on.
+    // Uses Local rather than Roaming: `%APPDATA%` follows a domain user between machines, and an
+    // API key should not be copied off the machine it was pasted on
     const local = env.LOCALAPPDATA?.trim() || join(home, 'AppData', 'Local');
     return join(local, USER_DIR_NAME);
   }
@@ -71,8 +70,8 @@ function userDirEnv(opts: UserDirEnv): Required<UserDirEnv> {
 }
 
 /**
- * The one directory user-level state is **written** to: keys today, and any settings a later
- * plan adds — so settings and keys never end up in two homes.
+ * The one directory user-level state is written to: keys today, and any settings a later plan
+ * adds, so settings and keys never end up in two homes.
  *
  * | Platform | Directory                                    |
  * | -------- | -------------------------------------------- |
@@ -81,10 +80,10 @@ function userDirEnv(opts: UserDirEnv): Required<UserDirEnv> {
  * | Linux    | `$XDG_CONFIG_HOME/vnauthor`, else `~/.config` |
  *
  * `$VNAUTHOR_HOME` overrides the whole thing. Tests set it, CI sets it, and so can anyone who
- * wants their config somewhere else. It is what keeps the branch above from being untestable.
+ * wants their config somewhere else; it is what makes the platform branch above testable.
  *
- * This is the directory an installer must not put inside the install and an uninstaller must not
- * delete by accident: it is the author's, not the build's.
+ * An installer must not place this directory inside the install, and an uninstaller must not
+ * delete it: it belongs to the author rather than to the build.
  */
 export function userConfigDir(opts: UserDirEnv = {}): string {
   const resolved = userDirEnv(opts);
@@ -93,16 +92,14 @@ export function userConfigDir(opts: UserDirEnv = {}): string {
 }
 
 /**
- * Every directory user-level state is **read** from, most specific first.
+ * Every directory user-level state is read from, most specific first.
  *
- * That is {@link userConfigDir}, plus `~/.vnauthor` when it exists and the native directory does
- * not — so a key placed by hand before this landed keeps working and nothing has to be migrated.
- * The legacy directory is only ever read; writes go to {@link userConfigDir} alone, which is what
- * stops the two from drifting into a slow migration nobody finishes.
+ * The list is {@link userConfigDir}, plus `~/.vnauthor` when it exists and the native directory
+ * does not, so a key placed by hand before this landed keeps working and nothing has to be
+ * migrated. The legacy directory is only read; writes go to {@link userConfigDir} alone.
  *
- * `$VNAUTHOR_HOME` suppresses the fallback rather than sitting in front of it. An override says
- * *this* is where my config is; a test or a CI job that sets it to an empty directory and still
- * got the author's `~/.vnauthor` would be the exact leak the override exists to prevent.
+ * `$VNAUTHOR_HOME` suppresses the fallback rather than sitting in front of it, so a test or a CI
+ * job that points the override at an empty directory never reads the author's `~/.vnauthor`.
  */
 export function userConfigDirs(opts: UserDirEnv = {}): string[] {
   const resolved = userDirEnv(opts);
@@ -141,11 +138,11 @@ async function findRepoRoot(start: string): Promise<string | undefined> {
 
 export interface SecretDirsOptions extends UserDirEnv {
   /**
-   * Whether to append the user-level `keys/` directories. **Defaults to `true`**, so every host
-   * gets the last rung without a change and no host can forget it.
+   * Whether to append the user-level `keys/` directories. Defaults to `true`, so every host gets
+   * the last rung without a change and no host can forget it.
    *
-   * `@vn/testkit` passes `false` explicitly: a test project is a closed world, and a test that
-   * read the developer's own key would pass for the wrong reason on their machine and fail on CI.
+   * `@vn/testkit` passes `false` explicitly: a test that read the developer's own key would pass
+   * for the wrong reason on their machine and fail on CI.
    */
   includeUser?: boolean;
 }
@@ -155,7 +152,7 @@ export interface SecretDirsOptions extends UserDirEnv {
  * own `keys/`, then the enclosing repo/workspace root's `keys/` (when the project lives
  * inside one), then the user's own — {@link userKeysDirs}. Lets a single shared `keys/` at the
  * repo root serve every project under it, and a single one per author serve every project.
- * Absolute and de-duplicated, so a project that *is* the repo root yields one entry.
+ * Absolute and de-duplicated, so a project that is itself the repo root yields one entry.
  */
 export async function secretDirsFor(
   projectDir: string,
@@ -224,15 +221,15 @@ export interface VendorKeyStatus {
   envName: string;
   /**
    * Whether that variable is set. It is read before every file, so a set variable shadows a key
-   * the author has just pasted — which is the honest answer to "why is it still asking me".
+   * the author has just pasted, which answers "why is it still asking me".
    */
   envShadow: boolean;
 }
 
 /**
- * For each vendor, whether a key resolved and **which source** answered. Reads the same way
- * {@link resolveKeys} does, throws for nothing, and returns no key values — so it is safe to send
- * to a renderer, to record, and to show in a pane.
+ * For each vendor, whether a key resolved and which source answered. Reads the same way
+ * {@link resolveKeys} does, never throws, and returns no key values, so it is safe to send to a
+ * renderer, to record, and to show in a pane.
  */
 export async function keyStatus(
   config: ProjectConfig,
@@ -257,7 +254,7 @@ export async function keyStatus(
 /**
  * Resolve API keys from environment variables (named in config) first, then optional
  * secret files under each of `secretsDirs` (in order). Throws a ConfigError naming only
- * the *source*, never the value, if a required key is missing.
+ * the source, never the value, if a required key is missing.
  */
 export async function resolveKeys(
   config: ProjectConfig,

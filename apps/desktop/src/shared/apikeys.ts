@@ -1,11 +1,11 @@
 /**
- * `docs/guides/api-keys.md`, read.
+ * Parser for `docs/guides/api-keys.md`.
  *
  * The walkthrough for getting a model key exists once, as that file, and three things read it:
- * the Setup pane, the docs site, and (later) a CI check that the vendor links still resolve. So
- * the file carries a little structure the prose does not need — an H2 per vendor whose slug is
- * the vendor id, and a fenced yaml block of the facts a machine should check — and this is the
- * one reader of that structure.
+ * the Setup pane, the docs site, and (later) a CI check that the vendor links still resolve. The
+ * file therefore carries structure the prose does not need — an H2 per vendor whose slug is the
+ * vendor id, and a fenced yaml block of the facts a machine should check — and this module is the
+ * only reader of that structure.
  *
  * It is in `shared/` because main reads the file and the renderer draws it: the parse happens
  * once, on the side that has a filesystem, and what crosses the IPC boundary is already blocks.
@@ -32,7 +32,7 @@ export interface KeyGuideVendor {
   body: Block[];
 }
 
-/** A section that is not a vendor — the shared advice below them. */
+/** A section with no vendor yaml block: the shared advice below the vendor sections. */
 export interface KeyGuideNote {
   title: string;
   body: Block[];
@@ -48,13 +48,13 @@ export interface KeyGuide {
 /** The fields of a vendor block that are URLs — what a link check has to visit. */
 export const GUIDE_URL_FIELDS = ['console', 'docs', 'billing'] as const;
 
-/** One of them. The whole set of pages the app is willing to hand the OS. */
+/** One field of `GUIDE_URL_FIELDS`. Their URLs are the only pages the app will hand to the OS. */
 export type GuideUrlField = (typeof GUIDE_URL_FIELDS)[number];
 
 /**
  * The heading-anchor slug GitHub and every docs renderer agree on, for the subset of headings
- * this file has: lowercase, punctuation dropped, spaces hyphenated. `## Gemini` is `gemini`,
- * which is what makes a section findable by the id `KEY_VENDORS` already orders.
+ * this file has: lowercase, punctuation dropped, spaces hyphenated. `## Gemini` slugs to `gemini`,
+ * which is how a section is found by the vendor id listed in `KEY_VENDORS`.
  */
 export function headingSlug(title: string): string {
   return title
@@ -69,12 +69,12 @@ const TOC_RE = /<!--\s*toc\s*-->[\s\S]*?<!--\s*tocstop\s*-->/g;
 const H2_RE = /^##\s+(.+)$/;
 
 /**
- * The strict subset of yaml the vendor blocks are written in: one `key: value` per line, scalars
- * only, no quoting, no nesting.
+ * Parses the strict subset of yaml the vendor blocks are written in: one `key: value` per line,
+ * scalars only, no quoting, no nesting.
  *
- * Not a yaml library, on purpose. The block is a fixed set of five strings and a boolean, and a
- * permissive parse would accept a shape the pane cannot draw; this refuses by returning nothing
- * for a line it does not recognise, and {@link keyGuideProblems} then names the missing field.
+ * Deliberately not a yaml library. The block is a fixed set of five strings and a boolean, and a
+ * permissive parse would accept a shape the pane cannot draw. An unrecognised line is skipped, and
+ * {@link keyGuideProblems} then names the missing field.
  */
 function parseFacts(text: string): Record<string, string> {
   const facts: Record<string, string> = {};
@@ -87,10 +87,9 @@ function parseFacts(text: string): Record<string, string> {
 
 /** Split a document into its leading matter and its H2 sections, in file order. */
 function sections(markdown: string): { intro: string; parts: { title: string; body: string }[] } {
-  // Line endings first. `parseMarkdown` normalizes its own input, but this split happens before
-  // it, so on a CRLF copy of the file every heading kept a trailing carriage return and no
-  // section was recognised as a vendor's — a Setup pane with no vendors in it, from nothing
-  // worse than someone opening the file in a Windows editor and saving.
+  // Normalizes line endings before the split. `parseMarkdown` normalizes its own input, but this
+  // split runs first, so on a CRLF copy of the file every heading kept a trailing carriage return
+  // and no section was recognised as a vendor's, leaving the Setup pane with no vendors in it.
   const lines = markdown.replace(/\r\n?/g, '\n').replace(TOC_RE, '').split('\n');
   const intro: string[] = [];
   const parts: { title: string; lines: string[] }[] = [];
@@ -108,9 +107,9 @@ function sections(markdown: string): { intro: string; parts: { title: string; bo
 }
 
 /**
- * Read the guide. Every section is kept whichever shape it is in — a vendor section missing its
- * yaml block still comes back, with empty facts, because the pane showing a broken page beats
- * the pane showing nothing while the fix is written.
+ * Reads the guide. Every section is kept whichever shape it is in — a vendor section missing its
+ * yaml block still comes back, with empty facts, so the pane draws a broken page rather than
+ * nothing while the fix is written.
  */
 export function parseKeyGuide(markdown: string): KeyGuide {
   const { intro, parts } = sections(markdown);
@@ -122,8 +121,8 @@ export function parseKeyGuide(markdown: string): KeyGuide {
     const blocks = parseMarkdown(part.body);
     const fence = blocks.find((block) => block.kind === 'code' && block.lang === 'yaml');
     if (!fence) {
-      // Once the vendors have started, an ordinary section is shared advice. Before them it is
-      // still front matter, so it stays with the intro rather than being lost.
+      // Once the vendors have started, an ordinary section is shared advice. A section before the
+      // first vendor is still front matter, so it stays with the intro.
       if (seenVendor) notes.push({ title: part.title, body: blocks });
       continue;
     }
@@ -142,8 +141,7 @@ export function parseKeyGuide(markdown: string): KeyGuide {
     });
   }
 
-  // The page's own H1 is its title, and a pane already has one — drawing both would put the
-  // page's name inside a window that just said it.
+  // Drops the page's own H1. The pane already shows the page title, so drawing both repeats it.
   const preface = parseMarkdown(intro);
   const opener = preface[0]?.kind === 'heading' && preface[0].level === 1 ? 1 : 0;
   return { intro: preface.slice(opener), vendors, notes };
@@ -151,7 +149,8 @@ export function parseKeyGuide(markdown: string): KeyGuide {
 
 /**
  * What is wrong with the guide, in sentences a person can act on. Every check is about the file
- * rather than the world: a link that 404s is CI's job, and a link that is missing is this one's.
+ * rather than the world. A link that 404s is CI's job. A link the file never states is this
+ * function's.
  *
  * `expected` is `KEY_VENDORS`, passed in rather than imported so this stays free of `@vn/config`
  * and therefore of node — `shared/` is in the browser bundle.
@@ -221,15 +220,14 @@ export interface LinkOutcome {
 }
 
 /**
- * Whether a link is still good, given what asking for it produced. Three ways to fail, and the
- * second is the one with a decision in it:
+ * Whether a link is still good, given what asking for it produced. Three ways to fail:
  *
  * - a non-2xx status, or no response at all;
- * - a redirect that leaves the **site** — not merely the host. `https://aistudio.google.com/apikey`
- *   answers 200 from `accounts.google.com` for anyone not signed in, which is the page working
- *   exactly as intended; a check that called that a failure would fail every run and be switched
- *   off within a month. It still catches the failure that matters: a vendor moving its key console
- *   somewhere else entirely.
+ * - a redirect that leaves the site, rather than merely the host.
+ *   `https://aistudio.google.com/apikey` answers 200 from `accounts.google.com` for anyone not
+ *   signed in, which is the page working as intended; a check that called that a failure would
+ *   fail every run and be switched off within a month. It still catches the failure that matters:
+ *   a vendor moving its key console somewhere else entirely.
  * - a redirect to the site's own root. A deep link whose page was deleted usually 301s to the
  *   front page and answers 200, which a status alone cannot tell from the page still being there.
  *
@@ -261,11 +259,11 @@ export function linkVerdict(url: string, outcome: LinkOutcome): { ok: boolean; d
   return { ok: true, detail: `HTTP ${status}` };
 }
 
-/** How a link can turn out. `unverified` is a real answer, not a softened failure — see below. */
+/** How a link can turn out. `unverified` is a real answer, not a softened failure. */
 export type LinkState = 'ok' | 'broken' | 'unverified';
 
 /**
- * A sibling of `url` that cannot exist, for asking a host whether it says no to anything at all.
+ * A sibling path of `url` that cannot exist, used to check whether a host ever answers a failure.
  *
  * Deterministic rather than random, so a run that reported something can be repeated by hand from
  * its own output.
@@ -279,15 +277,15 @@ export function canaryFor(url: string): string {
 }
 
 /**
- * The verdict for one guide URL, given what it answered **and** what a path that cannot exist
- * answered from the same host.
+ * The verdict for one guide URL, given what it answered together with what a path that cannot
+ * exist answered from the same host.
  *
- * The canary is the whole reason this is not just {@link linkVerdict}. `aistudio.google.com` is a
- * single-page app behind a sign-in: every path under it answers 200 from Google's login, including
- * `/apikey-moved-last-year`. A check that took that 200 as proof would go on saying the key console
- * is fine for as long as Google keeps the domain — which is to say, exactly when it stops being
- * true. So the check also asks a question it already knows the answer to, and when the host answers
- * 200 to that as well it reports what it actually learned: the host is up, and nothing more.
+ * The canary is why this is not just {@link linkVerdict}. `aistudio.google.com` is a single-page
+ * app behind a sign-in: every path under it answers 200 from Google's login, including
+ * `/apikey-moved-last-year`. Taking that 200 as proof would report the key console as fine for as
+ * long as Google keeps the domain, including after the console has moved. So the check also asks
+ * for a path it knows should not exist, and when the host answers 200 to that as well it reports
+ * only what it learned: the host is up.
  *
  * `unverified` is deliberately not a failure. Whether a vendor puts its console behind a sign-in is
  * not a fact about our file, and failing on it would make this a check people switch off.

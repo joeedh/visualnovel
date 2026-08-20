@@ -1,16 +1,17 @@
 /**
- * `--smoke`: the one question a packaged build cannot answer by opening a window.
+ * `--smoke` checks the one thing a packaged build cannot answer by opening a window: whether the
+ * two SDKs left out of the bundle still resolve.
  *
  * Everything in this app is bundled into `dist/` except two things. `scripts/aliases.mjs` leaves
  * `@google/genai` and `@anthropic-ai/sdk` external, and both are reached through a dynamic
- * `import()` at the moment a model is first called — so a packaging mistake that loses them (the
- * likely one being pnpm's symlink farm surviving into the app image) produces an installer that
- * launches, opens a project, and throws `Cannot find module` the first time the agent is asked
- * for anything. Every check short of this one passes.
+ * `import()` at the moment a model is first called. A packaging mistake that loses them (most
+ * likely pnpm's symlink farm surviving into the app image) produces an installer that launches,
+ * opens a project, and throws `Cannot find module` the first time the agent is asked for
+ * anything. Every check short of this one passes.
  *
- * So the packaged executable can be asked to do exactly that import and nothing else. It takes no
- * key, makes no call, and opens no window: constructing a client is a local act, and whether the
- * key it was handed is any good is `project.testKey`'s question, not this one.
+ * The packaged executable does that import and nothing else. It takes no key, makes no call, and
+ * opens no window, because constructing a client is a local act. Whether the key it was handed is
+ * any good is `project.testKey`'s question, not this one.
  */
 
 /** The dynamic `import()`, as a parameter — because it is the only part a test cannot run. */
@@ -30,9 +31,9 @@ export interface SmokeReport {
 
 /**
  * What each SDK is loaded for, mirroring how the two backends in `@vn/providers` pick their
- * constructor off the module — `backends/anthropic.ts` and `backends/gemini.ts`. The mirror is
- * deliberate rather than an import: those functions need a key and a model id to exist at all,
- * and the failure under test is module resolution, which a constructor proves on its own.
+ * constructor off the module — `backends/anthropic.ts` and `backends/gemini.ts`. Those functions
+ * need a key and a model id to exist at all, so this mirrors them rather than importing them, and
+ * the failure under test is module resolution, which constructing a client proves on its own.
  */
 const SDKS: { spec: string; pick: (mod: any) => unknown }[] = [
   { spec: '@anthropic-ai/sdk', pick: (mod) => mod?.default ?? mod },

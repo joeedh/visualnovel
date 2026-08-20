@@ -1,7 +1,7 @@
 /**
  * The chunked-prompt baseline (`docs/plans/archive/chunked-prompts.md`, stage 0).
  *
- * Task identity is `sha256(kind, inputs)` over the *flat* prompt string, so any change to how a
+ * Task identity is `sha256(kind, inputs)` over the flat prompt string, so any change to how a
  * prompt is assembled re-keys every task in every existing project. This pins the whole set for a
  * real fixture run: the literal below was recorded before chunking existed, and it must survive
  * the refactor character for character.
@@ -19,8 +19,8 @@ async function taskHashes(p: TestProject): Promise<string[]> {
     .sort();
 }
 
-// Recorded against a run with no override authored anywhere. Regenerating this literal is
-// never the fix for a failure here — a diff means prompts moved.
+// Recorded against a run with no authored override. Regenerating this literal is never the fix
+// for a failure here; a diff means prompts moved.
 const BASELINE = [
   'location_ref 336d09ed905d4352db239a19cf13aa3fc85c95d73f5758c1b69b0db6b1123d6b',
   'location_ref 54b6681d8a620cb62480a6e2558c61124ec5302aaa99e7bcdb7d16e3b480ab38',
@@ -46,8 +46,8 @@ describe('prompt hash baseline', () => {
     }
   });
 
-  // The other half of the acceptance test: an override is not inert. Authoring one has to move
-  // the task it names — and nothing else, since every other prompt is composed from chunks no
+  // The other half of the acceptance test is that an override is not inert. Authoring one has to
+  // move the task it names and nothing else, since every other prompt is composed from chunks no
   // override touched.
   it('moves exactly the task an authored override names', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
@@ -81,8 +81,8 @@ describe('prompt hash baseline', () => {
     }
   });
 
-  // Derived-first is not a preference: `canonicalJson` maps arrays positionally, so appending is
-  // the only order under which a project authoring no references keeps every hash it had.
+  // `canonicalJson` maps arrays positionally, so appending after the derived refs is the only
+  // order under which a project authoring no references keeps every hash it had.
   it('appends an authored reference after everything the planner derived', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {

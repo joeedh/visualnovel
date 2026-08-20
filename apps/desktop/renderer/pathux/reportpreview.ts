@@ -1,14 +1,14 @@
 /**
  * The finished report, before it goes anywhere.
  *
- * A bespoke surface rather than a `CommandForm`, because of a genuine conflict in one prop: the
- * body must be **editable** here, and must **not** be written verbatim into `commands.jsonl` — and
- * `digest: true`, which is what keeps it out of the log, replaces the editor with a size label.
- * So the command declares `digest` for the record's sake and this dialog does the editing.
+ * A bespoke surface rather than a `CommandForm`, because of a conflict in one prop: the body must
+ * be editable here, and must not be written verbatim into `commands.jsonl`. `digest: true`, which
+ * is what keeps it out of the log, replaces the editor with a size label, so the command declares
+ * `digest` for the record's sake and this dialog does the editing.
  *
  * The leak scan is `report.openIssue`'s own `check`, re-asked on every keystroke exactly as a
- * command form does it: the button stays refused, in the command's own words, until the name the
- * author is looking at is gone. Nothing is silently rewritten under them.
+ * command form does it. The button stays refused, in the command's own words, until the name the
+ * author is looking at is gone. Nothing is rewritten behind the author's back.
  */
 import { UIBase, type Container } from 'pathux';
 import { api } from '../api.js';
@@ -61,8 +61,8 @@ class Preview {
     const y = Math.max(48, Math.round(screen.size[1] * 0.12));
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
     // The same chrome the palette and the command dialog wear. Without it path.ux hands back a
-    // box with the theme's own border — which is `border-color` and no width, so nothing is
-    // drawn — and this is the one dialog in the shell that carries a public document.
+    // box with the theme's own border (which is `border-color` and no width, so nothing is drawn)
+    // and this is the one dialog in the shell that carries a public document.
     stylePopup(this.popup, screen, WIDTH, y);
 
     // `remove`, not `end`. Escape and the click-outside watcher hold their own closure over the
@@ -114,7 +114,7 @@ class Preview {
     this.renderButtons();
   }
 
-  /** The verdict on its own strip, so a redraw never tears out the text being typed into. */
+  /** The verdict on its own strip, so a redraw does not tear out the box being typed into. */
   private renderVerdict(): void {
     this.verdictCol.clear();
     if (this.check && this.check.state !== 'undeclared') {
@@ -128,9 +128,9 @@ class Preview {
     this.buttonCol.clear();
     const row = this.buttonCol.row();
 
-    // The only way out. Opening the browser deliberately leaves this dialog up — the issue form is
-    // a draft in another window, the author may want to come back and edit, and the copy on screen
-    // is the only one they have. So the label says what closing means *now* rather than always.
+    // The only way out. Opening the browser deliberately leaves this dialog up: the issue form is a
+    // draft in another window, the author may want to come back and edit, and the copy on screen is
+    // the only one they have. The label says what closing means now rather than in general
     const discard = row.button(this.filed ? 'Close' : 'Discard', () => this.close());
     discard.description = this.filed
       ? 'Close this dialog. The issue form in your browser is untouched — it is still a draft ' +
@@ -172,17 +172,17 @@ class Preview {
 
     report(outcome);
     if (!this.live) return;
-    // Open either way. Nothing has been posted yet — what the browser has is a form — so closing
-    // on success would take away the only copy of the text at the moment the author is reading it
-    // over. They say when they are done, with the button that says so.
+    // Stay open either way. Nothing has been posted yet (the browser holds a form), so closing on
+    // success would take away the only copy of the text while the author is still reading it over.
+    // The author closes the dialog with the Close button instead
     if (outcome.ok) this.filed = true;
     this.renderButtons();
   }
 }
 
 /**
- * Show a finished report. Idempotent like every other dialog here — and the analysis takes a
- * minute, so a second one arriving while the first is still on screen is not a thing that happens.
+ * Show a finished report. Idempotent like every other dialog here; the analysis takes a minute, so
+ * a second report arriving while the first is still on screen is unlikely.
  */
 export function openReportPreview(draft: ReportDraft): void {
   if (open) return;

@@ -72,9 +72,9 @@ async function apply(
 }
 
 /**
- * The same decision `apply` would make, against a freshly read graph, and then discarded. It is
- * the rule itself rather than a description of it — the price is that the check reads the story
- * once more, which is what makes it a report about *now* rather than about the last load.
+ * The same decision `apply` would make, against a freshly read graph, and then discarded. The check
+ * runs the rule rather than describing it; the price is that it reads the story once more, which is
+ * what makes it a report about the story as it stands rather than about the last load.
  */
 async function preview(
   ctx: CommandContext<CommandHost>,
@@ -89,7 +89,7 @@ async function preview(
  * storyboard that went with it — are reported in `written` beside the files that were written:
  * they are paths this command changed, which is what provenance and undo both want from that list.
  *
- * The preview runs the *whole* plan rather than just the decision, because the sentence worth
+ * The preview runs the whole plan rather than just the decision, because the sentence worth
  * showing is the one about the shots: `previewSceneEdit` reads them and `editScene` rewrites them,
  * so the note a surface refuses or warns with is the note the run reports.
  */
@@ -577,8 +577,8 @@ export const storyDeleteShot = define({
   },
 });
 
-// The two outfit commands. Neither goes through `preview`: that decides against the story graph,
-// which carries edges and reachability and not a word about clothes.
+// The two outfit commands. Neither goes through `preview`, which decides against the story graph,
+// and the graph carries edges and reachability but nothing about clothes.
 
 export const storySetSceneOutfit = define({
   id: 'story.setSceneOutfit',
@@ -674,8 +674,8 @@ export const storyDecomposeAll = define({
   mutating: true,
   // One undo point for the whole batch, which is the reason this is one command and not N.
   undoable: true,
-  // A model call per scene, and the result is a file that wins forever. Both halves of that
-  // deserve the dialog.
+  // Confirmed because it costs a model call per scene, and because the storyboard it writes is
+  // never regenerated afterwards.
   confirm: true,
   props: {},
   async check(_props, ctx) {
@@ -698,7 +698,8 @@ export const storyDecomposeAll = define({
     const result = await ctx.host.session.decomposeAllScenes();
     const parts = [`Decomposed ${result.decomposed.length} scene(s)`];
     if (result.kept.length) parts.push(`${result.kept.length} already had one`);
-    // Named, not counted: an unwritten scene is the one thing here an author has to act on.
+    // An unwritten scene is the one thing here an author has to act on, so the scenes are listed
+    // by name rather than counted
     if (result.fellBack.length) {
       parts.push(`not written for ${result.fellBack.map((f) => f.scene).join(', ')}`);
     }
@@ -735,8 +736,8 @@ export const storyExport = define({
   mutating: true,
   props: {},
   async check(_props, ctx) {
-    // Building the playable *is* the question — it is pure and writes nothing, so the check
-    // can answer with the real projection rather than a guess about whether one would work.
+    // Building the playable is the question, and it is pure and writes nothing, so the check
+    // answers with the real projection rather than a guess about whether one would work.
     const playable = await ctx.host.session.playable();
     const scenes = Object.keys(playable.scenes).length;
     return scenes

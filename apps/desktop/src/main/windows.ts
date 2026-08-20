@@ -1,16 +1,15 @@
 /**
- * The window registry: what main knows about the several renderers it is now talking to.
+ * The window registry: what main knows about the renderers it is talking to.
  *
- * A window is a **view**, not a document — one main process, one `WorkspaceSession`, one
- * `CommandStack`, one project, and N windows onto it. So what lives here is only the address
- * book: which windows exist, which one asked for something, which one to answer when nobody
- * asked, and where each one was on screen last time.
+ * A window is a view rather than a document: one main process, one `WorkspaceSession`, one
+ * `CommandStack`, one project, and N windows onto it. This module therefore holds only which
+ * windows exist, which one issued a request, which one to answer when none issued it, and where
+ * each one was on screen last time.
  *
- * **This module does not import `electron`**, and that is a requirement rather than an
- * accident: `src/main/index.ts` is the only module under `src/main/` that may, because the
- * `@vn/desktop` jest project is node-only and has no `electron` mapper. Everything here is
- * therefore generic over an opaque window handle, and `index.ts` instantiates it as
- * `Windows<BrowserWindow>`.
+ * This module must not import `electron`. `src/main/index.ts` is the only module under
+ * `src/main/` that may, because the `@vn/desktop` jest project is node-only and has no
+ * `electron` mapper. Everything here is generic over an opaque window handle, and `index.ts`
+ * instantiates it as `Windows<BrowserWindow>`.
  */
 
 /** A window's index within its workspace. Stable across a close and a reopen — see `add`. */
@@ -39,9 +38,9 @@ export class Windows<W> {
   private readonly recency: WindowId[] = [];
 
   /**
-   * Register a window at the **lowest free index**. Reuse is the point: a window's remembered
-   * layout, selection and template are keyed by index, so a closed-and-reopened window comes
-   * back into its own arrangement rather than a default screen.
+   * Register a window at the lowest free index. A window's remembered layout, selection and
+   * template are keyed by index, so reusing the index brings a closed-and-reopened window back
+   * into its own arrangement rather than a default one.
    */
   add(handle: W): WindowId {
     let id = 0;
@@ -81,8 +80,8 @@ export class Windows<W> {
   }
 
   /**
-   * Which window is this handle? `index.ts` resolves an IPC `event.sender` to its own window
-   * first, so the comparison here stays a plain identity check and `electron` stays out.
+   * The id of a registered handle. `index.ts` resolves an IPC `event.sender` to its own window
+   * before calling this, so the comparison stays a plain identity check and `electron` stays out.
    */
   byHandle(handle: W | null | undefined): WindowId | undefined {
     if (!handle) return undefined;
@@ -98,8 +97,8 @@ export class Windows<W> {
   }
 
   /**
-   * Who answers when nobody asked. The focused window, and — since a window may be behind the
-   * author's browser rather than gone — the most recently focused one when nothing has focus.
+   * Which window answers when no window asked. Returns the focused window, or the most recently
+   * focused one when nothing has focus, since a window may be behind another app rather than gone.
    */
   focused(): WindowId | undefined {
     return this.recency[this.recency.length - 1];
@@ -116,9 +115,9 @@ export class Windows<W> {
  * Pull `bounds` back onto the display set. A monitor that was there last launch may not be now,
  * and a window restored entirely off-screen is indistinguishable from one that never opened.
  *
- * Overlap, not containment: a window hanging off the right edge of a monitor it is mostly on is
- * where the author left it, so it is left alone. Only a window touching nothing is moved, onto
- * the display whose centre is nearest, and shrunk if it does not fit there.
+ * The test is overlap rather than containment: a window hanging off the right edge of a monitor
+ * it is mostly on is where the author left it, so it is left alone. Only a window overlapping no
+ * display is moved, onto the display whose centre is nearest, and shrunk if it does not fit there.
  */
 export function clampBounds(bounds: WindowBounds, displays: DisplayLike[]): WindowBounds {
   if (displays.length === 0) return bounds;
@@ -153,9 +152,9 @@ export interface RememberedWindow {
  * The remembered arrangement of a workspace's windows, rewritten from the live set.
  *
  * Closing a window deliberately means it does not come back, so the list is rewritten on every
- * move, resize and close. A **quit** closes every window in a cascade, which would otherwise
- * rewrite the list down to nothing and lose the whole arrangement — so `freeze()` at
- * `before-quit` snapshots the open set and stops writing for the rest of the process.
+ * move, resize and close. A quit closes every window in a cascade, which would otherwise rewrite
+ * the list down to nothing and lose the whole arrangement, so `freeze()` at `before-quit`
+ * snapshots the open set and stops writing for the rest of the process.
  *
  * The per-window `…window.<n>.*` keys are left alone either way: they are cheap, and they are
  * what makes index reuse worth having.
@@ -184,13 +183,12 @@ export class WindowList {
 
 /**
  * A request main is blocked on until a renderer answers it. Plan approval, a clarifying question
- * and an always-confirm tool are the same shape, so they share one: an id, the promise the agent
- * turn is parked on, the window it went to, and the answer {@link abandon} gives when nobody is
- * left to ask — a promise nothing will ever resolve hangs the agent for the life of the process.
+ * and an always-confirm tool share this one shape: an id, the promise the agent turn is parked on,
+ * the window it went to, and the answer {@link abandon} gives when there is nobody left to ask,
+ * since a promise nothing resolves hangs the agent for the life of the process.
  *
- * The window matters now. With one window, "that window closed" and "there is nobody left" were
- * the same fact; with four, ending every parked turn because one window closed would be a bug,
- * so a close abandons only {@link by} its own.
+ * The window is recorded because with several windows open, ending every parked turn when one of
+ * them closes would be a bug. {@link by} abandons only the turns parked on the window that closed.
  */
 export class Pending<T> {
   private readonly waiting = new Map<number, { resolve: (value: T) => void; window?: WindowId }>();
@@ -225,7 +223,7 @@ export class Pending<T> {
     for (const entry of waiters) entry.resolve(this.abandoned);
   }
 
-  /** One window closed: end the turns parked on *it*, and leave every other window's alone. */
+  /** Ends the turns parked on one closed window, leaving turns parked on other windows alone. */
   by(window: WindowId): void {
     for (const [id, entry] of [...this.waiting]) {
       if (entry.window !== window) continue;

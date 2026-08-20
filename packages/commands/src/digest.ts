@@ -1,32 +1,30 @@
 /**
- * How a bulk property is *recorded*. A prop declared `digest` (see `props.ts`) carries a whole
- * document; the history keeps `sha256` + byte length of it and never the text.
+ * How a bulk property is recorded. A prop declared `digest` (see `props.ts`) carries a whole
+ * document; the history keeps a `sha256` of it plus its byte length, never the text.
  *
- * The reason is that `CommandRecord.props` is appended verbatim to `commands.jsonl` and
- * `invocation` is `formatCommand`, which quotes and `\n`-escapes every string — a 50 KB note
- * would cost that much again on every save, and would stop `invocation` reading as the one-line
- * repro it is sold as. The bytes are already in the file and in the undo snapshot, so nothing is
- * lost. A digested invocation is not re-executable, which is honest: replaying a whole-file
- * overwrite from a log line was never the recovery path — undo is.
+ * `CommandRecord.props` is appended verbatim to `commands.jsonl`, and `invocation` is
+ * `formatCommand`, which quotes and `\n`-escapes every string, so a 50 KB note would cost that
+ * much again on every save and would stop `invocation` reading as the one-line repro it is sold
+ * as. The bytes are already in the file and in the undo snapshot, so nothing is lost. A digested
+ * invocation is not re-executable; the recovery path for a whole-file overwrite is undo, and never
+ * was replaying it from a log line.
  *
- * A `secret` prop is redacted through the same seam, but to the bare word `<secret>`: a digest
- * of a live credential is a fingerprint of it plus its exact length, which is not a thing to
- * write down.
+ * A `secret` prop is redacted through the same seam, but to the bare word `<secret>`, because a
+ * digest of a live credential would record a value that identifies it plus its exact length.
  *
  * This is a projection at record time only. The command's `run` receives the real value.
  *
- * Hashing is Web Crypto rather than `@vn/util`'s `sha256`, which is the one thing here worth
- * explaining: `@vn/util` reaches `node:crypto`, and this package is in the renderer's bundle —
- * the shared interaction rules import it — so a node import anywhere in the barrel fails
- * `vite build`. `crypto.subtle` is the same algorithm in both processes, and being async is why
- * this is a promise.
+ * Hashing uses Web Crypto rather than `@vn/util`'s `sha256` because `@vn/util` reaches
+ * `node:crypto` and this package is in the renderer's bundle (the shared interaction rules import
+ * it), so a node import anywhere in the barrel fails `vite build`. `crypto.subtle` is the same
+ * algorithm in both processes, and being async is why this returns a promise.
  */
 import type { PropSpecMap, PropValue } from './props.js';
 
 const hex = (bytes: Uint8Array): string =>
   [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-/** One bulk value as it is recorded: enough to identify it, far too little to reconstruct it. */
+/** One bulk value as it is recorded: enough to identify it, not enough to reconstruct it. */
 export async function digestOf(value: PropValue): Promise<string> {
   const text = Array.isArray(value) ? value.join('\n') : String(value);
   const bytes = new TextEncoder().encode(text);
@@ -39,7 +37,7 @@ export const REDACTED = '<secret>';
 
 /**
  * Every `digest` prop replaced by {@link digestOf} and every `secret` prop by {@link REDACTED};
- * everything else is itself.
+ * every other prop is passed through unchanged.
  */
 export async function digestProps(
   specs: PropSpecMap,

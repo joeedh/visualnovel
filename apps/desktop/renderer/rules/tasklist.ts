@@ -1,6 +1,6 @@
 /**
- * The questions the task *list* answers about itself, kept out of the editor because both of the
- * original two were inferences and both were wrong.
+ * The questions the task list answers about itself, kept out of the editor because they are
+ * inferences the editor got wrong.
  *
  * The list has four ways to hide a task and they overlap: `only done` keeps what finished
  * successfully, `only running` keeps what is moving right now, `only failed` keeps what stopped
@@ -13,22 +13,20 @@ import type { Task } from '../../src/shared/ipc';
 
 /** What the four controls are set to. Held by the pane; nothing here reads the pane. */
 export interface ListFilter {
-  /** Hashes taken out of the *list* by Clear finished. Nothing is deleted from `tasks.jsonl`. */
+  /** Hashes taken out of the list by Clear finished. Nothing is deleted from `tasks.jsonl`. */
   cleared: ReadonlySet<string>;
   onlyDone: boolean;
   /**
    * Narrow to what is moving. Independent of {@link onlyDone} rather than a third state of one
-   * control: `done` and `running` are disjoint, so ticking both is a request for nothing — and
-   * that is what it shows, with {@link emptyBecause} naming the pair rather than one of them.
+   * control. `done` and `running` are disjoint, so ticking both keeps nothing, and
+   * {@link emptyBecause} names the pair rather than one of them.
    */
   onlyRunning: boolean;
   /**
-   * Narrow to what stopped and wants a person — `failed` **and** `needs_human` both.
+   * Narrow to what stopped and wants a person — both `failed` and `needs_human`.
    *
-   * Two statuses under one tick, deliberately. They are one question for the author asking it
-   * ("what went wrong?"), and a shot that exhausted its refinement attempts is the single most
-   * likely answer — so a tick named for failure that hid `needs_human` would hide the very thing
-   * it was ticked to find.
+   * Two statuses under one tick, deliberately: they are one question for the author ("what went
+   * wrong?"), and a shot that exhausted its refinement attempts is the most likely answer.
    */
   onlyFailed: boolean;
 }
@@ -38,7 +36,7 @@ function stopped(task: Task): boolean {
   return task.status === 'failed' || task.status === 'needs_human';
 }
 
-/** Whether a task survives the status ticks. Any two of them are disjoint, so both on is empty. */
+/** Whether a task survives the status ticks. The statuses are disjoint, so two ticks keep none. */
 function passesStatus(task: Task, filter: ListFilter): boolean {
   if (filter.onlyDone && task.status !== 'done') return false;
   if (filter.onlyRunning && task.status !== 'running') return false;
@@ -68,8 +66,8 @@ export function emptyBecause(tasks: readonly Task[], filter: ListFilter): string
   if (tasks.length === 0) return 'No tasks yet — run the pipeline.';
   if (!tasks.some((task) => !filter.cleared.has(task.hash)))
     return 'Everything is cleared out of this list. Refresh brings it back.';
-  // More than one tick on asks for a task in two states at once, which no task ever is. Say that,
-  // rather than blaming whichever one happens to be tested first.
+  // More than one tick on asks for a task in two states at once, so the sentence names the pair
+  // rather than blaming whichever tick is tested first
   const on = ticked(filter);
   if (on.length > 1) {
     return `No task is ${on.join(' and ')} at once — untick all but one of the ${on.length}.`;

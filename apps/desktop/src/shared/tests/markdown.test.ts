@@ -22,8 +22,8 @@ describe('parseInline', () => {
   });
 
   /**
-   * The property that matters more than any particular syntax: nothing is dropped. A page this
-   * cannot fully draw is still a page a reader can follow.
+   * Nothing is dropped, whatever the syntax. A page this parser cannot fully draw is still a page
+   * a person can follow.
    */
   it('keeps unmatched markup as the text it was written as', () => {
     expect(spansText(parseInline('a stray ` backtick and [half a link'))).toBe(

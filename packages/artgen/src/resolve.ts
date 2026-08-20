@@ -3,8 +3,8 @@
  *
  * An override lives at exactly the rung that names one whole picture, so answering "which override
  * applies" is a lookup and never a merge chain. The builders resolve their own rung from the entity
- * they were already handed; this module is the other direction — from an **asset** back to the rung
- * that would be written — which is what a surface needs to show or edit one.
+ * they were already handed. This module goes the other direction, from an asset back to the rung
+ * that would be written, which is what a surface needs to show or edit one.
  */
 import type { Asset, ProjectModel, PromptOverride, Shot } from '@vn/types';
 
@@ -15,7 +15,7 @@ export type PromptRung =
   | { kind: 'variant'; locationId: string; variant: string }
   | { kind: 'shot'; sceneId: string; shotId: string };
 
-/** What a rung lookup reads: the model, plus the storyboards a shot rung lives in. */
+/** The model, plus the storyboards a shot rung lives in. */
 export interface RungContext {
   model: ProjectModel;
   /** A scene's persisted shots, by scene id — the same shape `derivePrompt` takes. */
@@ -25,10 +25,10 @@ export interface RungContext {
 /**
  * The rung an asset's prompt is overridden at, or `undefined` when it has none.
  *
- * A `concept`'s prompt was typed by a human in the first place — there is nothing derived under it
- * to override — and every other kind answers from its binding. A model sheet's angle is recorded
- * only on the task, so one rung covers all four angles of an outfit; that coarseness is deliberate
- * (§2), and the pane says so rather than the plan inventing a per-task home for one kind.
+ * A `concept`'s prompt was typed by a human, so there is nothing derived under it to override.
+ * Every other kind answers from its binding. A model sheet's angle is recorded only on the task, so
+ * one rung covers all four angles of an outfit. That coarseness is deliberate (§2) and the pane
+ * states it, rather than model sheets getting a per-task rung of their own.
  */
 export function rungOf(asset: Asset): PromptRung | undefined {
   const b = asset.satisfies[0];

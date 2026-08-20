@@ -110,9 +110,9 @@ describe('what an event does to the conversation', () => {
 });
 
 /**
- * The running total. It is the one event that changes the conversation without saying anything
- * in it — a receipt is not a line of the transcript, and a thread reopened months later should
- * not read as though the agent announced its own bill three times.
+ * The running total. A usage event changes the conversation without adding a line to the
+ * transcript, so a thread reopened months later does not read as though the agent announced its
+ * own cost three times.
  */
 describe('what a step cost', () => {
   const spent = (input: number, output: number): AgentEvent => ({ type: 'usage', input, output });
@@ -138,8 +138,8 @@ describe('what a step cost', () => {
 });
 
 /**
- * The cache half of the receipt. Its whole subtlety is that absent and zero are different
- * answers — a provider that says nothing about caching has not reported a miss.
+ * The cache half of the receipt. Absent and zero are different answers: a provider that says
+ * nothing about caching has not reported a miss.
  */
 describe('what the cache did', () => {
   type Usage = Extract<AgentEvent, { type: 'usage' }>;
@@ -167,7 +167,7 @@ describe('what the cache did', () => {
     });
   });
 
-  // A total is only as exact as its vaguest term, so one estimated step estimates the whole.
+  // One estimated step makes the whole total an estimate
   test('is an estimate ever after, once one step was one', () => {
     let convo = received(emptyConvo(opening), cached({ cacheRead: 900, cacheWrite: 100 }));
     expect(convo.tokens.cacheEstimated).toBeUndefined();
@@ -196,7 +196,7 @@ describe('the tokens tooltip', () => {
     expect(said).not.toMatch(/estimate/i);
   });
 
-  // The share is of input alone: output is not what a prefix cache moves.
+  // The share is of input alone, because a prefix cache does not move output
   test('hedges a matched split, and does not invent a write it was never told about', () => {
     const said = tokensDetail({
       input: 1200,
@@ -211,9 +211,9 @@ describe('the tokens tooltip', () => {
 });
 
 /**
- * What the turn in flight has spent against its budget — the other half of the same receipt, and
- * a different number: the conversation total counts every token, the meter counts what is billed
- * fresh, so a long cached turn moves one fast and the other barely at all.
+ * What the turn in flight has spent against its budget. This is a different number from the
+ * conversation total: the total counts every token, while the meter counts only what is billed
+ * fresh, so a long cached turn moves the total fast and the meter barely at all.
  */
 describe('what the turn in flight has spent', () => {
   test('excludes what the cache served, unlike the conversation total', () => {
@@ -269,7 +269,7 @@ describe('the plan card', () => {
   });
 
   // The card is transient. A thread that kept only what happened next read as a decision about
-  // nothing, and it is the turn a report on a bad conversation most needs to see.
+  // nothing, and the plan is the turn a report on a bad conversation most needs to see.
   test('the plan goes into the transcript, steps and files and all', () => {
     const [item] = proposed(emptyConvo(opening), plan).feed;
     expect(item?.role).toBe('agent');
@@ -419,8 +419,8 @@ describe('replaying a saved thread', () => {
 });
 
 /**
- * What a transcript line says a tool did. The whole call is in `detail.args` either way — this is
- * the glance, and the rule it follows is *one* field, chosen the same way every time.
+ * What a transcript line says a tool did. The whole call is in `detail.args` either way, so the
+ * headline shows one field, chosen the same way every time.
  */
 describe('a tool line’s headline argument', () => {
   test('prefers the path, whatever order the fields arrived in', () => {

@@ -230,9 +230,9 @@ describe('StructuredAgentBackend', () => {
 });
 
 /**
- * What a step cost. The number is shown to the author as a running total, so what it counts has
- * to be calls rather than turns: a step the model fumbled twice was paid for three times, and a
- * total that hid the fumbles would understate the bill exactly when it matters.
+ * What a step cost. The number is shown to the author as a running total, and it counts API calls
+ * rather than turns: a step the model fumbled twice was paid for three times, and a total that
+ * left the fumbles out would understate the bill.
  */
 describe('the receipt', () => {
   /** A text backend that reports usage, replaying one answer per call. */

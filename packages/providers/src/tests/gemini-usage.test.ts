@@ -44,8 +44,8 @@ describe('what a Gemini call reports it cost', () => {
         candidatesTokenCount: 2,
         cachedContentTokenCount: 3045,
       });
-      // `input` is unchanged: `promptTokenCount` already includes the cached tokens, so a total
-      // stays a total and `cacheRead` says how much of it was already there.
+      // `input` is unchanged because `promptTokenCount` already includes the cached tokens, and
+      // `cacheRead` reports how much of that total was already cached.
       expect(reply.usage).toEqual({
         input: 3452,
         output: 2,

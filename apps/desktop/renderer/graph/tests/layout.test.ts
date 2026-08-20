@@ -139,8 +139,8 @@ describe('tidy', () => {
     return n ? n.x + n.width / 2 : NaN;
   };
 
-  // The defect the pass exists for: each rank is centred on its own width, so a lone child of a
-  // left-hand parent is drawn under the middle of the rank above and its edge leans across it.
+  // Without the tidy pass each rank is centred on its own width, so a lone child of a left-hand
+  // parent is drawn under the middle of the rank above and its edge leans across it
   it('puts a single child under its parent instead of under the rank', () => {
     const g: Graph = {
       nodes: ['a', 'b', 'c', 'kid'].map(node),
@@ -158,7 +158,7 @@ describe('tidy', () => {
   });
 
   it('never overlaps two nodes in a rank, however hard they pull together', () => {
-    // Every node in the middle rank wants the same place: directly under the one root.
+    // Every node in the middle rank targets the same position, directly under the single root
     const kids = ['k0', 'k1', 'k2', 'k3', 'k4'];
     const g: Graph = {
       nodes: ['root', ...kids].map(node),
@@ -174,8 +174,8 @@ describe('tidy', () => {
     }
   });
 
-  // Same graph in, same coordinates out — the module's whole contract, and a straightening pass
-  // is exactly the kind of iteration that quietly breaks it.
+  // The layout must produce the same coordinates for the same graph, and an iterative
+  // straightening pass is the kind of code that breaks that silently
   it('is deterministic', () => {
     const once = layoutGraph(DIAMOND, { tidy: true }).nodes;
     const twice = layoutGraph(DIAMOND, { tidy: true }).nodes;

@@ -67,7 +67,7 @@ describe('driftOf', () => {
   });
 
   it('drifts when the shot is extended over a line it was not made from', () => {
-    // Honest under the one question being asked: this frame does not illustrate s:L3.
+    // The frame does not illustrate s:L3, so extending coverage over it counts as drift
     const shot = rendered(['s:L1']);
     shot.coversLines = ['s:L1', 's:L3'];
     expect(driftOf(SCENE, shot)).toBe('drifted');

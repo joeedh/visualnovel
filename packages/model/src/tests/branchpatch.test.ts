@@ -1,7 +1,7 @@
 /**
- * The patcher's contract is "only marker lines change, and a patch that would not re-parse to
- * the intended graph does not land at all". Most of these assert on the *whole file text*
- * rather than on the re-parsed graph, because preserving untouched bytes is the point — a
+ * The patcher's contract is that only marker lines change, and that a patch which would not
+ * re-parse to the intended graph does not land at all. Most of these assert on the whole file
+ * text rather than on the re-parsed graph, because preserving untouched bytes is the point: a
  * graph assertion would pass on a file whose prose had been rewritten.
  */
 import { readFileSync, readdirSync } from 'node:fs';
@@ -167,8 +167,8 @@ describe('applySceneMarkerEdit', () => {
     expect(scenesOf(text)[0]?.lines.map((l) => l.text)).toEqual(['Rain on the stones.']);
   });
 
-  // The parser strips one leading and one trailing quote, and `->` splits at the *last*
-  // viable arrow — so quoting is enough for both. `]]` is not recoverable at any quoting.
+  // The parser strips one leading and one trailing quote, and `->` splits at the last viable
+  // arrow, so quoting is enough for both. No quoting recovers a label containing `]]`.
   it('round-trips a label containing quotes and an arrow, and rejects one containing ]]', () => {
     const tricky = 'He said "go" -> then left';
     const { text, diagnostics } = applySceneMarkerEdit(SCRIPT, [
@@ -334,8 +334,8 @@ describe('applySceneMarkerEdit', () => {
     expect(applySceneMarkerEdit(SCRIPT, [])).toEqual({ text: SCRIPT, diagnostics: [] });
   });
 
-  // The re-parse assertion's reason for existing: a heading needs a blank line above it, and a
-  // note-only line is not blank — so deleting one can *create* a scene that wasn't there.
+  // A heading needs a blank line above it, and a note-only line is not blank, so deleting one
+  // can create a scene that was not there before. The re-parse assertion catches that.
   it('refuses a patch that would conjure a scene out of a suppressed heading', () => {
     const fragile = [
       'INT. DORM ROOM - DAY',
@@ -498,8 +498,8 @@ describe('applySceneMarkerEdit over templates/basic scene chunks', () => {
 
 /**
  * The same sweep over a multi-scene screenplay, where the property that can actually break is
- * that no *other* scene's markers move. Nothing *loads* a multi-scene file any more, but the
- * patcher still takes one: `vngen screenplay` emits that shape, and it is what gets imported.
+ * that no other scene's markers move. Nothing loads a multi-scene file any more, but the
+ * patcher still takes one: `vngen screenplay` emits that shape, and that shape gets imported.
  */
 describe('applySceneMarkerEdit over a whole screenplay', () => {
   const source = SCRIPTS.branching;

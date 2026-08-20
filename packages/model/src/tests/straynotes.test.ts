@@ -23,7 +23,7 @@ describe('a note no branch marker parses', () => {
       where: 'rooftop',
     });
     expect(d?.message).toContain('"Tell the truth" => s13');
-    // The half worth proving: the typo really does change the story graph.
+    // The typo really does change the story graph, which is the half worth proving.
     expect(splitScenes(parseFountain(SCRIPT('[[choice: "x" => s13]]'))).scenes[0]?.choices).toEqual(
       [],
     );

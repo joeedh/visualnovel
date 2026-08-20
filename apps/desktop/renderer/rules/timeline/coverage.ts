@@ -1,10 +1,10 @@
 /**
- * The timeline's ghost geometry: how a proposed drag is drawn *over* the committed strip.
+ * The timeline's ghost geometry, which is how a proposed drag is drawn over the committed strip.
  *
- * Everything else this module used to hold — `spansFor`, `resolveDrag`, `runsOf` — moved to
- * `@vn/scriptedit` (`coverage.ts`) beside the rule they feed, because both hosts — this app and
- * the authoring agent — enumerate targets and settle drags with the same geometry. What stays
- * here is drawing: main has no use for a ghost.
+ * `spansFor`, `resolveDrag` and `runsOf` moved out of this module to `@vn/scriptedit`
+ * (`coverage.ts`) beside the rule they feed, because both hosts (this app and the authoring agent)
+ * enumerate targets and settle drags with the same geometry. Only the drawing stays here, since
+ * main has no use for a ghost.
  */
 import { range, runsOf, type Segment } from '@vn/scriptedit';
 import type { Coverage, ShotSpan } from '../../../src/shared/ipc.js';
@@ -12,13 +12,13 @@ import { TOP } from '../../../src/shared/interactions.js';
 
 /**
  * The shot a reorder drop at `row` would sit after, named the way `timeline.reorder` names its
- * targets: {@link TOP} above the first shot's midpoint, otherwise the last shot whose own midpoint
- * is at or above the row.
+ * targets. Answers {@link TOP} above the first shot's midpoint. Otherwise answers the last shot
+ * whose own midpoint is at or above the row.
  *
- * Midpoints rather than the boundaries between brackets, for the reason `dropTarget` gives in the
- * script column: the gap between two brackets is a hairline, and an insertion point the author can
- * only hit by accident is not one they can aim at. `spans` is in first-line order, so a single pass
- * settles it.
+ * The test is on midpoints rather than on the boundaries between brackets, for the reason
+ * `dropTarget` gives in the script column: the gap between two brackets is a hairline, and an
+ * insertion point the author can only hit by accident is not one they can aim at. `spans` is in
+ * first-line order, so a single pass settles it.
  */
 export function shotDropTarget(spans: readonly ShotSpan[], row: number): string {
   let target = TOP;
@@ -29,9 +29,9 @@ export function shotDropTarget(spans: readonly ShotSpan[], row: number): string 
 }
 
 /**
- * The row a drop after `target` would insert at — the row the marker is drawn above, and
- * `rows.length` for a drop past the last line. {@link TOP} is row 0, since that is what an empty
- * `after` means.
+ * The row a drop after `target` would insert at, which is the row the marker is drawn above. A drop
+ * past the last line gives `rows.length`. {@link TOP} is row 0, since that is what an empty `after`
+ * means.
  */
 export function insertionRow(spans: readonly ShotSpan[], target: string, rows: number): number {
   if (target === TOP) return 0;
@@ -53,15 +53,15 @@ export interface DragPreview {
 }
 
 /**
- * The ghost geometry for an in-flight drag, resolved against **committed** coverage.
+ * The ghost geometry for an in-flight drag, resolved against committed coverage.
  *
- * Deliberately not `spansFor` over mutated shots: lanes are greedy first-fit over *extents*, so
+ * Deliberately not `spansFor` over mutated shots: lanes are greedy first-fit over extents, so
  * re-deriving them per pointer move moves shots the author never touched into other columns and
  * changes the column count under the cursor. The dragged shot keeps `span.lane` and every other
- * bracket keeps its geometry; only this overlay moves. It also keeps the grabbed handle under
+ * bracket keeps its geometry; only this overlay moves. That also keeps the grabbed handle under
  * the pointer, since the bracket it belongs to no longer slides out from beneath it.
  *
- * Returns `null` for a shot that draws no bracket — it has no lane to draw a ghost in.
+ * Returns `null` for a shot that draws no bracket, because it has no lane to draw a ghost in.
  */
 export function previewOf(
   coverage: Coverage,

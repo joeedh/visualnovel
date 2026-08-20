@@ -1,10 +1,10 @@
 /**
- * The image seam: how a `vnauthor` run gets a picture made.
+ * How a `vnauthor` run gets a picture made.
  *
- * The tool takes an `ArtGen` and never constructs a provider, exactly as it never decides its own
- * permissions — whether this run is mocked and where the keys live is the host's business. The
- * agent core stops at authored inputs, and a concept is one: a sketch bound to the entity it is of,
- * that nothing in the pipeline plans, renders or exports.
+ * The tool takes an `ArtGen` and never constructs a provider, just as it never decides its own
+ * permissions. Whether this run is mocked and where the keys live are the host's decision. The
+ * agent core stops at authored inputs, and a concept is an authored input — a sketch bound to the
+ * entity it depicts, which nothing in the pipeline plans, renders or exports.
  */
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
@@ -38,11 +38,11 @@ import {
 import { VnError } from '@vn/util';
 import type { Workspace } from './workspace.js';
 
-// The subject vocabulary travels with the seam: a host surface that offers `/makeimage` needs to
-// say what it bound to and to parse an override, and must not import `@vn/artgen` to do it.
+// Re-exported so a host surface offering `/makeimage` can name what it bound to and parse an
+// override without importing `@vn/artgen`
 export { formatSubject, parseSubject, type ConceptSubject } from '@vn/artgen';
 
-/** What {@link ArtGen.preview} answers: the picture that *would* be drawn, for the price of a read. */
+/** What {@link ArtGen.preview} answers: the picture that would be drawn, for the price of a read. */
 export interface ConceptPreview {
   prompt: string;
   subject?: ConceptSubject;
@@ -66,21 +66,21 @@ export interface ArtGen {
   preview(req: ConceptRequest): Promise<ConceptPreview>;
   /** Draw a concept again from an edited prompt. A new sketch; the original stays where it is. */
   redraw(req: RedrawRequest): Promise<RedrawResult>;
-  /** Every concept the project holds. A hash is not memorable, so nothing can be edited unlisted. */
+  /** Every concept the project holds. A hash is not memorable, so editing one starts with a list. */
   list(): Promise<ConceptListing[]>;
   /** Look at one stored picture and answer a question about it. Costs a vision call. */
   describe(req: DescribeRequest): Promise<DescribeResult>;
 }
 
 /**
- * An `ArtGen` bound to a workspace, re-reading the project on every call: a sketch asked for after
- * an edit must be drawn from the sheet as edited, and a long-lived REPL outlives any snapshot.
+ * An `ArtGen` bound to a workspace, re-reading the project on every call. A sketch asked for after
+ * an edit must be drawn from the edited sheet, and a long-lived REPL outlives any snapshot.
  *
- * `mock` produces the marked placeholder a mock provider always produces — the same offline
- * behaviour `vngen run --mock` has, and the marker is what keeps it out of a real run.
+ * `mock` produces the marked placeholder a mock provider always produces, which is the same
+ * offline behaviour `vngen run --mock` has; the marker keeps it out of a real run.
  */
 export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } = {}): ArtGen {
-  /** The project as it is right now, plus the ref loader both halves need. */
+  /** The project as it is right now, plus the ref loader handed to the providers. */
   async function open() {
     const config = await loadConfig(workspace.root);
     const model = modelFromInputs(await loadInputs(workspace.paths), {
@@ -95,7 +95,10 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
     return { config, model, store, loadRef };
   }
 
-  /** The image provider for this run: mocked, or real against keys resolved by source. */
+  /**
+   * The image provider for this run. Mocked when `opts.mock` is set. Otherwise real, against keys
+   * resolved by source.
+   */
   async function imageOf(
     config: Awaited<ReturnType<typeof loadConfig>>,
     loadRef: (ref: { hash: string; ext: string }) => Promise<{ bytes: Uint8Array; ext: string }>,
@@ -115,8 +118,8 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
 
   /**
    * The vision model for a read-back — the first `models.vision` entry, which is the reviewer the
-   * pipeline would have used. Mocked, it answers the same sentence every time and says what it is:
-   * a stub that never looked at the picture must not read as a description of one.
+   * pipeline would have used. Mocked, it answers the same sentence every time and says that it is
+   * a stub, so nothing it returns reads as a description of the picture.
    */
   async function visionOf(config: Awaited<ReturnType<typeof loadConfig>>): Promise<ChatBackend> {
     if (opts.mock) {
@@ -189,12 +192,12 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
 }
 
 /**
- * The text half of the same seam: the structured-text model `propose_storyboard` proposes with,
- * bound to a workspace and re-resolved per call exactly as {@link workspaceArtGen} re-reads the
- * project — `project.yaml` can change the model id mid-session and the next call honours it.
+ * The structured-text model `propose_storyboard` proposes with, bound to a workspace and
+ * re-resolved on every call the way {@link workspaceArtGen} re-reads the project. `project.yaml`
+ * can change the model id mid-session and the next call honours it.
  *
- * Mocked, the backend echoes the prompt back, which no schema parse accepts — so `decomposeScene`
- * answers with the deterministic baseline naming that failure, the same offline behaviour
+ * Mocked, the backend echoes the prompt back, which no schema parse accepts, so `decomposeScene`
+ * answers with the deterministic baseline naming that failure — the same offline behaviour
  * `vngen run --mock` has.
  */
 export function workspaceTextLLM(workspace: Workspace, opts: { mock?: boolean } = {}): TextLLM {

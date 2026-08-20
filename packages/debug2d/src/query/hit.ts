@@ -1,7 +1,7 @@
 /**
- * Fragment hit geometry, shared by the engine and explainPick. Paint is not pick:
- * `using: 'pick'` tests the pick authority (pick.shape, expanded by slop) and respects
- * `pointer-events`; `using: 'paint'` tests the drawn bounds.
+ * Fragment hit geometry, shared by the engine and explainPick. The two modes test
+ * different geometry: `using: 'pick'` tests the pick authority (pick.shape, expanded by
+ * slop) and respects `pointer-events`, while `using: 'paint'` tests the drawn bounds.
  */
 import { containsPoint, type Rect, type Vec2 } from '../geom.js';
 import type { Fragment, Shape } from '../types.js';
@@ -35,7 +35,7 @@ export function shapeBounds(shape: Shape, fallback: Rect): Rect {
       return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
     }
     case 'path':
-      // Path data is opaque to the query core; the drawn bounds are the honest fallback.
+      // Path data is opaque to the query core, so the drawn bounds are used instead
       return fallback;
   }
 }
@@ -49,7 +49,7 @@ export function pickBounds(f: Fragment): Rect {
     : base;
 }
 
-/** Is `p` (in the fragment's own space) inside every ancestor clip? */
+/** True when `p` (in the fragment's own space) is inside every ancestor clip. */
 export function insideClips(f: Fragment, p: Vec2): boolean {
   return (f.clip ?? []).every((c) => containsPoint(c.rect, p));
 }

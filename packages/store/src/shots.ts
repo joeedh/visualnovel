@@ -1,12 +1,12 @@
 /**
  * Persisted shot decompositions — `work/shots/<sceneId>.json`, one file per scene.
  *
- * This module is the **only** place the on-disk shape and the in-memory `Shot` are mapped to
- * each other. On disk the authored fields sit at the top level and everything a run produced
- * is nested under `shotData`, so the file says which half a human owns; in memory `Shot` stays
- * flat, because the planner and the runners work with it that way. Keeping the mapping here is
- * also what forces `shotData` to be *constructed* at write time from the run's results rather
- * than carried around and quietly trusted.
+ * This module is the only place the on-disk shape and the in-memory `Shot` are mapped to each
+ * other. On disk the authored fields sit at the top level and everything a run produced is nested
+ * under `shotData`, which shows the reader which half a human owns. In memory `Shot` stays flat,
+ * because the planner and the runners work with it that way. Keeping the mapping here also forces
+ * `shotData` to be constructed at write time from the run's results rather than carried around
+ * and trusted.
  */
 import fs from 'node:fs/promises';
 import type { Shot } from '@vn/types';
@@ -32,16 +32,15 @@ export interface LoadedShots {
 }
 
 /**
- * Read one scene's persisted shots, or `null` when the file does not exist — which is the
- * only signal a caller may use to decide "decompose this scene". (The file itself may be born
- * either way: written by a decomposer, or created around the first hand-made shot — and however
- * it was born, it wins forever.) A malformed file throws
- * rather than being ignored: silently re-decomposing over a hand-edit is the one behaviour
- * that would make the file untrustworthy to edit.
+ * Read one scene's persisted shots, or `null` when the file does not exist, which is the only
+ * signal a caller may use to decide "decompose this scene". The file may be written by a
+ * decomposer or created around the first hand-made shot; either way it is never regenerated
+ * afterwards. A malformed file throws rather than being ignored, so a silent re-decomposition
+ * never overwrites a hand edit.
  *
  * `knownLineIds`, when given, drops `coversLines` entries the scene no longer has (the
- * screenplay was edited under the shots). The shot itself is kept, and the drop is reported
- * so the caller can say so.
+ * screenplay was edited under the shots). The shot itself is kept, and each drop is returned
+ * so the caller can report it.
  */
 export async function readShots(
   paths: ProjectPaths,
@@ -127,8 +126,8 @@ function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): 
         ? {}
         : { promptOverride: promptOverrideToDoc(s.promptOverride!) }),
       coversLines: s.coversLines,
-      // Omitted entirely until a run has produced something, so a freshly decomposed file is
-      // purely authored material and reads as one.
+      // Omitted until a run has produced something, so a freshly decomposed file holds only
+      // authored material.
       ...(s.prompt !== undefined || s.image !== undefined || s.status !== 'pending'
         ? {
             shotData: {
@@ -153,7 +152,7 @@ function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): 
  * scheduler wave and `work/` is committed, so an unchanged rerun must leave the tree clean.
  * Returns whether anything was written.
  *
- * A caller that says nothing about `nextShot` **preserves** the file's existing mark. Most
+ * A caller that says nothing about `nextShot` preserves the file's existing mark. Most
  * writers here — the planner, shot fallout, the outfit editors — are rewriting shots they
  * loaded, and dropping the mark on their way through would quietly resurrect id reuse.
  * Only the two acts that move the mark (`story.newShot` spends an id, `story.deleteShot`
@@ -185,9 +184,9 @@ export async function writeShots(
 
 /**
  * Remove one scene's shots file. Deliberately not "write an empty list": an absent file is the
- * only signal that means "decompose this scene", so a scene whose last shot went away has to lose
- * the file to get a fresh storyboard instead of staying blank forever. Returns whether there was
- * one to remove — an absent file is not an error, since the caller decided against an older load.
+ * only signal that means "decompose this scene", so a scene that lost its last shot must lose the
+ * file to be storyboarded again. Returns whether there was a file to remove; an absent file is not
+ * an error, since the caller decided against an older load.
  */
 export async function deleteShots(paths: ProjectPaths, sceneId: string): Promise<boolean> {
   const file = paths.shotsFile(sceneId);

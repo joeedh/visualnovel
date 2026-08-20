@@ -1,12 +1,12 @@
 /**
- * The two outfit rules: what a scene marker or a shot override would change, and the sentence to
- * refuse with when it would change nothing.
+ * The two outfit rules: what a scene marker would change, and what a shot override would change.
+ * Each also gives the sentence to refuse with when the edit would change nothing.
  *
- * They live here for this package's founding reason — the desktop's `story.setOutfit` /
- * `story.setSceneOutfit`, `vnauthor`'s `set_outfit`, and the timeline's wardrobe strip must all
- * give one answer, so the rule can live in none of them. The inheritance chain itself is not
- * re-decided here: `outfitFor` in `@vn/model` is the one place it is written down, and these two
- * rules only say what a change would do to it.
+ * Both rules live here because the desktop's `story.setOutfit` / `story.setSceneOutfit`,
+ * `vnauthor`'s `set_outfit`, and the timeline's wardrobe strip must all give the same answer, so
+ * the rule can live in none of them. The inheritance chain itself is not re-decided here:
+ * `outfitFor` in `@vn/model` is the one place it is written down, and these two rules only say
+ * what a change would do to it.
  */
 import type { Character, Scene, Shot } from '@vn/types';
 import { outfitFor, type SceneMarkerEdit } from '@vn/model';
@@ -23,8 +23,8 @@ export type WardrobeMap = ReadonlyMap<string, Wardrobe>;
 
 /**
  * The wardrobes of a model's cast. `characterFromDoc` synthesizes the default when the sheet's
- * map omits it, so the default is normally already in the list; it is added here anyway, because
- * a wardrobe that cannot name the value a clear falls back to would refuse the clear.
+ * map omits it, so the default is normally already in the list. It is added here anyway, so a
+ * wardrobe can always name the value a clear falls back to; without it the clear is refused.
  */
 export function wardrobesOf(characters: ReadonlyMap<string, Character>): WardrobeMap {
   const out = new Map<string, Wardrobe>();
@@ -49,7 +49,7 @@ export type ShotOutfitOp =
 const refuse = (error: string, noop?: true): { ok: false; error: string; noop?: boolean } =>
   noop ? { ok: false, error, noop } : { ok: false, error };
 
-/** `"a", "b" or "c"` — the wardrobe as a refusal reads it. */
+/** A wardrobe's outfit ids, quoted and comma-separated for a refusal sentence. */
 const listed = (outfits: readonly string[]): string =>
   outfits.map((o) => `"${o}"`).join(', ') || 'none';
 
@@ -154,8 +154,8 @@ export function setShotOutfit(
         },
   );
 
-  // The fallback is named rather than described: "it inherits" leaves the author to work out
-  // whether the scene marker or the default answered, which is the whole question they asked.
+  // Name the fallback outfit and where it came from; saying only "it inherits" would leave the
+  // author to work out whether the scene marker or the character sheet answered
   const inherited = outfitFor({ characterId: args.character }, scene, {
     defaultOutfit: checked.wardrobe.defaultOutfit,
   });

@@ -80,7 +80,7 @@ describe('coverage', () => {
     expect(palette).toMatchObject({ found: false, words: ['112233'], missing: ['112233'] });
   });
 
-  // Reporting pure scaffolding as lost would put a ✗ on every condensation ever made.
+  // Reporting pure scaffolding as lost would mark every condensation as incomplete
   it('never reports a chunk that had nothing distinctive to look for', () => {
     const only = [{ key: 'noise', text: 'Render as a single image, no text.' }];
     expect(coverage(only, 'Anything at all.')).toEqual([
@@ -113,7 +113,8 @@ describe('condensePrompt', () => {
     expect(seen[0]).toContain('Just Aiko, from behind.');
   });
 
-  // The model's own account of what it dropped is kept, and disbelieved: coverage is the answer.
+  // The model's account of what it dropped is recorded but not trusted, because the local
+  // coverage check decides what actually survived
   it('records what the model claims it omitted without acting on it', async () => {
     const written =
       'Watercolour portrait of AIKO, #112233 palette, neutral pose, plain background.';

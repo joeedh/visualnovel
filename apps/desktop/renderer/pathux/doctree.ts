@@ -48,7 +48,7 @@ export function flattenTree(roots: readonly DocNode[], expanded: ReadonlySet<str
   return rows;
 }
 
-/** Flip one node, as a new set. The pane holds the state; this holds the rule. */
+/** Flip one node, returning a new set. The pane holds the expanded state itself. */
 export function toggleExpanded(expanded: ReadonlySet<string>, id: string): Set<string> {
   const next = new Set(expanded);
   if (!next.delete(id)) next.add(id);
@@ -76,10 +76,10 @@ function splitShot(key: string): { sceneId: string; shotId: string } {
 
 /**
  * What clicking a node selects. A grouping and a counted `more` name nothing the shell tracks, so
- * they return the selection **unchanged and identical** — a click meant to open a branch must not
- * cost the author their place, which is the same contract `selectionForTask` has. That identity is
- * also what lets the pane spend such a click on the twisty instead, which is how `more` shows what
- * it counted.
+ * they return the same selection object unchanged — a click meant to open a branch must not cost
+ * the author their place, which is the same contract `selectionForTask` has. That identity is also
+ * what lets the pane spend such a click on the twisty instead, which is how `more` shows what it
+ * counted.
  */
 export function selectionForNode(node: DocNode, current: Selection): Selection {
   const key = nodeKey(node);
@@ -119,9 +119,9 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
 
 /**
  * Whose backlinks the panel shows, as a node id `DocTree.backlinks` is keyed by. A character can
- * be named by any surface, so the shared selection answers for one; a location has no selection
- * field of its own, so a click in this tree is the only thing that knows — and while the last
- * click was on one, it wins.
+ * be named by any surface, so the shared selection answers for one. A location has no selection
+ * field of its own, so a click in this tree is the only record of one, and a location clicked last
+ * wins.
  */
 export function backlinkSubject(picked: string, selection: Selection): string {
   if (picked.startsWith('location:')) return picked;
@@ -223,15 +223,15 @@ function storyActs(): MenuEntry[] {
  * where a command says what it is about to do.
  *
  * Kinds with nothing to offer answer with an empty list, and are named here rather than falling
- * through silently: a new node kind should be a visible hole, not nothing.
+ * through silently, so a new node kind shows up as a missing case.
  */
 export function menuFor(node: DocNode): MenuEntry[] {
   const key = nodeKey(node);
   switch (node.kind) {
     case 'location':
       return [
-        // The todo's own words. A reference shot of a place is a concept bound to that place —
-        // `art.generate` with the subject already answered, so the sentence is all that is left.
+        // A reference shot of a place is a concept bound to that place: `art.generate` with the
+        // subject already answered, so only the sentence is left to fill in
         {
           label: 'New reference shot…',
           id: 'art.generate',
@@ -264,10 +264,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
       ];
     case 'wikidir':
       return wikiCreate();
-    // Two acts, and the second is a *form*: `agent.run` is handed a first sentence to edit rather
-    // than a turn already sent, because "change this skill" without saying how is a turn the
-    // author would only have to interrupt. The skill is named in the sentence, which is how the
-    // agent finds it — `discover_skills` already lists them, so nothing else needs to travel.
+    // The second entry is a form: `agent.run` is handed a first sentence to edit rather than a turn
+    // already sent. The skill is named in that sentence, which is how the agent finds it —
+    // `discover_skills` already lists them, so nothing else needs to travel
     case 'skill':
       return [
         {
@@ -282,11 +281,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
           form: true,
         },
       ];
-    // All four acts are offered and each refuses itself: `asset.accept` names `gate.approve` for a
-    // portrait and `art.promote` for a concept, and those two refuse everything else. The commands
-    // already know which one applies, and their sentences beat a menu's guess. There is no
-    // 'reject' — rejecting a candidate is approving a different one, and inventing the command
-    // here would be designing the gate through a menu.
+    // All four acts are offered and each command declares its own refusal: `asset.accept` names
+    // `gate.approve` for a portrait and `art.promote` for a concept, and those two refuse
+    // everything else. There is no 'reject', because rejecting a candidate is approving another
     case 'asset':
       return [
         { label: 'Regenerate…', id: 'asset.regenerate', props: { hash: key }, form: true },
@@ -300,10 +297,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { editor: 'asset', where: 'elsewhere', subject: key },
         },
       ];
-    // A slot has no bytes, so every act on one is about *making* some: hand a file in, adopt one
-    // already in the store, or run the pipeline and let it draw. All three take the address as it
-    // is written in the tree, and each refuses itself — a `portrait:` slot's two upload entries
-    // give `adoptionForSlot`'s own sentence, because the gate owns a look.
+    // A slot has no bytes, so every act on one is about making some: hand a file in, adopt one
+    // already in the store, or run the pipeline. All three take the address as it is written in the
+    // tree, and a `portrait:` slot's two upload entries give `adoptionForSlot`'s own refusal
     case 'slot':
       return [
         { label: 'Upload a file for this…', id: 'asset.upload', props: { slot: key }, form: true },
@@ -335,9 +331,8 @@ export function menuFor(node: DocNode): MenuEntry[] {
       ];
     }
     // A branch heading is where an author reaches for "another one of these", so each offers what
-    // its subtree is made of. `wiki` is the one that is a place rather than a heading — the
-    // `wikidir:` nodes are the folders inside it, which a flat `wiki/` never has at all. `assets`
-    // offers nothing on purpose: an asset is rendered from a subject, never authored from a name.
+    // its subtree is made of. `wiki` is a place rather than a heading, and the `wikidir:` nodes are
+    // its folders. `assets` offers nothing: an asset is rendered, never authored from a name
     case 'branch':
       switch (key) {
         case 'story':
@@ -364,9 +359,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
         default:
           return [];
       }
-    // A grouping, a page, a bare file and a counted stand-in: none names a subject a command takes.
-    // A wiki note is the interesting one — nothing binds to it (see `assetstrip.ts`) and `doc.write`
-    // needs the text, so the only act it has is the one a plain click already performs.
+    // None of these names a subject a command takes. Nothing binds to a wiki note (see
+    // `assetstrip.ts`) and `doc.write` needs the text, so the only act it has is the one a plain
+    // click already performs
     case 'assetkind':
     case 'wiki':
     case 'dir':
@@ -381,15 +376,15 @@ export function menuFor(node: DocNode): MenuEntry[] {
  * with the props `doc.rename` takes keeps the surface from assembling them: a row that can be
  * renamed is exactly a row this returns something for.
  *
- * A **scene is deliberately not renamable**. Its label is its id, and its id is its filename, the
+ * A scene is deliberately not renamable. Its label is its id, and its id is its filename, the
  * config's `start:` and every `[[goto:]]` pointing at it — one of those is a rename and the rest
- * are a refactor. So are assets, shots and branch headings: none is named by a document at all.
+ * are a refactor. Assets, shots and branch headings are left out too: none is named by a document.
  *
- * **A skill is deliberately left out too, for a different reason.** It has a path and a label, so
- * it looks renamable, but `doc.rename` renames a document by rewriting a `title:` in its
- * front-matter — and a `SKILL.md` has no `title:`. Its label is `name:`, which is a different key,
- * and its id is the directory, which no rewrite of the file could move. Renaming a skill is
- * `edit_skill`, or the Skills pane; a double-click here would silently write a key nobody reads.
+ * A skill is left out for a different reason. It has a path and a label, so it looks renamable, but
+ * `doc.rename` renames a document by rewriting a `title:` in its front-matter, and a `SKILL.md` has
+ * no `title:`. Its label is `name:`, which is a different key, and its id is the directory, which no
+ * rewrite of the file could move. Renaming a skill is `edit_skill`, or the Skills pane; a
+ * double-click here would silently write a key nobody reads.
  */
 export function renameOf(node: DocNode): { path: string; name: string } | undefined {
   if (!node.path) return undefined;
@@ -404,7 +399,7 @@ export function renameOf(node: DocNode): { path: string; name: string } | undefi
 }
 
 /**
- * What a row says on hover, and no row hovers silently. A path is the useful thing to say where
+ * What a row says on hover, and every row says something. A path is the useful thing to say where
  * there is one; the rest is what a row with no file says instead.
  *
  * The three facts the tree adds to the node are the arguments, because none is on `DocNode`:

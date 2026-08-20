@@ -18,7 +18,7 @@ interface ManifestFile {
   assets: Asset[];
 }
 
-/** A binding that names nothing binds nothing, and does not belong in the list. */
+/** True when the binding names no field. Such a binding is left out of the list. */
 function isEmpty(binding: AssetBinding): boolean {
   return Object.values(binding).every((v) => v === undefined);
 }
@@ -30,7 +30,7 @@ const key = (binding: AssetBinding): string =>
       .sort(),
   );
 
-/** Every manifest ever written stays readable: a lone record reads as a one-element list. */
+/** Normalizes `satisfies` to a list, so an older manifest's lone binding reads as one element. */
 function asList(satisfies: Asset['satisfies'] | AssetBinding | undefined): AssetBinding[] {
   if (satisfies === undefined) return [];
   if (Array.isArray(satisfies)) return satisfies.filter((b) => !isEmpty(b));
@@ -45,10 +45,10 @@ function mergeBindings(existing: AssetBinding[] | undefined, next?: AssetBinding
 }
 
 /**
- * The kinds every later prompt references, and the ones the base root holds. `concept` is here
- * because it is authored-side art — a sketch of a place belongs beside that place's plates, and
- * promoting one to a plate must not have to move bytes between roots. `reference` is here because
- * it is the most authored thing in the store: bytes a person chose, which nothing generated.
+ * The kinds every later prompt references, which are the ones the base root holds. `concept` is
+ * here because it is authored-side art: a sketch of a place belongs beside that place's plates,
+ * and promoting one to a plate must not move bytes between roots. `reference` is here because it
+ * is authored outright, being bytes a person chose rather than anything generated.
  */
 const BASE_KINDS = new Set<AssetKind>([
   'location_ref',
@@ -70,8 +70,8 @@ export function isBaseKind(kind: AssetKind): boolean {
 /**
  * One content-addressed root: bytes at `<dir>/<hash>.<ext>` plus the manifest indexing them.
  *
- * Two of these make an {@link AssetStore}. Splitting them is what lets base art live in its own
- * subtree — and optionally its own git repo — without the provenance staying behind.
+ * Two of these make an {@link AssetStore}. The split lets base art live in its own subtree (and
+ * optionally its own git repo) while its provenance travels with it.
  */
 export class AssetRoot {
   private readonly index = new Map<string, Asset>();
@@ -83,7 +83,7 @@ export class AssetRoot {
     readonly manifestFile: string,
     /** Whether a manifest was there to read. An absent one is not an error — see `AssetStore`. */
     readonly manifestFound: boolean,
-    /** Whether the manifest's own directory exists: the subtree, with or without an index. */
+    /** Whether the manifest's own directory exists, with or without an index in it. */
     readonly dirFound: boolean,
   ) {}
 
@@ -128,7 +128,7 @@ export class AssetRoot {
     const hash = sha256(bytes);
     const ref: AssetRef = { hash, ext };
     const file = this.fileOf(ref);
-    // Content-addressed: only write the bytes if this exact image is new.
+    // Storage is content-addressed, so the bytes are written only when this image is new
     if (!(await exists(file))) {
       await ensureDir(this.dir);
       await writeFileAtomic(file, bytes);
@@ -145,8 +145,8 @@ export class AssetRoot {
       // One byte-stream can serve several things; the second writer must not erase the first.
       satisfies: mergeBindings(existing?.satisfies, meta.satisfies),
       accepted: meta.accepted ?? existing?.accepted ?? false,
-      // A name a human gave outlives a write that has none to offer — promoting a concept must
-      // not erase what it was asked for.
+      // An existing title survives a write that carries none, so promoting a concept does not
+      // erase the name it was given
       ...((meta.title ?? existing?.title) ? { title: meta.title ?? existing?.title } : {}),
     });
     await this.persist();
@@ -197,10 +197,10 @@ export class AssetRoot {
  * model sheets, location refs) under `assets/`, and project art (shot frames) under
  * `vngen/build/`. Full write-up: `docs/reference/asset-stores.md`.
  *
- * Routing is by {@link AssetKind} and nothing else, so no asset is ambiguous about where it
- * lives. Reads consult both — hashes are content hashes, so a byte present in both roots *is*
- * the same byte — which is also why a project written before the split keeps resolving: its
- * base art is still indexed in the project manifest, and nothing on disk has to move.
+ * Routing is by {@link AssetKind} and nothing else, so where an asset lives is never ambiguous.
+ * Reads consult both roots, which is safe because hashes are content hashes and a hash present in
+ * both roots names the same bytes. It is also why a project written before the split keeps
+ * resolving: its base art is still indexed in the project manifest, and nothing on disk moves.
  */
 export class AssetStore implements IAssetStore {
   private constructor(
@@ -223,8 +223,8 @@ export class AssetStore implements IAssetStore {
   async write(bytes: Uint8Array, ext: string, meta: AssetMeta): Promise<AssetRef> {
     const root = this.rootFor(meta.kind);
     const ref = await root.write(bytes, ext, meta);
-    // The write created the base subtree and its manifest, so `absent` is no longer true — and
-    // a surface reading `base` after a run must not describe the root as it was before it.
+    // The write created the base subtree and its manifest, so `absent` no longer holds and a
+    // surface reading `base` after a run sees the root as it now is
     if (root === this.baseRoot) {
       this.base.count = this.baseRoot.count;
       this.base.state = 'ready';
@@ -274,10 +274,10 @@ export class AssetStore implements IAssetStore {
 }
 
 /**
- * Three states, because "nothing generated yet" and "you didn't clone the base repo" must not
- * look alike: a missing directory is a legacy or brand-new project (write into it), whereas a
- * directory with no manifest is the shape a missing submodule leaves behind. Confusing the two
- * is what makes a run regenerate an entire approved base library.
+ * There are three states so that "nothing generated yet" and "the base repo was never cloned" stay
+ * distinguishable. A missing directory means a legacy or brand-new project, which is written into.
+ * A directory with no manifest is what a missing submodule leaves behind. Confusing the two makes
+ * a run regenerate an entire approved base library.
  */
 function describe(paths: ProjectPaths, base: AssetRoot): BaseAssets {
   const state: BaseAssetState = base.manifestFound

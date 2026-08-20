@@ -3,12 +3,12 @@
  * plan §6.4, §7). The loop is written against the `AgentBackend` seam so the tool-call
  * protocol can change without touching policy. Policy lives here, deterministically:
  *
- * - **plan mode (read-only):** only `mutating: false` tools dispatch; the gate rejects
+ * - plan mode (read-only): only `mutating: false` tools dispatch; the gate rejects
  *   mutating tools and tells the model to `propose_plan` first.
- * - **execute mode (read-write):** entered only after the user approves a proposed plan.
+ * - execute mode (read-write): entered only after the user approves a proposed plan.
  *   Mutating tools dispatch; `git_commit` is blocked while error-severity diagnostics
  *   remain, matching "block commit on hard errors, warn on soft".
- * - **always-confirm:** any `confirm: true` tool (revert/restore) routes through the
+ * - always-confirm: a `confirm: true` tool (revert/restore) routes through the
  *   permission gate regardless of mode.
  *
  * Control tools (`propose_plan`, `ask_user`, `ask_choice`) are handled by the loop, not the
@@ -66,7 +66,7 @@ export interface Permission {
 /**
  * One question of an ask form.
  *
- * `choices` is a shortlist offered *with* the question rather than a second kind of question,
+ * `choices` is a shortlist offered with the question rather than a second kind of question,
  * because the answer is a string either way: the list only shapes how the question is presented.
  * The author may always type something that is not on it, and the agent is told verbatim what
  * they said. A host that ignores the list asks the question as plain text, which is degraded but
@@ -83,7 +83,7 @@ export interface AskQuestion {
 /**
  * A call to the model that failed, as the host is told about it.
  *
- * `attempt` counts the failures of *this step*, so `1` is the first thing that went wrong and
+ * `attempt` counts the failures of this step, so `1` is the first thing that went wrong and
  * anything higher means the attempts the host last granted are spent. `waitMs` is what the loop
  * would wait on its own — the provider's `retry-after` where it sent one, and an exponential
  * backoff where it did not.
@@ -104,7 +104,7 @@ export interface ApiFailure {
 }
 
 /**
- * What the host wants done about it.
+ * What the host wants done about a failed call to the model.
  *
  * There is deliberately no `switch model` option: the loop knows nothing about models, and a
  * host that does can swap the backend itself ({@link Agent.setBackend}) before answering `retry`.
@@ -121,7 +121,7 @@ export type ApiRecovery =
        */
       waitMs?: number;
     }
-  /** Give up: the error leaves `run` and the caller reports it as it always did. */
+  /** Give up: the error leaves `run` and the caller reports it. */
   | { do: 'stop' };
 
 /** A streamed event describing one thing the loop did (for the REPL / test assertions). */
@@ -198,10 +198,9 @@ export interface AgentOptions {
   /** Optional live event sink (the REPL renders these as they happen). */
   onEvent?: (event: AgentEvent) => void;
   /**
-   * What to do when the call to the model fails. Absent is the behaviour there has always been:
-   * the error leaves `run` and the caller reports it. A host that implements it can offer the
-   * author the choice instead — retry, or swap the backend and retry — without the loop knowing
-   * anything about providers.
+   * What to do when the call to the model fails. When this is absent the error leaves `run` and
+   * the caller reports it. A host that implements it can offer the author the choice instead
+   * (retry, or swap the backend and retry) without the loop knowing anything about providers.
    */
   onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
 }
@@ -260,8 +259,8 @@ const ALWAYS_LOADED = new Set([
 /**
  * The runaway backstop, and deliberately not a policy — the policy is the token budget. It has to
  * exist because a backend that reports no usage (a mock, a provider without receipts) spends zero
- * against any budget and would otherwise loop until the process died. `unlimited` means unlimited
- * *budget*; it is still backstopped.
+ * against any budget and would otherwise loop until the process died. `unlimited` removes the
+ * budget ceiling only; the backstop still applies.
  */
 const MAX_ITERATIONS = 200;
 
@@ -283,9 +282,9 @@ const MAX_API_ATTEMPTS = 50;
  * only thing that knows when a limit resets. Otherwise it is the doubling every vendor's guidance
  * describes, capped so a long grant cannot end up sleeping for an hour.
  *
- * Deliberately without jitter, which that guidance also calls for: jitter keeps a *fleet* of
- * clients from retrying in lockstep, and there is only one conversation here. Here jitter would
- * only make the wait impossible for a test to pin down.
+ * Deliberately without the jitter that guidance also calls for. Jitter keeps a fleet of clients
+ * from retrying in lockstep, and there is only one conversation here, so it would only make the
+ * wait impossible for a test to pin down.
  */
 export function apiBackoffMs(attempt: number, after?: number): number {
   if (after !== undefined && after > 0) return Math.min(RETRY_CAP_MS, after);
@@ -303,7 +302,7 @@ function failureText(err: unknown): string {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** What the model is told as the budget nears its ceiling: the instruction to wrap up, not just the number. */
+/** What the model is told as the budget nears its ceiling. Carries the instruction to wrap up, not just the number. */
 function budgetWarning(left: number): string {
   return (
     `BUDGET: about ${left.toLocaleString()} tokens remain this turn. Stop starting new work. ` +
@@ -365,7 +364,7 @@ const oneChoiceSchema = z.object({
 });
 
 /**
- * A question *inside a form* may omit its shortlist. Asked on its own, an open question belongs
+ * A question inside a form may omit its shortlist. Asked on its own, an open question belongs
  * to `ask_user` — but a form parks the turn once either way, so making the model ask the listed
  * questions here and the open one separately would cost a second turn to learn nothing extra.
  */
@@ -439,8 +438,6 @@ export class Agent {
 
   constructor(opts: AgentOptions) {
     this.backend = opts.backend;
-    // Give tools a confirmation channel (script-bearing skills) routed to the gate, unless
-    // the host already supplied one.
     this.ctx = {
       ...opts.ctx,
       // The ledger belongs to the conversation, so the agent owns it rather than the host: a
@@ -452,6 +449,8 @@ export class Agent {
         this.messages
           .filter((m) => m.role === 'user' && typeof m.content === 'string')
           .map((m) => m.content as string),
+      // The confirmation channel tools use for script-bearing skills, routed to the permission
+      // gate unless the host already supplied one.
       confirm:
         opts.ctx.confirm ??
         ((message: string) => opts.permission.confirmAction('run_skill', { message })),
@@ -596,7 +595,7 @@ export class Agent {
     const last = this.messages[this.messages.length - 1];
     const lastAssistant = [...this.messages].reverse().find((m) => m.role === 'assistant');
     if (!lastAssistant || !Array.isArray(lastAssistant.content)) return;
-    // Only a *trailing* assistant turn can be owed answers; anything older was already replied
+    // Only a trailing assistant turn can be owed answers; anything older was already replied
     // to (or the API would have refused at the time). `last` may be one of its observations.
     if (last !== lastAssistant && last?.role !== 'observation') return;
     const asked = lastAssistant.content
@@ -682,9 +681,9 @@ export class Agent {
       }
 
       const actions = turn.actions ?? [];
-      // One assistant message per step. `raw` when the provider sent blocks — echoing them back
-      // unmodified is the contract — and otherwise the narration, with each call written out as
-      // the JSON the model emitted so the next turn can read what it asked for.
+      // One assistant message per step. Uses `raw` when the provider sent blocks, because echoing
+      // them back unmodified is the contract. Otherwise files the narration, with each call as the
+      // JSON the model emitted so the next turn can read what it asked for.
       const narration: string[] = [];
       if (turn.message) narration.push(turn.message);
       for (const action of actions) narration.push(callRecord(action));
@@ -700,13 +699,9 @@ export class Agent {
         return { final: turn.final, mode: this.mode, events };
       }
 
-      // Every call is answered, including the ones a stop request arrived during: a `tool_use`
-      // the transcript never answers is a request the model's own API will refuse to continue.
-      // That is also why a tool that *throws* — a locked file, a dead IPC channel — becomes an
-      // error observation rather than an escaped exception: the throw would end the turn with
-      // the call unanswered, and every later turn would die on the same API refusal. The model
-      // is told the one thing it cannot infer — the change may have half-landed — so its next
-      // step is to read the file back and retry from what is actually on disk.
+      // Every call is answered, including calls a stop request arrived during: a `tool_use` the
+      // transcript never answers is a request the model's own API refuses to continue. A tool
+      // that throws therefore becomes an error observation rather than an escaped exception.
       for (const action of actions) {
         let observation: string;
         try {
@@ -755,10 +750,10 @@ export class Agent {
   /**
    * One call to the model, with whatever the host wants done about a failure.
    *
-   * The host is asked once per *grant*, not once per attempt: it answers with a number of tries,
+   * The host is asked once per grant, not once per attempt: it answers with a number of tries,
    * the loop spends them with the backoff the providers ask for, and only when they run out is it
-   * asked again — which is what lets "retry ten times" be one decision the author makes rather
-   * than ten. A host that implements nothing gets what it always got: the error, unchanged.
+   * asked again, which is what lets "retry ten times" be one decision the author makes rather
+   * than ten. A host that implements nothing gets the error, unchanged.
    *
    * The backend is re-read every attempt, so a host that swapped it — a different model, a
    * different vendor — is retried against the new one without saying so.
@@ -804,8 +799,8 @@ export class Agent {
           asked = recovery.waitMs;
         }
 
-        // The host's wait wins over both the provider's and ours: it was told what we were going
-        // to wait and answered with a different number, which is only meaningful if it is used.
+        // The host's wait wins over both the provider's and the loop's own, because the host was
+        // told what the loop would wait and answered with a different number.
         if (asked !== undefined) wait = asked;
 
         left--;
@@ -895,13 +890,9 @@ export class Agent {
           `Commit blocked: fix ${errors.length} validation error(s) first:\n` + errors.join('\n')
         );
       }
-      // Scope the commit to exactly what the agent edited this plan. Without this the bare
-      // `git commit` stages nothing (and fails), and would otherwise risk sweeping in
-      // unrelated dirty files when the workspace sits inside a larger repo.
-      //
-      // A list the model passed is *added to* what it actually wrote, never substituted for it:
-      // the record is complete and the memory is not, which is how an AICONTEXT.md the agent
-      // updated and then forgot about went uncommitted.
+      // Scope the commit to what the agent edited this plan, so a bare `git commit` neither
+      // stages nothing nor sweeps in unrelated dirty files from an enclosing repo. A list the
+      // model passed is added to what it actually wrote, never substituted for it.
       const commitArgs = parsed.data as { message: string; paths?: string[] };
       commitArgs.paths = [...new Set([...this.editedPaths, ...(commitArgs.paths ?? [])])];
     }

@@ -3,16 +3,16 @@
  * "splice C into A→B") into the `SceneMarkerEdit[]` that `applySceneMarkerEdit` applies as one
  * atomic patch.
  *
- * It lives apart from the command definitions because this is where the semantics are — which
- * rewires are legal, which silently produce an edge the runner would ignore — and those are
- * exactly what wants a node test rather than an Electron session.
+ * These functions live apart from the command definitions because they carry the semantics —
+ * which rewires are legal, and which silently produce an edge the runner would ignore — and
+ * those are what a node test can cover rather than an Electron session.
  *
- * It is in this package rather than in the app for the same reason `lineops.ts` is. The branch
- * editor runs these *same functions* mid-drag, so the refusal an author reads while dragging is
- * produced by the code that will run on drop — and the agent's `edit_branches` runs them too, so
- * the one thing it can do after `newScene` says *nothing points at it yet* is the thing the app
- * would do. A package may not import an app; while these rules were in `apps/desktop/src/shared/`,
- * the agent could create a scene and then had no way to wire it in.
+ * They are in this package rather than in the app for the same reason `lineops.ts` is. The branch
+ * editor runs these same functions mid-drag, so the refusal an author reads while dragging is
+ * produced by the code that will run on drop, and the agent's `edit_branches` runs them too, so
+ * the agent wires in a scene that `newScene` left unreferenced the same way the app would. A
+ * package may not import an app; while these rules were in `apps/desktop/src/shared/`, the agent
+ * could create a scene and then had no way to wire it in.
  */
 import type { Choice, Scene } from '@vn/types';
 import type { SceneMarkerEdit } from '@vn/model';
@@ -32,8 +32,8 @@ const choicesOf = (scene: { choices: Choice[] }): Choice[] =>
 
 /**
  * Add a choice, or replace the one at `index`. `goto` may name a scene that does not exist
- * yet — a dangling edge is a story diagnostic the editor *shows*, not something to forbid at
- * the point of authoring.
+ * yet: the editor shows a dangling edge as a story diagnostic rather than forbidding it at the
+ * point of authoring.
  */
 export function setChoice(
   scenes: SceneMap,
@@ -106,17 +106,17 @@ export function setNext(scenes: SceneMap, args: { scene: string; goto?: string }
  *
  * Four rules, each a refusal or a deliberate non-action:
  *
- * 1. **`C` must not already have choices.** `next` is only followed when a scene has none, so
- *    writing `C.next = B` on a scene that forks produces an edge the runner ignores — the
- *    story would never reach `B`. A silently dead edge is the failure this editor exists to
- *    catch, so it refuses with a reason rather than writing it.
- * 2. **It is a rewire, not a move.** `C`'s existing inbound edges are untouched; it stays
+ * 1. `C` must not already have choices. `next` is only followed when a scene has none, so
+ *    writing `C.next = B` on a scene that forks produces an edge the runner ignores and the
+ *    story would never reach `B`. A silently dead edge is what this editor exists to catch, so
+ *    it refuses with a reason rather than writing one.
+ * 2. This is a rewire, not a move. `C`'s existing inbound edges are untouched; it stays
  *    reachable from wherever it already was, and gains one more way in.
- * 3. **Cycles are legal** — looping back to a hub scene is normal VN structure, so nothing here
+ * 3. Cycles are legal — looping back to a hub scene is normal VN structure, so nothing here
  *    validates against them. Only the degenerate drops are refused: `C` as either endpoint of
  *    the edge it is being spliced into.
- * 4. **The label stays with the decision.** If `A→B` read *"Tell the truth"*, `A→C` still does.
- *    The decision hasn't changed, only where it leads first.
+ * 4. The label stays with the decision. If `A→B` read "Tell the truth", `A→C` still does. The
+ *    decision has not changed, only where it leads first.
  */
 export function spliceScene(
   scenes: SceneMap,
@@ -161,8 +161,8 @@ export function spliceScene(
           { sceneId: middle.id, next: target },
         ];
 
-  // Overwriting an existing `next` is what splicing *is*, but it silently drops an edge, so
-  // it goes in the message and therefore into the CommandRecord.
+  // Splicing overwrites an existing `next`, which silently drops an edge, so the message names
+  // the dropped edge and the CommandRecord keeps it.
   const replaced =
     middle.next !== undefined && middle.next !== target
       ? ` (replacing ${middle.id} → ${middle.next})`

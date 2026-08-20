@@ -37,7 +37,8 @@ describe('the reorder geometry', () => {
   const cov = spansFor(LINES, ORDERED);
 
   it('names the shot a drop is after by midpoint, so every insertion point is aimable', () => {
-    // Above the first shot's midpoint is the one position no shot names: `top`, the empty `after`.
+    // Above the first shot's midpoint no shot names the position, so the answer is the empty
+    // `after`, spelled `top`
     expect(shotDropTarget(cov.spans, 0)).toBe('top');
     expect(shotDropTarget(cov.spans, 1)).toBe('s__a');
     expect(shotDropTarget(cov.spans, 2)).toBe('s__b');
@@ -55,8 +56,8 @@ describe('the reorder geometry', () => {
     expect(insertionRow(cov.spans, 's__gone', cov.rows.length)).toBe(4);
   });
 
-  /** A shot other shots draw inside has no single position — `planShotMove` refuses it — but the
-      pointer still passes over its rows, so the midpoint rule must still answer something. */
+  // A shot that other shots draw inside has no single position (`planShotMove` refuses it), but
+  // the pointer still passes over its rows, so the midpoint rule must still answer something
   it('still names a target over interleaved coverage', () => {
     const interleaved = spansFor(LINES, SHOTS);
     expect(shotDropTarget(interleaved.spans, 0)).toBe('top');
@@ -67,12 +68,9 @@ describe('the reorder geometry', () => {
 describe('previewOf', () => {
   const cov = spansFor(LINES, SHOTS);
 
-  /**
-   * The regression this function exists for. Deriving the preview with `spansFor` over mutated
-   * shots re-runs the greedy lane fit: growing `s__aiko` to the end of the scene gives it the
-   * widest extent, which moves `s__establishing` — a shot the author never touched — into
-   * another column and changes the grid's column count mid-gesture.
-   */
+  // The regression this function exists for: deriving the preview with `spansFor` over mutated
+  // shots re-runs the greedy lane fit, so growing `s__aiko` to the end of the scene gives it the
+  // widest extent, moving the untouched `s__establishing` into another column mid-gesture
   it('keeps the dragged shot in its own lane no matter how far the drag reaches', () => {
     const lines = resolveDrag(cov, 's__aiko', 'end', 3)!;
     expect(previewOf(cov, 's__aiko', lines)!.lane).toBe(1);
@@ -89,7 +87,8 @@ describe('previewOf', () => {
   });
 
   it('brackets the proposal as contiguous runs, holes and all', () => {
-    // The establishing shot covers L1 and L4; extending its start is a no-op, so extend the end.
+    // Dragging aiko's start up to row 0 takes L1 from the establishing shot, so the proposal is
+    // one unbroken run; the second case leaves a hole where L2 stays with aiko
     const lines = resolveDrag(cov, 's__aiko', 'start', 0)!;
     expect(previewOf(cov, 's__aiko', lines)!.segments).toEqual([
       { shotId: 's__aiko', from: 0, to: 1 },

@@ -1,6 +1,6 @@
 /**
- * Tier 2 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: whether the *words* in
- * `docs/guides/api-keys.md` still describe what a vendor's own page says today.
+ * Tier 2 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: whether the wording in
+ * `docs/guides/api-keys.md` still describes what a vendor's own page says today.
  *
  * Tier 1 (`scripts/check-key-links.mjs`) answers whether the links resolve, which is a fact.
  * This answers whether the walkthrough beside them is still true, which is a judgement — so it
@@ -8,15 +8,14 @@
  * model comparing prose to prose across pages that get reworded constantly will be wrong some of
  * the time, and a blocking check that is wrong some of the time is one people learn to override.
  *
- * The pure half lives here so it can be tested without a network or a key: fetching and the model
- * call are in `scripts/audit-key-instructions.mjs`, and everything that decides anything is a
- * function below. Nothing here writes: the audit's one hard rule is that `docs/guides/api-keys.md` is
+ * The pure half lives here so it can be tested without a network or a key. Fetching and the model
+ * call are in `scripts/audit-key-instructions.mjs`, and every decision is made by a function
+ * below. Nothing here writes. The audit's one hard rule is that `docs/guides/api-keys.md` is
  * edited by a person, because it is what a new user reads when they are least able to tell that
  * something is wrong.
  *
- * This file is deliberately not imported by `index.ts`. It is the desktop app's key guide it
- * reasons about, which is why it lives here, but the app never runs it and it is not in the
- * bundle.
+ * This file is deliberately not imported by `index.ts`. It reasons about the desktop app's key
+ * guide, which is why it lives here, but the app never runs it and it is not in the bundle.
  */
 import { z } from 'zod';
 
@@ -45,8 +44,8 @@ export type VendorReview = z.infer<typeof VendorReviewSchema>;
  * A page the audit could not read, and why.
  *
  * `could-not-check` is a first-class verdict rather than a swallowed error. A page behind JS
- * rendering or a bot wall is a thing this could not read, and reporting "agree" about it would
- * be a lie that reads exactly like a pass.
+ * rendering or a bot wall cannot be read at all, and reporting "agree" about such a page would
+ * read exactly like a pass while being false.
  */
 export function unreadable(vendor: string, why: string): VendorReview {
   return { vendor, verdict: 'could-not-check', summary: why };
@@ -96,8 +95,8 @@ export function htmlToText(html: string): string {
         return ENTITIES[String(name).toLowerCase()] ?? whole;
       })
       .replace(/[ \t\f\v\u00a0]+/g, ' ')
-      // An inline tag becomes a space, so `<b>Create key</b>.` would otherwise read as
-      // "Create key ." — a difference the model would have to spend attention deciding to ignore.
+      // An inline tag becomes a space, so without this `<b>Create key</b>.` would read as
+      // "Create key ." and the model would have to decide to ignore the gap
       .replace(/ +([.,;:!?)\]])/g, '$1')
       .replace(/ *\n */g, '\n')
       .replace(/\n{3,}/g, '\n\n')
@@ -109,15 +108,15 @@ export function htmlToText(html: string): string {
  * How much readable text a page must have before the audit is willing to judge it.
  *
  * A single-page app served to a bare fetch is a few hundred characters of loading shell, and a
- * model handed that will confidently report that our instructions no longer match — comparing
- * them, in effect, against nothing. The floor is what separates "the vendor rewrote the page"
- * from "we never saw the page".
+ * model handed that will confidently report that our instructions no longer match, having
+ * compared them against nothing. The floor distinguishes a page the vendor rewrote from a page
+ * that was never read.
  */
 export const MIN_PAGE_CHARS = 2000;
 
 /**
  * A model prompt is priced by the token, and the tail of one of these pages is footer links.
- * Generous enough to hold a whole walkthrough, small enough that a weekly run stays cents.
+ * The cap holds a whole walkthrough while keeping a weekly run's cost to cents.
  */
 export const MAX_PAGE_CHARS = 40_000;
 
@@ -225,9 +224,9 @@ export function renderReview(reviews: readonly VendorReview[], stamp: string): s
 
   const lines: string[] = ['# API key instructions — weekly review', '', `Run ${stamp}.`, ''];
 
-  // The first line is the whole report for anyone reading a notification, so it must never be
-  // able to say "nothing to do" about a week when nothing was actually looked at. A run where
-  // every page failed to load is the one that most looks like a pass and least is one.
+  // The first line is the whole report for anyone reading a notification, so it must never say
+  // "nothing to do" about a week when nothing was read. A run where every page failed to load
+  // looks most like a pass, so it gets a headline of its own.
   if (drifted.length > 0) {
     lines.push(
       `**${drifted.length} of ${reviews.length} vendor sections look out of date.** Nothing has ` +

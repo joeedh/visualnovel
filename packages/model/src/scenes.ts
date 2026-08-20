@@ -21,9 +21,9 @@ export function parseHeading(heading: string): MinedLocation {
 }
 
 /**
- * The heading's interior/exterior prefix in canonical spelling, or `undefined` when it has
- * none — a forced `.HEADING`. Kept on the scene because `sceneToFountain` writes the heading
- * back and a reconstructed one is wrong about the thing the plate is generated from.
+ * The heading's interior/exterior prefix in canonical spelling. A forced `.HEADING` has no
+ * prefix and yields `undefined`. Kept on the scene because `sceneToFountain` writes the heading
+ * back, and a reconstructed heading is wrong about the variant the location plate comes from.
  */
 export function headingPrefixOf(heading: string): HeadingPrefix | undefined {
   const raw = HEADING_PREFIX.exec(heading)?.[1]?.toLowerCase().replace(/\./g, '');
@@ -63,10 +63,10 @@ export interface SplitOptions {
  * action, transitions, lyrics and centered text. Only `section` and `page_break` are dropped,
  * deliberately (see the `default` below).
  *
- * Line ids are **honoured where marked and allocated where not**: `[[line: L4]]` names the
+ * Line ids are honoured where marked and allocated where not: `[[line: L4]]` names the
  * next line-bearing element, `[[nextline: n]]` is the scene's allocator, and anything
- * unmarked takes the next id from it. Reading never writes — a screenplay with no marks
- * allocates `L1..Ln` in document order, exactly what a positional stamp produced.
+ * unmarked takes the next id from that allocator. Reading never writes — a screenplay with no
+ * marks allocates `L1..Ln` in document order, the same ids a positional stamp produced.
  */
 export function splitScenes(script: FountainScript, opts: SplitOptions = {}): SplitResult {
   const scenes: Scene[] = [];
@@ -78,15 +78,15 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
   const sceneIdOverrides = new Map<Scene, string>();
   /** Active speaker cue within the current scene; carried across the flattened element list. */
   let currentSpeaker: string | undefined;
-  /** A `[[line:]]` mark waiting for the element it names; carried the same way. */
+  /** A `[[line:]]` mark waiting for the element it names; carried across the element list. */
   let pendingLineId: string | undefined;
   /** Marks that never found an element, reported once the scene's final id is known. */
   const dangling = new Map<Scene, string[]>();
   /**
-   * Notes no marker parses out of, with the scene they sat in — `null` for one stranded above the
-   * first heading, which is exactly the kind worth saying. Classified in the final pass rather
-   * than here, because that is where `[[scene:]]` overrides land and a diagnostic stamped earlier
-   * could carry an id the scene no longer has.
+   * Notes no marker parses out of, with the scene they sat in. The scene is `null` for a note
+   * stranded above the first heading, which is worth reporting. Classified in the final pass
+   * rather than here, because that is where `[[scene:]]` overrides land and a diagnostic stamped
+   * earlier could carry an id the scene no longer has.
    */
   const strayNotes: { scene: Scene | null; text: string }[] = [];
 
@@ -119,8 +119,8 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
   let index = 0;
   for (const el of script.elements) {
     // A cue's speaker survives only its own dialogue block. Notes are interleaved into blocks
-    // and must not break it; everything else ends it. Left standing, the speaker attributed
-    // narration three exchanges later to whoever spoke last.
+    // and must not break it; everything else ends it. Without this reset, narration three
+    // exchanges later is attributed to whoever spoke last.
     if (el.type !== 'dialogue' && el.type !== 'parenthetical' && el.type !== 'note') {
       currentSpeaker = undefined;
     }
@@ -161,13 +161,13 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
           current.choices.push({ label: marker.label, goto: marker.goto } satisfies Choice);
         else if (marker.kind === 'next') current.next = marker.goto;
         else if (marker.kind === 'outfit') {
-          // Scene-scoped wherever the marker sits, so a later one for the same character is a
-          // correction rather than a change of clothes partway down the page.
+          // An outfit marker is scene-scoped wherever it sits, so a later marker for the same
+          // character corrects the earlier one rather than changing clothes down the page.
           current.outfits = { ...current.outfits, [marker.characterId]: marker.outfit };
         } else if (marker.kind === 'nextline') current.nextLineId = marker.value;
         else if (marker.kind === 'line') {
-          // Two marks with nothing between them: the first keeps the element, the second
-          // has nothing to name.
+          // When two marks arrive with nothing between them, the first keeps the element and
+          // the second names nothing.
           if (pendingLineId !== undefined) addDangling(current, marker.id);
           else pendingLineId = marker.id;
         }
@@ -206,7 +206,7 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
     const override = sceneIdOverrides.get(scene);
     if (opts.sceneId !== undefined) {
       // A chunk carries its id in front-matter, so a body marker cannot rename the file it
-      // lives in. Warned about rather than obeyed or dropped in silence.
+      // lives in. The mismatch is warned about rather than obeyed or dropped silently.
       if (override !== undefined && override !== opts.sceneId) {
         diagnostics.push({
           severity: 'warning',
@@ -270,14 +270,14 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
 }
 
 /**
- * What a note no marker parses is worth saying, or nothing at all. Severity follows **consequence,
- * not confidence**: a `choice`/`next`/`line` that fails to parse silently loses a story-graph edge
- * or a shot's anchor, while `outfit`, `nextline` and `scene` each document a fallback to a plain
- * note in `parseBranchMarker`, so erroring on one would overrule a decision made there. A note with
- * no colon is ordinary Fountain prose and is not a failed anything.
+ * The diagnostic for a note that no marker parses; `null` when the note needs none. Severity
+ * follows consequence rather than confidence: a `choice`/`next`/`line` that fails to parse silently
+ * loses a story-graph edge or a shot's anchor, while `outfit`, `nextline` and `scene` each document
+ * a fallback to a plain note in `parseBranchMarker`, so erroring on one would overrule a decision
+ * made there. A note with no colon is ordinary Fountain prose and is not a failed marker.
  *
- * The text is the only handle anyone has: notes never become `SceneLine`s, so no line id addresses
- * one.
+ * The note's text is the only handle a diagnostic has: notes never become `SceneLine`s, so no line
+ * id addresses one.
  */
 function strayNoteDiagnostic(text: string): Omit<Diagnostic, 'where'> | null {
   const colon = text.indexOf(':');

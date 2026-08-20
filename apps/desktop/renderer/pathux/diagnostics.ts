@@ -1,14 +1,11 @@
 /**
- * The header's problem count, opened.
+ * The header's problem count, opened as a popup: one fetch, one row per diagnostic. The ordering
+ * and the two sentences a row needs are in `src/shared/diagnostics.ts`, where the node-only jest
+ * project can reach them, so what is left here is widgets.
  *
- * The count has been in the bar since the first window; what it never had was a way to ask
- * *which*. This is that: one popup, one fetch, one row per diagnostic. The ordering and the two
- * sentences it needs are in `src/shared/diagnostics.ts`, where the node-only jest project can
- * reach them, so what is left here is widgets.
- *
- * Nothing here writes. A diagnostic is a *reading* of the model — validation re-derives the whole
- * list on every index — so there is no dismiss, no acknowledge and no filter to persist: the way
- * to clear one is to fix what it is about, and then it is gone on the next read.
+ * Nothing here writes. Validation re-derives the whole diagnostic list on every index, so there is
+ * no dismiss, no acknowledge and no filter to persist: a diagnostic clears when what it is about is
+ * fixed, and it is gone on the next read.
  */
 import { UIBase, type Container } from 'pathux';
 import type { Diagnostic } from '@vn/types';
@@ -34,7 +31,7 @@ class DiagnosticList {
   private readonly popup: Popup;
   private readonly body: Container;
   private diagnostics: Diagnostic[] = [];
-  /** Scene ids, so a row can ask whether its `where` is somewhere the author can be taken. */
+  /** Scene ids, so a row can tell whether its `where` names a scene the author can be taken to. */
   private scenes: string[] = [];
   private read = false;
 
@@ -84,8 +81,8 @@ class DiagnosticList {
 
     const rows = this.body.col();
     rows.style['overflowY'] = 'auto';
-    // Bounded by the window as well as by a number, for the reason the notification list is: a
-    // list that runs off the bottom of a short screen has no scrollbar the author can reach.
+    // Bounded by the window as well as by a fixed height, as the notification list is: a list that
+    // runs off the bottom of a short screen has no scrollbar the author can reach
     rows.style['maxHeight'] = 'min(420px, 60vh)';
 
     if (this.diagnostics.length === 0) {
@@ -97,16 +94,14 @@ class DiagnosticList {
   }
 
   /**
-   * One diagnostic, and a way in where there is one. `where` is an *entity* id rather than a
-   * scene id, and a scene diagnostic can name a scene that does not exist — `start:` pointing at
-   * nothing is exactly that — so `diagnosticScene` is asked rather than assumed, and only the
-   * rows it answers for become clickable. The rest are labels, because a row that opened the
-   * wrong editor half the time would be worse than one that opens none.
+   * One diagnostic, and a way in where there is one. `where` is an entity id rather than a scene
+   * id, and a scene diagnostic can name a scene that does not exist (`start:` pointing at nothing
+   * is one), so `diagnosticScene` decides which rows become clickable. The rest are labels.
    */
   private row(rows: Container, diagnostic: Diagnostic): void {
     const row = rows.row();
-    // A flex child shrinks before its parent scrolls, which is what drew the notification list
-    // through itself before it refused to. Same fix, same reason.
+    // A flex child shrinks before its parent scrolls, so a row without this is squeezed instead of
+    // scrolled — the same fix the notification list needed
     row.style['flexShrink'] = '0';
     const mark = diagnostic.severity === 'error' ? '●' : '○';
     const where = diagnostic.where ? ` (${diagnostic.where})` : '';
@@ -124,7 +119,7 @@ class DiagnosticList {
     open.description = `${diagnosticDetail(diagnostic)} · click to open ${scene}`;
   }
 
-  /** Show the scene a row is about, and get out of the way — the popup has said its piece. */
+  /** Show the scene a row is about, then close the popup. */
   private goto(scene: string): void {
     const ui = shell().ui;
     ui.sceneId = scene;
@@ -139,7 +134,7 @@ class DiagnosticList {
   }
 }
 
-/** Open the list. Idempotent, like the bell — the badge clicked twice is one popup. */
+/** Open the list, or close it when it is already open, so the badge never opens a second popup. */
 export function openDiagnostics(): void {
   if (list) {
     list.close();

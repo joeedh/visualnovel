@@ -1,11 +1,11 @@
 /**
- * A rename is text in, text out — so where the name lives, and what is left untouched around it,
- * are both testable without a workspace.
+ * `renameInText` takes text and returns text, so where the name lives and what is left untouched
+ * around it are both testable without a workspace.
  */
 import { parseFrontMatter } from '@vn/parse';
 import { renameInText } from '../rename.js';
 
-/** The text a successful rename produced, so a case that refused fails loudly at the assertion. */
+/** The renamed text. Throws when the rename was refused, so a refusing case fails loudly. */
 function renamed(path: string, text: string, name: string): string {
   const result = renameInText(path, text, name);
   if (!result.ok) throw new Error(result.reason);
@@ -44,7 +44,8 @@ describe('renameInText', () => {
     const doc = ['---', 'title: Old', 'tags: [lore]', '---', '', 'Body.', ''].join('\n');
     const out = renamed('wiki/note.md', doc, 'New');
     expect(parseFrontMatter(out).data['title']).toBe('New');
-    // Spliced, not re-serialized: the author ordered these keys and the body is untouched.
+    // The front-matter is spliced rather than re-serialized, so the author's key order and the
+    // body both survive
     expect(out).toContain('tags: [lore]');
     expect(out.endsWith('\nBody.\n')).toBe(true);
   });

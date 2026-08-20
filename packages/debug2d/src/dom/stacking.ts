@@ -1,9 +1,9 @@
 /**
  * Pure stacking-context walk over a snapshot tree → z-ordered fragments with culprit
  * retention (research §3-DOM). Identifies stacking contexts, applies CSS 2.1 paint order
- * within each, and — crucially — when an element's z-index is scoped by an ancestor that
- * established a context, records that ancestor on the fragment (`zContext`): it is the
- * fact explainPick prints, it is free here, and it is unrecoverable afterwards.
+ * within each. When an element's z-index is scoped by an ancestor that established a
+ * context, that ancestor is recorded on the fragment (`zContext`); explainPick prints it,
+ * and it cannot be recovered once the walk has finished.
  *
  * Honest approximations (`exactZ: false`, always): positioned `z-index: auto` elements
  * and zero/auto-z contexts paint atomically in one document-order bucket; floats are not
@@ -100,8 +100,8 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
     });
   }
 
-  // Gather this context's paint items: descend through in-flow content (emitting it in
-  // document order via `inFlow`), floating positioned/context-rooting elements up here.
+  // Gathers this context's paint items. In-flow content is descended into and collected in
+  // document order in `inFlow`; positioned and context-rooting elements go into `bucketed`
   function collect(
     parent: SnapNode,
     clips: ClipRef[],
@@ -135,8 +135,8 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
   }
 
   // Paint one atomic unit: the element itself, then its subtree in CSS 2.1 order.
-  // `scope` is the context root whose presence scopes descendants' z-index values —
-  // undefined only while inside the real root context, where z-index means what it says.
+  // `scope` is the context root that scopes descendants' z-index values; it is undefined
+  // only inside the real root context, where a declared z-index is used as written
   function paint(item: Item, scope: ZContextRef | undefined): void {
     emit(item.node, item.clips, item.owner, item.pe, scope);
 

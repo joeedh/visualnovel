@@ -41,8 +41,8 @@ She bows, a little too deeply.
 
 describe('splitScenes — line id allocation', () => {
   it('allocates L1..Ln in document order when nothing is marked', () => {
-    // The backward-compatibility property: an unmigrated screenplay keeps the ids the old
-    // positional stamp gave it, so existing coverage in work/shots survives the upgrade.
+    // An unmigrated screenplay keeps the ids the old positional stamp gave it, so existing
+    // coverage in work/shots survives the upgrade.
     expect(localIds(UNMARKED)).toEqual(['L1', 'L2', 'L3', 'L4']);
     expect(split(UNMARKED).scenes[0]!.nextLineId).toBe(5);
     expect(split(UNMARKED).diagnostics).toEqual([]);
@@ -246,8 +246,8 @@ She bows.
     expect(text).toBe(aliased);
   });
 
-  // Real authored prose, stripped back to what an author types: the sample ships the marks
-  // `vngen import` stamped, and un-marking them is the only way to sweep this writer over it.
+  // The sample ships the marks `vngen import` stamped, so stripping them back to what an
+  // author types is the only way to sweep this writer over real authored prose.
   it('leaves the sample scene chunks meaning exactly what they did', () => {
     const dir = join(__dirname, '../../../../templates/basic/scenes');
     const ids = readdirSync(dir)
@@ -292,7 +292,8 @@ She bows.
         where: 'arrival',
       },
     ]);
-    // The ids are still produced — the diagnostic is the report, not a refusal to parse.
+    // The ids are still produced; the diagnostic reports the collision rather than refusing
+    // to parse.
     expect(scenes[0]!.lines.map((l) => l.id)).toEqual(['arrival:L4', 'arrival:L4']);
   });
 
@@ -320,7 +321,7 @@ Wind.
         where: 'arrival',
       },
     ]);
-    // It does not leak into the next scene.
+    // The dangling mark does not leak into the next scene.
     expect(scenes[1]!.lines.map((l) => l.id)).toEqual(['rooftop:L1']);
   });
 

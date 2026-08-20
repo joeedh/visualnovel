@@ -351,8 +351,8 @@ export interface SessionDeps {
   writeClipboard?(text: string): void;
   /**
    * Tell the window what long-running work is in flight. Not routed through the command host:
-   * the effect is pushed *while* a command is still running, which is exactly when that host
-   * has not returned an outcome to attach anything to.
+   * the effect is pushed while a command is still running, which is when that host has not
+   * returned an outcome to attach anything to.
    */
   pushBusy(state: { what?: string; ran: number; pending: number }): void;
   /**
@@ -433,8 +433,8 @@ function suspensionsOf(
 
 /**
  * Every scene's persisted storyboard, by scene id. A storyboard that will not parse is one
- * scene's problem: with `reportBroken` it becomes a `null` the tree draws a badge for, and
- * without it the scene is simply absent, which is what every other reader wants.
+ * scene's problem. With `reportBroken` it becomes a `null` the tree draws a badge for. Without
+ * that option the scene is simply absent, which is what every other reader wants.
  */
 async function readAllShots(
   project: LoadedProject,
@@ -476,9 +476,9 @@ function withPromptOverride(shot: Shot, override: PromptOverride | undefined): S
 }
 
 /**
- * The character edit that applies one rung's prompt override — {@link characterNotesEdit} with
- * the other field. Clearing an override must be stated explicitly: an empty override object is
- * what `overrideData` serializes as a removed key, so `undefined` here still produces an edit.
+ * The character edit that applies one rung's prompt override. Clearing an override must be
+ * stated explicitly: an empty override object is what `overrideData` serializes as a removed
+ * key, so `undefined` here still produces an edit.
  */
 function characterOverrideEdit(
   project: LoadedProject,
@@ -744,7 +744,7 @@ export class WorkspaceSession {
   /**
    * The redactor the last report was written with, kept so the leak scan runs against the same
    * pseudonym table rather than a freshly built one — a different table is a different set of
-   * names, and the question being asked is whether *this* report still says one.
+   * names, and the question being asked is whether this report still says one.
    */
   private redaction: Redactor | undefined;
 
@@ -815,9 +815,9 @@ export class WorkspaceSession {
    */
   private permission(): Permission {
     return {
-      // A plan and its verdict are the decisive turns of a conversation and neither reaches the
-      // loop's event stream as a transcript line — so both are recorded here, at the seam that
-      // asks. The renderer runs the same two reducers on its own copy.
+      // A plan and its verdict are the decisive turns of a conversation, and neither reaches the
+      // loop's event stream as a transcript line, so both are recorded here. The renderer runs
+      // the same two reducers on its own copy.
       approvePlan: async (plan) => {
         const id = this.cardSeq++;
         this.record((convo) => proposed(convo, { id, plan }));
@@ -826,10 +826,9 @@ export class WorkspaceSession {
         return decision;
       },
       confirmAction: (tool, args) => this.deps.requestConfirm(tool, confirmDetail(tool, args)),
-      // The author's answer is the one turn of theirs that never passes through `run`, and the
-      // loop does not emit it — so a transcript that did not record it here would lose it. The
-      // question goes down with it, options and all: "the second one" is unreadable without the
-      // list it picked from. A declined confirmation needs no such care: that is a `blocked` event.
+      // The author's answer never passes through `run` and the loop does not emit it, so only a
+      // record made here keeps it — question included, since "the second one" is unreadable
+      // without its list. A declined confirmation needs none of this: it is a `blocked` event.
       ask: async (form) => {
         const id = this.cardSeq++;
         const questions = [...form];
@@ -863,8 +862,8 @@ export class WorkspaceSession {
   }
 
   /**
-   * The backend for the next turn. Native when the resolved chat backend can hold a conversation,
-   * which is the cached path; the text path otherwise.
+   * The backend for the next turn. A chat backend that can hold a conversation gets the native
+   * backend, which is the cached path. Every other backend gets the text path.
    *
    * The probe is `chatConversation` and deliberately not `chatWithTools`: Gemini implements the
    * latter, and moving it onto the native path would give it a larger tools block for a request
@@ -891,15 +890,15 @@ export class WorkspaceSession {
       // session's own `mock` is the only policy about whether it is real art.
       art: workspaceArtGen(workspace, { mock: this.mock }),
       text: workspaceTextLLM(workspace, { mock: this.mock }),
-      // The capability `vnauthor` does not have: the same two calls `asset.regenerate` makes, so
-      // an agent-started re-render takes the busy flag a pipeline run takes.
-      // The author's own words are the authority for an approval, so the seam carries the model
-      // that reads them alongside the two acts it gates.
+      // Approval is authorized by the author's own words, so this seam carries the model that
+      // reads them alongside the two acts it gates.
       approval: {
         list: () => this.approvable(),
         approve: (item) => this.approveOne(item),
         triage: () => this.triageBackend(),
       },
+      // The capability `vnauthor` does not have: the same two calls `asset.regenerate` makes, so
+      // an agent-started re-render takes the busy flag a pipeline run takes.
       pipeline: {
         regenerate: (hash) => this.regenerateAsset(hash),
         run: async () => {
@@ -929,7 +928,7 @@ export class WorkspaceSession {
 
   /**
    * A call to the model failed. Put it to the author with what can be done about it, once — the
-   * answer buys a *grant* of attempts, and the loop spends them without asking again.
+   * answer buys a grant of attempts, and the loop spends them without asking again.
    *
    * A second failure after the grant is spent does not ask again: the author already chose a
    * recovery and it did not work, so re-offering the same three options would just repeat the
@@ -946,8 +945,8 @@ export class WorkspaceSession {
     const plan = readApiPlan(answer, others);
     if (plan.do === 'switch') {
       // Before the retry rather than after it: the loop re-reads the backend every attempt, so a
-      // model swapped here is the one the next attempt is made against. One try on it, because a
-      // model the author picked failing is news, and worth telling them rather than grinding on.
+      // model swapped here is the one the next attempt is made against. It gets one try, so a
+      // model the author picked that also fails is reported rather than retried repeatedly.
       await this.setModel(plan.model);
       return { do: 'retry', times: 1 };
     }
@@ -997,8 +996,8 @@ export class WorkspaceSession {
     return new Workspace(this.dir).generatedContext();
   }
 
-  /** Rebuild that map. Throws if a file already sits at the path and the generator did not
-   * write it. */
+  /** Rebuild the generated project map. Throws if a file already sits at the path and the
+   * generator did not write it. */
   writeGeneratedContext(): Promise<{ file: string; counts: GeneratedCounts }> {
     return new Workspace(this.dir).writeGeneratedContext();
   }
@@ -1039,10 +1038,10 @@ export class WorkspaceSession {
     return this.while('an agent turn', async () => {
       const agent = await this.ensureAgent();
       await this.refreshProjectMap();
-      // The project map is a file, and this session outlives every rewrite of it — including the
-      // agent's own `update_context`. Re-read it per turn so the map above the tool output is not
-      // an older, more authoritative-looking answer than the tools give. Section by section, so a
-      // rewritten map supersedes itself in a message rather than invalidating the cached prefix.
+      // This session outlives every rewrite of the project map, the agent's own `update_context`
+      // included, so the map is re-read per turn and never outranks the tool output. Refreshed
+      // section by section, so a rewrite supersedes itself rather than invalidating the cached
+      // prefix.
       agent.refreshSystem(systemSections(await loadContext(this.dir)));
       const focus = scene ? focusOnScene(await this.index(), scene) : undefined;
       await this.beginThread(input);
@@ -1155,9 +1154,9 @@ export class WorkspaceSession {
    * The system prompt the next turn will carry, in its sections.
    *
    * Assembled from the project rather than read off `this.agent`, and deliberately so: `runAgent`
-   * calls `refreshSystem(systemSections(await loadContext(...)))` before every turn, so this *is*
-   * what the next turn sends — and it can be answered before an agent has ever been built, which
-   * is when an author most wants to check what it was told.
+   * calls `refreshSystem(systemSections(await loadContext(...)))` before every turn, so this is
+   * exactly what the next turn sends — and it can be answered before an agent has ever been
+   * built, which is when an author most wants to check what it was told.
    */
   async systemPrompt(): Promise<AgentSystem> {
     const context = await loadContext(this.dir);
@@ -1202,8 +1201,7 @@ export class WorkspaceSession {
       if (!(await git.isRepo())) return;
       const file = threadFile(paths, thread.id);
       // Nothing to commit means commit-on-save already recorded this transcript, so the answer is
-      // the commit that did — the pointer is about where the conversation *is*, not about who put
-      // it there.
+      // the commit that did — the pointer records where the conversation is, not who put it there.
       const sha =
         (await git.commit({
           message: `Close conversation: ${thread.title}`,
@@ -1231,19 +1229,16 @@ export class WorkspaceSession {
   }
 
   /**
-   * A saved conversation, for reading. It ends the live one — the model is *not* shown what comes
-   * back, so leaving the previous turns in its context while the screen shows somebody else's
-   * would be the one arrangement in which neither the author nor the agent knows what is being
-   * talked about.
+   * A saved conversation, for reading. It ends the live one: the model is never shown what comes
+   * back, so leaving the previous turns in its context while the screen shows another
+   * conversation would leave the author and the agent talking about different things.
    */
   async openThreadForReading(id: string): Promise<ThreadRecord> {
     const record = await readThread(new ProjectPaths(this.dir), id);
     await this.clearAgent();
-    // Reopened on the binding it was had on. A conversation reads as the model that wrote it —
-    // its turns, its refusals, its reasoning — so answering the next question on whatever the
-    // last conversation happened to leave bound is the one thing nobody means. `clearAgent` has
-    // already closed the live thread, so nothing is written here: the next turn opens a thread
-    // carrying this binding on its own line 0.
+    // Reopened on the binding it was recorded with, because a conversation reads as the model
+    // that wrote it. Nothing is written here — `clearAgent` has already closed the live thread,
+    // and the next turn opens a thread carrying this binding on its own line 0.
     if (record.model && record.model !== this.model) await this.setModel(record.model);
     if (record.effort && (EFFORT_CHOICES as readonly string[]).includes(record.effort)) {
       await this.setEffort(record.effort as EffortChoice);
@@ -1266,8 +1261,8 @@ export class WorkspaceSession {
   }
 
   /**
-   * The model and effort one analysis runs at. An empty field means *whatever the agent is bound
-   * to* — so a scripted `report.agent(thread='t3')` does the sensible thing without naming a
+   * The model and effort one analysis runs at. An empty field means whatever the agent is bound
+   * to, so a scripted `report.agent(thread='t3')` does the sensible thing without naming a
    * model, and the dialog seeds both explicitly when a person opens it.
    *
    * Nothing here is written back: the analysis borrows the binding for one run, and an author who
@@ -1286,7 +1281,7 @@ export class WorkspaceSession {
     return { modelId, ...(effort ? { effort } : {}) };
   }
 
-  /** The conversation an analysis would read: the one named, else the newest. */
+  /** The conversation an analysis would read. The one named, or the newest when none is named. */
   private async reportTarget(
     ask: ReportAsk,
   ): Promise<{ ok: false; message: string } | { ok: true; header: ThreadHeader }> {
@@ -1302,7 +1297,7 @@ export class WorkspaceSession {
 
   /**
    * What `report.agent` would do, without spending anything on it. Every refusal is a sentence a
-   * disabled control shows verbatim, and the key one is keyed to the *chosen* model — switching
+   * disabled control shows verbatim, and the key one is keyed to the chosen model — switching
    * the dropdown from a Claude id to a Gemini one changes which key has to be there. It names the
    * vendor and the command that sets it, never a value.
    */
@@ -1388,9 +1383,9 @@ export class WorkspaceSession {
   }
 
   /**
-   * Archive the report, and shrug if that fails. The author has the analysis on screen either way;
-   * refusing to show it because a copy could not be written would be losing the thing they paid a
-   * minute and a model call for over the thing they did not ask for.
+   * Archive the report, and report no file when that fails. The author has the analysis on screen
+   * either way, and a copy they did not ask for is not worth withholding the analysis they paid a
+   * minute and a model call for.
    */
   private async keepReport(body: string): Promise<{ file?: string }> {
     const userData = this.deps.userData;
@@ -1456,7 +1451,7 @@ export class WorkspaceSession {
 
     const { body, truncated } = fitBody(input.body);
     const url = issueUrl({ title: input.title, body });
-    // Belt to `issueUrl`'s own brace: what reaches the shell is checked, not merely composed.
+    // Checks the URL that reaches the shell rather than trusting what `issueUrl` composed
     assertIssueUrl(url);
 
     this.deps.writeClipboard?.(input.body);
@@ -1522,7 +1517,7 @@ export class WorkspaceSession {
 
   /**
    * Every picture that could be approved right now, upstream first — the same walk the document
-   * tree's *Awaiting approval* group is a projection of, so the agent and the tree can never
+   * tree's “Awaiting approval” group is a projection of, so the agent and the tree can never
    * disagree about what is waiting. A blocked row is still listed, with a sentence saying what
    * it is waiting on: the whole frontier is more useful than just the subset that happens to be
    * actionable this second.
@@ -1578,7 +1573,7 @@ export class WorkspaceSession {
     return out;
   }
 
-  /** Approve one of them through whichever door it belongs to. */
+  /** Approve one `Approvable` through whichever door it belongs to. */
   async approveOne(item: Approvable): Promise<{ ok: boolean; message: string }> {
     if (item.door !== 'gate') return this.acceptAsset(item.hash);
     if (!item.characterId) {
@@ -1593,7 +1588,7 @@ export class WorkspaceSession {
   /**
    * The small model that reads the author's own words before art is approved on their say-so.
    * Fixed at {@link TRIAGE_MODEL} rather than following the conversation's model: this is a check
-   * *on* the agent, and running it on the model being checked would not be a check. Returns
+   * on the agent, and running it on the model being checked would not be a check. Returns
    * `null` in a mocked session, where `@vn/authoring`'s `offlineTriage` stands in and says so.
    */
   private async triageBackend(): Promise<ChatBackend | null> {
@@ -1643,13 +1638,13 @@ export class WorkspaceSession {
     const label = labelAssets(manifest, labels).get(hash) ?? hash;
     const prereqs = assetPrereqs(asset, { ...labels, assets: manifest, shots });
     // Only for the kinds that can be accepted at all: a portrait, a concept and an upload are each
-    // refused by name before this could be reached, and a second sentence beside those reads as a
-    // second rule. Their prereqs are still listed — what a sketch was drawn from is worth showing
-    // even where there is nothing to approve.
+    // refused by name already, and a second sentence beside those reads as a second rule. Their
+    // prereqs are still listed, because what a sketch was drawn from is worth showing regardless.
     const unapproved = ACCEPTABLE.has(asset.kind) ? prereqRefusal(label, prereqs) : undefined;
     const from = slotOf(asset, labels.angleOf?.(asset.sourceTask));
     // A slot only counts while these are the bytes in it: a superseded render keeps its binding,
-    // and a pane offering to replace *that* would supersede a picture already moved past.
+    // and a pane offering to replace a superseded render would supersede a picture already
+    // moved past.
     const slot = from && task?.status === 'done' && task.output === asset.hash ? from : undefined;
     return {
       hash: asset.hash,
@@ -1710,15 +1705,15 @@ export class WorkspaceSession {
       };
     }
     if (info.suspended) {
-      // Accepting is the whole point of suspension: it says these bytes are the answer, and they
-      // were drawn against a reference that has since moved.
+      // Accepting says these bytes are the answer, and a suspended asset was drawn against a
+      // reference that has since moved.
       return {
         ok: false,
         message: `${info.label} is suspended: ${info.suspended}. Repin or regenerate it first.`,
       };
     }
-    // After suspension deliberately: that is a claim about *these* bytes resting on a reference
-    // that moved, which is the more specific thing to say. This one is about other bytes.
+    // Checked after suspension deliberately: suspension is a claim about these bytes resting on a
+    // reference that moved, which is more specific than a claim about other bytes upstream.
     if (info.unapproved) return { ok: false, message: info.unapproved };
     return {
       ok: true,
@@ -1814,8 +1809,8 @@ export class WorkspaceSession {
 
   /**
    * Put an asset's task back to `pending` so the next run re-renders it. Appending a `pending`
-   * snapshot to `tasks.jsonl` *is* the requeue — `loadGraph` replays last-writer-wins, which is
-   * how `requeueFailed` already works — so this needs no new scheduler machinery.
+   * snapshot to `tasks.jsonl` performs the requeue — `loadGraph` replays last-writer-wins, which
+   * is how `requeueFailed` already works — so this needs no new scheduler machinery.
    */
   async regenerateAsset(
     hash: string,
@@ -1960,7 +1955,7 @@ export class WorkspaceSession {
     const rung = rungOf(asset);
     const override = rung ? overrideAt(rung, { model: project.model, shots }) : undefined;
     const composed = composePrompt(chunks, override);
-    // Only a whole-prompt rewrite can lose a clause; in chunks mode the text *is* the chunks, and
+    // Only a whole-prompt rewrite can lose a clause; in chunks mode the text is the chunks, and
     // marking them would say "not found" about words that are demonstrably there.
     const marks =
       composed.mode === 'chunks'
@@ -2067,8 +2062,8 @@ export class WorkspaceSession {
    *
    * Enforcement is here, at write time, rather than in the planner: refusing at plan time would mean
    * the project is already broken on disk and the author meets a run failure instead of a rejected
-   * gesture. A bare hash attaches with no `from` — an upload or a concept *is* its own identity, so
-   * there is no slot under it and it can never drift.
+   * gesture. A bare hash attaches with no `from`, because an upload or a concept carries its own
+   * identity: there is no slot under it, so it can never drift.
    */
   private async addRefPlan(
     hash: string,
@@ -2265,9 +2260,9 @@ export class WorkspaceSession {
   }
 
   /**
-   * Move a pinned reference to what its slot holds now. Written before the adoption is logged, and
-   * the adoption is decided *before* either — so a refusal leaves the pin where it was rather than
-   * a moved pin with no output.
+   * Move a pinned reference to what its slot holds now. The adoption is decided first, then the
+   * pin is written, then the adoption is logged — so a refusal leaves the pin where it was rather
+   * than leaving a moved pin with no output.
    */
   async repinPrompt(
     hash: string,
@@ -2306,7 +2301,7 @@ export class WorkspaceSession {
   }
 
   /**
-   * Condense the chunks into one prompt and store it at the rung. The condensation is **held** the
+   * Condense the chunks into one prompt and store it at the rung. The condensation is held the
    * moment the chunks move under it — `composePrompt` keeps sending this text rather than the
    * fresh chunks, because re-rendering would move the task hash and re-render the picture.
    */
@@ -2451,7 +2446,7 @@ export class WorkspaceSession {
    * for — and nothing else: not the message, not the log, and not `commands.jsonl`, where
    * `prop.secret` has already replaced it.
    *
-   * At the project scope, `keys` is ignored *before* the write, because commit-on-save runs
+   * At the project scope, `keys` is ignored before the write happens, because commit-on-save runs
    * `git commit -A` and would otherwise commit the file within the second. At the user scope
    * there is no repository to ignore it in — the directory is deliberately outside every one —
    * so the guard is the file mode instead: `0600` on POSIX. A project's `keys/` never needed
@@ -2552,7 +2547,7 @@ export class WorkspaceSession {
    * rate-limited at 60 an hour per IP — fine for one desktop app, which is why nothing automated
    * may ever call this.
    *
-   * **It never throws.** Every failure comes back as an `unreachable` verdict carrying its own
+   * It never throws. Every failure comes back as an `unreachable` verdict carrying its own
    * sentence, because a check the author did not ask for must be able to fail without filing an
    * `error` notification at someone mid-scene. `announcementFor` is what decides whether the
    * verdict is worth saying out loud.
@@ -2614,7 +2609,7 @@ export class WorkspaceSession {
    * and every one of those failures otherwise surfaces much later, inside a run, as a stack of
    * pipeline errors that name a task rather than a key.
    *
-   * The model is one the *project* already configures for that vendor, not a name written down
+   * The model is one the project already configures for that vendor, not a name written down
    * here: a model id this file invented could be one the account has no access to, and the
    * refusal would then be about our choice rather than about their key.
    */
@@ -2690,7 +2685,7 @@ export class WorkspaceSession {
    * The rule behind every `prompt.*` write, decided once against a fresh load: which rung owns
    * this picture, what the edit does to what is stored there, and which file that lands in.
    *
-   * The two writers are the same two `artNotesPlan` has — an entity sheet through `@vn/model`'s
+   * The two writers are the same two `setArtNotes` has — an entity sheet through `@vn/model`'s
    * `apply*Edit`, or `work/shots/<sceneId>.json` — because an override lives beside the art notes
    * it overrides, and this is the only place in the app that split appears.
    */
@@ -3027,7 +3022,7 @@ export class WorkspaceSession {
     const slot = parseSlot(info.slot);
     if (!slot) return { ok: false, reason: `"${info.slot}" is not a picture in this project.` };
 
-    // Apply every refusal except `MOCK_PLACEHOLDER`: that one judges the bytes coming *in*, and
+    // Apply every refusal except `MOCK_PLACEHOLDER`: that one judges the incoming bytes, and
     // the chooser has not produced any yet — `uploadOf` refuses mock art at the upload, which is
     // where that check belongs. This call only exists to check the slot itself.
     const decided = await this.adoptPlan(hash, info.slot, false);
@@ -3235,13 +3230,13 @@ export class WorkspaceSession {
   }
 
   /**
-   * Every file under `.aiagent/skills`, as the Skills pane's own tree — the *content* the document
+   * Every file under `.aiagent/skills`, as the Skills pane's own tree — the content the document
    * tree deliberately leaves out.
    *
-   * Its own walk rather than a filter over `fileTree()`: that one is capped at 5000 files across
-   * the whole project, so on a large one `.aiagent` could be truncated away and this pane would
-   * draw an empty directory with nothing to say about why. It would also ship the entire project's
-   * file list to paint a dozen rows.
+   * Its own walk rather than a filter over `fileTree()`: that one is capped at `TREE_MAX_FILES`
+   * across the whole project, so on a large one `.aiagent` could be truncated away and this pane
+   * would draw an empty directory with nothing to say about why. It would also ship the entire
+   * project's file list to paint a dozen rows.
    *
    * No skills directory at all is `[]`, not a failure: that is the state every new project starts
    * in, and it is the Skills branch being drawn empty that tells the author what to do about it.
@@ -3309,12 +3304,11 @@ export class WorkspaceSession {
         ? { id, path: relPath(this.dir, join(paths.wikiDir, `${id}.md`)), text: `# ${name}\n` }
         : null;
     }
-    // A skill is a directory with a `SKILL.md` in it. `writeFileAtomic` makes the directory, so
-    // nothing here has to — and the refusal that results is deliberately *not* `writeSkill`'s. That
-    // one refuses an existing **directory**; this goes through `checkDocWrite` with an empty
-    // `seenHash` and refuses an existing **file**. So a directory a human has already put a vetted
-    // `run.mjs` in accepts the author's scaffold and rejects the agent's, which is the right way
-    // round: the human is the one who put the script there.
+    // A skill is a directory with a `SKILL.md` in it, and `writeFileAtomic` makes the directory.
+    // The refusal differs from `writeSkill`'s deliberately: that one refuses an existing
+    // directory, while this goes through `checkDocWrite` with an empty `seenHash` and refuses an
+    // existing file. So a directory a human has already put a vetted `run.mjs` in accepts the
+    // author's scaffold and rejects the agent's, and the human is the one who put the script there.
     if (kind === 'skill') {
       const id = skillId(name);
       if (!id) return null;
@@ -3346,9 +3340,9 @@ export class WorkspaceSession {
   }
 
   /**
-   * Scaffold a character, a location, a wiki note or a skill from a **name**. The empty `seenHash` is what
-   * makes this a creation: the write refuses over a file already there rather than overwriting
-   * whatever the author had under that name.
+   * Scaffold a character, a location, a wiki note or a skill from a name. The empty `seenHash` is
+   * what makes this a creation: the write refuses over a file already there rather than
+   * overwriting whatever the author had under that name.
    */
   async createDoc(
     kind: NewDocKind,
@@ -3393,7 +3387,7 @@ export class WorkspaceSession {
   }
 
   /**
-   * Rename one document in place. The **file never moves**: an id is derived from a name once, at
+   * Rename one document in place. The file never moves: an id is derived from a name once, at
    * creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at.
    */
   async renameDoc(
@@ -3516,7 +3510,7 @@ export class WorkspaceSession {
   }
 
   /**
-   * The decision behind `story.moveShot`, which is the one scene edit whose *rule* needs the
+   * The decision behind `story.moveShot`, which is the one scene edit whose rule needs the
    * storyboard: `planSceneEdit` hands its callback the script state and nothing else, so the shots
    * are read here and curried in. The result is an ordinary `(state) => LineOp`, so `check` and
    * `run` go through `previewSceneEdit`/`editScene` like every other prose edit.
@@ -3592,7 +3586,7 @@ export class WorkspaceSession {
   /**
    * Persist the ids reading already allocated as `[[line:]]` marks. Nothing about the model
    * changes — the ids are the same ones `splitScenes` handed out — so this writes the prose
-   * files and reports; the point is that a *later* insertion can no longer shift them.
+   * files and reports; what it buys is that a later insertion can no longer shift them.
    */
   async writeLineIds(
     sceneId?: string,
@@ -3680,8 +3674,8 @@ export class WorkspaceSession {
 
   /**
    * Convert a `screenplay/*.fountain` project into one chunk per scene — the `vngen import`
-   * equivalent. The screenplay is moved aside rather than deleted, and **last**: while it is still
-   * a `.fountain` the project reports it on every load, so the rename is what finishes the import.
+   * equivalent. The screenplay is moved aside rather than deleted, and moved last: while it is
+   * still a `.fountain` the project reports it on every load, so the rename finishes the import.
    */
   async importScreenplay(): Promise<{ ok: boolean; message: string; written: string[] }> {
     const plan = await this.planImport();
@@ -4086,7 +4080,7 @@ export class WorkspaceSession {
   }
 
   /**
-   * What a run would find. The count is a **dry run against mock providers** — what `vngen cost`
+   * What a run would find. The count is a dry run against mock providers — what `vngen cost`
    * does — rather than a read of the replayed graph: `tasks.jsonl` holds only what earlier runs
    * planned, so on a project that has never run it says zero while the work is not zero. Nothing
    * is written; a dry run plans with `readOnlyShots` and requeues in memory.
@@ -4141,8 +4135,8 @@ export class WorkspaceSession {
   /**
    * What `decomposeAllScenes` would do, computed without calling the model. A `check` may not
    * spend a model call, so this is the cheap half: how many scenes have no storyboard, which
-   * files will not parse, which scenes name
-   * a character the project does not have yet — and whether the *text* key resolves.
+   * files will not parse, which scenes name a character the project does not have yet — and
+   * whether the text key resolves.
    *
    * Deliberately `anthropic` and not `gemini`: decomposition draws nothing, and refusing it for a
    * missing image key would be a refusal the author cannot act on.

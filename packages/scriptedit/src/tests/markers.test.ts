@@ -22,12 +22,12 @@ describe('planMarkerEdit', () => {
     expect(plan.patches).toHaveLength(1);
     expect(plan.patches[0]!.source.id).toBe('arrival');
     expect(plan.patches[0]!.text).toContain('[[outfit: aiko=track]]');
-    // The rewire it was not asked about survives untouched.
+    // A marker the edit did not name is left as it was
     expect(plan.patches[0]!.text).toContain('[[next: greet]]');
   });
 
-  // The distinction the empty plan exists for: "already so" is a success, and the caller can say
-  // so without diffing anything.
+  // An empty patch list is a success rather than a refusal, so the caller can report "already so"
+  // without diffing anything
   it('plans no patch when the file already says it', () => {
     const already = source('arrival', '[[outfit: aiko=track]]\n');
     const plan = planMarkerEdit([already], [{ sceneId: 'arrival', outfits: { aiko: 'track' } }]);
@@ -43,7 +43,7 @@ describe('planMarkerEdit', () => {
   });
 
   /**
-   * The all-or-nothing, which is the reason planning is separate from applying: a set spanning two
+   * Planning is separate from applying so that an edit set is all-or-nothing. A set spanning two
    * files and refused on the second must not have written the first.
    */
   it('refuses the whole set when one edit in it cannot be made', () => {
@@ -59,7 +59,7 @@ describe('applyMarkerPlan', () => {
   it('writes the front-matter back byte-exactly and reports the files', async () => {
     const dir = await fs.mkdtemp(join(tmpdir(), 'vn-markers-'));
     try {
-      // Front-matter with a comment in it: re-serializing would eat it, splicing cannot.
+      // Re-serializing this front matter would drop the hand-written comment; splicing keeps it
       const prefix = '---\nscene: arrival\n# hand-written, keep me\n---\n';
       const src: SceneSource = { ...source('arrival'), file: join(dir, 'arrival.md'), prefix };
       await fs.writeFile(src.file, src.prefix + src.script);

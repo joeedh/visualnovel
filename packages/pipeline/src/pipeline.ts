@@ -3,10 +3,10 @@ import type { AssetStore } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 
 /**
- * Everything a runner needs to execute one task (report §5, §8). Distinct from the graph
- * itself: the scheduler owns the graph and status transitions; a runner only produces an
- * asset from a fully-specified task. `now` supplies timestamps because workflow/runner code
- * must stay deterministic where possible — the caller injects the clock.
+ * Everything a runner needs to execute one task (report §5, §8). This is not the graph: the
+ * scheduler owns the graph and status transitions, and a runner only produces an asset from a
+ * fully-specified task. `now` supplies timestamps because runner code must stay deterministic
+ * where possible, so the caller injects the clock.
  */
 export interface RunDeps {
   model: ProjectModel;

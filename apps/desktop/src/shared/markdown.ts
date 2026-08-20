@@ -6,11 +6,10 @@
  * only source of words. Rendering it means understanding it, and the alternative to a subset is
  * a markdown library in the browser bundle for two screens of prose.
  *
- * What it understands: paragraphs, headings, ordered and unordered lists, pipe tables, fenced
- * code, and inline `code`, **strong** and `[links](href)`. What it does not: emphasis, images,
- * block quotes, nested lists, HTML, reference links. Anything unrecognised survives as text
- * rather than disappearing, which is the property that matters — a page this cannot fully draw
- * is still a page a reader can follow.
+ * It understands paragraphs, headings, ordered and unordered lists, pipe tables, fenced code,
+ * and inline `code`, `**strong**` and `[links](href)`. It does not understand emphasis, images,
+ * block quotes, nested lists, HTML or reference links. Anything unrecognised survives as text
+ * rather than disappearing, so a page this cannot fully draw is still a page a reader can follow.
  *
  * It is here rather than in the renderer because main is what reads the file: the blocks travel
  * over IPC already parsed, so the renderer draws and does not interpret.

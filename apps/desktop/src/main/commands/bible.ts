@@ -1,5 +1,5 @@
 /**
- * The story bible as a command. Read-only and budgeted: there is no `bible.read`, because
+ * The one command over the story bible, read-only and budgeted. There is no `bible.read` because
  * `@vn/bible` has no whole-file API — a surface that wants the bible gets ranked excerpts or
  * opens the file itself.
  */

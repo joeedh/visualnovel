@@ -1,14 +1,15 @@
 /**
- * The exporter: project model + asset store → {@link Playable} (`story.play.json`).
+ * The exporter. Projects a project model plus an asset store into a {@link Playable}
+ * (`story.play.json`).
  *
  * `buildPlayable` is pure and in-memory. It flattens each scene's structured `lines` into an
  * ordered beat list: a `show` beat whenever the covering shot changes, then `say` (attributed
  * dialogue/parenthetical) or `narrate` (narration/action). Branch edges come straight from the
  * scene's `choices`/`next`, and the entry from the model.
  *
- * Assets are referenced by `{hash, ext}` and resolved from the manifest — never inlined, and
- * always *omitted* when absent so a partially-generated (or entirely un-generated) project
- * still plays (the runner shows a placeholder).
+ * Assets are referenced by `{hash, ext}` and resolved from the manifest, never inlined. An
+ * absent asset is omitted, so a partially-generated (or entirely un-generated) project still
+ * plays and the runner shows a placeholder.
  */
 import type {
   Asset,
@@ -40,7 +41,7 @@ interface CoveringShot {
  *
  * A model rebuilt from disk carries no shots — they exist in memory only while the planner is
  * running — so without this the exporter falls back to reconstructing the deterministic
- * baseline for *every* scene. For a scene the LLM decomposed that reconstruction names shot
+ * baseline for every scene. For a scene the LLM decomposed that reconstruction names shot
  * ids no run ever produced, and each one resolves to a `show` beat with no image: the art was
  * generated, paid for, and then never displayed.
  *
@@ -61,7 +62,7 @@ export async function loadSceneShots(
 
 /**
  * The shots that bind lines → images for a scene. Prefers the persisted decomposition, then
- * the scene's own in-memory shots; with neither it reconstructs the *deterministic* baseline,
+ * the scene's own in-memory shots; with neither it reconstructs the deterministic baseline,
  * mirroring `@vn/artgen`'s `deterministicShots` (which this package must not import): an
  * establishing shot over the scene's unattributed lines, plus one medium shot per character
  * over that character's dialogue lines. The reconstructed ids match the pipeline's
@@ -89,7 +90,7 @@ function coveringShots(scene: Scene, persisted?: readonly Shot[]): CoveringShot[
   return shots;
 }
 
-/** Manifest lookups: content-addressed, filtered by kind + subject + acceptance. */
+/** Content-addressed manifest lookups, filtered by kind, subject and acceptance. */
 class AssetIndex {
   constructor(private readonly assets: readonly Asset[]) {}
 
@@ -104,7 +105,10 @@ class AssetIndex {
     );
   }
 
-  /** A portrait for a character: the explicitly approved hash, else any accepted portrait. */
+  /**
+   * A portrait for a character. Uses the explicitly approved hash when the character has one,
+   * otherwise the first accepted portrait.
+   */
   portrait(characterId: string, approvedHash?: string): AssetRef | undefined {
     if (approvedHash) {
       const byHash = this.assets.find((a) => a.hash === approvedHash);
@@ -130,8 +134,8 @@ function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[
       const image = assets.shotImage(shot.id);
       beats.push(image ? { type: 'show', shot: shot.id, image } : { type: 'show', shot: shot.id });
     }
-    // A transition is coverable but is not shown: `CUT TO:` is an instruction to the reader
-    // of a screenplay, not a line of the story. It still changes the frame above.
+    // A transition is coverable but is not shown: `CUT TO:` is an instruction to the reader of
+    // a screenplay, not a line of the story. The show beat emitted above still changes the frame.
     if (line.kind === 'transition') continue;
     if ((line.kind === 'dialogue' || line.kind === 'parenthetical') && line.speaker) {
       beats.push({ type: 'say', who: line.speaker, text: line.text });
@@ -181,8 +185,8 @@ export function buildPlayable(
     version: 1,
     title: model.title,
     ...(model.entry ? { start: model.entry } : {}),
-    // Written even when false. A missing asset ref means "not generated yet"; this is a knob,
-    // and an author reading story.play.json should see it is there and off.
+    // Written even when false, so an author reading story.play.json sees the setting present
+    // and off. An omitted field would read as "not generated yet", the way a missing ref does.
     portraitOverlay,
     characters,
     scenes,

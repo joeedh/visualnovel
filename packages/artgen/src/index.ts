@@ -1,14 +1,14 @@
 /**
  * Art generation policy, shared by the pipeline, the desktop app and `vnauthor`.
  *
- * Two halves. **Prompt composition** — the builders every planned image is derived from — lives
- * here rather than in `@vn/pipeline` so the input side can reach it: an agent that cannot import
- * the pipeline still has to compose a prompt that looks like this project's art. **On-demand
- * generation** is the door the planner deliberately does not have: one sentence in, one `concept`
- * asset out, bound to what it sketches but consumed by nothing — plus `redrawConcept`, which draws
- * one again from an edited prompt (the one prompt in the system that is authored rather than
- * derived), and `promoteConcept`, which turns a sketch that turned out to be canon into the plate
- * the planner would have rendered.
+ * Two halves. Prompt composition — the builders every planned image is derived from — lives here
+ * rather than in `@vn/pipeline` so the input side can reach it: an agent that cannot import the
+ * pipeline still has to compose a prompt that looks like this project's art. On-demand generation
+ * is what the planner deliberately cannot do: one sentence in, one `concept` asset out, bound to
+ * what it sketches but consumed by nothing. Alongside it, `redrawConcept` draws one again from an
+ * edited prompt (the one prompt in the system that is authored rather than derived), and
+ * `promoteConcept` turns a sketch that turned out to be canon into the plate the planner would
+ * have rendered.
  */
 export * from './gate.js';
 export * from './chunks.js';

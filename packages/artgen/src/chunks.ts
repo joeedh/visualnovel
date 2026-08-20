@@ -32,9 +32,9 @@ export interface Composed {
   /** Every chunk, in effective order, muted ones included and marked. */
   chunks: EffectiveChunk[];
   /**
-   * `mode === 'agent'` and the chunks have moved since it condensed them. The text is **held**:
-   * the stale condensation is still what gets sent, because re-rendering would move the task hash
-   * and re-render the asset, which is exactly what holding exists to prevent.
+   * `mode === 'agent'` and the chunks have moved since the agent condensed them. The stale
+   * condensation is still what gets sent, because re-rendering would move the task hash and
+   * re-render the asset, which is exactly what holding exists to prevent.
    */
   held: boolean;
 }
@@ -59,8 +59,8 @@ export function renderPrompt(chunks: readonly PromptChunk[]): string {
  *
  * Text is trimmed and its whitespace collapsed here rather than at the end. That is equivalent to
  * the old global collapse, because the join between chunks is a single space: `paletteClause`
- * returns a **leading-space** string, and the space this trims is exactly the one `join(' ')` puts
- * back. An all-whitespace clause used to survive `.filter(Boolean)` and be erased by the final
+ * returns a string with a leading space, and the space this trims is exactly the one `join(' ')`
+ * puts back. An all-whitespace clause used to survive `.filter(Boolean)` and be erased by the final
  * collapse; here it is dropped up front, to the same effect.
  */
 export function chunk(
@@ -135,7 +135,7 @@ export function enabledChunks(chunks: readonly EffectiveChunk[]): EffectiveChunk
 }
 
 /**
- * What an agent-condensed prompt was condensed *from*: `key\ntext` of the enabled chunks, in
+ * What an agent-condensed prompt was condensed from: `key\ntext` of the enabled chunks, in
  * effective order. Muting and unmuting round-trips to the same fingerprint; reordering does not —
  * the agent chose that sentence order for the image model, so a reorder is a real change to what
  * it was asked to condense.
@@ -151,8 +151,8 @@ export function chunkFingerprint(chunks: readonly PromptChunk[], o?: PromptOverr
 /**
  * The whole override, resolved to one string plus the chunk list a surface draws.
  *
- * In `agent` mode the stored text is returned **unconditionally** — never a fallback to freshly
- * rendered chunks. Falling back would move the prompt, and therefore the task hash, and therefore
+ * In `agent` mode the stored text is always returned, never a fallback to freshly rendered
+ * chunks. Falling back would move the prompt, and therefore the task hash, and therefore
  * re-render the asset without anyone asking; `held` says the condensation is out of date instead.
  */
 export function composePrompt(chunks: readonly PromptChunk[], o?: PromptOverride): Composed {

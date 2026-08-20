@@ -1,7 +1,7 @@
 /**
  * What to call an asset on screen. A content hash is the asset's identity, not its name, so the
- * sidebar and the backlink panel say `Aiko — uniform / front` and keep the hash for when two
- * assets would otherwise answer to the same words. Pure: every fact comes from the caller.
+ * sidebar and the backlink panel say `Aiko — uniform / front` and fall back to the hash when two
+ * assets would otherwise carry the same words. Pure: every fact comes from the caller.
  */
 import type { AnyTask, Asset, AssetBinding, ProjectModel } from '@vn/types';
 
@@ -9,13 +9,13 @@ import type { AnyTask, Asset, AssetBinding, ProjectModel } from '@vn/types';
 export interface AssetLabelContext {
   model: ProjectModel;
   /**
-   * The model-sheet angle a task was for. `Asset.satisfies` binds only `{characterId, outfit}`
-   * — four sheets share that binding and differ only here.
+   * The model-sheet angle a task was for. `Asset.satisfies` binds only `{characterId, outfit}`,
+   * so four sheets share that binding and differ only in the angle.
    */
   angleOf?: (sourceTask: string | undefined) => string | undefined;
 }
 
-/** The context a loaded project answers with — the model for names, the graph for angles. */
+/** Builds the context from a loaded project: the model supplies names, the graph supplies angles. */
 export function labelContext(
   model: ProjectModel,
   graph: { get(hash: string): AnyTask | undefined },
@@ -29,7 +29,7 @@ export function labelContext(
   };
 }
 
-/** The fallback name, and the suffix a collision gets: the first 8 of the hash. */
+/** First 8 characters of the hash, used as the fallback name and as a collision suffix. */
 const short = (hash: string): string => hash.slice(0, 8);
 
 function nameOf(binding: AssetBinding, ctx: AssetLabelContext): string | undefined {
@@ -39,17 +39,16 @@ function nameOf(binding: AssetBinding, ctx: AssetLabelContext): string | undefin
 }
 
 /**
- * One asset's display name, or `undefined` when nothing in the model claims it — an asset whose
- * character has since been deleted has no name to give, and inventing one would be a lie about
- * what the manifest says.
+ * One asset's display name, or `undefined` when nothing in the model claims it. An asset whose
+ * character has since been deleted has no name, and none is invented for it.
  */
 export function assetLabel(asset: Asset, ctx: AssetLabelContext): string | undefined {
   const binding = asset.satisfies[0];
-  // An upload's name is the one an author typed, or the file they picked. It is bound to nothing
-  // by construction — nothing generated it — so a binding is never what names it.
+  // An upload's name is the one an author typed, or the file they picked. Nothing generated an
+  // upload, so it carries no binding and a binding never names it
   if (asset.kind === 'reference') return asset.title || undefined;
-  // A concept is the other kind whose name was authored rather than derived, and the other that may
-  // legitimately be bound to nothing — so it answers before the binding is required.
+  // A concept's name is also authored rather than derived, and a concept may legitimately carry no
+  // binding, so the concept case is handled before a binding is required
   if (asset.kind === 'concept') {
     const of = binding ? nameOf(binding, ctx) : undefined;
     if (!asset.title) return of;
@@ -78,9 +77,9 @@ export function assetLabel(asset: Asset, ctx: AssetLabelContext): string | undef
 }
 
 /**
- * Every asset's label, hash → label. Two assets that land on the same words both keep a
- * `(hash8)` suffix, so a label is never quietly ambiguous; one with no label at all falls back
- * to the `hash8.ext` the tree showed before names existed.
+ * Every asset's label, keyed by hash. Two assets that produce the same words both get a `(hash8)`
+ * suffix, so a label is always unambiguous. An asset with no label falls back to `hash8.ext`,
+ * which is what the tree showed before names existed.
  */
 export function labelAssets(assets: readonly Asset[], ctx: AssetLabelContext): Map<string, string> {
   const named = new Map<string, string | undefined>();

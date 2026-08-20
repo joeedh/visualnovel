@@ -15,13 +15,13 @@ describe('needsCheck', () => {
   });
 
   it('does not ask for an entry that only opens the palette', () => {
-    // Its props are incomplete on purpose, so the refusal would be about the blank the author is
-    // on their way to filling in.
+    // The entry's props are incomplete on purpose, so a refusal would only name the blank the
+    // author is on their way to filling in.
     expect(needsCheck({ label: 'Promote…', id: 'art.promote', form: true })).toBe(false);
   });
 
   it('does not ask about an entry the surface already refused', () => {
-    // There is nothing to ask *about*: the props it would carry are the ones that do not exist.
+    // The entry names no asset, so a check would have no id to ask a command about.
     expect(
       needsCheck({
         label: 'Open shot asset',
@@ -103,7 +103,7 @@ describe('entriesWithVerdicts', () => {
   it('falls back to what the registry says the command does', () => {
     const says = { 'view.open': 'Show a different editor in this pane' };
     const resolved = entriesWithVerdicts(entries, answered, says);
-    // Undeclared is not a sentence, so the row still says something rather than nothing.
+    // An undeclared verdict carries no message, so the description fills the row instead.
     expect(resolved[3]!.message).toBe('Show a different editor in this pane');
     // A form entry is never checked at all, and gets the same fallback.
     expect(

@@ -4,7 +4,7 @@
  *
  * This is the one `done` record written outside the scheduler, and it has to be unable to forge
  * work that never happened. The property is structural rather than a convention: the caller hands
- * over the task's **inputs**, derived from the project as it stands, and this module hashes them.
+ * over the task's inputs, derived from the project as it stands, and this module hashes them.
  * There is no way to pass a remembered task hash, so there is no way to mark done a node the
  * project no longer describes.
  *
@@ -19,15 +19,15 @@ import type { ProjectPaths } from '@vn/store';
 /** Bytes, and the task identity they are being claimed as the output of. */
 export interface AdoptRequest<K extends TaskKind> {
   kind: K;
-  /** Derived from the project **now**. Hashed here; a hash may not be passed in its place. */
+  /** Derived from the project as it stands. Hashed here; a hash may not be passed in its place. */
   inputs: TaskInputs[K];
   /** The asset whose bytes become the output. Already in the store. */
   output: Asset;
   /** The prompt recorded on the attempt. Defaults to the one in `inputs`, when it has one. */
   prompt?: string;
   /**
-   * Supersede a render that already holds this identity. Off by default, because the refusal is
-   * the safety property; a caller sets it when the author has been shown which render they are
+   * Supersede a render that already holds this identity. Off by default, because refusing is what
+   * keeps adoption safe; a caller sets it when the author has been shown which render they are
    * replacing and said yes. Nothing is destroyed either way — `tasks.jsonl` is append-only and the
    * superseded bytes stay in the store.
    */
@@ -50,11 +50,11 @@ export type Adoption<K extends TaskKind> =
  * Whether an adoption would land, and the record it would write. A read — {@link adopt} asks this
  * again rather than trusting that a check ran.
  *
- * The interesting refusal is the last one. A `done` node already holding **different** bytes means
- * the identity did not move, so nothing about the project changed and this would quietly replace a
- * real render with something else. When the identity *has* moved — which is what repinning does —
- * there is no node, and adoption is exactly the right answer. `replace` is the third case: the
- * author *means* to supersede that render, and says so before the act rather than around it.
+ * A `done` node already holding different bytes means the identity did not move, so nothing about
+ * the project changed and adopting would quietly replace a real render with something else; that
+ * case is refused. When the identity has moved — which is what repinning does — there is no node,
+ * and adoption is exactly the right answer. `replace` is the third case: the author means to
+ * supersede that render, and says so before the act rather than around it.
  */
 export function adoptionOf<K extends TaskKind>(
   req: AdoptRequest<K>,
@@ -100,7 +100,7 @@ export function adoptionOf<K extends TaskKind>(
 
 /**
  * Write the adoption. `loadGraph` replays the record, `TaskGraph.add` returns the existing `done`
- * node, and `ready()` skips it — which is the whole mechanism.
+ * node, and `ready()` skips it.
  */
 export async function adopt<K extends TaskKind>(
   paths: ProjectPaths,

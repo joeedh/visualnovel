@@ -2,10 +2,10 @@
  * Which of the two small drag targets a pointer is on: a card's connect handle, or the
  * arrowhead of a wire that could be pulled off its target.
  *
- * Both straddle a card's boundary — the handle sits on a bottom edge, an arrowhead on the
- * target's top edge — so neither can be resolved by `pick` alone: half of each disc lies where
- * `pick` answers "background" or "that card". This runs first and answers from the discs
- * themselves, which is the only way they are as big as they look in both directions.
+ * Both straddle a card's boundary (a handle sits on a bottom edge, an arrowhead on the target's
+ * top edge) so `pick` alone cannot resolve them: half of each disc lies where `pick` answers
+ * "background" or "that card". This runs first and answers from the discs themselves, which is
+ * what makes them as big as they look on both sides of the edge.
  */
 import type { EdgeRoute } from '../../graph/edges.js';
 import { handleAnchor } from '../../graph/edges.js';
@@ -17,9 +17,9 @@ const near = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 /**
  * `radius` is in world units — the caller divides its screen-pixel grab radius by the viewport
- * scale, exactly as hit-testing does. Handles beat arrowheads: a handle is the start of a
- * gesture, and the only case where both discs overlap is a card short enough that its top and
- * bottom are within one radius, where wiring outward is the likelier intent.
+ * scale, exactly as hit-testing does. A handle wins over an arrowhead: a handle starts a gesture,
+ * and the discs only overlap on a card short enough that its top and bottom are within one radius,
+ * where wiring outward is the likelier intent.
  */
 export function grabAt(
   nodes: readonly LaidOutNode[],

@@ -5,8 +5,8 @@ import type { DocFile, DocSaveResult } from '../../../src/shared/ipc.js';
 const settle = (): Promise<void> => new Promise((done) => setTimeout(done, 0));
 
 /**
- * A fake disk. `read` answers from `files`, `write` refuses on a hash mismatch the way `doc.write`
- * does — the refusal is the point of `seenHash`, so a fake that always accepted would test nothing.
+ * A fake disk. `read` answers from `files`, and `write` refuses on a hash mismatch the way
+ * `doc.write` does, which is what `seenHash` exists for.
  */
 class FakeIo implements DocIo {
   readonly files = new Map<string, { text: string; hash: string }>();
@@ -97,7 +97,7 @@ describe('DocBuffer', () => {
     buf.text = 'typed but not saved';
     expect(buf.dirty).toBe(true);
 
-    // Away and back — a pane switch, from the buffer's seat.
+    // A pane switch reaches the buffer as a close followed by a reopen
     await buf.open('');
     const before = io.reads;
     await buf.open(path);
@@ -139,7 +139,7 @@ describe('DocBuffer', () => {
     expect(await buf.save()).toBe(false);
     expect(buf.bad).toBe(true);
     expect(buf.note).toContain('changed underneath');
-    // Still dirty, still the author's text: a refusal must not eat the typing it refused.
+    // Still dirty and still the author's text: a refusal must not discard the typing it refused
     expect(buf.dirty).toBe(true);
     expect(buf.text).toBe('mine');
   });

@@ -1,16 +1,16 @@
 /**
- * The outfit strip's rows: who can be dressed here, what each control currently holds, and what
- * clearing it would fall back to.
+ * Rows of the outfit strip. Each row names a character that can be dressed, the value its control
+ * currently holds, and the value a clear would fall back to.
  *
- * Two levels sit in one list because they answer one question — a scene row per cast member, a
- * subject row per subject of the selected shot — and the shot rows are the ones that shadow. The
- * inheritance chain is not re-decided here: `outfitFor` is called for both the value in force and
- * the value a clear would reveal, so the strip and the prompt cannot disagree about either.
+ * Both levels sit in one list: a scene row per cast member, and a subject row per subject of the
+ * selected shot. Only the shot rows shadow a scene marker. The inheritance chain is not re-decided
+ * here. `outfitFor` supplies both the value in force and the value a clear would reveal, so the
+ * strip and the prompt cannot disagree.
  */
 import { outfitFor, type ResolvedOutfit } from '@vn/model';
 import type { CoverageCast, SceneCoverage } from '../../../src/shared/ipc';
 
-/** The select's value for "say nothing here"; an empty outfit is what both commands clear with. */
+/** A select's value for setting nothing at this level. Both commands clear with an empty outfit. */
 export const INHERIT = '';
 
 /** One control in the strip: a character at one level, with the wardrobe it may be set to. */
@@ -20,9 +20,9 @@ export interface OutfitRow {
   /** The shot the row overrides; only ever set on a `shot` row. */
   shot?: string;
   character: string;
-  /** Outfit ids the sheet authors, in order — what the select offers beside {@link INHERIT}. */
+  /** Outfit ids from the character sheet, in order; offered by the select beside {@link INHERIT}. */
   outfits: string[];
-  /** What this row itself says: an outfit id, or {@link INHERIT} when it says nothing. */
+  /** This row's own value: an outfit id, or {@link INHERIT} when the row sets nothing. */
   value: string;
   /** What actually reaches the frame, and which level supplied it. */
   effective: ResolvedOutfit;
@@ -45,8 +45,8 @@ export function outfitRows(data: SceneCoverage | null, selected: string | null):
     character: c.id,
     outfits: c.outfits,
     value: c.marked ?? INHERIT,
-    // A scene row's own answer is the marker, and what it falls back to is the sheet — the shot
-    // level is below it and cannot be what a *scene* marker inherits from.
+    // A scene row's value is the marker and its fallback is the character sheet; the shot level
+    // sits below the scene level, so a scene marker never inherits from it
     effective: c.marked ? { id: c.marked, origin: 'scene' } : sheet(c),
     inherits: sheet(c),
   }));
@@ -78,17 +78,17 @@ export function outfitRows(data: SceneCoverage | null, selected: string | null):
 }
 
 /**
- * The scene marker a shot row is hiding, if it is hiding one. This is the only thing the strip
- * says about a shot decomposed before outfits were authorable: those carry an explicit outfit, so
- * a marker cannot reach them, and clearing the row is the fix. It deliberately does not try to
- * tell a baked outfit from a deliberate one — the file asserts an override either way.
+ * The scene marker a shot row hides, or null when it hides none. A shot decomposed before outfits
+ * were authorable carries an explicit outfit that a marker cannot reach, and clearing the row is
+ * the fix; this is all the strip says about such a shot. A baked outfit is not distinguished from
+ * a deliberate one, because the file asserts an override either way.
  */
 export function shadowedMarker(row: OutfitRow): string | null {
   if (row.level !== 'shot' || row.value === INHERIT) return null;
   return row.inherits.origin === 'scene' ? row.inherits.id : null;
 }
 
-/** The invocation a row runs when its select changes — the command, not a description of it. */
+/** The command invocation a row runs when its select changes. */
 export function outfitInvocation(
   row: OutfitRow,
   outfit: string,

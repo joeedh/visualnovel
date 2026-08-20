@@ -1,8 +1,8 @@
 /**
- * The shipped template, through the path a first launch actually takes: seed `templates/basic`
+ * Exercises the shipped template through the path a first launch takes: seed `templates/basic`
  * into a scratch workspace, then open it. Every other session test builds its project with
- * testkit, so this is the only thing that fails when the *committed* sample stops loading —
- * a broken heading, a scene chunk whose front-matter disagrees with its filename, a `start:`
+ * testkit, so this is the only test that fails when the committed sample stops loading — from a
+ * broken heading, a scene chunk whose front-matter disagrees with its filename, or a `start:`
  * naming a scene that was renamed.
  */
 import { mkdtemp, rm } from 'node:fs/promises';

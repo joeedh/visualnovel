@@ -58,7 +58,7 @@ describe('routeEdges', () => {
     const routes = routeEdges(layout, g.edges);
     const back = routes.find((r) => r.id === 'a->hub');
     expect(back?.back).toBe(true);
-    // It bulges right of both cards rather than cutting through them.
+    // The back edge bulges right of both cards rather than cutting through them
     const rightmost = Math.max(...layout.nodes.map((n) => n.x + n.width));
     expect(Math.max(...(back?.points ?? []).map((p) => p.x))).toBeGreaterThan(rightmost);
   });

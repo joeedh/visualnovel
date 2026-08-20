@@ -1,21 +1,20 @@
 /**
- * One app instance per **workspace**, not per install.
+ * One app instance per workspace, not per install.
  *
  * Two instances on two different repos share nothing that can collide: the undo shadow refs
  * (`refs/vn/undo/<seq>`), the committer's `-A` sweep, the notification log and the agent
- * conversation are all per project. Two instances on the *same* repo collide in every one of
- * them — and silently, because each stack's `seq` starts at zero, so instance B's first command
- * overwrites the snapshot instance A's first command is holding. That is why the lock is keyed
- * by the resolved root and why `app.requestSingleInstanceLock()` — a global lock — is
- * deliberately not used: it would buy the safety by forbidding something that was never
- * dangerous.
+ * conversation are all per project. Two instances on the same repo collide in every one of
+ * them, and silently, because each stack's `seq` starts at zero, so instance B's first command
+ * overwrites the snapshot instance A's first command is holding. The lock is therefore keyed by
+ * the resolved root. `app.requestSingleInstanceLock()` is a global lock and is deliberately not
+ * used, because it would also forbid two instances on two different repos.
  *
- * **The lock is a listening socket, not a file.** Binding *is* acquiring: it succeeds for
- * exactly one process, and the endpoint dies with the process, so there is no stale-pid
- * bookkeeping and no lock that outlives a crash. On Windows a named pipe leaves nothing behind
- * at all; on posix a socket file survives a hard kill, so `EADDRINUSE` is followed by a connect
- * attempt — a refused connect means the owner is gone, and the file is unlinked and the listen
- * retried once.
+ * The lock is a listening socket rather than a file, so binding it is acquiring it: the bind
+ * succeeds for exactly one process, and the endpoint dies with the process, so there is no
+ * stale-pid bookkeeping and no lock that outlives a crash. On Windows a named pipe leaves
+ * nothing behind. On posix a socket file survives a hard kill, so `EADDRINUSE` is followed by a
+ * connect attempt: a refused connect means the owner is gone, so the file is unlinked and the
+ * listen retried once.
  *
  * Nothing here imports `electron`, so it is testable in the node-only desktop jest project.
  */
@@ -36,11 +35,11 @@ const HANDOFF_MS = 2000;
  * project root is longer than a pipe name may be and contains separators that are not legal in
  * one. Case-normalized on Windows, where two spellings of one directory are one directory.
  *
- * `platform` decides which rules to resolve *under*, so the resolver is picked explicitly rather
- * than taken from `node:path`'s default export: a bare `resolve` follows the host, which makes
- * `lockAddress(root, 'win32')` mean something different on a Linux runner than on Windows — it
- * leaves the backslashes in `C:\DEV\Story` as ordinary characters and prepends the cwd, so the
- * two spellings of one directory stop agreeing.
+ * `platform` decides which rules the path is resolved under, so the resolver is picked
+ * explicitly rather than taken from `node:path`'s default export. A bare `resolve` follows the
+ * host, so `lockAddress(root, 'win32')` would mean something different on a Linux runner than on
+ * Windows: it leaves the backslashes in `C:\DEV\Story` as ordinary characters and prepends the
+ * cwd, so the two spellings of one directory stop agreeing.
  */
 export function lockAddress(root: string, platform: string = process.platform): string {
   const canonical = platform === 'win32' ? win32.resolve(root).toLowerCase() : posix.resolve(root);
@@ -57,7 +56,7 @@ export interface InstanceLock {
   release(): Promise<void>;
 }
 
-/** Injected so a test can drive the socket layer without one. */
+/** The socket calls this module makes, injected so a test can replace them with fakes. */
 export interface LockIo {
   listen(address: string, onConnection: (socket: Socket) => void): Promise<Server>;
   connect(address: string, timeoutMs: number): Promise<Socket>;
@@ -132,8 +131,9 @@ export async function acquireWorkspace(
 
   let server = await listen();
   if (!server) {
-    // Taken — or a stale socket file left by a killed owner. Only the connect tells them apart,
-    // and only on posix: a Windows pipe cannot outlive the process that made it.
+    // The address is either held by a live owner or a stale socket file left by a killed one.
+    // Only a connect attempt tells the two apart, and only on posix, because a Windows pipe
+    // cannot outlive the process that made it.
     if (platform === 'win32') return null;
     const live = await io
       .connect(address, HANDOFF_MS)
@@ -182,9 +182,9 @@ export async function focusOwner(
 }
 
 /**
- * Is `root` open in another instance right now? A report about this instant — the caller must
- * still acquire for real, because the answer can change under it. Used by `workspace.open`'s
- * check, which is allowed to race precisely because `run` re-decides.
+ * Whether `root` is open in another instance at this instant. The caller must still acquire for
+ * real, because the answer can change before it does. Used by `workspace.open`'s check, which is
+ * allowed to race because `run` re-decides.
  */
 export async function workspaceIsTaken(
   root: string,

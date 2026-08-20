@@ -20,7 +20,7 @@ describe('Windows', () => {
     expect(windows.add(c)).toBe(2);
 
     // Closing the middle one and opening another must not renumber the survivors: everything a
-    // window remembers is keyed by index, so window 2 staying window 2 is the contract.
+    // window remembers is keyed by index, so window 2 must stay window 2.
     windows.remove(1);
     expect(windows.ids()).toEqual([0, 2]);
     expect(windows.add(handle('d'))).toBe(1);

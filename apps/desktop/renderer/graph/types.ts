@@ -17,7 +17,7 @@ export interface Size {
 
 export interface Rect extends Point, Size {}
 
-/** A node to be laid out. Size is the caller's — layout never measures, it only places. */
+/** A node to be laid out. Width and height come from the caller; layout only places. */
 export interface GraphNode {
   id: string;
   width: number;

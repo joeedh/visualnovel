@@ -1,17 +1,16 @@
 /**
- * Close Pane, as a gesture: the pane under the cursor is outlined and crossed out, a click
+ * Close Pane runs as a gesture: the pane under the cursor is outlined and crossed out, a click
  * collapses it, Escape cancels. path.ux's `splitTool` is the analogue for the opposite act, and the
  * menu reaches this the same way — a shell act, not a command, because a modal pick cannot be
  * driven by an id and a props object.
  *
- * It is written here rather than reached for in path.ux, which has a `removeAreaTool` of its own,
- * because that one collapses whatever `findScreenArea` answers. This app has two rules about that
- * — the header is not a pane, and the last pane is kept — and they live in `panes.ts`, so the pick
- * has to be made against them. A pane that may not go is still outlined, in mist and with the
- * reason written across it: a picker that ignores the pointer is indistinguishable from a broken
- * one.
+ * It is written here rather than reached for in path.ux, whose own `removeAreaTool` collapses
+ * whatever `findScreenArea` answers. This app has two rules about that — the header is not a pane,
+ * and the last pane is kept — and they live in `panes.ts`, so the pick has to be made against them.
+ * A pane that may not go is still outlined, in mist and with the reason written across it, so the
+ * picker is visibly following the pointer.
  *
- * The overlay is a throwaway `document.body` sibling for the reason `flash.ts` gives — a pane is a
+ * The overlay is a throwaway `document.body` sibling for the reason `flash.ts` gives: a pane is a
  * `ScreenArea` whose children paint over its own border and whose sheet is in a shadow root this
  * file does not own.
  */
@@ -26,9 +25,9 @@ const STAYS_CHROME = 'The menu bar is not a pane';
 const STAYS_LAST = 'The last pane is kept';
 
 /**
- * Start the pick. Returns once the modal is up; the gesture ends on a click, on Escape, or on any
- * button but the left one. `report` is handed the sentence the act produced, so the caller decides
- * where a notice goes — the header has one door for that and this file should not know it.
+ * Start the pick. Returns once the modal is up; the gesture ends on a click, on Escape, or on a
+ * button other than the left one. `report` is handed the sentence the act produced, so the caller
+ * decides where a notice goes.
  */
 export function pickPaneToClose(screen: VnScreen, report: (text: string) => void): void {
   const overlay = document.createElement('div');
@@ -59,8 +58,8 @@ export function pickPaneToClose(screen: VnScreen, report: (text: string) => void
   };
 
   const finish = (): void => {
-    // The verdict shown is the verdict taken: the same `paneClosable` call decided the outline the
-    // author was looking at when they clicked, so there is nothing left to re-check here.
+    // The same `paneClosable` call decided the outline the author was looking at when they
+    // clicked, so the verdict does not need re-checking here.
     const target = index;
     end();
     if (target === NO_PANE) {
@@ -140,7 +139,7 @@ function draw(overlay: HTMLDivElement, rect: DOMRect, closable: boolean, label: 
 
 /**
  * The X, at whatever size the pane allows. Hidden over a pane that cannot go, where a cross would
- * say the opposite of the mist around it.
+ * contradict the mist around it.
  */
 function cross(rect: DOMRect, hue: string, closable: boolean): SVGSVGElement {
   const span = Math.max(24, Math.min(rect.width, rect.height) * 0.45);

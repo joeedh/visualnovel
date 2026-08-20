@@ -8,8 +8,8 @@ const SECTIONS: SystemSectionView[] = [
 ];
 
 describe('joined', () => {
-  // The viewer's whole claim is that it shows what the agent is sent. The renderer cannot import
-  // the node-side joiner, so the separator is written twice — and this is what keeps them equal.
+  // The viewer claims to show what the agent is sent. The renderer cannot import the node-side
+  // joiner, so the separator is written twice and this test keeps the two spellings equal
   it('joins exactly the way the agent does', () => {
     expect(joined(SECTIONS)).toBe(joinSections([...SECTIONS]));
   });

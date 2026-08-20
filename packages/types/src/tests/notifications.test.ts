@@ -29,8 +29,8 @@ describe('migrateNotification', () => {
     expect(note?.link).toEqual({ editor: 'asset', subject: '3f9a' });
   });
 
-  // Skipping, not throwing: one line from tomorrow's build must not cost the author every other
-  // line in the log. `@vn/store`'s `readShots` throws for the opposite reason — see the doc there.
+  // Skips rather than throws, so one line written by a newer build does not cost the author every
+  // other line in the log. `@vn/store`'s `readShots` throws for the opposite reason — see its doc
   it('skips a line newer than this build rather than throwing', () => {
     expect(migrateNotification(line({ v: NOTIFICATION_VERSION + 1 }))).toBeUndefined();
   });

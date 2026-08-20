@@ -7,10 +7,10 @@ import type { ProjectModel } from '@vn/types';
 import type { StoryEdge, StoryGraph, StoryScene } from '../shared/ipc.js';
 
 /**
- * Edge ids are `<from>#choice:<index>` / `<from>#next`. Stable across reloads so a selection
- * survives a rebuild, unique because a scene has one `next` and one choice per index, and
- * addressable — the id carries exactly the arguments `story.removeChoice` / `story.setNext`
- * need, so a drag on a wire maps back to a command without a lookup table.
+ * Edge ids are `<from>#choice:<index>` / `<from>#next`. They are stable across reloads, so a
+ * selection survives a rebuild, and unique because a scene has one `next` and one choice per
+ * index. The id carries exactly the arguments `story.removeChoice` and `story.setNext` need, so
+ * a drag on a wire maps back to a command without a lookup table.
  */
 export const choiceEdgeId = (from: string, index: number): string => `${from}#choice:${index}`;
 export const nextEdgeId = (from: string): string => `${from}#next`;

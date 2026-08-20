@@ -100,9 +100,9 @@ function extractImage(res: any, modelId: string): ImageResult {
  * reads as "not said" instead of "free".
  *
  * `cachedContentTokenCount` is already part of `promptTokenCount`, so reporting it as `cacheRead`
- * carves the split *out* of `input` the way Anthropic's is rather than double-counting it. It is
- * flagged `cacheEstimated` because the implicit cache reports a match rather than a billed line,
- * and there is no cache-write counterpart to report at all.
+ * carves the split out of `input` the way the Anthropic backend does rather than double-counting
+ * it. It is flagged `cacheEstimated` because the implicit cache reports a match rather than a
+ * billed line, and there is no cache-write counterpart to report at all.
  */
 function usageOf(res: any): TokenUsage | undefined {
   const u = res?.usageMetadata;
@@ -126,8 +126,8 @@ export function createGeminiChat(
   const messageWithUsage = async (req: ChatRequest): Promise<ChatReply> => {
     const ai = await client();
     const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
-    // The vendor body, not the two strings above it: a positional error indexes into what went
-    // over the wire, and `parts` is where the images and the prompt were finally arranged.
+    // The captured body is this one rather than the request's own strings: a positional error
+    // indexes into what went over the wire, and `parts` is where the images and prompt end up
     const body = {
       model: modelId,
       contents: [{ role: 'user', parts }],
@@ -149,7 +149,8 @@ export function createGeminiChat(
 
   return {
     modelId,
-    // One request builder and one retry policy: the text path is this with the receipt dropped.
+    // The text path drops the usage `messageWithUsage` returns, so there is one request builder
+    // and one retry policy
     message: async (req: ChatRequest) => (await messageWithUsage(req)).text,
     messageWithUsage,
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {

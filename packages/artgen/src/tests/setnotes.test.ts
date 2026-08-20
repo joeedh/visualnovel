@@ -1,7 +1,7 @@
 /**
- * Writing an art rung — notes or seed. A real project on disk, because the point of this file is
- * which bytes land where: an entity rung goes through `apply*Edit` into the sheet, a shot rung into
- * `work/shots/<sceneId>.json`, and neither may quietly lose what was sitting beside it.
+ * Writing an art rung — notes or seed. These run against a real project on disk because what
+ * matters is which bytes land where. An entity rung goes through `apply*Edit` into the sheet and a
+ * shot rung into `work/shots/<sceneId>.json`, and neither may lose what was sitting beside it.
  */
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { readShots, writeShots } from '@vn/store';
@@ -13,7 +13,7 @@ async function depsOf(p: TestProject) {
   return { config, paths: p.paths };
 }
 
-/** The fixture: one dressed character, and a storyboard for the scene with a shot rung. */
+/** One dressed character, plus a storyboard for the scene carrying a shot rung. */
 async function fixture(): Promise<TestProject> {
   const p = await makeProject({
     script: SCRIPTS.branching,
@@ -96,8 +96,8 @@ describe('setArtNotes', () => {
     }
   });
 
-  // The wardrobe is replaced wholesale by `applyCharacterEdit`, so the rung has to resend it —
-  // this is the test that a note on one outfit does not erase the description of another.
+  // The wardrobe is replaced wholesale by `applyCharacterEdit`, so the rung has to resend it, or a
+  // note on one outfit erases the description of another.
   it('leaves the rest of the wardrobe exactly as it was', async () => {
     const p = await fixture();
     try {
@@ -228,7 +228,7 @@ describe('the seed half', () => {
 
       const shot = await setArtSeed(deps, { target: 'shot:rooftop/s1', seed: 9 });
       expect(shot.file).toBe(p.paths.shotsFile('rooftop'));
-      // The authored half of the shot has to survive: the seed is one field beside the rest.
+      // The seed is one field beside the authored half of the shot, and that half has to survive.
       expect((await readShots(p.paths, 'rooftop'))?.shots[0]).toMatchObject({
         camera: 'slow push in',
         seed: 9,

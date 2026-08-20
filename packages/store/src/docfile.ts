@@ -1,12 +1,12 @@
 /**
- * A workspace text document — the bounded read, the bounded write, and the refusals every
- * whole-file surface needs. Two callers share this: the agent's `read_file`/`write_file` and the
- * desktop's `doc.*` commands. "Outside the workspace" and "`scenes/` has its own writer" are one
- * answer here rather than two that drift, which is the argument `@vn/scriptedit` was extracted on.
+ * A workspace text document: the bounded read, the bounded write, and the refusals every
+ * whole-file surface needs. Two callers share it, the agent's `read_file`/`write_file` and the
+ * desktop's `doc.*` commands, so "outside the workspace" and "`scenes/` has its own writer" are
+ * answered once here instead of twice in ways that drift.
  *
- * What it deliberately does not know: whether the document is a valid entity sheet. That needs
- * `@vn/model`, which is this package's sibling, so a caller that cares runs the check itself — and
- * per the plan a schema failure is a diagnostic beside a saved file, not a refusal.
+ * This module does not know whether the document is a valid entity sheet. That check needs
+ * `@vn/model`, which is this package's sibling, so a caller that cares runs it. A schema failure
+ * is a diagnostic beside a saved file rather than a refusal.
  */
 import { promises as fs } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
@@ -15,9 +15,9 @@ import { ENTITY_TAG_KEY, ENTITY_TAGS, type EntityTag } from '@vn/types';
 import { sha256, writeFileAtomic } from '@vn/util';
 
 /**
- * The most a document surface will carry. Not a storage limit — it is the point past which a
- * file is no longer something a human is editing in a text box, and shipping it over IPC costs
- * more than saying so.
+ * The most a document surface will carry. This is a surface bound rather than a storage limit: past
+ * it, a file is no longer something a human edits in a text box, and shipping it over IPC costs
+ * more than refusing it.
  */
 export const MAX_DOC_BYTES = 1_000_000;
 
@@ -28,15 +28,15 @@ export function resolveInWorkspace(root: string, path: string): string | null {
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel)) ? abs : null;
 }
 
-/** Workspace-relative and forward-slashed — the form every document API speaks. */
+/** Workspace-relative and forward-slashed, the form every document API uses. */
 export function workspacePath(root: string, abs: string): string {
   return relative(root, abs).split('\\').join('/');
 }
 
 /**
- * The validated writer that owns a path, or null when nobody does. A chunk written whole is
- * unvalidated — duplicate line ids, a lost heading, a scene id that no longer matches the
- * filename — and every scene writer proves each of those before it writes.
+ * The validated writer that owns a path, or null when no writer owns it. A chunk written whole is
+ * unvalidated, so it can carry duplicate line ids, a lost heading, or a scene id that no longer
+ * matches the filename. Every scene writer checks each of those before it writes.
  */
 export function guardedDir(path: string): 'scenes' | null {
   return path.replace(/\\/g, '/').split('/')[0] === 'scenes' ? 'scenes' : null;
@@ -106,10 +106,10 @@ export function taggedKind(data: Record<string, unknown>): EntityTag | undefined
 }
 
 /**
- * The kind a *conventional* home implies. Discovery takes a sheet's kind from its directory and
- * treats a `type:` tag there as a conflict rather than an override, so a surface validating an
- * incoming save has to ask the question the same way round or it would decline to check the one
- * sheet the whole project is built on.
+ * The kind a conventional location on disk implies. Discovery takes a sheet's kind from its
+ * directory and treats a `type:` tag there as a conflict rather than an override, so a surface
+ * validating an incoming save asks the question the same way round. Asking it the other way round
+ * would skip the check on the one sheet the whole project is built on.
  */
 export function conventionalKind(path: string): EntityTag | undefined {
   const parts = path.replace(/\\/g, '/').split('/');
@@ -134,7 +134,7 @@ export interface DocWritePlan {
 }
 
 /**
- * Every refusal a save can earn, decided and not performed: outside the workspace, a path a
+ * Every refusal a save can earn, decided rather than performed: outside the workspace, a path a
  * validated writer owns, past the bound, unparseable front-matter, a dropped `type:` tag, and a
  * file that changed underneath. `sceneWriter` names the writer `scenes/` belongs to from the
  * caller's side, so the guard's sentence points at the one that caller should have used.
@@ -162,8 +162,8 @@ export async function checkDocWrite(
   try {
     doc = parseFrontMatter(text);
   } catch (err) {
-    // Identity lives in the front-matter, and a file whose front-matter is gone is a file the
-    // model can no longer place. A body mid-thought is the author's business; this is not.
+    // A document's identity lives in its front-matter, so a file whose front-matter will not
+    // parse cannot be placed in the model. An unfinished body is left to the author
     return refuse(`${rel}: front-matter will not parse: ${(err as Error).message}`);
   }
 
@@ -181,8 +181,8 @@ export async function checkDocWrite(
     }
     const had = taggedKind(parseFrontMatterOrEmpty(existing.file.text).data);
     if (had && taggedKind(doc.data) !== had) {
-      // The tag *is* the entity: dropping it removes the character from the model and breaks
-      // every backlink, which is a deletion wearing an edit's clothes.
+      // The tag is what makes the file an entity, so dropping it removes the character from the
+      // model and breaks every backlink. That is a deletion rather than an edit
       return refuse(
         `${rel} declares ${ENTITY_TAG_KEY}: ${had}, and this save drops it — that deletes the ` +
           `${had}, which is not an edit`,

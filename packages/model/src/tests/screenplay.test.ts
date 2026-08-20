@@ -177,7 +177,8 @@ describe('scriptFromScenes', () => {
       const back = splitScenes(parseFountain(out));
 
       expect(back.diagnostics).toEqual([]);
-      // Reading order, not storage order — so compare against the ids the export chose.
+      // Scenes come back in reading order rather than storage order, so compare against the
+      // ids the export chose.
       const written = out.match(/\[\[scene: (\S+)\]\]/g)?.map((m) => /: (\S+)\]\]/.exec(m)?.[1]);
       expect(back.scenes.map((s) => s.id)).toEqual(written);
       expect(canonicalScenes(back.scenes)).toBe(
@@ -186,8 +187,9 @@ describe('scriptFromScenes', () => {
     });
   }
 
-  // Pinned verbatim: this is a file a user opens, so its layout is part of the contract and a
-  // reformat should have to be deliberate. `clean` is the version a screenwriting tool sees.
+  // The output is pinned verbatim because a user opens this file, so its layout is part of the
+  // contract and a reformat has to be deliberate. `clean` is the version a screenwriting tool
+  // sees.
   it('lays a screenplay out the way an author expects', () => {
     expect(scriptFromScenes(graphOf(SCRIPTS.linear))).toBe(
       `INT. CLASSROOM - DAY
@@ -227,8 +229,8 @@ The city hums somewhere below.
     );
   });
 
-  // The reason the scene-level outfit is a marker and not front-matter: this pair round-trips
-  // markers for free, and would have dropped a front-matter field in silence.
+  // The scene-level outfit is a marker rather than front-matter because this pair round-trips
+  // markers for free and would have dropped a front-matter field in silence.
   it('carries outfit markers out to a screenplay and back through the importer', () => {
     const script = `INT. CLUB ROOM - AFTERNOON
 
@@ -280,7 +282,8 @@ Coming!
     const out = scriptFromScenes(graphOf(SCRIPTS.branching), { clean: true });
     expect(out).not.toContain('[[');
     expect(out).not.toMatch(/\n\n\n/);
-    // Still a screenplay: headings, cues and dialogue survive; only the machine notes went.
+    // The output is still a screenplay: headings, cues and dialogue survive, and only the
+    // machine notes went.
     expect(out).toContain('INT. CLASSROOM - AFTERNOON');
     expect(out).toContain('AIKO');
     expect(out).toContain('Um... hello.');

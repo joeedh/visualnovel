@@ -1,13 +1,13 @@
 /**
- * The palette's pure half: which catalog entries a query matches, and how a command's declared
- * props become an editable form and then an invocation. `Palette.tsx` keeps only rendering and
- * IPC — the same impure-shell/pure-core split the graph and timeline surfaces use.
+ * The palette's pure half. Decides which catalog entries a query matches, and turns a command's
+ * declared props into an editable form and then an invocation. `Palette.tsx` keeps only rendering
+ * and IPC, the same impure-shell/pure-core split the graph and timeline surfaces use.
  */
 import type { CatalogEntry, CatalogProp, PropValue } from '../../src/shared/ipc';
 
 /**
- * Substring match over `id` and `title`, every whitespace-separated term required. Not fuzzy:
- * a palette that answers `stroy` is also a palette that answers with the wrong command.
+ * Substring match over `id` and `title`, every whitespace-separated term required. Matching is
+ * deliberately not fuzzy, so a mistyped term returns nothing rather than the wrong command.
  */
 export function matches(entry: CatalogEntry, query: string): boolean {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -19,7 +19,7 @@ export function filterCommands(entries: CatalogEntry[], query: string): CatalogE
   return entries.filter((entry) => matches(entry, query));
 }
 
-/** What an untouched field starts at: the declared default, else the kind's blank. */
+/** Starting value for an untouched field. Uses the declared default, or the kind's blank value. */
 export function blankValue(prop: CatalogProp): PropValue {
   if (prop.default !== undefined) return prop.default;
   switch (prop.kind) {
@@ -57,14 +57,14 @@ export function fieldValue(prop: CatalogProp, raw: string | boolean): PropValue 
   return text;
 }
 
-/** The inverse, for the input's `value`: a list edits as the comma-separated text it parses from. */
+/** Renders a value for an input's `value`. A list becomes the comma-separated text it parses from. */
 export function fieldText(value: PropValue): string {
   return Array.isArray(value) ? value.join(', ') : String(value);
 }
 
 /**
- * How much a bulk (`digest`) prop is carrying, said the way a form can show it. The value is a
- * serialized document or mesh nobody reads in a text field, so its size is the honest summary.
+ * Size of a bulk (`digest`) prop, worded for a form to display. The value is a serialized document
+ * or mesh that cannot be read in a text field, so the form shows its size instead of its text.
  */
 export function bulkSize(value: PropValue): string {
   const chars = fieldText(value).length;

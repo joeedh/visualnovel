@@ -3,9 +3,8 @@
  * renderer applies, so the palette, the menu bar and CDP all reach the same vocabulary
  * rather than the renderer maintaining a second registry to keep in sync.
  *
- * They address **editors**, not rooms. The shell is a mesh of panes, so what an author (or the
- * agent driving for one) wants to say is "show me the coverage strip", optionally "beside the
- * script" — `view.open`, `view.focus`, and the two layout verbs. The names come from
+ * They address editors, not rooms. The shell is a mesh of panes, so `view.open`, `view.focus` and
+ * the two layout verbs name an editor and optionally where to put it. The names come from
  * `shared/editors.ts`, which is also what the renderer registers them under.
  */
 import { defineFor, prop } from '@vn/commands';
@@ -24,16 +23,16 @@ import { templateKey, workspaceScope } from '../../shared/sessionkeys.js';
 const define = defineFor<CommandHost>();
 
 /**
- * Which template *this* window is showing, remembered beside its live mesh.
+ * Which template the asking window is showing, remembered beside its live mesh.
  *
- * Not a module constant any more, and the reason it could never stay one is that it failed
- * loudly: `view.applyLayout` in window A wrote the flat `pathux.template`, and
- * `view.resetLayout` in window B then re-applied **A's** template to B. So it is derived from
- * who asked, like any other targeted act - and from the workspace, because `session.json` is
- * install-global and two instances on two repos would otherwise share one window 0.
+ * The key is derived from who asked rather than being a module constant: with a flat
+ * `pathux.template`, `view.applyLayout` in window A wrote it and `view.resetLayout` in window B
+ * then re-applied A's template to B. It is also derived from the workspace, because
+ * `session.json` is install-global and two instances on two repos would otherwise share one
+ * window 0.
  *
- * A command with no origin - the agent, CDP, main itself - remembers about the window its
- * effect will actually land in, which is the focused one.
+ * A command with no origin (the agent, CDP, main itself) is recorded against the window its
+ * effect will land in, which is the focused one.
  */
 function templateKeyFor(ctx: { root: string; origin?: number; host: CommandHost }): string {
   return templateKey(workspaceScope(ctx.root), ctx.origin ?? ctx.host.focusedWindow());
@@ -73,9 +72,8 @@ export const viewOpen = define({
     subject: prop.string(SUBJECT, { default: '' }),
   },
   async run({ editor, where, subject }, ctx) {
-    // `window` is not something a mesh can do to itself, so it is answered here instead of
-    // pushed: the new renderer opens showing the editor, which is the same outcome by the only
-    // route that exists.
+    // A mesh cannot open a window for itself, so this case is answered in main rather than
+    // pushed as an effect; the new renderer opens showing the editor
     if (where === 'window') {
       const id = await ctx.host.newWindow({ editor, subject: subject || undefined });
       return {
@@ -253,8 +251,8 @@ export const viewResetLayout = define({
   async run({ scope }, ctx) {
     const written = await resetLayouts(ctx.root, scope as 'shipped' | 'all');
 
-    // Whatever was on screen, put it back — a reset that leaves the window showing an
-    // arrangement no file describes any more would be the one act that lies about itself.
+    // Re-apply the arrangement that was on screen, so the window is never left showing an
+    // arrangement no file describes any more
     const wanted = ctx.host.state.get(templateKeyFor(ctx), DEFAULT_LAYOUT) || DEFAULT_LAYOUT;
     let read = await readLayout(ctx.root, wanted, ctx.git);
     let slug = wanted;

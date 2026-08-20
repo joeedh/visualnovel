@@ -148,8 +148,8 @@ describe('buildRefEdges', () => {
 describe('slotNodeIds', () => {
   const slots = [portraitSlot('aiko', { taskHash: 'por' }), portraitSlot('ren')];
 
-  // One picture, one box. A slot and the task filling it are the same thing seen from two sides,
-  // and drawing both would show the future twice — once as a promise and once as work.
+  // A slot and the task filling it are the same thing seen from two sides, so the graph draws one
+  // box for them rather than showing the same future twice, once as a promise and once as work
   it('collapses a slot into the task the planner actually filed for it', () => {
     const ids = slotNodeIds(status([portrait('por', 'aiko')], [], slots));
     expect(ids.get('portrait:aiko')).toBe('por');
@@ -176,8 +176,8 @@ describe('buildSlotEdges', () => {
     ]);
   });
 
-  // The same reason `buildRefEdges` skips an author-supplied image: an edge to nowhere claims a
-  // coupling the view cannot show either end of.
+  // Skipped for the same reason `buildRefEdges` skips an author-supplied image: an edge to nowhere
+  // claims a coupling the view cannot show either end of
   it('skips a ref naming a slot the graph does not hold — an authored asset pin', () => {
     const pinned = shotSlot('arrival', 'beat1', ['asset:' + 'a'.repeat(64)]);
     expect(buildSlotEdges(status([], [], [pinned]), [])).toEqual([]);
@@ -218,8 +218,8 @@ describe('barrierFor', () => {
     expect(barrierFor(status([]), scenes)).toBeNull();
   });
 
-  // The gate stated as reachability rather than guessed at per kind: the sheet and the shot land
-  // below because aiko's portrait is upstream of both, and neither is named here.
+  // The gate is stated as reachability rather than guessed at per kind: the sheet and the shot
+  // land below because aiko's portrait is upstream of both, and neither is named here
   it('holds up everything drawn from a pending portrait, and not the portrait itself', () => {
     const slots = [
       portraitSlot('aiko'),
@@ -235,8 +235,8 @@ describe('barrierFor', () => {
     ]);
   });
 
-  // The one case the walk cannot cover: the task was planned while the character was approved,
-  // and the approval was withdrawn afterwards, so its inputs no longer agree with the model.
+  // The walk cannot cover this case: the task was planned while the character was approved, and
+  // the approval was withdrawn afterwards, so the task's inputs no longer agree with the model
   it('puts an already-planned shot below the line when its subject is un-approved again', () => {
     const st = status([shot('shotA', 'arrival__beat1', [], [])], ['aiko']);
     expect(barrierFor(st, scenes)?.below.has('shotA')).toBe(true);
@@ -285,8 +285,8 @@ describe('taskGraphOf', () => {
     expect(model.nodes.get('por')?.kind).toBe('task');
     expect(model.nodes.has('slot:portrait:aiko')).toBe(false);
     expect(model.unplanned.map((s) => s.key)).toEqual(['sheet:aiko/uniform/front']);
-    // The sheet hangs off the portrait's *task* node — the slot collapsed into it, so the edge
-    // has to follow, or the promise would point at a box that is not on screen.
+    // The sheet hangs off the portrait's task node, since the slot collapsed into it. The edge
+    // has to follow, or the promise would point at a box that is not on screen
     expect(model.edges).toContainEqual(
       expect.objectContaining({ from: 'por', to: 'slot:sheet:aiko/uniform/front', kind: 'slot' }),
     );
@@ -312,8 +312,8 @@ describe('taskGraphOf', () => {
     expect(widthOf(two)).toBeGreaterThan(widthOf(one));
   });
 
-  // The stated ceiling from the plan. This is a smoke bound, not a benchmark: it exists to
-  // catch a derivation that goes quadratic, which is the way this gets slow.
+  // The plan states this ceiling as a smoke bound rather than a benchmark: it catches a derivation
+  // that has gone quadratic, which is the way this code becomes slow
   it('derives, lays out and routes 300 nodes in well under a second', () => {
     const tasks: Task[] = [];
     for (let i = 0; i < 60; i++) tasks.push(plate(`loc${i}`, `place${i}`, `assetLoc${i}`));

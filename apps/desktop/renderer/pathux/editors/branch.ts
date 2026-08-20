@@ -41,10 +41,10 @@ import type { StoryEdge, StoryGraph, StoryScene } from '../../../src/shared/ipc.
 const SVG = 'http://www.w3.org/2000/svg';
 
 /**
- * What the room supplied and the pane does not. `branch.css` is imported as-is — one copy of the
- * cards, the labels and the drag overlays — so this is the frame around it: the reset that does not
- * cross the shadow boundary, and the column, which was the room's `grid-template-rows` and here has
- * to beat that rule on specificity rather than replace it.
+ * The frame around `branch.css`, which is imported as-is and carries the cards, the labels and the
+ * drag overlays. This supplies the reset that does not cross the shadow boundary, and the column,
+ * which was the room's `grid-template-rows` and here has to beat that rule on specificity rather
+ * than replace it.
  */
 const SURFACE_CSS = `
 * { box-sizing: border-box; }
@@ -82,19 +82,18 @@ const INVITE =
   'the script column — either way it appears as a card you can wire the rest of the story to.';
 
 /**
- * The branch editor: index cards on a table, wired together. The port of STUDIO's `BranchEditor`,
- * onto the same `GraphCanvas` the task DAG uses.
+ * The branch editor: scenes drawn as index cards, wired together. The port of STUDIO's
+ * `BranchEditor` onto the same `GraphCanvas` the task DAG uses.
  *
- * Position is not semantic here — there is no `x`/`y` on a `Scene` — so every drag *means*
- * something instead of moving something, and all three read their verdict from `pathux/branch.ts`,
- * which asks the same `branchops` the command will run. The refusal shown mid-drag is the refusal
- * that would have happened.
+ * Position is not semantic here, since a `Scene` has no `x`/`y`, so a drag rewires the story
+ * rather than moving anything. All three drags read their verdict from `pathux/branch.ts`, which
+ * asks the same `branchops` the command will run, so the refusal shown mid-drag is the refusal the
+ * commit would give.
  *
- * Two things change in the port. The selected scene is the **shared** `ui.sceneId`, so a card
- * clicked here is the scene the coverage strip opens; and a claimed gesture calls
- * `preventDefault()`, which is `GraphCanvas`'s protocol for "this pointer is spoken for" — without
- * it the canvas would pan underneath an unwire drag, which is the one gesture that starts over
- * empty background.
+ * Two things change in the port. The selected scene is the shared `ui.sceneId`, so a card clicked
+ * here is the scene the coverage strip opens. A claimed gesture calls `preventDefault()`, which is
+ * `GraphCanvas`'s protocol for a pointer another handler has taken; without it the canvas would pan
+ * underneath an unwire drag, the one gesture that starts over empty background.
  */
 export class BranchEditor extends VnEditor {
   private bar!: Container;
@@ -111,7 +110,7 @@ export class BranchEditor extends VnEditor {
   private sceneById = new Map<string, StoryScene>();
   private edgeById = new Map<string, StoryEdge>();
 
-  /** Where the layout is going, and where it has got to — the two ends of the relayout tween. */
+  /** The two ends of the relayout tween: `target` is where it is going, `layout` where it is. */
   private target: GraphLayout = layoutGraph(EMPTY_GRAPH.graph);
   private layout: GraphLayout = this.target;
   private frame: number | undefined;
@@ -120,7 +119,7 @@ export class BranchEditor extends VnEditor {
   private drawn = '';
   /** Bumped on every load, so a reload redraws even when nothing about the selection moved. */
   private revision = 0;
-  /** Fit once, when the first layout meets a sized surface — never again, or panning fights back. */
+  /** Fit once, when the first layout meets a sized surface. Fitting again would undo panning. */
   private fitted = false;
 
   private selected: string | null = null;
@@ -183,7 +182,7 @@ export class BranchEditor extends VnEditor {
   override update() {
     super.update();
 
-    // Never mid-gesture: the drag is aimed at nodes and routes this frame's layout produced.
+    // No redraw mid-gesture: the drag is aimed at the nodes and routes this frame's layout produced
     if (this.drag) return;
     if (this.stateKey() !== this.drawn) this.redraw();
   }
@@ -308,8 +307,8 @@ export class BranchEditor extends VnEditor {
         'Name a new scene and add it to the graph, unconnected';
       const scene = this.ui.sceneId;
       if (scene && this.sceneById.has(scene)) {
-        // Hover asks the command, the click runs it — so a scene something still points at says
-        // so, in the command's own words, before the pointer goes down.
+        // Hover asks the command for its check and the click runs it, so a scene something still
+        // points at says so in the command's own words before the pointer goes down
         const remove = this.bar.button(`delete ${scene}`, () => void this.deleteScene(scene));
         remove.description = `Remove ${scene} and the shots that illustrate it`;
         remove.addEventListener('pointerenter', () => this.askDelete(scene, remove));
@@ -344,8 +343,8 @@ export class BranchEditor extends VnEditor {
 
     const label = el('button', `edge-label${edge.id === this.selected ? ' sel' : ''}`, edge.label);
     label.title = 'Rename this choice';
-    // On `pointerdown` rather than `click`, and claimed before the canvas sees it: the canvas
-    // picks on pointerdown and a redraw between down and up would take the click with it.
+    // Listens on `pointerdown` rather than `click` and stops it before the canvas picks: a redraw
+    // between down and up would take the click with it
     label.addEventListener('pointerdown', (event) => {
       event.stopPropagation();
       this.openLabel(edge);
@@ -354,9 +353,9 @@ export class BranchEditor extends VnEditor {
   }
 
   /**
-   * The three overlays, all world-space: which wires would take the carried card, the ghost wire
-   * being pulled, and the endpoint of the selected edge — the disc that says an arrowhead is
-   * grabbable at all.
+   * The three world-space overlays: which wires would take the carried card, the ghost wire being
+   * pulled, and the endpoint of the selected edge, a disc showing that its arrowhead can be
+   * grabbed.
    */
   private paintOverlay(): void {
     this.overlayHost.textContent = '';
@@ -460,7 +459,7 @@ export class BranchEditor extends VnEditor {
     this.redraw();
   }
 
-  /** Window-level, so a gesture that leaves the canvas still tracks and still releases. */
+  /** The listeners are on `window`, so a gesture leaving the canvas still tracks and releases. */
   private begin(drag: Drag): void {
     this.drag = drag;
     this.paintGesture();
@@ -488,12 +487,12 @@ export class BranchEditor extends VnEditor {
       finish();
       this.paintGesture();
       if (!pending) return;
-      // A press that never travelled is a click, and a click is a selection: the scene it opens
-      // is the shared one, so the coverage strip and the script column follow it.
+      // A press that never travelled counts as a click, which selects the scene. The selection is
+      // shared, so the coverage strip and the script column follow it
       if (pending.kind === 'press') return this.openScene(pending.scene);
       const invoke = commitOf(pending);
-      // A refused drop keeps the reason it was already showing; one that was over nothing at all
-      // has nothing to say and takes its preview with it.
+      // A refused drop keeps the reason already on screen. A drop over nothing clears the preview
+      // instead
       if (!invoke) return void (pending.verdict ? undefined : this.say(null));
       const opening = pending.kind === 'connect' ? newChoiceEdge(this.state, pending.scene) : null;
       void this.run(invoke, 'Story rewired.').then((ok) => {
@@ -541,9 +540,9 @@ export class BranchEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /**
-   * A click on a card is a selection *and* a composer scoped to that scene — both reads, and the
-   * seed is text in a field rather than a turn. It is seeded even when the selection did not
-   * move: clicking the card that is already open is how you ask about it again.
+   * A click on a card selects the scene and seeds a composer scoped to it. Both are reads, and the
+   * seed is text in a field rather than a turn. The seed is written even when the selection did not
+   * move, so clicking the card that is already open asks about it again.
    */
   private openScene(sceneId: string): void {
     seed(`Revise scene ${sceneId} — `);
@@ -564,9 +563,9 @@ export class BranchEditor extends VnEditor {
   }
 
   /**
-   * Remove the selected scene and move the selection off it — every other editor shares that
-   * selection and would otherwise open a scene that no longer exists. `this.story` is still the
-   * pre-delete graph when the selection moves, which is exactly what says what is left.
+   * Remove the selected scene and move the selection off it, because every other editor shares
+   * that selection and would otherwise open a scene that no longer exists. `this.story` is still
+   * the pre-delete graph when the selection moves, so it says which scenes are left.
    */
   private async deleteScene(scene: string): Promise<void> {
     const before = this.story;
@@ -582,7 +581,7 @@ export class BranchEditor extends VnEditor {
     this.namerEl?.querySelector('input')?.focus();
   }
 
-  /** Write the named scene, then select it — a scene is made in order to be written in. */
+  /** Write the named scene, then select it. */
   private async write(): Promise<void> {
     const asked = this.naming;
     if (!asked) return;
@@ -597,8 +596,8 @@ export class BranchEditor extends VnEditor {
   }
 
   /**
-   * The strip that names a scene before it exists. Not on the canvas: there is no position for a
-   * card with no scene behind it yet, and position is not semantic here anyway.
+   * The strip that names a scene before it exists. It is not on the canvas because a card with no
+   * scene behind it has no position, and position is not semantic here.
    */
   private syncNamer(): void {
     if (!this.naming) {
@@ -676,7 +675,7 @@ export class BranchEditor extends VnEditor {
     this.redraw();
   }
 
-  /** Finish an open label the way clicking away from it should: keep what was typed. */
+  /** Finish an open label the way clicking away from it does, keeping what was typed. */
   private settleLabel(): void {
     const edge = this.editing ? this.edgeById.get(this.editing) : undefined;
     if (edge && this.labelInput) this.commitLabel(edge, this.labelInput.value);
@@ -701,9 +700,9 @@ export class BranchEditor extends VnEditor {
   }
 
   private async run(invocation: Invocation, fallback: string): Promise<boolean> {
-    // Through the bridge, not `command:exec` directly: connecting two cards rewrites a scene, and
-    // every surface watching for that — the document tree above all — hears it from `exec`'s
-    // invalidate. Invoking the channel by hand wrote the file and told no one.
+    // Goes through the bridge rather than `command:exec`: connecting two cards rewrites a scene,
+    // and every surface watching for that (the document tree first of all) hears it from `exec`'s
+    // invalidate. Invoking the channel directly writes the file and notifies nothing
     const outcome = await exec(invocation.id, invocation.props);
     if (!outcome.ok) {
       this.say({ tone: 'refused', text: outcome.error });
@@ -740,9 +739,8 @@ function wireStyle(edge: EdgeRoute): EdgeStyle {
 }
 
 /**
- * One scene as an index card — the writers'-room artifact this whole surface is imitating. The id
- * is machine-side, the synopsis is authored, and the cast is the one line that says who is in it
- * without opening the scene.
+ * One scene as an index card. The id is machine-side, the synopsis is authored, and the cast line
+ * says who is in the scene without opening it.
  */
 function sceneCard(
   scene: StoryScene,

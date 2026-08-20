@@ -11,11 +11,11 @@ export async function ensureDir(dir: string): Promise<void> {
  * Atomic write: write to a temp sibling then rename, so a crash never leaves a
  * half-written file (report §10 crash-safety).
  *
- * The suffix is **random** rather than derived from the path and the data's length: two writers
- * of the same path with same-length data shared one temp file and raced. And the temp is unlinked
- * in a `finally`, because a failed rename otherwise leaves a `.tmp-…` sibling in `scenes/`, where
- * it is neither a scene nor invisible. The unlink's own error is swallowed: a cleanup that fails
- * must not mask the failure that caused it.
+ * The suffix is random rather than derived from the path and the data's length, because two
+ * writers of the same path with same-length data shared one temp file and raced. The temp is
+ * unlinked in a `finally` so that a failed rename does not leave a `.tmp-…` sibling in `scenes/`,
+ * where a directory listing shows it alongside the scenes. An error from that unlink is ignored,
+ * so a failed cleanup cannot mask the failure that caused it.
  */
 export async function writeFileAtomic(path: string, data: string | Uint8Array): Promise<void> {
   await ensureDir(dirname(path));

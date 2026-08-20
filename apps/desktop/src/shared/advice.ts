@@ -1,14 +1,12 @@
 /**
- * What is a good model to hand a conversation that went wrong, and how hard it should think
- * about it.
+ * Which model to hand a conversation that went wrong, and how hard it should think about it.
  *
- * Deliberately not beside `effortChoicesFor` in `@vn/types`: that table answers *what a model will
- * accept*, which is a fact about the API every surface reads. This answers *what is a good choice
- * for reading a broken transcript*, which is an opinion about one task — and an opinion does not
- * belong in the table.
+ * Deliberately not beside `effortChoicesFor` in `@vn/types`: that table records what a model will
+ * accept, which is a fact about the API that every surface reads. This module records a
+ * recommendation for one task, reading a broken transcript.
  *
- * Every verdict here is advice, never a refusal. `agent.setEffort` already states the house
- * position: every choice is accepted, not just the ones the current model offers.
+ * Every verdict here is advice, never a refusal. `agent.setEffort` accepts every choice, not only
+ * the ones the current model offers.
  */
 import {
   EFFORT_CHOICES,
@@ -32,10 +30,9 @@ export function stronger(a: EffortChoice, b: EffortChoice): EffortChoice {
 }
 
 /**
- * The effort this dialog opens on: what the author has bound, stepped **up** to at least medium
- * and then clamped to what the model takes. `DEFAULT_EFFORT` is `low`, so without this nearly
- * every author would meet the `low` note the first time they opened the dialog — and a warning
- * that always fires is one nobody reads. The fix is the default, not the volume.
+ * The effort this dialog opens on: what the author has bound, raised to at least medium and then
+ * clamped to what the model takes. `DEFAULT_EFFORT` is `low`, so without the raise nearly every
+ * author would meet the `low` note the first time they opened the dialog.
  */
 export function analysisEffort(modelId: string, bound: EffortChoice): EffortChoice | undefined {
   return resolveEffort(modelId, stronger(bound, 'medium'));
@@ -109,8 +106,8 @@ export function adviseModel(modelId: string, withSource: boolean): Advice {
 }
 
 /**
- * What to say about how hard it thinks. Only asked of a model that has the knob — where there is
- * none the model note above carries the advice and the row is not drawn at all.
+ * What to say about how hard the model thinks. Only asked of a model with a reasoning setting;
+ * for a model without one, `adviseModel` carries the advice and the row is not drawn.
  */
 export function adviseEffort(modelId: string, effort: EffortChoice): Advice {
   if (!supportsEffort(modelId)) return fine;
@@ -139,8 +136,8 @@ export function adviseEffort(modelId: string, effort: EffortChoice): Advice {
 const RANK: Record<Advice['level'], number> = { warn: 2, note: 1, ok: 0 };
 
 /**
- * The one sentence the dialog's accept strip shows, worst level first. The tick means *this will
- * run*; this says what it will cost.
+ * The one sentence the dialog's accept strip shows, worst level first. The tick says the run will
+ * happen; this sentence says what it will cost.
  */
 export function adviseRun(
   modelId: string,
@@ -153,7 +150,7 @@ export function adviseRun(
     .sort((a, b) => RANK[b.level] - RANK[a.level])
     .map((advice) => advice.text);
 
-  // Nothing is changed under the author silently, so a raised default says that it was raised.
+  // A raised default is announced rather than applied silently
   if (
     bound !== undefined &&
     raisedEffort(modelId, bound) &&

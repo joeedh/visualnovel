@@ -1,7 +1,7 @@
 /**
- * Deterministic layered layout for a directed graph. Same graph in, same coordinates out —
- * there is no force-directed relaxation and no randomness anywhere, because the view
- * re-lays-out on every model reload and a graph that reshuffles itself reads as broken.
+ * Deterministic layered layout for a directed graph. The same graph produces the same
+ * coordinates: there is no force-directed relaxation and no randomness, because the view
+ * re-lays-out on every model reload and a picture that reshuffles reads as broken.
  *
  * Ranks run top-to-bottom, matching the `flowchart TD` that `toMermaid` emits, so the app and
  * the `.mmd` export describe the same shape.
@@ -16,10 +16,10 @@ export interface LayoutOptions {
   /** Crossing-reduction sweeps. Each is one pass down and one back up. */
   sweeps?: number;
   /**
-   * Straighten the columns as well as ordering them — Sugiyama's third phase, which the plain
-   * layout skips. Off by default: it is strictly more work for the same *ordering*, and the
-   * cheap layout is what every non-interactive caller (the `.mmd` export's shape, the tests)
-   * wants. See {@link straighten}.
+   * Straighten the columns as well as ordering them, which is Sugiyama's third phase and is
+   * skipped by the plain layout. It is off by default because it is strictly more work for the
+   * same ordering, and every non-interactive caller (the `.mmd` export's shape, the tests) uses
+   * the cheap layout. See {@link straighten}.
    */
   tidy?: boolean;
 }
@@ -159,10 +159,10 @@ function orderRanks(ranks: string[][], forward: GraphEdge[], sweeps: number): st
 }
 
 /**
- * Weighted isotonic regression by pool-adjacent-violators: the non-decreasing sequence closest
- * (in weighted least squares) to `values`. Exact and O(n), not an approximation — which is why
- * {@link straighten} can ask for the ideal positions and let this hand back the legal ones,
- * instead of placing nodes one at a time and hoping the order it chose was a good one.
+ * Weighted isotonic regression by pool-adjacent-violators. Returns the non-decreasing sequence
+ * closest to `values` in weighted least squares. The result is exact and O(n), so
+ * {@link straighten} can hand over the ideal positions and get the closest legal ones back in
+ * one call rather than placing nodes one at a time.
  */
 function isotonic(values: number[], weights: number[]): number[] {
   const blocks: { value: number; weight: number; count: number }[] = [];
@@ -190,18 +190,18 @@ function isotonic(values: number[], weights: number[]): number[] {
 }
 
 /**
- * Sugiyama's third phase — x-coordinate assignment — which the plain layout skips: it centres
- * each rank on its own width, so a two-node rank under a five-node one sits nowhere near either
- * of its parents and every edge leans. The *ordering* is not touched; only the gaps within a
- * rank grow, so this is a rearrangement of the same picture rather than a different one.
+ * Sugiyama's third phase, x-coordinate assignment, which the plain layout skips. The plain
+ * layout centres each rank on its own width, so a two-node rank under a five-node one sits
+ * nowhere near either of its parents and every edge leans. The ordering is not touched here;
+ * only the gaps within a rank grow, so the picture is rearranged rather than replaced.
  *
- * Each pass asks every node where it would like to be — the mean of its neighbours' centres in
- * the rank above (going down) or below (going up) — and then answers the whole rank at once.
- * Writing a node's left edge as `u + prefix`, where `prefix` is the room its predecessors in the
- * rank need, turns "keep the order and keep them apart" into "`u` must not decrease", and the
- * closest legal `u` to what was wanted is exactly {@link isotonic}. Weighting by neighbour count
- * lets a node with five parents outrank one with a single child, and a node with no neighbours
- * on that side asks to stay where it is rather than being dragged along.
+ * Each pass computes a target position for every node — the mean of its neighbours' centres in
+ * the rank above going down, or below going up — and then solves the whole rank at once. Writing
+ * a node's left edge as `u + prefix`, where `prefix` is the room its predecessors in the rank
+ * need, turns "keep the order and keep them apart" into "`u` must not decrease", and the closest
+ * legal `u` to the targets is exactly {@link isotonic}. Weighting by neighbour count gives a node
+ * with five parents more pull than one with a single child, and a node with no neighbours on that
+ * side targets its current position so it is not dragged along.
  */
 function straighten(
   nodes: LaidOutNode[],
@@ -221,8 +221,8 @@ function straighten(
 
   const indices = ranks.map((_, i) => i);
   for (let pass = 0; pass < passes; pass++) {
-    // Down reads parents, up reads children. Alternating is what lets a straightening decided at
-    // the top propagate to the bottom and back rather than only ever pulling one way.
+    // A downward pass reads parents and an upward pass reads children. Alternating propagates a
+    // straightening decided at the top down to the bottom and back, instead of pulling one way
     const down = pass % 2 === 0;
     for (const r of down ? indices : [...indices].reverse()) {
       const row = (ranks[r] as string[])
@@ -253,8 +253,8 @@ function straighten(
     }
   }
 
-  // Ranks were centred on x = 0 before this ran, and callers (Fit, the minimap) read `bounds`
-  // rather than assuming it — but re-centring the whole picture keeps the two layouts comparable.
+  // Ranks were centred on x = 0 before this ran. Callers (Fit, the minimap) read `bounds` rather
+  // than assuming that, but re-centring keeps the tidy and plain layouts comparable
   const box = boundsOf(nodes);
   const shift = -(box.x + box.width / 2);
   if (shift !== 0) for (const n of nodes) n.x += shift;
@@ -267,8 +267,8 @@ function straighten(
  */
 export function layoutGraph(graph: Graph, opts: LayoutOptions = {}): GraphLayout {
   const { nodeGap, rankGap, tidy } = { ...DEFAULTS, ...opts };
-  // Tidying is worth more ordering work: straightening cannot remove a crossing, it can only
-  // make the ones that remain read cleanly, so the ordering wants to be as good as it gets first.
+  // Tidying runs more ordering sweeps first, because straightening cannot remove a crossing and
+  // can only make the crossings that remain read cleanly
   const sweeps = opts.sweeps ?? (tidy ? TIDY_SWEEPS : DEFAULTS.sweeps);
   const nodeIds = graph.nodes.map((n) => n.id);
   const present = new Set(nodeIds);

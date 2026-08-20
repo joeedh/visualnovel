@@ -4,13 +4,12 @@
  *
  * Every decision here delegates to the same rule module the matching `story.*` command runs in
  * main — `@vn/scriptedit`'s `branchops` for the branch editor and `lineops` for the script,
- * `coverage` for the timeline.
- * So the sentence shown while a card hovers over a wire it cannot be spliced into is produced by
- * the function that would have refused the drop, and `interaction.targets` answers with that same
- * sentence without anything being attempted.
+ * `coverage` for the timeline. The sentence shown while a card hovers over a wire it cannot be
+ * spliced into is therefore produced by the function that would have refused the drop, and
+ * `interaction.targets` answers with that same sentence without anything being attempted.
  *
- * It is in `shared/` rather than in the renderer because both halves need it: the surfaces run
- * `targets` during a gesture, and main runs it to answer an agent. See
+ * This module is in `shared/` rather than in the renderer because both halves need it: the
+ * surfaces run `targets` during a gesture, and main runs it to answer an agent. See
  * `docs/plans/archive/interaction-model.md`.
  */
 import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
@@ -38,9 +37,9 @@ export const NEW_CHOICE = 'New choice';
 export const CANVAS = 'canvas';
 
 /**
- * The insertion point above a scene's first line — the empty `after` of `story.moveLine` and
- * `story.moveShot`, which is not addressable as a target. Safe as a name because every line id is
- * `<scene>:L<n>` and every shot id is `<scene>__<raw>`.
+ * The insertion point above a scene's first line. `story.moveLine` and `story.moveShot` spell it
+ * as an empty `after`, which cannot be addressed as a target. Safe as a name because every line id
+ * is `<scene>:L<n>` and every shot id is `<scene>__<raw>`.
  */
 export const TOP = 'top';
 
@@ -74,8 +73,8 @@ const verdict = (decision: Decision, target: string): Verdict => {
 /**
  * Wire `from` to `to`. A scene with nothing leaving it continues linearly; anything else gains
  * a choice — including a scene that already has a bare `next`, whose fallthrough the runner
- * will then stop following. That is not refused: the now-inert edge is drawn struck through,
- * which says it better than a modal would.
+ * will then stop following. That is not refused; the now-inert edge is drawn struck through
+ * instead.
  */
 export function connect(scenes: SceneMap, from: string, to: string): Decision {
   const scene = scenes.get(from);
@@ -120,8 +119,8 @@ export function unwire(scenes: SceneMap, edge: StoryEdge): Decision {
 /**
  * Retype a choice's decision text. The edge keeps its index, so it stays the same choice.
  *
- * Not an interaction: it commits from an inline text input, so there is no carried object and
- * no enumerable target set — the thing an interaction exists to describe.
+ * Not an interaction: it commits from an inline text input, so there is no carried object and no
+ * enumerable target set for an interaction to describe.
  */
 export function relabel(scenes: SceneMap, edge: StoryEdge, label: string): Decision {
   if (edge.kind !== 'choice' || edge.index === undefined) {
@@ -139,9 +138,8 @@ export function relabel(scenes: SceneMap, edge: StoryEdge, label: string): Decis
  * The branch structure the graph describes, back in `Scene` terms. Choice order comes from
  * `StoryEdge.index` rather than array position, so it is the same index the command takes.
  *
- * This inverse is the load-bearing half: it is what lets a drop be judged by the *real*
- * `branchops` while the pointer is still down, rather than by a copy of the rules that could
- * disagree with them.
+ * The inversion is what lets a drop be judged by `branchops` itself while the pointer is still
+ * down, rather than by a copy of the rules that could disagree with them.
  */
 export function scenesOf(story: StoryGraph): SceneMap {
   const scenes = new Map<string, { id: string; choices: { label: string; goto: string }[] }>();
@@ -222,9 +220,9 @@ export const branchSplice = defineInteraction<BranchState>({
 });
 
 /**
- * The one gesture with a single target: the arrowhead is pulled *off* whatever it points at,
- * so there is nowhere else it could land. It is still an interaction rather than a bare
- * command because the verdict — whether that edge can be removed at all — is worth asking for.
+ * The one gesture with a single target, because the arrowhead is pulled off the scene it points
+ * at and has nowhere else to land. It is still an interaction rather than a bare command because a
+ * caller needs the verdict on whether that edge can be removed at all.
  */
 export const branchUnwire = defineInteraction<BranchState>({
   id: 'branch.unwire',
@@ -269,10 +267,10 @@ const parseHandle = (carried: string): { shotId: string; edge: Edge } | null => 
 };
 
 /**
- * Dragging a bracket's outer handle onto a line. Unlike the branch gestures, most targets are
- * *not* candidates at all: dropping the handle back where it already is changes nothing, so those
- * rows are dropped from the list rather than reported as an accept the author would learn nothing
- * from — "no target" and "a target that refuses" are different answers.
+ * Dragging a bracket's outer handle onto a line. Unlike the branch gestures, most rows are not
+ * candidates at all: dropping the handle back where it already is changes nothing, so those rows
+ * are left out of the list rather than reported as an accept the author would learn nothing from.
+ * "No target" and "a target that refuses" are different answers.
  */
 export const timelineCover = defineInteraction<CoverState>({
   id: 'timeline.cover',
@@ -334,14 +332,13 @@ export const timelineCover = defineInteraction<CoverState>({
 });
 
 /**
- * Dragging a whole bracket onto another one. The targets are the *other shots* rather than the
- * lines, because that is what the act is about: a shot's position is where its covered lines sit,
- * so "put this shot after that one" is the only way to say it without the author computing rows.
- * {@link TOP} is a target too — the same insertion point `script.moveLine` offers.
+ * Dragging a whole bracket onto another one. The targets are the other shots rather than the
+ * lines: a shot's position is where its covered lines sit, so "put this shot after that one" is
+ * the only way to say it without the author computing rows. {@link TOP} is a target too — the
+ * same insertion point `script.moveLine` offers.
  *
- * The refusal that matters is the interleaved shot: it is on screen in more than one place and has
- * no single position, and here it comes back as a refusal on every target rather than a gesture
- * that quietly does something else.
+ * An interleaved shot is on screen in more than one place and has no single position, so it comes
+ * back as a refusal on every target rather than as a gesture that quietly does something else.
  */
 export const timelineReorder = defineInteraction<CoverState>({
   id: 'timeline.reorder',
@@ -457,19 +454,18 @@ export const timelineCreate = defineInteraction<CoverState>({
 });
 
 // ---------------------------------------------------------------------------
-// The script's one gesture. It was declared and tested here before any surface ran it, which is
-// the point of the layer; STUDIO's script column is now its first consumer.
+// The script's one gesture. It was declared and tested here before any surface ran it; STUDIO's
+// script column is its first consumer.
 // ---------------------------------------------------------------------------
 
 /**
- * Dragging a line to another position in its own scene. The targets are *insertion points*, so
+ * Dragging a line to another position in its own scene. The targets are insertion points, so
  * there is one more of them than there are lines: {@link TOP}, then "after each line".
  *
- * Two kinds of non-target, and the distinction is the same one `timeline.cover` draws: a drop
- * that would reorder nothing is left out of the list entirely rather than reported as an accept
- * the author would learn nothing from, while a drop `lineops` refuses comes back as a refusal
- * carrying its sentence. A line id from another scene is not a near-miss target — coverage cannot
- * cross a scene boundary — so it is the whole gesture that is unresolved.
+ * There are two kinds of non-target, the same distinction `timeline.cover` draws. A drop that
+ * would reorder nothing is left out of the list entirely, while a drop `lineops` refuses comes
+ * back as a refusal carrying its sentence. A line id from another scene is not a near-miss target
+ * because coverage cannot cross a scene boundary, so the whole gesture is unresolved.
  */
 export const scriptMoveLine = defineInteraction<ScriptState>({
   id: 'script.moveLine',
@@ -531,18 +527,17 @@ export interface PromptDragState extends PromptOrderState {
 }
 
 /**
- * Dragging a chunk card to another position in the same prompt. The targets are *insertion points*,
+ * Dragging a chunk card to another position in the same prompt. The targets are insertion points,
  * so there is one more of them than there are cards: {@link TOP_CHUNK}, then "after each chunk".
  *
- * It earns its place as an interaction rather than a click handler because it has two real
- * refusals. A drop that would reorder nothing is left out of the list entirely — no target, rather
- * than an accept the author would learn nothing from. And in custom mode the whole gesture is
- * unresolved: the cards are still drawn, but only as what the agent would be given, so there is no
- * order in force for a drop to change.
+ * It is an interaction rather than a click handler because it has two refusals. A drop that would
+ * reorder nothing is left out of the list entirely rather than reported as an accept the author
+ * would learn nothing from. In custom mode the whole gesture is unresolved: the cards are still
+ * drawn, but only as what the agent would be given, so there is no order in force for a drop to
+ * change.
  *
  * An accept's note carries the reorder-invalidates-a-condensation warning (see `moveChunk`), so the
  * author reads it while the pointer is still down rather than after the prompt is already held.
- *
  */
 export const promptReorder = defineInteraction<PromptDragState>({
   id: 'prompt.reorder',

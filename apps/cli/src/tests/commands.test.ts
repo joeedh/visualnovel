@@ -97,7 +97,7 @@ describe('cmdRun — a failure is not a clean run', () => {
       ...(imageBackend ? { imageBackend } : {}),
     });
 
-  /** An image backend that rejects every call — the provider outage, made deterministic. */
+  /** An image backend that rejects every call, so a provider outage is deterministic. */
   const brokenImages = (message: string): ImageBackend => ({
     modelId: 'broken-image',
     generate: () => Promise.reject(new Error(message)),
@@ -311,7 +311,7 @@ describe('cmdScreenplay', () => {
       expect(out).toContain('Wrote 4 scene(s)');
       const text = await p.read('screenplay.fountain');
 
-      // Reading order, and still an input this repo accepts — the point of the escape hatch.
+      // The markers come out in reading order, and the file is still an input this repo accepts
       expect(text.match(/\[\[scene: (\S+)\]\]/g)).toEqual([
         '[[scene: arrival]]',
         '[[scene: rooftop]]',

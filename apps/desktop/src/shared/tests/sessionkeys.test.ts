@@ -1,7 +1,7 @@
 /**
- * The per-window session keys. Small enough to look obvious and worth pinning anyway: the shape
- * of these strings is what stops two windows sharing one mesh and two projects sharing one
- * window 0, and neither failure announces itself.
+ * The per-window session keys. The shape of these strings is what keeps two windows from sharing
+ * one mesh and two projects from sharing one window 0. Neither collision raises an error at
+ * runtime, so the keys are pinned here instead.
  */
 import {
   LEGACY_KEYS,

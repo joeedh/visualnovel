@@ -1,9 +1,9 @@
 /**
- * What the asset editor decides before it draws: which command approves the asset in front of
- * it, what the header's badges say, and how staleness reads as a sentence.
+ * The asset editor's decisions, made before it draws: which command approves the asset on screen,
+ * what the header's badges say, and how staleness is worded.
  *
- * Pure, because the desktop jest project is node-only and the pane itself can only be checked
- * live over CDP — so everything that is a *rule* rather than markup is tested here instead.
+ * These are pure functions so they can be tested here. The desktop jest project is node-only and
+ * the pane itself can only be checked live over CDP, so the rules are kept out of the markup.
  */
 import type { AssetInfo } from '../../src/shared/ipc.js';
 
@@ -39,15 +39,14 @@ export type ApproveAction =
   | { ok: false; reason: string };
 
 /**
- * A portrait is approved through the gate and nothing else — `gate.approve` also writes
- * `character.md` and `approved.png`, which is what actually clears the character — so the pane
- * offers that command rather than the generic `asset.accept` the command itself would refuse.
- * A concept and an upload have no approval at all, for opposite reasons: nothing consumes a
- * concept, and nothing generated an upload.
+ * A portrait is approved through the gate and nothing else. `gate.approve` also writes
+ * `character.md` and `approved.png`, which is what clears the character, so the pane offers that
+ * command rather than the generic `asset.accept` the command itself would refuse. A concept and an
+ * upload have no approval at all: nothing consumes a concept, and nothing generated an upload.
  *
  * Approval also flows upstream-first, and that refusal is placed ahead of the portrait split so it
- * gates both doors. The sentence is main's — `previewAccept` refuses `asset.accept` with the same
- * one — because a greyed button the command would honour is a lie about the rule.
+ * gates both paths. The sentence comes from main (`previewAccept` refuses `asset.accept` with the
+ * same one) so a greyed button states the same rule the command enforces.
  */
 export function approveAction(info: AssetInfo): ApproveAction {
   if (info.kind === 'concept') {
@@ -88,8 +87,8 @@ export function approveAction(info: AssetInfo): ApproveAction {
 export type PromoteAction = { ok: true; locationId: string } | { ok: false; reason: string };
 
 /**
- * Only a concept is promotable, and only one bound to a location: a character concept would walk
- * around the approval gate, which owns `character.md` and `approved.png`.
+ * Only a concept is promotable, and only one bound to a location. Promoting a character concept
+ * would bypass the approval gate, which owns `character.md` and `approved.png`.
  */
 export function promoteAction(info: AssetInfo): PromoteAction {
   if (info.kind !== 'concept') {
@@ -116,10 +115,10 @@ export function promoteAction(info: AssetInfo): PromoteAction {
 export type ReplaceAction = { ok: true; slot: string } | { ok: false; reason: string };
 
 /**
- * A file can only stand in for a picture the project actually planned, and only while these are
- * still the bytes in it — `AssetInfo.slot` is absent for a concept, an upload and a superseded
- * render alike. A portrait is the one live slot this declines: replacing a look is approving one,
- * and that is the gate's. Both refusals are `adoptionForSlot`'s, said as layout.
+ * A file can only stand in for a picture the project actually planned, and only while the asset on
+ * screen still holds that slot. `AssetInfo.slot` is absent for a concept, an upload and a
+ * superseded render alike. A portrait is the one live slot this declines, because replacing a look
+ * is approving one and approval belongs to the gate. Both refusals restate `adoptionForSlot`'s.
  */
 export function replaceAction(info: AssetInfo): ReplaceAction {
   if (info.slot === undefined) {
@@ -144,9 +143,9 @@ export type RedrawAction =
   | { ok: false; reason: string };
 
 /**
- * A concept is the one asset whose prompt is *authored*: nothing derives it, so nothing rewrites
- * it on the next planning pass and an edit survives. Every other kind's prompt is a derivation
- * folded into the task hash — art notes are how those move, and `asset.regenerate` re-runs them.
+ * A concept is the one asset whose prompt is authored: nothing derives it, so nothing rewrites it
+ * on the next planning pass and an edit survives. Every other kind's prompt is a derivation folded
+ * into the task hash; art notes are how those change, and `asset.regenerate` re-runs them.
  *
  * The prompt comes back whole rather than as an empty box, so the style preamble and the
  * framing sentence survive an edit by default.
@@ -161,7 +160,7 @@ export function promptEditable(info: AssetInfo): RedrawAction {
   return { ok: true, prompt: info.prompt ?? '', title: info.title ?? '' };
 }
 
-/** The header's facts, in the order they are read: what it is, where it lives, whether it stands. */
+/** The header's badges, in display order: the kind, the store it lives in, then its status. */
 export function badgesOf(info: AssetInfo): string[] {
   const badges = [info.kind, info.base ? 'base' : 'project'];
   if (info.accepted) badges.push('accepted');
@@ -171,11 +170,11 @@ export function badgesOf(info: AssetInfo): string[] {
 }
 
 /**
- * The drift sentence, or none. `stale` is only ever true when a derivation exists, so this says
- * what changed underneath rather than merely that something did.
+ * The drift sentence, or an empty string. `stale` is only ever true when a derivation exists, so
+ * this says what changed underneath rather than merely that something did.
  *
- * Suspension comes first because it is the stronger claim: the words may still be right, and a
- * reference the picture was drawn *against* is what moved.
+ * Suspension is reported first because it is the stronger claim: the words may still be right, and
+ * a reference the picture was drawn against is what moved.
  */
 export function driftNote(info: AssetInfo): string {
   if (info.suspended) {
@@ -185,7 +184,7 @@ export function driftNote(info: AssetInfo): string {
   return 'Rendered from an older prompt — the project describes it differently now. Regenerate to catch up.';
 }
 
-/** The prompt to show: today's derivation when there is one, else whatever the bytes recorded. */
+/** The prompt to show. Today's derivation if there is one, otherwise the one the bytes recorded. */
 export function promptShown(info: AssetInfo): { text: string; derived: boolean } {
   if (info.derived !== undefined) return { text: info.derived, derived: true };
   if (info.prompt !== undefined) return { text: info.prompt, derived: false };

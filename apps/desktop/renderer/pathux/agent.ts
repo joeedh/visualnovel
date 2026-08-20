@@ -2,10 +2,10 @@
  * The live conversation: one store, subscribed once at boot, reduced by the pure functions in
  * `convo.ts`.
  *
- * It is a module rather than editor state for the reason every other push in this shell is:
- * the agent streams whether or not a convo pane is open, and a pane opened later has to show
- * what was already said. A revision counter is all a pane needs to notice — `update()` runs
- * every frame, so there is nothing to subscribe to.
+ * It is a module rather than editor state because the agent streams whether or not a convo pane
+ * is open, and a pane opened later has to show what was already said. A pane notices a change by
+ * comparing a revision counter, since `update()` runs every frame and there is nothing to
+ * subscribe to.
  */
 import { api, isLive, onAgentEvent } from '../api.js';
 import { exec, noteBinding, onExec, shell } from './bridge.js';
@@ -33,9 +33,9 @@ const OPENING = isLive
   : 'Design preview (no Electron bridge). Live data appears when launched as the desktop app.';
 
 /**
- * What a reopened thread says in the dialogue box. It has to be the sentence still on screen after
- * the replayed turns are scrolled away, because the mistake it prevents — typing at a model that
- * was never shown any of this — is one an author makes at the bottom of the pane.
+ * What a reopened thread says in the dialogue box. It stays on screen after the replayed turns are
+ * scrolled away, because an author types at the bottom of the pane and would otherwise address a
+ * model that was never shown this conversation.
  */
 const REOPENED = 'Reopened for reading — the agent has not been shown this conversation.';
 
@@ -63,9 +63,9 @@ function set(next: Convo): void {
  * so a turn the author types and a turn the palette runs are the same command with the same
  * provenance.
  *
- * The selected scene rides along as a prop, so it is in the provenance record beside what was
- * asked — what the author was looking at is part of what they meant. Main resolves it against the
- * project and drops it if it no longer names anything.
+ * The selected scene rides along as a prop, so the provenance record holds what the author was
+ * looking at beside what they asked. Main resolves it against the project and drops it if it no
+ * longer names anything.
  */
 export async function ask(text: string): Promise<void> {
   const input = text.trim();
@@ -84,17 +84,16 @@ export async function decide(approved: boolean): Promise<void> {
   if (!request) return;
   set(decided(state, { approved }));
   void api.invoke('plan:decision', { id: request.id, decision: { approved } });
-  // Approving *is* the switch into execute mode; the agent will say so too, but the badge
+  // Approving switches into execute mode. The agent reports the change too, but the badge
   // should not lag the click that caused it.
   if (approved) setMode('execute');
 }
 
 /**
- * Answer the question card — one answer per question of the form, in its order. Like `decide`, a
- * reply rather than a command: main is parked inside the agent's turn, so nothing about this is
- * undoable and there is no provenance to record. The empty string is allowed through — "nothing
- * to add" is what the tool exists to hear — and a short array is padded with it, because the card
- * is the only thing standing between the agent and a turn that never resumes.
+ * Answer the question card — one answer per question of the form, in its order. Like `decide`,
+ * this is a reply rather than a command: main is parked inside the agent's turn, so nothing here
+ * is undoable and there is no provenance to record. The empty string is passed through as a
+ * deliberate "nothing to add", and a short array is padded with it so the turn always resumes.
  */
 export function answer(answers: string[]): void {
   const request = state.question;
@@ -118,9 +117,9 @@ function setMode(mode: 'plan' | 'execute'): void {
 }
 
 /**
- * Drop a targeted opener into the composer, so the next turn is scoped to what was clicked.
- * The pane focuses the field around it — a seed nobody is there to take is simply the text the
- * composer holds when one opens.
+ * Drop a targeted opener into the composer, so the next turn is scoped to what was clicked. The
+ * pane focuses the field around it. When no pane is open to take the seed, it becomes the text
+ * the composer holds once one does open.
  */
 export function seed(text: string): void {
   seeded = text;
@@ -141,9 +140,9 @@ export function installAgent(): void {
   api.on('permission:ask', (request: AskRequest) => set(queried(state, request)));
   api.on('permission:confirm', (request: ConfirmRequest) => set(confirmAsked(state, request)));
 
-  // Clearing and the thread commands follow the *command* rather than the button on the pane, so
-  // the palette running the same id has the same effect. One route reaches neither —
-  // `window.vn`/CDP, which goes straight to main — and none of these commands emits an event.
+  // Clearing and the thread commands follow the command rather than the pane's button, so the
+  // palette running the same id has the same effect. `window.vn`/CDP goes straight to main and
+  // reaches neither, and none of these commands emits an event.
   onExec((id, outcome) => {
     if (!outcome.ok) return;
     if (id === 'agent.clear') {
@@ -156,16 +155,15 @@ export function installAgent(): void {
       const record = outcome.data as ThreadRecord | undefined;
       if (record) {
         set(replayed(state, record.items, REOPENED));
-        // Main has already rebound the agent to what this conversation was had on; the bar is
-        // told, because no effect reports a model change.
+        // Main has already rebound the agent to this conversation's model. The bar is told
+        // directly, because no effect reports a model change.
         noteBinding(record.model, record.effort);
       }
       setMode('plan');
     } else if (id === 'upload.files' || id === 'upload.pick') {
-      // The seeded turn is the command's sentence, not the model's — nothing has been asked yet,
-      // which is the point: the conversation opens on the author's question, not on an answer.
-      // `seed` is present only when bytes actually landed, so a cancelled dialog and an upload
-      // where every file was refused both leave the conversation the author was having alone.
+      // The seeded turn is the command's sentence rather than the model's, so the conversation
+      // opens on the author's question. `seed` is present only when bytes landed, so a cancelled
+      // dialog and an upload whose files were all refused both leave the conversation alone.
       const upload = outcome.data as { seed?: string; suggestions?: string[] } | undefined;
       if (!upload?.seed) return;
       set(offered(state, upload.seed, upload.suggestions ?? []));

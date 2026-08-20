@@ -7,9 +7,9 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { CommandBridge, DesktopApi, SessionValue } from '../shared/ipc.js';
 
 /**
- * Read once, here, rather than from React: `sendSync` blocks, but it blocks the preload
- * before anything has painted, and it is what keeps a saved panel width from being visible
- * as a jump away from the default. The payload is a few hundred bytes of warm cache.
+ * Read once here rather than from React. `sendSync` blocks, but it blocks the preload before
+ * anything has painted, so a saved panel width never appears as a jump away from the default.
+ * The payload is a few hundred bytes of warm cache.
  */
 const initialSession = ipcRenderer.sendSync('session:snapshot:sync') as Record<
   string,
@@ -35,9 +35,9 @@ const api: DesktopApi = {
 contextBridge.exposeInMainWorld('api', api);
 
 /**
- * The scripting surface: `window.vn`. Lives in the preload rather than React so it exists
- * before the app mounts, which is what makes it usable from the DevTools console on load and
- * from CDP `Runtime.evaluate` (see `scripts/vn-cdp.mjs`).
+ * The scripting surface, `window.vn`. Lives in the preload rather than React so it exists before
+ * the app mounts, which makes it usable from the DevTools console on load and from CDP
+ * `Runtime.evaluate` (see `scripts/vn-cdp.mjs`).
  */
 const vn: CommandBridge = {
   exec: (dslOrId, props) =>

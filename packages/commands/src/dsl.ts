@@ -1,9 +1,9 @@
 /**
  * The invocation DSL: `namespace.command(prop1='bleh' prop2=1)`.
  *
- * Hand-rolled tokenizer + recursive descent — small enough to keep pure and exhaustively
- * testable, and it lets errors carry a column so the palette can point at the offending
- * character. Argument separators are whitespace and/or commas, interchangeably.
+ * Hand-rolled tokenizer plus recursive descent: small enough to keep pure and exhaustively
+ * testable, and errors carry a column so the palette can point at the offending character.
+ * Arguments are separated by whitespace, by a comma, or by both.
  */
 import type { PropValue } from './props.js';
 
@@ -109,7 +109,7 @@ class Parser {
     if (ch === '-' || /[0-9]/.test(ch)) return this.number();
     if (IDENT_START.test(ch)) {
       // Barewords are strings, so `agent.setMode(mode=execute)` reads naturally; `true` and
-      // `false` are the two that mean themselves. `coerceProps` sorts out the rest.
+      // `false` are the exceptions and parse as booleans. `coerceProps` handles the rest
       const word = this.ident();
       if (word === 'true') return true;
       if (word === 'false') return false;

@@ -1,10 +1,10 @@
 /**
- * The gesture surface, as commands: what interactions exist, and which targets would take one.
+ * Commands over the gesture surface: which interactions exist, and which targets would take one.
  *
- * `interaction.targets` is the point of the whole layer — it answers "what would happen if I
- * dropped this there, and why not" *before* anything is attempted, using the same `targets`
- * the branch editor runs mid-drag. Both are non-mutating: an interaction never writes, it only
- * names the command that would.
+ * `interaction.targets` answers what would happen if a carried thing were dropped on a target,
+ * and why a target refuses, before anything is attempted, using the same `targets` the branch
+ * editor runs mid-drag. Both commands are non-mutating, because an interaction never writes; it
+ * only names the command that would.
  */
 import { defineFor, formatVerdicts, prop, toInteractionCatalog } from '@vn/commands';
 import {
@@ -70,7 +70,7 @@ export const interactionTargets = define({
  * The state a gesture's namespace is judged against. `script.*` takes no `scene` prop: a line id
  * names its own scene, so passing one would be a second answer to the same question.
  *
- * `prompt.*` is judged against one asset's chunks **in effective order**, which is what
+ * `prompt.*` is judged against one asset's chunks in effective order, which is what
  * `promptView` returns — so the state carries no `order` of its own and a move computes the whole
  * order from what is on screen, exactly as the pane does.
  */

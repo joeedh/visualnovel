@@ -1,9 +1,9 @@
 /**
- * Ingest: outside bytes become a `reference` asset (`docs/plans/archive/chunked-prompts.md` §15).
+ * Ingesting outside bytes as a `reference` asset (`docs/plans/archive/chunked-prompts.md` §15).
  *
- * The two properties worth a real store are where the bytes land — the **base** root, beside the
- * authored art — and what is refused: a file that is not an image, and mock art, which a real
- * backend rejects as a reference and which must therefore never get as far as a run.
+ * Two properties need a real store. The bytes land in the base root, beside the authored art. Two
+ * kinds of file are refused: one that is not an image, and mock art, which a real backend rejects
+ * as a reference and which must therefore never reach a run.
  */
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,7 +12,7 @@ import { placeholderPng } from '@vn/providers';
 import { hashParts, sha256 } from '@vn/util';
 import { imageExt, uploadOf, uploadReference } from '../index.js';
 
-/** A tiny, valid, unmarked PNG: the signature plus enough bytes to be recognisably itself. */
+/** A small valid PNG carrying no mock marker. */
 function realPng(tint: number): Uint8Array {
   const png = placeholderPng('00112233');
   const bytes = new Uint8Array(png);
@@ -95,8 +95,8 @@ describe('uploadReference', () => {
     }
   });
 
-  // The marker is the whole "mock art never reaches a real run" guarantee; an upload is the one
-  // door that could otherwise walk around it.
+  // The marker is what keeps mock art out of a real run, and an upload is the only way bytes
+  // enter the store without passing through a provider
   it('refuses mock-marked bytes, naming why', async () => {
     const p = await makeProject({ script: SCRIPTS.branching });
     try {

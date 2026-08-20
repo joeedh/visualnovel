@@ -16,9 +16,10 @@ async function listFiles(dir: string, ext: string): Promise<string[]> {
 }
 
 /**
- * The retired one-file screenplay, if the project still has one: the first `.fountain` in
- * `screenplay/`, else the first `.md`. The **only** place that decides which file that is, so
- * the reader's diagnostic and the importer's conversion can never disagree about it.
+ * The retired one-file screenplay, if the project still has one. Returns the first `.fountain`
+ * in `screenplay/`, or the first `.md` when there is no `.fountain`. This is the only place
+ * that decides which file that is, so the reader's diagnostic and the importer's conversion
+ * cannot disagree about it.
  */
 export async function findScreenplay(paths: ProjectPaths): Promise<string | undefined> {
   const fountain = await listFiles(paths.screenplayDir, '.fountain');
@@ -29,10 +30,10 @@ export async function findScreenplay(paths: ProjectPaths): Promise<string | unde
 /**
  * Read all authored input files for a project (report §9.1). Characters and set-locations are
  * found by their `type:` tag across three surfaces (`discoverEntities`), so each doc carries the
- * file it came out of and nothing downstream re-derives one. Scenes come from `scenes/<id>.md`
- * chunks and nothing else: a `screenplay/` script is the retired one-contended-file form, and it
- * is reported rather than loaded — silently reading it is what let a project stay unconverted
- * forever, and `vngen import` is one command.
+ * file it came out of and nothing downstream re-derives one. Scenes come only from
+ * `scenes/<id>.md` chunks. A `screenplay/` script is the retired one-file form and is reported
+ * as a diagnostic rather than loaded, so a project that has not been converted says so instead
+ * of running on unread inputs.
  */
 export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
   const diagnostics: Diagnostic[] = [];
@@ -41,9 +42,9 @@ export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
   const sceneDocs = await readSceneChunks(paths);
   const legacyScreenplay = await findScreenplay(paths);
   if (legacyScreenplay !== undefined) {
-    // With chunks present the leftover is inert — it builds nothing — but an author editing it
-    // would be writing into a file nothing reads, so it is still said out loud. Without chunks
-    // it is the whole story, and the project has no scenes until it is converted.
+    // With chunks present the leftover builds nothing, but it is still warned about because an
+    // author editing it would be writing into a file nothing reads. Without chunks it holds the
+    // whole story, and the project has no scenes until it is converted.
     diagnostics.push(
       sceneDocs.length > 0
         ? {
@@ -108,7 +109,8 @@ export async function writeApprovedPortrait(
  * Flip a character sheet's front-matter to approved with the chosen portrait hash (report §P3).
  * Takes the sheet's `file` — resolved by the caller from the same `loadInputs` its decision was
  * made against — because a character discovered by tag lives wherever its file lives, and a path
- * re-derived from the id would approve a file that may not exist. Returns false if it doesn't.
+ * re-derived from the id would approve a file that may not exist. Returns false when the given
+ * file does not exist.
  */
 export async function setCharacterApproval(file: string, portraitHash: string): Promise<boolean> {
   if (!(await exists(file))) return false;

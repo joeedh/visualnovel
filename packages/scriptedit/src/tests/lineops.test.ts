@@ -19,9 +19,9 @@ import {
 } from '../lineops.js';
 
 /**
- * The scenes come out of the real parser rather than being hand-built: line ids are *allocated*
- * on read, and a fixture that stamps them by hand could hand out an id the allocator never
- * would — which is precisely the class of bug these ops exist to avoid.
+ * The scenes come out of the real parser rather than being hand-built. Line ids are allocated on
+ * read, so a fixture that stamps them by hand could hand out an id the allocator never would,
+ * which is the class of bug these ops exist to avoid.
  */
 const SCRIPT = `INT. CLASSROOM - EVENING
 
@@ -462,7 +462,7 @@ describe('mergeScene', () => {
     const merged = written(op, 'arrival');
     expect(ids(merged)).toEqual(['arrival:L1', 'arrival:L2', 'arrival:L3', 'arrival:L4']);
     expect(merged.nextLineId).toBe(5);
-    // Renumbered, not retired: the mapping is what lets a shot's coverage follow the merge.
+    // Renumbered rather than retired, so a shot's coverage can follow the merge
     expect(op).toMatchObject({
       ok: true,
       removes: ['rooftop'],

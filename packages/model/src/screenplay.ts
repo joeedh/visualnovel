@@ -3,10 +3,10 @@
  * scene (Fountain import/export, steps 1–2). Pure — parsed input in, the text or documents to
  * write out — so the CLI commands are left with nothing but I/O and refusals.
  *
- * The two are not symmetric, on purpose. **Import** has to prove itself before a byte of it is
+ * The two are not symmetric, on purpose. Import has to prove itself before a byte of it is
  * written, because an author cannot review a migration they have not seen: every chunk is re-read
  * through `sceneFromDoc` and compared against the scene the screenplay produced, and one
- * divergence empties `chunks`, the same way `branchpatch.ts` discards its patch. **Export** is a
+ * divergence empties `chunks`, the same way `branchpatch.ts` discards its patch. Export is a
  * projection with no such duty — it claims nothing about being re-importable, though the default
  * form is.
  */
@@ -25,7 +25,7 @@ export interface SceneChunk {
 
 /** What one conversion produced. */
 export interface SceneChunksResult {
-  /** One document per scene, in document order. **Empty** if any diagnostic is an error. */
+  /** One document per scene, in document order. Empty if any diagnostic is an error. */
   chunks: SceneChunk[];
   /**
    * What `project.yaml`'s `start:` must name. A directory of chunks has no document order to
@@ -47,7 +47,7 @@ export interface SceneChunksOptions {
 
 /**
  * A scene id has to be a filename stem, and the import will not invent one. `/`, `\`, spaces and
- * the shapes a shell or a Windows path would fight over are all excluded.
+ * the characters a shell or a Windows path treats specially are all excluded.
  */
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
@@ -55,7 +55,7 @@ function err(code: string, message: string, where?: string): Diagnostic {
   return { severity: 'error', code, message, ...(where ? { where } : {}) };
 }
 
-/** Elements `splitScenes` drops on the floor, so the conversion can say so rather than lose them. */
+/** Elements `splitScenes` discards, so the conversion can report them rather than lose them. */
 const DROPPED: { label: string; of: (el: FountainScript['elements'][number]) => boolean }[] = [
   { label: 'section heading', of: (el) => el.type === 'section' },
   { label: 'page break', of: (el) => el.type === 'page_break' },
@@ -64,8 +64,8 @@ const DROPPED: { label: string; of: (el: FountainScript['elements'][number]) => 
 
 /**
  * Warn about everything the model does not keep. Dropping these is a deliberate, documented
- * choice (see `splitScenes`), but dropping them *quietly* during a migration is how an author
- * discovers it months later from the export.
+ * choice (see `splitScenes`), but dropping them quietly during a migration leaves the author to
+ * discover it months later from the export.
  */
 function droppedWarnings(script: FountainScript): Diagnostic[] {
   const out: Diagnostic[] = [];
@@ -94,7 +94,7 @@ function droppedWarnings(script: FountainScript): Diagnostic[] {
 /**
  * Convert a parsed screenplay into the scene chunks that replace it.
  *
- * Scene ids are carried through **exactly** as the screenplay names them, `[[scene:]]` overrides
+ * Scene ids are carried through exactly as the screenplay names them, `[[scene:]]` overrides
  * included: `work/shots/<sceneId>.json` and every generated asset bind to them, so a rename here
  * would detach art the author already paid for. An id that cannot be a filename is therefore an
  * error naming the fix, not a slug the tool picks.
@@ -126,7 +126,7 @@ export function sceneChunksFromScript(
       );
       continue;
     }
-    // Case-insensitively, because `Rooftop.md` and `rooftop.md` are one file on Windows.
+    // Compared case-insensitively, because `Rooftop.md` and `rooftop.md` are one file on Windows.
     const first = seen.get(scene.id.toLowerCase());
     if (first !== undefined) {
       const also = first === scene.id ? '' : ` (spelled "${first}" elsewhere)`;
@@ -159,8 +159,8 @@ export function sceneChunksFromScript(
 
   const chunks = split.scenes.map((scene) => ({ id: scene.id, doc: sceneToDoc(scene) }));
 
-  // The safety net. Anything the writer cannot say and the reader cannot recover comes back as a
-  // scene that differs, and takes the whole conversion down with it.
+  // Re-reading each chunk is the safety net. Anything the writer cannot express and the reader
+  // cannot recover comes back as a scene that differs, which fails the whole conversion.
   const reread: Scene[] = [];
   let unreadable = false;
   for (const chunk of chunks) {
@@ -191,9 +191,9 @@ export function sceneChunksFromScript(
 }
 
 /**
- * What the export needs of a project: the scenes and where the story starts. A `ProjectModel` is
- * one, and so is a bare scene list — the projection has no business asking for characters,
- * locations or diagnostics it will not write.
+ * The export needs only the scenes and where the story starts. A `ProjectModel` satisfies this, and
+ * so does a bare scene list; the projection does not ask for characters, locations or diagnostics
+ * it will not write.
  */
 export interface SceneGraph {
   scenes: Map<string, Scene>;
@@ -203,19 +203,19 @@ export interface SceneGraph {
 /** Options for {@link scriptFromScenes}. */
 export interface ScreenplayOptions {
   /**
-   * Drop the `[[…]]` machine markers, for a destination that is a human or Final Draft. **One
-   * way**: the scene ids, the branch structure and `nextLineId` all live in those markers, so
-   * clean output is a reading copy and not an input to `vngen import`.
+   * Drop the `[[…]]` machine markers, for a destination that is a human or Final Draft. This is
+   * one-way: the scene ids, the branch structure and `nextLineId` all live in those markers, so
+   * clean output is a reading copy rather than an input to `vngen import`.
    */
   clean?: boolean;
 }
 
-/** A marker-only line, and nothing else on it — what `clean` removes. */
+/** A line holding only `[[…]]` markers — what `clean` removes. */
 const MARKER_LINE = /^\s*(?:\[\[[\s\S]*?\]\]\s*)+$/;
 
 /**
- * Marker lines were carrying this file's blank-line structure, so removing them leaves doubled
- * blanks behind — and in Fountain a blank line is not decoration.
+ * Remove marker-only lines and the doubled blank lines they leave behind. Marker lines carry part
+ * of the file's blank-line structure, and in Fountain a blank line is structural.
  */
 function stripMarkers(text: string): string {
   const out: string[] = [];
@@ -228,9 +228,9 @@ function stripMarkers(text: string): string {
 }
 
 /**
- * Reading order: breadth-first from the entry, `next` before `choices`. Not the order the scenes
- * are stored in — a directory sorts alphabetically, which produces a screenplay nobody can read —
- * but the order a playthrough tends to meet them in.
+ * Order the scenes breadth-first from the entry, `next` before `choices` — the order a playthrough
+ * tends to meet them in. Deliberately not the order the scenes are stored in: a directory sorts
+ * alphabetically, which produces a screenplay nobody can read.
  */
 function readingOrder(graph: SceneGraph): { ordered: Scene[]; unreachable: Scene[] } {
   const ordered: Scene[] = [];
@@ -251,14 +251,14 @@ function readingOrder(graph: SceneGraph): { ordered: Scene[]; unreachable: Scene
 }
 
 /**
- * Project a scene graph back into one Fountain screenplay — the escape hatch that keeps the chunk
- * format from being lock-in. Read-only, and stale the moment it is written: this is not a mirror
- * kept in sync, it is a file produced on request.
+ * Project a scene graph back into one Fountain screenplay — the export path out of the chunk
+ * format. The result is read-only and stale as soon as it is written: it is produced on request
+ * rather than kept in sync.
  *
  * Scenes come out in reading order, with anything the entry cannot reach appended under a
- * `# Unreachable` section rather than dropped — an unreachable scene is still the author's work.
- * Machine markers are kept by default (they are Fountain notes, so every renderer ignores them)
- * which makes the output a valid `vngen import` input; `clean` drops them one-way.
+ * `# Unreachable` section rather than dropped, because an unreachable scene is still the author's
+ * work. Machine markers are kept by default (they are Fountain notes, so every renderer ignores
+ * them) which makes the output a valid `vngen import` input; `clean` drops them one-way.
  */
 export function scriptFromScenes(graph: SceneGraph, opts: ScreenplayOptions = {}): string {
   const { ordered, unreachable } = readingOrder(graph);

@@ -21,8 +21,8 @@ describe('commitOf', () => {
     });
   });
 
-  // A click in and a click away is not an authorial act, and an undo point that undoes nothing
-  // is worse than no undo point.
+  // A click in and a click away is not an authorial act, so it must not leave an undo point that
+  // undoes nothing
   it('asks for nothing when the draft says what the line already says', () => {
     expect(commitOf(line, 'Um… hello.')).toBeNull();
     expect(commitOf(line, '  Um… hello. ')).toBeNull();

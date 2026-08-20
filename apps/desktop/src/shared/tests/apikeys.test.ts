@@ -1,9 +1,9 @@
 /**
  * The guide reader, and the check that the shipped file is the shape the pane needs.
  *
- * The last test is the important one: it reads `docs/guides/api-keys.md` itself. The structure that
- * file carries — a section per vendor, a yaml block of facts — exists for machines, and prose
- * being edited is exactly when a machine-readable part quietly stops being read.
+ * One of these blocks reads `docs/guides/api-keys.md` itself. The structure that file carries
+ * — a section per vendor, a yaml block of facts — exists for machines, and an edit to the prose
+ * around it is what most often breaks a machine-readable part without anyone noticing.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -63,7 +63,7 @@ describe('parseKeyGuide', () => {
       env: 'GEMINI_API_KEY',
       freeTier: true,
     });
-    // The yaml block is facts, not words: it is read and then it is gone.
+    // The yaml block is read for its facts and then dropped from the body
     expect(gemini.body.some((block) => block.kind === 'code')).toBe(false);
     expect(gemini.body.map((block) => blockText(block))).toEqual(['Open it.\nCopy the key.']);
   });
@@ -140,8 +140,8 @@ describe('linkVerdict', () => {
     });
   });
 
-  // The one that would otherwise fail every single run: not being signed in sends the key console
-  // to Google's own login, which is the page working, not the page having moved.
+  // Being signed out sends the key console to Google's own login. That is the page working rather
+  // than the page having moved, so without this the check would fail every run
   it('allows a redirect that stays on the same site', () => {
     const signin = 'https://accounts.google.com/v3/signin/identifier?continue=' + CONSOLE;
     expect(linkVerdict(CONSOLE, { status: 200, finalUrl: signin }).ok).toBe(true);
@@ -225,8 +225,8 @@ describe('linkReport', () => {
     expect(report).toEqual({ state: 'ok', detail: 'HTTP 200' });
   });
 
-  // The one this exists for. Every path under the Gemini console answers 200 from Google's login
-  // — including the one a broken link would have — so the 200 is worth nothing on its own.
+  // Every path under the Gemini console answers 200 from Google's login (including the one a
+  // broken link would have) so the 200 is worth nothing on its own
   it('is unverified when the host answers everything', () => {
     const signin = 'https://accounts.google.com/v3/signin/identifier';
     const report = linkReport(CONSOLE, answered(signin), answered(signin));
@@ -239,8 +239,7 @@ describe('linkReport', () => {
     expect(report).toEqual({ state: 'broken', detail: 'HTTP 404' });
   });
 
-  // A canary that could not be asked must not turn a good page into an unverified one, so the
-  // failure direction is the safe one.
+  // A canary request that failed must not turn a good page into an unverified one
   it('trusts the page when the canary request itself failed', () => {
     const report = linkReport(DOCS, answered(DOCS), { error: 'socket hang up' });
     expect(report.state).toBe('ok');

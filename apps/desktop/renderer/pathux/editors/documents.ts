@@ -34,18 +34,17 @@ type DocMode = 'documents' | 'files';
 /**
  * The sidebar, as a pane: the project's five branches — Story → scenes → shots, Characters,
  * Locations, Wiki, Assets by kind — over the tree `workspace:doctree` already builds, or every
- * file on disk when it is switched to file mode. A tenth editor rather than fixed chrome, so it
+ * file on disk when it is switched to file mode. It is an editor rather than fixed chrome, so it
  * can be torn out, put on either side, or opened twice — once per mode.
  *
- * It owns no selection of its own. A click publishes `ui.sceneId` / `ui.shotId` /
- * `ui.characterId` / `ui.docPath` — which every other editor already observes — so the tree
- * steers the app without knowing what is open, and a scene picked in the branch graph lights here
- * without either editor knowing the other exists.
+ * It holds no selection of its own. A click publishes `ui.sceneId` / `ui.shotId` /
+ * `ui.characterId` / `ui.docPath`, which every other editor already observes, so the tree steers
+ * the app without knowing what is open, and a scene picked in the branch graph highlights here.
  *
- * Under the tree sits what points **at** the selected entity: her sheet, her art, the scenes and
- * shots she is in, straight out of `DocTree.backlinks`. It is here rather than in the Inspector
- * because the Inspector's subject is `ui.taskHash` — machine identity, a different axis — and
- * "which scenes is she in" should not cost a second pane.
+ * The panel under the tree lists what points at the selected entity: its sheet, its art, and the
+ * scenes and shots it appears in, from `DocTree.backlinks`. It is here rather than in the
+ * Inspector because the Inspector's subject is `ui.taskHash`, a different axis, and "which scenes
+ * is this character in" should not cost a second pane.
  */
 export class DocumentsEditor extends VnEditor {
   private bar!: Container;
@@ -70,7 +69,7 @@ export class DocumentsEditor extends VnEditor {
   private token = 0;
   private pending = false;
   private drawn = '';
-  /** The last location clicked here, which is the only thing that knows one is selected. */
+  /** The last location clicked here. Nothing else records that a location is selected. */
   private picked = '';
   /** The node being renamed right now, so a rebuild underneath the box cannot start a second one. */
   private renaming = '';
@@ -96,15 +95,13 @@ export class DocumentsEditor extends VnEditor {
     this.rows = el('div', 'tv-rows') as HTMLDivElement;
     this.panel = el('div', 'dt-panel') as HTMLDivElement;
     this.surface.append(this.buildNewRow(), this.rows, this.panel);
-    // The surface rather than the rows, so the latch covers the backlink panel under them too.
+    // Latching on the surface rather than on the rows also covers the backlink panel below them.
     armDismissLatch(this.surface, menuIsOpen);
     this.appendSurface(this.surface);
 
     // Coarse on purpose (decision 7 of the plan): there is no write effect to listen for, a tree
-    // is one cached `loadProject` away, and a stale tree is worse than a redundant fetch.
-    // Re-armed on the way back on screen, and refetched with it: a tab switch tears the watch
-    // down, and a tree that stopped following the agent the first time the author looked at
-    // another pane is the bug this replaces.
+    // is one cached `loadProject` away, and a stale tree is worse than a redundant fetch. A tab
+    // switch tears the watch down, so it is re-armed and refetched on the way back on screen.
     this.watch(
       () => onInvalidate(() => void this.load()),
       () => void this.load(),
@@ -122,7 +119,7 @@ export class DocumentsEditor extends VnEditor {
     if (this.stateKey() !== this.drawn) this.rebuild();
   }
 
-  /** The tree currently being drawn, or undefined while its mode has yet to answer. */
+  /** The tree currently being drawn, or undefined until the fetch for its mode returns. */
   private roots(): readonly DocNode[] | undefined {
     return this.mode === 'files' ? this.files : this.tree?.roots;
   }
@@ -144,9 +141,9 @@ export class DocumentsEditor extends VnEditor {
         this.tree = tree;
         roots = tree.roots;
       }
-      // Expansion is the author's, and survives every refetch after the first — a tree that
-      // collapsed itself whenever something wrote a file would be unusable while working. One
-      // set serves both modes: their node ids share no prefix, so neither can close the other.
+      // The expanded set belongs to the author and survives every refetch after the first; a tree
+      // that collapsed whenever something wrote a file would be unusable while working. One set
+      // serves both modes: their node ids share no prefix, so neither can close the other.
       if (first) this.expanded = new Set([...this.expanded, ...defaultExpanded(roots)]);
       this.failure = '';
     } catch (err) {
@@ -213,8 +210,8 @@ export class DocumentsEditor extends VnEditor {
   private rebuildBar(): void {
     const files = this.mode === 'files';
     this.bar.clear();
-    // Labelled with the mode it is in rather than the one it would switch to, which is the
-    // reading the header's own PLAN/EXECUTE button already established.
+    // Labelled with the mode it is in rather than the one it would switch to, matching the
+    // header's own PLAN/EXECUTE button.
     this.bar.button(files ? 'FILES' : 'DOCUMENTS', () =>
       this.setMode(files ? 'documents' : 'files'),
     ).description = files
@@ -224,9 +221,8 @@ export class DocumentsEditor extends VnEditor {
       'Add a character, location, page or skill to this project';
     this.bar.button('Refresh', () => void this.load()).description =
       'Re-read the project from disk';
-    // Fold the whole tree back up. Not the same as reloading: expansion is the author's and
-    // survives every refetch, so once a morning's work has left forty branches open there is
-    // otherwise no way back but forty clicks.
+    // Folding the tree back up is not the same as reloading: expansion survives every refetch, so
+    // without this button a tree left with dozens of open branches has to be closed row by row.
     const shut =
       VN_ICONS.collapse >= 0
         ? this.bar.iconbutton(VN_ICONS.collapse, '', () => this.collapseAll())
@@ -236,9 +232,9 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * The one authored act the tree itself performs: scaffold a sheet or a note from a name, and
-   * open what it wrote. A row rather than a dialog — path.ux has no prompt, and the surface is
-   * already raw DOM in this pane's shadow root.
+   * Scaffold a sheet or a note from a name and open what it wrote — the one authored act the tree
+   * itself performs. It is a row rather than a dialog because path.ux has no prompt and this
+   * pane's surface is already raw DOM in its shadow root.
    */
   private buildNewRow(): HTMLElement {
     this.newRow = el('div', 'dt-new') as HTMLDivElement;
@@ -286,8 +282,8 @@ export class DocumentsEditor extends VnEditor {
     if (name === '') return;
 
     const outcome = await exec('doc.create', { kind: this.newKind.value, name });
-    // A refusal — a document already at that path — is already in the note frame, and the row
-    // stays open over the name that earned it rather than making the author retype it.
+    // A refusal (a document already at that path) is already reported in the note frame, so the
+    // row stays open with the name still in it rather than making the author retype it.
     if (!outcome.ok) return;
 
     this.hideNewRow();
@@ -295,9 +291,9 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Give a mined location the sheet it never had, and open it. The id `doc.create` derives from the
-   * name is the id the heading was mined through — both are `slug(name)` — so this is that
-   * location's sheet rather than a second location standing beside it.
+   * Write the sheet for a location mined from a scene heading, then open it. `doc.create` derives
+   * the id from the name and heading mining derives it the same way (both are `slug(name)`), so
+   * this writes that location's sheet rather than creating a second location beside it.
    */
   private async writeSheet(name: string): Promise<void> {
     const outcome = await exec('doc.create', { kind: 'location', name });
@@ -306,8 +302,8 @@ export class DocumentsEditor extends VnEditor {
   }
 
   private rebuildRows(): void {
-    // Whatever was being renamed, its box is about to be thrown away with the row it sat in —
-    // so the latch goes with it, rather than blocking every rename after the next refetch.
+    // A rename box is thrown away with the row it sat in, so clearing this here keeps a refetch
+    // from blocking every later rename.
     this.renaming = '';
     this.rows.textContent = '';
 
@@ -356,9 +352,9 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * What points at the selected entity. Drawn from the document tree even in file mode: the
-   * backlinks are the same walk either way, and an author who switched to files to find a note
-   * has not stopped caring which scenes the character is in.
+   * Draw what points at the selected entity. The document tree supplies the backlinks even in
+   * file mode, because the walk is the same either way and switching to file mode does not change
+   * which scenes a character is in.
    */
   private rebuildPanel(): void {
     this.panel.textContent = '';
@@ -375,8 +371,8 @@ export class DocumentsEditor extends VnEditor {
     );
     this.panel.appendChild(head);
 
-    // The sheet, said as what it is: a character filed in the story bible is still a character,
-    // and which of the two the author is looking at is the thing that would otherwise surprise.
+    // The sheet row is labelled by where the sheet lives, because a character filed in the story
+    // bible is still a character and the author would otherwise not know which of the two it is.
     if (links.sheet) {
       const label = links.wiki ? 'in the story bible' : 'sheet';
       this.panel.appendChild(
@@ -386,8 +382,9 @@ export class DocumentsEditor extends VnEditor {
       );
     }
 
-    // No sentence here: the panel already says what it is about, and the rows under it — scenes,
-    // shots — are the rest of the answer. Emptiness is worth saying in a pane showing one document.
+    // The strip gets no empty-state sentence: the panel heading already names the subject, and the
+    // scene and shot rows below are the rest of the answer. Saying a strip is empty earns its
+    // place only in a pane showing one document.
     const strip = el('div', 'dt-strip');
     renderAssetStrip(strip, assetGroups(links), '', { onPick: (hash) => this.openAsset(hash) });
     this.panel.appendChild(strip);
@@ -432,9 +429,9 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Everything shut, headings included — emptied rather than reset to `defaultExpanded`, because
-   * an author who asked for the tree closed means the tree, and the five headings are one click
-   * each to get back. Nothing to close is not an act, so it does not cost a rebuild.
+   * Shut everything, headings included. The set is emptied rather than reset to `defaultExpanded`,
+   * because a request to close the tree means the whole tree and the five headings cost one click
+   * each to reopen. An already-empty set is not a change, so it does not cost a rebuild.
    */
   private collapseAll(): void {
     if (this.expanded.size === 0) return;
@@ -451,36 +448,35 @@ export class DocumentsEditor extends VnEditor {
     const current = this.selection();
     const next = selectionForNode(row.node, current);
     if (next === current) {
-      // A grouping names nothing, so its whole row opens it — otherwise clicking the word
-      // "Characters" would be the one click in the tree that does nothing at all. A counted `more`
-      // is the same click for the same reason: it names nothing, and what it hides is the answer.
+      // A grouping row names no subject, so clicking anywhere in it expands the row; otherwise
+      // clicking the word "Characters" would do nothing at all. A counted `more` row expands on a
+      // click for the same reason: it names nothing, and what it hides is the answer.
       if (row.expandable) this.toggle(row.node.id);
       else this.rebuild();
       return;
     }
 
-    // An asset row is a slot, and its children are the takes that slot has had. Selecting the one
-    // already selected would do nothing visible, so the second click is spent on the only question
-    // the row has left an answer to: what came before this. Assets only — a scene is expandable
-    // too, and its shots must not appear and vanish as the author clicks around the story.
+    // An asset row is a slot and its children are that slot's earlier takes, so clicking the
+    // already-selected row expands it instead of reselecting it. Assets only: a scene is
+    // expandable too, and its shots must not appear and vanish as the author clicks around.
     if (row.node.kind === 'asset' && row.expandable && nodeIsSelected(row.node, current)) {
       this.toggle(row.node.id);
       return;
     }
 
-    // Selection first, always: a shot needs two fields to name it and `view.open` carries one
-    // string, so an editor whose subject cannot travel opens on the selection it already sees.
+    // The selection is published before routing: a shot needs two fields to name it and
+    // `view.open` carries one string, so an editor opens on the selection it already sees.
     this.publish(next);
     this.route(row.node);
   }
 
   /**
    * Rename in place: the label becomes a text box over the row it was drawn in, Enter commits and
-   * Escape leaves it alone. Undoable like every other document write, because it *is* one —
+   * Escape leaves it alone. It is undoable like every other document write, because it is one —
    * `doc.rename` rewrites the field the name was read from, and the file never moves.
    *
-   * The row is found by node id rather than held onto: the click that opened this rebuilt the
-   * rows, so the element the author double-clicked no longer exists.
+   * The row is found by node id rather than held onto, because the click that opened this rebuilt
+   * the rows and the element the author double-clicked no longer exists.
    */
   private beginRename(id: string, target: { path: string; name: string }): void {
     if (this.renaming) return;
@@ -502,8 +498,8 @@ export class DocumentsEditor extends VnEditor {
       if (settled) return;
       settled = true;
       this.renaming = '';
-      // The name only travels if it changed: renaming a document to what it is called already is
-      // a commit, an undo point and a rewritten file for nothing.
+      // The name is only sent if it changed: renaming a document to what it is already called
+      // would cost a commit, an undo point and a rewritten file for nothing.
       if (name !== undefined && name !== '' && name !== target.name) {
         void exec('doc.rename', { path: target.path, name }).then(() => void this.load());
       } else {
@@ -518,9 +514,9 @@ export class DocumentsEditor extends VnEditor {
       if (event.key === 'Enter') finish(box.value.trim());
       if (event.key === 'Escape') finish();
     });
-    // Clicking away is walking away, and walking away from a rename is not renaming.
+    // Clicking away cancels the rename rather than committing it
     box.addEventListener('blur', () => finish());
-    // Otherwise the click that puts the caret in the box is the row's third click.
+    // Without this the click that puts the caret in the box counts as a third click on the row
     box.addEventListener('click', (event) => event.stopPropagation());
 
     box.focus();
@@ -528,10 +524,10 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Right-click. The node under the cursor is selected first — otherwise "Regenerate" and whatever
-   * the asset pane happens to be showing could disagree about which asset is meant — but it is not
-   * routed to: opening a pane is what a left click is for, and a menu that rearranged the screen
-   * before the author chose anything would be answering a question they have not asked yet.
+   * Open the right-click menu. The node under the cursor is selected first, so that "Regenerate"
+   * and whatever the asset pane is showing cannot disagree about which asset is meant. It is not
+   * routed to: opening a pane is what a left click does, and a menu should not rearrange the
+   * screen before the author has chosen anything.
    */
   private openMenu(row: DocRow, x: number, y: number): void {
     const entries = menuFor(row.node);
@@ -547,9 +543,9 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Show the editor that answers for a node. Which one, and where, is `openNode`'s — the pane
-   * arithmetic behind `elsewhere` already means "anywhere but the one asking", so opening an
-   * asset can never replace the tree it was clicked in.
+   * Show the editor that answers for a node. `openNode` decides which editor and which pane; its
+   * `elsewhere` arithmetic means any pane but the one asking, so opening an asset cannot replace
+   * the tree it was clicked in.
    */
   private route(node: DocNode): void {
     openNode(this.ctx?.screen as VnScreen | undefined, node);
@@ -567,16 +563,16 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Show a document by path — what the backlink rows and the New… row have instead of a node.
-   * Routed like everything else, over a node standing in for the path, so there is exactly one
-   * place that decides where a document opens.
+   * Show a document by path, which is what the backlink rows and the New… row have instead of a
+   * node. It routes over a node standing in for the path, so exactly one place decides where a
+   * document opens.
    */
   private openDoc(path: string): void {
     this.publish({ ...this.selection(), docPath: path });
     this.route({ id: `wiki:${path}`, kind: 'wiki', label: path, path });
   }
 
-  /** The same, for a picture: the strip has a hash and the tree has a node, and both route. */
+  /** Show an asset by hash, which is what the asset strip has instead of a node. */
   private openAsset(hash: string): void {
     this.publish({ ...this.selection(), assetHash: hash });
     this.route(assetNode(hash));

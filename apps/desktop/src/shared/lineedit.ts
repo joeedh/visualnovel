@@ -1,21 +1,21 @@
 /**
- * Retyping one line, in the two surfaces that offer it: FLOOR's coverage timeline and STUDIO's
- * script column. Both open a textarea over a row and both commit `story.setLineText`, so the
- * decisions here — what a draft *is* as a line, whether an edit happened at all, how a
- * precondition reads — are made once rather than twice.
+ * Retyping one line, in the two surfaces that offer it: the Coverage editor's timeline and the
+ * Script editor's lines. Both open a textarea over a row and both commit `story.setLineText`, so
+ * the decisions here are made once rather than twice: what a draft amounts to as a line, whether
+ * an edit happened at all, and how a precondition reads.
  *
- * It is in `shared/` because the two consumers are in different rooms, and a room reaching into
- * another room's directory is how two copies of a rule start. Nothing here writes: a caller gets
- * an `Invocation` and runs it through the command stack like every other mutation.
+ * It is in `shared/` because the two consumers live in separate directories, and neither may
+ * reach into the other's to reuse a rule. Nothing here writes: a caller gets an `Invocation` and
+ * runs it through the command stack like every other mutation.
  */
 import type { Invocation, Verdict } from '@vn/commands';
 import type { CommandCheck, CoverageLine } from './ipc.js';
 
 /**
- * A draft as a line can hold it. The editor is a textarea so the row grows as you type, which
- * also means it accepts a pasted newline — and a line with a newline in it is not one line.
- * Folding those is the only quiet change this makes; the rest of the text is the author's, and
- * whether it is *allowed* is `@vn/scriptedit`'s to say, never this module's.
+ * A draft folded to what a single line can hold. The editor is a textarea so the row grows as
+ * you type, which also means it accepts a pasted newline, and a line with a newline in it is not
+ * one line. Folding those newlines is the only change made to the text; whether the result is
+ * allowed is `@vn/scriptedit`'s decision, never this module's.
  */
 export function lineOf(draft: string): string {
   return draft.replace(/\s*\n\s*/g, ' ').trim();
@@ -27,8 +27,8 @@ export function lineOf(draft: string): string {
  *
  * The no-op is decided here rather than in main because it is not a question about legality —
  * `story.setLineText` handles an unchanged text perfectly well ("already reads that way").
- * It is whether an *act* happened: clicking into a line and clicking away must not leave a
- * `CommandRecord` and an undo point that undo nothing. Every other judgment — an empty line, a
+ * The question is whether an act happened: clicking into a line and clicking away must not leave
+ * a `CommandRecord` and an undo point that undo nothing. Every other judgment — an empty line, a
  * text that would not read back — belongs to the command, and its sentence is what gets shown.
  */
 export function commitOf(line: CoverageLine, draft: string): Invocation | null {
@@ -38,11 +38,12 @@ export function commitOf(line: CoverageLine, draft: string): Invocation | null {
 }
 
 /**
- * A one-line message above the rows. `preview` is what would happen; `ok`/`refused` did.
+ * A one-line message above the rows. `preview` says what would happen; `ok` and `refused` say
+ * what did happen.
  *
- * The two ways a command speaks before it runs both land here — a `check` asked while the author
- * types, and a `Verdict` judged while something is carried — so the two surfaces cannot disagree
- * about which of those reads as a warning.
+ * Both ways a command reports before it runs land here — a `check` asked while the author types,
+ * and a `Verdict` judged while something is carried — so the two surfaces cannot disagree about
+ * which of those reads as a warning.
  */
 export interface Notice {
   tone: 'ok' | 'refused' | 'preview';
@@ -54,7 +55,8 @@ export interface Notice {
  * rendered shots that will keep illustrating the old prose comes from the command's own `check`,
  * so the warning and the run's message are one sentence rather than two guesses.
  *
- * `undeclared` renders as nothing: a command that states no precondition has not said yes.
+ * An `undeclared` check renders as nothing, because a command that states no precondition has
+ * not accepted.
  */
 export function noticeForCheck(check: CommandCheck): Notice | null {
   if (check.state === 'undeclared') return null;
@@ -64,8 +66,8 @@ export function noticeForCheck(check: CommandCheck): Notice | null {
 }
 
 /**
- * The same thing for a gesture mid-flight: the verdict's own sentence, so what the author reads
- * while a thing is carried is what the command would have said had they dropped it.
+ * A notice for a gesture in flight, built from the verdict's own sentence, so what the author
+ * reads while carrying something is what the command would have said on a drop.
  */
 export function noticeForVerdict(verdict: Verdict): Notice {
   return verdict.accept

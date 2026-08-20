@@ -92,7 +92,7 @@ describe('decomposeScene subjects', () => {
       MODEL,
       providersReturning([shot([{ characterId: 'Aiko', outfit: 'uniform' }])]),
     );
-    // Not merely accepted — rewritten, because the planner looks the id up verbatim.
+    // The id is rewritten, not merely accepted, because the planner looks it up verbatim
     expect(shots[0]!.subjects.map((s) => s.characterId)).toEqual(['aiko']);
   });
 

@@ -52,9 +52,9 @@ export interface ConceptResult {
 }
 
 /**
- * Existing art of the subject, fed back so "an aerial shot of the high school" is a shot of *that*
- * high school. Location plates rather than shot frames: a plate is the place with nothing in front
- * of it. Ordered by hash so the same project always sends the same references.
+ * Existing art of the subject, fed back so "an aerial shot of the high school" is a shot of that
+ * same high school. Location plates rather than shot frames: a plate is the place with nothing in
+ * front of it. Ordered by hash so the same project always sends the same references.
  */
 function subjectRefs(deps: ArtGenDeps, subject?: ConceptSubject): AssetRef[] {
   if (!subject) return [];
@@ -75,10 +75,10 @@ function subjectRefs(deps: ArtGenDeps, subject?: ConceptSubject): AssetRef[] {
 /**
  * Generate one concept image and store it.
  *
- * The door the planner deliberately does not have: a sentence in, an asset out, with no task node
- * and no place in any plan. The result is bound to what it sketches so the document tree and the
- * backlink panel can find it, and consumed by nothing — every other lookup in the codebase filters
- * by `kind` first, and the planner resolves a plate by task hash rather than by binding.
+ * This path deliberately bypasses the planner: a sentence goes in and an asset comes out, with no
+ * task node and no place in any plan. The result is bound to what it sketches so the document tree
+ * and the backlink panel can find it, and consumed by nothing — every other lookup in the codebase
+ * filters by `kind` first, and the planner resolves a plate by task hash rather than by binding.
  */
 export async function generateConcept(
   deps: ArtGenDeps,
@@ -100,8 +100,8 @@ export async function generateConcept(
   const result = await deps.image.generate(prompt, refs, params);
   const ref = await deps.store.write(result.bytes, result.ext, {
     kind: 'concept',
-    // Not a node in the task graph — a concept has none. The hash of the request that produced
-    // it, so provenance still answers "what made this" in the field that always answers it.
+    // A concept has no node in the task graph, so this records the hash of the request that
+    // produced it and provenance still answers "what made this" in its usual field
     sourceTask: hashParts('concept', { prompt, params, refs: refs.map((r) => r.hash) }),
     prompt,
     refs: refs.map((r) => r.hash),
@@ -151,10 +151,10 @@ export interface RedrawResult extends ConceptResult {
  * Every refusal a redraw can give, from the manifest alone — the same two-layer shape as
  * `promotionOf`, so a `check` and the act it guards say one sentence.
  *
- * A concept is the one asset kind whose prompt is *authored*: nothing derives it, no builder will
+ * A concept is the one asset kind whose prompt is authored: nothing derives it, no builder will
  * ever recompose it, and `derivePrompt` returns nothing for it. So editing that prompt cannot
  * freeze the asset against a future improvement, which is the reason every other kind's prompt is
- * read-only — and a planned asset is refused here by naming the command that does re-run it.
+ * read-only. A planned asset is refused here by naming the command that does re-run it.
  */
 export function redrawOf(
   store: AssetStore,
@@ -214,7 +214,7 @@ export function redrawOf(
  *
  * A redraw is a new asset, never an overwrite: bytes are content-addressed, so different bytes are
  * a different hash, and nothing in this repo removes bytes from the store. The original stays under
- * Concepts as the candidate it is. What carries over is the binding and the references, so a redraw
+ * Concepts as another candidate. What carries over is the binding and the references, so a redraw
  * of a sketch of the café is still a sketch of that café.
  */
 export async function redrawConcept(deps: ArtGenDeps, req: RedrawRequest): Promise<RedrawResult> {

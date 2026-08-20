@@ -1,7 +1,7 @@
 /**
  * Fixtures here mirror a real three-attempt `shot_image` run: `refinePrompt`
  * (`packages/pipeline/src/p6.ts`) strips the prior `Corrections:` clause before appending a
- * new one, so attempt 3's prompt is base + clause-3, *not* base + clause-2 + clause-3. That
+ * new one, so attempt 3's prompt is base + clause-3, not base + clause-2 + clause-3. That
  * strip-and-replace is the case a naive suffix diff gets wrong.
  */
 import type { DefectReport, Task, TaskAttempt } from '../../../src/shared/ipc';

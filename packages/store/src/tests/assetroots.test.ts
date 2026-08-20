@@ -98,14 +98,14 @@ describe('base states', () => {
     expect((await AssetStore.open(paths)).base?.state).toBe('ready');
   });
 
-  // Exactly what a checkout missing the base repo/submodule leaves behind.
+  // This is the state a checkout missing the base repo/submodule leaves behind.
   it('unavailable: the directory is there and the manifest is not', async () => {
     const paths = new ProjectPaths(await tempRoot());
     await mkdir(paths.baseAssets, { recursive: true });
     const store = await AssetStore.open(paths);
     expect(store.base?.state).toBe('unavailable');
 
-    // Refusing the write is the last line: nothing may quietly re-index base art elsewhere.
+    // The write is refused so base art is never re-indexed into another root.
     await expect(store.write(bytes('P'), 'png', meta('portrait'))).rejects.toThrow(/unavailable/);
     // A project asset is unaffected — it does not live there.
     await expect(store.write(bytes('S'), 'png', meta('shot_image'))).resolves.toBeDefined();

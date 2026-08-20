@@ -10,10 +10,9 @@ import { dirname, join, resolve } from 'node:path';
 import type { Playable } from '@vn/types';
 import { renderSite } from './site.js';
 
-// The three locations this reads. They mirror `ProjectPaths` in `@vn/store` rather than importing
-// it, because importing that package for three joins pulls the parser and the model in behind it
-// and this file is committed to an author's repository. Two asset roots because base art and shot
-// frames live apart; see docs/reference/asset-stores.md.
+// These mirror `ProjectPaths` in `@vn/store` rather than importing it: that package would pull
+// the parser and the model in behind it, and this file is committed to an author's repository.
+// Base art and shot frames live in separate roots; see docs/reference/asset-stores.md.
 const STORY_PLAY = ['vngen', 'build', 'story.play.json'];
 const BASE_ASSETS = ['assets', 'objects'];
 const PROJECT_ASSETS = ['vngen', 'build', 'assets'];
@@ -23,7 +22,7 @@ interface Options {
   out: string;
 }
 
-/** `--key value` and `--key=value`, both. An unknown flag is an error rather than a no-op. */
+/** Accepts both `--key value` and `--key=value`. An unknown flag is an error, not a no-op. */
 function parse(argv: string[]): Options {
   const flags: Record<string, string> = {};
   for (let i = 0; i < argv.length; i++) {
@@ -49,7 +48,7 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
  * field is wrong when it does not.
  *
  * This departs from the repo's rule that machine-read data is validated through the zod schemas
- * in `@vn/types`, and the reason is the bundle. `playableSchema` drags zod in, which takes this
+ * in `@vn/types`, for the sake of bundle size. `playableSchema` drags zod in, which takes this
  * file from 275 lines to 4,688 — and this file is committed to an author's git repository, where
  * every reinstall rewrites it as one diff. The input is a file this same toolchain wrote one step
  * earlier, so a structural check that names the bad field is enough.
@@ -133,7 +132,8 @@ async function main(argv: string[]): Promise<number> {
   for (const ref of site.assets) if (await copyAsset(project, out, ref)) copied++;
 
   // GitHub Pages runs Jekyll unless told not to, and Jekyll drops every path beginning with an
-  // underscore. Nothing here starts with one today; this keeps that from becoming a rule.
+  // underscore. No path written here starts with one today, and `.nojekyll` removes the need to
+  // keep it that way.
   await writeFile(join(out, '.nojekyll'), '', 'utf8');
 
   // The marker the workflow checks before it force-pushes, so a publish cannot overwrite a

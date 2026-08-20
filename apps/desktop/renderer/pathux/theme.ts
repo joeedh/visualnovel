@@ -2,12 +2,12 @@ import { CSSFont, setTheme } from 'pathux';
 import { TOKENS, alpha } from './tokens.js';
 
 /**
- * `tokens.css` re-expressed as a path.ux theme. path.ux applies `DefaultTheme` at module
- * load and `setTheme` **merges** two levels deep over it, so this file is an override tree,
- * not a fork of the 524-line default — but that same shallowness means a sub-record
- * (`button.disabled`, `menu.MenuSeparator`) is replaced wholesale rather than merged into,
- * so a key it drops falls all the way back to the style class's own top level rather than to
- * the default's sub-record. Style classes absent here keep path.ux's own values.
+ * `tokens.css` re-expressed as a path.ux theme. path.ux applies `DefaultTheme` at module load and
+ * `setTheme` merges two levels deep over it, so this file is an override tree rather than a fork
+ * of the default. Because the merge stops at two levels, a sub-record (`button.disabled`,
+ * `menu.MenuSeparator`) is replaced wholesale rather than merged into, so a key it omits falls
+ * back to the style class's own top level rather than to the default's sub-record. Style classes
+ * absent here keep path.ux's own values.
  */
 
 function font(
@@ -23,7 +23,7 @@ const body = font(14, TOKENS.paper);
 const small = font(12, TOKENS.paper);
 const dim = font(12, TOKENS.mist);
 
-/** Every widget's resting state is a raised surface; the three below vary from it. */
+/** The resting state shared by widgets is a raised surface; the states below vary from it. */
 const surface = {
   'background-color': TOKENS.inkRaised,
   'border-color': TOKENS.inkLine,
@@ -124,8 +124,8 @@ const VnTheme = {
     DefaultText: small,
     'background-color': alpha(TOKENS.inkRaised, 0),
     'border-color': TOKENS.inkLine,
-    // The one place both accents appear at once: the bar is machine progress, the fill is
-    // the run itself — warm because a run is the author's act.
+    // The one place both accents appear at once. The track carries the machine accent and the
+    // fill carries the warm one, because a run is the author's act.
     ProgressBar: TOKENS.sodium,
     ProgressBarBG: TOKENS.signalDeep,
   },

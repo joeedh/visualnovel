@@ -1,15 +1,15 @@
 /**
  * The app's own icons, added alongside path.ux's sheet.
  *
- * An id is **allocated asynchronously and may never arrive**: `iconmanager.addCustomIcon` calls
+ * An id is allocated asynchronously and may never arrive. `iconmanager.addCustomIcon` calls
  * `regenIcons()` synchronously, which draws the tile from an image that has not decoded yet, and
- * blob encoding is async on top — registering eagerly yields a blank tile. So registration waits
- * on `decode()`, the id starts at `-1`, and every caller is expected to draw a text button while
- * it still is. A decode that never lands costs a glyph, not a control.
+ * blob encoding is async on top, so registering eagerly yields a blank tile. Registration
+ * therefore waits on `decode()`, the id starts at `-1`, and every caller is expected to draw a
+ * text button while the id is still `-1`. A decode that never lands costs a glyph, not a control.
  */
 import { iconmanager, setIconMap } from 'pathux';
 
-/** Ids allocated for this app's icons. `-1` until — and if — the image decodes. */
+/** Ids allocated for this app's icons. Each stays `-1` until its image decodes. */
 export const VN_ICONS: { filter: number; collapse: number; pin: number } = {
   filter: -1,
   collapse: -1,
@@ -34,8 +34,8 @@ const COLLAPSE_SVG =
   '</g></svg>';
 
 /**
- * A drawing pin seen from the side, head up and point down — the shape Blender's pin has, because
- * this is the same idea and an author who knows one should recognise the other. Same 32px tile.
+ * A drawing pin seen from the side, head up and point down, matching the shape of Blender's pin
+ * so an author who knows one recognises the other. Same 32px tile.
  */
 const PIN_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
@@ -91,10 +91,9 @@ const waiting: (() => void)[] = [];
 /**
  * Run `cb` once the ids have stopped changing — every icon has decoded or given up.
  *
- * For a control built **once**: a bar rebuilt on every update picks the icon up by itself, but
- * one built in `init()` is built before the first `decode()` resolves, so its text fallback would
- * be permanent. Registering after everything has settled runs `cb` straight away, so a caller
- * does not have to ask which it is.
+ * A bar rebuilt on every update picks the icon up by itself. A control built once in `init()` is
+ * built before the first `decode()` resolves, so its text fallback would otherwise be permanent.
+ * Registering after everything has settled runs `cb` straight away.
  */
 export function whenIconsSettled(cb: () => void): void {
   if (settled) cb();

@@ -38,14 +38,15 @@ const TITLE_LINE = /^title:[^\r\n]*(?:\r?\n|$)/m;
  * Replace or add `start:` in `project.yaml` text, leaving every other byte alone. A project
  * config is hand-written and commented, so it is spliced rather than re-serialized — the same
  * reason the prose writers splice front-matter. The value goes through the YAML serializer, so
- * an id YAML would otherwise read as a bool or a number comes back quoted.
+ * an id that YAML would otherwise read as a bool or a number comes back quoted.
  */
 export function withStartScene(text: string, sceneId: string): string {
   const line = stringifyYaml({ start: sceneId });
   if (START_LINE.test(text)) {
     return text.replace(START_LINE, (_m, nl: string) => (nl ? line : line.trimEnd()));
   }
-  // Next to the title if there is one; a config with neither key is presumably nearly empty.
+  // Add the line next to the title if there is one; a config with neither key is presumably
+  // nearly empty.
   const title = TITLE_LINE.exec(text);
   if (title) {
     const at = title.index + title[0].length;
@@ -67,7 +68,7 @@ function keepLines(text: string): string[] {
  * splice {@link withStartScene} performs, and for the same reason.
  *
  * Unlike `start:`, an art style is prose and may already be written as a block scalar, so the
- * entry it replaces is the header line **plus** the indented lines under it. The replacement goes
+ * entry it replaces is the header line plus the indented lines under it. The replacement goes
  * through the YAML serializer, which picks the quoting or block form the value needs.
  */
 export function withArtStyle(text: string, style: string): string {

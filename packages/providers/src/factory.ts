@@ -16,7 +16,7 @@ export function chatVendorFor(modelId: string): keyof ResolvedKeys {
 /**
  * Pick the vendor for a model id and a stable reviewer label. Exported because a plain chat call
  * is not always a `Providers` bundle — `describeAsset` asks one vision model one question, and
- * building the reviewers and the image provider to get at it would be theatre.
+ * building the reviewers and the image provider to reach it is unnecessary.
  *
  * `record: false` keeps the calls out of the request ring. Only one caller wants it — the
  * difficult-agent analyst, which reads that ring and would otherwise evict the bodies it was

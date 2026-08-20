@@ -19,13 +19,12 @@ import { authoredRefs } from './refs.js';
 
 /**
  * The angles a model sheet is generated at once a character is approved (report §P4). Here rather
- * than in the planner because it is part of what a sheet *is*: the cycle walk and adoption both
- * have to name an angle, and three spellings of one list is how a shot ends up referencing a sheet
- * nothing planned.
+ * than in the planner because the cycle walk and adoption both have to name an angle; a second
+ * copy of the list lets a shot reference a sheet nothing planned.
  */
 export const MODEL_SHEET_ANGLES = ['front', 'side', 'back'] as const;
 
-/** The angle a shot references. One, not three: a frame needs the clothes, not a turnaround. */
+/** The one angle a shot references. A frame needs the clothes rather than a turnaround. */
 export const SHEET_FRONT = MODEL_SHEET_ANGLES[0];
 
 /** Image params derived from project config + the configured image model id. */
@@ -79,8 +78,8 @@ export function artClause(...notes: (string | undefined)[]): string {
 /**
  * P3 portrait chunks: one chunk per clause the builder has always assembled (report §P3).
  *
- * The one-slot-one-chunk rule is not a style preference — splitting a clause in two would change
- * the rendered string and re-key every task in every existing project.
+ * One clause per chunk: splitting a clause across two chunks would change the rendered string and
+ * re-key every task in every existing project.
  */
 export function buildPortraitChunks(character: Character, config: ProjectConfig): PromptChunk[] {
   const id = character.id;
@@ -119,7 +118,7 @@ export function buildPortraitChunks(character: Character, config: ProjectConfig)
  *
  * The override defaults to the one stored at this prompt's own rung (§2), so every existing caller
  * — the planner, the desktop's re-derivation — gets the authored answer without passing anything.
- * `override` is the preview seam: a surface showing what a not-yet-saved edit *would* send passes a
+ * `override` is the preview seam: a surface showing what a not-yet-saved edit would send passes a
  * candidate here rather than writing it first. A project authoring none renders the derived chunks,
  * character for character as before.
  */
@@ -133,7 +132,7 @@ export function buildPortraitPrompt(
 }
 
 /**
- * The reference images an author attached to this prompt, to be appended **after** whatever the
+ * The reference images an author attached to this prompt, to be appended after whatever the
  * planner derived (§12). A sibling of each `build*Prompt` rather than a call the planner assembles,
  * for the same reason the override is: a caller cannot forget what it never passes.
  */
@@ -281,7 +280,7 @@ export function buildModelSheetChunks(
   const worn = character.outfits.find((o) => o.id === outfit);
   return chunkList(
     chunk('style', 'style', stylePreamble(config), { kind: 'project', field: 'art_style' }),
-    // There is no `wardrobe` chunk: the builder puts the outfit *inside* the subject sentence, and
+    // There is no `wardrobe` chunk: the builder puts the outfit inside the subject sentence, and
     // splitting it out would change this prompt for every project and re-key every sheet task. The
     // outfit rides along as a second source instead, so a card can still name the rung.
     chunk(
@@ -333,14 +332,15 @@ export function buildModelSheetPrompt(
   config: ProjectConfig,
   override?: PromptOverride,
 ): string {
-  // The angle is recorded on the task alone, so the outfit's override covers all four sheets. A
-  // known coarseness (§2), stated on the card rather than fixed by a per-task override home.
+  // The angle is recorded on the task alone, so the outfit's override covers all three sheets.
+  // That coarseness is known (§2) and is stated on the card rather than fixed by giving each
+  // task its own override rung
   const stored = character.outfits.find((o) => o.id === outfit)?.promptOverride;
   return composePrompt(buildModelSheetChunks(character, outfit, angle, config), override ?? stored)
     .text;
 }
 
-/** {@link portraitRefs} for a model sheet — one rung, so all four angles get the same references. */
+/** {@link portraitRefs} for a model sheet — one rung, so all three angles get the same references. */
 export function modelSheetRefs(
   character: Character,
   outfit: string,
@@ -354,7 +354,7 @@ export function modelSheetRefs(
 
 /**
  * One model-sheet task's inputs. The approved portrait is passed in rather than read off the
- * character, because a sheet derives from the portrait *the caller resolved* — and it leads the
+ * character, because a sheet derives from the portrait the caller resolved — and it leads the
  * refs: arrays are positional in the hash, so this is the one order that leaves a project
  * authoring no references byte-identical (§12).
  */
@@ -372,7 +372,8 @@ export function modelSheetInputs(
     angle,
     prompt: buildModelSheetPrompt(character, outfit, angle, config),
     refs: [portrait, ...modelSheetRefs(character, outfit, angle, config)],
-    // The angle is not a rung, so one outfit seed covers all four sheets — as its notes do.
+    // The angle is not a rung, so one outfit seed covers all three sheets, as the outfit's art
+    // notes do
     params: seedFor(params, character.seed, character.outfits.find((o) => o.id === outfit)?.seed),
   };
 }
@@ -413,9 +414,9 @@ export function buildShotChunks(
       ...at,
       field: 'camera',
     }),
-    // The shot's own notes only. A character's and a location's reach this frame through the
-    // sheets and plates it references, which were generated with them; saying them again here
-    // would double the voice.
+    // Only the shot's own notes. A character's notes and a location's already reach this frame
+    // through the sheets and plates it references, which were generated with them, so repeating
+    // them here would state them twice
     chunk('art-notes', 'art-notes', artClause(shot.artNotes), {
       kind: 'art-notes',
       target: `shot:${shot.sceneId}/${shot.id}`,
@@ -475,11 +476,11 @@ export function shotInputs(
  * What this shot is meant to depict: its own framing and cast first, the prose of the lines
  * it covers as context.
  *
- * Deliberately *not* the scene synopsis. A scene describes action no single shot is
+ * Deliberately not the scene synopsis. A scene describes action no single shot is
  * responsible for, so a reviewer handed it flags every shot for the characters the scene
  * mentions but the shot never ordered — and since a background plate can never satisfy that,
  * the refine loop cannot converge and burns every attempt. `characters` is the authority on
- * who must be in frame, and the description says so out loud.
+ * who must be in frame, and the description states that explicitly.
  */
 function shotDescription(shot: Shot, scene: Scene): string {
   const covered = shot.coversLines.length

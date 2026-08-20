@@ -106,8 +106,8 @@ class Shell implements ShellApp {
    * request rides the url, and the window acts on it once, here, after its remembered
    * arrangement is already up. It goes through `view.open` rather than switching an area by
    * hand so that a window opened this way is recorded, and lands, exactly like a `view.open`
-   * anywhere else. `elsewhere` rather than `here`: the remembered arrangement is the point, and
-   * replacing whichever pane happened to be active would throw part of it away.
+   * anywhere else. It opens `elsewhere` rather than `here` because replacing whichever pane
+   * happened to be active would throw away part of the remembered arrangement.
    */
   private showRequestedEditor(): void {
     const params = new URLSearchParams(location.search);
@@ -123,7 +123,7 @@ class Shell implements ShellApp {
   /**
    * `view.layout` — throw the arrangement away and build the default one. The old screen is
    * destroyed rather than merely dropped: it holds window listeners, and two live screens both
-   * answering the pointer is the shape of a haunted layout.
+   * answering the pointer would leave the layout responding to every gesture twice.
    */
   rebuild(): void {
     this.discardScreen();
@@ -289,11 +289,11 @@ function installIcons(): void {
 }
 
 /**
- * Check that main and the renderer name the same editors, in **both** directions. `view.open`'s
+ * Check that main and the renderer name the same editors, in both directions. `view.open`'s
  * props are built from `shared/editors.ts` in the main process, which cannot see this registry,
- * so an editor it offers that nothing registered fails only when someone picks it — and the
- * reverse, an editor registered here and named in no list, is worse: `view.*` cannot reach it at
- * all, yet path.ux's own area switcher offers it from the pane menu.
+ * so an editor it offers that nothing registered fails only when someone picks it. In the other
+ * direction, an editor registered here but named in no list cannot be reached by `view.*` at all,
+ * even though path.ux's own area switcher still offers it from the pane menu.
  */
 function checkEditorNames(): void {
   const { unregistered, unnamed } = editorNameProblems(switchableAreaNames());
@@ -313,11 +313,9 @@ function checkEditorNames(): void {
  * registered against the same screen.
  */
 export function startShell(): void {
-  // No close-X on a pane tab. The X sits inside the tab, a few pixels from where a tab is picked
-  // up to be dragged, so the gesture that reorders a bar is the gesture that empties it — and the
-  // editor that vanishes is only findable again through the `+` menu, which is not where anyone
-  // looks for something they did not mean to lose. Closing stays on the tab's context menu, and
-  // path.ux appends where it went to every tab's tooltip.
+  // No close-X on a pane tab. The X sits a few pixels from where a tab is picked up to drag, so
+  // reordering a bar can empty it instead, and the editor is then findable only through the `+`
+  // menu. Closing stays on the tab's context menu, which path.ux names in every tab's tooltip
   cconst.loadConstants({ closableAreaTabs: false });
 
   // Theme before icons and before any widget builds its CSS — `setCSS` reads the live
@@ -332,9 +330,8 @@ export function startShell(): void {
   nstructjs.validateStructs();
   checkEditorNames();
   // What a pane may be switched to, answered in one place for both switchers. path.ux builds its
-  // own area menu by enumerating the registry, which knows nothing about `EDITORS`; this hands it
-  // the same predicate the Editors submenu is built from, so an editor that is named-but-not-
-  // offered is absent from both rather than from whichever one someone remembered to narrow.
+  // own area menu from the registry, which knows nothing about `EDITORS`; this hands it the same
+  // predicate the Editors submenu uses, so a named-but-not-offered editor is absent from both
   setAreaMenuFilter(isOfferedEditor);
   new Shell().start();
 }

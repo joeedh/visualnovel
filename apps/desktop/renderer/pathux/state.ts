@@ -8,31 +8,30 @@ import type { AgentMode } from '../../src/shared/ipc.js';
 
 export class ShellState {
   /**
-   * The one selection every editor observes, replacing the rooms' independent ones. Empty
-   * string means nothing selected.
+   * The one selection every editor observes. Empty string means nothing selected.
    */
   sceneId = '';
   shotId = '';
   characterId = '';
 
   /**
-   * The document a document editor is on: a workspace-relative path, not an id. That is what
-   * `DocNode.path` and `EntityLinks.sheet` already carry, and a note under `wiki/` has no id to
-   * name it by. It is a selection like the three above — the tree publishes it, the wiki editor
-   * observes it — and it persists with them.
+   * The document a document editor is on, as a workspace-relative path rather than an id. That is
+   * what `DocNode.path` and `EntityLinks.sheet` carry, and a note under `wiki/` has no id to name
+   * it by. The tree publishes this path and the wiki editor observes it. It persists alongside the
+   * ids above.
    */
   docPath = '';
 
   /**
-   * The task the inspector is looking at. Unlike the three ids above this is machine identity —
-   * a content hash that re-keys whenever a prompt changes — so it is **not** persisted: a hash
+   * The task the inspector is looking at. This is machine identity rather than an authored id: a
+   * content hash that re-keys whenever a prompt changes. It is not persisted, because a hash
    * remembered across a re-plan names nothing.
    */
   taskHash = '';
 
   /**
-   * The asset the asset editor is looking at, by content hash. Machine identity like `taskHash`
-   * and **not** persisted for the same reason: an asset regenerated between launches has
+   * The asset the asset editor is looking at, by content hash. This is machine identity like
+   * `taskHash` and is not persisted for the same reason: an asset regenerated between launches has
    * different bytes, so the hash remembered from last time names nothing.
    */
   assetHash = '';
@@ -44,16 +43,16 @@ export class ShellState {
    */
   projectTitle = '';
   /**
-   * The open project's root. Two projects may share a title, so anything caching per project —
-   * the header's recents list is the one — keys on this rather than on what it is called.
+   * The open project's root. Two projects may share a title, so anything caching per project (the
+   * header's recents list) keys on this rather than on the title.
    */
   projectRoot = '';
   model = 'claude-opus-4-8';
   /** How hard the model is asked to think. Mirrors `WorkspaceSession.effort`, same default. */
   effort: EffortChoice = DEFAULT_EFFORT;
   /**
-   * What one agent turn may spend, in non-cached tokens. Unlike everything else here it *is*
-   * persisted — in the install's session file, restored at boot by `installBridge` — because it
+   * What one agent turn may spend, in non-cached tokens. Unlike everything else here this is
+   * persisted, in the install's session file and restored at boot by `installBridge`, because it
    * is a decision about money rather than a fact re-read from the project.
    */
   budget: BudgetChoice = DEFAULT_BUDGET;
@@ -83,8 +82,7 @@ export class ShellState {
 
   /**
    * A model call that failed and is being tried again: which attempt of how many the author
-   * allowed. Both zero the moment it is over, whichever way it went — a counter left standing on
-   * "3 of 10" is a claim that something is still happening.
+   * allowed. Both return to zero as soon as the retrying ends, whether it succeeded or failed.
    */
   retryAttempt = 0;
   retryOf = 0;

@@ -18,7 +18,7 @@ describe('driftTag', () => {
     expect(tag.state).toBe('drifted');
     expect(tag.label).toBe('OLD PROSE');
     expect(tag.title).toMatch(/retyped/);
-    // The whole point of the mark: no run is going to fix this on the author's behalf.
+    // The mark exists to say that no run will fix this on the author's behalf
     expect(tag.title).toMatch(/nothing re-renders on its own/i);
   });
 

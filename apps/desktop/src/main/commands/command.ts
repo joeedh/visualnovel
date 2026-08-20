@@ -1,9 +1,9 @@
 /**
- * The command surface asking about itself: would that invocation run?
+ * A command that reports whether another invocation would run.
  *
- * It takes a DSL line rather than an id and a prop bag because the answer is about a *specific*
- * act — `story.setNext(scene='a' goto='b')` refuses where `goto='c'` accepts — and the DSL is
- * already how an invocation is written down everywhere else (history, the palette, CDP).
+ * It takes a DSL line rather than an id and a prop bag because the answer depends on the exact
+ * arguments — `story.setNext(scene='a' goto='b')` refuses where `goto='c'` accepts — and the DSL
+ * is already how an invocation is written down everywhere else (history, the palette, CDP).
  */
 import { defineFor, parseCommand, prop } from '@vn/commands';
 import type { CommandHost } from './host.js';

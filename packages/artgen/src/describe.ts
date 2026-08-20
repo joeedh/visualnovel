@@ -1,7 +1,7 @@
 /**
- * Reading a picture back: one image, one question, one paragraph of prose.
+ * Asking one question about one stored image and getting a paragraph of prose back.
  *
- * This is deliberately **not** `VisionReviewer`. That interface is P7's — it is told what a *shot*
+ * This is deliberately not `VisionReviewer`. That interface belongs to P7: it is told what a shot
  * ordered and answers with a structured `DefectReport` the refine loop branches on, and it has no
  * question to ask about a portrait, a sheet or a plate. What an author (or an agent proposing an
  * art note) needs is the plain vision call underneath: "does this read as brutalist yet?" is not a
@@ -21,7 +21,7 @@ export interface DescribeDeps {
 }
 
 export interface DescribeRequest {
-  /** The asset to look at. A full hash: a surface that takes a prefix resolves it first. */
+  /** The asset to look at, named by a full hash. A surface that takes a prefix resolves it first. */
   hash: string;
   /** What to ask about it. Defaults to {@link DEFAULT_QUESTION}. */
   question?: string;
@@ -43,7 +43,10 @@ const SYSTEM =
   'directly and concretely, in one short paragraph. Describe what is actually there — do not ' +
   'invent detail you cannot see, and do not offer to help further.';
 
-/** What a picture is called, from what it fills. A concept has only the sentence it was asked for. */
+/**
+ * What a picture is called, from the slot it fills. A concept or an upload fills none, so the title
+ * it was stored with is used instead.
+ */
 export function assetSlotLabel(asset: Asset): string {
   const slot = slotOf(asset);
   if (slot) return slotLabel(slot);
@@ -52,8 +55,8 @@ export function assetSlotLabel(asset: Asset): string {
 
 /**
  * Ask a vision model about one stored picture. Refuses an asset the store has never heard of
- * rather than describing whatever came before it: a task that is queued but not run has no image,
- * and saying so is the answer.
+ * rather than describing whatever came before it. A task that is queued but not run has no image,
+ * and the refusal says so.
  */
 export async function describeAsset(
   deps: DescribeDeps,

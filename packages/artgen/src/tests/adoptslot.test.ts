@@ -1,15 +1,15 @@
 /**
  * Adoption onto a slot: bytes an author brought become the picture the planner would have drawn.
  *
- * The two contracts worth a real run are the ones a hand-built graph cannot show — `vngen run`
- * skips a slot that was adopted, and superseding a render leaves the old one in the log — so those
- * cases go through the actual scheduler.
+ * Two contracts need a real run because a hand-built graph cannot show them: `vngen run` skips a
+ * slot that was adopted, and superseding a render leaves the old one in the log. Those cases go
+ * through the actual scheduler.
  */
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import type { Asset, AssetRef, ImageProvider, ImageResult, ShotsFile } from '@vn/types';
 import { adoptSlot, adoptionForSlot, generateConcept } from '../index.js';
 
-// Real-looking bytes: mock-marked art is refused, which is the point of one of these cases.
+// The bytes have to look real, because mock-marked art is refused and a case below tests that
 const image: ImageProvider = {
   generate: (): Promise<ImageResult> =>
     Promise.resolve({
@@ -20,7 +20,7 @@ const image: ImageProvider = {
   edit: () => Promise.reject(new Error('a concept is generated, never edited')),
 };
 
-/** A project with one real, un-mock-marked asset in it — the thing an adoption adopts. */
+/** A project holding one real asset that carries no mock marking, ready to be adopted. */
 async function withArtwork(script: string): Promise<{ p: TestProject; ref: AssetRef }> {
   const p = await makeProject({ script });
   const { config, model, store } = await p.reload();
@@ -64,7 +64,7 @@ describe('adoptionForSlot', () => {
     }
   });
 
-  // The precondition a surface shows and the sentence the act throws are one function, asked twice.
+  // The precondition a surface shows and the sentence the act throws both come from this function
   it('describes the adoption it would make', async () => {
     const { p, ref } = await withArtwork(SCRIPTS.branching);
     try {
@@ -89,7 +89,7 @@ describe('adoptSlot', () => {
     const { p, ref } = await withArtwork(SCRIPTS.branching);
     try {
       // `evening` is the variant the rooftop scene's heading names, so the planner wants a plate
-      // for exactly this pair — which is the only way "adopted" means anything.
+      // for exactly this pair. Adoption only proves anything on a slot the planner wants.
       const { plan } = await adoptSlot(await depsOf(p), {
         hash: ref.hash,
         slot: { kind: 'plate', locationId: 'rooftop', variant: 'evening' },
@@ -109,7 +109,7 @@ describe('adoptSlot', () => {
     } finally {
       await p.cleanup();
     }
-    // A full scheduler pass over a real project on disk; the default 5s is for pure tests.
+    // A full scheduler pass over a real project on disk needs more than jest's default timeout
   }, 30_000);
 
   it('supersedes a rendered frame only when told to, and keeps what it superseded', async () => {
@@ -137,14 +137,14 @@ describe('adoptSlot', () => {
       expect(plan.supersedes).toBe(rendered);
 
       // The frame is stamped where the runner stamps one, so it reads as current rather than
-      // drift-unknown — an artist worked from these lines.
+      // drift-unknown, because the artist worked from these lines
       const after = JSON.parse(await p.read('vngen/work/shots/arrival.json')) as ShotsFile;
       expect(after.shots[0]!.shotData).toMatchObject({
         image: ref.hash,
         proseHash: expect.any(String),
       });
 
-      // Append-only: both records are in the log, and the graph answers the newer one.
+      // The log is append-only, so both records stay in it and the graph answers with the newer
       const log = await p.read('vngen/state/tasks.jsonl');
       const records = log
         .split('\n')
@@ -155,9 +155,9 @@ describe('adoptSlot', () => {
       const { graph, store } = await p.reload();
       expect(graph.get(plan.taskHash)!.output).toBe(ref.hash);
 
-      // One hash, two roots: the frame is filed under `build/` because that is where its kind
-      // routes, while the base root still holds the concept it came from. The merged view shows
-      // the base row, which is why this reads the build manifest by hand.
+      // The same hash sits in two roots. The frame is filed under `build/` because that is where
+      // its kind routes, while the base root still holds the concept it came from. The merged view
+      // shows the base row, which is why this reads the build manifest by hand.
       const built = JSON.parse(await p.read('vngen/build/manifest.json')) as { assets: Asset[] };
       expect(built.assets.find((a) => a.hash === ref.hash)).toMatchObject({ kind: 'shot_image' });
       expect(store.manifest().find((a) => a.hash === ref.hash)).toMatchObject({ kind: 'concept' });

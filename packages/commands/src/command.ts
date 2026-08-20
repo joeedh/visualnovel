@@ -1,10 +1,10 @@
 /**
- * The command contract. Modelled on `@vn/authoring`'s `Tool` so the two registries read as
- * siblings: a named, described, typed, gated shim over a function that already exists.
+ * The command contract. Modelled on `@vn/authoring`'s `Tool`: a named, described, typed, gated
+ * shim over a function that already exists.
  *
- * The two differ in what they serve. A `Tool` is advertised to an LLM and gated by the
- * agent's plan/execute mode; a `Command` is the app's own vocabulary — reachable from the
- * palette, the menu bar, the DSL, and CDP — and is recorded on a stack with provenance.
+ * The two differ in what they serve. A `Tool` is advertised to an LLM and gated by the agent's
+ * plan/execute mode. A `Command` is the app's own vocabulary, reachable from the palette, the
+ * menu bar, the DSL and CDP, and recorded on a stack with provenance.
  */
 import type { Git } from '@vn/git';
 import type { PropSpecMap, PropValue, PropsOf } from './props.js';
@@ -26,16 +26,15 @@ export interface CommandContext<Host = unknown> {
    */
   confirm?(message: string): Promise<boolean>;
   /**
-   * Who asked, as an opaque number carried for the length of one execution.
+   * An opaque number identifying the caller, carried for the length of one execution.
    *
-   * The framework never learns what it means; the desktop is the half that says it is a window
-   * id, so a `view.*` effect can be answered by the window whose palette ran it. It is built as
-   * a per-execution shallow overlay on the shared context precisely because commands overlap —
-   * a mutable field would be clobbered by the next palette command while a `pipeline.run` was
-   * still going.
+   * The framework never interprets it; the desktop app treats it as a window id, so a `view.*`
+   * effect can be answered by the window whose palette ran it. It is a per-execution shallow
+   * overlay on the shared context because commands overlap: a mutable field would be clobbered
+   * by the next palette command while a `pipeline.run` was still going.
    *
-   * Deliberately absent from `CommandRecord`: a window index means nothing to a reader of
-   * `commands.jsonl` a week later.
+   * Deliberately absent from `CommandRecord`, where a window index would mean nothing to a
+   * reader of `commands.jsonl` a week later.
    */
   origin?: number;
 }
@@ -68,8 +67,8 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
   /**
    * Whether the stack should snapshot the document tree around this command so it can be
    * undone. Only meaningful with `mutating: true`, and only for commands whose writes are
-   * *documents* — generated output is content-addressed and is the task graph's business, not
-   * undo's (`docs/history/gitUndoOptions.md` §6).
+   * documents. Generated output is content-addressed and belongs to the task graph rather than
+   * to undo (`docs/history/gitUndoOptions.md` §6).
    */
   undoable?: boolean;
   /**
@@ -79,23 +78,23 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
    */
   commitsItself?: boolean;
   /**
-   * Would this run, and if not why? A report about *now* — never a gate on `run`, which
-   * re-decides against the state it actually finds. A check that passed and a run that then
-   * refuses is a race the caller is entitled to lose; a check that gated would only turn that
-   * race into a state where the command cannot be reached at all.
+   * Reports whether this would run now, and why not. Never a gate on `run`, which re-decides
+   * against the state it actually finds: a check that passed followed by a run that refuses is a
+   * race the caller must tolerate, whereas a check that gated would turn that race into a state
+   * where the command cannot be reached at all.
    *
-   * It **reads and does not write**, so asking is always free. Absence is not permission: a
-   * command with no check reports `undeclared`, which is the honest answer.
+   * Reads and does not write, so asking is always free. A command with no check reports
+   * `undeclared`, and that absence is not permission.
    *
-   * Only mutating commands declare one. A non-mutating command's answer is the command itself.
+   * Only mutating commands declare one; run a non-mutating command to get its answer.
    */
   check?(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CheckResult>;
   run(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CommandOutput>;
 }
 
 /**
- * A precondition's answer. `note` on an accept is not decoration — it is where the check says
- * what it found (`4 task(s) ready`), which is the part worth reading before committing to work.
+ * A precondition's answer. `note` on an accept carries what the check found (`4 task(s) ready`),
+ * which is the part worth reading before committing to work.
  */
 export type CheckResult = { ok: true; note: string } | { ok: false; reason: string };
 

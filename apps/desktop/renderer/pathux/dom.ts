@@ -4,12 +4,12 @@
  * a widget and has no theme sheet behind it.
  *
  * Everything here is a plain element with inline style from {@link TOKENS} and no behaviour.
- * Anything that needs a *control* — a button in a header, a menu, a slider — is a path.ux
- * widget instead, and does not belong in this file.
+ * Anything that needs a control — a button in a header, a menu, a slider — is a path.ux widget
+ * instead, and does not belong in this file.
  */
 import { TOKENS } from './tokens.js';
 
-/** Task status as the one colour the whole shell reads it by. */
+/** The one colour the whole shell reads a task status by. */
 export const STATUS_COLOUR: Record<string, string> = {
   done: TOKENS.jade,
   running: TOKENS.signal,
@@ -37,7 +37,7 @@ export function card(): HTMLDivElement {
   return box;
 }
 
-/** The machine side: hashes, kinds, counts. Mono and nothing else. */
+/** Monospaced text for the machine side of a card: hashes, kinds and counts. */
 export function mono(text: string, color: string, size = 10): HTMLElement {
   const span = document.createElement('span');
   span.textContent = text;
@@ -66,7 +66,7 @@ export function row(): HTMLDivElement {
   return line;
 }
 
-/** What a task is *about*, in one line that truncates rather than wraps. */
+/** What a task is about, in one line that truncates rather than wraps. */
 export function subject(text: string, color: string): HTMLElement {
   const div = document.createElement('div');
   div.textContent = text;
@@ -81,7 +81,7 @@ export function subject(text: string, color: string): HTMLElement {
   return div;
 }
 
-/** The status dot: the colour, and only the colour, at a glance. */
+/** The status dot, which carries the colour and nothing else. */
 export function dot(colour: string, size = 7): HTMLElement {
   const span = document.createElement('span');
   Object.assign(span.style, {
@@ -113,7 +113,7 @@ export function centered(text: string): HTMLElement {
   return div;
 }
 
-/** The same sentence, in the flow rather than filling the surface. */
+/** One line of explanation in the flow rather than filling the surface. */
 export function note(text: string, color: string = TOKENS.mistDim): HTMLElement {
   const div = document.createElement('div');
   div.textContent = text;

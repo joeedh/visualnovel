@@ -19,9 +19,9 @@ export interface BuildInputs {
   sceneDocs?: SceneChunkDoc[];
   /**
    * A whole multi-scene screenplay instead, split by its `[[scene:]]` markers. No reader produces
-   * one any more (`vngen import` converts a `screenplay/` project); it stays because Fountain is
-   * still a form scenes can be *given* in — a caller holding one string, and the tests that
-   * exercise validation over a whole story, do not have to write chunks to disk first.
+   * one any more (`vngen import` converts a `screenplay/` project). It stays because Fountain is
+   * still a form scenes can arrive in: a caller holding one string, and the tests that exercise
+   * validation over a whole story, do not have to write chunks to disk first.
    */
   script?: FountainScript;
   /**
@@ -61,8 +61,8 @@ function readScenes(inputs: BuildInputs): {
 
 /**
  * The entry scene. A chunk project has no document order to fall back on, so a missing `start:`
- * is an error naming the fix rather than the scene whose filename sorts first — an entry chosen
- * by alphabetics is one that silently moves the day a scene is renamed.
+ * is an error naming the fix rather than the scene whose filename sorts first, because an entry
+ * chosen alphabetically moves silently the day a scene is renamed.
  */
 function entryOf(
   inputs: BuildInputs,
@@ -130,8 +130,8 @@ function mergeMinedLocations(
  * The id a file's name implies, against the id it declares. Entities are discovered by tag, so the
  * carried file is where an editor writes and the front-matter id is what the rest of the model
  * refers to; when they disagree, every path derived from the id points somewhere the entity is not.
- * Reported and the entity dropped — never resolved by picking one — as `sceneFromDoc` already
- * treats the same disagreement for scenes.
+ * The disagreement is reported and the entity is dropped, never resolved by picking one side,
+ * matching how `sceneFromDoc` already treats the same disagreement for scenes.
  */
 function idAgrees(
   kind: 'character' | 'location',
@@ -172,7 +172,7 @@ function cueToId(
 /**
  * `reference_images:` was storage for a feature nothing ever read — no builder, no planner, no
  * provider — so a project that set it never saw an effect and there is nothing to convert. It is
- * named once, here, so an author who wrote paths in learns where they went.
+ * named here, once, so an author who filled it in learns where those paths went.
  */
 function retiredReferenceImages(id: string, data: Record<string, unknown>): Diagnostic | undefined {
   const paths = data['reference_images'];
@@ -212,9 +212,9 @@ function resolveCast(
 }
 
 /**
- * Check the scene's `[[outfit:]]` markers against the cast sheets, **dropping** any that name a
- * character the project does not have or an outfit that character has not authored. Ignoring a
- * marker is the safe failure: the shot falls back to the default and renders, where honouring it
+ * Check the scene's `[[outfit:]]` markers against the cast sheets, dropping any that name a
+ * character the project does not have or an outfit that character has not authored. A dropped
+ * marker fails safely: the shot falls back to the default and renders, where honouring the marker
  * would put a word in the prompt that nothing describes.
  */
 function validateSceneOutfits(scene: Scene, characters: Map<string, Character>): Diagnostic[] {
@@ -274,9 +274,9 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
         where: res.value.id,
       });
     }
-    // A wardrobe that does not contain the default is a typo, not a wardrobe: the outfit is still
-    // synthesized (nothing may be left with no outfit to resolve to), so this is a warning.
     const c = res.value;
+    // a wardrobe that omits the default outfit is a typo; the outfit is still synthesized (every
+    // subject must have an outfit to resolve to), so this is only a warning
     if (c.outfits.length > 1 && !c.outfits.some((o) => o.description && o.id === c.defaultOutfit)) {
       diagnostics.push({
         severity: 'warning',
@@ -318,8 +318,8 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     }
     const cast = resolveCast(scene, characters, byName);
     scene.characters = cast.ids;
-    // Remap each line's speaker cue to a resolved character id (keep the raw cue if unknown,
-    // so a name still shows). Uses the same resolution as the cast above.
+    // remap each line's speaker cue to a character id, by the same resolution the cast list uses,
+    // keeping the raw cue when it resolves to nothing so a name still shows
     for (const line of scene.lines) {
       if (line.speaker) line.speaker = cueToId(line.speaker, characters, byName) ?? line.speaker;
     }

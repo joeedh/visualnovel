@@ -4,15 +4,15 @@ import { readShots, writeShots, type ProjectPaths } from '@vn/store';
 import { decomposeScene } from './p5.js';
 
 /**
- * What a batch decomposition did, per scene. Four disjoint lists rather than a count: every one of
- * them is something an author may need to act on, and a number cannot be acted on.
+ * What a batch decomposition did, per scene. Four disjoint lists rather than a count, because each
+ * list names scenes an author may need to act on.
  */
 export interface DecomposeAllResult {
   /** Scenes whose storyboard the model wrote, now on disk. */
   decomposed: string[];
   /** Scenes that already had a file. Untouched, and no provider call was made for them. */
   kept: string[];
-  /** The model did not answer. **Nothing was written** — see {@link decomposeAll}. */
+  /** The model did not answer. Nothing was written; see {@link decomposeAll}. */
   fellBack: { scene: string; reason: string }[];
   /** A file exists but would not parse. Left exactly as it is, and the batch carried on. */
   unreadable: { scene: string; error: string }[];
@@ -24,8 +24,8 @@ export interface DecomposeAllOptions {
   paths: ProjectPaths;
   logger?: Logger;
   /**
-   * Write the deterministic storyboard when the model does not answer. **Off by default and
-   * deliberately hard to reach**: see {@link decomposeAll} for why this is nearly always wrong.
+   * Write the deterministic storyboard when the model does not answer. Off by default and
+   * deliberately hard to reach; see {@link decomposeAll} for why this is nearly always wrong.
    */
   keepBaseline?: boolean;
 }
@@ -36,19 +36,19 @@ export interface DecomposeAllOptions {
  *
  * Each rule guards a hazard the incremental path never had to face:
  *
- * - **Reachable scenes only.** A dead branch costs a model call and renders nothing.
- * - **A scene with a file is kept, and there is no `force`.** `work/shots/<sceneId>.json` wins
- *   forever; re-decomposing is non-deterministic, so it would change shot ids, hence task
- *   identities, hence re-render art that is already paid for. A file a hand-placed first shot
- *   created (`story.newShot`, the agent's `write_storyboard`) is kept exactly the same way —
+ * - Reachable scenes only. A dead branch costs a model call and renders nothing.
+ * - A scene that already has a file is kept, and there is no `force`. `work/shots/<sceneId>.json`
+ *   wins forever; re-decomposing is non-deterministic, so it would change shot ids, hence task
+ *   identities, hence re-render art that is already paid for. A file created by a hand-placed
+ *   first shot (`story.newShot`, the agent's `write_storyboard`) is kept the same way, because
  *   writing it is how making shots by hand ends decomposition for a scene.
- * - **A baseline is reported, not written.** An absent file is the only signal that means
+ * - A baseline is reported, not written. An absent file is the only signal that means
  *   "decompose this scene", so persisting a fallback is permanent. One scene inside a run is the
  *   deterministic-fallback contract working; sixty at once with one bad key would silently baseline
  *   an entire project with no way back short of deleting files by hand. `keepBaseline` exists for a
  *   caller that genuinely wants the deterministic storyboard, and nothing in the app passes it.
- * - **One bad file does not stop the batch.** `readShots` throws on a malformed file rather than
- *   re-decomposing over a hand-edit, which is right — so the throw is caught per scene and named.
+ * - One bad file does not stop the batch. `readShots` throws on a malformed file rather than
+ *   re-decomposing over a hand-edit, so the throw is caught per scene and the scene is named.
  *
  * `writeShots` skips a byte-identical rewrite, so a second run over a decomposed project leaves the
  * worktree clean.
@@ -89,9 +89,9 @@ export async function decomposeAll(opts: DecomposeAllOptions): Promise<Decompose
 }
 
 /**
- * What `decomposeAll` would do, without spending anything. The half of the answer that can be had
- * for free — a command's `check` must never call the model — so a confirmation dialog can say how
- * many scenes it is about to pay for before the author agrees to it.
+ * What `decomposeAll` would do, without spending anything. This is the half of the answer that can
+ * be had for free, since a command's `check` must never call the model, and it lets a confirmation
+ * dialog say how many scenes it is about to pay for before the author agrees to it.
  *
  * `atRisk` is the one that is easy to miss: `resolveSubject` silently drops a `characterId` the
  * model does not have, and the decomposition is then permanent, so decomposing before the cast
@@ -113,7 +113,7 @@ export async function decomposeAllPreview(
       if (await readShots(paths, scene.id)) kept.push(scene.id);
       else pending.push(scene.id);
     } catch {
-      // The message belongs to `decomposeAll`; here the name is the whole answer.
+      // Only the scene name is reported here; `decomposeAll` carries the error message
       unreadable.push(scene.id);
     }
   }

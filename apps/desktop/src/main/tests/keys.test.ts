@@ -3,8 +3,8 @@
  *
  * The invariant under test is the same in both halves: a key value reaches exactly one file and
  * nothing else. Every message, every status row and every recorded property is checked for the
- * string that was pasted, because the interesting failure here is not a wrong answer — it is a
- * right answer with the secret in it.
+ * string that was pasted, because the failure that matters here is a correct answer that carries
+ * the secret in it.
  */
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
@@ -48,7 +48,7 @@ describe('project.setKey — the two scopes', () => {
   });
 
   it('writes above the project when asked, and touches no .gitignore', async () => {
-    // $VNAUTHOR_HOME is what jest already points somewhere empty; pointing it inside the project
+    // jest already points $VNAUTHOR_HOME at an empty directory; pointing it inside the project
     // keeps the write in a directory the fixture cleans up.
     const home = join(p.dir, 'userhome');
     process.env.VNAUTHOR_HOME = home;
@@ -142,9 +142,9 @@ describe('project.keyStatus', () => {
 });
 
 /**
- * The refusal, not the call. `testKey` itself makes a real request and so is not something a test
- * suite may run; what is testable — and what the Setup pane's greyed-out button shows — is the
- * sentence that says why there is nothing to try.
+ * `testKey` itself makes a real request, so a test suite cannot run it. What is testable is the
+ * refusal: the sentence that says why there is nothing to try, which is also what the Setup
+ * pane's greyed-out button shows.
  */
 describe('project.testKey — what it says before it calls', () => {
   let p: TestProject;
@@ -161,7 +161,7 @@ describe('project.testKey — what it says before it calls', () => {
     const session = new WorkspaceSession(p.dir, true, deps);
     const verdict = await session.previewTestKey('gemini');
     expect(verdict).toEqual({ ok: false, message: expect.stringContaining('Mock mode') });
-    // And the call itself is the same answer, so a palette invocation cannot get further.
+    // The call itself gives the same answer, so a palette invocation cannot get further.
     expect((await session.testKey('gemini')).message).toContain('Mock mode');
   });
 

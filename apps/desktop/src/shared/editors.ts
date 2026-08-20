@@ -3,18 +3,19 @@ import type { DocNodeKind } from './ipc.js';
 /**
  * Every editor the shell can show, and the one place their names are written down.
  *
- * It is here rather than in the renderer because `view.*` runs in main like every other command
- * and needs the list to declare its props — the catalog then offers the real names to the
+ * The list lives here rather than in the renderer because `view.*` runs in main like every other
+ * command and needs it to declare its props — the catalog then offers the real names to the
  * palette, to CDP and to the agent. The renderer registers each editor class under the matching
  * area name, and the shell checks the two agree at boot.
  *
- * The header bar is deliberately absent: it is chrome, not somewhere the author navigates to.
+ * The header bar is deliberately absent because it is chrome rather than a place the author
+ * navigates to.
  *
  * Each entry also declares what it will show for a clicked document-tree node — see
  * {@link EditorClaim}. An editor added without one is visibly claim-less in the same file that
  * names it, rather than silently unreachable from the tree.
  *
- * An entry with `pins` follows one selection field, and so can be **pinned** off it — see
+ * An entry with `pins` follows one selection field, and so can be pinned off it — see
  * {@link PinField}. An editor with no `pins` shows the same thing whatever is selected and has
  * nothing a pin could hold still.
  */
@@ -41,8 +42,8 @@ export const EDITORS = [
       if (node.kind === 'shot') return 'primary';
       return node.kind === 'scene' ? 'secondary' : undefined;
     },
-    // The scene, not the shot: a pinned Coverage still highlights whichever shot is selected —
-    // holding both still would make its own rows unclickable.
+    // Pins the scene rather than the shot. A pinned Coverage still highlights whichever shot is
+    // selected; holding both still would make its own rows unclickable.
     pins: 'sceneId',
   },
   { id: 'tasklist', title: 'Tasks', what: 'the pipeline task list' },
@@ -50,8 +51,8 @@ export const EDITORS = [
     id: 'taskgraph',
     title: 'Task Graph',
     what: 'the pipeline task graph',
-    // The only editor with anything to say about a picture that has no bytes: a slot is a place in
-    // the graph, and every other pane's subject is a file or a hash.
+    // The only editor that can show a slot, which is a place in the graph rather than bytes; every
+    // other pane's subject is a file or a hash.
     claims: (node: ClaimNode) => (node.kind === 'slot' ? 'primary' : undefined),
   },
   // The Inspector claims nothing on purpose: its subject is `ui.taskHash`, and no document-tree
@@ -62,12 +63,9 @@ export const EDITORS = [
     id: 'skills',
     title: 'Skills',
     what: 'the playbooks the agent can follow, and can write',
-    // Listed **before** Wiki on purpose. Both claim a `.md` file as `primary`, so a skill file
-    // clicked in file mode is a tie — and the tie breaks on this list's order, which is what makes
-    // the router's ordering total. Skills wins it because a `SKILL.md` opened in a plain text box
-    // would let an author edit front-matter this pane is the one that answers for. Visibility
-    // still comes first, and correctly so: with Wiki up and Skills closed, the click lands where
-    // the author is already looking.
+    // Listed before Wiki on purpose: both claim a `.md` file as `primary`, and the tie breaks on
+    // this list's order. Skills wins because a `SKILL.md` opened in a plain text box would let an
+    // author edit front-matter this pane answers for. Visibility is still ranked ahead of order.
     claims: (node: ClaimNode) => {
       if (node.kind === 'skill') return 'primary';
       return node.kind === 'file' && underSkills(node.path) ? 'primary' : undefined;
@@ -77,9 +75,9 @@ export const EDITORS = [
     id: 'wiki',
     title: 'Wiki',
     what: 'one markdown document',
-    // A sheet is edited here, and entity discovery means a character's may itself live under
-    // `wiki/**` — so an entity is claimed by the document it was found in, and only if it has
-    // one. A scene is not: prose has one editor and it is Script.
+    // A sheet is edited here, and entity discovery means a character's sheet may itself live under
+    // `wiki/**`, so an entity is claimed by the document it was found in and only if it has one.
+    // A scene is not claimed here because prose has one editor and that is Script.
     claims: (node: ClaimNode) => {
       if (node.kind === 'wiki') return 'primary';
       if (node.kind === 'character' || node.kind === 'location') {
@@ -102,27 +100,24 @@ export const EDITORS = [
     id: 'systemprompt',
     title: 'System Prompt',
     what: 'the system prompt the agent will be sent',
-    // Named but not listed, for the same reason as Setup and a different audience: this is what
-    // the agent was *told*, which is a thing to check when a turn misbehaves rather than a place
-    // to work. It claims nothing — no document-tree node is the prompt, and the prompt is not a
-    // file: it is three sources joined, one of which is built in and has no path at all.
+    // Named but not listed, for the same reason as Setup: this is what the agent was told, a place
+    // to check when a turn misbehaves rather than a place to work. It claims nothing because no
+    // document-tree node names the prompt: three joined sources, one built in with no path.
     offered: false,
   },
   {
     id: 'onboarding',
     title: 'Setup',
     what: 'how to get a model key, and where yours are',
-    // Reached once, from the File menu, and never again — so it is named but not listed. It also
-    // claims nothing: no document-tree node names an API key, and a click that opened it would
-    // have landed on a pane about something else entirely.
+    // Reached once from the File menu and never again, so it is named but not listed. It claims
+    // nothing because no document-tree node names an API key.
     offered: false,
   },
 ] as const;
 
 /**
  * How well an editor answers for a clicked document-tree node. Two named tiers rather than a
- * number: a score accumulates ad-hoc tie-breakers until nobody can say why a click landed where
- * it did, whereas this is a table lookup.
+ * numeric score, so ranking stays a table lookup.
  */
 export type ClaimTier = 'primary' | 'secondary';
 
@@ -139,11 +134,10 @@ export type EditorClaim = (node: ClaimNode) => ClaimTier | undefined;
 /**
  * Where a project's skills live, workspace-relative and forward-slashed.
  *
- * Deliberately **not** `@vn/authoring`'s `PROJECT_SKILLS_DIR`, which is a `join()` and therefore
- * `.aiagent\skills` on Windows. It is here rather than in the renderer because a *claim* needs
- * it, and this file is the browser bundle's — so the one spelling serves the claim, the Skills
- * pane's rules and both their tests. Two spellings of one directory is the cost of a node-free
- * shared module; a claim that matched on exactly one platform is worse.
+ * Deliberately not `@vn/authoring`'s `PROJECT_SKILLS_DIR`, which is a `join()` and therefore
+ * `.aiagent\skills` on Windows. This spelling lives here rather than in the renderer because a
+ * claim needs it and this file is in the browser bundle, so one constant serves the claim, the
+ * Skills pane's rules and both their tests.
  */
 export const SKILLS_DIR = '.aiagent/skills';
 
@@ -155,9 +149,9 @@ export function underSkills(path: string | undefined): boolean {
 const TEXT_SUFFIXES = ['.md', '.txt', '.fountain', '.yaml', '.yml', '.json'] as const;
 
 /**
- * Whether a path names something an editor can honestly show as text. A claim is a predicate over
- * the node rather than a map from its kind precisely for this: in file mode a `.png` is a `file`
- * like any other, and pointing the wiki editor at one would have it read a binary.
+ * Whether a path names something an editor can honestly show as text. In file mode a `.png` is a
+ * `file` like any other, which is why a claim is a predicate over the node rather than a map from
+ * its kind: pointing the wiki editor at one would have it read a binary.
  */
 export function isTextPath(path: string | undefined): boolean {
   if (path === undefined) return false;
@@ -169,12 +163,11 @@ export function isTextPath(path: string | undefined): boolean {
 export type EditorId = (typeof EDITORS)[number]['id'];
 
 /**
- * The selection field a pinnable editor follows — and, pinned, stops following.
+ * The selection field a pinnable editor follows, and stops following once pinned.
  *
- * One field per editor rather than a set, and it is always the one naming *which thing* the pane
+ * One field per editor rather than a set, and it is always the field naming which thing the pane
  * is about. A pane that froze the rest of the selection with it would stop responding to its own
- * rows: Coverage holds the scene and still follows the shot, which is what makes a pinned pane a
- * second view of the project rather than a photograph of one.
+ * rows: Coverage holds the scene and still follows the shot.
  */
 export type PinField = 'sceneId' | 'docPath' | 'assetHash' | 'taskHash';
 
@@ -209,13 +202,13 @@ export const EDITOR_IDS: readonly EditorId[] = EDITORS.map((editor) => editor.id
 /**
  * The editors on offer: the ones the pane switcher lists and the View ▸ Editors submenu draws.
  *
- * An entry with `offered: false` is **named but not listed** — reachable from a menu entry, the
+ * An entry with `offered: false` is named but not listed — reachable from a menu entry, the
  * palette, CDP, the agent and a stored layout, and absent from the two places an author browses.
  * path.ux enforces the first half through `setAreaMenuFilter`, which the shell installs from this
  * list; the submenu is built from the same one, so the two ways of switching a pane cannot come
  * to disagree.
  *
- * `EDITOR_IDS` is deliberately *not* narrowed: `view.open`'s props, a stored layout's validation
+ * `EDITOR_IDS` is deliberately not narrowed: `view.open`'s props, a stored layout's validation
  * and `editorNameProblems`'s boot check all still cover every editor, because an unoffered editor
  * going missing is exactly as broken as an offered one going missing.
  */
@@ -227,10 +220,9 @@ export const OFFERED_EDITOR_IDS: readonly EditorId[] = EDITORS.flatMap((editor) 
  * Whether an area is listed where an author browses — the predicate the shell installs as
  * path.ux's `setAreaMenuFilter`.
  *
- * It answers `true` for a name this list does not carry, rather than `false`. The filter is
- * installed application-wide and sees every registered area, path.ux's own included; a predicate
- * that took away everything it had not heard of would be this list quietly deciding what a
- * library may offer. It narrows exactly what it names and nothing else.
+ * Answers `true` for a name this list does not carry. The filter is installed application-wide and
+ * sees every registered area, path.ux's own included, so it narrows exactly what this list names
+ * and nothing else.
  */
 export function isOfferedEditor(name: string): boolean {
   const editor = EDITORS.find((entry) => entry.id === name);
@@ -243,8 +235,7 @@ export function editorTitle(id: EditorId): string {
 
 /**
  * What an editor says on hover, wherever it is offered. The Editors menu and the pane tab that
- * switches to it are the same act, so they say the same sentence, and it is written once — in
- * `what`, which is the half a reader could not have guessed from the title.
+ * switches to it show the same sentence, written once in `what`.
  */
 export function editorTooltip(id: EditorId): string {
   const editor = EDITORS.find((entry) => entry.id === id);
@@ -253,19 +244,18 @@ export function editorTooltip(id: EditorId): string {
 
 /**
  * Where `view.open` puts an editor: in the pane you are in, in a new one beside it, or
- * `elsewhere` — the biggest pane that is *not* the one asking, splitting only when there is no
- * other. That last one is what a sidebar wants: opening into itself would replace the sidebar.
+ * `elsewhere` — the biggest pane other than the one asking, splitting only when there is no other.
+ * A sidebar wants `elsewhere` because opening into itself would replace the sidebar.
  *
- * `window` is the odd one and is deliberately in the same list: to an author "put the script on
- * the other monitor" is the same sentence as "put it below", and only the app knows a monitor is
- * a whole second renderer. It never reaches the mesh — main answers it with `window.new` instead
- * of pushing an effect — so the renderer's own table excludes it by type rather than by check.
+ * `window` is deliberately in the same list: to an author "put the script on the other monitor" is
+ * the same sentence as "put it below", and only the app knows a monitor is a whole second
+ * renderer. It never reaches the mesh — main answers it with `window.new` instead of pushing an
+ * effect — so the renderer's own table excludes it by type rather than by check.
  *
- * `popup` is the other one that is not a place in the mesh: a floating window over it, with a
- * titlebar to move it by and a close button. Nothing the author arranged moves to make room for
- * one, which is why it is what an editor the *app* decided to show — the task list, when a run
- * starts — opens in. It is in the same list because to an author it is still an answer to
- * "where does it go".
+ * `popup` is also not a place in the mesh: a floating window over it, with a titlebar to move it
+ * by and a close button. Nothing the author arranged moves to make room for one, so it is where an
+ * editor the app itself decided to show opens (the task list, when a run starts). It is in the
+ * same list because to an author it is still an answer to "where does it go".
  */
 export type OpenWhere =
   | 'here'
@@ -289,11 +279,10 @@ export const OPEN_WHERE = [
 ] as const;
 
 /**
- * Where this build's registry and this list disagree. Both directions matter and only one of
- * them is visible without asking: an id in `EDITORS` that nothing registered fails at the moment
- * someone picks it out of the palette, while a registered editor missing from here never reaches
- * `view.*` at all — yet still shows up in path.ux's own area-switcher menu, which enumerates the
- * area classes and knows nothing about this file.
+ * Where this build's registry and this list disagree. An id in `EDITORS` that nothing registered
+ * fails at the moment someone picks it out of the palette. A registered editor missing from here
+ * never reaches `view.*` at all, yet still shows up in path.ux's own area-switcher menu, which
+ * enumerates the area classes and knows nothing about this file.
  *
  * Pure so the shell's boot check can be tested. The shell supplies the registry's names, minus
  * chrome — the header is an editor by construction and deliberately absent from this list.

@@ -9,8 +9,8 @@
 import type { ChunkCategory, ChunkOrigin } from '@vn/types';
 
 /**
- * One reference image attached to a chunk, as the strip under the card draws it. Evidence for that
- * clause — so a muted chunk sends none of these either.
+ * One reference image attached to a chunk, as the strip under the card draws it. The images are
+ * evidence for that clause, so a muted chunk sends none of them.
  */
 export interface ChunkRefInfo {
   /** The hash actually fed to the model, and what the task hashes over. */
@@ -40,7 +40,7 @@ export interface PromptChunkInfo {
   authored?: string;
   muted: boolean;
   /**
-   * The edit was written against derived text that has since changed. Absent means *unknown*: an
+   * The edit was written against derived text that has since changed. Absent means unknown: an
    * edit that recorded no `of` is never reported as stale, the posture `Shot.proseHash` takes.
    */
   editStale?: boolean;

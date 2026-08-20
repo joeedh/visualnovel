@@ -1,10 +1,10 @@
 /**
- * The round-trip property for scenes: `parse(write(scene)) ≡ scene`, in both forms a scene is
- * written in — a block of a single screenplay, and a `scenes/<id>.md` chunk.
+ * The round-trip property for scenes is `parse(write(scene)) ≡ scene`, in both forms a scene is
+ * written in: a block of a single screenplay, and a `scenes/<id>.md` chunk.
  *
- * The sibling of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and what makes
- * `sceneToFountain` safe to write with. Comparison is structural — every field the model
- * carries except `shots`, which is never serialized.
+ * The property is the sibling of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and it
+ * is what makes `sceneToFountain` safe to write with. Comparison is structural — every field
+ * the model carries except `shots`, which is never serialized.
  */
 import { parseFountain, parseFrontMatter } from '@vn/parse';
 import type { HeadingPrefix, Scene, SceneLine } from '@vn/types';
@@ -39,8 +39,8 @@ function reparse(scene: Scene): Scene {
 }
 
 /**
- * The same, as a chunk — through the file *text*, so the front-matter fence is part of the
- * round trip rather than only the doc it parses to.
+ * Round-trips the scene as a chunk, through the file text, so the front-matter fence is part of
+ * the round trip rather than only the doc it parses to.
  */
 function rechunk(scene: Scene): Scene {
   const result = sceneFromDoc(parseFrontMatter(docToMarkdown(sceneToDoc(scene))), scene.id);

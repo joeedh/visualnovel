@@ -7,8 +7,8 @@
  * Everything that decides is in this file and is pure. The request itself and the browser are
  * `session.ts`'s, which is the same split `keyaudit.ts` uses and here has a second reason: the
  * unauthenticated GitHub API allows 60 requests an hour per IP, which is generous for one desktop
- * app and not remotely generous for a CI runner shared by every job on it. **No test may make
- * this call.** The functions below take a payload; they never fetch one.
+ * app and not remotely generous for a CI runner shared by every job on it. No test may make this
+ * call. The functions below take a payload; they never fetch one.
  */
 import { ISSUE_REPO } from '@vn/agentreport';
 import type { NotificationInput } from '@vn/types';
@@ -17,8 +17,8 @@ import { LINK_COMMANDS } from '../shared/notify.js';
 
 /**
  * `releases/latest` rather than a listing of releases, because it already excludes prereleases
- * and drafts. That is the whole of the plan's "a prerelease tag is ignored" — a rule enforced by
- * choosing the endpoint is one no later edit here can forget.
+ * and drafts. That is the whole of the plan's "a prerelease tag is ignored": the endpoint enforces
+ * it, so no later edit here has to remember the rule.
  */
 export const RELEASES_API = `https://api.github.com/repos/${ISSUE_REPO}/releases/latest`;
 
@@ -76,10 +76,9 @@ const SEMVER = /^v?(\d+)\.(\d+)\.(\d+)$/;
 /**
  * A version as three numbers, or `undefined` for anything else.
  *
- * Deliberately not a semver dependency. Prereleases never reach this — `releases/latest` filters
- * them — and build metadata is not something this repo's tags carry, so the grammar the plan said
- * to write by hand is the whole grammar there is. Anything outside it is reported as unreadable
- * rather than guessed at.
+ * Deliberately not a semver dependency. Prereleases never reach this (`releases/latest` filters
+ * them) and this repo's tags carry no build metadata, so `SEMVER` is the whole grammar there is.
+ * Anything outside it is reported as unreadable rather than guessed at.
  */
 export function parseVersion(text: string): [number, number, number] | undefined {
   const match = SEMVER.exec(text.trim());
@@ -118,9 +117,8 @@ export function unreachable(running: string, why: string): UpdateCheck {
 /**
  * The verdict, given what this build is and what GitHub answered.
  *
- * `ahead` is its own state rather than being folded into `current`: it is what anyone running
- * from a checkout between releases sees, and telling them they are up to date when they are
- * carrying unreleased code is a small lie that makes the whole check harder to trust.
+ * `ahead` is its own state rather than being folded into `current`. It is what anyone running from
+ * a checkout between releases sees, and reporting unreleased code as up to date would be wrong.
  */
 export function checkAgainst(running: string, payload: unknown): UpdateCheck {
   const release = LatestReleaseSchema.safeParse(payload);
@@ -177,15 +175,14 @@ export function checkAgainst(running: string, payload: unknown): UpdateCheck {
  *
  * Two rules, and both are the plan's:
  *
- * - **An available update is always announced**, quiet or not. That is the entire point of the
- *   periodic check, and it is the one thing here worth surviving the frame being dismissed.
- * - **A failure is announced only when a person asked.** A background check that could not reach
+ * - An available update is always announced, quiet or not. That is the point of the periodic
+ *   check, and it is the one thing here worth surviving the frame being dismissed.
+ * - A failure is announced only when a person asked. A background check that could not reach
  *   GitHub has nothing to say to someone in the middle of writing a scene. This is also why
  *   nothing in this file throws: a command that threw would be filed as an `error` by
- *   `shouldFileCommand` whatever `quiet` said, which is precisely the notification the plan is
- *   trying not to post.
+ *   `shouldFileCommand` whatever `quiet` said, which is the notification the plan avoids posting.
  *
- * The link names a *command*, never a URL. `app.openReleases` derives its own address from
+ * The link names a command, never a URL. `app.openReleases` derives its own address from
  * `ISSUE_REPO`, so a notification — a line of a file git union-merges across clones — can ask for
  * the releases page and cannot ask for anything else.
  */

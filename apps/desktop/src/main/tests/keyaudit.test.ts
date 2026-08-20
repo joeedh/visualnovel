@@ -62,8 +62,8 @@ describe('pageProblem', () => {
     expect(pageProblem('x'.repeat(MIN_PAGE_CHARS))).toBeUndefined();
   });
 
-  // The failure this exists for: a single-page app served to a bare fetch is a loading shell, and
-  // a model handed that would report drift against, in effect, nothing.
+  // This exists for one failure: a single-page app served to a bare fetch is a loading shell, and
+  // a model handed that would report drift against nothing.
   it('refuses a loading shell, saying what it got rather than that the docs changed', () => {
     const problem = pageProblem('Loading…');
     expect(problem).toContain('8 characters');
@@ -193,8 +193,8 @@ describe('renderReview', () => {
     expect(md).toContain('## anthropic — could not be checked');
   });
 
-  // The report this exists to prevent: every page failed to load, and the top line reads as a
-  // clean week. A run that looked at nothing has to say so in its first sentence.
+  // This prevents one report: every page failed to load and the top line reads as a clean week.
+  // A run that looked at nothing has to say so in its first sentence.
   it('never reports a pass for a week in which nothing was checked', () => {
     const md = renderReview(
       [unreadable('gemini', 'timed out'), unreadable('anthropic', 'no key')],

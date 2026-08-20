@@ -77,7 +77,7 @@ describe('renderGeneratedContext', () => {
     expect(text.startsWith(GENERATED_BANNER)).toBe(true);
     expect(isGenerated(text)).toBe(true);
     expect(isGenerated('# Hand-written\n')).toBe(false);
-    // The mark, not the whole banner: a later version of the banner is still ours.
+    // Recognition is by the mark rather than the whole banner, so a later banner still counts
     expect(isGenerated('<!-- vn:generated-context v9 — whatever -->\n')).toBe(true);
   });
 

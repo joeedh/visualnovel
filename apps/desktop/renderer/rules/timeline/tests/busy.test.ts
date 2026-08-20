@@ -12,7 +12,7 @@ describe('the strip while a write is in flight', () => {
     expect(busyLabel(busy)).toBe('Moving shot…');
   });
 
-  // The timer fires after the write already landed: the reveal must not resurrect the bar.
+  // The timer fires after the write already landed, so the reveal must not bring the bar back
   it('leaves a settled write settled when the delay fires late', () => {
     expect(revealBusy(SETTLED)).toBe(SETTLED);
     expect(busyLabel(revealBusy(SETTLED))).toBeNull();

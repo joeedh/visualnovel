@@ -1,7 +1,6 @@
 /**
- * Grep-shaped ranking over the index. Deliberately simple and deliberately deterministic: a
- * result order a test cannot pin is a test of nothing, and this is the layer an embedding
- * store replaces wholesale.
+ * Grep-shaped ranking over the index. Deliberately simple and deterministic, so a test can pin
+ * the result order. This is the layer an embedding store would replace wholesale.
  */
 import type { Excerpt, QueryOptions } from './types.js';
 import type { IndexedFile } from './indexer.js';
@@ -18,7 +17,7 @@ const CONTEXT = 2;
 const PER_FILE = 3;
 const DEFAULT_LIMIT = 8;
 const DEFAULT_BUDGET = 4000;
-/** Below this, a truncated excerpt says nothing — stop instead of emitting a stub. */
+/** Below this many characters left in the budget, ranking stops rather than emitting a stub. */
 const MIN_EXCERPT = 120;
 
 /** The searchable terms in a query string. Empty when the query is all stopwords. */
@@ -84,8 +83,8 @@ function windowsOf(file: IndexedFile, tokens: string[], bonus: number): Excerpt[
 }
 
 /**
- * Rank passages across the index. The `budget` is the contract: the returned excerpts never
- * total more characters than it, the last one truncated rather than the cap exceeded.
+ * Rank passages across the index. The returned excerpts never total more characters than
+ * `budget`; the last one is truncated rather than exceeding the cap.
  */
 export function rank(index: IndexedFile[], text: string, opts: QueryOptions = {}): Excerpt[] {
   const tokens = terms(text);

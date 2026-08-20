@@ -20,23 +20,23 @@ import type { DocNode } from '../../../src/shared/ipc.js';
 
 /**
  * The project's skills — the playbooks under `.aiagent/skills`, as a tree of the files inside them
- * beside the file being edited. It is the one pane that shows what is *in* a skill: the document
+ * beside the file being edited. It is the one pane that shows the contents of a skill: the document
  * tree carries identity (one row per skill, `docs/reference/document-tree.md`), and the content is here.
  *
  * The text half is `DocBuffer`, exactly as Wiki's is — `doc.read` in, `doc.write` out, with the
  * draft, the `seenHash` refusal and the quit guard all coming from that one module rather than
  * being retyped here. What this pane owns is the tree beside it, its expansion, and the hint.
  *
- * **The hint is the feature, not decoration.** A skill is the one thing in the app the agent can
+ * The hint is functional rather than decorative. A skill is the one thing in the app the agent can
  * author, and an author who has not read `docs/` has no way to know that. So the sentence and its
- * button sit above the tree and are drawn whether or not any skill exists — an empty pane is
- * exactly when they are needed. The button opens the *agent form* (`agent.run` through
+ * button sit above the tree and are drawn whether or not any skill exists; an empty pane is exactly
+ * when they are needed. The button opens the agent form (`agent.run` through
  * `openCommandDialog`) rather than running anything: `agent.run` is mutating and plan-first, so
  * what the author gets back is a proposed plan they still approve.
  *
- * Deliberately **not** reused: `renderAssetStrip`. Nothing in the manifest binds to a skill file
- * and nothing ever will — every binding names a character, a location, a scene or a shot — so a
- * strip here would be permanently empty, which is worse than absent.
+ * `renderAssetStrip` is deliberately not reused. Nothing in the manifest binds to a skill file and
+ * nothing ever will — every binding names a character, a location, a scene or a shot — so a strip
+ * here would be permanently empty, which is worse than absent.
  */
 export class SkillsEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -99,7 +99,7 @@ export class SkillsEditor extends VnEditor {
       // re-read on the same terms.
       () => this.buf.wrote([this.buf.path]),
     );
-    // And the tree beside it, which a *new* skill changes without touching the open file at all.
+    // And the tree beside it, which a new skill changes without touching the open file at all.
     // Coarse on purpose: a walk is cheap and a stale tree is worse than a redundant fetch — which
     // is also why coming back on screen just walks it again rather than reasoning about the gap.
     this.watch(

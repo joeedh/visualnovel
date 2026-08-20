@@ -53,15 +53,15 @@ export interface RunOptions {
   /** Scripted reviewer verdicts, e.g. a blocking defect to drive the P7 refine loop. */
   reviewResponses?: string[];
   /**
-   * Replace the mock provider bundle outright. The escape hatch exists for exactly one
-   * caller — `scripts/record-fixture-assets.mjs`, which needs real providers to record
-   * against. **No test should pass this**: a suite that reaches a network is not a suite.
+   * Replace the mock provider bundle outright. This exists for exactly one caller,
+   * `scripts/record-fixture-assets.mjs`, which needs real providers to record against. No
+   * test should pass this, because a test must not reach the network.
    */
   providers?: Providers;
   /**
-   * Replace only the image backend the mock providers sit on — the seam a test injects a
-   * throwing or flaky backend at to exercise the scheduler's failure and retry paths.
-   * Ignored when `providers` is given.
+   * Replace only the image backend the mock providers sit on. A test injects a throwing or
+   * flaky backend here to exercise the scheduler's failure and retry paths. Ignored when
+   * `providers` is given.
    */
   imageBackend?: ImageBackend;
   /** Receive the scheduler's structured events (`task.start` / `task.end`). */
@@ -81,9 +81,9 @@ export interface MakeProjectOptions {
   /**
    * Which on-disk form the scenes are written in. Default `'chunks'`: `script` is split into
    * `scenes/<id>.md` through the same writer the app uses, with `start:` added to `project.yaml`.
-   * `'screenplay'` writes the one `screenplay/script.fountain` instead — **an unimported project**,
-   * which no longer loads its scenes, so it is only for testing what happens to one: the
-   * diagnostic, and `vngen import`. The script is the same either way.
+   * `'screenplay'` writes the one `screenplay/script.fountain` instead, which is an unimported
+   * project and no longer loads its scenes. Use it only to test what happens to such a project:
+   * the diagnostic, and `vngen import`. The script is the same either way.
    */
   format?: 'chunks' | 'screenplay';
   /** `git init` + a deterministic identity + an initial commit of the inputs. */
@@ -91,10 +91,10 @@ export interface MakeProjectOptions {
   /** Extra files, keyed by path relative to the project root. */
   files?: Record<string, string>;
   /**
-   * `'cached'` serves **real** recorded art out of the fixture asset cache; anything it has
-   * no recording for falls through to a placeholder, and so does everything downstream of
-   * that (a ref's bytes are part of the next request's key). Default `'placeholder'`, so an
-   * existing suite is untouched and no test can pass only on a machine that has the cache.
+   * `'cached'` serves real recorded art out of the fixture asset cache. A request with no
+   * recording falls through to a placeholder, and so does everything downstream of it (a ref's
+   * bytes are part of the next request's key). Defaults to `'placeholder'`, so an existing
+   * suite is untouched and no test can pass only on a machine that has the cache.
    */
   assets?: 'placeholder' | 'cached';
   /** Override the cache directory. Tests point this at a temp dir. */
@@ -260,7 +260,8 @@ export class TestProject {
   }
 
   cleanup(): Promise<void> {
-    // Retries: git leaves read-only pack files behind, which Windows refuses to unlink first try.
+    // Retried because git leaves read-only pack files behind, which Windows refuses to unlink
+    // on the first attempt
     return rm(this.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 
@@ -283,7 +284,10 @@ export class TestProject {
   }
 }
 
-/** Where a fixture sheet is written: the wiki path when the spec asks to be found by tag. */
+/**
+ * The path a fixture sheet is written to. Uses the wiki path when the spec asks to be found by
+ * tag, otherwise `conventional`.
+ */
 function sheetFile(paths: ProjectPaths, spec: { wiki?: string }, conventional: string): string {
   return spec.wiki ? join(paths.wikiDir, `${spec.wiki}.md`) : conventional;
 }

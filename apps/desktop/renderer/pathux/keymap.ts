@@ -1,8 +1,7 @@
 /**
  * The app-level keymap. path.ux routes a keystroke to the focused area's keymaps first and
  * falls through to `screen.keymap`, so these are the gestures that belong to the shell rather
- * than to whatever is focused — and an editor that wants `/` for itself can now take it,
- * which the React shell's one window-level `keydown` could not allow.
+ * than to the focused editor. An editor that wants `/` for itself can claim it.
  *
  * Escape is not here: a popup installs its own handler while it is up, and nothing else in
  * the shell claims it.

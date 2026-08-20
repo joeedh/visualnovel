@@ -2,7 +2,7 @@
  * Rewrite a chunk list into one prompt an image model handles well
  * (`docs/plans/archive/chunked-prompts.md` §4).
  *
- * Condensing is an **authoring-time** action. It never runs during planning, which is what keeps
+ * Condensing is an authoring-time action. It never runs during planning, which is what keeps
  * `planTasks` deterministic and offline — and it is why `ArtGenDeps` is not widened to carry a
  * `TextLLM`: an optional `text` there would tell every reader that concept generation might call a
  * model, which it does not. The caller already holds `providers.text`.
@@ -13,7 +13,10 @@ import { coverage, type ChunkCoverage } from './coverage.js';
 
 export interface Condensation {
   prompt: string;
-  /** What the local check makes of the result — see `coverage.ts` on why it, not the model. */
+  /**
+   * What the local check makes of the result. `coverage.ts` explains why the check answers this
+   * rather than the model.
+   */
   coverage: ChunkCoverage[];
   /** `fallback` means the model was unavailable or unusable and the chunks were simply joined. */
   source: 'llm' | 'fallback';

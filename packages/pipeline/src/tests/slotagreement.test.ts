@@ -1,13 +1,13 @@
 /**
- * The one property the slot graph can get wrong: promising a picture the planner never plans, or
- * missing one it does.
+ * Checks the one property the slot graph can get wrong: promising a picture the planner never
+ * plans, or missing one it does.
  *
- * Both sides enumerate from `@vn/model`'s `used.ts` now, but they compose prompts and hash inputs
- * through separate call paths, so agreement is asserted rather than assumed — the planner is run to
+ * Both sides enumerate from `@vn/model`'s `used.ts`, but they compose prompts and hash inputs
+ * through separate call paths, so agreement is asserted rather than assumed. The planner is run to
  * exhaustion with mock providers and the two hash sets are compared outright.
  *
- * It lives in `@vn/pipeline` because `@vn/artgen` may not import the planner; the pipeline may
- * import both, so this is the only package that can ask the question.
+ * This test lives in `@vn/pipeline` because `@vn/artgen` may not import the planner; the pipeline
+ * may import both, so this is the only package that can ask the question.
  */
 import { projectConfig, type ProjectModel } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
@@ -83,8 +83,8 @@ describe('the slot graph and the planner agree', () => {
   });
 
   it('states no identity the planner did not, while the gate is still closed', async () => {
-    // Pre-gate the planner emits plates and portraits only. The slot graph still *lists* every
-    // sheet and shot — that is what it is for — but must not claim a hash for one.
+    // Before the gate opens the planner emits plates and portraits only. The slot graph still
+    // lists every sheet and shot, but must not claim a hash for one.
     const m = project('draft');
     const graph = await planToExhaustion(m);
     const g = slots(m, graph);

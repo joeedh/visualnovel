@@ -30,8 +30,8 @@ describe('derivedNextShot', () => {
   });
 
   it('counts a model-minted shot<n> id, not just hand-allocated ones', () => {
-    // The model decomposer may itself answer with a raw `shot3`, which `shotId` namespaces to
-    // `s__shot3` — "the file has no mark" never means "no such ids exist".
+    // The model decomposer may answer with a raw `shot3`, which `shotId` namespaces to
+    // `s__shot3`, so a file carrying no mark can still hold allocated shot<n> ids
     expect(derivedNextShot([shot('s__shot3', []), shot('s__beat1', [])])).toBe(4);
   });
 });
@@ -62,8 +62,8 @@ describe('newShot', () => {
     const board = { shots: [shot('s__shot2', ['s:L1'])] };
     const op = newShot(SCENE, board, { lines: ['s:L2'] });
     if (!op.ok) throw new Error(op.error);
-    // Not s__shot2 again: recreating a retired id would hash to an already-done task and
-    // silently inherit the deleted shot's frame.
+    // Recreating a retired id would hash to an already-done task and silently inherit the
+    // deleted shot's frame, so s__shot2 is not handed out again
     expect(op.shot.id).toBe('s__shot3');
   });
 
@@ -160,7 +160,7 @@ describe('deleteShot', () => {
   it('keeps the deleted id retired when the file carried no mark', () => {
     const op = deleteShot({ shots: [shot('s__shot4', ['s:L1'])] }, { shot: 's__shot4' });
     if (!op.ok) throw new Error(op.error);
-    // Derived over the board *before* removal: the freed id must not be mintable again.
+    // Derived over the board before the removal, so the freed id cannot be minted again
     expect(op.nextShot).toBe(5);
   });
 

@@ -2,40 +2,41 @@
  * Reordering shots inside a scene — which, in this app, means moving the lines they cover.
  *
  * A shot has no stored position. The exporter walks a scene's lines in order and emits a `show`
- * beat whenever the covering shot changes, so a shot's position *is* where its covered lines sit,
+ * beat whenever the covering shot changes, so a shot's position is where its covered lines sit,
  * and the storyboard order is a reading of the prose order rather than a second ordering beside it.
  * Reordering shots is therefore a prose edit, and {@link moveShot} hands back the same
  * {@link LineOp} the nine `lineops` decisions do — one write path, one undo entry, one set of
  * proofs.
  *
- * It lives here rather than in `lineops.ts` because it has to read the storyboard, and that module
- * is pure over the scene set on purpose. It is the sibling of `shotfallout.ts`: that one asks what
- * a prose edit does to the shots, this one asks what a shot move does to the prose.
+ * This module lives here rather than in `lineops.ts` because it has to read the storyboard, and
+ * that module is pure over the scene set on purpose. It is the sibling of `shotfallout.ts`: that
+ * one asks what a prose edit does to the shots, this one asks what a shot move does to the prose.
  *
  * Two things a caller has to understand:
  *
- * - **Only a contiguous shot can move.** Coverage is a set and interleaving is the normal case (the
+ * - Only a contiguous shot can move. Coverage is a set and interleaving is the normal case (the
  *   deterministic decomposer gives the establishing shot every narration line while each medium
  *   shot takes one character's dialogue). A shot with holes is on screen in more than one place, so
  *   it has no single position to move from, and every way of inventing one silently decides
- *   something about the shots it interleaves with. This refuses instead, and names them.
- * - **A move costs nothing.** Ids do not change, so no shot's coverage changes; each shot's covered
+ *   something about the shots it interleaves with. {@link planShotMove} refuses instead and names
+ *   those shots.
+ * - A move costs nothing. Ids do not change, so no shot's coverage changes; each shot's covered
  *   lines keep their relative order, so no `proseHash` moves. Nothing drifts, nothing re-renders,
- *   and the only difference is the order of `show` beats — which is the act the author asked for.
+ *   and the only difference is the order of `show` beats, which is the act the author asked for.
  */
 import type { Scene, Shot } from '@vn/types';
 import { nextIdOf, type LineOp, type ScriptState } from './lineops.js';
 
-/** As much of a shot as a reorder reads. Both `Shot` and the app's `CoverageShot` are one. */
+/** As much of a shot as a reorder reads. Both `Shot` and the app's `CoverageShot` satisfy it. */
 export interface PositionedShot {
   id: string;
   coversLines: readonly string[];
 }
 
 /**
- * The decision itself: the scene's new line order, or the sentence that refuses it. `noop` marks
- * the one refusal a *gesture* should not show — the shot is already there — so a surface can drop
- * that target from its list instead of offering a drop the author would learn nothing from.
+ * The decision: the scene's new line order, or the sentence that refuses it. `noop` marks the one
+ * refusal a gesture should not show (the shot is already there) so a surface can drop that target
+ * from its list instead of offering a drop the author would learn nothing from.
  */
 export type ShotMove =
   | { ok: true; message: string; order: string[] }
@@ -79,8 +80,8 @@ function interleaving(
 }
 
 /**
- * The rule, over ids alone: the line order a scene would have with `shot` sitting immediately
- * after `after` — or at the top when `after` is empty. Separate from {@link moveShot} so the
+ * The line order a scene would have with `shot` sitting immediately after `after`, or at the top
+ * when `after` is empty. Decided over ids alone and kept separate from {@link moveShot} so the
  * timeline can judge a drag against the coverage strip it already holds and get the sentence the
  * command would give, without a `Scene` to hand.
  *
@@ -116,9 +117,9 @@ export function planShotMove(
     );
   }
 
-  // The anchor line, in the scene as it stands: the top for an empty target, else the target's
-  // last covered line. Resolving it to a line id first is what lets the splice be computed
-  // against the order with the block already lifted out.
+  // Resolve the anchor to a line id first, so the splice can be computed against the order with
+  // the block already lifted out. An empty target anchors at the top of the scene; otherwise the
+  // anchor is the target's last covered line
   let anchor: string | undefined;
   if (args.after) {
     const target = shots.find((s) => s.id === args.after);

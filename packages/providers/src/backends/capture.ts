@@ -3,22 +3,20 @@
  *
  * A conversation request is the one thing in this package that cannot be reconstructed from what
  * comes back: the body is assembled from a transcript the loop owns, sent, and forgotten. When the
- * API rejects it by position — *"messages.1.content.0: unexpected `tool_use_id`"* — the position is
- * only meaningful against the body, and nothing keeps the body. So this does.
+ * API rejects it by position ("messages.1.content.0: unexpected `tool_use_id`"), the position is
+ * only meaningful against the body, so the body is kept here.
  *
- * Two destinations, deliberately unlike each other:
+ * There are two destinations. A ring in memory is always on, bounded by bytes and by count, oldest
+ * evicted; it never leaves the process on its own, and its one reader is the debug agent, on the
+ * author's own key, only when the author ticks the box that says so
+ * (`docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`). Files on disk
+ * are off unless `VN_DUMP_REQUESTS` names a directory, and deliberately not wired to a log level:
+ * the body carries the whole conversation, which is the author's fiction and their file contents,
+ * and a verbosity flag should not start writing that out.
  *
- * - **A ring in memory, always on.** Bounded by bytes and by count, oldest evicted. It never
- *   leaves the process on its own; the one reader is the debug agent, on the author's own key,
- *   and only when the author ticks the box that says so
- *   (`docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`).
- * - **Files on disk, off unless `VN_DUMP_REQUESTS` names a directory**, and deliberately not wired
- *   to a log level: the body carries the whole conversation, which is the author's fiction and
- *   their file contents, and that is not something a verbosity flag should start writing out.
+ * Neither destination ever carries the API key, which rides on the client rather than the payload.
  *
- * Neither ever carries the API key — that rides on the client, not in the payload.
- *
- * The body is written *before* the call rather than after it, because the failures worth capturing
+ * The body is written before the call rather than after it, because the failures worth capturing
  * include the ones that never return. What went wrong is recorded beside it afterwards.
  */
 import { Buffer } from 'node:buffer';
@@ -32,11 +30,11 @@ function dumpDir(): string | undefined {
   return dir && dir.trim() !== '' ? dir : undefined;
 }
 
-/** What the ring holds before it starts evicting. Both caps apply; either one can bite first. */
+/** What the ring holds before it starts evicting. Both caps apply, and either can trigger first. */
 const DEFAULT_BYTES = 64 * 1024 * 1024;
 const DEFAULT_COUNT = 64;
 
-/** An env override, or the default. A value that is not a positive number is not an opinion. */
+/** An env override, or the default. A value that is not a positive number is ignored. */
 function capFrom(name: string, fallback: number): number {
   const raw = Number(process.env[name]);
   return Number.isFinite(raw) && raw > 0 ? raw : fallback;
@@ -50,8 +48,8 @@ export interface CapturedHeader {
   at: string;
   bytes: number;
   /**
-   * True when the body alone exceeded the whole byte cap and was let go. The header is kept
-   * anyway: that a request this size was sent is itself the answer to some questions.
+   * True when the body alone exceeded the whole byte cap and was discarded. The header is kept
+   * anyway, so the size of what was sent is still on record.
    */
   dropped: boolean;
   /** The failure, when the call came back with one. */
@@ -65,9 +63,8 @@ interface Entry extends CapturedHeader {
 /**
  * A frozen view of the ring.
  *
- * Evidence that moves under its reader is not evidence: the debug agent takes minutes and many
- * calls to read one of these, and a live ring would evict entries — possibly the one it was
- * opened to read — between the listing and the read.
+ * The debug agent takes minutes and many calls to read one of these, and a live ring would evict
+ * entries (possibly the one it was opened to read) between the listing and the read.
  */
 export interface CaptureSnapshot {
   headers(): CapturedHeader[];

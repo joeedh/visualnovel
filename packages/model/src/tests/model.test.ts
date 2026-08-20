@@ -117,7 +117,7 @@ describe('splitScenes — structured lines', () => {
   it('attributes dialogue to resolved character ids and leaves narration unattributed', () => {
     expect(lines[0]!.speaker).toBeUndefined();
     expect(lines[1]!.speaker).toBe('aiko');
-    // A cue's speaker ends with its dialogue block: the action below it is nobody's.
+    // A cue's speaker ends with its dialogue block, so the action below it has no speaker.
     expect(lines[2]!.kind).toBe('narration');
     expect(lines[2]!.speaker).toBeUndefined();
     expect(lines[3]!.speaker).toBe('ren');
@@ -217,7 +217,8 @@ describe('buildModel — the wardrobe', () => {
     expect(d).toHaveLength(1);
     expect(d[0]!.severity).toBe('warning');
     expect(d[0]!.message).toContain('"track"');
-    // A warning, not an error: the outfit is still synthesized, so nothing is left unresolvable.
+    // The outfit is still synthesized and stays resolvable, so this is a warning rather than
+    // an error.
     expect(model.characters.get('ada')!.outfits.map((o) => o.id)).toEqual(['uniform', 'track']);
   });
 
@@ -236,7 +237,8 @@ describe('buildModel — the wardrobe', () => {
     expect(d[0]!.severity).toBe('warning');
     expect(d[0]!.message).toContain('refs/ada-coat.png');
     expect(d[0]!.message).toContain('asset.upload');
-    // Every sheet the fixtures ever wrote carries an empty list; that is not a migration.
+    // Every sheet the fixtures ever wrote carries an empty list, which does not count as a
+    // migration.
     expect(build('reference_images: []\n').diagnostics).toEqual([]);
   });
 });
@@ -293,8 +295,8 @@ describe('buildModel — the scene outfit marker', () => {
     expect(m.diagnostics).toEqual([]);
   });
 
-  // Ignored rather than honoured: the shot falls back to the default and renders, where obeying
-  // would put a word in the prompt that nothing describes.
+  // An unknown outfit is ignored rather than honoured, so the shot falls back to the default
+  // and renders. Obeying it would put a word in the prompt that nothing describes.
   it('warns about an outfit the character never authored, listing the ones they have', () => {
     const m = build('[[outfit: aiko=swim]]\n');
     expect(m.scenes.get('arrival')!.outfits).toBeUndefined();

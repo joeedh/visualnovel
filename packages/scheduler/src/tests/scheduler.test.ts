@@ -14,8 +14,8 @@ const BLOCKING =
   '{"reviewer":"x","defects":[{"severity":"blocking","category":"outfit","description":"wrong"}]}';
 
 /**
- * An image backend that rejects its first `failures` calls and then behaves like the stub —
- * the transient outage this plan exists for, made deterministic.
+ * An image backend that rejects its first `failures` calls and then behaves like the stub, so a
+ * transient provider outage is deterministic.
  */
 function flakyImages(failures: number, message: string): ImageBackend {
   const stub = new StubImageBackend();
@@ -199,7 +199,7 @@ describe('requeueFailed', () => {
     return task;
   }
 
-  /** A graph of the given nodes, plus the hashes of the ones the current plan asked for. */
+  /** A graph holding the given nodes. */
   function graphOf(...tasks: AnyTask[]): TaskGraph {
     const graph = new TaskGraph();
     for (const t of tasks) graph.add(t);

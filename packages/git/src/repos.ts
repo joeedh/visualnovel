@@ -2,13 +2,12 @@
  * Which repository owns a path — the multi-repo seam (`docs/plans/archive/repo-map-and-commit-on-save.md`).
  *
  * A project's story bible or base assets may each be their own repo, so nothing may assume one
- * root. The map is **discovered, not declared**: `git rev-parse --show-toplevel` is git's own
- * answer, so it handles worktrees, `.git` files and ceiling directories, and it gets the case
- * that matters right for free — git does not descend into a nested repository, so a `wiki/.git`
- * really is not the project repo's business.
+ * root. The map is discovered rather than declared: `git rev-parse --show-toplevel` is git's own
+ * answer, so it handles worktrees, `.git` files and ceiling directories. Git does not descend
+ * into a nested repository, so a `wiki/.git` is not the project repo's business.
  *
- * Mechanism only. Which roles exist, when to commit, and what to do with a path that belongs to
- * no repo are all the host's business.
+ * This module is mechanism only. Which roles exist, when to commit, and what to do with a path
+ * that belongs to no repo are all the host's business.
  */
 import { stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -21,7 +20,7 @@ async function nearestDir(path: string): Promise<string | null> {
     try {
       if ((await stat(current)).isDirectory()) return current;
     } catch {
-      // Missing: a path about to be written. Ask its parent instead.
+      // the path does not exist yet, so ask its parent instead
     }
     const parent = dirname(current);
     if (parent === current) return null;
@@ -30,7 +29,10 @@ async function nearestDir(path: string): Promise<string | null> {
 }
 
 export class RepoResolver {
-  /** Directory → owning repo root, or null for "asked, and it is in no work tree". */
+  /**
+   * Directory → owning repo root. A null value means the directory was asked about and is in no
+   * work tree.
+   */
   private readonly roots = new Map<string, string | null>();
   private readonly handles = new Map<string, Git>();
 

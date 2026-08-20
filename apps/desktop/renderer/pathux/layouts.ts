@@ -1,15 +1,14 @@
 /**
  * Which layout template the window is showing, and noticing when the file behind it moves.
  *
- * The screen itself is remembered per install (`persist.ts`); a *template* is a file in the
- * project, so it can be edited by hand, pulled from a collaborator, or restored by an undo —
- * none of which pass through this window. The fingerprint is how those are noticed: main
- * reports one with every template it lists, and an arrangement whose fingerprint moved is one
- * the window is no longer honestly showing.
+ * The screen itself is remembered per install (`persist.ts`). A template is a file in the
+ * project, so it can be edited by hand, pulled from a collaborator, or restored by an undo, none
+ * of which pass through this window. Main reports a fingerprint with every template it lists, and
+ * a fingerprint that has moved means the window is showing an arrangement the file no longer has.
  *
- * This is what makes `view.resetLayout` undoable in the sense the author means. The command's
- * own effect covers the reset; undo restores the files and nothing pushes an effect at all —
- * only the fingerprint says the arrangement came back, and this re-applies it.
+ * That is what makes undoing `view.resetLayout` visible here. The command's own effect covers the
+ * reset; an undo restores the files and pushes no effect at all, so only the fingerprint reports
+ * that the arrangement came back, and this re-applies it.
  */
 import { editorTitle, type EditorId } from '../../src/shared/editors.js';
 import { LAYOUT_FORMAT, type LayoutFile, type LayoutSummary } from '../../src/shared/layouts.js';
@@ -21,7 +20,7 @@ import { currentScreen } from './persist.js';
 let active = '';
 let applied = '';
 
-/** One at a time: `exec` is async, and an invalidate can land while a check is in flight. */
+/** Only one check runs at a time, since an invalidate can land while `exec` is in flight. */
 let checking = false;
 
 /** The template the window is showing, or `''` before one has been applied. */
@@ -39,12 +38,12 @@ export function markApplied(slug: string, fingerprint: string): void {
 }
 
 /**
- * The arrangement on screen, as the file `view.saveLayout` files — a serialized mesh rather than
- * a recipe, because an author drags borders into shapes no split grammar describes and the
+ * The arrangement on screen, in the form `view.saveLayout` writes. It is a serialized mesh rather
+ * than a recipe, because an author drags borders into shapes no split grammar describes and the
  * per-pane state (the Documents editor's mode) has no recipe representation at all.
  *
- * The slug and the title are left empty: main derives both from the name the author gives, and
- * a second answer here is how a file starts disagreeing with what it is called.
+ * The slug and the title are left empty. Main derives both from the name the author gives, and
+ * answering here as well would let the file disagree with what it is called.
  */
 export function currentLayoutFile(shell: ShellApp, editors: EditorId[]): LayoutFile | undefined {
   const screen = currentScreen(shell);
@@ -71,8 +70,8 @@ export async function fetchLayouts(): Promise<{ active: string; layouts: LayoutS
 
 /**
  * Follow the file the window was built from. Subscribed to the coarse invalidate rather than to
- * `view.*`: the writes that matter here — an undo, a pull, another window's reset — are exactly
- * the ones no command in this session ran.
+ * `view.*`, because the writes that matter here (an undo, a pull, another window's reset) are
+ * exactly the ones no command in this session ran.
  */
 export function installLayoutWatch(): () => void {
   void seed();
@@ -81,8 +80,8 @@ export function installLayoutWatch(): () => void {
 
 /**
  * Take the fingerprint of whatever main says is active, without applying anything. At boot the
- * window is the mesh the session remembered, which *is* the template as far as the author is
- * concerned — re-applying it here would throw away a border they dragged last session.
+ * window shows the mesh the session remembered, which the author regards as the template, so
+ * re-applying it here would throw away a border they dragged last session.
  */
 async function seed(): Promise<void> {
   const { active: slug, layouts } = await fetchLayouts();
@@ -98,8 +97,8 @@ async function recheck(): Promise<void> {
     const { layouts } = await fetchLayouts();
     const mine = layouts.find((entry) => entry.slug === active);
     if (!mine || mine.problem || mine.fingerprint === applied) return;
-    // Adopt the fingerprint first: one moved file is one attempt, whether or not the apply
-    // takes. Re-trying it on every subsequent invalidate would be a loop nothing breaks.
+    // The fingerprint is adopted before the apply, so a moved file is attempted once whether or
+    // not the apply takes; retrying on every later invalidate would loop with nothing to stop it
     applied = mine.fingerprint;
     await exec('view.applyLayout', { name: active });
   } finally {

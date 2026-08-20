@@ -228,7 +228,7 @@ describe('condenseAction', () => {
   it('supplies force from custom mode, rather than offering to discard the text', () => {
     const action = condenseAction(view({ mode: 'custom', custom: 'Just Aiko.' }));
     expect(action).toMatchObject({ ok: true, props: { hash: 'abc123', force: true } });
-    // The refusal the command itself gives without the flag names it, in these same words.
+    // Without the flag, `prompt.condense` refuses in these same words
     expect(condenseNeedsForce('abc123')).toContain("prompt.condense(hash='abc123' force=true)");
   });
 

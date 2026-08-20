@@ -111,7 +111,7 @@ describe('AssetCache', () => {
       );
       await fs.rm(join(dir, `${entry.key}.png`));
       expect(cache.has(key)).toBe(true);
-      // The index describes the bytes; it never stands in for them.
+      // The index records the entry; `get` still requires the bytes on disk.
       expect(await cache.get(key)).toBeNull();
     } finally {
       await cleanup();

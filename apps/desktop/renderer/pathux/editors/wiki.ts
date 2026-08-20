@@ -11,24 +11,25 @@ import WIKI_CSS from '../../styles/wiki.css?inline';
 import type { DocTree } from '../../../src/shared/ipc.js';
 
 /**
- * One markdown document, as text. The story bible, a character sheet, a location sheet — whatever
- * `ui.docPath` names — read through `doc.read` and saved through `doc.write`, which is what makes
- * "the user saves it, saving also commits to git" true with no machinery of its own.
+ * One markdown document, as text. The story bible, a character sheet or a location sheet (whatever
+ * `ui.docPath` names) is read through `doc.read` and saved through `doc.write`, so saving also
+ * commits to git with no machinery of its own.
  *
- * It is **not** a form over `Character`. The requirement is that the author edits the markdown, so
- * the front-matter is in the box with the prose and the model's opinion of it arrives afterwards,
- * on the footer line: a sheet whose fields are half-typed saves and says so, and only a save that
- * would destroy identity — unparseable front-matter, or a dropped `type:` tag — is refused. All
- * three rules live in the command; nothing here re-decides them.
+ * This is not a form over `Character`. The author edits the markdown, so the front-matter sits in
+ * the box with the prose and the model's reading of it arrives afterwards on the footer line. A
+ * sheet whose fields are half-typed saves and says so, and a save is refused only when it would
+ * destroy identity (unparseable front-matter, or a dropped `type:` tag). All three rules live in
+ * the command; nothing here re-decides them.
  *
- * It does not read through `@vn/bible` either. That interface has no whole-file call and the
- * absence is the guarantee — a human reading their own note on screen is not the context window.
+ * It does not read through `@vn/bible` either. That interface has no whole-file call, which is
+ * what keeps whole documents out of a context window; a human reading their own note on screen is
+ * a different case.
  *
- * Under the text sits what was *drawn from* this document — the assets bound to whatever subject
- * the file is, found by `DocTree.pathIndex`. For a lore note that is honestly nothing, and the
- * sentence saying so is the feature: it is how an author sees that a page no art comes from is
- * exactly that. Which notes merely *mention* the subject is `bible.search` — ranked, budgeted, a
- * different question — and is deliberately not asked here.
+ * Under the text sits what was drawn from this document: the assets bound to whatever subject the
+ * file is, found by `DocTree.pathIndex`. For a lore note that is usually nothing, and the sentence
+ * saying so is how an author sees that no art comes from the page. Which notes mention the subject
+ * is a separate, ranked and budgeted question answered by `bible.search`, and is deliberately not
+ * asked here.
  */
 export class WikiEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -44,9 +45,9 @@ export class WikiEditor extends VnEditor {
   private tree: DocTree | undefined;
 
   /**
-   * The document in the box, which trails `ui.docPath` by one async read. The draft it files, the
-   * `seenHash` refusal it earns and the quit guard behind it are `docbuffer.ts`'s — this pane owns
-   * the widgets and nothing about the text.
+   * The document in the box, which trails `ui.docPath` by one async read. The draft, the
+   * `seenHash` refusal and the quit guard all live in `docbuffer.ts`; this pane owns the widgets
+   * and nothing about the text.
    */
   private readonly buf = new DocBuffer(() => this.paint());
 
@@ -68,8 +69,8 @@ export class WikiEditor extends VnEditor {
     this.saveBtn.description = 'Write this document back to disk, and commit it';
     const reload = bar.button('⟳', () => void this.buf.reload());
     reload.description = 'Re-read this document from disk (discards an unsaved draft)';
-    // Built once, like the rest of this bar: the toggle keeps its own state, so it does not need
-    // to be redrawn when the document changes underneath it.
+    // Built once with the rest of this bar. The toggle keeps its own state, so it does not need
+    // redrawing when the document changes underneath it.
     this.pinToggle(bar);
     bar.flushUpdate();
 
@@ -94,8 +95,8 @@ export class WikiEditor extends VnEditor {
       this.buf.text = this.text.value;
     });
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a sentence. Ctrl+S is caught here for the same
-    // reason: it is the save gesture, and the browser's own is not.
+    // keys opens the palette on the first `/` of a sentence. Ctrl+S is caught here so it saves the
+    // document rather than reaching the browser's own save.
     this.text.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
@@ -105,8 +106,8 @@ export class WikiEditor extends VnEditor {
     });
     this.surface.appendChild(this.text);
 
-    // Bounded and below: what was drawn from a page must never grow until the page has nowhere
-    // left to be read.
+    // The strip sits below the text and is height-bounded, so it cannot crowd the page text off
+    // the screen
     this.strip = el('div', 'wk-strip') as HTMLDivElement;
     this.surface.appendChild(this.strip);
 
@@ -119,18 +120,18 @@ export class WikiEditor extends VnEditor {
 
     this.appendSurface(this.surface);
 
-    // A file this pane is showing can be written by something else entirely — `gate.approve`
-    // rewrites `character.md`, and so does the agent, whose writes are not commands at all. What
-    // a clean and a dirty buffer each do about that is `DocBuffer.wrote`.
+    // A file this pane is showing can be written by something else: `gate.approve` rewrites
+    // `character.md`, and so does the agent, whose writes are not commands at all.
+    // `DocBuffer.wrote` decides what a clean buffer and a dirty buffer each do about it.
     this.watch(
       () => onWrote((paths) => this.buf.wrote(paths)),
-      // Which paths moved while the pane was off screen is unknowable, so the one it is showing
-      // is re-read on the same terms.
+      // The paths that moved while the pane was off screen are unknown, so the one it is showing
+      // is re-read on the same terms
       () => this.buf.wrote([this.buf.path]),
     );
 
     // Generating a portrait while the character's sheet is open should make the portrait appear,
-    // and generation is not a write to *this* file — so the strip follows the coarser signal.
+    // and generation does not write the open file, so the strip follows the coarser signal
     this.watch(
       () => onInvalidate(() => void this.loadTree()),
       () => void this.loadTree(),
@@ -151,9 +152,9 @@ export class WikiEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /**
-   * Refetch the tree the strip reads. A failure is silence rather than a message: the pane's job
-   * is the document in the box, and a backlink panel that could not be built is not news the
-   * author can act on while typing.
+   * Refetch the tree the strip reads. A failure is silent, because the pane's job is the document
+   * in the box and a backlink panel that could not be built is not something the author can act on
+   * while typing.
    */
   private async loadTree(): Promise<void> {
     try {
@@ -164,7 +165,7 @@ export class WikiEditor extends VnEditor {
     this.paintStrip();
   }
 
-  /** The picture, for a strip that has a hash where the tree has a row. */
+  /** Opens the picture for a hash. The strip carries hashes where the tree carries rows. */
   private openAsset(hash: string): void {
     this.ui.assetHash = hash;
     this.announce();
@@ -175,8 +176,8 @@ export class WikiEditor extends VnEditor {
     const open = this.buf.path !== '';
     this.empty.style.display = open ? 'none' : 'flex';
     this.text.style.display = open ? 'block' : 'none';
-    // Only when it actually differs: assigning `value` moves the caret, and the buffer already
-    // holds what the author is typing.
+    // Assigned only when it differs, because assigning `value` moves the caret and the buffer
+    // already holds what the author is typing
     if (this.text.value !== this.buf.text) this.text.value = this.buf.text;
     this.pathEl.textContent = open ? this.buf.path : '';
     this.pathEl.title = this.pathEl.textContent;
@@ -189,9 +190,9 @@ export class WikiEditor extends VnEditor {
   }
 
   /**
-   * What was drawn from the open document. `pathIndex` turns the one thing this pane knows — a
-   * path — into the backlink key, so the editor needs no convention of its own; a file that is not
-   * a subject has no key, and gets the sentence.
+   * What was drawn from the open document. `pathIndex` turns the path (the one thing this pane
+   * knows) into the backlink key, so the editor needs no convention of its own. A file that is not
+   * a subject has no key, and gets the `EMPTY` sentence instead.
    */
   private paintStrip(): void {
     if (this.buf.path === '') {
@@ -208,9 +209,9 @@ export class WikiEditor extends VnEditor {
 }
 
 /**
- * No asset binds to a plain lore note, and none ever will: every binding in the manifest names a
- * character, a location, a scene or a shot. So this is the honest answer for most of the bible,
- * and saying it is better than a strip that is sometimes missing for no stated reason.
+ * Shown for most of the bible, because every binding in the manifest names a character, a
+ * location, a scene or a shot, so no asset binds to a plain lore note. Saying so is clearer than
+ * a strip that is sometimes missing with no stated reason.
  */
 const EMPTY = 'Nothing has been drawn from this page.';
 

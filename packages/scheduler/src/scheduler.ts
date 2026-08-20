@@ -31,9 +31,9 @@ export interface RunOptions {
   /** Plan + preview only; never spend on generation. */
   dryRun?: boolean;
   /**
-   * Called as the wave loop turns. A run is one blocking round trip otherwise, so a surface
-   * saying how much work is left cannot be built from the return value — by the time it has
-   * one, there is nothing left to report.
+   * Called as the run makes progress. A run is otherwise one blocking round trip, so a surface
+   * showing how much work is left cannot be built from the return value: by the time the caller
+   * holds that value, there is nothing left to report.
    */
   onProgress?: (progress: RunProgress) => void;
   /**
@@ -94,8 +94,8 @@ export interface RunSummary {
  *
  * Two bounds keep that from being reckless. `plannedHashes` is the live set the current plan
  * asked for: `tasks.jsonl` is never pruned, so a project whose prompts changed carries orphaned
- * `failed` nodes forever, and requeueing one spends real money on a frame nothing wants. And
- * the budget counts **attempt records that carry an `error`** rather than `attempts.length` — a
+ * `failed` nodes forever, and requeueing one spends real money on a frame nothing wants. The
+ * budget counts attempt records that carry an `error` rather than `attempts.length`, because a
  * `needs_human` shot has one attempt per P7 refine pass, which is not a retry of anything.
  *
  * `needs_human` is never requeued: it is a request for a human, not a fault.
@@ -149,8 +149,8 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     readOnlyShots: dryRun,
   });
 
-  // Refusing here rather than letting the loop find nothing ready: "nothing was planned" and
-  // "nothing is left to do" look identical from the outside, and only one of them is a problem.
+  // Refuse here rather than letting the loop find nothing ready: from the outside "nothing was
+  // planned" and "nothing is left to do" look identical, and only one of them is a problem.
   const refused = baseRefusal(store.base);
   if (refused) {
     const gate = gateStatus(model);
@@ -180,7 +180,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   if (!dryRun) for (const node of requeued) await logTask(paths, node);
   if (retried.length) logger?.info('task.retry', { hashes: retried });
 
-  // The live set: what the *current* plan asked for, deduped back to canonical nodes. Every
+  // The live set is what the current plan asked for, deduped back to canonical nodes. Every
   // terminal-state report is derived from this rather than from what this process happened to
   // touch, so a failure inherited from an earlier run still counts and an orphan never does.
   const live = (planned: AnyTask[], status: TaskStatus): AnyTask[] =>

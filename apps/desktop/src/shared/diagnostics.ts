@@ -1,18 +1,16 @@
 /**
- * What the header's problem count is counting, arranged for reading.
+ * Ordering and labelling for the diagnostics behind the header's problem count.
  *
- * The count itself has been in the header for a long time; what it never had was a way to ask
- * *which* problems. That is all this is: the ordering and the two sentences a list of
- * `Diagnostic`s needs before it can be drawn, kept here so the node-only jest project can test
- * them and the popup stays widgets.
+ * The logic lives here rather than in the popup so the node-only jest project can test it and the
+ * popup stays widgets.
  */
 import type { Diagnostic } from '@vn/types';
 
 /**
- * Errors first, then warnings, each keeping the order the model produced them in. Severity is the
- * only thing worth reordering by — a diagnostic's position in the list is the order validation
- * found it, which is roughly the order the files are read, and sorting by message or code would
- * scatter the three complaints about one scene across the list.
+ * Errors first, then warnings, each keeping the order the model produced them in. Nothing else is
+ * sorted on: a diagnostic's position is the order validation found it, roughly the order the files
+ * are read, and sorting by message or code would scatter several complaints about one scene across
+ * the list.
  */
 export function orderDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
   return [
@@ -32,9 +30,8 @@ export function diagnosticSummary(diagnostics: readonly Diagnostic[]): string {
 }
 
 /**
- * What one row hovers as: the code that raised it, and the entity it is about where it named one.
- * The message is already on screen, so repeating it here would waste the one line a tooltip has;
- * the code is what a search of the source takes.
+ * Tooltip for one diagnostic row: the code that raised it, plus the entity it names where it names
+ * one. The message is already on screen, and the code is what a search of the source takes.
  */
 export function diagnosticDetail(diagnostic: Diagnostic): string {
   const where = diagnostic.where ? ` · ${diagnostic.where}` : '';

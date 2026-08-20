@@ -147,8 +147,8 @@ describe('isSelected', () => {
     expect(isSelected(view(plate('school')), { ...NONE, characterId: 'school' })).toBe(false);
   });
 
-  // A slot names the same shot the selection does, and is still not selected: the highlight is a
-  // task's, and drawing it on the promise as well would claim the work exists.
+  // A slot can name the same shot the selection does and still not be selected. The highlight
+  // belongs to a task, so drawing it on a slot would claim the work already exists.
   it('never selects a slot or the gate barrier', () => {
     const slot = {
       kind: 'slot' as const,

@@ -29,10 +29,10 @@ export async function pool<T, R>(
  * Retry an async op with exponential backoff. Throws the last error on exhaustion, and
  * immediately when `shouldRetry` rules an error out — the default retries everything.
  *
- * `delayFor` is what the *failure itself* said to wait — a `retry-after`, typically. It wins over
- * the computed backoff when it answers a number, because a provider that names a delay is telling
- * us when its own limit resets, and guessing shorter buys another 429 while guessing longer wastes
- * the difference.
+ * `delayFor` reads a wait out of the failure itself, typically a `retry-after`. A number from it
+ * is used in place of the computed backoff, because a provider that names a delay is reporting
+ * when its own limit resets: a shorter wait gets another 429 and a longer one wastes the
+ * difference.
  */
 export async function retry<T>(
   fn: (attempt: number) => Promise<T>,

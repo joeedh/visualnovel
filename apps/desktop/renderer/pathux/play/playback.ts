@@ -1,7 +1,6 @@
 /**
- * The runner's rules, with no widget in them: folding a scene's beats into frames, where a
- * click or a key goes next, and what a save file is. The React runner kept all of this inside
- * its component, which is why none of it was ever tested; the path.ux editor is the thin half.
+ * The runner's rules, with no widget in them: folding a scene's beats into frames, where a click
+ * or a key goes next, and what a save file is. The path.ux editor holds only the rendering.
  */
 import type { Beat, Playable, PlayableScene } from '../../../src/shared/ipc.js';
 
@@ -63,9 +62,9 @@ export function assetUrl(ref?: Ref): string | undefined {
 }
 
 /**
- * Where a click goes from `history`'s last position: one frame on, or — at the scene-end panel
- * with no choice to make — the linear `next`. Returns the new history, or the same array when
- * there is nowhere to go, so a caller can compare by identity.
+ * Where a click goes from `history`'s last position. Advances one frame. At the scene-end panel
+ * with no choice to make, follows the linear `next`. Returns the same array when there is nowhere
+ * to go, so a caller can compare by identity.
  */
 export function advance(play: Playable, history: Pos[]): Pos[] {
   const cur = history[history.length - 1];
@@ -106,8 +105,8 @@ export function saveKeyOf(play: Playable | undefined): string {
 }
 
 /**
- * A save file is a history stack, and anything else is no save at all: the value is
- * user-writable (localStorage), so it is validated rather than trusted.
+ * Accepts a history stack and rejects anything else. The stored value is user-writable
+ * (localStorage), so it is validated rather than trusted.
  */
 export function parseSave(raw: string | null): Pos[] | undefined {
   if (!raw) return undefined;

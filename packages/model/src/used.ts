@@ -2,14 +2,13 @@
  * What a run draws, enumerated from the model alone.
  *
  * These four answers used to be private to `planTasks`, which was fine while the planner was the
- * only thing that wanted them. It is not any more: the slot graph promises every picture the
- * project implies, and a promise the planner never plans is the one bug that shape of graph can
- * have. So the enumeration lives here, above both, and there is exactly one of it.
+ * only thing that wanted them. The slot graph now promises every picture the project implies, and
+ * a promise the planner never plans is the one bug that shape of graph can have, so the
+ * enumeration lives here, above both callers, and there is exactly one of it.
  *
- * Two of them are scoped to the *story* and two to the *sheets*, and the split is the point: a
- * portrait and a plate are owed to whoever authored one, because that is what an author asks the
- * pipeline for first; a model sheet is three image calls that exist to be referenced, so it waits
- * for a scene to reference them.
+ * Two of them are scoped to the story and two to the sheets. A portrait and a plate are owed to
+ * whoever authored one, because that is what an author asks the pipeline for first; a model sheet
+ * is three image calls that exist to be referenced, so it waits for a scene to reference them.
  *
  * All four are pure over a `ProjectModel` — no disk, no providers, no task graph.
  */
@@ -25,7 +24,7 @@ export function reachableScenes(model: ProjectModel): Scene[] {
  * portrait is owed to whoever has one — an author draws the cast, then writes scenes for the cast
  * they have, and a character invisible until a scene names them has that backwards.
  *
- * Deliberately *not* the question the P3 gate asks. `gateStatus` keeps its own reachable-scene walk
+ * Deliberately not the question the P3 gate asks. `gateStatus` keeps its own reachable-scene walk
  * so an uncast character's unapproved portrait halts nothing.
  */
 export function allCharacters(model: ProjectModel): Character[] {
@@ -54,7 +53,8 @@ export function usedOutfits(
   const add = (characterId: string, outfit: string | undefined): void => {
     const set = out.get(characterId) ?? new Set<string>();
     if (!out.has(characterId)) {
-      // The default goes in first whoever asks, so a wardrobe-less project plans what it always did.
+      // The default goes in first for every caller, so a wardrobe-less project plans what it
+      // always did.
       const fallback = model.characters.get(characterId)?.defaultOutfit;
       if (fallback) set.add(fallback);
       out.set(characterId, set);

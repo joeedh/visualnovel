@@ -2,8 +2,8 @@
  * The image seed as an authored field: the narrowest rung wins, and a project that authored none
  * hashes exactly as it did before seeds existed.
  *
- * The second half is the one worth pinning — `params` is in the task hash, so a stray key here
- * re-keys every task in every existing project and re-renders the lot.
+ * A project that authored no seed must keep hashing the same because `params` is in the task hash.
+ * A stray key here re-keys every task in every existing project and re-renders all of them.
  */
 import { projectConfig, type ImageParams, type Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
@@ -50,8 +50,8 @@ describe('seedFor', () => {
   });
 
   it('returns the very same params when no rung authored one', () => {
-    // Identity, not equality: a fresh object with the same fields would still hash the same, but
-    // returning one at all is the mistake that would put a `seed: undefined` key in the inputs.
+    // The check is identity rather than equality. A fresh object with the same fields would hash
+    // the same, but building one is the mistake that puts a `seed: undefined` key in the inputs.
     expect(seedFor(base)).toBe(base);
     expect(seedFor(base, undefined, undefined)).toBe(base);
   });
@@ -79,7 +79,7 @@ describe('the four builders', () => {
       seed: 4,
       outfits: [{ id: 'default', characterId: 'aiko', description: '', seed: 11 }],
     };
-    // A portrait wears no outfit, so it stops at the character rung; a sheet does not.
+    // A portrait wears no outfit, so it stops at the character rung; a sheet reads the outfit rung.
     expect(portraitInputs(c, config, base).params.seed).toBe(4);
     expect(
       modelSheetInputs(c, 'default', 'front', { hash: 'sha-portrait', ext: 'png' }, config, base)

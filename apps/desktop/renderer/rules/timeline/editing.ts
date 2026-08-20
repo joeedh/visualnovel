@@ -1,21 +1,21 @@
 /**
- * The pure half of the *strip's* two gestures: which one may start, and the one sentence a
- * refused grab has to say. Retyping itself — what a draft is as a line, what it commits, how a
- * precondition reads — is `src/shared/lineedit.ts`, shared with STUDIO's script column.
+ * The pure half of the strip's two gestures: which one may start, and the sentence a refused grab
+ * is given. Retyping itself lives in `src/shared/lineedit.ts` (what a draft is as a line, what it
+ * commits, how a precondition reads), shared with STUDIO's script column.
  *
- * The strip carries two gestures over one grid — dragging a bracket edge and retyping a line —
- * and they cannot be live together: mid-drag the row under the pointer is read from the DOM and
- * the script column gives up its pointer events, which is exactly what an open editor needs.
- * So each one makes the other inert while it lasts (see {@link canEdit} / {@link canGrab}).
+ * The strip carries two gestures over one grid (dragging a bracket edge and retyping a line) and
+ * they cannot be live together. Mid-drag the row under the pointer is read from the DOM and the
+ * script column gives up its pointer events, which is exactly what an open editor needs. Each
+ * gesture therefore makes the other inert while it lasts (see {@link canEdit} and {@link canGrab}).
  *
- * Every row's *text* is editable, whatever its kind. The speaker is not: changing who says a
- * line changes its `kind`, hence the row's shape and the exporter's beat type. `story.setSpeaker`
- * exists and belongs in STUDIO, where the script's structure is what you are editing.
+ * Every row's text is editable, whatever its kind. The speaker is not: changing who says a line
+ * changes its `kind`, and with it the row's shape and the exporter's beat type. `story.setSpeaker`
+ * exists and belongs in STUDIO, where the script's structure is what is being edited.
  */
 import type { Notice } from '../../../src/shared/lineedit.js';
 import { WRITE_PENDING } from './busy.js';
 
-/** What the strip is doing right now. All idle is the resting state. */
+/** What the strip is doing right now. {@link IDLE} is the resting state. */
 export interface StripMode {
   /** The line id whose editor is open, or `null`. */
   editing: string | null;
@@ -28,19 +28,20 @@ export interface StripMode {
 export const IDLE: StripMode = { editing: null, dragging: false, pending: false };
 
 /**
- * May a click open an editor? Not mid-drag: `.tl-grid.dragging` takes the script column's
- * pointer events away so the hit bands can be reached, and a click that lands nowhere is a
- * better outcome than an editor opening under a held handle. And not mid-write: the row the
- * editor would open over is about to be replaced by the re-read.
+ * Whether a click may open an editor. Refuses mid-drag, because `.tl-grid.dragging` takes the
+ * script column's pointer events away so the hit bands can be reached, and a click that lands
+ * nowhere is a better outcome than an editor opening under a held handle. Refuses mid-write,
+ * because the row the editor would open over is about to be replaced by the re-read.
  */
 export function canEdit(mode: StripMode): boolean {
   return !mode.dragging && !mode.pending;
 }
 
 /**
- * May a bracket handle be grabbed? Not while an editor is open, and not while a write is landing.
+ * Whether a bracket handle may be grabbed. Refuses while an editor is open, and while a write is
+ * landing.
  *
- * The plan's first answer was "entering one closes the other", which is worse: closing an editor
+ * The rejected alternative was to have entering one gesture close the other: closing an editor
  * commits it (blur commits), so grabbing a handle would silently write a half-typed line and
  * reload the strip under the gesture. Refusing the grab costs the author one click and nothing else.
  */
@@ -49,18 +50,18 @@ export function canGrab(mode: StripMode): boolean {
 }
 
 /**
- * The sentence a refused grab is told. Two locks, two reasons: a write in flight outranks an open
- * editor, because "finish the line" is bad advice while the strip is about to be rebuilt anyway.
+ * The sentence a refused grab is given. A write in flight outranks an open editor, because "finish
+ * the line" is bad advice while the strip is about to be rebuilt anyway.
  */
 export function grabRefusal(mode: StripMode): Notice {
   return mode.pending ? WRITE_PENDING : GRAB_BLOCKED;
 }
 
 /**
- * Why a handle does not move while an editor is open — and the one sentence in this strip that no
- * command said, because no command was asked. A refused grab has to say something: the handle
- * cannot take focus away from the editor (its `pointerdown` is prevented, so no blur, so no
- * commit), which means without this the click reads as the drag being broken.
+ * Why a handle does not move while an editor is open. No command was invoked here, so no command
+ * supplied this sentence. The handle cannot take focus away from the editor (its `pointerdown` is
+ * prevented, so there is no blur and no commit), so without this notice the click reads as a
+ * broken drag.
  */
 export const GRAB_BLOCKED: Notice = {
   tone: 'refused',

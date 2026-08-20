@@ -42,22 +42,22 @@ function projectName(path: string): string {
 }
 
 /**
- * Run a menu entry and say what it answered. `report` voices only what the notification push
- * will not — an entry that opens no palette and no dialog would otherwise show nothing at all,
- * and "Cancelled." is the one an entry that opens a chooser most needs to pass on.
+ * Run a menu entry and report what it answered. `report` shows only what the notification push
+ * does not: an entry that opens no palette and no dialog would otherwise show nothing at all,
+ * and an entry that opens a chooser needs to pass on "Cancelled.".
  */
 function act(id: string, props: Record<string, PropValue> = {}): void {
   void exec(id, props).then(report);
 }
 
 /**
- * Start a run without a form. Both plain doors — the app menu's entry and the header's button —
- * come through here, so the refusal an author sees is the same sentence whichever they clicked,
- * and it is the command's own: `check` first, because a refused `exec` says nothing a surface
- * can show *before* the work would have started.
+ * Start a run without a form. The app menu's entry and the header's button both come through
+ * here, so an author sees the same refusal whichever they clicked, and it is the command's own.
+ * `check` runs first, because a refused `exec` says nothing a surface can show before the work
+ * would have started.
  *
- * `mock` follows whether this is a live app: a browser preview has no keys and no main process,
- * and a dry run is the only thing it could honestly do.
+ * `mock` follows whether this is a live app. A browser preview has no keys and no main process,
+ * so a dry run is the only thing it could do.
  */
 function runPipelineNow(): void {
   const props = { mock: !isLive };
@@ -74,12 +74,12 @@ function runPipelineNow(): void {
 /**
  * The app header: the brand (which is also the app menu), the View menu, the project's name,
  * undo/redo, and the badges saying which model, mode and run-mode are live. The React `Topbar`'s
- * three room buttons are not here and will not be: a pane shows an editor, so the nav is a list
- * of editors, and each entry runs the same `view.open` the palette and the agent do.
+ * three room buttons are deliberately absent: a pane shows an editor, so the nav is a list of
+ * editors, and each entry runs the same `view.open` the palette and the agent do.
  *
- * It is a screen area rather than a DOM element above the screen, which is what path.ux's own
- * `MenuBarEditor` is: the mesh then owns the geometry, and a header that is part of the mesh
- * survives the layout round-trip like everything else.
+ * The header is a screen area rather than a DOM element above the screen (path.ux's own
+ * `MenuBarEditor` is a DOM element above the screen). The mesh therefore owns the geometry, and
+ * a header that is part of the mesh survives the layout round-trip like everything else.
  */
 export class VnHeaderEditor extends VnEditor {
   private bar!: Container;
@@ -92,14 +92,14 @@ export class VnHeaderEditor extends VnEditor {
   /** The remembered projects, and the one that is open, as `workspace.recent` last answered. */
   private recents: string[] = [];
   private current = '';
-  /** Which project root the list above was fetched for — the guard that keeps it one fetch. */
+  /** Which project root the recents were fetched for, so the fetch happens once per project. */
   private recentsFor = '\0';
 
   /** The project's layout templates, and which one the window is showing. */
   private layouts: LayoutSummary[] = [];
   private activeSlug = '';
   private layoutsFor = '\0';
-  /** Bumped whenever the files may have moved, which is what makes the guard above expire. */
+  /** Bumped whenever the layout files may have moved, which expires `layoutsFor`. */
   private layoutRevision = 0;
 
   /** Whether this project carries the GitHub page builder, which decides one menu label. */
@@ -148,11 +148,11 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * Put the note frame last and hard right, beside the bell that keeps what it shows.
+   * Put the note frame last and hard right, beside the bell, which keeps what the frame shows.
    * `makeHeader` runs inside `super.init()`, so the frame is added before `this.bar` exists and
    * would otherwise sit at the far left, in front of the brand. Re-adding it moves it in the
-   * shadow root; the margin goes through `setCSSAfter` because `setBoxCSS` unsets `margin` and
-   * rewrites every side from the theme on hover, on press and on every `flushUpdate` — a plain
+   * shadow root. The margin goes through `setCSSAfter` because `setBoxCSS` unsets `margin` and
+   * rewrites every side from the theme on hover, on press and on every `flushUpdate`, so a plain
    * `style['marginLeft']` write is erased moments later.
    */
   private placeNoteArea(): void {
@@ -170,7 +170,7 @@ export class VnHeaderEditor extends VnEditor {
     else this.sayProgress();
   }
 
-  /** Every fact the bar draws, in one string. Cheap to compare, and impossible to forget. */
+  /** Every fact the bar draws, in one string. Cheap to compare. */
   private stateKey(): string {
     const ui = this.ui;
     return [
@@ -192,7 +192,7 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * Refetch the remembered projects, once per project the header finds itself in. `workspace.open`
+   * Refetch the remembered projects, once per project the header is opened in. `workspace.open`
    * is what changes the list, and it also changes which root is open — so the root is the cheap
    * signal that the list is stale, and the guard is what keeps `rebuild` from fetching forever.
    */
@@ -215,7 +215,7 @@ export class VnHeaderEditor extends VnEditor {
 
   /**
    * Refetch the project's layout templates. Same shape as {@link refreshRecents}, keyed on the
-   * project *and* on the revision the invalidate watch bumps — a template is a file, so the
+   * project and on the revision the invalidate watch bumps — a template is a file, so the
    * things that change the list are writes rather than a change of project.
    */
   private refreshLayouts(): void {
@@ -277,8 +277,8 @@ export class VnHeaderEditor extends VnEditor {
     redo.description = ui.redoLabel ? `Redo ${ui.redoLabel}` : 'Nothing to redo';
     redo.disabled = !ui.canRedo;
 
-    // Errors displace warnings: one count, and the worse one wins it. A button rather than a
-    // label, because a count with no way to ask *which* is a number the author cannot act on.
+    // Errors displace warnings: one count, showing the more severe kind. A button rather than a
+    // label, because a count the author cannot click to list is a number they cannot act on.
     const shown = ui.errors || ui.warnings;
     if (shown > 0) {
       const kind = ui.errors ? 'error' : 'warning';
@@ -344,9 +344,9 @@ export class VnHeaderEditor extends VnEditor {
     const spinner = this.bar.label('◴');
     this.spinner = spinner;
     this.sayProgress();
-    // Turned by the Web Animations API rather than a `@keyframes` rule: keyframe names are looked
-    // up in the element's own tree scope, and this label sits several nested shadow roots below
-    // the one `adoptStyle` reaches. `setCSSAfter` for the box, which the theme rewrites each pass.
+    // Turned by the Web Animations API rather than a `@keyframes` rule: keyframe names resolve in
+    // the element's own tree scope, and this label sits several shadow roots below the one
+    // `adoptStyle` reaches. The box uses `setCSSAfter` because the theme rewrites it each pass.
     spinner.setCSSAfter(() => {
       spinner.style['padding'] = '0px 8px';
       spinner.style['display'] = 'inline-block';
@@ -362,10 +362,9 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * The retry counter, beside the model it is retrying. Drawn only while a retry is actually in
-   * hand — which is what makes it a badge rather than a control: there is nothing to click,
-   * because the author already answered the card that started it, and the way to end it early is
-   * the Stop button the turn already has.
+   * The retry counter, beside the model it is retrying. Drawn only while a retry is in flight.
+   * It is a badge rather than a control: the author already answered the card that started the
+   * retry, and the Stop button the turn already has is the way to end it early.
    */
   private retryBadge(): void {
     const ui = this.ui;
@@ -381,8 +380,7 @@ export class VnHeaderEditor extends VnEditor {
 
   /**
    * Retitle the spinner from the counts. Deliberately not part of {@link stateKey}: a task
-   * finishing would then rebuild the whole bar, and the rotation would restart from zero every
-   * few seconds — the one thing a busy indicator must not do.
+   * finishing would rebuild the whole bar, restarting the rotation from zero every few seconds.
    */
   private sayProgress(): void {
     const ui = this.ui;
@@ -411,9 +409,9 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * The app menu. Every entry is written in **object** form, because the array form has no slot
-   * for a tooltip — an entry that will not say what it does is the same unfinished control a
-   * button without one is, and half this menu opens a dialog the author cannot preview.
+   * The app menu. Every entry is written in object form, because the array form has no slot for
+   * a tooltip — an entry that does not say what it does is as unfinished as a button without one,
+   * and half this menu opens a dialog the author cannot preview.
    */
   private appMenu(): MenuTemplate {
     return [
@@ -437,23 +435,25 @@ export class VnHeaderEditor extends VnEditor {
         tooltip: 'Reapply the act that was just undone',
       },
       Menu.SEP,
-      // Fired, not formed: the plain entry and the header's button are one door, and neither asks
-      // a question. `runPipelineNow` checks first so a refusal is shown before anything starts.
+      // Fired rather than formed: this entry and the header's button run the same act, and
+      // neither takes an argument. `runPipelineNow` checks first, so a refusal is shown before
+      // anything starts.
       {
         name: 'Run Pipeline',
         callback: () => runPipelineNow(),
         tooltip: 'Plan and render everything that is ready, to the next gate',
       },
-      // The advanced door: `pipeline.run`'s own form, where the flags live. `mock` is seeded from
-      // whether this is a live app — a preview has no keys, and a dry run is all it could do.
+      // The advanced entry opens `pipeline.run`'s own form, where the flags live. `mock` is
+      // seeded from whether this is a live app — a preview has no keys, so a dry run is all it
+      // could do.
       {
         name: 'Run Pipeline (adv)…',
         callback: () => openCommandDialog('pipeline.run', { mock: !isLive }),
         tooltip: 'Start a run with the flags spelled out — dry run, scene filter, task limit',
       },
-      // A folder to browse for, a title, and the checkbox that turns the two into a folder the OS
-      // chooser could not have named. Checked here rather than in the command, whose own default
-      // has always been "the project goes here".
+      // The form takes a folder to browse for, a title, and the checkbox that turns the two into
+      // a folder the OS chooser could not have named. The checkbox is ticked here rather than in
+      // the command, whose own default has always been "the project goes here".
       {
         name: 'New Project…',
         callback: () => openCommandDialog('workspace.create', { newFolder: true }),
@@ -516,11 +516,11 @@ export class VnHeaderEditor extends VnEditor {
 
   /**
    * The projects this install has opened, as a submenu of `workspace.open` invocations. Built from
-   * `workspace.recent` and from nothing the renderer remembers on its own — a second answer here
-   * is how a menu starts offering a project main does not know about.
+   * `workspace.recent` and from nothing the renderer remembers on its own, so the menu cannot
+   * offer a project main does not know about.
    *
-   * The open one is **kept**, ticked and inert. Dropping it read as the bug it caused: a list of
-   * one project renders `(none)`, which is a menu that looks empty and is telling the truth.
+   * The open project is kept in the list, ticked and inert. Dropping it caused a bug: a list of
+   * one project then renders `(none)`, so the menu looks empty while telling the truth.
    */
   private recentMenu(): Menu {
     const items: MenuTemplate = this.recents.length
@@ -541,9 +541,10 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * The View menu is two lists and two acts: which editor a pane shows, and how the whole
-   * window is arranged. Both are long enough to be submenus — the editor list grows with every
-   * port, and the layout list grows with whatever the author saves.
+   * The View menu is two lists — which editor a pane shows, and how the whole window is
+   * arranged — followed by the acts that split, close and move panes and windows. Both lists are
+   * long enough to be submenus: the editor list grows with every port, and the layout list grows
+   * with whatever the author saves.
    */
   private viewMenu(): MenuTemplate {
     return [
@@ -590,9 +591,9 @@ export class VnHeaderEditor extends VnEditor {
   /**
    * Undo, redo, and the pass that finishes the art.
    *
-   * Undo and redo are also on the app menu and on two buttons in this same bar — three doors to
-   * one act, deliberately: an author looking for undo looks under Edit, and a menu called Edit
-   * that did not have it would read as broken. What is *only* here is `pipeline.approveAndRun`,
+   * Undo and redo are also on the app menu and on two buttons in this same bar — three ways to
+   * reach one act, deliberately: an author looking for undo looks under Edit, and a menu called
+   * Edit without it would read as broken. Only `pipeline.approveAndRun` is unique to this menu,
    * because it is the one act that changes the project wholesale rather than a piece of it.
    */
   private editMenu(): MenuTemplate {
@@ -654,9 +655,9 @@ export class VnHeaderEditor extends VnEditor {
   /**
    * The report entry cannot be a bare `openCommandDialog`: the conversation list is this
    * project's and the model list carries advice, so the dialog is opened by a function that
-   * fetches both first. The update check is the opposite — no arguments, one sentence back — so
-   * it is fired through `act`, whose `report` is what voices "you are up to date". This menu is
-   * also the *only* thing that ever starts a check: nothing here is scheduled.
+   * fetches both first. The update check takes no arguments and answers in one sentence, so it
+   * is fired through `act`, whose `report` shows "you are up to date". This menu is the only
+   * thing that starts a check; nothing is scheduled.
    */
   private helpMenu(): MenuTemplate {
     return [
@@ -679,13 +680,13 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * What replaced the room nav: every editor an author browses to, each one a `view.open`. The
-   * list is `shared/editors.ts`, which is also what the command's props are built from — a menu
-   * that offered something the command would refuse is the drift this avoids.
+   * Every editor an author browses to, each entry a `view.open`. This replaced the room nav. The
+   * list is `shared/editors.ts`, which is also what the command's props are built from, so the
+   * menu cannot offer something the command would refuse.
    *
-   * `OFFERED_EDITOR_IDS` rather than `EDITORS`, and it is the same predicate the shell hands
-   * path.ux's own area menu: an editor reached from one place and one place only is listed in
-   * neither switcher. `view.open` still takes its name, so the entry that does reach it works.
+   * Built from `OFFERED_EDITOR_IDS` rather than `EDITORS`, the same predicate the shell hands
+   * path.ux's own area menu: an editor reachable from one place only is listed in neither
+   * switcher. `view.open` still takes its name, so the entry that does reach it works.
    */
   private editorsMenu(): Menu {
     return this.submenu(

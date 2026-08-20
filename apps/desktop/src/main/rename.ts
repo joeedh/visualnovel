@@ -1,19 +1,20 @@
 /**
  * What renaming a document means, as text in and text out.
  *
- * A rename changes **the name the document is drawn under**, and where that name lives depends on
- * what the document is. A character or a location sheet is named by front-matter `name:` — the
- * field the model reads, wherever the sheet is filed. Everything else is named by its title, which
- * `@vn/bible` reads as "front-matter `title:`, else the first H1, else the filename stem"; a rename
- * writes wherever the title was *read* from, or the tree would go on showing the old name and the
- * rename would look like it failed.
+ * A rename changes the name the document is drawn under, and where that name lives depends on what
+ * the document is. A character or a location sheet is named by front-matter `name:` — the field
+ * the model reads, wherever the sheet is filed. Everything else is named by its title, which
+ * `@vn/bible` takes from front-matter `title:`, then the first H1, then the filename stem. A
+ * rename writes wherever the title was read from, or the tree would go on showing the old name and
+ * the rename would look like it failed.
  *
  * It never moves the file. An id is derived from a name once, at creation; afterwards it is what
  * shots, cast lists and `[[goto:]]` markers point at, and renaming the file would break every one
  * of them silently.
  *
- * Pure, and tested as such: the write itself is `WorkspaceSession.renameDoc`, over the same
- * `writeDocFile` every other document save goes through.
+ * These functions are pure and are tested that way. The write itself is
+ * `WorkspaceSession.renameDoc`, over the same `writeDocFile` every other document save goes
+ * through.
  */
 import { applyCharacterEdit, applyLocationEdit, docToMarkdown } from '@vn/model';
 import { parseFrontMatter, splitFrontMatter } from '@vn/parse';
@@ -35,9 +36,9 @@ function spliceAt(text: string, at: number, length: number, replacement: string)
 }
 
 /**
- * Rewrite a document so it is known by `name`. `path` is workspace-relative and decides only one
- * thing — whether a conventional home makes this an entity sheet — with a `type:` tag as the
- * fallback, the same way round `checkDocWrite` asks it.
+ * Rewrite a document so it is known by `name`. `path` is workspace-relative and decides only
+ * whether a conventional home makes this an entity sheet, falling back to a `type:` tag — the same
+ * order `checkDocWrite` asks in.
  */
 export function renameInText(path: string, text: string, name: string): RenameResult {
   const next = name.trim();
@@ -78,8 +79,8 @@ export function renameInText(path: string, text: string, name: string): RenameRe
     };
   }
 
-  // Titled by its filename and nothing else, and the file does not move — so the name has to be
-  // written down somewhere, and a heading at the top is what a page with no title reads best as.
+  // The page is titled by its filename and nothing else, and the file does not move, so the name
+  // has to go into the text. A heading at the top is how a page with no title reads best.
   const head = prefix === '' ? '' : `${prefix}\n`;
   const rest = body.replace(/^\n+/, '');
   return { ok: true, text: `${head}# ${next}\n${rest ? `\n${rest}` : ''}`, what: 'a heading' };

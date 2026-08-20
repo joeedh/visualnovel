@@ -3,7 +3,7 @@
  * `.vndesktop/session.json` the React rooms used, under two new keys — the flat
  * `panel.<id>.width` keys retire with the rooms that wrote them.
  *
- * Both keys are **per window and per workspace** (`../../src/shared/sessionkeys.ts`), because
+ * Both keys are per window and per workspace (`../../src/shared/sessionkeys.ts`), because
  * `session.json` is install-global and a mesh is the one thing every window has its own of.
  * Which window this is arrives on the url rather than over IPC: restoring happens before the
  * first paint, and `workspace.index()` has not come back yet.
@@ -52,13 +52,14 @@ const FILE_ARGS = { magic: MAGIC, doScreen: true, useJSON: true, resetOnLoad: fa
 const DEBOUNCE_MS = 400;
 
 /**
- * Selection is what the author is looking at, and nothing that changes it — a widget binds to
- * `ui.*` and dispatches a command, never writing a document through the shell.
+ * Holds what the author is looking at, never anything that changes a document. A widget binds to
+ * `ui.*` and dispatches a command rather than writing a document through the shell.
  *
- * `docPath` is a path rather than an id and is the one entry here that names a file. It has to
- * be: `DocNode.path` and `EntityLinks.sheet` are paths, and a free-form note under `wiki/` has no
- * id at all. It is still a selection — the tree publishes it, an editor reads it — not a buffer.
- * `taskHash` stays out, as machine identity that re-keys whenever a prompt changes.
+ * `docPath` is a path rather than an id and is the one entry here that names a file. It has to be
+ * a path, because `DocNode.path` and `EntityLinks.sheet` are paths and a free-form note under
+ * `wiki/` has no id at all. It is still a selection rather than a buffer: the tree publishes it
+ * and an editor reads it. `taskHash` stays out, as machine identity that re-keys whenever a
+ * prompt changes.
  */
 interface StoredSelection {
   [k: string]: string;
@@ -159,7 +160,7 @@ export function restoreLayout(shell: ShellApp): boolean {
 
 /**
  * Whether every editor the stored layout names still exists. A `ScreenArea` writes its active
- * editor as an area **name**, and `loadSTRUCT` answers one it cannot find by falling back to
+ * editor as an area name, and `loadSTRUCT` answers one it cannot find by falling back to
  * the first registered area class rather than failing — so a layout saved before an editor was
  * removed or renamed comes back as some other editor entirely, in silence. Discarding the whole
  * layout loses a split; honouring it loses the truth about what is on screen.
@@ -227,8 +228,8 @@ export function installPersistence(shell: ShellApp): void {
     );
   }
 
-  // A quit does not run the debounce, so the last few hundred milliseconds of a drag would
-  // otherwise be the one thing not remembered.
+  // A quit does not run the debounce, so the last `DEBOUNCE_MS` of a drag would otherwise be the
+  // one thing not remembered
   window.addEventListener('beforeunload', () => {
     if (timer !== undefined) clearTimeout(timer);
     saveLayout(shell);

@@ -1,6 +1,6 @@
 /**
  * Asset → the rung that owns its prompt (`docs/plans/archive/chunked-prompts.md` §2), and what that rung
- * says today. The point of the lookup is that it is a lookup: no merge chain, one answer per asset.
+ * says today. There is no merge chain; each asset gets one answer from a single lookup.
  */
 import type { Asset, AssetKind, PromptOverride, Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
@@ -50,7 +50,7 @@ describe('rungOf', () => {
 
   it('gives nothing for an asset whose binding cannot name a rung', () => {
     expect(rungOf(asset('portrait', []))).toBeUndefined();
-    // A sheet with no outfit: the rung is the outfit entry, so there is nowhere to write.
+    // A sheet's rung is the outfit entry, so a sheet with no outfit has nowhere to write.
     expect(rungOf(asset('model_sheet', [{ characterId: 'aiko' }]))).toBeUndefined();
   });
 });
@@ -98,7 +98,8 @@ describe('overrideAt', () => {
   it('answers nothing for a rung the project no longer has', () => {
     expect(overrideAt({ kind: 'character', characterId: 'gone' }, ctx)).toBeUndefined();
     expect(overrideAt({ kind: 'shot', sceneId: 's9', shotId: 'x' }, ctx)).toBeUndefined();
-    // No storyboards loaded at all: unknown, which is the same shape as "not overridden".
+    // With no storyboards loaded the answer is unknown, which has the same shape as "not
+    // overridden".
     expect(
       overrideAt({ kind: 'shot', sceneId: 's1', shotId: 's1__a' }, { model: ctx.model }),
     ).toBeUndefined();

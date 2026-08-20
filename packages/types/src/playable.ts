@@ -1,5 +1,5 @@
 /**
- * The **playable** schema (`story.play.json`) — a flattened, ordered projection of the
+ * The playable schema (`story.play.json`) — a flattened, ordered projection of the
  * project model that a runner can interpret directly (see docs/plans/archive/runner.md, Part B).
  *
  * It is a thin view over the existing `Scene`/`Shot`/`Asset` types: each scene becomes an
@@ -22,9 +22,9 @@ export const playableAssetRefSchema = z.object({
 const showBeatSchema = z.object({
   type: z.literal('show'),
   /**
-   * Which shot this frame is, so a runner can say where it is in the project — the one place
-   * the playable names an authored id. Optional because a file written before the field still
-   * parses; a runner that has none simply cannot jump.
+   * Which shot this frame is, so a runner can say where the frame sits in the project. This is
+   * the one place the playable names an authored id. Optional so that a file written before the
+   * field still parses; a runner reading a beat without this id cannot jump to the shot.
    */
   shot: z.string().min(1).optional(),
   /** The shot image; omitted when the shot has no accepted asset yet (runner shows a placeholder). */

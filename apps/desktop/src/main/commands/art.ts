@@ -1,19 +1,19 @@
 /**
- * Art as commands: what it should look like, and drawing one on demand.
+ * Commands for art direction and for drawing a concept image on demand.
  *
- * Art notes are the only thing an author says about how generated art should *look*, and they are
- * authored input rather than a prompt override: they go into the prompt the builders derive, so
- * setting one re-keys exactly the tasks it reaches and the next run re-renders them. That is why
- * `art.setNotes` is a `story.*`-shaped document mutator — undoable, committed — and not a pipeline
- * command. `art.generate` is the other half: the door the planner does not have, one sentence in
- * and one `concept` asset out, planned by nothing and consumed by nothing.
+ * Art notes are the only thing an author says about the appearance of generated art, and they are
+ * authored input rather than a prompt override. They go into the prompt the builders derive, so
+ * setting a note re-keys exactly the tasks it reaches and the next run re-renders them. That
+ * makes `art.setNotes` a `story.*`-shaped document mutator (undoable and committed) rather than a
+ * pipeline command. `art.generate` takes one sentence and produces one `concept` asset, which the
+ * planner never plans and nothing downstream consumes.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
 
-/** A session preview read as a precondition: the plan's own sentence either way. */
+/** Turns a session preview into a check result, keeping its message as the note or the refusal. */
 function verdict(result: { ok: boolean; message: string }): CheckResult {
   return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
 }
@@ -55,7 +55,7 @@ export const artSetSeed = define({
   undoable: true,
   props: {
     target: prop.string('the rung to write: kind:id[/outfit|variant|shotId]'),
-    // -1 rather than a second prop: 0 is a real seed, so no in-range value is free to mean "none".
+    // -1 rather than a second prop, because 0 is a real seed and no in-range value can mean none
     seed: prop.number('the seed; -1 clears it, leaving the rung to inherit', { default: -1 }),
   },
   async check({ target, seed }, ctx) {
@@ -68,7 +68,7 @@ export const artSetSeed = define({
   },
 });
 
-/** The prop's sentinel as the session states it: `null` is "author no seed here". */
+/** Maps the prop's negative sentinel to the `null` the session uses for no seed at this rung. */
 function seedOrClear(seed: number): number | null {
   return seed < 0 ? null : seed;
 }
@@ -82,9 +82,9 @@ export const artGenerate = define({
     'Concepts. A concept is a sketch and nothing more: the pipeline never plans it, no scene ' +
     'renders it, and `vngen export` ignores it. It costs one image generation.',
   mutating: true,
-  // It spends a real image call, which is the bar `asset.regenerate(run=true)` clears too. Not
-  // undoable and not journalled: it writes new content-addressed bytes, so there is no prior
-  // state to restore to.
+  // Spends a real image call, the same bar `asset.regenerate(run=true)` clears. It is neither
+  // undoable nor journalled, because it writes new content-addressed bytes and there is no prior
+  // state to restore
   confirm: true,
   props: {
     sentence: prop.string('what to draw, in plain words'),
@@ -99,8 +99,8 @@ export const artGenerate = define({
   async run({ sentence, subject, open }, ctx) {
     const result = await ctx.host.session.drawConcept(sentence, subject);
     if (!result.ok || !result.hash) throw new Error(result.message);
-    // The same route a click on an asset in the document tree takes, so the picture lands in a
-    // pane that is not the one that asked for it.
+    // Same route as a click on an asset in the document tree, so the picture opens in a pane other
+    // than the one that asked for it
     if (open) {
       ctx.host.ui(
         {
@@ -127,8 +127,8 @@ export const artRedraw = define({
     'content-addressed, so nothing is overwritten. A planned asset is refused by name: its ' +
     'prompt comes from the builders, and re-rendering it is `asset.regenerate`.',
   mutating: true,
-  // One image call, like `art.generate`. Not undoable for the same reason: new bytes have no
-  // prior state to restore to.
+  // One image call, like `art.generate`, and not undoable because new bytes have no prior state
+  // to restore
   confirm: true,
   props: {
     hash: prop.string('the concept asset to draw again'),
@@ -170,8 +170,8 @@ export const artPromote = define({
     'bound to a location can be promoted; a character concept is refused, because a look goes ' +
     'through the approval gate.',
   mutating: true,
-  // It writes a sheet, a manifest row and a `done` task record across two trees, which no
-  // document snapshot covers — so it is committed like any act, but never undone.
+  // Writes a sheet, a manifest row and a `done` task record across two trees, which no document
+  // snapshot covers, so it is committed like any other act but never undone
   confirm: true,
   props: {
     hash: prop.string('the concept asset to promote'),

@@ -2,10 +2,10 @@
  * The marker write path: `[[choice:]]`, `[[next:]]` and `[[outfit:]]` edits, planned across every
  * file they touch and then applied.
  *
- * Split from deciding for the same reason a prose edit is: a set of edits spanning three chunks and
- * refused on the third must leave the first two exactly as they were, so every patch is computed
- * before any is written. `applySceneMarkerEdit` does the surgical line rewrite; this is only the
- * fan-out over sources and the all-or-nothing.
+ * Writing is split from deciding, as it is for a prose edit: a set of edits spanning three chunks
+ * and refused on the third must leave the first two exactly as they were, so every patch is
+ * computed before any is written. `applySceneMarkerEdit` does the line rewrite; this module only
+ * fans out over the sources and enforces all-or-nothing.
  */
 import { applySceneMarkerEdit, type SceneMarkerEdit } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';

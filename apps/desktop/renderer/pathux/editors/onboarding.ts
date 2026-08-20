@@ -18,11 +18,11 @@ import type { KeyScope, KeyStatusView, VendorKeyView } from '../../../src/shared
  * a stored layout, and absent from the pane switcher, because an author does not navigate here
  * twice.
  *
- * **Every word on it comes from `docs/guides/api-keys.md`**, over `app.keyGuide`. Nothing is typed in
- * here: a second copy of the steps is a copy that goes stale the first time a console moves a
- * button, and this file's job is only to say which of them are already done. What it adds to the
- * page is the three things the page cannot know — whether a key resolved and from where, whether
- * an environment variable is shadowing one, and whether the key that resolved actually works.
+ * Every word on it comes from `docs/guides/api-keys.md`, over `app.keyGuide`. Nothing is typed in
+ * here: a second copy of the steps goes stale the first time a console moves a button, and this
+ * file only says which of the steps are already done. What it adds to the page is the three
+ * things the page cannot know — whether a key resolved and from where, whether an environment
+ * variable is shadowing one, and whether the key that resolved actually works.
  */
 export class OnboardingEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -62,8 +62,8 @@ export class OnboardingEditor extends VnEditor {
     this.surface.append(this.page, this.noteEl);
     this.appendSurface(this.surface);
 
-    // `project.setKey` is mutating, so pasting one here re-reads the other vendor's row too —
-    // and so does opening another workspace, whose project may name different variables.
+    // `project.setKey` is mutating, so pasting a key here re-reads the other vendor's row too.
+    // Opening another workspace does the same, because its project may name different variables.
     this.unwatch = onInvalidate(() => void this.load());
 
     void this.load();
@@ -84,9 +84,9 @@ export class OnboardingEditor extends VnEditor {
     const [guide, status] = await Promise.all([exec('app.keyGuide'), exec('project.keyStatus')]);
     if (mine !== this.token) return;
 
-    // The guide is what the app ships and the status is what the machine has: either can fail on
-    // its own — a packaging mistake loses the first, no project open loses the second — and the
-    // pane is worth drawing with one of them.
+    // The guide is what the app ships and the status is what the machine has. Either can fail on
+    // its own — a packaging mistake loses the guide, no project open loses the status — and the
+    // pane is worth drawing with only one of them.
     this.guide = guide.ok ? (guide.data as KeyGuide) : undefined;
     this.status = status.ok ? (status.data as KeyStatusView) : undefined;
     const trouble = [guide.ok ? '' : guide.error, status.ok ? '' : status.error].filter(Boolean);
@@ -207,9 +207,8 @@ export class OnboardingEditor extends VnEditor {
   }
 
   /**
-   * The box, its scope, and the two acts. The scope defaults to **every project**, which is the
-   * answer that is right the second time: an author who pastes a key once has almost never meant
-   * "and only for this one folder".
+   * The box, its scope, and the two acts. The scope defaults to every project: an author who
+   * pastes a key once has almost never meant "and only for this one folder".
    */
   private pasteRow(vendor: KeyGuideVendor, view: VendorKeyView | undefined): HTMLElement {
     const wrapEl = el('div', '');
@@ -275,8 +274,8 @@ export class OnboardingEditor extends VnEditor {
         key,
         scope: (scope.value as KeyScope) ?? 'user',
       }).then((outcome) => {
-        // Cleared whatever the answer was: a key that failed to write is not one to leave sitting
-        // in a box for the next person at this screen.
+        // The box is cleared whatever the answer was, because a key that failed to write should
+        // not sit on screen for the next person here.
         box.value = '';
         report(outcome);
         this.say(said, outcome.ok ? outcome.record.message : outcome.error, outcome.ok);
@@ -362,9 +361,10 @@ function drawBlock(block: Block): HTMLElement {
  * A run of spans into an element.
  *
  * A link becomes a `span`, not an `a`. There is no navigation inside this shadow root — a
- * renderer that followed an href would be showing a web page where a pane was — and the one door
- * to the outside is `app.openKeyLink`, which names a *field* of the shipped guide rather than a
- * URL. So the address goes in the tooltip, and the buttons above it are how you get there.
+ * renderer that followed an href would show a web page where a pane was — and the only way out
+ * to the browser is `app.openKeyLink`, which names a field of the shipped guide rather than a
+ * URL. The address therefore goes in the tooltip, and each vendor card's link buttons are how a
+ * page is opened.
  */
 function spans(into: HTMLElement, runs: readonly Inline[]): HTMLElement {
   for (const run of runs) {

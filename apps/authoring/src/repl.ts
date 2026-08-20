@@ -123,9 +123,9 @@ export function terminalPermission(channel: Channel): Permission {
       );
       return isYes(answer ?? '');
     },
-    // A form is put one question at a time here, and there is no going back: a terminal has no
-    // Back button, and the line above the cursor has already scrolled. The desktop pane is where
-    // a form is a form; this stays the degraded-but-never-wrong reading of the same request.
+    // Puts a form one question at a time, with no way back: a terminal has no Back button, and
+    // the line above the cursor has already scrolled. The desktop pane renders the same request
+    // as a form
     async ask(form) {
       const answers: string[] = [];
       for (const [i, item] of form.entries()) {
@@ -150,8 +150,8 @@ async function askOne(channel: Channel, item: AskQuestion): Promise<string> {
 
 /**
  * Turn `2` — or `1,3` for a multi-pick — into the options it names. Anything that is not a run of
- * valid numbers is the author's own words and comes back untouched, which is what makes "type
- * your own" and "let's talk about it" need no affordance of their own in a terminal.
+ * valid numbers is returned untouched as the author's own words, so typing an answer past the
+ * list needs no affordance of its own in a terminal.
  */
 function pickedOr(raw: string, item: AskQuestion): string {
   const options = item.choices ?? [];
@@ -293,11 +293,11 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   }
 
   /**
-   * A call to the model failed. Same question the desktop's card puts, and the same shortlist —
-   * put here as the numbered list every other question in this REPL uses.
+   * Handles a failed call to the model. Asks the same question and offers the same shortlist as
+   * the desktop's card, rendered as the numbered list every other question in this REPL uses.
    *
-   * Only the first failure asks. Once the grant the author gave is spent, saying so and stopping
-   * is the answer: the transcript is intact, so trying again is one more line typed at the prompt.
+   * Only the first failure asks; a later one says so and stops. The transcript is left intact, so
+   * trying again is one more line typed at the prompt.
    */
   async function recoverApi(failure: ApiFailure): Promise<ApiRecovery> {
     if (failure.attempt > 1) return { do: 'stop' };
@@ -306,7 +306,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
     const answer = await askOne(channel, apiRecoveryQuestion(failure, currentModel, others));
     const plan = readApiPlan(answer, others);
     if (plan.do === 'switch') {
-      // One attempt on it: a model the author picked failing is news, not something to grind on.
+      // One attempt only: a model the author just picked failing is reported rather than retried
       if (
         !(await applySettings(
           plan.model,
@@ -357,8 +357,8 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       channel.write(yellow('Running with --mock — no model is in use, so /effort has no effect.'));
       return;
     }
-    // Only what this model takes. An unsupported one still gets the menu — the setting is kept
-    // across a model switch — so fall back to the full list rather than offering nothing.
+    // Offer only the levels this model takes. A model that supports none still gets a menu
+    // (the setting is kept across a model switch) so fall back to the full list
     const offered = effortChoicesFor(currentModel);
     const menu = offered.length > 0 ? offered : EFFORT_CHOICES;
     let choice = arg;
@@ -386,8 +386,9 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   }
 
   /**
-   * The turn ceiling. Unlike /model and /effort this rebuilds nothing — the budget is the loop's
-   * own meter, not something the backend was constructed with — so it works under --mock too.
+   * Sets the turn ceiling. Rebuilds nothing (unlike /model and /effort) because the budget is the
+   * loop's own meter rather than something the backend was constructed with, so it works under
+   * --mock too.
    */
   async function handleBudget(arg: string): Promise<void> {
     let choice = arg;
@@ -464,10 +465,9 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
         continue;
       }
 
-      // The project map inside the system message is a snapshot of a file the agent's own
-      // `update_context` rewrites, so it is re-read per turn rather than frozen at startup —
-      // section by section, so a rewrite supersedes itself in a message rather than editing the
-      // prompt every cached byte behind it depends on.
+      // The project map in the system message is a snapshot of a file the agent's own
+      // `update_context` rewrites, so it is re-read per turn, section by section: a rewritten
+      // section arrives as a later message rather than an edit to the prefix the cache depends on
       session.agent.refreshSystem(systemSections(await loadContext(opts.dir)));
       const result = await session.agent.run(line);
       channel.write('');
@@ -483,10 +483,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
 }
 
 /**
- * `/makeimage <sentence>` — draw a concept image, directly.
+ * `/makeimage <sentence>` — draw a concept image directly.
  *
- * Not a turn through the model: a one-line request should cost one generation and no tokens. It
- * obeys plan mode like every other mutating act, and there it still composes and prints the prompt,
+ * Runs no turn through the model, so a one-line request costs one generation and no tokens. Obeys
+ * plan mode like every other mutating act; in plan mode it still composes and prints the prompt,
  * which is the part worth reading before spending anything.
  */
 async function makeImage(
@@ -523,10 +523,10 @@ async function makeImage(
 /**
  * `/upload <file...>` — copy the author's own documents into `archive/`, then ask about them.
  *
- * The same `archiveUpload` the desktop's `upload.pick` runs, so a file uploaded from either place
- * lands in the same layout. It is not a turn: the model is told nothing here, and what it is told
- * next is whichever suggestion the author picks. Plan mode afterwards for that reason — the answer
- * to "what should I do with these" is a plan, not an edit.
+ * Runs the same `archiveUpload` the desktop's `upload.pick` does, so a file uploaded from either
+ * place lands in the same layout. No turn is run: the model is told nothing here, and hears next
+ * only whichever suggestion the author picks. Ends in plan mode, because the answer to "what
+ * should I do with these" is a plan rather than an edit.
  */
 async function upload(session: AuthoringSession, channel: Channel, rest: string): Promise<void> {
   const paths = splitPaths(rest);

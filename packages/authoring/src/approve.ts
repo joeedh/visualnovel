@@ -1,24 +1,24 @@
 /**
- * Approving pictures on the author's say-so — the one act in this agent where the *authority*
+ * Approving pictures on the author's say-so. This is the one act in this agent whose authority
  * comes from the author's own words rather than from the agent's argument for them.
  *
- * Approval is what turns a draft into the thing everything downstream is drawn from, and it is
- * irreversible in the sense that matters: a run continues past a gate that has been cleared. So
- * the tool is built to make one specific mistake impossible — the agent deciding, mid-turn and
- * for reasons of its own, that the author would surely want all of this approved.
+ * An approved draft is what everything downstream is drawn from, and approval is irreversible in
+ * one respect: a run continues past a gate that has been cleared. The tool is therefore built to
+ * rule out the agent deciding mid-turn, on its own reasoning, that the author wants all of this
+ * approved.
  *
- * Three checks, in order, and each one can only narrow what the one before it allowed:
+ * Three checks run in order, and each can only narrow what the one before it allowed:
  *
- * 1. **The list is the project's, not the model's.** The host enumerates what is approvable now,
- *    upstream first, and nothing outside that list can be approved however it is named.
- * 2. **A small model reads what the author actually typed** — not what the agent says they meant.
- *    It answers two questions at once, because they are the same question: did they ask for this,
- *    and if so which of these pictures did they mean. It never sees the agent's reasoning.
- * 3. **The author confirms the final list**, item by item, before anything is written.
+ * 1. The list comes from the project rather than the model. The host enumerates what is approvable
+ *    now, upstream first, and nothing outside that list can be approved however it is named.
+ * 2. A small model reads what the author typed, not what the agent says they meant. It answers
+ *    both halves of one question — did they ask for this, and which of these pictures did they
+ *    mean — and it never sees the agent's reasoning.
+ * 3. The author confirms the final list, item by item, before anything is written.
  *
- * The triage model is deliberately small: this is a reading-comprehension question about a short
- * piece of text, which is what a small model is good at, and making it cheap is what lets step 2
- * be unconditional rather than something worth skipping.
+ * The triage model is deliberately small. This is a reading-comprehension question about a short
+ * piece of text, which a small model handles well, and keeping it cheap is what lets step 2 run
+ * unconditionally rather than be skipped.
  */
 import { z } from 'zod';
 import type { ChatBackend } from '@vn/providers';
@@ -27,12 +27,12 @@ import { withStructuredRetry } from '@vn/providers';
 /**
  * The model that reads the author's words. Named here rather than taken from the project, because
  * this is not the conversation's model and it is not the author's choice: it is a fixed part of
- * how the check works, and a project that swapped it for the model being checked would be
- * checking the agent's homework with the agent.
+ * how the check works, and a project that swapped it for the model being checked would let the
+ * agent judge its own request.
  */
 export const TRIAGE_MODEL = 'claude-haiku-4-5';
 
-/** How far back the author's own words are read. Recent, because consent goes stale. */
+/** How many of the author's own recent turns are read. Kept short because consent goes stale. */
 export const SAID_WINDOW = 6;
 
 /** One picture the author could approve right now, as the host enumerates it. */
@@ -54,12 +54,12 @@ export interface Approvable {
   /** Why it cannot be approved yet — something upstream is unapproved. Listed, never approved. */
   blocked?: string;
   /**
-   * True when the slot this is a candidate for **already has an answer** — the character's gate is
-   * cleared, or another candidate in the slot is accepted. Such a row is still offered, because
-   * choosing a different take is a real thing an author does; but approving it *changes* the
-   * answer rather than settling the slot, so anything approving in bulk has to leave it alone.
-   * Without that, a settled project offers its losing takes forever and a pass over them never
-   * converges — each round un-approves what the round before it approved.
+   * True when the slot this is a candidate for already has an answer, meaning the character's gate
+   * is cleared or another candidate in the slot is accepted. Such a row is still offered, because
+   * choosing a different take is something an author does, but approving it changes the answer
+   * rather than settling the slot, so anything approving in bulk must leave it alone. Otherwise a
+   * settled project offers its losing takes forever and a repeated pass never converges, each
+   * round un-approving what the round before it approved.
    */
   settled?: boolean;
 }
@@ -73,8 +73,8 @@ export interface ApprovalControl {
   /**
    * The small model that reads the author's words, built by the host because it owns the keys and
    * knows whether this run is mocked. Async because resolving a key can fail, and it should fail
-   * by name at the point of use rather than at session start. `null` is a host with no model for
-   * this — a mocked session — and {@link offlineTriage} stands in.
+   * by name at the point of use rather than at session start. Returns `null` when the host has no
+   * model for this (a mocked session), and {@link offlineTriage} is used instead.
    */
   triage(): Promise<ChatBackend | null>;
 }
@@ -133,9 +133,8 @@ export async function triageApprovals(
 /**
  * Keep only what was on the list, and drop everything if the answer was "they did not ask".
  *
- * Belt and braces over a model that was told both rules, because these two are the ones whose
- * failure is silent: a hallucinated hash that happens to match nothing is harmless, and one that
- * happens to match something is an approval nobody asked for.
+ * The model is told both rules; this repeats them because their failure is silent. A hallucinated
+ * hash matching nothing is harmless, and one matching something is an unrequested approval.
  */
 export function narrowTriage(
   triage: ApprovalTriage,
@@ -147,9 +146,9 @@ export function narrowTriage(
 }
 
 /**
- * The offline triage, for a mocked session. Deliberately dumb and deliberately honest about it:
- * it matches words, says so in `reason`, and is no weaker a gate than the real one because the
- * gate that actually protects the author is the card they confirm afterwards.
+ * The offline triage, for a mocked session. It matches words and says so in `reason`. It is no
+ * weaker a gate than the real one, because the gate protecting the author is the card they
+ * confirm afterwards.
  */
 export function offlineTriage(req: ApprovalRequest): ApprovalTriage {
   const asking = [...req.said]
@@ -184,9 +183,9 @@ function mentions(words: string, asset: Approvable): boolean {
 }
 
 /**
- * The card the author reads before anything is written. Every picture by name, what its approval
- * would do, and the sentence the triage model gave for why it is on the list at all — because a
- * list of ten hashes with no account of where it came from is not something anyone can consent to.
+ * The card the author reads before anything is written. It names every picture, says what its
+ * approval would do, and carries the triage model's sentence explaining why the list holds what it
+ * holds, since a bare list of hashes gives the author nothing to consent to.
  */
 export function approvalCard(triage: ApprovalTriage, chosen: readonly Approvable[]): string {
   const rows = chosen.map((a) => {

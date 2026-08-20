@@ -3,11 +3,10 @@
  * asks it what a gesture means and then runs the command it names, so the mapping from an
  * authorial act to a `CommandRecord` is testable in node.
  *
- * The central rule this module holds: this surface's model is a **list of lines**, not a
- * buffer, so a keystroke either belongs to the textarea or names one command. Nothing here
- * decides whether an edit is *legal* — `@vn/scriptedit` does, through the command, and its
- * sentence is what the author reads. This module only decides which command an act asks for,
- * and whether an act happened at all.
+ * This surface's model is a list of lines rather than a buffer, so a keystroke either belongs to
+ * the textarea or names one command. Whether an edit is legal is decided by `@vn/scriptedit`,
+ * through the command, and its sentence is what the author reads. This module only decides which
+ * command an act asks for, and whether an act happened at all.
  */
 import type { Invocation } from '@vn/commands';
 import type { ScriptState } from '@vn/scriptedit';
@@ -36,9 +35,9 @@ export interface ScriptScene {
  * being composed after `after` (`''` = the top of the scene).
  *
  * The composer exists because `story.insertLine` refuses a line with no text ("A line needs some
- * text"), and must — an empty line has no lossless Fountain form. Enter therefore cannot create
- * the line first and let the author type into it; instead it opens a row that is not a line yet,
- * and committing that row performs the insert.
+ * text"); an empty line has no lossless Fountain form. Enter therefore cannot create the line
+ * first and let the author type into it. Instead it opens a row that is not a line yet, and
+ * committing that row performs the insert.
  */
 export type Editing = { row: 'line'; line: CoverageLine } | { row: 'new'; after: string };
 
@@ -56,7 +55,7 @@ export interface Draft {
  */
 export type Continue =
   | { open: 'none' }
-  /** Compose a line after this one. {@link COMPOSED} means "after the line just inserted". */
+  /** Compose a line after this one. {@link COMPOSED} names the line that was just inserted. */
   | { open: 'compose'; after: string }
   /** Reopen an existing line's editor. */
   | { open: 'line'; line: string };
@@ -68,14 +67,14 @@ export type Continue =
  */
 export const COMPOSED = 'composed';
 
-/** What a keystroke means. `type` is "not ours — let the textarea have it". */
+/** What a keystroke means. `type` leaves the keystroke to the textarea. */
 export type ScriptAct =
   | { act: 'type' }
   /** Close the editor and drop the draft. Nothing is written. */
   | { act: 'discard' }
   /**
-   * Run these in order, stopping at the first refusal, then continue. `steps` may be empty —
-   * "nothing to write, but the editor still moves".
+   * Run these in order, stopping at the first refusal, then continue. `steps` may be empty when
+   * there is nothing to write but the editor still moves.
    */
   | { act: 'run'; steps: Invocation[]; then: Continue };
 
@@ -86,16 +85,16 @@ const DISCARD: ScriptAct = { act: 'discard' };
  * What a keystroke in the open editor asks for. Three keys are the surface's; everything else
  * belongs to the textarea.
  *
- * - **Enter** commits the row. At the end of a line it also opens a composer below, which is how
- *   a paragraph gets typed: one `setLineText` and one `insertLine` per line, each its own undo
- *   point. Mid-line it only commits — inserting happens from the end of a line, and a caret in
- *   the middle means "I was fixing this one".
- * - **Backspace** at the start of an *emptied* line is `story.deleteLine`: the author cleared the
- *   line and kept going, and `setLineText` would only refuse it ("delete it instead"). At the
- *   start of a line that still says something it does nothing — merging two lines is a delete
- *   plus a retype, and spending two commands on a keystroke that usually means "I mis-hit" is
- *   worse than doing nothing.
- * - **Escape** discards.
+ * - Enter commits the row. At the end of a line it also opens a composer below, which is how a
+ *   paragraph gets typed: one `setLineText` and one `insertLine` per line, each its own undo
+ *   point. Mid-line it only commits, because inserting happens from the end of a line and a
+ *   caret in the middle means the author was fixing that line.
+ * - Backspace at the start of an emptied line is `story.deleteLine`: the author cleared the line
+ *   and kept going, and `setLineText` would only refuse it ("delete it instead"). At the start of
+ *   a line that still says something it does nothing — merging two lines is a delete plus a
+ *   retype, and spending two commands on a keystroke that usually means a mis-hit is worse than
+ *   doing nothing.
+ * - Escape discards.
  *
  * There is no soft newline: a line with a newline in it is not one line (see `lineOf`), so a
  * modified Enter is still an Enter.
@@ -142,8 +141,8 @@ export function lineAbove(lines: readonly CoverageLine[], lineId: string): Cover
  * under the same cue — which is how a screenplay is typed — and everything else starts a
  * narration line, because `insertLine` refuses a speaker on a kind nobody speaks.
  *
- * A parenthetical is a delivery note, so the line *after* one is the spoken line, not a second
- * note.
+ * A parenthetical is a delivery note, so the line following one is the spoken line rather than a
+ * second note.
  */
 export function attributionAfter(above: CoverageLine | null): {
   kind: CoverageLine['kind'];
@@ -176,7 +175,7 @@ export function insertedAfter(lines: readonly CoverageLine[], after: string): Co
 
 /**
  * The row the editor moves to once an act's commands have run, and the draft it opens with —
- * resolved against the *reloaded* lines, because that is the only place the id an insert just
+ * resolved against the reloaded lines, because that is the only place the id an insert just
  * minted can be found. `null` closes the editor.
  *
  * `from` is `null` for an act no editor started — a drag commits a command too, and it has no row
@@ -236,9 +235,9 @@ export interface CueChoice {
 
 /**
  * The cue for a cast member: their name, uppercased, which is what an author types in a Fountain
- * screenplay and what `buildModel` resolves back to this id. Deliberately *not* the id — a prose
- * edit is decided against the scene as its file parses, where speakers are still cues, so writing
- * an id back would rewrite `AIKO` as `@aiko`.
+ * screenplay and what `buildModel` resolves back to this id. Deliberately not the id: a prose edit
+ * is decided against the scene as its file parses, where speakers are still cues, so writing an id
+ * back would rewrite `AIKO` as `@aiko`.
  */
 export function cueFor(member: CastMember): string {
   return (member.name || member.id).toUpperCase();
@@ -302,8 +301,8 @@ export function cueSlotText(
 }
 
 /**
- * The same, for the composer row — which has no line yet, so this states what the insert will
- * attribute rather than offering to change it. {@link attributionAfter} is what decides.
+ * The cue slot's text for the composer row. The row has no line yet, so this states what the
+ * insert will attribute rather than offering to change it. {@link attributionAfter} decides.
  */
 export function composedCueText(
   cast: readonly CastMember[],
@@ -406,9 +405,9 @@ export function proposeSceneId(base: string, taken: Iterable<string>): string {
  * The scene a merge at the end of `sceneId` would absorb — the one it continues to, and only when
  * that continuation is the scene's only way out. `null` when there is no boundary to remove.
  *
- * A merge is always "absorb the scene I continue to", which is the boundary at the bottom of the
- * column. The rest of the refusals — the entry scene, something else pointing at the absorbed one
- * — are `mergeScene`'s, and the author reads them from its `check`.
+ * A merge always absorbs the scene this one continues to, which is the boundary at the bottom of
+ * the column. The rest of the refusals (the entry scene, something else pointing at the absorbed
+ * scene) are `mergeScene`'s, and the author reads them from its `check`.
  */
 export function mergeTarget(story: StoryGraph, sceneId: string): string | null {
   const out = story.edges.filter((e) => e.from === sceneId);
@@ -419,7 +418,7 @@ export function mergeTarget(story: StoryGraph, sceneId: string): string | null {
 
 /**
  * Whether a new scene may be written as this one's continuation — only from a leaf. On a scene
- * that already goes somewhere, continuing would replace that wire; putting a scene *between* two
+ * that already goes somewhere, continuing would replace that wire; putting a scene between two
  * others is the branch editor's splice gesture, which already exists and states its own cost.
  */
 export function canContinue(story: StoryGraph, sceneId: string): boolean {
@@ -443,7 +442,7 @@ export const mergeOf = (absorbed: string, into: string): Invocation => ({
  * across a scene boundary or creates a file, and each carries a cost only the command can state —
  * so the column holds the invocation, shows that sentence, and commits on a second gesture.
  *
- * The editable fields live here rather than in the surface because they are *props*: what the
+ * The editable fields live here rather than in the surface because they are props: what the
  * author is choosing before confirming is the invocation itself.
  */
 export type Pending =
@@ -456,8 +455,8 @@ export type Pending =
 
 /**
  * The new-scene act as the column proposes it: a free id derived from this scene's, and a heading
- * built from the current location. Both are prefills the author edits in the strip — a heading has
- * to be *composed* rather than copied, because what the column knows is the location id.
+ * built from the current location. Both are prefills the author edits in the strip; a heading has
+ * to be composed rather than copied, because what the column knows is the location id.
  */
 export function continueFrom(scene: string, location: string, taken: Iterable<string>): Pending {
   return {

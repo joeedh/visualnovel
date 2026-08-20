@@ -1,6 +1,6 @@
 /**
- * When a requeue runs the pipeline by itself. The decision is the whole feature, and the act it
- * guards spends a real image call, so it is pinned here rather than left to a live run.
+ * When a requeue runs the pipeline by itself. The act this decision guards spends a real image
+ * call, so the decision is pinned here rather than left to a live run.
  */
 import { autoRunReason } from '../asset.js';
 
@@ -13,7 +13,8 @@ describe('autoRunReason', () => {
 
   it('leaves anything wider to the author', () => {
     expect(autoRunReason({ ...alone, pending: 2 })).toBe('');
-    // Nothing pending is not "one task": the requeue is what should have put it there.
+    // Zero pending does not count as the one task, because the requeue is what should have
+    // planned that task
     expect(autoRunReason({ ...alone, pending: 0 })).toBe('');
   });
 

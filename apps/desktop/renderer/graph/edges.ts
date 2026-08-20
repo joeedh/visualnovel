@@ -2,9 +2,9 @@
  * Edge routing: a laid-out graph plus its edges becomes drawable paths, sampled polylines for
  * hit-testing, and the anchor point a label is typeset at.
  *
- * One path serves both purposes on purpose. If the drawn curve and the hit-tested geometry
- * came from different code, an edge could be clickable somewhere it isn't drawn — the exact
- * class of bug `@vn/debug2d` exists to chase down.
+ * The drawn curve and the hit-tested polyline are derived from the same path deliberately. If
+ * they came from different code, an edge could be clickable where it is not drawn, which is
+ * the class of bug `@vn/debug2d` exists to chase down.
  */
 import { round, type GraphEdge, type LaidOutNode, type Point } from './types.js';
 import type { GraphLayout } from './layout.js';
@@ -19,7 +19,7 @@ export interface EdgeRoute {
   path: string;
   /** Polyline approximation of `path`, for distance queries. */
   points: Point[];
-  /** Where a label sits: the curve's midpoint. */
+  /** The curve's midpoint, where a label is typeset. */
   labelAnchor: Point;
   /** True when the edge runs against the ranking (a loop back to an earlier scene). */
   back: boolean;
@@ -62,10 +62,10 @@ const top = (n: LaidOutNode): Point => ({ x: n.x + n.width / 2, y: n.y });
 const right = (n: LaidOutNode): Point => ({ x: n.x + n.width, y: n.y + n.height / 2 });
 
 /**
- * The curve for one edge. Three shapes, by geometry rather than by declared kind: a normal
- * descent leaves the bottom and enters the top; anything that does not descend leaves and
- * re-enters the right-hand side, bulging out far enough to stay clear of its own nodes; a
- * self-edge is that same side loop at its minimum.
+ * The curve for one edge. The shape is chosen from the geometry rather than the declared kind.
+ * An edge that descends leaves the bottom of its source and enters the top of its target. An
+ * edge that does not descend leaves and re-enters the right-hand side, bulging out far enough
+ * to stay clear of both nodes. A self-edge is that same side loop with no extra bulge.
  */
 function curveFor(
   from: LaidOutNode,
@@ -140,8 +140,8 @@ export function routeEdges(
 }
 
 /**
- * Where a drag from a node's edge handle should start: the bottom of the card, which is where
- * every forward edge leaves from. Exported so the editor's ghost edge and the routed edge
- * agree on their origin.
+ * The bottom of the card, where every forward edge leaves from and where a drag from the node's
+ * edge handle starts. Exported so the editor's ghost edge and the routed edge agree on their
+ * origin.
  */
 export const handleAnchor = (node: LaidOutNode): Point => bottom(node);

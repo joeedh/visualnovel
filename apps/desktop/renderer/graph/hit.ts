@@ -1,10 +1,9 @@
 /**
  * Hit-testing a laid-out graph.
  *
- * The one rule this module exists to enforce: **slop is authored in screen pixels and geometry
- * lives in world units**, so every tolerance is divided through by the viewport scale before it
- * meets a coordinate. `pick` takes a screen point and a viewport and does that conversion
- * itself — callers never get the chance to do it backwards.
+ * Slop is authored in screen pixels while the geometry is in world units, so every tolerance is
+ * divided through by the viewport scale before it meets a coordinate. `pick` takes a screen
+ * point and a viewport and performs that conversion itself, so a caller cannot invert it.
  */
 import { screenToWorldDistance, toWorld, type Viewport } from './viewport.js';
 import type { LaidOutNode, Point, Rect } from './types.js';

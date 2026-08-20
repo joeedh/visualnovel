@@ -126,27 +126,25 @@ describe('the desktop registry', () => {
   });
 
   /**
-   * Undo restores a snapshot of the *document* tree, so only commands whose writes are
-   * documents may opt in. The rest write generated output (`story.export`, `story.screenplay`,
+   * Undo restores a snapshot of the document tree, so only commands whose writes are documents may
+   * opt in. The rest write generated output (`story.export`, `story.screenplay`,
    * `workspace.reindex`, `asset.accept`), write new content-addressed bytes there was no prior
    * state for (`art.generate`, `art.redraw`, `asset.upload`), append to a log (`pipeline.run`,
-   * `asset.regenerate`), straddle a sheet, the manifest and the task log at once
-   * (`art.promote`, and `asset.adopt`/`asset.replace`, which append a `done` record the log has
-   * no un-appending for), restructure the whole worktree
-   * (`workspace.import`, whose own `.imported` rename is the reversal), write into a *different*
-   * tree than the one a snapshot covers (`workspace.open`/`pick`/`create`), copy bytes in from
-   * outside the tree *and* close the conversation a snapshot cannot restore (`upload.*`), write under
-   * `vngen/state`, which the snapshot deliberately excludes (`agent.renameThread` — a transcript
-   * must survive undoing the edits it produced), write a credential to a *gitignored* file
-   * (`project.setKey`: an undo point is a git snapshot, and snapshotting a key is the one thing
-   * that command exists to avoid), or straddle both
-   * classes (`gate.approve` flips
-   * `character.md` **and** marks the asset accepted in `manifest.json`) — see
-   * `docs/plans/archive/command-undo-redo.md`.
+   * `asset.regenerate`), straddle a sheet, the manifest and the task log at once (`art.promote`,
+   * and `asset.adopt`/`asset.replace`, which append a `done` record the log has no un-appending
+   * for), restructure the whole worktree (`workspace.import`, whose own `.imported` rename is the
+   * reversal), write into a different tree than the one a snapshot covers
+   * (`workspace.open`/`pick`/`create`), copy bytes in from outside the tree and close the
+   * conversation a snapshot cannot restore (`upload.*`), write under `vngen/state`, which the
+   * snapshot deliberately excludes (`agent.renameThread` — a transcript must survive undoing the
+   * edits it produced), write a credential to a gitignored file (`project.setKey`: an undo point is
+   * a git snapshot, and snapshotting a key is the one thing that command exists to avoid), or
+   * straddle both classes (`gate.approve` flips `character.md` and marks the asset accepted in
+   * `manifest.json`) — see `docs/plans/archive/command-undo-redo.md`.
    *
    * `view.saveLayout` and `view.resetLayout` are the exception that proves the rule: a layout
-   * template is not a document, but it *is* an authored file inside the snapshot's pathspec, so
-   * undo restores it exactly the way it restores a scene.
+   * template is not a document, but it is an authored file inside the snapshot's pathspec, so undo
+   * restores it exactly the way it restores a scene.
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
@@ -193,7 +191,7 @@ describe('the desktop registry', () => {
   });
 
   /**
-   * A check is a precondition on an *act* — something with a cost that running it would incur.
+   * A check is a precondition on an act — something with a cost that running it would incur.
    * That is usually a write, so it is usually a mutator; `agent.run` is the one mutator without
    * one, because what it would do is decided by a model rather than by state this process can
    * read.
@@ -203,9 +201,9 @@ describe('the desktop registry', () => {
    * real model's time on a real key and the other opens a public issue tracker on text — so "run
    * it and find out" is the wrong answer to both. `project.testKey` is the same shape and cheaper:
    * it calls a provider for real, so whether a key even resolves is worth answering first. The two
-   * stops are the converse: they interrupt an act rather than performing one, so there *is* state
-   * to read — whether a run or a turn is in progress — and the answer is what greys the Stop
-   * button and says why.
+   * stops are the converse: they interrupt an act rather than performing one, so there is state to
+   * read — whether a run or a turn is in progress — and the answer is what greys the Stop button
+   * and says why.
    */
   it('declares a precondition on what an act would cost, and on the two interrupters', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([

@@ -118,7 +118,7 @@ describe('@vn/git', () => {
       expect(shown).toContain('Moved line L4 into rooftop');
       expect(shown).toContain('Vn-Command: story.moveLine');
       expect(shown).toContain('Vn-Seq: 12');
-      // The subject stays the subject — trailers are body, not part of the one-line summary.
+      // trailers go in the body, so the subject stays the one-line summary
       expect((await git.log(1))[0]?.subject).toBe('Moved line L4 into rooftop');
     } finally {
       await cleanup();
@@ -239,7 +239,7 @@ describe('@vn/git', () => {
         expect(await fs.readFile(join(dir, 'keep.md'), 'utf8')).toBe('before\n');
         expect(await fs.readFile(join(dir, 'doomed.md'), 'utf8')).toBe('exists\n');
         await expect(fs.access(join(dir, 'added.md'))).rejects.toThrow();
-        // Outside the pathspec, so in neither tree: undo has no opinion about generated output.
+        // undo leaves generated output alone: it is outside the pathspec, so in neither tree
         expect(await fs.readFile(join(dir, 'gen/out.bin'), 'utf8')).toBe('regenerated\n');
 
         await git.applyTree(before, after);
@@ -268,7 +268,7 @@ describe('@vn/git', () => {
           { ref: 'refs/vn/undo/1/pre', sha: snap },
         ]);
         expect(await git.treeOf(snap)).toBe(tree);
-        // The author's history never mentions it.
+        // the snapshot ref never appears in the author's history
         expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
 
         await git.deleteRef('refs/vn/undo/1/pre');

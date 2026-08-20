@@ -2,17 +2,18 @@
  * Surgical scene-marker patching for authored Fountain — a whole `screenplay/*.fountain` or
  * one `scenes/<id>.md` body (story branch editor, Wave 1).
  *
- * `sceneToFountain` is lossless (`parse(write(scene)) ≡ scene`) but not byte-exact: the author's
- * spacing, comment style and marker placement are theirs, and an edit has no business
- * reformatting the file. So this module rewrites **only** `[[choice: …]]`, `[[next: …]]` and
- * `[[outfit: …]]` note lines, leaving every other byte exactly as authored. The serializer is
- * for scenes the app authored; this is for scenes it inherited.
+ * `sceneToFountain` is lossless (`parse(write(scene)) ≡ scene`) but not byte-exact, so it is the
+ * wrong writer for an authored file: the author's spacing, comment style and marker placement
+ * belong to the author, and an edit must not reformat them. This module rewrites only
+ * `[[choice: …]]`, `[[next: …]]` and `[[outfit: …]]` note lines, leaving every other byte exactly
+ * as authored. The serializer handles scenes the app authored; this module handles scenes it
+ * inherited.
  *
- * The safety net is total: after patching, the whole file is re-parsed and the resulting scene
- * list is compared against the intended one. Any divergence — a marker written into the wrong
- * scene, or a removed note line that leaves a blank above a heading the parser was previously
- * ignoring — discards the patch and returns a diagnostic. A marker edit cannot silently
- * corrupt a screenplay.
+ * After patching, the whole file is re-parsed and the resulting scene list is compared against
+ * the intended one. Any divergence discards the patch and returns a diagnostic, so a marker edit
+ * cannot silently corrupt a screenplay. Two divergences this catches: a marker written into the
+ * wrong scene, and a removed note line that leaves a blank above a heading the parser was
+ * previously ignoring.
  */
 import type { Choice, Diagnostic, Scene } from '@vn/types';
 import { parseBranchMarker, parseFountain } from '@vn/parse';
@@ -42,7 +43,7 @@ export interface MarkerPatchOptions {
   /**
    * Patch a scene chunk's body: the id comes from the file's front-matter, so it is forced onto
    * the one scene the body may hold rather than taken from the heading. More than one heading
-   * is a refusal — a chunk that holds two scenes has no single id to be.
+   * is refused, because a chunk holding two scenes has no single id.
    */
   sceneId?: string;
 }
@@ -86,8 +87,8 @@ function splitLines(src: string): RawLine[] {
 }
 
 /**
- * Blank out boneyard blocks while preserving length and line breaks. The parser *deletes*
- * them, which can join two lines; masking keeps offsets aligned instead. The two disagree
+ * Blank out boneyard blocks while preserving length and line breaks. The parser deletes them,
+ * which can join two lines; masking keeps offsets aligned instead. The two disagree
  * only when a boneyard straddles a line break next to a heading, and the heading-count check
  * below turns that into a refusal rather than a mis-patch.
  */
@@ -102,8 +103,8 @@ function stripNotes(line: string): string {
 /**
  * Line indices of every scene heading, using the parser's own rules: a forced `.heading` or a
  * known INT./EXT. prefix, tested against the note-stripped line, preceded by a blank line.
- * Blankness is tested on the *raw* line — a note-only line is not blank to the parser, which
- * is why removing one can change how the next line reads.
+ * Blankness is tested on the raw line: a note-only line counts as non-blank to the parser, so
+ * removing one can change how the next line reads.
  */
 function findHeadings(masked: RawLine[]): number[] {
   let restStart = 0;

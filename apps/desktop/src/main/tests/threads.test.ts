@@ -55,7 +55,7 @@ describe('threads', () => {
 
     const read = await readThread(paths, header.id);
     expect(read.items).toMatchObject(items);
-    // Every stored line is stamped, which is what a report lines a conversation up by.
+    // Every stored line is stamped, which is what a report uses to line a conversation up
     expect(read.items.every((stored) => !Number.isNaN(Date.parse(stored.at!)))).toBe(true);
     expect(read.commit).toBe('a1b2c3d');
     expect(read.model).toBe('claude-opus-5');
@@ -98,7 +98,7 @@ describe('threads', () => {
       model: 'claude-opus-5',
       effort: 'xhigh',
     });
-    // And the listing reads the same binding — it parses only the header-shaped lines.
+    // The listing reads the same binding, parsing only the header-shaped lines
     expect((await listThreads(paths))[0]).toMatchObject({ model: 'claude-opus-5' });
   });
 
@@ -107,7 +107,7 @@ describe('threads', () => {
     await bindThread(paths, id, { effort: 'high' });
     expect(await readThread(paths, id)).toMatchObject({ model: 'claude-sonnet-5', effort: 'high' });
 
-    // Naming neither writes nothing at all, rather than a line saying nothing.
+    // A rebind that names neither field appends nothing, rather than a line that says nothing
     const count = async (): Promise<number> =>
       (await readFile(threadFile(paths, id), 'utf8')).trim().split('\n').length;
     const before = await count();
@@ -128,7 +128,8 @@ describe('threads', () => {
       { commit: 'a'.repeat(40) },
       { commit: 'b'.repeat(40) },
     ]);
-    // The listing reads it too — a row can say a conversation is in history without being opened.
+    // The listing reads the archive too, so a row can say a conversation is in history without
+    // being opened
     expect((await listThreads(paths))[0]!.archived).toHaveLength(2);
   });
 

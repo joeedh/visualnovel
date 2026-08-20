@@ -1,7 +1,7 @@
 import type { Playable } from '@vn/types';
 import { renderSite } from '../site.js';
 
-/** A playable built by hand: the renderer's input is the exporter's output, not the model. */
+/** A playable built by hand. The renderer reads the exporter's output, not the model. */
 function playable(partial: Partial<Playable> = {}): Playable {
   return {
     version: 1,

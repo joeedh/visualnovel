@@ -11,9 +11,10 @@ export interface FrontMatterDoc {
 const FENCE = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
 /**
- * The front-matter block and the body as byte-exact halves: `prefix + body` is the file, less
- * a BOM. A patcher that rewrites only prose splices its result back onto `prefix`, so YAML the
- * author wrote — key order, spacing, comments — survives where re-serializing it would not.
+ * Split a file into the front-matter block and the body, byte-exactly: `prefix + body` is the
+ * file, less a BOM. A patcher that rewrites only prose splices its result back onto `prefix`, so
+ * the YAML the author wrote (key order, spacing, comments) survives instead of being
+ * re-serialized.
  */
 export function splitFrontMatter(text: string): { prefix: string; body: string } {
   const normalized = text.startsWith('﻿') ? text.slice(1) : text;

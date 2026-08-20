@@ -1,7 +1,7 @@
 /**
- * The narrowing that lets the renderer treat `reviews` as `DefectReport[]`. Everything here
- * is about the ragged case: `tasks.jsonl` is append-only JSON written across runs, so an
- * attempt's reviews can be anything at all by the time the inspector reads them.
+ * The narrowing that lets the renderer treat `reviews` as `DefectReport[]`. The cases here are
+ * mostly about ragged input: `tasks.jsonl` is append-only JSON written across runs, so an
+ * attempt's reviews may be any shape by the time the inspector reads them.
  */
 import type { AnyTask, DefectReport } from '@vn/types';
 import { narrowTask } from '../reviews.js';

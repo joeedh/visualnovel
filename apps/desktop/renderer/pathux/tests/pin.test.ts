@@ -27,8 +27,8 @@ describe('what a pinned editor reads', () => {
     live.shotId = 'sh2';
     live.projectTitle = 'Test4';
     live.busyWhat = 'a pipeline run';
-    // A pinned Coverage holds its scene and still follows the selected shot: that is what makes a
-    // pinned pane a second view of the project rather than a photograph of one.
+    // A pinned Coverage holds its scene and still follows the selected shot, so a pinned pane is a
+    // second view of the project rather than a frozen copy of it.
     expect(view.shotId).toBe('sh2');
     expect(view.projectTitle).toBe('Test4');
     expect(view.busyWhat).toBe('a pipeline run');
@@ -46,8 +46,8 @@ describe('what a pinned editor reads', () => {
 describe('what a write through a pinned editor does', () => {
   test('moves the pin and the shell together', () => {
     const { live, view } = pinned('sceneId', 'arrival');
-    // The scene picker in a pinned Script: the author chose *in this pane*, so the pane goes
-    // there — and a selection is one thing the whole app shares, so everyone else does too.
+    // A scene chosen in a pinned Script's picker moves that pane's pin. Selection is shared across
+    // the app, so the shell moves with it.
     view.sceneId = 'market';
     expect(view.sceneId).toBe('market');
     expect(live.sceneId).toBe('market');

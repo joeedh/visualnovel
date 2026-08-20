@@ -1,12 +1,12 @@
 /**
- * The notification log as a vocabulary. Reading it is an IPC channel (`notify:list`), but every
- * *change* to it is a command, because commands are the only write path — which also means the
+ * Commands over the notification log. Reading it is an IPC channel (`notify:list`), but every
+ * change to it is a command, because commands are the only write path — which also means the
  * agent and CDP can archive, unarchive and purge exactly as the dialog does.
  *
  * None is `undoable`, for the reason `agent.ts` already gives for threads: `vngen/state` is
- * outside `UNDO_PATHS`, so a journal entry claiming to restore a flag could not. They are
- * `mutating: false` for the same reason — nothing under the undo snapshot changes — with the
- * single exception of the one that destroys the file.
+ * outside `UNDO_PATHS`, so a journal entry could not restore a flag. They are `mutating: false`
+ * for the same reason — nothing under the undo snapshot changes — apart from the one that
+ * destroys the file.
  */
 import { defineFor, prop } from '@vn/commands';
 import { LINK_COMMANDS, linkCommand, linkTarget } from '../../shared/notify.js';
@@ -76,9 +76,9 @@ export const notifyUnhide = define({
 });
 
 /**
- * "Clear" takes the ids the dialog drew rather than recomputing what is visible. The category
- * filter lives in the session store and only the dialog knows what it is showing, so asking main
- * to re-derive it is how a Clear ends up hiding something that was filtered off screen.
+ * Takes the ids the dialog drew rather than recomputing what is visible. The category filter lives
+ * in the session store and only the dialog knows what it is showing, so re-deriving the list in
+ * main would let a Clear hide something that was filtered off screen.
  */
 export const notifyClear = define({
   id: 'notify.clear',
@@ -100,8 +100,8 @@ export const notifyDeleteAll = define({
   description:
     'Empty the notification log. Unlike archiving this cannot be undone — the file is truncated ' +
     'and the record of what the app did is gone.',
-  // It truncates a file the repo tracks, so it is an act the committer should record — and, being
-  // the only mutator here, the only one with a precondition worth asking about.
+  // Truncates a file the repo tracks, so the committer should record it. This is the only mutator
+  // in this file, and the only one with a precondition worth asking about
   mutating: true,
   confirm: true,
   props: {},
@@ -124,15 +124,15 @@ export const notifyDeleteAll = define({
 });
 
 /**
- * Clicking a notification: read, then go where it points. A notification with no link — or with
- * one naming an editor this build does not have, or a command it does not allow — is still marked
- * read, and says it went nowhere rather than refusing: the click did do something.
+ * Marks a notification read, then goes where it points. A notification with no link — or with one
+ * naming an editor this build does not have, or a command it does not allow — is still marked read
+ * and reports that it went nowhere rather than refusing, because the click did do something.
  *
- * A link naming a command is followed *first*, through the same session method the command itself
- * wraps — one implementation, two thin doors, exactly as `app.openKeyLink` sits over
- * `session.openKeyLink`. That is what keeps a notification from ever being a URL: the log names
- * an act and the app still derives the destination. `linkCommand` narrows against a short
- * allow-list, because these lines arrive from other people's clones.
+ * A link naming a command is followed before a link naming an editor, through the same session
+ * method the command itself wraps, the way `app.openKeyLink` sits over `session.openKeyLink`. A
+ * notification therefore never carries a URL: the log names an act and the app derives the
+ * destination. `linkCommand` narrows against a short allow-list, because these lines arrive from
+ * other people's clones.
  */
 export const notifyFollow = define({
   id: 'notify.follow',

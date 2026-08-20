@@ -53,8 +53,8 @@ describe('effectiveOrder', () => {
     ]);
   });
 
-  // The one function in this file that is duplicated across a package boundary — artgen is
-  // node-side and `shared/` is in the browser bundle — so the two are pinned together here.
+  // `effectiveOrder` is duplicated across a package boundary (artgen is node-side and `shared/`
+  // is in the browser bundle), so this test pins the two copies together
   it('agrees with the reordering @vn/artgen does inside composePrompt', () => {
     const derived: PromptChunk[] = chunks.map((c) => ({
       key: c.key,

@@ -104,7 +104,8 @@ describe('what right-clicking a line offers', () => {
   });
 
   test('a line no shot covers is a different answer, and it is also said', () => {
-    // Two ways of having no picture, two next moves: decompose the scene, or run it.
+    // A line with no shot and a shot with no frame are different states: one is fixed by
+    // decomposing the scene, the other by running it.
     const [entry] = lineMenu(scene, 'a:L1');
     expect(entry?.refused).toBe('No shot covers a:L1 yet.');
   });

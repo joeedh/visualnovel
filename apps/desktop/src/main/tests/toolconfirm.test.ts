@@ -1,7 +1,7 @@
 /**
  * The confirm card's wording. The author is being asked to spend an image call or throw work
- * away, so what the sentence *says* is the whole safeguard — a card reading `{"hash":"a1b2…"}`
- * is one the author clicks through without reading.
+ * away, and the sentence is the whole safeguard: a card reading `{"hash":"a1b2…"}` is one the
+ * author clicks through without reading.
  */
 import { confirmDetail } from '../toolconfirm.js';
 
@@ -55,7 +55,7 @@ describe('confirmDetail', () => {
   });
 
   it('gives an unknown tool a sentence rather than a blank', () => {
-    // A new confirm-gated tool must never be *easier* to allow than the ones named above.
+    // A new confirm-gated tool must not be easier to allow than the named ones
     expect(confirmDetail('some_new_tool', { a: 1 })).toBe('Run some_new_tool with {"a":1}.');
     expect(confirmDetail('some_new_tool', undefined)).toBe('Run some_new_tool.');
   });

@@ -43,7 +43,7 @@ describe('fragmentsFromSnapshot', () => {
       byLabel: 'div.stage',
       reason: 'transform',
     });
-    // The sibling's z-index is scoped by the real root: no note.
+    // The sibling's z-index is scoped by the real root, so it carries no note
     expect(zOf(frags, 'toast').zContext).toBeUndefined();
     expect(zOf(frags, 'modal').style.zIndex).toBe(999);
   });

@@ -41,9 +41,10 @@ export { MODEL_SHEET_ANGLES };
 const PNG = 'png';
 
 /**
- * One model-sheet task. Built in two places — P4 fans them out, and a shot in a non-default outfit
- * names one as a ref — so the identity is written down once or the shot would depend on a hash
- * nothing planned. The inputs come from `@vn/artgen` because adoption derives them too.
+ * One model-sheet task. Two places build these: P4 fans them out, and a shot in a non-default
+ * outfit names one as a ref. The identity is written down once here so a shot cannot end up
+ * depending on a hash nothing planned. The inputs come from `@vn/artgen` because adoption
+ * derives them too.
  */
 function modelSheetTask(
   character: Character,
@@ -60,9 +61,10 @@ function modelSheetTask(
 }
 
 /**
- * A scene's shots: the persisted decomposition when one exists, otherwise a fresh one written
- * out immediately. Re-decomposing is never done over an existing file — the LLM path is
- * non-deterministic, so it would change shot ids, hence task identities, hence regenerate art.
+ * A scene's shots. Returns the persisted decomposition if one exists. Otherwise decomposes the
+ * scene and writes the result out immediately. Re-decomposing over an existing file is never
+ * done: the LLM path is non-deterministic, so it would change shot ids, hence task identities,
+ * hence regenerate art.
  */
 async function shotsFor(
   scene: Scene,
@@ -87,9 +89,9 @@ async function shotsFor(
     }
   }
   const decomposition = await decomposeScene(scene, model, providers);
-  // Inside a run the baseline is the deterministic-fallback contract working, so it is still
-  // written — but silently persisting one is how a whole project ends up baselined forever, and
-  // until now nothing could even say it had happened. `decomposeAll` refuses to write it at all.
+  // Inside a run a baseline decomposition means the deterministic fallback worked, so it is still
+  // written. Persisting one silently is how a whole project ends up baselined forever, so it is
+  // logged here; `decomposeAll` refuses to write it at all.
   if (decomposition.source === 'baseline') {
     logger?.warn('decomposition fell back to the deterministic storyboard', {
       scene: scene.id,
@@ -105,9 +107,9 @@ async function shotsFor(
  * shots file restored from an old commit cannot convince anything that work is done — the
  * stale values it loaded are overwritten here.
  *
- * `proseHash` is the exception, and deliberately: it is stamped only when *these* bytes are new.
- * A rerun reporting the same image must not re-baseline the prose under it, or a drift the author
- * has not acted on would be silently cleared by a run that did no work.
+ * `proseHash` is a deliberate exception: it is stamped only when these bytes are new. A rerun
+ * reporting the same image must not re-baseline the prose under it, or a drift the author has
+ * not acted on would be silently cleared by a run that did no work.
  */
 function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
   const before = shot.image;
@@ -139,10 +141,9 @@ function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
  * Why planning is refused, or `undefined` to plan normally.
  *
  * An `unavailable` base root — the directory is there, its manifest is not — is the shape a
- * clone without the base repo leaves behind, and the whole plan rests on it: the four base kinds
- * would be re-generated from scratch, and every shot references a location plate and a portrait
- * whose bytes are equally gone. So nothing is plannable, and saying that in one sentence is the
- * point of the state existing at all. The sentence lives in `@vn/artgen` because generating one
+ * clone without the base repo leaves behind. The four base kinds would be re-generated from
+ * scratch, and every shot references a location plate and a portrait whose bytes are equally
+ * gone, so nothing is plannable. The sentence lives in `@vn/artgen` because generating one
  * image on demand must refuse in exactly the same words.
  */
 export { baseRefusal } from '@vn/artgen';
@@ -155,7 +156,7 @@ function doneOutput(graph: TaskGraph, hash: string): AssetRef | undefined {
 }
 
 /**
- * Emit/dedupe the tasks that are *currently runnable* given the model's approval state
+ * Emit/dedupe the tasks that are currently runnable given the model's approval state
  * (report §5, §7, §P3 gate-as-barrier). This is intentionally incremental: it is called
  * once per scheduler wave so that tasks whose identity depends on an upstream output
  * (shot images reference the produced location plate) only appear after that upstream task
@@ -167,7 +168,7 @@ function doneOutput(graph: TaskGraph, hash: string): AssetRef | undefined {
  * With `paths`, decompositions are persisted under `work/shots/` and preferred over
  * re-decomposing; without it planning is pure, which is what the unit tests want.
  *
- * An `unavailable` base root plans **nothing** — see {@link baseRefusal}.
+ * An `unavailable` base root plans nothing — see {@link baseRefusal}.
  */
 export async function planTasks(opts: {
   model: ProjectModel;
@@ -194,8 +195,8 @@ export async function planTasks(opts: {
   const params = imageParams(config);
   const planned: AnyTask[] = [];
 
-  // P2: location reference plates — no upstream deps, always plannable. Every authored location,
-  // not only the ones a scene sits in: a location sheet is asking for its plate.
+  // P2: location reference plates — no upstream deps, always plannable. Covers every authored
+  // location, not only the ones a scene sits in, because authoring a sheet earns its plate.
   for (const [locationId, variants] of allLocationVariants(model)) {
     const location = model.locations.get(locationId);
     if (!location) continue;
@@ -210,9 +211,9 @@ export async function planTasks(opts: {
   for (const character of allCharacters(model)) {
     planned.push(graph.add(makeTask('portrait', portraitInputs(character, config, params))));
 
-    // P4: model sheets derive from the *approved* portrait, so only after the gate — and only for
-    // the outfits something puts this character in, not for every one the sheet authors. An uncast
-    // character has no wardrobe entry at all, and `?? []` is what keeps that costing nothing.
+    // P4: model sheets derive from the approved portrait, so only after the gate — and only for
+    // the outfits something puts this character in, not for every one the sheet authors. An
+    // uncast character has no wardrobe entry, so it costs nothing.
     if (isApproved(character) && character.approvedPortrait) {
       const portraitRef: AssetRef = { hash: character.approvedPortrait, ext: PNG };
       for (const outfit of wardrobe.get(character.id) ?? []) {
@@ -242,9 +243,9 @@ export async function planTasks(opts: {
       const locAsset = doneOutput(graph, locTaskHash);
       if (!locAsset) continue;
 
-      // Each subject contributes its approved portrait as an identity reference — and, when it is
-      // not in the character's default, that outfit's front sheet, so the clothes are something to
-      // copy rather than words to interpret. The portrait alone shows the default.
+      // Each subject contributes its approved portrait as an identity reference, which already
+      // shows the default outfit. A subject in a non-default outfit also contributes that outfit's
+      // front sheet, so the clothes are an image to copy rather than words to interpret.
       const subjectRefs: AssetRef[] = [];
       const sheetDeps: string[] = [];
       let missingRef = false;
@@ -285,14 +286,14 @@ export async function planTasks(opts: {
       refreshShotData(shot, node, scene);
     }
 
-    // Once per pass, including the final one the scheduler runs after the last wave — which
-    // is what gets a completed run's outputs into the file.
+    // Written once per pass, including the final pass the scheduler runs after the last wave.
+    // That final pass is what gets a completed run's outputs into the file.
     if (paths && !readOnlyShots) await writeShots(paths, scene.id, scene.shots);
   }
 
-  // The defensive half of §14: `prompt.addRef` refuses a cycle before it can be written, so one
-  // here means a hand-edited project. Loud beats the alternative — a reference loop leaves every
-  // task in it permanently unplannable and the plan-run-replan loop starves without saying why.
+  // The defensive half of §14: `prompt.addRef` refuses a cycle before it can be written, so a
+  // cycle here means a hand-edited project. Throwing is deliberate — a reference loop leaves every
+  // task in it permanently unplannable, and the plan-run-replan loop would starve silently.
   const cycle = firstCycle({
     model,
     shots: new Map([...model.scenes].map(([id, s]) => [id, s.shots])),

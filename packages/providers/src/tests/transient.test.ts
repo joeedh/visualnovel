@@ -56,7 +56,7 @@ describe('isTransient', () => {
     expect(isTransient(new Error('fetch failed'))).toBe(true);
   });
 
-  // The expensive direction to be wrong in: three refusals cost three times one refusal.
+  // Being wrong in this direction is expensive: retrying a refusal pays for it three times.
   it('treats a bad request, a refusal, and anything unrecognized as terminal', () => {
     expect(isTransient(httpError(400, 'invalid argument'))).toBe(false);
     expect(isTransient(httpError(403, 'permission denied'))).toBe(false);
@@ -97,7 +97,8 @@ describe('createGeminiImage — retry in place', () => {
     expect(sdk.calls()).toBe(3);
   }, 15_000);
 
-  // Decided before the network, so another attempt would send the same bad bytes.
+  // The reference is rejected before the network call, so another attempt would send the same
+  // bad bytes.
   it('never retries an unusable reference image', async () => {
     const sdk = fakeSdk([oneImage]);
     const backend = createGeminiImage('k', params.modelId, sdk.client);
@@ -158,10 +159,9 @@ describe('what the provider said to wait', () => {
 });
 
 /**
- * What a host is told a failure *was*, which is a different question from whether to retry it.
- * The whole of this is the unwrapping: every one of these arrives at the desktop already wrapped
- * by `providerError`, so a classifier that read only the outermost error would answer `unknown`
- * for all of them.
+ * What a host is told a failure was, which is a different question from whether to retry it.
+ * Every error here arrives at the desktop already wrapped by `providerError`, so a classifier
+ * that read only the outermost error would answer `unknown` for all of them.
  */
 describe('faultKind', () => {
   /** As a host sees it: wrapped once by `callWithRetry`, exactly as the backends do. */
