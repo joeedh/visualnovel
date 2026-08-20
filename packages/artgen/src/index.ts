@@ -33,3 +33,4 @@ export * from './adopt.js';
 export * from './adoptslot.js';
 export * from './upload.js';
 export * from './promote.js';
+export * from './storyboard.js';

@@ -384,6 +384,9 @@ export const shotDecompositionSchema = z.object({
   ),
 });
 
+/** A parsed decomposition — what the model answers, and what `write_storyboard` restates. */
+export type ShotDecomposition = z.infer<typeof shotDecompositionSchema>;
+
 /**
  * One prompt condensed from a chunk list by the LLM (`docs/plans/chunked-prompts.md` §4).
  *

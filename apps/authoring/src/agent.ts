@@ -38,6 +38,7 @@ import {
   composeSystem,
   loadContext,
   workspaceArtGen,
+  workspaceTextLLM,
   type AgentBackend,
   type AgentEvent,
   type ApiFailure,
@@ -125,6 +126,7 @@ export async function createAuthoringAgent(
     workspace,
     git: openGit(dir),
     art: workspaceArtGen(workspace, { mock: opts.mock }),
+    text: workspaceTextLLM(workspace, { mock: opts.mock }),
   };
   const context = await loadContext(dir);
   const model = (await loadConfig(dir)).models.text;

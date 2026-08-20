@@ -62,7 +62,7 @@ export async function loadSceneShots(
 /**
  * The shots that bind lines → images for a scene. Prefers the persisted decomposition, then
  * the scene's own in-memory shots; with neither it reconstructs the *deterministic* baseline,
- * mirroring `@vn/pipeline`'s `deterministicShots` (which this package must not import): an
+ * mirroring `@vn/artgen`'s `deterministicShots` (which this package must not import): an
  * establishing shot over the scene's unattributed lines, plus one medium shot per character
  * over that character's dialogue lines. The reconstructed ids match the pipeline's
  * `${sceneId}__<raw>` scheme so images from a deterministic run resolve.

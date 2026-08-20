@@ -10,12 +10,17 @@ import { modelFromInputs } from '@vn/model';
 import { openBible, type Bible } from '@vn/bible';
 import { baseAssetsOf, loadInputs, readShots, ProjectPaths } from '@vn/store';
 import {
+  deleteShot as planDeleteShot,
   moveShot,
+  newShot as planNewShot,
+  setCoverage,
   setSceneOutfit,
   setShotOutfit,
   wardrobesOf,
   type BranchOp,
+  type DeleteShotOp,
   type LineOp,
+  type NewShotOp,
   type SceneMap,
   type SceneOutfitOp,
   type ScriptState,
@@ -26,7 +31,7 @@ import { loadConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
 import { exists, readText, VnError, writeFileAtomic } from '@vn/util';
 import { join, relative, resolve, sep } from 'node:path';
-import type { BaseAssets, CharacterStatus, Diagnostic, ProjectModel } from '@vn/types';
+import type { BaseAssets, CharacterStatus, Diagnostic, ProjectModel, Shot } from '@vn/types';
 import {
   countsOf,
   GENERATED_CONTEXT_FILE,
@@ -353,6 +358,69 @@ export class Workspace {
     }
     const wardrobes = wardrobesOf(model.characters);
     return setShotOutfit(loaded.shots, scene, wardrobes, { shot: shotId, character, outfit });
+  }
+
+  /**
+   * The new-shot rule, same shape as the desktop's `session.newShotRule` — one authorial act, one
+   * answer, however it is asked for. The board may be null: making the first shot by hand is what
+   * ends decomposition for the scene, and the rule prices that in its own message. The scene's
+   * location supplies the variant ids the default is validated against, the same way the model
+   * decomposer's answer is.
+   */
+  async newShot(
+    sceneId: string,
+    lines: readonly string[],
+    framing?: Shot['framing'],
+  ): Promise<NewShotOp> {
+    const { model } = await this.load();
+    const scene = model.scenes.get(sceneId);
+    if (!scene) return { ok: false, error: `No scene "${sceneId}".` };
+    const loaded = await readShots(this.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    const location = model.locations.get(scene.location);
+    return planNewShot(scene, loaded, {
+      lines,
+      ...(framing ? { framing } : {}),
+      variants: location?.variants.map((v) => v.id) ?? [],
+    });
+  }
+
+  /** The delete-shot rule; see {@link newShot}. Mirrors the desktop's `session.deleteShotRule`. */
+  async deleteShot(sceneId: string, shotId: string): Promise<DeleteShotOp> {
+    const { model } = await this.load();
+    const scene = model.scenes.get(sceneId);
+    if (!scene) return { ok: false, error: `No scene "${sceneId}".` };
+    const loaded = await readShots(this.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) return { ok: false, error: `Scene "${sceneId}" has no decomposition yet.` };
+    return planDeleteShot(loaded, { shot: shotId });
+  }
+
+  /**
+   * The coverage rule, with `setCoverage`'s changed shots already merged back into the full list —
+   * what the caller writes is the whole board, and only this method holds the board it was decided
+   * against. Mirrors the desktop's `session.setCoverage` up to (but not including) the write.
+   */
+  async shotCoverage(
+    sceneId: string,
+    shotId: string,
+    lines: readonly string[],
+  ): Promise<{ ok: false; error: string } | { ok: true; shots: Shot[]; message: string }> {
+    const { model } = await this.load();
+    const scene = model.scenes.get(sceneId);
+    if (!scene) return { ok: false, error: `No scene "${sceneId}".` };
+    const lineOrder = scene.lines.map((l) => l.id);
+    const loaded = await readShots(this.paths, sceneId, new Set(lineOrder));
+    if (!loaded) {
+      return {
+        ok: false,
+        error: `Scene "${sceneId}" has no shots yet — decompose it or place one by hand first.`,
+      };
+    }
+    const op = setCoverage(loaded.shots, { shot: shotId, lines, lineOrder });
+    if (!op.ok) return { ok: false, error: op.error };
+    const next = new Map(op.changed.map((s) => [s.id, s.coversLines]));
+    const shots = loaded.shots.map((s) => ({ ...s, coversLines: next.get(s.id) ?? s.coversLines }));
+    const gaps = op.uncovered.length ? ` ${op.uncovered.length} line(s) now uncovered.` : '';
+    return { ok: true, shots, message: op.message + gaps };
   }
 
   /**

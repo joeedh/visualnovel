@@ -164,8 +164,9 @@ agent honors.
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter
   so untouched prose and branch markers are preserved.
-- **Prose edits are the desktop's edits.** `edit_scene` names the same thirteen acts the `story.*`
-  commands do — and `set_outfit` the two outfit commands — running the same `@vn/scriptedit`
+- **Prose edits are the desktop's edits.** `edit_scene` names the same fifteen acts the `story.*`
+  commands do — thirteen over prose, plus `newShot`/`deleteShot`, which write the storyboard —
+  and `set_outfit` the two outfit commands — running the same `@vn/scriptedit`
   decisions, so a refusal an author sees mid-drag is the refusal the agent gets, and the storyboard
   consequence is accounted for once. **Drafting a run of prose is one call, and so is clearing
   one**: `insertLines` and `deleteLines` fold over `insertLine` and `deleteLine` inside
@@ -181,7 +182,7 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 41 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 45 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -193,6 +194,7 @@ whatever the mode).
 | Scene prose | `edit_scene` **M** |
 | Branch wiring | `edit_branches` **M** |
 | Wardrobe | `set_outfit` **M** |
+| Storyboards | `read_shots`, `set_coverage` **M**, `propose_storyboard` (costs a model call, writes nothing), `write_storyboard` **M** |
 | Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
 | Approval | `approve_assets` **M** (confirms its own list) |
@@ -430,8 +432,9 @@ playbook for one act; [`branching`](../templates/basic/.aiagent/skills/branching
 a fork can take, how to split a shared scene into per-route chunks, and the refusal to hand back
 when the author asks for something that would need a conditional; and
 [`full-production`](../templates/basic/.aiagent/skills/full-production), a spine — nine
-phases from premise to storyboard, each its own plan and its own commit, ending at the one
-thing the agent cannot do (decomposition is `@vn/pipeline`'s, so shots are the author's act).
+phases from premise to storyboard, each its own plan and its own commit, ending at the choice
+of how a scene gets its shots (batch decomposition, a proposal the agent drafts, or by hand),
+which stays the author's.
 
 **The agent can write a skill, and what it writes is prose.** `create_skill` scaffolds
 `.aiagent/skills/<id>/SKILL.md` from a name, a description, an optional _when to use_ and a body;

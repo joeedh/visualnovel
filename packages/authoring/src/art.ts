@@ -10,6 +10,7 @@ import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import { AssetStore, loadInputs } from '@vn/store';
 import {
+  ChatTextLLM,
   RecordedChatBackend,
   chatBackendFor,
   chatVendorFor,
@@ -17,6 +18,7 @@ import {
   createProviders,
   type ChatBackend,
 } from '@vn/providers';
+import type { TextLLM } from '@vn/types';
 import {
   bindingSubject,
   conceptPrompt,
@@ -183,5 +185,32 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
         ...(subject ? { subject } : {}),
       };
     },
+  };
+}
+
+/**
+ * The text half of the same seam: the structured-text model `propose_storyboard` proposes with,
+ * bound to a workspace and re-resolved per call exactly as {@link workspaceArtGen} re-reads the
+ * project — `project.yaml` can change the model id mid-session and the next call honours it.
+ *
+ * Mocked, the backend echoes the prompt back, which no schema parse accepts — so `decomposeScene`
+ * answers with the deterministic baseline naming that failure, the same offline behaviour
+ * `vngen run --mock` has.
+ */
+export function workspaceTextLLM(workspace: Workspace, opts: { mock?: boolean } = {}): TextLLM {
+  async function textOf(): Promise<TextLLM> {
+    if (opts.mock) {
+      return new ChatTextLLM(new RecordedChatBackend('mock-text', (req) => req.prompt));
+    }
+    const config = await loadConfig(workspace.root);
+    const keys = await resolveKeys(config, {
+      secretsDirs: await secretDirsFor(workspace.root),
+      require: [chatVendorFor(config.models.text)],
+    });
+    return new ChatTextLLM(chatBackendFor(config.models.text, keys).backend);
+  }
+  return {
+    complete: async (prompt, system) => (await textOf()).complete(prompt, system),
+    structured: async (prompt, parse, system) => (await textOf()).structured(prompt, parse, system),
   };
 }

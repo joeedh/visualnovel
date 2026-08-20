@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { openGit } from '@vn/git';
 import { AssetStore, ProjectPaths, readShots, writeShots } from '@vn/store';
 import { exists, VnError } from '@vn/util';
-import type { Shot } from '@vn/types';
+import type { Shot, TextLLM } from '@vn/types';
 import type { ConceptRequest, DescribeRequest, RedrawRequest } from '@vn/artgen';
 import {
   createRegistry,
@@ -2052,6 +2052,263 @@ describe('create tools with the full field set', () => {
       const text = await fs.readFile(join(dir, 'locations', 'the_workshop.md'), 'utf8');
       expect(text).toContain('lighting: one lamp');
       expect(text).toContain('night');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+/**
+ * The storyboard tools: the seam between the agent and `@vn/scriptedit`'s shot rules plus
+ * `@vn/artgen`'s realization gauntlet, both tested where they live. What is asserted here is
+ * which file each act writes (and that refusals write nothing), that the `nextShot` mark
+ * round-trips so a deleted id stays retired, and that a proposal is read back rather than
+ * persisted.
+ */
+describe('storyboard tools', () => {
+  /** A text seam that answers with fixed JSON — or refuses to parse, like the mock echo does. */
+  const fakeText = (answer: string): TextLLM => ({
+    complete: () => Promise.resolve(answer),
+    structured: async (_prompt, parse) => parse(answer),
+  });
+
+  it('read_shots on an undecomposed scene names both doors and writes nothing', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run('read_shots', { scene: 'ending' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('propose_storyboard');
+      expect(r.output).toContain('newShot');
+      expect(await exists(join(dir, 'vngen', 'work', 'shots', 'ending.json'))).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('newShot creates the storyboard, and the mark keeps a deleted id retired', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const first = await run(
+        'edit_scene',
+        { op: 'newShot', scene: 'ending', lineIds: ['ending:L1'], framing: 'close' },
+        ctx,
+      );
+      expect(first.ok).toBe(true);
+      expect(first.written).toEqual(['vngen/work/shots/ending.json']);
+      expect(first.output).toContain('ends decomposition');
+
+      const second = await run(
+        'edit_scene',
+        { op: 'newShot', scene: 'ending', lineIds: ['ending:L2'] },
+        ctx,
+      );
+      expect(second.ok).toBe(true);
+
+      const paths = new ProjectPaths(dir);
+      let board = await readShots(paths, 'ending');
+      expect(board?.shots.map((s) => s.id)).toEqual(['ending__shot1', 'ending__shot2']);
+      // The speaker of the claimed line is the default cast; L1 has none.
+      expect(board?.shots[0]!.subjects).toEqual([]);
+      expect(board?.shots[0]!.framing).toBe('close');
+      expect(board?.shots[1]!.subjects).toEqual([{ characterId: 'aiko' }]);
+
+      const del = await run(
+        'edit_scene',
+        { op: 'deleteShot', scene: 'ending', shot: 'ending__shot2' },
+        ctx,
+      );
+      expect(del.ok).toBe(true);
+      expect(del.output).toContain('become uncovered');
+
+      // The freed lines come back as a *new* frame: shot2 stays retired.
+      const again = await run(
+        'edit_scene',
+        { op: 'newShot', scene: 'ending', lineIds: ['ending:L2'] },
+        ctx,
+      );
+      expect(again.ok).toBe(true);
+      board = await readShots(paths, 'ending');
+      expect(board?.shots.map((s) => s.id)).toEqual(['ending__shot1', 'ending__shot3']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('deleting the last shot deletes the file, so the scene is decomposed again', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await run('edit_scene', { op: 'newShot', scene: 'ending', lineIds: ['ending:L1'] }, ctx);
+      const r = await run(
+        'edit_scene',
+        { op: 'deleteShot', scene: 'ending', shot: 'ending__shot1' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('decomposed again');
+      expect(await exists(join(dir, 'vngen', 'work', 'shots', 'ending.json'))).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('set_coverage restates the whole set, and a released line is reported as a gap', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await run(
+        'edit_scene',
+        { op: 'newShot', scene: 'ending', lineIds: ['ending:L1', 'ending:L2'] },
+        ctx,
+      );
+      const r = await run(
+        'set_coverage',
+        { scene: 'ending', shot: 'ending__shot1', lines: ['ending:L2', 'ending:L3'] },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['vngen/work/shots/ending.json']);
+      expect(r.output).toContain('uncovered');
+      const board = await readShots(new ProjectPaths(dir), 'ending');
+      expect(board?.shots[0]!.coversLines).toEqual(['ending:L2', 'ending:L3']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('propose_storyboard refuses without a text seam', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const r = await run('propose_storyboard', { scene: 'ending' }, ctx);
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('no text model');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('propose_storyboard reads a proposal into the conversation and writes nothing', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      ctx.text = fakeText(
+        JSON.stringify({
+          shots: [
+            {
+              id: 'opener',
+              framing: 'wide',
+              location: 'day',
+              subjects: [{ characterId: 'aiko' }],
+              coversLines: ['ending:L1', 'ending:L2', 'ending:L3'],
+            },
+          ],
+        }),
+      );
+      const r = await run('propose_storyboard', { scene: 'ending' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('Proposed by the model.');
+      expect(r.output).toContain('ending__opener');
+      expect(r.output).toContain('Nothing is written.');
+      expect(await exists(join(dir, 'vngen', 'work', 'shots', 'ending.json'))).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('propose_storyboard reports the baseline with its reason when no model answer parses', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      ctx.text = fakeText('not json'); // the mock echo's behaviour: nothing a schema accepts
+      const r = await run('propose_storyboard', { scene: 'ending' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('deterministic baseline');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('write_storyboard runs the batch gauntlet: namespaced ids, inventions dropped', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'write_storyboard',
+        {
+          scene: 'ending',
+          shots: [
+            {
+              id: 'opener',
+              framing: 'wide',
+              location: 'nowhere', // not a classroom variant — coerced to the first one
+              subjects: [{ characterId: 'AIKO' }, { characterId: 'ghost' }],
+              coversLines: ['ending:L1', 'ending:L99'],
+            },
+          ],
+        },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['vngen/work/shots/ending.json']);
+      expect(r.output).toContain('ends decomposition');
+      const board = await readShots(new ProjectPaths(dir), 'ending');
+      const shot = board?.shots[0];
+      expect(shot?.id).toBe('ending__opener');
+      expect(shot?.location).toBe('day');
+      expect(shot?.subjects).toEqual([{ characterId: 'aiko' }]); // case fixed, invention dropped
+      expect(shot?.coversLines).toEqual(['ending:L1']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('write_storyboard refuses where a storyboard exists, and propose_storyboard does too', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await run('edit_scene', { op: 'newShot', scene: 'ending', lineIds: ['ending:L1'] }, ctx);
+      const shots = [
+        {
+          id: 'opener',
+          framing: 'wide',
+          location: 'day',
+          subjects: [],
+          coversLines: ['ending:L1'],
+        },
+      ];
+      const w = await run('write_storyboard', { scene: 'ending', shots }, ctx);
+      expect(w.ok).toBe(false);
+      expect(w.output).toContain('wins forever');
+
+      ctx.text = fakeText('{"shots":[]}');
+      const p = await run('propose_storyboard', { scene: 'ending' }, ctx);
+      expect(p.ok).toBe(false);
+      expect(p.output).toContain('wins forever');
+
+      const board = await readShots(new ProjectPaths(dir), 'ending');
+      expect(board?.shots.map((s) => s.id)).toEqual(['ending__shot1']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('write_storyboard refuses a list that binds nothing, rather than writing the baseline', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'write_storyboard',
+        {
+          scene: 'ending',
+          shots: [
+            {
+              id: 'opener',
+              framing: 'wide',
+              location: 'day',
+              subjects: [],
+              coversLines: ['ending:L99'], // no real line — realization would baseline
+            },
+          ],
+        },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('refused:');
+      expect(r.output).toContain('nothing was written');
+      expect(await exists(join(dir, 'vngen', 'work', 'shots', 'ending.json'))).toBe(false);
     } finally {
       await cleanup();
     }

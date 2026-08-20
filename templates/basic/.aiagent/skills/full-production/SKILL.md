@@ -1,6 +1,6 @@
 ---
 name: Full Production Pass
-description: The whole route from a one-line premise to a storyboarded project — bible, characters, outline, treatment, scenes, scripts, locations, then the hand-off to decomposition.
+description: The whole route from a one-line premise to a storyboarded project — bible, characters, outline, treatment, scenes, scripts, locations, then the hand-off to shots.
 when-to-use: The user has a premise and wants a whole VN built, or asks what order to do things in. Also when picking a half-built project back up — start at the first phase whose output is missing.
 ---
 
@@ -99,22 +99,33 @@ created.
 
 Finish with `validate_inputs`, then commit.
 
-## The hand-off — shots
+## The hand-off — shots, by decomposition or by hand
 
-**You cannot make shots.** Decomposition is a pipeline step: the author runs **Decompose All
-Scenes** in the app (`story.decomposeAll`) or a `vngen run`. It is an explicit act because an
-absent `vngen/work/shots/<sceneId>.json` is the only signal meaning "decompose this", and a
-decomposition, once written, wins forever.
+A scene gets its storyboard one of three ways, and each is an explicit act, because a storyboard,
+once written, wins forever:
 
-So end phase 9 by saying exactly that, and stop. Once the author has run it, you can work on the
-storyboard:
+- **Batch decomposition** — the author runs **Decompose All Scenes** in the app
+  (`story.decomposeAll`) or a `vngen run`. Cheapest per scene, and the right default for a whole
+  project.
+- **A proposal you draft** — `propose_storyboard` decomposes one scene with a model call and
+  writes nothing; if the author approves what you showed them, restate it to `write_storyboard`.
+- **Shots placed by hand** — `edit_scene op=newShot` covers the lines you pass with a new frame.
+  The first one on an undecomposed scene writes the storyboard and ends decomposition for that
+  scene, so place it only when the author has chosen the by-hand route.
 
-- **Read it first.** Coverage is what to check: every line covered by exactly one shot, no shot
-  with no lines. A shot with no lines never appears; a line with no shot leaves the previous image
-  on screen.
-- **Framing is the decomposer's choice, not yours** — you cannot set `framing` or `subjects`. What
-  you can do is `set_art_notes rung=shot:<sceneId>/<shotId>` to direct a frame ("the speaker in the
-  near third, listener over-shoulder"), `set_outfit shot=…`, and `edit_scene op=moveShot` to
-  reorder, which moves the lines the shot covers.
+So end phase 9 by naming the choice, and stop — do not pick for the author. Every new shot id,
+whichever door made it, is a new frame the pipeline will owe. Once a storyboard exists, you can
+work on it:
+
+- **Read it first** with `read_shots`. Coverage is what to check: every line covered by exactly
+  one shot, no shot with no lines. A shot with no lines never appears; a line with no shot leaves
+  the previous image on screen.
+- **Coverage edits are free.** `set_coverage` restates the full set of lines a shot covers —
+  claiming takes from the shot that held them — and re-renders nothing. `edit_scene op=moveShot`
+  reorders by moving the lines the shot covers.
+- To direct a frame, `set_art_notes rung=shot:<sceneId>/<shotId>` ("the speaker in the near third,
+  listener over-shoulder") and `set_outfit shot=…`. Framing and subjects are set at birth
+  (`newShot`/`write_storyboard`); to change them afterwards, delete the shot and place it again —
+  which orphans any art already paid for, so say so first.
 - Art notes are **appended** to the derived prompt and **re-render** the frames they reach. Say how
   many pictures a proposal re-draws before proposing it.

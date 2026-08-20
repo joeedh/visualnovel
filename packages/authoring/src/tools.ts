@@ -63,6 +63,7 @@ import {
 } from './approve.js';
 import {
   AssetStore,
+  deleteShots,
   guardedDir,
   readDocFile,
   readShots,
@@ -72,12 +73,22 @@ import {
   writeShots,
 } from '@vn/store';
 import { exists, readText, writeFileAtomic } from '@vn/util';
-import { bindsTo, type Asset, type Diagnostic, type ProjectModel, type Shot } from '@vn/types';
+import {
+  bindsTo,
+  type Asset,
+  type Diagnostic,
+  type ProjectModel,
+  type Scene,
+  type Shot,
+  type TextLLM,
+} from '@vn/types';
 import type { Git } from '@vn/git';
 import {
   assetSlotLabel,
+  decomposeScene,
   formatSubject,
   parseSubject,
+  realizeDecomposition,
   rungsFor,
   setArtNotes,
   type NotesMode,
@@ -149,6 +160,12 @@ export interface ToolContext {
    * than assume an API key exists to spend.
    */
   art?: ArtGen;
+  /**
+   * The structured-text model, wired by the host that knows the model id, where the keys are and
+   * whether this run is mocked — the seam `art` is, for the text half. Absent in bare contexts,
+   * in which case `propose_storyboard` refuses rather than assume an API key exists to spend.
+   */
+  text?: TextLLM;
   /**
    * Re-rendering a planned asset, wired by the host that owns the pipeline. `@vn/authoring` may
    * not import `@vn/pipeline` or `@vn/scheduler`, and this is why it does not have to: absent —
@@ -682,11 +699,13 @@ const createLocationTool: Tool<z.infer<typeof locationCreateShape>> = {
 // ── Scene prose (execute mode) ──────────────────────────────────────────────
 
 /**
- * The eleven acts, named exactly as the desktop's `story.*` commands are, because they *are* those
- * commands' decisions: an agent transcript and a command history should read as the same vocabulary.
- * `insertLines` and `deleteLines` are the twelfth and thirteenth and have no button behind them —
- * a person types or removes one line at a time and a model rewrites forty, and `@vn/scriptedit`
- * still allocates every id.
+ * The thirteen acts, named exactly as the desktop's `story.*` commands are, because they *are*
+ * those commands' decisions: an agent transcript and a command history should read as the same
+ * vocabulary. `insertLines` and `deleteLines` have no button behind them — a person types or
+ * removes one line at a time and a model rewrites forty, and `@vn/scriptedit` still allocates
+ * every id. `newShot` and `deleteShot` write the storyboard rather than prose — they are here,
+ * not their own tools, because to the author making a shot IS a scene edit, and the vocabulary
+ * rule above outranks which file the write lands in.
  */
 const SCENE_OPS = [
   'setLineText',
@@ -696,6 +715,8 @@ const SCENE_OPS = [
   'deleteLines',
   'moveLine',
   'moveShot',
+  'newShot',
+  'deleteShot',
   'setSpeaker',
   'newScene',
   'setHeading',
@@ -720,9 +741,15 @@ const sceneEditShape = z.object({
   scene: z
     .string()
     .optional()
-    .describe('insertLine, moveShot, newScene, setHeading, deleteScene, splitScene, mergeScene'),
+    .describe(
+      'insertLine, moveShot, newShot, deleteShot, newScene, setHeading, deleteScene, ' +
+        'splitScene, mergeScene',
+    ),
   line: z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
-  shot: z.string().optional().describe('moveShot: the shot id to move, e.g. arrival__beat1'),
+  shot: z
+    .string()
+    .optional()
+    .describe('moveShot: the shot id to move, e.g. arrival__beat1; deleteShot: the one to remove'),
   text: z.string().optional().describe('setLineText, insertLine'),
   lines: z
     .array(
@@ -737,7 +764,14 @@ const sceneEditShape = z.object({
   lineIds: z
     .array(z.string().min(1))
     .optional()
-    .describe('deleteLines: the line ids to remove, in any order; all of them or none'),
+    .describe(
+      'deleteLines: the line ids to remove, in any order; all of them or none. ' +
+        'newShot: the lines the shot covers from birth — at least one, and only uncovered ones',
+    ),
+  framing: z
+    .enum(['wide', 'medium', 'close', 'establishing'])
+    .optional()
+    .describe('newShot: how the frame is composed; defaults to medium'),
   after: z
     .string()
     .optional()
@@ -776,6 +810,8 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   deleteLines: ['lineIds'],
   moveLine: ['line'],
   moveShot: ['scene', 'shot'],
+  newShot: ['scene', 'lineIds'],
+  deleteShot: ['scene', 'shot'],
   setSpeaker: ['line'],
   newScene: ['scene', 'heading'],
   setHeading: ['scene', 'heading'],
@@ -823,6 +859,11 @@ async function sceneDecider(
       return (s) => moveLine(s, { line, after });
     case 'moveShot':
       return workspace.shotOrder(scene, a.shot ?? '', after);
+    case 'newShot':
+    case 'deleteShot':
+      // Handled in run() before the decider is asked: both write the storyboard, not prose, so
+      // they never go through `planSceneEdit`.
+      throw new Error(`${a.op} does not go through planSceneEdit`);
     case 'setSpeaker':
       return (s) => setSpeaker(s, { line, speaker });
     case 'newScene':
@@ -850,6 +891,11 @@ const editSceneTool: Tool<SceneEditArgs> = {
     'split or merge a scene; reorder a shot, which moves the lines it covers. The only way to ' +
     'change a scenes/<id>.md — write_file refuses them. Reports what the edit costs the ' +
     'storyboard; moveShot costs it nothing, since no coverage and no covered prose changes. ' +
+    'newShot and deleteShot edit the storyboard instead: read it with read_shots first. A new ' +
+    'shot covers the lineIds you pass and is a new frame the pipeline will owe — the first one ' +
+    'on an undecomposed scene writes the storyboard and ends decomposition for that scene — and ' +
+    'deleting a shot releases its lines as gaps and orphans any art already paid for; deleting ' +
+    'the last one deletes the file, so the scene is decomposed again. ' +
     'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in. ' +
     'Drafting a run of prose is insertLines and clearing one is deleteLines, one call for the ' +
     'whole run — do not call insertLine or deleteLine forty times.',
@@ -858,6 +904,29 @@ const editSceneTool: Tool<SceneEditArgs> = {
   async run(a, ctx) {
     const missing = SCENE_OP_ARGS[a.op].filter((name) => a[name] === undefined);
     if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
+
+    // The two storyboard ops write `work/shots/<scene>.json`, not prose, so they bypass the
+    // scene-plan machinery and follow `set_outfit`'s write path instead. The rules are
+    // `@vn/scriptedit`'s `shotcreate` module — the ones `story.newShot` and `story.deleteShot`
+    // run — so a refusal here is verbatim the one the Coverage strip would show.
+    if (a.op === 'newShot') {
+      const op = await ctx.workspace.newShot(a.scene ?? '', a.lineIds ?? [], a.framing);
+      if (!op.ok) return fail(op.error);
+      await writeShots(ctx.workspace.paths, a.scene!, op.shots, { nextShot: op.nextShot });
+      const shotsFile = `vngen/work/shots/${a.scene}.json`;
+      return ok(op.message, {
+        written: [shotsFile],
+        data: { paths: [shotsFile], shot: op.shot.id, created: op.created },
+      });
+    }
+    if (a.op === 'deleteShot') {
+      const op = await ctx.workspace.deleteShot(a.scene ?? '', a.shot ?? '');
+      if (!op.ok) return fail(op.error);
+      if (op.deleteFile) await deleteShots(ctx.workspace.paths, a.scene!);
+      else await writeShots(ctx.workspace.paths, a.scene!, op.shots, { nextShot: op.nextShot });
+      const shotsFile = `vngen/work/shots/${a.scene}.json`;
+      return ok(op.message, { written: [shotsFile], data: { paths: [shotsFile] } });
+    }
 
     const input = await ctx.workspace.sceneEditInput();
     const plan = await planSceneEdit(input, await sceneDecider(a, ctx.workspace));
@@ -1022,6 +1091,205 @@ const setOutfitTool: Tool<z.infer<typeof outfitShape>> = {
     const files = await applyMarkerPlan(plan.patches);
     const paths = files.map((file) => rel(ctx.workspace.root, file));
     return ok(op.message, { written: paths, data: { paths } });
+  },
+};
+
+// ── Storyboards: reading one, covering lines, and making one whole ──────────
+
+/**
+ * A storyboard as the model reads it back: every shot with its framing, variant, cast and the
+ * line ids it covers, then the gaps. One renderer for `read_shots` and `propose_storyboard`, so
+ * what the agent proposes and what it later reads back are the same picture.
+ */
+function formatStoryboard(scene: Scene, shots: readonly Shot[]): string {
+  const covered = new Set(shots.flatMap((s) => s.coversLines));
+  const rows = shots.map((s) => {
+    const cast =
+      s.subjects.map((x) => x.characterId + (x.outfit ? `/${x.outfit}` : '')).join(', ') ||
+      'nobody in frame';
+    const lines = s.coversLines.length
+      ? `covers ${s.coversLines.join(', ')}`
+      : 'covers nothing — never shown';
+    return `${s.id}  [${s.framing} @${s.location}]  ${cast}\n    ${lines}`;
+  });
+  const gaps = scene.lines.filter((l) => !covered.has(l.id)).map((l) => l.id);
+  const tail = gaps.length
+    ? `Uncovered: ${gaps.join(', ')} — the runner holds the previous image over them.`
+    : 'Every line is covered.';
+  return [...rows, tail].join('\n');
+}
+
+const readShotsTool: Tool<{ scene: string }> = {
+  name: 'read_shots',
+  description:
+    'Read a scene’s storyboard: each shot’s framing, location variant, cast and the line ids it ' +
+    'covers, plus the lines nothing covers. The look before any storyboard write — set_coverage, ' +
+    'edit_scene’s newShot and deleteShot, set_outfit with a shot, write_storyboard. A scene with ' +
+    'no storyboard says so, and names both doors: propose then write one, or place the first ' +
+    'shot by hand.',
+  mutating: false,
+  args: z.object({ scene: z.string().min(1).describe('the scene whose storyboard to read') }),
+  async run(a, ctx) {
+    const { model } = await ctx.workspace.load();
+    const scene = model.scenes.get(a.scene);
+    if (!scene) return fail(`No scene "${a.scene}".`);
+    const loaded = await readShots(
+      ctx.workspace.paths,
+      a.scene,
+      new Set(scene.lines.map((l) => l.id)),
+    );
+    if (!loaded) {
+      return ok(
+        `Scene "${a.scene}" has no storyboard yet — nothing has decomposed it and no shot was ` +
+          'placed by hand. propose_storyboard drafts one to review; edit_scene op=newShot places ' +
+          'the first shot by hand, which ends decomposition for the scene.',
+      );
+    }
+    return ok(
+      `Storyboard for "${a.scene}" (${loaded.shots.length} shot(s)):\n` +
+        formatStoryboard(scene, loaded.shots),
+      { data: { shots: loaded.shots } },
+    );
+  },
+};
+
+const coverageShape = z.object({
+  scene: z.string().min(1).describe('the scene the shot belongs to'),
+  shot: z.string().min(1).describe('the shot whose coverage is being restated'),
+  lines: z
+    .array(z.string())
+    .describe(
+      'the full set of line ids the shot covers after the edit — a line it had that is not ' +
+        'listed is released as a gap',
+    ),
+});
+
+const setCoverageTool: Tool<z.infer<typeof coverageShape>> = {
+  name: 'set_coverage',
+  description:
+    'Restate which line ids one shot is on screen for — the whole set, not a delta. Free: ' +
+    'coverage is not in a shot’s task hash, so nothing re-renders. Claiming a line takes it from ' +
+    'whichever shot had it, and a claim that would leave a neighbour empty is refused — delete ' +
+    'the neighbour first if that is what you mean. A released line is a gap the runner shows as ' +
+    'the previous image held too long. Read what covers what with read_shots first.',
+  mutating: true,
+  args: coverageShape,
+  async run(a, ctx) {
+    const op = await ctx.workspace.shotCoverage(a.scene, a.shot, a.lines);
+    if (!op.ok) return fail(op.error);
+    await writeShots(ctx.workspace.paths, a.scene, op.shots);
+    const shotsFile = `vngen/work/shots/${a.scene}.json`;
+    return ok(op.message, { written: [shotsFile], data: { paths: [shotsFile] } });
+  },
+};
+
+const proposeStoryboardTool: Tool<{ scene: string }> = {
+  name: 'propose_storyboard',
+  description:
+    'Ask the decomposer for a storyboard proposal for one scene and read it back into the ' +
+    'conversation — shots, coverage, and where the answer came from (the model, or the ' +
+    'deterministic baseline with the reason no model answered). Writes nothing, but spends one ' +
+    'structured text call. Persisting is write_storyboard, restating the shots the author ' +
+    'approved — in this same conversation, because a reopened thread is read-only, so an ' +
+    'unpersisted proposal dies with its conversation and a re-proposal is a new roll of the dice.',
+  mutating: false,
+  args: z.object({ scene: z.string().min(1).describe('the scene to storyboard') }),
+  async run(a, ctx) {
+    if (!ctx.text) {
+      return fail('no text model is wired into this session, so there is nothing to propose with.');
+    }
+    const { model } = await ctx.workspace.load();
+    const scene = model.scenes.get(a.scene);
+    if (!scene) return fail(`No scene "${a.scene}".`);
+    const loaded = await readShots(
+      ctx.workspace.paths,
+      a.scene,
+      new Set(scene.lines.map((l) => l.id)),
+    );
+    if (loaded) {
+      return fail(
+        `Scene "${a.scene}" already has a storyboard, and the file wins forever — edit it with ` +
+          'edit_scene (newShot/deleteShot), set_coverage and set_outfit instead.',
+      );
+    }
+    const result = await decomposeScene(scene, model, { text: ctx.text });
+    const source =
+      result.source === 'model'
+        ? 'Proposed by the model.'
+        : `The deterministic baseline — no model answer was used: ${result.reason ?? 'unknown'}.`;
+    return ok(
+      `${source}\n${formatStoryboard(scene, result.shots)}\n` +
+        'Nothing is written. If the author approves, restate these shots to write_storyboard.',
+      { data: { source: result.source, reason: result.reason, shots: result.shots } },
+    );
+  },
+};
+
+const storyboardShotShape = z.object({
+  id: z.string().min(1).describe('the shot id from the proposal, e.g. arrival__establishing'),
+  framing: z.enum(['wide', 'medium', 'close', 'establishing']),
+  location: z.string().min(1).describe('a variant id of the scene’s location'),
+  subjects: z
+    .array(
+      z.object({
+        characterId: z.string().min(1),
+        pose: z.string().optional(),
+        expression: z.string().optional(),
+      }),
+    )
+    .describe('who is in frame; wardrobe is deliberately not here — outfits are set_outfit’s'),
+  camera: z.string().optional(),
+  coversLines: z.array(z.string()).describe('the line ids this shot is on screen for'),
+});
+
+const writeStoryboardShape = z.object({
+  scene: z.string().min(1).describe('the scene the storyboard is for'),
+  shots: z
+    .array(storyboardShotShape)
+    .min(1)
+    .describe('the full shot list, restated from the proposal the author approved'),
+});
+
+const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
+  name: 'write_storyboard',
+  description:
+    'Persist a whole storyboard for a scene that has none — the mutating half of ' +
+    'propose_storyboard. Takes the full shot list as arguments on purpose: the decomposer is ' +
+    'non-deterministic, so what is written is exactly what the author read and approved, never a ' +
+    'fresh roll. Every shot is a frame the pipeline will owe. It refuses when a storyboard ' +
+    'already exists (no force — the file wins forever; edit it instead), and it runs the same ' +
+    'validation the batch decomposer does: unknown characters and invented line ids are dropped, ' +
+    'and a list that binds none of the scene’s lines is refused rather than repaired into the ' +
+    'baseline.',
+  mutating: true,
+  args: writeStoryboardShape,
+  async run(a, ctx) {
+    const { model } = await ctx.workspace.load();
+    const scene = model.scenes.get(a.scene);
+    if (!scene) return fail(`No scene "${a.scene}".`);
+    const existing = await readShots(
+      ctx.workspace.paths,
+      a.scene,
+      new Set(scene.lines.map((l) => l.id)),
+    );
+    if (existing) {
+      return fail(
+        `Scene "${a.scene}" already has a storyboard, and the file wins forever — edit it with ` +
+          'edit_scene (newShot/deleteShot), set_coverage and set_outfit instead.',
+      );
+    }
+    const result = realizeDecomposition({ shots: a.shots }, scene, model);
+    if (result.source === 'baseline') {
+      return fail(`refused: ${result.reason ?? 'the shots were unusable'} — nothing was written.`);
+    }
+    await writeShots(ctx.workspace.paths, a.scene, result.shots);
+    const shotsFile = `vngen/work/shots/${a.scene}.json`;
+    return ok(
+      `Wrote the storyboard for "${a.scene}" — ${result.shots.length} shot(s), each a frame the ` +
+        `pipeline will owe. This ends decomposition for the scene.\n` +
+        formatStoryboard(scene, result.shots),
+      { written: [shotsFile], data: { paths: [shotsFile], shots: result.shots } },
+    );
   },
 };
 
@@ -1987,6 +2255,10 @@ export const ALL_TOOLS: Tool[] = [
   editSceneTool,
   editBranchesTool,
   setOutfitTool,
+  readShotsTool,
+  setCoverageTool,
+  proposeStoryboardTool,
+  writeStoryboardTool,
   generateImageTool,
   listImagesTool,
   editImageTool,

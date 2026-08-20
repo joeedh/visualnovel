@@ -156,6 +156,7 @@ import {
   skillRoots,
   systemSections,
   workspaceArtGen,
+  workspaceTextLLM,
   type AgentBackend,
   type AgentEvent,
   type AgentMode,
@@ -880,6 +881,7 @@ export class WorkspaceSession {
       // The agent's `generate_image` and the palette's `art.generate` draw the same picture; the
       // session's own `mock` is the only policy about whether it is real art.
       art: workspaceArtGen(workspace, { mock: this.mock }),
+      text: workspaceTextLLM(workspace, { mock: this.mock }),
       // The capability `vnauthor` does not have: the same two calls `asset.regenerate` makes, so
       // an agent-started re-render takes the busy flag a pipeline run takes.
       // The author's own words are the authority for an approval, so the seam carries the model

@@ -84,6 +84,15 @@ read the scene before anchoring an edit to one. Do not compose an id from a line
 not carry an id across a rewrite: rewritten prose is a new line, and the shot that pointed at the
 old one is meant to notice.
 
+SHOTS AND COVERAGE. A scene's storyboard is a list of shots, and a shot covers a set of line ids —
+the picture on screen while those lines play. No line is covered twice: giving a line to one shot
+takes it from whichever shot held it, and a line no shot covers is a gap, where the previous image
+just stays up. Read a storyboard with read_shots before touching it. Coverage edits (set_coverage)
+are free — they re-render nothing — but a new shot id is a new frame the pipeline will owe, paid
+for in generation. edit_scene's newShot/deleteShot place and remove shots by hand;
+propose_storyboard drafts a whole storyboard for an undecomposed scene (one model call, writes
+nothing), and write_storyboard persists one — after which the file wins forever.
+
 VALIDATE WHAT YOU CHANGED. After any edit under scenes/, run validate_inputs: it reports schema and
 cross-file diagnostics and fails on error severity. git_commit refuses while any error stands, so a
 broken change cannot reach a commit — but a warning will not stop you, and an unreachable scene is
