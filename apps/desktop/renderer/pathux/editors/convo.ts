@@ -207,6 +207,12 @@ export class ConvoEditor extends VnEditor {
   private tokensLbl?: Label;
   private budgetMenu?: DropBox;
   private drawn = -1;
+  /**
+   * What {@link sayBudget} last painted. The ceiling is deliberately outside {@link stateKey} — a
+   * bar rebuilt under an open menu closes it mid-choice — so nothing else notices the author
+   * picking one, and the label read the old number until the next turn bumped the revision.
+   */
+  private budgetKey = '';
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
   /** The form page whose box already took focus, so a redraw does not steal the caret back. */
@@ -232,7 +238,9 @@ export class ConvoEditor extends VnEditor {
   override init() {
     super.init();
 
-    this.bar = (this.header as Container).row();
+    // A column of two rows rather than one long row: the bar carries eleven controls, and a
+    // single row pushes the last of them off the end of any pane narrower than the window.
+    this.bar = (this.header as Container).col();
     this.rebuildBar();
 
     this.adoptStyle(STUDIO_CSS + SURFACE_CSS);
@@ -250,6 +258,7 @@ export class ConvoEditor extends VnEditor {
 
     if (revision() !== this.drawn) this.rebuild();
     if (this.stateKey() !== this.barKey) this.rebuildBar();
+    if (this.budgetSay() !== this.budgetKey) this.sayBudget();
   }
 
   /** What the bar draws from. Three session facts, none of them the conversation's. */
@@ -267,11 +276,12 @@ export class ConvoEditor extends VnEditor {
     const ui = this.ui;
 
     this.bar.clear();
-    this.bar.label('VNAUTHOR').style['padding'] = '0px 8px';
-    const mode = this.bar.button(
-      ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE',
-      () => void toggleMode(),
-    );
+    // Row one is what a turn is answered *with*; row two is what it costs and where it is kept.
+    const top = this.bar.row();
+    const low = this.bar.row();
+
+    top.label('VNAUTHOR').style['padding'] = '0px 8px';
+    const mode = top.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => void toggleMode());
     mode.description =
       ui.agentMode === 'plan'
         ? 'Plan mode: the agent reads and proposes, and edits nothing. Click to let it edit.'
@@ -287,7 +297,7 @@ export class ConvoEditor extends VnEditor {
       `Answer with ${id} from the next turn on.`,
       id,
     ]) as MenuTemplate;
-    const model = this.bar.menu(ui.model || 'model…', models);
+    const model = top.menu(ui.model || 'model…', models);
     model.description = 'Which model answers. Switching takes effect on the next turn.';
 
     // Only what this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable thinks
@@ -301,7 +311,7 @@ export class ConvoEditor extends VnEditor {
       `Think at ${effortLabel(choice)} from the next turn on.`,
       choice,
     ]) as MenuTemplate;
-    const effort = this.bar.menu(`effort: ${effortLabel(ui.effort)}`, efforts);
+    const effort = top.menu(`effort: ${effortLabel(ui.effort)}`, efforts);
     effort.description = 'How hard the model thinks before answering. Higher costs more.';
     // A model with no thinking knob gets the menu greyed rather than hidden — the setting is kept
     // across a model switch, so what the author picked is still true, it is just not in use.
@@ -322,27 +332,27 @@ export class ConvoEditor extends VnEditor {
         : `Stop a turn once it has spent ${choice} tokens the cache did not serve.`,
       choice,
     ]) as MenuTemplate;
-    this.budgetMenu = this.bar.menu('', budgets);
+    this.budgetMenu = low.menu('', budgets);
     this.sayBudget();
 
-    this.tokensLbl = this.bar.label('');
+    this.tokensLbl = low.label('');
     this.tokensLbl.setCSSAfter(() => (this.tokensLbl!.style['padding'] = '0px 8px'));
     this.sayTokens();
 
-    this.threadsBtn = this.bar.button('Threads', () => void this.showThreads());
+    this.threadsBtn = low.button('Threads', () => void this.showThreads());
     this.threadsBtn.description =
       'Saved conversations. Reopening one is read-only — the agent is not shown it.';
 
     // Beside the list rather than only inside it: starting a fresh conversation is the commonest
     // thing anyone opens that menu for, and it is one gesture, not two.
-    const fresh = this.bar.button('New', () => void exec('agent.newThread'));
+    const fresh = low.button('New', () => void exec('agent.newThread'));
     fresh.description =
       'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
       'stays under Threads.';
 
     // Through the registry: the transcript follows `agent.clear` itself, so clearing from here
     // and clearing from the palette are one act with one record.
-    const clear = this.bar.button('Clear', () => void exec('agent.clear'));
+    const clear = low.button('Clear', () => void exec('agent.clear'));
     clear.description =
       'Forget this conversation and start again in plan mode. The thread stays saved.';
     this.bar.flushUpdate();
@@ -352,7 +362,12 @@ export class ConvoEditor extends VnEditor {
    * The ceiling, and what the turn in flight has spent against it. Retitled in place rather than
    * rebuilt, so a click that opens the menu is not undone by the next usage event arriving.
    */
+  private budgetSay(): string {
+    return `${this.ui.budget}|${convo().turnSpend}`;
+  }
+
   private sayBudget(): void {
+    this.budgetKey = this.budgetSay();
     if (!this.budgetMenu) return;
     const choice = this.ui.budget;
     const spent = convo().turnSpend;
