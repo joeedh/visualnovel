@@ -82,6 +82,13 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
   let pendingLineId: string | undefined;
   /** Marks that never found an element, reported once the scene's final id is known. */
   const dangling = new Map<Scene, string[]>();
+  /**
+   * Notes no marker parses out of, with the scene they sat in — `null` for one stranded above the
+   * first heading, which is exactly the kind worth saying. Classified in the final pass rather
+   * than here, because that is where `[[scene:]]` overrides land and a diagnostic stamped earlier
+   * could carry an id the scene no longer has.
+   */
+  const strayNotes: { scene: Scene | null; text: string }[] = [];
 
   const addDangling = (scene: Scene, id: string): void => {
     dangling.set(scene, [...(dangling.get(scene) ?? []), id]);
@@ -144,7 +151,11 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
         break;
       case 'note': {
         const marker = parseBranchMarker(el.text);
-        if (!marker || !current) break;
+        if (!marker) {
+          strayNotes.push({ scene: current, text: el.text.trim() });
+          break;
+        }
+        if (!current) break;
         if (marker.kind === 'scene') sceneIdOverrides.set(current, marker.id);
         else if (marker.kind === 'choice')
           current.choices.push({ label: marker.label, goto: marker.goto } satisfies Choice);
@@ -244,5 +255,44 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
     }
   }
 
+  for (const { scene, text } of strayNotes) {
+    const classified = strayNoteDiagnostic(text);
+    if (!classified) continue;
+    const where = scene?.id ?? opts.sceneId;
+    diagnostics.push({
+      ...classified,
+      message: `[[${text}]]${where ? ` (scene ${where})` : ''} ${classified.message}`,
+      ...(where ? { where } : {}),
+    });
+  }
+
   return { scenes, mined, diagnostics };
+}
+
+/**
+ * What a note no marker parses is worth saying, or nothing at all. Severity follows **consequence,
+ * not confidence**: a `choice`/`next`/`line` that fails to parse silently loses a story-graph edge
+ * or a shot's anchor, while `outfit`, `nextline` and `scene` each document a fallback to a plain
+ * note in `parseBranchMarker`, so erroring on one would overrule a decision made there. A note with
+ * no colon is ordinary Fountain prose and is not a failed anything.
+ *
+ * The text is the only handle anyone has: notes never become `SceneLine`s, so no line id addresses
+ * one.
+ */
+function strayNoteDiagnostic(text: string): Omit<Diagnostic, 'where'> | null {
+  const colon = text.indexOf(':');
+  if (colon < 0) return null;
+  const key = text.slice(0, colon).trim().toLowerCase();
+  if (key === 'choice' || key === 'next' || key === 'goto' || key === 'line') {
+    return {
+      severity: 'error',
+      code: 'unparsed_branch_marker',
+      message: `is a ${key} marker that does not parse; the edge or anchor it names is lost, and it will be absent from the scene the next time it is written`,
+    };
+  }
+  return {
+    severity: 'warning',
+    code: 'unknown_marker',
+    message: `is not a branch marker; it will be absent from the scene the next time it is written`,
+  };
 }
