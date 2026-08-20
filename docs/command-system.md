@@ -32,8 +32,10 @@
 
 Every action the desktop shell can take is a **registered command**: a named, described,
 typed shim over a function that already exists. The palette, the menu bar, the document tree's
-right-click menus, the authoring agent, and an external CDP client all reach the same registry
-through the same execution path, and every execution is recorded with the document repo's git HEAD.
+right-click menus, and an external CDP client all reach the same registry through the same
+execution path, and every execution is recorded with the document repo's git HEAD. The authoring
+agent deliberately does not: its tools share the commands' _decisions_, never the registry —
+see [From the agent](#from-the-agent).
 
 This document describes what shipped. The implementation plan — including the deviations
 from it and the follow-ons deliberately left out — is

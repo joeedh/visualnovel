@@ -306,9 +306,14 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   one projection every record passes through.
 - **A mutating command declares its refusal before it runs** — `stack.check` answers `accept` |
   `refuse` | `undeclared`, and absence of a check is not permission.
-- **The palette, the menu bar, right-click menus, the agent and CDP all reach the same registry.**
-  A right-click entry is an _invocation_, never a callback: checked before it is drawn, and a
-  refusal is **shown** rather than hidden. Finding a command and filling it in are two hosts over
+- **The palette, the menu bar, right-click menus and CDP all reach the same registry — the agent
+  does not.** The agent's tools share the commands' **decisions**, never their transport: a tool
+  like `edit_scene` calls the same `@vn/scriptedit` rule its `story.*` counterpart does, but no
+  tool invokes the registry, and wiring the tool loop through it is an unshipped follow-on
+  ([`docs/command-system.md`](docs/command-system.md#from-the-agent)). So a command with no tool
+  wrapping its decision — `story.decomposeAll`, for one — is unreachable to the agent in either
+  host. A right-click entry is an _invocation_, never a callback: checked before it is drawn, and
+  a refusal is **shown** rather than hidden. Finding a command and filling it in are two hosts over
   one `CommandForm` (`openCommandDialog(id, props)`).
   ([`docs/plans/document-tree-context-menus.md`](docs/plans/document-tree-context-menus.md))
 - **Provenance, undo and commits are each opt-in** — `vngen/state/commands.jsonl`, shadow-snapshot
