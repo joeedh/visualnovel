@@ -23,3 +23,5 @@ key-instructions-review.md
 apps/desktop/.package
 apps/desktop/release
 .DS_Store
+# The review-agent-transcripts skill remembers which project transcripts it has already read.
+transcript-review-ledger.json
