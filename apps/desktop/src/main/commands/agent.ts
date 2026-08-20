@@ -29,6 +29,10 @@ export const agentRun = define({
     }),
   },
   async run({ input, scene }, ctx) {
+    // The window whose composer sent this turn is where the turn's cards belong. Without this
+    // note the ask went to whichever window held focus when it fired — usually right, until the
+    // author is reading in another window, at which point the card lands where they are not.
+    ctx.host.noteTurnWindow(ctx.origin);
     const result = await ctx.host.session.runAgent(input, scene || undefined);
     return { message: result.final, data: result };
   },

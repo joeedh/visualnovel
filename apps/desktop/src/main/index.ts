@@ -587,6 +587,9 @@ function getStack(): CommandStack<CommandHost> {
         return true;
       },
       quitApp: () => app.quit(),
+      noteTurnWindow: (origin) => {
+        turnWindow = origin;
+      },
       windowCount: () => windows.size,
       focusedWindow: () => windows.focused() ?? 0,
       pickDirectory: async (options, target) => {

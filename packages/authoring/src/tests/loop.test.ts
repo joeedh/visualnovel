@@ -22,8 +22,10 @@ import {
   type Permission,
   type Plan,
   type PlanDecision,
+  type Tool,
   type ToolContext,
 } from '../index.js';
+import { z } from 'zod';
 
 const CHARACTER = `---
 id: aiko
@@ -1143,6 +1145,110 @@ describe('the turn budget', () => {
       expect(agent.currentBudget).toBe('50k');
       const res = await agent.run('go');
       expect(res.final).toContain('(50k)');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('a tool that throws mid-turn', () => {
+  /** A tool whose run always fails the way a locked file does. */
+  const explode: Tool = {
+    name: 'explode',
+    description: 'always fails',
+    mutating: false,
+    args: z.object({}),
+    run: () => Promise.reject(new Error('EPERM: operation not permitted, rename')),
+  };
+
+  it('answers the call with an error observation and lets the turn carry on', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const calls: AgentMessage[][] = [];
+      let step = 0;
+      const backend: AgentBackend = {
+        next(_system, messages) {
+          calls.push(messages.map((m) => ({ ...m })));
+          step++;
+          if (step === 1) {
+            return Promise.resolve({
+              actions: [{ tool: 'explode', args: {}, id: 'toolu_boom' }],
+              raw: [{ type: 'tool_use', id: 'toolu_boom', name: 'explode', input: {} }],
+            });
+          }
+          return Promise.resolve({ final: 'recovered' });
+        },
+      };
+      const events: AgentEvent[] = [];
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        registry: new Map([[explode.name, explode]]),
+        onEvent: (e) => events.push(e),
+      });
+      const res = await agent.run('go');
+      // The throw did not end the turn: the model was shown the failure and answered after it.
+      expect(res.final).toBe('recovered');
+      const failed = events.find((e) => e.type === 'tool' && !e.result.ok);
+      expect(failed).toBeDefined();
+      // The next step's transcript answers the call — same id, and marching orders that say
+      // verify what landed, then retry; nothing about committing.
+      const seen = calls[1]!;
+      const answer = seen.find((m) => m.role === 'observation' && m.toolUseId === 'toolu_boom');
+      expect(answer).toBeDefined();
+      expect(String(answer!.content)).toContain('"explode" failed');
+      expect(String(answer!.content)).toContain('EPERM');
+      expect(String(answer!.content)).toContain('Re-read the affected file(s)');
+      expect(String(answer!.content)).not.toContain('commit');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('repairing a thread a crash left mid-call', () => {
+  it('synthesizes the missing tool_result before the new user message', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const calls: AgentMessage[][] = [];
+      let step = 0;
+      const backend: AgentBackend = {
+        next(_system, messages) {
+          calls.push(messages.map((m) => ({ ...m })));
+          step++;
+          // Step 1 leaves a tool_use in the raw assistant blocks that the loop never answers
+          // (no matching action), and step 2 dies — the shape a crash mid-dispatch leaves.
+          if (step === 1) {
+            return Promise.resolve({
+              actions: [],
+              raw: [
+                { type: 'text', text: 'on it' },
+                { type: 'tool_use', id: 'toolu_lost', name: 'edit_file', input: {} },
+              ],
+            });
+          }
+          if (step === 2) return Promise.reject(new ProviderError('chat: connection reset'));
+          return Promise.resolve({ final: 'carried on' });
+        },
+      };
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      await expect(agent.run('go')).rejects.toThrow('connection reset');
+
+      // The next turn is what the issue's thread could never have: it heals the hole instead of
+      // dying on the same 400 forever.
+      const res = await agent.run('again');
+      expect(res.final).toBe('carried on');
+      const seen = calls[2]!;
+      const fix = seen.findIndex((m) => m.role === 'observation' && m.toolUseId === 'toolu_lost');
+      const ask = seen.findIndex((m) => m.role === 'user' && m.content === 'again');
+      expect(fix).toBeGreaterThan(-1);
+      expect(fix).toBeLessThan(ask);
+      expect(String(seen[fix]!.content)).toContain('interrupted before it could report a result');
+      // Repair is idempotent: the one hole got one answer.
+      const fixes = seen.filter((m) => m.role === 'observation' && m.toolUseId === 'toolu_lost');
+      expect(fixes).toHaveLength(1);
     } finally {
       await cleanup();
     }

@@ -580,6 +580,49 @@ export class Agent {
    * filed as a `context` message ahead of the user's, so "rewrite this line" has a *this*; a host
    * that knows nothing passes nothing, and the transcript reads exactly as it did before.
    */
+  /**
+   * Answer any `tool_use` the transcript left hanging. A crash between the assistant message and
+   * its observations — the process died, an old build let a tool's throw escape the loop — leaves
+   * calls no `tool_result` answers, and a native API refuses the whole conversation from then on:
+   * every later turn fails with the same 400. Synthesizing the missing answers here, before the
+   * new user message, is what lets an already-damaged thread carry on.
+   */
+  private repairDanglingCalls(): void {
+    const last = this.messages[this.messages.length - 1];
+    const lastAssistant = [...this.messages].reverse().find((m) => m.role === 'assistant');
+    if (!lastAssistant || !Array.isArray(lastAssistant.content)) return;
+    // Only a *trailing* assistant turn can be owed answers; anything older was already replied
+    // to (or the API would have refused at the time). `last` may be one of its observations.
+    if (last !== lastAssistant && last?.role !== 'observation') return;
+    const asked = lastAssistant.content
+      .filter(
+        (block): block is { type: string; id: string } =>
+          typeof block === 'object' &&
+          block !== null &&
+          (block as { type?: unknown }).type === 'tool_use' &&
+          typeof (block as { id?: unknown }).id === 'string',
+      )
+      .map((block) => block.id);
+    const from = this.messages.indexOf(lastAssistant);
+    const answered = new Set(
+      this.messages
+        .slice(from + 1)
+        .filter((m) => m.role === 'observation' && m.toolUseId)
+        .map((m) => m.toolUseId),
+    );
+    for (const id of asked) {
+      if (answered.has(id)) continue;
+      this.messages.push({
+        role: 'observation',
+        content:
+          'Error: this tool call was interrupted before it could report a result. It may have ' +
+          'partially applied. Re-read the affected file(s) to see what is actually on disk ' +
+          'before retrying or continuing.',
+        toolUseId: id,
+      });
+    }
+  }
+
   async run(userInput: string, focus?: string): Promise<RunResult> {
     const events: AgentEvent[] = [];
     const emit = (event: AgentEvent): void => {
@@ -587,6 +630,7 @@ export class Agent {
       this.onEvent?.(event);
     };
 
+    this.repairDanglingCalls();
     if (focus) this.messages.push({ role: 'context', content: focus });
     this.messages.push({ role: 'user', content: userInput });
     // After the user's message, never before it: a system message may not open a conversation,
@@ -645,8 +689,29 @@ export class Agent {
 
       // Every call is answered, including the ones a stop request arrived during: a `tool_use`
       // the transcript never answers is a request the model's own API will refuse to continue.
+      // That is also why a tool that *throws* — a locked file, a dead IPC channel — becomes an
+      // error observation rather than an escaped exception: the throw would end the turn with
+      // the call unanswered, and every later turn would die on the same API refusal. The model
+      // is told the one thing it cannot infer — the change may have half-landed — so its next
+      // step is to read the file back and retry from what is actually on disk.
       for (const action of actions) {
-        const observation = await this.dispatch(action.tool, action.args, emit);
+        let observation: string;
+        try {
+          observation = await this.dispatch(action.tool, action.args, emit);
+        } catch (err) {
+          const reason = failureText(err);
+          emit({
+            type: 'tool',
+            tool: action.tool,
+            args: action.args,
+            result: { ok: false, output: reason },
+          });
+          observation =
+            `Error: "${action.tool}" failed: ${reason}\n` +
+            `The change may have been partially applied. Re-read the affected file(s) to see ` +
+            `what is actually on disk, then retry the edit — or repair from that state — before ` +
+            `moving on.`;
+        }
         this.messages.push({
           role: 'observation',
           content: observation,

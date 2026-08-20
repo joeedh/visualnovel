@@ -63,6 +63,13 @@ export interface CommandHost {
   /** How many windows are open, so `window.close` can say what closing the last one does. */
   windowCount(): number;
   /**
+   * Remember which window started the agent turn about to run, so the plan, ask and confirm
+   * cards land on it rather than on whichever window happens to hold focus when they go out.
+   * `agent.run` calls this with `ctx.origin` — `undefined` for the palette-less callers (CDP,
+   * main itself), which main answers with the focused window as it does any unaddressed push.
+   */
+  noteTurnWindow(origin: WindowId | undefined): void;
+  /**
    * Which window an unaddressed effect would land in. A command run by the agent or by CDP has
    * no `ctx.origin`, and anything it remembers *about a window* has to be remembered about the
    * same one the effect reaches — otherwise `view.applyLayout` rearranges window 3 and writes

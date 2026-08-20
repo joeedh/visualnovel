@@ -22,9 +22,34 @@ export async function writeFileAtomic(path: string, data: string | Uint8Array): 
   const tmp = `${path}.tmp-${randomBytes(6).toString('hex')}`;
   try {
     await fs.writeFile(tmp, data);
-    await fs.rename(tmp, path);
+    await renameWithRetry(tmp, path);
   } finally {
     await fs.rm(tmp, { force: true }).catch(() => {});
+  }
+}
+
+/**
+ * On Windows the destination may be held open for a moment by something that scans files as
+ * they change — antivirus, an indexer, an editor's watcher — and the rename then fails EPERM
+ * (or EACCES/EBUSY) even though nothing is wrong with either path. The lock is released in
+ * milliseconds, so a failed rename is retried briefly before it is allowed to be an error.
+ */
+const RENAME_RETRYABLE = new Set(['EPERM', 'EACCES', 'EBUSY']);
+const RENAME_ATTEMPTS = 5;
+const RENAME_BASE_DELAY_MS = 10;
+
+async function renameWithRetry(from: string, to: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await fs.rename(from, to);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code ?? '';
+      if (!RENAME_RETRYABLE.has(code) || attempt >= RENAME_ATTEMPTS) throw err;
+      await new Promise((resolve) =>
+        setTimeout(resolve, RENAME_BASE_DELAY_MS * 2 ** (attempt - 1)),
+      );
+    }
   }
 }
 

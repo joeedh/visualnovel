@@ -225,6 +225,16 @@ export class ConvoEditor extends VnEditor {
   private askForm: AskForm | null = null;
   /** The live **Submit answers** button, so typing can keep its tooltip's blank count true. */
   private sendAct: HTMLButtonElement | null = null;
+  /**
+   * The ask card's element, kept so a rebuild the author did not cause reattaches it rather than
+   * rebuilding it. `rebuild` replaces the transcript wholesale, and a redraw landing between a
+   * click's press and its release detaches the row under the pointer — the click then never
+   * fires, and the author's pick silently goes nowhere. The two keys say when the card is
+   * genuinely stale: a different request, or a form the author has since moved.
+   */
+  private askCardEl: HTMLElement | null = null;
+  private askCardRequest: AskRequest | null = null;
+  private askCardForm: AskForm | null = null;
 
   static override define() {
     return {
@@ -543,6 +553,12 @@ export class ConvoEditor extends VnEditor {
     this.workingEl.style.display = state.busy ? 'block' : 'none';
     this.drawChips(state.suggestions);
 
+    // Detaching the reused ask card drops focus to the body even though the node survives, so
+    // where the author's caret was is put back once the card is in the document again.
+    const root = this.transcript.getRootNode() as Document | ShadowRoot;
+    const active = root.activeElement as HTMLElement | null;
+    const refocus = active && this.askCardEl?.contains(active) ? active : null;
+
     this.transcript.textContent = '';
     if (state.feed.length === 0 && !state.plan && !state.question && !state.confirm) {
       this.transcript.appendChild(
@@ -551,10 +567,11 @@ export class ConvoEditor extends VnEditor {
     }
     for (const item of state.feed) this.transcript.appendChild(this.turn(item));
     if (state.plan) this.transcript.appendChild(this.planCard(state.plan.plan));
-    if (state.question) this.transcript.appendChild(this.askCard(state.question));
+    if (state.question) this.transcript.appendChild(this.askCardFor(state.question));
     if (state.confirm) this.transcript.appendChild(this.confirmCard(state.confirm));
     // The transcript is bottom-aligned, so what just happened is what is on screen.
     this.transcript.scrollTop = this.transcript.scrollHeight;
+    refocus?.focus();
 
     const seeded = takeSeed();
     if (seeded !== null) {
@@ -692,6 +709,25 @@ export class ConvoEditor extends VnEditor {
     return card;
   }
 
+  /**
+   * The card, reused while nothing about it has changed. Every author-driven change — paging,
+   * picking, answering — goes through {@link page} or {@link sendAnswers} and makes a new form
+   * or clears the question, so a fresh element is built exactly when the card should look
+   * different; a rebuild caused by anything else reattaches the element the author is mid-click
+   * on. Typing is the one change that redraws nothing by design, so the input handler keeps the
+   * form key in step itself.
+   */
+  private askCardFor(request: AskRequest): HTMLElement {
+    const form = this.formFor(request);
+    if (this.askCardEl && this.askCardRequest === request && this.askCardForm === form) {
+      return this.askCardEl;
+    }
+    this.askCardRequest = request;
+    this.askCardForm = form;
+    this.askCardEl = this.askCard(request);
+    return this.askCardEl;
+  }
+
   /** The form for this request, started on arrival and kept until the answers go back. */
   private formFor(request: AskRequest): AskForm {
     if (!this.askForm || this.askForm.questions !== request.questions) {
@@ -755,6 +791,10 @@ export class ConvoEditor extends VnEditor {
     // written into the form on every keystroke instead, where a redraw will find it again.
     field.addEventListener('input', () => {
       this.askForm = type(this.askForm ?? form, field.value);
+      // The element on screen already shows this keystroke, so the card key follows the form:
+      // otherwise the next unrelated rebuild would count typing as staleness and rebuild the
+      // card, which is exactly the redraw-under-the-pointer this cache exists to prevent.
+      this.askCardForm = this.askForm;
       // The tooltip counts what is still blank, and typing is exactly what stops one being blank.
       if (this.sendAct) this.sendAct.title = this.sendTitle(this.askForm, listed);
     });
@@ -868,6 +908,9 @@ export class ConvoEditor extends VnEditor {
 
   private sendAnswers(answers: string[]): void {
     this.askForm = null;
+    this.askCardEl = null;
+    this.askCardRequest = null;
+    this.askCardForm = null;
     answer(answers);
   }
 
