@@ -425,6 +425,13 @@ export const shotDataSchema = z.object({
 export const shotsFileSchema = z.object({
   version: z.literal(1),
   scene: z.string().min(1),
+  /**
+   * High-water mark for hand-allocated `<sceneId>__shot<n>` ids — the `Scene.nextLineId`
+   * posture. A shot's id is in its task hash, so re-minting a retired id would resolve to an
+   * already-done task and silently inherit the deleted shot's frame; the mark only ever rises.
+   * Absent on decomposed and pre-mark files, where it is derived by scanning existing ids.
+   */
+  nextShot: z.number().int().positive().optional(),
   shots: z
     .array(
       z.object({

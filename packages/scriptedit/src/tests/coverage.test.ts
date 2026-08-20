@@ -1,5 +1,4 @@
 import { resolveDrag, setCoverage, spansFor, type CoverShot } from '../coverage.js';
-import type { CoverageLine, CoverageShot } from '../ipc.js';
 
 const LINES = ['s:L1', 's:L2', 's:L3', 's:L4', 's:L5', 's:L6'];
 
@@ -126,16 +125,35 @@ describe('setCoverage', () => {
 
 // ---------------------------------------------------------------------------
 // The geometry. Its own fixture: four lines, and the decomposer's interleaving.
+// The line and shot shapes are richer than the package's own — the desktop's projections carry
+// prose and drift — which is exactly what `spansFor`'s generics exist to hand back unnarrowed.
 // ---------------------------------------------------------------------------
 
-const SCRIPT: CoverageLine[] = [
+interface RichLine {
+  id: string;
+  kind: 'narration' | 'dialogue';
+  speaker?: string;
+  text: string;
+}
+
+interface RichShot {
+  id: string;
+  framing: string;
+  subjects: string[];
+  outfits: Record<string, string>;
+  coversLines: string[];
+  status: string;
+  drift: string;
+}
+
+const SCRIPT: RichLine[] = [
   { id: 's:L1', kind: 'narration', text: 'The roof, at dusk.' },
   { id: 's:L2', kind: 'dialogue', speaker: 'aiko', text: 'Um… hello.' },
   { id: 's:L3', kind: 'dialogue', speaker: 'ren', text: 'You came.' },
   { id: 's:L4', kind: 'narration', text: 'She bows, a little too deeply.' },
 ];
 
-const drawn = (id: string, coversLines: string[]): CoverageShot => ({
+const drawn = (id: string, coversLines: string[]): RichShot => ({
   id,
   framing: 'medium',
   subjects: [],
@@ -145,7 +163,7 @@ const drawn = (id: string, coversLines: string[]): CoverageShot => ({
   drift: 'current',
 });
 
-const SHOTS: CoverageShot[] = [
+const SHOTS: RichShot[] = [
   drawn('s__establishing', ['s:L1', 's:L4']),
   drawn('s__aiko', ['s:L2']),
   drawn('s__ren', ['s:L3']),
@@ -160,6 +178,8 @@ describe('spansFor', () => {
       { shotId: 's__establishing', from: 3, to: 3 },
     ]);
     expect([est.first, est.last]).toEqual([0, 3]);
+    // The caller's own shot type comes back out: fields the rules never read stay visible.
+    expect(est.shot.drift).toBe('current');
   });
 
   it('lanes shots by extent, so an interleaved bracket never draws inside another', () => {

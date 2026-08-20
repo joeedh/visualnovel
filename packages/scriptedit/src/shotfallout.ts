@@ -36,7 +36,9 @@ export interface ShotFallout {
   /**
    * Scene ids whose shots file must go — either the scene stopped existing, or it has no shots
    * left. An absent file is the *only* signal that means "decompose this scene", so removing an
-   * emptied one is how a scene gets a fresh storyboard instead of staying blank forever.
+   * emptied one is how a scene gets a fresh storyboard instead of staying blank forever. The same
+   * posture as `deleteShot` removing the last shot by hand (`shotcreate.ts`): an empty list is
+   * never written, the file is deleted instead.
    */
   removes: string[];
   /** Shots that changed file, `[shotId, destination scene]`. Their art is untouched. */

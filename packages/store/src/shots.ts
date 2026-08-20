@@ -24,11 +24,18 @@ export interface LoadedShots {
   shots: Shot[];
   /** Line ids dropped because the scene no longer has them, per shot. */
   dropped: { shotId: string; lineIds: string[] }[];
+  /**
+   * High-water mark for hand-allocated `__shot<n>` ids; see `shotsFileSchema`. Absent on
+   * decomposed and pre-mark files — `derivedNextShot` in `@vn/scriptedit` covers those.
+   */
+  nextShot?: number;
 }
 
 /**
  * Read one scene's persisted shots, or `null` when the file does not exist — which is the
- * only signal a caller may use to decide "decompose this scene". A malformed file throws
+ * only signal a caller may use to decide "decompose this scene". (The file itself may be born
+ * either way: written by a decomposer, or created around the first hand-made shot — and however
+ * it was born, it wins forever.) A malformed file throws
  * rather than being ignored: silently re-decomposing over a hand-edit is the one behaviour
  * that would make the file untrustworthy to edit.
  *
@@ -93,14 +100,18 @@ export async function readShots(
     return shot;
   });
 
-  return { shots, dropped };
+  const loaded: LoadedShots = { shots, dropped };
+  if (parsed.data.nextShot !== undefined) loaded.nextShot = parsed.data.nextShot;
+  return loaded;
 }
 
 /** The file text for a set of shots — flat `Shot`s projected into the nested on-disk shape. */
-function serialize(sceneId: string, shots: readonly Shot[]): string {
+function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): string {
   const file = {
     version: 1,
     scene: sceneId,
+    // Only present once a hand-made shot has spent an id, so decomposed files stay byte-stable.
+    ...(nextShot !== undefined ? { nextShot } : {}),
     shots: shots.map((s) => ({
       id: s.id,
       sceneId: s.sceneId,
@@ -141,15 +152,33 @@ function serialize(sceneId: string, shots: readonly Shot[]): string {
  * Write one scene's shots, skipping a byte-identical rewrite. The planner calls this once per
  * scheduler wave and `work/` is committed, so an unchanged rerun must leave the tree clean.
  * Returns whether anything was written.
+ *
+ * A caller that says nothing about `nextShot` **preserves** the file's existing mark. Most
+ * writers here — the planner, shot fallout, the outfit editors — are rewriting shots they
+ * loaded, and dropping the mark on their way through would quietly resurrect id reuse.
+ * Only the two acts that move the mark (`story.newShot` spends an id, `story.deleteShot`
+ * carries it into the rewritten file) pass one.
  */
 export async function writeShots(
   paths: ProjectPaths,
   sceneId: string,
   shots: readonly Shot[],
+  opts?: { nextShot?: number },
 ): Promise<boolean> {
   const file = paths.shotsFile(sceneId);
-  const next = serialize(sceneId, shots);
-  if ((await exists(file)) && (await readText(file)) === next) return false;
+  const had = await exists(file);
+  const before = had ? await readText(file) : undefined;
+  let mark = opts?.nextShot;
+  if (mark === undefined && before !== undefined) {
+    try {
+      const raw = JSON.parse(before) as { nextShot?: unknown };
+      if (typeof raw.nextShot === 'number') mark = raw.nextShot;
+    } catch {
+      // Unparseable is readShots's problem to report; an overwrite here keeps the caller's shots.
+    }
+  }
+  const next = serialize(sceneId, shots, mark);
+  if (before === next) return false;
   await writeFileAtomic(file, next);
   return true;
 }

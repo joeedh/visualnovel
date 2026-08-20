@@ -45,6 +45,30 @@ export {
 } from './lineops.js';
 export { moveShot, planShotMove, type PositionedShot, type ShotMove } from './shotorder.js';
 export {
+  resolveDrag,
+  range,
+  runsOf,
+  setCoverage,
+  spansFor,
+  type CoverLine,
+  type CoverShot,
+  type Coverage,
+  type CoverageOp,
+  type CoverageRow,
+  type Edge,
+  type Segment,
+  type ShotSpan,
+} from './coverage.js';
+export {
+  deleteShot,
+  derivedNextShot,
+  newShot,
+  type DeleteShotOp,
+  type NewShotOp,
+  type ShotBoard,
+  type ShotScene,
+} from './shotcreate.js';
+export {
   setSceneOutfit,
   setShotOutfit,
   wardrobesOf,

@@ -132,6 +132,31 @@ describe('shots file', () => {
     );
   });
 
+  it('round-trips the nextShot mark, and omits it until an id has been spent', async () => {
+    const paths = await tempPaths();
+    await writeShots(paths, 'arrival', [shot()]);
+    // A decomposed file never carries the field, so it stays byte-stable across versions.
+    let raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect(raw.nextShot).toBeUndefined();
+    expect((await readShots(paths, 'arrival'))?.nextShot).toBeUndefined();
+
+    expect(await writeShots(paths, 'arrival', [shot()], { nextShot: 3 })).toBe(true);
+    raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect(raw.nextShot).toBe(3);
+    expect((await readShots(paths, 'arrival'))?.nextShot).toBe(3);
+  });
+
+  it('preserves an existing mark when the caller says nothing about it', async () => {
+    const paths = await tempPaths();
+    await writeShots(paths, 'arrival', [shot()], { nextShot: 4 });
+    // The planner, fallout and outfit writers all rewrite shots they loaded; none of them may
+    // drop the mark on the way through — that would quietly resurrect id reuse.
+    await writeShots(paths, 'arrival', [shot({ framing: 'wide' })]);
+    expect((await readShots(paths, 'arrival'))?.nextShot).toBe(4);
+    // And preserving it keeps the unchanged rerun byte-identical.
+    expect(await writeShots(paths, 'arrival', [shot({ framing: 'wide' })])).toBe(false);
+  });
+
   it('deletes a file so the scene reads as undecomposed again', async () => {
     const paths = await tempPaths();
     await writeShots(paths, 'arrival', [shot()]);
