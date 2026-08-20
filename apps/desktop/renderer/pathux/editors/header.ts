@@ -26,7 +26,7 @@ import { currentLayoutFile, fetchLayouts } from '../layouts.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
 import { openDiagnostics } from '../diagnostics.js';
-import { openNotifications } from '../notifications.js';
+import { openNotifications, rectOf } from '../notifications.js';
 import { openPalette } from '../palette.js';
 import { openReportDialog } from '../report.js';
 import { paneToUse } from '../panes.js';
@@ -283,7 +283,11 @@ export class VnHeaderEditor extends VnEditor {
         ? 'Plan mode: the agent reads but never writes. Click to let it apply edits.'
         : 'Execute mode: the agent may apply edits. Click to make it read-only again.';
 
-    const bell = this.bar.button(ui.unread ? `🔔 ${ui.unread}` : '🔔', () => openNotifications());
+    // The rect is read inside the callback, not here: the bar is still being built at this point
+    // and the button has not been laid out, so a rect taken now is the zero one.
+    const bell = this.bar.button(ui.unread ? `🔔 ${ui.unread}` : '🔔', () =>
+      openNotifications(rectOf(bell)),
+    );
     bell.description = ui.unread
       ? `Show notifications — ${ui.unread} unread`
       : 'Show notifications';

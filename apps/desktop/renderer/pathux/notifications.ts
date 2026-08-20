@@ -27,6 +27,33 @@ type Popup = Container & { end(): void };
 const WIDTH = 460;
 const FILTER_KEY = 'vn.notifications.filter';
 
+/**
+ * Where a popup hangs from: the on-screen box of the control that opened it. `screen.popup` takes
+ * client coordinates and the screen fills the window, so a `getBoundingClientRect()` goes straight
+ * in with no conversion.
+ */
+export interface Anchor {
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Put a `WIDTH`-wide popup under `anchor`, right edges aligned, and keep it on screen.
+ *
+ * Right-aligned rather than left: both controls that open one sit at the right end of a bar, and a
+ * 460px box starting at the bell would hang off the edge of the window. Without an anchor — the
+ * palette, the agent, anything with no pointer behind it — it falls back to the top right corner.
+ */
+function place(
+  screenWidth: number,
+  anchor: Anchor | undefined,
+  fallbackY: number,
+): [number, number] {
+  if (!anchor) return [Math.max(8, screenWidth - WIDTH - 16), fallbackY];
+  const x = Math.min(Math.max(8, anchor.right - WIDTH), Math.max(8, screenWidth - WIDTH - 8));
+  return [x, anchor.bottom + 4];
+}
+
 let cached: Notification[] = [];
 let filter: NotificationFilter = restoreFilter();
 let list: NotificationList | undefined;
@@ -90,12 +117,15 @@ class NotificationList {
   /** Rows the author archived this session, so the ×'d row can offer Undo in the same space. */
   private readonly archived = new Set<string>();
 
-  constructor() {
+  constructor(anchor?: Anchor) {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the notifications on');
 
-    const x = Math.max(8, screen.size[0] - WIDTH - 16);
-    this.popup = screen.popup(screen as unknown as UIBase, x, 40, false) as Popup;
+    // Under the bell that opened it. It used to be pinned to the top right corner on a guessed
+    // `y = 40`, which is the header's height in one theme and a few hundred pixels away from the
+    // bell in any window whose chrome is taller.
+    const [x, y] = place(screen.size[0], anchor, 40);
+    this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
     this.popup.style['width'] = `${WIDTH}px`;
 
     const end = this.popup.end.bind(this.popup);
@@ -124,8 +154,17 @@ class NotificationList {
     // Bounded by the window as well as by a number: 420px is taller than a short screen, and a
     // list that runs off the bottom has no scrollbar the author can reach.
     rows.style['maxHeight'] = 'min(420px, 60vh)';
+    // The other half of that bound, and the one whose absence tangled the list. A flex item's
+    // `min-height` is `auto`, which is its *content* height — so a scroller full of rows refuses
+    // to shrink, `overflow-y` never engages, and the overflow is taken out of its siblings
+    // instead: the header and the rows either side of it drawn through each other. Explicit `0`
+    // is what lets the scrollbar do the job the max-height asked for.
+    rows.style['minHeight'] = '0px';
 
-    if (shown.length === 0) rows.label(this.emptyBecause());
+    if (shown.length === 0) {
+      const empty = rows.label(this.emptyBecause());
+      empty.style['flexShrink'] = '0';
+    }
     for (const note of shown) this.row(rows, note);
 
     this.body.flushUpdate();
@@ -152,6 +191,9 @@ class NotificationList {
 
   private header(shown: readonly Notification[]): void {
     const row = this.body.row();
+    // Never squeezed: the list below it is the part that scrolls, and a header allowed to shrink
+    // is the first thing the rows are drawn on top of.
+    row.style['flexShrink'] = '0';
     row.label(`NOTIFICATIONS · ${shown.length}`);
 
     // An already-archived row is still drawn, offering its Undo; Clear has nothing to do to it.
@@ -178,10 +220,13 @@ class NotificationList {
       this.render();
     };
 
+    // Read at click time rather than at build time: the row has not been laid out yet while it
+    // is being built, so a rect taken here would be the zero one.
+    const under = () => openFilters(rectOf(funnel));
     const funnel =
       VN_ICONS.filter >= 0
-        ? row.iconbutton(VN_ICONS.filter, '', () => openFilters())
-        : row.button('Filter', () => openFilters());
+        ? row.iconbutton(VN_ICONS.filter, '', under)
+        : row.button('Filter', under);
     funnel.description = 'Choose which kinds of notification this list shows.';
 
     const more = row.menu('⋯', [
@@ -233,12 +278,12 @@ class FilterPopup {
   private readonly popup: Popup;
   private readonly body: Container;
 
-  constructor() {
+  constructor(anchor?: Anchor) {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the filter on');
 
-    const x = Math.max(8, screen.size[0] - WIDTH - 32);
-    this.popup = screen.popup(screen as unknown as UIBase, x, 80, false) as Popup;
+    const [x, y] = place(screen.size[0], anchor, 80);
+    this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
 
     const end = this.popup.end.bind(this.popup);
     this.popup.end = () => {
@@ -289,18 +334,28 @@ class FilterPopup {
   }
 }
 
+/**
+ * The on-screen box of a widget, for hanging a popup under. Answers `undefined` for anything not
+ * laid out yet, so a caller with nothing to measure gets the corner fallback rather than `0, 0`.
+ */
+export function rectOf(widget: unknown): Anchor | undefined {
+  const box = (widget as { getBoundingClientRect?: () => DOMRect }).getBoundingClientRect?.();
+  if (!box || (box.width === 0 && box.height === 0)) return undefined;
+  return { right: box.right, bottom: box.bottom };
+}
+
 /** Open the list. Idempotent, like the palette — the bell clicked twice is one popup. */
-export function openNotifications(): void {
+export function openNotifications(anchor?: Anchor): void {
   if (list) {
     list.close();
     return;
   }
-  list = new NotificationList();
+  list = new NotificationList(anchor);
 }
 
-function openFilters(): void {
+function openFilters(anchor?: Anchor): void {
   if (filters) return;
-  filters = new FilterPopup();
+  filters = new FilterPopup(anchor);
 }
 
 function closeFilters(): void {
