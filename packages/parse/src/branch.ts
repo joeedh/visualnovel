@@ -19,6 +19,23 @@ export type BranchMarker =
   | { kind: 'line'; id: string }
   | { kind: 'nextline'; value: number };
 
+/** Every marker kind, at runtime. Kept in step with {@link BranchMarker} by the check below. */
+export const BRANCH_MARKER_KINDS = [
+  'scene',
+  'choice',
+  'next',
+  'outfit',
+  'line',
+  'nextline',
+] as const satisfies readonly BranchMarker['kind'][];
+
+// `satisfies` catches an entry that is not a kind; this catches a kind that is not an entry. The
+// assignment is what makes it fail — a type alias that resolves to an error object still compiles.
+type AllKindsListed = BranchMarker['kind'] extends (typeof BRANCH_MARKER_KINDS)[number]
+  ? true
+  : { error: 'a BranchMarker kind is missing from BRANCH_MARKER_KINDS' };
+const _allKindsListed: AllKindsListed = true;
+
 /** Parse a single note's text into a branch marker, or null if it is a plain note. */
 export function parseBranchMarker(note: string): BranchMarker | null {
   const text = note.trim();

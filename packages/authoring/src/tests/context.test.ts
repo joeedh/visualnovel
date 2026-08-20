@@ -10,6 +10,7 @@ import {
   GENERATED_CONTEXT_FILE,
   SYSTEM_PROMPT,
 } from '../index.js';
+import { BRANCH_MARKER_KINDS } from '@vn/parse';
 
 async function tempDir(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
   const dir = await fs.mkdtemp(join(tmpdir(), 'vn-ctx-'));
@@ -151,6 +152,24 @@ describe('composeSystem', () => {
     expect(composed).toContain('SYS');
     expect(composed).toContain('CTX');
     expect(composed).not.toContain('PROJECT MAP');
+  });
+});
+
+describe('SYSTEM_PROMPT', () => {
+  // Proves each marker kind is *mentioned*, which is the failure this was written for: a kind was
+  // added to BranchMarker and the prompt's table was not. A row that goes stale rather than absent
+  // is residual risk no test can reach.
+  it('names every branch-marker kind', () => {
+    for (const kind of BRANCH_MARKER_KINDS) {
+      expect(SYSTEM_PROMPT).toContain(`[[${kind}:`);
+    }
+  });
+
+  // Characters, not tokens — the same unit the generated map (8,000) and a bible query (4,000) are
+  // budgeted in. Overflow fails the build rather than truncating: the prompt is the first segment
+  // of a byte-stable cached prefix, so it cannot be quietly trimmed.
+  it('stays inside its character budget', () => {
+    expect(SYSTEM_PROMPT.length).toBeLessThanOrEqual(25_000);
   });
 });
 
