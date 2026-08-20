@@ -1,6 +1,6 @@
 import type { Check, Container } from 'pathux';
 import { api } from '../../api.js';
-import { onBusy, onInvalidate } from '../bridge.js';
+import { exec, onBusy, onInvalidate } from '../bridge.js';
 import { subjectOf } from '../../rules/taskGraph.js';
 import { emptyBecause, showing, type ListFilter } from '../../rules/tasklist.js';
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
@@ -32,6 +32,8 @@ export class TaskListEditor extends VnEditor {
   private token = 0;
   /** Remembered per pane: whether the list is narrowed to what has already finished. */
   onlyDone = false;
+  /** Remembered per pane: whether the list is narrowed to what is moving right now. */
+  onlyRunning = false;
   /**
    * Hashes the author cleared out of the *list*. Nothing is deleted: a `done` record is what
    * makes a run resumable, so pruning `tasks.jsonl` would re-render — and re-pay for — every
@@ -56,7 +58,9 @@ export class TaskListEditor extends VnEditor {
   override init() {
     super.init();
 
-    this.bar = (this.header as Container).row();
+    // A column of two rows rather than one long row: the bar carries a sentence of counts and
+    // five controls, and in one row the last of them falls off the end of a half-width pane.
+    this.bar = (this.header as Container).col();
 
     this.list = document.createElement('div');
     Object.assign(this.list.style, {
@@ -105,7 +109,7 @@ export class TaskListEditor extends VnEditor {
 
   /** What the two controls in the bar are set to, as the pure rules want to be asked. */
   private filter(): ListFilter {
-    return { cleared: this.cleared, onlyDone: this.onlyDone };
+    return { cleared: this.cleared, onlyDone: this.onlyDone, onlyRunning: this.onlyRunning };
   }
 
   private showing(): Task[] {
@@ -132,6 +136,7 @@ export class TaskListEditor extends VnEditor {
       (this.status?.tasks ?? []).map((t) => `${t.hash.slice(0, 8)}:${t.status}`).join(','),
       this.status?.gatePending.join(',') ?? '',
       this.onlyDone ? 'done-only' : 'all',
+      this.onlyRunning ? 'running-only' : 'all',
       this.cleared.size,
       ui.taskHash,
       ui.sceneId,
@@ -152,8 +157,12 @@ export class TaskListEditor extends VnEditor {
     const hidden = tasks.length - this.showing().length;
 
     this.bar.clear();
-    this.bar.label('TASKS').style['padding'] = '0px 8px';
-    this.bar.label(
+    // Row one is what the list *is*; row two is what to do about it.
+    const top = this.bar.row();
+    const low = this.bar.row();
+
+    top.label('TASKS').style['padding'] = '0px 8px';
+    top.label(
       this.failure
         ? this.failure
         : `${tasks.length} task${tasks.length === 1 ? '' : 's'} · ${running} running${
@@ -163,10 +172,10 @@ export class TaskListEditor extends VnEditor {
 
     // A run spends money and writes assets, so it goes through the palette's form and its
     // confirmation rather than off a bare button — `pipeline.run` is gated on the command.
-    this.bar.button('▸ Run', () => openCommandDialog('pipeline.run')).description =
+    low.button('▸ Run', () => openCommandDialog('pipeline.run')).description =
       'Open the run form, where the flags are spelled out before anything is spent';
 
-    const only = this.bar.check(undefined, 'only done') as Check;
+    const only = low.check(undefined, 'only done') as Check;
     only.checked = this.onlyDone;
     only.description = 'Narrow the list to the tasks that finished successfully.';
     // `on_change`, not `onchange` — path.ux's own hook. A DOM-shaped name is never called.
@@ -176,7 +185,19 @@ export class TaskListEditor extends VnEditor {
       this.rebuild();
     };
 
-    const clear = this.bar.button('Clear finished', () => {
+    // Its own tick rather than a third state of `only done`: the two are disjoint, so what an
+    // author wants while a wave is in flight is the *running* half, not a mode switch away from
+    // the one they left on. Ticking both shows nothing, and `emptyBecause` says so by name.
+    const moving = low.check(undefined, 'only running') as Check;
+    moving.checked = this.onlyRunning;
+    moving.description = 'Narrow the list to the tasks a wave is working on right now.';
+    moving.on_change = (next: unknown) => {
+      this.onlyRunning = next === true;
+      layoutChanged();
+      this.rebuild();
+    };
+
+    const clear = low.button('Clear finished', () => {
       for (const task of tasks) if (TaskListEditor.finished(task)) this.cleared.add(task.hash);
       this.rebuild();
     });
@@ -188,7 +209,7 @@ export class TaskListEditor extends VnEditor {
       : 'Take everything already finished out of this list. Nothing is deleted — those records ' +
         'are what make a run resumable — and Refresh brings them back.';
 
-    const refresh = this.bar.button('Refresh', () => {
+    const refresh = low.button('Refresh', () => {
       this.cleared.clear();
       void this.load();
     });
@@ -288,9 +309,21 @@ export class TaskListEditor extends VnEditor {
       box.appendChild(why);
     }
 
-    box.title = `Inspect this ${task.kind} — every other pane follows the pick`;
+    const drew = TaskListEditor.drewAsset(task);
+    box.title = drew
+      ? `Open what this ${task.kind} drew in the asset editor — every other pane follows the pick`
+      : `Inspect this ${task.kind} — every other pane follows the pick`;
     box.addEventListener('click', () => this.select(task));
     return box;
+  }
+
+  /**
+   * The asset hash a task left behind, or `undefined`. Only a `done` task has one worth opening:
+   * `output` is written when the runner accepts a picture, and a task that failed after an
+   * attempt produced bytes is one whose bytes nothing downstream is allowed to use.
+   */
+  private static drewAsset(task: Task): string | undefined {
+    return task.status === 'done' && task.output ? task.output : undefined;
   }
 
   private select(task: Task): void {
@@ -304,7 +337,14 @@ export class TaskListEditor extends VnEditor {
       this.ui.characterId = next.characterId;
     }
     this.announce();
+
+    // A finished task *is* its picture, and the list is where an author watches one arrive — so
+    // the click that picks it also puts it on screen. Through `view.open` rather than by setting
+    // `ui.assetHash` here: the command is what finds or raises a pane, and what records the act.
+    // `elsewhere`, so the list the author is scanning is not the pane that gets replaced.
+    const drew = TaskListEditor.drewAsset(task);
+    if (drew) void exec('view.open', { editor: 'asset', where: 'elsewhere', subject: drew });
   }
 }
 
-registerEditor(TaskListEditor, 'vn.TaskListEditor', ['onlyDone : bool']);
+registerEditor(TaskListEditor, 'vn.TaskListEditor', ['onlyDone : bool', 'onlyRunning : bool']);

@@ -850,13 +850,28 @@ Plan: [`plans/task-dag-view.md`](plans/task-dag-view.md).
   `failed` or `needs_human` node, and the list is the surface built for scanning — so it is drawn
   there rather than one click away in the inspector, whose attempt stack answers a different
   question (what each *attempt* said) and is not where an author looking for the failure starts.
-- **An empty list blames the control that emptied it.** There are two ways to hide a task and they
-  overlap: `only done` keeps what succeeded, Clear finished takes what finished out, and Clear's set
-  is a superset of the filter's. So the sentence has to ask about Clear *first* — otherwise a list
-  emptied by Clear says nothing has finished at the moment ten things have. `renderer/rules/
-  tasklist.ts` holds both that and `showing`, because both are inferences and both were wrong; the
-  pane keeps only the two control values. Clear's own tooltip while greyed is its refusal, per the
-  tooltip rule.
+- **An empty list blames the control that emptied it.** There are three ways to hide a task and
+  they overlap: `only done` keeps what succeeded, `only running` keeps what is moving, Clear
+  finished takes what finished out, and Clear's set is a superset of `only done`'s. So the sentence
+  has to ask about Clear *first* — otherwise a list emptied by Clear says nothing has finished at
+  the moment ten things have. `renderer/rules/tasklist.ts` holds both that and `showing`, because
+  both are inferences and both were wrong; the pane keeps only the three control values. Clear's
+  own tooltip while greyed is its refusal, per the tooltip rule.
+- **`only running` is its own tick, not a third state of `only done`.** The two statuses are
+  disjoint, so what an author wants while a wave is in flight is the *running* half rather than a
+  mode switch away from the setting they left on. Ticking both is a request for a task that is
+  finished and still moving, which no task ever is — so the list shows nothing and `emptyBecause`
+  names the pair rather than blaming whichever tick happens to be tested first. The bar is a
+  **column of two rows** — what the list *is* on top, what to do about it underneath — because five
+  controls and a sentence of counts in one row lose their last control in a half-width pane.
+- **Clicking a finished task opens what it drew.** A `done` task with an `output` *is* its
+  picture, and the list is where an author watches one arrive — so the click that picks it also
+  runs `view.open(editor='asset', where='elsewhere', subject=<hash>)`. Through the command rather
+  than by setting `ui.assetHash` in the pane: the command is what finds or raises a pane and what
+  records the act, and `elsewhere` keeps the list being scanned from being the pane that gets
+  replaced. Only `done` — bytes from a task that failed afterwards are bytes nothing downstream is
+  allowed to use. The card's tooltip says which of the two the click will do; a task that drew
+  nothing selects as before, and the inspector follows.
 
 - **A hash the cached status has never heard of is a re-plan, not a miss.** The inspector re-fetches
   once on that condition rather than polling, and says so on screen when the task is still absent.
