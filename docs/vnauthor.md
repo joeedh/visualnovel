@@ -164,13 +164,15 @@ agent honors.
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter
   so untouched prose and branch markers are preserved.
-- **Prose edits are the desktop's edits.** `edit_scene` names the same twelve acts the `story.*`
+- **Prose edits are the desktop's edits.** `edit_scene` names the same thirteen acts the `story.*`
   commands do — and `set_outfit` the two outfit commands — running the same `@vn/scriptedit`
   decisions, so a refusal an author sees mid-drag is the refusal the agent gets, and the storyboard
-  consequence is accounted for once. **Drafting a run of prose is one call**: `insertLines` folds
-  over `insertLine` inside `@vn/scriptedit`, so ids stay allocated by the one prose write path, a
-  bad line anywhere in the run inserts none of it and says which line it was, and the whole run is
-  a single write rather than forty. Eleven of the twelve are prose; `setHeading` is the one that moves
+  consequence is accounted for once. **Drafting a run of prose is one call, and so is clearing
+  one**: `insertLines` and `deleteLines` fold over `insertLine` and `deleteLine` inside
+  `@vn/scriptedit`, so ids stay allocated by the one prose write path, a bad line anywhere in the
+  run writes none of it and says which line it was, and the whole run is a single write rather than
+  forty — which is what makes *rewriting* a scene two calls instead of forty-one. Twelve of the
+  thirteen are prose; `setHeading` is the one that moves
   a scene somewhere else, and it says in its own result that the rendered art will be drawn again
   and that the prose it left behind is the agent's to rewrite. **Wiring is the second half and a
   second tool**: `edit_branches` runs `branchops`' four rewires, which is what makes `newScene`'s

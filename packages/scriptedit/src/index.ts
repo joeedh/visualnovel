@@ -26,6 +26,7 @@ export {
 } from './branchops.js';
 export {
   deleteLine,
+  deleteLines,
   deleteScene,
   insertLine,
   insertLines,

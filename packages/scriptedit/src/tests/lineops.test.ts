@@ -3,6 +3,7 @@ import { parseFountain } from '@vn/parse';
 import type { Scene } from '@vn/types';
 import {
   deleteLine,
+  deleteLines,
   deleteScene,
   insertLine,
   insertLines,
@@ -235,6 +236,40 @@ describe('deleteLine', () => {
       s = { ...s, scenes: new Map(s.scenes).set('attic', written(op, 'attic')) };
     }
     expect(ids(s.scenes.get('attic') as Scene)).toEqual([]);
+  });
+});
+
+describe('deleteLines', () => {
+  it('clears a run in one act, writing the scene once', () => {
+    const op = deleteLines(state(), { lines: ['arrival:L1', 'arrival:L2'] });
+    expect(ids(written(op, 'arrival'))).toEqual([]);
+    expect(op).toMatchObject({ ok: true, retired: ['arrival:L1', 'arrival:L2'] });
+    expect(op.ok && op.writes.length).toBe(1);
+    expect(op.ok && op.message).toBe('Deleted 2 line(s); 0 line(s) left in arrival.');
+  });
+
+  it('takes the ids in any order, and across scenes', () => {
+    const op = deleteLines(state(), { lines: ['rooftop:L2', 'arrival:L1'] });
+    expect(ids(written(op, 'arrival'))).toEqual(['arrival:L2']);
+    expect(ids(written(op, 'rooftop'))).toEqual(['rooftop:L1']);
+    expect(op.ok && op.writes.length).toBe(2);
+  });
+
+  it('deletes nothing at all when an id anywhere in the run is refused', () => {
+    const op = deleteLines(state(), { lines: ['arrival:L1', 'arrival:L9'] });
+    expect(error(op)).toBe(
+      'line 2 of 2: Scene "arrival" has no line "arrival:L9". Nothing was deleted.',
+    );
+  });
+
+  it('refuses the same id twice rather than reporting a deletion that did not happen', () => {
+    expect(error(deleteLines(state(), { lines: ['arrival:L1', 'arrival:L1'] }))).toContain(
+      'Nothing was deleted.',
+    );
+  });
+
+  it('refuses an empty run rather than reporting a successful no-op', () => {
+    expect(error(deleteLines(state(), { lines: [] }))).toBe('Nothing to delete.');
   });
 });
 

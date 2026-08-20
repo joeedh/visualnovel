@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
 
@@ -10,17 +10,22 @@ export async function ensureDir(dir: string): Promise<void> {
 /**
  * Atomic write: write to a temp sibling then rename, so a crash never leaves a
  * half-written file (report §10 crash-safety).
+ *
+ * The suffix is **random** rather than derived from the path and the data's length: two writers
+ * of the same path with same-length data shared one temp file and raced. And the temp is unlinked
+ * in a `finally`, because a failed rename otherwise leaves a `.tmp-…` sibling in `scenes/`, where
+ * it is neither a scene nor invisible. The unlink's own error is swallowed: a cleanup that fails
+ * must not mask the failure that caused it.
  */
 export async function writeFileAtomic(path: string, data: string | Uint8Array): Promise<void> {
   await ensureDir(dirname(path));
-  const suffix = createHash('sha1')
-    .update(path)
-    .update(String(data.length))
-    .digest('hex')
-    .slice(0, 8);
-  const tmp = `${path}.tmp-${suffix}`;
-  await fs.writeFile(tmp, data);
-  await fs.rename(tmp, path);
+  const tmp = `${path}.tmp-${randomBytes(6).toString('hex')}`;
+  try {
+    await fs.writeFile(tmp, data);
+    await fs.rename(tmp, path);
+  } finally {
+    await fs.rm(tmp, { force: true }).catch(() => {});
+  }
 }
 
 /** Append one JSON record as a line to a JSONL file, creating it if needed. */

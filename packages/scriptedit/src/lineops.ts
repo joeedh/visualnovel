@@ -268,6 +268,38 @@ export function deleteLine(state: ScriptState, args: { line: string }): LineOp {
 }
 
 /**
+ * Delete a run of lines in one act — the symmetric half of {@link insertLines}, and the reason a
+ * rewritten scene costs two calls rather than forty-one. A fold over {@link deleteLine} and
+ * deliberately nothing more: every refusal is that function's, and a run that fails anywhere
+ * returns nothing to write, so the caller's plan removes nothing at all.
+ *
+ * The lines may sit in different scenes and may be given in any order: each is located afresh
+ * against the state the deletions so far produced.
+ */
+export function deleteLines(state: ScriptState, args: { lines: readonly string[] }): LineOp {
+  if (args.lines.length === 0) return refuse('Nothing to delete.');
+
+  let scenes = state.scenes;
+  const retired: string[] = [];
+  const touched = new Set<string>();
+  for (const [i, line] of args.lines.entries()) {
+    const op = deleteLine({ ...state, scenes }, { line });
+    if (!op.ok) {
+      return refuse(`line ${i + 1} of ${args.lines.length}: ${op.error} Nothing was deleted.`);
+    }
+    retired.push(...op.retired);
+    for (const written of op.writes) {
+      touched.add(written.id);
+      scenes = new Map(scenes).set(written.id, written);
+    }
+  }
+
+  const writes = [...touched].map((id) => scenes.get(id) as Scene);
+  const left = writes.map((s) => `${s.lines.length} line(s) left in ${s.id}`).join(', ');
+  return done(`Deleted ${retired.length} line(s); ${left}.`, { writes, retired });
+}
+
+/**
  * Reorder within a scene. Ids do not change, so nothing detaches — but a shot's covered prose is
  * read in scene order, so moving a covered line still changes what its art was made to depict.
  */

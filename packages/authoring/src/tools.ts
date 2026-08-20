@@ -24,6 +24,7 @@ import { docToMarkdown } from '@vn/model';
 import { formatExcerpts } from '@vn/bible';
 import {
   deleteLine,
+  deleteLines,
   deleteScene,
   insertLine,
   insertLines,
@@ -683,14 +684,16 @@ const createLocationTool: Tool<z.infer<typeof locationCreateShape>> = {
 /**
  * The eleven acts, named exactly as the desktop's `story.*` commands are, because they *are* those
  * commands' decisions: an agent transcript and a command history should read as the same vocabulary.
- * `insertLines` is the twelfth and has no button behind it — a person types one line at a time and
- * a model drafts forty, and `@vn/scriptedit` still allocates every id.
+ * `insertLines` and `deleteLines` are the twelfth and thirteenth and have no button behind them —
+ * a person types or removes one line at a time and a model rewrites forty, and `@vn/scriptedit`
+ * still allocates every id.
  */
 const SCENE_OPS = [
   'setLineText',
   'insertLine',
   'insertLines',
   'deleteLine',
+  'deleteLines',
   'moveLine',
   'moveShot',
   'setSpeaker',
@@ -731,6 +734,10 @@ const sceneEditShape = z.object({
     )
     .optional()
     .describe('insertLines: a run of lines to add in order, each after the one before it'),
+  lineIds: z
+    .array(z.string().min(1))
+    .optional()
+    .describe('deleteLines: the line ids to remove, in any order; all of them or none'),
   after: z
     .string()
     .optional()
@@ -766,6 +773,7 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   insertLine: ['scene', 'text'],
   insertLines: ['scene', 'lines'],
   deleteLine: ['line'],
+  deleteLines: ['lineIds'],
   moveLine: ['line'],
   moveShot: ['scene', 'shot'],
   setSpeaker: ['line'],
@@ -809,6 +817,8 @@ async function sceneDecider(
         });
     case 'deleteLine':
       return (s) => deleteLine(s, { line });
+    case 'deleteLines':
+      return (s) => deleteLines(s, { lines: a.lineIds ?? [] });
     case 'moveLine':
       return (s) => moveLine(s, { line, after });
     case 'moveShot':
@@ -841,8 +851,8 @@ const editSceneTool: Tool<SceneEditArgs> = {
     'change a scenes/<id>.md — write_file refuses them. Reports what the edit costs the ' +
     'storyboard; moveShot costs it nothing, since no coverage and no covered prose changes. ' +
     'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in. ' +
-    'Drafting a run of prose is insertLines, one call for the whole run — do not call insertLine ' +
-    'forty times.',
+    'Drafting a run of prose is insertLines and clearing one is deleteLines, one call for the ' +
+    'whole run — do not call insertLine or deleteLine forty times.',
   mutating: true,
   args: sceneEditShape,
   async run(a, ctx) {
