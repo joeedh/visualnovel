@@ -20,3 +20,11 @@
      be the first option before the models.
 [ ]: the tokens counter's tooltip should be reworked so it's more readable for average users 
      instead of devs.
+[ ]: execute docs/plans/watching-and-stopping-an-agent-report.md -- progress and a stop button
+     for the report difficult agent dialog (the two items above), plus the fallback bug a stop
+     exposes: analyze() reads a stopped loop as one that never filed, so Stop would spend
+     another model call and hand back a report that was cancelled.  pressure test the plan
+     with a fresh-context agent first.
+[ ]: the report difficult agent dialog should be clearer about the user needing to paste 
+     the detailed report at the end, use red or yellow text for this.
+	 
