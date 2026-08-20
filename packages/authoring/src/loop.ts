@@ -188,6 +188,13 @@ export interface AgentOptions {
    * meter cannot see, because the backend reports no usage.
    */
   maxIterations?: number;
+  /**
+   * Whether tools outside {@link ALWAYS_LOADED} are advertised as deferred. Defaults to true.
+   * Deferral pays for itself over a large catalog, where the unloaded schemas buy back real
+   * context. A host with a handful of tools sets this to false: deferring them saves nothing, and
+   * on the native path it hides tools the prompt orders the model to call behind tool search.
+   */
+  deferTools?: boolean;
   /** Optional live event sink (the REPL renders these as they happen). */
   onEvent?: (event: AgentEvent) => void;
   /**
@@ -411,6 +418,7 @@ export class Agent {
   /** Which choice {@link budget} came from, quoted in the message a budget-exhausted turn ends with. */
   private budgetChoice: BudgetChoice;
   private readonly maxIterations: number;
+  private readonly deferTools: boolean;
   private readonly onEvent?: (event: AgentEvent) => void;
   private readonly onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
   private readonly messages: AgentMessage[] = [];
@@ -455,6 +463,7 @@ export class Agent {
     this.budgetChoice = opts.budget ?? DEFAULT_BUDGET;
     this.budget = budgetTokens(this.budgetChoice);
     this.maxIterations = opts.maxIterations ?? MAX_ITERATIONS;
+    this.deferTools = opts.deferTools ?? true;
     this.onEvent = opts.onEvent;
     this.onApiError = opts.onApiError;
   }
@@ -559,7 +568,7 @@ export class Agent {
    * The tool catalog advertised to the backend (registry + control tools), each flagged for
    * whether it may be deferred. Derived from a static list and the registry's own order, so two
    * turns of one conversation produce byte-identical catalogs — the prefix everything else caches
-   * behind.
+   * behind. A host that set `deferTools: false` gets the same catalog with no flags on it.
    */
   private toolSpecs(): ToolSpec[] {
     const fromRegistry = [...this.registry.values()].map((t) => ({
@@ -568,7 +577,9 @@ export class Agent {
       mutating: t.mutating,
       parameters: describeToolParams(t.args),
     }));
-    return [...fromRegistry, ...CONTROL_TOOLS].map((t) => ({
+    const all = [...fromRegistry, ...CONTROL_TOOLS];
+    if (!this.deferTools) return all;
+    return all.map((t) => ({
       ...t,
       ...(ALWAYS_LOADED.has(t.name) ? {} : { defer: true }),
     }));

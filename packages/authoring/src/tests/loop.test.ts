@@ -1008,6 +1008,26 @@ describe('the tool catalog', () => {
     }
   });
 
+  it('defers nothing at all for a host that asked it not to', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        deferTools: false,
+      });
+      await agent.run('one');
+      const tools = backend.seen[0]!.tools;
+      expect(tools.length).toBeGreaterThan(6);
+      expect(tools.filter((t) => t.defer)).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('is byte-identical between turns, including after a mode change', async () => {
     const { ctx, cleanup } = await tempProject();
     try {

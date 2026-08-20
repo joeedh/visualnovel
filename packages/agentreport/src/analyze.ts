@@ -5,7 +5,8 @@
  * loop — there is nothing to look up, so a loop would only be an opportunity to wander. With the
  * source it is the ordinary authoring loop pointed at a registry holding read tools and nothing
  * else, because that loop already gates, validates and caps, and re-implementing it here would be
- * a second thing to get wrong.
+ * a second thing to get wrong. It picks its backend the same way the ordinary hosts do, so the
+ * transcript it re-reads every iteration is cached rather than re-sent.
  *
  * Everything the analyst is shown has been through the redactor first, and everything it writes
  * goes back through it before anyone sees it. The prompt asks for general terms as well; that is
@@ -22,6 +23,7 @@ import {
 } from '@vn/providers';
 import {
   Agent,
+  NativeAgentBackend,
   StructuredAgentBackend,
   type Permission,
   type Tool,
@@ -248,8 +250,17 @@ async function analyzeWithTools(
     LOOP_PROTOCOL,
   ].join('');
 
+  // The same probe the desktop app and vnauthor use: the native path when the backend offers a
+  // conversation seam, so each iteration reads the transcript out of cache instead of re-paying
+  // for it, and the structured path otherwise.
+  const chat = opts.backend;
   const agent = new Agent({
-    backend: new StructuredAgentBackend(opts.backend),
+    backend: chat.chatConversation
+      ? new NativeAgentBackend(chat)
+      : new StructuredAgentBackend(chat),
+    // Six tools, all of them needed: deferring them would buy no context back and would hide
+    // submit_report itself behind tool search, which ends the run without a report.
+    deferTools: false,
     ctx,
     permission: unattended(),
     system,

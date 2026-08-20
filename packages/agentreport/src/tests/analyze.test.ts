@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import type { ChatBackend, ChatRequest } from '@vn/providers';
+import type {
+  ChatBackend,
+  ChatConvoReply,
+  ChatConvoRequest,
+  ChatRequest,
+  ToolSchema,
+} from '@vn/providers';
 import type { Tool, ToolContext } from '@vn/authoring';
 import { analystBackend, analyze } from '../analyze.js';
 import { buildRedactor } from '../redact.js';
@@ -23,6 +29,32 @@ class Scripted implements ChatBackend {
       return this.whenDirect;
     }
     return this.replies.shift() ?? '{"final":"nothing left to say"}';
+  }
+}
+
+/**
+ * A backend that implements the conversation seam, so the analyst's probe selects the native path.
+ * It answers with one `submit_report` call and then plain text, and keeps every request it was
+ * handed. `message` throws: taking it is the failure this fake exists to catch.
+ */
+class Native implements ChatBackend {
+  readonly modelId = 'claude-sonnet-5';
+  readonly requests: ChatConvoRequest[] = [];
+  readonly catalogs: ToolSchema[][] = [];
+  private turn = 0;
+  constructor(private readonly report: unknown) {}
+  async message(): Promise<string> {
+    throw new Error('the structured path was taken');
+  }
+  async chatConversation(req: ChatConvoRequest, tools: ToolSchema[]): Promise<ChatConvoReply> {
+    this.requests.push(req);
+    this.catalogs.push(tools);
+    if (this.turn++ > 0)
+      return { raw: [{ type: 'text', text: 'filed' }], toolCalls: [], text: 'filed' };
+    return {
+      raw: [{ type: 'tool_use', id: 'call_1', name: 'submit_report', input: this.report }],
+      toolCalls: [{ id: 'call_1', name: 'submit_report', args: this.report }],
+    };
   }
 }
 
@@ -248,6 +280,85 @@ describe('with the requests but not the source', () => {
       redactor: redactor(),
     });
     expect(systems[0]).not.toContain('Never quote its content');
+  });
+});
+
+/**
+ * The cached path. The analyst re-reads the transcript on every iteration, so the thing worth
+ * asserting is that it goes over the conversation seam with breakpoints on it, and with a catalog
+ * the model can call without searching first.
+ */
+describe('on a backend that supports conversations', () => {
+  const source = (): { registry: Map<string, Tool>; ctx: ToolContext } => ({
+    registry: new Map<string, Tool>([
+      [
+        'grep',
+        {
+          name: 'grep',
+          description: 'search the source',
+          mutating: false,
+          args: z.object({ pattern: z.string() }),
+          async run() {
+            return { ok: true, output: 'nothing' };
+          },
+        } as Tool,
+      ],
+    ]),
+    ctx: {} as ToolContext,
+  });
+
+  it('takes the native path and files the report through it', async () => {
+    const backend = new Native(findings);
+    const report = await analyze({ evidence, backend, redactor: redactor(), source: source() });
+    expect(backend.requests.length).toBeGreaterThan(0);
+    expect(report.readSource).toBe(true);
+    expect(report.fellBack).toBeUndefined();
+    expect(report.analysis.summary).toContain('Character A');
+    expect(JSON.stringify(report)).not.toMatch(/Titus/);
+  });
+
+  it('marks the tail of every request, so the transcript is read from cache', async () => {
+    const backend = new Native(findings);
+    await analyze({ evidence, backend, redactor: redactor(), source: source() });
+    for (const req of backend.requests) {
+      expect(req.turns[req.turns.length - 1]?.cache).toBe(true);
+    }
+  });
+
+  it('defers no tool, so submit_report is callable without a search', async () => {
+    const backend = new Native(findings);
+    await analyze({ evidence, backend, redactor: redactor(), source: source() });
+    const names = backend.catalogs[0]!.map((t) => t.name);
+    expect(names).toContain('submit_report');
+    expect(names).toContain('grep');
+    expect(backend.catalogs[0]!.filter((t) => t.defer)).toEqual([]);
+  });
+
+  it('probes on a detail-only run too', async () => {
+    const backend = new Native(findings);
+    const report = await analyze({
+      evidence,
+      backend,
+      redactor: redactor(),
+      detail: new Map<string, Tool>([
+        [
+          'list_requests',
+          {
+            name: 'list_requests',
+            description: 'list what was sent',
+            mutating: false,
+            args: z.object({}),
+            async run() {
+              return { ok: true, output: '#1' };
+            },
+          } as Tool,
+        ],
+      ]),
+      ctx: {} as ToolContext,
+    });
+    expect(backend.requests.length).toBeGreaterThan(0);
+    expect(report.readSource).toBe(false);
+    expect(report.fellBack).toBeUndefined();
   });
 });
 

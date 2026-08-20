@@ -28,7 +28,7 @@
 [ ]: the report difficult agent dialog should be clearer about the user needing to paste 
      the detailed report at the end, use red or yellow text for this.
 [ ]: the play editor isn't updated when new shows are created
-[ ]: use an agent to execute docs/plans/prompt-caching-for-the-report-analyst.md wait for it to finish
+[x]: use an agent to execute docs/plans/prompt-caching-for-the-report-analyst.md wait for it to finish
 [ ]: the new install git hub workflow feature should tell the user how to enable the page on github 
      pages, looks like they have to navigate to the settings and select the gh-pages branch manually.
 	 also if the user asks the agent how to do this it should be able to answer.

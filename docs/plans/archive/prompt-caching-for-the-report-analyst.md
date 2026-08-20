@@ -16,7 +16,7 @@ Both other agent hosts already probe for the cached path and take it when the ba
 - `apps/authoring/src/agent.ts:98-99` — the same probe, behind a `--no-native` escape hatch.
 
 The archived caching plan
-([`archive/prompt-caching-and-deferred-tool-loading.md`](archive/prompt-caching-and-deferred-tool-loading.md))
+([`prompt-caching-and-deferred-tool-loading.md`](prompt-caching-and-deferred-tool-loading.md))
 even flagged the analyst as the consumer it was leaving behind. This plan closes that gap: the
 analyst's loop uses `NativeAgentBackend` whenever the resolved backend implements
 `chatConversation`, and `StructuredAgentBackend` otherwise.
@@ -36,7 +36,7 @@ wasteful with someone else's money.
 
 The archived caching plan judged leaving the analyst behind "acceptable: … a short analysis run
 … the one caller caching would barely help"
-([`archive/prompt-caching-and-deferred-tool-loading.md`](archive/prompt-caching-and-deferred-tool-loading.md):573-580).
+([`prompt-caching-and-deferred-tool-loading.md`](prompt-caching-and-deferred-tool-loading.md):573-580).
 That judgment predates the request tools: a detail-only run is now a loop too
 (`analyze.ts:164-171`), `fetch_api_docs` and the request tools give a run more to read and more
 iterations to spend, and the transcript that dominates every request has only grown. The
@@ -179,12 +179,12 @@ receipt is the only evidence — which is fine, it is the thing being claimed.)
 
 ## Docs to update when shipping
 
-- [`../reference/agent-report.md`](../reference/agent-report.md) "The analyst" — the sentence
+- [`../../reference/agent-report.md`](../../reference/agent-report.md) "The analyst" — the sentence
   that the loop runs the native cached path when the model's backend supports it (structured
   otherwise, tools never deferred) belongs where the *loop* is described, which is two places:
   the with-source bullet and the detail-only section further down, since a detail-only run is
   the same loop.
-- [`index.md`](index.md) — row flips to shipped, file moves to `archive/`.
+- [`../index.md`](../index.md) — row flips to shipped, file moves to `archive/`.
 - `CLAUDE.md` needs no change: its agent-report bullet describes redaction boundaries, not the
   transport.
 

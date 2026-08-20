@@ -117,6 +117,13 @@ Two paths, different in kind, producing the same `analysisSchema` shape rendered
   records `fellBack` — so `readSource` on a finished report means the analyst actually read
   source, not that it was allowed to.
 
+The loop picks its backend with the same probe the desktop app and `vnauthor` use: the native
+cached path when the model's backend implements `chatConversation`, the structured path otherwise.
+That matters most here, because the first user message is the whole transcript and every iteration
+re-reads it. Tools are **never deferred** in this loop (`deferTools: false`) — the catalog is six
+tools, so deferral would buy no context back, and it would hide `submit_report` behind tool search,
+which ends the run without a report.
+
 The key check happens at the point of use and names the env var or file, never the value, exactly
 as `resolveKeys` does everywhere else.
 
@@ -144,6 +151,12 @@ ring could evict the entry the analysis was opened to read. The default answer i
 outline, not content; a path read returns one node's values, decoded, redacted and capped at
 2,000 characters; base64 blocks are refused by kind. The analyst runs with `{ record: false }` so
 its own calls do not enter the ring it is reading.
+
+A run with the request tools and no source is the same loop, so it makes the same backend probe and
+defers no tool either. `record: false` is honoured on the cached path — `createAnthropicChat`
+threads the flag into `chatConversation`'s capture — so taking it does not put the analyst's own
+prompts back in the ring. The cost of that is deliberate: a failing request from the analyst itself
+is the one fault class the request-diagnosis tools cannot see.
 
 ## The dialog
 
