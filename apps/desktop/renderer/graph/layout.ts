@@ -15,6 +15,13 @@ export interface LayoutOptions {
   rankGap?: number;
   /** Crossing-reduction sweeps. Each is one pass down and one back up. */
   sweeps?: number;
+  /**
+   * Straighten the columns as well as ordering them — Sugiyama's third phase, which the plain
+   * layout skips. Off by default: it is strictly more work for the same *ordering*, and the
+   * cheap layout is what every non-interactive caller (the `.mmd` export's shape, the tests)
+   * wants. See {@link straighten}.
+   */
+  tidy?: boolean;
 }
 
 export interface GraphLayout {
@@ -27,7 +34,13 @@ export interface GraphLayout {
   bounds: Rect;
 }
 
-const DEFAULTS = { nodeGap: 40, rankGap: 88, sweeps: 4 };
+const DEFAULTS = { nodeGap: 40, rankGap: 88, sweeps: 4, tidy: false };
+
+/** Ordering sweeps under `tidy`. More crossings removed before the columns are straightened. */
+const TIDY_SWEEPS = 12;
+
+/** Straightening passes. Each is one sweep down the ranks and one back up. */
+const TIDY_PASSES = 8;
 
 /**
  * Classify edges as forward or back, by DFS from the graph's roots in input order. Cycles are
@@ -146,12 +159,117 @@ function orderRanks(ranks: string[][], forward: GraphEdge[], sweeps: number): st
 }
 
 /**
+ * Weighted isotonic regression by pool-adjacent-violators: the non-decreasing sequence closest
+ * (in weighted least squares) to `values`. Exact and O(n), not an approximation — which is why
+ * {@link straighten} can ask for the ideal positions and let this hand back the legal ones,
+ * instead of placing nodes one at a time and hoping the order it chose was a good one.
+ */
+function isotonic(values: number[], weights: number[]): number[] {
+  const blocks: { value: number; weight: number; count: number }[] = [];
+  for (const [i, value] of values.entries()) {
+    let block = { value, weight: weights[i] as number, count: 1 };
+    // A block that starts above its successor is impossible under a non-decreasing answer, so
+    // the two are pooled at their weighted mean and the check repeats leftwards.
+    while (
+      blocks.length > 0 &&
+      (blocks[blocks.length - 1] as { value: number }).value > block.value
+    ) {
+      const prev = blocks.pop() as { value: number; weight: number; count: number };
+      const weight = prev.weight + block.weight;
+      block = {
+        value: (prev.value * prev.weight + block.value * block.weight) / weight,
+        weight,
+        count: prev.count + block.count,
+      };
+    }
+    blocks.push(block);
+  }
+  const out: number[] = [];
+  for (const b of blocks) for (let i = 0; i < b.count; i++) out.push(b.value);
+  return out;
+}
+
+/**
+ * Sugiyama's third phase — x-coordinate assignment — which the plain layout skips: it centres
+ * each rank on its own width, so a two-node rank under a five-node one sits nowhere near either
+ * of its parents and every edge leans. The *ordering* is not touched; only the gaps within a
+ * rank grow, so this is a rearrangement of the same picture rather than a different one.
+ *
+ * Each pass asks every node where it would like to be — the mean of its neighbours' centres in
+ * the rank above (going down) or below (going up) — and then answers the whole rank at once.
+ * Writing a node's left edge as `u + prefix`, where `prefix` is the room its predecessors in the
+ * rank need, turns "keep the order and keep them apart" into "`u` must not decrease", and the
+ * closest legal `u` to what was wanted is exactly {@link isotonic}. Weighting by neighbour count
+ * lets a node with five parents outrank one with a single child, and a node with no neighbours
+ * on that side asks to stay where it is rather than being dragged along.
+ */
+function straighten(
+  nodes: LaidOutNode[],
+  ranks: string[][],
+  forward: GraphEdge[],
+  nodeGap: number,
+  passes: number,
+): void {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const preds = new Map<string, string[]>();
+  const succs = new Map<string, string[]>();
+  for (const e of forward) {
+    preds.set(e.to, [...(preds.get(e.to) ?? []), e.from]);
+    succs.set(e.from, [...(succs.get(e.from) ?? []), e.to]);
+  }
+  const centre = (n: LaidOutNode): number => n.x + n.width / 2;
+
+  const indices = ranks.map((_, i) => i);
+  for (let pass = 0; pass < passes; pass++) {
+    // Down reads parents, up reads children. Alternating is what lets a straightening decided at
+    // the top propagate to the bottom and back rather than only ever pulling one way.
+    const down = pass % 2 === 0;
+    for (const r of down ? indices : [...indices].reverse()) {
+      const row = (ranks[r] as string[])
+        .map((id) => byId.get(id))
+        .filter((n): n is LaidOutNode => n !== undefined);
+      if (row.length === 0) continue;
+
+      const prefix: number[] = [];
+      let acc = 0;
+      for (const n of row) {
+        prefix.push(acc);
+        acc += n.width + nodeGap;
+      }
+
+      const want: number[] = [];
+      const weight: number[] = [];
+      for (const [k, n] of row.entries()) {
+        const near = ((down ? preds.get(n.id) : succs.get(n.id)) ?? [])
+          .map((id) => byId.get(id))
+          .filter((m): m is LaidOutNode => m !== undefined);
+        const target = near.length > 0 ? mean(near.map(centre)) : centre(n);
+        want.push(target - n.width / 2 - (prefix[k] as number));
+        weight.push(near.length > 0 ? near.length : 1);
+      }
+
+      const solved = isotonic(want, weight);
+      for (const [k, n] of row.entries()) n.x = (solved[k] as number) + (prefix[k] as number);
+    }
+  }
+
+  // Ranks were centred on x = 0 before this ran, and callers (Fit, the minimap) read `bounds`
+  // rather than assuming it — but re-centring the whole picture keeps the two layouts comparable.
+  const box = boundsOf(nodes);
+  const shift = -(box.x + box.width / 2);
+  if (shift !== 0) for (const n of nodes) n.x += shift;
+}
+
+/**
  * Lay a graph out. Edges whose endpoints are not both present are ignored rather than being an
  * error — a `goto` to a scene that does not exist is a story diagnostic, not a layout one, and
  * the editor still has to draw the scenes that do exist.
  */
 export function layoutGraph(graph: Graph, opts: LayoutOptions = {}): GraphLayout {
-  const { nodeGap, rankGap, sweeps } = { ...DEFAULTS, ...opts };
+  const { nodeGap, rankGap, tidy } = { ...DEFAULTS, ...opts };
+  // Tidying is worth more ordering work: straightening cannot remove a crossing, it can only
+  // make the ones that remain read cleanly, so the ordering wants to be as good as it gets first.
+  const sweeps = opts.sweeps ?? (tidy ? TIDY_SWEEPS : DEFAULTS.sweeps);
   const nodeIds = graph.nodes.map((n) => n.id);
   const present = new Set(nodeIds);
   const edges = graph.edges.filter((e) => present.has(e.from) && present.has(e.to));
@@ -184,6 +302,8 @@ export function layoutGraph(graph: Graph, opts: LayoutOptions = {}): GraphLayout
     }
     y += rowHeight + rankGap;
   }
+
+  if (tidy) straighten(nodes, ranks, forward, nodeGap, TIDY_PASSES);
 
   const byId = new Map(nodes.map((n) => [n.id, n]));
   return { nodes, byId, ranks, backEdges, bounds: boundsOf(nodes) };

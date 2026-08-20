@@ -899,6 +899,17 @@ and each fix is a pure function tested in node:
   dashed and **is** addressable — clicking it moves the selection to its subject and, when
   something already fills it, its asset hash. Nothing estimates a count any more.
 
+**Tidy is a second layout, not a second graph.** The graph view's `Tidy` tick re-runs
+`layoutGraph` with `tidy: true`, which spends more ordering sweeps and then straightens each rank
+with weighted isotonic regression (PAVA): writing a node's left edge as `u + prefix` turns "keep
+the order the sweeps chose, keep the nodes apart" into "`u` must not decrease", so the pass that
+pulls every node toward the mean of its neighbours has an exact optimum rather than an iterative
+guess. Edges come out running more directly and long chains come out as columns. Nothing about the
+graph changes — same nodes, same edges, same ranks, same order — only where they are drawn, and it
+is deterministic, so the same graph in is the same coordinates out. It is remembered per pane
+(`'tidy : bool'` on the editor's struct) and is part of the pane's `stateKey`, so ticking it
+repaints without a re-fetch.
+
 **The gate has one affordance, and it is the same one in both places.** A pending character is a
 bar in the list and a button on the graph's barrier rule, and each opens `gate.approve`'s own dialog
 with `characterId` prefilled — so `stack.check`'s refusal is printed before the author commits to

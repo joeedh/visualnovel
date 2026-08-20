@@ -132,3 +132,58 @@ describe('layoutGraph', () => {
     expect(layout.bounds).toEqual({ x: 0, y: 0, width: 0, height: 0 });
   });
 });
+
+describe('tidy', () => {
+  const centre = (layout: ReturnType<typeof layoutGraph>, id: string): number => {
+    const n = layout.byId.get(id);
+    return n ? n.x + n.width / 2 : NaN;
+  };
+
+  // The defect the pass exists for: each rank is centred on its own width, so a lone child of a
+  // left-hand parent is drawn under the middle of the rank above and its edge leans across it.
+  it('puts a single child under its parent instead of under the rank', () => {
+    const g: Graph = {
+      nodes: ['a', 'b', 'c', 'kid'].map(node),
+      edges: [edge('a', 'kid')],
+    };
+    const plain = layoutGraph(g);
+    const tidy = layoutGraph(g, { tidy: true });
+    expect(Math.abs(centre(plain, 'kid') - centre(plain, 'a'))).toBeGreaterThan(1);
+    expect(Math.abs(centre(tidy, 'kid') - centre(tidy, 'a'))).toBeLessThan(1);
+  });
+
+  it('keeps the ordering the crossing-reduction chose', () => {
+    const tidy = layoutGraph(DIAMOND, { tidy: true });
+    expect(tidy.ranks).toEqual(layoutGraph(DIAMOND).ranks);
+  });
+
+  it('never overlaps two nodes in a rank, however hard they pull together', () => {
+    // Every node in the middle rank wants the same place: directly under the one root.
+    const kids = ['k0', 'k1', 'k2', 'k3', 'k4'];
+    const g: Graph = {
+      nodes: ['root', ...kids].map(node),
+      edges: kids.map((k) => edge('root', k)),
+    };
+    const tidy = layoutGraph(g, { tidy: true });
+    const row = kids.map((k) => tidy.byId.get(k)).filter((n) => n !== undefined);
+    row.sort((a, b) => a.x - b.x);
+    for (const [i, n] of row.entries()) {
+      if (i === 0) continue;
+      const left = row[i - 1] as (typeof row)[number];
+      expect(n.x).toBeGreaterThanOrEqual(left.x + left.width - 0.001);
+    }
+  });
+
+  // Same graph in, same coordinates out — the module's whole contract, and a straightening pass
+  // is exactly the kind of iteration that quietly breaks it.
+  it('is deterministic', () => {
+    const once = layoutGraph(DIAMOND, { tidy: true }).nodes;
+    const twice = layoutGraph(DIAMOND, { tidy: true }).nodes;
+    expect(twice).toEqual(once);
+  });
+
+  it('leaves the picture centred on x = 0', () => {
+    const tidy = layoutGraph(DIAMOND, { tidy: true });
+    expect(tidy.bounds.x + tidy.bounds.width / 2).toBeCloseTo(0, 6);
+  });
+});

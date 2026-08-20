@@ -1,4 +1,4 @@
-import type { Container } from 'pathux';
+import type { Check, Container } from 'pathux';
 import { api } from '../../api.js';
 import { routeEdges } from '../../graph/edges.js';
 import { layoutGraph, type GraphLayout } from '../../graph/layout.js';
@@ -44,6 +44,12 @@ export class TaskGraphEditor extends VnEditor {
   private model: TaskGraphModel | undefined;
   private layout: GraphLayout | undefined;
   private routes: EdgeRoute[] = [];
+
+  /**
+   * Straighten the columns as well as ordering them. A view setting, not a model one — the graph
+   * is identical either way, so this persists with the pane rather than with the project.
+   */
+  tidy = false;
 
   /** Fit once, when the first layout meets a sized surface — never again, or panning fights back. */
   private fitted = false;
@@ -100,7 +106,7 @@ export class TaskGraphEditor extends VnEditor {
     const status = this.status;
     if (status) {
       this.model = taskGraphOf(status, this.story);
-      this.layout = layoutGraph(this.model.graph);
+      this.layout = layoutGraph(this.model.graph, { tidy: this.tidy });
       this.routes = routeEdges(this.layout, this.model.edges);
     }
     this.fitted = false;
@@ -137,6 +143,7 @@ export class TaskGraphEditor extends VnEditor {
       ui.sceneId,
       ui.shotId,
       ui.characterId,
+      this.tidy ? 'tidy' : 'plain',
     ].join('|');
   }
 
@@ -166,6 +173,16 @@ export class TaskGraphEditor extends VnEditor {
         ? this.failure
         : `${tasks} task${tasks === 1 ? '' : 's'}${unplanned > 0 ? ` · ${unplanned} not yet planned` : ''}`,
     ).style['padding'] = '0px 8px';
+
+    const tidy = this.bar.check(undefined, 'Tidy') as Check;
+    tidy.checked = this.tidy;
+    tidy.description =
+      'Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.';
+    tidy.on_change = (next: unknown) => {
+      this.tidy = next === true;
+      // A relayout, not a redraw: the coordinates themselves are what changes.
+      this.rebuild();
+    };
 
     this.bar.button('Fit', () => {
       this.fitted = false;
@@ -373,4 +390,4 @@ function slotNode(view: Extract<TaskNodeView, { kind: 'slot' }>): HTMLElement {
   return box;
 }
 
-registerEditor(TaskGraphEditor, 'vn.TaskGraphEditor');
+registerEditor(TaskGraphEditor, 'vn.TaskGraphEditor', ['tidy : bool']);
