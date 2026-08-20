@@ -423,7 +423,11 @@ Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md` (f
 `name`, `description`, `when-to-use`). A pure-prose skill returns its body as guidance; a skill
 with a `run.{mjs,js,cjs,sh}` script runs a vetted command — and **each run is permissioned**
 (always-confirm), executing in the workspace root with the workspace path as its first argument.
-See [`templates/basic/.aiagent/skills/new-character`](../templates/basic/.aiagent/skills/new-character).
+Two ship with the sample: [`new-character`](../templates/basic/.aiagent/skills/new-character), a
+playbook for one act, and
+[`full-production`](../templates/basic/.aiagent/skills/full-production), a spine — nine
+phases from premise to storyboard, each its own plan and its own commit, ending at the one
+thing the agent cannot do (decomposition is `@vn/pipeline`'s, so shots are the author's act).
 
 **The agent can write a skill, and what it writes is prose.** `create_skill` scaffolds
 `.aiagent/skills/<id>/SKILL.md` from a name, a description, an optional _when to use_ and a body;
