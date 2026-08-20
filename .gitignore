@@ -10,6 +10,8 @@ dist
 .vndesktop
 coverage
 *.tsbuildinfo
+# `pnpm lint` runs eslint with --cache, which writes this.
+.eslintcache
 *.tmp-*
 # Bundled entry points the build scripts require() and delete; an aborted run leaves one behind.
 .record-entry.cjs*
