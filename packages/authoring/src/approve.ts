@@ -53,6 +53,15 @@ export interface Approvable {
   characterId?: string;
   /** Why it cannot be approved yet — something upstream is unapproved. Listed, never approved. */
   blocked?: string;
+  /**
+   * True when the slot this is a candidate for **already has an answer** — the character's gate is
+   * cleared, or another candidate in the slot is accepted. Such a row is still offered, because
+   * choosing a different take is a real thing an author does; but approving it *changes* the
+   * answer rather than settling the slot, so anything approving in bulk has to leave it alone.
+   * Without that, a settled project offers its losing takes forever and a pass over them never
+   * converges — each round un-approves what the round before it approved.
+   */
+  settled?: boolean;
 }
 
 /** The approval seam, wired by the host that owns the manifest. */

@@ -1553,6 +1553,10 @@ export class WorkspaceSession {
           door: asset.kind === 'portrait' ? 'gate' : 'accept',
           ...(characterId === undefined ? {} : { characterId }),
           ...(blocked === undefined ? {} : { blocked }),
+          // The slot's own asymmetric answer (gate for a portrait, `accepted` for everything
+          // else), carried through so a caller approving in bulk can tell "nothing has settled
+          // this yet" from "this is the take that lost".
+          ...(slot.approved ? { settled: true } : {}),
         });
       }
     }

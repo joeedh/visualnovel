@@ -25,6 +25,15 @@ describe('stopReason', () => {
     expect(stopReason(round({ approved: 0, ran: 0 }), 0)).toContain('everything is generated');
   });
 
+  // The same standstill, told honestly: a project whose last tasks are failed or `needs_human`
+  // has stopped moving too, and "everything is generated" is a claim the author disproves by
+  // opening the art.
+  it('does not call a standstill with failures a finished project', () => {
+    const why = stopReason(round({ approved: 0, ran: 0, failed: 3 }), 0);
+    expect(why).toContain('needs a person');
+    expect(why).not.toContain('everything is generated');
+  });
+
   it('gives up on a round that approved nothing and failed everything', () => {
     expect(stopReason(round({ approved: 0, ran: 2, failed: 2 }), 0)).toContain('failed');
     // Progress alongside a failure is still progress — an inherited failure would otherwise end
@@ -63,9 +72,27 @@ describe('toApprove', () => {
   // both in a pass would settle her look and then unsettle it.
   it('takes one portrait per character, and the first one offered', () => {
     const rows = [
-      item({ hash: 'p1', kind: 'portrait', door: 'gate', characterId: 'aiko' }),
-      item({ hash: 'p2', kind: 'portrait', door: 'gate', characterId: 'aiko' }),
-      item({ hash: 'p3', kind: 'portrait', door: 'gate', characterId: 'haruki' }),
+      item({
+        hash: 'p1',
+        kind: 'portrait',
+        door: 'gate',
+        slot: 'portrait:aiko',
+        characterId: 'aiko',
+      }),
+      item({
+        hash: 'p2',
+        kind: 'portrait',
+        door: 'gate',
+        slot: 'portrait:aiko',
+        characterId: 'aiko',
+      }),
+      item({
+        hash: 'p3',
+        kind: 'portrait',
+        door: 'gate',
+        slot: 'portrait:haruki',
+        characterId: 'haruki',
+      }),
     ];
     expect(toApprove(rows).map((r) => r.hash)).toEqual(['p1', 'p3']);
   });
@@ -74,8 +101,33 @@ describe('toApprove', () => {
     expect(toApprove([item({ kind: 'portrait', door: 'gate' })])).toEqual([]);
   });
 
-  it('keeps every accept-door picture, however many share a slot', () => {
+  // Two unaccepted drafts for one slot are alternatives as much as two portraits are: accepting
+  // both leaves `pick` unable to name what the slot holds, so it reads as empty.
+  it('takes one accept-door draft per slot too', () => {
     const rows = [item({ hash: 'a' }), item({ hash: 'b' })];
+    expect(toApprove(rows).map((r) => r.hash)).toEqual(['a']);
+  });
+
+  it('keeps drafts for different slots apart', () => {
+    const rows = [item({ hash: 'a' }), item({ hash: 'b', slot: 'shot:greet/s2' })];
     expect(toApprove(rows)).toHaveLength(2);
+  });
+
+  // The bug this whole rule exists for: a finished project still lists the takes that lost, and a
+  // pass that approved them would change every settled answer and be offered the old one next
+  // round, forever, while the pipeline it ran between rounds had nothing to do.
+  it('leaves a settled slot alone, whichever door it answers to', () => {
+    const rows = [
+      item({ hash: 'a', settled: true }),
+      item({
+        hash: 'p1',
+        kind: 'portrait',
+        door: 'gate',
+        slot: 'portrait:aiko',
+        characterId: 'aiko',
+        settled: true,
+      }),
+    ];
+    expect(toApprove(rows)).toEqual([]);
   });
 });

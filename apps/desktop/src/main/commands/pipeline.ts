@@ -134,9 +134,15 @@ export interface RoundOutcome {
  */
 export function stopReason(outcome: RoundOutcome, round: number, cap = MAX_ROUNDS): string {
   if (outcome.stopped) return 'stopped on request';
-  // The convergence test, and the only ending that means success: nothing was waiting to be
-  // approved and the planner had nothing left to do.
-  if (outcome.approved === 0 && outcome.ran === 0) return 'everything is generated and approved';
+  // The convergence test: nothing was waiting to be approved and the planner had nothing left to
+  // do. Said two ways, because a project whose remaining tasks are failed or flagged `needs_human`
+  // has also stopped moving, and telling an author that everything is generated would be a lie
+  // they only find out about by looking at the art.
+  if (outcome.approved === 0 && outcome.ran === 0) {
+    return outcome.failed > 0
+      ? 'nothing left to approve, and what remains needs a person'
+      : 'everything is generated and approved';
+  }
   // A round that approved nothing and failed everything it tried will do the same again. Terminal
   // tasks are retried once by the scheduler, so this is the failure that has already been retried.
   if (outcome.approved === 0 && outcome.ran > 0 && outcome.failed >= outcome.ran) {
@@ -147,26 +153,29 @@ export function stopReason(outcome: RoundOutcome, round: number, cap = MAX_ROUND
 }
 
 /**
- * The rows to approve this round: everything not blocked, and — at the character gate — at most
- * one portrait per character.
+ * The rows to approve this round: every unblocked candidate for a slot **nothing has settled yet**,
+ * and at most one per slot.
  *
- * The gate is the one door whose candidates are alternatives rather than separate pictures:
- * approving two portraits of Aiko in one pass is not approving two things, it is choosing her
- * look and then changing it. The first is taken because `approvable` lists upstream-first in slot
- * order, which is the project's own idea of the obvious one.
+ * Both halves are the same rule, and both are about a slot's candidates being *alternatives* rather
+ * than separate pictures. Approving a second portrait of Aiko is not approving two things, it is
+ * choosing her look and then changing it; accepting a second sheet for one angle leaves `pick`
+ * unable to say which one the slot holds, so the slot reads as empty and its plates re-render.
+ * A settled slot is skipped outright — its losing takes stay listed for an author who wants to
+ * choose one, but a pass that approved them would un-approve its own last round and never
+ * converge. The first row of a slot is the one taken, because `approvable` lists upstream-first in
+ * slot order, which is the project's own idea of the obvious one.
  */
 export function toApprove(items: readonly Approvable[]): Approvable[] {
   const chosen: Approvable[] = [];
-  const gated = new Set<string>();
+  const taken = new Set<string>();
   for (const item of items) {
-    if (item.blocked) continue;
-    if (item.door === 'gate') {
-      // A portrait of nobody clears nobody from the gate — `approveOne` says exactly that, and
-      // skipping it here keeps the loop from asking once a round for as long as it runs.
-      const who = item.characterId;
-      if (!who || gated.has(who)) continue;
-      gated.add(who);
-    }
+    if (item.blocked || item.settled) continue;
+    // A portrait of nobody clears nobody from the gate — `approveOne` says exactly that, and
+    // skipping it here keeps the loop from asking once a round for as long as it runs.
+    if (item.door === 'gate' && !item.characterId) continue;
+    // Keyed by the slot the row is listed under, which for a portrait is the character's own.
+    if (taken.has(item.slot)) continue;
+    taken.add(item.slot);
     chosen.push(item);
   }
   return chosen;
@@ -193,14 +202,24 @@ export const pipelineApproveAndRun = define({
     const state = await ctx.host.session.runPreconditions(false);
     if (state.keyError) return { ok: false, reason: state.keyError };
     const waiting = toApprove(await ctx.host.session.approvable()).length;
-    return {
-      ok: true,
-      note: [
-        `${waiting} picture(s) would be approved, then ${state.pending} planned task(s) run.`,
+    const lines = [
+      `${waiting} picture(s) would be approved, then ${state.pending} planned task(s) run.`,
+    ];
+    // Said before the pass rather than after it: a project with nothing waiting and nothing
+    // plannable ends on its first round, and an author who was not told that reads the round it
+    // takes as a pass that ran and did nothing.
+    if (waiting === 0 && state.pending === 0) {
+      lines.push(
+        'Nothing is waiting and nothing is plannable, so this ends after one round. Art that ' +
+          'failed or is flagged for a person is not re-run by it.',
+      );
+    } else {
+      lines.push(
         `Each round unlocks more, and it repeats until nothing is left — up to ${MAX_ROUNDS} rounds.`,
         'This spends real model calls.',
-      ].join('\n'),
-    };
+      );
+    }
+    return { ok: true, note: lines.join('\n') };
   },
   async run(_props, ctx) {
     // Same reasoning as `pipeline.run`, and more so: the list fills in while this happens, and it

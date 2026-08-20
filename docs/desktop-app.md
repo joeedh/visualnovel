@@ -331,8 +331,10 @@ are the bridge's.
   next rung of the slot graph, so an approved portrait clears the gate and an approved sheet lets
   its plates plan. It is a menu entry rather than a button because it spends real model calls and
   approves art on the author's behalf; the confirmation card counts what is waiting and what is
-  planned before anything is spent, and Stop pipeline ends it after the task in progress. Its
-  loop, its round cap and what it approves at the gate are in
+  planned before anything is spent — and says so plainly when the answer to both is none, because
+  a pass with nothing to do still takes one round and an author who was not told reads that round
+  as a run that did nothing. Stop pipeline ends it after the task in progress. Its
+  loop, its round cap and the one-candidate-per-unsettled-slot rule it approves by are in
   [`command-system.md`](command-system.md#the-registered-commands).
 - **The Help menu is the only thing that ever starts an update check.** Check for Updates…
   (`app.checkForUpdates`) asks GitHub whether a newer release exists, compares it against
