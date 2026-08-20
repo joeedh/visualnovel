@@ -384,7 +384,19 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
 
 **Comment style, where plans and research are filed, how docs are kept honest, and the checklist
 a plan passes before it counts as finished: [`docs/conventions.md`](docs/conventions.md).** The
-two conventions below stay here because they are rules you need while the work is happening.
+three conventions below stay here because they are rules you need while the work is happening.
+
+### Plans
+
+- **A plan is pressure-tested by a fresh-context agent once it is written, before the work
+  starts.** Hand the finished `docs/plans/<name>.md` to a subagent that has not seen the
+  conversation that produced it, and ask it to attack the plan: what the plan assumes but never
+  states, what it contradicts in the code or in `docs/`, what it leaves undecided, and what it
+  would cost to undo. The reviewer must be a _separate_ context — the author's context already
+  holds the reasoning the plan is supposed to carry on its own, so an agent that helped write it
+  cannot tell a stated decision from a remembered one.
+- **The plan is then updated to answer what came back** — either by fixing it, or by writing down
+  why the objection is wrong. A review whose findings leave no trace in the file did not happen.
 
 ### Git history
 

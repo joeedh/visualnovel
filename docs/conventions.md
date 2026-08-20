@@ -44,6 +44,18 @@ happening, not looked up afterwards.
   deliberately outside prettier's idea of markdown, and reformatting it loses the author's
   own shorthand.  When executing the todo list items, items that create documents (including
   plans) should be executed in subagents.
+- **A plan is pressure-tested by a fresh-context agent after it is formulated and before the
+  work starts.** Once `docs/plans/<name>.md` reads as finished, hand it to a subagent that has
+  not seen the conversation that produced it and ask it to attack the plan rather than approve
+  it: what does the plan assume without stating, what does it contradict in the code or in
+  `docs/`, what decision does it defer, what would it cost to undo, and what does it leave a
+  reader unable to act on. The reviewer must be a *separate* context, not a continuation of the
+  author's — the author's context already holds the reasoning the plan is supposed to carry on
+  its own, so an agent that helped write it reads its own memory back in and cannot tell a
+  stated decision from a remembered one.
+- **The findings are then written into the plan** — each is either fixed, or recorded in the
+  plan with the reason it is wrong or deliberately out of scope. A review that leaves no trace
+  in the file did not happen, and the next reader will raise the same objection.
 
 ## Research
 
