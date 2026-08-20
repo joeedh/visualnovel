@@ -3,7 +3,7 @@
 Status: **shipped**.
 
 What to change in `vnauthor` and its desktop host, derived from
-[`../research/agent-transcript-review-test4.md`](../../research/agent-transcript-review-test4.md) —
+[`../../research/agent-transcript-review-test4.md`](../../research/agent-transcript-review-test4.md) —
 an adversarial read of the four saved conversations in `examples/test4`. The review says what went
 wrong; this plan says what to build.
 

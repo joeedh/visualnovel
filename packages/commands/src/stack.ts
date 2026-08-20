@@ -15,7 +15,7 @@ import type { Snapshot, UndoJournal, UndoPoint } from './undo.js';
 import type { CommandContext, CommandOutcome, CommandRecord, CommandSource } from './command.js';
 
 const NO_JOURNAL =
-  'undo is unavailable here — no snapshot journal is wired (see docs/gitUndoOptions.md)';
+  'undo is unavailable here — no snapshot journal is wired (see docs/history/gitUndoOptions.md)';
 
 export interface CommandStackOptions<Host> {
   registry: CommandRegistry<Host>;
@@ -262,7 +262,7 @@ export class CommandStack<Host = unknown> {
    *
    * Restoring the post-state, never replaying `invocation` — a replay is a *re-run*, and for
    * anything touching a model or reading changed inputs it would produce a different result
-   * (`docs/gitUndoOptions.md` §7). The invocation stays on the record for exactly that use.
+   * (`docs/history/gitUndoOptions.md` §7). The invocation stays on the record for exactly that use.
    */
   async redo(): Promise<CommandOutcome> {
     const journal = this.opts.journal;

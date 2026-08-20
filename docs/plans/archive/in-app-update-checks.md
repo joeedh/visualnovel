@@ -20,7 +20,7 @@ The reason for the split is not caution, it is that stage 2 does not work yet wh
 most. `electron-updater` on macOS requires a signed app — Squirrel.Mac refuses an unsigned
 bundle and fails **silently**, which is the worst failure mode available. On Windows/NSIS it
 works fine unsigned, but SmartScreen still greets each downloaded update. Until
-[`code-signing-and-notarization.md`](../code-signing-and-notarization.md) is done, stage 2 is a
+[`../code-signing-and-notarization.md`](../code-signing-and-notarization.md) is done, stage 2 is a
 better experience on exactly one platform, and stage 1 is the same experience on all of them.
 
 So: build stage 1 now. Add stage 2 in the same command, behind the same entry point, when

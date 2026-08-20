@@ -112,7 +112,7 @@ Four steps, as planned, with three things the plan did not say:
   the story and the flag stays a description of the staging.
 
 The unkeyed-portrait limitation is **documented, not fixed** — see
-[`playable-format.md`](../../playable-format.md#contracts), which warns an author at the point they
+[`../../reference/playable-format.md`](../../reference/playable-format.md#contracts), which warns an author at the point they
 would flip the flag rather than leaving them to discover it in a frame.
 
 ## Out of scope

@@ -163,7 +163,7 @@ function entityBranch(input: DocTreeInput, kind: 'character' | 'location'): DocN
 
 /**
  * The wiki tree, from `Bible.files()` — path, title, nothing else. A table of contents is not an
- * excerpt, which is why this may read the bible index at all; see `docs/story-bible.md`.
+ * excerpt, which is why this may read the bible index at all; see `docs/reference/story-bible.md`.
  */
 function wikiBranch(input: DocTreeInput): DocNode {
   const roots: DocNode[] = [];
@@ -202,7 +202,7 @@ function wikiBranch(input: DocTreeInput): DocNode {
 
 /**
  * The skills, as leaves. **No file children**: the doc tree is identity, not content
- * (`docs/document-tree.md`), and a skill is one thing with an id, a name and a description — the
+ * (`docs/reference/document-tree.md`), and a skill is one thing with an id, a name and a description — the
  * same granularity as a character. What is *inside* the directory is the Skills pane's own tree.
  *
  * **Drawn even when empty**, which no other branch is. A skill has to be findable before one

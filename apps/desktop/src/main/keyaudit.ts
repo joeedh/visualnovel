@@ -1,6 +1,6 @@
 /**
  * Tier 2 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: whether the *words* in
- * `docs/api-keys.md` still describe what a vendor's own page says today.
+ * `docs/guides/api-keys.md` still describe what a vendor's own page says today.
  *
  * Tier 1 (`scripts/check-key-links.mjs`) answers whether the links resolve, which is a fact.
  * This answers whether the walkthrough beside them is still true, which is a judgement — so it
@@ -10,7 +10,7 @@
  *
  * The pure half lives here so it can be tested without a network or a key: fetching and the model
  * call are in `scripts/audit-key-instructions.mjs`, and everything that decides anything is a
- * function below. Nothing here writes: the audit's one hard rule is that `docs/api-keys.md` is
+ * function below. Nothing here writes: the audit's one hard rule is that `docs/guides/api-keys.md` is
  * edited by a person, because it is what a new user reads when they are least able to tell that
  * something is wrong.
  *
@@ -169,7 +169,7 @@ export function auditPrompt(opts: {
   return [
     `Vendor id: ${opts.vendor} (${opts.name})`,
     '',
-    'Our walkthrough, from docs/api-keys.md:',
+    'Our walkthrough, from docs/guides/api-keys.md:',
     '---',
     opts.ours,
     '---',
@@ -259,7 +259,12 @@ export function renderReview(reviews: readonly VendorReview[], stamp: string): s
     if (review.theirs) {
       lines.push('', 'They say:', '', `> ${review.theirs.split('\n').join('\n> ')}`);
     }
-    lines.push('', 'Proposed replacement for that part of `docs/api-keys.md`:', '', '```markdown');
+    lines.push(
+      '',
+      'Proposed replacement for that part of `docs/guides/api-keys.md`:',
+      '',
+      '```markdown',
+    );
     lines.push(review.proposal ?? '');
     lines.push('```');
   }
@@ -268,7 +273,7 @@ export function renderReview(reviews: readonly VendorReview[], stamp: string): s
     '',
     '---',
     '',
-    'Written by `scripts/audit-key-instructions.mjs`. It reads `docs/api-keys.md` and never ' +
+    'Written by `scripts/audit-key-instructions.mjs`. It reads `docs/guides/api-keys.md` and never ' +
       'writes to it — apply what you agree with by hand, and close this when you have.',
   );
   return lines.join('\n') + '\n';

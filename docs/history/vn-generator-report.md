@@ -47,7 +47,7 @@
 This is the **original design report**, kept as written. The architecture it proposes is the
 one that got built, but nine specifics came out differently once implemented. For the
 invariants as they actually hold today, read
-[`pipeline-contracts.md`](pipeline-contracts.md); this list is only the delta.
+[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md); this list is only the delta.
 
 | Report says | Shipped |
 | ----------- | ------- |
@@ -58,13 +58,13 @@ invariants as they actually hold today, read
 | §3, §4 P5 — Shot blocks live inside the scene's markdown file | Shots are persisted separately as `work/shots/<sceneId>.json`, authored fields at top level and run output under `shotData`. |
 | §9.2 — `character.resolved.md`, `build/shots/`, `state/cache.sqlite` | None exist. Shots live under `work/`, not `build/`; there is no sqlite cache — `state/tasks.jsonl` replayed *is* the cache. |
 | §4 P7 — a hard cap of 4 refine iterations | Configurable: `config.max_refine_attempts`, which defaults to 4. |
-| §9.1 — the screenplay is one authored `screenplay/screenplay.fountain` | Authored input is **one file per scene**: `scenes/<id>.md`, `scene: <id>` front-matter over a one-scene Fountain body, entry named by `start:` in `project.yaml`. The single-file form is no longer read: `vngen import` converts one, `vngen screenplay` projects the chunks back out, and a project still holding one is told to import it. See [`fountain.md`](fountain.md#one-fountain-file-in-and-out-project-specific). |
-| §3, §4 — a character's `reference_images:` front-matter, and §4 P7's per-phase `reference_images` argument | The front-matter key was storage for a feature nothing ever read and is **retired**: a file still setting it gets a `retired_reference_images` diagnostic naming the paths, and the serializers drop the key. Reference images are now attached to a prompt **clause** instead — `prompt.addRef`, with `asset.upload` bringing outside bytes in as a `reference` asset. See [`plans/chunked-prompts.md`](plans/archive/chunked-prompts.md). |
+| §9.1 — the screenplay is one authored `screenplay/screenplay.fountain` | Authored input is **one file per scene**: `scenes/<id>.md`, `scene: <id>` front-matter over a one-scene Fountain body, entry named by `start:` in `project.yaml`. The single-file form is no longer read: `vngen import` converts one, `vngen screenplay` projects the chunks back out, and a project still holding one is told to import it. See [`../reference/fountain.md`](../reference/fountain.md#one-fountain-file-in-and-out-project-specific). |
+| §3, §4 — a character's `reference_images:` front-matter, and §4 P7's per-phase `reference_images` argument | The front-matter key was storage for a feature nothing ever read and is **retired**: a file still setting it gets a `retired_reference_images` diagnostic naming the paths, and the serializers drop the key. Reference images are now attached to a prompt **clause** instead — `prompt.addRef`, with `asset.upload` bringing outside bytes in as a `reference` asset. See [`../plans/archive/chunked-prompts.md`](../plans/archive/chunked-prompts.md). |
 | §3, §4 P5, §9.2 — `scenes/<id>.md` is a *generated* file under `work/` | Inverted: `scenes/<id>.md` is now the **author's** file at the project root, and there is no `vngen/work/scenes/` at all. What P5 produces is `work/shots/<sceneId>.json` (previous row). |
 
 One thing the report holds out of scope has since been partly built, in a narrower form than
 it warns against: there is no external-engine export, but there *is* a small in-house playable
-(`story.play.json`) and a desktop runner — see [`playable-format.md`](playable-format.md).
+(`story.play.json`) and a desktop runner — see [`../reference/playable-format.md`](../reference/playable-format.md).
 
 ---
 

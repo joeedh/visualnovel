@@ -341,7 +341,7 @@ actually reaches a user in the desktop instead of being auto-allowed.
 
 ## Stage 6 — docs and bookkeeping
 
-- Keep this plan current as the work proceeds, and add its row to [`index.md`](../index.md) — a plan
+- Keep this plan current as the work proceeds, and add its row to [`../index.md`](../index.md) — a plan
   is indexed there, not in [`../index.md`](../index.md), which lists `docs/` pages.
 - `CLAUDE.md`: `@vn/artgen` in the layering diagram and the package table; a core-ideas bullet for
   the concept kind (generated on demand, bound but never consumed, promotable) and for promotion's

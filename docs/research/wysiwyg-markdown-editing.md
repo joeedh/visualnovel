@@ -5,7 +5,7 @@ _Investigation. Not a plan — no steps, no waves committed to. It surveys what 
 the constraints that pane already carries._
 
 _Status: **nothing built, and nothing decided.** The Wiki editor ships the plain textarea described
-in [`../desktop-app.md`](../desktop-app.md). CodeMirror 6 is the current favourite on the strength
+in [`../reference/desktop-app.md`](../reference/desktop-app.md). CodeMirror 6 is the current favourite on the strength
 of the round-trip argument below, but it has not been chosen — the open questions at the end are
 real, and two of them could still move the verdict._
 

@@ -8,7 +8,7 @@ file actually on disk.
 The pane that draws them is the `documents` editor
 ([`desktop-app.md`](desktop-app.md#documents)); this page is the shape underneath it. Plan and the
 reasoning behind each decision:
-[`plans/document-tree-and-backlinks.md`](plans/archive/document-tree-and-backlinks.md).
+[`../plans/archive/document-tree-and-backlinks.md`](../plans/archive/document-tree-and-backlinks.md).
 
 <!-- toc -->
 
@@ -26,7 +26,7 @@ reasoning behind each decision:
 ## What it is
 
 **A join, not a new source of truth.** Every edge the tree draws already exists on disk: entity
-sheets carry the file they were discovered in ([entity discovery by tag](plans/archive/entity-discovery-by-meta-tag.md)),
+sheets carry the file they were discovered in ([entity discovery by tag](../plans/archive/entity-discovery-by-meta-tag.md)),
 `Scene.characters` names the cast, `ShotSubject.characterId` names who is in frame,
 `Asset.satisfies` names what a byte-stream is for, and `Bible.files()` names the wiki. This module
 walks them once and shapes the result; it reads nothing else and writes nothing at all.
@@ -71,7 +71,7 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   undefined means it did not look, and leaves the branch out.
 - **Unapproved assets** is a lens on the two branches around it — everything still standing between
   the project and a finished set of pictures, in two groups the
-  [slot graph](plans/archive/the-full-slot-graph-and-approving-upstream-first.md) makes disjoint by
+  [slot graph](../plans/archive/the-full-slot-graph-and-approving-upstream-first.md) makes disjoint by
   construction. *Awaiting approval* is real bytes nothing has accepted, reusing the same
   `asset:<hash>` ids the Assets branch uses, so selection, routing and the right-click menu work
   here with no renderer change. *Not yet rendered* is slots with **zero candidates** — deliberately
@@ -109,7 +109,7 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   about a concept, an upload, a reference or a base-root asset is not a verdict. The group heading
   counts **rows**, because rows are what it heads. Without a slot graph the branch is a flat list of
   everything, exactly as it was before any of this.
-  Plans: [`plans/superseded-assets-in-the-document-tree.md`](plans/archive/superseded-assets-in-the-document-tree.md)
+  Plans: [`../plans/archive/superseded-assets-in-the-document-tree.md`](../plans/archive/superseded-assets-in-the-document-tree.md)
   (the first form of it), then `todos.md` item 37.
 - **An asset is named, and the hash is what a collision costs.** `labelAssets`
   (`apps/desktop/src/main/assetlabel.ts`, pure) turns the manifest's bindings into display names —
@@ -211,7 +211,7 @@ testable without a DOM; resolving a verdict into a drawn item is `renderer/pathu
 and opening the path.ux menu is `renderer/pathux/showmenu.ts`. The full write-up, including why an
 entry is an invocation rather than a callback, is in
 [`command-system.md`](command-system.md#from-a-right-click) and
-[`plans/document-tree-context-menus.md`](plans/archive/document-tree-context-menus.md).
+[`../plans/archive/document-tree-context-menus.md`](../plans/archive/document-tree-context-menus.md).
 
 | node kind | entries |
 | --- | --- |

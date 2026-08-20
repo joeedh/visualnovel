@@ -1,5 +1,5 @@
 /**
- * The base/project store split (`docs/asset-stores.md`): routing by kind, the union read, the
+ * The base/project store split (`docs/reference/asset-stores.md`): routing by kind, the union read, the
  * three base states, and the two compatibility guarantees — a legacy manifest keeps resolving,
  * and a single-record `satisfies` reads as a one-element list.
  */

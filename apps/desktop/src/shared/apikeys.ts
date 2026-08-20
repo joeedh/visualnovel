@@ -1,5 +1,5 @@
 /**
- * `docs/api-keys.md`, read.
+ * `docs/guides/api-keys.md`, read.
  *
  * The walkthrough for getting a model key exists once, as that file, and three things read it:
  * the Setup pane, the docs site, and (later) a CI check that the vendor links still resolve. So
@@ -161,12 +161,13 @@ export function keyGuideProblems(guide: KeyGuide, expected: readonly string[]): 
   const found = new Set(guide.vendors.map((vendor) => vendor.vendor));
 
   for (const vendor of expected) {
-    if (!found.has(vendor)) problems.push(`No \`## ${vendor}\` section in docs/api-keys.md.`);
+    if (!found.has(vendor))
+      problems.push(`No \`## ${vendor}\` section in docs/guides/api-keys.md.`);
   }
   for (const vendor of guide.vendors) {
     if (!expected.includes(vendor.vendor)) {
       problems.push(
-        `docs/api-keys.md has a section for \`${vendor.vendor}\`, which is not a vendor.`,
+        `docs/guides/api-keys.md has a section for \`${vendor.vendor}\`, which is not a vendor.`,
       );
     }
     for (const field of GUIDE_URL_FIELDS) {

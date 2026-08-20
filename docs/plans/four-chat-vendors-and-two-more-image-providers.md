@@ -33,10 +33,10 @@ Three separate plans have already tripped over the same wall.
 [`provider-credentials-and-the-ai-usage-ledger.md`](provider-credentials-and-the-ai-usage-ledger.md)
 names it outright in its step 9 — a third vendor "necessarily" needs a real routing table, because
 `chatVendorFor`'s "anything not `claude` is Gemini" rule cannot survive one.
-[`prompt-caching-and-deferred-tool-loading.md`](archive/prompt-caching-and-deferred-tool-loading.md) built
+[`archive/prompt-caching-and-deferred-tool-loading.md`](archive/prompt-caching-and-deferred-tool-loading.md) built
 a four-breakpoint request builder that is Anthropic-only by construction and left Gemini on the
 single-shot path.
-[`gemini-estimated-cache-hit-rate.md`](archive/gemini-estimated-cache-hit-rate.md) had to invent
+[`archive/gemini-estimated-cache-hit-rate.md`](archive/gemini-estimated-cache-hit-rate.md) had to invent
 `cacheEstimated` because one vendor reports a matched prefix that it does not bill for.
 
 Each of those was the right local call. Together they mean the repo now has one native

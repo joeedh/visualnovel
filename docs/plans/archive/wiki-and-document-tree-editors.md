@@ -1,7 +1,7 @@
 # Wiki and document-tree editors
 
 Status: **shipped** — see [What shipped, and where it deviated](#what-shipped-and-where-it-deviated).
-Item 12 of [`refactorTaskList.md`](../refactorTaskList.md). The
+Item 12 of [`../refactorTaskList.md`](../refactorTaskList.md). The
 panes for the backends that items 3 and 9 shipped — a sidebar that draws the document tree and the
 file tree, a backlink panel behind a character, and a markdown editor for the story bible — plus the
 read and write commands they need, which did not exist.
@@ -31,7 +31,7 @@ Project…` in the app menu). This plan owns the other three, and the tracker ge
 ping-pong cannot happen again.
 
 It is also the largest remaining gap against the requirements, which are unusually specific here
-([`../designRequirementsEtc.md`](../../designRequirementsEtc.md) §Authoring):
+([`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md) §Authoring):
 
 > The user uses the UX to edit the story bible. … The user creates a new character, the app
 > initializes it with a template. There is a sidebar with a logical document tree; it will have a
@@ -143,7 +143,7 @@ own area-switcher `+` menu (`area_base.ts:34-59` enumerates `areaclasses` and sk
 ### 2. Reading a file is not a hole in the bible's guarantee
 
 `@vn/bible` deliberately has no whole-file API, and that absence is what keeps the bible out of the
-agent's context window ([`../story-bible.md`](../../story-bible.md)). A human reading their own note on
+agent's context window ([`../../reference/story-bible.md`](../../reference/story-bible.md)). A human reading their own note on
 screen is not that, and `CLAUDE.md` already anticipates it: "a surface wanting a whole file opens it
 itself."
 
@@ -391,15 +391,15 @@ without images.
 
 ### 7. Docs and tracker
 
-[`../desktop-app.md`](../../desktop-app.md) gets its two new editor sections **and** its "all eight"
-count at `:122`; [`../story-bible.md`](../../story-bible.md) gets the sentence about why a human surface
-may read a whole file when the agent may not; [`../document-tree.md`](../../document-tree.md) loses its
+[`../../reference/desktop-app.md`](../../reference/desktop-app.md) gets its two new editor sections **and** its "all eight"
+count at `:122`; [`../../reference/story-bible.md`](../../reference/story-bible.md) gets the sentence about why a human surface
+may read a whole file when the agent may not; [`../../reference/document-tree.md`](../../reference/document-tree.md) loses its
 "no UI yet" framing; the `doc.*` commands land in
-[`../command-system.md`](../archive/command-system.md) — whose "Forty-seven, in nine namespaces" at `:252` is
+[`command-system.md`](command-system.md) — whose "Forty-seven, in nine namespaces" at `:252` is
 **already stale** against 48 and becomes **51 in ten namespaces** — plus its per-namespace list;
-[`../desktopAppState.md`](../../desktopAppState.md) gains `ui.docPath` in category 2 and the per-pane
+[`../../reference/desktopAppState.md`](../../reference/desktopAppState.md) gains `ui.docPath` in category 2 and the per-pane
 mode field if decision 11 lands that way; `CLAUDE.md`'s editor count (`:307`) and command count move.
-This plan's row, [`index.md`](../index.md) and [`refactorTaskList.md`](../refactorTaskList.md) get marked.
+This plan's row, [`../index.md`](../index.md) and [`../refactorTaskList.md`](../refactorTaskList.md) get marked.
 
 ## Out of scope
 
@@ -408,7 +408,7 @@ This plan's row, [`index.md`](../index.md) and [`refactorTaskList.md`](../refact
 - **The "generate character assets" button** the requirements describe next to the character file.
   That is gate and pipeline surface, not a document editor's — and the gate surface it would sit on
   **shipped** with item 1, which now has no open row to receive it. So it gets its own:
-  [`refactorTaskList.md`](../refactorTaskList.md) item 13. A pointer at a finished item is exactly the
+  [`../refactorTaskList.md`](../refactorTaskList.md) item 13. A pointer at a finished item is exactly the
   ping-pong this plan exists to end.
 - **Editing scenes here.** `scenes/<id>.md` is refused by `doc.write`. The Script editor owns prose.
 - **Embeddings.** `@vn/bible`'s ranking is behind `query()` and swappable without a caller changing;

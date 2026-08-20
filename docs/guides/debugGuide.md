@@ -134,7 +134,7 @@ own key, and only when they tick **Read the requests this session sent** — whi
 them when it offers to look into an API refusal. What that agent reads is structure and capped,
 redacted values, and **none of it reaches the report**: the privacy area stays the author's own
 model provider. See
-[`plans/diagnosing-an-api-error-from-the-request-that-caused-it.md`](plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md).
+[`../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`](../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md).
 
 **Files on disk, off unless `VN_DUMP_REQUESTS` names a directory.** Each body is written as
 `<label>-<pid>-<seq>.json`, with a `.error.txt` beside the ones that failed. Deliberately not

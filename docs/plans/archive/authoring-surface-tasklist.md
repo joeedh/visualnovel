@@ -141,5 +141,5 @@ nothing. Wave C is the two features that consume the rest.
 ## Closing out
 
 Each plan is finished under the repo's own rule: comments audited, every `CLAUDENOTE:` gone, the
-`docs/` pages it names updated, its row in [`index.md`](../index.md) moved to **shipped**, and the
+`docs/` pages it names updated, its row in [`../index.md`](../index.md) moved to **shipped**, and the
 matching `[ ]:` in `todos.md` checked — wording, ordering and whitespace left alone.

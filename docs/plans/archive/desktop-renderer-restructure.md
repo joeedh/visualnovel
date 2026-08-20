@@ -1,7 +1,7 @@
 # Plan: desktop renderer restructure
 
 **Status:** done.
-**Gates:** every editor plan in [`desktop-editors-tracking.md`](../desktop-editors-tracking.md).
+**Gates:** every editor plan in [`../desktop-editors-tracking.md`](../desktop-editors-tracking.md).
 Nothing else should start until this lands.
 
 ## Why

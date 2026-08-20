@@ -195,7 +195,7 @@ export class AssetRoot {
 /**
  * Content-addressed asset store + manifest (report §8), across two roots: base art (portraits,
  * model sheets, location refs) under `assets/`, and project art (shot frames) under
- * `vngen/build/`. Full write-up: `docs/asset-stores.md`.
+ * `vngen/build/`. Full write-up: `docs/reference/asset-stores.md`.
  *
  * Routing is by {@link AssetKind} and nothing else, so no asset is ambiguous about where it
  * lives. Reads consult both — hashes are content hashes, so a byte present in both roots *is*

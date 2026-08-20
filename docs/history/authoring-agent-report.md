@@ -69,7 +69,7 @@ produces malformed files:
   `screenplay/*.fountain`. _As shipped_ scenes are authored one per file —
   `scenes/<id>.md`, entry named by `start:` — and `screenplay/` is not read at all; the agent
   tells the author to run `vngen import` rather than editing one. See
-  [`fountain.md`](fountain.md#where-the-fountain-lives-project-specific).
+  [`../reference/fountain.md`](../reference/fountain.md#where-the-fountain-lives-project-specific).
 - **Character file schema** — YAML front-matter (`id`, `name`, `status`,
   `default_outfit`, `palette`, …) + canonical prose description + wardrobe section.
   _As shipped_ `reference_images` is **retired** — it was storage nothing read, and a file
@@ -199,7 +199,7 @@ This keeps the core agent small while letting each author encode their own workf
 
 Grouped by concern. (Names illustrative — the shipped registry is
 `packages/authoring/src/tools.ts` and its 23 tools are enumerated in
-[`vnauthor.md`](vnauthor.md). It follows this grouping, with four differences: editing is
+[`../reference/vnauthor.md`](../reference/vnauthor.md). It follows this grouping, with four differences: editing is
 typed per entity — `create_character` / `create_location` / `edit_character` /
 `edit_location` — rather than a generic `edit_file`, so every write goes through `@vn/model`'s
 round-trip-safe serializers; `load_context` is not a tool, because context is loaded before

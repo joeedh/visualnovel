@@ -19,7 +19,7 @@ export const appKeyGuide = define({
   id: 'app.keyGuide',
   title: 'The API key walkthrough',
   description:
-    'The steps for getting a model key, read from `docs/api-keys.md` — the one copy of them, ' +
+    'The steps for getting a model key, read from `docs/guides/api-keys.md` — the one copy of them, ' +
     'which the docs site serves and the Setup pane draws. Per vendor: where the console is, ' +
     'what the environment variable is called, whether there is a free tier, and the steps.',
   mutating: false,
@@ -44,7 +44,7 @@ export const appOpenKeyLink = define({
   title: "Open a provider's page",
   description:
     'Open one of a model provider’s own pages in your browser: the console where keys are made, ' +
-    'its documentation, or what it charges. The addresses are the ones `docs/api-keys.md` ' +
+    'its documentation, or what it charges. The addresses are the ones `docs/guides/api-keys.md` ' +
     'states, so a button and the written instructions cannot point at different pages — and ' +
     'naming a *field* rather than a URL is why no part of the app can ask the OS to open an ' +
     'address it was handed.',

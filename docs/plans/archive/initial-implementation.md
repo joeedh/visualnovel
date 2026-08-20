@@ -2,10 +2,10 @@
 
 Status: **shipped.** The monorepo, the package layering, phases P1–P7, the task graph, the
 store, the scheduler and the `vngen` CLI are all in the codebase; this plan is history, not a
-task list. As-shipped detail lives in [`../pipeline-contracts.md`](../../pipeline-contracts.md)
-and [`../toolchain.md`](../../toolchain.md).
+task list. As-shipped detail lives in [`../../reference/pipeline-contracts.md`](../../reference/pipeline-contracts.md)
+and [`../../guides/toolchain.md`](../../guides/toolchain.md).
 
-> Implements the design in [`docs/vn-generator-report.md`](../../vn-generator-report.md).
+> Implements the design in [`../../history/vn-generator-report.md`](../../history/vn-generator-report.md).
 > Scope: a pnpm/TypeScript monorepo that turns authored inputs (characters,
 > branching screenplay, optional locations + reference images) into a deduped,
 > resumable pipeline of generated art assets + a provenance manifest. Engine export
@@ -18,7 +18,7 @@ and [`../toolchain.md`](../../toolchain.md).
 The report separates **deterministic plumbing** (parse, dedupe, layout, scheduling)
 from **generative steps** (LLM/image calls). Package boundaries mirror that split,
 with strict layering so the future authoring agent
-([`docs/authoring-agent-report.md`](../../authoring-agent-report.md)) can reuse the
+([`../../history/authoring-agent-report.md`](../../history/authoring-agent-report.md)) can reuse the
 input-side packages without pulling in the generative pipeline.
 
 Two decisions up front:

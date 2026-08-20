@@ -143,9 +143,9 @@ one that answers for it.
   "palette form _is_ the dialog" decision is superseded, with a pointer here.
 - [`new-and-open-project.md`](new-and-open-project.md): the "warns, and proceeds" decision now
   proceeds with a repository of its own.
-- [`../desktop-app.md`](../../desktop-app.md) and [`../command-system.md`](../archive/command-system.md): the
+- [`../../reference/desktop-app.md`](../../reference/desktop-app.md) and [`command-system.md`](command-system.md): the
   palette-versus-dialog split, and where a menu entry needing an argument goes.
-- [`../repos-and-commits.md`](../../repos-and-commits.md): creating a project inside a repo nests one.
+- [`../../reference/repos-and-commits.md`](../../reference/repos-and-commits.md): creating a project inside a repo nests one.
 - `CLAUDE.md`: the two bullets that state the old behaviour.
 
 ## Acceptance

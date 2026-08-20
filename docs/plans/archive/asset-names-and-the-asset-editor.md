@@ -23,7 +23,7 @@ That field is `artNotes`. Because it enters `TaskInputs.prompt`, editing it re-k
 planner plans a fresh one and the next run regenerates exactly the assets it reached. No new
 scheduler machinery, and the same edit is reachable from the agent, the palette and the new pane.
 
-This is work item 13 in [`refactorTaskList.md`](../refactorTaskList.md) ("generation from an
+This is work item 13 in [`../refactorTaskList.md`](../refactorTaskList.md) ("generation from an
 authored surface"), which was **needs plan** until this page.
 
 ## Decisions already taken (with the user)

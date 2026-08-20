@@ -1,14 +1,14 @@
 # Authoring Agent — Implementation Plan
 
 Status: **shipped** as `@vn/authoring` + `@vn/authoring-app`. The as-shipped write-up is
-[`../vnauthor.md`](../../vnauthor.md).
+[`../../reference/vnauthor.md`](../../reference/vnauthor.md).
 
-> Implements the design in [`docs/authoring-agent-report.md`](../../authoring-agent-report.md).
+> Implements the design in [`../../history/authoring-agent-report.md`](../../history/authoring-agent-report.md).
 > Scope: a plan-first, git-backed, format-aware conversational agent that helps a user
 > **author and refine the input files** the VN Generator consumes — characters, the
 > branching Fountain screenplay, and locations. It operates on the **input/authoring**
 > side only and is deliberately separate from the generative image pipeline
-> ([`docs/vn-generator-report.md`](../../vn-generator-report.md) §9.1): it never runs P1–P7,
+> ([`../../history/vn-generator-report.md`](../../history/vn-generator-report.md) §9.1): it never runs P1–P7,
 > it prepares and maintains the source files those phases read.
 
 ---

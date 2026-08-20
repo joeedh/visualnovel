@@ -7,7 +7,7 @@
  * snapshot tree taken either side of it.
  *
  * Scope is the whole worktree (`-A`) per repo, not the paths a command claimed it wrote — a
- * declared `written` set is unverified (`docs/gitUndoOptions.md` §3) and the invariant this
+ * declared `written` set is unverified (`docs/history/gitUndoOptions.md` §3) and the invariant this
  * rests on is stronger anyway: the app opens on a clean worktree and every act ends with one,
  * so "everything dirty" and "what this act did" are the same set.
  */

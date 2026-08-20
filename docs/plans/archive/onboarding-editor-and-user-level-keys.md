@@ -174,7 +174,7 @@ Set Up API Keys…   →   view.open(editor='onboarding' where='elsewhere')
 `where='elsewhere'` already means "the biggest pane that is not the active one, splitting only
 if there is no other", so the pane arithmetic needed for this exists and the plan adds none.
 
-**This is an interim arrangement.** [`multiple-windows.md`](../multiple-windows.md) is in progress;
+**This is an interim arrangement.** [`../multiple-windows.md`](../multiple-windows.md) is in progress;
 when it lands, the onboarding editor should open as **its own window** instead of taking over
 a pane of the author's layout — a first-run walkthrough that eats the biggest pane is a
 walkthrough that rearranges the screen to say hello. Recorded in `CLAUDE.md` so it is not

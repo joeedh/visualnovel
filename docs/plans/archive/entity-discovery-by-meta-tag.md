@@ -1,7 +1,7 @@
 # Entity discovery by meta tag
 
 Status: **shipped** — see [As shipped](#as-shipped). Item 2 of
-[`refactorTaskList.md`](../refactorTaskList.md); the foundation
+[`../refactorTaskList.md`](../refactorTaskList.md); the foundation
 move of the [migration report](../../research/codebase-migration-for-new-requirements.md#1-entity-discovery-by-meta-tag).
 The wiki/bible plan, the backlink index and the outfit diagnostics all sit on the shapes this
 plan introduces.
@@ -12,7 +12,7 @@ plan introduces.
 
 ## Why
 
-[`../designRequirementsEtc.md`](../../designRequirementsEtc.md) says character and set-location
+[`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md) says character and set-location
 files are **story bible files identified via a meta tag** — discovery by content, not by
 location. Today discovery is path convention and nothing else: an author who writes a
 character sheet anywhere but `characters/<id>/character.md` has written a file nothing reads.
@@ -136,8 +136,8 @@ on a project constructed to deserve it. The mismatch fixture (`characters/ada/` 
 ### 6. Docs
 
 `CLAUDE.md`'s `@vn/store` row (discovery is tagged, three-surface), `docs/vnauthor.md` if
-tool descriptions change, this plan's As-shipped section, the row in [`index.md`](../index.md),
-and the item-2 row in [`refactorTaskList.md`](../refactorTaskList.md).
+tool descriptions change, this plan's As-shipped section, the row in [`../index.md`](../index.md),
+and the item-2 row in [`../refactorTaskList.md`](../refactorTaskList.md).
 
 ## Decisions settled here (refining the report's leanings)
 

@@ -1,14 +1,14 @@
 # Project bootstrap and the workspace picker
 
-Item 10 of [`refactorTaskList.md`](../refactorTaskList.md). The requirement, in full
-([`designRequirementsEtc.md`](../../designRequirementsEtc.md)):
+Item 10 of [`../refactorTaskList.md`](../refactorTaskList.md). The requirement, in full
+([`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md)):
 
 > The user starts with an empty project. The app requests the user to pick a directory for the
 > project. The app initializes a git repository if necessary. It will automatically commit
 > existing files.
 
 Status: **shipped** (deviations in [As shipped](#as-shipped)); the as-shipped page is
-[`desktop-app.md` § Which project is open](../../desktop-app.md#which-project-is-open).
+[`desktop-app.md` § Which project is open](../../reference/desktop-app.md#which-project-is-open).
 
 <!-- toc -->
 
@@ -149,11 +149,11 @@ checkout is asked once and remembers the answer.
 5. Startup precedence in `resolveWorkspace()`, including the first-run picker and `VN_NO_PICKER`.
 6. Regenerate `apps/desktop/dist/commands.json` (`pnpm --filter @vn/desktop build:catalog`);
    `commands.test.ts` pins the catalog against the live registry.
-7. Docs: a `## Workspaces` section in [`desktop-app.md`](../../desktop-app.md) (precedence, recents,
+7. Docs: a `## Workspaces` section in [`../../reference/desktop-app.md`](../../reference/desktop-app.md) (precedence, recents,
    what a switch tears down), the bootstrap paragraph in
-   [`repos-and-commits.md`](../../repos-and-commits.md) updated to point at `openWorkspace`, the two
-   new command rows in [`command-system.md`](../archive/command-system.md) and its count, and the trackers
-   ([`refactorTaskList.md`](../refactorTaskList.md) row 10, [`index.md`](../index.md)).
+   [`../../reference/repos-and-commits.md`](../../reference/repos-and-commits.md) updated to point at `openWorkspace`, the two
+   new command rows in [`command-system.md`](command-system.md) and its count, and the trackers
+   ([`../refactorTaskList.md`](../refactorTaskList.md) row 10, [`../index.md`](../index.md)).
 
 ## As shipped
 

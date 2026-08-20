@@ -4,7 +4,7 @@ _Survey, external. Nothing here is a plan and nothing here is load-bearing for t
 records what else existed in this space as of **August 2026**, so that a decision about export
 targets, camera continuity, or scope can be made against the field rather than against nothing._
 
-_Status: **reference.** Unlike [`../visualNovelFormats.md`](../visualNovelFormats.md), which
+_Status: **reference.** Unlike [`../history/visualNovelFormats.md`](../history/visualNovelFormats.md), which
 surveys formats this project has to interoperate with, nothing below is an interoperability
 constraint. It is competitive and prior-art context, and it will rot faster than any other
 document in `docs/`._
@@ -31,12 +31,12 @@ document in `docs/`._
 Three decisions in the backlog are hard to make in isolation and easy to make against a field:
 
 - **Whether to ship an engine export target** besides `story.play.json`
-  ([`../playable-format.md`](../playable-format.md)). Lock-in is only a risk relative to what an
+  ([`../reference/playable-format.md`](../reference/playable-format.md)). Lock-in is only a risk relative to what an
   author's alternative is.
 - **Whether camera and staging continuity across a scene** is a gap worth a plan, or a
   limitation of the medium.
 - **How much of this system is visual-novel-specific** at all. The requirements already note the
-  manga and storyboard applications ([`../designRequirementsEtc.md`](../designRequirementsEtc.md));
+  manga and storyboard applications ([`../history/designRequirementsEtc.md`](../history/designRequirementsEtc.md));
   the survey below suggests the transferable part is not the part one would guess.
 
 ## A caveat about sources
@@ -96,11 +96,11 @@ Ren'Py VN end-to-end in about ten minutes
 **What this camp gives an agent is hands, not economics.** A tool surface says *how* to place a
 sprite; it says nothing about whether that sprite has been approved, whether it has already been
 generated, what it cost, or whether the line it illustrates still exists. Every property in
-[`../pipeline-contracts.md`](../pipeline-contracts.md) is absent by construction, because a tool
+[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) is absent by construction, because a tool
 server is stateless with respect to production.
 
 This is the camp whose *shape* is closest to a piece of this project — `vnauthor`'s tool registry
-is the same idea ([`../vnauthor.md`](../vnauthor.md)) — and whose depth is least.
+is the same idea ([`../reference/vnauthor.md`](../reference/vnauthor.md)) — and whose depth is least.
 
 ### 3. Multi-agent story-to-play research
 
@@ -118,7 +118,7 @@ paper does not need to — the parts that consumed most of this repo: resumabili
 content-addressed dedupe so identical work is not bought twice, bounded retry with a persisted
 reason, a report derived from the live plan rather than from what one process happened to touch,
 or any notion of an artifact drifting out of date. Those are precisely the contracts in
-[`../pipeline-contracts.md`](../pipeline-contracts.md), and each of them was written after the
+[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md), and each of them was written after the
 corresponding failure.
 
 The reading worth taking from this camp is that **the generative decomposition is the solved
@@ -182,9 +182,9 @@ deliberate about it, because it is not the axis anyone is competing on.
 - **Export lock-in.** `story.play.json` is in-house. Summer Engine's pitch is a standard Godot 4
   project with no royalties, and that is a real adoption argument. The mitigation is cheap
   relative to what it buys: Fountain already round-trips
-  ([`../plans/fountain-import-export.md`](../plans/archive/fountain-import-export.md)), the playable
+  ([`../plans/archive/fountain-import-export.md`](../plans/archive/fountain-import-export.md)), the playable
   projection is already a manifest-driven projection
-  ([`../playable-format.md`](../playable-format.md)), and a Ren'Py or Godot target is another
+  ([`../reference/playable-format.md`](../reference/playable-format.md)), and a Ren'Py or Godot target is another
   projection rather than a new architecture.
 
 - **Retrieval.** Grep-shaped, with known defects — see
@@ -228,7 +228,7 @@ Two consequences worth recording:
    and shot rendering, it would produce a layout artifact the shot prompt references — arriving at
    the planner a wave later than the decomposition, exactly as a shot already waits on its
    location plate, and exactly as a non-default outfit already waits on its sheet
-   ([`../plans/outfits-at-scene-and-shot-level.md`](../plans/archive/outfits-at-scene-and-shot-level.md)).
+   ([`../plans/archive/outfits-at-scene-and-shot-level.md`](../plans/archive/outfits-at-scene-and-shot-level.md)).
    The graph absorbs it. This is the cheapest available answer to the camera-continuity gap and it
    costs none of the four properties above.
 

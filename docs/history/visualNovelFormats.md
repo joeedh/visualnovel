@@ -38,7 +38,7 @@ of our intermediate representation and any future export work.
 Since this survey was written, one narrow thing on that axis did get built — but it is not an
 export in the sense meant here. `@vn/export` projects the model + manifest into
 `story.play.json`, a **flattened ordered view over our own types** for our own desktop runner
-([`playable-format.md`](playable-format.md)). It has no scripting language, no macro system,
+([`../reference/playable-format.md`](../reference/playable-format.md)). It has no scripting language, no macro system,
 and no engine on the far side. Everything below remains a target we do not emit.
 
 A visual novel is, at its core, a **branching script that drives presentation**: it
@@ -92,7 +92,7 @@ DSL *and* an embeddable runtime; Twine is an editor *and* a family of story form
 
 ### Fountain (screenplay markup)
 
-- **Paradigm:** plain-text screenplay markup (see [`fountain.md`](fountain.md)).
+- **Paradigm:** plain-text screenplay markup (see [`../reference/fountain.md`](../reference/fountain.md)).
 - **Branching:** none natively — Fountain is a *linear* screenplay format. This project
   layers branch markers on top (`[[choice: … -> id]]`, `[[scene: id]]`, `[[next: id]]`)
   to turn it into a branch graph.
@@ -352,7 +352,7 @@ language.
 
 ## Further reading
 
-- [`fountain.md`](fountain.md) — the input screenplay format this project extends.
+- [`../reference/fountain.md`](../reference/fountain.md) — the input screenplay format this project extends.
 - [`vn-generator-report.md`](vn-generator-report.md) — the pipeline design and the explicit
   "stops at `manifest.json`, engine export out of scope" boundary.
 - Ren'Py documentation — the reference for the dominant open VN runtime.

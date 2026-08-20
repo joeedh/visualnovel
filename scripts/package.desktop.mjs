@@ -79,8 +79,11 @@ await writeFile(
 );
 
 await cp(join(APP, 'dist'), join(SCRATCH, 'dist'), { recursive: true });
-await mkdir(join(SCRATCH, 'docs'), { recursive: true });
-await cp(join(REPO_ROOT, 'docs', 'api-keys.md'), join(SCRATCH, 'docs', 'api-keys.md'));
+await mkdir(join(SCRATCH, 'docs', 'guides'), { recursive: true });
+await cp(
+  join(REPO_ROOT, 'docs', 'guides', 'api-keys.md'),
+  join(SCRATCH, 'docs', 'guides', 'api-keys.md'),
+);
 
 // `--ignore-workspace` because the scratch tree sits inside the monorepo and pnpm would
 // otherwise resolve against it; `hoisted` because that is the entire point of this directory.

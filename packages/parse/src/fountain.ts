@@ -1,5 +1,5 @@
 ﻿/**
- * A pragmatic Fountain parser (report §P0; see docs/fountain.md). It recognizes the
+ * A pragmatic Fountain parser (report §P0; see docs/reference/fountain.md). It recognizes the
  * elements this project needs to mine locations and split scenes — scene headings,
  * action, character cues, dialogue, parentheticals, transitions, sections, synopses,
  * notes, lyrics, and page breaks — using blank-line + capitalization + prefix rules.

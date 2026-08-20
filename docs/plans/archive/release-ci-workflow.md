@@ -84,7 +84,7 @@ because the history is linear and the noise commits were squashed out on the way
 ## Secrets
 
 None, for now. `GITHUB_TOKEN` is the built-in one, and it is enough to create a draft release.
-Signing certificates ([`code-signing-and-notarization.md`](../code-signing-and-notarization.md))
+Signing certificates ([`../code-signing-and-notarization.md`](../code-signing-and-notarization.md))
 and the audit's model key ([`auditing-the-api-key-instructions.md`](auditing-the-api-key-instructions.md))
 are the two things that will add repo secrets later, and both are their own plan.
 

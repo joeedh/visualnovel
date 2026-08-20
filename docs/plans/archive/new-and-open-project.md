@@ -51,7 +51,7 @@ So three things are missing, and only one of them is interesting.
   somebody's files (do not touch them). The refusal names which.
 - **It warns, and proceeds, when the target sits inside an existing git repo.** `RepoResolver`
   already reports a project merely sitting inside a larger repo and refuses to commit in it
-  ([`repos-and-commits.md`](../../repos-and-commits.md)) — so a project created three levels down in
+  ([`../../reference/repos-and-commits.md`](../../reference/repos-and-commits.md)) — so a project created three levels down in
   a monorepo will silently get no commit-on-save. The `check` sentence must say that before the
   directory exists, because afterwards the symptom is "my edits aren't being committed" with no
   visible cause.

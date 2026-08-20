@@ -4,7 +4,7 @@ Status: **shipped** (see [As shipped](#as-shipped)). The prerequisite the resear
 detail. It follows
 [`allocated-line-ids.md`](allocated-line-ids.md) and precedes
 [`scene-chunk-files.md`](scene-chunk-files.md) — every later move in
-[`../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md)
+[`../../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md)
 writes prose through the function this plan makes trustworthy.
 
 <!-- toc -->

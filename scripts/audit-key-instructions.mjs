@@ -1,14 +1,14 @@
 /**
  * Tier 2 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: the weekly, advisory half.
  *
- * For each vendor section of `docs/api-keys.md` it fetches that vendor's own documentation, hands
+ * For each vendor section of `docs/guides/api-keys.md` it fetches that vendor's own documentation, hands
  * both to a model, and writes `key-instructions-review.md` saying agree / drifted /
  * could-not-check. `.github/workflows/key-docs-audit.yml` runs it on a cron and turns a drifted
  * run into one issue.
  *
  * It always exits 0. Advisory means advisory: a vendor's page being slow, or a model being
  * unavailable, must not be something anyone has to go and clear. The one thing that would make
- * this dangerous is the one thing it does not do — it opens `docs/api-keys.md` for reading and
+ * this dangerous is the one thing it does not do — it opens `docs/guides/api-keys.md` for reading and
  * never writes to it, because an unreviewed model edit landing in the file a confused new user
  * follows is the highest-consequence automated write in this repo.
  *
@@ -29,7 +29,7 @@ import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { alias, EXTERNAL, REPO_ROOT as root } from './aliases.mjs';
 
-const GUIDE = join(root, 'docs/api-keys.md');
+const GUIDE = join(root, 'docs/guides/api-keys.md');
 const TMP = resolve(root, 'apps/desktop/.keyaudit-entry.cjs');
 
 /** Long enough for a slow docs site; this runs once a week and nothing waits on it. */
@@ -51,7 +51,9 @@ function flag(name, fallback) {
 
 const outPath = resolve(root, flag('out', 'key-instructions-review.md'));
 if (resolve(outPath) === resolve(GUIDE)) {
-  throw new Error('refusing to write to docs/api-keys.md — this audit proposes, a person applies');
+  throw new Error(
+    'refusing to write to docs/guides/api-keys.md — this audit proposes, a person applies',
+  );
 }
 
 await build({
@@ -186,7 +188,9 @@ for (const vendor of guide.vendors) {
 // one this run should not silently omit.
 for (const expected of KEY_VENDORS) {
   if (!guide.vendors.some((v) => v.vendor === expected)) {
-    reviews.push(unreadable(expected, 'docs/api-keys.md has no section for this vendor at all'));
+    reviews.push(
+      unreadable(expected, 'docs/guides/api-keys.md has no section for this vendor at all'),
+    );
   }
 }
 

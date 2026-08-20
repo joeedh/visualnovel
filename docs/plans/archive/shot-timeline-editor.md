@@ -7,7 +7,7 @@ ghost rather than [re-laning the strip](#amendment--the-drag-draws-a-ghost-inste
 and a claim may not [empty a neighbour](#amendment--a-claim-may-not-empty-a-neighbour).
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), plus shot
 persistence (Wave 1 here).
-**Size:** large. [`../research/graphThingsReport.md`](../../research/graphThingsReport.md) §7.
+**Size:** large. [`../../research/graphThingsReport.md`](../../research/graphThingsReport.md) §7.
 
 ## Why
 
@@ -195,7 +195,7 @@ That splits shot editing cleanly into two tiers:
 **v1 edits coverage only.** It is the actual gap, it is free, and it keeps the first version
 of a new editing surface incapable of destroying hours of generation. Framing/subject editing
 is a second pass that needs the invalidation-cost readout described in
-[`../research/graphThingsReport.md`](../../research/graphThingsReport.md) §3.
+[`../../research/graphThingsReport.md`](../../research/graphThingsReport.md) §3.
 
 ## Design
 

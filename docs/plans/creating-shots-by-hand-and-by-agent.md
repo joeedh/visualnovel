@@ -185,7 +185,7 @@ its other tools already use.
 
 New tools with no supporting context produce a model that misuses them. Knowledge is routed to
 the three places
-[`what-the-agent-knows-about-the-story-format.md`](archive/what-the-agent-knows-about-the-story-format.md)
+[`archive/what-the-agent-knows-about-the-story-format.md`](archive/what-the-agent-knows-about-the-story-format.md)
 established — the system prompt for what is always true, refusals for what is case-specific, a
 skill for workflow — and every surface that currently teaches the *old* rule is corrected in the
 same stage that changes it:
@@ -222,7 +222,7 @@ same stage that changes it:
   told to edit state it has no way to look at.
 - **The caching contract is respected, not renegotiated.** The system prompt and the tools block
   are part of the byte-stable cached prefix
-  ([`prompt-caching-and-deferred-tool-loading.md`](archive/prompt-caching-and-deferred-tool-loading.md)):
+  ([`archive/prompt-caching-and-deferred-tool-loading.md`](archive/prompt-caching-and-deferred-tool-loading.md)):
   new prompt text and new tools land between conversations, never edited into a live one — a
   mid-conversation change, if one is ever needed, rides the existing appended
   `{"role":"system"}` channel. The desktop's System Prompt editor needs no change; it renders
@@ -241,9 +241,9 @@ then):
 shot also ends it. It is stated in:
 
 - `CLAUDE.md` — the "Decomposing every scene is an explicit act" bullet;
-- [`../pipeline-contracts.md`](../pipeline-contracts.md) — the decomposition contract, the P5
+- [`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) — the decomposition contract, the P5
   section, **and** the second statement inside the scene-heading contract;
-- [`../cli.md`](../cli.md) — states the whole contract ("an absent one is the only signal … the
+- [`../guides/cli.md`](../guides/cli.md) — states the whole contract ("an absent one is the only signal … the
   file wins forever"), a surface class the first draft of this list missed entirely;
 - `apps/cli/src/commands.ts` — `vngen decompose`'s own printed sentences, and the test that
   asserts them (`apps/cli/src/tests/commands.test.ts`);
@@ -275,24 +275,24 @@ why it lives *there* (two hosts, one rule), in the voice of `@vn/scriptedit`'s e
 The re-export left behind during the move carries a comment naming its replacement so it cannot
 outlive the migration silently.
 
-**The docs that describe the surfaces.** [`../desktop-app.md`](../desktop-app.md#coverage) — the
+**The docs that describe the surfaces.** [`../reference/desktop-app.md`](../reference/desktop-app.md#coverage) — the
 Coverage section's "decomposed on purpose" bullet gains the creation door, and the busy state
-joins the gesture rules; [`../vnauthor.md`](../vnauthor.md#tools) — the tool table;
-[`../command-system.md`](../command-system.md) — anywhere a command count is named. Shipped plans
-([`shot-timeline-editor.md`](archive/shot-timeline-editor.md) and kin) are history and are **not**
+joins the gesture rules; [`../reference/vnauthor.md`](../reference/vnauthor.md#tools) — the tool table;
+[`../reference/command-system.md`](../reference/command-system.md) — anywhere a command count is named. Shipped plans
+([`archive/shot-timeline-editor.md`](archive/shot-timeline-editor.md) and kin) are history and are **not**
 rewritten; a plan is the authority on its own scope, and this one records the change.
 
 ## Out of scope
 
 - Routing the agent's tool loop through the command registry — still the follow-on
-  [`command-system.md`](archive/command-system.md) records, and this plan neither needs it nor advances it.
+  [`archive/command-system.md`](archive/command-system.md) records, and this plan neither needs it nor advances it.
 - Merging or splitting shots, and any change to `timeline.reorder`'s refusal for interleaved
   shots.
 - Any change to task identity, `buildShotPrompt`, or what invalidates art.
 
 ## Finishing checklist
 
-Beyond [`../conventions.md`](../conventions.md#finishing-a-plan): re-run Part D's search — grep
+Beyond [`../reference/conventions.md`](../reference/conventions.md#finishing-a-plan): re-run Part D's search — grep
 the repo for "only signal", "decompose this", "the only way to", and the moved symbol names — and
 fix what the list above missed, because the list was written before the work and the claims move
 with the code.

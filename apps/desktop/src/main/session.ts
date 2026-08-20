@@ -2506,7 +2506,7 @@ export class WorkspaceSession {
    * what the page says.
    */
   async keyGuide(): Promise<KeyGuide> {
-    return parseKeyGuide(await readResource('docs', 'api-keys.md'));
+    return parseKeyGuide(await readResource('docs', 'guides', 'api-keys.md'));
   }
 
   /**

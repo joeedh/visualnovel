@@ -1,7 +1,7 @@
 # Allocated line ids
 
 Status: **shipped** (see [As shipped](#as-shipped)). Move one of the direction argued in
-[`../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md)
+[`../../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md)
 — and the only one that stands entirely on its own. It ships against the existing single-file
 screenplay, needs no editor, and closes a silent-corruption path that exists today.
 

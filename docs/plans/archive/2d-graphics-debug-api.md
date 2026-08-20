@@ -6,7 +6,7 @@
 
 ## Context
 
-[`docs/research/2d-graphics-debug-api.md`](../../research/2d-graphics-debug-api.md) designs a
+[`../../research/2d-graphics-debug-api.md`](../../research/2d-graphics-debug-api.md) designs a
 source-agnostic 2D debugging layer for the desktop app: a neutral **fragment IR** captured
 from DOM (later canvas/SVG) sources, a **query engine** over recorded frames, and a causal
 **`explain()` family** as the actual product — "why did my click miss", "why is this on

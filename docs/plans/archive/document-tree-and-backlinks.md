@@ -1,8 +1,8 @@
 # Document tree and backlinks
 
 Status: **shipped** (deviations in [As shipped](#as-shipped)); the page is
-[`../document-tree.md`](../../document-tree.md). Item 9 of
-[`refactorTaskList.md`](../refactorTaskList.md), from §8 of the
+[`../../reference/document-tree.md`](../../reference/document-tree.md). Item 9 of
+[`../refactorTaskList.md`](../refactorTaskList.md), from §8 of the
 [migration report](../../research/codebase-migration-for-new-requirements.md#8-backlink-and-document-tree-index).
 Last in the sequence by construction: it reads what items 2, 3, 5, 6 and 7 produce and writes
 nothing.
@@ -95,7 +95,7 @@ in a serialized shape is unportable.
 character's *own* sheet when that sheet lives under `wiki/`, because that is a fact the tag index
 already knows. Finding every other note that says her name is what `bible.search` does, ranked and
 budgeted; precomputing it would be a second, unbudgeted index over the one tree that was
-deliberately given a budget. See [`../story-bible.md`](../../story-bible.md).
+deliberately given a budget. See [`../../reference/story-bible.md`](../../reference/story-bible.md).
 
 **7. Assets group by kind, and the tree says which root holds them.** `AssetStore.manifest()`
 merges both roots, and the `AssetKind` routing rule is what decides where bytes live, so the
@@ -184,10 +184,10 @@ shaping are testable apart.
 
 - New `docs/document-tree.md` — the branches, the node-id contract, what is deliberately absent
   (click actions, wiki mention-search), and the caps. Listed in [`../index.md`](../index.md).
-- [`../command-system.md`](../archive/command-system.md) — two rows and the counts.
-- [`../story-bible.md`](../../story-bible.md) — `files()` gains a third reader; still metadata.
+- [`command-system.md`](command-system.md) — two rows and the counts.
+- [`../../reference/story-bible.md`](../../reference/story-bible.md) — `files()` gains a third reader; still metadata.
 - `CLAUDE.md` — a line under the desktop section pointing at the new page.
-- `refactorTaskList.md` / [`index.md`](../index.md) — status.
+- `refactorTaskList.md` / [`../index.md`](../index.md) — status.
 
 ## As shipped
 

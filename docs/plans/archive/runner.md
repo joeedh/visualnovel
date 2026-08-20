@@ -1,8 +1,8 @@
 # Plan: Playable export format + desktop VN runner
 
 Status: **shipped** — `@vn/export`, `vngen export`, and the desktop PLAY room. As-shipped
-detail: [`../playable-format.md`](../../playable-format.md) and
-[`../desktop-app.md`](../../desktop-app.md).
+detail: [`../../reference/playable-format.md`](../../reference/playable-format.md) and
+[`../../reference/desktop-app.md`](../../reference/desktop-app.md).
 
 ## Context
 

@@ -1,5 +1,5 @@
 # Tier 2 of `docs/plans/archive/auditing-the-api-key-instructions.md`: does the walkthrough in
-# `docs/api-keys.md` still describe what the vendors' own pages say?
+# `docs/guides/api-keys.md` still describe what the vendors' own pages say?
 #
 # Weekly rather than per-tag, and advisory rather than blocking, both on purpose. A model
 # comparing prose to prose across pages that get reworded constantly will be wrong some of the
@@ -19,7 +19,7 @@ on:
 permissions:
   contents: read
   # The whole output of this workflow is one issue. Nothing here writes to the repository, and
-  # `docs/api-keys.md` in particular is only ever read — it is edited by a person.
+  # `docs/guides/api-keys.md` in particular is only ever read — it is edited by a person.
   issues: write
 
 # The title is the identity: the run below finds the open issue by it and edits that one rather

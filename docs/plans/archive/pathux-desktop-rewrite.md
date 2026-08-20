@@ -5,12 +5,12 @@ room vocabulary's retirement, the docs, and the deletion: the React shell, the `
 `react`/`react-dom` are gone, and the pure rule modules moved from `renderer/rooms/` to
 `renderer/rules/` with their tests (see [The deletion, as it went](#the-deletion-as-it-went)).
 Item 1 of
-[`refactorTaskList.md`](../refactorTaskList.md). Replaces the
+[`../refactorTaskList.md`](../refactorTaskList.md). Replaces the
 three-room React renderer with path.ux's subdividing screen — the §UX requirement of
-[`../designRequirementsEtc.md`](../../designRequirementsEtc.md) — while keeping the main
+[`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md) — while keeping the main
 process, the IPC shapes, `WorkspaceSession` and the `@vn/commands` registry as they are.
 The evaluation that led here is recorded in
-[`refactorTaskList.md`](../refactorTaskList.md#decisions-taken-so-far): path.ux's
+[`../refactorTaskList.md`](../refactorTaskList.md#decisions-taken-so-far): path.ux's
 `FrameManager.ts` hard-imports its widget modules and `Area`/`ScreenArea` are `UIBase`
 custom elements, so the frame manager comes with the widget library or not at all; React is
 displaced from the renderer.
@@ -41,7 +41,7 @@ verdicts. The `--mock`/`--project` flags.
 **Dies:** every `.tsx` file (~6,300 LOC), `react`/`react-dom` from `apps/desktop`'s
 dependencies, the `Room`/`StudioMode`/`FloorMode` vocabulary end to end, the single
 window-level keydown handler, and the by-room organization of `styles/` and
-[`../desktop-app.md`](../../desktop-app.md).
+[`../../reference/desktop-app.md`](../../reference/desktop-app.md).
 
 **Changes shape:** `view.*` commands (rooms → editors), `.vndesktop/session.json` (panel
 widths → serialized screen layout), `tokens.css` (design contract re-expressed as a path.ux
@@ -534,7 +534,7 @@ mounts, still shows STUDIO/FLOOR/PLAY, and ignores a `view.open` without error.
 
 ### 6. Docs — **shipped**
 
-[`../desktop-app.md`](../../desktop-app.md) is rewritten organized by editor — its by-room structure
+[`../../reference/desktop-app.md`](../../reference/desktop-app.md) is rewritten organized by editor — its by-room structure
 was part of the diagnosis, so leaving it would have described an app that no longer exists. The
 shape is: the shell (panes and `view.*`, the header as a screen area, the bridge as the one seam,
 `ShellState` as the one selection, per-area keymaps, and the two shadow-root rules
@@ -549,7 +549,7 @@ open, the seeded workspace, and a closing section on the retired `--react` shell
   `compose.ts`, `tween.ts`, `diagnostics.ts`). Deleting the React shell means **moving** them, not
   deleting them — a reader who took "rooms/ is the old shell" literally would delete the logic
   layer along with the markup. The renderer file tree in the doc labels them as such.
-- [`../desktopAppState.md`](../../desktopAppState.md): category 2 is now the layout and the selection
+- [`../../reference/desktopAppState.md`](../../reference/desktopAppState.md): category 2 is now the layout and the selection
   (`pathux.layout` / `pathux.selection`, what writes them, and why `taskHash` is excluded);
   category 3 is `ShellState` plus the conversation store instead of a table of React hooks; the
   data-flow walkthroughs name editors and commands rather than rooms and IPC channels; and the

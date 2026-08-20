@@ -1,5 +1,5 @@
 /**
- * The subset reader. Every case here is a shape `docs/api-keys.md` actually contains, because
+ * The subset reader. Every case here is a shape `docs/guides/api-keys.md` actually contains, because
  * that page is the reason this exists — a general markdown suite would be testing a library we
  * deliberately did not write.
  */

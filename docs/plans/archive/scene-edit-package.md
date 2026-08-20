@@ -73,7 +73,7 @@ scenePlanMessage(plan)                // the one sentence a check and a run must
 `sourcesOf`/`chunkText` move even though this plan is about prose edits, because `editBranches`
 shares them — leaving them behind would mean the branch write path and the prose write path derive
 their target files two different ways, which is the one thing
-["a writer patches the file the model was built from"](../../pipeline-contracts.md) forbids.
+["a writer patches the file the model was built from"](../../reference/pipeline-contracts.md) forbids.
 
 What stays in the desktop app: `loadProject` (it also opens the asset store and the task graph),
 `relPath`, `storyGraphOf`, the `story.*` commands, `interactions.ts`, and `branchops.ts` (no agent

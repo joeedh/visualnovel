@@ -14,7 +14,7 @@ How this repository is written, as opposed to what it does. Comment style, where
 research are filed, how documentation is kept honest, and the checklist a plan passes before
 it counts as finished.
 
-Two conventions deliberately stay in [`../CLAUDE.md`](../CLAUDE.md) rather than moving here —
+Two conventions deliberately stay in [`../../CLAUDE.md`](../../CLAUDE.md) rather than moving here —
 **git history** (`master` is linear; a branch lands by rebasing) and **tooltips** (every
 interactive element carries one). Both are rules that have to be in hand while the work is
 happening, not looked up afterwards.
@@ -34,11 +34,11 @@ happening, not looked up afterwards.
 
 ## Plans
 
-- **Plans live in [`plans/`](plans).** Any implementation plan gets written to
+- **Plans live in [`plans/`](../plans).** Any implementation plan gets written to
   `docs/plans/<descriptive-name>.md` before the work starts, and is kept up to date as the
   work proceeds — not left only in the conversation. the plan should have a properly
   descriptive name.
-- **A shipped plan moves to [`plans/archive/`](plans/archive).** [`plans/index.md`](plans/index.md)
+- **A shipped plan moves to [`plans/archive/`](../plans/archive).** [`../plans/index.md`](../plans/index.md)
   is the authority on status; when its row for a plan flips to **shipped**, the file is
   `git mv`ed into `archive/` in the same change and every link to it updated —
   `pnpm check:doclinks` (part of `pnpm lint`) names each one that was missed. Open plans
@@ -65,7 +65,7 @@ happening, not looked up afterwards.
 
 ## Research
 
-- **Research lives in [`research/`](research).** Any survey, investigation
+- **Research lives in [`research/`](../research).** Any survey, investigation
   write-up, or report goes in `docs/research/<descriptive-name>.md` — not at the `docs/`
   root and not only in the conversation. Design docs and implementation plans keep their
   existing homes (`docs/`, `docs/plans/`).
@@ -77,7 +77,7 @@ happening, not looked up afterwards.
   to the doc that states them in full. When a section there grows past roughly a screen of
   as-shipped detail, move it under `docs/` and leave the pointer — a `docs/` page is read on
   demand, whereas everything in `CLAUDE.md` is carried into every session.
-- **Every new `docs/` page is listed in [`index.md`](index.md)** with a one-line
+- **Every new `docs/` page is listed in [`../index.md`](../index.md)** with a one-line
   summary of what it covers.
 - **Lint and format markdown by naming the files.** After a docs-only change run
   `pnpm exec prettier --check <the files you touched>`, not a blanket `pnpm lint` — that runs

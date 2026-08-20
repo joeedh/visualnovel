@@ -1,7 +1,7 @@
 # The story bible (`wiki/`) and retrieval
 
 Status: **shipped** — see [As shipped](#as-shipped). Item 3 of
-[`refactorTaskList.md`](../refactorTaskList.md); §2 of the
+[`../refactorTaskList.md`](../refactorTaskList.md); §2 of the
 [migration report](../../research/codebase-migration-for-new-requirements.md#2-the-story-bible-wiki).
 Sits directly on [`entity-discovery-by-meta-tag.md`](entity-discovery-by-meta-tag.md), which
 already made `wiki/**` a place the loader looks.
@@ -12,7 +12,7 @@ already made `wiki/**` a place the loader looks.
 
 ## Why
 
-[`../designRequirementsEtc.md`](../../designRequirementsEtc.md) gives the bible one sentence of
+[`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md) gives the bible one sentence of
 requirement and one sentence of prohibition:
 
 > The story bible is an arbitrary collection of markdown files that is provided to the AI
@@ -169,8 +169,8 @@ answer.
 
 `CLAUDE.md`'s package table and layering diagram, the tool row in `docs/vnauthor.md`, the
 command in `docs/command-system.md`, a new `docs/story-bible.md` listed in `docs/index.md`,
-this plan's As-shipped section, and the rows in [`index.md`](../index.md) and
-[`refactorTaskList.md`](../refactorTaskList.md).
+this plan's As-shipped section, and the rows in [`../index.md`](../index.md) and
+[`../refactorTaskList.md`](../refactorTaskList.md).
 
 ## Decisions settled here
 
@@ -186,7 +186,7 @@ this plan's As-shipped section, and the rows in [`index.md`](../index.md) and
 
 ## Not in scope — and who should own it
 
-- **Own-repo wiki** (a separate `.git` under `wiki/`): [`refactorTaskList.md`](../refactorTaskList.md)
+- **Own-repo wiki** (a separate `.git` under `wiki/`): [`../refactorTaskList.md`](../refactorTaskList.md)
   item 4, the repo map. This plan only refrains from making it harder.
 - **Entity templates** ("the user creates a new character, the app initializes it with a
   template") and **creating entities into `wiki/`**: neither item 2 nor this plan owns them.
@@ -207,7 +207,7 @@ whole file.
 
 ## As shipped
 
-All six steps landed as designed. The as-shipped guide is [`../story-bible.md`](../../story-bible.md);
+All six steps landed as designed. The as-shipped guide is [`../../reference/story-bible.md`](../../reference/story-bible.md);
 what follows is only what the plan above left open or decided differently.
 
 **The walk moved, it did not fork.** `listMarkdownTree(dir)` + `listWikiFiles(paths)` now live in

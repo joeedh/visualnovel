@@ -2,7 +2,7 @@
  * A deliberately small markdown reader: enough to draw a documentation page inside a pane, and
  * no more.
  *
- * It exists because one page — `docs/api-keys.md` — is both a docs page and the Setup pane's
+ * It exists because one page — `docs/guides/api-keys.md` — is both a docs page and the Setup pane's
  * only source of words. Rendering it means understanding it, and the alternative to a subset is
  * a markdown library in the browser bundle for two screens of prose.
  *

@@ -1,5 +1,5 @@
 /**
- * Shadow snapshots for the command stack — `docs/gitUndoOptions.md` strategies D + E.
+ * Shadow snapshots for the command stack — `docs/history/gitUndoOptions.md` strategies D + E.
  *
  * Before and after every undoable command the journal captures the **document** tree into a
  * detached commit under `refs/vn/undo/<seq>/`. HEAD does not move, the index is not touched,

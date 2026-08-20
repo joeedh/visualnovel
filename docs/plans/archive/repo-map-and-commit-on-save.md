@@ -1,7 +1,7 @@
 # Repo map and commit-on-save
 
 Status: **shipped** — see [As shipped](#as-shipped) for what came out differently, and
-[`../repos-and-commits.md`](../../repos-and-commits.md) for the as-built write-up. Item 4 of [`refactorTaskList.md`](../refactorTaskList.md), from §4 of the
+[`../../reference/repos-and-commits.md`](../../reference/repos-and-commits.md) for the as-built write-up. Item 4 of [`../refactorTaskList.md`](../refactorTaskList.md), from §4 of the
 [migration report](../../research/codebase-migration-for-new-requirements.md). It blocks item 10
 (project bootstrap) and the "wiki in its own repo" option item 3 deliberately left open.
 
@@ -11,7 +11,7 @@ Status: **shipped** — see [As shipped](#as-shipped) for what came out differen
 
 ## What the requirements ask for
 
-Four sentences from [`../designRequirementsEtc.md`](../../designRequirementsEtc.md):
+Four sentences from [`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md):
 
 - "Projects live in git repos."
 - "the story bible may optionally be in its own git repo separate from the project repo"
@@ -43,7 +43,7 @@ has drifted from what the record says it left.
 
 ## The conflict, stated honestly
 
-Commit-per-mutating-command is [`../gitUndoOptions.md`](../../gitUndoOptions.md) §4, and it **lost**
+Commit-per-mutating-command is [`../../history/gitUndoOptions.md`](../../history/gitUndoOptions.md) §4, and it **lost**
 to shadow snapshots. It lost on one argument — "it pollutes history; a per-keystroke-ish commit
 log buries the author's own narrative" — and the requirements have now retired that argument.
 The author's history is *supposed* to record every save.

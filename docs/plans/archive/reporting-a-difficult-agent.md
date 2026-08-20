@@ -863,9 +863,9 @@ advisory, being unreachable from the dropdown.
 1. Audit comments in everything touched; no `CLAUDENOTE:` survives.
 2. Update `CLAUDE.md` — the layering graph gains `agentreport`, and the invariant lines gain the
    redactor-as-boundary rule, the source manifest, and the build-time issue repo.
-3. Update [`docs/desktop-app.md`](../../desktop-app.md) (the Help menu, the two dialogs, and the note
+3. Update [`../../reference/desktop-app.md`](../../reference/desktop-app.md) (the Help menu, the two dialogs, and the note
    that the analysis borrows the bound model without rebinding it),
-   [`docs/command-system.md`](../archive/command-system.md) (`multiline`, `hint`, `choices`), and the
+   [`command-system.md`](command-system.md) (`multiline`, `hint`, `choices`), and the
    As-shipped section of [`conversation-threads.md`](conversation-threads.md) for the format
    enrichment.
-4. Flip this plan's status and its row in [`index.md`](../index.md).
+4. Flip this plan's status and its row in [`../index.md`](../index.md).

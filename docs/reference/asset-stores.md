@@ -8,7 +8,7 @@ particular story — stays under `vngen/build/`.
 One `AssetStore` facade spans both, so every consumer (the pipeline runners, `@vn/export`, the
 CLI, the desktop session, testkit) is unchanged by the split.
 
-Plan: [`plans/base-and-project-asset-stores.md`](plans/archive/base-and-project-asset-stores.md).
+Plan: [`../plans/archive/base-and-project-asset-stores.md`](../plans/archive/base-and-project-asset-stores.md).
 The invariants in short form are in
 [`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage).
 

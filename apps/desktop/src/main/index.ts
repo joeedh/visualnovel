@@ -758,7 +758,7 @@ function registerIpc(): void {
  * **Both roots**, in the order `AssetStore` reads them: base art — portraits, model sheets,
  * location plates — lives beside the inputs at `assets/objects/`, and only shot frames are
  * under `vngen/build/assets/`. A url says nothing about which root it came from, and the
- * backlink panel's images are entirely the base kind (`docs/asset-stores.md`).
+ * backlink panel's images are entirely the base kind (`docs/reference/asset-stores.md`).
  *
  * The root is resolved per request, not captured: after `switchWorkspace` a captured one would
  * serve the previous project's bytes at the new project's hashes.

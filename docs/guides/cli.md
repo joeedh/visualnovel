@@ -1,8 +1,8 @@
 # The CLI (`vngen`)
 
 What `vngen` does, what it needs, and what a project looks like on disk. The pipeline behind it is
-[`vn-generator-report.md`](vn-generator-report.md); the invariants it obeys are
-[`pipeline-contracts.md`](pipeline-contracts.md). Run it as `node apps/cli/dist/cli.js <cmd>` or
+[`../history/vn-generator-report.md`](../history/vn-generator-report.md); the invariants it obeys are
+[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md). Run it as `node apps/cli/dist/cli.js <cmd>` or
 `pnpm vngen <cmd>` after `pnpm build`.
 
 <!-- toc -->
@@ -40,10 +40,10 @@ rather than the image one: it draws nothing, so refusing it for a missing Gemini
 refusal the author cannot act on. `story.decomposeAll` in the desktop app is the same function.
 
 `export` and `screenplay` are different artifacts: `export` writes the playable the desktop app
-runs ([`playable-format.md`](playable-format.md)), `screenplay` writes Fountain a human (or
+runs ([`../reference/playable-format.md`](../reference/playable-format.md)), `screenplay` writes Fountain a human (or
 `vngen import`) can read. `import` runs once per project, refuses over an existing `scenes/`, and
 moves the original aside as `.fountain.imported` — both are written up in full in
-[`fountain.md`](fountain.md#one-fountain-file-in-and-out-project-specific).
+[`../reference/fountain.md`](../reference/fountain.md#one-fountain-file-in-and-out-project-specific).
 
 ## `--mock`, and what a real run needs
 
@@ -64,7 +64,7 @@ places are consulted, and the **first** that answers wins:
 So a project carrying its own key wins over the one set up once for the machine, and a set
 environment variable wins over both — which is the honest answer to "why is it still asking me"
 after a key was just pasted. `vnauthor` resolves model and keys exactly the same way
-([`vnauthor.md`](vnauthor.md#running-it)); getting a key in the first place is
+([`../reference/vnauthor.md`](../reference/vnauthor.md#running-it)); getting a key in the first place is
 [`api-keys.md`](api-keys.md).
 
 `vngen run --mock` writes no assets at all. Mock providers used *directly* — tests, `@vn/testkit`
@@ -76,11 +76,11 @@ marker; see [`testkit.md`](testkit.md#placeholder-art-and-the-recorded-corpus).
 Authored input lives at the project root: `project.yaml`, `characters/<id>/character.md`,
 `locations/<id>.md`, `scenes/<id>.md`. Those are the conventional homes, and where a _new_ sheet is
 created — but a character or location tagged `type:` under `wiki/**` is discovered there too
-([`plans/entity-discovery-by-meta-tag.md`](plans/archive/entity-discovery-by-meta-tag.md)).
+([`../plans/archive/entity-discovery-by-meta-tag.md`](../plans/archive/entity-discovery-by-meta-tag.md)).
 
 **Base art is the one generated thing that is not under `vngen/`.** `assets/` (`manifest.json` +
 `objects/<hash>.<ext>`) sits at the project root because it is its own subtree and may be its own
-repo — [`asset-stores.md`](asset-stores.md). Everything else generated lives under `vngen/`:
+repo — [`../reference/asset-stores.md`](../reference/asset-stores.md). Everything else generated lives under `vngen/`:
 
 - `work/` — human-editable: the story graph, candidates, `approved.png`, `shots/<sceneId>.json`
 - `build/` — machine: shot `assets/`, `manifest.json`
@@ -107,14 +107,14 @@ markers included. A directory has no document order, so the entry scene is `star
 The older one-contended-file form (`screenplay/*.fountain`) is **not read**: a project holding one
 and no `scenes/` gets an error naming `vngen import`, and one left beside chunks is a warning to
 delete or rename it `.fountain.imported`. What a body may contain:
-[`fountain.md`](fountain.md#where-the-fountain-lives-project-specific); why the reader is the only
-thing that decides: [`pipeline-contracts.md`](pipeline-contracts.md#scenes-shots-and-lines).
+[`../reference/fountain.md`](../reference/fountain.md#where-the-fountain-lives-project-specific); why the reader is the only
+thing that decides: [`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md#scenes-shots-and-lines).
 
 ## The sample project
 
-[`templates/basic`](../templates/basic) is a small branching VN, and a **read-only template**: the
+[`templates/basic`](../../templates/basic) is a small branching VN, and a **read-only template**: the
 desktop app copies it rather than running in it (see
-[`desktop-app.md`](desktop-app.md#seeded-workspace-examplesmysamplerepo)). The CLI has no such
+[`../reference/desktop-app.md`](../reference/desktop-app.md#seeded-workspace-examplesmysamplerepo)). The CLI has no such
 indirection — it runs wherever you point it — so copy it first. `examples/` is gitignored whole and
 exists for exactly this, which keeps a real run's ~100 MB of generated art out of `git status`.
 

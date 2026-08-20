@@ -69,7 +69,7 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
    * Whether the stack should snapshot the document tree around this command so it can be
    * undone. Only meaningful with `mutating: true`, and only for commands whose writes are
    * *documents* — generated output is content-addressed and is the task graph's business, not
-   * undo's (`docs/gitUndoOptions.md` §6).
+   * undo's (`docs/history/gitUndoOptions.md` §6).
    */
   undoable?: boolean;
   /**
@@ -125,7 +125,7 @@ export type CommandOutcome =
 /**
  * One executed command. `gitHead`, `gitDirty`, `written` and `invocation` are captured for
  * provenance and debugging now, and are exactly the inputs every undo strategy in
- * `docs/gitUndoOptions.md` needs later.
+ * `docs/history/gitUndoOptions.md` needs later.
  */
 export interface CommandRecord {
   seq: number;

@@ -5,7 +5,7 @@ Status: **shipped** — all nine steps, each carrying its own as-shipped notes b
 change which scenes exist, the rail's diagnostics are a way into one, and the end-to-end pass — a
 scene written in the app, generated, watched in PLAY — has been done against
 `examples/mySampleRepo`. Move six of
-[`../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md),
+[`../../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md),
 and the last of them. It consumes [`scene-editing-commands.md`](scene-editing-commands.md) and adds
 no write path of its own. Its sibling is [`line-editing-in-floor.md`](line-editing-in-floor.md);
 the division is one sentence — **FLOOR edits a line, STUDIO edits the script.**

@@ -1,7 +1,7 @@
 /**
  * Files the *app* ships, as opposed to files the author wrote.
  *
- * There is exactly one so far — `docs/api-keys.md`, which the Setup pane renders — and it has
+ * There is exactly one so far — `docs/guides/api-keys.md`, which the Setup pane renders — and it has
  * the awkward property of living at the repo root in a checkout and inside the installer's
  * resources directory in a packaged build. Resolving that in one place means the pane asks for a
  * document by name and never learns which kind of build it is running in.

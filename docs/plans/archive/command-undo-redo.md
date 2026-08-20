@@ -4,7 +4,7 @@
 [changed nothing is not an undo point](#amendment--a-command-that-changed-nothing-is-not-an-undo-point),
 and the snapshot refs are [private, not invisible](#amendment--private-refs-are-not-invisible-refs).
 **Depends on:** [command system](command-system.md) (shipped), and the strategy survey in
-[`../gitUndoOptions.md`](../../gitUndoOptions.md) — this plan is that document's §8 recommendation
+[`../../history/gitUndoOptions.md`](../../history/gitUndoOptions.md) — this plan is that document's §8 recommendation
 being carried out.
 **Size:** medium.
 
@@ -24,7 +24,7 @@ answer, and it is the one the palette, the menus and CDP have all been advertisi
 
 ## Strategy: D + E, gated by §7
 
-Straight from [`gitUndoOptions.md`](../../gitUndoOptions.md) §8, unchanged:
+Straight from [`../../history/gitUndoOptions.md`](../../history/gitUndoOptions.md) §8, unchanged:
 
 - **Shadow snapshots (D)** for document state — snapshot the worktree into a detached commit
   under `refs/vn/undo/*` without moving `HEAD` or touching the index.

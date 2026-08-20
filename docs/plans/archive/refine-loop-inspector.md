@@ -1,7 +1,7 @@
 # Plan: refine-loop inspector
 
 **Status:** shipped. **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md).
-**Size:** small — the cheapest item in [`../research/graphThingsReport.md`](../../research/graphThingsReport.md) §6.
+**Size:** small — the cheapest item in [`../../research/graphThingsReport.md`](../../research/graphThingsReport.md) §6.
 
 ## Why
 

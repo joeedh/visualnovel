@@ -1,7 +1,7 @@
 /**
  * The guide reader, and the check that the shipped file is the shape the pane needs.
  *
- * The last test is the important one: it reads `docs/api-keys.md` itself. The structure that
+ * The last test is the important one: it reads `docs/guides/api-keys.md` itself. The structure that
  * file carries — a section per vendor, a yaml block of facts — exists for machines, and prose
  * being edited is exactly when a machine-readable part quietly stops being read.
  */
@@ -93,7 +93,7 @@ describe('keyGuideProblems', () => {
   it('names a vendor with no section', () => {
     const guide = parseKeyGuide(GUIDE);
     expect(keyGuideProblems(guide, ['gemini', 'anthropic'])).toEqual([
-      'No `## anthropic` section in docs/api-keys.md.',
+      'No `## anthropic` section in docs/guides/api-keys.md.',
     ]);
   });
 
@@ -107,9 +107,9 @@ describe('keyGuideProblems', () => {
   });
 });
 
-describe('the shipped docs/api-keys.md', () => {
+describe('the shipped docs/guides/api-keys.md', () => {
   // Five directories up from `src/shared/tests`: the repo root.
-  const path = join(__dirname, '..', '..', '..', '..', '..', 'docs', 'api-keys.md');
+  const path = join(__dirname, '..', '..', '..', '..', '..', 'docs', 'guides', 'api-keys.md');
   const guide = parseKeyGuide(readFileSync(path, 'utf8'));
 
   it('has a section per vendor, in KEY_VENDORS order, with every fact the pane draws', () => {

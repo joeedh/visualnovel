@@ -2,7 +2,7 @@
 
 This plan has been pressure-tested; the findings are folded in below, and the record of what was
 checked is
-[`docs/research/pressure-test-skills-editor-plan.md`](../../research/pressure-test-skills-editor-plan.md).
+[`../../research/pressure-test-skills-editor-plan.md`](../../research/pressure-test-skills-editor-plan.md).
 
 ## Context
 
@@ -93,7 +93,7 @@ Three decisions the user made, which the plan below assumes:
 ## Stage 0 — the plan document
 
 `docs/plans/skills-editor-and-agent-authored-skills.md`, listed in
-[`docs/plans/index.md`](../index.md) with a status row — **not** `docs/index.md`, which delegates
+[`../index.md`](../index.md) with a status row — **not** `docs/index.md`, which delegates
 plans to that file and lists only the `docs/` pages themselves.
 
 ---

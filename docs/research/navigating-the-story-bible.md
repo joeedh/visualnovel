@@ -53,7 +53,7 @@ a tool the agent can call.
 
 And two doors are deliberately shut. `search`'s `INPUT_GLOBS` excludes `wiki/` because `search`
 has no budget and the bible is unbounded — merging them would put an unbounded tree behind a tool
-that cannot bound it, which [`../story-bible.md`](../story-bible.md#who-reaches-it) states as
+that cannot bound it, which [`../reference/story-bible.md`](../reference/story-bible.md#who-reaches-it) states as
 policy. `Bible` has no `read()`, which is the guarantee that the tree cannot be pasted.
 
 Both of those are right. Neither of them is a reason the agent should be unable to _list_.
@@ -163,7 +163,7 @@ says it must not be.
 What a listing door adds is a **path**, and a path is already public: the map prints them, the
 document tree shows them, `read_file` accepts them. Listing makes the agent's existing reach
 legible; it does not extend it. Worth writing into
-[`../story-bible.md`](../story-bible.md#why-there-is-no-read) alongside the existing argument,
+[`../reference/story-bible.md`](../reference/story-bible.md#why-there-is-no-read) alongside the existing argument,
 because the next person to read that section will be looking at a tool whose name starts with
 `list_`.
 

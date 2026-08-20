@@ -3,7 +3,7 @@
  * a file that exists — and, when it carries a `#fragment`, at a heading that exists.
  *
  * External URLs are out of scope on purpose: the one set worth checking against the network is
- * the vendor pages in `docs/api-keys.md`, and `check-key-links.mjs` already owns that. This
+ * the vendor pages in `docs/guides/api-keys.md`, and `check-key-links.mjs` already owns that. This
  * checker is offline and instant, so it can run on every lint.
  *
  * Anchors are slugified with the same `markdown-toc` package `markdown-toc.mjs` uses, so this

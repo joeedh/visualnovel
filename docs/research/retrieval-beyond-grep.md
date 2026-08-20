@@ -5,8 +5,8 @@ ranking in `@vn/bible`, and prices each option against the constraints that pack
 carries._
 
 _Status: **nothing built.** `@vn/bible` ships the grep-shaped ranker described in
-[`../story-bible.md`](../story-bible.md#ranking), behind the `query(text) → ranked excerpts` seam
-[`../plans/story-bible-and-retrieval.md`](../plans/archive/story-bible-and-retrieval.md) settled. That
+[`../reference/story-bible.md`](../reference/story-bible.md#ranking), behind the `query(text) → ranked excerpts` seam
+[`../plans/archive/story-bible-and-retrieval.md`](../plans/archive/story-bible-and-retrieval.md) settled. That
 plan named the successor — "grep now, embeddings behind the same function" — and this document
 argues the first move is **not** the one it named._
 
@@ -39,7 +39,7 @@ argues the first move is **not** the one it named._
 
 ## The question
 
-[`../designRequirementsEtc.md`](../designRequirementsEtc.md) permits "vector embedding databases
+[`../history/designRequirementsEtc.md`](../history/designRequirementsEtc.md) permits "vector embedding databases
 or grepping or whatever", and the retrieval plan read that as a two-step: ship grep, swap in
 embeddings later. The framing has since hardened into an assumption that the upgrade path is
 *vector search*, and that the obstacle is *cost* — a paid third-party embedding service the
@@ -165,7 +165,7 @@ since a heading line scores double and therefore wins its own window — the exc
 first line lies *above* the heading it is attributed to, under the previous section.
 
 The consequence is small but is exactly the kind of thing
-[`../story-bible.md`](../story-bible.md#how-a-file-is-indexed) promises does not happen: "a
+[`../reference/story-bible.md`](../reference/story-bible.md#how-a-file-is-indexed) promises does not happen: "a
 reported `file:line` is the line an editor shows". It still is. It is the *heading* that is now
 describing a different part of the file. Attributing from `start` rather than `index` is the fix.
 
@@ -355,7 +355,7 @@ retrieval gain, and it is paid once per file edit rather than per query.
 The same allow-list problem as §E applies, and the same shape of answer, but a different
 mechanism: this is not a call at query time, it is **a build step that writes an artifact
 `@vn/bible` reads**. The project already has the pattern —
-[`../plans/agent-context-regeneration.md`](../plans/archive/agent-context-regeneration.md)'s
+[`../plans/archive/agent-context-regeneration.md`](../plans/archive/agent-context-regeneration.md)'s
 `workspace.reindex` writes `AICONTEXT.generated.md`, is budgeted, and refuses to overwrite a file
 it did not write. Contextual headers are a second artifact from the same act.
 
@@ -375,7 +375,7 @@ machine's, which is a line this project has been careful about everywhere else.
 
 ### G. Entity signal, without a precomputed backlink index
 
-[`../story-bible.md`](../story-bible.md#why-there-is-no-read) already refuses one version of this:
+[`../reference/story-bible.md`](../reference/story-bible.md#why-there-is-no-read) already refuses one version of this:
 
 > "which other notes mention Aiko" stays a `query`, ranked and budgeted, rather than becoming a
 > precomputed backlink index over the one tree that was deliberately given a budget.
@@ -403,7 +403,7 @@ that iteration routinely beats one-shot retrieval, whatever the ranker underneat
 
 Most of this exists. `AICONTEXT.generated.md` renders the bible as a table of contents — path,
 title, tags, headings — which is precisely the aiming mechanism, and
-[`../story-bible.md`](../story-bible.md#why-there-is-no-read) already describes it as "what turns
+[`../reference/story-bible.md`](../reference/story-bible.md#why-there-is-no-read) already describes it as "what turns
 a blind `search_bible` into an aimed one". `list_workspace` reports the count so the agent knows
 a bible exists.
 
@@ -438,7 +438,7 @@ cannot run in `@vn/testkit` without a network, and that property is worth more t
 improvement on offer.
 
 **Replacing lexical search with vectors outright** — the literal reading of "the layer an
-embedding store replaces **wholesale**" in [`../story-bible.md`](../story-bible.md#ranking).
+embedding store replaces **wholesale**" in [`../reference/story-bible.md`](../reference/story-bible.md#ranking).
 Rejected on the §D argument: it regresses proper-noun search, which is the query class this
 corpus is densest in. The seam is still right and no caller still changes; what the seam gets is
 a *hybrid* implementation, not a vector one. That sentence in the as-shipped guide should be

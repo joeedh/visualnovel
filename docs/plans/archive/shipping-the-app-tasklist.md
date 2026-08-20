@@ -22,7 +22,7 @@ The shape of the problem: a packaged app has no checkout, no `pnpm`, no submodul
 | 3   | [`release-ci-workflow.md`](release-ci-workflow.md)                                         | `ci.yml` on every push, then the tag-triggered build and the draft release     |
 | 4   | [`in-app-update-checks.md`](in-app-update-checks.md)                                       | `app.checkForUpdates` as a command, the releases feed, later auto-install      |
 | 5   | [`auditing-the-api-key-instructions.md`](auditing-the-api-key-instructions.md)             | `docs/api-keys.md` as one source, the link check, the weekly advisory audit    |
-| —   | [`code-signing-and-notarization.md`](../code-signing-and-notarization.md)                     | deferred by decision: what it costs, what it unblocks, when to do it           |
+| —   | [`../code-signing-and-notarization.md`](../code-signing-and-notarization.md)                     | deferred by decision: what it costs, what it unblocks, when to do it           |
 
 ## Order
 

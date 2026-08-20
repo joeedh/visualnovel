@@ -3,8 +3,8 @@
 A plan-first, git-backed conversational agent that helps an author write and refine the inputs
 the pipeline consumes. It does **not** run the generative pipeline — it stops at well-formed,
 validated input files in a clean commit. Design:
-[`authoring-agent-report.md`](authoring-agent-report.md); plan:
-[`plans/authoring-agent-implementation.md`](plans/archive/authoring-agent-implementation.md).
+[`../history/authoring-agent-report.md`](../history/authoring-agent-report.md); plan:
+[`../plans/archive/authoring-agent-implementation.md`](../plans/archive/authoring-agent-implementation.md).
 
 <!-- toc -->
 
@@ -57,7 +57,7 @@ pnpm build
 printf '/skills\n/status\n/exit\n' | node apps/authoring/dist/vnauthor.js templates/basic --mock
 ```
 
-[`templates/basic/AICONTEXT.md`](../templates/basic/AICONTEXT.md) shows project guidance the
+[`../../templates/basic/AICONTEXT.md`](../../templates/basic/AICONTEXT.md) shows project guidance the
 agent honors.
 
 ## How it works
@@ -394,7 +394,7 @@ first, so one call can approve a plate and the frame drawn from it.
 An author's own documents — a worldbuilding dump, a cast list, an outline someone else wrote —
 come in through **`/upload <file…>`** in the REPL, or **Upload Files…** in the desktop app. Both
 run `archiveUpload` in `packages/authoring/src/archive.ts`, so there is one archive and one layout.
-Plan: [`plans/upload-and-archive.md`](plans/archive/upload-and-archive.md).
+Plan: [`../plans/archive/upload-and-archive.md`](../plans/archive/upload-and-archive.md).
 
 - **The originals are copied verbatim to `archive/<yyyymmdd-hhmmss>-<slug>/<original filename>`**,
   one directory per batch, at the project root. Not under `wiki/` and not under `vngen/`: the first
@@ -427,11 +427,11 @@ Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md` (f
 `name`, `description`, `when-to-use`). A pure-prose skill returns its body as guidance; a skill
 with a `run.{mjs,js,cjs,sh}` script runs a vetted command — and **each run is permissioned**
 (always-confirm), executing in the workspace root with the workspace path as its first argument.
-Three ship with the sample: [`new-character`](../templates/basic/.aiagent/skills/new-character), a
-playbook for one act; [`branching`](../templates/basic/.aiagent/skills/branching), the three shapes
+Three ship with the sample: [`new-character`](../../templates/basic/.aiagent/skills/new-character), a
+playbook for one act; [`branching`](../../templates/basic/.aiagent/skills/branching), the three shapes
 a fork can take, how to split a shared scene into per-route chunks, and the refusal to hand back
 when the author asks for something that would need a conditional; and
-[`full-production`](../templates/basic/.aiagent/skills/full-production), a spine — nine
+[`full-production`](../../templates/basic/.aiagent/skills/full-production), a spine — nine
 phases from premise to storyboard, each its own plan and its own commit, ending at the choice
 of how a scene gets its shots (batch decomposition, a proposal the agent drafts, or by hand),
 which stays the author's.

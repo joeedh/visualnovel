@@ -27,12 +27,12 @@ files:
   # so `renderer/tsconfig.json` has something to check path.ux against. Never runtime.
   - '!dist/pathux-types/**'
 
-# `docs/api-keys.md` is the Setup pane's single source, and it is markdown outside `apps/desktop`.
+# `docs/guides/api-keys.md` is the Setup pane's single source, and it is markdown outside `apps/desktop`.
 # `resourcePath()` looks under `process.resourcesPath` first in a packaged build, so this `to:`
-# and the `readResource('docs', 'api-keys.md')` call have to keep saying the same thing.
+# and the `readResource('docs', 'guides', 'api-keys.md')` call have to keep saying the same thing.
 extraResources:
-  - from: docs/api-keys.md
-    to: docs/api-keys.md
+  - from: docs/guides/api-keys.md
+    to: docs/guides/api-keys.md
 
 # Nothing is unpacked from the asar, and that is a finding rather than an omission: no native
 # module ships, and the only executable the app spawns is the machine's own `git`, which was

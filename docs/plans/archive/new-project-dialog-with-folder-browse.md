@@ -161,8 +161,8 @@ choose, it is the form the browse button lives in.
 - [`new-and-open-project.md`](new-and-open-project.md): the "A `workspace.createPick` is **not**
   added" paragraph is replaced with a pointer here, and a `Shipped deviations` line records the
   reversal.
-- [`../desktop-app.md`](../../desktop-app.md): the New Project… sentence.
-- [`../command-system.md`](../archive/command-system.md): the prop kinds list gains `directory`, and the
+- [`../../reference/desktop-app.md`](../../reference/desktop-app.md): the New Project… sentence.
+- [`command-system.md`](command-system.md): the prop kinds list gains `directory`, and the
   palette section gains the Browse button and the checkbox.
 - `CLAUDE.md`: the workspace-creation bullet gains the dialog's shape.
 - `docs/plans/index.md`: a row for this plan.

@@ -1,6 +1,6 @@
 # Shot ordering inside a scene
 
-Status: **shipped**. Item 7 of [`refactorTaskList.md`](../refactorTaskList.md), from §6 of the
+Status: **shipped**. Item 7 of [`../refactorTaskList.md`](../refactorTaskList.md), from §6 of the
 [migration report](../../research/codebase-migration-for-new-requirements.md). Ordered **before**
 item 6 (outfits): both touch `work/shots/<sceneId>.json`, but this one adds no authored field to
 it and re-renders nothing, while outfits add a field and deliberately re-hash shots. Settling what
@@ -12,7 +12,7 @@ a shot's *position* is first means the outfit override arrives into a file whose
 
 ## What the requirement asks for
 
-From [`../designRequirementsEtc.md`](../../designRequirementsEtc.md): "Shots can be reordered inside
+From [`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md): "Shots can be reordered inside
 of scenes", against a script model of scenes → shots → lines in which "lines … are collected into
 shots" — shots as the containers, explicitly aimed at the manga/storyboarding ambition.
 

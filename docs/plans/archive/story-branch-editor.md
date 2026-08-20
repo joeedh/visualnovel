@@ -6,7 +6,7 @@ As-shipped section, and the [Done](#done) checklist is complete.
 **Blocks:** [task DAG view](task-dag-view.md) (which reuses the `renderer/graph/` primitives
 this plan creates).
 **Size:** large — the only genuinely new *editor* in
-[`../research/graphThingsReport.md`](../../research/graphThingsReport.md) §1.
+[`../../research/graphThingsReport.md`](../../research/graphThingsReport.md) §1.
 
 ## Why
 
@@ -390,7 +390,7 @@ would exclude it.
 
 Scene deletion, scene creation (above), body or dialogue editing, manual node positions, minimap,
 multi-select, undo (the stack refuses by design — see
-[`../gitUndoOptions.md`](../../gitUndoOptions.md)), and thumbnails beyond a single accepted shot
+[`../../history/gitUndoOptions.md`](../../history/gitUndoOptions.md)), and thumbnails beyond a single accepted shot
 image per scene.
 
 ## Done
@@ -404,8 +404,8 @@ image per scene.
 - [x] Branch editor renders `templates/basic` correctly, dead scenes dashed
 - [x] An edge rewire changes only marker lines in `git diff`
 - [x] `vngen graph` and the editor agree on the same project
-- [x] `CLAUDE.md` + [`../command-system.md`](../archive/command-system.md) updated with the new
+- [x] `CLAUDE.md` + [`command-system.md`](command-system.md) updated with the new
       commands and the `view.mode` effect
 - [x] Debug lessons appended to `research/debug-lessons-learned.md` — see
       [Debug lessons](../desktop-editors-tracking.md#debugging-lessons); since consolidated into
-      [`../debugGuide.md`](../../debugGuide.md)
+      [`../../guides/debugGuide.md`](../../guides/debugGuide.md)

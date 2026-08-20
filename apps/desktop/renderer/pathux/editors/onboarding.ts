@@ -18,7 +18,7 @@ import type { KeyScope, KeyStatusView, VendorKeyView } from '../../../src/shared
  * a stored layout, and absent from the pane switcher, because an author does not navigate here
  * twice.
  *
- * **Every word on it comes from `docs/api-keys.md`**, over `app.keyGuide`. Nothing is typed in
+ * **Every word on it comes from `docs/guides/api-keys.md`**, over `app.keyGuide`. Nothing is typed in
  * here: a second copy of the steps is a copy that goes stale the first time a console moves a
  * button, and this file's job is only to say which of them are already done. What it adds to the
  * page is the three things the page cannot know — whether a key resolved and from where, whether

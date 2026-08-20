@@ -1,8 +1,8 @@
 # Toolchain
 
 How this monorepo is built, checked, tested and formatted — and where each choice
-deliberately deviates from [`plans/initial-implementation.md`](plans/archive/initial-implementation.md).
-The day-to-day command table lives in [`../CLAUDE.md`](../CLAUDE.md); this is the "why it is
+deliberately deviates from [`../plans/archive/initial-implementation.md`](../plans/archive/initial-implementation.md).
+The day-to-day command table lives in [`../../CLAUDE.md`](../../CLAUDE.md); this is the "why it is
 wired that way" companion.
 
 <!-- toc -->
@@ -60,7 +60,7 @@ wired that way" companion.
   `.turbo` (gitignored).
 - **The desktop bundle has a third step, `build:catalog`.** `scripts/gen-command-catalog.mjs`
   bundles `apps/desktop/src/main/commands/catalog-entry.ts` and writes
-  `apps/desktop/dist/commands.json` (see [`command-system.md`](command-system.md)). Both
+  `apps/desktop/dist/commands.json` (see [`../reference/command-system.md`](../reference/command-system.md)). Both
   bundle scripts share one alias map, `scripts/aliases.mjs`, so their package lists can't
   drift.
 
@@ -69,7 +69,7 @@ wired that way" companion.
 `pnpm package` (unpacked-only: `pnpm package:dir`) turns `apps/desktop` into an installer.
 electron-builder does the work, configured in `apps/desktop/electron-builder.yml` — which carries
 the comments explaining each choice, so read that file rather than this section for *why*. The
-plan is [`plans/packaging-the-desktop-app.md`](plans/archive/packaging-the-desktop-app.md). Four things
+plan is [`../plans/archive/packaging-the-desktop-app.md`](../plans/archive/packaging-the-desktop-app.md). Four things
 about how it fits the rest of the toolchain:
 
 - **It packages from a scratch project, not from the workspace.** pnpm's `node_modules` is a farm
@@ -143,7 +143,7 @@ a node-side type erases cleanly — only `vite build` fails, with
   every project's `testMatch` is `**/<scope>/**/tests/*.test.ts`, so a `*.test.ts` outside a
   `tests/` dir is silently never run.
 - The desktop project is `**/apps/desktop/**/tests/*.test.ts` — `.ts` only, node environment,
-  no jsdom. See [`desktop-app.md`](desktop-app.md) for what that implies about where renderer
+  no jsdom. See [`../reference/desktop-app.md`](../reference/desktop-app.md) for what that implies about where renderer
   logic lives.
 
 ## Continuous integration
@@ -167,7 +167,7 @@ verdict is unambiguous.
   `publish` job that makes a **draft** release. Publishing is what makes every installed copy's
   update check start offering the build, so it is the irreversible act and stays a person's.
   Details, and why `publish` refuses an already-published tag:
-  [`plans/release-ci-workflow.md`](plans/archive/release-ci-workflow.md).
+  [`../plans/archive/release-ci-workflow.md`](../plans/archive/release-ci-workflow.md).
 - **`key-docs-audit.yml` runs weekly** — `pnpm audit:keydocs`, which asks a model whether the
   _words_ around those links are still true. Advisory: it exits 0 in every path there is, and
   turns drift into one issue rather than a red tick. A model comparing prose to prose will be
@@ -180,7 +180,7 @@ verdict is unambiguous.
   about our file. Both counts are printed every run, because the number going up is the signal
   that the check is quietly ceasing to be one.
 - Why the two key-doc tiers are shaped this way, in full:
-  [`plans/auditing-the-api-key-instructions.md`](plans/archive/auditing-the-api-key-instructions.md).
+  [`../plans/archive/auditing-the-api-key-instructions.md`](../plans/archive/auditing-the-api-key-instructions.md).
 
 ## Format and package manager
 

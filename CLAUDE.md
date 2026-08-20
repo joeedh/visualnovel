@@ -17,10 +17,10 @@ that split and are enforced by lint rules, so the input-side packages can be reu
 without pulling in the generative pipeline.
 
 - Docs index: [`docs/index.md`](docs/index.md)
-- Design: [`docs/vn-generator-report.md`](docs/vn-generator-report.md)
+- Design: [`docs/history/vn-generator-report.md`](docs/history/vn-generator-report.md)
 - Pipeline contracts (the invariants below, in full):
-  [`docs/pipeline-contracts.md`](docs/pipeline-contracts.md)
-- Debugging guide: [`docs/debugGuide.md`](docs/debugGuide.md) — read this before debugging
+  [`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md)
+- Debugging guide: [`docs/guides/debugGuide.md`](docs/guides/debugGuide.md) — read this before debugging
   anything in this repo; tools ordered cheapest-first, evidence over reproduction
 - **Out of scope:** _external_ engine export (Ren'Py/Ink/etc.). The generative pipeline core
   stops at a populated `build/` + `manifest.json`. On top of that sits a small, in-house
@@ -52,8 +52,8 @@ That one is invisible to anyone who has ever built path.ux — its `node_modules
 disk — and on a clean checkout it surfaces as scores of "has no exported member" errors _inside_
 `vendor/`, naming the symbol rather than the install. `pnpm doctor` fails on it by name too.
 Then `pnpm check && pnpm test && pnpm lint` should be green; `pnpm build` bundles everything.
-Details: [`docs/toolchain.md`](docs/toolchain.md), and
-[`docs/desktop-app.md`](docs/desktop-app.md) for the submodule's role.
+Details: [`docs/guides/toolchain.md`](docs/guides/toolchain.md), and
+[`docs/reference/desktop-app.md`](docs/reference/desktop-app.md) for the submodule's role.
 
 ## Commands
 
@@ -74,13 +74,13 @@ Run from the repo root.
 | Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                      |
 | Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)              |
 | Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs resolve)          |
-| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/api-keys.md` only)         |
+| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/guides/api-keys.md` only)  |
 | Audit the key-guide wording  | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)        |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 
 The toolchain's shape — and every deliberate deviation from the original plan — is
-[`docs/toolchain.md`](docs/toolchain.md). Four things bite often enough to repeat here:
+[`docs/guides/toolchain.md`](docs/guides/toolchain.md). Four things bite often enough to repeat here:
 
 - `pnpm check` is **two** passes: the flat workspace check plus `pnpm check:renderer`, because
   `apps/desktop/renderer/**` lives outside `src/` and nothing else typechecks it.
@@ -96,7 +96,7 @@ The toolchain's shape — and every deliberate deviation from the original plan 
 
 Acyclic, enforced by `eslint-plugin-boundaries` + `import/no-cycle`. What each package is
 responsible for, and the rules behind this diagram, are in
-[`docs/packages.md`](docs/packages.md).
+[`docs/reference/packages.md`](docs/reference/packages.md).
 
 ```
 types  util
@@ -130,24 +130,24 @@ providers   │      ╲ ╲  │
 
 Each is a contract that costs money or corrupts provenance when broken. **Nearly every one below
 is stated in full — with the failure it prevents — in
-[`docs/pipeline-contracts.md`](docs/pipeline-contracts.md); read that, or the plan a bullet links
+[`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md); read that, or the plan a bullet links
 instead, before changing any of them.** These lines exist so you know a contract is there, not so
 you can act on it.
 
 - **Content-addressed task graph.** Identity is `sha256(kind, inputs)`; replaying
   `state/tasks.jsonl` rebuilds the graph, which is what makes a run resumable.
 - **Content-addressed asset store, in two roots** — base art at `assets/`, shot frames at
-  `vngen/build/assets/`. ([`docs/asset-stores.md`](docs/asset-stores.md))
+  `vngen/build/assets/`. ([`docs/reference/asset-stores.md`](docs/reference/asset-stores.md))
 - **Gate-as-barrier.** The P3 character-approval gate is a planner predicate, not a task
   dependency: a run halts with nothing ready.
 - **A portrait and a plate are owed to whoever authored a sheet; a model sheet is not.**
-  ([`docs/plans/drawing-a-character-before-a-scene-casts-them.md`](docs/plans/archive/drawing-a-character-before-a-scene-casts-them.md))
+  ([`docs/plans/archive/drawing-a-character-before-a-scene-casts-them.md`](docs/plans/archive/drawing-a-character-before-a-scene-casts-them.md))
 - **Incremental planning.** The planner runs once per wave, so `vngen cost` undercounts what a
   later wave unlocks.
 - **The whole graph is a graph of slots, not of task hashes** (`portrait:`/`sheet:`/`plate:`/
   `shot:`, edges by `refsOfSlot`), and **approval flows upstream first** — `assetApproved`,
   `assetPrereqs`, `prereqRefusal`, one sentence in three places.
-  ([`docs/plans/the-full-slot-graph-and-approving-upstream-first.md`](docs/plans/archive/the-full-slot-graph-and-approving-upstream-first.md))
+  ([`docs/plans/archive/the-full-slot-graph-and-approving-upstream-first.md`](docs/plans/archive/the-full-slot-graph-and-approving-upstream-first.md))
 - **Getting a storyboard is an explicit act, and a fallback is never persisted** — an absent
   `work/shots/<sceneId>.json` is the only signal meaning "decompose this", and a first shot
   placed by hand writes that file, ending decomposition the same way. A storyboard, once
@@ -156,19 +156,19 @@ you can act on it.
 - **A terminal task records why, is retried once, and is reported from the live plan.**
 - **What a character wears is inherited** — `outfitFor`: shot override → the scene's
   `[[outfit:]]` marker → `character.defaultOutfit`. Unlike other scene edits it **does** re-render.
-  ([`docs/plans/outfits-at-scene-and-shot-level.md`](docs/plans/archive/outfits-at-scene-and-shot-level.md))
+  ([`docs/plans/archive/outfits-at-scene-and-shot-level.md`](docs/plans/archive/outfits-at-scene-and-shot-level.md))
 - **Art direction is an authored field, and it deliberately re-renders** — `artNotes`, free text
   at five rungs, **appended** to what was derived; the agent reaches the same rungs through the
   same refusals. **The image seed rides those same rungs**, resolved only in `seedFor`; zero is a
   seed, so every test is `=== undefined`.
-  ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/archive/asset-names-and-the-asset-editor.md),
-  [`docs/plans/agent-art-revision.md`](docs/plans/archive/agent-art-revision.md))
+  ([`docs/plans/archive/asset-names-and-the-asset-editor.md`](docs/plans/archive/asset-names-and-the-asset-editor.md),
+  [`docs/plans/archive/agent-art-revision.md`](docs/plans/archive/agent-art-revision.md))
 - **A concept is a picture the pipeline never asked for** — never planned, consumed, exported or
   `accepted`, and its prompt is authored, so it is the one prompt an author may edit.
 - **Adoption is the one `done` record written outside the scheduler** — `adoptSlot` makes any
   bytes any slot's output; it cannot forge work, and refuses a `portrait:`.
-  ([`docs/plans/adopting-an-uploaded-asset.md`](docs/plans/archive/adopting-an-uploaded-asset.md),
-  [`docs/plans/on-demand-concept-images.md`](docs/plans/archive/on-demand-concept-images.md))
+  ([`docs/plans/archive/adopting-an-uploaded-asset.md`](docs/plans/archive/adopting-an-uploaded-asset.md),
+  [`docs/plans/archive/on-demand-concept-images.md`](docs/plans/archive/on-demand-concept-images.md))
 - **No _prose_ edit invalidates art, so drift is reported instead** — `Shot.proseHash`, `driftOf`
   re-derived on every read. **A scene's heading is the exception**: `story.setHeading` re-renders
   the scene and restages every shot.
@@ -177,9 +177,9 @@ you can act on it.
   structural, and **one scene, one file** — a writer patches the file the model was built from.
 - **An entity is found by its tag, and the file it was found in travels with it** —
   `entityFile(docs, id)`; conflicts are diagnostics, never a throw.
-  ([`docs/plans/entity-discovery-by-meta-tag.md`](docs/plans/archive/entity-discovery-by-meta-tag.md))
+  ([`docs/plans/archive/entity-discovery-by-meta-tag.md`](docs/plans/archive/entity-discovery-by-meta-tag.md))
 - **The story bible is reached by query, never pasted** — no whole-file API, and that absence is
-  the guarantee. ([`docs/story-bible.md`](docs/story-bible.md))
+  the guarantee. ([`docs/reference/story-bible.md`](docs/reference/story-bible.md))
 - **P7 generate→critique→refine is folded into the `shot_image` runner**, capped by
   `config.max_refine_attempts`, flagging `needs_human` rather than looping.
 - **Deterministic fallbacks** in P1/P5, and **provider seams** — the scheduler never imports a
@@ -192,7 +192,7 @@ vngen run | approve | status | graph | export | cost | import | screenplay   [di
 ```
 
 Flags, `--mock` semantics, key resolution, the on-disk project layout, and the
-`templates/basic` walkthrough: [`docs/cli.md`](docs/cli.md). Two things worth knowing before
+`templates/basic` walkthrough: [`docs/guides/cli.md`](docs/guides/cli.md). Two things worth knowing before
 running anything: `--mock` writes no assets and needs no keys, and in a real project `vngen/` is
 **committed** — it is the reproducible output of a run, not something to gitignore.
 
@@ -201,15 +201,15 @@ running anything: `--mock` writes no assets and needs no keys, and in a real pro
 The pipeline is presentation-agnostic — it stops at `manifest.json`. `@vn/export` projects the
 model + manifest into a small in-house **playable** (`story.play.json`), and the Electron app
 plays it. This is deliberately **not** an external DSL export.
-Format: [`docs/playable-format.md`](docs/playable-format.md). The app — shell, canvas, the fifteen
+Format: [`docs/reference/playable-format.md`](docs/reference/playable-format.md). The app — shell, canvas, the fifteen
 editors, the session store, the seeded workspace, and every behaviour below in full:
-[`docs/desktop-app.md`](docs/desktop-app.md); what persists where:
-[`docs/desktopAppState.md`](docs/desktopAppState.md); the document tree, asset naming and
-`doc.rename`: [`docs/document-tree.md`](docs/document-tree.md).
+[`docs/reference/desktop-app.md`](docs/reference/desktop-app.md); what persists where:
+[`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md); the document tree, asset naming and
+`doc.rename`: [`docs/reference/document-tree.md`](docs/reference/document-tree.md).
 
 - **One workspace at a time, and opening another is a teardown** — but **creating one scaffolds
   where opening does not**, in its own dialog, into its own repository.
-  ([`docs/plans/new-and-open-project.md`](docs/plans/archive/new-and-open-project.md))
+  ([`docs/plans/archive/new-and-open-project.md`](docs/plans/archive/new-and-open-project.md))
 - **A window is a renderer, not an app instance, and one instance owns a workspace** — `window.*`
   plus `view.open(where=window)`, everything a window remembers keyed by its index, `ctx.origin`
   saying which one asked, and a socket lock refusing a second process on the same project.
@@ -217,20 +217,20 @@ editors, the session store, the seeded workspace, and every behaviour below in f
 - **A model key is written to a file git cannot see, and recorded as `<secret>`**
   (`project.setKey`, deliberately not undoable), at one of two scopes — this project, or every
   project on this machine. **Setup is that box with the steps above it**: an editor named but not listed,
-  rendering `docs/api-keys.md` itself rather than a copy of it, and the only door to the outside
+  rendering `docs/guides/api-keys.md` itself rather than a copy of it, and the only door to the outside
   names a _field_ of that guide rather than a URL.
-  ([`docs/plans/onboarding-editor-and-user-level-keys.md`](docs/plans/archive/onboarding-editor-and-user-level-keys.md))
+  ([`docs/plans/archive/onboarding-editor-and-user-level-keys.md`](docs/plans/archive/onboarding-editor-and-user-level-keys.md))
 - **A layout template is an arrangement the project owns, and it is never merged** —
   `.vnstudio/layouts/<slug>.json`, marked `-merge`; a conflicted one is refused by name.
-  ([`docs/plans/layout-templates-and-the-view-menu.md`](docs/plans/archive/layout-templates-and-the-view-menu.md))
+  ([`docs/plans/archive/layout-templates-and-the-view-menu.md`](docs/plans/archive/layout-templates-and-the-view-menu.md))
 - **A conversation is a thread**, appended to `vngen/state/threads/<id>.jsonl`; reopening one is
-  read-only. ([`docs/plans/conversation-threads.md`](docs/plans/archive/conversation-threads.md))
+  read-only. ([`docs/plans/archive/conversation-threads.md`](docs/plans/archive/conversation-threads.md))
 - **What a turn cost travels as an event, and it counts calls rather than turns** — no receipt
   means **no total**, never `0`, and a cache split may arrive marked an estimate.
-  ([`docs/plans/gemini-estimated-cache-hit-rate.md`](docs/plans/archive/gemini-estimated-cache-hit-rate.md))
+  ([`docs/plans/archive/gemini-estimated-cache-hit-rate.md`](docs/plans/archive/gemini-estimated-cache-hit-rate.md))
 - **Every notification is durable, and one hook files them all** —
   `vngen/state/notifications.jsonl`, versioned per line because git union-merges it.
-  ([`docs/plans/notifications.md`](docs/plans/archive/notifications.md))
+  ([`docs/plans/archive/notifications.md`](docs/plans/archive/notifications.md))
 - **A document that is not a scene is written as text, and only by `doc.*`** — refused by
   **content**, never mtime; `scenes/**` is refused outright, because prose is `story.*`.
 - **A rename writes where the name was read from, and never moves the file** — an id is derived
@@ -238,33 +238,33 @@ editors, the session store, the seeded workspace, and every behaviour below in f
 - **An asset is named, one pane answers for it, and the tree lists slots rather than pictures** —
   one row per slot, its earlier takes folded under the one that replaced them; `asset.replace` reads
   the slot off the asset on screen rather than being told it.
-  ([`docs/plans/asset-names-and-the-asset-editor.md`](docs/plans/archive/asset-names-and-the-asset-editor.md))
+  ([`docs/plans/archive/asset-names-and-the-asset-editor.md`](docs/plans/archive/asset-names-and-the-asset-editor.md))
 - **What was drawn from a document is one widget, and a scene is a subject like any other** —
   `renderAssetStrip`, shared by Documents, Wiki and Script.
-  ([`docs/plans/asset-cross-references.md`](docs/plans/archive/asset-cross-references.md))
+  ([`docs/plans/archive/asset-cross-references.md`](docs/plans/archive/asset-cross-references.md))
 - **An uploaded document is archived verbatim and read only by name** — `archive/<stamp>-<slug>/`,
   invisible to `search`, the bible and entity discovery.
-  ([`docs/plans/upload-and-archive.md`](docs/plans/archive/upload-and-archive.md))
+  ([`docs/plans/archive/upload-and-archive.md`](docs/plans/archive/upload-and-archive.md))
 - **A bad conversation is diagnosed on the author's own key, and the fiction's names never leave
   with it** — redaction is a boundary rather than a prompt, and nothing is posted.
-  ([`docs/plans/reporting-a-difficult-agent.md`](docs/plans/archive/reporting-a-difficult-agent.md))
+  ([`docs/plans/archive/reporting-a-difficult-agent.md`](docs/plans/archive/reporting-a-difficult-agent.md))
 - **Every request is kept in memory, and what it says never reaches the report** — a bounded ring
   in `@vn/providers` (64 MB / 64 entries, always on), so a 400 that names a position is readable
   against the body it indexes; `faultKind` tells a fault in the request from a dead connection or
   a bad key, and only the first opens the report dialog by itself. The analyst reads the ring by
   pointer on the author's own key; none of it is carried into what is filed.
-  ([`docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md`](docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md))
+  ([`docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`](docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md))
 - **The app ships as an installer, and `git` is a runtime dependency it checks for rather than
   bundles** — `pnpm package`, a hoisted scratch install because pnpm’s symlink farm does not
   survive into an app image, and `pnpm smoke` to prove the two lazily-imported SDKs resolved. A
   machine without git gets an app that **opens** and a durable note saying why saving does not.
-  ([`docs/plans/packaging-the-desktop-app.md`](docs/plans/archive/packaging-the-desktop-app.md))
+  ([`docs/plans/archive/packaging-the-desktop-app.md`](docs/plans/archive/packaging-the-desktop-app.md))
 - **Nothing checks for an update until asked, and a notification may name an act rather than a
   place** — Help ▸ Check for Updates… is the only thing that starts a check
   (`app.checkForUpdates`; nothing is scheduled, and it downloads nothing), and the notice it files
   links a **command** off a short allow-list rather than a URL, because the rule that no part of
   the app opens an address it was handed holds hardest for a file git union-merges across clones.
-  ([`docs/plans/in-app-update-checks.md`](docs/plans/archive/in-app-update-checks.md))
+  ([`docs/plans/archive/in-app-update-checks.md`](docs/plans/archive/in-app-update-checks.md))
 
 The renderer is a **path.ux screen mesh** — panes subdivide the window, each showing one editor;
 no React, no room vocabulary. path.ux is a git submodule at `vendor/path.ux`, so a fresh clone
@@ -298,7 +298,7 @@ hardest:
 
 Every desktop action is a **registered command** rather than a bespoke IPC channel: typed
 properties, a string DSL (`namespace.command(a='x' b=1)`), git-stamped provenance, one JSON
-catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
+catalog. Full write-up: [`docs/reference/command-system.md`](docs/reference/command-system.md).
 
 - **`@vn/commands` is the framework; the desktop app owns the commands**, in
   `apps/desktop/src/main/commands/` as thin wrappers over `WorkspaceSession`.
@@ -313,15 +313,15 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   does not.** The agent's tools share the commands' **decisions**, never their transport: a tool
   like `edit_scene` calls the same `@vn/scriptedit` rule its `story.*` counterpart does, but no
   tool invokes the registry, and wiring the tool loop through it is an unshipped follow-on
-  ([`docs/command-system.md`](docs/command-system.md#from-the-agent)). So a command with no tool
+  ([`docs/reference/command-system.md`](docs/reference/command-system.md#from-the-agent)). So a command with no tool
   wrapping its decision — `story.decomposeAll`, for one — is unreachable to the agent in either
   host. A right-click entry is an _invocation_, never a callback: checked before it is drawn, and
   a refusal is **shown** rather than hidden. Finding a command and filling it in are two hosts over
   one `CommandForm` (`openCommandDialog(id, props)`).
-  ([`docs/plans/document-tree-context-menus.md`](docs/plans/archive/document-tree-context-menus.md))
+  ([`docs/plans/archive/document-tree-context-menus.md`](docs/plans/archive/document-tree-context-menus.md))
 - **Provenance, undo and commits are each opt-in** — `vngen/state/commands.jsonl`, shadow-snapshot
   undo that **refuses rather than guesses** when the worktree drifted, and per-repo commit-on-save.
-  ([`docs/repos-and-commits.md`](docs/repos-and-commits.md))
+  ([`docs/reference/repos-and-commits.md`](docs/reference/repos-and-commits.md))
 - **`view.*` commands run in main** and push a `command:ui` effect naming an **editor**, never a
   room; main answers optimistically and the mesh returns a correction.
 - **CDP is opt-in in the app and on by default in the developer launchers** — `VN_CDP_PORT`,
@@ -345,17 +345,17 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   **Approval is the one act whose authority is the author's own words**: `approve_assets` takes no
   arguments, a second small model reads what the author typed — never a word the agent wrote —
   against the host's list, and the author confirms the result.
-  [`docs/vnauthor.md`](docs/vnauthor.md),
-  [`docs/plans/prompt-caching-and-deferred-tool-loading.md`](docs/plans/archive/prompt-caching-and-deferred-tool-loading.md),
-  [`docs/plans/improving-the-authoring-agent.md`](docs/plans/archive/improving-the-authoring-agent.md),
-  [`docs/plans/skills-editor-and-agent-authored-skills.md`](docs/plans/archive/skills-editor-and-agent-authored-skills.md).
+  [`docs/reference/vnauthor.md`](docs/reference/vnauthor.md),
+  [`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md`](docs/plans/archive/prompt-caching-and-deferred-tool-loading.md),
+  [`docs/plans/archive/improving-the-authoring-agent.md`](docs/plans/archive/improving-the-authoring-agent.md),
+  [`docs/plans/archive/skills-editor-and-agent-authored-skills.md`](docs/plans/archive/skills-editor-and-agent-authored-skills.md).
 - **`@vn/bible`** — retrieval over `wiki/`. `query` is budgeted and is the only door; a missing
-  `wiki/` is an empty bible, not an error. [`docs/story-bible.md`](docs/story-bible.md).
+  `wiki/` is an empty bible, not an error. [`docs/reference/story-bible.md`](docs/reference/story-bible.md).
 - **`@vn/testkit`** — real projects on disk through the real scheduler with mock providers.
   Nothing may import it, and mock art is **marked** art the real backend refuses.
-  [`docs/testkit.md`](docs/testkit.md).
+  [`docs/guides/testkit.md`](docs/guides/testkit.md).
 - **`@vn/debug2d`** — source-agnostic 2D debugging for the renderer. Zero deps and dev-only, so
-  `vite build` drops it. [`docs/debugGuide.md`](docs/debugGuide.md).
+  `vite build` drops it. [`docs/guides/debugGuide.md`](docs/guides/debugGuide.md).
 
 ## Conventions
 
@@ -367,7 +367,7 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   project's own `keys/`, the enclosing repo root's, then the user-level one. So a project carrying
   its own key wins over the machine's, and a set environment variable wins over a file that was
   just written, which is the honest answer to "why is it still asking me".
-  ([`docs/api-keys.md`](docs/api-keys.md))
+  ([`docs/guides/api-keys.md`](docs/guides/api-keys.md))
 - **User-level state lives in one directory, and it is not in a repo** — `%LOCALAPPDATA%\vnauthor`
   on Windows, `~/Library/Application Support/vnauthor` on macOS, `$XDG_CONFIG_HOME/vnauthor` (else
   `~/.config/vnauthor`) on Linux, all from `userConfigDir` in `@vn/config`. `$VNAUTHOR_HOME`
@@ -384,7 +384,7 @@ catalog. Full write-up: [`docs/command-system.md`](docs/command-system.md).
   an illegal cross-layer import.
 
 **Comment style, where plans and research are filed, how docs are kept honest, and the checklist
-a plan passes before it counts as finished: [`docs/conventions.md`](docs/conventions.md).** The
+a plan passes before it counts as finished: [`docs/reference/conventions.md`](docs/reference/conventions.md).** The
 three conventions below stay here because they are rules you need while the work is happening.
 
 ### Plans

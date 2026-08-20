@@ -4,7 +4,7 @@ Status: **shipped** — the nine commands are registered and runnable, they carr
 them, the gesture is declared, `vnauthor`'s `edit_scene` runs the same decisions, and the whole set is
 verified from the palette and CDP against a real project. See [As shipped](#as-shipped). The ticks in
 [Steps](#steps) are the detail. Move four of
-[`../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md),
+[`../../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md),
 and the first one that lets anything change prose. It depends on
 [`scene-chunk-files.md`](scene-chunk-files.md) for the file layout and
 [`allocated-line-ids.md`](allocated-line-ids.md) for ids that survive the edit. Both UI plans —
@@ -101,7 +101,7 @@ camera, and **never reads a line's text**. Prose reaches only `shotDescription`,
 *reviewer* spec and never enters a task's `inputs`. So a retyped line changes no task hash. Prose
 edits are as free as coverage edits, and that is what makes free editing affordable at all — the
 research doc
-([`../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md#what-editing-a-chunk-does-to-everything-downstream))
+([`../../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md#what-editing-a-chunk-does-to-everything-downstream))
 had it right.
 
 The consequence is worse than a rehash, not better: **a rendered frame goes on illustrating prose

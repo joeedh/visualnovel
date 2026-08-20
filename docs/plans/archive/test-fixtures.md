@@ -258,4 +258,4 @@ Four things the implementation learned that the plan above could not know:
 - [x] `CLAUDE.md` documents `@vn/testkit` (package table + a testing note)
 - [x] Debug lessons appended to `research/debug-lessons-learned.md` — see
       [Debug lessons](../desktop-editors-tracking.md#debugging-lessons); since consolidated into
-      [`../debugGuide.md`](../../debugGuide.md)
+      [`../../guides/debugGuide.md`](../../guides/debugGuide.md)

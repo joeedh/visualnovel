@@ -21,7 +21,7 @@ import type { DocNode } from '../../../src/shared/ipc.js';
 /**
  * The project's skills — the playbooks under `.aiagent/skills`, as a tree of the files inside them
  * beside the file being edited. It is the one pane that shows what is *in* a skill: the document
- * tree carries identity (one row per skill, `docs/document-tree.md`), and the content is here.
+ * tree carries identity (one row per skill, `docs/reference/document-tree.md`), and the content is here.
  *
  * The text half is `DocBuffer`, exactly as Wiki's is — `doc.read` in, `doc.write` out, with the
  * draft, the `seenHash` refusal and the quit guard all coming from that one module rather than

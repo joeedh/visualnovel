@@ -945,9 +945,9 @@ plain data — `--raw` crosses the wire with `returnByValue` and live objects do
 
 ## 19. Docs, and the invariant this changes
 
-- This file, kept up to date as the work proceeds, and listed in [`docs/index.md`](../index.md).
-- [`docs/pipeline-contracts.md`](../../pipeline-contracts.md),
-  [`docs/command-system.md`](../archive/command-system.md), [`docs/desktop-app.md`](../../desktop-app.md) — the
+- This file, kept up to date as the work proceeds, and listed in [`../index.md`](../index.md).
+- [`../../reference/pipeline-contracts.md`](../../reference/pipeline-contracts.md),
+  [`command-system.md`](command-system.md), [`../../reference/desktop-app.md`](../../reference/desktop-app.md) — the
   `prompt.*` namespace, the twelfth editor, and the override storage table.
 - **CLAUDE.md's core-ideas list currently states, twice, that a prompt is derived on every planning
   pass "so there is nothing there to edit."** That invariant is what this plan revises, and the
@@ -960,7 +960,7 @@ plain data — `--raw` crosses the wire with `returnByValue` and live objects do
   hash and remembers the slot it came from, so an upstream change suspends rather than silently
   re-renders; suspension is derived by walking that graph on read, never stored; and the graph is kept
   acyclic at write time over bindings, because a cycle in it starves the scheduler in silence._
-- [`docs/asset-stores.md`](../../asset-stores.md) — the `reference` kind, its routing to the base root,
+- [`../../reference/asset-stores.md`](../../reference/asset-stores.md) — the `reference` kind, its routing to the base root,
   and its synthesized `sourceTask`.
 - `todos.md` — **"the asset editor should have an option to upload a custom asset"** is completed by
   §15 and gets its checkbox checked. The cross-reference-widget item is adjacent but not completed:

@@ -62,7 +62,7 @@ The branch editor therefore needs a **surgical marker patcher** that rewrites on
 as the safety net. Mitigating factor: there is exactly one screenplay file
 (`packages/store/src/worktree.ts:43` reads `fountain[0]` only).
 
-**Resolved** — [`lossless-scene-serialization.md`](archive/lossless-scene-serialization.md) rewrote
+**Resolved** — [`archive/lossless-scene-serialization.md`](archive/lossless-scene-serialization.md) rewrote
 `sceneToFountain` against `Scene.lines` and retired `Scene.body` entirely; the contract
 `parse(write(scene)) ≡ scene` is pinned by a property test. The surgical patcher stays for
 inherited files, where the author's formatting is theirs to keep.
@@ -116,7 +116,7 @@ silently-repeated work rather than an error. What is learned getting each one wo
 worth more than the code, and it is exactly what gets forgotten by the next plan.
 
 **Done** — every plan appended its section, and the accumulated file was consolidated into
-[`../debugGuide.md`](../debugGuide.md) and deleted. The full scratch file is in history at
+[`../guides/debugGuide.md`](../guides/debugGuide.md) and deleted. The full scratch file is in history at
 `git show 6d1029b:docs/research/debug-lessons-learned.md`; the consolidation commit's diff is
 the record of what the editorial pass chose to drop. The procedure that was followed, kept
 because the next batch of plans should follow it too:
@@ -132,9 +132,9 @@ because the next batch of plans should follow it too:
   - Note anything that made a bug *hard* to see, not just the bug: a swallowed rejection, a
     dev/prod behavioral split, a Windows-only path or line-ending difference.
   - Negative results count. "Screenshots were useless here, `explainPick` answered it in one
-    call" is the sort of thing [`../debugGuide.md`](../debugGuide.md) exists to say.
+    call" is the sort of thing [`../guides/debugGuide.md`](../guides/debugGuide.md) exists to say.
 - **When all plans in the table above are done, consolidate that file into
-  [`../debugGuide.md`](../debugGuide.md)** — reorganized by symptom and kept cheapest-first,
+  [`../guides/debugGuide.md`](../guides/debugGuide.md)** — reorganized by symptom and kept cheapest-first,
   matching the guide's existing shape rather than appended as a log. Lessons that turned out
   to be one-offs get dropped in the consolidation; that editorial pass is the point.
   `debug-lessons-learned.md` is scratch that earns its way into the guide, so it is deleted
@@ -157,7 +157,7 @@ Decided against in the survey, recorded here so it does not get re-proposed:
   prompt breakdown in the inspector gets most of the value at none of the cost.
 - **Agent trace visualizer** — not an editor, not a current pain point.
 - **Command history / git lane view** — low value until an undo strategy is chosen
-  ([`../gitUndoOptions.md`](../gitUndoOptions.md)).
+  ([`../history/gitUndoOptions.md`](../history/gitUndoOptions.md)).
 - **debug2d fragment tree UI** — stays a dev-only console/CDP surface; wiring it into the app
   would violate the isolation that makes it strippable.
 - **Package layering graph** — build-time metadata, changes rarely, no runtime value.

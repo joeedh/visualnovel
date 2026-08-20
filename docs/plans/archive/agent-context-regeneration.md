@@ -1,6 +1,6 @@
 # Agent context regeneration
 
-Status: **shipped** (deviations in [As shipped](#as-shipped)). Item 8 of [`refactorTaskList.md`](../refactorTaskList.md), from §7 of the
+Status: **shipped** (deviations in [As shipped](#as-shipped)). Item 8 of [`../refactorTaskList.md`](../refactorTaskList.md), from §7 of the
 [migration report](../../research/codebase-migration-for-new-requirements.md). Sits on item 2 (tag
 discovery) and item 3 ([`story-bible-and-retrieval.md`](story-bible-and-retrieval.md)) — it is
 their walk, projected.
@@ -141,14 +141,14 @@ generated one included, because `/status` shows that list.
 
 ### 5. Docs
 
-- [`../vnauthor.md`](../../vnauthor.md) — the precedence chain gains a rung; `regenerate_context` in
+- [`../../reference/vnauthor.md`](../../reference/vnauthor.md) — the precedence chain gains a rung; `regenerate_context` in
   the tool table.
-- [`../command-system.md`](../archive/command-system.md) — `workspace.reindex` in the table, and the
+- [`command-system.md`](command-system.md) — `workspace.reindex` in the table, and the
   counts.
-- [`../story-bible.md`](../../story-bible.md) — the TOC is the second thing that reads `files()`, and
+- [`../../reference/story-bible.md`](../../reference/story-bible.md) — the TOC is the second thing that reads `files()`, and
   the note that a TOC is not an excerpt belongs beside the no-whole-file rule.
 - `CLAUDE.md` — the context-precedence line under "Authoring agent" gains the generated rung.
-- `refactorTaskList.md` / [`index.md`](../index.md) — status.
+- `refactorTaskList.md` / [`../index.md`](../index.md) — status.
 
 ## As shipped
 

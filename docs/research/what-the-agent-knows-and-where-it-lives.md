@@ -15,7 +15,7 @@ _The two reports it consolidates:_
 
 _Prior work it builds on rather than repeats:
 [`agent-transcript-review-test4.md`](agent-transcript-review-test4.md) and the plan it produced,
-[`plans/improving-the-authoring-agent.md`](../plans/archive/improving-the-authoring-agent.md) (shipped);
+[`../plans/archive/improving-the-authoring-agent.md`](../plans/archive/improving-the-authoring-agent.md) (shipped);
 and [`retrieval-beyond-grep.md`](retrieval-beyond-grep.md) for the ranking half of `@vn/bible`._
 
 <!-- toc -->
@@ -198,7 +198,7 @@ and note that one of them, item 3, is a promise the prompt is **already** making
    happen in `examples/test4`, but it is what the author believed they were looking at, it is
    unguarded, and it costs one comparison.
 4. **A batch delete for `edit_scene`.** `insertLines` shipped from
-   [`plans/improving-the-authoring-agent.md`](../plans/archive/improving-the-authoring-agent.md) §3.2 and
+   [`../plans/archive/improving-the-authoring-agent.md`](../plans/archive/improving-the-authoring-agent.md) §3.2 and
    the symmetric half did not: 159 `deleteLine` calls against 11 `insertLines` across the corpus.
    That plan's own argument — "a 40-line scene goes from 41 calls to two" — applies unchanged to
    _rewriting_ one, which still costs 40 deletes plus an insert, and rewriting scenes is most of

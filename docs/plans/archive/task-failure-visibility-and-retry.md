@@ -219,7 +219,7 @@ Each step is one commit and leaves `pnpm check` / `pnpm test` / `pnpm lint` gree
 ## As shipped
 
 All five steps landed as written. The contract is in
-[`../pipeline-contracts.md`](../../pipeline-contracts.md#scheduling). What follows is where the plan
+[`../../reference/pipeline-contracts.md`](../../reference/pipeline-contracts.md#scheduling). What follows is where the plan
 was wrong, silent, or made a call it deferred to implementation.
 
 **Both backends are covered, and Claude's messages got longer.** Step 4 hedged on Anthropic; the

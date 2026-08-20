@@ -1,10 +1,10 @@
 # Repos and commits
 
 How the app decides **which git repository owns a path** and **when history gets written**.
-Design and rationale: [`plans/repo-map-and-commit-on-save.md`](plans/archive/repo-map-and-commit-on-save.md).
+Design and rationale: [`../plans/archive/repo-map-and-commit-on-save.md`](../plans/archive/repo-map-and-commit-on-save.md).
 For undo — which is the other half of the same machinery — see
 [`command-system.md`](command-system.md#undo-is-opt-in-and-rests-on-shadow-snapshots) and the survey it came from,
-[`gitUndoOptions.md`](gitUndoOptions.md).
+[`../history/gitUndoOptions.md`](../history/gitUndoOptions.md).
 
 <!-- toc -->
 
@@ -75,7 +75,7 @@ Every act that changed something becomes a commit, in each repo it touched.
 the existing tests out of anyone's history.
 
 Scope is the **whole worktree** (`git add -A`) per repo — not `record.written`, which is a
-hand-declared claim nothing verifies ([`gitUndoOptions.md`](gitUndoOptions.md) §3), and not the
+hand-declared claim nothing verifies ([`../history/gitUndoOptions.md`](../history/gitUndoOptions.md) §3), and not the
 undo pathspec. A `pipeline.run` that writes five hundred assets therefore needs no special case to
 become one commit.
 
@@ -178,7 +178,7 @@ site that happens to remember it.
 Union merge is what makes an append-only log survive a branch merge: both sides' lines are kept.
 It duplicates a line whose read/hidden flags each side changed, which is why the reader dedupes by
 id and **ORs** the flags — both are monotonic, so the set bit wins. See
-[`plans/notifications.md`](plans/archive/notifications.md).
+[`../plans/archive/notifications.md`](../plans/archive/notifications.md).
 
 This repo's own `* text=auto eol=lf` is deliberately **not** copied into a project. `merge` and
 `text`/`eol` are orthogonal attributes, and a project is the user's repo; `initRepoAt` already

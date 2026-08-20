@@ -2,7 +2,7 @@
 
 Status: **shipped** — all eight steps (an authorable wardrobe; `outfitFor` and the prompts; the
 `[[outfit:]]` marker; the two commands; the timeline's wardrobe strip; the agent's `set_outfit`;
-the narrowed sheet fan-out; the docs). Item 6 of [`refactorTaskList.md`](../refactorTaskList.md), from §5 of the
+the narrowed sheet fan-out; the docs). Item 6 of [`../refactorTaskList.md`](../refactorTaskList.md), from §5 of the
 [migration report](../../research/codebase-migration-for-new-requirements.md). Ordered **after**
 item 7 ([`shot-ordering-in-scenes.md`](shot-ordering-in-scenes.md)): both touch
 `work/shots/<sceneId>.json`, and shot ordering settled what a shot's *position* is without adding
@@ -14,7 +14,7 @@ a field to that file or re-rendering anything. This plan adds a field and delibe
 
 ## What the requirement asks for
 
-From [`../designRequirementsEtc.md`](../../designRequirementsEtc.md): outfits optionally specified at
+From [`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md): outfits optionally specified at
 the scene or shot level. "Optionally" is the load-bearing word — an unspecified outfit is not an
 empty one, it is *inherited*, and the whole design follows from taking that literally.
 
@@ -54,7 +54,7 @@ with the **id**, never `Outfit.description` — which is why the description fie
 **Scene chunk front-matter is `scene: <id>` and nothing else.** Everything semantic lives as
 Fountain elements and `[[…]]` markers in the body, `sceneToFountain` writes those markers in a block
 under the heading (`packages/model/src/serialize.ts:144`), and `branchpatch.ts` patches marker lines
-surgically without reformatting the file. [`index.md`](../index.md#decisions-that-span-the-batch)
+surgically without reformatting the file. [`../index.md`](../index.md#decisions-that-span-the-batch)
 already marks "front-matter is identity only" for revisit, noting nothing had wanted a field there
 yet.
 
@@ -66,7 +66,7 @@ screenplay` and `vngen import` round-trip `[[…]]` markers for free and would s
 front-matter field, so front-matter means extending that pair as well, for the same meaning.
 
 **Front-matter is therefore considered and declined again, deliberately.** The revisit
-[`index.md`](../index.md#decisions-that-span-the-batch) called for has happened here and came out the
+[`../index.md`](../index.md#decisions-that-span-the-batch) called for has happened here and came out the
 same way. What would change the answer: a second field that has no reading as a marker (something
 positionless *and* structured, e.g. a per-scene render budget), or the Fountain projection being
 retired. Neither is true today. Note that this rule is about **scene chunks**; character and
@@ -283,16 +283,16 @@ not drift or the shot would wait on a hash P4 never planned.
 - `CLAUDE.md` — a core-idea bullet for outfit inheritance; the shots-file writer count; the
   `@vn/model` row gains `outfitFor`, and the `@vn/scriptedit` row the outfit rules and the marker
   write path.
-- [`../fountain.md`](../../fountain.md) — the `[[outfit:]]` marker beside the others.
-- [`../desktop-app.md`](../../desktop-app.md) — the timeline's detail strip.
-- [`../vnauthor.md`](../../vnauthor.md) — `set_outfit`.
+- [`../../reference/fountain.md`](../../reference/fountain.md) — the `[[outfit:]]` marker beside the others.
+- [`../../reference/desktop-app.md`](../../reference/desktop-app.md) — the timeline's detail strip.
+- [`../../reference/vnauthor.md`](../../reference/vnauthor.md) — `set_outfit`.
 - `refactorTaskList.md` / `index.md` — status, and the front-matter revisit recorded as taken.
 
 Done, plus three things the sweep turned up that earlier steps had left behind:
-[`../pipeline-contracts.md`](../../pipeline-contracts.md#scenes-shots-and-lines) gets the contract in
+[`../../reference/pipeline-contracts.md`](../../reference/pipeline-contracts.md#scenes-shots-and-lines) gets the contract in
 full (the chain, the deliberate re-render, and the fan-out that follows from `outfitFor`'s range),
 since CLAUDE.md's bullet promises it is stated there; and
-[`../command-system.md`](../archive/command-system.md) had drifted — its table was missing `story.moveShot`
+[`command-system.md`](command-system.md) had drifted — its table was missing `story.moveShot`
 along with the two outfit commands, and its counts still said thirty-eight commands and fifteen
 undoable where the registry now holds forty-one and eighteen.
 

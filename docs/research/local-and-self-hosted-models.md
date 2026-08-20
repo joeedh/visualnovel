@@ -134,7 +134,7 @@ whole authoring agent, and its request shape is deliberately Anthropic-specific.
 
 `buildConvoRequest` (`packages/providers/src/backends/convo-request.ts`) is the most
 vendor-coupled function in the repo, and every line of it is coupled on purpose
-([`../plans/prompt-caching-and-deferred-tool-loading.md`](../plans/archive/prompt-caching-and-deferred-tool-loading.md)):
+([`../plans/archive/prompt-caching-and-deferred-tool-loading.md`](../plans/archive/prompt-caching-and-deferred-tool-loading.md)):
 
 - **Four `cache_control: {type: 'ephemeral'}` breakpoints** — end of the tool catalog, end of the
   system prompt, and a rolling pair over the transcript that `NativeAgentBackend` advances each
@@ -841,7 +841,7 @@ for the big ones.
 **Nothing leaves the machine** is the strongest argument for the local path here, and it is
 strongest because the repo has already taken a position on it. `keys/` is gitignored and key values
 are never logged. The difficult-agent report
-([`../plans/reporting-a-difficult-agent.md`](../plans/archive/reporting-a-difficult-agent.md)) is explicitly
+([`../plans/archive/reporting-a-difficult-agent.md`](../plans/archive/reporting-a-difficult-agent.md)) is explicitly
 "the author's own key, on the author's own machine", with a redactor that replaces the fiction's
 names **at the boundary rather than in a prompt**, because a prompt is a request and a boundary is
 a guarantee. `@vn/bible` has no whole-file API and that absence is the guarantee.

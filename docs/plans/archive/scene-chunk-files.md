@@ -1,7 +1,7 @@
 # Scene chunk files
 
 Status: **shipped** (see [As shipped](#as-shipped)). Move two of
-[`../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md),
+[`../../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md),
 after [`allocated-line-ids.md`](allocated-line-ids.md) and
 [`lossless-scene-serialization.md`](lossless-scene-serialization.md). It changes where a scene
 lives, and nothing else: no editor, no new commands beyond the ones that must be retargeted.

@@ -45,7 +45,7 @@ export class ProjectPaths {
    * Base assets — generated art every later prompt references (portraits, model sheets,
    * location refs). Beside the authored inputs rather than under `vngen/`, because it is its
    * own subtree and may be its own git repo: `vngen/build/assets/` could not be either without
-   * dragging the build tree along. See `docs/asset-stores.md`.
+   * dragging the build tree along. See `docs/reference/asset-stores.md`.
    */
   get baseAssets(): string {
     return join(this.root, 'assets');

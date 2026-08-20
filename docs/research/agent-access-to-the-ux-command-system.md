@@ -33,7 +33,7 @@ inertia.
 ## Where the seam is today
 
 `CommandSource` already includes `'agent'`. The plumbing is there and unused, and that is
-deliberate: [`command-system.md`](../command-system.md#from-the-agent) states the shipped position
+deliberate: [`../reference/command-system.md`](../reference/command-system.md#from-the-agent) states the shipped position
 as *"the agent and the commands share the **decisions** rather than the transport."*
 
 Concretely:
@@ -123,7 +123,7 @@ unit is *the approved plan*, not the act.
 **4. Results are sentences.** `CommandOutcome.message` is written for a message line. Some
 commands carry `data`; most do not. A model reading "Showing Coverage below." learns less than a
 tool return designed to be read. Giving commands a second, machine-facing projection is a second
-truth about the same thing — the exact shape [`guided-ui-tours.md`](../plans/guided-ui-tours.md)
+truth about the same thing — the exact shape [`../plans/guided-ui-tours.md`](../plans/guided-ui-tours.md)
 §8 rejects for the anchor map.
 
 **5. "Full" is not achievable, so a second list appears.** A dozen commands are meaningless or

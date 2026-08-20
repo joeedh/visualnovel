@@ -2,7 +2,7 @@
 
 How the existing packages (everything except the desktop renderer, whose path.ux rewrite is
 tracked separately) get from what is shipped to what
-[`../designRequirementsEtc.md`](../designRequirementsEtc.md) asks for. This is the input to
+[`../history/designRequirementsEtc.md`](../history/designRequirementsEtc.md) asks for. This is the input to
 the individual plans listed in [`../plans/refactorTaskList.md`](../plans/refactorTaskList.md);
 it maps each requirement onto the packages it touches, states the migration path, and names
 the design decisions that must be settled before a plan is written.
@@ -29,7 +29,7 @@ the design decisions that must be settled before a plan is written.
 Each section below takes one requirement, states what exists today (with the file that proves
 it), what the requirement actually demands, the smallest migration that satisfies it without
 breaking a shipped contract, and any decision a plan must settle first. The contracts in
-[`../pipeline-contracts.md`](../pipeline-contracts.md) are treated as load-bearing: a
+[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) are treated as load-bearing: a
 migration that breaks content-addressed task identity, the lossless scene round-trip, or the
 single-write-path rule is rejected here even where it would be less code.
 
@@ -180,7 +180,7 @@ index**, refusing when the worktree drifted.
 creation. Wiki and base assets may be separate repos.
 
 **The conflict to resolve honestly.** Commit-per-command was one of the five strategies
-surveyed in [`../gitUndoOptions.md`](../gitUndoOptions.md) and *lost* to shadow snapshots —
+surveyed in [`../history/gitUndoOptions.md`](../history/gitUndoOptions.md) and *lost* to shadow snapshots —
 but it lost under the constraint "don't pollute the author's history", and the requirement
 has now changed that constraint: the author's history is *supposed* to record every save.
 The survey's losing option and the shipped option can coexist, though, and that is the

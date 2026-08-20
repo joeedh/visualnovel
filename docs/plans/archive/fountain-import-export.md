@@ -2,7 +2,7 @@
 
 Status: **shipped** — every step is ticked and [As shipped](#as-shipped) records what changed on
 the way. Move three of
-[`../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md).
+[`../../research/scene-chunks-as-the-authored-unit.md`](../../research/scene-chunks-as-the-authored-unit.md).
 It depends on [`lossless-scene-serialization.md`](lossless-scene-serialization.md) for the writer
 and [`scene-chunk-files.md`](scene-chunk-files.md) for the target, and it is what retired that
 plan's `screenplay/` fallback.

@@ -16,7 +16,7 @@
 <!-- tocstop -->
 
 **Status: §8 has been carried out** — see [§8](#8-recommendation) for what shipped and where
-it deviated, and [`plans/command-undo-redo.md`](plans/archive/command-undo-redo.md) for the
+it deviated, and [`../plans/archive/command-undo-redo.md`](../plans/archive/command-undo-redo.md) for the
 implementation. The survey below is left as written, in the present tense of a `@vn/commands`
 that shipped **without** undo: it records what v1 already captured, what each candidate
 strategy would cost, and which one to reach for first. That is the reasoning the choice rests
@@ -259,4 +259,4 @@ one, so "everything dirty" *is* "what this act did".
 branch ref and the index but changes no file in the worktree, so it cannot perturb a snapshot tree
 taken on either side of it. The two mechanisms answer different questions — §4 records *what
 changed*, §5 records *what may be rolled back* — and keep different scopes for that reason. What
-shipped is in [`repos-and-commits.md`](repos-and-commits.md); the survey above stays as written.
+shipped is in [`../reference/repos-and-commits.md`](../reference/repos-and-commits.md); the survey above stays as written.

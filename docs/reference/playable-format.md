@@ -4,7 +4,7 @@ The pipeline is presentation-agnostic — it stops at `manifest.json`. To actual
 generated VN, `@vn/export` projects the model + manifest into a small in-house **playable**,
 and the desktop app plays it. This is deliberately **not** an external DSL export (Ren'Py,
 Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` types. Plan:
-[`plans/runner.md`](plans/archive/runner.md); the app that renders it is
+[`../plans/archive/runner.md`](../plans/archive/runner.md); the app that renders it is
 [`desktop-app.md`](desktop-app.md).
 
 <!-- toc -->
@@ -70,7 +70,7 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
   on**, be warned the P3 portrait is prompted for a "plain neutral background"
   (`packages/pipeline/src/prompts.ts`) — an opaque plate, not a keyed cutout, so it lands as a
   rectangle. A real sprite asset with an alpha channel is unbuilt work
-  ([`plans/portrait-overlay-opt-in.md`](plans/archive/portrait-overlay-opt-in.md)).
+  ([`../plans/archive/portrait-overlay-opt-in.md`](../plans/archive/portrait-overlay-opt-in.md)).
 - **Asset refs are `{hash, ext}`**, resolved by the runner (never inlined). A missing asset is
   **omitted, not an error** — a partially- or un-generated project still plays (placeholder
   background/portrait).

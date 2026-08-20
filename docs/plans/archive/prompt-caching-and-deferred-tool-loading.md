@@ -10,7 +10,7 @@ because two of the obvious individual fixes silently cancel the caching out.
 
 This plan has been pressure-tested; the findings are folded in below, and the record of what was
 checked is
-[`docs/research/pressure-test-prompt-caching-plan.md`](../../research/pressure-test-prompt-caching-plan.md).
+[`../../research/pressure-test-prompt-caching-plan.md`](../../research/pressure-test-prompt-caching-plan.md).
 
 ## What was measured, and what was reconstructed
 
@@ -478,7 +478,7 @@ five workstreams and still see a 0% hit rate:
    [below](#what-happens-when-the-agent-edits-aicontextmd) — this is the one invalidation the
    agent can trigger on itself, and workstream C already carries the mechanism that fixes it.
 3. **Switching model, effort or speed mid-session invalidates everything.** `setBackend` is called
-   by `/model` and `/effort`, and [`fast-mode-as-an-opt-in.md`](../fast-mode-as-an-opt-in.md) has
+   by `/model` and `/effort`, and [`../fast-mode-as-an-opt-in.md`](../fast-mode-as-an-opt-in.md) has
    already written down the third case: toggling fast mode re-bills the whole prompt, which is why
    that plan refuses to downgrade a 429 silently. That is correct behaviour and the cost is
    unavoidable; it is worth a line in the docs so nobody reports it as a bug. A model switch is
@@ -608,7 +608,7 @@ sites move to the appending one.
   out-of-CI ritual**, like its sibling `scripts/verify-prompt-chunks.mjs`, which needs a running app
   over CDP and is not in `package.json`'s scripts either. `pnpm test` is jest only and will not run
   it. It resolves its key through `resolveKeys` and never prints it — the standing rule in
-  [`CLAUDE.md`](../../../CLAUDE.md), restated here because a script that talks to a paid API is exactly
+  [`../../../CLAUDE.md`](../../../CLAUDE.md), restated here because a script that talks to a paid API is exactly
   where it gets forgotten.
 
 ## What shipped differently

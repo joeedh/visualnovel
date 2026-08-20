@@ -18,7 +18,7 @@ import markdownToc from 'markdown-toc';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const TARGET_DIRS = ['docs', 'docs/research'];
+const TARGET_DIRS = ['docs', 'docs/guides', 'docs/reference', 'docs/history', 'docs/research'];
 
 const TOC_MARKER_RE = /<!--[ \t]*toc[ \t]*-->/;
 const H1_RE = /^(#[^\n]*\n)/;

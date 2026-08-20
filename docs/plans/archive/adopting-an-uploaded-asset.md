@@ -258,4 +258,4 @@ refuses mock art at the upload, which is where it belongs.
 `shot:` slot writes a project-root row under `shot_image` and leaves the base row where it is;
 `manifest()` is base-first, so `asset.info` keeps answering `reference`. Within the base root it is
 still a rewrite in place, which is why promotion's behaviour is unchanged. Stated in
-[`../asset-stores.md`](../../asset-stores.md).
+[`../../reference/asset-stores.md`](../../reference/asset-stores.md).

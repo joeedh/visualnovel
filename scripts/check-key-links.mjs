@@ -1,5 +1,5 @@
 /**
- * Tier 1 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: every URL `docs/api-keys.md`
+ * Tier 1 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: every URL `docs/guides/api-keys.md`
  * states in a vendor's yaml block still resolves.
  *
  * This is the failure that actually happens to a new user. Both vendors reword and rearrange
@@ -21,7 +21,7 @@
  * Usage:
  *   node scripts/check-key-links.mjs          # exits non-zero if any link is broken
  *
- * It never writes to `docs/api-keys.md`. Nothing in either tier of this audit does: that file is
+ * It never writes to `docs/guides/api-keys.md`. Nothing in either tier of this audit does: that file is
  * what a new user reads when they are most confused and least able to tell something is wrong.
  */
 import { build } from 'esbuild';
@@ -30,7 +30,7 @@ import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { alias, EXTERNAL, REPO_ROOT as root } from './aliases.mjs';
 
-const GUIDE = join(root, 'docs/api-keys.md');
+const GUIDE = join(root, 'docs/guides/api-keys.md');
 const TMP = resolve(root, 'apps/desktop/.keylinks-entry.cjs');
 
 /** How many times a request is allowed to be ordinary network noise before it is a verdict. */
@@ -78,7 +78,7 @@ const guide = parseKeyGuide(await fs.readFile(GUIDE, 'utf8'));
 // The shape of the file is checked before the network is touched. A missing yaml block is a
 // broken page too, and finding it here says so in one line rather than as an absence of URLs.
 const problems = keyGuideProblems(guide, KEY_VENDORS);
-for (const problem of problems) console.error(`FAIL docs/api-keys.md — ${problem}`);
+for (const problem of problems) console.error(`FAIL docs/guides/api-keys.md — ${problem}`);
 
 /** One request, with a timeout, reduced to what {@link linkReport} needs to judge it. */
 async function ask(url) {
@@ -141,13 +141,13 @@ for (const { vendor, field, url } of guideUrls(guide)) {
 
 if (broken) {
   console.error(
-    '\nA link in docs/api-keys.md no longer resolves. Find the vendor’s current page and edit ' +
+    '\nA link in docs/guides/api-keys.md no longer resolves. Find the vendor’s current page and edit ' +
       'that file — it is the only copy, so the Setup pane is fixed by the same edit.',
   );
   process.exit(1);
 }
 
-console.log('\nEvery link in docs/api-keys.md resolves.');
+console.log('\nEvery link in docs/guides/api-keys.md resolves.');
 if (unverified > 0) {
   // Said every run, not just the first, because the number going up is the signal. One vendor
   // hiding its console behind a sign-in is a fact about that vendor; a second one doing it means

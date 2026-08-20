@@ -4,7 +4,7 @@
 **Depends on:** [desktop renderer restructure](desktop-renderer-restructure.md), and
 [story branch editor](story-branch-editor.md) for the `renderer/graph/` primitives.
 **Size:** medium. An upgrade to an existing surface, not a new one —
-[`../research/graphThingsReport.md`](../../research/graphThingsReport.md) §2.
+[`../../research/graphThingsReport.md`](../../research/graphThingsReport.md) §2.
 
 ## Why
 

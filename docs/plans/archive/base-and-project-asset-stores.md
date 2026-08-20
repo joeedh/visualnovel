@@ -1,8 +1,8 @@
 # Base and project asset stores
 
 Status: **shipped** — see [As shipped](#as-shipped) for the four places the result differs from
-the plan below. As-shipped reference: [`../asset-stores.md`](../../asset-stores.md).
-Item 5 of [`refactorTaskList.md`](../refactorTaskList.md), from §3 of the
+the plan below. As-shipped reference: [`../../reference/asset-stores.md`](../../reference/asset-stores.md).
+Item 5 of [`../refactorTaskList.md`](../refactorTaskList.md), from §3 of the
 [migration report](../../research/codebase-migration-for-new-requirements.md). Independent of the
 wiki work; it sits on item 4's repo map for the "own git repo" half.
 
@@ -12,7 +12,7 @@ wiki work; it sits on item 4's repo map for the "own git repo" half.
 
 ## What the requirements ask for
 
-Two sentences from [`../designRequirementsEtc.md`](../../designRequirementsEtc.md):
+Two sentences from [`../../history/designRequirementsEtc.md`](../../history/designRequirementsEtc.md):
 
 - "Assets are separated into **base assets** (such as character descriptions and prompts,
   character model sheets, locations, etc) that are **in their own folder subtree and may
@@ -189,7 +189,7 @@ all commit-on-save needs.
 ## As shipped
 
 The steps above landed as written except in five places, each recorded here rather than edited
-into the plan. The as-shipped reference is [`../asset-stores.md`](../../asset-stores.md).
+into the plan. The as-shipped reference is [`../../reference/asset-stores.md`](../../reference/asset-stores.md).
 
 **The `unavailable` refusal is total, not base-kinds-only.** Step 4 says the planner "refuses to
 plan base kinds". It refuses to plan *anything*: every shot references a location plate and a

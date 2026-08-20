@@ -11,11 +11,11 @@ would have double-reported.
 What to change so the authoring agent stops inventing notation the format does not have, stops
 mistaking the project's own line ids for junk, and so a note nothing understands is reported rather
 than deleted behind the author's back. Derived from
-[`../research/what-the-agent-knows-and-where-it-lives.md`](../../research/what-the-agent-knows-and-where-it-lives.md)
+[`../../research/what-the-agent-knows-and-where-it-lives.md`](../../research/what-the-agent-knows-and-where-it-lives.md)
 and the report it consolidates,
-[`../research/story-format-rules-and-a-scene-lint.md`](../../research/story-format-rules-and-a-scene-lint.md),
+[`../../research/story-format-rules-and-a-scene-lint.md`](../../research/story-format-rules-and-a-scene-lint.md),
 then rewritten against
-[`../research/pressure-test-what-the-agent-knows-about-the-story-format.md`](../../research/pressure-test-what-the-agent-knows-about-the-story-format.md),
+[`../../research/pressure-test-what-the-agent-knows-about-the-story-format.md`](../../research/pressure-test-what-the-agent-knows-about-the-story-format.md),
 which killed one whole section of an earlier draft and turned another inside out.
 
 The rule it implements, in one line: **the prompt carries what must never be got wrong, a skill
@@ -441,7 +441,7 @@ Each wave is one commit, and each is green (`pnpm check`, `pnpm test`, `pnpm lin
    rather than introducing one.
 5. **The ergonomics fixes (§4).** Independent of all of it; last because nothing else waits on them.
 
-Finishing the plan means the checklist in [`../conventions.md`](../../conventions.md#finishing-a-plan):
+Finishing the plan means the checklist in [`../../reference/conventions.md`](../../reference/conventions.md#finishing-a-plan):
 audit comments, no `CLAUDENOTE:` left, and update `docs/vnauthor.md` (the tool table gains
 `deleteLines`) and this file's status line.
 
@@ -473,7 +473,7 @@ than deleted, because each belief is reasonable and will recur.
 ## Deliberately out of scope
 
 - **`list_bible` and the wiki-navigation prompt sentence.**
-  [`navigating-the-story-bible.md`](../../research/navigating-the-story-bible.md) is independent of
+  [`../../research/navigating-the-story-bible.md`](../../research/navigating-the-story-bible.md) is independent of
   every wave here and has open questions this plan cannot settle for it — what a truncated listing
   does, and whether `match` ranks or filters. It gets its own plan. The ~200 characters of prompt it
   needs are reserved, not spent, because describing a tool the agent cannot call is worse than

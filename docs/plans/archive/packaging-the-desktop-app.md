@@ -171,6 +171,6 @@ macOS and Linux targets remain deferred, for the reasons in the table above.
 
 ## Out of scope
 
-Signing ([`code-signing-and-notarization.md`](../code-signing-and-notarization.md)), CI
+Signing ([`../code-signing-and-notarization.md`](../code-signing-and-notarization.md)), CI
 ([`release-ci-workflow.md`](release-ci-workflow.md)), and auto-install updates
 ([`in-app-update-checks.md`](in-app-update-checks.md)).
