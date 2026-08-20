@@ -251,6 +251,36 @@ rather than fired.
 5. Re-run install on the already-installed project and confirm it overwrites cleanly and produces
    a second commit.
 
+## As shipped
+
+Built as planned. Six things ended up different from the text above.
+
+- **`site-cli.ts` validates by hand rather than through `playableSchema`.** The plan called for
+  zod at the boundary, per the repo convention. Measured, zod takes the bundle from 275 lines to
+  4,688 — and this file is committed to an author's git history and rewritten whole on every
+  reinstall. `asPlayable` checks the fields `renderSite` reads and names the bad one. The reason is
+  recorded on the function.
+- **The workflow refuses a `gh-pages` it did not write.** Every published site carries a
+  `.vn-pages` marker at its root, and the workflow checks for it before force-pushing, so
+  installing this cannot destroy a branch somebody built by hand. The plan's force-push had no
+  guard.
+- **`.gitattributes` was in scope after all.** The plan left it out; the committed bundle gets
+  `${SITEBUILDER_FILE} -merge` for the same reason layout templates do — a three-way merge of two
+  builds' output produces a file neither build wrote.
+- **`pagesStatus` reports staleness, and the menu label comes from it.** Staleness is decided by
+  comparing bytes against the shipped bundle, which also catches a hand-edited copy. The plan only
+  had `installed`.
+- **The bundle carries `/* eslint-disable */`**, and this repo ignores `**/.vnstudio/pages/**`.
+  See finding 25.
+- **`publishBranch` is a prop with a `gh-pages` default**, and `concurrency` does not cancel a run
+  in progress — cancelling one mid-push could leave the published branch half-written.
+
+Verified end to end against `examples/test4`: install and reinstall over CDP, each producing one
+commit with `Vn-Command: project.installPages`; the Action green at 54 pages and 141/141 assets;
+and a `gh-pages` branch carrying `index.html`, `assets/`, `.nojekyll` and `.vn-pages`. Enabling
+Pages in the repository's settings is still the author's own step, and had not been done when this
+was written.
+
 ## Risks worth stating
 
 - **A committed build artifact.** `.vnstudio/pages/vn-site.mjs` is generated output living in the
