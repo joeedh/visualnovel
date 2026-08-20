@@ -43,7 +43,9 @@ function loadLedger() {
 }
 
 function saveLedger(ledger) {
-  const files = Object.fromEntries(Object.entries(ledger.files).sort(([a], [b]) => (a < b ? -1 : 1)));
+  const files = Object.fromEntries(
+    Object.entries(ledger.files).sort(([a], [b]) => (a < b ? -1 : 1)),
+  );
   writeFileSync(LEDGER, `${JSON.stringify({ v: 1, files }, null, 2)}\n`, 'utf8');
 }
 
@@ -69,7 +71,9 @@ function blobHashes(paths) {
   const out = new Map();
   for (let i = 0; i < paths.length; i += 50) {
     const chunk = paths.slice(i, i + 50);
-    const hashes = git(['hash-object', '--', ...chunk]).trim().split('\n');
+    const hashes = git(['hash-object', '--', ...chunk])
+      .trim()
+      .split('\n');
     chunk.forEach((p, j) => out.set(p, hashes[j]));
   }
   return out;
@@ -102,11 +106,15 @@ if (cmd === 'list') {
   if (!Number.isInteger(n) || n < 1) usage();
   const rows = statusOf(candidates(), ledger).filter((r) => r.state !== 'clean');
   // Never-audited files first, then stale ones; within each group, the most comments first.
-  rows.sort((a, b) => (a.state === b.state ? b.commentLines - a.commentLines : a.state === 'never' ? -1 : 1));
+  rows.sort((a, b) =>
+    a.state === b.state ? b.commentLines - a.commentLines : a.state === 'never' ? -1 : 1,
+  );
   console.log(JSON.stringify({ ledger: LEDGER, files: rows.slice(0, n) }, null, 2));
 } else if (cmd === 'record') {
   if (rest.length === 0) usage();
-  const paths = rest.map((p) => resolve(ROOT, p)).map((p) => git(['ls-files', '--full-name', '--', p]).trim());
+  const paths = rest
+    .map((p) => resolve(ROOT, p))
+    .map((p) => git(['ls-files', '--full-name', '--', p]).trim());
   const missing = paths.filter((p) => !p);
   if (missing.length || paths.length !== rest.length) {
     console.error('record: every file must be tracked by git');
