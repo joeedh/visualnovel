@@ -1,0 +1,189 @@
+# Reporting a difficult agent
+
+<!-- toc -->
+
+- [The privacy model](#the-privacy-model)
+- [The package](#the-package)
+- [Evidence](#evidence)
+- [Redaction is a boundary](#redaction-is-a-boundary)
+- [The analyst](#the-analyst)
+  * [What source it may read](#what-source-it-may-read)
+  * [The request-capture tools](#the-request-capture-tools)
+- [The dialog](#the-dialog)
+- [Review, then the issue](#review-then-the-issue)
+- [Deliberately absent](#deliberately-absent)
+
+<!-- tocstop -->
+
+How **Help ▸ Report a Difficult Agent…** works as shipped: an author picks a conversation that
+went badly, optionally says what they had actually wanted, and a dedicated **debug agent** —
+running on the author's own model key, on the author's own machine — reads the thread, works out
+what went wrong, and drafts a report. The author reviews and edits the draft, and one click opens
+a pre-filled GitHub issue titled `AGENTREPORT: …`. Nothing is ever posted for them.
+
+The pure logic lives in **`@vn/agentreport`**; the desktop app's main process is its only
+consumer (`apps/desktop/src/main/commands/report.ts` defines `report.agent` and
+`report.openIssue`). The plans that built it, with the implementation history:
+[`../plans/archive/reporting-a-difficult-agent.md`](../plans/archive/reporting-a-difficult-agent.md)
+and, for the request-capture tools,
+[`../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`](../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md).
+
+## The privacy model
+
+Three commitments, in descending order of visibility:
+
+- **The analysis is not a service.** It runs on the author's key, so the conversation never
+  leaves their machine except as a report they read first — and the report goes only where the
+  author's own browser takes it.
+- **Names from the fiction are replaced before any model sees them**, deterministically, by a
+  redactor that sits on the boundary rather than in a prompt (below). The pseudonym map is held
+  in memory only — never written to disk, never sent to the model, never in the report — so a
+  filed issue is not de-anonymisable.
+- **The two optional reading doors are different promises.** The *thread* and the *app source*
+  can end up quoted in the report; that is their point. The *captured requests* never do: the
+  analyst sees structure and capped, redacted values through `list_requests` / `read_request`,
+  and none of it is carried into `submit_report`. The privacy area of the detailed capture stays
+  one party wide — the author's own model provider, who was already sent those bodies.
+
+## The package
+
+`packages/agentreport/` is a leaf beside the four shared ones (`export`, `scriptedit`, `bible`,
+`artgen`), but with one host rather than two — it moves down only if `vnauthor` ever grows the
+same command. It may import the input-side packages plus `@vn/commands` (the acting record a
+transcript lacks is `commands.jsonl`) and `@vn/providers`; the boundaries rule forbids
+`@vn/pipeline` and `@vn/scheduler`.
+
+| Module            | What it holds                                                                |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `transcript.ts`   | `assemble` / `toMarkdown` — evidence from a thread plus the command log      |
+| `redact.ts`       | `buildRedactor` / `sourcesFrom` — the substitution boundary and `leaks()`    |
+| `report.ts`       | `analysisSchema` — the report shape both analysis paths produce              |
+| `analyze.ts`      | the two analysis paths, and redaction on both sides of the model             |
+| `render.ts`       | the one markdown renderer both paths share                                   |
+| `sourcemap.ts`    | `READABLE` / `DENY` — the declared manifest of what source may be read       |
+| `sourcetools.ts`  | `grep`, `read_file`, `fetch_api_docs`, and the shared `Budget`               |
+| `requesttools.ts` | `list_requests` / `read_request` over a frozen capture snapshot              |
+| `issue.ts`        | `ISSUE_REPO`, `issueUrl`, `fitBody` — the GitHub issue URL and its budgets   |
+
+All but `analyze.ts` are pure and node-tested in `src/tests/`.
+
+## Evidence
+
+`assemble(thread, records, context)` joins the thread with `commands.jsonl` **by time**: the
+window runs from the thread's start to its last stamped line — not to now, because a thread stays
+open while the author keeps working and those later acts are not the agent's. Acts the author
+performed by hand are deliberately included: what happened in the project while the conversation
+was open *is* the evidence. Reading the log back is `apps/desktop/src/main/commandlog.ts`, with
+`evidenceFor(paths, threadId, context)` as the one seam that touches disk.
+
+A thread recorded before the detailed format (tool args, results, untruncated text — the Stage 1
+enrichment in the plan) is flagged `thin`, and the report carries a line saying the transcript
+predates the format, so a maintainer knows why the evidence is sparse.
+
+`toMarkdown` fences tool args and output with a backtick run longer than any in the text, because
+a report about an agent that mangled a markdown file must not end its own code block midway.
+
+## Redaction is a boundary
+
+Nothing reaches the model unredacted — not the transcript, not the author's note, not a tool
+result — and every prose field of the reply is redacted again on the way out, because an analyst
+that read source may recall a name the transcript never held. The sources come from the loaded
+`ProjectModel` (every character, location and scene id, plus display names), the project title
+and root, and the OS username / home prefix. Rules that carry weight:
+
+- **Longest match first**, so `Titus Vale` is not half-replaced by `Titus`.
+- **An apostrophe is punctuation, not a letter** — `James's`, `James'` and the slip `Jame's` are
+  one person, found by a live leak during the shipping pass.
+- **Boundary guards are per name and Unicode-aware** — `\b` is ASCII, so a guard is only demanded
+  on an edge whose own character is a letter in a spaced script; a single ideograph is a whole
+  name.
+- **Paths match through either separator and through JSON escaping** (`C:\\dev\\x` as
+  stringified tool args), project root before home directory.
+
+`leaks(text)` is the same matcher used as a detector; it is what gates the issue button.
+
+## The analyst
+
+Two paths, different in kind, producing the same `analysisSchema` shape rendered by one
+`render.ts`:
+
+- **Without source** — one structured call through `chatBackendFor` + `withStructuredRetry`; no
+  agent loop at all.
+- **With source** — the `@vn/authoring` loop with an injected registry of exactly four tools:
+  `grep`, `read_file`, `fetch_api_docs`, and `submit_report`, whose validated args end the run.
+  Plans are auto-approved (the registry holds nothing that could act on one), `ask_user` is
+  answered with a fixed "nobody is here", and a confirmation is refused rather than approved.
+  If this path fails, it **falls back to the cheap one** rather than erroring, and the report
+  records `fellBack` — so `readSource` on a finished report means the analyst actually read
+  source, not that it was allowed to.
+
+The key check happens at the point of use and names the env var or file, never the value, exactly
+as `resolveKeys` does everywhere else.
+
+### What source it may read
+
+The install ships full source unpacked (an `extraResource`, not inside `app.asar`), and the
+readable set is a **declared manifest** in `sourcemap.ts` — `READABLE` names `packages`, `apps`,
+`docs`, `scripts`, `CLAUDE.md` and `package.json`; `DENY` removes `node_modules`, build output,
+`.git`, `keys` and the minified vendor blobs. `docs/` and `CLAUDE.md` are the highest-value
+entries: they state the invariants in prose, so a report can cite the contract that was broken
+rather than paraphrase code. Refusals that matter: `keys/**` by name and before the generic
+sentence, symlinks by `lstat` in both the walk and the read, and `fetch_api_docs` takes a
+provider and topic — **never a URL** — against a fixed allow-list, because an agent that has just
+read a private manuscript must not hold an exfiltration channel.
+
+One `Budget` (steps, input tokens, and a byte budget across all reads) is shared by every tool in
+a run, and **truncation is reported to the model** — a cap silently read as "no matches" produces
+a confidently wrong report.
+
+### The request-capture tools
+
+When the author also opens the request door, the analyst gets `list_requests` and `read_request`
+over a **frozen** `captureSnapshot()` of `@vn/providers`' in-memory ring — frozen because a live
+ring could evict the entry the analysis was opened to read. The default answer is a structural
+outline, not content; a path read returns one node's values, decoded, redacted and capped at
+2,000 characters; base64 blocks are refused by kind. The analyst runs with `{ record: false }` so
+its own calls do not enter the ring it is reading.
+
+## The dialog
+
+`report.agent` is the one **checked non-mutator** in the registry — a check is a precondition on
+an act with a cost, and this one spends a minute of a real model's time on a real key. Its
+refusals, shown verbatim by the form: mock providers first (a mock backend would fabricate a
+diagnosis), then no conversations recorded, an unknown thread, no key for the **chosen** model
+(naming the vendor), and `source` ticked on a build that did not ship its source.
+
+The dialog seeds the newest thread (not the "active" one, which is usually empty), the bound
+model, and the bound effort **stepped up to at least `medium`** for this run only — nothing
+rebinds the conversation's own settings. Model and effort advice comes from
+`apps/desktop/src/shared/advice.ts` (`adviseModel` / `adviseEffort` / `adviseRun`) and rides the
+form's accept note: the tick means *this will run*, the sentence says what it will cost. The
+full dialog mechanics — the `choices`-as-a-function vocabulary, the preview opened from an
+`onExec` watch — are in [`desktop-app.md`](desktop-app.md) under the Help menu.
+
+## Review, then the issue
+
+The finished report is written **outside the project**, to the app's `userData/reports/<stamp>.md`
+— a bug report is about the app, not the story, and a redacted transcript is not something to
+commit on the author's behalf. The preview dialog is editable, and its Open GitHub Issue… button
+is gated by `report.openIssue`'s `check`, which runs `redactor.leaks(body)` on every keystroke and
+refuses by name (`"Riva Kestrel" is still in the report`) until the author has edited the name
+out — the same redactor the analysis ran with, because a fresh one would scan for different
+pseudonyms.
+
+Opening the browser opens an **unsubmitted** form on `github.com/joeedh/visualnovel/issues/new`
+(`ISSUE_REPO` is a build-time constant, not the git remote — a packaged app has no checkout and a
+fork's remote points at the fork). The URL is asserted (`origin` and exact pathname) before
+`shell.openExternal`, because the body is agent-authored text. GitHub's URL limit means `fitBody`
+trims the body in a stated order and puts the full report on the clipboard, saying so in the
+trimmed text. The preview stays open after the browser launches — nothing has been posted yet,
+and dismissing it would take away the only copy at the moment the author is reading it over.
+
+## Deliberately absent
+
+- **Posting the issue.** The author presses Create, or nothing happens.
+- **Any upload path that is not the author's own browser.** No telemetry, no service, no key of
+  ours.
+- **Restoring `Agent.messages` on reopen** — the report works from the transcript and the act
+  log.
+- **Reporting from `vnauthor`.** One host; the package moves down if that changes.

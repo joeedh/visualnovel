@@ -247,7 +247,7 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   ([`docs/plans/archive/upload-and-archive.md`](docs/plans/archive/upload-and-archive.md))
 - **A bad conversation is diagnosed on the author's own key, and the fiction's names never leave
   with it** — redaction is a boundary rather than a prompt, and nothing is posted.
-  ([`docs/plans/archive/reporting-a-difficult-agent.md`](docs/plans/archive/reporting-a-difficult-agent.md))
+  ([`docs/reference/agent-report.md`](docs/reference/agent-report.md))
 - **Every request is kept in memory, and what it says never reaches the report** — a bounded ring
   in `@vn/providers` (64 MB / 64 entries, always on), so a 400 that names a position is readable
   against the body it indexes; `faultKind` tells a fault in the request from a dead connection or

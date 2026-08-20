@@ -361,7 +361,7 @@ are the bridge's.
   — which is what keeps it out of the log — replaces the editor with a size label. The Open GitHub
   Issue… button is gated by `report.openIssue`'s own `check`, re-asked on every keystroke, so a name
   the redactor still recognises in the body is a refusal in the command's own words rather than a
-  silent rewrite. ([`../plans/archive/reporting-a-difficult-agent.md`](../plans/archive/reporting-a-difficult-agent.md))
+  silent rewrite. Full write-up: [`agent-report.md`](agent-report.md).
 - **A mid-gesture verdict must be the verdict that would happen.** Wherever a drag decides
   something, the grab captures every candidate's verdict up front — from the same pure rule the
   command itself runs, through the interaction layer's `targets` query
