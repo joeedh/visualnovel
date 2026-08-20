@@ -6,9 +6,16 @@
  * it is folded into every image task's hash — changing it does not adjust a rendering, it re-keys
  * the whole library and the next run draws it all again. That is why the write is `confirm: true`
  * and why its check counts what it would touch.
+ *
+ * `project.installPages` is `mutating` but not `undoable`. It writes `.github/` and `.vnstudio/`,
+ * which are outside the document tree the shadow snapshot covers, and removing it again is a
+ * `git rm` of two paths rather than a state the app models.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
+import { openGit } from '@vn/git';
+import { notify } from '../notifications.js';
+import { installPages, pagesState } from '../pages.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -138,6 +145,122 @@ export const projectKeyStatus = define({
       message:
         missing.length === 0 ? 'Every provider has a key.' : `No key for ${missing.join(', ')}.`,
       data: view,
+    };
+  },
+});
+
+/**
+ * Whether this project can publish, and whether it already does. Shared by `project.pagesStatus`
+ * and `project.installPages` so the menu label, the refusal and the confirmation note cannot
+ * disagree about what is installed.
+ */
+async function pagesView(ctx: { host: CommandHost }, publishBranch: string) {
+  const root = ctx.host.session.dir;
+  const git = openGit(root);
+  const repo = await git.isRepo();
+  const branch = repo ? await git.branch() : '';
+  const remote = repo ? await git.configGet('remote.origin.url') : null;
+  // `git.branch()` answers `HEAD` on a detached or unborn checkout. A workflow triggered on a
+  // branch called HEAD would install without complaint and then never fire.
+  const onBranch = branch !== '' && branch !== 'HEAD';
+  const state =
+    repo && onBranch
+      ? await pagesState(root, { branch, publishBranch })
+      : { installed: false, stale: false };
+  return { repo, branch, onBranch, remote, ...state };
+}
+
+export const projectPagesStatus = define({
+  id: 'project.pagesStatus',
+  title: 'GitHub Pages status',
+  description:
+    'Whether this project carries the GitHub Pages publisher, whether it came from this build ' +
+    'of the app, and what the repository would publish from.',
+  mutating: false,
+  props: {
+    branch: prop.string('The branch the workflow publishes the site to.', {
+      default: 'gh-pages',
+    }),
+  },
+  async run(props, ctx) {
+    const view = await pagesView(ctx, props.branch);
+    const message = view.installed
+      ? view.stale
+        ? 'The page builder is installed, from a different build of the app.'
+        : 'The page builder is installed and up to date.'
+      : 'The page builder is not installed.';
+    return { message, data: view };
+  },
+});
+
+export const projectInstallPages = define({
+  id: 'project.installPages',
+  title: 'Install the GitHub page builder',
+  description:
+    'Write a GitHub Actions workflow into this project that publishes it as a light-novel web ' +
+    'page. The workflow and the renderer it runs are committed to the project repository; ' +
+    'pushing the repository then publishes the site to a branch GitHub Pages can serve.',
+  mutating: true,
+  confirm: true,
+  props: {
+    branch: prop.string('The branch the workflow publishes the site to.', {
+      default: 'gh-pages',
+    }),
+  },
+  async check(props, ctx) {
+    const busy = ctx.host.session.busy();
+    if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
+    const view = await pagesView(ctx, props.branch);
+    if (!view.repo) {
+      return {
+        ok: false,
+        reason: 'This project is not a git repository, so there is nothing to publish from.',
+      };
+    }
+    if (!view.onBranch) {
+      return {
+        ok: false,
+        reason:
+          'This repository has no branch checked out yet. Make a commit first, then install the page builder.',
+      };
+    }
+    if (!view.remote) {
+      return {
+        ok: false,
+        reason:
+          'This repository has no `origin` remote. Add one on GitHub, then install the page builder.',
+      };
+    }
+    const verb = view.installed ? 'Updates' : 'Installs';
+    return {
+      ok: true,
+      note:
+        `${verb} the workflow and the renderer, and exports the playable. Pushing ${view.branch} ` +
+        `then publishes the site to ${props.branch}.`,
+    };
+  },
+  async run(props, ctx) {
+    const view = await pagesView(ctx, props.branch);
+    // Export first. Without a `story.play.json` in the same commit, the first Action run fails on
+    // a file the author has no reason to know about.
+    const { scenes } = await ctx.host.session.exportPlayable();
+    const written = await installPages(ctx.host.session.dir, {
+      branch: view.branch,
+      publishBranch: props.branch,
+    });
+
+    await notify({
+      category: 'workspace',
+      message:
+        `The GitHub page builder is installed. Two steps remain: push ${view.branch} to origin, ` +
+        `then in the repository's Settings, Pages, choose "Deploy from a branch" and pick ` +
+        `${props.branch} at the root.`,
+    });
+
+    return {
+      message: `${view.installed ? 'Updated' : 'Installed'} the page builder; exported ${scenes} scene(s).`,
+      data: { ...view, publishBranch: props.branch },
+      written: [...written, 'vngen/build/story.play.json'],
     };
   },
 });

@@ -276,6 +276,14 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   the built binary. On a machine without git the app still **opens**, and files a durable note
   explaining why saving does not work.
   ([`docs/plans/archive/packaging-the-desktop-app.md`](docs/plans/archive/packaging-the-desktop-app.md))
+- **A VN publishes to the web as a light novel, and the renderer travels with the project** —
+  `renderSite` turns the playable into one HTML page per scene, with `choices` and `next` as
+  links and no prose rewriting anywhere in the path. Every package here is `private: true`, so a
+  CI runner cannot install one: `project.installPages` commits a dependency-free bundle of the
+  renderer into the project alongside a workflow that runs it with plain `node`. **The app
+  commits and never pushes**, the workflow force-pushes a `gh-pages` branch rather than deploying
+  to Pages directly, and it refuses a branch that carries no `.vn-pages` marker.
+  ([`docs/guides/github-pages.md`](docs/guides/github-pages.md))
 - **Nothing checks for an update until asked, and an update notice links a command, not a
   URL.** Help ▸ Check for Updates… is the only trigger (`app.checkForUpdates`; nothing is
   scheduled and nothing is downloaded), and the notice it files links a **command** from a

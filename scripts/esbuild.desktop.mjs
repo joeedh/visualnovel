@@ -15,6 +15,7 @@
 import { build, context } from 'esbuild';
 import { resolve } from 'node:path';
 import { alias, EXTERNAL, REPO_ROOT as root } from './aliases.mjs';
+import { sitebuilderOptions } from './esbuild.sitebuilder.mjs';
 
 const watch = process.argv.includes('--watch');
 
@@ -41,12 +42,17 @@ const targets = [
   },
 ];
 
+// The site builder is bundled here too, with its own options rather than `common`: it is ESM,
+// has no externals, and ships into an author's git repository. Building it alongside main means
+// the dev watcher and `pnpm build:main` both leave a current copy where `pages.ts` looks for it.
+const all = [...targets.map((t) => ({ ...common, ...t })), sitebuilderOptions];
+
 if (watch) {
-  for (const t of targets) {
-    const ctx = await context({ ...common, ...t });
+  for (const options of all) {
+    const ctx = await context(options);
     await ctx.watch();
   }
-  process.stderr.write('esbuild: watching @vn/desktop (main + preload)…\n');
+  process.stderr.write('esbuild: watching @vn/desktop (main + preload + site builder)…\n');
 } else {
-  await Promise.all(targets.map((t) => build({ ...common, ...t })));
+  await Promise.all(all.map((options) => build(options)));
 }

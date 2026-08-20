@@ -102,6 +102,10 @@ export class VnHeaderEditor extends VnEditor {
   /** Bumped whenever the files may have moved, which is what makes the guard above expire. */
   private layoutRevision = 0;
 
+  /** Whether this project carries the GitHub page builder, which decides one menu label. */
+  private pagesInstalled = false;
+  private pagesFor = '\0';
+
   static override define() {
     return {
       tagname: 'vn-header-editor-x',
@@ -226,10 +230,31 @@ export class VnHeaderEditor extends VnEditor {
     });
   }
 
+  /**
+   * Refetch whether the page builder is installed, which decides whether one entry reads Install
+   * or Update. Same shape as {@link refreshLayouts}, and keyed on the root for the reason
+   * {@link refreshRecents} gives: two projects may share a title.
+   *
+   * The flag is deliberately not in {@link stateKey}. This guard is what stops the fetch from
+   * repeating; putting the answer in the key as well would make every rebuild re-ask.
+   */
+  private refreshPages(): void {
+    const key = `${this.ui.projectRoot}|${this.layoutRevision}`;
+    if (this.pagesFor === key) return;
+    this.pagesFor = key;
+
+    void exec('project.pagesStatus').then((outcome) => {
+      const data = outcome.ok ? (outcome.data as { installed?: boolean }) : undefined;
+      this.pagesInstalled = data?.installed ?? false;
+      this.rebuild();
+    });
+  }
+
   private rebuild(): void {
     this.drawn = this.stateKey();
     this.refreshRecents();
     this.refreshLayouts();
+    this.refreshPages();
     const ui = this.ui;
 
     this.bar.clear();
@@ -463,6 +488,14 @@ export class VnHeaderEditor extends VnEditor {
         name: 'Upload Files…',
         callback: () => openCommandDialog('upload.pick'),
         tooltip: 'Copy files into the project archive, verbatim, under a dated folder',
+      },
+      // Formed rather than fired: the command is `confirm`, and its note is where the author
+      // learns which branch gets pushed and which one gets published.
+      {
+        name: this.pagesInstalled ? 'Update GitHub Page Builder…' : 'Install GitHub Page Builder…',
+        callback: () => openCommandDialog('project.installPages'),
+        tooltip:
+          'Commit a GitHub Actions workflow that publishes this story as a web page when you push',
       },
       Menu.SEP,
       {

@@ -59,7 +59,9 @@ import {
 } from './prompt.js';
 import {
   projectInfo,
+  projectInstallPages,
   projectKeyStatus,
+  projectPagesStatus,
   projectSetArtStyle,
   projectSetKey,
   projectTestKey,
@@ -186,7 +188,9 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     promptSetChunk,
     promptSetCustom,
     projectInfo,
+    projectInstallPages,
     projectKeyStatus,
+    projectPagesStatus,
     projectSetArtStyle,
     projectSetKey,
     projectTestKey,

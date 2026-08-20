@@ -160,6 +160,9 @@ export default tseslint.config(
       'coverage/**',
       'vendor/**',
       '.claude/worktrees/**',
+      // The page builder the desktop app commits into a project is generated output; it
+      // carries its own eslint-disable, and this keeps an older copy in examples/ quiet too.
+      '**/.vnstudio/pages/**',
     ],
   },
   js.configs.recommended,

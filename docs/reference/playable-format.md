@@ -11,6 +11,7 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
 
 - [Shape](#shape)
 - [Contracts](#contracts)
+- [The web export](#the-web-export)
 
 <!-- tocstop -->
 
@@ -79,3 +80,32 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
 - **The first shot covering a line wins**, which is why the coverage timeline refuses double
   coverage rather than silently hiding the second shot's frame — see
   [`desktop-app.md`](desktop-app.md#coverage).
+
+## The web export
+
+The same playable renders as a static **light-novel site** — one HTML page per scene, with
+`choices` and `next` as ordinary links. The app can install a GitHub Actions workflow that
+publishes it to GitHub Pages, so a generated VN is readable in a browser without the desktop
+runner.
+
+`renderSite(playable)` (`packages/export/src/site.ts`) is pure: it returns the pages to write and
+the assets to copy, and touches no filesystem. It reads only the playable, never `Scene`/`Shot` —
+the coverage rules were already applied at export. `say` beats render mechanically as speaker plus
+line; there is no prose rewriting and no model call anywhere in the path.
+
+Three contracts are worth stating:
+
+- **`site.ts` is not re-exported from the package barrel.** Its only consumer is `site-cli.ts`,
+  and re-exporting it would pull an HTML template and a stylesheet into the desktop main bundle.
+- **`site-cli.ts` validates by hand rather than through `playableSchema`.** This is the one place
+  the repo's "validate at the boundary with zod" rule is deliberately not followed. The module is
+  bundled into a file committed to an author's git repository, and zod takes that file from 275
+  lines to 4,688. `asPlayable` checks the fields the renderer reads and names the one that is
+  wrong. The input is a file the same toolchain wrote one step earlier.
+- **The renderer travels with the project.** Every package here is `private: true`, so a CI runner
+  cannot `npx vngen`. `scripts/esbuild.sitebuilder.mjs` bundles `site-cli.ts` with no externals
+  into `apps/desktop/dist/main/vn-site.mjs`, and `project.installPages` writes that file into the
+  project as `.vnstudio/pages/vn-site.mjs`. CI runs it with plain `node` and does no install.
+
+What lands in the author's repository, and what the workflow does with it, is in
+[`../guides/github-pages.md`](../guides/github-pages.md).
