@@ -27,4 +27,5 @@
      with a fresh-context agent first.
 [ ]: the report difficult agent dialog should be clearer about the user needing to paste 
      the detailed report at the end, use red or yellow text for this.
-	 
+[ ]: the play editor isn't updated when new shows are created
+[ ]: use an agent to execute docs/plans/prompt-caching-for-the-report-analyst.md wait for it to finish
