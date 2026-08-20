@@ -389,6 +389,14 @@ const fallback: DesktopApi = {
         return Promise.resolve(MOCK_SKILLTREE);
       case 'pipeline:status':
         return Promise.resolve(MOCK_STATUS);
+      // A preview has no project, so no AICONTEXT.md and no map — but the built-in half of the
+      // prompt is a constant, and saying so beats an empty pane.
+      case 'agent:system':
+        return Promise.resolve({
+          sections: [{ name: 'BUILT-IN', text: '(preview) no project open' }],
+          files: [],
+          modelId: '',
+        });
       case 'agent:setMode':
         return Promise.resolve('plan');
       case 'agent:setModel':

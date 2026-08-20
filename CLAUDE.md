@@ -198,7 +198,7 @@ running anything: `--mock` writes no assets and needs no keys, and in a real pro
 The pipeline is presentation-agnostic — it stops at `manifest.json`. `@vn/export` projects the
 model + manifest into a small in-house **playable** (`story.play.json`), and the Electron app
 plays it. This is deliberately **not** an external DSL export.
-Format: [`docs/playable-format.md`](docs/playable-format.md). The app — shell, canvas, the fourteen
+Format: [`docs/playable-format.md`](docs/playable-format.md). The app — shell, canvas, the fifteen
 editors, the session store, the seeded workspace, and every behaviour below in full:
 [`docs/desktop-app.md`](docs/desktop-app.md); what persists where:
 [`docs/desktopAppState.md`](docs/desktopAppState.md); the document tree, asset naming and
@@ -213,7 +213,7 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   ([`docs/plans/multiple-windows.md`](docs/plans/multiple-windows.md))
 - **A model key is written to a file git cannot see, and recorded as `<secret>`**
   (`project.setKey`, deliberately not undoable), at one of two scopes — this project, or every
-  project on this machine. **Setup is that box with the steps above it**: the fourteenth editor,
+  project on this machine. **Setup is that box with the steps above it**: an editor named but not listed,
   rendering `docs/api-keys.md` itself rather than a copy of it, and the only door to the outside
   names a _field_ of that guide rather than a URL.
   ([`docs/plans/onboarding-editor-and-user-level-keys.md`](docs/plans/onboarding-editor-and-user-level-keys.md))
@@ -268,7 +268,7 @@ no React, no room vocabulary. path.ux is a git submodule at `vendor/path.ux`, so
 needs `git submodule update --init --recursive` (`pnpm doctor` says so by name). Six rules bite
 hardest:
 
-- **The fourteen editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
+- **The fifteen editors are named in one place** (`apps/desktop/src/shared/editors.ts`), and
   **`registerEditor(cls, 'vn.Name')`** is the only way to register one — a hand-written name is
   minified. That list also carries each editor's `claims` predicate, ranked in
   `renderer/pathux/route.ts`, and a `pins` field for the one selection an editor can be **pinned**
@@ -278,8 +278,9 @@ hardest:
   narrows View ▸ Editors; path.ux's **`setAreaMenuFilter`**, installed once by the shell, is what
   keeps it out of the pane header's own dropdown, which path.ux builds from its registry rather
   than from ours. Deliberately not `AreaFlags.HIDDEN`: hidden is a property of the editor, not
-  listed is a property of this application. Setup is the only one today, and it stops being a pane
-  at all once a preferences window has somewhere to be.
+  listed is a property of this application. Two carry it: Setup, which stops being a pane at all
+  once a preferences window has somewhere to be, and System Prompt, which is somewhere to look when
+  a turn misbehaves rather than somewhere to work.
 - **`src/shared/` is in the browser bundle**, so what it imports must be node-free; neither
   `tsgo` pass catches a violation, only `vite build`.
 - **A raw DOM surface goes in the shadow root via `VnEditor.appendSurface`** with its own sheet

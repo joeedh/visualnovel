@@ -35,6 +35,7 @@ import './editors/documents.js';
 import './editors/graph.js';
 import './editors/inspector.js';
 import './editors/onboarding.js';
+import './editors/systemprompt.js';
 import './editors/project.js';
 import './editors/script.js';
 import './editors/skills.js';

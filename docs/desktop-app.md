@@ -28,6 +28,7 @@ traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-
 - [Documents](#documents)
 - [Asset](#asset)
 - [Project](#project)
+- [System Prompt](#system-prompt)
 - [Setup](#setup)
 - [Remembered UI state (`desktop/session.json`)](#remembered-ui-state-desktopsessionjson)
 - [Which project is open](#which-project-is-open)
@@ -178,28 +179,29 @@ are the bridge's.
   [`desktopAppState.md`](desktopAppState.md#multiple-windows-of-the-same-workspace).
   Full design: [`plans/multiple-windows.md`](plans/multiple-windows.md).
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all fourteen (`branches`, `script`, `convo`,
+  `apps/desktop/src/shared/editors.ts` holds all fifteen (`branches`, `script`, `convo`,
   `timeline`, `tasklist`, `taskgraph`, `inspector`, `play`, `skills`, `wiki`, `documents`, `asset`,
-  `project`, `onboarding`) with their titles. It is in
+  `project`, `systemprompt`, `onboarding`) with their titles. It is in
   `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
   boot if the two ever disagree. Each entry also declares what it will show for a clicked
-  document-tree node (see [Documents](#documents)), so a fifteenth editor that forgets to is
+  document-tree node (see [Documents](#documents)), so a sixteenth editor that forgets to is
   visibly claim-less in the same file that names it rather than silently unreachable from the tree.
   The header bar is deliberately absent from the list — it is chrome,
   not somewhere the author navigates to.
 - **An editor can be named without being listed** — `offered: false` on its entry, which today
-  only Setup carries. `view.open(editor='onboarding')` still works, the palette still finds it,
+  Setup and System Prompt carry. `view.open(editor='onboarding')` still works, the palette still finds it,
   and a saved layout that holds it still restores; what the flag removes is the two places an
   author *browses* editors. `OFFERED_EDITOR_IDS` narrows View ▸ Editors, and the shell installs
   `isOfferedEditor` as path.ux's `setAreaMenuFilter`, which is what keeps it out of the pane
   header's own change-editor dropdown — a menu path.ux builds from its registry rather than from
   ours, so nothing on our side could have filtered it. This is deliberately **not**
   `AreaFlags.HIDDEN`: hidden is a property of the editor, and being uninteresting to browse is a
-  property of *this* application. `EDITOR_IDS` still covers all fourteen, so `view.*`'s props are
+  property of *this* application. `EDITOR_IDS` still covers all fifteen, so `view.*`'s props are
   unaffected. Once a Setup that is really a preferences window has somewhere to be, it stops
-  being a pane at all and the flag goes with it.
+  being a pane at all and the flag goes with it; System Prompt keeps the flag for the opposite
+  reason — it is a place to look when a turn misbehaves, and it will never be a place to work.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows an editor
   in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below` |
   `elsewhere` | `window`); asking for one already open `here` is a focus, not a second copy.
@@ -1234,9 +1236,41 @@ and `view.open(editor=project)` carries nothing. It is where an asset's style cl
   block: those are env-var *names* and safe to print, but a settings pane listing them is one
   screenshot away from looking like it lists their values.
 
+## System Prompt
+
+`editors/systemprompt.ts` — the system message the agent's next turn will carry, in its sections.
+The pane an author opens when a turn misbehaves and the question is "what did it actually read?".
+
+- **Named but not listed** (`offered: false`, above). It is somewhere to look, not somewhere to
+  work, so it is reached by name: `view.open(editor='systemprompt')` from the command palette. A
+  saved layout that holds it still restores it.
+- **It asks main for the prompt rather than reassembling it.** `agent:system` answers with
+  `systemSections(await loadContext(dir))`, the section list, the context files that fed it and the
+  bound model id. That is the whole point of the pane: `runAgent` calls
+  `refreshSystem(systemSections(await loadContext(...)))` before every turn, so what is on screen
+  is the assembly that ships. A second implementation in the renderer could disagree with the one
+  that runs, and would be wrong in exactly the case being investigated. It answers before an agent
+  exists, too — the prompt is a property of the workspace, not of a conversation.
+- **The sections are the sections.** Built-in, then the generated `PROJECT MAP`, then the author's
+  `PROJECT CONTEXT (AICONTEXT.md)` — drawn one card each, in order, with the authored one warm,
+  because it is the one part a reader can go and change. `Copy` puts the **join** on the clipboard,
+  not the card under the cursor: what the model receives is one string.
+- **The separator is written twice, and a test keeps the two equal.** `renderer/rules/
+  systemprompt.ts` is in the browser bundle and `@vn/authoring` is node-side, so `joined` restates
+  `joinSections`'s `
+
+`; its test asserts the two against each other. The scale line
+  (`N sections · N lines · N chars · ~N tokens · model`) counts the join rather than the sum of the
+  parts, which would be short by one separator per section, and the token figure says `~` because
+  it is characters over four.
+- **It follows invalidation like every other pane.** Two of the three sections are files in the
+  workspace and `update_context` rewrites one of them mid-conversation, so the pane re-reads rather
+  than showing whatever was true when it was opened; `⟳` is there for a file that moved underneath.
+  A slow read that lands after a newer one is dropped by a rising token.
+
 ## Setup
 
-`editors/onboarding.ts` — the fourteenth editor, and the answer to "I installed this, now what".
+`editors/onboarding.ts` — the answer to "I installed this, now what".
 It is the one pane an author is expected to visit once: how to get a key from each provider, which
 of theirs are set, and a box to paste one into. It is a **singleton** like Project, and it is
 `offered: false` (above), so it is named but not browsable and it claims no document-tree node —

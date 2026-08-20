@@ -704,6 +704,7 @@ function registerIpc(): void {
   handle('agent:setMode', (_origin, mode) => getSession().setMode(mode));
   handle('agent:setModel', (_origin, modelId) => getSession().setModel(modelId));
   handle('agent:clear', () => getSession().clearAgent());
+  handle('agent:system', () => getSession().systemPrompt());
   handle('plan:decision', (_origin, payload) => pendingPlans.answer(payload.id, payload.decision));
   handle('ask:answer', (_origin, payload) => pendingAsks.answer(payload.id, payload.answers));
   handle('confirm:decision', (_origin, payload) =>

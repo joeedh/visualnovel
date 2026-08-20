@@ -85,31 +85,38 @@ describe('what an editor can be pinned to', () => {
 });
 
 /**
- * Named but not listed. Setup is reached from one File-menu entry and from nowhere an author
- * browses, and the two halves of that are easy to get half-right: narrowing the *vocabulary*
- * instead of the offer would take the editor away from `view.open`, the palette, CDP and any
- * layout that already held it.
+ * Named but not listed. Setup is reached from one File-menu entry and the system prompt from the
+ * palette, both from nowhere an author browses, and the two halves of that are easy to get
+ * half-right: narrowing the *vocabulary* instead of the offer would take the editor away from
+ * `view.open`, the palette, CDP and any layout that already held it.
  */
 describe('the offered subset', () => {
+  /** In `EDITORS` order, which is the order `editorNameProblems` answers in. */
+  const UNOFFERED = ['systemprompt', 'onboarding'] as const;
+
   it('leaves an unoffered editor out of what an author browses', () => {
-    expect(OFFERED_EDITOR_IDS).not.toContain('onboarding');
-    expect(isOfferedEditor('onboarding')).toBe(false);
+    for (const id of UNOFFERED) {
+      expect(OFFERED_EDITOR_IDS).not.toContain(id);
+      expect(isOfferedEditor(id)).toBe(false);
+    }
   });
 
   it('still names it, so every way of reaching it by name keeps working', () => {
     expect(EDITOR_IDS).toContain('onboarding');
     expect(editorTitle('onboarding')).toBe('Setup');
+    expect(editorTitle('systemprompt')).toBe('System Prompt');
     // The boot check covers it like any other: an unoffered editor going missing from the
     // registry is exactly as broken as an offered one going missing.
-    expect(editorNameProblems(EDITOR_IDS.filter((id) => id !== 'onboarding'))).toEqual({
-      unregistered: ['onboarding'],
+    const others = EDITOR_IDS.filter((id) => !UNOFFERED.some((hidden) => hidden === id));
+    expect(editorNameProblems(others)).toEqual({
+      unregistered: [...UNOFFERED],
       unnamed: [],
     });
   });
 
   it('offers everything else, and answers for a name it has never heard of', () => {
     for (const id of EDITOR_IDS) {
-      if (id === 'onboarding') continue;
+      if (UNOFFERED.some((hidden) => hidden === id)) continue;
       expect(isOfferedEditor(id)).toBe(true);
     }
     // The filter is installed application-wide and sees path.ux's own areas too. Whatever it has

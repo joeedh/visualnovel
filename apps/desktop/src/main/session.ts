@@ -237,6 +237,7 @@ import {
   type Report,
 } from '@vn/agentreport';
 import type {
+  AgentSystem,
   ApproveResult,
   AssetInfo,
   BranchEditResult,
@@ -1130,6 +1131,23 @@ export class WorkspaceSession {
     this.budget = budget;
     (await this.ensureAgent()).setBudget(budget);
     return budget;
+  }
+
+  /**
+   * The system prompt the next turn will carry, in its sections.
+   *
+   * Assembled from the project rather than read off `this.agent`, and deliberately so: `runAgent`
+   * calls `refreshSystem(systemSections(await loadContext(...)))` before every turn, so this *is*
+   * what the next turn sends — and it can be answered before an agent has ever been built, which
+   * is when an author most wants to check what it was told.
+   */
+  async systemPrompt(): Promise<AgentSystem> {
+    const context = await loadContext(this.dir);
+    return {
+      sections: systemSections(context).map((section) => ({ ...section })),
+      files: context.files,
+      modelId: this.model,
+    };
   }
 
   /**

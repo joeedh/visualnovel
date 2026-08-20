@@ -1,0 +1,98 @@
+/*
+ * The system-prompt viewer's surface. Adopted into the pane's shadow root by
+ * `editors/systemprompt.ts`, never imported by `index.css` — document rules do not cross that
+ * boundary, so the reset is here too.
+ *
+ * Everything on this pane is machine-side (`--signal`): it is what the agent was told, not
+ * anything an author edits here. The `AICONTEXT.md` section is authored prose, so its heading
+ * is warm — that is the one part a reader can go and change.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.sp-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sp-note {
+  flex: 0 0 auto;
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.sp-note.bad {
+  color: var(--vermilion);
+}
+
+.sp-files {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.sp-card {
+  flex: 0 0 auto;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  background: var(--ink-raised);
+  overflow: hidden;
+}
+
+.sp-card > h2 {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ink-line-soft);
+  color: var(--signal);
+  font-family: var(--disp);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sp-card.authored > h2 {
+  color: var(--sodium);
+}
+
+.sp-text {
+  /* `pre-wrap`, not `pre`: the prompt is wrapped at 100 columns already, and a horizontal
+     scrollbar per section would hide the one long line that broke the wrap. */
+  padding: 10px 12px;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sp-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: center;
+}

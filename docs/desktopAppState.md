@@ -476,6 +476,7 @@ The **conversation on screen is not recovered**: the renderer opens on an empty 
 | `agent:setMode` | `mode: AgentMode` | AgentMode | No (Agent in memory) |
 | `agent:setModel` | `modelId: string` | string | No (backend rebuilt) |
 | `agent:clear` | none | void | No (Agent reset) |
+| `agent:system` | none | AgentSystem | No (assembled per call, from files) |
 | `plan:decision` | `{ id, decision }` | void | No (resolves permission) |
 | `pipeline:status` | none | PipelineStatus | No (rebuilt from files) |
 | `pipeline:run` | `{ mock: boolean }` | PipelineRunResult | No (executes fresh) |

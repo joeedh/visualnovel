@@ -99,6 +99,16 @@ export const EDITORS = [
   },
   { id: 'project', title: 'Project', what: 'project.yaml — art style, models, image params' },
   {
+    id: 'systemprompt',
+    title: 'System Prompt',
+    what: 'the system prompt the agent will be sent',
+    // Named but not listed, for the same reason as Setup and a different audience: this is what
+    // the agent was *told*, which is a thing to check when a turn misbehaves rather than a place
+    // to work. It claims nothing — no document-tree node is the prompt, and the prompt is not a
+    // file: it is three sources joined, one of which is built in and has no path at all.
+    offered: false,
+  },
+  {
     id: 'onboarding',
     title: 'Setup',
     what: 'how to get a model key, and where yours are',

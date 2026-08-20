@@ -671,6 +671,12 @@ export interface InvokeChannels {
   'agent:setMode': (mode: AgentMode) => AgentMode;
   'agent:setModel': (modelId: string) => string;
   'agent:clear': () => void;
+  /**
+   * The system prompt as the next turn will send it, in its sections. Rebuilt from the project
+   * on every call rather than read off a live agent, because that is exactly what `runAgent`
+   * does before each turn — so the answer is the same one whether or not the agent has started.
+   */
+  'agent:system': () => AgentSystem;
   'plan:decision': (payload: { id: number; decision: PlanDecision }) => void;
   /**
    * The author's answers to `permission:ask`, one per question and in the form's own order.
@@ -720,6 +726,25 @@ export interface InvokeChannels {
    * command's outcome, which main would otherwise never hear about.
    */
   'notify:post': (input: NotificationInput) => Notification;
+}
+
+/**
+ * One labelled part of the system prompt. The parts travel separately because that is how they
+ * are cached and superseded, and because a reader wants to know which of the three said a thing —
+ * the built-in contract, the generated project map, or the author's own `AICONTEXT.md`.
+ */
+export interface SystemSectionView {
+  name: string;
+  text: string;
+}
+
+/** The final system prompt, plus where the author-supplied half of it came from. */
+export interface AgentSystem {
+  sections: SystemSectionView[];
+  /** Absolute paths of every context file that contributed, in load order. */
+  files: string[];
+  /** The text model the sections would be sent to. */
+  modelId: string;
 }
 
 /** Events pushed from main to the renderer (fire-and-forget). */
