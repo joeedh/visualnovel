@@ -1,5 +1,3 @@
-[ ]: Clicking an asset in a popped up tasks window should be able to set the active asset to it and open it 
-     in an asset editor.
 [ ]: changing the token budget doesn't update its dropdown menu until the agent runs.
 [ ]: pathux's help picker should not close a tooltip on pointer up if triggered by multitouch.
      it should instead register a global pointer down handler to close it (don't 
@@ -13,7 +11,6 @@
 [ ]: when clicking a task in the tasks editor that's done and has an assoicated asset it should open 
      the asset in the asset editor.
 [ ]: tasks editor should have a 'only running' checkbox.  also split it's header into two rows.
-[ ]: After tellig the agent to approve all artwork with approve_assets tool there are still assets in teh 'Awaiting approval' document subtree
 [ ]: task graph editor needs a button to relayout the graph to a prettier and more readable layout
      (the graph is not modifed, it's just displayed in a better layout; you may use d3 for this if 
 	  you want).
