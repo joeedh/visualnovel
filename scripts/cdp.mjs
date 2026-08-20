@@ -10,7 +10,12 @@
  * off the top of the list: every window loads its own url with `?window=<n>` on it, and that
  * query string is what CDP reports as the target's `url`.
  */
-export const CDP_PORT = process.env.VN_CDP_PORT ?? '9222';
+/**
+ * Read per call, not once at import. A script that starts the app itself knows the port only after
+ * it has picked one, and a module-level constant is already frozen at `9222` by then — which reads
+ * as "no CDP endpoint" against an app that is listening perfectly well on another port.
+ */
+export const cdpPort = () => process.env.VN_CDP_PORT || '9222';
 export const CDP_HOST = '127.0.0.1';
 
 /** Node 22+ has a global WebSocket; the repo's floor is 20, so fall back to `ws`. */
@@ -37,10 +42,10 @@ export async function connect(url) {
 export async function pageTarget(index = 0) {
   let targets;
   try {
-    targets = await (await fetch(`http://${CDP_HOST}:${CDP_PORT}/json/list`)).json();
+    targets = await (await fetch(`http://${CDP_HOST}:${cdpPort()}/json/list`)).json();
   } catch {
     throw new Error(
-      `no CDP endpoint on ${CDP_HOST}:${CDP_PORT}. Start the app with VN_CDP_PORT=${CDP_PORT} set.`,
+      `no CDP endpoint on ${CDP_HOST}:${cdpPort()}. Start the app with VN_CDP_PORT=${cdpPort()} set.`,
     );
   }
   const pages = targets.filter((t) => t.type === 'page' && t.webSocketDebuggerUrl);

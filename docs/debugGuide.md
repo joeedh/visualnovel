@@ -4,6 +4,7 @@
 
 - [First: the gates](#first-the-gates)
 - [Reading the evidence on disk](#reading-the-evidence-on-disk)
+  * [The request a model refused](#the-request-a-model-refused)
 - [Reproducing offline](#reproducing-offline)
   * [Getting a project into the state you need](#getting-a-project-into-the-state-you-need)
 - [Debugging the desktop app](#debugging-the-desktop-app)
@@ -109,6 +110,51 @@ the scene, so fixing one leaves the symptom identical.
 command executed over CDP appends a `CommandRecord` to `commands.jsonl` in whatever workspace
 the app was pointed at — including a committed tree like `templates/basic`, where generated
 provenance does not belong.
+
+### The request a model refused
+
+A conversation request is the one body in this repo that is assembled rather than written out at
+the call site: `buildConvoRequest` folds the system prompt, the tool catalog and the whole
+transcript together, sends it, and forgets it. So a 400 that names a position —
+*"messages.1.content.0: unexpected `tool_use_id` found in `tool_search_tool_result` blocks"* — is
+unreadable, because the thing the position indexes into is gone.
+
+`packages/providers/src/backends/capture.ts` keeps it, to two destinations that are deliberately
+unlike each other.
+
+**A ring in memory, always on.** Every Anthropic and Gemini call site captures its vendor body
+before sending it — `claude`, `claude-tools`, `convo`, `gemini`, `gemini-tools` — and records the
+failure beside it afterwards. It is bounded by bytes *and* by count, oldest evicted, defaulting to
+64 MB / 64 entries (`VN_CAPTURE_BYTES`, `VN_CAPTURE_COUNT`). A body larger than the whole byte cap
+is let go and its header kept, marked `dropped`: that a request that size was sent is itself an
+answer.
+
+Nothing sends the ring anywhere. Its one reader is the debug report agent, running on the author's
+own key, and only when they tick **Read the requests this session sent** — which the app ticks for
+them when it offers to look into an API refusal. What that agent reads is structure and capped,
+redacted values, and **none of it reaches the report**: the privacy area stays the author's own
+model provider. See
+[`plans/diagnosing-an-api-error-from-the-request-that-caused-it.md`](plans/diagnosing-an-api-error-from-the-request-that-caused-it.md).
+
+**Files on disk, off unless `VN_DUMP_REQUESTS` names a directory.** Each body is written as
+`<label>-<pid>-<seq>.json`, with a `.error.txt` beside the ones that failed. Deliberately not
+attached to a log level: the body carries the author's whole conversation and whatever file
+contents the agent had read, so turning it on is a decision rather than a side effect of asking
+for more logs. It never carries the API key — that rides on the client, not in the payload.
+
+```powershell
+$env:VN_DUMP_REQUESTS = "C:\dev\vn-requests"
+pnpm --filter @vn/desktop build   # the launcher runs the built app; it does not build
+pnpm vndesktop
+```
+
+Both are written *before* the call, because the failures worth capturing include the ones that
+never return.
+
+Two ways to end up with nothing: `--mock` makes no provider calls at all, and a stale `dist/` will
+not have any of this, `@vn/providers` being source-only and bundled into the desktop's main bundle.
+Expect one entry per **step** rather than per turn — a turn that calls four tools captures four
+bodies.
 
 ## Reproducing offline
 

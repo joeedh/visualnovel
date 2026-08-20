@@ -23,4 +23,12 @@ export {
   type EffortChoice,
 } from '@vn/types';
 export { createGeminiChat, createGeminiImage, type GeminiClient } from './backends/gemini.js';
-export { isTransient, retryAfterMs } from './backends/transient.js';
+export {
+  capturedRequest,
+  capturedRequests,
+  captureSnapshot,
+  clearCaptures,
+  type CapturedHeader,
+  type CaptureSnapshot,
+} from './backends/capture.js';
+export { faultKind, isTransient, retryAfterMs, type FaultKind } from './backends/transient.js';

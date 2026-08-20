@@ -23,6 +23,48 @@ type Message = { role: string; content: Block[] };
 const messages = (body: Record<string, unknown>): Message[] => body.messages as Message[];
 const tools = (body: Record<string, unknown>): Block[] => (body.tools ?? []) as Block[];
 
+/** The id the API gives a server-side tool call. Its prefix is what the pairing rule is about. */
+const SRV = 'srvtoolu_01BQ5mmxtZsuMrBwkBkZ7k3W';
+
+/**
+ * One assistant reply that reached for a deferred tool: the blocks Anthropic returns, in the order
+ * it returns them. Echoed back on the next step, which is the round trip these tests are about.
+ */
+const SEARCHED: Block[] = [
+  { type: 'thinking', thinking: 'which tool approves art?', signature: 'sig' },
+  { type: 'server_tool_use', id: SRV, name: 'tool_search_tool_bm25', input: { query: 'approve' } },
+  {
+    type: 'tool_search_tool_result',
+    tool_use_id: SRV,
+    content: [{ type: 'tool_reference', name: 'approve_assets' }],
+  },
+  { type: 'tool_use', id: 'toolu_1', name: 'approve_assets', input: {} },
+];
+
+/**
+ * The rule the API states as an error rather than as prose: every `tool_search_tool_result` pairs
+ * with a `server_tool_use` of the same id **earlier in the same message**, and no `tool_result` is
+ * ever returned for a `srvtoolu_` id
+ * (`docs/plans/prompt-caching-and-deferred-tool-loading.md:386`).
+ *
+ * Checked over the whole body rather than over the turn under test, because what separates a pair
+ * is never the pair — it is a turn beside it that merged, or a marker that landed between them.
+ */
+function expectPairedServerTools(body: Record<string, unknown>): void {
+  for (const message of messages(body)) {
+    const opened: string[] = [];
+    for (const block of message.content) {
+      if (block.type === 'server_tool_use') opened.push(String(block.id));
+      if (block.type === 'tool_search_tool_result') {
+        expect(opened).toContain(String(block.tool_use_id));
+      }
+      if (block.type === 'tool_result') {
+        expect(String(block.tool_use_id)).not.toMatch(/^srvtoolu_/);
+      }
+    }
+  }
+}
+
 /** Which message indices carry a breakpoint, and on which block of each. */
 function breakpoints(body: Record<string, unknown>): [number, number][] {
   const out: [number, number][] = [];
@@ -160,5 +202,71 @@ describe('the transcript', () => {
         ],
       },
     ]);
+  });
+});
+
+/**
+ * The round trip a deferred tool costs: the model searches, the API answers inline, and the whole
+ * exchange has to come back on the next step intact. What makes this worth its own block is that
+ * the API validates it *positionally* — a pair broken by anything at all is a 400 naming a message
+ * and a block index, and the transcript is re-sent every step, so one break repeats forever.
+ */
+describe('a tool search echoed back', () => {
+  /** The step after the search: the reply, then the answer to the one call it actually made. */
+  const roundTrip = (): ChatTurn[] => [
+    { role: 'user', content: 'approve the art' },
+    { role: 'assistant', content: SEARCHED },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'done' }] },
+  ];
+
+  it('keeps the result paired with the call that made it, and answers only the real call', () => {
+    const body = buildConvoRequest(WITH_SYSTEM, { system: 's', turns: roundTrip() }, TOOLS);
+    expectPairedServerTools(body);
+    // Not merely paired — identical. A re-rendered block is a changed byte, and the search
+    // result is the one block in a transcript nothing on our side could reconstruct.
+    expect(messages(body)[1]!.content).toEqual(SEARCHED);
+    expect(messages(body).map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
+  });
+
+  it('leaves the caller’s blocks unmarked, so the next step echoes the same pair', () => {
+    const blocks = SEARCHED.map((b) => ({ ...b }));
+    const turns: ChatTurn[] = [
+      { role: 'user', content: 'approve the art' },
+      { role: 'assistant', content: blocks, cache: true },
+    ];
+    const body = buildConvoRequest(WITH_SYSTEM, { system: 's', turns }, TOOLS);
+    // The marker goes on the last block, which is past the pair, and the pair still reads.
+    expect(breakpoints(body)).toEqual([[1, 3]]);
+    expectPairedServerTools(body);
+    // And the array the loop holds is the array it will send again next step.
+    expect(blocks).toEqual(SEARCHED);
+  });
+
+  it('survives the assistant turn it is in being merged with the next one', () => {
+    // Two assistant turns in a row is not hypothetical: a turn that runs out of budget files its
+    // own sentence as an assistant message straight after the reply that spent the last of it.
+    const turns: ChatTurn[] = [
+      { role: 'user', content: 'approve the art' },
+      { role: 'assistant', content: SEARCHED },
+      { role: 'assistant', content: 'Out of budget for this turn.' },
+    ];
+    const body = buildConvoRequest(WITH_SYSTEM, { system: 's', turns }, TOOLS);
+    expect(messages(body)).toHaveLength(2);
+    expect(messages(body)[1]!.content).toEqual([
+      ...SEARCHED,
+      { type: 'text', text: 'Out of budget for this turn.' },
+    ]);
+    expectPairedServerTools(body);
+  });
+
+  it('survives a system turn beside it, whichever way the model takes one', () => {
+    const withSystem: ChatTurn[] = [...roundTrip(), { role: 'system', content: 'BUDGET: 9,000' }];
+    for (const model of [WITH_SYSTEM, WITHOUT_SYSTEM]) {
+      const body = buildConvoRequest(model, { system: 's', turns: withSystem }, TOOLS);
+      // Down-rendered and merged for one model, a message of its own for the other — and in
+      // neither case does it land inside the assistant turn holding the pair.
+      expect(messages(body)[1]!.content).toEqual(SEARCHED);
+      expectPairedServerTools(body);
+    }
   });
 });

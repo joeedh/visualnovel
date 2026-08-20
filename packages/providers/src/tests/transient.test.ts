@@ -3,9 +3,15 @@
  * injected rather than mocked: the real client arrives through a dynamic `import()`, which
  * jest's CJS runtime rejects outright (see `scripts/jest-esbuild.cjs`).
  */
-import { ProviderError, RetryableProviderError } from '@vn/util';
+import { ConfigError, ProviderError, RetryableProviderError } from '@vn/util';
 import { providerError } from '../backends/transient.js';
-import { createGeminiImage, isTransient, retryAfterMs, type GeminiClient } from '../index.js';
+import {
+  createGeminiImage,
+  faultKind,
+  isTransient,
+  retryAfterMs,
+  type GeminiClient,
+} from '../index.js';
 
 /** An SDK error the way the vendors raise it: a numeric status beside the message. */
 function httpError(status: number, message: string): Error {
@@ -148,5 +154,62 @@ describe('what the provider said to wait', () => {
     );
     expect(refused).toBeInstanceOf(ProviderError);
     expect(refused).not.toBeInstanceOf(RetryableProviderError);
+  });
+});
+
+/**
+ * What a host is told a failure *was*, which is a different question from whether to retry it.
+ * The whole of this is the unwrapping: every one of these arrives at the desktop already wrapped
+ * by `providerError`, so a classifier that read only the outermost error would answer `unknown`
+ * for all of them.
+ */
+describe('faultKind', () => {
+  /** As a host sees it: wrapped once by `callWithRetry`, exactly as the backends do. */
+  const wrapped = (err: unknown): unknown => providerError('Claude conversation failed', err);
+
+  it('reads a rejected body through the wrapper', () => {
+    const sdk = Object.assign(new Error('400 {"type":"error","error":{"message":"bad"}}'), {
+      status: 400,
+    });
+    expect(faultKind(wrapped(sdk))).toBe('request');
+  });
+
+  it('reads a status Anthropic put only at the head of its message', () => {
+    // No "status" or "code" word before the number, which is the one shape `STATUS_IN_TEXT`
+    // deliberately will not match — and the shape both vendors actually send.
+    expect(faultKind(wrapped(new Error('400 {"type":"error"}')))).toBe('request');
+  });
+
+  it('separates a rejected key from a rejected body', () => {
+    expect(faultKind(wrapped(Object.assign(new Error('unauthorized'), { status: 401 })))).toBe(
+      'auth',
+    );
+    expect(faultKind(wrapped(Object.assign(new Error('forbidden'), { status: 403 })))).toBe('auth');
+    expect(faultKind(new ConfigError('no anthropic API key'))).toBe('auth');
+  });
+
+  it('answers transient by class, without needing a status at all', () => {
+    expect(faultKind(new RetryableProviderError('overloaded'))).toBe('transient');
+    expect(faultKind(wrapped(new Error('fetch failed')))).toBe('transient');
+    expect(faultKind(wrapped(Object.assign(new Error('slow down'), { status: 429 })))).toBe(
+      'transient',
+    );
+    expect(faultKind(wrapped(Object.assign(new Error('bad gateway'), { status: 502 })))).toBe(
+      'transient',
+    );
+  });
+
+  it('says unknown rather than guessing, and does not read an errno as a status', () => {
+    expect(faultKind(new Error('something went sideways'))).toBe('unknown');
+    expect(faultKind(undefined)).toBe('unknown');
+    // A vendor `code` in the 4xx range that is not an HTTP status would offer the author a bug
+    // report for a typo. Only a real status field or a leading status in the message counts.
+    expect(faultKind(new Error('ENOENT: no such file'))).toBe('unknown');
+  });
+
+  it('survives a cause that points at itself', () => {
+    const loop = new Error('round we go') as Error & { cause?: unknown };
+    loop.cause = loop;
+    expect(faultKind(loop)).toBe('unknown');
   });
 });

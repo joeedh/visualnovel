@@ -17,6 +17,7 @@
 import { z } from 'zod';
 import { budgetTokens, charge, DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
 import { RetryableProviderError } from '@vn/util';
+import { faultKind, type FaultKind } from '@vn/providers';
 import type { AgentAction, AgentBackend, AgentMessage, AgentTurn, ToolSpec } from './backend.js';
 import { joinSections, type SystemSection } from './context.js';
 import {
@@ -91,6 +92,12 @@ export interface ApiFailure {
   message: string;
   /** Whether another attempt could plausibly get a different answer: a 429, a 5xx, a dead socket. */
   transient: boolean;
+  /**
+   * The same judgement, refined: `transient` here means what `transient` above means, and the
+   * other three split what it lumps together as terminal. A host offers different things for a
+   * rejected key and a rejected body, and this is the one field that tells them apart.
+   */
+  kind: FaultKind;
   attempt: number;
   waitMs: number;
 }
@@ -710,6 +717,7 @@ export class Agent {
               ? await this.onApiError({
                   message,
                   transient: err instanceof RetryableProviderError,
+                  kind: faultKind(err),
                   attempt: failures,
                   waitMs: wait,
                 })

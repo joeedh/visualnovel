@@ -14,7 +14,13 @@ import {
   setLineText,
   splitScene,
 } from '@vn/scriptedit';
-import { discoverSkills, newSkillTemplate, skillRoots } from '@vn/authoring';
+import {
+  discoverSkills,
+  newSkillTemplate,
+  skillRoots,
+  type ApiFailure,
+  type ApiRecovery,
+} from '@vn/authoring';
 import { openGit } from '@vn/git';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
@@ -1461,6 +1467,64 @@ describe('WorkspaceSession — the agent asks the author', () => {
     );
     // The card reads English, not the argument list — `toolconfirm.ts` owns the wording.
     expect(seen[0]).toContain('generate_image: Draw a concept sketch: “a rooftop”');
+  });
+
+  /**
+   * The recovery card is the one place the author is already being interrupted about a failed
+   * call, so the offer to diagnose it lives there rather than in a second dialog of its own.
+   */
+  it('offers to diagnose a rejected body, and pushes it rather than answering it', async () => {
+    const offered: { thread?: string; message: string }[] = [];
+    let choices: string[] = [];
+    const session = new WorkspaceSession('.', true, {
+      ...deps,
+      requestAnswer: (questions) => {
+        choices = [...(questions[0]?.choices ?? [])];
+        return Promise.resolve(['Stop, and look into what went wrong']);
+      },
+      offerDiagnosis: (fault) => offered.push(fault),
+    });
+    const recover = (
+      session as unknown as { recoverApi: (f: ApiFailure) => Promise<ApiRecovery> }
+    ).recoverApi.bind(session);
+
+    const stopped = await recover({
+      message: '400 messages.1.content.0: unexpected `tool_use_id`',
+      transient: false,
+      kind: 'request',
+      attempt: 1,
+      waitMs: 0,
+    });
+    expect(choices).toContain('Stop, and look into what went wrong');
+    // The turn ends: a diagnosis reads the request that failed, and a retry would put a second
+    // one in front of it.
+    expect(stopped).toEqual({ do: 'stop' });
+    expect(offered).toEqual([{ message: '400 messages.1.content.0: unexpected `tool_use_id`' }]);
+  });
+
+  it('does not offer it for a rate limit or a rejected key', async () => {
+    let choices: string[] = [];
+    const session = new WorkspaceSession('.', true, {
+      ...deps,
+      requestAnswer: (questions) => {
+        choices = [...(questions[0]?.choices ?? [])];
+        return Promise.resolve(['Stop this turn']);
+      },
+    });
+    const recover = (
+      session as unknown as { recoverApi: (f: ApiFailure) => Promise<ApiRecovery> }
+    ).recoverApi.bind(session);
+
+    for (const kind of ['transient', 'auth', 'unknown'] as const) {
+      await recover({
+        message: 'nope',
+        transient: kind === 'transient',
+        kind,
+        attempt: 1,
+        waitMs: 0,
+      });
+      expect(choices).not.toContain('Stop, and look into what went wrong');
+    }
   });
 });
 

@@ -15,6 +15,18 @@ import type { ChoiceRow } from './commandform.js';
 import { exec, onExec, say, shell } from './bridge.js';
 import { openReportPreview, type ReportDraft } from './reportpreview.js';
 
+/** What an opening other than the menu's knows that the menu's does not. */
+export interface ReportSeed {
+  /** The conversation it went wrong in. Ignored if the project no longer has it. */
+  thread?: string;
+  /** Tick reading the source. */
+  source?: boolean;
+  /** Tick reading the requests this session sent. */
+  detail?: boolean;
+  /** One sentence saying why the dialog opened by itself. */
+  note?: string;
+}
+
 /**
  * Open the preview whenever a report finishes, whoever in the shell asked for one.
  *
@@ -41,8 +53,13 @@ export function installReportPreview(): void {
  * turn and cleared by `agent.clear`, a new conversation, an upload and by *reopening* a thread —
  * so there is usually no active one, including right after someone reopened the bad conversation
  * to look at it. Newest-first ordering makes the first row the one they had trouble with.
+ *
+ * `seed` is for the one opening the author did not ask for — an API refusal the app offered to
+ * look into. That opening knows which conversation it was and that the request itself is the
+ * evidence, so it names the thread and ticks both reading boxes; the author still decides whether
+ * to run it, and can untick either.
  */
-export async function openReportDialog(): Promise<void> {
+export async function openReportDialog(seed: ReportSeed = {}): Promise<void> {
   const outcome = await exec('agent.threads');
   if (!outcome.ok) {
     say('Could not read this project’s conversations.', true);
@@ -67,11 +84,26 @@ export async function openReportDialog(): Promise<void> {
   // which is also what makes the effort menu draw nothing at all.
   const effort = analysisEffort(model, ui.effort) ?? '';
 
-  openCommandDialog('report.agent', { thread: threads[0]?.id ?? '', model, effort }, (values) => ({
-    thread: rows,
-    model: modelRows(Boolean(values['source'])),
-    effort: effortRows(String(values['model'] ?? model)),
-  }));
+  // A seeded thread only counts if the project still has it: a conversation can be deleted
+  // between the failure and the dialog, and a row nothing matches would leave the form blank.
+  const seeded = seed.thread && threads.some((t) => t.id === seed.thread) ? seed.thread : undefined;
+
+  openCommandDialog(
+    'report.agent',
+    {
+      thread: seeded ?? threads[0]?.id ?? '',
+      model,
+      effort,
+      ...(seed.source === undefined ? {} : { source: seed.source }),
+      ...(seed.detail === undefined ? {} : { detail: seed.detail }),
+    },
+    (values) => ({
+      thread: rows,
+      model: modelRows(Boolean(values['source'])),
+      effort: effortRows(String(values['model'] ?? model)),
+    }),
+    seed.note,
+  );
 }
 
 /**

@@ -12,6 +12,7 @@ import type {
   ToolSchema,
 } from '../backend.js';
 import { isPlaceholderImage } from '../placeholder.js';
+import { captureRequest } from './capture.js';
 import { callWithRetry } from './transient.js';
 
 const MIME: Record<string, string> = {
@@ -119,20 +120,31 @@ export function createGeminiChat(
   apiKey: string,
   modelId: string,
   client: GeminiClient = lazyClient(apiKey),
+  opts: { record?: boolean } = {},
 ): ChatBackend {
+  const record = opts.record;
   const messageWithUsage = async (req: ChatRequest): Promise<ChatReply> => {
     const ai = await client();
     const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
-    return callWithRetry(`Gemini request failed (${modelId})`, async () => {
-      const res = await ai.models.generateContent({
-        model: modelId,
-        contents: [{ role: 'user', parts }],
-        config: req.system ? { systemInstruction: req.system } : undefined,
+    // The vendor body, not the two strings above it: a positional error indexes into what went
+    // over the wire, and `parts` is where the images and the prompt were finally arranged.
+    const body = {
+      model: modelId,
+      contents: [{ role: 'user', parts }],
+      config: req.system ? { systemInstruction: req.system } : undefined,
+    };
+    const capture = await captureRequest('gemini', body, { record });
+    try {
+      return await callWithRetry(`Gemini request failed (${modelId})`, async () => {
+        const res = await ai.models.generateContent(body);
+        const text = (res.text ?? '') as string;
+        const usage = usageOf(res);
+        return usage ? { text, usage } : { text };
       });
-      const text = (res.text ?? '') as string;
-      const usage = usageOf(res);
-      return usage ? { text, usage } : { text };
-    });
+    } catch (err) {
+      await capture.failed(err);
+      throw err;
+    }
   };
 
   return {
@@ -143,33 +155,40 @@ export function createGeminiChat(
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
       const ai = await client();
       const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
-      return callWithRetry(`Gemini tool request failed (${modelId})`, async () => {
-        const res = await ai.models.generateContent({
-          model: modelId,
-          contents: [{ role: 'user', parts }],
-          config: {
-            ...(req.system ? { systemInstruction: req.system } : {}),
-            tools: [
-              {
-                functionDeclarations: tools.map((t) => ({
-                  name: t.name,
-                  description: t.description,
-                  parameters: t.parameters,
-                })),
-              },
-            ],
-          },
+      const body = {
+        model: modelId,
+        contents: [{ role: 'user', parts }],
+        config: {
+          ...(req.system ? { systemInstruction: req.system } : {}),
+          tools: [
+            {
+              functionDeclarations: tools.map((t) => ({
+                name: t.name,
+                description: t.description,
+                parameters: t.parameters,
+              })),
+            },
+          ],
+        },
+      };
+      const capture = await captureRequest('gemini-tools', body, { record });
+      try {
+        return await callWithRetry(`Gemini tool request failed (${modelId})`, async () => {
+          const res = await ai.models.generateContent(body);
+          const replyParts = res?.candidates?.[0]?.content?.parts ?? [];
+          const text = replyParts
+            .filter((p: any) => typeof p.text === 'string')
+            .map((p: any) => p.text)
+            .join('');
+          const toolCalls = replyParts
+            .filter((p: any) => p.functionCall)
+            .map((p: any) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} }));
+          return { text: text || undefined, toolCalls, usage: usageOf(res) } as ChatToolReply;
         });
-        const replyParts = res?.candidates?.[0]?.content?.parts ?? [];
-        const text = replyParts
-          .filter((p: any) => typeof p.text === 'string')
-          .map((p: any) => p.text)
-          .join('');
-        const toolCalls = replyParts
-          .filter((p: any) => p.functionCall)
-          .map((p: any) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} }));
-        return { text: text || undefined, toolCalls, usage: usageOf(res) } as ChatToolReply;
-      });
+      } catch (err) {
+        await capture.failed(err);
+        throw err;
+      }
     },
   };
 }

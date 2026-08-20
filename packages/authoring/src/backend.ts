@@ -8,6 +8,7 @@
  * (`docs/plans/prompt-caching-and-deferred-tool-loading.md`).
  */
 import { z } from 'zod';
+import { ProviderError } from '@vn/util';
 import { parseStructured } from '@vn/providers';
 import type { ChatBackend, ChatReply, ChatTurn, TokenUsage, ToolSchema } from '@vn/providers';
 
@@ -231,6 +232,11 @@ ${REPAIR}`,
         if (spent) turn.usage = spent;
         return turn;
       } catch (err) {
+        // A `ProviderError` is the API refusing the request, not the model answering badly.
+        // Retrying an unchanged body buys the same refusal three times, and folding it into a
+        // `final` hands the author an API fault dressed as a normal turn — no card, `ok: true`,
+        // and nothing to diagnose it from.
+        if (err instanceof ProviderError) throw err;
         lastErr = err;
       }
     }

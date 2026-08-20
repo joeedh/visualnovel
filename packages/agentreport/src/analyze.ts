@@ -51,14 +51,42 @@ const SYSTEM = [
   'set confidence to low — a confident wrong diagnosis costs a maintainer more than an admission.',
 ].join('\n');
 
-const WITH_SOURCE = [
+/**
+ * How a run that has tools ends. Split out of the source paragraph below because it is the loop's
+ * own protocol rather than a permission: a run with the request tools and no source needs it just
+ * as much, and folding the two together meant such a run would finish without filing a report and
+ * silently fall back to the single call.
+ */
+const LOOP_PROTOCOL = [
+  '',
+  'When you are finished, call submit_report exactly once. Do not finish your turn without it.',
+].join('\n');
+
+const SOURCE_ACCESS = [
   '',
   "You can read the tool's own source code, its documentation, and the files of the project the",
   'author was working on. Use it to check what the agent was actually able to do before you',
   'conclude what it should have done, and to point each recommendation at the file that would',
   'have to change. Read what you need and no more.',
+].join('\n');
+
+/**
+ * What the request tools are for, and the one rule about them that is not enforceable by code.
+ *
+ * The capture is the author's own conversation as it went over the wire, read on the author's own
+ * key, and it is not in the report and must not get into it. The tools themselves are built so a
+ * long verbatim span cannot be obtained — an outline by default, one capped and redacted value at
+ * a time — and this paragraph is the second layer rather than the mechanism.
+ */
+const REQUEST_ACCESS = [
   '',
-  'When you are finished, call submit_report exactly once. Do not finish your turn without it.',
+  'You can also read the requests the app actually sent to the model API, which is what a',
+  'positional error like "messages.1.content.0" points into. Start with list_requests to find the',
+  'one that failed, then read_request with no path for its shape — that alone answers most',
+  'positional errors — and only then a path, for one specific value.',
+  '',
+  'What you read there is private to this machine and does not go in the report. Describe what you',
+  'find structurally: which block, of what type, in what position. Never quote its content.',
 ].join('\n');
 
 /** The prompt: the evidence, plus whatever the author said they were trying to do. */
@@ -110,7 +138,9 @@ export function analystBackend(
         `set $${config.keys[vendor]} or put ${secretFileFor(vendor)} in the project's keys/ directory`,
     );
   }
-  return chatBackendFor(modelId, keys, effort).backend;
+  // A diagnosis never records itself: the analyst runs many turns, and every one of them would
+  // push an entry into the request ring it may be reading from.
+  return chatBackendFor(modelId, keys, effort, { record: false }).backend;
 }
 
 /** The read tools the analyst gets when the author lets it look at the source. */
@@ -127,9 +157,19 @@ export interface AnalyzeOptions {
   redactor: Redactor;
   /** The author's own account of what they were trying to do. Optional, and redacted. */
   wanted?: string;
-  /** Present when the author ticked the box. Absent is the cheap path. */
+  /** Present when the author ticked the source box. */
   source?: SourceAccess;
-  /** Runaway backstop on tool-call iterations for the source path. */
+  /**
+   * Present when the author ticked the detail box: the tools that read the captured requests.
+   * Independent of {@link source} — the two boxes are separate, and either one alone is a loop.
+   */
+  detail?: Map<string, Tool>;
+  /**
+   * The context a loop needs when there is no source root to hand it one. Read only when
+   * {@link source} is absent and {@link detail} is not — a detail-only run is still a loop.
+   */
+  ctx?: ToolContext;
+  /** Runaway backstop on tool-call iterations for whichever loop runs. */
   maxIterations?: number;
 }
 
@@ -184,20 +224,35 @@ function submitTool(sink: { report?: Analysis }): Tool<Analysis> {
   };
 }
 
-async function analyzeWithSource(
+/**
+ * The looping path, run whenever the analyst has anything to read.
+ *
+ * What it may read is whichever registries were handed in — the source tools, the request tools,
+ * or both — and the system prompt is assembled to match, so the analyst is never told it can read
+ * something it has no tool for. The switch is the registry rather than a flag: a run with tools is
+ * a loop, and that is the only fact either branch turns on.
+ */
+async function analyzeWithTools(
   opts: AnalyzeOptions,
-  source: SourceAccess,
+  ctx: ToolContext,
 ): Promise<{ analysis?: Analysis; why?: string }> {
   const sink: { report?: Analysis } = {};
-  const registry = new Map(source.registry);
+  const registry = new Map([...(opts.source?.registry ?? []), ...(opts.detail ?? [])]);
   const submit = submitTool(sink);
   registry.set(submit.name, submit as Tool);
 
+  const system = [
+    SYSTEM,
+    opts.source ? SOURCE_ACCESS : '',
+    opts.detail ? REQUEST_ACCESS : '',
+    LOOP_PROTOCOL,
+  ].join('');
+
   const agent = new Agent({
     backend: new StructuredAgentBackend(opts.backend),
-    ctx: source.ctx,
+    ctx,
     permission: unattended(),
-    system: `${SYSTEM}${WITH_SOURCE}`,
+    system,
     registry,
     maxIterations: opts.maxIterations ?? 24,
   });
@@ -217,11 +272,14 @@ async function analyzeWithSource(
  */
 export async function analyze(opts: AnalyzeOptions): Promise<Report> {
   const model = opts.backend.modelId;
+  const ctx = opts.source?.ctx ?? opts.ctx;
 
-  if (opts.source) {
-    const { analysis, why } = await analyzeWithSource(opts, opts.source);
+  // Tools, and somewhere to run them: a detail-only run has no source root, so its context comes
+  // in beside the tools rather than with them.
+  if ((opts.source || opts.detail) && ctx) {
+    const { analysis, why } = await analyzeWithTools(opts, ctx);
     if (analysis) {
-      return { analysis: scrub(analysis, opts.redactor), model, readSource: true };
+      return { analysis: scrub(analysis, opts.redactor), model, readSource: Boolean(opts.source) };
     }
     return {
       analysis: scrub(await analyzeDirectly(opts), opts.redactor),

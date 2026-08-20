@@ -5,6 +5,7 @@ import type {
   ChatTurn,
   ToolSchema,
 } from '@vn/providers';
+import { ProviderError } from '@vn/util';
 import {
   NativeAgentBackend,
   StructuredAgentBackend,
@@ -193,6 +194,23 @@ describe('StructuredAgentBackend', () => {
       TOOLS,
     );
     expect(turn.final).toContain("couldn't produce a valid action");
+  });
+
+  it('rethrows an API refusal rather than folding it into an answer', async () => {
+    // Three attempts at an unchanged body buy three identical refusals, and a `final` here would
+    // hand the author an API fault with `ok: true` on it and no card to diagnose from.
+    let calls = 0;
+    const chat: ChatBackend = {
+      modelId: 'mock-text',
+      message: () => {
+        calls++;
+        return Promise.reject(new ProviderError('Claude request failed: messages.1: bad'));
+      },
+    };
+    await expect(new StructuredAgentBackend(chat).next('sys', MESSAGES, TOOLS)).rejects.toThrow(
+      /messages\.1/,
+    );
+    expect(calls).toBe(1);
   });
 
   it('tells the second attempt what was wrong with the first', async () => {

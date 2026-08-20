@@ -3,7 +3,13 @@
  * is the part worth pinning: a desktop ask card returns the row verbatim, `vnauthor` returns
  * whatever the author typed, and both land in the same three plans.
  */
-import { API_RETRIES, apiRecoveryQuestion, readApiPlan, switchChoice } from '../index.js';
+import {
+  API_RETRIES,
+  apiRecoveryQuestion,
+  offersReport,
+  readApiPlan,
+  switchChoice,
+} from '../index.js';
 import type { ApiFailure } from '../index.js';
 
 const OTHERS = ['gemini-2.5-pro', 'gpt-5'];
@@ -11,6 +17,7 @@ const OTHERS = ['gemini-2.5-pro', 'gpt-5'];
 const failure = (over: Partial<ApiFailure> = {}): ApiFailure => ({
   message: '429 rate limited',
   transient: true,
+  kind: 'transient',
   attempt: 1,
   waitMs: 1_000,
   ...over,
@@ -66,5 +73,38 @@ describe('reading the answer back', () => {
     expect(read('do the needful')).toEqual({ do: 'stop' });
     // A model nobody offered is not a model this host can build a backend for.
     expect(read('switch to llama-9')).toEqual({ do: 'stop' });
+  });
+});
+
+/**
+ * The fourth choice. It is offered on one fault class and nowhere else, because the point of an
+ * offer the author trusts is that it does not appear for every odd failure.
+ */
+describe('offering to look into it', () => {
+  const rejected = failure({ transient: false, kind: 'request', message: '400 messages.1: bad' });
+
+  it('is offered when the provider rejected the body, and only then', () => {
+    expect(offersReport(rejected)).toBe(true);
+    expect(offersReport(failure())).toBe(false);
+    expect(offersReport(failure({ transient: false, kind: 'auth' }))).toBe(false);
+    expect(offersReport(failure({ transient: false, kind: 'unknown' }))).toBe(false);
+  });
+
+  it('sits above stop in the list, so stop is still the last word', () => {
+    const q = apiRecoveryQuestion(rejected, 'claude-opus-4', []);
+    expect(q.choices).toEqual([
+      'Retry automatically, up to 10 times',
+      'Stop, and look into what went wrong',
+      'Stop this turn',
+    ]);
+  });
+
+  it('reads back as its own plan rather than as a stop', () => {
+    expect(readApiPlan('Stop, and look into what went wrong', OTHERS)).toEqual({ do: 'report' });
+    expect(readApiPlan('look into it please', OTHERS)).toEqual({ do: 'report' });
+    // A typed answer that names a model *and* asks to look into it is asking to diagnose: the
+    // row itself names no model, so the model search below it would misread this one.
+    expect(readApiPlan('look into what gemini-2.5-pro did', OTHERS)).toEqual({ do: 'report' });
+    expect(readApiPlan('Stop this turn', OTHERS)).toEqual({ do: 'stop' });
   });
 });

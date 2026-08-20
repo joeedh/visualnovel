@@ -37,6 +37,14 @@ export const reportAgent = define({
         'that was broken instead of guessing from the conversation. Slower, and it spends more ' +
         'of your tokens.',
     }),
+    detail: prop.boolean('let it read the requests this app sent to the model API', {
+      default: false,
+      hint:
+        'When the API rejected a request by position — "messages.1.content.0" — only the request ' +
+        'itself says what was at that position, so the debug agent reads the ones this session ' +
+        'sent. They stay on this machine: they are read on your own key and none of what it ' +
+        'finds there goes into the report.',
+    }),
     // Both are `prop.string`, not `prop.oneOf`: an enum's values are baked into the catalog at
     // module load, and this menu's rows depend on the model chosen in the same form.
     model: prop.string('the model that reads the conversation; empty means the bound one', {

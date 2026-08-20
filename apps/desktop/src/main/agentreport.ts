@@ -18,15 +18,18 @@ import {
   analystBackend,
   analyze,
   buildRedactor,
+  createRequestTools,
   createSourceTools,
   redactEvidence,
   sourceRoot,
   sourcesFrom,
+  Budget,
   type Evidence,
   type Redactor,
   type Report,
   type SourceAccess,
 } from '@vn/agentreport';
+import { captureSnapshot } from '@vn/providers';
 import { evidenceFor } from './commandlog.js';
 
 export interface AnalysisRequest {
@@ -44,6 +47,14 @@ export interface AnalysisRequest {
   wanted?: string;
   /** Whether the author let the analyst read the source. */
   source: boolean;
+  /**
+   * Whether the author let the analyst read the requests the app sent — the bodies a positional
+   * API error indexes into. Independent of {@link source}: either alone is a valid analysis.
+   *
+   * **Nothing read this way reaches the report.** It is the author's own conversation, read on
+   * the author's own key, which is what keeps the privacy area to their model provider.
+   */
+  detail?: boolean;
   appVersion?: string;
   /**
    * The app's own directory — where the drafted report is kept and where fetched provider
@@ -98,11 +109,12 @@ export function makeRedactor(dir: string, model: ProjectModel): Redactor {
  * in the registry touches either — the tools resolve their own roots — but the loop's type says
  * a context has a workspace and a git, and satisfying it honestly costs nothing.
  */
-async function sourceAccess(req: AnalysisRequest): Promise<SourceAccess> {
+async function sourceAccess(req: AnalysisRequest, budget: Budget): Promise<SourceAccess> {
   const root = await sourceRoot();
   if (!root) throw new Error(NO_SOURCE);
   return {
     registry: createSourceTools({
+      budget,
       sourceRoot: root,
       projectRoot: req.dir,
       ...(req.userData ? { cacheDir: join(req.userData, 'apidocs') } : {}),
@@ -126,6 +138,11 @@ export async function analyseThread(
   req: AnalysisRequest,
 ): Promise<{ report: Report; evidence: Evidence; redactor: Redactor }> {
   const redactor = makeRedactor(req.dir, req.model);
+  // Frozen before anything is read, and before the analyst's own turns could move it — evidence
+  // that shifts under its reader is not evidence.
+  const snapshot = captureSnapshot();
+  // One analysis, one budget, however many kinds of reading it does.
+  const budget = new Budget();
 
   const evidence = redactEvidence(
     await evidenceFor(req.paths, req.threadId, {
@@ -140,7 +157,11 @@ export async function analyseThread(
     backend: analystBackend(req.modelId, req.config, req.keys, req.effort),
     redactor,
     ...(req.wanted?.trim() ? { wanted: req.wanted } : {}),
-    ...(req.source ? { source: await sourceAccess(req) } : {}),
+    ...(req.source ? { source: await sourceAccess(req, budget) } : {}),
+    ...(req.detail ? { detail: createRequestTools({ snapshot, redactor, budget }) } : {}),
+    // A detail-only run has no source root to take a context from, so it brings its own. The
+    // request tools never touch either half of it; the loop's type is what asks for one.
+    ctx: { workspace: new Workspace(req.dir), git: openGit(req.dir) },
   });
 
   return { report, evidence, redactor };

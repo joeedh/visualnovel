@@ -3,7 +3,7 @@
  * backends wrap their network calls in. This is the only layer that sees a status code, so it
  * is the only layer that can tell a rate limit from a content refusal.
  */
-import { ProviderError, RetryableProviderError, retry } from '@vn/util';
+import { ConfigError, ProviderError, RetryableProviderError, retry } from '@vn/util';
 
 /** Attempts and backoff for one network call. Deliberately small — the scheduler retries too. */
 const ATTEMPTS = 3;
@@ -48,6 +48,76 @@ export function isTransient(err: unknown): boolean {
   if (TRANSIENT_TEXT.test(message)) return true;
   const named = STATUS_IN_TEXT.exec(message)?.[1];
   return named !== undefined && retryableStatus(Number(named));
+}
+
+/**
+ * What sort of fault this was, for a host deciding what to offer the author about it.
+ *
+ * A refinement of {@link isTransient} rather than a rival to it: `transient` means the same thing
+ * here, and the other three split what `isTransient` lumps together as "terminal".
+ *
+ * - `transient` — a 429, a 5xx, a dead socket. Another attempt is worth making.
+ * - `auth` — 401, 403, a {@link ConfigError}. The answer is the key, not a bug report.
+ * - `request` — a terminal 4xx that is neither: the body itself was rejected.
+ * - `unknown` — unrecognized, and deliberately treated as no information.
+ */
+export type FaultKind = 'transient' | 'auth' | 'request' | 'unknown';
+
+/** 4xx that mean "we do not believe who you are", as opposed to "we do not like what you sent". */
+const authStatus = (s: number): boolean => s === 401 || s === 403;
+
+/** Every status this error carries, wherever the SDK put it, in the message included. */
+function statuses(err: unknown): number[] {
+  const e = err as { status?: unknown; code?: unknown; response?: { status?: unknown } };
+  const found: number[] = [];
+  for (const value of [e?.status, e?.code, e?.response?.status]) {
+    if (typeof value === 'number') found.push(value);
+  }
+  const named = STATUS_IN_TEXT.exec(causeMessage(err))?.[1];
+  if (named !== undefined) found.push(Number(named));
+  return found;
+}
+
+/**
+ * Classify a failure, unwrapping `cause` as far as it goes.
+ *
+ * The unwrapping is the whole of it. {@link providerError} wraps the SDK error as
+ * `new ProviderError(message, { cause: err })`, so by the time a host catches one the status is on
+ * `.cause` — and Anthropic's own message, `400 {"type":"error",…}`, matches neither
+ * {@link STATUS_IN_TEXT} (no "status"/"code" word before the number) nor anything else here. A
+ * classifier that read only the outermost error would answer `unknown` for every real 400.
+ */
+export function faultKind(err: unknown): FaultKind {
+  // By class, without needing a status at all: this is what the retry policy already decided.
+  if (err instanceof RetryableProviderError) return 'transient';
+  if (err instanceof ConfigError) return 'auth';
+
+  let seen: unknown = err;
+  const chain: unknown[] = [];
+  // Bounded, because a `cause` cycle is a hang rather than a wrong answer, and a wrong answer is
+  // the recoverable one.
+  for (let depth = 0; seen !== undefined && seen !== null && depth < 8; depth++) {
+    chain.push(seen);
+    seen = (seen as { cause?: unknown }).cause;
+  }
+  for (const link of chain) {
+    if (link instanceof ConfigError) return 'auth';
+    if (isTransient(link)) return 'transient';
+    const found = statuses(link);
+    if (found.some(authStatus)) return 'auth';
+    // 4xx only. A status that is not a status — an `errno`, a vendor's own code — is common in
+    // the `code` field, and reading one as a rejection would offer a bug report for a typo.
+    if (found.some((s) => s >= 400 && s < 500)) return 'request';
+    // Anthropic and Gemini both put the code at the head of the message with no word before it,
+    // which is the one shape `STATUS_IN_TEXT` deliberately will not match.
+    const lead = /^\s*(\d{3})\b/.exec(causeMessage(link))?.[1];
+    if (lead !== undefined) {
+      const status = Number(lead);
+      if (authStatus(status)) return 'auth';
+      if (status >= 400 && status < 500) return 'request';
+    }
+  }
+  return 'unknown';
 }
 
 /** One header off whatever the SDK put the response headers in — an object, or a `Headers`. */

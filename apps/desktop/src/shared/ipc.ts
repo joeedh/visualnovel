@@ -131,7 +131,18 @@ export type UiEffect =
    * than polled: the header disables its run button and the convo editor shows its stop button
    * off exactly the fact `WorkspaceSession.busy()` already keeps.
    */
-  | { type: 'busy'; what?: string; ran: number; pending: number };
+  | { type: 'busy'; what?: string; ran: number; pending: number }
+  /**
+   * A model call failed in a way the request itself explains — a rejected body, not a rate limit
+   * and not a bad key — and the author picked "look into what went wrong" on the card that
+   * offered it.
+   *
+   * Pushed rather than answered: `WorkspaceSession.while()` is a `Set` rather than a mutex, so a
+   * "last fault" the renderer came back and asked for could be overwritten by a second turn
+   * between the failure and the question. `message` is the provider's own sentence, shown on the
+   * dialog so it says why it opened.
+   */
+  | { type: 'agent'; action: 'diagnose'; thread?: string; message: string };
 
 /** Either form of invocation accepted over `command:exec`: structured, or a DSL string. */
 export interface CommandExecRequest {

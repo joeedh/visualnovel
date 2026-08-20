@@ -24,6 +24,27 @@ Three things make it more than a form:
 - **Optionally the debug agent may read the app's own source**, which ships with the install. That
   turns "the agent did something odd" into "the agent did something odd and here is the contract in
   `docs/` it violated".
+- **Optionally it may also read the requests this session sent** — the vendor bodies kept in the
+  in-memory ring, which is what makes a positional 400 legible. That door has a second tier of
+  privacy on it, below.
+
+## The two tiers of privacy
+
+The two reading doors are not the same promise.
+
+**The thread and the source can end up in the report.** That is the point of them: the report
+quotes what the agent did, redacted, and cites the contract it broke. The author reads the draft
+before anything is filed, and nothing is posted for them.
+
+**The requests never do.** The capture is read on the author's own key and nowhere else — the
+analyst sees structure and capped, redacted values through `list_requests` / `read_request`, and
+none of it is carried into `submit_report`. The privacy area of the detailed capture stays exactly
+one party wide: the author's own model provider, who was sent those bodies already. The analyst
+also runs with `{ record: false }` so its own calls do not enter the ring it is reading, and it
+reads a frozen `captureSnapshot()` rather than the live ring.
+
+The mechanism is described in
+[`diagnosing-an-api-error-from-the-request-that-caused-it.md`](diagnosing-an-api-error-from-the-request-that-caused-it.md).
 
 ## Why the transcript has to change first
 
@@ -708,6 +729,12 @@ report body must be **editable** (so not `digest`) and must **not** be logged ve
 value is non-empty (`commandform.ts:113`). So the preview is a small dialog — a textarea, the leak
 banner, `Open GitHub Issue…` and `Discard` — and the command it eventually calls declares its body
 prop `digest: true` for recording purposes only.
+
+**Opening the browser does not close the preview.** Nothing has been posted at that point — what
+the browser holds is a filled-in form the author still has to press Create on — so dismissing the
+dialog would take away the only copy of the text at the moment they are reading it over. The
+buttons say so: `Discard` becomes `Close`, and the file button becomes
+`Open GitHub Issue Again…`, which re-opens a form on whatever is on screen now.
 
 **The leak scan is a refusal, re-checked as you type.** `report.openIssue`'s `check` runs
 `redactor.leaks(body)` and refuses by name — `"Riva Kestrel" is still in the report` — and the

@@ -15,6 +15,7 @@ import { api } from '../api.js';
 import type { CommandCheck } from '../../src/shared/ipc.js';
 import { exec, report, shell } from './bridge.js';
 import { paragraph } from './paragraph.js';
+import { INSET, onPopupClosed, popupLeft, stylePopup } from './popup.js';
 import { writingBox } from './writingbox.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
@@ -22,7 +23,7 @@ type Popup = Container & { end(): void };
 
 const WIDTH = 720;
 /** What prose may fill, leaving the popup's own inset either side. */
-const PROSE = WIDTH - 24;
+const PROSE = WIDTH - INSET;
 
 /** The part of `report.agent`'s answer this dialog opens on. */
 export interface ReportDraft {
@@ -48,23 +49,29 @@ class Preview {
   private live = true;
   /** One browser window per press. The command is quick, but a double click is two tabs. */
   private filing = false;
+  /** Whether the browser has been handed this report at least once. */
+  private filed = false;
 
   constructor(private readonly draft: ReportDraft) {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang a dialog on');
     this.body = draft.body;
 
-    const x = Math.max(8, Math.round(screen.size[0] / 2 - WIDTH / 2));
+    const x = popupLeft(screen, WIDTH);
     const y = Math.max(48, Math.round(screen.size[1] * 0.12));
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
-    this.popup.style['width'] = `${WIDTH}px`;
+    // The same chrome the palette and the command dialog wear. Without it path.ux hands back a
+    // box with the theme's own border — which is `border-color` and no width, so nothing is
+    // drawn — and this is the one dialog in the shell that carries a public document.
+    stylePopup(this.popup, screen, WIDTH, y);
 
-    const end = this.popup.end.bind(this.popup);
-    this.popup.end = () => {
+    // `remove`, not `end`. Escape and the click-outside watcher hold their own closure over the
+    // real `end`, so an override here is never told they fired: the box goes and `open` stays
+    // set, and the preview cannot be opened again for the rest of the session.
+    onPopupClosed(this.popup, () => {
       open = undefined;
       this.live = false;
-      end();
-    };
+    });
 
     const col = this.popup.col();
     paragraph(col, draft.title, PROSE);
@@ -121,21 +128,31 @@ class Preview {
     this.buttonCol.clear();
     const row = this.buttonCol.row();
 
-    const discard = row.button('Discard', () => this.close());
-    discard.description = this.draft.file
-      ? 'Close without filing anything. The saved copy stays where it is.'
-      : 'Close without filing anything.';
+    // The only way out. Opening the browser deliberately leaves this dialog up — the issue form is
+    // a draft in another window, the author may want to come back and edit, and the copy on screen
+    // is the only one they have. So the label says what closing means *now* rather than always.
+    const discard = row.button(this.filed ? 'Close' : 'Discard', () => this.close());
+    discard.description = this.filed
+      ? 'Close this dialog. The issue form in your browser is untouched — it is still a draft ' +
+        'until you press Create there.'
+      : this.draft.file
+        ? 'Close without filing anything. The saved copy stays where it is.'
+        : 'Close without filing anything.';
 
     const refused = this.check?.state === 'refuse';
-    const file = row.button(
-      this.filing ? 'Opening…' : 'Open GitHub Issue…',
-      () => void this.file(),
-    );
+    const label = this.filing
+      ? 'Opening…'
+      : this.filed
+        ? 'Open GitHub Issue Again…'
+        : 'Open GitHub Issue…';
+    const file = row.button(label, () => void this.file());
     file.disabled = refused || this.filing;
     // A greyed control that will not say why is the same bug as a hidden one.
     file.description = refused
       ? (this.check?.message ?? '')
-      : 'Copy the report to your clipboard and open a filled-in issue in your browser. ' +
+      : (this.filed
+          ? 'Edited the report since? Open a fresh issue form on what is on screen now. '
+          : 'Copy the report to your clipboard and open a filled-in issue in your browser. ') +
         'Nothing is posted until you press Create there.';
 
     this.buttonCol.flushUpdate();
@@ -155,10 +172,11 @@ class Preview {
 
     report(outcome);
     if (!this.live) return;
-    // The browser has the report; keeping the dialog up would only invite a second tab. A refusal
-    // leaves it open, because the thing to fix is in the box.
-    if (outcome.ok) this.close();
-    else this.renderButtons();
+    // Open either way. Nothing has been posted yet — what the browser has is a form — so closing
+    // on success would take away the only copy of the text at the moment the author is reading it
+    // over. They say when they are done, with the button that says so.
+    if (outcome.ok) this.filed = true;
+    this.renderButtons();
   }
 }
 

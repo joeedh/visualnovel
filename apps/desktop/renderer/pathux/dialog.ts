@@ -29,7 +29,7 @@ class Dialog {
   private readonly body: Container;
   private form: CommandForm | undefined;
 
-  constructor(id: string, overrides?: Record<string, PropValue>, choices?: Choices) {
+  constructor(id: string, overrides?: Record<string, PropValue>, choices?: Choices, note?: string) {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang a dialog on');
 
@@ -57,6 +57,14 @@ class Dialog {
       heading.description = entry.id;
       const what = paragraph(this.body, entry.description, PROSE);
       what.description = entry.description;
+      // Why *this* dialog is on screen, when something other than the author opened it. It sits
+      // under the command's own sentence because the command reads the same however it was
+      // reached — what changed is the occasion, and the occasion is what the fields are already
+      // filled in for.
+      if (note) {
+        const why = paragraph(this.body, note, PROSE);
+        why.description = note;
+      }
 
       this.form = new CommandForm(
         this.body.col(),
@@ -93,14 +101,18 @@ class Dialog {
  *
  * `choices` offers option lists for this opening only, for the fields whose vocabulary belongs to
  * the project rather than to the command — the conversations in it, the models a key is set for.
+ *
+ * `note` is one sentence saying why the dialog opened, for the openings the author did not ask
+ * for: a form that appears by itself with boxes already ticked has to account for both.
  */
 export function openCommandDialog(
   id: string,
   overrides?: Record<string, PropValue>,
   choices?: Choices,
+  note?: string,
 ): void {
   if (open) return;
-  open = new Dialog(id, overrides, choices);
+  open = new Dialog(id, overrides, choices, note);
 }
 
 export function closeCommandDialog(): void {

@@ -1,5 +1,6 @@
 /**
- * Shared chrome for the two screen popups — the command palette and the command dialog.
+ * Shared chrome for the screen popups — the command palette, the command dialog, and the report
+ * preview.
  *
  * path.ux hands back a plain container, so without this a dialog is a box the same colour as the
  * pane behind it and nothing says where it ends. The size is a **cap, not a size**: a fixed pixel

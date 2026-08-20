@@ -10,6 +10,7 @@ import type {
   TokenUsage,
   ToolSchema,
 } from '../backend.js';
+import { captureRequest } from './capture.js';
 import { buildConvoRequest } from './convo-request.js';
 import { callWithRetry } from './transient.js';
 
@@ -74,7 +75,7 @@ function readBlocks(res: any): {
 export function createAnthropicChat(
   apiKey: string,
   modelId: string,
-  opts: { effort?: EffortChoice } = {},
+  opts: { effort?: EffortChoice; record?: boolean } = {},
 ): ChatBackend {
   // Extra request fields for reasoning. `budget_tokens` is removed on current Claude models
   // (400) — the supported path is output_config.effort + adaptive thinking.
@@ -115,20 +116,27 @@ export function createAnthropicChat(
       });
     }
     content.push({ type: 'text', text: req.prompt });
-    return callWithRetry(`Claude request failed (${modelId})`, async () => {
-      const res = await anthropic.messages.create({
-        model: modelId,
-        system: req.system,
-        messages: [{ role: 'user', content }],
-        ...tuning(),
+    const body = {
+      model: modelId,
+      system: req.system,
+      messages: [{ role: 'user', content }],
+      ...tuning(),
+    };
+    const capture = await captureRequest('claude', body, { record: opts.record });
+    try {
+      return await callWithRetry(`Claude request failed (${modelId})`, async () => {
+        const res = await anthropic.messages.create(body);
+        const text = (res.content ?? [])
+          .filter((b: any) => b.type === 'text')
+          .map((b: any) => b.text)
+          .join('\n') as string;
+        const usage = usageOf(res);
+        return usage ? { text, usage } : { text };
       });
-      const text = (res.content ?? [])
-        .filter((b: any) => b.type === 'text')
-        .map((b: any) => b.text)
-        .join('\n') as string;
-      const usage = usageOf(res);
-      return usage ? { text, usage } : { text };
-    });
+    } catch (err) {
+      await capture.failed(err);
+      throw err;
+    }
   };
 
   return {
@@ -151,21 +159,28 @@ export function createAnthropicChat(
         });
       }
       content.push({ type: 'text', text: req.prompt });
-      return callWithRetry(`Claude tool request failed (${modelId})`, async () => {
-        const res = await anthropic.messages.create({
-          model: modelId,
-          system: req.system,
-          tools: tools.map((t) => ({
-            name: t.name,
-            description: t.description,
-            input_schema: t.parameters,
-          })),
-          messages: [{ role: 'user', content }],
-          ...tuning(),
+      const body = {
+        model: modelId,
+        system: req.system,
+        tools: tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          input_schema: t.parameters,
+        })),
+        messages: [{ role: 'user', content }],
+        ...tuning(),
+      };
+      const capture = await captureRequest('claude-tools', body, { record: opts.record });
+      try {
+        return await callWithRetry(`Claude tool request failed (${modelId})`, async () => {
+          const res = await anthropic.messages.create(body);
+          const { text, toolCalls } = readBlocks(res);
+          return { text: text || undefined, toolCalls, usage: usageOf(res) } as ChatToolReply;
         });
-        const { text, toolCalls } = readBlocks(res);
-        return { text: text || undefined, toolCalls, usage: usageOf(res) } as ChatToolReply;
-      });
+      } catch (err) {
+        await capture.failed(err);
+        throw err;
+      }
     },
     /**
      * The cached, multi-turn path. Everything about it that matters is in
@@ -176,11 +191,19 @@ export function createAnthropicChat(
     async chatConversation(req: ChatConvoRequest, tools: ToolSchema[]): Promise<ChatConvoReply> {
       const anthropic = await client();
       const body = buildConvoRequest(modelId, req, tools, tuning());
-      return callWithRetry(`Claude conversation failed (${modelId})`, async () => {
-        const res = await anthropic.messages.create(body);
-        const { text, toolCalls, blocks } = readBlocks(res);
-        return { text: text || undefined, toolCalls, usage: usageOf(res), raw: blocks };
-      });
+      // The one that matters most: its body is assembled rather than written out at the call
+      // site, so a positional 400 against it cannot be read anywhere but here.
+      const capture = await captureRequest('convo', body, { record: opts.record });
+      try {
+        return await callWithRetry(`Claude conversation failed (${modelId})`, async () => {
+          const res = await anthropic.messages.create(body);
+          const { text, toolCalls, blocks } = readBlocks(res);
+          return { text: text || undefined, toolCalls, usage: usageOf(res), raw: blocks };
+        });
+      } catch (err) {
+        await capture.failed(err);
+        throw err;
+      }
     },
   };
 }

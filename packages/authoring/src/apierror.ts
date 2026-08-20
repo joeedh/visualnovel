@@ -16,14 +16,20 @@ import type { ApiFailure, AskQuestion } from './loop.js';
  */
 export const API_RETRIES = 10;
 
-/** What the author decided. `switch` is a host action; the other two are an `ApiRecovery`. */
+/**
+ * What the author decided. `switch` and `report` are host actions; the other two are an
+ * `ApiRecovery` — and `report` stops the turn as well, so a host with nowhere to send a report can
+ * treat it as `stop` and lose nothing but the offer.
+ */
 export type ApiPlan =
   | { do: 'retry'; times: number }
   | { do: 'switch'; model: string }
+  | { do: 'report' }
   | { do: 'stop' };
 
 const RETRY_CHOICE = `Retry automatically, up to ${API_RETRIES} times`;
 const STOP_CHOICE = 'Stop this turn';
+const REPORT_CHOICE = 'Stop, and look into what went wrong';
 
 /** How switching to `model` reads in the list, and the string an answer is matched against. */
 export function switchChoice(model: string): string {
@@ -52,8 +58,25 @@ export function apiRecoveryQuestion(
     question:
       `${model || 'The model'} failed: ${failure.message}\n\n${advice}\n\n` +
       'What should I do? The conversation so far is kept either way.',
-    choices: [RETRY_CHOICE, ...others.map(switchChoice), STOP_CHOICE],
+    choices: [
+      RETRY_CHOICE,
+      ...others.map(switchChoice),
+      ...(offersReport(failure) ? [REPORT_CHOICE] : []),
+      STOP_CHOICE,
+    ],
   };
+}
+
+/**
+ * Whether looking into it is worth offering.
+ *
+ * Only a `request` fault: the provider read what was sent and rejected it, which is the one class
+ * where the request itself is the evidence. A rate limit has nothing to diagnose, a rejected key
+ * wants the key dialog, and `unknown` is where a false positive lives — an offer on every odd
+ * failure teaches the author to dismiss the offer.
+ */
+export function offersReport(failure: ApiFailure): boolean {
+  return failure.kind === 'request';
 }
 
 /**
@@ -65,6 +88,11 @@ export function readApiPlan(answer: string, others: readonly string[]): ApiPlan 
   if (!said) return { do: 'stop' };
   if (said === RETRY_CHOICE.toLowerCase() || /^retry\b/.test(said)) {
     return { do: 'retry', times: API_RETRIES };
+  }
+  // Read before the model search, because the row names no model while a typed answer that does
+  // ("look into what gemini did") is asking to diagnose rather than to switch.
+  if (said === REPORT_CHOICE.toLowerCase() || /\blook into\b/.test(said)) {
+    return { do: 'report' };
   }
   // A model is looked for anywhere in the answer, so the picked row, a typed id and "switch to
   // gemini-2.5-pro please" all land in the same place.

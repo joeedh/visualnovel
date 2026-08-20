@@ -18,6 +18,10 @@ export function chatVendorFor(modelId: string): keyof ResolvedKeys {
  * is not always a `Providers` bundle — `describeAsset` asks one vision model one question, and
  * building the reviewers and the image provider to get at it would be theatre.
  *
+ * `record: false` keeps the calls out of the request ring. Only one caller wants it — the
+ * difficult-agent analyst, which reads that ring and would otherwise evict the bodies it was
+ * opened to read, and find its own prompts there as though they were the author's.
+ *
  * `effort` is per-call rather than per-project: the desktop app binds it to the conversation and
  * a difficult-agent report borrows a different one for a single analysis. Gemini has no such knob
  * and ignores it.
@@ -26,10 +30,12 @@ export function chatBackendFor(
   modelId: string,
   keys: ResolvedKeys,
   effort?: EffortChoice,
+  opts: { record?: boolean } = {},
 ): { backend: ChatBackend; label: string } {
+  const { record } = opts;
   return chatVendorFor(modelId) === 'anthropic'
-    ? { backend: createAnthropicChat(keys.anthropic, modelId, { effort }), label: 'claude' }
-    : { backend: createGeminiChat(keys.gemini, modelId), label: 'gemini' };
+    ? { backend: createAnthropicChat(keys.anthropic, modelId, { effort, record }), label: 'claude' }
+    : { backend: createGeminiChat(keys.gemini, modelId, undefined, { record }), label: 'gemini' };
 }
 
 /**

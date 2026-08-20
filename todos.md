@@ -6,6 +6,7 @@
 	 block the pointer down going to its other consumers).  there should be a backup timer 
 	 to close the tooltip after 30 seconds.  in the multitouch case the user's own finger 
 	 can block the tooltip.
+[ ]: clicking a project in the recent projects menu doesn't open it
 
 ## Command Macro Report
 [x]: write a report on the pros and cons of giving the agent full access to the ux command system.

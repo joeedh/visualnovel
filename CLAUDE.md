@@ -231,6 +231,12 @@ editors, the session store, the seeded workspace, and every behaviour below in f
 - **A bad conversation is diagnosed on the author's own key, and the fiction's names never leave
   with it** — redaction is a boundary rather than a prompt, and nothing is posted.
   ([`docs/plans/reporting-a-difficult-agent.md`](docs/plans/reporting-a-difficult-agent.md))
+- **Every request is kept in memory, and what it says never reaches the report** — a bounded ring
+  in `@vn/providers` (64 MB / 64 entries, always on), so a 400 that names a position is readable
+  against the body it indexes; `faultKind` tells a fault in the request from a dead connection or
+  a bad key, and only the first opens the report dialog by itself. The analyst reads the ring by
+  pointer on the author's own key; none of it is carried into what is filed.
+  ([`docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md`](docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md))
 
 The renderer is a **path.ux screen mesh** — panes subdivide the window, each showing one editor;
 no React, no room vocabulary. path.ux is a git submodule at `vendor/path.ux`, so a fresh clone

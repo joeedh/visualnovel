@@ -408,6 +408,8 @@ const deps: SessionDeps = {
   openExternal: (url) => shell.openExternal(url),
   writeClipboard: (text) => clipboard.writeText(text),
   pushBusy: (state) => broadcast('command:ui', { type: 'busy', ...state }),
+  offerDiagnosis: (fault) =>
+    broadcast('command:ui', { type: 'agent', action: 'diagnose', ...fault }),
 };
 
 function getSession(): WorkspaceSession {

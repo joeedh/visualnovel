@@ -124,6 +124,7 @@ import {
   type Suspension,
 } from '@vn/artgen';
 import {
+  captureSnapshot,
   chatBackendFor,
   chatVendorFor,
   createMockProviders,
@@ -328,6 +329,12 @@ export interface SessionDeps {
    * has not returned an outcome to attach anything to.
    */
   pushBusy(state: { what?: string; ran: number; pending: number }): void;
+  /**
+   * Offer to diagnose the call that just failed. Pushed for the same reason `pushBusy` is: the
+   * author is answering a card that is still open inside a running turn, and there is no command
+   * outcome to hang it on.
+   */
+  offerDiagnosis?(fault: { thread?: string; message: string }): void;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -506,6 +513,8 @@ export interface ReportAsk {
   thread: string;
   note: string;
   source: boolean;
+  /** Whether the analyst may read the requests this session sent. Off unless the box is ticked. */
+  detail?: boolean;
   model: string;
   effort: string;
 }
@@ -888,6 +897,15 @@ export class WorkspaceSession {
       await this.setModel(plan.model);
       return { do: 'retry', times: 1 };
     }
+    if (plan.do === 'report') {
+      // The turn ends either way: a diagnosis reads the request that failed, and another attempt
+      // would only put a second one in front of it.
+      this.deps.offerDiagnosis?.({
+        ...(this.thread ? { thread: this.thread.id } : {}),
+        message: failure.message,
+      });
+      return { do: 'stop' };
+    }
     return plan.do === 'retry' ? { do: 'retry', times: API_RETRIES } : { do: 'stop' };
   }
 
@@ -1237,11 +1255,23 @@ export class WorkspaceSession {
     }
 
     if (ask.source && !(await sourceRoot())) return { ok: false, message: NO_SOURCE };
+    // Said before it is run rather than discovered afterwards: with nothing captured the box is
+    // ticked for no benefit, and an analyst told it can read requests that do not exist wastes
+    // turns finding that out.
+    if (ask.detail && captureSnapshot().headers().length === 0) {
+      return {
+        ok: false,
+        message:
+          'Nothing was sent to the model API in this session, so there are no requests to read. ' +
+          'Untick reading the requests.',
+      };
+    }
 
     const advice = adviseRun(modelId, effort ?? this.effort, ask.source, this.effort);
+    const also = ask.detail ? ' It also reads the requests this session sent.' : '';
     return {
       ok: true,
-      message: `Reads “${target.header.title}” with ${modelId}.${advice ? ` ${advice}` : ''}`,
+      message: `Reads “${target.header.title}” with ${modelId}.${advice ? ` ${advice}` : ''}${also}`,
     };
   }
 
@@ -1271,6 +1301,7 @@ export class WorkspaceSession {
         threadId: target.header.id,
         modelId,
         source: ask.source,
+        ...(ask.detail ? { detail: true } : {}),
         ...(effort ? { effort } : {}),
         ...(ask.note.trim() ? { wanted: ask.note } : {}),
         ...(this.deps.appVersion ? { appVersion: this.deps.appVersion } : {}),

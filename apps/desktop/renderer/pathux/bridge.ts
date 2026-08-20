@@ -29,6 +29,7 @@ import { shouldFileCommand } from '../../src/shared/notify.js';
 import type { ShellApp } from './context.js';
 import { notificationsChanged, refreshNotifications } from './notifications.js';
 import { closePalette, openPalette } from './palette.js';
+import { openReportDialog } from './report.js';
 import { applyView } from './view.js';
 
 let host: ShellApp | undefined;
@@ -317,6 +318,23 @@ export function installBridge(app: ShellApp): void {
       const state: BusyState = { what: ui.busyWhat, ran: effect.ran, pending: effect.pending };
       for (const watcher of busyWatchers) watcher(state);
       touch();
+    } else if (effect.type === 'agent' && effect.action === 'diagnose') {
+      // The API rejected what was sent rather than being unreachable, so the request itself is
+      // the evidence — and it is only in this process, only until the ring rolls over. Both
+      // reading boxes come ticked because this is the case they exist for; the author still
+      // presses the button, and may untick either.
+      void openReportDialog({
+        ...(effect.thread ? { thread: effect.thread } : {}),
+        source: true,
+        detail: true,
+        note:
+          `The model API refused this turn: ${effect.message}
+
+That is a fault in what was ` +
+          'sent, not in the connection, so the debug agent is set up to read both the source and ' +
+          'the requests this session sent. The requests stay on this machine — they are read on ' +
+          'your own key, and nothing from them goes into the report.',
+      });
     } else if (effect.type === 'view') {
       // The command already said what it meant to do; the mesh answers only when it disagrees,
       // and that answer displaces the optimistic sentence rather than following it.

@@ -184,6 +184,73 @@ describe('with the source', () => {
   });
 });
 
+/**
+ * The requests without the source: the author may let the analyst read what was sent without
+ * handing it the repository, so the tool loop has to be reachable by either door on its own.
+ */
+describe('with the requests but not the source', () => {
+  const listed: number[] = [];
+  const list: Tool<Record<string, never>> = {
+    name: 'list_requests',
+    description: 'list what was sent',
+    mutating: false,
+    args: z.object({}),
+    async run() {
+      listed.push(1);
+      return { ok: true, output: '#1  convo  900 B  FAILED: messages.1.content.0' };
+    },
+  };
+  const detail = () => new Map<string, Tool>([['list_requests', list as Tool]]);
+
+  it('runs the loop, and says it did not read the source', async () => {
+    listed.length = 0;
+    const backend = new Scripted([
+      JSON.stringify({ tool: 'list_requests', args: {} }),
+      JSON.stringify({ tool: 'submit_report', args: findings }),
+    ]);
+    const report = await analyze({
+      evidence,
+      backend,
+      redactor: redactor(),
+      detail: detail(),
+      ctx: {} as ToolContext,
+    });
+    expect(listed).toHaveLength(1);
+    expect(report.readSource).toBe(false);
+    expect(report.fellBack).toBeUndefined();
+    expect(backend.prompts[0]).toContain('list_requests');
+  });
+
+  it('tells the analyst the capture is private, and only when it has one', async () => {
+    // The paragraph rides on the system prompt, which is what the provider caches — so it is
+    // spliced in per analysis rather than restated in every step.
+    const systems: (string | undefined)[] = [];
+    class Watched extends Scripted {
+      override async message(req: ChatRequest): Promise<string> {
+        systems.push(req.system);
+        return super.message(req);
+      }
+    }
+
+    await analyze({
+      evidence,
+      backend: new Watched([JSON.stringify({ tool: 'submit_report', args: findings })]),
+      redactor: redactor(),
+      detail: detail(),
+      ctx: {} as ToolContext,
+    });
+    expect(systems[0]).toContain('Never quote its content');
+
+    systems.length = 0;
+    await analyze({
+      evidence,
+      backend: new Watched([JSON.stringify(findings)]),
+      redactor: redactor(),
+    });
+    expect(systems[0]).not.toContain('Never quote its content');
+  });
+});
+
 describe('the key the analysis model needs', () => {
   const config = { keys: { gemini: 'GEMINI_API_KEY', anthropic: 'ANTHROPIC_API_KEY' } } as never;
 
