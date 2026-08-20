@@ -1,5 +1,5 @@
 /**
- * Ingest: outside bytes become a `reference` asset (`docs/plans/chunked-prompts.md` §15).
+ * Ingest: outside bytes become a `reference` asset (`docs/plans/archive/chunked-prompts.md` §15).
  *
  * The two properties worth a real store are where the bytes land — the **base** root, beside the
  * authored art — and what is refused: a file that is not an image, and mock art, which a real

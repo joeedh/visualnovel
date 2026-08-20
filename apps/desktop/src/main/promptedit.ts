@@ -1,5 +1,5 @@
 /**
- * What one prompt edit does to a stored override (`docs/plans/chunked-prompts.md` §5, §6).
+ * What one prompt edit does to a stored override (`docs/plans/archive/chunked-prompts.md` §5, §6).
  *
  * Pure: chunks and the current override in, the next override out — or the sentence refusing it.
  * The session owns loading and writing; this owns the rules, so `check` and `run` cannot disagree

@@ -1,6 +1,6 @@
 /**
  * Byte-identity between the chunked builders and the flat-string builders they replaced
- * (`docs/plans/chunked-prompts.md` §18).
+ * (`docs/plans/archive/chunked-prompts.md` §18).
  *
  * The legacy collapse is spelled out literally in each case rather than imported, so this proves
  * the property in code instead of asserting that two call sites agree.

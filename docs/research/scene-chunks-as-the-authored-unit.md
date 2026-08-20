@@ -4,9 +4,9 @@ _Investigation. Not a plan — no steps, no waves committed to. It argues a shap
 it costs._
 
 _Status: **moves one and two have shipped.** Allocated line ids landed as
-[`../plans/allocated-line-ids.md`](../plans/allocated-line-ids.md) and lossless scene
+[`../plans/allocated-line-ids.md`](../plans/archive/allocated-line-ids.md) and lossless scene
 serialization as
-[`../plans/lossless-scene-serialization.md`](../plans/lossless-scene-serialization.md), so
+[`../plans/lossless-scene-serialization.md`](../plans/archive/lossless-scene-serialization.md), so
 blockers 1 and 2 below are fixed; 3 stands as written. The seven plans this document produced,
 and which of them are built, are tracked in [`../plans/index.md`](../plans/index.md)._
 
@@ -65,7 +65,7 @@ direction starts by making them allocated rather than derived.
 **Fixed.** Ids are now allocated by `splitScenes` and written down as `[[line: L4]]` /
 `[[nextline: 12]]` notes; reading never writes, and `story.assignLineIds` is the opt-in,
 undoable command that persists them. See
-[`../plans/allocated-line-ids.md`](../plans/allocated-line-ids.md).
+[`../plans/allocated-line-ids.md`](../plans/archive/allocated-line-ids.md).
 
 ### 2. Scene serialization is lossy, so edits cannot round-trip through the model
 
@@ -88,7 +88,7 @@ instead of `body` is lossless for everything `lines` retains.
 pinned by a property test; the heading's prefix and variant are retained, transitions/lyrics/
 centered text became line kinds, and `Scene.body` is gone. The surgical patcher stays for files
 the author wrote. See
-[`../plans/lossless-scene-serialization.md`](../plans/lossless-scene-serialization.md).
+[`../plans/lossless-scene-serialization.md`](../plans/archive/lossless-scene-serialization.md).
 
 ### 3. One file, many writers
 

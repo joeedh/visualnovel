@@ -1,5 +1,5 @@
 /**
- * The reference graph, and the cycle check over it (`docs/plans/chunked-prompts.md` §14).
+ * The reference graph, and the cycle check over it (`docs/plans/archive/chunked-prompts.md` §14).
  *
  * Enforcement is over references, not `Task.deps` — `deps` is incomplete and is not hashed, so a
  * ref cycle is invisible to `topoOrder`. And the cycle is over **logical slots, not hashes**: "Aiko's

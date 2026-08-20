@@ -5,7 +5,7 @@
  * perfectly and for free. This exists for the other case: making a generated project
  * viewable, and the P7 refine loop reviewable, by someone who has never held an API key.
  *
- * Plan: `docs/plans/sample-workspace-and-asset-cache.md`.
+ * Plan: `docs/plans/archive/sample-workspace-and-asset-cache.md`.
  */
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';

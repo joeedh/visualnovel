@@ -39,9 +39,9 @@ see [From the agent](#from-the-agent).
 
 This document describes what shipped. The implementation plan — including the deviations
 from it and the follow-ons deliberately left out — is
-[`plans/command-system.md`](plans/command-system.md). Undo/redo landed later, on top of this;
+[`plans/command-system.md`](plans/archive/command-system.md). Undo/redo landed later, on top of this;
 the strategy survey is [`gitUndoOptions.md`](gitUndoOptions.md) and the plan that carried out
-its recommendation is [`plans/command-undo-redo.md`](plans/command-undo-redo.md).
+its recommendation is [`plans/command-undo-redo.md`](plans/archive/command-undo-redo.md).
 
 ---
 
@@ -236,7 +236,7 @@ screenplay is worse than none. It landed once the story editors made destructive
 reachable from a *gesture*. The mechanism is
 [`gitUndoOptions.md`](gitUndoOptions.md) §8: **shadow snapshots** of the document tree, **split
 by data class**, and **refuse rather than guess** when the repo moved. Full write-up:
-[`plans/command-undo-redo.md`](plans/command-undo-redo.md).
+[`plans/command-undo-redo.md`](plans/archive/command-undo-redo.md).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
   document mutators set it — every `story.*` one (the branch/coverage commands it shipped for, the
@@ -283,7 +283,7 @@ looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-
 
 A hundred and seventeen, in nineteen namespaces. Sixty-two are `mutating`; sixty-eight declare a
 precondition; thirty-eight are undoable; fourteen ask for confirmation. (The table below is every
-one of them but `notify.*`, which [`notifications.md`](plans/notifications.md) states in full.)
+one of them but `notify.*`, which [`notifications.md`](plans/archive/notifications.md) states in full.)
 
 **Commands are the only write path.** The `story.*` branch mutators go through
 `session.editBranches(decide)` → `planMarkerEdit` → `applyMarkerPlan` → reload, and the scene
@@ -428,7 +428,7 @@ snapshotting a credential is the one thing that command exists to avoid;
 was open, which `vngen/state` being outside the snapshot means undo could not put back; and
 `workspace.open`/`workspace.pick`/`workspace.create` write into a *different* tree than the one a
 snapshot covers, so a shadow ref in the old repo could not restore it anyway. The reasoning is in
-[`plans/command-undo-redo.md`](plans/command-undo-redo.md).
+[`plans/command-undo-redo.md`](plans/archive/command-undo-redo.md).
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer
 applies (`applyView` moves the panes; `openPalette`/`closePalette` for the palette). The
@@ -570,7 +570,7 @@ write path and it is `story.*`.
 every builder assembles a `PromptChunk[]` and `renderPrompt` collapses it byte-identically to the
 flat string it always produced — so what these commands write is an **override** stored beside the
 authored input, and a project that runs none of them keeps every task hash it had. Full statement:
-[`plans/chunked-prompts.md`](plans/chunked-prompts.md).
+[`plans/chunked-prompts.md`](plans/archive/chunked-prompts.md).
 
 - **One asset, one rung.** Every command takes the asset `hash` and the session resolves it to the
   rung that names the whole picture: the character for a portrait, the outfit entry for a sheet, the
@@ -643,7 +643,7 @@ node scripts/vn-cdp.mjs "interaction.targets(interaction='branch.splice' carried
 ```
 
 Full design, including what deliberately is _not_ an interaction:
-[`plans/interaction-model.md`](plans/interaction-model.md).
+[`plans/interaction-model.md`](plans/archive/interaction-model.md).
 
 `CommandHost` is the app-specific service bundle every command receives:
 `{ session: WorkspaceSession; state: SessionStore; ui(effect: UiEffect): void; check(id, props) }`.
@@ -704,7 +704,7 @@ node scripts/vn-cdp.mjs --raw "window.vn.check('pipeline.run', {mock: false})"
 ```
 
 Full design, and why this is not the same function as `targets`:
-[`plans/preconditions-and-timeline-interaction.md`](plans/preconditions-and-timeline-interaction.md).
+[`plans/preconditions-and-timeline-interaction.md`](plans/archive/preconditions-and-timeline-interaction.md).
 
 ---
 
@@ -990,8 +990,8 @@ schemas instead is an obvious follow-on.
 Deliberately out of scope for v1, in rough order of value:
 
 1. ~~**Make `renderer/app/Palette.tsx` data-driven** off `command:catalog`.~~ **Shipped** as
-   step 7 of [`plans/allocated-line-ids.md`](plans/allocated-line-ids.md) — see
-   [From the palette](#from-the-palette).
+   step 7 of [`plans/allocated-line-ids.md`](plans/archive/allocated-line-ids.md) — see
+   [From the palette](#from-the-palette-or-from-a-commands-own-dialog).
 2. **Route `confirm` through the renderer.** The palette now takes a second click, but the main
    process still auto-approves for every other caller, so `pipeline.run`'s `confirm: true` is not
    a gate for the agent or CDP.

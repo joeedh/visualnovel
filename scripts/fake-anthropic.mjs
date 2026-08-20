@@ -1,7 +1,7 @@
 /**
  * A local stand-in for `api.anthropic.com`, so the whole diagnose-an-API-error path can be walked
  * without a key, a bill, or a real 400 to wait for
- * (`docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md` § Testing).
+ * (`docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md` § Testing).
  *
  * It speaks just enough of `POST /v1/messages` to answer from a script and to fail on cue with a
  * **real** positional refusal:

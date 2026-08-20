@@ -1,6 +1,6 @@
 /**
  * Adopting bytes as a slot's output — "this picture *is* the café's night plate", not "point at
- * this picture" (`docs/plans/adopting-an-uploaded-asset.md`).
+ * this picture" (`docs/plans/archive/adopting-an-uploaded-asset.md`).
  *
  * The generalization of `promoteConcept`, which was this act with one slot kind hard-coded. A slot
  * is a `RefBinding`, the address the reference graph, the cycle refusal and `prompt.addRef` already

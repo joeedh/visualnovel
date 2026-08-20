@@ -23,9 +23,9 @@
 
 _Status: survey, **partly built**. The three highest-ranked candidates shipped, each as a mode
 within an existing room rather than a new one: §1 the story branch editor (STUDIO's `branches`,
-[`../plans/story-branch-editor.md`](../plans/story-branch-editor.md)), §2 the task DAG viewer
-(FLOOR's `graph`, [`../plans/task-dag-view.md`](../plans/task-dag-view.md)), and §7 the shot
-timeline (FLOOR's `timeline`, [`../plans/shot-timeline-editor.md`](../plans/shot-timeline-editor.md)).
+[`../plans/story-branch-editor.md`](../plans/archive/story-branch-editor.md)), §2 the task DAG viewer
+(FLOOR's `graph`, [`../plans/task-dag-view.md`](../plans/archive/task-dag-view.md)), and §7 the shot
+timeline (FLOOR's `timeline`, [`../plans/shot-timeline-editor.md`](../plans/archive/shot-timeline-editor.md)).
 They share one canvas (`apps/desktop/renderer/graph/`) but **not** the heterogeneous adapter
 proposed below — each view projects its own node/edge model. §§3–6 and 8–10 remain unbuilt._
 
@@ -258,7 +258,7 @@ value than the pipeline views because sessions are short and the transcript is r
 `gitHead`, `gitDirty`, `written` paths, and the replayable `invocation`.
 
 The log is linear, but it is no longer flat: undo shipped
-([`../plans/command-undo-redo.md`](../plans/command-undo-redo.md)), so records carry `pre`/`post`
+([`../plans/command-undo-redo.md`](../plans/archive/command-undo-redo.md)), so records carry `pre`/`post`
 snapshot commits and the stack's own undo/redo entries are tagged. The graph-shaped version is
 the **join against git history**: commands as a lane beside commits, showing which files each
 touched — with the snapshot commits already sitting in the object database, waiting to be

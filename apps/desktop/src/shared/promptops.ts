@@ -1,6 +1,6 @@
 /**
  * The pure half of `prompt.moveChunk`: what the chunk list's effective order is, and what a drop
- * would make it (`docs/plans/chunked-prompts.md` §7).
+ * would make it (`docs/plans/archive/chunked-prompts.md` §7).
  *
  * It is in `shared/` for the same reason `coverage.ts` is — the pane runs these mid-drag to draw
  * what a drop would produce, and `prompt.reorder` (`interactions.ts`) enumerates its targets with

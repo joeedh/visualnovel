@@ -27,14 +27,14 @@ Four leaves share that same constrained allow-list, each for a reason worth stat
   generative pipeline/scheduler.
 - **`@vn/scriptedit`** exists for a sharper reason: it holds the scene-edit rules and write path,
   and both the desktop app's `story.*` commands _and_ `vnauthor` must run the same ones — so they
-  cannot live in either ([`plans/scene-edit-package.md`](plans/scene-edit-package.md)).
+  cannot live in either ([`plans/scene-edit-package.md`](plans/archive/scene-edit-package.md)).
 - **`@vn/bible`** is the third, for the same reason: both the agent and the desktop app search the
   story bible, so the ranking policy belongs to neither ([`story-bible.md`](story-bible.md)).
 - **`@vn/artgen`** is the fourth, and the one that reaches furthest down: it holds prompt
   composition (moved out of `@vn/pipeline`, which re-exports it) and on-demand generation, so it
   imports `providers` and `taskgraph` as well. `@vn/authoring` importing it is **not** a way around
   the pipeline ban — **the boundaries rule is per import statement, not transitive**
-  ([`plans/on-demand-concept-images.md`](plans/on-demand-concept-images.md)).
+  ([`plans/on-demand-concept-images.md`](plans/archive/on-demand-concept-images.md)).
 
 Two packages sit **outside the graph entirely**, and neither is drawn in the diagram.
 `@vn/debug2d` imports nothing from `packages/` and is imported only by the desktop renderer's

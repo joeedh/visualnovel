@@ -10,7 +10,7 @@
  * that a recorded P7 loop is one attempt deep; the cache exists to hold real *art*, and
  * replayability and LLM nondeterminism cannot both be had.
  *
- * Plan: `docs/plans/sample-workspace-and-asset-cache.md`.
+ * Plan: `docs/plans/archive/sample-workspace-and-asset-cache.md`.
  */
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import type { AnyTask, AssetCacheEntry, Logger } from '@vn/types';

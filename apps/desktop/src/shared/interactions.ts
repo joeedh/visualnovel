@@ -11,7 +11,7 @@
  *
  * It is in `shared/` rather than in the renderer because both halves need it: the surfaces run
  * `targets` during a gesture, and main runs it to answer an agent. See
- * `docs/plans/interaction-model.md`.
+ * `docs/plans/archive/interaction-model.md`.
  */
 import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
 import {

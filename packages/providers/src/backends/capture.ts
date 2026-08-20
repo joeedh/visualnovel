@@ -11,7 +11,7 @@
  * - **A ring in memory, always on.** Bounded by bytes and by count, oldest evicted. It never
  *   leaves the process on its own; the one reader is the debug agent, on the author's own key,
  *   and only when the author ticks the box that says so
- *   (`docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md`).
+ *   (`docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`).
  * - **Files on disk, off unless `VN_DUMP_REQUESTS` names a directory**, and deliberately not wired
  *   to a log level: the body carries the whole conversation, which is the author's fiction and
  *   their file contents, and that is not something a verbosity flag should start writing out.

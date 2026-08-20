@@ -1,9 +1,9 @@
 # Repos and commits
 
 How the app decides **which git repository owns a path** and **when history gets written**.
-Design and rationale: [`plans/repo-map-and-commit-on-save.md`](plans/repo-map-and-commit-on-save.md).
+Design and rationale: [`plans/repo-map-and-commit-on-save.md`](plans/archive/repo-map-and-commit-on-save.md).
 For undo — which is the other half of the same machinery — see
-[`command-system.md`](command-system.md#undo) and the survey it came from,
+[`command-system.md`](command-system.md#undo-is-opt-in-and-rests-on-shadow-snapshots) and the survey it came from,
 [`gitUndoOptions.md`](gitUndoOptions.md).
 
 <!-- toc -->
@@ -178,7 +178,7 @@ site that happens to remember it.
 Union merge is what makes an append-only log survive a branch merge: both sides' lines are kept.
 It duplicates a line whose read/hidden flags each side changed, which is why the reader dedupes by
 id and **ORs** the flags — both are monotonic, so the set bit wins. See
-[`plans/notifications.md`](plans/notifications.md).
+[`plans/notifications.md`](plans/archive/notifications.md).
 
 This repo's own `* text=auto eol=lf` is deliberately **not** copied into a project. `merge` and
 `text`/`eol` are orthogonal attributes, and a project is the user's repo; `initRepoAt` already

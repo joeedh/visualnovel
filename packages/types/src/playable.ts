@@ -1,6 +1,6 @@
 /**
  * The **playable** schema (`story.play.json`) — a flattened, ordered projection of the
- * project model that a runner can interpret directly (see docs/plans/runner.md, Part B).
+ * project model that a runner can interpret directly (see docs/plans/archive/runner.md, Part B).
  *
  * It is a thin view over the existing `Scene`/`Shot`/`Asset` types: each scene becomes an
  * ordered list of `beats` (show a background, say a line, narrate) plus its branch edges.

@@ -1,5 +1,5 @@
 /**
- * Tier 2 of [`docs/plans/auditing-the-api-key-instructions.md`]: the weekly, advisory half.
+ * Tier 2 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: the weekly, advisory half.
  *
  * For each vendor section of `docs/api-keys.md` it fetches that vendor's own documentation, hands
  * both to a model, and writes `key-instructions-review.md` saying agree / drifted /

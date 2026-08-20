@@ -1,5 +1,5 @@
 /**
- * A composed prompt as a surface sees it (`docs/plans/chunked-prompts.md` §6).
+ * A composed prompt as a surface sees it (`docs/plans/archive/chunked-prompts.md` §6).
  *
  * `@vn/artgen` is node-side and `src/shared/` is in the browser bundle, so `EffectiveChunk` and
  * `Composed` cannot cross — this re-declares them as plain data, the way `AssetInfo` already

@@ -1,6 +1,6 @@
 /**
  * Adoption: recording bytes that already exist as the output of the task that would have produced
- * them (`docs/plans/chunked-prompts.md` §13).
+ * them (`docs/plans/archive/chunked-prompts.md` §13).
  *
  * This is the one `done` record written outside the scheduler, and it has to be unable to forge
  * work that never happened. The property is structural rather than a convention: the caller hands

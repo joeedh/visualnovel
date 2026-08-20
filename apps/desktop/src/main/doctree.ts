@@ -2,7 +2,7 @@
  * The sidebar's two shapes, as pure projections: a logical document tree and per-entity
  * backlinks. Every edge here already exists somewhere — the model's cast lists, `ShotSubject`,
  * `Asset.satisfies`, the tag index — so this module reads no file and writes none. Plan:
- * `docs/plans/document-tree-and-backlinks.md`.
+ * `docs/plans/archive/document-tree-and-backlinks.md`.
  */
 import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';

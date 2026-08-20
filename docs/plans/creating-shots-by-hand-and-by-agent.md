@@ -185,7 +185,7 @@ its other tools already use.
 
 New tools with no supporting context produce a model that misuses them. Knowledge is routed to
 the three places
-[`what-the-agent-knows-about-the-story-format.md`](what-the-agent-knows-about-the-story-format.md)
+[`what-the-agent-knows-about-the-story-format.md`](archive/what-the-agent-knows-about-the-story-format.md)
 established — the system prompt for what is always true, refusals for what is case-specific, a
 skill for workflow — and every surface that currently teaches the *old* rule is corrected in the
 same stage that changes it:
@@ -222,7 +222,7 @@ same stage that changes it:
   told to edit state it has no way to look at.
 - **The caching contract is respected, not renegotiated.** The system prompt and the tools block
   are part of the byte-stable cached prefix
-  ([`prompt-caching-and-deferred-tool-loading.md`](prompt-caching-and-deferred-tool-loading.md)):
+  ([`prompt-caching-and-deferred-tool-loading.md`](archive/prompt-caching-and-deferred-tool-loading.md)):
   new prompt text and new tools land between conversations, never edited into a live one — a
   mid-conversation change, if one is ever needed, rides the existing appended
   `{"role":"system"}` channel. The desktop's System Prompt editor needs no change; it renders
@@ -279,13 +279,13 @@ outlive the migration silently.
 Coverage section's "decomposed on purpose" bullet gains the creation door, and the busy state
 joins the gesture rules; [`../vnauthor.md`](../vnauthor.md#tools) — the tool table;
 [`../command-system.md`](../command-system.md) — anywhere a command count is named. Shipped plans
-([`shot-timeline-editor.md`](shot-timeline-editor.md) and kin) are history and are **not**
+([`shot-timeline-editor.md`](archive/shot-timeline-editor.md) and kin) are history and are **not**
 rewritten; a plan is the authority on its own scope, and this one records the change.
 
 ## Out of scope
 
 - Routing the agent's tool loop through the command registry — still the follow-on
-  [`command-system.md`](command-system.md) records, and this plan neither needs it nor advances it.
+  [`command-system.md`](archive/command-system.md) records, and this plan neither needs it nor advances it.
 - Merging or splitting shots, and any change to `timeline.reorder`'s refusal for interleaved
   shots.
 - Any change to task identity, `buildShotPrompt`, or what invalidates art.

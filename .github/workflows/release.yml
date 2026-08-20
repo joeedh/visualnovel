@@ -1,4 +1,4 @@
-# Turn a tag into a draft release. Plan: `docs/plans/release-ci-workflow.md`, which argues every
+# Turn a tag into a draft release. Plan: `docs/plans/archive/release-ci-workflow.md`, which argues every
 # choice below in prose.
 #
 # The shape is gate → build → publish, and the seams between them are the point. Checks run once,

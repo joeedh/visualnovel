@@ -38,6 +38,12 @@ happening, not looked up afterwards.
   `docs/plans/<descriptive-name>.md` before the work starts, and is kept up to date as the
   work proceeds — not left only in the conversation. the plan should have a properly
   descriptive name.
+- **A shipped plan moves to [`plans/archive/`](plans/archive).** [`plans/index.md`](plans/index.md)
+  is the authority on status; when its row for a plan flips to **shipped**, the file is
+  `git mv`ed into `archive/` in the same change and every link to it updated —
+  `pnpm check:doclinks` (part of `pnpm lint`) names each one that was missed. Open plans
+  (planned/partial) and the tracker files stay at the top level, so `docs/plans/` itself
+  reads as the list of work still in flight.
 - **`todos.md` at the repo root is the author's running list, and a finished item gets its
   checkbox checked** — `[ ]:` becomes `[x]:` as part of finishing the work, not later. Leave
   the wording, ordering and whitespace of the entry alone: it is hand-written, it is

@@ -5,7 +5,7 @@
  * reused, what nothing asked for, and what is indexed but missing on disk. Without it, the
  * script runs the fixture's image requests against the **real** Gemini model and writes the
  * responses back — a deliberate, costed, human-initiated action that needs a Gemini key.
- * Staleness is always reported and never gated; see `docs/plans/sample-workspace-and-asset-cache.md`.
+ * Staleness is always reported and never gated; see `docs/plans/archive/sample-workspace-and-asset-cache.md`.
  *
  * The logic lives in `packages/testkit/src/record.ts` so it is typechecked and covered by the
  * boundaries rule. Testkit is source-only TypeScript, so bundle it the way the command catalog

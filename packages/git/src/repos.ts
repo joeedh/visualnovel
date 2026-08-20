@@ -1,5 +1,5 @@
 /**
- * Which repository owns a path — the multi-repo seam (`docs/plans/repo-map-and-commit-on-save.md`).
+ * Which repository owns a path — the multi-repo seam (`docs/plans/archive/repo-map-and-commit-on-save.md`).
  *
  * A project's story bible or base assets may each be their own repo, so nothing may assume one
  * root. The map is **discovered, not declared**: `git rev-parse --show-toplevel` is git's own

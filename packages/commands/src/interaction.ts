@@ -9,7 +9,7 @@
  * The load-bearing rule is that `targets` is the *same function the drop calls*, not a
  * description of it. That is what the branch editor already did by hand — the refusal shown
  * mid-drag is the refusal that would happen — named here so each new surface inherits it
- * instead of re-establishing it. See `docs/plans/interaction-model.md`.
+ * instead of re-establishing it. See `docs/plans/archive/interaction-model.md`.
  */
 import { COMMAND_ID } from './command.js';
 import type { Invocation } from './dsl.js';

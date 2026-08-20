@@ -1,6 +1,6 @@
 /**
  * The pure order rules behind `prompt.moveChunk` and the `prompt.reorder` gesture
- * (`docs/plans/chunked-prompts.md` §7).
+ * (`docs/plans/archive/chunked-prompts.md` §7).
  */
 import { effectiveChunks } from '@vn/artgen';
 import type { PromptChunk, PromptOverride } from '@vn/types';

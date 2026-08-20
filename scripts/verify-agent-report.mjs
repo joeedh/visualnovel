@@ -1,7 +1,7 @@
 /**
  * Walk the whole of "the API refused the turn, so the app offered to look into it" — from the
  * refusal, through the dialog that opens by itself, to the GitHub form the author presses Create
- * on (`docs/plans/diagnosing-an-api-error-from-the-request-that-caused-it.md` § Testing).
+ * on (`docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md` § Testing).
  *
  * **Half harness, half instructions**, because the path cannot be driven entirely from outside.
  * `renderer/pathux/report.ts` says why: `window.vn.exec` invokes main directly, so a turn sent

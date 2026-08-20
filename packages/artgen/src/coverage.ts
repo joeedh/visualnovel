@@ -1,5 +1,5 @@
 /**
- * Does a rewritten prompt still say what each chunk said? (`docs/plans/chunked-prompts.md` §1, §4)
+ * Does a rewritten prompt still say what each chunk said? (`docs/plans/archive/chunked-prompts.md` §1, §4)
  *
  * A condensed or hand-written prompt is one string with no structure in it, so the only way to ask
  * whether a clause survived is to look for its words. That is a **heuristic**, and it is the whole

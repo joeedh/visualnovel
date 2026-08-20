@@ -76,7 +76,7 @@ marker; see [`testkit.md`](testkit.md#placeholder-art-and-the-recorded-corpus).
 Authored input lives at the project root: `project.yaml`, `characters/<id>/character.md`,
 `locations/<id>.md`, `scenes/<id>.md`. Those are the conventional homes, and where a _new_ sheet is
 created — but a character or location tagged `type:` under `wiki/**` is discovered there too
-([`plans/entity-discovery-by-meta-tag.md`](plans/entity-discovery-by-meta-tag.md)).
+([`plans/entity-discovery-by-meta-tag.md`](plans/archive/entity-discovery-by-meta-tag.md)).
 
 **Base art is the one generated thing that is not under `vngen/`.** `assets/` (`manifest.json` +
 `objects/<hash>.<ext>`) sits at the project root because it is its own subtree and may be its own

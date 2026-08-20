@@ -66,7 +66,7 @@ title, tags, headings, one line per note; and the [document tree](document-tree.
 paths and titles back into the sidebar's Wiki branch. A table of contents is not an excerpt; it
 says a note about the war has a `Casualties` heading and nothing about what is under it, which is
 what turns a blind `search_bible` into an aimed one without pasting a word. See
-[`plans/agent-context-regeneration.md`](plans/agent-context-regeneration.md).
+[`plans/agent-context-regeneration.md`](plans/archive/agent-context-regeneration.md).
 
 The tree stops there for the same reason. A character's *own* sheet is linked, because the tag
 index already knows where it was found — but "which other notes mention Aiko" stays a `query`,

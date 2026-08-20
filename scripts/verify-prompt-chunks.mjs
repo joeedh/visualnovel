@@ -1,6 +1,6 @@
 /**
  * Drive the chunked-prompt editor in a running desktop app and check what it draws
- * (`docs/plans/chunked-prompts.md` §18). The pane can only be verified live — the desktop jest
+ * (`docs/plans/archive/chunked-prompts.md` §18). The pane can only be verified live — the desktop jest
  * project is node-only, so every *rule* is unit-tested and everything below is the wiring.
  *
  * Usage:

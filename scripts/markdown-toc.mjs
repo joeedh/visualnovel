@@ -1,8 +1,9 @@
 /**
  * Generate/update tables of contents in `docs/*.md` and `docs/research/*.md`.
  *
- * Plan files (`docs/plans/*.md`) are intentionally excluded — they're living documents
- * whose headings churn as work proceeds, and a TOC there is more noise than signal.
+ * Plan files (`docs/plans/**`, the archive included) are intentionally excluded — they're
+ * living documents whose headings churn as work proceeds, and a TOC there is more noise
+ * than signal.
  *
  * markdown-toc only touches a file that already has `<!-- toc -->` / `<!-- tocstop -->`
  * markers, so this first inserts them (right after the leading H1) into any target file

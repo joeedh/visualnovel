@@ -16,7 +16,7 @@
 <!-- tocstop -->
 
 **Status: §8 has been carried out** — see [§8](#8-recommendation) for what shipped and where
-it deviated, and [`plans/command-undo-redo.md`](plans/command-undo-redo.md) for the
+it deviated, and [`plans/command-undo-redo.md`](plans/archive/command-undo-redo.md) for the
 implementation. The survey below is left as written, in the present tense of a `@vn/commands`
 that shipped **without** undo: it records what v1 already captured, what each candidate
 strategy would cost, and which one to reach for first. That is the reasoning the choice rests

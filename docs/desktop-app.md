@@ -7,7 +7,7 @@ side by side. Every action the app can take is a registered command
 ([`command-system.md`](command-system.md)); what it persists and where is
 [`desktopAppState.md`](desktopAppState.md); what it plays is
 [`playable-format.md`](playable-format.md). The rewrite that got here, step by step and with its
-traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/pathux-desktop-rewrite.md).
+traps written down, is [`plans/pathux-desktop-rewrite.md`](plans/archive/pathux-desktop-rewrite.md).
 
 <!-- toc -->
 
@@ -48,7 +48,7 @@ pnpm --filter @vn/desktop dev -- --mock         # live dev loop
 **Shipping it is a different command**: `pnpm package` builds an installer and `pnpm smoke`
 runs the packaged binary to prove the two lazily-imported SDKs actually reached the app image.
 Why it is built the way it is: [`toolchain.md`](toolchain.md#packaging-the-desktop-app) and
-[`plans/packaging-the-desktop-app.md`](plans/packaging-the-desktop-app.md).
+[`plans/packaging-the-desktop-app.md`](plans/archive/packaging-the-desktop-app.md).
 
 **`pnpm vndesktop` opens CDP on 9222**, like the dev loop — `scripts/vndesktop.mjs` sets
 `VN_CDP_PORT` before launching Electron, because the switch can only be appended before
@@ -343,7 +343,7 @@ are the bridge's.
   notification, because that is the one verdict worth surviving the frame; "you are up to date" is
   said and not filed. The check is fired through `act` rather than a form: it takes no arguments
   the author would fill in, and `report` is what voices the answer. Full write-up:
-  [`plans/in-app-update-checks.md`](plans/in-app-update-checks.md).
+  [`plans/in-app-update-checks.md`](plans/archive/in-app-update-checks.md).
 - **The Help menu's other entry opens two dialogs in turn.** Report a Difficult Agent…
   (`pathux/report.ts`) is not a bare `openCommandDialog`: three of `report.agent`'s five fields have
   a vocabulary the command cannot carry — the conversations in *this* project, the models a key
@@ -361,7 +361,7 @@ are the bridge's.
   — which is what keeps it out of the log — replaces the editor with a size label. The Open GitHub
   Issue… button is gated by `report.openIssue`'s own `check`, re-asked on every keystroke, so a name
   the redactor still recognises in the body is a refusal in the command's own words rather than a
-  silent rewrite. ([`plans/reporting-a-difficult-agent.md`](plans/reporting-a-difficult-agent.md))
+  silent rewrite. ([`plans/reporting-a-difficult-agent.md`](plans/archive/reporting-a-difficult-agent.md))
 - **A mid-gesture verdict must be the verdict that would happen.** Wherever a drag decides
   something, the grab captures every candidate's verdict up front — from the same pure rule the
   command itself runs, through the interaction layer's `targets` query
@@ -426,7 +426,7 @@ A **layout template** is a named screen arrangement the *project* owns:
 put back by Reset View Layout…. Two ship — **Writing** (the documents tree, the script with the
 branch cards behind it, the agent) and **Art** (the documents tree, one asset with its art notes,
 the pipeline queue). Full write-up:
-[`plans/layout-templates-and-the-view-menu.md`](plans/layout-templates-and-the-view-menu.md).
+[`plans/layout-templates-and-the-view-menu.md`](plans/archive/layout-templates-and-the-view-menu.md).
 
 - **The template is the saved arrangement; the live mesh is not.** What is on screen right now
   stays per install in `desktop/session.json` under `pathux.layout`, for the reason
@@ -462,7 +462,7 @@ Two editors draw a graph, and they share both the geometry and the surface. `ren
 the domain-free math — `layout.ts` (layered DAG layout), `edges.ts` (routes plus the polyline every
 hit test uses), `hit.ts` (`pick`), `viewport.ts` (pan/zoom) — all pure, all tested.
 `pathux/graph/canvas.ts` is the imperative surface over it. Plan:
-[`plans/story-branch-editor.md`](plans/story-branch-editor.md).
+[`plans/story-branch-editor.md`](plans/archive/story-branch-editor.md).
 
 - **One geometry, drawn and hit-tested.** `routeEdges` emits the SVG path and its sampled
   polyline together, so an edge can't be clickable where it isn't drawn. Slop is authored in
@@ -524,7 +524,7 @@ sixteen tests over the three drags.
 and cues, the composer at the end. `rooms/studio/script/script.ts` (`scriptRows`, `keyAct`,
 `stepsOf`, `checkOf`, `splitBoundaries`, `mergeTarget`, `dropTarget`, `nextEditing`) is imported
 unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` with six tests. Plan:
-[`plans/script-composition-in-studio.md`](plans/script-composition-in-studio.md).
+[`plans/script-composition-in-studio.md`](plans/archive/script-composition-in-studio.md).
 
 - **The model is a list of lines, not a buffer.** There is no document being diffed on save: a
   keystroke either belongs to the open row's textarea or names one command, and `script.ts` is the
@@ -690,7 +690,7 @@ the same events** to write the transcript — see the threads bullet below.
   `asked` drops the chips the instant one is. A cancelled dialog and a batch where every file was
   refused both leave the conversation in progress alone — the renderer keys on the `seed` the
   command emits only when something was written. See
-  [`plans/upload-and-archive.md`](plans/upload-and-archive.md) and
+  [`plans/upload-and-archive.md`](plans/archive/upload-and-archive.md) and
   [`vnauthor.md`](vnauthor.md#the-archive).
 - **A pane the author did not click is flashed, once.** `UiEffect`'s `view` carries `flash`, and
   `applyView` outlines the pane it landed in for 600ms after the mesh has settled. It is an overlay
@@ -713,7 +713,7 @@ the same events** to write the transcript — see the threads bullet below.
   and `/effort` read too. **The effort menu offers what the model takes, and there is no
   `default` item**: it lists that model's own ladder plus `no thinking` where an explicit
   `thinking: disabled` is accepted, and it starts at `low` — see
-  [`plans/deliberate-reasoning-effort-defaults.md`](plans/deliberate-reasoning-effort-defaults.md)
+  [`plans/deliberate-reasoning-effort-defaults.md`](plans/archive/deliberate-reasoning-effort-defaults.md)
   for why the absent knob was the wrong default. A model with no reasoning knob at all greys the
   menu and says why; the setting is **kept** rather than cleared, so switching back to a model
   that honours it needs no second gesture — but a level the new model does not offer is stepped
@@ -745,8 +745,8 @@ The pure rules live in `renderer/rules/timeline/` (`drift`, `editing`, `wardrobe
 `@vn/scriptedit` (`coverage.ts`, `shotcreate.ts` — geometry and shot creation, shared with the
 agent's tools); the state machine the React component kept in its own `.tsx` is now
 `pathux/timeline.ts`, with its tests beside it.
-Plans: [`plans/shot-timeline-editor.md`](plans/shot-timeline-editor.md) and
-[`plans/line-editing-in-floor.md`](plans/line-editing-in-floor.md).
+Plans: [`plans/shot-timeline-editor.md`](plans/archive/shot-timeline-editor.md) and
+[`plans/line-editing-in-floor.md`](plans/archive/line-editing-in-floor.md).
 
 This is the only surface that edits `Shot.coversLines` directly — the `story.*` scene editors also
 move it, as fallout of a split or merge rather than as the point — and `buildShotPrompt` ignores it,
@@ -877,7 +877,7 @@ list), `editors/graph.ts` (the DAG, on the shared canvas) and `editors/inspector
 detail). The list is better for scanning, the graph for structure; both are read-only, and the only
 mutations from any of the three are `pipeline.run` and `gate.approve`. `rooms/floor/taskGraph.ts`
 owns the derivation and `rooms/floor/attempts.ts` the review merge, both unchanged with their tests.
-Plan: [`plans/task-dag-view.md`](plans/task-dag-view.md).
+Plan: [`plans/task-dag-view.md`](plans/archive/task-dag-view.md).
 
 - **A task surface publishes `ui.taskHash`, and that is what the inspector watches.** The three
   authored ids answer "where in the story", which is not the same question as "which node" — a task
@@ -978,7 +978,7 @@ the gap between them; `attempts.ts` is the pure half. Two contracts: `blocking` 
 as `mergeReports` (`@vn/providers`) computes it, so the UI can't disagree with the verdict the
 runner acted on; and every attempt's bytes are in the store (`store.write` runs per attempt,
 `store.accept` only on the clean one), so rejected frames are viewable over `vnasset://`. Plan:
-[`plans/refine-loop-inspector.md`](plans/refine-loop-inspector.md).
+[`plans/refine-loop-inspector.md`](plans/archive/refine-loop-inspector.md).
 
 ## Play
 
@@ -1167,8 +1167,8 @@ with tests beside them.
 that would make them differently. Its subject is `ui.assetHash`, which the documents tree publishes
 when an asset leaf is clicked; the rules on top of it (which approve command applies, the badges,
 the drift note, which prompt to show) are pure in `renderer/rules/assetview.ts` with tests beside
-them. Plans: [`plans/asset-names-and-the-asset-editor.md`](plans/asset-names-and-the-asset-editor.md)
-and [`plans/on-demand-concept-images.md`](plans/on-demand-concept-images.md).
+them. Plans: [`plans/asset-names-and-the-asset-editor.md`](plans/archive/asset-names-and-the-asset-editor.md)
+and [`plans/on-demand-concept-images.md`](plans/archive/on-demand-concept-images.md).
 
 `art.generate(sentence=…)` is the other way in: it draws a concept and, unless told not to, opens
 it here — so asking for a picture ends looking at it. `art.redraw` does the same with the sketch
@@ -1181,7 +1181,7 @@ it produces.
   came from a document offers a `⇱` to it. The art notes are still the append-only half beside it,
   and both are authored input: setting either re-keys the task, so "regenerate" is the pipeline that
   already exists rather than a second path to the image model. See
-  [`plans/chunked-prompts.md`](plans/chunked-prompts.md).
+  [`plans/chunked-prompts.md`](plans/archive/chunked-prompts.md).
 - **A reference image lives on the card of the clause it is evidence for.** Under each card is a
   strip of thumbnails (`vnasset://<hash>.<ext>`); a click opens that picture `elsewhere` — this pane
   is showing what the reference is *for* — and `×` runs `prompt.dropRef`. A chip on a muted clause is
@@ -1256,7 +1256,7 @@ it produces.
   layout. The hint says what it costs: the render it stands in for keeps its bytes in the store, and
   the next run adopts the author's picture instead of drawing one. Nothing is auto-accepted, and the
   pane moves to the new hash afterwards, because the bytes it was showing are no longer the slot's.
-  See [`plans/adopting-an-uploaded-asset.md`](plans/adopting-an-uploaded-asset.md).
+  See [`plans/adopting-an-uploaded-asset.md`](plans/archive/adopting-an-uploaded-asset.md).
 - **Show task hands off rather than duplicating.** `ui.taskHash` is published and the inspector is
   opened `elsewhere` — attempts, the refine loop and the reviewer's verdict are its subject, and
   this pane does not re-render them.
@@ -1405,7 +1405,7 @@ before the first window and the app hangs with nothing on screen. Full write-up:
 
 One workspace at a time, resolved in `app.whenReady()` before the asset protocol or any session
 exists — but no longer resolved *forever*. Plan:
-[`plans/project-bootstrap-and-workspace-picker.md`](plans/project-bootstrap-and-workspace-picker.md).
+[`plans/project-bootstrap-and-workspace-picker.md`](plans/archive/project-bootstrap-and-workspace-picker.md).
 
 **Precedence at launch**, first hit wins:
 

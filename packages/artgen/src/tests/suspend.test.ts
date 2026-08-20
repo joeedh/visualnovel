@@ -1,5 +1,5 @@
 /**
- * Suspension is derived and transitive (`docs/plans/chunked-prompts.md` §13). Nothing here writes
+ * Suspension is derived and transitive (`docs/plans/archive/chunked-prompts.md` §13). Nothing here writes
  * a flag; every assertion is a walk over the same manifest twice, with one edit in between.
  */
 import type { Asset, AssetKind, Location, ProjectModel, Shot } from '@vn/types';

@@ -1,5 +1,5 @@
 /**
- * The chunked-prompt baseline (`docs/plans/chunked-prompts.md`, stage 0).
+ * The chunked-prompt baseline (`docs/plans/archive/chunked-prompts.md`, stage 0).
  *
  * Task identity is `sha256(kind, inputs)` over the *flat* prompt string, so any change to how a
  * prompt is assembled re-keys every task in every existing project. This pins the whole set for a

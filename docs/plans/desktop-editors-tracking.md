@@ -8,12 +8,12 @@ the individual plans hang off. Survey that motivated them:
 
 | # | Plan | Kind | Status | Depends on |
 | - | ---- | ---- | ------ | ---------- |
-| — | [test-fixtures](test-fixtures.md) | groundwork | **done** | — |
-| 0 | [desktop-renderer-restructure](desktop-renderer-restructure.md) | refactor | **done** | — |
-| 1 | [refine-loop-inspector](refine-loop-inspector.md) | upgrade | **done** | 0, testkit |
-| 2 | [story-branch-editor](story-branch-editor.md) | **new editor** | **done** | 0, testkit |
-| 3 | [task-dag-view](task-dag-view.md) | upgrade | **done** | 0, 2 (`renderer/graph/`), testkit |
-| 4 | [shot-timeline-editor](shot-timeline-editor.md) | **new editor** | **done** | 0, testkit, ~~shot persistence~~, ~~a real run~~ |
+| — | [test-fixtures](archive/test-fixtures.md) | groundwork | **done** | — |
+| 0 | [desktop-renderer-restructure](archive/desktop-renderer-restructure.md) | refactor | **done** | — |
+| 1 | [refine-loop-inspector](archive/refine-loop-inspector.md) | upgrade | **done** | 0, testkit |
+| 2 | [story-branch-editor](archive/story-branch-editor.md) | **new editor** | **done** | 0, testkit |
+| 3 | [task-dag-view](archive/task-dag-view.md) | upgrade | **done** | 0, 2 (`renderer/graph/`), testkit |
+| 4 | [shot-timeline-editor](archive/shot-timeline-editor.md) | **new editor** | **done** | 0, testkit, ~~shot persistence~~, ~~a real run~~ |
 
 Recommended order: **test-fixtures → 0 → 1 → 2 → 3 → 4.** test-fixtures and 0 are both
 "make the ground testable" work and are independent of each other, so they can run in
@@ -33,7 +33,7 @@ Twelve test files roll their own `mkdtemp`, and the two most complete fixtures a
 incompatible — `apps/cli` writes a one-character/one-scene project to disk, while `pipeline`
 and `scheduler` hand-build in-memory `ProjectModel` literals. Nothing produces a git-backed,
 multi-scene, actually-*run* project, which is what four of the five checklists below assert
-against. Split out into [test-fixtures](test-fixtures.md).
+against. Split out into [test-fixtures](archive/test-fixtures.md).
 
 **Resolved** — `@vn/testkit` ships `makeProject` / `synthProject` / `SCRIPTS`; the `cli`,
 `scheduler`, `pipeline`, `export` and `authoring-app` fixtures are migrated onto it, and
@@ -62,7 +62,7 @@ The branch editor therefore needs a **surgical marker patcher** that rewrites on
 as the safety net. Mitigating factor: there is exactly one screenplay file
 (`packages/store/src/worktree.ts:43` reads `fountain[0]` only).
 
-**Resolved** — [`lossless-scene-serialization.md`](lossless-scene-serialization.md) rewrote
+**Resolved** — [`lossless-scene-serialization.md`](archive/lossless-scene-serialization.md) rewrote
 `sceneToFountain` against `Scene.lines` and retired `Scene.body` entirely; the contract
 `parse(write(scene)) ≡ scene` is pinned by a property test. The surgical patcher stays for
 inherited files, where the author's formatting is theirs to keep.
@@ -97,7 +97,7 @@ These apply to every plan; changing one is a decision to revisit here, not in a 
   hit-testing, coverage math, and derivation are all pure and all tested; components are not.
 - **Project fixtures come from `@vn/testkit`, not from a new `mkdtemp` block.** Anything an
   editor test asserts against — a branching screenplay, a git repo, a completed mock run —
-  is built by [test-fixtures](test-fixtures.md). A new bespoke builder is a signal that
+  is built by [test-fixtures](archive/test-fixtures.md). A new bespoke builder is a signal that
   testkit is missing an option.
 - **No new accent hues.** The existing `--sodium` (warm — authored/human) and `--signal`
   (cool — machine/pipeline) split already encodes provenance. Editors spend those two.
@@ -212,7 +212,7 @@ Decided against in the survey, recorded here so it does not get re-proposed:
 - [x] `coversLines` edits provably do not rehash _(Wave 1)_
 - [x] Round-trip verified through `story.play.json` _(Wave 2, live over CDP)_
 - [x] Acceptance pass on a real non-mock run _(see the plan's
-      [Acceptance on a real run](shot-timeline-editor.md#acceptance-on-a-real-run))_
+      [Acceptance on a real run](archive/shot-timeline-editor.md#acceptance-on-a-real-run))_
 
 ### Debug lessons
 

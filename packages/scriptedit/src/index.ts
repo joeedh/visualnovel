@@ -4,7 +4,7 @@
  *
  * The rules were in `apps/desktop/src/shared/`, which made them unreachable from `@vn/authoring`
  * (a package may not import an app) — so the agent's `edit_scene` had no way to be the same answer
- * as the desktop's `story.*` commands. See `docs/plans/scene-edit-package.md`.
+ * as the desktop's `story.*` commands. See `docs/plans/archive/scene-edit-package.md`.
  *
  * That covers both halves of a scene edit: `lineops` decides which *edits* are legal and
  * `branchops` which *wires* are. The wires came over second, because until they did the agent

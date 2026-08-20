@@ -1,5 +1,5 @@
 /**
- * Asset → the rung that owns its prompt (`docs/plans/chunked-prompts.md` §2), and what that rung
+ * Asset → the rung that owns its prompt (`docs/plans/archive/chunked-prompts.md` §2), and what that rung
  * says today. The point of the lookup is that it is a lookup: no merge chain, one answer per asset.
  */
 import type { Asset, AssetKind, PromptOverride, Shot } from '@vn/types';

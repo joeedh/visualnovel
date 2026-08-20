@@ -1,6 +1,6 @@
 /**
  * Suspension: what a changed upstream asset does to everything downstream of it
- * (`docs/plans/chunked-prompts.md` §13).
+ * (`docs/plans/archive/chunked-prompts.md` §13).
  *
  * An asset is suspended when a reference on it has drifted, **or** when anything it references is
  * suspended. Nothing about that is stored. A flag would need a cascade pass that can be interrupted

@@ -1,6 +1,6 @@
 /**
  * Prove that the agent's prompt prefix is actually being cached
- * (`docs/plans/prompt-caching-and-deferred-tool-loading.md` § Tests).
+ * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md` § Tests).
  *
  * Everything about caching that a unit test can check is a claim about the *request* — where the
  * breakpoints are, what defers, what was echoed — and those are checked in
@@ -12,7 +12,7 @@
  *   it back. The breakpoints are ours to place, so the proof is that they were placed.
  * - **Gemini** — five calls carrying a byte-identical prefix, asserting that *some* call came back
  *   reporting one. There is nothing to place: the implicit cache is opportunistic, and it says
- *   nothing at all on many calls that hit (`docs/plans/gemini-estimated-cache-hit-rate.md`), which
+ *   nothing at all on many calls that hit (`docs/plans/archive/gemini-estimated-cache-hit-rate.md`), which
  *   is why five and not two.
  *
  * Usage:

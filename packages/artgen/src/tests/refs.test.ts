@@ -1,5 +1,5 @@
 /**
- * A binding → what fills that slot today (`docs/plans/chunked-prompts.md` §11). The pin is what
+ * A binding → what fills that slot today (`docs/plans/archive/chunked-prompts.md` §11). The pin is what
  * the model is fed; this is only ever the comparison shown beside it.
  */
 import type { Asset, AssetKind, ChunkRef } from '@vn/types';

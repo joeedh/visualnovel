@@ -12,7 +12,7 @@ exercise of `vnauthor` on record, and every finding below is something that actu
 it, not something that could.
 
 The recommendations below are built out as a plan in
-[`../plans/improving-the-authoring-agent.md`](../plans/improving-the-authoring-agent.md), which
+[`../plans/improving-the-authoring-agent.md`](../plans/archive/improving-the-authoring-agent.md), which
 specifies the two designs this review only argues for: a per-turn token budget replacing
 `maxSteps`, and a partial file update tool.
 
