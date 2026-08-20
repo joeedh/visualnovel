@@ -12,7 +12,7 @@
  * from, or the whole edit is refused with nothing touched.
  */
 import { sceneFromDoc, sceneToDoc } from '@vn/model';
-import { stringifyFrontMatter } from '@vn/parse';
+import { parseBranchMarker, parseFountain, stringifyFrontMatter } from '@vn/parse';
 import { deleteSceneChunk, deleteShots, readShots, writeShots, type ProjectPaths } from '@vn/store';
 import type { Shot } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
@@ -29,6 +29,18 @@ export interface SceneEditInput {
   sources: readonly SceneSource[];
   /** The entry scene `start:` names, so deleting or merging it away can refuse. */
   entry?: string;
+}
+
+/**
+ * The notes in a body that no branch marker parses out of — the ones `Scene` has no field for, so
+ * the serializer cannot write them back. Marker notes are excluded rather than diffed: the writer
+ * re-emits those in canonical form (`[[goto:]]` comes back as `[[next:]]`), which a text diff would
+ * read as a loss.
+ */
+function strayNoteTexts(body: string): string[] {
+  return parseFountain(body)
+    .elements.filter((el) => el.type === 'note' && parseBranchMarker(el.text) === null)
+    .map((el) => (el as { text: string }).text.trim());
 }
 
 /** An edit that will happen, with everything needed to write it and nothing left to decide. */
@@ -82,6 +94,27 @@ export async function planSceneEdit(
     // An existing chunk keeps its front-matter byte-exactly — only the body is ours to rewrite;
     // a new one is written the way the importer writes chunks.
     const source = input.sources.find((s) => s.id === scene.id);
+
+    // A note the model cannot hold would vanish on write, and the round-trip check above cannot
+    // see it: both sides of that comparison come from the model. Compare against the source
+    // instead. Refused rather than warned, because the alternative is deleting an author's text
+    // during a write they did not ask for. Nothing the agent writes can produce one (`Scene` has
+    // no field for a note, so the round-trip refuses first) — a person, `vngen import` or
+    // `git_restore` is how one gets in.
+    if (source !== undefined) {
+      const before = strayNoteTexts(source.script);
+      const after = strayNoteTexts(doc.body);
+      const lost = before.filter((n) => !after.includes(n));
+      if (lost.length > 0) {
+        return {
+          ok: false,
+          message:
+            `Writing ${scene.id} would drop ${lost.length} note(s) the model does not keep: ` +
+            `${lost.map((n) => `[[${n}]]`).join(', ')}. Remove or fix them in the file first.`,
+        };
+      }
+    }
+
     if (source === undefined) {
       pending.push({
         file: input.paths.sceneFile(scene.id),
