@@ -6,6 +6,12 @@
  * This names the fix instead. Nested submodules (path.ux carries path-controller) are
  * found by reading each submodule's own `.gitmodules`, so nothing here hard-codes a layout.
  *
+ * It also catches the quieter half of the same problem: a submodule that is checked out but
+ * whose own dependencies were never installed. path.ux is a project of its own with its own
+ * lockfile and is not a pnpm workspace member, so the root install does not reach it — and the
+ * failure that produces is scores of "has no exported member" errors from inside `vendor/`,
+ * which name a symbol rather than the install that is missing.
+ *
  * Usage: `pnpm doctor` (and as the desktop build's first step).
  */
 import { promises as fs } from 'node:fs';
@@ -32,30 +38,72 @@ async function isPopulated(dir) {
   return entries !== null && entries.length > 0;
 }
 
-/** Walk submodules depth-first, collecting the paths that are declared but empty. */
-async function findMissing(base, missing = []) {
-  for (const rel of await declaredPaths(join(base, '.gitmodules'))) {
-    const dir = join(base, rel);
-    if (await isPopulated(dir)) {
-      await findMissing(dir, missing);
-    } else {
-      missing.push(dir);
-    }
-  }
-  return missing;
+/** Whether a path exists at all, file or directory. */
+async function exists(path) {
+  return fs.stat(path).then(
+    () => true,
+    () => false,
+  );
 }
 
-const missing = await findMissing(ROOT);
+/**
+ * Walk submodules depth-first, collecting two different kinds of not-ready: declared but empty,
+ * and checked out but never installed. The second is the subtler one — a submodule with a
+ * `package.json` of its own is not a workspace member, so the root `pnpm install` does not reach
+ * it, and what it needs is missing without anything saying so. path.ux is exactly that shape, and
+ * the failure it produces is a wall of "has no exported member" from inside `vendor/`.
+ */
+async function survey(base, found = { missing: [], uninstalled: [] }) {
+  for (const rel of await declaredPaths(join(base, '.gitmodules'))) {
+    const dir = join(base, rel);
+    if (!(await isPopulated(dir))) {
+      found.missing.push(dir);
+      continue;
+    }
+    if (
+      (await exists(join(dir, 'package.json'))) &&
+      !(await isPopulated(join(dir, 'node_modules')))
+    ) {
+      found.uninstalled.push(dir);
+    }
+    await survey(dir, found);
+  }
+  return found;
+}
+
+/** A repo-root-relative path with forward slashes, which is how the fix is spelled. */
+function relative(dir) {
+  return dir.slice(ROOT.length + 1).replaceAll('\\', '/');
+}
+
+const { missing, uninstalled } = await survey(ROOT);
+
 if (missing.length > 0) {
-  const list = missing.map((dir) => `  ${dir.slice(ROOT.length + 1).replaceAll('\\', '/')}`);
   process.stderr.write(
     [
       `Submodule${missing.length > 1 ? 's are' : ' is'} not checked out:`,
-      ...list,
+      ...missing.map((dir) => `  ${relative(dir)}`),
       '',
       'Run this from the repository root, then try again:',
       '',
       '  git submodule update --init --recursive',
+      '',
+    ].join('\n'),
+  );
+  process.exit(1);
+}
+
+if (uninstalled.length > 0) {
+  process.stderr.write(
+    [
+      `Submodule${uninstalled.length > 1 ? 's carry' : ' carries'} dependencies of its own that ` +
+        'are not installed:',
+      ...uninstalled.map((dir) => `  ${relative(dir)}`),
+      '',
+      'A submodule is not a workspace member, so the root install does not reach it. Run this',
+      'from the repository root, then try again:',
+      '',
+      ...uninstalled.map((dir) => `  pnpm --dir ${relative(dir)} install`),
       '',
     ].join('\n'),
   );

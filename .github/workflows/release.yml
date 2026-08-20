@@ -67,6 +67,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # path.ux is a project of its own, with its own lockfile, and it is not a workspace member —
+      # so the root install does not reach it and `nstructjs`, which
+      # `path-controller/util/nstructjs.ts` re-exports, resolves to nothing. Locally this is
+      # invisible: anyone who has ever built path.ux has its `node_modules` on disk already. On a
+      # clean checkout it surfaces as scores of "has no exported member" errors *inside* `vendor/`,
+      # which name the symbol rather than the install that is missing.
+      - run: pnpm --dir vendor/path.ux install --frozen-lockfile
+
       - run: pnpm check
       - run: pnpm test
       - run: pnpm lint
@@ -102,6 +110,14 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # path.ux is a project of its own, with its own lockfile, and it is not a workspace member —
+      # so the root install does not reach it and `nstructjs`, which
+      # `path-controller/util/nstructjs.ts` re-exports, resolves to nothing. Locally this is
+      # invisible: anyone who has ever built path.ux has its `node_modules` on disk already. On a
+      # clean checkout it surfaces as scores of "has no exported member" errors *inside* `vendor/`,
+      # which name the symbol rather than the install that is missing.
+      - run: pnpm --dir vendor/path.ux install --frozen-lockfile
 
       # `scripts/package.desktop.mjs` passes `--publish never` itself, so a matrix leg cannot
       # upload even by accident. Three legs racing to write one release is exactly what the

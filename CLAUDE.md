@@ -34,17 +34,23 @@ generative pipeline.
 
 ## Setup
 
-A fresh clone needs three steps, in this order:
+A fresh clone needs four steps, in this order:
 
 ```bash
 git submodule update --init --recursive   # vendor/path.ux, and the one it carries
 pnpm install                              # Node >= 20, pnpm 10 (see packageManager)
-pnpm doctor                               # fails by name if a submodule is still missing
+pnpm --dir vendor/path.ux install         # path.ux has its own lockfile; the root install skips it
+pnpm doctor                               # fails by name if either of the two is still owed
 ```
 
 The renderer compiles path.ux from source through a vite alias, so a missing submodule
 surfaces as an unresolvable import a long way from its cause — `pnpm doctor`
 (`scripts/check-submodules.mjs`, also the desktop build's first step) names the fix instead.
+**A checked-out submodule is not an installed one:** path.ux is a project of its own, with its
+own lockfile, and it is not a pnpm workspace member, so nothing in the root install reaches it.
+That one is invisible to anyone who has ever built path.ux — its `node_modules` is already on
+disk — and on a clean checkout it surfaces as scores of "has no exported member" errors _inside_
+`vendor/`, naming the symbol rather than the install. `pnpm doctor` fails on it by name too.
 Then `pnpm check && pnpm test && pnpm lint` should be green; `pnpm build` bundles everything.
 Details: [`docs/toolchain.md`](docs/toolchain.md), and
 [`docs/desktop-app.md`](docs/desktop-app.md) for the submodule's role.

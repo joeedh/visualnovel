@@ -35,6 +35,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # path.ux is a project of its own, with its own lockfile, and it is not a workspace member —
+      # so the root install does not reach it and `nstructjs`, which
+      # `path-controller/util/nstructjs.ts` re-exports, resolves to nothing. Locally this is
+      # invisible: anyone who has ever built path.ux has its `node_modules` on disk already. On a
+      # clean checkout it surfaces as scores of "has no exported member" errors *inside* `vendor/`,
+      # which name the symbol rather than the install that is missing.
+      - run: pnpm --dir vendor/path.ux install --frozen-lockfile
+
       # Three steps rather than one chained command, so a failure names the gate that failed
       # without anyone reading the log. `pnpm check` — not a bare `tsgo` — because it is two
       # passes, and the second is the only thing that typechecks `renderer/**`.
