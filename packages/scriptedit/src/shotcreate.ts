@@ -27,20 +27,24 @@ export interface ShotScene {
   locationVariant?: string | undefined;
 }
 
-/** A storyboard as loaded from disk — or `null`, meaning the scene is undecomposed. */
-export interface ShotBoard {
-  shots: readonly Shot[];
+/**
+ * A storyboard as loaded from disk — or `null`, meaning the scene is undecomposed. Generic so a
+ * host can judge the rule against its own projection of a shot (the timeline's `CoverageShot`):
+ * the decision reads only `id` and `coversLines`, and only a writer needs the full `Shot`s back.
+ */
+export interface ShotBoard<S extends CoverShot = Shot> {
+  shots: readonly S[];
   /** The persisted high-water mark; absent on decomposed and pre-mark files. */
   nextShot?: number | undefined;
 }
 
-export type NewShotOp =
+export type NewShotOp<S extends CoverShot = Shot> =
   | {
       ok: true;
       /** The shot that was made. */
       shot: Shot;
       /** The whole storyboard after the edit, coverage takes applied. */
-      shots: Shot[];
+      shots: (S | Shot)[];
       /** The mark to persist: one past the id just spent. */
       nextShot: number;
       /** True when the scene had no storyboard — this act created it, ending decomposition. */
@@ -86,7 +90,7 @@ export function derivedNextShot(shots: readonly Pick<Shot, 'id'>[]): number {
   return high + 1;
 }
 
-const nextShotOf = (board: ShotBoard | null): number =>
+const nextShotOf = (board: ShotBoard<CoverShot> | null): number =>
   board === null ? 1 : (board.nextShot ?? derivedNextShot(board.shots));
 
 /**
@@ -103,16 +107,16 @@ const nextShotOf = (board: ShotBoard | null): number =>
  * variant (validated against `args.variants` the way the model decomposer's answer is), subjects
  * are the speakers of the claimed lines, and no outfit — absent means inherit.
  */
-export function newShot(
+export function newShot<S extends CoverShot>(
   scene: ShotScene,
-  board: ShotBoard | null,
+  board: ShotBoard<S> | null,
   args: {
     lines: readonly string[];
     framing?: Shot['framing'] | undefined;
     /** The scene's location variant ids, for validating the default. */
     variants?: readonly string[] | undefined;
   },
-): NewShotOp {
+): NewShotOp<S> {
   if (args.lines.length === 0) {
     return { ok: false, error: 'A new shot must cover at least one line.' };
   }

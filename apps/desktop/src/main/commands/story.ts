@@ -29,6 +29,7 @@ import {
   newScene,
   removeChoice,
   setChoice,
+  setCoverage as decideCoverage,
   setHeading,
   setLineText,
   setNext,
@@ -41,7 +42,6 @@ import {
   type ScriptState,
 } from '@vn/scriptedit';
 import type { Scene } from '@vn/types';
-import { setCoverage as decideCoverage } from '../../shared/coverage.js';
 import { scenesOf } from '../../shared/interactions.js';
 import type { CommandHost } from './host.js';
 
@@ -523,6 +523,60 @@ export const storyMoveShot = define({
   },
 });
 
+export const storyNewShot = define({
+  id: 'story.newShot',
+  title: 'New shot',
+  description:
+    'Place a shot by hand over the lines it covers. Claimed lines are taken off other shots the ' +
+    'way a coverage drag takes them; a new shot id is a new task, so this is a new frame to ' +
+    'render. On a scene with no storyboard yet, this creates it — which ends decomposition for ' +
+    'that scene, and every line the shot does not claim stays uncovered until covered by hand.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene to place the shot in'),
+    lines: prop.string('comma-separated line ids the shot covers; at least one'),
+    framing: prop.oneOf(
+      ['medium', 'wide', 'close', 'establishing'] as const,
+      'how the shot frames its subjects',
+      { default: 'medium' },
+    ),
+  },
+  async check({ scene, lines, framing }, ctx) {
+    const op = await ctx.host.session.previewNewShot(scene, idsOf(lines), framing);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, lines, framing }, ctx) {
+    const result = await ctx.host.session.newShot(scene, idsOf(lines), framing);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+export const storyDeleteShot = define({
+  id: 'story.deleteShot',
+  title: 'Delete a shot',
+  description:
+    'Remove a shot from its scene. The lines it covered become visible gaps — never handed to a ' +
+    'neighbour — and a rendered frame it had is orphaned, not deleted. Removing the last shot ' +
+    'deletes the storyboard file itself, so the scene will be decomposed again.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot: prop.string('the shot id to delete, e.g. arrival__beat1'),
+  },
+  async check({ scene, shot }, ctx) {
+    const op = await ctx.host.session.previewDeleteShot(scene, shot);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot }, ctx) {
+    const result = await ctx.host.session.deleteShot(scene, shot);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
 // The two outfit commands. Neither goes through `preview`: that decides against the story graph,
 // which carries edges and reachability and not a word about clothes.
 
@@ -610,12 +664,13 @@ export const storyDecomposeAll = define({
   description:
     'Ask the writing model for a storyboard for every reachable scene that has none yet, so the ' +
     'project can see the whole graph instead of one wave of it. One model call per scene, so it ' +
-    'costs real money. A scene that already has one is left alone and there is no way to force ' +
-    'it: the file wins forever, and re-decomposing would change shot ids, hence task identities, ' +
-    'hence re-render art already paid for. A scene the model does not answer for is reported and ' +
-    'NOT written, because an absent file is the only signal that means "decompose this". Run ' +
-    'story.assignLineIds first, and write the cast sheets first — a character the project does ' +
-    'not have yet is dropped from the shots silently and permanently.',
+    'costs real money. A scene that already has one — decomposed, or begun by hand with ' +
+    'story.newShot — is left alone and there is no way to force it: the file wins forever, and ' +
+    're-decomposing would change shot ids, hence task identities, hence re-render art already ' +
+    'paid for. A scene the model does not answer for is reported and NOT written, because an ' +
+    'absent file is the only signal that means "decompose this". Run story.assignLineIds first, ' +
+    'and write the cast sheets first — a character the project does not have yet is dropped from ' +
+    'the shots silently and permanently.',
   mutating: true,
   // One undo point for the whole batch, which is the reason this is one command and not N.
   undoable: true,

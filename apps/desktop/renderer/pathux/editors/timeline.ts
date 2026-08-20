@@ -1,10 +1,20 @@
 import type { Container, MenuTemplate } from 'pathux';
 import { api } from '../../api.js';
-import { spansFor, type Coverage, type Edge, type ShotSpan } from '../../../src/shared/coverage.js';
+import { spansFor, type Edge } from '@vn/scriptedit';
+import type { Coverage, ShotSpan } from '../../../src/shared/ipc.js';
 import { commitOf, noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
+import {
+  BUSY_DELAY_MS,
+  SETTLED,
+  WRITE_PENDING,
+  beginWrite,
+  busyLabel,
+  revealBusy,
+  type Busy,
+} from '../../rules/timeline/busy.js';
 import { insertionRow, previewOf } from '../../rules/timeline/coverage.js';
 import { driftTag, staleCount } from '../../rules/timeline/drift.js';
-import { GRAB_BLOCKED, canEdit, canGrab } from '../../rules/timeline/editing.js';
+import { canEdit, canGrab, grabRefusal } from '../../rules/timeline/editing.js';
 import {
   INHERIT,
   outfitInvocation,
@@ -13,13 +23,19 @@ import {
   sourceLabel,
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
+import type { VnContext } from '../context.js';
+import { openCommandDialog } from '../dialog.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { showContextMenu } from '../showmenu.js';
 import {
+  aimCreate,
   aimDrag,
   aimReorder,
   grabEdge,
+  grabGutter,
   grabShot,
   noticeOf,
+  type Create,
   type Drag,
   type Reorder,
 } from '../timeline.js';
@@ -51,6 +67,45 @@ const SURFACE_CSS = `
   background: var(--ink-sunken);
 }
 .tl-surface > .tl-body { flex: 1 1 auto; }
+/* A write in flight: the notice row becomes an indeterminate bar carrying the command's name. */
+.tl-surface > .tl-notice.busy { position: relative; overflow: hidden; }
+.tl-surface > .tl-notice.busy::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 28%;
+  background: var(--ink-line);
+  opacity: 0.55;
+  animation: tl-busy 1.1s linear infinite;
+}
+@keyframes tl-busy {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(460%); }
+}
+/* The gutter cell: its own element at the row's left edge, so its pointerdown is never a
+   click-to-edit's — no two gestures share a pointerdown. */
+.tl-grid .tl-line { position: relative; }
+.tl-grid .tl-gutter {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 9px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.tl-grid .tl-gutter:hover { background: var(--ink-line); }
+/* The two doors out of an undecomposed scene. */
+.tl-note .tl-doors { display: inline-flex; gap: 8px; margin-left: 10px; vertical-align: middle; }
+.tl-note .tl-door {
+  background: var(--ink-sunken);
+  color: var(--paper);
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  padding: 2px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.tl-note .tl-door:disabled { opacity: 0.5; cursor: default; }
 `;
 
 /**
@@ -86,7 +141,12 @@ export class TimelineEditor extends VnEditor {
 
   private drag: Drag | null = null;
   private reorder: Reorder | null = null;
+  private create: Create | null = null;
   private notice: Notice | null = null;
+
+  /** The write in flight, if any (`busy.ts`). The timer is what reveals the bar after the delay. */
+  private busy: Busy = SETTLED;
+  private busyTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** The line id whose editor is open, and the text in it. */
   private editing: string | null = null;
@@ -131,7 +191,7 @@ export class TimelineEditor extends VnEditor {
     // Never mid-gesture: the row under the pointer is read from the DOM, so rebuilding the strip
     // under a held handle would replace the nodes the drag is aimed at. A selection changed by
     // the drop itself is picked up on release, when the strip reloads anyway.
-    if (this.drag || this.reorder) return;
+    if (this.drag || this.reorder || this.create) return;
     // A scene picked anywhere else in the shell — a shot clicked in the task list, a branch
     // followed in STUDIO — arrives as a changed `ui.sceneId` and nothing else, so the strip has
     // to notice it needs different data. Redrawing on it alone would draw the old scene's
@@ -213,6 +273,14 @@ export class TimelineEditor extends VnEditor {
     summary.style['padding'] = '0px 8px';
     summary.description =
       'Shots in this scene, lines no shot covers, and shots drawn from prose that has since changed.';
+    // The no-gaps door into `story.newShot`: the gutter drag needs a row to sweep, and a scene
+    // whose every line is covered still takes a hand-placed shot — one that claims its lines off
+    // the shots that hold them.
+    const add = this.bar.button('+ shot', () =>
+      openCommandDialog('story.newShot', { scene: this.ui.sceneId }),
+    );
+    add.description =
+      'Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.';
     const refresh = this.bar.button('Refresh', () => void this.load());
     refresh.description = 'Re-read the shots and their images from disk.';
     this.bar.flushUpdate();
@@ -265,13 +333,7 @@ export class TimelineEditor extends VnEditor {
     // Not a refusal to draw anything: correcting a line is exactly what an author wants to do
     // *before* paying for art, so the script renders with no bracket columns.
     if (!this.data.decomposed) {
-      this.body.appendChild(
-        el(
-          'div',
-          'tl-note',
-          `${this.data.sceneId} has no shots yet — they appear once a run gets past the character gate.`,
-        ),
-      );
+      this.body.appendChild(this.undecomposedNote(this.data));
     }
 
     this.grid = this.buildGrid(this.data);
@@ -285,6 +347,66 @@ export class TimelineEditor extends VnEditor {
       for (const s of this.coverage.orphans) box.appendChild(el('span', 'orph', s.id));
       this.body.appendChild(box);
     }
+  }
+
+  /**
+   * The undecomposed scene's note, with the two doors out of it: decompose (the model reads the
+   * scene and storyboards it) or place the first shot by hand (which ends decomposition for this
+   * scene). Both are invocations, checked before they are drawn — a door that would be refused is
+   * disabled with the refusal as its tooltip, never hidden. Both open the command dialog rather
+   * than running: one is `confirm: true`, and the other has a field the author is here to fill in.
+   */
+  private undecomposedNote(data: SceneCoverage): HTMLElement {
+    const note = el(
+      'div',
+      'tl-note',
+      `${data.sceneId} has no shots yet — decompose it, or place the first shot by hand. `,
+    );
+    const doors = el('span', 'tl-doors');
+    note.appendChild(doors);
+    // The same prefill the dialog opens with, so the check's verdict is the verdict of this door.
+    const byHand = { scene: data.sceneId, lines: data.lines[0]?.id ?? '' };
+    doors.appendChild(
+      this.door(
+        'decompose',
+        'story.decomposeAll',
+        {},
+        'Ask the writing model to storyboard every scene that has none — one model call per scene, priced in the dialog before it runs.',
+      ),
+    );
+    doors.appendChild(
+      this.door(
+        'place a shot by hand',
+        'story.newShot',
+        byHand,
+        `Create the storyboard for ${data.sceneId} yourself, one shot at a time — which ends decomposition for this scene.`,
+      ),
+    );
+    return note;
+  }
+
+  /** One door: a button over one command, checked before it is drawn. */
+  private door(
+    label: string,
+    id: string,
+    props: Record<string, string>,
+    does: string,
+  ): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.className = 'tl-door';
+    button.textContent = label;
+    button.disabled = true;
+    button.title = does;
+    void api.invoke('command:check', { id, props }).then((check) => {
+      if (check.state === 'refuse') {
+        // A disabled control's tooltip is its refusal — the door stays visible and says why.
+        button.title = check.message;
+        return;
+      }
+      button.disabled = false;
+      button.addEventListener('click', () => openCommandDialog(id, props));
+    });
+    return button;
   }
 
   private buildGrid(data: SceneCoverage): HTMLDivElement {
@@ -329,6 +451,21 @@ export class TimelineEditor extends VnEditor {
     const box = el('div', `tl-line ${line.kind}${gap}${over}`);
     box.style.gridColumn = '1';
     box.style.gridRow = String(row.index + 1);
+
+    // The creation gesture's grab, as its own element: the prose cell keeps click-to-edit, so no
+    // two gestures share a pointerdown. Dragging along it sweeps lines into a new shot.
+    const gutter = el('div', 'tl-gutter');
+    gutter.title =
+      'Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.';
+    gutter.addEventListener('pointerdown', (event) => {
+      // Prevented for the same reason a handle's is: the gutter must never take focus off an open
+      // editor, so a blocked grab is refused aloud rather than committing a half-typed line.
+      event.preventDefault();
+      event.stopPropagation();
+      if (!canGrab(this.mode())) return this.say(grabRefusal(this.mode()));
+      this.beginCreate(line.id);
+    });
+    box.appendChild(gutter);
 
     // Not editable here: changing who says a line changes its kind, hence this row's shape and
     // the exporter's beat type. `story.setSpeaker` is STUDIO's.
@@ -450,9 +587,22 @@ export class TimelineEditor extends VnEditor {
     // Not prevented, unlike the handles': a bracket is also the click target that selects a
     // shot, and a grab that never moves must still read as that click.
     box.addEventListener('pointerdown', () => {
-      if (!canGrab(this.mode())) return this.say(GRAB_BLOCKED);
+      if (!canGrab(this.mode())) return this.say(grabRefusal(this.mode()));
       this.select(shotId);
       this.beginReorder(shotId);
+    });
+    // The bracket's other act: a right-click offers the commands about this one shot, each checked
+    // before it is drawn, and a refusal — deleting the last shot, say — shown rather than hidden.
+    box.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void showContextMenu(this.ctx as VnContext, event.clientX, event.clientY, shotId, [
+        {
+          label: 'Delete this shot',
+          id: 'story.deleteShot',
+          props: { scene: this.ui.sceneId, shot: shotId },
+        },
+      ]);
     });
     return box;
   }
@@ -468,7 +618,7 @@ export class TimelineEditor extends VnEditor {
       // refused rather than the editor silently committed under it. See `canGrab`.
       event.preventDefault();
       event.stopPropagation();
-      if (!canGrab(this.mode())) return this.say(GRAB_BLOCKED);
+      if (!canGrab(this.mode())) return this.say(grabRefusal(this.mode()));
       this.beginDrag(shotId, edge);
     });
     return button;
@@ -546,7 +696,11 @@ export class TimelineEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   private mode() {
-    return { editing: this.editing, dragging: this.drag !== null || this.reorder !== null };
+    return {
+      editing: this.editing,
+      dragging: this.drag !== null || this.reorder !== null || this.create !== null,
+      pending: this.busy.pending,
+    };
   }
 
   private select(shotId: string): void {
@@ -565,6 +719,11 @@ export class TimelineEditor extends VnEditor {
     this.startGesture();
   }
 
+  private beginCreate(lineId: string): void {
+    this.create = grabGutter(this.data ?? null, lineId);
+    this.startGesture();
+  }
+
   /** Window-level, so a gesture that leaves the strip still tracks and still releases. */
   private startGesture(): void {
     this.grid?.classList.add('dragging');
@@ -579,16 +738,19 @@ export class TimelineEditor extends VnEditor {
       if (row === null) return;
       if (this.drag) this.drag = aimDrag(this.drag, this.coverage, row);
       else if (this.reorder) this.reorder = aimReorder(this.reorder, this.coverage.spans, row);
-      this.notice = noticeOf(this.drag ?? this.reorder ?? { verdict: null });
+      else if (this.create) this.create = aimCreate(this.create, this.coverage, row);
+      this.notice = noticeOf(this.drag ?? this.reorder ?? this.create ?? { verdict: null });
       this.paintGesture();
     };
     const onUp = (): void => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      const pending = this.drag ?? this.reorder;
+      const pending = this.drag ?? this.reorder ?? this.create;
       const wasDrag = this.drag !== null;
+      const wasCreate = this.create !== null;
       this.drag = null;
       this.reorder = null;
+      this.create = null;
       this.grid?.classList.remove('dragging');
       held?.forEach((node) => node.classList.remove('dragging'));
       this.paintGesture();
@@ -600,7 +762,11 @@ export class TimelineEditor extends VnEditor {
       }
       if (!pending.verdict) return void this.say(null);
       if (!pending.verdict.accept) return;
-      void this.run(pending.verdict.invoke, wasDrag ? 'Coverage updated.' : 'Shot moved.');
+      void this.run(
+        pending.verdict.invoke,
+        wasDrag ? 'Updating coverage' : wasCreate ? 'Making shot' : 'Moving shot',
+        wasDrag ? 'Coverage updated.' : wasCreate ? 'Shot made.' : 'Shot moved.',
+      );
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -648,6 +814,18 @@ export class TimelineEditor extends VnEditor {
       return;
     }
 
+    if (this.create) {
+      // The sweep's preview is the rows themselves: the shot does not exist yet, so there is no
+      // bracket to ghost — the claim tint says which lines the drop would cover. Only for a drop
+      // that would be accepted; a refused sweep keeps its reason in the notice and tints nothing.
+      if (!this.create.lines || !this.create.verdict?.accept) return;
+      const swept = new Set(this.create.lines);
+      for (const row of this.coverage.rows) {
+        if (swept.has(row.line.id)) this.bands.get(row.index)?.classList.add('claim');
+      }
+      return;
+    }
+
     if (!this.reorder?.verdict) return;
     // The reorder's whole preview: where the shot would land. The brackets themselves hold still
     // — a shot's position is where its lines sit, so a live preview would have to move the prose
@@ -669,6 +847,9 @@ export class TimelineEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   private openEditor(line: CoverageLine): void {
+    // Mid-drag the refusal is silent — the click landed nowhere by design. Mid-write it speaks:
+    // the author clicked squarely on a line and deserves the sentence.
+    if (this.busy.pending) return this.say(WRITE_PENDING);
     if (!canEdit(this.mode())) return;
     this.settled = false;
     this.editing = line.id;
@@ -702,7 +883,9 @@ export class TimelineEditor extends VnEditor {
       this.rebuild();
       return;
     }
+    this.beginBusy('Retyping line');
     const outcome = await api.invoke('command:exec', { ...invocation, source: 'ui' });
+    this.settleBusy();
     if (!outcome.ok) {
       // The draft is still held, so reopening hands back what the author typed alongside the
       // command's own reason for refusing it — "a line cannot be empty", most often.
@@ -722,14 +905,69 @@ export class TimelineEditor extends VnEditor {
    * and the command's own sentence is what the author is told either way.
    */
   private async setOutfit(row: OutfitRow, outfit: string): Promise<void> {
-    await this.run(outfitInvocation(row, outfit), 'Outfit set.');
+    await this.run(outfitInvocation(row, outfit), 'Setting outfit', 'Outfit set.');
   }
 
-  private async run(invocation: Invocation, fallback: string): Promise<void> {
+  /**
+   * Every command this surface sends goes through here (retyping excepted — its refusal path
+   * reopens the editor). `progress` is what the bar says while the write is in flight; `fallback`
+   * is the outcome when the command's record carries no message. The bar resolves into the
+   * outcome notice — one row, changing tone — rather than a second surface appearing.
+   */
+  private async run(invocation: Invocation, progress: string, fallback: string): Promise<void> {
+    this.beginBusy(progress);
     const outcome = await api.invoke('command:exec', { ...invocation, source: 'ui' });
+    this.settleBusy();
     if (!outcome.ok) return this.say({ tone: 'refused', text: outcome.error });
     this.notice = { tone: 'ok', text: outcome.record.message ?? fallback };
     await this.loadScene();
+  }
+
+  /**
+   * The write left. The lock is immediate — a grab, a retype or a wardrobe pick would be judged
+   * against rows the landing is about to replace — but the bar waits out {@link BUSY_DELAY_MS},
+   * so a fast command never flashes. {@link WRITE_PENDING} becomes every locked control's
+   * tooltip, because a control that will not act has to say why on hover.
+   */
+  private beginBusy(title: string): void {
+    this.busy = beginWrite(title);
+    this.lockSurface();
+    clearTimeout(this.busyTimer);
+    this.busyTimer = setTimeout(() => {
+      this.busy = revealBusy(this.busy);
+      this.paintNotice();
+    }, BUSY_DELAY_MS);
+  }
+
+  private settleBusy(): void {
+    clearTimeout(this.busyTimer);
+    this.busy = SETTLED;
+    this.unlockSurface();
+  }
+
+  /** Swap every tooltip for the refusal, keeping the words to hand back. Selects also disable. */
+  private lockSurface(): void {
+    for (const node of this.surface.querySelectorAll<HTMLElement>('[title]')) {
+      node.dataset['idleTitle'] = node.title;
+      node.title = WRITE_PENDING.text;
+    }
+    for (const pick of this.surface.querySelectorAll<HTMLSelectElement>('select')) {
+      pick.disabled = true;
+      pick.title = WRITE_PENDING.text;
+    }
+  }
+
+  /** Undo the lock in place: a refused command leaves the strip standing, so nothing rebuilds it. */
+  private unlockSurface(): void {
+    for (const node of this.surface.querySelectorAll<HTMLElement>('[title]')) {
+      const idle = node.dataset['idleTitle'];
+      if (idle === undefined) continue;
+      node.title = idle;
+      delete node.dataset['idleTitle'];
+    }
+    for (const pick of this.surface.querySelectorAll<HTMLSelectElement>('select')) {
+      pick.disabled = false;
+    }
   }
 
   private say(notice: Notice | null): void {
@@ -739,6 +977,12 @@ export class TimelineEditor extends VnEditor {
 
   private paintNotice(): void {
     if (!this.noticeEl) return;
+    const label = busyLabel(this.busy);
+    if (label !== null) {
+      this.noticeEl.className = 'tl-notice busy';
+      this.noticeEl.textContent = label;
+      return;
+    }
     this.noticeEl.className = `tl-notice${this.notice ? ` ${this.notice.tone}` : ''}`;
     this.noticeEl.textContent = this.notice?.text ?? '';
   }

@@ -13,35 +13,47 @@
  * exists and belongs in STUDIO, where the script's structure is what you are editing.
  */
 import type { Notice } from '../../../src/shared/lineedit.js';
+import { WRITE_PENDING } from './busy.js';
 
-/** What the strip is doing right now. Both idle is the resting state. */
+/** What the strip is doing right now. All idle is the resting state. */
 export interface StripMode {
   /** The line id whose editor is open, or `null`. */
   editing: string | null;
-  /** True while a coverage handle is held. */
+  /** True while a coverage handle, a bracket or a gutter cell is held. */
   dragging: boolean;
+  /** True while a command is in flight — the strip is about to be re-read (`busy.ts`). */
+  pending: boolean;
 }
 
-export const IDLE: StripMode = { editing: null, dragging: false };
+export const IDLE: StripMode = { editing: null, dragging: false, pending: false };
 
 /**
  * May a click open an editor? Not mid-drag: `.tl-grid.dragging` takes the script column's
  * pointer events away so the hit bands can be reached, and a click that lands nowhere is a
- * better outcome than an editor opening under a held handle.
+ * better outcome than an editor opening under a held handle. And not mid-write: the row the
+ * editor would open over is about to be replaced by the re-read.
  */
 export function canEdit(mode: StripMode): boolean {
-  return !mode.dragging;
+  return !mode.dragging && !mode.pending;
 }
 
 /**
- * May a bracket handle be grabbed? Not while an editor is open.
+ * May a bracket handle be grabbed? Not while an editor is open, and not while a write is landing.
  *
  * The plan's first answer was "entering one closes the other", which is worse: closing an editor
  * commits it (blur commits), so grabbing a handle would silently write a half-typed line and
  * reload the strip under the gesture. Refusing the grab costs the author one click and nothing else.
  */
 export function canGrab(mode: StripMode): boolean {
-  return mode.editing === null;
+  return mode.editing === null && !mode.pending;
+}
+
+/**
+ * The sentence a refused grab is told. Two locks, two reasons: a write in flight outranks an open
+ * editor, because "finish the line" is bad advice while the strip is about to be rebuilt anyway.
+ */
+export function grabRefusal(mode: StripMode): Notice {
+  return mode.pending ? WRITE_PENDING : GRAB_BLOCKED;
 }
 
 /**

@@ -1,6 +1,15 @@
-import { spansFor } from '../../../src/shared/coverage.js';
+import { spansFor } from '@vn/scriptedit';
 import { TOP } from '../../../src/shared/interactions.js';
-import { aimDrag, aimReorder, coverState, grabEdge, grabShot, noticeOf } from '../timeline.js';
+import {
+  aimCreate,
+  aimDrag,
+  aimReorder,
+  coverState,
+  grabEdge,
+  grabGutter,
+  grabShot,
+  noticeOf,
+} from '../timeline.js';
 import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../src/shared/ipc';
 
 const LINES: CoverageLine[] = [
@@ -92,6 +101,43 @@ describe('aiming a drag at a row', () => {
 
   it('answers a row off the end of the scene as no target', () => {
     expect(aimDrag(grabEdge(data, 's__a', 'end'), cov, 99).verdict).toBeNull();
+  });
+});
+
+describe('the gutter sweep that makes a shot', () => {
+  it('judges every line at the grab, the anchor row included — a one-line shot is a real act', () => {
+    const create = grabGutter(data, 's:L2');
+    expect([...create.verdicts.keys()].sort()).toEqual(['s:L1', 's:L2', 's:L3', 's:L4']);
+    expect(create.lines).toBeNull();
+    expect(create.verdict).toBeNull();
+  });
+
+  it('sweeps anchor-to-row inclusive, in row order, whichever way the drag went', () => {
+    const down = aimCreate(grabGutter(data, 's:L2'), cov, 3);
+    expect(down.lines).toEqual(['s:L2', 's:L3', 's:L4']);
+    const up = aimCreate(grabGutter(data, 's:L4'), cov, 1);
+    expect(up.lines).toEqual(['s:L2', 's:L3', 's:L4']);
+  });
+
+  it('carries the id the write would actually mint, off the persisted mark', () => {
+    // The mark outranks derivation: shot4 even though only a/b/c exist, because a retired id must
+    // never be re-minted.
+    const marked: SceneCoverage = { ...data, nextShot: 4 };
+    const aimed = aimCreate(grabGutter(marked, 's:L1'), cov, 0);
+    expect(aimed.verdict?.accept).toBe(true);
+    expect(noticeOf(aimed)?.text).toContain('s__shot4');
+  });
+
+  it('keeps a refusal and its sweep together, so a refused drop is still drawn', () => {
+    // Claiming every line would leave all three shots covering nothing — refused by the same
+    // sentence a coverage drag gets.
+    const aimed = aimCreate(grabGutter(data, 's:L1'), cov, 3);
+    expect(aimed.lines).toEqual(['s:L1', 's:L2', 's:L3', 's:L4']);
+    expect(aimed.verdict?.accept).toBe(false);
+  });
+
+  it('answers a row off the end of the scene as no target', () => {
+    expect(aimCreate(grabGutter(data, 's:L1'), cov, 99).verdict).toBeNull();
   });
 });
 

@@ -16,6 +16,7 @@
 import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
 import {
   moveLine,
+  newShot,
   planShotMove,
   removeChoice,
   sceneIdOf,
@@ -26,7 +27,7 @@ import {
   type SceneMap,
   type ScriptState,
 } from '@vn/scriptedit';
-import { resolveDrag, setCoverage, spansFor, type Edge } from './coverage.js';
+import { resolveDrag, setCoverage, spansFor, type Edge } from '@vn/scriptedit';
 import type { CoverageLine, CoverageShot, PropValue, StoryEdge, StoryGraph } from './ipc.js';
 import { effectiveOrder, moveChunk, TOP_CHUNK, type PromptOrderState } from './promptops.js';
 
@@ -244,14 +245,17 @@ export const branchUnwire = defineInteraction<BranchState>({
 });
 
 // ---------------------------------------------------------------------------
-// The timeline's two gestures: one moves a bracket's edge, the other moves the bracket.
+// The timeline's three gestures: one moves a bracket's edge, one moves the bracket, and one
+// makes a bracket where none covers.
 // ---------------------------------------------------------------------------
 
-/** Everything `timeline.cover` is judged against: exactly `SceneCoverage` minus `decomposed`. */
+/** Everything the timeline gestures are judged against: exactly `SceneCoverage` minus `decomposed`. */
 export interface CoverState {
   sceneId: string;
   lines: CoverageLine[];
   shots: CoverageShot[];
+  /** The storyboard's persisted shot-id mark, so `timeline.create` names the id a drop would mint. */
+  nextShot?: number;
 }
 
 /** `<shotId>#start` / `<shotId>#end` — the handle, as one token. */
@@ -378,6 +382,74 @@ export const timelineReorder = defineInteraction<CoverState>({
               },
             }
           : { target, accept: false, reason: move.error },
+      );
+    }
+    return verdicts;
+  },
+});
+
+/**
+ * Dragging across the uncovered-lines gutter to make a shot. The gutter is where a missing shot
+ * is already visible, so it is where one is made: the carried object is the row the drag started
+ * on, every row of the scene is a target, and a drop claims the whole swept range — judged by the
+ * same `newShot` rule the command runs, so the mid-gesture sentence prices the new frame, any
+ * lines taken off other shots, and (on a scene with no storyboard) the end of decomposition.
+ *
+ * Disambiguation is by surface, not by modifier: this drag starts on the gutter cell, which is
+ * its own element — the prose cell keeps click-to-edit and a bracket handle keeps
+ * `timeline.cover`, so no two gestures ever claim the same pointerdown. Every drop creates a
+ * shot, so unlike the other timeline gestures no target is filtered as a no-op.
+ */
+export const timelineCreate = defineInteraction<CoverState>({
+  id: 'timeline.create',
+  title: 'New shot from swept lines',
+  description:
+    'Drag along the gutter beside the script to make a shot covering the swept lines. A new ' +
+    'shot id is a new task, so this is a new frame to render; claimed lines are taken off ' +
+    'whatever shot held them. On a scene with no storyboard, the first hand-made shot creates ' +
+    'it — which ends decomposition for that scene.',
+  grab: "a line's gutter cell, left of the prose",
+  carries: 'the line the drag started on',
+  accepts: 'any line of the scene — the new shot covers everything between the two',
+  commands: ['story.newShot'],
+  cancellable: true,
+  targets: (state, carried) => {
+    const anchor = state.lines.findIndex((l) => l.id === carried);
+    if (anchor < 0) {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          reason: `"${carried}" is not a line of ${state.sceneId}.`,
+        },
+      ];
+    }
+    // An empty shot list is never persisted, so no shots means no storyboard: the rule sees
+    // `null` and its verdict says what creating one costs.
+    const board = state.shots.length
+      ? {
+          shots: state.shots,
+          ...(state.nextShot !== undefined ? { nextShot: state.nextShot } : {}),
+        }
+      : null;
+    const verdicts: Verdict[] = [];
+    for (let index = 0; index < state.lines.length; index++) {
+      const [first, last] = anchor <= index ? [anchor, index] : [index, anchor];
+      const lines = state.lines.slice(first, last + 1).map((l) => l.id);
+      const op = newShot({ id: state.sceneId, lines: state.lines }, board, { lines });
+      const target = state.lines[index]!.id;
+      verdicts.push(
+        op.ok
+          ? {
+              target,
+              accept: true,
+              note: op.message,
+              invoke: {
+                id: 'story.newShot',
+                props: { scene: state.sceneId, lines: lines.join(',') },
+              },
+            }
+          : { target, accept: false, reason: op.error },
       );
     }
     return verdicts;
@@ -532,6 +604,7 @@ export const INTERACTION_IDS = [
   'prompt.reorder',
   'script.moveLine',
   'timeline.cover',
+  'timeline.create',
   'timeline.reorder',
 ] as const;
 
@@ -547,6 +620,7 @@ export function createDesktopInteractions(): InteractionRegistry {
     branchUnwire,
     promptReorder,
     timelineCover,
+    timelineCreate,
     timelineReorder,
     scriptMoveLine,
   ]);

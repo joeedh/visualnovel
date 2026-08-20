@@ -611,11 +611,12 @@ would run) or refuse (with the sentence the command itself would have given). It
 path of its own — every gesture terminates in a registered command, and
 `InteractionRegistry.verify` fails the build if it names one that does not exist.
 
-The six gestures — the branch editor's `branch.connect`, `branch.splice` and `branch.unwire`, the
-coverage timeline's `timeline.cover`, the script's `script.moveLine`, and the asset pane's
-`prompt.reorder` — are declared in
-`apps/desktop/src/shared/interactions.ts`, beside `branchops.ts`/`coverage.ts` (and delegating to
-`@vn/scriptedit`'s `lineops`) for the same reason those are shared: `BranchEditor` runs
+The eight gestures — the branch editor's `branch.connect`, `branch.splice` and `branch.unwire`,
+the coverage timeline's `timeline.cover`, `timeline.create` and `timeline.reorder`, the script's
+`script.moveLine`, and the asset pane's `prompt.reorder` — are declared in
+`apps/desktop/src/shared/interactions.ts`, beside `branchops.ts` (and delegating to
+`@vn/scriptedit`'s `lineops`, `coverage` and `shotcreate` modules) for the same reason those are
+shared: `BranchEditor` runs
 `branchSplice.targets` to draw its mid-drag verdict overlay, the `Timeline` evaluates
 `timelineCover.targets` once per grab for its notice, and
 `interaction.targets` runs the same call in main — so an author and an agent cannot be told

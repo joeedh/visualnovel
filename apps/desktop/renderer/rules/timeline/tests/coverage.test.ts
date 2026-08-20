@@ -1,5 +1,5 @@
 import { insertionRow, previewOf, shotDropTarget } from '../coverage.js';
-import { resolveDrag, spansFor } from '../../../../src/shared/coverage.js';
+import { resolveDrag, spansFor } from '@vn/scriptedit';
 import type { CoverageLine, CoverageShot } from '../../../../src/shared/ipc';
 
 const LINES: CoverageLine[] = [

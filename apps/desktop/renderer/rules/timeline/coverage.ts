@@ -2,17 +2,12 @@
  * The timeline's ghost geometry: how a proposed drag is drawn *over* the committed strip.
  *
  * Everything else this module used to hold — `spansFor`, `resolveDrag`, `runsOf` — moved to
- * `src/shared/coverage.ts` beside the rule they feed, because `timeline.cover` enumerates its
- * targets with them and main answers `interaction.targets` with that same enumeration. What
- * stays here is drawing: main has no use for a ghost.
+ * `@vn/scriptedit` (`coverage.ts`) beside the rule they feed, because both hosts — this app and
+ * the authoring agent — enumerate targets and settle drags with the same geometry. What stays
+ * here is drawing: main has no use for a ghost.
  */
-import {
-  runsOf,
-  range,
-  type Coverage,
-  type Segment,
-  type ShotSpan,
-} from '../../../src/shared/coverage.js';
+import { range, runsOf, type Segment } from '@vn/scriptedit';
+import type { Coverage, ShotSpan } from '../../../src/shared/ipc.js';
 import { TOP } from '../../../src/shared/interactions.js';
 
 /**

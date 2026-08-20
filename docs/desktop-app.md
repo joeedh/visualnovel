@@ -741,8 +741,10 @@ the same events** to write the transcript — see the threads bullet below.
 
 `editors/timeline.ts` — a scene's screenplay down the pane with the shots covering it bracketed
 beside it, and the wardrobe under it. It runs **vertically** because screenplays do.
-`rooms/floor/timeline/{coverage,drift,editing,wardrobe}.ts` are imported unchanged; the state
-machine the React component kept in its own `.tsx` is now `pathux/timeline.ts` with twelve tests.
+The pure rules live in `renderer/rules/timeline/` (`drift`, `editing`, `wardrobe`, `busy`) and in
+`@vn/scriptedit` (`coverage.ts`, `shotcreate.ts` — geometry and shot creation, shared with the
+agent's tools); the state machine the React component kept in its own `.tsx` is now
+`pathux/timeline.ts`, with its tests beside it.
 Plans: [`plans/shot-timeline-editor.md`](plans/shot-timeline-editor.md) and
 [`plans/line-editing-in-floor.md`](plans/line-editing-in-floor.md).
 
@@ -752,10 +754,12 @@ so every edit here is free: nothing rehashes and no art is invalidated. That is 
 **prose** it edits, and there it is the problem rather than the feature — hence the drift marking
 below.
 
-- **One rule, previewed and committed.** `src/shared/coverage.ts` holds the whole gesture's
-  logic — `setCoverage` (the rule), `spansFor` (the geometry) and `resolveDrag` (which lines a
-  drop asks for) — run by the `story.setCoverage` command in main _and_ by the strip mid-drag,
-  so a refusal shown while a handle is carried is the refusal that would happen. Only `previewOf`
+- **One rule, previewed and committed.** `@vn/scriptedit`'s `coverage.ts` holds the whole
+  gesture's logic — `setCoverage` (the rule), `spansFor` (the geometry) and `resolveDrag` (which
+  lines a drop asks for) — run by the `story.setCoverage` command in main _and_ by the strip
+  mid-drag, so a refusal shown while a handle is carried is the refusal that would happen. It
+  lives in the package rather than in `src/shared/` because two hosts — this app and the
+  authoring agent — enumerate targets and settle drags with the same geometry. Only `previewOf`
   stays in the renderer: it is ghost geometry for drawing, and main has no use for it. One
   command per drop.
 - **The gesture is declared, not just implemented.** `timeline.cover` (in
@@ -783,7 +787,7 @@ below.
   lines back: a drag that swept across a neighbour and returned would destroy it, and the return
   trip could not undo it. The dragged shot may still empty itself via the command DSL — only
   the side effect is refused.
-- **Coverage is a set, never a range.** `timeline/coverage.ts` splits a shot into contiguous
+- **Coverage is a set, never a range.** `spansFor` splits a shot into contiguous
   _segments_ and lanes shots by extent, so the decomposer's interleaving (plate takes the
   narration, each medium one speaker) draws as separate columns instead of nested brackets.
   Only a shot's outermost handles drag; a shot covering nothing is listed under
@@ -818,10 +822,33 @@ below.
   rather than the half-typed line being committed under the gesture. `timeline/editing.ts` is the
   pure half of the two-mode rule; retyping itself is `src/shared/lineedit.ts`, shared with the
   script editor so the two surfaces cannot disagree about either.
+- **Shots are made and unmade here too, by the same rules the agent runs.** A third gesture over
+  the same grid, `timeline.create` → `story.newShot`: dragging along a row's **gutter cell** — its
+  own element at the row's left edge, so no two gestures share a pointerdown — sweeps lines into a
+  new shot, judged once at the grab like the other two, with the verdict naming the id the write
+  would actually mint (the persisted `nextShot` mark rides `SceneCoverage` for exactly this).
+  Claimed lines are taken the way a coverage drag takes them, and the accepted sweep tints the
+  rows it would claim. A `+ shot` control in the bar covers the no-gaps case, opening
+  `openCommandDialog('story.newShot', …)` prefilled with the scene. Deleting is on the bracket: a
+  right-click offers `story.deleteShot`, checked before it is drawn, and the refusal for the last
+  shot is shown rather than hidden. The rules — `newShot`, `deleteShot`, the `nextShot` high-water
+  mark — are `@vn/scriptedit`'s `shotcreate.ts`, so a shot made by drag and one made by an agent
+  op are priced and refused by the same sentences.
+- **A write in flight locks the strip, and says so after 150 ms.** Every command re-reads the
+  whole strip when it lands, so a grab, a retype or a wardrobe pick started mid-write would be
+  judged against rows the landing is about to replace. `rules/timeline/busy.ts` is the pure state:
+  the lock is immediate, the notice row becomes an indeterminate progress bar carrying the
+  command's own title ("Making shot…") only once the write outlives `BUSY_DELAY_MS`, and the bar
+  resolves into the outcome notice — one row changing tone, not a second surface. The one sentence
+  a locked control has — "Waiting for the last edit to land." — is both the refusal a blocked
+  gesture is told and the tooltip every locked control carries meanwhile.
 - **An undecomposed scene renders its script.** Correcting a line is exactly what an author wants to
   do *before* paying for art, so a scene with no `work/shots/<id>.json` draws the script column with
-  no bracket columns and a note saying where the shots come from — not a refusal. Both the vermilion
-  gap gutter and the uncovered count wait for a decomposition.
+  no bracket columns and a note — not a refusal. The note carries the two doors out of it,
+  `story.decomposeAll` and `story.newShot`, each an invocation checked before it is drawn: a door
+  that would be refused is disabled with the refusal as its tooltip. Placing the first shot by hand
+  creates the storyboard, which **ends decomposition for that scene** — the command's `check` says
+  so before the write. Both the vermilion gap gutter and the uncovered count wait for a storyboard.
 - **A frame that illustrates old prose is marked, not re-run.** Drift is derived in main
   (`driftOf`, surfaced as `CoverageShot.drift` — see
   [`pipeline-contracts.md`](pipeline-contracts.md#scenes-shots-and-lines)) and rendered as a state on

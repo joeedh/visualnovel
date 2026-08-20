@@ -50,6 +50,7 @@ import {
   ProjectPaths,
   checkDocWrite,
   conventionalKind,
+  deleteShots,
   entityDoc,
   entityFile,
   findScreenplay,
@@ -176,12 +177,17 @@ import type { Excerpt } from '@vn/bible';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import { buildPlayable, loadSceneShots } from '@vn/export';
 import {
+  deleteShot as planDeleteShot,
   moveShot,
+  newShot as planNewShot,
+  setCoverage,
   setSceneOutfit,
   setShotOutfit,
   wardrobesOf,
   type BranchOp,
+  type DeleteShotOp,
   type LineOp,
+  type NewShotOp,
   type SceneOutfitOp,
   type ScriptState,
   type ShotOutfitOp,
@@ -300,7 +306,6 @@ import {
   type ThreadRecord,
 } from './threads.js';
 import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
-import { setCoverage } from '../shared/coverage.js';
 import { adviseRun, analysisEffort } from '../shared/advice.js';
 import { NO_SOURCE, analyseThread, makeRedactor, saveReport } from './agentreport.js';
 
@@ -3738,11 +3743,12 @@ export class WorkspaceSession {
         return [{ id, ...wardrobe, ...(marked ? { marked } : {}) }];
       }),
       decomposed: loaded !== null,
+      ...(loaded?.nextShot !== undefined ? { nextShot: loaded.nextShot } : {}),
     };
   }
 
   /**
-   * Rewrite one shot's coverage. The rule is `shared/coverage.ts`, so the timeline's mid-drag
+   * Rewrite one shot's coverage. The rule is `@vn/scriptedit`'s `setCoverage`, so the timeline's mid-drag
    * preview and this write cannot disagree; only `coversLines` is touched, and `buildShotPrompt`
    * ignores it, so no task rehashes and no generated art is invalidated.
    */
@@ -3878,6 +3884,107 @@ export class WorkspaceSession {
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
     await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok: true,
+      message: op.message,
+      written: [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.sceneCoverage(sceneId),
+    };
+  }
+
+  /**
+   * The new-shot rule against a fresh load, shared by the preview and the write. The scene's
+   * location supplies the variant ids the default is validated against, the same way the model
+   * decomposer's answer is.
+   */
+  private async newShotRule(
+    sceneId: string,
+    lines: readonly string[],
+    framing: string,
+  ): Promise<{ project: LoadedProject; op: NewShotOp }> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return { project, op: { ok: false, error: `No scene "${sceneId}".` } };
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    const location = project.model.locations.get(scene.location);
+    const op = planNewShot(scene, loaded, {
+      lines,
+      ...(framing ? { framing: framing as Shot['framing'] } : {}),
+      variants: location?.variants.map((v) => v.id) ?? [],
+    });
+    return { project, op };
+  }
+
+  /** What `story.newShot` would do, without writing it. */
+  async previewNewShot(
+    sceneId: string,
+    lines: readonly string[],
+    framing: string,
+  ): Promise<NewShotOp> {
+    return (await this.newShotRule(sceneId, lines, framing)).op;
+  }
+
+  /**
+   * Create a shot by hand — on an undecomposed scene, this writes the storyboard file itself,
+   * which ends decomposition for the scene. The one writer that moves the `nextShot` mark
+   * forward: the id just spent is retired with the write.
+   */
+  async newShot(
+    sceneId: string,
+    lines: readonly string[],
+    framing: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.newShotRule(sceneId, lines, framing);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots, { nextShot: op.nextShot });
+    return {
+      ok: true,
+      message: op.message,
+      written: [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.sceneCoverage(sceneId),
+    };
+  }
+
+  /** The delete-shot rule against a fresh load, shared by the preview and the write. */
+  private async deleteShotRule(
+    sceneId: string,
+    shotId: string,
+  ): Promise<{ project: LoadedProject; op: DeleteShotOp }> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return { project, op: { ok: false, error: `No scene "${sceneId}".` } };
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return {
+        project,
+        op: { ok: false, error: `Scene "${sceneId}" has no decomposition yet.` },
+      };
+    }
+    return { project, op: planDeleteShot(loaded, { shot: shotId }) };
+  }
+
+  /** What `story.deleteShot` would do, without writing it. */
+  async previewDeleteShot(sceneId: string, shotId: string): Promise<DeleteShotOp> {
+    return (await this.deleteShotRule(sceneId, shotId)).op;
+  }
+
+  /**
+   * Delete a shot. Removing the last one deletes the file itself — restoring the one signal that
+   * means "decompose this scene" — and otherwise the rewrite carries the `nextShot` mark, so the
+   * freed id stays retired.
+   */
+  async deleteShot(
+    sceneId: string,
+    shotId: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.deleteShotRule(sceneId, shotId);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    if (op.deleteFile) await deleteShots(project.paths, sceneId);
+    else await writeShots(project.paths, sceneId, op.shots, { nextShot: op.nextShot });
     return {
       ok: true,
       message: op.message,

@@ -9,6 +9,7 @@
  */
 import type { LayoutFile } from './layouts.js';
 import type { PromptView } from './prompt.js';
+import type { Coverage as PkgCoverage, ShotSpan as PkgShotSpan } from '@vn/scriptedit';
 import type {
   AgentEvent,
   AgentMode,
@@ -346,6 +347,14 @@ export interface CoverageShot {
 }
 
 /**
+ * The coverage geometry from `@vn/scriptedit`, specialized to this app's rich projections — the
+ * generic `spansFor` hands the same {@link CoverageShot} back with its drift, status and image
+ * intact, and these aliases are the names the timeline annotates that with.
+ */
+export type Coverage = PkgCoverage<CoverageLine, CoverageShot>;
+export type ShotSpan = PkgShotSpan<CoverageShot>;
+
+/**
  * One member of a scene's cast, with the clothes they could be put in. The wardrobe travels with
  * the coverage because the strip's outfit controls have to offer exactly what the command would
  * accept — a select built from anything else would offer refusals.
@@ -377,6 +386,11 @@ export interface SceneCoverage {
   cast: CoverageCast[];
   /** No decomposition on disk yet: the scene has not been planned past the gate. */
   decomposed: boolean;
+  /**
+   * The storyboard's persisted shot-id high-water mark, when the file records one — so a surface
+   * previewing `story.newShot` names the id the write would actually mint, not a derived guess.
+   */
+  nextShot?: number;
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   promptReorder,
   scriptMoveLine,
   timelineCover,
+  timelineCreate,
   timelineReorder,
   TOP,
   type BranchState,
@@ -287,6 +288,68 @@ describe('timeline.cover', () => {
   });
 });
 
+describe('timeline.create', () => {
+  const shot = (id: string, coversLines: string[]): CoverageShot => ({
+    id,
+    framing: 'medium',
+    subjects: [],
+    outfits: {},
+    coversLines,
+    status: 'accepted',
+    drift: 'current',
+  });
+
+  const lines = ['L1', 'L2', 'L3'].map((n) => ({
+    id: `arrival:${n}`,
+    kind: 'narration' as const,
+    text: n,
+  }));
+
+  const decomposed: CoverState = {
+    sceneId: 'arrival',
+    lines,
+    shots: [shot('arrival__establishing', ['arrival:L1', 'arrival:L2', 'arrival:L3'])],
+    nextShot: 5,
+  };
+
+  it('judges every line — the anchor included, since a one-line shot is a real act', () => {
+    const verdicts = timelineCreate.targets(decomposed, 'arrival:L2');
+    expect(verdicts.map((v) => v.target)).toEqual(['arrival:L1', 'arrival:L2', 'arrival:L3']);
+  });
+
+  it('mints the id off the persisted mark and carries the newShot the drop would run', () => {
+    const [, l2] = timelineCreate.targets(decomposed, 'arrival:L2');
+    expect(l2?.accept && l2.invoke).toEqual({
+      id: 'story.newShot',
+      props: { scene: 'arrival', lines: 'arrival:L2' },
+    });
+    expect(l2?.accept && l2.note).toContain('arrival__shot5');
+  });
+
+  it('refuses with the coverage rule’s own sentence where the claim would empty a shot', () => {
+    const verdicts = timelineCreate.targets(decomposed, 'arrival:L1');
+    expect(verdicts.find((v) => v.target === 'arrival:L3')).toMatchObject({
+      accept: false,
+      reason: expect.stringContaining('leave arrival__establishing covering nothing'),
+    });
+  });
+
+  it('says a first shot creates the storyboard and ends decomposition', () => {
+    // No shots loaded means undecomposed — an empty list is never persisted, so there is no
+    // board to hand the rule, and the act is bigger than adding one shot.
+    const bare: CoverState = { sceneId: 'arrival', lines, shots: [] };
+    const [first] = timelineCreate.targets(bare, 'arrival:L1');
+    expect(first?.accept && first.note).toContain('ends decomposition');
+    expect(first?.accept && first.note).toContain('arrival__shot1');
+  });
+
+  it('refuses the grab when the anchor is not a line of the scene', () => {
+    expect(timelineCreate.targets(decomposed, 'arrival:L9')).toEqual([
+      { target: UNRESOLVED, accept: false, reason: expect.stringContaining('arrival:L9') },
+    ]);
+  });
+});
+
 describe('timeline.reorder', () => {
   const shot = (id: string, coversLines: string[]): CoverageShot => ({
     id,
@@ -476,6 +539,7 @@ describe('the registry', () => {
       'prompt.reorder',
       'script.moveLine',
       'timeline.cover',
+      'timeline.create',
       'timeline.reorder',
     ]);
   });
