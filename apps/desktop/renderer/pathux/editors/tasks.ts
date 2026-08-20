@@ -34,6 +34,8 @@ export class TaskListEditor extends VnEditor {
   onlyDone = false;
   /** Remembered per pane: whether the list is narrowed to what is moving right now. */
   onlyRunning = false;
+  /** Remembered per pane: whether the list is narrowed to what stopped and wants a person. */
+  onlyFailed = false;
   /**
    * Hashes the author cleared out of the *list*. Nothing is deleted: a `done` record is what
    * makes a run resumable, so pruning `tasks.jsonl` would re-render — and re-pay for — every
@@ -109,7 +111,12 @@ export class TaskListEditor extends VnEditor {
 
   /** What the two controls in the bar are set to, as the pure rules want to be asked. */
   private filter(): ListFilter {
-    return { cleared: this.cleared, onlyDone: this.onlyDone, onlyRunning: this.onlyRunning };
+    return {
+      cleared: this.cleared,
+      onlyDone: this.onlyDone,
+      onlyRunning: this.onlyRunning,
+      onlyFailed: this.onlyFailed,
+    };
   }
 
   private showing(): Task[] {
@@ -137,6 +144,7 @@ export class TaskListEditor extends VnEditor {
       this.status?.gatePending.join(',') ?? '',
       this.onlyDone ? 'done-only' : 'all',
       this.onlyRunning ? 'running-only' : 'all',
+      this.onlyFailed ? 'failed-only' : 'all',
       this.cleared.size,
       ui.taskHash,
       ui.sceneId,
@@ -193,6 +201,20 @@ export class TaskListEditor extends VnEditor {
     moving.description = 'Narrow the list to the tasks a wave is working on right now.';
     moving.on_change = (next: unknown) => {
       this.onlyRunning = next === true;
+      layoutChanged();
+      this.rebuild();
+    };
+
+    // The list is where an author goes when a run did not produce what they expected, and a
+    // failure is a needle in a column of hundreds of `done` cards. `needs_human` rides this tick
+    // too — see `ListFilter.onlyFailed`.
+    const broke = low.check(undefined, 'only failed') as Check;
+    broke.checked = this.onlyFailed;
+    broke.description =
+      'Narrow the list to what stopped and wants a person — failed tasks and shots flagged ' +
+      'needs_human.';
+    broke.on_change = (next: unknown) => {
+      this.onlyFailed = next === true;
       layoutChanged();
       this.rebuild();
     };
@@ -311,19 +333,31 @@ export class TaskListEditor extends VnEditor {
 
     const drew = TaskListEditor.drewAsset(task);
     box.title = drew
-      ? `Open what this ${task.kind} drew in the asset editor — every other pane follows the pick`
-      : `Inspect this ${task.kind} — every other pane follows the pick`;
+      ? `Open what this ${task.kind} drew in the asset editor — the last frame it rendered, ` +
+        'accepted or not; every other pane follows the pick'
+      : `Inspect this ${task.kind} — it rendered nothing to open; every other pane follows the pick`;
     box.addEventListener('click', () => this.select(task));
     return box;
   }
 
   /**
-   * The asset hash a task left behind, or `undefined`. Only a `done` task has one worth opening:
-   * `output` is written when the runner accepts a picture, and a task that failed after an
-   * attempt produced bytes is one whose bytes nothing downstream is allowed to use.
+   * The asset hash a task left behind, or `undefined` — whatever its status.
+   *
+   * It used to answer only for a `done` task, on the reasoning that bytes from a task that
+   * stopped are bytes nothing downstream may use. True, and beside the point: *unusable* and
+   * *unviewable* are different, and a picture that was rejected is exactly what an author
+   * clicking a failed card is asking to see. A `needs_human` shot carries its last rejected
+   * frame as `output`, and a `failed` task that got far enough to render something carries it on
+   * the attempt that rendered it — so the last attempt with bytes is the fallback. Nothing here
+   * accepts anything; the asset editor is a window.
    */
   private static drewAsset(task: Task): string | undefined {
-    return task.status === 'done' && task.output ? task.output : undefined;
+    if (task.output) return task.output;
+    for (let i = task.attempts.length - 1; i >= 0; i--) {
+      const drew = task.attempts[i]?.output;
+      if (drew) return drew;
+    }
+    return undefined;
   }
 
   private select(task: Task): void {
@@ -339,7 +373,8 @@ export class TaskListEditor extends VnEditor {
     this.announce();
 
     // A finished task *is* its picture, and the list is where an author watches one arrive — so
-    // the click that picks it also puts it on screen. Through `view.open` rather than by setting
+    // the click that picks it also puts it on screen. A rejected frame opens the same way: what
+    // an author wants after a failure is to look at what came out. Through `view.open` rather than by setting
     // `ui.assetHash` here: the command is what finds or raises a pane, and what records the act.
     // `elsewhere`, so the list the author is scanning is not the pane that gets replaced.
     const drew = TaskListEditor.drewAsset(task);
@@ -347,4 +382,8 @@ export class TaskListEditor extends VnEditor {
   }
 }
 
-registerEditor(TaskListEditor, 'vn.TaskListEditor', ['onlyDone : bool', 'onlyRunning : bool']);
+registerEditor(TaskListEditor, 'vn.TaskListEditor', [
+  'onlyDone : bool',
+  'onlyRunning : bool',
+  'onlyFailed : bool',
+]);

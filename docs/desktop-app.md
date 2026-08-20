@@ -866,28 +866,38 @@ Plan: [`plans/task-dag-view.md`](plans/task-dag-view.md).
   `failed` or `needs_human` node, and the list is the surface built for scanning — so it is drawn
   there rather than one click away in the inspector, whose attempt stack answers a different
   question (what each *attempt* said) and is not where an author looking for the failure starts.
-- **An empty list blames the control that emptied it.** There are three ways to hide a task and
-  they overlap: `only done` keeps what succeeded, `only running` keeps what is moving, Clear
-  finished takes what finished out, and Clear's set is a superset of `only done`'s. So the sentence
+- **An empty list blames the control that emptied it.** There are four ways to hide a task and
+  they overlap: `only done` keeps what succeeded, `only running` keeps what is moving, `only
+  failed` keeps what stopped, Clear finished takes what finished out, and Clear's set is a
+  superset of `only done`'s. So the sentence
   has to ask about Clear *first* — otherwise a list emptied by Clear says nothing has finished at
   the moment ten things have. `renderer/rules/tasklist.ts` holds both that and `showing`, because
-  both are inferences and both were wrong; the pane keeps only the three control values. Clear's
+  both are inferences and both were wrong; the pane keeps only the four control values. Clear's
   own tooltip while greyed is its refusal, per the tooltip rule.
-- **`only running` is its own tick, not a third state of `only done`.** The two statuses are
-  disjoint, so what an author wants while a wave is in flight is the *running* half rather than a
-  mode switch away from the setting they left on. Ticking both is a request for a task that is
+- **Each status tick is its own, not a state of one control.** The statuses are pairwise disjoint,
+  so what an author wants while a wave is in flight is the *running* half rather than a
+  mode switch away from the setting they left on. Ticking two is a request for a task that is
   finished and still moving, which no task ever is — so the list shows nothing and `emptyBecause`
-  names the pair rather than blaming whichever tick happens to be tested first. The bar is a
-  **column of two rows** — what the list *is* on top, what to do about it underneath — because five
-  controls and a sentence of counts in one row lose their last control in a half-width pane.
-- **Clicking a finished task opens what it drew.** A `done` task with an `output` *is* its
+  names every tick that is on rather than blaming whichever one happens to be tested first. The bar
+  is a **column of two rows** — what the list *is* on top, what to do about it underneath — because
+  six controls and a sentence of counts in one row lose their last control in a half-width pane.
+- **`only failed` keeps `needs_human` too, and that is the point of it.** The list is where an
+  author goes when a run did not produce what they expected, and a failure is a needle in a column
+  of hundreds of `done` cards. A shot that exhausted its refinement attempts is the likeliest
+  answer to “what went wrong”, so a tick named for failure that hid `needs_human` would hide the
+  very thing it was ticked to find.
+- **Clicking a task opens what it drew, accepted or not.** A task with an `output` *is* its
   picture, and the list is where an author watches one arrive — so the click that picks it also
   runs `view.open(editor='asset', where='elsewhere', subject=<hash>)`. Through the command rather
   than by setting `ui.assetHash` in the pane: the command is what finds or raises a pane and what
   records the act, and `elsewhere` keeps the list being scanned from being the pane that gets
-  replaced. Only `done` — bytes from a task that failed afterwards are bytes nothing downstream is
-  allowed to use. The card's tooltip says which of the two the click will do; a task that drew
-  nothing selects as before, and the inspector follows.
+  replaced. **Not only `done`**: bytes from a task that stopped are bytes nothing downstream may
+  *use*, which is a different thing from bytes nobody may *look at* — and a rejected frame is
+  exactly what an author clicking a failed card is asking to see. A `needs_human` shot carries its
+  last rejected frame as `output`; a `failed` task that rendered something carries it on the
+  attempt that rendered it, so `drewAsset` falls back to the last attempt with bytes. The card's
+  tooltip says which of the two the click will do; a task that drew nothing selects as before, and
+  the inspector follows.
 
 - **A hash the cached status has never heard of is a re-plan, not a miss.** The inspector re-fetches
   once on that condition rather than polling, and says so on screen when the task is still absent.

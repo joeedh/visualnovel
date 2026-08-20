@@ -17,14 +17,21 @@ const filter = (over: Partial<ListFilter> = {}): ListFilter => ({
   cleared: new Set(),
   onlyDone: false,
   onlyRunning: false,
+  onlyFailed: false,
   ...over,
 });
 
-const TASKS = [task('a', 'done'), task('b', 'failed'), task('c', 'pending'), task('d', 'running')];
+const TASKS = [
+  task('a', 'done'),
+  task('b', 'failed'),
+  task('c', 'pending'),
+  task('d', 'running'),
+  task('e', 'needs_human'),
+];
 
 describe('showing', () => {
   it('shows everything by default', () => {
-    expect(showing(TASKS, filter()).map((t) => t.hash)).toEqual(['a', 'b', 'c', 'd']);
+    expect(showing(TASKS, filter()).map((t) => t.hash)).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
 
   it('keeps only what succeeded under the filter — a failure has finished but is not done', () => {
@@ -33,7 +40,7 @@ describe('showing', () => {
 
   it('drops what Clear took out, filter or no filter', () => {
     const cleared = new Set(['a', 'b']);
-    expect(showing(TASKS, filter({ cleared })).map((t) => t.hash)).toEqual(['c', 'd']);
+    expect(showing(TASKS, filter({ cleared })).map((t) => t.hash)).toEqual(['c', 'd', 'e']);
     expect(showing(TASKS, filter({ cleared, onlyDone: true }))).toEqual([]);
   });
 
@@ -41,10 +48,18 @@ describe('showing', () => {
     expect(showing(TASKS, filter({ onlyRunning: true })).map((t) => t.hash)).toEqual(['d']);
   });
 
-  // The two ticks are independent rather than one three-state control, and `done` and `running`
-  // are disjoint — so both on is a request for nothing, and answering nothing is correct.
-  it('shows nothing when both status ticks are on', () => {
+  // The one tick an author reaches for after a run that did not produce what they expected — and
+  // a shot that exhausted its refinements is the likeliest answer, so it is kept by a tick named
+  // for failure rather than hidden by it.
+  it('keeps what stopped and wants a person, needs_human included', () => {
+    expect(showing(TASKS, filter({ onlyFailed: true })).map((t) => t.hash)).toEqual(['b', 'e']);
+  });
+
+  // The ticks are independent rather than one four-state control, and no two of the statuses
+  // overlap — so any two on is a request for nothing, and answering nothing is correct.
+  it('shows nothing when two status ticks are on', () => {
     expect(showing(TASKS, filter({ onlyDone: true, onlyRunning: true }))).toEqual([]);
+    expect(showing(TASKS, filter({ onlyDone: true, onlyFailed: true }))).toEqual([]);
   });
 });
 
@@ -54,7 +69,7 @@ describe('emptyBecause', () => {
   });
 
   it('blames Clear when Clear is what emptied it', () => {
-    const cleared = new Set(['a', 'b', 'c', 'd']);
+    const cleared = new Set(['a', 'b', 'c', 'd', 'e']);
     expect(emptyBecause(TASKS, filter({ cleared }))).toContain('Refresh brings it back');
   });
 
@@ -62,7 +77,7 @@ describe('emptyBecause', () => {
   // both on the filter used to be blamed — and told the author nothing had finished when the
   // three tasks it had just cleared all had.
   it('still blames Clear when the filter is on as well', () => {
-    const cleared = new Set(['a', 'b', 'c', 'd']);
+    const cleared = new Set(['a', 'b', 'c', 'd', 'e']);
     expect(emptyBecause(TASKS, filter({ cleared, onlyDone: true }))).toContain(
       'Refresh brings it back',
     );
@@ -78,10 +93,22 @@ describe('emptyBecause', () => {
     );
   });
 
-  // Blaming whichever tick is tested first would tell the author to untick the one they need.
-  it('names the pair rather than one of them when both ticks are on', () => {
-    expect(emptyBecause(TASKS, filter({ onlyDone: true, onlyRunning: true }))).toContain(
-      'both done and running',
+  it('names “only failed” when that is the tick that emptied it', () => {
+    expect(emptyBecause([task('a', 'done')], filter({ onlyFailed: true }))).toContain(
+      'flagged for a person',
     );
+  });
+
+  // Blaming whichever tick is tested first would tell the author to untick the one they need.
+  it('names every tick that is on rather than one of them', () => {
+    expect(emptyBecause(TASKS, filter({ onlyDone: true, onlyRunning: true }))).toContain(
+      'done and running at once',
+    );
+    const three = emptyBecause(
+      TASKS,
+      filter({ onlyDone: true, onlyRunning: true, onlyFailed: true }),
+    );
+    expect(three).toContain('done and running and failed');
+    expect(three).toContain('all but one of the 3');
   });
 });
