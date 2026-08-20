@@ -1,6 +1,12 @@
 # What the agent knows about the story format
 
-Status: **not started.**
+Status: **shipped**, in five commits, one per wave (4 and 5 landed in the other order, so the
+skill could name `deleteLines` after it existed). Two deliberate deviations, both pinned by a
+test: §2.2 compares only the notes the model does *not* keep rather than raw note text, because
+the serializer re-emits `[[goto:]]` canonically and a raw diff would refuse edits to any scene
+carrying one; and §2.4's `droppedWarnings` row was dropped, because `sceneChunksFromScript`
+already merges `splitScenes`' diagnostics, so the `vngen import` door is covered and the row
+would have double-reported.
 
 What to change so the authoring agent stops inventing notation the format does not have, stops
 mistaking the project's own line ids for junk, and so a note nothing understands is reported rather
