@@ -45,8 +45,29 @@
      only be run when approved by the user and not part of pnpm test and use real api keys.  
 	 both the vn agent and the debug agent would be tested.  one test for every supported 
 	 model.
-[ ]: add a 'needs approval' icon next to the notification icon.  it should dropdown 
-     a list of assets that need approval, clicking one should show it in the asset editor.
-	 when approved the asset should be removed from the list, and added back when stale.
-	 assets should be added to the list at the head, so the most recently added ones
-	 are on top.
+[ ]: the story editor should show script line numbers
+[ ]: right clicking a script line should popup a context menu with 'edit with agent' that 
+     shows convo editor in a different screen area and creates a new thread if the current 
+	 one isn't empty, and prefills it with the scene and line number.
+[ ]: assets that failed to generate should have a reason shown in the asset editor.
+[ ]: when an asset that failed after X attempts is changed (e.g. art notes, prompt changes)
+     the pipeline should rerender it.
+[ ]: when an asset editor is showing the more recent asset of a slot, and the pipeline generates 
+     a new asset for that slot, the editor should show the new asset automatically.
+[ ]: the task graph should have a searchable list of asset slots, clicking one lets 
+     you see just the graph uses to generate the slot.  it should arrange the nodes 
+	 in a nice manner.
+[ ]: the asset editor for failed shots should have a 'fix with agent' button 
+     that shows the convo editor with a new thread (if current thread isn't empty)
+	 and a prompt for the agent to fix the asset prefilled.
+[ ]: do not use sugiyama layout for the global task graph view 
+   - it might work for individual asset subgraphs, so use it for those and we'll try it.
+[ ]: clicking on a scene should show it in any open play editors 
+[ ]: clicking on a shot in the coverage editor (or the document tree) should show it in the play editor.
+[ ]: write a report on supporting a manga or anime shot composition style, where 
+     instead of portraits popping up on the screen (as light novels often do) 
+	 each shot would fully frame characters.  cross reference with the ai shot 
+	 framing report.
+[ ]: see if the ai framing report includes methods that use generative ai to edit 
+     reference shots and insert characters into them.  if not use an agent to research
+	 that and add it to the report.

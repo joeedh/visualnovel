@@ -1,6 +1,8 @@
 # Tracking cache misses in transcripts
 
-_Research, internal. Nothing here is a plan. It answers one question — **could a saved conversation
+_Research, internal. The plan written from it is
+[`../plans/recording-cache-misses-in-a-thread.md`](../plans/recording-cache-misses-in-a-thread.md).
+It answers one question — **could a saved conversation
 record when the prompt cache missed, for the vendors that report honestly enough to tell** — and
 prices the three places the record could live._
 
