@@ -124,6 +124,7 @@ export class CommandStack<Host = unknown> {
         finishedAt: this.now(),
         status: 'ok',
         message: output.message,
+        ...(output.subject ? { subject: output.subject } : {}),
         ...(output.written ? { written: output.written } : {}),
         ...(journal && pre && post ? { undo: journal.point(pre, post) } : {}),
       };

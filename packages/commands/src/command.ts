@@ -43,6 +43,8 @@ export interface CommandContext<Host = unknown> {
 export interface CommandOutput {
   /** Human-readable one-liner for the history and the feed. */
   message: string;
+  /** One line for the commit subject, when `message` is prose rather than a summary. */
+  subject?: string;
   /** Structured payload handed back to the caller. */
   data?: unknown;
   /** Workspace-relative paths written — provenance now, undo input later. */
@@ -142,6 +144,8 @@ export interface CommandRecord {
   finishedAt: string;
   status: 'ok' | 'error';
   message: string;
+  /** One line for the commit subject, when `message` is prose rather than a summary. */
+  subject?: string;
   written?: string[];
   error?: string;
   /**

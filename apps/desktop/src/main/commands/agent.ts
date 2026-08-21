@@ -33,7 +33,8 @@ export const agentRun = define({
     // reading in another window
     ctx.host.noteTurnWindow(ctx.origin);
     const result = await ctx.host.session.runAgent(input, scene || undefined);
-    return { message: result.final, data: result };
+    // The reply is prose the conversation pane renders, so the commit takes the ask instead
+    return { message: result.final, subject: `Agent turn: ${input}`, data: result };
   },
 });
 

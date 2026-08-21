@@ -92,7 +92,7 @@ recorded — as its own event rather than folded into whatever the author does n
 ### Message shape
 
 The subject is the command's own one-liner (`CommandRecord.message`), stripped of a trailing
-period and capped at 72 characters; provenance goes in trailers:
+period, cut at the first newline and capped at 72 characters; provenance goes in trailers:
 
 ```
 Moved line L4 into rooftop
@@ -102,6 +102,10 @@ Vn-Seq: 12
 Vn-Invocation: story.moveLine(lineId='L4' toScene='rooftop')
 Vn-Source: ui
 ```
+
+A command whose `message` is prose rather than a summary sets `CommandRecord.subject`, and the
+commit is named after that instead. `agent.run` is the only one that does: its message is the
+agent's whole reply, which the conversation pane renders, so the commit takes `Agent turn: <ask>`.
 
 An undo or redo adds `Vn-Undo:` / `Vn-Redo:` naming the seq it reverses. A checkpoint carries
 `Vn-Checkpoint: true` and no command fields.

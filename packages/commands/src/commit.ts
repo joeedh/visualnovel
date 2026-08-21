@@ -31,8 +31,13 @@ export interface CommitterOptions {
 /** Git subjects are read in one line; anything longer belongs in the body. */
 const SUBJECT_MAX = 72;
 
+/**
+ * The first line of `text` as a git subject, or `fallback` when it has none. Only the first line
+ * is taken: git reads a blank line as the start of a body, so truncating a longer text mid-word
+ * would leave a stray paragraph of it as the commit message body.
+ */
 function subject(text: string, fallback: string): string {
-  const line = text.trim().replace(/\.$/, '');
+  const line = text.trim().split('\n')[0]!.trim().replace(/\.$/, '');
   if (line.length === 0) return fallback;
   return line.length <= SUBJECT_MAX ? line : `${line.slice(0, SUBJECT_MAX - 1).trimEnd()}…`;
 }
@@ -59,7 +64,10 @@ export class Committer {
 
   /** Commit whatever `record`'s command left on disk. A repo with nothing to commit is skipped. */
   async commit(record: CommandRecord): Promise<CommitResult[]> {
-    return this.run(subject(record.message, record.invocation), trailersOf(record));
+    return this.run(
+      subject(record.subject ?? record.message, record.invocation),
+      trailersOf(record),
+    );
   }
 
   /**

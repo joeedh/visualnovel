@@ -72,6 +72,26 @@ describe('Committer', () => {
     }
   }, 20_000);
 
+  it('keeps a prose message out of the commit body, and prefers the record’s own subject', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      const committer = new Committer({ repos: () => [git] });
+      const prose =
+        'Fixed and committed.\n\n**The cause:** a shot’s description named the wrong plate.';
+
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      const first = await committer.commit(record({ message: prose }));
+      expect((await git.log(1))[0]!.subject).toBe('Fixed and committed');
+      expect(await git.show(first[0]!.sha)).not.toContain('The cause:');
+
+      await fs.writeFile(join(dir, 'doc.md'), 'edited again\n');
+      await committer.commit(record({ message: prose, subject: 'Agent turn: fix the plate' }));
+      expect((await git.log(1))[0]!.subject).toBe('Agent turn: fix the plate');
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
   it('produces no commit when the act left nothing on disk', async () => {
     const { git, cleanup } = await tempProject();
     try {
