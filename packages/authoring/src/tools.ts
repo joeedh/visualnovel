@@ -215,18 +215,42 @@ function formatDiagnostics(diags: Diagnostic[]): string {
     .join('\n');
 }
 
-/** Render a zod base type as a short name for a tool-arg signature. */
-function zodTypeName(t: ZodType): string {
+/**
+ * How far a signature descends into nested shapes before falling back to `object` / `any`. Two
+ * covers every nested shape in the registry — `write_storyboard`'s `shots[].subjects[]` is the
+ * deepest — and bounds what a future tool can add to the cached prefix.
+ */
+const SIGNATURE_DEPTH = 2;
+
+/**
+ * Render a zod base type as a short name for a tool-arg signature. A nested object below
+ * {@link SIGNATURE_DEPTH} is spelled out; past it a shape collapses to `object` or `any`, which is
+ * what left `write_storyboard`'s real argument names unreachable and had the model guessing them.
+ */
+function zodTypeName(t: ZodType, depth = 0): string {
   if (t instanceof z.ZodOptional || t instanceof z.ZodDefault || t instanceof z.ZodNullable)
-    return zodTypeName(t._def.innerType as ZodType);
-  if (t instanceof z.ZodArray) return `${zodTypeName(t._def.type as ZodType)}[]`;
+    return zodTypeName(t._def.innerType as ZodType, depth);
+  if (t instanceof z.ZodArray) return `${zodTypeName(t._def.type as ZodType, depth)}[]`;
   if (t instanceof z.ZodEnum) return (t._def.values as string[]).map((v) => `"${v}"`).join('|');
   if (t instanceof z.ZodString) return 'string';
   if (t instanceof z.ZodNumber) return 'number';
   if (t instanceof z.ZodBoolean) return 'boolean';
-  if (t instanceof z.ZodObject) return 'object';
+  if (depth >= SIGNATURE_DEPTH) return t instanceof z.ZodObject ? 'object' : 'any';
+  if (t instanceof z.ZodObject) {
+    const shape = t.shape as Record<string, ZodType>;
+    const fields = Object.entries(shape).map(
+      ([name, f]) => `${name}${isOptional(f) ? '?' : ''}: ${zodTypeName(f, depth + 1)}`,
+    );
+    return `{ ${fields.join(', ')} }`;
+  }
+  if (t instanceof z.ZodRecord)
+    return `record<string, ${zodTypeName(t._def.valueType as ZodType, depth + 1)}>`;
+  if (t instanceof z.ZodUnion)
+    return (t._def.options as ZodType[]).map((o) => zodTypeName(o, depth + 1)).join(' | ');
   return 'any';
 }
+
+const isOptional = (t: ZodType): boolean => t instanceof z.ZodOptional || t instanceof z.ZodDefault;
 
 /**
  * Render an object schema as a compact `name?: type (note)` signature so the model knows a
@@ -238,11 +262,59 @@ export function describeToolParams(schema: ZodType): string {
   const shape = schema.shape as Record<string, ZodType>;
   return Object.entries(shape)
     .map(([name, field]) => {
-      const optional = field instanceof z.ZodOptional || field instanceof z.ZodDefault;
       const note = field.description ? ` (${field.description})` : '';
-      return `${name}${optional ? '?' : ''}: ${zodTypeName(field)}${note}`;
+      return `${name}${isOptional(field) ? '?' : ''}: ${zodTypeName(field)}${note}`;
     })
     .join(', ');
+}
+
+/**
+ * One zod type as JSON Schema, covering the subset the registry uses. Mirrors {@link zodTypeName}'s
+ * switch and sits beside it so the two stay in step. zod is pinned at ^3, which has no
+ * `z.toJSONSchema`, and one call site does not earn a dependency.
+ *
+ * `_def.unknownKeys` is ignored, so a `.strict()` shape never becomes
+ * `additionalProperties: false`. A vendor-side rejection arrives as a request error rather than as
+ * an observation the model can act on, so unknown keys are refused by zod in the loop instead.
+ * Properties are emitted in the zod shape's own order and never sorted: the tool catalog sits in
+ * the cached prefix and must be byte-stable across turns.
+ */
+function jsonTypeOf(t: ZodType): Record<string, unknown> {
+  const note = t.description ? { description: t.description } : {};
+  if (t instanceof z.ZodOptional || t instanceof z.ZodDefault)
+    return { ...jsonTypeOf(t._def.innerType as ZodType), ...note };
+  if (t instanceof z.ZodNullable)
+    return { anyOf: [jsonTypeOf(t._def.innerType as ZodType), { type: 'null' }], ...note };
+  if (t instanceof z.ZodArray)
+    return { type: 'array', items: jsonTypeOf(t._def.type as ZodType), ...note };
+  if (t instanceof z.ZodEnum) return { type: 'string', enum: t._def.values as string[], ...note };
+  if (t instanceof z.ZodString) return { type: 'string', ...note };
+  if (t instanceof z.ZodNumber) return { type: 'number', ...note };
+  if (t instanceof z.ZodBoolean) return { type: 'boolean', ...note };
+  if (t instanceof z.ZodRecord)
+    return {
+      type: 'object',
+      additionalProperties: jsonTypeOf(t._def.valueType as ZodType),
+      ...note,
+    };
+  if (t instanceof z.ZodUnion)
+    return { anyOf: (t._def.options as ZodType[]).map(jsonTypeOf), ...note };
+  if (t instanceof z.ZodObject) {
+    const shape = t.shape as Record<string, ZodType>;
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const [name, field] of Object.entries(shape)) {
+      properties[name] = jsonTypeOf(field);
+      if (!isOptional(field)) required.push(name);
+    }
+    return { type: 'object', properties, ...(required.length ? { required } : {}), ...note };
+  }
+  return { ...note };
+}
+
+/** A tool's arguments as JSON Schema, or undefined when the tool's args are not an object shape. */
+export function jsonSchemaOf(schema: ZodType): Record<string, unknown> | undefined {
+  return schema instanceof z.ZodObject ? jsonTypeOf(schema) : undefined;
 }
 
 // ── File & content ──────────────────────────────────────────────────────────
@@ -1120,6 +1192,26 @@ function formatStoryboard(scene: Scene, shots: readonly Shot[]): string {
   return [...rows, tail].join('\n');
 }
 
+/**
+ * A proposal's shots as `write_storyboard`'s `shots` argument. Only the fields that tool takes,
+ * so what `propose_storyboard` prints can be restated without editing; `sceneId` and `status` are
+ * the scene's and the pipeline's, not the caller's.
+ */
+function storyboardArgsOf(shots: readonly Shot[]): unknown[] {
+  return shots.map((s) => ({
+    id: s.id,
+    framing: s.framing,
+    location: s.location,
+    subjects: s.subjects.map((x) => ({
+      characterId: x.characterId,
+      ...(x.pose === undefined ? {} : { pose: x.pose }),
+      ...(x.expression === undefined ? {} : { expression: x.expression }),
+    })),
+    ...(s.camera === undefined ? {} : { camera: s.camera }),
+    coversLines: s.coversLines,
+  }));
+}
+
 const readShotsTool: Tool<{ scene: string }> = {
   name: 'read_shots',
   description:
@@ -1220,7 +1312,9 @@ const proposeStoryboardTool: Tool<{ scene: string }> = {
         : `The deterministic baseline — no model answer was used: ${result.reason ?? 'unknown'}.`;
     return ok(
       `${source}\n${formatStoryboard(scene, result.shots)}\n` +
-        'Nothing is written. If the author approves, restate these shots to write_storyboard.',
+        'Nothing is written. If the author approves, restate these shots to write_storyboard — ' +
+        'this is exactly the `shots` array it takes:\n' +
+        JSON.stringify(storyboardArgsOf(result.shots), null, 2),
       { data: { source: result.source, reason: result.reason, shots: result.shots } },
     );
   },

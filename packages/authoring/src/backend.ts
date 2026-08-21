@@ -41,6 +41,11 @@ export interface ToolSpec {
   mutating: boolean;
   /** Compact `name?: type (note)` argument signature, so the model needn't guess fields. */
   parameters?: string;
+  /**
+   * The same arguments as JSON Schema, for a backend that takes one. Absent for a tool with no
+   * zod shape in the registry, which falls back to a permissive object.
+   */
+  schema?: Record<string, unknown>;
   /** Keep out of context until the model searches for it. Advisory — a text path renders all. */
   defer?: boolean;
 }
@@ -300,11 +305,13 @@ export class NativeAgentBackend implements AgentBackend {
   async next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn> {
     const schemas: ToolSchema[] = tools.map((t) => {
       let description = t.mutating ? `${t.description} (mutating)` : t.description;
-      if (t.parameters) description += ` Args: ${t.parameters}`;
+      // A tool that carries a schema already states its arguments in the request; appending the
+      // signature too would put the same information in the cached prefix twice.
+      if (t.parameters && !t.schema) description += ` Args: ${t.parameters}`;
       return {
         name: t.name,
         description,
-        parameters: LOOSE_PARAMS,
+        parameters: t.schema ?? LOOSE_PARAMS,
         ...(t.defer ? { defer: true } : {}),
       };
     });

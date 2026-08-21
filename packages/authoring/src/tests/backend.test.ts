@@ -5,7 +5,9 @@ import type {
   ChatTurn,
   ToolSchema,
 } from '@vn/providers';
+import { z } from 'zod';
 import { ProviderError } from '@vn/util';
+import { describeToolParams, jsonSchemaOf } from '../tools.js';
 import {
   NativeAgentBackend,
   StructuredAgentBackend,
@@ -65,13 +67,49 @@ describe('NativeAgentBackend', () => {
     ]);
     expect(turn.message).toBe('reading');
     expect(turn.final).toBeUndefined();
-    // Every tool is advertised with a permissive object schema (the loop re-validates args),
+    // A tool carrying no schema falls back to a permissive object (the loop re-validates args),
     // and `defer` rides through untouched for the provider's own tool search.
     const { tools } = chat.calls[0]!;
     expect(tools.map((t) => t.name)).toEqual(['read_file', 'write_file']);
     expect(tools[0]!.defer).toBeUndefined();
     expect(tools[1]!.defer).toBe(true);
     expect(tools[1]!.parameters).toEqual({ type: 'object', additionalProperties: true });
+  });
+
+  it('sends a tool’s real schema, drops the signature append, and stays byte-stable', async () => {
+    const shape = z
+      .object({
+        scene: z.string(),
+        shots: z.array(z.object({ id: z.string(), pose: z.string().optional() })).min(1),
+      })
+      .strict();
+    const spec: ToolSpec[] = [
+      {
+        name: 'write_storyboard',
+        description: 'Persist a storyboard.',
+        mutating: true,
+        parameters: describeToolParams(shape),
+        schema: jsonSchemaOf(shape)!,
+      },
+    ];
+    const chat = convoChat({ text: 'done', toolCalls: [] });
+    const backend = new NativeAgentBackend(chat);
+    await backend.next('sys', MESSAGES, spec);
+    await backend.next('sys', MESSAGES, spec);
+
+    const sent = chat.calls[0]!.tools[0]!;
+    const params = sent.parameters as Record<string, Record<string, Record<string, unknown>>>;
+    expect(params.properties!.shots!.items).toMatchObject({
+      type: 'object',
+      properties: { id: { type: 'string' }, pose: { type: 'string' } },
+      required: ['id'],
+    });
+    // A `.strict()` shape must not become the vendor's refusal — zod refuses the stray key in the
+    // loop, where the model can read the refusal and correct it.
+    expect(JSON.stringify(params)).not.toContain('additionalProperties');
+    // The schema already states the arguments; appending the signature would send them twice.
+    expect(sent.description).not.toContain('Args:');
+    expect(JSON.stringify(chat.calls[1]!.tools)).toBe(JSON.stringify(chat.calls[0]!.tools));
   });
 
   it('treats a text-only reply as a final message and keeps the blocks it came in', async () => {

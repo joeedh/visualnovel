@@ -23,6 +23,7 @@ import { joinSections, type SystemSection } from './context.js';
 import {
   createRegistry,
   describeToolParams,
+  jsonSchemaOf,
   type ReadLedger,
   type Tool,
   type ToolContext,
@@ -570,12 +571,16 @@ export class Agent {
    * behind. A host that set `deferTools: false` gets the same catalog with no flags on it.
    */
   private toolSpecs(): ToolSpec[] {
-    const fromRegistry = [...this.registry.values()].map((t) => ({
-      name: t.name,
-      description: t.description,
-      mutating: t.mutating,
-      parameters: describeToolParams(t.args),
-    }));
+    const fromRegistry = [...this.registry.values()].map((t) => {
+      const schema = jsonSchemaOf(t.args);
+      return {
+        name: t.name,
+        description: t.description,
+        mutating: t.mutating,
+        parameters: describeToolParams(t.args),
+        ...(schema ? { schema } : {}),
+      };
+    });
     const all = [...fromRegistry, ...CONTROL_TOOLS];
     if (!this.deferTools) return all;
     return all.map((t) => ({
