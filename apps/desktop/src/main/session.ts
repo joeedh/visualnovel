@@ -185,6 +185,7 @@ import {
   setCoverage,
   setSceneOutfit,
   setShotOutfit,
+  setShotVariant,
   wardrobesOf,
   type BranchOp,
   type DeleteShotOp,
@@ -3900,6 +3901,70 @@ export class WorkspaceSession {
     outfit: string,
   ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
     const { project, op } = await this.shotOutfitRule(sceneId, shotId, character, outfit);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok: true,
+      message: op.message,
+      written: [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.sceneCoverage(sceneId),
+    };
+  }
+
+  /** The variant rule against a fresh load, shared by the preview and the write. */
+  private async shotVariantRule(
+    sceneId: string,
+    shotId: string,
+    variant: string,
+  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return { project, op: { ok: false, error: `No scene "${sceneId}".` } };
+
+    const location = project.model.locations.get(scene.location);
+    if (!location) {
+      return {
+        project,
+        op: { ok: false, error: `No location "${scene.location}", which ${sceneId} is set in.` },
+      };
+    }
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return {
+        project,
+        op: {
+          ok: false,
+          error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+        },
+      };
+    }
+    return {
+      project,
+      op: setShotVariant(loaded.shots, scene, location, { shot: shotId, variant }),
+    };
+  }
+
+  /** What `story.setVariant` would do, without writing it. */
+  async previewShotVariant(
+    sceneId: string,
+    shotId: string,
+    variant: string,
+  ): Promise<ShotOutfitOp> {
+    return (await this.shotVariantRule(sceneId, shotId, variant)).op;
+  }
+
+  /**
+   * Set which variant of the scene's location one shot is drawn against. Like `setShotOutfit` this
+   * changes the shot's prompt, so the shot re-hashes and the next run re-renders it. Shot fallout
+   * does not apply: a variant change touches neither `coversLines` nor `proseHash`.
+   */
+  async setShotVariant(
+    sceneId: string,
+    shotId: string,
+    variant: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.shotVariantRule(sceneId, shotId, variant);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
     await writeShots(project.paths, sceneId, op.shots);

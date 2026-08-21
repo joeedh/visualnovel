@@ -634,6 +634,31 @@ export const storySetOutfit = define({
   },
 });
 
+export const storySetVariant = define({
+  id: 'story.setVariant',
+  title: 'Set which variant a shot is drawn in',
+  description:
+    "Change which variant of the scene's location one shot is set in — the `@night` the " +
+    'storyboard listing shows. That is the plate the frame is drawn against, so the shot ' +
+    're-hashes and the next run re-renders it.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    variant: prop.string("a variant id of the scene's location, e.g. night"),
+  },
+  async check({ scene, shot, variant }, ctx) {
+    const op = await ctx.host.session.previewShotVariant(scene, shot, variant);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot, variant }, ctx) {
+    const result = await ctx.host.session.setShotVariant(scene, shot, variant);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
 export const storyAssignLineIds = define({
   id: 'story.assignLineIds',
   title: 'Assign line ids',

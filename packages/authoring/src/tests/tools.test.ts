@@ -1040,6 +1040,74 @@ describe('set_outfit', () => {
   });
 });
 
+describe('set_variant', () => {
+  const boarded = (variant: string, paths: ProjectPaths): Promise<unknown> =>
+    writeShots(paths, 'arrival', [
+      {
+        id: 'arrival__beat1',
+        sceneId: 'arrival',
+        framing: 'medium',
+        location: variant,
+        subjects: [{ characterId: 'aiko' }],
+        coversLines: ['arrival:L1'],
+        status: 'pending',
+      },
+    ]);
+
+  it('moves one shot to another variant and says the frame is drawn again', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const paths = new ProjectPaths(dir);
+      await boarded('day', paths);
+      const r = await run(
+        'set_variant',
+        { scene: 'arrival', shot: 'arrival__beat1', variant: 'afternoon' },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.written).toEqual(['vngen/work/shots/arrival.json']);
+      expect(r.output).toContain('drawn again');
+      const after = await readShots(paths, 'arrival');
+      expect(after?.shots[0]!.location).toBe('afternoon');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('gives the rule’s refusal, naming the variants the location does have', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const paths = new ProjectPaths(dir);
+      await boarded('day', paths);
+      const r = await run(
+        'set_variant',
+        { scene: 'arrival', shot: 'arrival__beat1', variant: 'midnight' },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('"day", "afternoon"');
+      expect((await readShots(paths, 'arrival'))?.shots[0]!.location).toBe('day');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses a scene with no storyboard rather than making one', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'set_variant',
+        { scene: 'arrival', shot: 'arrival__beat1', variant: 'afternoon' },
+        ctx,
+      );
+      expect(r.ok).toBe(false);
+      expect(r.output).toContain('no decomposition yet');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
 /** Records what each art call asked for rather than drawing a picture. */
 function fakeArt(dir: string): {
   art: ArtGen;
@@ -2327,6 +2395,9 @@ describe('storyboard tools', () => {
       expect(r.ok).toBe(true);
       expect(r.written).toEqual(['vngen/work/shots/ending.json']);
       expect(r.output).toContain('ends decomposition');
+      // The coercion is silent on disk, so the write has to say which frames it moved
+      expect(r.output).toContain('ending__opener: "nowhere" → "day"');
+      expect(r.output).toContain('set_variant');
       const board = await readShots(new ProjectPaths(dir), 'ending');
       const shot = board?.shots[0];
       expect(shot?.id).toBe('ending__opener');
@@ -2336,6 +2407,25 @@ describe('storyboard tools', () => {
     } finally {
       await cleanup();
     }
+  });
+
+  it('write_storyboard rejects a shot key it does not take, rather than dropping it', () => {
+    const shape = tool('write_storyboard').args;
+    const shot = {
+      id: 'opener',
+      framing: 'wide',
+      location: 'day',
+      subjects: [],
+      coversLines: ['ending:L1'],
+    };
+    expect(shape.safeParse({ scene: 'ending', shots: [shot] }).success).toBe(true);
+    const stray = shape.safeParse({
+      scene: 'ending',
+      shots: [{ ...shot, variant: 'night' }],
+    });
+    expect(stray.success).toBe(false);
+    if (stray.success) throw new Error('expected a rejection');
+    expect(JSON.stringify(stray.error.issues)).toContain('variant');
   });
 
   it('write_storyboard refuses where a storyboard exists, and propose_storyboard does too', async () => {

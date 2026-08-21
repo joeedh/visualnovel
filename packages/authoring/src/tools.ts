@@ -1167,6 +1167,36 @@ const setOutfitTool: Tool<z.infer<typeof outfitShape>> = {
   },
 };
 
+const variantShape = z.object({
+  scene: z.string().min(1).describe('the scene the shot belongs to'),
+  shot: z.string().min(1).describe('the shot id, e.g. arrival__beat1'),
+  variant: z.string().min(1).describe('a variant id of the scene’s location, e.g. night'),
+});
+
+/**
+ * The only way to change a shot's variant after the storyboard is written. `write_storyboard`
+ * takes one per shot but is refused once a file exists, and the field is easy to get wrong at
+ * write time because a variant id and a location id look alike.
+ *
+ * The rule is `@vn/scriptedit`'s, so a refusal is verbatim the one `story.setVariant` gives.
+ */
+const setVariantTool: Tool<z.infer<typeof variantShape>> = {
+  name: 'set_variant',
+  description:
+    'Change which variant of its scene’s location one shot is drawn in — the @night read_shots ' +
+    'shows. That variant is the plate the frame is drawn against, so the shot re-hashes and the ' +
+    'next run draws it again. The variants themselves are authored on the location.',
+  mutating: true,
+  args: variantShape,
+  async run(a, ctx) {
+    const op = await ctx.workspace.shotVariant(a.scene, a.shot, a.variant);
+    if (!op.ok) return fail(op.error);
+    await writeShots(ctx.workspace.paths, a.scene, op.shots);
+    const shotsFile = `vngen/work/shots/${a.scene}.json`;
+    return ok(op.message, { written: [shotsFile], data: { paths: [shotsFile] } });
+  },
+};
+
 // ── Storyboards: reading one, covering lines, and making one whole ──────────
 
 /**
@@ -1215,9 +1245,11 @@ function storyboardArgsOf(shots: readonly Shot[]): unknown[] {
 const readShotsTool: Tool<{ scene: string }> = {
   name: 'read_shots',
   description:
-    'Read a scene’s storyboard: each shot’s framing, location variant, cast and the line ids it ' +
-    'covers, plus the lines nothing covers. The look before any storyboard write — set_coverage, ' +
-    'edit_scene’s newShot and deleteShot, set_outfit with a shot, write_storyboard. A scene with ' +
+    'Read a scene’s storyboard: each shot’s framing, cast and the line ids it covers, plus the ' +
+    'lines nothing covers. The @night after the framing is the variant of the scene’s location ' +
+    'that shot is drawn against, changed with set_variant. The look before any storyboard write ' +
+    '— set_coverage, edit_scene’s newShot and deleteShot, set_outfit with a shot, ' +
+    'write_storyboard. A scene with ' +
     'no storyboard says so, and names both doors: propose then write one, or place the first ' +
     'shot by hand.',
   mutating: false,
@@ -1320,30 +1352,68 @@ const proposeStoryboardTool: Tool<{ scene: string }> = {
   },
 };
 
-const storyboardShotShape = z.object({
-  id: z.string().min(1).describe('the shot id from the proposal, e.g. arrival__establishing'),
-  framing: z.enum(['wide', 'medium', 'close', 'establishing']),
-  location: z.string().min(1).describe('a variant id of the scene’s location'),
-  subjects: z
-    .array(
-      z.object({
-        characterId: z.string().min(1),
-        pose: z.string().optional(),
-        expression: z.string().optional(),
-      }),
-    )
-    .describe('who is in frame; wardrobe is deliberately not here — outfits are set_outfit’s'),
-  camera: z.string().optional(),
-  coversLines: z.array(z.string()).describe('the line ids this shot is on screen for'),
-});
+// Both shapes are `.strict()` for the reason `@vn/types`'s art-direction shapes are: a misspelled
+// key here is dropped silently, and a shot's variant sent as `variant` cost one conversation
+// fifteen items and seven wrong frames before the agent worked out it had never arrived.
+const storyboardShotShape = z
+  .object({
+    id: z.string().min(1).describe('the shot id from the proposal, e.g. arrival__establishing'),
+    framing: z.enum(['wide', 'medium', 'close', 'establishing']),
+    location: z
+      .string()
+      .min(1)
+      .describe(
+        'the location variant id, e.g. "night" — not the location id; the scene already fixes ' +
+          'the location',
+      ),
+    subjects: z
+      .array(
+        z.object({
+          characterId: z.string().min(1),
+          pose: z.string().optional(),
+          expression: z.string().optional(),
+        }),
+      )
+      .describe('who is in frame; wardrobe is deliberately not here — outfits are set_outfit’s'),
+    camera: z.string().optional(),
+    coversLines: z.array(z.string()).describe('the line ids this shot is on screen for'),
+  })
+  .strict();
 
-const writeStoryboardShape = z.object({
-  scene: z.string().min(1).describe('the scene the storyboard is for'),
-  shots: z
-    .array(storyboardShotShape)
-    .min(1)
-    .describe('the full shot list, restated from the proposal the author approved'),
-});
+const writeStoryboardShape = z
+  .object({
+    scene: z.string().min(1).describe('the scene the storyboard is for'),
+    shots: z
+      .array(storyboardShotShape)
+      .min(1)
+      .describe('the full shot list, restated from the proposal the author approved'),
+  })
+  .strict();
+
+/**
+ * A line naming every shot whose variant was not one of the scene's location and what
+ * `realizeDecomposition` fell back to, or the empty string when none was. The coercion is silent
+ * on disk, and a shot drawn against the wrong plate looks like a model failure rather than a
+ * dropped argument, so the write says which frames it changed.
+ */
+function coercedVariants(
+  asked: readonly { id: string; location: string }[],
+  written: readonly Shot[],
+): string {
+  // Realization namespaces a bare shot id with its scene, so the two lists rarely match on id
+  const askedFor = (s: Shot): { location: string } | undefined =>
+    asked.find((x) => x.id === s.id || `${s.sceneId}__${x.id}` === s.id);
+  const changed = written.filter((s) => {
+    const from = askedFor(s);
+    return from !== undefined && from.location !== s.location;
+  });
+  if (changed.length === 0) return '';
+  const each = changed.map((s) => `${s.id}: "${askedFor(s)!.location}" → "${s.location}"`);
+  return (
+    `The scene’s location has no such variant, so these shots were moved to one it has — ` +
+    `${each.join('; ')}. Change any of them with set_variant.\n`
+  );
+}
 
 const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
   name: 'write_storyboard',
@@ -1382,6 +1452,7 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
     return ok(
       `Wrote the storyboard for "${a.scene}" — ${result.shots.length} shot(s), each a frame the ` +
         `pipeline will owe. This ends decomposition for the scene.\n` +
+        coercedVariants(a.shots, result.shots) +
         formatStoryboard(scene, result.shots),
       { written: [shotsFile], data: { paths: [shotsFile], shots: result.shots } },
     );
@@ -2352,6 +2423,7 @@ export const ALL_TOOLS: Tool[] = [
   editSceneTool,
   editBranchesTool,
   setOutfitTool,
+  setVariantTool,
   readShotsTool,
   setCoverageTool,
   proposeStoryboardTool,

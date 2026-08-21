@@ -93,6 +93,7 @@ import {
   storySetOutfit,
   storySetSceneOutfit,
   storySetSpeaker,
+  storySetVariant,
   storySpliceScene,
   storySplitScene,
 } from './story.js';
@@ -221,6 +222,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storySetOutfit,
     storySetSceneOutfit,
     storySetSpeaker,
+    storySetVariant,
     storySpliceScene,
     storySplitScene,
     uploadFiles,

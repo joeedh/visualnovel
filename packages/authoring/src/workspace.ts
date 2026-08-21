@@ -16,6 +16,7 @@ import {
   setCoverage,
   setSceneOutfit,
   setShotOutfit,
+  setShotVariant,
   wardrobesOf,
   type BranchOp,
   type DeleteShotOp,
@@ -358,6 +359,25 @@ export class Workspace {
     }
     const wardrobes = wardrobesOf(model.characters);
     return setShotOutfit(loaded.shots, scene, wardrobes, { shot: shotId, character, outfit });
+  }
+
+  /** The variant rule, reading the storyboard for the reason {@link shotOutfit} reads it. */
+  async shotVariant(sceneId: string, shotId: string, variant: string): Promise<ShotOutfitOp> {
+    const { model } = await this.load();
+    const scene = model.scenes.get(sceneId);
+    if (!scene) return { ok: false, error: `No scene "${sceneId}".` };
+    const location = model.locations.get(scene.location);
+    if (!location) {
+      return { ok: false, error: `No location "${scene.location}", which ${sceneId} is set in.` };
+    }
+    const loaded = await readShots(this.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return {
+        ok: false,
+        error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+      };
+    }
+    return setShotVariant(loaded.shots, scene, location, { shot: shotId, variant });
   }
 
   /**
