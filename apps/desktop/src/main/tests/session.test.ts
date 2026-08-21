@@ -1254,6 +1254,37 @@ describe('WorkspaceSession — over a generated project', () => {
     expect(await session.previewRegenerate(info.hash)).toMatchObject({ ok: false });
   });
 
+  /**
+   * A P7 refine attempt appends a `Corrections:` clause no derivation reproduces, so comparing the
+   * recorded prompt verbatim made every refined frame permanently stale — and permanently refused
+   * for regeneration, with a refusal telling the author to run a pipeline that plans nothing.
+   */
+  it('does not count a refine attempt as drift, and still catches an edit on top of one', async () => {
+    const hash = await plate();
+    const manifestFile = join(p.dir, 'assets', 'manifest.json');
+    const patch = async (prompt: string): Promise<void> => {
+      const file = JSON.parse(await fs.readFile(manifestFile, 'utf8')) as {
+        assets: { hash: string; prompt?: string }[];
+      };
+      file.assets.find((a) => a.hash === hash)!.prompt = prompt;
+      await fs.writeFile(manifestFile, JSON.stringify(file, null, 2) + '\n');
+    };
+
+    const derived = (await session.assetInfo(hash))!.derived!;
+    await patch(`${derived} Corrections: fix the lighting.`);
+    const refined = (await session.assetInfo(hash))!;
+    expect(refined.stale).toBe(false);
+    // The editor still shows what was sent; only the comparison is normalized.
+    expect(refined.prompt).toContain('Corrections: fix the lighting.');
+    expect(await session.previewRegenerate(hash)).toMatchObject({ ok: true });
+
+    expect(
+      await session.setArtNotes('location:classroom/day', 'chalk dust in the air'),
+    ).toMatchObject({ ok: true });
+    expect((await session.assetInfo(hash))!.stale).toBe(true);
+    expect(await session.previewRegenerate(hash)).toMatchObject({ ok: false });
+  });
+
   it('writes a seed on the same rung, and offers the config seed as what it inherits', async () => {
     expect(await session.previewArtSeed('location:classroom/day', 12)).toMatchObject({ ok: true });
     expect(await session.setArtSeed('location:classroom/day', 12)).toMatchObject({

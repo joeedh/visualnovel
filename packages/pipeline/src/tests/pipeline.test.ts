@@ -1,8 +1,9 @@
-import { projectConfig, type ProjectModel, type Shot } from '@vn/types';
+import { projectConfig, type Defect, type ProjectModel, type Shot } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
 import { createMockProviders } from '@vn/providers';
 import { character, location, model, scene } from '@vn/testkit';
 import {
+  basePromptOf,
   baseRefusal,
   costPreview,
   decomposeScene,
@@ -225,6 +226,20 @@ describe('refinePrompt', () => {
     ]);
     expect(twice).toContain('fix hair: too long');
     expect(twice).not.toContain('use blazer');
+  });
+
+  it('recovers the base prompt a refined one was built from', () => {
+    const base = 'a shot of the classroom';
+    expect(basePromptOf(base)).toBe(base);
+    const defect = (fix: string): Defect => ({
+      severity: 'blocking',
+      category: 'outfit',
+      description: 'wrong',
+      suggestedFix: fix,
+    });
+    const once = refinePrompt(base, [defect('use blazer')]);
+    expect(basePromptOf(once)).toBe(base);
+    expect(basePromptOf(refinePrompt(once, [defect('shorter hair')]))).toBe(base);
   });
 });
 

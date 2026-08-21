@@ -502,6 +502,8 @@ export interface AssetInfo {
   /**
    * The bytes were rendered from words the project has since changed — what an art-notes edit
    * produces. False when `derived` is unknown: a missing derivation is not evidence of drift.
+   * The `Corrections:` clause a P7 refine attempt appends is stripped before the comparison, so a
+   * refined frame is not stale on account of the refine.
    */
   stale: boolean;
   /**
@@ -538,7 +540,8 @@ export interface AssetInfo {
    * The composed prompt: the clauses, what the override does to them, and the string that would
    * be sent. Folded in here so the pane makes one round trip and there is one invalidation path.
    * Named apart from `prompt`, which is the historical record the manifest kept; this field is
-   * what would be sent now, and the two disagreeing is what `stale` reports.
+   * what would be sent now. The two may disagree by the `Corrections:` clause of a refine attempt
+   * with `stale` false, because that clause is stripped before staleness is decided.
    */
   promptView?: PromptView;
 }

@@ -72,6 +72,7 @@ import {
 import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, sha256, writeFileAtomic } from '@vn/util';
 import {
+  basePromptOf,
   baseRefusal,
   decomposeAll,
   decomposeAllPreview,
@@ -1633,6 +1634,8 @@ export class WorkspaceSession {
     const task = project.graph.get(asset.sourceTask);
     const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
     const derived = derivePrompt(asset, ctx);
+    // The prompt as sent carries any `Corrections:` clause P7 appended; the planner hashed the base.
+    const recorded = asset.prompt === undefined ? undefined : basePromptOf(asset.prompt);
     const view = await this.promptViewOf(project, hash);
     const labels = labelContext(project.model, project.graph);
     const label = labelAssets(manifest, labels).get(hash) ?? hash;
@@ -1659,7 +1662,7 @@ export class WorkspaceSession {
       ...(derived === undefined ? {} : { derived }),
       // An unknown derivation is not evidence of drift — it means the project no longer describes
       // this asset, which the editor says a different way.
-      stale: derived !== undefined && asset.prompt !== undefined && derived !== asset.prompt,
+      stale: derived !== undefined && recorded !== undefined && derived !== recorded,
       ...(suspended ? { suspended: suspended.reason } : {}),
       ...(slot ? { slot: slotKey(slot) } : {}),
       prereqs,
