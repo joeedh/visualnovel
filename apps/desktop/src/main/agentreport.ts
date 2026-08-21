@@ -28,6 +28,7 @@ import {
   type Redactor,
   type Report,
   type SourceAccess,
+  type ToolSummary,
 } from '@vn/agentreport';
 import { captureSnapshot } from '@vn/providers';
 import { evidenceFor } from './commandlog.js';
@@ -45,6 +46,11 @@ export interface AnalysisRequest {
   effort?: EffortChoice;
   /** What the author said they had wanted. Redacted like everything else. */
   wanted?: string;
+  /**
+   * The tools the agent under report could call, so a recommendation is written against what that
+   * agent can reach.
+   */
+  reportedTools?: readonly ToolSummary[];
   /** Whether the author let the analyst read the source. */
   source: boolean;
   /**
@@ -154,6 +160,7 @@ export async function analyseThread(
     backend: analystBackend(req.modelId, req.config, req.keys, req.effort),
     redactor,
     ...(req.wanted?.trim() ? { wanted: req.wanted } : {}),
+    ...(req.reportedTools?.length ? { reportedTools: req.reportedTools } : {}),
     ...(req.source ? { source: await sourceAccess(req, budget) } : {}),
     ...(req.detail ? { detail: createRequestTools({ snapshot, redactor, budget }) } : {}),
     // A detail-only run has no source root to take a context from, so it supplies its own. The

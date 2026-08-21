@@ -148,6 +148,7 @@ import {
   archiveUpload,
   PROJECT_SKILLS_DIR,
   composeSystem,
+  createRegistry,
   discoverSkills,
   focusOnScene,
   loadContext,
@@ -1346,6 +1347,19 @@ export class WorkspaceSession {
   }
 
   /**
+   * The tools the agent under report could call. Read off the live agent when this window has run
+   * a turn, since a host may add to the registry; otherwise from the same default `ensureAgent`
+   * builds one from, because a reopened thread can be reported without a turn ever running here.
+   */
+  private agentTools(): { name: string; description: string }[] {
+    if (this.agent) return this.agent.tools;
+    return [...createRegistry().values()].map((t) => ({
+      name: t.name,
+      description: t.description,
+    }));
+  }
+
+  /**
    * Analyse a conversation that went wrong. Long — a minute or two, more with the source — so it
    * takes the busy flag every other long act does, and the dialog closes rather than being held
    * open across it.
@@ -1371,6 +1385,7 @@ export class WorkspaceSession {
         threadId: target.header.id,
         modelId,
         source: ask.source,
+        reportedTools: this.agentTools(),
         ...(ask.detail ? { detail: true } : {}),
         ...(effort ? { effort } : {}),
         ...(ask.note.trim() ? { wanted: ask.note } : {}),

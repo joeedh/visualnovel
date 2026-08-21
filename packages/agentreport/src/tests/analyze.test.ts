@@ -130,6 +130,39 @@ describe('without the source', () => {
     expect(backend.prompts[0]).not.toContain('Titus Vale');
   });
 
+  it('names the tools the reported agent had, and says nothing about them when the host cannot', async () => {
+    const backend = new Scripted([JSON.stringify(findings), JSON.stringify(findings)]);
+    await analyze({
+      evidence,
+      backend,
+      redactor: redactor(),
+      reportedTools: [
+        { name: 'edit_scene', description: 'change a scene' },
+        { name: 'house_style', description: 'the house style\nsecond line' },
+      ],
+    });
+    expect(backend.prompts[0]).toContain('- `edit_scene` — change a scene');
+    expect(backend.prompts[0]).toContain('- `house_style` — the house style');
+    expect(backend.prompts[0]).not.toContain('second line');
+
+    await analyze({ evidence, backend, redactor: redactor() });
+    expect(backend.prompts[1]).not.toContain('The tools the agent under report had');
+  });
+
+  it('keeps the author’s statement on the report, for the renderer to print', async () => {
+    const backend = new Scripted([JSON.stringify(findings), JSON.stringify(findings)]);
+    const said = await analyze({
+      evidence,
+      backend,
+      redactor: redactor(),
+      wanted: 'It kept rewriting Titus Vale',
+    });
+    expect(said.authorStatement).toBe('It kept rewriting Character A');
+
+    const silent = await analyze({ evidence, backend, redactor: redactor(), wanted: '  ' });
+    expect(silent.authorStatement).toBeUndefined();
+  });
+
   it('says the author did not say, rather than leaving the model to wonder', async () => {
     const backend = new Scripted([JSON.stringify(findings)]);
     await analyze({ evidence, backend, redactor: redactor() });
@@ -185,7 +218,8 @@ describe('with the source', () => {
       JSON.stringify({ tool: 'submit_report', args: findings }),
     ]);
     const report = await analyze({ evidence, backend, redactor: redactor(), source: source() });
-    expect(report.readSource).toBe(true);
+    expect(report.fellBack).toBeUndefined();
+    expect(report.analysis.summary).toContain('Character A');
   });
 
   it('falls back to one call, and says it did, when no report is filed', async () => {
@@ -197,6 +231,30 @@ describe('with the source', () => {
     expect(report.readSource).toBe(false);
     expect(report.fellBack).toContain('I could not work it out');
     expect(report.analysis.rootCause).toBe('A question read as an instruction.');
+  });
+
+  it('caps confidence when the source was there and the analyst never opened it', async () => {
+    const backend = new Scripted([JSON.stringify({ tool: 'submit_report', args: findings })]);
+    const report = await analyze({ evidence, backend, redactor: redactor(), source: source() });
+    expect(grepped).toEqual([]);
+    expect(report.readSource).toBe(false);
+    expect(report.analysis.confidence).toBe('low');
+  });
+
+  it('keeps the analyst’s own confidence once a source tool has run', async () => {
+    const backend = new Scripted([
+      JSON.stringify({ tool: 'grep', args: { pattern: 'plan mode' } }),
+      JSON.stringify({ tool: 'submit_report', args: findings }),
+    ]);
+    const report = await analyze({ evidence, backend, redactor: redactor(), source: source() });
+    expect(report.readSource).toBe(true);
+    expect(report.analysis.confidence).toBe('medium');
+  });
+
+  it('does not cap a run that was offered no source at all', async () => {
+    const backend = new Scripted([JSON.stringify(findings)]);
+    const report = await analyze({ evidence, backend, redactor: redactor() });
+    expect(report.analysis.confidence).toBe('medium');
   });
 
   it('stops at the step cap instead of looping forever', async () => {
@@ -311,7 +369,6 @@ describe('on a backend that supports conversations', () => {
     const backend = new Native(findings);
     const report = await analyze({ evidence, backend, redactor: redactor(), source: source() });
     expect(backend.requests.length).toBeGreaterThan(0);
-    expect(report.readSource).toBe(true);
     expect(report.fellBack).toBeUndefined();
     expect(report.analysis.summary).toContain('Character A');
     expect(JSON.stringify(report)).not.toMatch(/Titus/);

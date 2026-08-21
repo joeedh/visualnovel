@@ -25,6 +25,10 @@ const REDACTION_NOTE =
   'characters and locations are pseudonyms, and the substitution table was never saved. ' +
   'A pseudonym means the same thing everywhere in this report and nothing outside it.';
 
+const AUTHOR_NOTE =
+  'This is what the author said went wrong, in their own words. It is the claim the analysis ' +
+  'started from rather than one of its findings, so read it separately from the account below.';
+
 function bullets(items: string[]): string {
   return items.map((item) => `- ${item.replace(/\s*\n\s*/g, ' ').trim()}`).join('\n');
 }
@@ -74,12 +78,12 @@ function provenance(report: Report, evidence: Evidence): string {
  */
 export function renderReport(report: Report, evidence: Evidence): string {
   const { analysis } = report;
-  const out = [
-    `## ${analysis.summary.trim()}`,
-    `_${REDACTION_NOTE}_`,
-    '### What happened',
-    analysis.whatHappened.trim(),
-  ];
+  const out = [`## ${analysis.summary.trim()}`, `_${REDACTION_NOTE}_`];
+
+  const said = report.authorStatement?.trim();
+  if (said) out.push('### What the author reported', `${AUTHOR_NOTE}\n\n${quotes([said])}`);
+
+  out.push('### What happened', analysis.whatHappened.trim());
 
   if (analysis.whatWentWrong.length) {
     out.push('### What went wrong', bullets(analysis.whatWentWrong));

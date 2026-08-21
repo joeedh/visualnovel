@@ -565,6 +565,15 @@ export class Agent {
   }
 
   /**
+   * The tools this agent can call, as names and descriptions. A host may hand in a registry of its
+   * own, so anything reporting what the agent could reach reads it from here rather than from the
+   * built-in list.
+   */
+  get tools(): { name: string; description: string }[] {
+    return [...this.registry.values()].map((t) => ({ name: t.name, description: t.description }));
+  }
+
+  /**
    * The tool catalog advertised to the backend (registry + control tools), each flagged for
    * whether it may be deferred. Derived from a static list and the registry's own order, so two
    * turns of one conversation produce byte-identical catalogs — the prefix everything else caches

@@ -117,6 +117,23 @@ Two paths, different in kind, producing the same `analysisSchema` shape rendered
   records `fellBack` — so `readSource` on a finished report means the analyst actually read
   source, not that it was allowed to.
 
+`readSource` is set by watching the tools rather than by the offer: each source tool is wrapped so
+that calling it records the fact, and a run that had the source and never opened it has its
+`confidence` clamped to `low`. A run offered no source is not clamped, because there was nothing to
+open and the analyst's judgement of the transcript is all the report ever had.
+
+The analyst is also told what the agent under report could do, and reads the author's account as a
+claim under test:
+
+- **The reported agent's tools** are taken from the registry the reporting host actually built
+  (`Agent.tools`, or the host's own default when no turn has run in this window), never from the
+  `ALL_TOOLS` constant — `createRegistry` takes an `extra` argument, so the constant is not the tool
+  list any given host runs with. A recommendation asking for something outside that list is asking
+  for a tool that does not exist, and the prompt says so.
+- **What the author said** is printed in the issue verbatim, under a heading naming it as the claim
+  the analysis started from rather than one of its findings. The system prompt asks the analyst to
+  check it and to write "the author reports X" wherever the evidence does not settle it.
+
 The loop picks its backend with the same probe the desktop app and `vnauthor` use: the native
 cached path when the model's backend implements `chatConversation`, the structured path otherwise.
 That matters most here, because the first user message is the whole transcript and every iteration

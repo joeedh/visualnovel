@@ -58,11 +58,18 @@ export interface Report {
   /** The model that wrote it. */
   model: string;
   /**
-   * Whether the analyst actually read the source. False when the author declined it, and also
-   * when it was offered and the run fell back — a reader of the issue is told which, because the
-   * weight of a recommendation about a specific file depends on it.
+   * Whether the analyst called a source-reading tool. False when the author declined the source,
+   * when the run fell back, and when the source was offered and never opened — a reader of the
+   * issue is told which, because the weight of a recommendation about a specific file depends on
+   * it. A run that had the source and did not read it has its confidence capped at `low`.
    */
   readSource: boolean;
+  /**
+   * What the author said they were trying to do, redacted. The renderer prints it as the claim the
+   * analysis started from, so a reader can see the symptom separately from the analyst's account
+   * of it. Absent when the author said nothing.
+   */
+  authorStatement?: string;
   /** Set when the source was offered and the agent path did not produce a report. */
   fellBack?: string;
 }

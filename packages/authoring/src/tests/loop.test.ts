@@ -8,6 +8,7 @@ import { ProviderError, RetryableProviderError } from '@vn/util';
 import {
   Agent,
   apiBackoffMs,
+  createRegistry,
   focusOnScene,
   type AgentBackend,
   type AgentMessage,
@@ -129,6 +130,37 @@ function agentWith(
   const backend = new StructuredAgentBackend(new RecordedChatBackend('mock', turns));
   return new Agent({ backend, ctx, permission, system: 'SYS', mode });
 }
+
+describe('the tools an agent can reach', () => {
+  it('reports the registry it was given, extras included', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const extra: Tool<Record<string, never>> = {
+        name: 'house_style',
+        description: 'read the house style',
+        mutating: false,
+        args: z.object({}),
+        run: () => Promise.resolve({ ok: true, output: 'terse' }),
+      };
+      const backend = new StructuredAgentBackend(new RecordedChatBackend('mock', []));
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        registry: createRegistry([extra as Tool]),
+      });
+      const names = agent.tools.map((t) => t.name);
+      expect(names).toContain('house_style');
+      expect(names).toContain('list_workspace');
+      expect(agent.tools.find((t) => t.name === 'house_style')?.description).toBe(
+        'read the house style',
+      );
+    } finally {
+      await cleanup();
+    }
+  });
+});
 
 describe('read-only plan flow', () => {
   it('dispatches read tools and returns a final message', async () => {

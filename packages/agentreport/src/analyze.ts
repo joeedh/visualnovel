@@ -50,6 +50,10 @@ const SYSTEM = [
   '',
   'Be honest about how much the transcript supports. If it records too little to tell, say so and',
   'set confidence to low — a confident wrong diagnosis costs a maintainer more than an admission.',
+  '',
+  'What the author says went wrong is the claim you are testing, not a finding. Check it against',
+  'the conversation and whatever else you can read. Where the evidence does not settle it, write',
+  '"the author reports X" rather than X, and say what would settle it.',
 ].join('\n');
 
 /**
@@ -90,15 +94,34 @@ const REQUEST_ACCESS = [
   'find structurally: which block, of what type, in what position. Never quote its content.',
 ].join('\n');
 
+/**
+ * The tools the agent under report could call, so a recommendation is written against what that
+ * agent can reach. Without it the analyst has recommended capabilities the agent has no tool for
+ * and cannot be given one for, which reads to a maintainer as a defect rather than a wish.
+ */
+function reportedTools(tools: readonly ToolSummary[]): string {
+  const lines = tools.map((t) => `- \`${t.name}\` — ${t.description.split('\n')[0]!.trim()}`);
+  return [
+    '## The tools the agent under report had',
+    '',
+    'This is every tool it could call. A recommendation that asks it to do something outside this',
+    'list is asking for a tool that does not exist — say that in as many words if it is the fix.',
+    '',
+    lines.join('\n'),
+  ].join('\n');
+}
+
 /** The evidence, plus whatever the author said they were trying to do. */
-function userPrompt(evidence: Evidence, wanted: string | undefined, redactor: Redactor): string {
-  const parts = [redactor.apply(toMarkdown(evidence))];
-  const said = wanted?.trim();
+function userPrompt(opts: AnalyzeOptions): string {
+  const { redactor } = opts;
+  const parts = [redactor.apply(toMarkdown(opts.evidence))];
+  const said = opts.wanted?.trim();
   parts.push(
     said
       ? `## What the author says they wanted\n\n${redactor.apply(said)}`
       : '## What the author says they wanted\n\nThey did not say. Work it out from the conversation.',
   );
+  if (opts.reportedTools?.length) parts.push(reportedTools(opts.reportedTools));
   return parts.join('\n\n');
 }
 
@@ -144,6 +167,12 @@ export function analystBackend(
   return chatBackendFor(modelId, keys, effort, { record: false }).backend;
 }
 
+/** One tool of the agent under report, as the analyst is shown it. */
+export interface ToolSummary {
+  name: string;
+  description: string;
+}
+
 /** The read tools the analyst gets when the author lets it look at the source. */
 export interface SourceAccess {
   /** Read tools only. Nothing here may write, and the loop blocks anything that says it does. */
@@ -158,6 +187,12 @@ export interface AnalyzeOptions {
   redactor: Redactor;
   /** The author's own account of what they were trying to do. Optional, and redacted. */
   wanted?: string;
+  /**
+   * The tools the agent under report ran with, taken from the registry that host actually built.
+   * Omitted by a host that cannot say, in which case the analyst is told nothing about them rather
+   * than a guess.
+   */
+  reportedTools?: readonly ToolSummary[];
   /** Present when the author ticked the source box. */
   source?: SourceAccess;
   /**
@@ -195,7 +230,7 @@ function unattended(): Permission {
 /** The one call the cheap path makes. */
 async function analyzeDirectly(opts: AnalyzeOptions): Promise<Analysis> {
   const prompt = [
-    userPrompt(opts.evidence, opts.wanted, opts.redactor),
+    userPrompt(opts),
     '',
     'Reply with a single JSON object and nothing else, with these fields:',
     '  summary, whatHappened, whatWentWrong[], rootCause,',
@@ -226,6 +261,20 @@ function submitTool(sink: { report?: Analysis }): Tool<Analysis> {
 }
 
 /**
+ * A source tool that records the first time it is called. Whether the analyst opened the source is
+ * a fact about the run rather than about the offer, and the report says which.
+ */
+function watched(tool: Tool, read: { source: boolean }): Tool {
+  return {
+    ...tool,
+    run: (args, ctx) => {
+      read.source = true;
+      return tool.run(args, ctx);
+    },
+  };
+}
+
+/**
  * The looping path, run whenever the analyst has anything to read.
  *
  * The analyst reads whichever registries were handed in: the source tools, the request tools, or
@@ -235,9 +284,15 @@ function submitTool(sink: { report?: Analysis }): Tool<Analysis> {
 async function analyzeWithTools(
   opts: AnalyzeOptions,
   ctx: ToolContext,
-): Promise<{ analysis?: Analysis; why?: string }> {
+): Promise<{ analysis?: Analysis; why?: string; readSource: boolean }> {
   const sink: { report?: Analysis } = {};
-  const registry = new Map([...(opts.source?.registry ?? []), ...(opts.detail ?? [])]);
+  const read = { source: false };
+  const registry = new Map([
+    ...[...(opts.source?.registry ?? [])].map(
+      ([name, tool]) => [name, watched(tool, read)] as [string, Tool],
+    ),
+    ...(opts.detail ?? []),
+  ]);
   const submit = submitTool(sink);
   registry.set(submit.name, submit as Tool);
 
@@ -266,9 +321,28 @@ async function analyzeWithTools(
     maxIterations: opts.maxIterations ?? 24,
   });
 
-  const result = await agent.run(userPrompt(opts.evidence, opts.wanted, opts.redactor));
-  if (sink.report) return { analysis: sink.report };
-  return { why: `the analyst finished without filing one — it said: ${result.final}` };
+  const result = await agent.run(userPrompt(opts));
+  if (sink.report) return { analysis: sink.report, readSource: read.source };
+  return {
+    why: `the analyst finished without filing one — it said: ${result.final}`,
+    readSource: read.source,
+  };
+}
+
+/**
+ * The analyst's confidence, capped at `low` when the source was there to read and it did not read
+ * it. A run offered no source is left alone: there was nothing to open, so the analyst's own
+ * judgement of the transcript is all the report ever had.
+ */
+function confidenceOf(analysis: Analysis, offered: boolean, read: boolean): Analysis {
+  if (!offered || read) return analysis;
+  return { ...analysis, confidence: 'low' };
+}
+
+/** The author's account, redacted, or absent when they said nothing. */
+function statementOf(opts: AnalyzeOptions): { authorStatement?: string } {
+  const said = opts.wanted?.trim();
+  return said ? { authorStatement: opts.redactor.apply(said) } : {};
 }
 
 /**
@@ -282,21 +356,29 @@ async function analyzeWithTools(
 export async function analyze(opts: AnalyzeOptions): Promise<Report> {
   const model = opts.backend.modelId;
   const ctx = opts.source?.ctx ?? opts.ctx;
+  const said = statementOf(opts);
 
   // A detail-only run has no source root, so its context comes in beside the tools rather than
   // with them
   if ((opts.source || opts.detail) && ctx) {
-    const { analysis, why } = await analyzeWithTools(opts, ctx);
+    const { analysis, why, readSource } = await analyzeWithTools(opts, ctx);
     if (analysis) {
-      return { analysis: scrub(analysis, opts.redactor), model, readSource: Boolean(opts.source) };
+      const capped = confidenceOf(analysis, Boolean(opts.source), readSource);
+      return { analysis: scrub(capped, opts.redactor), model, readSource, ...said };
     }
     return {
       analysis: scrub(await analyzeDirectly(opts), opts.redactor),
       model,
       readSource: false,
       fellBack: why,
+      ...said,
     };
   }
 
-  return { analysis: scrub(await analyzeDirectly(opts), opts.redactor), model, readSource: false };
+  return {
+    analysis: scrub(await analyzeDirectly(opts), opts.redactor),
+    model,
+    readSource: false,
+    ...said,
+  };
 }

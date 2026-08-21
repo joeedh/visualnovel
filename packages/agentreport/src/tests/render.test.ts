@@ -83,6 +83,23 @@ describe('the body', () => {
     expect(renderReport(none, evidence())).toContain('The analyst had none to make.');
   });
 
+  it('prints the author’s own words as the claim under test, above the analysis', () => {
+    const said = { ...report, authorStatement: 'It kept rewriting Character A' };
+    const body = renderReport(said, evidence());
+    expect(body).toContain('### What the author reported');
+    expect(body).toContain('> It kept rewriting Character A');
+    expect(body.indexOf('### What the author reported')).toBeLessThan(
+      body.indexOf('### What happened'),
+    );
+  });
+
+  it('shows no heading at all when the author said nothing', () => {
+    expect(renderReport({ ...report, authorStatement: '  ' }, evidence())).not.toContain(
+      '### What the author reported',
+    );
+    expect(renderReport(report, evidence())).not.toContain('### What the author reported');
+  });
+
   it('quotes the evidence as a blockquote', () => {
     expect(renderReport(report, evidence())).toContain('> author: just tell me what happens in it');
   });
