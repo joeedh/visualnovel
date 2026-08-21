@@ -261,7 +261,11 @@ editors, the session store, the seeded workspace, and every behaviour below in f
   ([`docs/plans/archive/upload-and-archive.md`](docs/plans/archive/upload-and-archive.md))
 - **A bad conversation is diagnosed on the author's own key, and the fiction's names never
   leave the machine** — redaction is enforced at a boundary, not requested in a prompt, and
-  nothing is posted automatically.
+  nothing is posted automatically. **"The debug agent"** always means this one: the agent
+  Help ▸ Report a Difficult Agent… runs (`report.agent`, implemented in `@vn/agentreport`) to
+  read the reported thread and draft the issue. It is also called **the analyst** in
+  `@vn/agentreport` and its plans; the two names are the same agent. It is not `vnauthor`, and
+  it is not a debugging tool for this repository.
   ([`docs/reference/agent-report.md`](docs/reference/agent-report.md))
 - **Every API request is kept in memory, and its contents never reach the report** — a bounded
   ring in `@vn/providers` (64 MB / 64 entries, always on), so a 400 that names a byte position
