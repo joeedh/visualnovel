@@ -26,7 +26,7 @@
 	 also if the user asks the agent how to do this it should be able to answer.
 [ ]: the newShot agent tool apparently doesn't have a parameter for the cast/character[s] 
      add if that makes sense.
-[ ]: when the tasks editor pops up in a floating editor it should have 'only running'
+[x]: when the tasks editor pops up in a floating editor it should have 'only running'
      checkbox on.
 [ ]: clicking the pipeline stop button should also stop the recursive approve and generate
      loop if it doesn't already.

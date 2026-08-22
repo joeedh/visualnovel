@@ -11,7 +11,7 @@ import { AreaFlags, type CSSFont, type IconButton, type ScreenArea, type UIBase 
 import { editorTitle, type OpenWhere } from '../../src/shared/editors.js';
 import type { EditorId, UiEffect } from '../../src/shared/ipc.js';
 import type { ShellApp } from './context.js';
-import { editorClass } from './editor.js';
+import { editorClass, type VnEditor } from './editor.js';
 import { flashRect } from './flash.js';
 import { closeIcon } from './icons.js';
 import { markApplied } from './layouts.js';
@@ -175,6 +175,9 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
       height: Math.min(POPUP_SIZE[1], screen.size[1] * 0.9),
     });
     growCloseButton(sarea as unknown as ScreenArea);
+    // After `popupArea`, so the editor's own `init()` has already run and this only has to change
+    // what it settled on
+    (sarea as unknown as { area?: VnEditor }).area?.openedFloating();
     activate(screen, sarea as unknown as ScreenArea);
     return null;
   }

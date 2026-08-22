@@ -909,6 +909,12 @@ Plan: [`../plans/archive/task-dag-view.md`](../plans/archive/task-dag-view.md).
   names every tick that is on rather than blaming whichever one happens to be tested first. The bar
   is a **column of two rows** — what the list *is* on top, what to do about it underneath — because
   six controls and a sentence of counts in one row lose their last control in a half-width pane.
+- **A floating task list opens with `only running` on.** A popup is raised over the mesh to watch a
+  wave go by, so it starts narrowed to what is moving; in a pane the list starts on everything,
+  which is what a list read for structure wants. `VnEditor.openedFloating()` is the hook that says
+  so, called from `view.ts` after `popupArea` because path.ux sets `AreaFlags.FLOATING` after the
+  editor's `init()` has already run. What it sets is an opening state and nothing more: the
+  author's next click on the tick owns it.
 - **`only failed` keeps `needs_human` too, and that is the point of it.** The list is where an
   author goes when a run did not produce what they expected, and a failure is a needle in a column
   of hundreds of `done` cards. A shot that exhausted its refinement attempts is the likeliest

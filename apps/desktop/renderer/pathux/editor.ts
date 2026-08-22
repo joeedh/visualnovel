@@ -123,6 +123,13 @@ export class VnEditor extends Area {
   }
 
   /**
+   * Called once when this editor opens in a floating window rather than a pane, after `init()`.
+   * Override it to start on the settings a small window over the mesh is opened for. Whatever it
+   * sets is an opening state and nothing more: the author's next click owns the control.
+   */
+  openedFloating(): void {}
+
+  /**
    * Wake every widget bound to `ui.*`, after an editor has changed one. Reached through the
    * context rather than the bridge: an editor exists before `installBridge` runs, and one that
    * publishes a selection during its first `update()` would otherwise throw.

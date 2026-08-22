@@ -87,6 +87,15 @@ export class TaskListEditor extends VnEditor {
     void this.load();
   }
 
+  /**
+   * A floating task list is opened over the mesh to watch a wave go by, so it starts narrowed to
+   * what is moving. In a pane it starts on everything, which is what a list read for structure
+   * wants. The redraw is left to `update`, which sees the tick in `stateKey`.
+   */
+  override openedFloating(): void {
+    this.onlyRunning = true;
+  }
+
   override update() {
     super.update();
 
