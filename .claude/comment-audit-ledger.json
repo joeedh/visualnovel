@@ -634,8 +634,8 @@
       "blob": "d684742896f9e05c09360e8b6ee6fb237c44a962"
     },
     "apps/desktop/src/main/commands/prompt.ts": {
-      "auditedAt": "2026-08-22T16:45:10.997Z",
-      "blob": "145a4b07a00c4f9187c58bc147f5301d08cd92ec"
+      "auditedAt": "2026-08-22T16:51:25.494Z",
+      "blob": "e7cee644ef0717025058b199c06f4d2652d9f45c"
     },
     "apps/desktop/src/main/commands/report.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",

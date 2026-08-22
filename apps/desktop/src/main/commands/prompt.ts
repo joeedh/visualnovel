@@ -1,14 +1,14 @@
 /**
- * The prompt an asset is generated from, as commands (`docs/plans/archive/chunked-prompts.md` §5).
+ * Commands for the prompt an asset is generated from (docs/plans/archive/chunked-prompts.md §5).
  *
- * A separate namespace from `art.*` on purpose: `art.setNotes` writes authored input that feeds the
- * derivation (it lands in the sheet and the builders read it back) while everything here writes an
- * override of the derivation, a block that says what to do to the clauses the builders produced.
- * The two live in different places on disk and undo differently, because they are different acts.
+ * Deliberately a separate namespace from `art.*`. `art.setNotes` writes authored input that feeds
+ * the derivation: it lands in the sheet and the builders read it back. Everything here writes an
+ * override of the derivation, which says what to do to the clauses the builders produced. The two
+ * are stored in different places on disk and undo separately.
  *
- * Every command names its asset by hash and the session resolves hash → owning rung, so no caller
+ * Every command names its asset by hash, and the session resolves hash → owning rung, so no caller
  * has to know whether a picture's prompt lives on a character sheet, a location sheet or a
- * storyboard. Each of these re-keys the tasks that rung reaches, exactly like an art note.
+ * storyboard. Each of these re-keys the tasks that rung reaches, as an art note does.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import type { CommandHost } from './host.js';
@@ -16,7 +16,10 @@ import type { ChunkOp, ClearPart } from '../session.js';
 
 const define = defineFor<CommandHost>();
 
-/** Turns a session preview into a precondition result, keeping the preview's own message as the note on success or the reason on refusal. */
+/**
+ * Turns a session preview into a precondition result. The preview's message becomes the note when
+ * it succeeds and the reason when it refuses.
+ */
 function verdict(result: { ok: boolean; message: string }): CheckResult {
   return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
 }
@@ -59,8 +62,8 @@ export const promptSetChunk = define({
   props: {
     hash: prop.string('the asset whose prompt to edit'),
     chunk: prop.string('the clause key, e.g. `subject` or `palette`'),
-    // A clause is a sentence, so it is not digested: the history line reading back what was
-    // written is the record. Digesting is for a whole document (`prompt.setCustom`).
+    // A clause is one sentence, so it is not digested — the history line records it verbatim.
+    // Digesting is for a whole document (`prompt.setCustom`)
     op: prop.oneOf(['replace', 'append', 'mute', 'clear'] as const, 'what to do to the clause'),
     text: prop.string('the words, for `replace` and `append`', { default: '' }),
   },

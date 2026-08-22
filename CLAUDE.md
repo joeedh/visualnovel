@@ -477,6 +477,16 @@ below stay here because they are rules you need while the work is happening.
   - **Rhetorical emphasis** — `**bold**` and `*italics*` in a comment mark the sentence the
     author found most interesting, not the one the reader needs first. Put the load-bearing
     claim in the first sentence and drop the markup.
+  - **A head noun that is not what the code is** — a module of commands documented as "The
+    prompt an asset is generated from, as commands" asserts that the module is a prompt, then
+    retracts it through a preposition. Lead with the head noun that names the declaration —
+    "Commands for the prompt an asset is generated from" — and demote the rest to a
+    complement. A trailing ", as X" or ", in the form of X" is the same metaphorical equation
+    above smuggled in through an adjunct.
+- **Reserve backticks for code symbols.** Identifiers, types, commands, file globs the reader
+  will type: those get backticks. A file path cited as a reference —
+  `(docs/plans/archive/chunked-prompts.md §5)` — does not, because marking it up gives it the
+  same weight as the identifiers around it and dilutes them.
 - **A comment describes the code directly beneath it.** A comment placed above an `if` is read
   as a caption for the branch it guards, so one that explains the opposite case belongs on the
   `else`, or should be reworded to describe the test itself. Misplacing a comment this way is a
