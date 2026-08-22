@@ -94,7 +94,7 @@ git is effectively always present, and a bundled copy adds tens of megabytes plu
 to keep patched, to solve a problem only Windows has — where the answer is a link to the
 installer.
 
-The check is a **runtime doctor**, deliberately named after `pnpm doctor`, which already does the
+The check is a **runtime doctor** similar to`pnpm check:setup`, which already does the
 same job for the submodule:
 
 - Runs once at startup, before any workspace opens.

@@ -23,7 +23,7 @@ on: [push, pull_request]
 Two things this repo needs that a generic workflow would miss:
 
 - **`submodules: recursive` is mandatory.** `vendor/path.ux` is a submodule and
-  `apps/desktop`'s `build` runs `pnpm doctor` first, which fails by name without it. Without
+  `apps/desktop`'s `build` runs `pnpm check:setup` first, which fails by name without it. Without
   the flag, every desktop build fails identically and confusingly.
 - **`pnpm check` is two passes.** The root script already chains `check:renderer`, so calling
   `pnpm check` is enough — but it must be `pnpm check`, not `tsgo -p tsconfig.json`, or

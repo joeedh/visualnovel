@@ -96,7 +96,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      # `pnpm package` runs `pnpm build`, which runs `pnpm doctor` first and fails by name
+      # `pnpm package` runs `pnpm build`, which runs `pnpm check:setup` first and fails by name
       # without the submodule.
       - uses: actions/checkout@v4
         with:

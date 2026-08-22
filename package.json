@@ -18,7 +18,7 @@
     "check": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
     "typecheck": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
     "check:renderer": "pnpm --filter @vn/desktop check",
-    "doctor": "node scripts/check-submodules.mjs",
+    "check:setup": "node scripts/check-submodules.mjs",
     "test": "jest",
     "lint": "eslint --cache . && pnpm format:check && pnpm check:doclinks",
     "check:doclinks": "node scripts/check-doc-links.mjs",
@@ -36,7 +36,8 @@
     "package:dir": "pnpm --filter @vn/desktop package:dir",
     "smoke": "pnpm --filter @vn/desktop smoke",
     "check:keylinks": "node scripts/check-key-links.mjs",
-    "audit:keydocs": "node scripts/audit-key-instructions.mjs"
+    "audit:keydocs": "node scripts/audit-key-instructions.mjs",
+    "setup": "git submodule update --init --recursive  && pnpm install && pnpm --dir vendor/path.ux install  && pnpm check:setup"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

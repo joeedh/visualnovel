@@ -12,7 +12,7 @@
  * failure that produces is scores of "has no exported member" errors from inside `vendor/`,
  * which name a symbol rather than the install that is missing.
  *
- * Usage: `pnpm doctor` (and as the desktop build's first step).
+ * Usage: `pnpm check:setup` (and as the desktop build's first step).
  */
 import { promises as fs } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';

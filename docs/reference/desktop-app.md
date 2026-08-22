@@ -80,7 +80,7 @@ renderer hot-reloads on its own). The dev loop defaults `VN_CDP_PORT=9222` for t
 **path.ux is a git submodule** at `vendor/path.ux` and carries a nested one of its own, so a
 fresh clone needs `git submodule update --init --recursive` — and then
 `pnpm --dir vendor/path.ux install`, because path.ux keeps its own lockfile and is not a pnpm
-workspace member, so the root install does not reach it. `pnpm doctor`
+workspace member, so the root install does not reach it. `pnpm check:setup`
 (`scripts/check-submodules.mjs`, also the first step of `@vn/desktop`'s `build`) fails by name on
 either one rather than letting the resolver complain. Vite compiles path.ux's TypeScript source through an
 alias — there is no prebuilt bundle to keep in sync — while `tsgo` checks us against

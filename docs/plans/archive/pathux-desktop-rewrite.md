@@ -119,7 +119,7 @@ Area rendering inside the Electron window behind a `--pathux` flag. CI/`pnpm bui
 fail loudly when submodules are uninitialized (a doctor check naming the
 `--init --recursive` command), not with a resolver error.
 
-**The doctor.** `scripts/check-submodules.mjs`, wired as `pnpm doctor` at the root and as
+**The doctor.** `scripts/check-submodules.mjs`, wired as `pnpm check:setup` at the root and as
 the first step of `@vn/desktop`'s `build`. It reads `.gitmodules` recursively rather than
 hard-coding a path, so path.ux's own nested `path-controller` is covered by the same walk,
 and a repo with no `.gitmodules` at all passes — which is why it could land before the
