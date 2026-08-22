@@ -390,6 +390,7 @@ export class Workspace {
     sceneId: string,
     lines: readonly string[],
     framing?: Shot['framing'],
+    subjects: readonly string[] = [],
   ): Promise<NewShotOp> {
     const { model } = await this.load();
     const scene = model.scenes.get(sceneId);
@@ -399,7 +400,9 @@ export class Workspace {
     return planNewShot(scene, loaded, {
       lines,
       ...(framing ? { framing } : {}),
+      subjects,
       variants: location?.variants.map((v) => v.id) ?? [],
+      cast: [...model.characters.keys()],
     });
   }
 

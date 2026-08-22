@@ -107,6 +107,11 @@ const nextShotOf = (board: ShotBoard<CoverShot> | null): number =>
  * refused by the same sentence a drag gets. Defaults: framing `medium`, the heading's location
  * variant (validated against `args.variants` the way the model decomposer's answer is), subjects
  * are the speakers of the claimed lines, and no outfit — absent means inherit.
+ *
+ * `args.subjects` names the cast instead, for the shots the speakers do not describe: a reaction
+ * on a listener, an establishing frame over narration, a character present but silent. Nothing
+ * else can set a shot's subjects afterwards, so an unnamed character is refused here rather than
+ * reaching the prompt as an id no sheet answers.
  */
 export function newShot<S extends CoverShot>(
   scene: ShotScene,
@@ -114,12 +119,29 @@ export function newShot<S extends CoverShot>(
   args: {
     lines: readonly string[];
     framing?: Shot['framing'] | undefined;
+    /**
+     * Character ids in frame, in the order they matter. An empty list means the speakers of the
+     * claimed lines, which is also what omitting it means — a shot framing nobody is what
+     * narration already produces, and is not worth a second way of saying it.
+     */
+    subjects?: readonly string[] | undefined;
     /** The scene's location variant ids, for validating the default. */
     variants?: readonly string[] | undefined;
+    /** The project's character ids, for refusing a subject nothing describes. */
+    cast?: readonly string[] | undefined;
   },
 ): NewShotOp<S> {
   if (args.lines.length === 0) {
     return { ok: false, error: 'A new shot must cover at least one line.' };
+  }
+
+  const named = [...new Set(args.subjects ?? [])];
+  const cast = args.cast ?? [];
+  if (cast.length > 0) {
+    const unknown = named.filter((id) => !cast.includes(id));
+    if (unknown.length > 0) {
+      return { ok: false, error: `No character "${unknown[0]}" in this project.` };
+    }
   }
 
   const n = nextShotOf(board);
@@ -148,7 +170,8 @@ export function newShot<S extends CoverShot>(
 
   const claimed = new Set(coversLines);
   const speakers = scene.lines.filter((l) => claimed.has(l.id) && l.speaker).map((l) => l.speaker!);
-  const subjects: ShotSubject[] = [...new Set(speakers)].map((characterId) => ({ characterId }));
+  const inFrame = named.length > 0 ? named : [...new Set(speakers)];
+  const subjects: ShotSubject[] = inFrame.map((characterId) => ({ characterId }));
 
   const shot: Shot = {
     id,
@@ -166,6 +189,9 @@ export function newShot<S extends CoverShot>(
 
   const created = board === null;
   const parts = [`${id} covers ${coversLines.length} line(s) — a new frame to render.`];
+  // Only when named. The derived answer is already visible in the lines the shot claimed, and
+  // repeating it would bury the two sentences below that cost something.
+  if (named.length > 0) parts.push(`It frames ${named.join(', ')}.`);
   if (created) {
     parts.push(
       `This creates the storyboard for ${scene.id} and ends decomposition for this scene: ` +

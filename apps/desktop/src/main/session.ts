@@ -4133,6 +4133,7 @@ export class WorkspaceSession {
     sceneId: string,
     lines: readonly string[],
     framing: string,
+    subjects: readonly string[],
   ): Promise<{ project: LoadedProject; op: NewShotOp }> {
     const project = await loadProject(this.dir);
     const scene = project.model.scenes.get(sceneId);
@@ -4143,7 +4144,9 @@ export class WorkspaceSession {
     const op = planNewShot(scene, loaded, {
       lines,
       ...(framing ? { framing: framing as Shot['framing'] } : {}),
+      subjects,
       variants: location?.variants.map((v) => v.id) ?? [],
+      cast: [...project.model.characters.keys()],
     });
     return { project, op };
   }
@@ -4153,8 +4156,9 @@ export class WorkspaceSession {
     sceneId: string,
     lines: readonly string[],
     framing: string,
+    subjects: readonly string[] = [],
   ): Promise<NewShotOp> {
-    return (await this.newShotRule(sceneId, lines, framing)).op;
+    return (await this.newShotRule(sceneId, lines, framing, subjects)).op;
   }
 
   /**
@@ -4166,8 +4170,9 @@ export class WorkspaceSession {
     sceneId: string,
     lines: readonly string[],
     framing: string,
+    subjects: readonly string[] = [],
   ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
-    const { project, op } = await this.newShotRule(sceneId, lines, framing);
+    const { project, op } = await this.newShotRule(sceneId, lines, framing, subjects);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
     await writeShots(project.paths, sceneId, op.shots, { nextShot: op.nextShot });

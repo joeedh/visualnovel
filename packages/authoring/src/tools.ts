@@ -845,6 +845,14 @@ const sceneEditShape = z.object({
     .enum(['wide', 'medium', 'close', 'establishing'])
     .optional()
     .describe('newShot: how the frame is composed; defaults to medium'),
+  subjects: z
+    .array(z.string().min(1))
+    .optional()
+    .describe(
+      'newShot: the character ids on screen. Defaults to the speakers of the covered lines, ' +
+        'which is wrong for a reaction on a listener, an establishing frame over narration, or ' +
+        'anyone present and silent. Nothing can change a shot’s cast afterwards',
+    ),
   after: z
     .string()
     .optional()
@@ -968,6 +976,8 @@ const editSceneTool: Tool<SceneEditArgs> = {
     'newShot and deleteShot edit the storyboard instead: read it with read_shots first. A new ' +
     'shot covers the lineIds you pass and is a new frame the pipeline will owe — the first one ' +
     'on an undecomposed scene writes the storyboard and ends decomposition for that scene — and ' +
+    'its subjects are the covered lines’ speakers unless you name them, which is the one chance ' +
+    'to say who is on screen; ' +
     'deleting a shot releases its lines as gaps and orphans any art already paid for; deleting ' +
     'the last one deletes the file, so the scene is decomposed again. ' +
     'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in. ' +
@@ -983,7 +993,12 @@ const editSceneTool: Tool<SceneEditArgs> = {
     // `set_outfit`'s write path and run the `shotcreate` rules behind `story.newShot` and
     // `story.deleteShot`. A refusal here is verbatim the one the Coverage strip shows.
     if (a.op === 'newShot') {
-      const op = await ctx.workspace.newShot(a.scene ?? '', a.lineIds ?? [], a.framing);
+      const op = await ctx.workspace.newShot(
+        a.scene ?? '',
+        a.lineIds ?? [],
+        a.framing,
+        a.subjects ?? [],
+      );
       if (!op.ok) return fail(op.error);
       await writeShots(ctx.workspace.paths, a.scene!, op.shots, { nextShot: op.nextShot });
       const shotsFile = `vngen/work/shots/${a.scene}.json`;

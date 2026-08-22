@@ -94,6 +94,35 @@ describe('newShot', () => {
     expect(op.shot.subjects).toEqual([{ characterId: 'aiko' }, { characterId: 'ren' }]);
   });
 
+  it('casts who was named instead, deduped and in the order given', () => {
+    const op = newShot(SCENE, null, { lines: ['s:L2'], subjects: ['ren', 'aiko', 'ren'] });
+    if (!op.ok) throw new Error(op.error);
+    expect(op.shot.subjects).toEqual([{ characterId: 'ren' }, { characterId: 'aiko' }]);
+    expect(op.message).toContain('It frames ren, aiko.');
+  });
+
+  // The alternative — an empty list meaning nobody on screen — buys a state narration already
+  // produces, at the cost of a silently empty cast whenever an argument arrives empty
+  it('reads an empty list as no answer, and falls back to the speakers', () => {
+    const op = newShot(SCENE, null, { lines: ['s:L2'], subjects: [] });
+    if (!op.ok) throw new Error(op.error);
+    expect(op.shot.subjects).toEqual([{ characterId: 'aiko' }]);
+    expect(op.message).not.toContain('It frames');
+  });
+
+  // Nothing sets a shot's subjects after birth, so a typo here would reach the prompt as an id
+  // no character sheet answers
+  it('refuses a subject the project has no character for', () => {
+    expect(
+      newShot(SCENE, null, { lines: ['s:L2'], subjects: ['aiko', 'kaz'], cast: ['aiko', 'ren'] }),
+    ).toMatchObject({ ok: false, error: 'No character "kaz" in this project.' });
+  });
+
+  it('validates nothing when the caller names no cast', () => {
+    const op = newShot(SCENE, null, { lines: ['s:L2'], subjects: ['kaz'] });
+    expect(op.ok).toBe(true);
+  });
+
   it('defaults framing to medium and honours an explicit one', () => {
     const a = newShot(SCENE, null, { lines: ['s:L1'] });
     if (!a.ok) throw new Error(a.error);

@@ -530,7 +530,9 @@ export const storyNewShot = define({
     'Place a shot by hand over the lines it covers. Claimed lines are taken off other shots the ' +
     'way a coverage drag takes them; a new shot id is a new task, so this is a new frame to ' +
     'render. On a scene with no storyboard yet, this creates it — which ends decomposition for ' +
-    'that scene, and every line the shot does not claim stays uncovered until covered by hand.',
+    'that scene, and every line the shot does not claim stays uncovered until covered by hand. ' +
+    "A shot's cast cannot be changed afterwards, so name it here when the speakers of the covered " +
+    'lines are not who is on screen.',
   mutating: true,
   undoable: true,
   props: {
@@ -541,13 +543,17 @@ export const storyNewShot = define({
       'how the shot frames its subjects',
       { default: 'medium' },
     ),
+    subjects: prop.string(
+      'comma-separated character ids on screen; empty uses the speakers of the covered lines',
+      { default: '' },
+    ),
   },
-  async check({ scene, lines, framing }, ctx) {
-    const op = await ctx.host.session.previewNewShot(scene, idsOf(lines), framing);
+  async check({ scene, lines, framing, subjects }, ctx) {
+    const op = await ctx.host.session.previewNewShot(scene, idsOf(lines), framing, idsOf(subjects));
     return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
   },
-  async run({ scene, lines, framing }, ctx) {
-    const result = await ctx.host.session.newShot(scene, idsOf(lines), framing);
+  async run({ scene, lines, framing, subjects }, ctx) {
+    const result = await ctx.host.session.newShot(scene, idsOf(lines), framing, idsOf(subjects));
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result.coverage, written: result.written };
   },

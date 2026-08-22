@@ -89,7 +89,9 @@ the picture on screen while those lines play. No line is covered twice: giving a
 takes it from whichever shot held it, and a line no shot covers is a gap, where the previous image
 just stays up. Read a storyboard with read_shots before touching it. Coverage edits (set_coverage)
 are free — they re-render nothing — but a new shot id is a new frame the pipeline will owe, paid
-for in generation. edit_scene's newShot/deleteShot place and remove shots by hand;
+for in generation. edit_scene's newShot/deleteShot place and remove shots by hand; a new shot's
+subjects default to the speakers of the lines it covers, and newShot's subjects argument is the
+only chance to say otherwise — nothing changes a shot's cast afterwards.
 propose_storyboard drafts a whole storyboard for an undecomposed scene (one model call, writes
 nothing), and write_storyboard persists one — after which the file wins forever.
 

@@ -168,7 +168,10 @@ agent honors.
   commands do — thirteen over prose, plus `newShot`/`deleteShot`, which write the storyboard —
   and `set_outfit` the two outfit commands — running the same `@vn/scriptedit`
   decisions, so a refusal an author sees mid-drag is the refusal the agent gets, and the storyboard
-  consequence is accounted for once. **Drafting a run of prose is one call, and so is clearing
+  consequence is accounted for once. `newShot` takes the cast as well, because the speakers of the
+  covered lines are not who is on screen in a reaction shot, an establishing frame over narration,
+  or any scene where someone is present and silent — and no later act changes a shot's subjects, so
+  a character the project does not have is refused at birth rather than reaching the prompt. **Drafting a run of prose is one call, and so is clearing
   one**: `insertLines` and `deleteLines` fold over `insertLine` and `deleteLine` inside
   `@vn/scriptedit`, so ids stay allocated by the one prose write path, a bad line anywhere in the
   run writes none of it and says which line it was, and the whole run is a single write rather than

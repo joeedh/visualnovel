@@ -855,7 +855,9 @@ below.
   would actually mint (the persisted `nextShot` mark rides `SceneCoverage` for exactly this).
   Claimed lines are taken the way a coverage drag takes them, and the accepted sweep tints the
   rows it would claim. A `+ shot` control in the bar covers the no-gaps case, opening
-  `openCommandDialog('story.newShot', …)` prefilled with the scene. Deleting is on the bracket: a
+  `openCommandDialog('story.newShot', …)` prefilled with the scene — and it is the only way in
+  here to name the shot's cast, since a drag has no field for one and a sweep along a gutter says
+  nothing about who is on screen. Left empty, the cast is the speakers of the claimed lines. Deleting is on the bracket: a
   right-click offers `story.deleteShot`, checked before it is drawn, and the refusal for the last
   shot is shown rather than hidden. The rules — `newShot`, `deleteShot`, the `nextShot` high-water
   mark — are `@vn/scriptedit`'s `shotcreate.ts`, so a shot made by drag and one made by an agent

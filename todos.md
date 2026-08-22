@@ -24,7 +24,7 @@
 [ ]: the new install git hub workflow feature should tell the user how to enable the page on github 
      pages, looks like they have to navigate to the settings and select the gh-pages branch manually.
 	 also if the user asks the agent how to do this it should be able to answer.
-[ ]: the newShot agent tool apparently doesn't have a parameter for the cast/character[s] 
+[x]: the newShot agent tool apparently doesn't have a parameter for the cast/character[s] 
      add if that makes sense.
 [x]: when the tasks editor pops up in a floating editor it should have 'only running'
      checkbox on.
