@@ -24,6 +24,7 @@ model-specific material will rot within months; the structural findings should o
   * [The classical foundations still hold](#the-classical-foundations-still-hold)
   * [The evidence says use a small discrete vocabulary](#the-evidence-says-use-a-small-discrete-vocabulary)
   * [Shot scale and camera angle can be measured automatically](#shot-scale-and-camera-angle-can-be-measured-automatically)
+  * [The domain gap is real, and it is uneven](#the-domain-gap-is-real-and-it-is-uneven)
   * [Learned camera control is mostly aimed at video](#learned-camera-control-is-mostly-aimed-at-video)
   * [The LLM film agents are weakly evidenced](#the-llm-film-agents-are-weakly-evidenced)
 - [Conditioning the image model](#conditioning-the-image-model)
@@ -49,6 +50,7 @@ model-specific material will rot within months; the structural findings should o
   * [Which image APIs expose structural control](#which-image-apis-expose-structural-control)
   * [The FLUX licence constraint](#the-flux-licence-constraint)
   * [Hosted ComfyUI runners](#hosted-comfyui-runners)
+    + [Cold start is the largest unmodelled term, and one published figure is a trap](#cold-start-is-the-largest-unmodelled-term-and-one-published-figure-is-a-trap)
   * [OpenRouter's actual boundary](#openrouters-actual-boundary)
   * [Self-hosting, in the numbers that are actually published](#self-hosting-in-the-numbers-that-are-actually-published)
   * [What a project actually costs](#what-a-project-actually-costs)
@@ -214,10 +216,45 @@ A 2020 follow-on ([doi:10.1111/cgf.13949](https://doi.org/10.1111/cgf.13949)) ad
 anticipation. **If a system ever needs to place a camera such that two named characters land at two
 named screen positions, this is the closed-form answer.**
 
-⚠️ The Toric coordinate parameterisation and the spindle-torus construction are **not verified here** —
-the HAL repository blocked every fetch route. The claims above come from abstracts. Anyone
-implementing this should read the paper rather than trusting a secondhand description of its
-mathematics.
+**The parameterisation is three angles, (α, θ, φ).** α is the angle the two targets subtend at the
+camera, and it is *computed from* the desired screen positions rather than searched over — choosing α
+chooses which surface you are on. θ is the horizontal angle around the target pair (0 and ±1 give the
+over-the-shoulder views from behind each target) and φ the vertical (0 at target height, +1 above, −1
+below). The construction is the inscribed-angle theorem revolved: the locus of points in a plane
+seeing a segment at constant angle is a circular arc, and sweeping that arc about the axis through
+both targets gives a **spindle torus** on which every point reproduces the same two-subject framing.
+
+**The two-subject case is genuinely algebraic, and that is what makes it worth implementing.** Four
+independent citing papers describe it as an "algebraic computation", "fast algebraic techniques", an
+"algebraic implementation", and analytic interpolation. The precise claim, stated carefully: the
+screen-position constraint is **satisfied by construction** — every point on the correct torus frames
+both subjects exactly, so there is no residual to minimise for framing — and what remains is a search
+over the two free parameters for everything *else* (vantage angle, subject size, visibility), which
+the 2015 paper does with "an efficient interval-based search technique". Not a numerical search for
+the framing, and not a single closed-form pose either.
+
+**Three subjects is where it stops being cheap.** The authors describe the three-target case as exact,
+but three screen positions is the P3P problem and is generically **over-constrained**; a later paper
+by Jiang et al. notes that practitioners "trivially address" it by framing the leftmost and rightmost
+characters and letting the middle fall where it may. **Treat the two-subject case as the one to
+build.**
+
+What the 2015 TOG paper adds over the 2012 SCA paper: interval-based search over the surface,
+**screen-space manipulators** for real-time direct control, and **viewpoint interpolation** that keeps
+visual properties continuous along a path (the long-take capability). Camera roll is left free in 2012
+and constrained in 2015. The 2020 follow-on is Burg, Lino and Christie, "Real-time Anticipation of
+Occlusions for Automated Camera Control in Toric Space" (*Computer Graphics Forum*), which projects
+occluder information into Toric space to build an **anticipation map** predicting occlusions over a
+user-defined time window, then moves the camera to minimise them.
+
+⚠️ **Two things remain unread.** Every route to the primary PDFs failed — HAL serves an Anubis
+challenge, the ACM and Eurographics libraries return 403, and the authors' pages no longer host them —
+so the actual equations, the interval-search algorithm and all runtime figures are unverified, and the
+account above is reconstructed from verbatim quotation in fetchable papers by the same authors and
+their implementers. And citing papers **disagree on the dimensionality reduction**: some say 6-DOF to
+a 2D search, others say 7-DOF to 4-DOF. Both readings follow from the same construction depending on
+what you count, so **do not quote a single DOF figure without the paper in hand.** Do not attribute
+visual servoing to this line of work either; nothing fetched supports it.
 
 **The Prose Storyboard Language** (Ronfard, Gandhi, Boiron, Murukutla;
 [arXiv:1508.07593](https://arxiv.org/abs/1508.07593), and WICED 2022) is a formal language "for
@@ -227,15 +264,26 @@ readable by machines and humans, and "designed to serve as a high-level user int
 cinematography and editing systems." That is a specification for the authoring surface a shot-framing
 system should expose. Cite the four-author v5; v1 had three authors.
 
-> **A correction worth carrying:** DCCL is **Christianson et al., AAAI 1996**
-> ([AAAI library](http://www.aaai.org/Library/AAAI/1996/aaai96-022.php)), not Bares and Lester. Both
-> lines exist and are different. Bares and Lester's constraint-based work is real and separate — see
-> "Virtual 3D camera composition from frame constraints", ACM Multimedia 2000.
+> **Two corrections, the second of which an earlier draft of this survey got wrong itself.**
+>
+> DCCL is "Declarative Camera Control for Automatic Cinematography", **Christianson, Anderson, He,
+> Salesin, Weld and Cohen — six authors — AAAI 1996**
+> ([AAAI library](http://www.aaai.org/Library/AAAI/1996/aaai96-022.php)), encoding 16 idioms from a
+> film textbook. It is not Bares and Lester.
+>
+> **But "Bares and Lester, ACM Multimedia 2000" does not exist**, and an earlier draft cited it. The
+> ACM MM 2000 paper "Virtual 3D camera composition from frame constraints" is **Bares, McDermott,
+> Boudreaux and Thainimit** — **Lester is not an author** (dblp `conf/mm/BaresMBT00`). Bares and
+> Lester do have a joint corpus of nine records, none of them at ACM Multimedia and none in 2000. For
+> constraint-based camera control the intended citation is almost certainly **Bares, Grégoire and
+> Lester, "Realtime Constraint-Based Cinematography for Complex Interactive 3D Worlds", IAAI 1998**.
+> Cite one or the other; the fused version is a phantom.
 
 ### The evidence says use a small discrete vocabulary
 
-This is the clearest one-sided finding in the survey. Every camp independently converges on a small
-closed set of shot descriptors rather than continuous camera parameters:
+This is the clearest one-sided finding in the survey. Nearly every camp independently converges on a
+small closed set of shot descriptors rather than continuous camera parameters (MovieAgent is the one
+exception, and Section 3's account of it explains why that does not weaken the pattern):
 
 - **FilmAgent** ([arXiv:2501.12909](https://arxiv.org/abs/2501.12909)) gives its LLM **9 shot types**
   — three static (close-up, medium, long) and six dynamic — over **165 static and 107 dynamic
@@ -255,26 +303,61 @@ vocabulary and do not exist for continuous camera parameters.** See the next sub
 This is the most immediately actionable material in the survey, because it turns "the framing looks
 wrong" into a number.
 
-| Property | Classes | Accuracy | Source |
-| --- | --- | --- | --- |
-| Shot scale | **3** — close, medium, long | **~94% overall** | Savardi, Signoroni, Migliorati, Benini, ICIP 2018, [doi:10.1109/ICIP.2018.8451474](https://doi.org/10.1109/ICIP.2018.8451474) |
-| Camera angle | **5** — overhead, high, neutral, low, dutch | **>95% weighted P/R** | Savardi, Kovács, Signoroni, Benini, IMX Workshops 2023, [doi:10.1145/3604321.3604334](https://doi.org/10.1145/3604321.3604334) |
-| Camera level | **6** — aerial, eye, shoulder, hip, knee, ground | **>95% weighted P/R** | as above |
+| Property | Classes | Live-action | **Animation** | Source |
+| --- | --- | --- | --- | --- |
+| Shot scale | **3** — close, medium, long | **~94% accuracy** | **F1 ≈ 0.80** | ICIP 2018, [doi:10.1109/ICIP.2018.8451474](https://doi.org/10.1109/ICIP.2018.8451474) / ICIAP-W 2022, [doi:10.1007/978-3-031-13321-3_17](https://doi.org/10.1007/978-3-031-13321-3_17) |
+| Camera angle | **5** — overhead, high, neutral, low, dutch | **>95% weighted P/R** | **F1 = 0.61** | IMX-W 2023, [doi:10.1145/3604321.3604334](https://doi.org/10.1145/3604321.3604334) / ICIAP-W 2022 |
+| Camera level | **6** — aerial, eye, shoulder, hip, knee, ground | **>95% weighted P/R** | **F1 = 0.68** | as above |
 
-The shot-scale model was trained and tested on the full filmographies of six directors — Scorsese,
-Godard, Tarr, Fellini, Antonioni, Bergman — **120 films analysed second by second**. The angle and
-level models used **over 24,000 images** and work "even when frames do not prominently feature the
-human figure." Models, annotation tooling and frame data are offered through the group's project page
-at [cinescale.github.io](https://cinescale.github.io/).
+The live-action shot-scale model was trained and tested on the full filmographies of six directors —
+Scorsese, Godard, Tarr, Fellini, Antonioni, Bergman — **120 films analysed second by second**. The
+angle and level models used **over 24,000 images** and work "even when frames do not prominently
+feature the human figure." Models, annotation tooling and frame data are offered through the group's
+project page at [cinescale.github.io](https://cinescale.github.io/).
 
-Two caveats that matter for a stylised pipeline. **These numbers are on live-action film frames**, and
-an illustration-domain gap is likely. The same group published "Automatic Indexing of Virtual Camera
-Features from Japanese Anime" (ICIAP Workshops 2022,
-[doi:10.1007/978-3-031-13321-3_17](https://doi.org/10.1007/978-3-031-13321-3_17)) — which is exactly
-the paper that would settle it — and ⚠️ **its abstract is elided by the publisher and could not be
-read.** That is the highest-value unread item in this survey. Second, **94% on three classes means
-roughly one verdict in seventeen is wrong**, so a classifier belongs in a system as a flag for human
-review, not as an automatic reject gate.
+### The domain gap is real, and it is uneven
+
+The animation column above is the answer to the question this survey most needed answered, and it does
+not transfer the way one would hope. **Gualandris, Savardi, Signoroni and Benini**, "Automatic Indexing
+of Virtual Camera Features from Japanese Anime" (ICIAP 2022 Workshops, FAPER; LNCS 13373, 186–197),
+applied the same three taxonomies to a corpus of **over 17,000 annotated frames** from Japanese
+animated films of **1982–2021** — Miyazaki, Anno, Oshii — split **12 films for training, 3 for test**.
+Their own framing of the problem:
+
+> "Since animation techniques exploit drawings or computer graphics objects for making films instead of
+> camera shooting, the automatic understanding of such 'virtual camera' features appears harder if
+> compared to live-action movies."
+
+And their result: **shot scale reaches "about 80%", which they call "comparable with state-of-the-art
+methods applied on live-action movies", while camera angle and camera level reach F1 of 61% and 68%.**
+
+**Read that as two different verdicts, because it is.** Shot scale mostly survives the jump to
+stylised 2D. **Camera angle and camera level collapse — a drop of roughly 27 to 34 points** — and the
+authors attribute it directly to the absence of a physical camera. For a system that wants to verify
+framing on generated illustration, **shot scale is measurable and camera geometry is not.**
+
+Three qualifications, none of which rescue the angle and level numbers:
+
+- **This is not a transfer result.** The method **fine-tunes ImageNet-pretrained CNNs on anime**; it
+  does not take the live-action model and run it on animation. ⚠️ No zero-shot cross-domain number
+  appears in the abstract or on the project page, and the full text is paywalled (Unpaywall reports
+  `oa_status: closed`, no OA locations), so a cross-domain table could exist inside it unseen.
+- **The comparison is generous.** "About 80%" F1 against "around 94%" accuracy is not an
+  apples-to-apples metric, and the animation test set is three films.
+- **Even the good number is a flag, not a gate.** 94% on three classes means roughly one verdict in
+  seventeen is wrong; 0.80 F1 means closer to one in five. A classifier belongs in a pipeline as a
+  trigger for human review, never as an automatic reject.
+
+> **Attribution correction:** the anime paper's author set is **Gualandris**, Savardi, Signoroni,
+> Benini. **Kovács is not an author of it** — he is on the IMX-W 2023 angle-and-level paper. An earlier
+> draft of this survey assumed the same author set across all three.
+
+⚠️ A methodological warning worth carrying beyond this section. Two separate fetches of the same
+project page returned **contradictory F1 figures**, and neither matched the paper's own abstract; the
+numbers above come from the University of Brescia repository's raw OAI-PMH record, which serves the
+abstract as machine-readable XML rather than through a summarisation layer. **Numeric tables read off
+rendered HTML through any summarising intermediary should be re-checked against a primary record
+before being relied on.**
 
 **MovieNet** ([movienet.github.io](https://movienet.github.io/), ECCV 2020) annotates shot scale in
 **five** classes — extreme close-up, close-up, medium, **full**, long — and shot movement in four. Note
@@ -306,10 +389,31 @@ model is exactly the one a shot-framing system wants** and transfers directly to
 One transferable idea from the video camp: MotionCtrl keeps **camera** a separate, appearance-free
 axis from **subject description**. Any prompt schema should do the same.
 
-> ⚠️ **Do not attribute Plücker embeddings to CameraCtrl.** Its abstract says only "camera trajectory
-> parameterization". Of the papers checked, only CameraAnything verifiably uses Plücker rays. More
-> broadly, **almost none of these abstracts name an evaluation metric** — CCD, CameraCtrl, CameraCtrl
-> II, MotionCtrl, Director3D, CineMaster and CameraAnything all say "extensive experiments" without
+**The camera representations, read from the bodies.** An earlier draft of this survey warned against
+attributing Plücker embeddings to CameraCtrl on the strength of its abstract. That warning was wrong,
+and reading §3.2 reverses it: _"We thus choose Plücker embeddings (Sitzmann et al. 2021) as the
+camera pose representation."_ The pattern that matters for a still-image system is that **the field is
+split**, and the split is not subtle.
+
+| System         | Camera representation                                     |
+| -------------- | --------------------------------------------------------- |
+| CameraCtrl     | Plücker embeddings, per-pixel ray                          |
+| CameraCtrl II  | Plücker, injected at the initial patchify layer only       |
+| CameraAnything | Plücker plus 3D RoPE                                       |
+| MotionCtrl     | Raw extrinsics, ℝ^{L×12}                                   |
+| CineMaster     | Raw extrinsics, ℝ^{F×12}                                   |
+| Director3D     | Interpretable `{r, t, f, p}` — position, target, focal, up |
+| CCD            | 5-DoF character-centric vector, ℝ⁵                         |
+
+Plücker is the choice for models that condition **densely and per-pixel**, because a ray map is
+already image-shaped. Raw extrinsics are the choice for models that condition **per-frame**. Neither
+is what a still-image framing system wants, and the two bottom rows are why: Director3D's
+`{r, t, f, p}` is the tuple a human would type, and CCD's five character-centric degrees of freedom
+are Toric-flavoured — **though the CCD paper does not use the word Toric**, so do not cite it as an
+implementation of Lino and Christie.
+
+> ⚠️ **Almost none of these abstracts name an evaluation metric** — CCD, CameraCtrl, CameraCtrl II,
+> MotionCtrl, Director3D, CineMaster and CameraAnything all say "extensive experiments" without
 > naming one. Any FID, FVD or pose-error figure attributed to them should be treated as unsourced
 > until someone reads the body.
 
@@ -320,9 +424,16 @@ architectural claims rest on that. Its cinematographer agents apply "shot usage 
 debate-and-judge stage with **no geometric validation of any kind** — no collision check, no
 visibility check, no camera-to-actor geometry. **MovieAgent**
 ([2503.07314](https://arxiv.org/abs/2503.07314)) claims state of the art on script faithfulness,
-character consistency and narrative coherence without defining a metric in its abstract; ⚠️ whether
-its camera settings are discrete or continuous **could not be resolved** and is the most useful open
-question in this area.
+character consistency and narrative coherence without defining a metric in its abstract. ⚠️ **3.98 is
+not a plain mean of four five-point scores** — one of the four columns (Action, 0.88) is
+accuracy-style, so the headline number mixes scales and should not be quoted as "3.98/5 across four
+aspects."
+
+**MovieAgent's camera settings are neither discrete nor continuous: they are free-form natural
+language** in the agent prompts. That places the two film agents at opposite ends of one axis —
+FilmAgent selects from an enumerated menu of nine shot types over pre-placed setups, MovieAgent writes
+whatever sentence it likes. It is the one published exception to the convergence described above, and
+it is not evidence against it, because MovieAgent measures nothing about the cameras it describes.
 
 The honest summary: **these systems demonstrate that a multi-agent LLM can select shots from a menu
 and produce watchable output. They do not demonstrate that the multi-agent structure is what made it
@@ -406,11 +517,11 @@ than expected.
 measured 3D-versus-2D comparison found. Object accuracy is YOLOv8 detection of the specified objects;
 mIoU is placement accuracy:
 
-| Method | Layout control | Object accuracy | mIoU |
-| --- | --- | --- | --- |
-| Build-A-Scene | 3D boxes, interactive | **55.3%** | **0.772** |
-| Layout-Guidance | **2D layout** | 48.2% | — |
-| LooseControl | 3D boxes, non-interactive | **24.3%** | 0.633 |
+| Method | Layout control | Object accuracy | mIoU | CLIP_T2I |
+| --- | --- | --- | --- | --- |
+| Build-A-Scene | 3D boxes, interactive | **55.3%** | **0.772** | 0.321 |
+| Layout-Guidance | **2D layout** | 48.2% | 0.425 | **0.323** |
+| LooseControl | 3D boxes, non-interactive | **24.3%** | 0.633 | 0.302 |
 
 Read carefully, this does not say what the framing predicts:
 
@@ -419,12 +530,44 @@ Read carefully, this does not say what the framing predicts:
 2. **The 3D win is modest and conditional** — about seven points, and only with Build-A-Scene's extra
    interactive machinery on top. **The dimensionality of the layout is not what bought the accuracy;
    the machinery around it was.**
-3. Build-A-Scene positions its own contribution as **editability**, not placement accuracy.
+3. **Whatever the 3D proxy bought, it was not prompt adherence.** Build-A-Scene's CLIP_T2I (0.321) is
+   fractionally _below_ 2D Layout-Guidance's (0.323). The gain is in placement, and only in placement.
+4. **The two baselines do not rank consistently across the two placement metrics.** Layout-Guidance
+   beats LooseControl on object accuracy (48.2% against 24.3%) and loses to it on mIoU (0.425 against
+   0.633). A table whose baselines swap places depending on the metric is not measuring one underlying
+   quantity called "placement accuracy."
+4. Build-A-Scene positions its own contribution as **editability**, not placement accuracy.
 
-⚠️ These are the authors' own numbers against baselines they chose, and **the same author (Wonka)
-co-authors both Build-A-Scene and the LooseControl baseline that scores 24.3%.** Layout-Guidance was
-not independently verified — it appears only as a row in that table. Treat the margin as weaker than
-it looks.
+⚠️ These are the authors' own numbers against baselines they chose, and the shared-authorship problem
+is worse than one name: **Peter Wonka co-authors Build-A-Scene, the LooseControl baseline that scores
+24.3%, _and_ ZoeDepth**, the monocular-depth foundation the whole line rests on; **Niloy Mitra
+co-authors LooseControl and Diffusion Handles.** Treat the margin as weaker than it looks.
+
+The 2D baseline is **"Training-Free Layout Control with Cross-Attention Guidance"** (Chen, Laina,
+Vedaldi, [2304.03373](https://arxiv.org/abs/2304.03373), WACV 2024) — a training-free method, which
+makes the comparison less favourable to the 3D route than the table's framing implies.
+
+**An independent comparison does exist, and it points the same way.** **SeeThrough3D**
+([2602.23359](https://arxiv.org/abs/2602.23359), CVPR 2026, IISc Bengaluru / IIIT Hyderabad — **no
+author overlap with Wonka, Mitra, Eldesokey or Bhat**) benchmarks both 3D-proxy methods against
+image-space occlusion-control methods on one protocol:
+
+| Baseline | Depth ordering ↑ | Object score ↑ | Angular error ↓ | Text alignment ↑ | KID ×10⁻³ ↓ |
+| --- | --- | --- | --- | --- | --- |
+| VODiff (image-space) | 0.68 | 19.7 | 92.73 | 29.51 | 15.40 |
+| **LooseControl** (3D) | 0.82 | 20.02 | 89.88 | 28.43 | 14.32 |
+| **Build-A-Scene** (3D) | 0.89 | 21.0 | 91.62 | 28.05 | 20.12 |
+| LaRender (image-space) | **1.02** | 21.83 | 89.63 | **30.20** | **13.46** |
+| SeeThrough3D | 1.46 | 22.86 | 47.92 | 31.87 | 5.43 |
+
+**LaRender — a training-free, image-space latent-rendering method (Zhan & Liu, ICCV 2025) — beats both
+3D-proxy systems on depth ordering, text alignment and KID.** Depth ordering is the metric a 3D proxy
+is supposed to own outright. Only the paper's own method wins, and SeeThrough3D is itself
+3D-proxy-conditioned, so it is independent of the parties it benchmarks without being disinterested
+about the conclusion.
+
+**Two independent tables now say the same thing: the dimensionality of the proxy is not what buys
+accuracy.**
 
 **The 2D layout alternative, for comparison:**
 
@@ -465,6 +608,16 @@ that is content-to-lighting entanglement generally, **not depth-condition-to-lig
 and it should not be cited as though it measured this. Treat the concern as an untested hypothesis —
 it is cheap to ablate directly.
 
+Two later probes confirm the negative rather than closing it. The polarity convention is common
+knowledge in the tooling — Blender's near-black convention is the inverse of ControlNet's, and
+`sd-webui-controlnet` ships an `invert` preprocessor for exactly that reason — with no discussion
+anywhere of a lighting consequence. And the nearest measurement points the other way: **PPS-Ctrl**
+([2504.17067](https://arxiv.org/abs/2504.17067)) replaces depth with a per-pixel shading map because
+"PPS captures surface lighting effects, providing a stronger structural constraint than depth maps",
+and its ablation (RMSE 3.740 against depth's 4.099) is evidence that depth conditioning **fails to
+supply** shading, not that it **imposes** a scheme. **The ablation is still unrun**: invert the depth
+map, hold prompt and seed, measure output luminance and estimated light direction.
+
 **Structure and appearance are entangled by default.** Three papers in a line each treat their
 separation as something requiring deliberate machinery — **Plug-and-Play Diffusion Features**
 ([2211.12572](https://arxiv.org/abs/2211.12572)), **FreeControl**
@@ -476,10 +629,21 @@ needs, and it is training-free.
 **Normalised depth loses absolute scale.** **ZoeDepth**
 ([2302.12288](https://arxiv.org/abs/2302.12288)) states the field's split directly: work either
 "focuses on generalization performance **disregarding metric scale**" or targets metric depth on
-specific datasets. ⚠️ The downstream consequence one would expect — that a close-up of a large object
-and a wide shot of a small one produce identical conditioning — **is not measured anywhere found.**
-For a shot-framing system this is exactly the wrong thing to be unmeasured, since shot scale is the
-deliverable. Anyone building on depth conditioning should test it early.
+specific datasets — relative estimation "deals with the large depth scale variation … by factoring out
+the scale", so "the predicted depth has no metric meaning, limiting the applications."
+
+The optical half of the concern is stated plainly inside a generative-conditioning paper. **ZeroNVS**
+([2310.17994](https://arxiv.org/abs/2310.17994)): _"To a monocular camera, a small object close to the
+camera and a large object at a distance appear identical, despite representing different scenes."_
+
+⚠️ **Nobody joins the two halves.** The downstream consequence — that a close-up of a large object and
+a wide shot of a small one produce identical normalised conditioning — **is not measured anywhere
+found.** LooseControl and Build-A-Scene both treat depth normalisation as an implementation detail and
+discuss neither metric depth nor scale ambiguity. What corroborates the concern is a silence with a
+shape: **papers that need absolute scale switch to metric depth or a 3D layout proxy without saying
+why they had to.** For a shot-framing system this is exactly the wrong thing to be unmeasured, since
+shot scale is the deliverable. **This is the survey's most testable open claim**; anyone building on
+depth conditioning should settle it early.
 
 > **Name correction:** **"Sketch2Scene" does not exist as a proxy-to-image conditioning system.** The
 > name resolves to a 2024 paper that *generates* 3D from sketches
@@ -715,20 +879,50 @@ feature.
 | --- | --- | --- | --- |
 | **fal.ai** | **Yes — the richest surface verified anywhere** | `controlnets[].{control_image_url, conditioning_scale, start_percentage, end_percentage}`; `controlnet_unions[].controls[].control_mode` ∈ canny/tile/depth/blur/pose/gray; `control_loras[]`; `ip_adapters[]` | `flux-general` **$0.075/MP**; control-LoRA canny/depth **$0.04/MP** |
 | **Replicate** | **Yes** | `control_image`, `guidance` — **no conditioning-scale knob** | canny-pro / depth-pro **$0.05/image** |
-| **Stability AI** | Endpoints exist (`/v2beta/stable-image/control/{structure,sketch,style}`) | ⚠️ **unverified** — docs are behind a Cloudflare-fronted SPA | ⚠️ unverified |
+| **Stability AI** | **Yes** — `/v2beta/stable-image/control/{structure,sketch}`. **No pose endpoint exists** | **`control_strength`, 0–1, default 0.7** | structure/sketch **$0.05/image**; style-transfer $0.08 |
 | **BFL direct** | **No** — no canny/depth path in the live OpenAPI | `input_image`…`input_image_8` | FLUX.2 [pro] from $0.03 |
 | **OpenAI** | **No** | `image`, `mask`, `input_fidelity`. **No seed** | token-metered, $30/M out |
 | **Google Gemini** | **No** | aspect ratio, up to 14 references | 2.5 Flash **$0.039**; 3 Pro **$0.134** |
 | **Recraft** | **No** — `controls` holds colour and style only | `controls.{colors, artistic_level}` | V4.1 $0.035 |
-| **Ideogram / Luma** | **No** | style and character references, weights | ⚠️ Ideogram unverified; Luma Uni-1 $0.0404 |
+| **Ideogram / Luma** | **No** | style and character references, weights | Ideogram V3 $0.03/$0.06/$0.09 (third-party hosts); Luma Uni-1 $0.0404 |
 
-Three specifics worth knowing before committing. fal's `flux-general` says "**Only one controlnet is
-supported at the moment**", so depth and pose together is not available — and its billing **rounds up
-to the nearest megapixel**, so a 1920×1080 render bills as 3 MP and triples the unit cost. Replicate's
-FLUX control models expose only `guidance`, so **control strength is not directly dialable**, which
-matters for a validation loop that wants to retry a shot with more structural adherence. OpenAI
-documents **no seed parameter at all**, which is disqualifying on its own for a content-addressed
-resumable pipeline.
+> **Stability, read from its own OpenAPI spec.** The docs site is a Cloudflare-fronted SPA and the
+> spec it advertises 404s, but a working one is served at
+> `https://api.stability.ai/v2alpha/openapi`. `control_strength` is the real parameter name, 0–1,
+> default 0.7, on both `/control/structure` and `/control/sketch`. `/control/style` and
+> `/control/style-transfer` use **different** names (`fidelity`, `style_strength`,
+> `composition_fidelity`), so the four endpoints do not share one dial. Across all 31 paths the only
+> word containing "pose" in the entire 471 KB spec is `overexposed` — **there is no pose control on
+> the Stability API**, and `/control/pose` and `/control/openpose` both 404 where the four real
+> endpoints 401. Terms of service assign output rights to the customer and forbid using outputs to
+> train competing models.
+
+**Four specifics worth knowing before committing.**
+
+**fal's one-controlnet limit is endpoint-specific, not a platform rule.** `flux-general` says "**Only
+one controlnet is supported at the moment**" on both its array fields, so the array shape is
+misleading and depth-plus-pose is unavailable there. But `fal-ai/sdxl-controlnet-union` exposes **six
+independent control-image fields** — `openpose_`, `canny_`, `depth_`, `normal_`, `segmentation_`,
+`teed_image_url` — with no such language and a `controlnet_conditioning_scale` of its own, and fal
+labels it a multi-controlnet model. ⚠️ **That six-field schema is not proof that setting two of them
+runs two conditioning passes**; no worked example confirms it and no live call was made. **If stacking
+depth with pose is a requirement, that endpoint is the only verified candidate on fal and it must be
+tested before being designed around.** Every FLUX-family endpoint on fal is single-control, and
+`z-image/turbo/controlnet` takes one `image_url` with a single-valued `preprocess` enum, so it too
+permits one at a time despite offering three modes.
+
+fal's billing **rounds up to the nearest megapixel**, so a 1920×1080 render bills as 3 MP and triples
+the unit cost. Replicate's FLUX control models expose only `guidance`, so **control strength is not
+directly dialable**, which matters for a validation loop that wants to retry a shot with more
+structural adherence. OpenAI documents **no seed parameter at all**, which is disqualifying on its own
+for a content-addressed resumable pipeline.
+
+**Two licences are tier-dependent, which is easy to miss.** Recraft assigns copyright to paid users
+but **owns free-tier assets outright and forbids their commercial use**; Luma assigns output to the
+customer but permits commercial use only for output produced under an active paid subscription. Both
+forbid using output to train models. ⚠️ **Ideogram's terms could not be read at all** — `/terms`,
+`/legal`, `/tos`, `/content-policy` and six other paths all returned 403 or 404 — so no claim about
+Ideogram's output ownership belongs in a build decision.
 
 ### The FLUX licence constraint
 
@@ -762,18 +956,57 @@ body rather than pinned to a deployment.
 | **ComfyICU** | **Yes** | **No — shared executor, no custom nodes at all** | $64.00 (L40S) |
 | **Replicate** (`any-comfyui-workflow`) | **Yes** | **Curated list only** | $19.50 (L40S) |
 | **RunComfy** | **No** — an `overrides` map of node-id → input | Yes | hourly, $0.99–$9.59/h |
-| **Comfy Org Cloud** | ⚠️ API reference not locatable | Preinstalled set only; **no model upload** | $16–$80/mo, concurrency capped at 1–5 |
+| **Comfy Org Cloud** | **Yes** — `POST /api/prompt` with `{"prompt": workflow}` in export-API format | Preinstalled set only; **no model upload** | $16/mo annual, $20/mo monthly, to $80–$100; concurrency 1–5 |
+| **ComfyDeploy** | **No** — `POST /run/deployment/queue` takes `deployment_id` plus an `inputs` map | Yes | ⚠️ pricing moved behind the app login |
 | **Modal / fal / Baseten** | Not natively — you own the container and HTTP surface | Yours | $10.84–$21.94 (Modal L40S–H100) |
+| **Salad** | Via their own MIT `comfyui-api` wrapper, self-deployed | Yours | RTX 4090 **$0.30/h** (prices ~11 months stale) |
 
-**RunPod Serverless is the only verified option combining per-request arbitrary graphs with arbitrary
-node packs.** ComfyICU has the cleanest API and forbids custom nodes entirely, which is an easy thing
-to discover too late. Comfy Org does ship hosted products, which many readers will not expect, but its
-cloud accepts no uploaded model files and caps concurrency by tier, so a batch of shots serialises.
+**RunPod Serverless and Comfy Org Cloud are the two verified options taking an arbitrary graph per
+request**, and they differ on everything else: RunPod takes arbitrary node packs through a custom
+Dockerfile, Comfy Cloud takes none and accepts no uploaded model files. ComfyICU has the cleanest API
+and forbids custom nodes entirely, which is an easy thing to discover too late.
 
-⚠️ **Not one service in this survey publishes a cold-start figure.** RunPod names FlashBoot,
-ComfyDeploy claims "Optimized Cold-Start", Baseten documents `min_replica` — all qualitative. Cold
-start is the largest unmodelled term in the cost figures above, and it has to be measured rather than
-read.
+**ComfyDeploy is deployment-scoped, and its own spec settles it.** A `WorkflowRunRequest` schema
+carrying `workflow_api_json` exists in `components.schemas` but is **referenced by no path** — an
+internal dashboard type, not a public route, and even it requires a registered `workflow_id` alongside
+the graph. The public surface is three endpoints. A pipeline emitting a structurally different
+workflow per shot cannot use it.
+
+Two corrections to an earlier draft. **Comfy Cloud's two pages do not disagree**: $16/mo is the annual
+rate and $20/mo the monthly one, and the earlier draft compared one to the other. **Salad is not
+opaque** — its website 403s every route, but its GitHub org is open and authoritative, publishing both
+a price file and an MIT ComfyUI wrapper with two constraints a build must plan around: a **100-second
+Container Gateway timeout** (long jobs need webhooks) and a 35 GB compressed image ceiling.
+
+#### Cold start is the largest unmodelled term, and one published figure is a trap
+
+⚠️ **No third-party measured cold-start figure for a 10–25 GB image model exists on any of these
+platforms.** Everything available is vendor-claimed or anecdotal. The vendors do agree on where the
+time goes: Baseten states "loading model weights can dominate cold-start time", and Modal separates a
+roughly one-second container boot from a weight load it describes as "minutes" without snapshotting.
+The closest figure to the right size band is Modal's own **~1 minute for SD3.5 Large Turbo**.
+
+⚠️ **Do not put RunPod's sub-200 ms FlashBoot number in a cost model.** FlashBoot's own documentation
+describes **retaining worker state after spin-down**, so that figure measures reviving a warm worker,
+not a fresh container plus a multi-gigabyte weight load — using it as a cold-start term understates
+the real number by two to three orders of magnitude. RunPod's own model-caching docs concede "large
+models requiring several minutes to load" when no cached host is available.
+
+**Weight size is the driver, and the LoRA-versus-checkpoint gap is 19×.** Exact bytes from the
+HuggingFace API:
+
+| Artifact | Size |
+| --- | --- |
+| `flux1-depth-dev.safetensors` (full 12B checkpoint) | **22.17 GiB** |
+| `flux1-canny-dev.safetensors` | 22.17 GiB |
+| InstantX FLUX.1-dev-Controlnet-Canny | 3.34 GiB |
+| Shakker-Labs FLUX.1-dev-ControlNet-Depth | 2.97 GiB |
+| **`flux1-depth-dev-lora.safetensors`** | **1.16 GiB** |
+
+**The full merged checkpoint is a complete copy of the transformer; the LoRA delivering the same
+capability is 19.1× smaller.** That compounds directly with the cold-start problem: full checkpoints
+put a self-hosted runner in the worst band, LoRAs largely avoid it, and third-party ControlNets sit
+between.
 
 ### OpenRouter's actual boundary
 
@@ -859,15 +1092,23 @@ call through OpenRouter; keep a local ComfyUI as the development rig rather than
 renderer.**
 
 The reasoning in order of weight: structural conditioning is the requirement and only fal, Replicate
-and probably Stability have it; of those only fal exposes a conditioning **scale**, which a validation
-loop needs in order to retry with more structural adherence. The licence puts self-hosting FLUX [dev]
+and Stability have it; of those, **fal and Stability both expose a conditioning scale** (fal's
+`conditioning_scale`, Stability's `control_strength` at 0–1 default 0.7) and Replicate does not, and a
+validation loop needs that dial in order to retry with more structural adherence. fal wins over
+Stability on breadth rather than on the dial: Stability offers structure and sketch and **no pose
+endpoint at all**, which forecloses character-posed framing. The licence puts self-hosting FLUX [dev]
 control weights out of reach for a shipped product while calling a host does not. And a roughly $50
 delta across an entire project does not justify owning a Docker build, a weight cache, a queue and an
 unmeasured cold-start problem.
 
+**Stability is the fallback worth naming**, because it is the second vendor with a real strength dial
+at $0.05 per image flat, and its terms assign output rights cleanly. Losing pose control is the price.
+
 **The strongest argument against it deserves stating in full, because it is not weak.** fal is a single
-vendor that has already deprecated `flux-pro/v1/canny` — a control endpoint, killed — and cannot stack
-depth with pose. The industry direction is visibly *away* from control maps: BFL removed structural
+vendor that has already deprecated `flux-pro/v1/canny` — a control endpoint, killed — and its
+FLUX-family endpoints cannot stack depth with pose. (`fal-ai/sdxl-controlnet-union` may be able to, but
+that means dropping to SDXL, and the capability is inferred from a six-field schema rather than
+demonstrated.) The industry direction is visibly *away* from control maps: BFL removed structural
 endpoints from its own API in favour of multi-reference editing, and Google, OpenAI, Recraft, Ideogram
 and Luma never had them. There is no portability story, because `controlnets[].conditioning_scale` is
 fal's schema rather than a standard, so migrating means rewriting the rendering layer. **The honest
@@ -879,14 +1120,24 @@ Qwen-Image means giving up the control ecosystem that motivated the stack.
 
 ### What could not be verified here
 
-**Salad** returned HTTP 403 on every page, so nothing about it is known. **Stability's** control
-parameters and pricing are unverified — the endpoints were confirmed to exist by a 401-versus-404
-probe, but the widely-repeated `control_strength` parameter name is **not confirmed**.
-**ComfyDeploy's** pricing pages 404. **Comfy Cloud's** API reference could not be located, and its own
-two pages disagree on the entry price ($16 versus $20). **Cold-start latency** is unpublished
-everywhere. **Numeric VRAM requirements** are unpublished everywhere. **ControlNet checkpoint file
-sizes**, **Ideogram's per-image price**, and the licence terms for Recraft, Ideogram and Luma were not
-obtainable. Local hardware and electricity costs were deliberately not estimated.
+**Cold-start latency is the one that matters and the one still open.** No third-party measurement
+exists for a 10–25 GB image model on any platform here, and the section above explains why the
+vendor-published numbers cannot substitute. It remains the largest unmodelled term in every cost
+figure in this survey.
+
+Still unobtainable: **ComfyDeploy's pricing**, which moved behind the app login rather than
+disappearing; **Ideogram's official per-image price and its terms of service**, both 403-walled, so
+the Ideogram figures above come from two independent third-party hosts and no claim about Ideogram's
+output ownership can be made at all; and **numeric VRAM requirements**, unpublished everywhere. Salad's
+published prices are from a file last committed roughly eleven months before this survey, so they are
+indicative rather than current. Local hardware and electricity costs were deliberately not estimated.
+
+**Closed since the first draft:** Stability's parameters, pricing, licence and the absence of a pose
+endpoint (read from its own OpenAPI spec); whether ComfyDeploy and Comfy Cloud accept an arbitrary
+graph (no and yes respectively); Comfy Cloud's apparent price contradiction (annual versus monthly);
+Salad's product, GPU prices and ComfyUI support (via its GitHub org, the website still being 403);
+FLUX ControlNet file sizes; and the Recraft and Luma licences, both of which turn out to be
+tier-dependent.
 
 Three name collisions worth recording: **ComfyUI "API nodes" are not a hosted runner** — they are
 outbound partner nodes calling third-party APIs on prepaid credits, the opposite direction of travel.
@@ -917,6 +1168,11 @@ loop. It skips every unmeasured claim in Section 5 entirely.
 
 **What it cannot do:** control which character stands where, guarantee occlusion order, or hold a
 consistent spatial layout of a location across many shots.
+
+**The one number it rests on:** shot-scale classification on stylised art is about **0.80 F1**
+(Section 3), so roughly one verdict in five is wrong. That is enough to drive a retry and to flag a
+shot for review; it is not enough to reject a frame outright. Build the loop so a disagreement raises
+the shot rather than discarding it.
 
 ### Architecture B — 2D instance layout with masks
 
@@ -1011,11 +1267,15 @@ literature alone provides.
 1. **Add a geometric framing check to the P7 loop.** A person detector, bounding-box height over frame
    height, and a projection from the four-value enum onto the three-class close/medium/long axis
    (`close`→close, `medium`→medium, `wide` and `establishing`→long). This makes the framing verdict
-   arithmetic rather than opinion, and it is the unclaimed ground identified in Section 6.
-2. **Promote camera angle and level from free text to enums.** `shot.camera` currently absorbs this
-   unvalidated (`prompts.ts:495`). The verified five-class angle and six-class level vocabularies both
-   have **>95%** classifiers behind them, so this converts an uncheckable string into two checkable
-   fields.
+   arithmetic rather than opinion, and it is the unclaimed ground identified in Section 6. **Shot scale
+   is the one property that survives the stylised-art domain gap** (Section 3), which is why this
+   change is worth making and the camera-geometry equivalent is not.
+2. **Promote camera angle and level from free text to enums — but do not expect to verify them.**
+   `shot.camera` currently absorbs both unvalidated (`prompts.ts:495`), and the five-class angle and
+   six-class level vocabularies are the right ones to adopt. **The verification argument for doing so
+   does not survive the domain gap**, though: those classifiers reach >95% on live-action and **0.61
+   and 0.68 F1 on animation**, which is too weak to gate on. Adopt the enums for authoring
+   consistency, prompt derivation and dedup — not because a checker can police them.
 3. **Consider the `wide`/`establishing` conflation.** `establishing` is a narrative role, not a shot
    scale — it means "a long shot used to open a scene". Keeping the enum as authored while defining the
    projection above for verification purposes resolves this without a migration.
@@ -1033,37 +1293,72 @@ rather than precede it.
 
 Listed so that nothing here is mistaken for a settled fact.
 
-**The highest-value unread source** is "Automatic Indexing of Virtual Camera Features from Japanese
-Anime" (ICIAP Workshops 2022, [doi:10.1007/978-3-031-13321-3_17](https://doi.org/10.1007/978-3-031-13321-3_17)),
-whose abstract the publisher elides. It is the paper that would say whether the ~94% shot-scale
-classifier survives the jump from live-action film to stylised illustration — the single assumption
-Architecture A's validation loop rests on.
+**Resolved since first draft.** The anime domain-gap question — previously the highest-value unread
+item here — is answered in Section 3 from the University of Brescia repository's raw OAI-PMH record:
+shot scale holds at about 0.80 F1 on animation while camera angle and level fall to 0.61 and 0.68.
+**What is still open about that paper** is its full text, which is paywalled with no open-access
+location, so ⚠️ **whether it reports any zero-shot cross-domain baseline is unknown** — the fine-tuned
+numbers above are all that the abstract and project page give. The authors' anime dataset and model
+are offered through OSF, and ⚠️ **what those repositories actually contain could not be enumerated**
+(the OSF API returned 401/404 to an unauthenticated fetcher).
 
 **Unverified specifics:**
 
-- **Toric space's coordinate parameterisation and spindle-torus construction.** HAL blocked every
-  fetch route. Only the abstract-level claims are sourced.
-- **Whether MovieAgent's camera settings are discrete or continuous.**
-- **Camera representation** is unstated in the abstracts of CCD, E.T., CameraCtrl, CameraCtrl II and
-  Director3D; **evaluation metrics** are unnamed in the abstracts of CCD, CameraCtrl, CameraCtrl II,
-  MotionCtrl, Director3D, CineMaster and CameraAnything.
-- **Venues** for Generative Rendering and LooseControl; the two research passes disagreed about
-  whether Neural Assets (NeurIPS 2024), Build-A-Scene (ICLR 2025) and Diffusion Handles (CVPR 2024)
-  were confirmed, and the disagreement is unresolved.
+- **Toric space's primary PDFs are still unread** — HAL's Anubis gateway and the ACM and Eurographics
+  libraries all refused. The parameterisation and spindle-torus construction in Section 3 come from
+  citing papers rather than the originals, and those citing papers **disagree about the degrees of
+  freedom** (6D→2D against 7DOF→4DOF), so do not quote a single DOF figure without the paper in hand.
+- **MovieAgent's per-dimension sub-scores**, **CineMaster's Table 2 column labels**, and
+  **Director3D's `{r, t, f, p}` dimensionality**.
+- **Evaluation metrics** are unnamed in the abstracts of CCD, CameraCtrl, CameraCtrl II, MotionCtrl,
+  Director3D, CineMaster and CameraAnything.
 - **MovieNet shot-scale classifier accuracy**, and **CineTechBench** per-dimension class counts.
 - **LSMDC** was not verified at all.
-- **Depth-condition-to-lighting leakage** has no published support in either direction.
+- **Depth-condition-to-lighting leakage** has no published support in either direction, and the
+  inverted-depth ablation that would settle it appears never to have been run.
 - **The scale-ambiguity consequence** — that a close-up of a large object and a wide shot of a small
   one condition identically — is unmeasured, and it is the assumption most worth testing early.
+- **The 2D-versus-3D classification of LaRender and VODiff** in the SeeThrough3D table rests on their
+  titles and method descriptions rather than a verbatim sentence.
+- **The anime classifier paper's full text** is paywalled, so whether it reports a zero-shot
+  cross-domain baseline is unknown.
 
-**Unmeasured comparisons that a survey could easily imply are settled:** occlusion ordering,
-perspective and horizon consistency, character scale consistency across shots, and scene reuse across
-frames. These are the intuitive arguments for a 3D proxy and **not one of them is quantified in any
-source found.**
+**Resolved since the last pass:** every venue in the proxy-conditioning section is now confirmed from
+DBLP — Neural Assets NeurIPS 2024, Build-A-Scene ICLR 2025 (OpenReview `gg6dPtdC1C`), Diffusion
+Handles CVPR 2024, **Generative Rendering CVPR 2024**, **LooseControl SIGGRAPH 2024** (article 102).
+Camera representations are read from the bodies rather than the abstracts (Section 3). MovieAgent's
+camera settings are free-form natural language, neither discrete nor continuous.
 
-**One citation to avoid.** LVLM-Composer ([2507.04152](https://arxiv.org/abs/2507.04152)) surfaced
-claiming composition-fidelity validation, but its author list carries no institutional affiliation and
-the paper has paper-mill characteristics. It should not be cited without independent scrutiny.
+**The four intuitive arguments for a 3D proxy, checked one at a time.** An earlier draft said none of
+them was quantified anywhere. That was too broad, and three of the four do not survive it:
+
+| Argument for a 3D proxy | Status |
+| --- | --- |
+| Occlusion ordering | **Measured, repeatedly.** SeeThrough3D scores pairwise depth ordering against ground truth on 3D-box proxies specifically; OcclusionFormer ([2605.21343](https://arxiv.org/abs/2605.21343)) reports occlusion-order F1 0.78 and depth-order WHDR 0.16; LayerBind ([2603.05769](https://arxiv.org/abs/2603.05769)) reports UniDet-Depth and an occlusion-relation VQA score |
+| Perspective consistency | **Split.** Vanishing points are measured — ControlVP ([2512.07504](https://arxiv.org/abs/2512.07504)) reports angular accuracy AA@3°/5°/10° of 0.731/0.826/0.910. **The horizon line specifically is not measured anywhere found** |
+| **Character scale across shots** | **The gap is real.** This one survives |
+| Scene reuse across shots | **Measured by proxy, never geometrically.** MEt3R ([2501.06336](https://arxiv.org/abs/2501.06336)) measures multi-view consistency by dense reconstruction and warping, but for novel views of one scene rather than a re-authored camera; CANVAS uses an LLM judge over architectural elements (4.88/5) rather than geometry |
+
+**Character scale consistency across shots is the clean gap, and the story-visualisation benchmarks
+show exactly how it went missing.** ViStoryBench's CIDS pipeline crops character regions with
+Grounding DINO, embeds the crops, and compares them by cosine similarity — **the bounding boxes are
+computed and then discarded, with no area or scale term.** CANVAS scores facial identity, clothing and
+hair; CharaConsist (ICCV 2025) scores masked CLIP similarity. Every one of them measures _who_ and
+none measures _how big_. The closest thing to an acknowledgement is prose: **Setting the Stage**
+([2512.12598](https://arxiv.org/abs/2512.12598)) observes that "the person is rendered at
+approximately the same height as the adjacent chair, which is clearly implausible" — and does not
+quantify it. Its judge rubric goes further in the wrong direction, explicitly instructing the model
+not to penalise "zoom/rotation, and moderate viewpoint changes."
+
+**For this repository that is the load-bearing finding**, because a VN's characters recur across shots
+at authored scales, and nothing in the literature will tell you whether a given route holds them
+steady.
+
+> **A correction to an earlier draft's flag.** LVLM-Composer
+> ([2507.04152](https://arxiv.org/abs/2507.04152)) was flagged here as carrying no institutional
+> affiliation. **That is false** — the rendered HTML title block reads "Affiliation: Northern Caribbean
+> University". The error came from reading the arXiv `/abs` page, which shows affiliations for no paper
+> at all. The citation remains unused in this survey, but not on that ground.
 
 **On method.** Web-search budget was exhausted early, so discovery relied on direct fetches and
 structured APIs (arXiv, DBLP, Semantic Scholar, GitHub, HuggingFace, Civitai). **Absence of evidence
