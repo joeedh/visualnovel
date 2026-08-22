@@ -19,7 +19,7 @@
      be the first option before the models.
 [x]: the tokens counter's tooltip should be reworked so it's more readable for average users 
      instead of devs.
-[ ]: the play editor isn't updated when new shows are created
+[x]: the play editor isn't updated when new shows are created
 [x]: use an agent to execute docs/plans/prompt-caching-for-the-report-analyst.md wait for it to finish
 [ ]: the new install git hub workflow feature should tell the user how to enable the page on github 
      pages, looks like they have to navigate to the settings and select the gh-pages branch manually.
@@ -63,8 +63,8 @@
 	 and a prompt for the agent to fix the asset prefilled.
 [ ]: do not use sugiyama layout for the global task graph view 
    - it might work for individual asset subgraphs, so use it for those and we'll try it.
-[ ]: clicking on a scene should show it in any open play editors 
-[ ]: clicking on a shot in the coverage editor (or the document tree) should show it in the play editor.
+[x]: clicking on a scene should show it in any open play editors 
+[x]: clicking on a shot in the coverage editor (or the document tree) should show it in the play editor.
 [ ]: write a report on supporting a manga or anime shot composition style, where 
      instead of portraits popping up on the screen (as light novels often do) 
 	 each shot would fully frame characters.  cross reference with the ai shot 

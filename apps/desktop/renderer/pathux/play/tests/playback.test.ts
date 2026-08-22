@@ -5,7 +5,9 @@ import {
   back,
   choose,
   framesOf,
+  jumpTo,
   parseSave,
+  samePos,
   saveKeyOf,
   startOf,
 } from '../playback.js';
@@ -101,6 +103,34 @@ describe('navigation', () => {
     const p = play();
     delete p.start;
     expect(startOf(p)).toEqual([]);
+  });
+});
+
+describe('following a selection made elsewhere', () => {
+  it('lands on the first frame the named shot drew', () => {
+    expect(jumpTo(play(), 'a', 'a.s2')).toEqual({ sceneId: 'a', frameIndex: 2 });
+  });
+
+  it('lands on the scene’s first frame when no shot is named', () => {
+    expect(jumpTo(play(), 'a', '')).toEqual({ sceneId: 'a', frameIndex: 0 });
+  });
+
+  // A shot covering only stage directions has no frame of its own, and a shot id left over from
+  // another scene is a stale selection rather than a reason to refuse the scene.
+  it('falls back to the first frame for a shot the scene’s frames do not name', () => {
+    expect(jumpTo(play(), 'a', 'b.s1')).toEqual({ sceneId: 'a', frameIndex: 0 });
+  });
+
+  it('has nowhere to go in a scene the playable does not have', () => {
+    expect(jumpTo(play(), 'gone', '')).toBeNull();
+  });
+
+  it('knows a jump that would not move', () => {
+    const at = { sceneId: 'a', frameIndex: 2 };
+    expect(samePos(at, { ...at })).toBe(true);
+    expect(samePos(at, { sceneId: 'a', frameIndex: 3 })).toBe(false);
+    expect(samePos(undefined, at)).toBe(false);
+    expect(samePos(at, null)).toBe(false);
   });
 });
 

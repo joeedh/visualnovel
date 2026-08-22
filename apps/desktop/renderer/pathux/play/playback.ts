@@ -99,6 +99,27 @@ export function startOf(play: Playable): Pos[] {
   return play.start ? [{ sceneId: play.start, frameIndex: 0 }] : [];
 }
 
+/**
+ * Where a scene or a shot selected elsewhere in the shell sits in the playable: the first frame
+ * drawn from that shot, or the scene's first frame when no shot is named. `null` for a scene the
+ * playable does not have, which is what an unexported scene looks like from here.
+ *
+ * A shot the scene's frames do not name falls back to that scene's first frame. A shot covering
+ * only stage directions has no frame of its own, and a shot id from another scene is a stale
+ * selection rather than a reason to refuse the scene.
+ */
+export function jumpTo(play: Playable, sceneId: string, shotId: string): Pos | null {
+  const scene = play.scenes[sceneId];
+  if (!scene) return null;
+  const at = shotId ? framesOf(scene).findIndex((f) => f.shotId === shotId) : -1;
+  return { sceneId, frameIndex: at < 0 ? 0 : at };
+}
+
+/** Whether two positions are the same place, so a jump that would not move is skipped. */
+export function samePos(a: Pos | undefined, b: Pos | null): boolean {
+  return !!a && !!b && a.sceneId === b.sceneId && a.frameIndex === b.frameIndex;
+}
+
 /** Saves are per-title, so two projects open in turn do not overwrite each other. */
 export function saveKeyOf(play: Playable | undefined): string {
   return play ? `vn.runner.save.${play.title}` : 'vn.runner.save';

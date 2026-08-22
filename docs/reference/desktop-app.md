@@ -1015,7 +1015,7 @@ runner acted on; and every attempt's bytes are in the store (`store.write` runs 
 ## Play
 
 `editors/play.ts` — the runner. `pathux/play/playback.ts` is the pure half (frames, navigation, the
-save blob) with eleven tests beside it. The stage is deliberately raw DOM inside the column frame,
+save blob) with sixteen tests beside it. The stage is deliberately raw DOM inside the column frame,
 with path.ux widgets only for the chrome above it: a VN frame is a background, a portrait and a text
 box, none of which is a control.
 
@@ -1031,7 +1031,21 @@ box, none of which is a control.
   `shot` field (`@vn/types`, `@vn/export`), `framesOf` carries it down the frames between shot
   changes, and the editor publishes `ui.sceneId`/`ui.shotId` as the playthrough moves — so every
   other pane follows along. The React runner never did this; it is the one behavioural gain of the
-  port, and it is why the schema changed.
+  port, and it is why the schema changed. The push happens only when the playthrough itself moved,
+  which is what keeps a redraw from writing the played position over a scene the author has just
+  selected somewhere else.
+- **The same two fields are followed the other way.** A scene or a shot picked in the document tree,
+  in Shot Coverage or in the task graph jumps the playthrough to it: `jumpTo` finds the first frame
+  the named shot drew, or the scene's first frame when no shot is named. The jump is pushed onto the
+  navigation stack rather than replacing it, so Back retraces it the way it retraces a choice. A
+  scene the playable does not have is said in the bar rather than followed — the playable is built
+  from the model as it stands, so a scene with no beats yet is an ordinary pre-run state. Opening the
+  pane starts on the shared selection for the same reason, falling back to the story's own start.
+- **A new or re-rendered shot re-reads the playable.** The pane watches `onInvalidate` and comes
+  back on screen re-reading, because the playable is built rather than read from a file and nothing
+  else would tell it a shot had been made. The position holds across the re-read: a `show` beat folds
+  into the line after it, so shot changes change which image a frame carries rather than how many
+  frames a scene has. A scene that has gone since is the one case that starts the story over.
 - **No portrait over the shot unless the project asked.** A shot prompt names its own subjects,
   so the frame already shows the cast; the speaker's portrait is staged over it only when
   `story.play.json` says `portraitOverlay`, from `project.yaml`'s `portrait_overlay` —

@@ -1,7 +1,7 @@
 import { HotKey, KeyMap, type Container } from 'pathux';
 import { api } from '../../api.js';
 import type { Playable, PlayableScene } from '../../../src/shared/ipc.js';
-import { notify } from '../bridge.js';
+import { notify, onInvalidate } from '../bridge.js';
 import { centered } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import {
@@ -10,7 +10,9 @@ import {
   back,
   choose,
   framesOf,
+  jumpTo,
   parseSave,
+  samePos,
   saveKeyOf,
   startOf,
   type Frame,
@@ -29,7 +31,8 @@ import { TOKENS, alpha } from '../tokens.js';
  *
  * The frame carries the shot it came from, so watching the story moves `ui.sceneId`/`ui.shotId`
  * and every other editor follows along. The React runner could not do that: it could show a
- * frame but never say where in the story that frame was.
+ * frame but never say where in the story that frame was. It follows the same two fields the other
+ * way as well, so a scene or a shot picked anywhere else jumps the playthrough there.
  */
 export class PlayEditor extends VnEditor {
   private bar!: Container;
@@ -43,6 +46,12 @@ export class PlayEditor extends VnEditor {
   private notice = '';
   /** What the bar and stage last drew, so a redraw happens on a change and not on a tick. */
   private drawn = '';
+  /** The shared selection this pane has already answered, so only a foreign move jumps it. */
+  private followed = '';
+  /** The playthrough position last published, so a redraw that did not move publishes nothing. */
+  private published = '';
+  /** Bumped on every re-read, so a reload redraws even though the position did not move. */
+  private revision = 0;
 
   static override define() {
     return {
@@ -80,12 +89,22 @@ export class PlayEditor extends VnEditor {
       new HotKey('Backspace', [], () => this.go(back(this.history)), 'Back'),
     ]);
 
+    // The playable is built from the model and the store rather than read from a file, so a shot
+    // made or rendered since the last read is a re-read away. Coming back on screen re-reads for
+    // the same reason: what changed while the pane was away is unknowable from here.
+    this.watch(
+      () => onInvalidate(() => void this.reload()),
+      () => void this.reload(),
+    );
+
     void this.loadPlayable();
   }
 
   override update() {
     super.update();
 
+    const selection = this.selectionKey();
+    if (selection !== this.followed) this.follow(selection);
     if (this.stateKey() !== this.drawn) this.rebuild();
   }
 
@@ -96,11 +115,40 @@ export class PlayEditor extends VnEditor {
   private async loadPlayable(): Promise<void> {
     try {
       this.play = await api.invoke('story:play');
-      this.history = startOf(this.play);
+      this.history = this.opening(this.play);
     } catch (err) {
       this.failure = err instanceof Error ? err.message : String(err);
     }
     this.rebuild();
+  }
+
+  /**
+   * Re-read the playable and stay where the playthrough is. A shot made, moved or re-rendered
+   * changes which image a frame carries rather than how many frames a scene has, because a `show`
+   * beat folds into the line after it — so the position survives. A scene that has gone since is
+   * the one case that starts over.
+   */
+  private async reload(): Promise<void> {
+    let play: Playable;
+    try {
+      play = await api.invoke('story:play');
+    } catch (err) {
+      this.failure = err instanceof Error ? err.message : String(err);
+      this.rebuild();
+      return;
+    }
+    this.play = play;
+    this.failure = '';
+    const cur = this.history[this.history.length - 1];
+    if (!cur || !play.scenes[cur.sceneId]) this.history = this.opening(play);
+    this.revision += 1;
+    this.rebuild();
+  }
+
+  /** Where a fresh read starts: what the rest of the app is looking at, or the story's own start. */
+  private opening(play: Playable): Pos[] {
+    const at = jumpTo(play, this.ui.sceneId, this.ui.shotId);
+    return at ? [at] : startOf(play);
   }
 
   /** Everything both halves draw, in one string. */
@@ -109,11 +157,40 @@ export class PlayEditor extends VnEditor {
     return [
       this.play?.title ?? '',
       this.failure,
+      this.revision,
       this.history.length,
       cur?.sceneId ?? '',
       cur?.frameIndex ?? -1,
       this.notice,
     ].join('|');
+  }
+
+  private selectionKey(): string {
+    return `${this.ui.sceneId}|${this.ui.shotId}`;
+  }
+
+  /**
+   * Jump to a scene or a shot picked elsewhere — in the document tree, in Shot Coverage, in the
+   * task graph. The jump is pushed onto the history rather than replacing it, so Back retraces the
+   * way it retraces a choice.
+   *
+   * A scene the playable does not have is said rather than followed: the story is exported from
+   * the model as it stands, so a scene with no beats yet is an ordinary pre-run state.
+   */
+  private follow(selection: string): void {
+    this.followed = selection;
+    if (!this.play || !this.ui.sceneId) return;
+
+    const to = jumpTo(this.play, this.ui.sceneId, this.ui.shotId);
+    if (!to) {
+      this.notice = `${this.ui.sceneId} has nothing to play yet.`;
+      this.rebuild();
+      return;
+    }
+    if (samePos(this.history[this.history.length - 1], to)) return;
+    this.history = [...this.history, to];
+    this.notice = '';
+    this.rebuild();
   }
 
   /** One frame on, or off the end of the scene onto whatever follows it. */
@@ -140,13 +217,22 @@ export class PlayEditor extends VnEditor {
   }
 
   /**
-   * The playthrough position, as the shell's one selection. Only pushed when it changes: a
-   * `notifyChange` per frame would rebuild every other editor for nothing.
+   * The playthrough position, as the shell's one selection. Pushed only when the playthrough
+   * itself moved: a `notifyChange` per frame would rebuild every other editor for nothing, and a
+   * redraw that did not move would publish the played position over a scene the author has just
+   * selected somewhere else.
    */
   private publishSelection(): void {
     const cur = this.history[this.history.length - 1];
+    const at = `${cur?.sceneId ?? ''}|${cur?.frameIndex ?? -1}`;
+    if (at === this.published) return;
+    this.published = at;
+
     const sceneId = cur?.sceneId ?? '';
     const shotId = this.currentFrame()?.shotId ?? '';
+    // Recorded whether or not it is pushed, because either way this is the selection the pane is
+    // now answering, and `update` would otherwise read its own move as a foreign one.
+    this.followed = `${sceneId}|${shotId}`;
     if (this.ui.sceneId === sceneId && this.ui.shotId === shotId) return;
 
     this.ui.sceneId = sceneId;
