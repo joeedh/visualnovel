@@ -521,6 +521,16 @@ sixteen tests over the three drags.
   coverage panes follow, and it seeds the conversation composer with `Revise scene <id> — ` even
   when the selection did not move: clicking the card that is already open is how you ask about it
   again.
+- **Right-clicking a card offers its script** (`cardMenu` in `pathux/branch.ts`) — the entry the
+  document tree has no need of, because a click there already opens the scene while a click here
+  only selects it. The scene is selected before the menu opens: `view.open` carries one subject
+  string and Script has no entry in `SUBJECT_OF`, so it opens on the shared selection. `where` is
+  `elsewhere`, which focuses an open Script pane rather than opening a second one and never covers
+  the canvas with it. A **stub** — a `[[goto:]]` with no scene behind it — offers `story.newScene`
+  prefilled with its id instead, as a form, since a heading is not something a menu row supplies.
+  The listener is on the canvas rather than on a card, because the node layer takes no pointer
+  events, and `onPick` swallows a pointer-down taken while a menu is open, or the click that
+  dismisses the menu would grab the card underneath it.
 
 ## Script
 

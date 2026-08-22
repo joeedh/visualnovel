@@ -2,6 +2,7 @@ import { branchState } from '../../../src/shared/interactions.js';
 import {
   GRAB,
   aim,
+  cardMenu,
   commitOf,
   grabArrow,
   grabCard,
@@ -175,5 +176,21 @@ describe('pulling a wire off its target', () => {
   test('an edge that is no longer there refuses rather than throwing', () => {
     const drag = aim(grabArrow(state, 'gone#next', at(0, 0)), { ...nowhere, away: GRAB + 1 });
     expect(drag.verdict?.accept).toBe(false);
+  });
+});
+
+describe('right-clicking a card', () => {
+  test('offers the script, which a plain click on this canvas does not open', () => {
+    expect(cardMenu('a', false)).toEqual([
+      { label: 'Go to script', id: 'view.open', props: { editor: 'script', where: 'elsewhere' } },
+    ]);
+  });
+
+  // A stub names a scene nothing wrote, so the one act it has is writing it — as a form, because a
+  // heading is not something a menu row can supply.
+  test('offers to write the scene a stub stands for', () => {
+    expect(cardMenu('missing', true)).toEqual([
+      { label: 'Write missing…', id: 'story.newScene', props: { scene: 'missing' }, form: true },
+    ]);
   });
 });

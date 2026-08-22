@@ -20,6 +20,7 @@ import {
   type BranchState,
 } from '../../src/shared/interactions.js';
 import { noticeForVerdict, type Notice } from '../../src/shared/lineedit.js';
+import type { MenuEntry } from './contextmenu.js';
 import type { Invocation, Verdict } from '@vn/commands';
 import type { Point } from '../graph/types.js';
 
@@ -192,4 +193,22 @@ export function newChoiceEdge(state: BranchState, scene: string): string | null 
   const source = state.scenes.get(scene);
   if (!source || (source.choices.length === 0 && source.next === undefined)) return null;
   return `${scene}#choice:${source.choices.length}`;
+}
+
+/**
+ * What right-clicking a card offers. The script is offered explicitly because a click on this
+ * canvas only selects a scene — in the document tree the same click already opens it, so the entry
+ * would be redundant there. `where` is `elsewhere` so the canvas never opens the script over
+ * itself; an open script pane is focused rather than opened twice.
+ *
+ * A stub is a `[[goto:]]` with no scene behind it, so the one act it has is writing that scene.
+ * `story.newScene` also wants a heading, which a menu has no way to supply, so it opens its form.
+ */
+export function cardMenu(id: string, stub: boolean): MenuEntry[] {
+  if (stub) {
+    return [{ label: `Write ${id}…`, id: 'story.newScene', props: { scene: id }, form: true }];
+  }
+  return [
+    { label: 'Go to script', id: 'view.open', props: { editor: 'script', where: 'elsewhere' } },
+  ];
 }

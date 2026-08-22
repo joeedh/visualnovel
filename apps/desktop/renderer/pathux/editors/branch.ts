@@ -21,6 +21,7 @@ import { noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
 import {
   GRAB,
   aim,
+  cardMenu,
   commitOf,
   grabArrow,
   grabCard,
@@ -32,8 +33,10 @@ import {
 import { exec, refreshWorkspace } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
+import { menuIsOpen, showContextMenu } from '../showmenu.js';
 import { TOKENS } from '../tokens.js';
 import BRANCH_CSS from '../../styles/branch.css?inline';
+import type { VnContext } from '../context.js';
 import type { Invocation } from '@vn/commands';
 import type { LaidOutNode, Point } from '../../graph/types.js';
 import type { StoryEdge, StoryGraph, StoryScene } from '../../../src/shared/ipc.js';
@@ -158,6 +161,9 @@ export class BranchEditor extends VnEditor {
       onSurfaceChange: () => this.fitOnce(),
     });
     this.canvas.element.className = 'branch-canvas';
+    // On the canvas rather than on a card: the node layer takes no pointer events, so a card is
+    // never the target of an event the canvas did not resolve.
+    this.canvas.element.addEventListener('contextmenu', (event) => this.openMenu(event));
     this.surface.appendChild(this.canvas.element);
 
     this.surface.appendChild(el('p', 'invite', INVITE));
@@ -432,6 +438,10 @@ export class BranchEditor extends VnEditor {
   }
 
   private onPick(hit: GraphPick, event: PointerEvent): void {
+    // The wrangler closes a menu on mouse-up, so pointer-down is the last moment this can be
+    // asked. Without it the click that dismisses a card's own menu would grab the card under it.
+    // `preventDefault` is the canvas's protocol for a taken pointer, so it does not pan either.
+    if (menuIsOpen()) return event.preventDefault();
     this.settleLabel();
     const world = this.worldAt(event.clientX, event.clientY);
     const scale = this.canvas.viewport.scale;
@@ -456,6 +466,21 @@ export class BranchEditor extends VnEditor {
     }
     this.selected = hit.type === 'edge' ? hit.edge.id : null;
     this.redraw();
+  }
+
+  /**
+   * The commands a card carries. A scene is selected first, because Go to script opens the script
+   * on the shared selection — `view.open` carries one subject string and a scene does not use it.
+   * A right-click over the background offers nothing: it names no card.
+   */
+  private openMenu(event: MouseEvent): void {
+    event.preventDefault();
+    const node = nodeAt(this.layout, this.worldAt(event.clientX, event.clientY));
+    if (!node) return;
+    const stub = this.stubs.has(node.id);
+    if (!stub) this.selectScene(node.id);
+    const entries = cardMenu(node.id, stub);
+    void showContextMenu(this.ctx as VnContext, event.clientX, event.clientY, node.id, entries);
   }
 
   /** The listeners are on `window`, so a gesture leaving the canvas still tracks and releases. */
@@ -545,6 +570,11 @@ export class BranchEditor extends VnEditor {
    */
   private openScene(sceneId: string): void {
     seed(`Revise scene ${sceneId} — `);
+    this.selectScene(sceneId);
+  }
+
+  /** Move the shared selection onto a card, which is what every other surface follows. */
+  private selectScene(sceneId: string): void {
     if (this.ui.sceneId === sceneId) return;
     this.ui.sceneId = sceneId;
     this.announce();
@@ -754,9 +784,10 @@ function sceneCard(
   if (ghost) classes.push('carried');
 
   const box = el('article', classes.join(' '));
+  const acts = 'click to select it, right-click to open its script, drag it to lay the graph out';
   box.title = scene.reachable
-    ? `${scene.id} — click to select it, drag it to lay the graph out`
-    : `${scene.id} — nothing reaches this scene; click to select it, drag it to move it`;
+    ? `${scene.id} — ${acts}`
+    : `${scene.id} — nothing reaches this scene; ${acts}`;
 
   const head = el('header');
   head.appendChild(el('span', 'id', scene.id));
@@ -782,7 +813,7 @@ function sceneCard(
 /** The stand-in for a `goto` with no scene behind it. Never a drop target — there is no scene. */
 function stubCard(id: string): HTMLElement {
   const box = el('div', 'scene-stub');
-  box.title = `${id} — no scene by that name`;
+  box.title = `${id} — no scene by that name; right-click to write it`;
   box.appendChild(el('span', 'id', id));
   box.appendChild(el('span', 'tag', 'unwritten'));
   return box;

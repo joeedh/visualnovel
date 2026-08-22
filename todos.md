@@ -1,7 +1,7 @@
 [x]: add a rule to CLAUDE.md that all plans are to be pressure tested with an agent with a 
      fresh context after formulation.
 [x]: rename coverage editor to 'shot coverage'
-[ ]: right clicking on a node in the branches editor should popup a context menu with 'go to script' that will show
+[x]: right clicking on a node in the branches editor should popup a context menu with 'go to script' that will show
      the story node in a script editor.
 [x]: remove the 'clear' button in the convo editor.
 [ ]: when the agent makes changes to shot coverage it should refresh the coverage editor
