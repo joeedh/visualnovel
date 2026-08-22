@@ -520,8 +520,8 @@ sixteen tests over the three drags.
 
 ## Script
 
-`editors/script.ts` — one scene's lines down the pane, typed: the heading, the lines with their ids
-and cues, the composer at the end. `rooms/studio/script/script.ts` (`scriptRows`, `keyAct`,
+`editors/script.ts` — one scene's lines down the pane, typed: the heading, the lines with their
+numbers and cues, the composer at the end. `rooms/studio/script/script.ts` (`scriptRows`, `keyAct`,
 `stepsOf`, `checkOf`, `splitBoundaries`, `mergeTarget`, `dropTarget`, `nextEditing`) is imported
 unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` with six tests. Plan:
 [`../plans/archive/script-composition-in-studio.md`](../plans/archive/script-composition-in-studio.md).
@@ -531,6 +531,11 @@ unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` wi
   pure function that decides which. Enter commits the row (and, from the end of a line, opens a
   composer below — a paragraph is one `setLineText` plus one `insertLine` per line, each its own
   undo point); Backspace at the start of an *emptied* line is `story.deleteLine`; Escape discards.
+- **The gutter counts the page; the id is in the tooltip.** `scriptRows` carries an `at` — the
+  row's 1-based place among the scene's lines, counting past an open composer without renumbering
+  around it — and that is the number on screen, readable at rest rather than only on hover. A line
+  id is allocated once and persisted, so `L12` stops matching the count as soon as a line is
+  inserted above it; it is what a refusal names, which is why the gutter's tooltip still gives it.
 - **A composer row is not a line yet.** `story.insertLine` refuses empty text — an empty line has
   no lossless Fountain form — so Enter cannot create a line and let the author type into it.
   Committing the composer *is* the insert, and the id it minted is found by position in the

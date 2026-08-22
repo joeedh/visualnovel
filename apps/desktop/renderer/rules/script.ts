@@ -16,8 +16,8 @@ import { commitOf, lineOf } from '../../src/shared/lineedit.js';
 import type { CharacterEntry, CoverageLine, SceneCoverage, StoryGraph } from '../../src/shared/ipc';
 
 /**
- * The local part of a `${sceneId}:L<n>` id, which is what the gutter shows. The scene half is
- * already the column's heading, and repeating it on every row makes the numbers unreadable.
+ * The local part of a `${sceneId}:L<n>` id, for the sentences that name one line. The scene half
+ * is already the column's heading, and repeating it in every sentence makes the ids unreadable.
  */
 export function localLineId(lineId: string): string {
   const colon = lineId.lastIndexOf(':');
@@ -196,8 +196,11 @@ export function nextEditing(
   return made ? { editing: { row: 'new', after: made.id }, draft: '' } : null;
 }
 
-/** One rendered row: a line of the scene, or the composer sitting after `after`. */
-export type ScriptRow = { line: CoverageLine } | { compose: string };
+/**
+ * One rendered row: a line of the scene at its 1-based place in the page, or the composer sitting
+ * after `after`. `at` counts lines only, so an open composer does not shift the numbers around it.
+ */
+export type ScriptRow = { line: CoverageLine; at: number } | { compose: string };
 
 /**
  * The column's rows, with the composer spliced in where it belongs. A composer whose `after`
@@ -207,8 +210,8 @@ export type ScriptRow = { line: CoverageLine } | { compose: string };
 export function scriptRows(lines: readonly CoverageLine[], editing: Editing | null): ScriptRow[] {
   const after = editing?.row === 'new' ? editing.after : null;
   const rows: ScriptRow[] = after === '' ? [{ compose: '' }] : [];
-  for (const line of lines) {
-    rows.push({ line });
+  for (const [i, line] of lines.entries()) {
+    rows.push({ line, at: i + 1 });
     if (after === line.id) rows.push({ compose: line.id });
   }
   return rows;

@@ -108,13 +108,14 @@
   font-family: var(--mono);
   font-size: 9.5px;
   line-height: 2.2;
-  color: var(--ink-line);
+  color: var(--mist-dim);
   text-align: right;
   user-select: none;
 }
-/* The gutter is a reference, not a label — it comes forward when the row is under the pointer. */
+/* Readable at rest, because a number an author has to hover to count is not a number they can
+   cite; it comes further forward when the row is under the pointer. */
 .sc-line:hover .lid {
-  color: var(--mist-dim);
+  color: var(--mist);
 }
 /* The cue is also the control that changes it, so it is a button that looks like a cue — the row
    reads as a screenplay until the pointer is on it. */

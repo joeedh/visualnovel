@@ -47,7 +47,7 @@ describe('localLineId', () => {
     expect(localLineId('arrival:L4')).toBe('L4');
   });
 
-  it('keeps an id it cannot split rather than showing an empty gutter', () => {
+  it('keeps an id it cannot split rather than naming nothing', () => {
     expect(localLineId('L4')).toBe('L4');
   });
 
@@ -263,6 +263,19 @@ describe('scriptRows', () => {
   // author never pointed
   it('drops a composer anchored to a line that is no longer there', () => {
     expect(scriptRows(lines, { row: 'new', after: 'a:L9' })).toHaveLength(lines.length);
+  });
+
+  it('numbers the lines from one, in the order they are read', () => {
+    expect(scriptRows(lines, null).map((r) => ('line' in r ? r.at : 'composer'))).toEqual(
+      lines.map((_, i) => i + 1),
+    );
+  });
+
+  // The number is the row's place among the lines, and a composer is not a line yet
+  it('counts past an open composer without renumbering the lines around it', () => {
+    const rows = scriptRows(lines, { row: 'new', after: 'a:L1' });
+    expect(rows[1]).toEqual({ compose: 'a:L1' });
+    expect(rows[2]).toEqual({ line: lines[1], at: 2 });
   });
 });
 

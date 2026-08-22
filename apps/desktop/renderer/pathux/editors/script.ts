@@ -459,7 +459,7 @@ export class ScriptEditor extends VnEditor {
         page.appendChild(box);
         continue;
       }
-      page.appendChild(this.lineRow(shown, row.line, cuts.has(row.line.id)));
+      page.appendChild(this.lineRow(shown, row.line, row.at, cuts.has(row.line.id)));
       if (this.pending?.act === 'split' && this.pending.at === row.line.id) {
         page.appendChild(this.strip(shown, this.pending));
       }
@@ -498,7 +498,7 @@ export class ScriptEditor extends VnEditor {
     openNode(this.ctx?.screen as VnScreen | undefined, assetNode(hash));
   }
 
-  private lineRow(scene: SceneCoverage, line: CoverageLine, cut: boolean): HTMLElement {
+  private lineRow(scene: SceneCoverage, line: CoverageLine, at: number, cut: boolean): HTMLElement {
     const box = el('div', `sc-line ${line.kind}`);
     box.dataset['line'] = line.id;
     box.addEventListener('contextmenu', (event) => {
@@ -512,10 +512,11 @@ export class ScriptEditor extends VnEditor {
       );
     });
 
-    // The gutter doubles as the drag handle: it already shows the row's name, and a line's name is
-    // what a move is about.
-    const lid = el('span', 'lid', localLineId(line.id));
-    lid.title = `${line.id} — drag this handle to move the line`;
+    // The gutter numbers the page the way an author reads it back, counting from the heading. The
+    // stable id is in the tooltip instead: it is what a refusal names, but it stops matching the
+    // count as soon as a line is inserted, so it cannot be the number on screen.
+    const lid = el('span', 'lid', String(at));
+    lid.title = `Line ${at} of this scene, ${line.id} — drag this handle to move it`;
     lid.addEventListener('pointerdown', (event) => this.grab(scene, line, event));
     box.appendChild(lid);
 

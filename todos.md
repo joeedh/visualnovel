@@ -46,7 +46,7 @@
      only be run when approved by the user and not part of pnpm test and use real api keys.  
 	 both the vn agent and the debug agent would be tested.  one test for every supported 
 	 model.
-[ ]: the story editor should show script line numbers
+[x]: the story editor should show script line numbers
 [ ]: right clicking a script line should popup a context menu with 'edit with agent' that 
      shows convo editor in a different screen area and creates a new thread if the current 
 	 one isn't empty, and prefills it with the scene and line number.
