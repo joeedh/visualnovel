@@ -868,6 +868,16 @@ below.
   resolves into the outcome notice — one row changing tone, not a second surface. The one sentence
   a locked control has — "Waiting for the last edit to land." — is both the refusal a blocked
   gesture is told and the tooltip every locked control carries meanwhile.
+- **A write from somewhere else re-reads the strip.** The agent rewrites a storyboard through its
+  own tools, and the palette runs the same `story.*` commands without this pane, so the strip watches
+  `onInvalidate` and re-reads on it. The graph is re-read too, since a scene may have been written
+  since. Coming back on screen re-reads for the same reason: what changed while the pane was away
+  cannot be known from here. `canReread` in `rules/timeline/editing.ts` holds it off while an editor
+  is open, a handle is held, or a write of this pane's own is in flight — the same three states the
+  gestures check, and the reason an open editor blocks it differs from the reason a click on a second
+  line does not: nothing here blurs the editor first, so the draft would be dropped rather than
+  committed. This pane's own commands run with `source: 'ui'` and so do not bump the undo revision,
+  which is what keeps a write made here from re-reading twice.
 - **An undecomposed scene renders its script.** Correcting a line is exactly what an author wants to
   do *before* paying for art, so a scene with no `work/shots/<id>.json` draws the script column with
   no bracket columns and a note — not a refusal. The note carries the two doors out of it,

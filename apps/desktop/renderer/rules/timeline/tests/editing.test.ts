@@ -1,5 +1,5 @@
 import { WRITE_PENDING } from '../busy.js';
-import { GRAB_BLOCKED, IDLE, canEdit, canGrab, grabRefusal } from '../editing.js';
+import { GRAB_BLOCKED, IDLE, canEdit, canGrab, canReread, grabRefusal } from '../editing.js';
 
 describe('the modes over one grid', () => {
   it('lets either gesture start from rest', () => {
@@ -27,5 +27,20 @@ describe('the modes over one grid', () => {
   it('names the write, not the editor, when both locks apply', () => {
     expect(grabRefusal({ editing: 's:L1', dragging: false, pending: true })).toBe(WRITE_PENDING);
     expect(grabRefusal({ editing: 's:L1', dragging: false, pending: false })).toBe(GRAB_BLOCKED);
+  });
+});
+
+// A re-read replaces every row, so it waits for whatever the author is holding onto. Unlike a
+// click on a second line, an open editor blocks it: nothing here blurs it first, so the draft
+// would be dropped rather than committed
+describe('re-reading after someone else wrote', () => {
+  it('re-reads from rest', () => {
+    expect(canReread(IDLE)).toBe(true);
+  });
+
+  it('waits out an open editor, a held handle and a write of its own', () => {
+    expect(canReread({ editing: 's:L2', dragging: false, pending: false })).toBe(false);
+    expect(canReread({ editing: null, dragging: true, pending: false })).toBe(false);
+    expect(canReread({ editing: null, dragging: false, pending: true })).toBe(false);
   });
 });

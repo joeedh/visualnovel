@@ -14,7 +14,7 @@ import {
 } from '../../rules/timeline/busy.js';
 import { insertionRow, previewOf } from '../../rules/timeline/coverage.js';
 import { driftTag, staleCount } from '../../rules/timeline/drift.js';
-import { canEdit, canGrab, grabRefusal } from '../../rules/timeline/editing.js';
+import { canEdit, canGrab, canReread, grabRefusal } from '../../rules/timeline/editing.js';
 import {
   INHERIT,
   outfitInvocation,
@@ -23,6 +23,7 @@ import {
   sourceLabel,
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
+import { onInvalidate } from '../bridge.js';
 import type { VnContext } from '../context.js';
 import { openCommandDialog } from '../dialog.js';
 import { VnEditor, registerEditor } from '../editor.js';
@@ -187,6 +188,20 @@ export class TimelineEditor extends VnEditor {
     this.surface = document.createElement('div');
     this.surface.className = 'tl-surface';
     this.appendSurface(this.surface);
+
+    // The agent rewrites a storyboard through its own tools and the palette runs `story.*` without
+    // this pane, so nothing here would otherwise hear that the shots changed. The graph is re-read
+    // as well, because a scene may have been written since. Coming back on screen re-reads for the
+    // same reason: what changed while the pane was away is unknowable from here.
+    this.watch(
+      () =>
+        onInvalidate(() => {
+          if (canReread(this.mode())) void this.load();
+        }),
+      () => {
+        if (canReread(this.mode())) void this.load();
+      },
+    );
 
     void this.load();
   }

@@ -50,6 +50,16 @@ export function canGrab(mode: StripMode): boolean {
 }
 
 /**
+ * Whether the strip may be re-read because something outside it rewrote the project — the agent in
+ * execute mode, or a command run from the palette. An open editor holds a draft the re-read would
+ * carry off with it, and a held handle is aimed at rows the re-read would replace. A write of this
+ * pane's own is already followed by a re-read, so re-reading again would double it.
+ */
+export function canReread(mode: StripMode): boolean {
+  return mode.editing === null && !mode.dragging && !mode.pending;
+}
+
+/**
  * The sentence a refused grab is given. A write in flight outranks an open editor, because "finish
  * the line" is bad advice while the strip is about to be rebuilt anyway.
  */
