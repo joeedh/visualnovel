@@ -47,7 +47,7 @@
 	 both the vn agent and the debug agent would be tested.  one test for every supported 
 	 model.
 [x]: the story editor should show script line numbers
-[ ]: right clicking a script line should popup a context menu with 'edit with agent' that 
+[x]: right clicking a script line should popup a context menu with 'edit with agent' that 
      shows convo editor in a different screen area and creates a new thread if the current 
 	 one isn't empty, and prefills it with the scene and line number.
 [x]: assets that failed to generate should have a reason shown in the asset editor.
@@ -58,7 +58,7 @@
 [ ]: the task graph should have a searchable list of asset slots, clicking one lets 
      you see just the graph uses to generate the slot.  it should arrange the nodes 
 	 in a nice manner.
-[ ]: the asset editor for failed shots should have a 'fix with agent' button 
+[x]: the asset editor for failed shots should have a 'fix with agent' button 
      that shows the convo editor with a new thread (if current thread isn't empty)
 	 and a prompt for the agent to fix the asset prefilled.
 [ ]: do not use sugiyama layout for the global task graph view 

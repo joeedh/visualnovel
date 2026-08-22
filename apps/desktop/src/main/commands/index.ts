@@ -9,6 +9,8 @@ import { CommandRegistry } from '@vn/commands';
 import { appCheckForUpdates, appKeyGuide, appOpenKeyLink, appOpenReleases } from './app.js';
 import {
   agentClear,
+  agentEditLine,
+  agentFixAsset,
   agentNewThread,
   agentOpenThread,
   agentRenameThread,
@@ -135,6 +137,8 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     appOpenKeyLink,
     appOpenReleases,
     agentClear,
+    agentEditLine,
+    agentFixAsset,
     agentNewThread,
     agentOpenThread,
     agentRenameThread,

@@ -133,6 +133,21 @@ export function takeSeed(): string | null {
   return text;
 }
 
+/**
+ * Put a surface's opener in the composer, on a conversation of its own. A conversation already on
+ * screen is saved and closed first, through `agent.newThread` rather than by clearing here, so the
+ * transcript is filed the same way it is when the author starts one from the menu. An empty one is
+ * reused instead, since closing it would file a conversation nobody had.
+ *
+ * The decision is made here rather than in the command because this is the side that can see it. A
+ * reopened thread is on screen without being live, so main's own copy of the conversation is empty
+ * exactly when the author is looking at a full one.
+ */
+async function openerFor(text: string): Promise<void> {
+  if (state.feed.length > 0 && !(await exec('agent.newThread')).ok) return;
+  seed(text);
+}
+
 /** Subscribe to the agent's stream and its three permission doors. Called once, at boot. */
 export function installAgent(): void {
   onAgentEvent((event) => set(received(state, event)));
@@ -168,6 +183,12 @@ export function installAgent(): void {
       if (!upload?.seed) return;
       set(offered(state, upload.seed, upload.suggestions ?? []));
       setMode('plan');
+    } else if (id === 'agent.editLine' || id === 'agent.fixAsset') {
+      // These two ask about something on screen rather than about the project, so the opener is
+      // the composer's text and not a line the agent said. The pane the command opened focuses
+      // the field around it.
+      const opener = (outcome.data as { seed?: string } | undefined)?.seed;
+      if (opener) void openerFor(opener);
     }
   });
 }

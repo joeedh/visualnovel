@@ -71,7 +71,12 @@ export function shotCovering(shots: readonly CoverageShot[], lineId: string): Co
 }
 
 /**
- * What right-clicking a line offers. One entry today: the frame drawn from the shot that covers it.
+ * What right-clicking a line offers: a conversation about the line itself, then the frame drawn
+ * from the shot that covers it.
+ *
+ * The prose entry comes first because it acts on what was clicked, where the art entry leaves for
+ * another subject. `agent.editLine` is checked like any other entry — it can refuse (a turn is
+ * running, the scene has moved on) and the sentence for that is its own.
  *
  * Both ways of having no picture are shown rather than hidden, because "no shot covers it" and
  * "its shot has not been drawn" are different answers with different next moves. Neither case can
@@ -79,16 +84,22 @@ export function shotCovering(shots: readonly CoverageShot[], lineId: string): Co
  * is for.
  */
 export function lineMenu(scene: SceneCoverage, lineId: string): MenuEntry[] {
+  const edit: MenuEntry = {
+    label: 'Edit with agent',
+    id: 'agent.editLine',
+    props: { scene: scene.sceneId, line: lineId },
+  };
   const label = 'Open shot asset';
   const shot = shotCovering(scene.shots, lineId);
   if (!shot) {
-    return [{ label, id: 'view.open', refused: `No shot covers ${lineId} yet.` }];
+    return [edit, { label, id: 'view.open', refused: `No shot covers ${lineId} yet.` }];
   }
   if (!shot.image) {
     return [
+      edit,
       { label, id: 'view.open', refused: `${shot.id} covers ${lineId} but has not been drawn.` },
     ];
   }
   const props = { editor: 'asset', where: 'elsewhere', subject: shot.image.hash };
-  return [{ label, id: 'view.open', props }];
+  return [edit, { label, id: 'view.open', props }];
 }

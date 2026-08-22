@@ -769,7 +769,23 @@ export class AssetEditor extends VnEditor {
         : 'Open the task that gave up in the inspector — a re-render, not the one these bytes came from';
     b.addEventListener('click', () => this.showTask(failure.task));
     band.appendChild(b);
+
+    // On the band rather than in the bar: the offer only exists while there is a failure to read,
+    // and this is where the author is reading it.
+    const fix = button('as-mode', 'Fix with agent');
+    fix.title =
+      'Open a conversation about this failure, with what it said already in the composer. Nothing is sent';
+    fix.addEventListener('click', () => void this.fixWithAgent(info.hash));
+    band.appendChild(fix);
     return band;
+  }
+
+  /**
+   * Hand the failure to the agent. The command opens the conversation and fills the composer; the
+   * turn is the author's to send, and no picture is redrawn by any of it.
+   */
+  private async fixWithAgent(hash: string): Promise<void> {
+    report(await exec('agent.fixAsset', { hash }));
   }
 
   private heldBanner(view: PromptView): HTMLElement {

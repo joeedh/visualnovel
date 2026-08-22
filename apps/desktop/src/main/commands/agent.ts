@@ -2,7 +2,7 @@
  * The authoring agent as commands. `agent.run` is marked mutating because a turn in execute mode
  * can edit files. The agent keeps its own plan/execute gate, and these commands do not bypass it.
  */
-import { defineFor, prop } from '@vn/commands';
+import { defineFor, prop, type CommandContext } from '@vn/commands';
 import {
   BUDGET_CHOICES,
   EFFORT_CHOICES,
@@ -10,6 +10,7 @@ import {
   type BudgetChoice,
   type EffortChoice,
 } from '@vn/types';
+import { assetOpener, lineOpener } from '../../shared/agentseed.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -198,5 +199,110 @@ export const agentRenameThread = define({
   async run({ id, title }, ctx) {
     const header = await ctx.host.session.renameThread(id, title);
     return { message: `Renamed to “${header.title}”.`, data: header };
+  },
+});
+
+/**
+ * The two openers: a surface points the agent at what the author is looking at, and the composer
+ * arrives already naming it.
+ *
+ * Neither sends a turn and neither touches the conversation. Each opens the pane, and returns its
+ * sentence as `data.seed` for the composer to hold — so the palette running one has the same effect
+ * as the right-click that normally does, and the author still writes and sends the turn.
+ *
+ * Whether the opener needs a fresh conversation is the renderer's decision rather than one made
+ * here. A reopened thread is on screen without being live, so main's own copy of the conversation
+ * is empty exactly when the author can see a full one.
+ */
+function idle(host: CommandHost): { ok: true } | { ok: false; reason: string } {
+  const busy = host.session.busy();
+  return busy
+    ? { ok: false, reason: `${busy} is still running; wait for it to finish.` }
+    : { ok: true };
+}
+
+/** The view effect both openers push: the conversation, in a pane of its own, outlined on arrival. */
+function showConvo(ctx: CommandContext<CommandHost>): void {
+  ctx.host.ui(
+    { type: 'view', action: 'open', editor: 'convo', where: 'elsewhere', flash: true },
+    ctx.origin,
+  );
+}
+
+/** The opener one line of a scene would arrive with, or why there is none. */
+async function wouldEditLine(
+  scene: string,
+  line: string,
+  host: CommandHost,
+): Promise<{ ok: true; seed: string } | { ok: false; reason: string }> {
+  const free = idle(host);
+  if (!free.ok) return free;
+  let coverage;
+  try {
+    coverage = await host.session.sceneCoverage(scene);
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+  const seed = lineOpener(coverage, line);
+  return seed ? { ok: true, seed } : { ok: false, reason: `Scene ${scene} has no line ${line}.` };
+}
+
+export const agentEditLine = define({
+  id: 'agent.editLine',
+  title: 'Edit with the agent',
+  description:
+    'Open the conversation on one line of a scene, with the composer already naming it — the ' +
+    'scene, the line’s number in it, its id and its words. Nothing is sent: the opener is text in ' +
+    'a field, and what to ask for is the author’s to write.',
+  mutating: false,
+  props: {
+    scene: prop.string('the scene the line is in'),
+    line: prop.string('the line id, which the script column’s gutter tooltip names'),
+  },
+  check: ({ scene, line }, ctx) =>
+    wouldEditLine(scene, line, ctx.host).then((v) =>
+      v.ok ? { ok: true as const, note: 'Opens a conversation about this line.' } : v,
+    ),
+  async run({ scene, line }, ctx) {
+    const verdict = await wouldEditLine(scene, line, ctx.host);
+    if (!verdict.ok) throw new Error(verdict.reason);
+    showConvo(ctx);
+    return { message: `Asking about ${line} of ${scene}.`, data: { seed: verdict.seed } };
+  },
+});
+
+/** The opener a failed picture would arrive with, or why there is none. */
+async function wouldFixAsset(
+  hash: string,
+  host: CommandHost,
+): Promise<{ ok: true; seed: string } | { ok: false; reason: string }> {
+  const free = idle(host);
+  if (!free.ok) return free;
+  const info = await host.session.assetInfo(hash);
+  if (!info) return { ok: false, reason: `No asset ${hash}.` };
+  const seed = assetOpener(info);
+  return seed
+    ? { ok: true, seed }
+    : { ok: false, reason: `“${info.label}” has not failed — there is nothing to fix.` };
+}
+
+export const agentFixAsset = define({
+  id: 'agent.fixAsset',
+  title: 'Fix with the agent',
+  description:
+    'Open the conversation on a picture the pipeline gave up on, with the composer holding what ' +
+    'the failure said and a request to work out why. Nothing is sent, and nothing is regenerated ' +
+    '— the agent proposes a change to the prompt or the art notes, and a run is what redraws it.',
+  mutating: false,
+  props: { hash: prop.string('the asset that failed') },
+  check: ({ hash }, ctx) =>
+    wouldFixAsset(hash, ctx.host).then((v) =>
+      v.ok ? { ok: true as const, note: 'Opens a conversation about this failure.' } : v,
+    ),
+  async run({ hash }, ctx) {
+    const verdict = await wouldFixAsset(hash, ctx.host);
+    if (!verdict.ok) throw new Error(verdict.reason);
+    showConvo(ctx);
+    return { message: 'Asking about what went wrong.', data: { seed: verdict.seed } };
   },
 });

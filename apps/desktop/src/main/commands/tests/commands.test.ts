@@ -209,6 +209,8 @@ describe('the desktop registry', () => {
    */
   it('declares a precondition on what an act would cost, and on the two interrupters', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
+      'agent.editLine',
+      'agent.fixAsset',
       'agent.renameThread',
       'agent.stop',
       'art.generate',
@@ -283,6 +285,11 @@ describe('the desktop registry', () => {
     ]);
     // A checked non-mutator is the exception, so it is listed by name rather than allowed by rule.
     expect(commands.filter((c) => c.check && !c.mutating).map((c) => c.id)).toEqual([
+      // Neither sends a turn nor writes anything. Both are offered from a surface that draws a
+      // refusal rather than hiding it, so the sentence for a line the scene has lost, a picture
+      // that never failed, or a turn already running has to exist before the click.
+      'agent.editLine',
+      'agent.fixAsset',
       'agent.stop',
       'pipeline.stop',
       // Writes nothing and calls a provider, which is the cost. The Setup pane's Test button is

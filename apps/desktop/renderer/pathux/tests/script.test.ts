@@ -88,6 +88,7 @@ describe('what right-clicking a line offers', () => {
 
   test('a drawn shot opens its frame by hash, elsewhere', () => {
     expect(lineMenu(covered, 'a:L1')).toEqual([
+      { label: 'Edit with agent', id: 'agent.editLine', props: { scene: 'a', line: 'a:L1' } },
       {
         label: 'Open shot asset',
         id: 'view.open',
@@ -96,8 +97,17 @@ describe('what right-clicking a line offers', () => {
     ]);
   });
 
+  // It names the line rather than pre-judging anything, so `check` is asked whatever the art says
+  test('the agent entry is offered on every line, drawn or not', () => {
+    for (const from of [scene, covered]) {
+      const [entry] = lineMenu(from, 'a:L3');
+      expect(entry?.id).toBe('agent.editLine');
+      expect(entry?.refused).toBeUndefined();
+    }
+  });
+
   test('a shot with no frame yet says so rather than vanishing', () => {
-    const [entry] = lineMenu(covered, 'a:L3');
+    const [, entry] = lineMenu(covered, 'a:L3');
     expect(entry?.props).toBeUndefined();
     expect(entry?.refused).toContain('a:S2');
     expect(entry?.refused).toContain('has not been drawn');
@@ -106,7 +116,7 @@ describe('what right-clicking a line offers', () => {
   test('a line no shot covers is a different answer, and it is also said', () => {
     // A line with no shot and a shot with no frame are different states: one is fixed by
     // decomposing the scene, the other by running it.
-    const [entry] = lineMenu(scene, 'a:L1');
+    const [, entry] = lineMenu(scene, 'a:L1');
     expect(entry?.refused).toBe('No shot covers a:L1 yet.');
   });
 });

@@ -712,6 +712,21 @@ the same events** to write the transcript — see the threads bullet below.
   command emits only when something was written. See
   [`../plans/archive/upload-and-archive.md`](../plans/archive/upload-and-archive.md) and
   [`vnauthor.md`](vnauthor.md#the-archive).
+- **Two surfaces open a conversation about what is on screen.** Right-clicking a script line offers
+  **Edit with agent** (`agent.editLine`); the failure band in the Asset editor carries **Fix with
+  agent** (`agent.fixAsset`). Each opens this pane `elsewhere`, flashed, and returns its opener as
+  `data.seed` — so running one from the palette does what the click does. The opener lands in the
+  **composer**, not in the dialogue box, because it is the author's sentence rather than the
+  agent's: a line's opener names the scene, the line's number in it, its id and its words; a
+  failure's names the picture, what the pipeline said, and asks what in the prompt or the art notes
+  caused it. Both sentences are built by `src/shared/agentseed.ts`, which is pure and tested. A
+  conversation already on screen is closed through `agent.newThread` first, so its transcript is
+  filed exactly as it is when a thread is started from the menu; an empty one is reused, since
+  closing it would file a conversation nobody had. **That decision is the renderer's**:
+  `openThreadForReading` clears main's own copy, so main's conversation is empty precisely when the
+  author is looking at a full one. Neither command sends a turn, writes anything, or redraws a
+  picture. Both declare a `check`, so a turn already running, a line the scene no longer holds, and
+  a picture that never failed each grey the control and say why.
 - **A pane the author did not click is flashed, once.** `UiEffect`'s `view` carries `flash`, and
   `applyView` outlines the pane it landed in for 600ms after the mesh has settled. It is an overlay
   positioned over the pane's rectangle rather than a class on the `ScreenArea`: pane children paint
