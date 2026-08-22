@@ -1450,9 +1450,13 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
 
     // In one act the bytes came in as a reference and left as the plate
     expect(await session.assetInfo(done.hash!)).toMatchObject({ kind: 'location_ref', slot });
+    expect((await session.assetInfo(done.hash!))!.newerTake).toBeUndefined();
     // The superseded picture is still there to look at, and only its claim on the slot is gone,
-    // which is what makes the strip disappear from its pane.
-    expect((await session.assetInfo(before))!.slot).toBeUndefined();
+    // which is what makes the strip disappear from its pane. It names what took the slot over, so
+    // a pane left on it follows rather than sitting on a picture the project moved past.
+    const superseded = (await session.assetInfo(before))!;
+    expect(superseded.slot).toBeUndefined();
+    expect(superseded.newerTake).toBe(done.hash);
   });
 
   /**

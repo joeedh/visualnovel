@@ -1676,27 +1676,37 @@ export class WorkspaceSession {
   }
 
   /**
-   * Why the picture an asset fills is not finished, or `undefined` while it is still on its way.
-   *
-   * Two tasks are asked, in order. The slot's identity as the project states it today comes first,
-   * because an art-notes edit gives the slot a new one and a run that fails on it leaves the last
-   * good render on screen with nothing saying the re-render did not happen. The task these bytes
-   * came from answers second, for the frame that was drawn and then flagged. One slot is resolved
-   * rather than the whole graph, which is what keeps this cheap enough for every read of the pane.
+   * The task the project would run for a slot today, or `undefined` when the slot no longer
+   * resolves. One slot is resolved rather than the whole graph, which is what keeps this cheap
+   * enough for every read of the asset pane.
    */
-  private failureOf(
+  private slotTask(
     project: LoadedProject,
     binding: RefBinding,
     shots: ReadonlyMap<string, Shot[] | null>,
-    sourceTask: string,
-  ): AssetFailure | undefined {
+  ): string | undefined {
     const decided = resolveSlot(binding, {
       model: project.model,
       shots,
       config: project.config,
       graph: project.graph,
     });
-    const current = decided.ok ? slotTaskHash(decided.plan) : undefined;
+    return decided.ok ? slotTaskHash(decided.plan) : undefined;
+  }
+
+  /**
+   * Why the picture an asset fills is not finished, or `undefined` while it is still on its way.
+   *
+   * Two tasks are asked, in order. The slot's identity as the project states it today comes first,
+   * because an art-notes edit gives the slot a new one and a run that fails on it leaves the last
+   * good render on screen with nothing saying the re-render did not happen. The task these bytes
+   * came from answers second, for the frame that was drawn and then flagged.
+   */
+  private failureOf(
+    project: LoadedProject,
+    current: string | undefined,
+    sourceTask: string,
+  ): AssetFailure | undefined {
     for (const hash of [current, sourceTask]) {
       if (!hash) continue;
       const task = project.graph.get(hash);
@@ -1740,11 +1750,19 @@ export class WorkspaceSession {
     // prereqs are still listed, because what a sketch was drawn from is worth showing regardless.
     const unapproved = ACCEPTABLE.has(asset.kind) ? prereqRefusal(label, prereqs) : undefined;
     const from = slotOf(asset, labels.angleOf?.(asset.sourceTask));
+    const current = from ? this.slotTask(project, from, shots) : undefined;
     // A slot only counts while these are the bytes in it: a superseded render keeps its binding,
     // and a pane offering to replace a superseded render would supersede a picture already
     // moved past.
     const slot = from && task?.status === 'done' && task.output === asset.hash ? from : undefined;
-    const failure = from ? this.failureOf(project, from, shots, asset.sourceTask) : undefined;
+    const failure = from ? this.failureOf(project, current, asset.sourceTask) : undefined;
+    // Reported only once the bytes exist, so the pane never follows a hash the manifest cannot
+    // answer for.
+    const holder = current === undefined ? undefined : project.graph.get(current)?.output;
+    const newer =
+      holder !== undefined && holder !== asset.hash && manifest.some((a) => a.hash === holder)
+        ? holder
+        : undefined;
     return {
       hash: asset.hash,
       ext: asset.ext,
@@ -1761,6 +1779,7 @@ export class WorkspaceSession {
       stale: derived !== undefined && recorded !== undefined && derived !== recorded,
       ...(suspended ? { suspended: suspended.reason } : {}),
       ...(slot ? { slot: slotKey(slot) } : {}),
+      ...(newer ? { newerTake: newer } : {}),
       ...(failure ? { failure } : {}),
       prereqs,
       ...(unapproved ? { unapproved } : {}),

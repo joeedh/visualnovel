@@ -9,6 +9,7 @@ import {
   promptEditable,
   promptShown,
   replaceAction,
+  watchSlot,
 } from '../assetview.js';
 import type { AssetFailure, AssetInfo } from '../../../src/shared/ipc.js';
 
@@ -209,6 +210,32 @@ describe('promptEditable', () => {
     expect(plate).toEqual({ ok: false, reason: expect.stringContaining('a clause at a time') });
     expect(plate.ok === false && plate.reason).toContain('location_ref');
     expect(promptEditable(portrait())).toMatchObject({ ok: false });
+  });
+});
+
+describe('watchSlot', () => {
+  it('follows the slot forward when a run fills it again', () => {
+    expect(watchSlot(info(), info({ newerTake: 'b2' }), true)).toEqual({
+      holding: true,
+      follow: 'b2',
+    });
+    expect(watchSlot(info(), info(), true)).toEqual({ holding: true, follow: '' });
+  });
+
+  it('arrives holding the take that fills the slot, and not one behind it', () => {
+    expect(watchSlot(undefined, info(), false).holding).toBe(true);
+    expect(watchSlot(info({ hash: 'e5f6' }), info({ newerTake: 'b2' }), true)).toEqual({
+      holding: false,
+      follow: '',
+    });
+  });
+
+  // Walking back is a request for the older take, so the pane holds it however far behind it falls
+  it('stays on a take it arrived behind, through the empty window an edit opens', () => {
+    // An edit re-keys the slot, so the take it superseded reports no newer one until a render lands
+    const empty = watchSlot(info({ newerTake: 'b2' }), info(), false);
+    expect(empty).toEqual({ holding: false, follow: '' });
+    expect(watchSlot(info(), info({ newerTake: 'b3' }), empty.holding).follow).toBe('');
   });
 });
 

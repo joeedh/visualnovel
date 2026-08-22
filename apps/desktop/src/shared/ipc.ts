@@ -538,6 +538,13 @@ export interface AssetInfo {
    */
   slot?: string;
   /**
+   * The asset filling that slot now, when it is not this one. Present for an earlier take and for
+   * a render something later replaced; absent while these are the bytes in the slot, and absent
+   * when the slot's task has produced nothing yet. The pane follows it, so a run that finishes
+   * while the author is looking at the slot shows the new picture.
+   */
+  newerTake?: string;
+  /**
    * The pictures these bytes were drawn from, in the order the task fed them to the model — the
    * approval frontier, and what the pane's DRAWN FROM strip lists. Always present, empty for an
    * asset drawn from nothing, so no surface has to branch on `undefined`.

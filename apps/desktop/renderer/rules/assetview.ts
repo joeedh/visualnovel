@@ -160,6 +160,28 @@ export function promptEditable(info: AssetInfo): RedrawAction {
   return { ok: true, prompt: info.prompt ?? '', title: info.title ?? '' };
 }
 
+/** Whether a pane follows its slot, and where to. */
+export interface SlotWatch {
+  /** Carry this back into the next call. */
+  holding: boolean;
+  /** The asset to move to, or an empty string to stay. */
+  follow: string;
+}
+
+/**
+ * Where a pane goes when the slot it is watching has been filled again.
+ *
+ * Only the take that held the slot follows: an author who walked back to an earlier one asked for
+ * that one, and a jump forward would undo the walk. Which take that is gets decided when the pane
+ * arrives on an asset and then kept, because an authored edit re-keys the slot and leaves it empty
+ * until something renders. Deciding again inside that window would read every take as the one in
+ * the slot, walked-back ones included.
+ */
+export function watchSlot(was: AssetInfo | undefined, now: AssetInfo, holding: boolean): SlotWatch {
+  const held = was?.hash === now.hash ? holding : now.newerTake === undefined;
+  return { holding: held, follow: held ? (now.newerTake ?? '') : '' };
+}
+
 /** The header's badges, in display order: the kind, the store it lives in, then its status. */
 export function badgesOf(info: AssetInfo): string[] {
   const badges = [info.kind, info.base ? 'base' : 'project'];

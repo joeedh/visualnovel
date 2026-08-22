@@ -1293,6 +1293,13 @@ it produces.
 - **A write anywhere re-reads, unless a box is dirty.** `onInvalidate` covers this pane's own edit,
   the agent's, and an undo of either; a refetch under a half-typed note would eat it, so an
   in-progress rung suppresses it until it commits.
+- **The pane follows its slot forward.** `AssetInfo.newerTake` names the asset filling this one's
+  slot when it is not this one, and `watchSlot` moves the pane onto it, so a run that lands a new
+  render while the author is watching shows the new picture rather than the frame it replaced. Only
+  the take that held the slot follows: an author who walked back to an earlier one asked for that
+  one. Which take that is is decided when the pane arrives on an asset and then kept, because an
+  authored edit re-keys the slot and empties it until something renders, and inside that window
+  every take alike reports no newer one. A pinned pane never follows, which is what the pin is for.
 
 ## Project
 

@@ -14,6 +14,7 @@ import {
   promptEditable,
   promptShown,
   replaceAction,
+  watchSlot,
 } from '../../rules/assetview.js';
 import {
   chunkAddress,
@@ -69,6 +70,8 @@ export class AssetEditor extends VnEditor {
   private surface!: HTMLDivElement;
 
   private info: AssetInfo | undefined;
+  /** True while the shown asset is the one filling its slot, so a later render is one to follow. */
+  private holding = false;
   private failure = '';
   /** The hash the shown info is for, which trails `ui.assetHash` by one async read. */
   private shown = '';
@@ -160,7 +163,16 @@ export class AssetEditor extends VnEditor {
     if (mine !== this.token) return;
 
     if (outcome.ok) {
+      const was = this.info;
       this.info = outcome.data as AssetInfo;
+      const watch = watchSlot(was, this.info, this.holding);
+      this.holding = watch.holding;
+      // A pinned pane holds what it was pinned to, which is the whole point of the pin.
+      if (watch.follow !== '' && !this.pinned) {
+        this.ui.assetHash = watch.follow;
+        this.announce();
+        return;
+      }
       this.failure = '';
       if (!this.promptDirty) {
         const editable = promptEditable(this.info);
