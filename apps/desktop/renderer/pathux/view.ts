@@ -7,12 +7,13 @@
  * Returning the sentence rather than saying it here keeps this file out of the bridge's import
  * cycle.
  */
-import { AreaFlags, type ScreenArea } from 'pathux';
+import { AreaFlags, type CSSFont, type IconButton, type ScreenArea, type UIBase } from 'pathux';
 import { editorTitle, type OpenWhere } from '../../src/shared/editors.js';
 import type { EditorId, UiEffect } from '../../src/shared/ipc.js';
 import type { ShellApp } from './context.js';
 import { editorClass } from './editor.js';
 import { flashRect } from './flash.js';
+import { closeIcon } from './icons.js';
 import { markApplied } from './layouts.js';
 import {
   NO_PANE,
@@ -100,6 +101,48 @@ function flashed(screen: VnScreen, effect: ViewEffect, correction: string | null
  */
 const POPUP_SIZE: [number, number] = [520, 420];
 
+/**
+ * How wide the popup's close button is drawn, in pixels.
+ *
+ * Chosen against path.ux's titlebar height: the button's own padding and border go outside this
+ * number, and a button taller than the bar is clipped by it.
+ */
+const CLOSE_SIZE = 18;
+
+/**
+ * Redraw the close button path.ux puts on a popup's titlebar, which is otherwise a six-pixel mark
+ * in the corner of a twenty-four-pixel tile and easy to miss.
+ *
+ * The button is given a cross that fills its box, and a box that fits inside the bar. `setCSS`
+ * re-derives both from the theme every time the button is pressed, so they are reapplied after it
+ * rather than assigned once. A popup opened without a titlebar has no button and is left alone.
+ */
+function growCloseButton(sarea: ScreenArea): void {
+  const shadow = (sarea as unknown as { shadow: ShadowRoot }).shadow;
+  const bar = [...shadow.children].reverse().find((el) => el.tagName === 'ROWFRAME-X') as
+    | (UIBase & { shadow: ShadowRoot })
+    | undefined;
+  const button = bar?.shadow.querySelector('iconbutton-x') as
+    | (IconButton & { dom: HTMLElement })
+    | null;
+  if (!bar || !button) return;
+
+  // Drawn in the colour the title beside it is drawn in, since the sheet's own glyphs are baked
+  // in fixed colours and this one is not
+  button.customIcon = closeIcon(bar.getDefault<CSSFont>('DefaultText').color);
+  const themed = button.setCSS.bind(button);
+  button.setCSS = (): void => {
+    themed();
+    button.style.width = button.style.height = `${CLOSE_SIZE}px`;
+    button.dom.style.width = button.dom.style.height = `${CLOSE_SIZE}px`;
+    // A sheet icon is placed by offsetting the whole sheet, and the custom-icon branch of `setCSS`
+    // writes the image without clearing that offset, which puts this one outside the box
+    button.dom.style.backgroundPosition = 'center';
+    button.dom.style.backgroundClip = 'border-box';
+  };
+  button.setCSS();
+}
+
 type Split = { horiz: boolean; intoNew: boolean };
 
 /** Which way `splitArea` divides, and whether the new half is the one that gets the editor. */
@@ -131,6 +174,7 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
       width: Math.min(POPUP_SIZE[0], screen.size[0] * 0.9),
       height: Math.min(POPUP_SIZE[1], screen.size[1] * 0.9),
     });
+    growCloseButton(sarea as unknown as ScreenArea);
     activate(screen, sarea as unknown as ScreenArea);
     return null;
   }

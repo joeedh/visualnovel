@@ -44,6 +44,33 @@ const PIN_SVG =
   '<path d="M12 4h8v8l4 5H8l4-5z"/><path d="M16 17v11"/>' +
   '</g></svg>';
 
+/**
+ * A cross drawn to the edges of its tile, for a button that supplies its own image.
+ *
+ * path.ux's sheet has one cross, `TINY_X`, and its artwork sits in a corner of the tile rather
+ * than filling it, so a button drawn from it renders about six pixels across whatever size the
+ * tile is.
+ */
+const closeSvg = (color: string): string =>
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+  `<g fill="none" stroke="${color}" stroke-width="3.5" stroke-linecap="round">` +
+  '<path d="M7 7l18 18"/><path d="M25 7L7 25"/>' +
+  '</g></svg>';
+
+/**
+ * An image of {@link closeSvg} in `color`, for `IconButton.customIcon`.
+ *
+ * That property takes an image and draws it `contain`, so this icon needs neither an id from
+ * `addCustomIcon` nor the decode the ones below wait on. The colour is passed in because the sheet
+ * is drawn in fixed colours and this one has to read against whatever the theme puts behind it. A
+ * fresh element each call, because a button holds the one it is given.
+ */
+export function closeIcon(color: string): HTMLImageElement {
+  const image = new Image(32, 32);
+  image.src = `data:image/svg+xml;utf8,${encodeURIComponent(closeSvg(color))}`;
+  return image;
+}
+
 /** One icon to register: what to call it, the name a `setIconMap` entry uses, and its drawing. */
 const CUSTOM: { key: keyof typeof VN_ICONS; name: string; map: string; svg: string }[] = [
   { key: 'filter', name: 'vn-filter', map: 'VN_FILTER', svg: FILTER_SVG },
