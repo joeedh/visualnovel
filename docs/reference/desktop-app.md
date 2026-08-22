@@ -287,8 +287,8 @@ are the bridge's.
   `command:exec`, so provenance, undo and history are identical whether the header, the palette, an
   editor or the agent ran it. `say()` puts a sentence in the screen's note frame — every editor gets
   one, because `VnEditor` builds its header with a note area. `onExec` lets a surface follow the
-  *command* rather than the button on it (which is how `agent.clear` empties the transcript from
-  either place). `onWrote(paths)` is the third feed and the only one that answers **which files
+  *command* rather than the button on it (which is how `agent.newThread` starts a fresh transcript
+  whether it was run from the pane or from the palette). `onWrote(paths)` is the third feed and the only one that answers **which files
   moved**: it carries `written` from every successful command *and* from the agent's tool results,
   whose writes are not commands and would otherwise be invisible. The document editors subscribe to
   it, so a file the agent rewrites under an open pane is re-read. Which paths concern which pane is
@@ -655,10 +655,11 @@ the same events** to write the transcript — see the threads bullet below.
   author just typed. **Chat about this** fills in only the questions still blank — declining to
   pick is a thing you can mean about some of a form and not the rest.
 - **Clearing follows the command, not the button.** The store watches the registry through
-  `bridge.onExec`, so `agent.clear` from the pane and from the palette empty the transcript
-  identically — as do `agent.newThread` and `agent.openThread`. Named gap: `window.vn`/CDP goes
-  straight to main and none of them emits an event, so a clear run that way leaves an open pane's
-  transcript standing.
+  `bridge.onExec`, so `agent.newThread` empties the transcript identically whether the pane's
+  **New** button ran it or the palette did — as do `agent.clear`, which has no button and is
+  reached from the palette, and `agent.openThread`. Named gap: `window.vn`/CDP goes straight to
+  main and none of them emits an event, so a clear run that way leaves an open pane's transcript
+  standing.
 - **A conversation is a thread, and it is written down as it happens.** Main appends one JSONL
   line per feed item to `vngen/state/threads/<id>.jsonl` — lazily, so an app opened and closed
   without a word writes no file — titled from the first thing the author said. The bar's

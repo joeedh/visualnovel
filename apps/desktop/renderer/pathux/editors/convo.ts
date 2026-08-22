@@ -360,11 +360,6 @@ export class ConvoEditor extends VnEditor {
       'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
       'stays under Threads.';
 
-    // Through the registry: the transcript follows `agent.clear` itself, so clearing from here
-    // and clearing from the palette are one act with one record.
-    const clear = low.button('Clear', () => void exec('agent.clear'));
-    clear.description =
-      'Forget this conversation and start again in plan mode. The thread stays saved.';
     this.bar.flushUpdate();
   }
 

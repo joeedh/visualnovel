@@ -32,8 +32,8 @@ builds one of these, runs it once and throws it away. The main-side work is hold
 ### The editor
 
 - **A new editor, not a `ConvoEditor` subclass.** `ConvoEditor` reads the module store in
-  `renderer/pathux/agent.ts`, which is fed by `agent:event`, and its bar is eleven vnauthor
-  controls (plan/execute, model, effort, budget, tokens, Threads, New, Clear) of which none apply
+  `renderer/pathux/agent.ts`, which is fed by `agent:event`, and its bar is ten vnauthor
+  controls (plan/execute, model, effort, budget, tokens, Threads, New) of which none apply
   to an analyst. A subclass would override nearly every method and inherit the one thing that is
   actively wrong, because the analyst's events must never travel on `agent:event` — see the
   channel decision below. The report editor gets its own class and its own store,
