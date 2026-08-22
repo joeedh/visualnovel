@@ -1,6 +1,7 @@
 # Recording prompt-cache misses in a thread
 
-_Status: **planned.** Implements the design in
+_Status: **stages 1–3 shipped** (2026-08-22); stage 4 is deferred as written below. Implements the
+design in
 [`../research/tracking-cache-misses-in-transcripts.md`](../research/tracking-cache-misses-in-transcripts.md),
 which is the authority on why each decision was made; this file is the authority on what gets built
 and in what order._
