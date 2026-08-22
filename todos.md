@@ -50,7 +50,7 @@
 [ ]: right clicking a script line should popup a context menu with 'edit with agent' that 
      shows convo editor in a different screen area and creates a new thread if the current 
 	 one isn't empty, and prefills it with the scene and line number.
-[ ]: assets that failed to generate should have a reason shown in the asset editor.
+[x]: assets that failed to generate should have a reason shown in the asset editor.
 [ ]: when an asset that failed after X attempts is changed (e.g. art notes, prompt changes)
      the pipeline should rerender it.
 [ ]: when an asset editor is showing the more recent asset of a slot, and the pipeline generates 

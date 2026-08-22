@@ -1178,7 +1178,7 @@ with tests beside them.
 `editors/asset.ts` — one generated asset: the bytes, the prompt that made them, and the art notes
 that would make them differently. Its subject is `ui.assetHash`, which the documents tree publishes
 when an asset leaf is clicked; the rules on top of it (which approve command applies, the badges,
-the drift note, which prompt to show) are pure in `renderer/rules/assetview.ts` with tests beside
+the failure and drift notes, which prompt to show) are pure in `renderer/rules/assetview.ts` with tests beside
 them. Plans: [`../plans/archive/asset-names-and-the-asset-editor.md`](../plans/archive/asset-names-and-the-asset-editor.md)
 and [`../plans/archive/on-demand-concept-images.md`](../plans/archive/on-demand-concept-images.md).
 
@@ -1204,6 +1204,15 @@ it produces.
   `driftNote`'s sentence come before the ordinary staleness one, because it is the stronger claim:
   the words may still be right and a picture this was drawn *against* is what changed.
   `prompt.repin` clears it, and `regenerate=false` keeps the bytes.
+- **A picture the pipeline gave up on says why, in the pane showing it.** `AssetInfo.failure` is
+  read off the slot's identity as the project states it today, and off `asset.sourceTask` only when
+  that identity is not terminal. The two part company after an art-notes edit: the slot re-keys, a
+  run fails on the new task, and the last good render is still what is on screen — so the band says
+  a re-render failed and names the frame the author is looking at, and `driftNote` stands down,
+  because its advice is to regenerate and regenerating is what just failed. `failed` quotes the
+  retry budget (`config.max_task_attempts`) against the attempt records that carry an error;
+  `needs_human` does not, since a P7 refine pass records an attempt without one. **Show task**
+  opens the task that gave up, which is not always the one these bytes came from.
 - **The mode strip says which text is actually being sent** — the clauses, a prompt the author wrote
   by hand, or one the agent condensed. Condensing is a button beside it; a condensation whose
   clauses have since moved is **held**, and the banner over the cards says so rather than the pane

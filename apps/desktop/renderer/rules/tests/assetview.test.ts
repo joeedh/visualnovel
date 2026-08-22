@@ -3,13 +3,14 @@ import {
   badgesOf,
   characterOf,
   driftNote,
+  failureNote,
   locationOf,
   promoteAction,
   promptEditable,
   promptShown,
   replaceAction,
 } from '../assetview.js';
-import type { AssetInfo } from '../../../src/shared/ipc.js';
+import type { AssetFailure, AssetInfo } from '../../../src/shared/ipc.js';
 
 const info = (over: Partial<AssetInfo> = {}): AssetInfo => ({
   hash: 'a1b2c3d4',
@@ -32,6 +33,16 @@ const portrait = (over: Partial<AssetInfo> = {}): AssetInfo =>
     rungs: [{ target: 'character:aiko', label: 'Aiko' }],
     ...over,
   });
+
+const failed = (over: Partial<AssetFailure> = {}): AssetFailure => ({
+  task: 't1',
+  status: 'failed',
+  error: 'the image model returned 503',
+  attempts: 2,
+  maxAttempts: 2,
+  later: false,
+  ...over,
+});
 
 const concept = (over: Partial<AssetInfo> = {}): AssetInfo =>
   info({
@@ -217,6 +228,55 @@ describe('driftNote', () => {
   it('is silent unless the bytes trail the words', () => {
     expect(driftNote(info())).toBe('');
     expect(driftNote(info({ stale: true }))).toContain('older prompt');
+  });
+
+  // Regenerating is what the failed re-render was, so the drift note's advice would be a loop
+  it('stands down when a later render already tried to catch up and failed', () => {
+    expect(driftNote(info({ stale: true, failure: failed({ later: true }) }))).toBe('');
+    expect(driftNote(info({ stale: true, failure: failed() }))).toContain('older prompt');
+  });
+
+  it('still reports a suspension over a failure, since the words may be fine', () => {
+    const note = driftNote(info({ stale: true, suspended: 'a1b2 moved', failure: failed() }));
+    expect(note).toContain('Suspended');
+  });
+});
+
+describe('failureNote', () => {
+  it('says nothing about an asset the pipeline has not given up on', () => {
+    expect(failureNote(info())).toBe('');
+  });
+
+  it('quotes the retry budget and the provider’s own words for a fault', () => {
+    expect(failureNote(info({ failure: failed() }))).toBe(
+      'Generating this failed after 2 of 2 attempts — the image model returned 503. Regenerate to try again.',
+    );
+  });
+
+  // A refine pass records no error, so counting attempts here would read as "tried 0 of 2 times"
+  it('leaves the budget out of a frame that was drawn and then flagged', () => {
+    const note = failureNote(
+      info({
+        failure: failed({
+          status: 'needs_human',
+          attempts: 0,
+          error: 'shot still has blocking defects after 4 attempts',
+        }),
+      }),
+    );
+    expect(note).toContain('blocking defects');
+    expect(note).not.toContain('of 2 attempts');
+  });
+
+  it('says which frame is on screen when a re-render is what gave up', () => {
+    expect(failureNote(info({ failure: failed({ later: true }) }))).toContain(
+      'last frame that got through',
+    );
+  });
+
+  it('reports a task that recorded no reason rather than trailing off', () => {
+    const note = failureNote(info({ failure: failed({ error: undefined }) }));
+    expect(note).toContain('no reason was recorded');
   });
 });
 

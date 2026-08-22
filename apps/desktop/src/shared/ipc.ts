@@ -477,6 +477,25 @@ export interface ArtRungInfo {
   seed?: number;
 }
 
+/** The pipeline gave up on the picture an asset fills, and what it recorded when it did. */
+export interface AssetFailure {
+  /** The task that gave up, so a surface can open it in the inspector. */
+  task: string;
+  /** `failed` is a fault; `needs_human` means the frame was drawn and review kept blocking it. */
+  status: 'failed' | 'needs_human';
+  /** The task's own `error`. Absent when it reached a terminal state without recording one. */
+  error?: string;
+  /** Attempt records carrying an error — the same records the retry budget counts. */
+  attempts: number;
+  /** `config.max_task_attempts`, the budget those attempts are counted against. */
+  maxAttempts: number;
+  /**
+   * The task that gave up is a re-render rather than the one these bytes came from. The picture
+   * on screen is the last one that worked, and the project has described it differently since.
+   */
+  later: boolean;
+}
+
 /** Everything the asset editor draws: what the bytes are, what made them, and what to edit. */
 export interface AssetInfo {
   hash: string;
@@ -529,6 +548,12 @@ export interface AssetInfo {
    * `asset.accept` refuses with, so a greyed button's tooltip is the command's own word.
    */
   unapproved?: string;
+  /**
+   * Why the picture this asset fills is not finished. Read from the slot's identity as the project
+   * states it today, so a re-render that failed after these bytes were drawn is reported too.
+   * Absent while that identity is pending, running or done.
+   */
+  failure?: AssetFailure;
   /** The art-notes rungs that reach this asset, widest first. */
   rungs: ArtRungInfo[];
   /**

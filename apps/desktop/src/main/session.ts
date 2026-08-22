@@ -113,6 +113,7 @@ import {
   refDrift,
   renderPrompt,
   resolveBinding,
+  resolveSlot,
   rungOf,
   rungsFor,
   setArtNotes as writeArtNotes,
@@ -120,6 +121,7 @@ import {
   slotKey,
   slotLabel,
   slotOf,
+  slotTaskHash,
   subjectEntity,
   suspensionMap,
   uploadOf,
@@ -249,6 +251,7 @@ import {
 import type {
   AgentSystem,
   ApproveResult,
+  AssetFailure,
   AssetInfo,
   BranchEditResult,
   DocNode,
@@ -1673,6 +1676,44 @@ export class WorkspaceSession {
   }
 
   /**
+   * Why the picture an asset fills is not finished, or `undefined` while it is still on its way.
+   *
+   * Two tasks are asked, in order. The slot's identity as the project states it today comes first,
+   * because an art-notes edit gives the slot a new one and a run that fails on it leaves the last
+   * good render on screen with nothing saying the re-render did not happen. The task these bytes
+   * came from answers second, for the frame that was drawn and then flagged. One slot is resolved
+   * rather than the whole graph, which is what keeps this cheap enough for every read of the pane.
+   */
+  private failureOf(
+    project: LoadedProject,
+    binding: RefBinding,
+    shots: ReadonlyMap<string, Shot[] | null>,
+    sourceTask: string,
+  ): AssetFailure | undefined {
+    const decided = resolveSlot(binding, {
+      model: project.model,
+      shots,
+      config: project.config,
+      graph: project.graph,
+    });
+    const current = decided.ok ? slotTaskHash(decided.plan) : undefined;
+    for (const hash of [current, sourceTask]) {
+      if (!hash) continue;
+      const task = project.graph.get(hash);
+      if (!task || (task.status !== 'failed' && task.status !== 'needs_human')) continue;
+      return {
+        task: hash,
+        status: task.status,
+        ...(task.error === undefined ? {} : { error: task.error }),
+        attempts: task.attempts.filter((a) => a.error).length,
+        maxAttempts: project.config.max_task_attempts,
+        later: hash !== sourceTask,
+      };
+    }
+    return undefined;
+  }
+
+  /**
    * Everything the asset editor draws for one asset: what the bytes are, the prompt they were
    * made from, the prompt the builders would write now, and the art-notes rungs that reach it.
    * `null` when the manifest has never heard of the hash.
@@ -1703,6 +1744,7 @@ export class WorkspaceSession {
     // and a pane offering to replace a superseded render would supersede a picture already
     // moved past.
     const slot = from && task?.status === 'done' && task.output === asset.hash ? from : undefined;
+    const failure = from ? this.failureOf(project, from, shots, asset.sourceTask) : undefined;
     return {
       hash: asset.hash,
       ext: asset.ext,
@@ -1719,6 +1761,7 @@ export class WorkspaceSession {
       stale: derived !== undefined && recorded !== undefined && derived !== recorded,
       ...(suspended ? { suspended: suspended.reason } : {}),
       ...(slot ? { slot: slotKey(slot) } : {}),
+      ...(failure ? { failure } : {}),
       prereqs,
       ...(unapproved ? { unapproved } : {}),
       rungs: rungsFor(asset, { model: project.model, shots }),

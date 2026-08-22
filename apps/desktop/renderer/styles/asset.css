@@ -190,6 +190,26 @@
 }
 
 /*
+ * The same band as `.as-drift` in vermilion, which is what the app already says a refusal or a
+ * failure in. Drift is a picture that no longer matches its words; this is a picture that is not
+ * there, so it sits above and reads louder.
+ */
+.as-failed {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(229, 83, 75, 0.45);
+  border-left-width: 2px;
+  border-radius: var(--r-chrome);
+  background: rgba(229, 83, 75, 0.08);
+  color: var(--vermilion);
+  font-size: 12.5px;
+}
+
+/*
  * The approval frontier. Machine voice (`--signal` family, mono addresses): these rows are what
  * the project says this picture rests on, not anything the author typed — so no sodium, and the
  * only warm thing in the strip is the sentence saying what is still in the way.
@@ -461,7 +481,7 @@
  * document an author edits, signal where the builders wrote the sentence — the same 3px rail plus
  * 7% wash `.as-promote` and `.as-drift` already use. Texture *groups* the category and the mono tag
  * names it exactly, because twelve categories cannot be twelve hues without inventing accents.
- * `--vermilion` is spent here on one thing only: the `not found ✗` coverage marker.
+ * `--vermilion` is spent in this section on one thing only: the `not found ✗` coverage marker.
  */
 
 .as-modes {

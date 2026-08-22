@@ -9,6 +9,7 @@ import {
   approveAction,
   badgesOf,
   driftNote,
+  failureNote,
   promoteAction,
   promptEditable,
   promptShown,
@@ -33,7 +34,13 @@ import { promptReorder, type PromptDragState } from '../../../src/shared/interac
 import { TOP_CHUNK } from '../../../src/shared/promptops.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import ASSET_CSS from '../../styles/asset.css?inline';
-import type { AssetInfo, ArtRungInfo, Prereq, PropValue } from '../../../src/shared/ipc.js';
+import type {
+  AssetFailure,
+  AssetInfo,
+  ArtRungInfo,
+  Prereq,
+  PropValue,
+} from '../../../src/shared/ipc.js';
 import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js';
 
 /** A reorder in flight: every insertion point's verdict, judged once on the grab. */
@@ -265,8 +272,8 @@ export class AssetEditor extends VnEditor {
   }
 
   /** Hand the task off to the inspector, which is the pane that reads attempts. */
-  private showTask(): void {
-    const task = this.info?.sourceTask ?? '';
+  private showTask(hash?: string): void {
+    const task = hash ?? this.info?.sourceTask ?? '';
     if (task === '') return this.complain('The manifest records no task for this asset.');
     this.ui.taskHash = task;
     this.announce();
@@ -598,6 +605,10 @@ export class AssetEditor extends VnEditor {
     const replaceable = replaceAction(info);
     if (replaceable.ok) this.surface.appendChild(this.replaceStrip(replaceable.slot));
 
+    // Ahead of the drift band: a failure says the picture is not there, which outranks a note
+    // saying the picture no longer matches the words.
+    if (info.failure) this.surface.appendChild(this.failureBand(info, info.failure));
+
     const drift = driftNote(info);
     if (drift) this.surface.appendChild(el('div', 'as-drift', drift));
 
@@ -717,6 +728,23 @@ export class AssetEditor extends VnEditor {
   }
 
   /** Shown when the condensation no longer matches the chunks; the condensation is still what runs. */
+  /**
+   * What the pipeline recorded when it gave up, plus the way into the task that recorded it. The
+   * button names its own task rather than the asset's, because a failed re-render is a different
+   * task from the one these bytes came from and the inspector is where its attempts are readable.
+   */
+  private failureBand(info: AssetInfo, failure: AssetFailure): HTMLElement {
+    const band = el('div', 'as-failed', failureNote(info));
+    const b = button('as-mode', 'Show task');
+    b.title =
+      failure.task === info.sourceTask
+        ? 'Open this task in the inspector, where its attempts are listed'
+        : 'Open the task that gave up in the inspector — a re-render, not the one these bytes came from';
+    b.addEventListener('click', () => this.showTask(failure.task));
+    band.appendChild(b);
+    return band;
+  }
+
   private heldBanner(view: PromptView): HTMLElement {
     const banner = el('div', 'as-held', heldNote(view));
     const action = condenseAction(view);

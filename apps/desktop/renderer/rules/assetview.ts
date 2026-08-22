@@ -170,6 +170,33 @@ export function badgesOf(info: AssetInfo): string[] {
 }
 
 /**
+ * The failure sentence, or an empty string. Four cases, because two things vary: whether the
+ * pipeline hit a fault or asked for a human, and whether the task that gave up is the one these
+ * bytes came from or a later re-render of the same slot.
+ *
+ * The retry budget is quoted for a fault only. A `needs_human` shot records one attempt per P7
+ * refine pass and none of them carries an error, so counting them against the budget would report
+ * a frame reviewed four times as having been tried zero times out of two.
+ */
+export function failureNote(info: AssetInfo): string {
+  const failure = info.failure;
+  if (!failure) return '';
+  const why = failure.error ?? 'no reason was recorded';
+  const tries = `${failure.attempts} of ${failure.maxAttempts} attempts`;
+  if (failure.later) {
+    const what =
+      failure.status === 'failed'
+        ? `The re-render failed after ${tries} — ${why}.`
+        : `The re-render was flagged for a human — ${why}.`;
+    return `${what} What is on screen is the last frame that got through.`;
+  }
+  if (failure.status === 'failed') {
+    return `Generating this failed after ${tries} — ${why}. Regenerate to try again.`;
+  }
+  return `Flagged for a human — ${why}. Accept it as it stands, or change the art notes and regenerate.`;
+}
+
+/**
  * The drift sentence, or an empty string. `stale` is only ever true when a derivation exists, so
  * this says what changed underneath rather than merely that something did.
  *
@@ -181,6 +208,9 @@ export function driftNote(info: AssetInfo): string {
     return `Suspended — ${info.suspended}. Repin the reference or regenerate; the bytes stay either way.`;
   }
   if (!info.stale) return '';
+  // A failed re-render already says the project has moved on, and it says so about the attempt to
+  // catch up. Telling the author to regenerate here would be telling them to run what just failed.
+  if (info.failure?.later) return '';
   return 'Rendered from an older prompt — the project describes it differently now. Regenerate to catch up.';
 }
 

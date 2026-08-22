@@ -1454,6 +1454,63 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
     // which is what makes the strip disappear from its pane.
     expect((await session.assetInfo(before))!.slot).toBeUndefined();
   });
+
+  /**
+   * A failure is read off the slot rather than off `asset.sourceTask`, which is what lets the pane
+   * report a re-render that never landed. Both records are written by hand, because mock providers
+   * always succeed and no run can reach the state these assertions are about.
+   */
+  it('reports why the slot gave up, and says when a later render is what did', async () => {
+    const log = join(p.dir, 'vngen', 'state', 'tasks.jsonl');
+    const append = async (record: object): Promise<void> => {
+      await fs.appendFile(log, JSON.stringify(record) + '\n');
+    };
+
+    const node = (await session.status()).slots.find((s) => s.key.startsWith('plate:') && s.hash)!;
+    const shown = (await session.assetInfo(node.hash!))!;
+    expect(shown.failure).toBeUndefined();
+
+    // Rewritten from the task's own last record, since the pane derives this asset's prompt from
+    // the inputs a hand-written stub would not carry.
+    const error = 'the image model returned 503';
+    const lines = (await fs.readFile(log, 'utf8')).split('\n').filter((l) => l.trim() !== '');
+    const was = lines
+      .map((l) => JSON.parse(l) as { hash: string })
+      .reverse()
+      .find((r) => r.hash === shown.sourceTask)!;
+    await append({ ...was, status: 'failed', error, attempts: [{ attempt: 1, refs: [], error }] });
+    expect((await session.assetInfo(node.hash!))!.failure).toMatchObject({
+      task: shown.sourceTask,
+      status: 'failed',
+      error,
+      attempts: 1,
+      maxAttempts: 2,
+      later: false,
+    });
+
+    // An art-notes edit re-keys the slot, so what the pane reports next is a task these bytes never
+    // came from — and the picture on screen is the last one that did.
+    const rung = shown.rungs[shown.rungs.length - 1]!.target;
+    expect(await session.setArtNotes(rung, 'rain running down the windows')).toMatchObject({
+      ok: true,
+    });
+    const next = (await session.status()).slots.find((s) => s.key === node.key)!.taskHash!;
+    expect(next).not.toBe(shown.sourceTask);
+    await append({
+      hash: next,
+      kind: 'location_ref',
+      deps: [],
+      inputs: {},
+      status: 'needs_human',
+      attempts: [],
+      error: 'the render kept coming back with the wrong window',
+    });
+    expect((await session.assetInfo(node.hash!))!.failure).toMatchObject({
+      task: next,
+      status: 'needs_human',
+      later: true,
+    });
+  });
 });
 
 /**
