@@ -80,7 +80,19 @@ export interface AgentTurn {
    * attempt, because each attempt was a billed call.
    */
   usage?: TokenUsage;
+  /**
+   * Whether the prompt cache was read as it should have been, when the backend's figures can be
+   * compared across calls. Absent means the question was not answerable, never that the cache hit.
+   */
+  cacheVerdict?: CacheVerdict;
 }
+
+/**
+ * What one call did to the prompt cache. `cold` opens a conversation and is not a defect;
+ * `expired` is a prefix that aged out between calls. `miss` is the one worth a record: the prefix
+ * broke while it was still readable.
+ */
+export type CacheVerdict = 'cold' | 'hit' | 'expired' | 'miss';
 
 /**
  * Add up two receipts. `undefined` throughout means nothing was reported, not that it was free —
@@ -112,6 +124,12 @@ function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage 
  */
 export interface AgentBackend {
   next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn>;
+  /**
+   * The conversation was cleared and the next call starts from nothing. Called by `Agent.clear`,
+   * which keeps the backend it was given, so per-conversation state that outlived the transcript
+   * would otherwise be compared against a prefix that no longer exists.
+   */
+  reset?(): void;
 }
 
 /** The JSON shape the structured backend asks the model to emit each turn. */
@@ -295,11 +313,46 @@ function turnOf(m: AgentMessage): ChatTurn {
 export class NativeAgentBackend implements AgentBackend {
   /** Where the previous request put its trailing breakpoint — the one this request reads from. */
   private prevBreak = -1;
+  /** The previous call's receipt and the moment it arrived, which is what a verdict compares. */
+  private prev: { usage: TokenUsage; at: number } | undefined;
 
-  constructor(private readonly chat: ChatBackend) {
+  constructor(
+    private readonly chat: ChatBackend,
+    private readonly now: () => number = Date.now,
+  ) {
     if (!chat.chatConversation) {
       throw new Error(`backend "${chat.modelId}" does not support native tool-calling`);
     }
+  }
+
+  reset(): void {
+    this.prevBreak = -1;
+    this.prev = undefined;
+  }
+
+  /**
+   * What this receipt says the cache did, against the one before it. Everything readable last call
+   * plus everything written last call should be readable this call, so a drop means the prefix was
+   * invalidated in between.
+   *
+   * Answered only where the backend says its figures are lines on a bill and both receipts carry
+   * both figures. An absent count means the vendor said nothing rather than zero, so reading one as
+   * a zero would report a miss against a cache that worked.
+   */
+  private verdictFor(usage: TokenUsage): CacheVerdict | undefined {
+    if (this.chat.cacheReporting !== 'billed') return undefined;
+    const prev = this.prev;
+    const at = this.now();
+    this.prev = { usage, at };
+    if (!prev) return 'cold';
+    if (usage.cacheRead === undefined) return undefined;
+    if (prev.usage.cacheRead === undefined || prev.usage.cacheWrite === undefined) return undefined;
+    if (usage.cacheRead >= prev.usage.cacheRead + prev.usage.cacheWrite) return 'hit';
+    // A prefix that aged out is not a defect, and telling the two apart needs a TTL only the
+    // backend knows. Without one the drop is real and its cause is not, so neither is reported
+    const ttl = this.chat.cacheTtlMs;
+    if (ttl === undefined) return undefined;
+    return at - prev.at > ttl ? 'expired' : 'miss';
   }
 
   async next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn> {
@@ -338,7 +391,11 @@ export class NativeAgentBackend implements AgentBackend {
     } else {
       turn.final = reply.text ?? '';
     }
-    if (reply.usage) turn.usage = reply.usage;
+    if (reply.usage) {
+      turn.usage = reply.usage;
+      const verdict = this.verdictFor(reply.usage);
+      if (verdict) turn.cacheVerdict = verdict;
+    }
     return turn;
   }
 }

@@ -18,7 +18,14 @@ import { z } from 'zod';
 import { budgetTokens, charge, DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
 import { RetryableProviderError } from '@vn/util';
 import { faultKind, type FaultKind } from '@vn/providers';
-import type { AgentAction, AgentBackend, AgentMessage, AgentTurn, ToolSpec } from './backend.js';
+import type {
+  AgentAction,
+  AgentBackend,
+  AgentMessage,
+  AgentTurn,
+  CacheVerdict,
+  ToolSpec,
+} from './backend.js';
 import { joinSections, type SystemSection } from './context.js';
 import {
   createRegistry,
@@ -139,6 +146,8 @@ export type AgentEvent =
   // shows a real total or none. The cache split is carved out of `input`, and is absent when the
   // provider said nothing (not the same as a cache miss); `cacheEstimated` marks a matched-prefix
   // count rather than a billed one — Gemini's implicit cache.
+  // `verdict` says what this call did to the prompt cache, and is present only where the backend's
+  // figures can be compared across calls. Absent means the question was not answerable.
   | {
       type: 'usage';
       input: number;
@@ -146,6 +155,7 @@ export type AgentEvent =
       cacheRead?: number;
       cacheWrite?: number;
       cacheEstimated?: boolean;
+      verdict?: CacheVerdict;
     }
   // Progress of a model call that is failing. `failed` means one attempt is gone and the host is
   // about to be asked; `retrying` means attempt `attempt` of `of` is about to be made and is the
@@ -507,6 +517,9 @@ export class Agent {
     // `refreshSystem` rebuilds the prompt outright instead of filing supersede messages.
     this.filedMode = undefined;
     this.pendingSystem.length = 0;
+    // The backend survives the clear, so anything it remembers about the previous prefix would be
+    // compared against a conversation that no longer exists
+    this.backend.reset?.();
   }
 
   /**
@@ -691,7 +704,11 @@ export class Agent {
       // anything useful.
       if (turn.usage) {
         spent += charge(turn.usage);
-        emit({ type: 'usage', ...turn.usage });
+        emit({
+          type: 'usage',
+          ...turn.usage,
+          ...(turn.cacheVerdict ? { verdict: turn.cacheVerdict } : {}),
+        });
       }
 
       const actions = turn.actions ?? [];
