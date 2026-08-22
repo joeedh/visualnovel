@@ -15,9 +15,9 @@
 [ ]: overlapping notifications popup is still not fixed, you will have to run a headed 
      test and take screenshots yourself to fix it.  note it needs fairly long notification
 	 text to happen.
-[ ]: the model api error card thingy should have 'stop and try and figure what went wrong'
+[x]: the model api error card thingy should have 'stop and try and figure what went wrong'
      be the first option before the models.
-[ ]: the tokens counter's tooltip should be reworked so it's more readable for average users 
+[x]: the tokens counter's tooltip should be reworked so it's more readable for average users 
      instead of devs.
 [ ]: the play editor isn't updated when new shows are created
 [x]: use an agent to execute docs/plans/prompt-caching-for-the-report-analyst.md wait for it to finish

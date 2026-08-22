@@ -178,25 +178,26 @@ describe('what the cache did', () => {
 
 describe('the tokens tooltip', () => {
   test('offers no figures before anything has been counted', () => {
-    expect(tokensDetail({ input: 0, output: 0 })).toBe(
-      'What this conversation has cost so far. Nothing counted yet.',
-    );
+    const said = tokensDetail({ input: 0, output: 0 });
+    expect(said).toContain('Tokens are how a model measures text');
+    expect(said).toContain('Nothing used in this conversation yet.');
   });
 
   test('says nothing about a cache no provider mentioned', () => {
     const said = tokensDetail({ input: 1200, output: 300 });
-    expect(said).toContain('1,200 in, 300 out');
+    expect(said).toContain('It has sent 1,200 and got 300 back.');
     expect(said).not.toMatch(/cache/i);
   });
 
   test('reports a billed split as fact, both halves of it', () => {
     const said = tokensDetail({ input: 1200, output: 300, cacheRead: 900, cacheWrite: 100 });
-    expect(said).toContain('900 read from cache (75%)');
-    expect(said).toContain('100 written to it');
-    expect(said).not.toMatch(/estimate/i);
+    expect(said).toContain('The counter shows 600');
+    expect(said).toContain('900 of what it sent (75%)');
+    expect(said).toContain('100 was put there for next time');
+    expect(said).not.toMatch(/roughly/i);
   });
 
-  // The share is of input alone, because a prefix cache does not move output
+  // The share is of what was sent alone, because a prefix cache does not move what comes back
   test('hedges a matched split, and does not invent a write it was never told about', () => {
     const said = tokensDetail({
       input: 1200,
@@ -204,9 +205,15 @@ describe('the tokens tooltip', () => {
       cacheRead: 900,
       cacheEstimated: true,
     });
-    expect(said).toContain('roughly 900 (75%) was already cached');
-    expect(said).toContain('estimate');
-    expect(said).not.toContain('written to it');
+    expect(said).toContain('Roughly 900 of what it sent (75%)');
+    expect(said).toContain('Roughly, because');
+    expect(said).not.toContain('put there for next time');
+  });
+
+  // The author is being told what their conversation cost, not what a response body said
+  test('uses none of the API’s words for these numbers', () => {
+    const said = tokensDetail({ input: 1200, output: 300, cacheRead: 900, cacheWrite: 100 });
+    expect(said).not.toMatch(/\b(input|output|cache read|cache write|prefix|billed)\b/i);
   });
 });
 

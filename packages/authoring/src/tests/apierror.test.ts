@@ -91,11 +91,13 @@ describe('offering to look into it', () => {
     expect(offersReport(failure({ transient: false, kind: 'unknown' }))).toBe(false);
   });
 
-  it('sits above stop in the list, so stop is still the last word', () => {
-    const q = apiRecoveryQuestion(rejected, 'claude-opus-4', []);
+  it('leads the list, ahead of retrying and of every model', () => {
+    const q = apiRecoveryQuestion(rejected, 'claude-opus-4', OTHERS);
     expect(q.choices).toEqual([
-      'Retry automatically, up to 10 times',
       'Stop, and look into what went wrong',
+      'Retry automatically, up to 10 times',
+      switchChoice('gemini-2.5-pro'),
+      switchChoice('gpt-5'),
       'Stop this turn',
     ]);
   });

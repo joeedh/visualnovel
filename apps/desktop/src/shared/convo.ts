@@ -151,38 +151,50 @@ export function threadDetail(thread: ThreadHeader): string {
  * cache did with them. It lives here rather than in the pane that draws it, for the same reason
  * `threadDetail` does: prose about a value belongs outside an editor that stays thin rendering.
  *
- * The cache sentence appears only where the provider reported something, and is worded as an
- * estimate where the report was a matched prefix rather than a bill. Gemini reports nothing at all
- * on many calls that did hit the cache, so a low share there may mean the provider stayed silent
- * rather than that the cache missed.
+ * It is written for an author rather than for whoever wrote the counter, which is why it says what
+ * a token is every time and spends words on the cache being cheaper rather than on the split being
+ * reported. The words the API uses for these numbers — input, output, cache read, cache write — are
+ * not in it: the reader is being told what their conversation cost, not what a response body said.
+ *
+ * The cache sentence appears only where the provider reported something, and is hedged where the
+ * report was a matched prefix rather than a bill. Gemini reports nothing at all on many calls that
+ * did hit the cache, so a low share there may mean the provider stayed silent rather than that the
+ * cache missed.
  */
 export function tokensDetail(tokens: Convo['tokens']): string {
   const { input, output, cacheRead, cacheWrite, cacheEstimated } = tokens;
-  if (input + output === 0) return 'What this conversation has cost so far. Nothing counted yet.';
+  const what =
+    'Tokens are how a model measures text — about three quarters of a word each, and what you ' +
+    'are charged for.';
+  if (input + output === 0) return `${what} Nothing used in this conversation yet.`;
 
-  const lines = [
-    `${input.toLocaleString()} in, ${output.toLocaleString()} out, this conversation.`,
-  ];
-  if (cacheRead !== undefined || cacheWrite !== undefined) {
-    // The uncached number goes first, ahead of the split it is derived from. A provider that
-    // reported no split skips this branch, where the in/out line is already what the counter shows
-    lines.unshift(
-      `${uncachedTokens(tokens).toLocaleString()} the cache did not serve — what the counter ` +
-        'shows.',
+  const lines = [what];
+  const sent = `It has sent ${input.toLocaleString()} and got ${output.toLocaleString()} back.`;
+  if (cacheRead === undefined && cacheWrite === undefined) {
+    lines.push(sent);
+  } else {
+    // The counter's own figure goes ahead of the two it is derived from, so the first number the
+    // reader meets is the one they were hovering over
+    lines.push(
+      `The counter shows ${uncachedTokens(tokens).toLocaleString()} — the part charged at full ` +
+        'price.',
+      sent,
     );
     const read = cacheRead ?? 0;
-    // The percentage is of input, because that is the number caching moves
+    // The share is of what was sent, because that is the half caching moves
     const share = input === 0 ? 0 : Math.round((read / input) * 100);
     lines.push(
       cacheEstimated
-        ? `Of the input, roughly ${read.toLocaleString()} (${share}%) was already cached — an ` +
-            'estimate, because the provider reports what it matched rather than what it billed, ' +
-            'and says nothing at all on many calls that did hit.'
-        : `Of the input, ${read.toLocaleString()} read from cache (${share}%) and ` +
-            `${(cacheWrite ?? 0).toLocaleString()} written to it.`,
+        ? `Roughly ${read.toLocaleString()} of what it sent (${share}%) was text the model had ` +
+            'already been given, so it came back from the cache far cheaper. Roughly, because ' +
+            'this provider says what it recognised rather than what it charged for, and often ' +
+            'says nothing at all on a call the cache did help.'
+        : `${read.toLocaleString()} of what it sent (${share}%) was text the model had already ` +
+            'been given, so it came back from the cache far cheaper, and ' +
+            `${(cacheWrite ?? 0).toLocaleString()} was put there for next time.`,
     );
   }
-  lines.push('Retried steps are counted every time. Clearing the conversation resets it.');
+  lines.push('Retries count every time. Clearing the conversation starts the count over.');
   return lines.join(' ');
 }
 

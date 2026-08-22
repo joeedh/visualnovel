@@ -56,10 +56,13 @@ export function apiRecoveryQuestion(
     question:
       `${model || 'The model'} failed: ${failure.message}\n\n${advice}\n\n` +
       'What should I do? The conversation so far is kept either way.',
+    // The report leads the list wherever it is offered. It is offered for a `request` fault only,
+    // where the provider read the body and rejected it, so retrying it and handing the same body to
+    // another model both spend calls repeating what went wrong. Stop stays last either way.
     choices: [
+      ...(offersReport(failure) ? [REPORT_CHOICE] : []),
       RETRY_CHOICE,
       ...others.map(switchChoice),
-      ...(offersReport(failure) ? [REPORT_CHOICE] : []),
       STOP_CHOICE,
     ],
   };
