@@ -7,6 +7,7 @@ import {
   OFFERED_EDITOR_IDS,
   type EditorId,
 } from '../../../src/shared/editors.js';
+import { BUSY_PASS, BUSY_RUN, stopsWhat } from '../../../src/shared/ipc.js';
 import type { PropValue } from '../../../src/shared/ipc.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
 import {
@@ -339,7 +340,10 @@ export class VnHeaderEditor extends VnEditor {
         : 'Preview what a run would do. This window cannot call a model.';
 
     this.spinner = undefined;
-    if (busy !== 'a pipeline run') return;
+    // An approve-and-generate pass is generative work with a Stop of its own, and it holds the
+    // session through the gaps between its rounds — so the spinner and the button stay drawn there
+    // rather than blinking out while the pass approves.
+    if (busy !== BUSY_RUN && busy !== BUSY_PASS) return;
 
     const spinner = this.bar.label('◴');
     this.spinner = spinner;
@@ -357,7 +361,7 @@ export class VnHeaderEditor extends VnEditor {
     });
 
     const stop = this.bar.button('■', () => void exec('pipeline.stop').then(report));
-    stop.description = 'Stop the run after the task it is on. Finished work is kept.';
+    stop.description = stopsWhat(busy);
     stop.setCSSAfter(() => (stop.style['color'] = 'var(--vermilion, #e5534b)'));
   }
 

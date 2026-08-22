@@ -1,5 +1,6 @@
 /** Commands for the generative pipeline: run to the next gate, stop a run, or read the state. */
 import { defineFor, prop } from '@vn/commands';
+import { BUSY_PASS, BUSY_RUN, stopsWhat } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
 import type { Approvable } from '@vn/authoring';
 
@@ -91,10 +92,13 @@ export const pipelineStop = define({
   props: {},
   check(_props, ctx) {
     const busy = ctx.host.session.busy();
-    if (busy !== 'a pipeline run') {
+    // An approve-and-generate pass is stopped by the same button, and reaching it is the point of
+    // holding the session for the whole pass: a stop asked for between rounds ends the pass rather
+    // than only the round it interrupted.
+    if (busy !== BUSY_RUN && busy !== BUSY_PASS) {
       return Promise.resolve({ ok: false, reason: 'No pipeline run is in progress.' });
     }
-    return Promise.resolve({ ok: true, note: 'The run stops after the task it is on.' });
+    return Promise.resolve({ ok: true, note: stopsWhat(busy) });
   },
   run(_props, ctx) {
     const asked = ctx.host.session.stopPipeline();
@@ -130,8 +134,11 @@ export interface RoundOutcome {
  * Split out and pinned by tests because every branch either spends more real image calls or stops
  * short of finishing the art, and an author only finds out which afterwards.
  */
+/** Why the pass ended when the author pressed Stop, wherever in a round the stop landed. */
+const STOPPED = 'stopped on request';
+
 export function stopReason(outcome: RoundOutcome, round: number, cap = MAX_ROUNDS): string {
-  if (outcome.stopped) return 'stopped on request';
+  if (outcome.stopped) return STOPPED;
   // Convergence: nothing was waiting to be approved and the planner had nothing left to do. A
   // project whose remaining tasks are failed or flagged `needs_human` has also stopped moving, so
   // that case gets its own sentence instead of being reported as everything generated.
@@ -227,35 +234,48 @@ export const pipelineApproveAndRun = define({
     let rounds = 0;
     let why = `stopped after ${MAX_ROUNDS} rounds`;
 
-    for (let round = 0; round < MAX_ROUNDS; round++) {
-      rounds = round + 1;
-      let approvedNow = 0;
-      for (const item of toApprove(await ctx.host.session.approvable())) {
-        const outcome = await ctx.host.session.approveOne(item);
-        // A refusal does not abandon the pass: the rows are re-derived every round, so whatever
-        // refused is either already handled or listed again next time with its own sentence.
-        if (outcome.ok) approvedNow++;
-      }
-      approved += approvedNow;
+    // The session is held for the whole pass rather than for each round's run, so Stop reaches the
+    // gaps between rounds. Approving is not a run, and a stop asked for during one used to have
+    // nothing to abort and was forgotten by the time the next round started.
+    await ctx.host.session.duringPass(async (signal) => {
+      for (let round = 0; round < MAX_ROUNDS; round++) {
+        rounds = round + 1;
+        let approvedNow = 0;
+        for (const item of toApprove(await ctx.host.session.approvable())) {
+          if (signal.aborted) break;
+          const outcome = await ctx.host.session.approveOne(item);
+          // A refusal does not abandon the pass: the rows are re-derived every round, so whatever
+          // refused is either already handled or listed again next time with its own sentence.
+          if (outcome.ok) approvedNow++;
+        }
+        approved += approvedNow;
 
-      const result = await ctx.host.session.runPipeline(false);
-      ran += result.ran;
-      failed = result.failed;
+        // Checked ahead of the run so a stop costs nothing more. The run would report the same,
+        // but only after loading the project and planning against it to be told to stop.
+        if (signal.aborted) {
+          why = STOPPED;
+          break;
+        }
 
-      const reason = stopReason(
-        {
-          approved: approvedNow,
-          ran: result.ran,
-          failed: result.failed,
-          stopped: result.stopped === true,
-        },
-        round,
-      );
-      if (reason) {
-        why = reason;
-        break;
+        const result = await ctx.host.session.runPipeline(false);
+        ran += result.ran;
+        failed = result.failed;
+
+        const reason = stopReason(
+          {
+            approved: approvedNow,
+            ran: result.ran,
+            failed: result.failed,
+            stopped: result.stopped === true,
+          },
+          round,
+        );
+        if (reason) {
+          why = reason;
+          break;
+        }
       }
-    }
+    });
 
     const trouble = failed > 0 ? `, ${failed} failed` : '';
     return {

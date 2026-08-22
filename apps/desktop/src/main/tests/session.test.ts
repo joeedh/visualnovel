@@ -91,6 +91,29 @@ describe('WorkspaceSession — reading a project', () => {
     expect(session.busy()).toBeUndefined();
   });
 
+  // Stop reaches a pass between its rounds, which is where approving happens and where nothing
+  // used to be in flight to receive it.
+  it('holds the session for a whole pass, and carries a stop across a round boundary', async () => {
+    const session = sessionFor(p);
+    const seen: (string | undefined)[] = [];
+
+    await session.duringPass(async (signal) => {
+      await session.runPipeline(true);
+      // A run inside a pass reports the pass, since that is what a second run would collide with
+      seen.push(session.busy());
+      expect(signal.aborted).toBe(false);
+
+      // The run made no controller of its own, so its ending did not clear the pass's: a stop
+      // asked for here — between rounds, with nothing in flight — still lands.
+      expect(session.stopPipeline()).toBe(true);
+      expect(signal.aborted).toBe(true);
+    });
+
+    expect(seen).toEqual(['an approve-and-generate pass']);
+    expect(session.busy()).toBeUndefined();
+    expect(session.stopPipeline()).toBe(false);
+  });
+
   it('builds a playable with no asset refs while nothing is generated', async () => {
     const play = await sessionFor(p).playable();
     expect(play.start).toBe('arrival');

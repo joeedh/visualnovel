@@ -248,6 +248,7 @@ import {
   type Redactor,
   type Report,
 } from '@vn/agentreport';
+import { BUSY_PASS, BUSY_RUN } from '../shared/ipc.js';
 import type {
   AgentSystem,
   ApproveResult,
@@ -721,7 +722,11 @@ export class WorkspaceSession {
   private readonly inFlight = new Set<string>();
   /** How the work above is going, as the scheduler last reported it. Zeroed when it ends. */
   private progress = { ran: 0, pending: 0 };
-  /** Set for as long as a pipeline run is interruptible; `stopPipeline` is the one caller. */
+  /**
+   * Set for as long as generative work is interruptible; `stopPipeline` is the one caller. A pass
+   * holds one for all of its rounds, and the runs inside it share that one rather than making
+   * their own.
+   */
   private cancel: AbortController | undefined;
 
   /**
@@ -801,7 +806,20 @@ export class WorkspaceSession {
   }
 
   /**
-   * Ask the pipeline run in flight to stop. It stops at a task boundary, so this returns what
+   * Hold the session for a whole approve-and-generate pass, rounds and gaps alike. One
+   * `AbortController` covers all of it, which is what carries a stop asked for while the pass is
+   * approving — when no run is in flight to receive it — into the round that follows.
+   */
+  duringPass<T>(body: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    const cancel = new AbortController();
+    this.cancel = cancel;
+    return this.while(BUSY_PASS, () => body(cancel.signal)).finally(() => {
+      if (this.cancel === cancel) this.cancel = undefined;
+    });
+  }
+
+  /**
+   * Ask the generative work in flight to stop. It stops at a task boundary, so this returns what
    * was asked rather than what happened — the run's own outcome says that.
    */
   stopPipeline(): boolean {
@@ -4379,9 +4397,10 @@ export class WorkspaceSession {
   async runPipeline(mock: boolean): Promise<PipelineRunResult> {
     // The whole method, loads included: `busy()` has to be true from the call, not from the
     // moment the scheduler starts, or a switch could land in the gap.
-    const cancel = new AbortController();
+    const outer = this.cancel;
+    const cancel = outer ?? new AbortController();
     this.cancel = cancel;
-    const { summary, assets } = await this.while('a pipeline run', async () => {
+    const { summary, assets } = await this.while(BUSY_RUN, async () => {
       const project = await loadProject(this.dir);
       const providers = await buildProviders(project, mock);
       const ran = await runPipeline({
@@ -4404,7 +4423,9 @@ export class WorkspaceSession {
       // of everything for a handful of hashes.
       return { summary: ran, assets: project.store.manifest() };
     }).finally(() => {
-      if (this.cancel === cancel) this.cancel = undefined;
+      // A pass owns its controller for every round it still has to take, so only a run that made
+      // its own clears it.
+      if (!outer && this.cancel === cancel) this.cancel = undefined;
     });
     this.announceRun(summary, assets, mock);
     return {

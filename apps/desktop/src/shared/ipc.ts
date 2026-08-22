@@ -66,6 +66,31 @@ import type { EditorId, OpenWhere } from './editors.js';
 
 export type { EditorId, OpenWhere } from './editors.js';
 
+/**
+ * What `busy.what` says while the scheduler is executing tasks.
+ *
+ * A refusal names the work with it, so it is worded to read inside one ("a pipeline run is
+ * already in progress").
+ */
+export const BUSY_RUN = 'a pipeline run';
+
+/**
+ * What `busy.what` says for the whole of an approve-and-generate pass, its gaps between rounds
+ * included. `pipeline.run` holds {@link BUSY_RUN} inside this, and `busy()` reports the outer
+ * name, because the pass is what a second run would collide with.
+ */
+export const BUSY_PASS = 'an approve-and-generate pass';
+
+/**
+ * What Stop is about to do to the work named. `pipeline.stop` answers with it and the header's
+ * Stop button is described by it, so the button says what the command it runs would say.
+ */
+export function stopsWhat(busy: string): string {
+  return busy === BUSY_PASS
+    ? 'The pass stops after the task it is on, and takes no further rounds. Finished work is kept.'
+    : 'The run stops after the task it is on. Finished work is kept.';
+}
+
 /** Anything the desktop session store can persist — plain JSON, nothing else. */
 export type SessionValue =
   | string
@@ -126,8 +151,8 @@ export type UiEffect =
    */
   | { type: 'workspace'; root: string; title: string }
   /**
-   * Long-running work started, moved, or ended. `what` names the work in plain words ("a
-   * pipeline run", "an agent turn") and is absent when the session went idle. This is pushed
+   * Long-running work started, moved, or ended. `what` names the work in plain words
+   * ({@link BUSY_RUN}, "an agent turn") and is absent when the session went idle. This is pushed
    * rather than polled, so that the header's run button and the conversation editor's stop
    * button both read the state `WorkspaceSession.busy()` already tracks.
    */

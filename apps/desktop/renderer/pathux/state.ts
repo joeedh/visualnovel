@@ -71,9 +71,10 @@ export class ShellState {
   redoLabel = '';
 
   /**
-   * What long-running work main has in flight, named the way its refusals are ('a pipeline run',
-   * 'an agent turn'), and empty when the session is idle. Everything that must not be started
-   * twice reads this rather than keeping a flag of its own.
+   * What long-running work main has in flight, named the way its refusals are (`BUSY_RUN`,
+   * `BUSY_PASS`, 'an agent turn'), and empty when the session is idle. Everything that must not be
+   * started twice reads this rather than keeping a flag of its own. Work that nests reports the
+   * outer name, since that is what a second start would collide with.
    */
   busyWhat = '';
   /** How that work is going. Both zero when nothing is running, and while a turn has no count. */

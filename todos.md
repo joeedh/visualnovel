@@ -28,7 +28,7 @@
      add if that makes sense.
 [x]: when the tasks editor pops up in a floating editor it should have 'only running'
      checkbox on.
-[ ]: clicking the pipeline stop button should also stop the recursive approve and generate
+[x]: clicking the pipeline stop button should also stop the recursive approve and generate
      loop if it doesn't already.
 [ ]: double checking a shot in the coverage editor should show the shots asset in
      the asset editor.  same with double clicking the shot in owning scene's subtree of 
