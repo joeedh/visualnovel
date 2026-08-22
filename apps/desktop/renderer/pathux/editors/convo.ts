@@ -1,7 +1,18 @@
 import { Menu, createMenu, startMenu } from 'pathux';
 import type { Button, Container, DropBox, Label, MenuTemplate, MenuTemplateCustom } from 'pathux';
 import { BUDGET_CHOICES, TEXT_MODELS, budgetLabel, effortChoicesFor, effortLabel } from '@vn/types';
-import { allow, answer, ask, convo, decide, revision, takeSeed } from '../agent.js';
+import {
+  allow,
+  answer,
+  ask,
+  askFormFor,
+  askFormNow,
+  convo,
+  decide,
+  revision,
+  setAskForm,
+  takeSeed,
+} from '../agent.js';
 import { exec, report, setBudget, setEffort, setModel, toggleMode } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
@@ -25,7 +36,6 @@ import {
   pageLabel,
   pageOf,
   pick,
-  startForm,
   type,
   type AskForm,
 } from '../../rules/askform.js';
@@ -218,12 +228,6 @@ export class ConvoEditor extends VnEditor {
   private barKey = '';
   /** The form page whose box already took focus, so a redraw does not steal the caret back. */
   private focusedAsk = '';
-  /**
-   * The form being filled in — which page, what is ticked on each, what is typed beside it. The
-   * transcript is rebuilt wholesale and a half-answered form is not: it is the author's work, and
-   * an event arriving mid-answer must not throw it away. Cleared when the answers go back.
-   */
-  private askForm: AskForm | null = null;
   /** The live Submit answers button, so typing can keep its tooltip's blank count true. */
   private sendAct: HTMLButtonElement | null = null;
   /**
@@ -670,7 +674,7 @@ export class ConvoEditor extends VnEditor {
    * question with a pager reads as a question. A single question draws as it always did.
    */
   private askCard(request: AskRequest): HTMLElement {
-    const form = this.formFor(request);
+    const form = askFormFor(request);
     const page = pageOf(form);
     const card = el('div', 'plan ask');
     const head = el('div', 'plan-head', 'VNAUTHOR ASKS');
@@ -713,7 +717,7 @@ export class ConvoEditor extends VnEditor {
    * form key in step itself.
    */
   private askCardFor(request: AskRequest): HTMLElement {
-    const form = this.formFor(request);
+    const form = askFormFor(request);
     if (this.askCardEl && this.askCardRequest === request && this.askCardForm === form) {
       return this.askCardEl;
     }
@@ -723,17 +727,9 @@ export class ConvoEditor extends VnEditor {
     return this.askCardEl;
   }
 
-  /** The form for this request, started on arrival and kept until the answers go back. */
-  private formFor(request: AskRequest): AskForm {
-    if (!this.askForm || this.askForm.questions !== request.questions) {
-      this.askForm = startForm(request.questions);
-    }
-    return this.askForm;
-  }
-
   /** Apply a transition to the form and redraw the card around it. */
   private page(next: AskForm): void {
-    this.askForm = next;
+    setAskForm(next);
     this.rebuild();
   }
 
@@ -741,6 +737,12 @@ export class ConvoEditor extends VnEditor {
    * The shortlist. On a lone single-pick question a click answers outright — there is nothing
    * else to say — while every other shape ticks and waits, because a form has more pages to fill
    * in and a multi-pick's second choice is the whole point.
+   *
+   * A tick redraws nothing. Rebuilding the card would take the row out from under the pointer
+   * between one click and the next and scroll the list as it went, and a click whose row is gone
+   * is never delivered — which is how a picked answer reaches the agent as no answer at all. The
+   * rows and the tooltip are updated in place instead, and the cache key follows the form the way
+   * typing's does.
    *
    * Returns the first row so the card can start the focus there.
    */
@@ -758,11 +760,17 @@ export class ConvoEditor extends VnEditor {
           : `Answer “${choice}” to this question. The rest of the form stays as you left it.`;
       if (isPicked(form, choice)) row.classList.add('picked');
       row.addEventListener('click', () => {
-        if (outright) return this.sendAnswers([choice]);
+        // Whatever was typed beside the list rides along, on an outright pick too: a choice
+        // qualified in the box is one answer, and sending the choice alone would drop half of it.
+        const picked = pick(askFormNow() ?? form, choice);
+        if (outright) return this.sendAnswers(answersOf(picked));
+        if (!multi) return this.page(goTo(picked, picked.at + 1));
         // Picking the last question's answer must not submit: on the last page the pick simply
         // stands, and Submit is the one thing that ends the form.
-        const picked = pick(this.askForm ?? form, choice);
-        this.page(multi ? picked : goTo(picked, picked.at + 1));
+        setAskForm(picked, false);
+        this.askCardForm = picked;
+        rows.forEach((r, i) => r.classList.toggle('picked', isPicked(picked, choices[i]!)));
+        if (this.sendAct) this.sendAct.title = this.sendTitle(picked, true);
       });
       list.appendChild(row);
       return row;
@@ -785,18 +793,19 @@ export class ConvoEditor extends VnEditor {
     // Typing does not redraw — that would take the caret away mid-word — so what was typed is
     // written into the form on every keystroke instead, where a redraw will find it again.
     field.addEventListener('input', () => {
-      this.askForm = type(this.askForm ?? form, field.value);
+      const typed = type(askFormNow() ?? form, field.value);
+      setAskForm(typed, false);
       // The element on screen already shows this keystroke, so the card key follows the form:
       // otherwise the next unrelated rebuild would count typing as staleness and rebuild the
       // card, which is exactly the redraw-under-the-pointer this cache exists to prevent.
-      this.askCardForm = this.askForm;
+      this.askCardForm = typed;
       // The tooltip counts what is still blank, and typing is exactly what stops one being blank.
-      if (this.sendAct) this.sendAct.title = this.sendTitle(this.askForm, listed);
+      if (this.sendAct) this.sendAct.title = this.sendTitle(typed, listed);
     });
     field.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key !== 'Enter') return;
-      const now = this.askForm ?? form;
+      const now = askFormNow() ?? form;
       if (isLast(now)) this.reply();
       else this.page(goTo(now, now.at + 1));
     });
@@ -811,12 +820,12 @@ export class ConvoEditor extends VnEditor {
       const nav = el('div', 'ask-nav');
       nav.appendChild(
         this.navButton('‹ Back', isFirst(form), 'Go back to the previous question.', () =>
-          this.page(goTo(this.askForm ?? form, form.at - 1)),
+          this.page(goTo(askFormNow() ?? form, form.at - 1)),
         ),
       );
       nav.appendChild(
         this.navButton('Next ›', isLast(form), 'Go on to the next question.', () =>
-          this.page(goTo(this.askForm ?? form, form.at + 1)),
+          this.page(goTo(askFormNow() ?? form, form.at + 1)),
         ),
       );
       acts.appendChild(nav);
@@ -891,18 +900,19 @@ export class ConvoEditor extends VnEditor {
         : 'Answer that you would rather talk it through than pick from the list.';
     chat.addEventListener('click', () => {
       const said = 'None of those — let us talk it through before I pick.';
-      this.sendAnswers(answersOf(this.askForm ?? form).map((a) => (a === '' ? said : a)));
+      this.sendAnswers(answersOf(askFormNow() ?? form).map((a) => (a === '' ? said : a)));
     });
     return chat;
   }
 
   /** What Answer → and Submit answers send: every page's picks, then what was typed. */
   private reply(): void {
-    if (this.askForm) this.sendAnswers(answersOf(this.askForm));
+    const now = askFormNow();
+    if (now) this.sendAnswers(answersOf(now));
   }
 
+  /** The form itself is cleared by `answer`, since it belongs to the question rather than here. */
   private sendAnswers(answers: string[]): void {
-    this.askForm = null;
     this.askCardEl = null;
     this.askCardRequest = null;
     this.askCardForm = null;

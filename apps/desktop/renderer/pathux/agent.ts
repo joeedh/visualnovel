@@ -9,6 +9,7 @@
  */
 import { api, isLive, onAgentEvent } from '../api.js';
 import { exec, noteBinding, onExec, shell } from './bridge.js';
+import { startForm, type AskForm } from '../rules/askform.js';
 import {
   answered,
   answeredQuestion,
@@ -43,6 +44,13 @@ let state: Convo = emptyConvo(OPENING);
 let rev = 0;
 /** Text waiting for a composer: written by a surface, taken by the pane once. */
 let seeded: string | null = null;
+/**
+ * What the author has picked and typed into the question now on screen. It sits beside the question
+ * rather than inside a pane, so two convo panes fill in one form and a pane re-created by a layout
+ * change keeps what was answered before it. A pane holding its own copy would send the picks it
+ * happened to see, which is how a picked answer reaches the agent as no answer at all.
+ */
+let form: AskForm | null = null;
 
 export function convo(): Convo {
   return state;
@@ -89,6 +97,27 @@ export async function decide(approved: boolean): Promise<void> {
   if (approved) setMode('execute');
 }
 
+/** The form for this request, started on arrival and kept until the answers go back. */
+export function askFormFor(request: AskRequest): AskForm {
+  if (!form || form.questions !== request.questions) form = startForm(request.questions);
+  return form;
+}
+
+/** The form as it stands, which is not the one a cached card was drawn from. */
+export function askFormNow(): AskForm | null {
+  return form;
+}
+
+/**
+ * Replace the form. A keystroke passes `redraw` false, because redrawing the card would take the
+ * caret out of the box it was typed into; every other transition bumps the revision so a second
+ * pane on the same question follows.
+ */
+export function setAskForm(next: AskForm, redraw = true): void {
+  form = next;
+  if (redraw) rev++;
+}
+
 /**
  * Answer the question card — one answer per question of the form, in its order. Like `decide`,
  * this is a reply rather than a command: main is parked inside the agent's turn, so nothing here
@@ -98,6 +127,7 @@ export async function decide(approved: boolean): Promise<void> {
 export function answer(answers: string[]): void {
   const request = state.question;
   if (!request) return;
+  form = null;
   const trimmed = request.questions.map((_, i) => (answers[i] ?? '').trim());
   set(answeredQuestion(state, trimmed));
   void api.invoke('ask:answer', { id: request.id, answers: trimmed });

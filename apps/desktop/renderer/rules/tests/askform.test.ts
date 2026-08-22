@@ -74,6 +74,15 @@ describe('picking', () => {
   it('drops typing that is only whitespace', () => {
     expect(answerAt(type(startForm(FORM), '   '), 0)).toBe('');
   });
+
+  // The card sends a lone single-pick question on the click. What is typed beside the list has to
+  // be read off the form the click produced, or a qualified choice reaches the agent as the bare
+  // choice.
+  it('carries what was typed into an answer sent on the pick', () => {
+    const form = pick(type(startForm(ONE), 'but keep it quiet'), 'Bitter');
+    expect(answersOnPick(form)).toBe(true);
+    expect(answersOf(form)).toEqual(['Bitter, but keep it quiet']);
+  });
 });
 
 describe('submitting', () => {

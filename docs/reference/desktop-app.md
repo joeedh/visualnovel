@@ -658,12 +658,15 @@ the same events** to write the transcript — see the threads bullet below.
   `AskRequest` carries `questions[]` and `ask:answer` carries `answers[]`, so a form is one parked
   turn and one line of the transcript each way — the questions together, then the answers numbered
   under them. Everything the author has filled in lives in an `AskForm` (`renderer/rules/askform.ts`,
-  pure and unit-tested): the page they are on, what is ticked per page, what is typed per page. It
-  is state on the editor rather than in the card, because a redraw must not clear what the author
-  has chosen so far — and **every handler must read the live form, not the one it was drawn with**:
-  typing deliberately does not redraw (that would take the caret away mid-word), so a Back/Next
-  closed over the drawn form silently discards the words just typed. Found exactly that way,
-  driving the card over CDP.
+  pure and unit-tested): the page they are on, what is ticked per page, what is typed per page.
+  **The form belongs to the question, not to a pane.** It is module state in
+  `renderer/pathux/agent.ts` (`askFormFor`, `askFormNow`, `setAskForm`), started when the request
+  arrives and cleared when the answers go back, so two convo panes fill in one form and a pane
+  re-created by a layout change keeps what was answered before it. A pane holding its own copy
+  sends the picks that pane happened to see, and the other pane's picks are lost. **Every handler
+  must read the live form, not the one it was drawn with**: typing deliberately does not redraw
+  (that would take the caret away mid-word), so a Back/Next closed over the drawn form silently
+  discards the words just typed. Found exactly that way, driving the card over CDP.
 - **‹ Back / Next › sit on the left, away from the one button that ends the form.** A mis-aimed
   click near Submit must not submit half a form. For the same reason a pick on the last page does
   not send — it stands, and **Submit answers** is the only thing that ends a form — while a pick on
@@ -673,6 +676,13 @@ the same events** to write the transcript — see the threads bullet below.
   and it is recomputed on every keystroke, because a stale count is a lie about the thing the
   author just typed. **Chat about this** fills in only the questions still blank — declining to
   pick is a thing you can mean about some of a form and not the rest.
+- **A tick redraws nothing.** Ticking a choice on a multi-pick updates the rows and the Submit
+  tooltip in place. Rebuilding the card would take the row out from under the pointer between one
+  click and the next and scroll the list as it went, because `rebuild` empties the transcript and
+  scrolls it to the bottom, and a click whose row is gone is never delivered. That is one of the
+  ways a picked answer reached the agent as `(no answer)`. An outright pick sends what was typed
+  beside the list along with the choice, since a choice qualified in the box is one answer and
+  sending the choice alone drops half of it.
 - **Clearing follows the command, not the button.** The store watches the registry through
   `bridge.onExec`, so `agent.newThread` empties the transcript identically whether the pane's
   **New** button ran it or the palette did — as do `agent.clear`, which has no button and is
