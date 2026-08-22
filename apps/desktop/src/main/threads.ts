@@ -20,6 +20,7 @@ import type {
   ThreadArchive,
   ThreadHeader,
   ThreadRecord,
+  ThreadUsage,
   ToolDetail,
 } from '../shared/convo.js';
 
@@ -52,7 +53,8 @@ type ThreadLine =
   | ({ type: 'item'; at: string } & FeedItem)
   | { type: 'title'; title: string; at: string }
   | { type: 'binding'; model?: string; effort?: string; at: string }
-  | ({ type: 'archived' } & ThreadArchive);
+  | ({ type: 'archived' } & ThreadArchive)
+  | ({ type: 'usage' } & ThreadUsage);
 
 export function threadsDir(paths: ProjectPaths): string {
   return join(paths.state, 'threads');
@@ -202,7 +204,21 @@ export async function readThread(paths: ProjectPaths, id: string): Promise<Threa
       ...(detail === undefined ? {} : { detail }),
       ...(at === undefined ? {} : { at }),
     }));
-  return { ...header, items };
+  // A thread whose backend reported nothing gets no `usage` field, which is also every thread
+  // written before receipts were recorded
+  const usage = parsed
+    .filter((line) => line.type === 'usage')
+    .map(({ step, input, output, cacheRead, cacheWrite, cacheEstimated, verdict, at }) => ({
+      step,
+      input,
+      output,
+      ...(cacheRead === undefined ? {} : { cacheRead }),
+      ...(cacheWrite === undefined ? {} : { cacheWrite }),
+      ...(cacheEstimated === undefined ? {} : { cacheEstimated }),
+      ...(verdict === undefined ? {} : { verdict }),
+      at,
+    }));
+  return { ...header, items, ...(usage.length === 0 ? {} : { usage }) };
 }
 
 /**
@@ -255,6 +271,19 @@ export async function appendItem(
     ...(item.detail ? { detail: clampDetail(item.detail) } : {}),
     at: now.toISOString(),
   });
+}
+
+/**
+ * One call's receipt. Written as its own record rather than folded into a transcript line, because
+ * a receipt is not something anyone said and a turn can spend several calls. Absent figures stay
+ * absent: a vendor that reported nothing must not read back as a zero.
+ */
+export async function appendUsage(
+  paths: ProjectPaths,
+  id: string,
+  usage: ThreadUsage,
+): Promise<void> {
+  await appendJsonl(threadFile(paths, id), { type: 'usage', ...usage });
 }
 
 /**

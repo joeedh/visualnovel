@@ -2,10 +2,11 @@ import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ProjectPaths } from '@vn/store';
-import type { FeedItem } from '../../shared/convo.js';
+import type { FeedItem, ThreadUsage } from '../../shared/convo.js';
 import {
   NEW_THREAD_TITLE,
   appendItem,
+  appendUsage,
   archiveThread,
   bindThread,
   listThreads,
@@ -218,6 +219,74 @@ describe('threads', () => {
     expect((await readThread(paths, id)).items).toEqual([
       { ...item(1, 'tool', 'read_file'), at: 'then' },
     ]);
+  });
+});
+
+describe('receipts in a thread', () => {
+  let root: string;
+  let paths: ProjectPaths;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vn-threads-usage-'));
+    paths = new ProjectPaths(root);
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('round-trips every field a receipt carries', async () => {
+    const { id } = await openThread(paths, { title: 'spend' });
+    const usage: ThreadUsage[] = [
+      { step: 1, input: 1000, output: 20, cacheRead: 0, cacheWrite: 900, verdict: 'cold', at: 'a' },
+      {
+        step: 2,
+        input: 1000,
+        output: 20,
+        cacheRead: 900,
+        cacheWrite: 80,
+        cacheEstimated: true,
+        verdict: 'hit',
+        at: 'b',
+      },
+    ];
+    for (const receipt of usage) await appendUsage(paths, id, receipt);
+
+    expect((await readThread(paths, id)).usage).toEqual(usage);
+  });
+
+  it('leaves a figure the vendor never reported absent rather than zero', async () => {
+    const { id } = await openThread(paths, { title: 'silent' });
+    await appendUsage(paths, id, { step: 1, input: 1000, output: 20, at: 'a' });
+
+    const [read] = (await readThread(paths, id)).usage!;
+    expect(read).toEqual({ step: 1, input: 1000, output: 20, at: 'a' });
+    expect('cacheRead' in read!).toBe(false);
+  });
+
+  it('is not read as a transcript line, and does not stop one being read', async () => {
+    const { id } = await openThread(paths, { title: 'mixed' });
+    await appendItem(paths, id, item(1, 'user', 'go'));
+    await appendUsage(paths, id, { step: 1, input: 10, output: 2, verdict: 'miss', at: 'a' });
+    await appendItem(paths, id, item(2, 'agent', 'done'));
+
+    const read = await readThread(paths, id);
+    expect(read.items.map((line) => line.id)).toEqual([1, 2]);
+    expect(read.usage).toHaveLength(1);
+  });
+
+  it('gets no field at all on a thread that recorded none', async () => {
+    const { id } = await openThread(paths, { title: 'quiet' });
+    await appendItem(paths, id, item(1, 'user', 'go'));
+
+    expect('usage' in (await readThread(paths, id))).toBe(false);
+  });
+
+  it('is ignored by the listing, which parses headers only', async () => {
+    const { id } = await openThread(paths, { title: 'listed' });
+    await appendUsage(paths, id, { step: 1, input: 10, output: 2, verdict: 'cold', at: 'a' });
+
+    expect((await listThreads(paths)).map((header) => header.id)).toEqual([id]);
   });
 });
 

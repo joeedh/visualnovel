@@ -1,5 +1,13 @@
 import type { CommandRecord } from '@vn/commands';
-import { assemble, toMarkdown, type FeedItem, type ThreadRecord } from '../transcript.js';
+import type { Redactor } from '../redact.js';
+import {
+  assemble,
+  redactEvidence,
+  toMarkdown,
+  type FeedItem,
+  type ThreadRecord,
+  type ThreadUsage,
+} from '../transcript.js';
 
 const at = (minute: number) => `2026-08-15T14:${String(minute).padStart(2, '0')}:00.000Z`;
 
@@ -158,5 +166,68 @@ describe('toMarkdown', () => {
     const md = toMarkdown(assemble(thread([]), []));
     expect(md).toContain('Nothing was said in it.');
     expect(md).toContain('No commands were executed in this window.');
+  });
+});
+
+describe('redactEvidence', () => {
+  // Replaces one authored name and nothing else, so a field that came through unscrubbed is
+  // visible in the result rather than having to be inferred
+  const redactor: Redactor = {
+    apply: (text) => text.replaceAll('aiko', '<char1>'),
+    leaks: () => [],
+  };
+
+  it('keeps every field of a record that has them all', () => {
+    const usage = [{ step: 1, input: 10, output: 2, verdict: 'miss' as const, at: at(1) }];
+    const evidence = assemble(thread([line(1, 'user', 'go', 1)], { usage }), []);
+    const { thread: scrubbed } = redactEvidence(evidence, redactor);
+
+    expect(scrubbed).toEqual({ ...evidence.thread, title: 'give <char1> a track outfit' });
+  });
+
+  it('leaves out what the record left out', () => {
+    const bare = thread([], { model: undefined, commit: undefined });
+    const { thread: scrubbed } = redactEvidence(assemble(bare, []), redactor);
+
+    expect(Object.keys(scrubbed).sort()).toEqual(['id', 'items', 'startedAt', 'title']);
+  });
+});
+
+describe('the cache section', () => {
+  const receipt = (step: number, over: Partial<ThreadUsage> = {}): ThreadUsage => ({
+    step,
+    input: 1000,
+    output: 20,
+    at: at(step),
+    ...over,
+  });
+
+  it('counts the verdicts and names every call the prefix broke on', () => {
+    const usage = [
+      receipt(1, { verdict: 'cold', cacheWrite: 900 }),
+      receipt(2, { verdict: 'hit', cacheRead: 900 }),
+      receipt(3, { verdict: 'miss', cacheWrite: 980 }),
+    ];
+    const md = toMarkdown(assemble(thread([], { usage }), []));
+    expect(md).toContain('## What the prompt cache did');
+    expect(md).toContain('- hit: 1');
+    expect(md).toContain('- miss: 1');
+    expect(md).toContain('- call 3 re-sent 980 tokens');
+  });
+
+  it('names no call where the prefix held', () => {
+    const usage = [receipt(1, { verdict: 'cold' }), receipt(2, { verdict: 'hit' })];
+    const md = toMarkdown(assemble(thread([], { usage }), []));
+    expect(md).toContain('- hit: 1');
+    expect(md).not.toContain('re-sent');
+  });
+
+  it('is left out where no call carried a verdict, rather than reading as a cache that held', () => {
+    const md = toMarkdown(assemble(thread([], { usage: [receipt(1), receipt(2)] }), []));
+    expect(md).not.toContain('What the prompt cache did');
+  });
+
+  it('is left out on a thread that recorded no receipts at all', () => {
+    expect(toMarkdown(assemble(thread([]), []))).not.toContain('What the prompt cache did');
   });
 });

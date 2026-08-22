@@ -295,9 +295,11 @@ import {
   queried,
   received,
   type Convo,
+  type ThreadUsage,
 } from '../shared/convo.js';
 import {
   appendItem,
+  appendUsage,
   archiveThread,
   bindThread,
   listThreads,
@@ -745,6 +747,12 @@ export class WorkspaceSession {
    */
   private writes: Promise<void> = Promise.resolve();
   /**
+   * Which API call the next receipt belongs to, counted from 1 and reset when a thread is opened.
+   * A turn spends several calls, so a receipt needs an index of its own to be lined up against the
+   * transcript without matching timestamps.
+   */
+  private step = 1;
+  /**
    * The redactor the last report was written with, kept so the leak scan runs against the same
    * pseudonym table rather than a freshly built one — a different table is a different set of
    * names, and the question being asked is whether this report still says one.
@@ -865,6 +873,34 @@ export class WorkspaceSession {
   }
 
   /**
+   * Write one call's receipt to the active thread, and advance the step count. Separate from
+   * `record` because a receipt is not a transcript line, and chained through the same promise so a
+   * receipt lands between the lines it was earned between. Warns rather than throws, for the same
+   * reason `record` does.
+   */
+  private recordUsage(event: Extract<AgentEvent, { type: 'usage' }>): void {
+    const step = this.step++;
+    const id = this.thread?.id;
+    if (!id) return;
+    const paths = new ProjectPaths(this.dir);
+    const usage: ThreadUsage = {
+      step,
+      input: event.input,
+      output: event.output,
+      ...(event.cacheRead === undefined ? {} : { cacheRead: event.cacheRead }),
+      ...(event.cacheWrite === undefined ? {} : { cacheWrite: event.cacheWrite }),
+      ...(event.cacheEstimated === undefined ? {} : { cacheEstimated: event.cacheEstimated }),
+      ...(event.verdict === undefined ? {} : { verdict: event.verdict }),
+      at: new Date().toISOString(),
+    };
+    this.writes = this.writes
+      .then(() => appendUsage(paths, id, usage))
+      .catch((err: unknown) => {
+        console.warn(`[vnstudio] could not append usage to thread ${id}: ${String(err)}`);
+      });
+  }
+
+  /**
    * The backend for the next turn. A chat backend that can hold a conversation gets the native
    * backend, which is the cached path. Every other backend gets the text path.
    *
@@ -921,6 +957,7 @@ export class WorkspaceSession {
       budget: this.budget,
       onEvent: (event) => {
         this.record((convo) => received(convo, event));
+        if (event.type === 'usage') this.recordUsage(event);
         this.deps.emitEvent(event);
         if (event.type === 'api') this.announceApi(event);
       },
@@ -1083,6 +1120,7 @@ export class WorkspaceSession {
         ...(this.model === '' ? {} : { model: this.model }),
         ...(this.effort === undefined ? {} : { effort: this.effort }),
       });
+      this.step = 1;
     } catch (err) {
       console.warn(`[vnstudio] could not start a conversation thread: ${String(err)}`);
     }

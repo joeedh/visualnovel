@@ -11,6 +11,7 @@
  * carries the counter over, so a cleared conversation never reuses an id.
  */
 import { charge } from '@vn/types';
+import type { CacheVerdict } from '@vn/authoring';
 import type {
   AgentEvent,
   AskQuestion,
@@ -52,6 +53,25 @@ export interface FeedItem {
 }
 
 /**
+ * What one API call cost, written down. A receipt is not a transcript line — nobody said it — so it
+ * is a record of its own rather than a `FeedItem`, and it carries the step it belongs to so a
+ * reader can line it up against the transcript without matching timestamps.
+ *
+ * `verdict` is what the call did to the prompt cache, and is present only where the backend's
+ * figures can be compared across calls. Absent means the question was not answerable.
+ */
+export interface ThreadUsage {
+  step: number;
+  input: number;
+  output: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  cacheEstimated?: boolean;
+  verdict?: CacheVerdict;
+  at: string;
+}
+
+/**
  * A saved conversation's header. It lives here rather than beside the store in `main/threads.ts`
  * because both sides of the bridge hold one (main writes it, and `agent.threads` hands it to the
  * dropdown) and `main/` is node-only.
@@ -86,9 +106,15 @@ export interface ThreadArchive {
   at: string;
 }
 
-/** A whole saved conversation: the header plus every transcript line, in order. */
+/**
+ * A whole saved conversation: the header plus every transcript line, in order.
+ *
+ * `usage` is absent on a thread that recorded no receipts, which is every thread written before
+ * they were recorded and every thread had on a backend that reports nothing.
+ */
 export interface ThreadRecord extends ThreadHeader {
   items: FeedItem[];
+  usage?: ThreadUsage[];
 }
 
 /**

@@ -28,6 +28,25 @@ export interface FeedItem {
   at?: string;
 }
 
+/**
+ * One call's receipt, as the thread recorded it. Structurally the desktop app's `ThreadUsage`, and
+ * declared here for the same reason `FeedItem` is.
+ *
+ * `verdict` is what the call did to the prompt cache, and is present only where the backend's
+ * figures can be compared across calls. Absent means the question was not answerable, never that
+ * the cache worked.
+ */
+export interface ThreadUsage {
+  step: number;
+  input: number;
+  output: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  cacheEstimated?: boolean;
+  verdict?: 'cold' | 'hit' | 'expired' | 'miss';
+  at: string;
+}
+
 /** One saved conversation. Structurally the desktop app's `ThreadRecord`. */
 export interface ThreadRecord {
   id: string;
@@ -36,6 +55,8 @@ export interface ThreadRecord {
   commit?: string;
   model?: string;
   items: FeedItem[];
+  /** Absent on a thread that recorded no receipts, which is every thread written before they were. */
+  usage?: ThreadUsage[];
 }
 
 /** What the host knows about the run that the thread file does not record. */
@@ -74,8 +95,15 @@ export function redactEvidence(evidence: Evidence, redactor: Redactor): Evidence
   const scrub = (text: string): string => redactor.apply(text);
   return {
     ...evidence,
+    // Field by field rather than by spreading, because a spread would carry a field added to
+    // `ThreadRecord` later into the report unscrubbed. Everything named here either holds no
+    // authored text or is scrubbed on the way past.
     thread: {
-      ...evidence.thread,
+      id: evidence.thread.id,
+      startedAt: evidence.thread.startedAt,
+      ...(evidence.thread.commit === undefined ? {} : { commit: evidence.thread.commit }),
+      ...(evidence.thread.model === undefined ? {} : { model: evidence.thread.model }),
+      ...(evidence.thread.usage === undefined ? {} : { usage: evidence.thread.usage }),
       title: scrub(evidence.thread.title),
       items: evidence.thread.items.map((item) => ({
         ...item,
@@ -212,6 +240,43 @@ const THIN_NOTE =
   'so the evidence below is thinner than a recent one, and silence in it is not innocence.';
 
 /**
+ * What the prompt cache did over the conversation, or nothing at all.
+ *
+ * A thread whose backend does not report comparable figures carries no verdicts, and the section is
+ * left out entirely rather than rendered empty — an empty heading reads as a cache that never
+ * missed. A miss is named by step and by what it cost to re-send, because that is the number that
+ * says whether it mattered.
+ */
+function renderCache(usage: ThreadUsage[]): string[] {
+  const judged = usage.filter((call) => call.verdict !== undefined);
+  if (judged.length === 0) return [];
+
+  const counts = new Map<string, number>();
+  for (const call of judged) {
+    const verdict = call.verdict as string;
+    counts.set(verdict, (counts.get(verdict) ?? 0) + 1);
+  }
+  const tally = [...counts]
+    .map(([verdict, n]) => `- ${verdict}: ${n}`)
+    .sort()
+    .join('\n');
+
+  const missed = judged
+    .filter((call) => call.verdict === 'miss')
+    .map((call) => `- call ${call.step} re-sent ${call.cacheWrite ?? call.input} tokens`);
+
+  const out = ['## What the prompt cache did', tally];
+  if (missed.length > 0) {
+    out.push(
+      'The prefix broke on these calls while it was still readable, so everything before the ' +
+        'break was billed again:',
+      missed.join('\n'),
+    );
+  }
+  return out;
+}
+
+/**
  * The evidence as one document. This is the only thing the analyst is shown, and it goes through
  * the redactor before it goes anywhere — so nothing here may be a shape the redactor cannot see
  * into, which is why args and output are rendered as text rather than re-encoded.
@@ -238,6 +303,8 @@ export function toMarkdown(evidence: Evidence): string {
       ? 'Nothing was said in it.'
       : thread.items.map(renderItem).join('\n\n'),
   );
+
+  out.push(...renderCache(thread.usage ?? []));
 
   out.push('## What the app did while it was open');
   out.push(

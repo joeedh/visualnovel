@@ -83,6 +83,15 @@ predates the format, so a maintainer knows why the evidence is sparse.
 `toMarkdown` fences tool args and output with a backtick run longer than any in the text, because
 a report about an agent that mangled a markdown file must not end its own code block midway.
 
+A thread also carries the receipts its calls returned, and `toMarkdown` renders what the prompt
+cache did with them: the counts per verdict, and every call the prefix broke on named by step with
+what it cost to re-send. The section is left out entirely where no call carried a verdict, because
+an empty one would read as a cache that never missed. Which backends produce a verdict at all is
+[`docs/plans/recording-cache-misses-in-a-thread.md`](../plans/recording-cache-misses-in-a-thread.md).
+
+`redactEvidence` names `ThreadRecord`'s fields explicitly rather than spreading it, so a field added
+later has to be considered rather than reaching the model by default.
+
 ## Redaction is a boundary
 
 Nothing reaches the model unredacted — not the transcript, not the author's note, not a tool

@@ -429,7 +429,7 @@ invoke('pipeline:run', { mock })
 | Which layout template the window shows | `desktop/session.json` (`pathux.<ws>.window.<n>.template`) | ✓ Survives restart | `view.layouts`, the layout watch | `view.applyLayout` / `saveLayout` / `resetLayout`, in main |
 | The layout templates themselves | `.vnstudio/layouts/*.json` (the **project** repo) | ✓ On disk, committed | `view.layouts` / `view.applyLayout` | `view.saveLayout`, `view.resetLayout`, `ensureLayouts` |
 | The conversation on screen | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
-| The conversation as a transcript | `vngen/state/threads/<id>.jsonl` | ✓ Survives restart | `agent.threads` / `agent.openThread` | Main, one line per feed item, as the turn runs |
+| The conversation as a transcript | `vngen/state/threads/<id>.jsonl` | ✓ Survives restart | `agent.threads` / `agent.openThread` | Main, one line per feed item plus one per API call's receipt, as the turn runs |
 | Header facts, `taskHash`, per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |
 | Project config | Files | ✓ On disk | Main (lazy load) | Author / editor |
