@@ -36,7 +36,8 @@ pipeline.
 
 ## Setup
 
-A fresh clone needs four steps, in this order:
+A fresh clone needs four steps, in this order (you can also run 'pnpm setup:all'; keep 
+it up to date with this list):
 
 ```bash
 git submodule update --init --recursive   # vendor/path.ux, and the one it carries
@@ -138,8 +139,8 @@ providers   │      ╲ ╲  │
 
 Core application contracts; breaking one costs money or corrupts provenance. See
 [`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md) for
-full details including failuree models. Read the pipeline-contracts doc in full before changing
-bullet points, make sure to include any documents linked in the bullet point inside
+full details including failure modes. Read the pipeline-contracts doc in full before changing
+bullet points, make sure to read any documents linked in the corresponding bullet point inside
 the pipeline-contracts doc.
 
 - **Content-addressed task graph.** Task identity is `sha256(kind, inputs)`. Replaying

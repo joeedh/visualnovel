@@ -37,7 +37,7 @@
     "smoke": "pnpm --filter @vn/desktop smoke",
     "check:keylinks": "node scripts/check-key-links.mjs",
     "audit:keydocs": "node scripts/audit-key-instructions.mjs",
-    "setup": "git submodule update --init --recursive  && pnpm install && pnpm --dir vendor/path.ux install  && pnpm check:setup"
+    "setup:all": "git submodule update --init --recursive  && pnpm install && pnpm --dir vendor/path.ux install  && pnpm check:setup"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

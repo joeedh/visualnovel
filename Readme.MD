@@ -9,3 +9,9 @@ See [`docs/guides/github-pages.md`](docs/guides/github-pages.md) for how to publ
 
 Start at [`CLAUDE.md`](CLAUDE.md) for the map of the repository, or
 [`docs/index.md`](docs/index.md) for the documentation index.
+
+## Building
+
+```bash
+pnpm setup:all
+```
