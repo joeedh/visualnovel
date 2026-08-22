@@ -4,6 +4,7 @@ import { exec, notify, onInvalidate, report } from '../bridge.js';
 import type { VnContext } from '../context.js';
 import { menuFor } from '../doctree.js';
 import { assetNode } from '../open.js';
+import { openCommandDialog } from '../dialog.js';
 import { showContextMenu } from '../showmenu.js';
 import {
   approveAction,
@@ -13,6 +14,7 @@ import {
   promoteAction,
   promptEditable,
   promptShown,
+  regenerateAction,
   replaceAction,
   watchSlot,
 } from '../../rules/assetview.js';
@@ -211,10 +213,19 @@ export class AssetEditor extends VnEditor {
   /**
    * Requeue the task behind these bytes and run it. `asset.regenerate` is `confirm: true` and
    * takes the run itself, so this is one act with one provenance record rather than two.
+   *
+   * An asset the project has moved past has no task of its own left to re-run, and the command
+   * refuses one. The button offers the run that would draw it instead, as `pipeline.run`'s own
+   * dialog, so what the author confirms is the work and its cost rather than a refusal.
    */
   private async regenerate(): Promise<void> {
     const info = this.info;
     if (!info) return;
+    const action = regenerateAction(info);
+    if (action.act === 'pipeline') {
+      openCommandDialog('pipeline.run', { mock: false }, undefined, action.note);
+      return;
+    }
     report(await exec('asset.regenerate', { hash: info.hash, run: true }));
   }
 
@@ -556,7 +567,11 @@ export class AssetEditor extends VnEditor {
 
       const regen = this.bar.button('Regenerate', () => void this.regenerate());
       regen.disabled = !info;
-      regen.description = 'Requeue the task behind these bytes and run the pipeline';
+      // Two different acts under one label, so the tooltip is the only place the author can find
+      // out which one this click is before making it.
+      regen.description = info
+        ? regenerateAction(info).hint
+        : 'Requeue the task behind these bytes and run the pipeline';
     }
 
     const task = this.bar.button('Task', () => this.showTask());

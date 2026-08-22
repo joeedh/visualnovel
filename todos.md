@@ -35,7 +35,7 @@
 	 shots in the document editor.
 [x]: add a search bar to the document tree.  it should act as a filter for the tree.
 [x]: alphabetically sort the assets subtrees in the document tree
-[ ]: the regenerate button in the asset editor should not error if it cannot be 
+[x]: the regenerate button in the asset editor should not error if it cannot be 
      recreated in one task and inform the user to run the pipeline, instead it 
 	 should pop up a dialog asking the user if they want to run the whole pipeline.
 [x]: the 'x' icon in floating editors is too small

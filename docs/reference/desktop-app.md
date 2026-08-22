@@ -1268,6 +1268,16 @@ it produces.
   `asset.regenerate` is what asks again. It refuses a `stale` asset, whose own task is an orphan,
   except when the slot's current identity is `failed` or `needs_human` — then it queues that task,
   and the picture on screen stays until the new render lands.
+- **Regenerate offers the run rather than reporting the refusal.** A stale asset's own task is an
+  orphan, so `asset.regenerate` refuses it — but the picture the author asked for is already
+  planned, as the fresh task the re-key produced, and a pipeline run is what reaches it. The button
+  opens `pipeline.run`'s own dialog on that case, with the dry-run box unticked and a note saying
+  why it opened and why the box is filled in that way. What the author confirms is therefore the
+  work and its cost rather than a sentence telling them to go and find the command. `regenerateAction`
+  in `renderer/rules/assetview.ts` picks between the two acts and writes the button's tooltip, since
+  one label now covers both; its order mirrors `regeneration` in `main/session.ts`, failed re-render
+  first. The refusals that need the graph — an asset recording no task, base assets unavailable —
+  are left to the command, which is the only side that can see one.
 - **The mode strip says which text is actually being sent** — the clauses, a prompt the author wrote
   by hand, or one the agent condensed. Condensing is a button beside it; a condensation whose
   clauses have since moved is **held**, and the banner over the cards says so rather than the pane

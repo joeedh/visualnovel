@@ -8,6 +8,7 @@ import {
   promoteAction,
   promptEditable,
   promptShown,
+  regenerateAction,
   replaceAction,
   watchSlot,
 } from '../assetview.js';
@@ -266,6 +267,36 @@ describe('driftNote', () => {
   it('still reports a suspension over a failure, since the words may be fine', () => {
     const note = driftNote(info({ stale: true, suspended: 'a1b2 moved', failure: failed() }));
     expect(note).toContain('Suspended');
+  });
+});
+
+describe('regenerateAction', () => {
+  it('requeues the asset’s own task while the project still describes it', () => {
+    expect(regenerateAction(info())).toMatchObject({ act: 'requeue' });
+  });
+
+  // Main refuses this one, so a click that ran the command would report the refusal and stop
+  it('offers a run for an asset the project has moved past', () => {
+    const action = regenerateAction(info({ stale: true }));
+    expect(action.act).toBe('pipeline');
+    if (action.act !== 'pipeline') throw new Error('expected the pipeline offer');
+    expect(action.note).toContain('Café Mori — night');
+    expect(action.note).toContain('Dry run is unticked');
+  });
+
+  // Nothing reaches a task that gave up once its budget is spent, so a run is the wrong offer —
+  // the same exception main makes ahead of its own stale refusal
+  it('still requeues a stale asset whose slot has since failed', () => {
+    expect(regenerateAction(info({ stale: true, failure: failed({ later: true }) }))).toMatchObject(
+      {
+        act: 'requeue',
+      },
+    );
+  });
+
+  it('says which of the two the click does', () => {
+    expect(regenerateAction(info()).hint).toContain('Requeue');
+    expect(regenerateAction(info({ stale: true })).hint).toContain('pipeline run');
   });
 });
 

@@ -160,6 +160,41 @@ export function promptEditable(info: AssetInfo): RedrawAction {
   return { ok: true, prompt: info.prompt ?? '', title: info.title ?? '' };
 }
 
+/** The Regenerate button: requeue this asset's own task, or offer to run the pipeline instead. */
+export type RegenerateAction =
+  | { act: 'requeue'; hint: string }
+  | { act: 'pipeline'; hint: string; note: string };
+
+/**
+ * Which of the two acts Regenerate performs. A stale asset's own task is an orphan — the prompt
+ * moved on, so the planner wants a different hash — and `asset.regenerate` refuses it. The picture
+ * the author is asking for still exists, as the fresh task planning already made, so the button
+ * offers the run that reaches it rather than reporting a refusal and stopping.
+ *
+ * A stale asset whose slot has since failed is the exception, and it is checked first for the
+ * reason main checks it first: the task to re-run is the one that gave up, and no run reaches it
+ * once its retry budget is spent. The order here mirrors `regeneration` in `main/session.ts`.
+ * Refusals that need the graph (an asset recording no task, unavailable base assets) are left to
+ * the command, which is the only side that can see one.
+ */
+export function regenerateAction(info: AssetInfo): RegenerateAction {
+  const requeue = {
+    act: 'requeue',
+    hint: 'Requeue the task behind these bytes and run the pipeline',
+  } as const;
+  if (info.failure?.later) return requeue;
+  if (!info.stale) return requeue;
+  return {
+    act: 'pipeline',
+    hint: 'Offer a pipeline run: this picture is behind the project, and the task that catches it up is already planned',
+    note:
+      `${info.label} was rendered from a prompt the project has since changed, so re-running its own ` +
+      'task would draw the picture you edited away from. A fresh task is already planned for it, and ' +
+      'a run is what reaches it. Dry run is unticked because Regenerate asked for the picture rather ' +
+      'than a preview of the work.',
+  };
+}
+
 /** Whether a pane follows its slot, and where to. */
 export interface SlotWatch {
   /** Carry this back into the next call. */
