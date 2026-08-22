@@ -558,6 +558,31 @@ describe('the Assets branch, one row per slot', () => {
     expect(concepts.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
   });
 
+  it('lists rows by name, with digit runs compared as numbers', () => {
+    const base = makeInput();
+    const hashes = ['d', 'e', 'f'].map((c) => c.repeat(64));
+    const labels = new Map([
+      [hashes[0]!, 'Shot 10'],
+      [hashes[1]!, 'Shot 9'],
+      [hashes[2]!, 'Aiko'],
+    ]);
+    // Handed over in `SlotGraph.order`, which here is not the order an author reads them in.
+    const nodes = hashes.map((hash, i) =>
+      slot(
+        `portrait:s${i}`,
+        { kind: 'portrait', characterId: 'aiko' },
+        { candidates: [hash], hash },
+      ),
+    );
+    const tree = buildDocTree({
+      ...base,
+      manifest: hashes.map((hash) => asset(hash)),
+      assetLabels: labels,
+      slots: slots(nodes),
+    });
+    expect(kinds(tree)[0]!.children!.map((n) => n.label)).toEqual(['Aiko', 'Shot 9', 'Shot 10']);
+  });
+
   it('is a flat list of everything without a slot graph', () => {
     const plain = kinds(buildDocTree(makeInput()));
     expect(plain.map((n) => [n.label, n.children!.map((c) => c.id)])).toEqual([

@@ -34,7 +34,7 @@
      the asset editor.  same with double clicking the shot in owning scene's subtree of 
 	 shots in the document editor.
 [ ]: add a search bar to the document tree.  it should act as a filter for the tree.
-[ ]: alphabetically sort the assets subtrees in the document tree
+[x]: alphabetically sort the assets subtrees in the document tree
 [ ]: the regenerate button in the asset editor should not error if it cannot be 
      recreated in one task and inform the user to run the pipeline, instead it 
 	 should pop up a dialog asking the user if they want to run the whole pipeline.

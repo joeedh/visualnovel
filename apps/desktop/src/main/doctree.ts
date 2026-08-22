@@ -97,6 +97,12 @@ function capped(id: string, children: DocNode[], cap: number): DocNode[] {
   ];
 }
 
+/**
+ * How the Assets branch orders what it lists. Digit runs compare as numbers, so `Shot 10` follows
+ * `Shot 9` rather than `Shot 1`, and case is ignored so an uploaded `aiko` files beside `Aiko`.
+ */
+const BY_LABEL = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 const ASSET_KIND_LABELS: Record<AssetKind, string> = {
   portrait: 'Portraits',
   model_sheet: 'Model sheets',
@@ -256,6 +262,8 @@ function driftedImages(input: DocTreeInput): Set<string> {
  * slots only, so its silence about a concept, an upload, a reference or a base-root asset says
  * nothing about them, and pruning on that silence would bury every sketch in the project. Without a
  * graph this produces a flat list.
+ *
+ * The groups and the rows in them are alphabetical, so a name can be found by scanning.
  */
 function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const stale = driftedImages(input);
@@ -279,8 +287,9 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
     else byKind.set(kind, [n]);
   };
 
-  // Slots first, in `SlotGraph.order` — upstream before downstream, the same order the Unapproved
-  // branch lists in and the order the work itself has to happen in.
+  // Slots first, walked in `SlotGraph.order` — upstream before downstream. That order decides
+  // which of two slots claiming one picture gets to keep it; the rows themselves are sorted by
+  // name further down.
   const claimed = new Set<string>();
   for (const key of input.slots?.order ?? []) {
     const slot = input.slots?.nodes.get(key);
@@ -326,14 +335,22 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
 
   for (const asset of input.manifest) if (!claimed.has(asset.hash)) add(asset.kind, row(asset));
 
+  // Both levels are ordered by the name on the row. `SlotGraph.order` did its work above, deciding
+  // which slot claims a picture two of them could; it says nothing a reader needs once every row in
+  // a group is the same kind, and a list nobody can scan for a name is worse than one that loses
+  // the topology. The takes folded under a row keep their own order, which is a history.
   const groups = [...byKind.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => BY_LABEL.compare(ASSET_KIND_LABELS[a], ASSET_KIND_LABELS[b]))
     // The heading counts rows rather than pictures, because rows are what it heads: a kind with
     // one slot rendered nine times counts as one, since the other eight are not drawn
     .map(([kind, rows]) =>
       node(`assetkind:${kind}`, 'assetkind', `${ASSET_KIND_LABELS[kind]} (${rows.length})`, {
         badge: isBaseKind(kind) ? 'base' : 'project',
-        children: capped(`assetkind:${kind}`, rows, cap),
+        children: capped(
+          `assetkind:${kind}`,
+          [...rows].sort((a, b) => BY_LABEL.compare(a.label, b.label)),
+          cap,
+        ),
       }),
     );
   return node('branch:assets', 'branch', 'Assets', { children: groups });

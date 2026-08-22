@@ -86,7 +86,9 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   correctly. A leaf is named, not hashed — see below. **Concepts** is one of those groups, and the
   only one the pipeline never plans: an `art.generate` sketch has no task in the graph, and the tree
   is the one place it is visible at all. Within a group the rows are **slots**, not
-  pictures — see the contract below.
+  pictures — see the contract below. The groups, and the rows inside each of them, are
+  **alphabetical by the name on the row**, compared with digit runs read as numbers so `Shot 10`
+  follows `Shot 9`.
 
 ## Contracts
 
@@ -98,8 +100,9 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   project that re-rendered a portrait four times has four pictures called `Aiko`, told apart only by
   the `(hash8)` a label collision costs — so it gets **one** row, the one filling the slot now, with
   the other three folded underneath it newest-first and collapsed, because `defaultExpanded` opens
-  only the roots. Slots come in `SlotGraph.order`, upstream before downstream, the same order the
-  Unapproved branch lists in. "Now" is `SlotNode.hash` where the slot resolved, and the **newest**
+  only the roots. The rows are alphabetical; `SlotGraph.order` still decides which of two slots
+  claiming one picture keeps it, which is the only thing the topology answers here. "Now" is
+  `SlotNode.hash` where the slot resolved, and the **newest**
   candidate where it did not: `pick` declines whenever the answer is not certain, a row still has to
   open on something, and that is not a verdict on the drafts — choosing between them happens in the
   Unapproved branch, where all of them are still listed one per row. Newest means latest in the
