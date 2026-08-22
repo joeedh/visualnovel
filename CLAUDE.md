@@ -305,7 +305,10 @@ The document tree, asset naming and `doc.rename`:
   dependency-free bundle of the renderer into the project alongside a workflow that runs it
   with plain `node`. The app commits and never pushes, the workflow force-pushes a
   `gh-pages` branch rather than deploying to Pages directly, and it refuses a branch that
-  carries no `.vn-pages` marker.
+  carries no `.vn-pages` marker. Serving that branch is a repository setting the app can neither
+  make nor read, and skipping it fails quietly — the workflow goes green and the address 404s — so
+  the confirmation, the notification, `project.pagesStatus` and the authoring agent's built-in
+  prompt each name the setting.
   ([`docs/guides/github-pages.md`](docs/guides/github-pages.md))
 - Nothing checks for an update until the author asks. Help ▸ Check for Updates… is the only
   trigger (`app.checkForUpdates`; nothing is scheduled and nothing is downloaded), and the

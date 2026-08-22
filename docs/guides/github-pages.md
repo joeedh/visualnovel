@@ -35,10 +35,19 @@ Commit-on-save commits all of it. The app never pushes.
 
 ## Turning it on
 
-Two steps remain, and the notification the command files says so:
+Two steps remain, both on GitHub, and neither is automatic:
 
 1. **Push the branch to `origin`.** The workflow runs on that push.
-2. **Settings ▸ Pages ▸ Deploy from a branch**, and pick **`gh-pages`** at the root.
+2. **On github.com, open the repository's Settings ▸ Pages**, set Source to **Deploy from a
+   branch**, pick **`gh-pages`** with the folder **`/ (root)`**, and Save.
+
+Step 2 fails quietly when it is skipped: the workflow goes green and the published address still
+404s. Nothing in the app can do it or check it — the app never talks to GitHub, so what it can
+report is what is installed, not what is served. Three places say so instead: the confirmation the
+command asks for before installing, the durable notification it files afterwards, and
+`project.pagesStatus`. The authoring agent can answer the question too; the steps are in its
+built-in prompt (`packages/authoring/src/context.ts`), because an author who is already talking to
+it will ask it rather than reopening a menu.
 
 The workflow renders the site and force-pushes it to `gh-pages` as a single-commit orphan branch,
 so the published branch is a rendering you can open and read rather than a history. It refuses to

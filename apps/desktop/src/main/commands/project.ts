@@ -189,7 +189,13 @@ export const projectPagesStatus = define({
         ? 'The page builder is installed, from a different build of the app.'
         : 'The page builder is installed and up to date.'
       : 'The page builder is not installed.';
-    return { message, data: view };
+    // Nothing here can see whether Pages is switched on: it is a repository setting, and the app
+    // never talks to GitHub. What is installed says nothing about what is served, so the answer
+    // names the setting rather than implying the site is up.
+    const serving = view.installed
+      ? ` Serving it needs Settings ▸ Pages on GitHub set to deploy from ${props.branch} at the root.`
+      : '';
+    return { message: `${message}${serving}`, data: view };
   },
 });
 
@@ -236,7 +242,8 @@ export const projectInstallPages = define({
       ok: true,
       note:
         `${verb} the workflow and the renderer, and exports the playable. Pushing ${view.branch} ` +
-        `then publishes the site to ${props.branch}.`,
+        `then publishes the site to ${props.branch}. Serving it is a setting only you can change: ` +
+        `Settings ▸ Pages on GitHub, deploying from ${props.branch} at the root.`,
     };
   },
   async run(props, ctx) {
@@ -249,12 +256,17 @@ export const projectInstallPages = define({
       publishBranch: props.branch,
     });
 
+    // The second step is a GitHub setting nothing here can reach, and skipping it fails quietly:
+    // the workflow goes green and the address 404s. The notification is durable, so it is still
+    // there to read when the push finishes.
     await notify({
       category: 'workspace',
       message:
-        `The GitHub page builder is installed. Two steps remain: push ${view.branch} to origin, ` +
-        `then in the repository's Settings, Pages, choose "Deploy from a branch" and pick ` +
-        `${props.branch} at the root.`,
+        `The GitHub page builder is installed. Two steps remain, both on GitHub. ` +
+        `1. Push ${view.branch} to origin — that is what runs the workflow. ` +
+        `2. Open the repository on github.com and go to Settings ▸ Pages, set Source to ` +
+        `"Deploy from a branch", pick ${props.branch} with the folder "/ (root)", and Save. ` +
+        `Until step 2 is done the workflow succeeds and the published address still 404s.`,
     });
 
     return {
