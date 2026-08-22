@@ -36,7 +36,7 @@ pipeline.
 
 ## Setup
 
-A fresh clone needs four steps, in this order (you can also run 'pnpm setup:all'; keep 
+A fresh clone needs four steps, in this order (you can also run 'pnpm setup:all'; keep
 it up to date with this list):
 
 ```bash
@@ -49,7 +49,7 @@ pnpm check:setup                               # fails by name if either of the 
 Note: path.ux is a submodule with submodules wired into the build as a
 vite alias; `pnpm check:setup`
 (`scripts/check-submodules.mjs`, also the desktop build's first step) is needed to properly
-surface errors.  Checking out the submodule does not install its dependencies: path.ux is its own
+surface errors. Checking out the submodule does not install its dependencies: path.ux is its own
 project with its own lockfile, and it is not a pnpm workspace member, so the root install
 skips it. Anyone who has built path.ux before tends to forget that step, because their
 `node_modules` is already on disk. On a clean checkout the symptom is scores of "has no

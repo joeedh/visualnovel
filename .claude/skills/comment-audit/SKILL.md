@@ -10,8 +10,8 @@ fails them, and record the audit in a **committed** ledger at `.claude/comment-a
 An entry stores the file's git blob hash at audit time, so a file counts as **stale** once its
 content changes after the audit — independent of commits, branches, or clocks.
 
-Evaluate each comment in the file.  Make sure you check every single comment.  Do not miss 
-a single one.  This includes doc comments normal comments file header comments etc.
+Evaluate each comment in the file. Make sure you check every single comment. Do not miss
+a single one. This includes doc comments normal comments file header comments etc.
 
 ## Arguments
 
