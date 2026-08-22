@@ -11,7 +11,7 @@ import type {
   ToolSchema,
 } from '../backend.js';
 import { captureRequest } from './capture.js';
-import { buildConvoRequest } from './convo-request.js';
+import { buildConvoRequest, CACHE_TTL_MS } from './convo-request.js';
 import { callWithRetry } from './transient.js';
 
 // Room for the answer. Thinking gets more because `max_tokens` caps thinking + text together.
@@ -140,6 +140,10 @@ export function createAnthropicChat(
 
   return {
     modelId,
+    // Every call reports `cache_read_input_tokens` and `cache_creation_input_tokens` as billing
+    // facts, so a zero read here is a real zero rather than a backend with no accounting
+    cacheReporting: 'billed',
+    cacheTtlMs: CACHE_TTL_MS,
     // The text path drops the usage `messageWithUsage` returns, so there is one request builder
     // and one retry policy rather than two that drift
     message: async (req: ChatRequest) => (await messageWithUsage(req)).text,

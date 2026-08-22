@@ -8,6 +8,7 @@ export * from './mock.js';
 export * from './placeholder.js';
 export * from './cache.js';
 export { createAnthropicChat } from './backends/anthropic.js';
+export { CACHE_TTL_MS } from './backends/convo-request.js';
 // Re-exported so a consumer of the backends keeps reaching the model facts through one import.
 export {
   DEFAULT_EFFORT,

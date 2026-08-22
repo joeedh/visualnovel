@@ -118,6 +118,19 @@ export interface ChatConvoRequest {
  */
 export interface ChatBackend {
   readonly modelId: string;
+  /**
+   * Whether this backend's cache figures can be compared across calls. `billed` means every call
+   * reports what it was billed, so a zero read is a real zero. `estimated` means the number is a
+   * matched prefix rather than a bill and may be absent on a call that did hit. Absent means the
+   * backend has no accounting, which is not the same as a cache that always misses.
+   */
+  readonly cacheReporting?: 'billed' | 'estimated';
+  /**
+   * How long a cached prefix survives between calls, in milliseconds. Read to tell a prefix that
+   * broke from one that aged out, so a backend that does not declare one leaves that question
+   * unanswered rather than being judged against another vendor's number.
+   */
+  readonly cacheTtlMs?: number;
   message(req: ChatRequest): Promise<string>;
   chatWithTools?(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply>;
   /**

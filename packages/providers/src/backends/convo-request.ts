@@ -13,6 +13,12 @@ import type { ChatConvoRequest, ChatTurn, ToolSchema } from '../backend.js';
 /** The vendor's cache marker. Default TTL (5 minutes): an agent's steps are seconds apart. */
 const EPHEMERAL = { type: 'ephemeral' } as const;
 
+/**
+ * How long an {@link EPHEMERAL} marker lasts, in milliseconds. The one place to change if the
+ * marker's TTL is ever set explicitly; the Anthropic backend declares it as its `cacheTtlMs`.
+ */
+export const CACHE_TTL_MS = 5 * 60 * 1000;
+
 /** The server-side BM25 tool search, which is what makes `defer_loading` safe for the cache. */
 const SEARCH_TOOL = {
   type: 'tool_search_tool_bm25_20251119',

@@ -149,6 +149,9 @@ export function createGeminiChat(
 
   return {
     modelId,
+    // The implicit cache reports a matched prefix rather than a bill, and says nothing at all on
+    // many calls that did hit, so a figure from here cannot be compared against the previous call
+    cacheReporting: 'estimated',
     // The text path drops the usage `messageWithUsage` returns, so there is one request builder
     // and one retry policy
     message: async (req: ChatRequest) => (await messageWithUsage(req)).text,
