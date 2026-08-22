@@ -33,6 +33,34 @@
   line-height: 1.5;
 }
 
+/* ------------------------------------------------------------------ filter */
+
+/* Above the tree and always drawn, unlike the new-document row below it: the box is the only sign
+   that rows are missing, so it must be on screen whenever the filter is on. */
+.dt-search {
+  flex: 0 0 auto;
+  display: flex;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+}
+
+.dt-search-box {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.dt-search-box:focus {
+  outline: 1px solid var(--sodium);
+}
+
 /* ------------------------------------------------------------------ new document */
 
 .dt-new {

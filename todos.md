@@ -33,7 +33,7 @@
 [ ]: double checking a shot in the coverage editor should show the shots asset in
      the asset editor.  same with double clicking the shot in owning scene's subtree of 
 	 shots in the document editor.
-[ ]: add a search bar to the document tree.  it should act as a filter for the tree.
+[x]: add a search bar to the document tree.  it should act as a filter for the tree.
 [x]: alphabetically sort the assets subtrees in the document tree
 [ ]: the regenerate button in the asset editor should not error if it cannot be 
      recreated in one task and inform the user to run the pipeline, instead it 

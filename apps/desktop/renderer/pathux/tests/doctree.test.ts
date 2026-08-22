@@ -2,6 +2,7 @@ import {
   assetGroups,
   backlinkSubject,
   defaultExpanded,
+  filterTree,
   findNode,
   flattenTree,
   menuFor,
@@ -123,6 +124,59 @@ describe('a counted `more`', () => {
   it('still names nothing, so a click on it is spent on its twisty', () => {
     const current = { ...NONE, sceneId: 'a' };
     expect(selectionForNode(CAPPED[0]!.children![1]!, current)).toBe(current);
+  });
+});
+
+describe('filterTree', () => {
+  const CAPPED: DocNode[] = [
+    node('branch:story', 'branch', {
+      children: [
+        node('scene:a', 'scene'),
+        node('more:branch:story', 'more', {
+          label: '… and 2 more',
+          children: [node('scene:greet', 'scene')],
+        }),
+      ],
+    }),
+  ];
+
+  it('returns the tree untouched when nothing is typed', () => {
+    const { roots, expanded } = filterTree(TREE, '   ');
+    expect(roots).toEqual(TREE);
+    expect([...expanded]).toEqual([]);
+  });
+
+  it('keeps a match and the branches over it, and drops the branches with no match under them', () => {
+    const { roots } = filterTree(TREE, 'aiko');
+    expect(roots.map((n) => n.id)).toEqual(['branch:characters']);
+    expect(roots[0]!.children!.map((n) => n.id)).toEqual(['character:aiko']);
+  });
+
+  it('opens the branches it kept for a match, so the match is drawn without a click', () => {
+    const { roots, expanded } = filterTree(TREE, 'aiko');
+    expect([...expanded]).toEqual(['branch:characters']);
+    expect(ids(flattenTree(roots, expanded))).toEqual(['branch:characters', 'character:aiko']);
+  });
+
+  it('matches without case, and on part of a label', () => {
+    expect(filterTree(TREE, 'AIK').roots.map((n) => n.id)).toEqual(['branch:characters']);
+  });
+
+  it('keeps a matching node whole, and does not open it', () => {
+    const { roots, expanded } = filterTree(TREE, 'greet');
+    const scene = roots[0]!.children![0]!;
+    expect(scene.id).toBe('scene:greet');
+    expect(scene.children!.map((n) => n.id)).toEqual(['shot:greet/greet__s1']);
+    expect(expanded.has('scene:greet')).toBe(false);
+  });
+
+  it('searches past a counted stand-in and draws what it finds in its place', () => {
+    const { roots, expanded } = filterTree(CAPPED, 'greet');
+    expect(ids(flattenTree(roots, expanded))).toEqual(['branch:story', 'scene:greet']);
+  });
+
+  it('answers with nothing when nothing matches', () => {
+    expect(filterTree(TREE, 'nobody').roots).toEqual([]);
   });
 });
 

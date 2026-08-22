@@ -151,6 +151,17 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   about what it is allowed to know. `flattenTree` expands a `more` node **at its own depth**: what a
   cap dropped are siblings of the rows above it, so opening one continues the list rather than
   nesting a copy of the branch inside itself.
+- **The search box filters the tree in hand rather than asking for another one.** `filterTree`
+  (`renderer/pathux/doctree.ts`, pure) keeps the nodes whose labels contain what was typed, matched
+  without case, plus the branches over them. A node that matches keeps its whole subtree and is not
+  opened, so a scene found by name is still a scene to drill into; a node kept only for what is
+  under it is pruned to the matches and opened, since a filter whose answers are behind twisties has
+  not filtered anything. The branches it opens are added to the ones the author had open rather than
+  replacing them, and the query is not persisted — a project reopening on three rows would read as a
+  project that lost its files. A counted `more` node is spliced away wherever the walk reaches one
+  and its children are searched in its place: the cap governs what is drawn at rest, and a query is
+  the author asking past it. Filtering is local because the whole tree is already fetched, and a
+  round trip per keystroke would answer later than the author types.
 - **Backlinks come from the same walk.** `EntityLinks` gives an entity's sheet, its `wiki` path when
   that sheet lives under `wiki/`, its assets (with `accepted` and `base`), its scenes and its shots.
   An entity with no art gets an empty list, never a missing key.

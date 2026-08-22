@@ -7,6 +7,7 @@ import {
   assetGroups,
   backlinkSubject,
   defaultExpanded,
+  filterTree,
   findNode,
   flattenTree,
   menuFor,
@@ -54,6 +55,7 @@ export class DocumentsEditor extends VnEditor {
   private newRow!: HTMLDivElement;
   private newKind!: HTMLSelectElement;
   private newName!: HTMLInputElement;
+  private search!: HTMLInputElement;
 
   /**
    * The one field this pane remembers, declared to nstructjs at the bottom of this file. Public
@@ -73,6 +75,11 @@ export class DocumentsEditor extends VnEditor {
   private picked = '';
   /** The node being renamed right now, so a rebuild underneath the box cannot start a second one. */
   private renaming = '';
+  /**
+   * What the search box holds. Not remembered across sessions: a filter is a question about right
+   * now, and a project reopening on three visible rows would read as a project that lost its files.
+   */
+  private query = '';
 
   static override define() {
     return {
@@ -93,7 +100,7 @@ export class DocumentsEditor extends VnEditor {
     this.surface = el('div', 'dt-surface') as HTMLDivElement;
     this.rows = el('div', 'tv-rows') as HTMLDivElement;
     this.panel = el('div', 'dt-panel') as HTMLDivElement;
-    this.surface.append(this.buildNewRow(), this.rows, this.panel);
+    this.surface.append(this.buildSearchRow(), this.buildNewRow(), this.rows, this.panel);
     // Latching on the surface rather than on the rows also covers the backlink panel below them.
     armDismissLatch(this.surface, menuIsOpen);
     this.appendSurface(this.surface);
@@ -185,6 +192,7 @@ export class DocumentsEditor extends VnEditor {
       this.failure,
       this.token,
       this.picked,
+      this.query,
       this.expanded.size,
       [...this.expanded].join(','),
       ui.sceneId,
@@ -228,6 +236,34 @@ export class DocumentsEditor extends VnEditor {
         : this.bar.button('Close all', () => this.collapseAll());
     shut.description = 'Fold every branch of the tree shut';
     this.bar.flushUpdate();
+  }
+
+  /**
+   * The search box. It sits outside the rows it filters, so it keeps the caret through the rebuild
+   * every keystroke causes. Filtering is local to the tree already fetched: everything the pane
+   * draws is in hand, and a round trip per keystroke would answer later than the author types.
+   */
+  private buildSearchRow(): HTMLElement {
+    const row = el('div', 'dt-search') as HTMLDivElement;
+    this.search = document.createElement('input');
+    this.search.className = 'dt-search-box';
+    this.search.placeholder = 'filter';
+    this.search.title =
+      'Show only the rows whose names contain what you type — Escape clears it again';
+    this.search.addEventListener('input', () => {
+      this.query = this.search.value;
+      this.rebuild();
+    });
+    // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
+    // keys opens the palette on the first `/` of a query.
+    this.search.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key !== 'Escape' || this.query === '') return;
+      this.query = this.search.value = '';
+      this.rebuild();
+    });
+    row.appendChild(this.search);
+    return row;
   }
 
   /**
@@ -316,9 +352,15 @@ export class DocumentsEditor extends VnEditor {
       return;
     }
 
-    const rows = flattenTree(roots, this.expanded);
+    // The filter's own open branches are added to the author's rather than replacing them, so a
+    // matched node they had already expanded still shows what is under it.
+    const filtered = filterTree(roots, this.query);
+    const rows = flattenTree(filtered.roots, new Set([...this.expanded, ...filtered.expanded]));
     if (rows.length === 0) {
-      this.rows.appendChild(el('div', 'dt-note', 'Nothing in this workspace yet.'));
+      const note = this.query.trim()
+        ? `Nothing here is called “${this.query.trim()}”.`
+        : 'Nothing in this workspace yet.';
+      this.rows.appendChild(el('div', 'dt-note', note));
       return;
     }
 

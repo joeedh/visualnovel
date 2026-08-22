@@ -48,6 +48,53 @@ export function flattenTree(roots: readonly DocNode[], expanded: ReadonlySet<str
   return rows;
 }
 
+/** A tree narrowed to a query, and the ids that have to be open for its matches to be on screen. */
+export interface FilteredTree {
+  roots: DocNode[];
+  expanded: Set<string>;
+}
+
+/** Drop counted stand-ins, searching what they hold in their place. */
+function uncapped(nodes: readonly DocNode[]): DocNode[] {
+  return nodes.flatMap((node) => (node.kind === 'more' ? uncapped(node.children ?? []) : [node]));
+}
+
+/**
+ * The tree narrowed to the nodes whose labels contain `query`, matched without case. An empty query
+ * returns the tree unchanged and opens nothing.
+ *
+ * A node that matches keeps its whole subtree, so a scene found by name is still a scene to drill
+ * into, and it is not opened — the author asked for the scene, not for its shots. A node that does
+ * not match survives only for the matches beneath it, pruned to them and opened, since a filter
+ * whose answers are behind twisties has not filtered anything.
+ *
+ * A counted `more` node is spliced away wherever the walk reaches one and its children are searched
+ * in its place. The cap governs how much of a branch is drawn at rest, and a query is the author
+ * asking past it.
+ */
+export function filterTree(roots: readonly DocNode[], query: string): FilteredTree {
+  const needle = query.trim().toLowerCase();
+  const expanded = new Set<string>();
+  if (needle === '') return { roots: [...roots], expanded };
+
+  const keep = (nodes: readonly DocNode[]): DocNode[] => {
+    const out: DocNode[] = [];
+    for (const node of uncapped(nodes)) {
+      if (node.label.toLowerCase().includes(needle)) {
+        out.push(node);
+        continue;
+      }
+      const children = keep(node.children ?? []);
+      if (children.length === 0) continue;
+      expanded.add(node.id);
+      out.push({ ...node, children });
+    }
+    return out;
+  };
+
+  return { roots: keep(roots), expanded };
+}
+
 /** Flip one node, returning a new set. The pane holds the expanded state itself. */
 export function toggleExpanded(expanded: ReadonlySet<string>, id: string): Set<string> {
   const next = new Set(expanded);
