@@ -20,11 +20,23 @@ import { api } from '../api.js';
 import { exec, shell } from './bridge.js';
 import { openCommandDialog } from './dialog.js';
 import { VN_ICONS } from './icons.js';
+import { paragraph } from './paragraph.js';
+import { INSET, onPopupClosed, stylePopup } from './popup.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
 
 const WIDTH = 460;
+
+/** How wide the category filter is. It holds a column of tickboxes, so it needs far less room. */
+const FILTER_WIDTH = 200;
+
+/** What the × at the end of a row takes off it, so a message wraps short of the × rather than under it. */
+const ACTION = 48;
+
+/** What a message may fill: the popup's width, less its own inset and the × beside it. */
+const PROSE = WIDTH - INSET - ACTION;
+
 const FILTER_KEY = 'vn.notifications.filter';
 
 /**
@@ -38,19 +50,20 @@ export interface Anchor {
 }
 
 /**
- * Put a `WIDTH`-wide popup under `anchor`, right edges aligned, and keep it on screen.
+ * Put a `width`-wide popup under `anchor`, right edges aligned, and keep it on screen.
  *
  * Right edges are aligned rather than left ones because both controls that open a popup sit at the
- * right end of a bar, and a `WIDTH`-wide box starting at the bell would hang off the edge of the
- * window. A caller with no anchor to give (the palette, the agent) gets the top right corner.
+ * right end of a bar, and a wide box starting at the bell would hang off the edge of the window. A
+ * caller with no anchor to give (the palette, the agent) gets the top right corner.
  */
 function place(
   screenWidth: number,
   anchor: Anchor | undefined,
   fallbackY: number,
+  width: number,
 ): [number, number] {
-  if (!anchor) return [Math.max(8, screenWidth - WIDTH - 16), fallbackY];
-  const x = Math.min(Math.max(8, anchor.right - WIDTH), Math.max(8, screenWidth - WIDTH - 8));
+  if (!anchor) return [Math.max(8, screenWidth - width - 16), fallbackY];
+  const x = Math.min(Math.max(8, anchor.right - width), Math.max(8, screenWidth - width - 8));
   return [x, anchor.bottom + 4];
 }
 
@@ -123,16 +136,17 @@ class NotificationList {
 
     // Hung under the bell that opened it, since a fixed `y` lands far from the bell in a window
     // whose chrome is taller than the header
-    const [x, y] = place(screen.size[0], anchor, 40);
+    const [x, y] = place(screen.size[0], anchor, 40, WIDTH);
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
-    this.popup.style['width'] = `${WIDTH}px`;
+    stylePopup(this.popup, screen, WIDTH, y);
 
-    const end = this.popup.end.bind(this.popup);
-    this.popup.end = () => {
+    // Escape and a click outside never reach `close`, so the singleton is cleared when the popup
+    // is removed. An overridden `end` is not called on those paths, which left the bell toggling
+    // nothing for the rest of the session.
+    onPopupClosed(this.popup, () => {
       list = undefined;
       closeFilters();
-      end();
-    };
+    });
 
     this.body = this.popup.col();
     this.render();
@@ -162,7 +176,7 @@ class NotificationList {
       const empty = rows.label(this.emptyBecause());
       empty.style['flexShrink'] = '0';
     }
-    for (const note of shown) this.row(rows, note);
+    shown.forEach((note, i) => this.row(rows, note, i > 0));
 
     this.body.flushUpdate();
   }
@@ -239,13 +253,26 @@ class NotificationList {
   /**
    * One row. Archiving replaces its contents rather than the list — same row object, same
    * layout space — so the Undo the × offers sits exactly where the message was.
+   *
+   * The message is a wrapped paragraph rather than a button's label. A path.ux `Button` sets its
+   * own height from the theme and its width to `max-content`, so a label longer than the popup
+   * wraps inside a box still one line tall and is painted through the header above it and the
+   * pane below. The paragraph is clickable in the button's place, and `×` stays a button because
+   * a single glyph fits one.
    */
-  private row(rows: Container, note: Notification): void {
+  private row(rows: Container, note: Notification, ruled: boolean): void {
     const row = rows.row();
     // A `colframe-x` is a flex column and a flex child shrinks before its parent scrolls, so
     // without this a long list squeezes every row to a few pixels and draws them through each
     // other instead of overflowing
     row.style['flexShrink'] = '0';
+    // A wrapped message makes the row several lines tall, and a centred × then floats level with
+    // the middle of the sentence rather than with the row it ends
+    row.style['alignItems'] = 'flex-start';
+    // Where one four-line message ends and the next begins, said in the layout rather than left
+    // to the author to work out from the bullets. `setBoxCSS` rewrites margin, padding and
+    // border-radius from the theme on every update, and leaves the other border properties alone.
+    if (ruled) row.style['borderTop'] = '1px solid var(--ink-line, #232a35)';
     if (this.archived.has(note.id)) {
       row.label('archived');
       row.button('undo', () => {
@@ -255,11 +282,19 @@ class NotificationList {
       return;
     }
 
-    const mark = note.r ? '  ' : '● ';
-    const open = row.button(`${mark}[${note.category}] ${note.message}`, () => {
+    // A read row keeps the bullet's width so the messages stay in one column. The spaces are
+    // non-breaking because a plain one collapses away in wrapped prose.
+    const mark = note.r ? '  ' : '● ';
+    const open = paragraph(row, `${mark}[${note.category}] ${note.message}`, PROSE);
+    open.description = `${note.level} · ${note.source} · ${note.at}`;
+    // The label is only as wide as its text, so on a one-line message the × would otherwise land
+    // mid-row instead of at the end of it
+    open.style['flexGrow'] = '1';
+    open.dom.style.cursor = 'pointer';
+    open.dom.style.padding = '4px 0';
+    open.addEventListener('click', () => {
       void act('notify.follow', { id: note.id });
     });
-    open.description = `${note.level} · ${note.source} · ${note.at}`;
 
     const hide = row.button('×', () => {
       this.archived.add(note.id);
@@ -278,14 +313,13 @@ class FilterPopup {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the filter on');
 
-    const [x, y] = place(screen.size[0], anchor, 80);
+    const [x, y] = place(screen.size[0], anchor, 80, FILTER_WIDTH);
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
+    stylePopup(this.popup, screen, FILTER_WIDTH, y);
 
-    const end = this.popup.end.bind(this.popup);
-    this.popup.end = () => {
+    onPopupClosed(this.popup, () => {
       filters = undefined;
-      end();
-    };
+    });
 
     this.body = this.popup.col();
     this.render();

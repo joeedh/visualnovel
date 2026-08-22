@@ -12,7 +12,7 @@
 	 create a tool for the agent to search the uncompacted history similar to how claude code 
 	 does it.
 [ ]: execute docs/plans/the-debug-agent-as-a-conversation.md
-[ ]: overlapping notifications popup is still not fixed, you will have to run a headed 
+[x]: overlapping notifications popup is still not fixed, you will have to run a headed 
      test and take screenshots yourself to fix it.  note it needs fairly long notification
 	 text to happen.
 [x]: the model api error card thingy should have 'stop and try and figure what went wrong'

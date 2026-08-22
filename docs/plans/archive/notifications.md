@@ -318,13 +318,17 @@ in the header — so the badge and the list can never disagree about which ones 
 ### The list
 
 `renderer/pathux/notifications.ts`, modelled on `dialog.ts`: a module-level singleton, a popup
-anchored top-right, a wrapped `popup.end` so Escape and click-outside clear it, and a scrolling
-`col()` with `overflowY: 'auto'` and a `maxHeight`.
+anchored top-right, and a scrolling `col()` with `overflowY: 'auto'` and a `maxHeight`. Both this
+popup and the filter take the shared chrome in `popup.ts` — `stylePopup` for the border, the
+padding and the window-sized cap, and `onPopupClosed` for the singleton guard.
 
-Each row is a full-width button — `● [category] message` — running `notify.follow`, plus a small
-`×` running `notify.hide`. Clicking a row marks it read but does **not** hide it. On `×`, the
-row's contents are replaced **in place** — the same row object, so the layout space is kept — with
-"archived" and an "undo" button running `notify.unhide`.
+Each row is a wrapped paragraph — `● [category] message` — that runs `notify.follow` when it is
+clicked, plus a small `×` running `notify.hide`. The message is a `paragraph()` rather than a
+button's label because a path.ux `Button` sets its own height from the theme and its width to
+`max-content`: a label longer than the popup wraps inside a box still one line tall and paints
+through the header above it and the pane below. Clicking a row marks it read but does **not** hide
+it. On `×`, the row's contents are replaced **in place** — the same row object, so the layout space
+is kept — with "archived" and an "undo" button running `notify.unhide`.
 
 The header holds `Clear` (which hides everything the list is currently showing, so it respects the
 filter), a "show deleted" checkbox, the funnel, and a `⋯` menu with
