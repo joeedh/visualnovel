@@ -13,7 +13,8 @@
 	 does it.
 [ ]: execute docs/plans/the-debug-agent-as-a-conversation.md
 [ ]: overlapping notifications popup is still not fixed, you will have to run a headed 
-     test and take screenshots yourself to fix it.
+     test and take screenshots yourself to fix it.  note it needs fairly long notification
+	 text to happen.
 [ ]: the model api error card thingy should have 'stop and try and figure what went wrong'
      be the first option before the models.
 [ ]: the tokens counter's tooltip should be reworked so it's more readable for average users 
