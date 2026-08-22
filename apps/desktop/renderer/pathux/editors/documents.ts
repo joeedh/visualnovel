@@ -377,11 +377,14 @@ export class DocumentsEditor extends VnEditor {
       onToggle: (id) => this.toggle(id),
       onClick: (row) => this.pick(row),
       // A location mined from a heading has no sheet, so its second click writes one rather than
-      // renaming — the only place in the tree where a second click authors a file.
+      // renaming — the only place in the tree where a second click authors a file. A shot's second
+      // click opens the frame it was drawn as, and a shot with no frame yet does nothing, which is
+      // what its tooltip says it will do.
       onSecondClick: (row) => {
         const renamable = renameOf(row.node);
         if (renamable) this.beginRename(row.node.id, renamable);
         else if (this.sheetless(row.node)) void this.writeSheet(row.node.label);
+        else if (row.node.kind === 'shot' && row.node.hash) this.openAsset(row.node.hash);
       },
       onMenu: (row, x, y) => this.openMenu(row, x, y),
     });

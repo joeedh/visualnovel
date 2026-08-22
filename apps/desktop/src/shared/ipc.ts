@@ -461,6 +461,13 @@ export interface DocNode {
    * the tooltip rule forbids.
    */
   note?: string;
+  /**
+   * The picture this row stands for, for a row that is not itself an asset row. A shot carries
+   * the frame its storyboard recorded, which is what lets a second click open it without the tree
+   * deciding for itself which of a slot's takes counts. An asset row keeps its hash in its
+   * {@link DocNode.id} instead, the way `assetNode` writes one.
+   */
+  hash?: string;
   children?: DocNode[];
 }
 

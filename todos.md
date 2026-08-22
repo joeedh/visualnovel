@@ -30,7 +30,7 @@
      checkbox on.
 [x]: clicking the pipeline stop button should also stop the recursive approve and generate
      loop if it doesn't already.
-[ ]: double checking a shot in the coverage editor should show the shots asset in
+[x]: double checking a shot in the coverage editor should show the shots asset in
      the asset editor.  same with double clicking the shot in owning scene's subtree of 
 	 shots in the document editor.
 [x]: add a search bar to the document tree.  it should act as a filter for the tree.

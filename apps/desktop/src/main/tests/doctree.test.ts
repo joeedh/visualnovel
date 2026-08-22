@@ -154,6 +154,19 @@ describe('buildDocTree', () => {
     expect(scenes[1]!.children).toBeUndefined();
   });
 
+  it('carries the frame a shot was drawn as, so a second click can open it', () => {
+    const frame = 'c'.repeat(64);
+    const drawn = buildDocTree(
+      makeInput({ shots: new Map([['arrival', [scene('arrival', { image: frame })]]]) }),
+    );
+    const shots = branch(drawn.roots, 'branch:story').children![0]!.children!;
+    expect(shots[0]!.hash).toBe(frame);
+    // A shot with no frame yet carries no hash at all, which is what leaves the second click and
+    // the tooltip about it out.
+    const shot = branch(tree.roots, 'branch:story').children![0]!.children![0]!;
+    expect(shot.hash).toBeUndefined();
+  });
+
   it('says so on the scene when a storyboard would not parse, rather than failing the tree', () => {
     const broken = buildDocTree(makeInput({ shots: new Map([['arrival', null]]) }));
     const scenes = branch(broken.roots, 'branch:story').children!;

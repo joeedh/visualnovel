@@ -122,7 +122,12 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
         ? undefined
         : capped(
             `scene:${scene.id}`,
-            shots.map((s) => node(`shot:${scene.id}/${s.id}`, 'shot', s.id, { badge: s.framing })),
+            shots.map((s) =>
+              node(`shot:${scene.id}/${s.id}`, 'shot', s.id, {
+                badge: s.framing,
+                ...(s.image ? { hash: s.image } : {}),
+              }),
+            ),
             cap,
           );
     // An unreadable storyboard outranks an unreachable scene, because a disk problem is the one

@@ -312,6 +312,19 @@ Two things behind the gesture:
   added), because writing anywhere else would leave the tree showing the old name. **The file never
   moves**: the id is derived from a name once, at creation.
 
+## Opening a shot's frame
+
+Double-clicking a shot under its scene shows the frame that shot was drawn as, in the Asset
+editor. It is the same counted gesture as the rename above, on the branch of `onSecondClick` that
+handles a node no rename and no sheet claimed.
+
+The hash comes from the storyboard's own `Shot.image`, carried onto the node as `DocNode.hash` in
+`storyBranch`. The tree does not pick it: a slot can hold several takes, and `EntityLinks.assets`
+lists all of them, so choosing there would risk opening a picture the runner would not show. A shot
+with no frame yet carries no hash, its tooltip offers no double-click, and the gesture does nothing.
+The Shot Coverage editor answers the same double-click the same way, from `CoverageShot.image`,
+which is the same field projected for the strip.
+
 ## Deliberately absent
 
 - **An agent backlink tool** — `vnauthor` authors inputs and stops at them; shots and assets are

@@ -26,6 +26,8 @@ import {
 import type { VnContext } from '../context.js';
 import { openCommandDialog } from '../dialog.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { assetNode, openNode } from '../open.js';
+import type { VnScreen } from '../screen.js';
 import { showContextMenu } from '../showmenu.js';
 import {
   aimCreate,
@@ -41,7 +43,12 @@ import {
 } from '../timeline.js';
 import STRIP_CSS from '../../styles/timeline.css?inline';
 import type { Invocation } from '@vn/commands';
-import type { CoverageLine, SceneCoverage, StoryGraph } from '../../../src/shared/ipc.js';
+import type {
+  CoverageLine,
+  CoverageShot,
+  SceneCoverage,
+  StoryGraph,
+} from '../../../src/shared/ipc.js';
 
 /**
  * The frame around `timeline.css`, which is imported as-is because the React strip's sheet is kept
@@ -582,7 +589,9 @@ export class TimelineEditor extends VnEditor {
 
     if (last) box.appendChild(this.handle(shotId, 'end'));
 
-    box.title = `${shotId} — click to select it, drag to move it among the other shots`;
+    box.title =
+      `${shotId} — click to select it, double-click to open its frame, ` +
+      'drag to move it among the other shots';
     // The drag handles prevent their pointerdown and a bracket does not, because a bracket is
     // also the click target that selects a shot, and a grab that never moves must read as a click.
     box.addEventListener('pointerdown', () => {
@@ -590,6 +599,7 @@ export class TimelineEditor extends VnEditor {
       this.select(shotId);
       this.beginReorder(shotId);
     });
+    box.addEventListener('dblclick', () => this.openFrame(shot));
     // A right-click offers the commands about this one shot, each checked before it is drawn, with
     // a refusal (deleting the last shot, say) shown rather than hidden.
     box.addEventListener('contextmenu', (event) => {
@@ -706,6 +716,24 @@ export class TimelineEditor extends VnEditor {
     if (this.ui.shotId === shotId) return;
     this.ui.shotId = shotId;
     this.announce();
+  }
+
+  /**
+   * Show a shot's frame in the asset editor. The hash comes from the storyboard's own `image`
+   * field, so this opens the picture the runner would show rather than deciding for itself which
+   * of a slot's takes counts.
+   */
+  private openFrame(shot: CoverageShot): void {
+    const image = shot.image;
+    if (!image) {
+      return this.say({
+        tone: 'refused',
+        text: `${shot.id} has no frame yet — run the pipeline to draw one.`,
+      });
+    }
+    this.ui.assetHash = image.hash;
+    this.announce();
+    openNode(this.ctx?.screen as VnScreen | undefined, assetNode(image.hash));
   }
 
   private beginDrag(shotId: string, edge: Edge): void {

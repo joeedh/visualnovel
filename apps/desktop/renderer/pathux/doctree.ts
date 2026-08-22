@@ -471,6 +471,9 @@ export function rowTitle(
       ? 'Hide the rest of this list again'
       : 'More than the tree draws at once — click to show the rest';
   }
+  if (node.kind === 'shot' && node.hash) {
+    return 'Open this shot in its editor — double-click to show the frame it was drawn as';
+  }
   return `Open this ${node.kind} in its editor`;
 }
 

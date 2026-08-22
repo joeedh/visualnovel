@@ -611,6 +611,14 @@ describe('rowTitle', () => {
     );
   });
 
+  // The second click opens the frame, so the row offers it only once there is one to open.
+  it('offers a drawn shot’s frame, and stays quiet about a shot with none', () => {
+    const shot = node('shot:greet/greet__s1', 'shot', { hash: 'c'.repeat(64) });
+    expect(rowTitle(shot, plain)).toBe(
+      'Open this shot in its editor — double-click to show the frame it was drawn as',
+    );
+  });
+
   it('never hovers silently: every kind says something', () => {
     // A `Record` rather than a list, so adding a `DocNodeKind` fails to compile here until
     // someone has decided what its row says on hover.

@@ -816,6 +816,12 @@ below.
   every shot's covered lines keep their relative order, so no `proseHash` moves. Nothing drifts and
   nothing re-renders — only the order of `show` beats in the playable, which is the act the author
   asked for. Contrast `story.moveLine`, which moves a line _between_ shots and reports drift.
+- **Double-clicking a bracket opens the frame that shot was drawn as**, in the Asset editor, with
+  the hash taken from `CoverageShot.image` — the storyboard's own `Shot.image` projected for the
+  strip. A slot can hold several takes, so reading the field rather than picking among them opens
+  the picture the runner would show. A shot with no frame yet is refused with a sentence in the
+  notice row. The document tree answers the same gesture the same way, over `DocNode.hash`
+  ([`document-tree.md`](document-tree.md#opening-a-shots-frame)).
 - **Rows are grid rows, so wrapped prose sizes itself.** The one thing measured is which row
   the pointer is over: a full-width `.tl-band` behind each row, reached by `elementFromPoint`
   once `.tl-grid.dragging` drops pointer events on the script and the brackets.
