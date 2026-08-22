@@ -1,4 +1,4 @@
-/** The generative pipeline as commands: run to the next gate, stop a run, or read the state. */
+/** Commands for the generative pipeline: run to the next gate, stop a run, or read the state. */
 import { defineFor, prop } from '@vn/commands';
 import type { CommandHost } from './host.js';
 import type { Approvable } from '@vn/authoring';
@@ -30,8 +30,8 @@ export const pipelineRun = define({
   props: { mock: prop.boolean('dry run: preview only, no model calls', { default: true }) },
   async check({ mock }, ctx) {
     // The session runs one long thing at a time, and a second run would plan against a graph the
-    // first is still writing. The refusal names what is busy, because "an agent turn" is the case
-    // worth waiting out.
+    // first is still writing. The refusal names what is busy, whether a pipeline run or an agent
+    // turn, because either would race the graph this command is about to plan against.
     const busy = ctx.host.session.busy();
     if (busy) return { ok: false, reason: `${busy} is already in progress.` };
     const state = await ctx.host.session.runPreconditions(mock);
@@ -159,8 +159,8 @@ export function stopReason(outcome: RoundOutcome, round: number, cap = MAX_ROUND
  * unable to say which one the slot holds, so the slot reads as empty and its plates re-render.
  * A settled slot is skipped outright — its losing takes stay listed for an author who wants to
  * choose one, but a pass that approved them would un-approve its own last round and never
- * converge. The first row of a slot is the one taken, because `approvable` lists upstream-first in
- * slot order, which is the project's own idea of the obvious one.
+ * converge. The first row of a slot is the one taken, because `approvable` already lists
+ * upstream-first in slot order, which is the natural order to prefer.
  */
 export function toApprove(items: readonly Approvable[]): Approvable[] {
   const chosen: Approvable[] = [];

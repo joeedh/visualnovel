@@ -626,16 +626,16 @@
       "blob": "eb4f82af9dc4edd1c3907014c3f89e00ef42ce6e"
     },
     "apps/desktop/src/main/commands/pipeline.ts": {
-      "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "fb47ca8788ccd20978e5c2a4ba590b7331d7e2b4"
+      "auditedAt": "2026-08-22T16:45:30.857Z",
+      "blob": "0c07307a765f5cca9de6110bc322095990686b44"
     },
     "apps/desktop/src/main/commands/project.ts": {
-      "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "f273f6ed4941dd666d24c0dcc354b3879f6f3be8"
+      "auditedAt": "2026-08-22T16:38:16.563Z",
+      "blob": "d684742896f9e05c09360e8b6ee6fb237c44a962"
     },
     "apps/desktop/src/main/commands/prompt.ts": {
-      "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "817a32b398f27aa669e22420eded8f79bacc1cee"
+      "auditedAt": "2026-08-22T16:45:10.997Z",
+      "blob": "145a4b07a00c4f9187c58bc147f5301d08cd92ec"
     },
     "apps/desktop/src/main/commands/report.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",

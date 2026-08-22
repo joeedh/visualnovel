@@ -1,11 +1,11 @@
 /**
- * The project itself as commands: what `project.yaml` says, and the one field in it an author
- * edits often enough to want a pane for.
+ * Commands for the project's own settings: reading what `project.yaml` says, and writing the one
+ * field in it an author edits often enough to want a pane for.
  *
- * The art style is not like the other settings. It is the first clause of every image prompt, so
- * it is folded into every image task's hash — changing it does not adjust a rendering, it re-keys
- * the whole library and the next run draws it all again. That is why the write is `confirm: true`
- * and why its check counts what it would touch.
+ * The art style is not like the other settings. It is the first clause of every image prompt and
+ * is folded into every image task's hash, so changing it re-keys the whole library and the next
+ * run draws it all again. That is why the write is `confirm: true` and why its check counts what
+ * it would touch.
  *
  * `project.installPages` is `mutating` but not `undoable`. It writes `.github/` and `.vnstudio/`,
  * which are outside the document tree the shadow snapshot covers, and removing it again is a
@@ -20,7 +20,7 @@ import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
 
-/** A session preview read as a precondition: the plan's own sentence either way. */
+/** Converts a session preview into a `CheckResult`, keeping the session's message in both cases. */
 function verdict(result: { ok: boolean; message: string }): CheckResult {
   return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
 }
@@ -66,7 +66,7 @@ export const projectSetArtStyle = define({
   },
 });
 
-/** The two rungs an author can write to. Ordered so the enum's first value is today's default. */
+/** The two key sources an author can write to. Ordered so the enum's first value is the default. */
 const KEY_SCOPES = ['project', 'user'] as const;
 
 export const projectSetKey = define({
@@ -79,9 +79,9 @@ export const projectSetKey = define({
     'it once for every project on this machine, into a directory no repository contains. Either ' +
     'way the value reaches that file and nowhere else: the history records `<secret>`.',
   mutating: true,
-  // Deliberately not undoable: an undo point is a git snapshot, and snapshotting a credential is
-  // the one thing this command exists to avoid. That holds doubly at the user scope, where the
-  // file is not in a repository at all and there is no snapshot to be had.
+  // Deliberately not undoable: an undo point is a git snapshot, and this command exists to keep
+  // the credential out of git. At the user scope the file is not in a repository at all, so no
+  // snapshot is possible.
   undoable: false,
   props: {
     provider: prop.oneOf(KEY_VENDORS, 'which model provider the key is for'),

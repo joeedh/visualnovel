@@ -4,7 +4,7 @@
  * A separate namespace from `art.*` on purpose: `art.setNotes` writes authored input that feeds the
  * derivation (it lands in the sheet and the builders read it back) while everything here writes an
  * override of the derivation, a block that says what to do to the clauses the builders produced.
- * Different act, different place on disk, different thing to undo.
+ * The two live in different places on disk and undo differently, because they are different acts.
  *
  * Every command names its asset by hash and the session resolves hash → owning rung, so no caller
  * has to know whether a picture's prompt lives on a character sheet, a location sheet or a
@@ -16,7 +16,7 @@ import type { ChunkOp, ClearPart } from '../session.js';
 
 const define = defineFor<CommandHost>();
 
-/** A session preview read as a precondition: the plan's own sentence either way. */
+/** Turns a session preview into a precondition result, keeping the preview's own message as the note on success or the reason on refusal. */
 function verdict(result: { ok: boolean; message: string }): CheckResult {
   return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
 }
@@ -110,8 +110,8 @@ export const promptSetCustom = define({
   undoable: true,
   props: {
     hash: prop.string('the asset whose prompt to replace'),
-    // Digested, and therefore required: a whole prompt is bulk content, and the overload set has
-    // no digest-plus-default signature.
+    // A whole prompt is bulk content, so this field is digested. That makes it required: the
+    // overload set has no digest-plus-default signature.
     text: prop.string('the prompt to send instead', { digest: true }),
   },
   async check({ hash, text }, ctx) {
