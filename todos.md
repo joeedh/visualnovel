@@ -51,7 +51,7 @@
      shows convo editor in a different screen area and creates a new thread if the current 
 	 one isn't empty, and prefills it with the scene and line number.
 [x]: assets that failed to generate should have a reason shown in the asset editor.
-[ ]: when an asset that failed after X attempts is changed (e.g. art notes, prompt changes)
+[x]: when an asset that failed after X attempts is changed (e.g. art notes, prompt changes)
      the pipeline should rerender it.
 [ ]: when an asset editor is showing the more recent asset of a slot, and the pipeline generates 
      a new asset for that slot, the editor should show the new asset automatically.

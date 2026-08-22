@@ -1844,7 +1844,9 @@ export class WorkspaceSession {
    * A `stale` asset is refused on purpose: its task is an orphan (the prompt moved on, so the
    * planner now wants a different hash), and requeueing it would spend a real image call
    * reproducing the picture the author just edited away from. `tasks.jsonl` is never pruned, so
-   * without this the log's dead nodes stay re-runnable forever.
+   * without this the log's dead nodes stay re-runnable forever. The one stale asset that is not
+   * refused is one whose slot has since failed: there the task to re-run is the one that gave up,
+   * and no run will reach it on its own once its retry budget is spent.
    */
   private async regeneration(
     hash: string,
@@ -1880,6 +1882,19 @@ export class WorkspaceSession {
         ok: false,
         reason: `${info.label} records no task in the graph, so there is nothing to re-run.`,
       };
+    }
+    // A re-render the project has already given up on is the picture the author is asking for,
+    // not the one these bytes came from. The scheduler will not requeue it once its retry budget
+    // is spent, and the orphan refusal below would send the author to a run that does nothing.
+    if (info.failure?.later) {
+      const later = project.graph.get(info.failure.task);
+      if (later) {
+        return {
+          ok: true,
+          task: later,
+          note: `Would re-run the ${later.kind} that gave up on ${info.label}. The picture on screen is the last one that got through, and it stays until the new render lands.`,
+        };
+      }
     }
     if (info.stale) {
       return {

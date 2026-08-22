@@ -188,7 +188,7 @@ export function failureNote(info: AssetInfo): string {
       failure.status === 'failed'
         ? `The re-render failed after ${tries} — ${why}.`
         : `The re-render was flagged for a human — ${why}.`;
-    return `${what} What is on screen is the last frame that got through.`;
+    return `${what} What is on screen is the last frame that got through. Regenerate to run the new prompt again — no run will reach it on its own.`;
   }
   if (failure.status === 'failed') {
     return `Generating this failed after ${tries} — ${why}. Regenerate to try again.`;
@@ -208,8 +208,8 @@ export function driftNote(info: AssetInfo): string {
     return `Suspended — ${info.suspended}. Repin the reference or regenerate; the bytes stay either way.`;
   }
   if (!info.stale) return '';
-  // A failed re-render already says the project has moved on, and it says so about the attempt to
-  // catch up. Telling the author to regenerate here would be telling them to run what just failed.
+  // A failed re-render already reports that the project moved on, and already says what to do
+  // about it, so this would repeat both about the attempt to catch up
   if (info.failure?.later) return '';
   return 'Rendered from an older prompt — the project describes it differently now. Regenerate to catch up.';
 }

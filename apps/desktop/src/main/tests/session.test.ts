@@ -1460,7 +1460,7 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
    * report a re-render that never landed. Both records are written by hand, because mock providers
    * always succeed and no run can reach the state these assertions are about.
    */
-  it('reports why the slot gave up, and says when a later render is what did', async () => {
+  it('reports why the slot gave up, and regenerates the render that did', async () => {
     const log = join(p.dir, 'vngen', 'state', 'tasks.jsonl');
     const append = async (record: object): Promise<void> => {
       await fs.appendFile(log, JSON.stringify(record) + '\n');
@@ -1505,10 +1505,26 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
       attempts: [],
       error: 'the render kept coming back with the wrong window',
     });
+    const shownNow = (await session.assetInfo(node.hash!))!;
+    expect(shownNow.failure).toMatchObject({ task: next, status: 'needs_human', later: true });
+
+    // These bytes are stale, which is normally refused as an orphan — but the task the orphan
+    // refusal would send the author to a run for is the one that just gave up, and no run reaches
+    // a task that spent its budget. Regenerating asks for that task rather than this asset's.
+    expect(shownNow.stale).toBe(true);
+    expect(await session.previewRegenerate(node.hash!)).toMatchObject({
+      ok: true,
+      message: expect.stringContaining('gave up'),
+    });
+    expect(await session.regenerateAsset(node.hash!)).toMatchObject({
+      ok: true,
+      message: expect.stringContaining(next.slice(0, 8)),
+    });
+    // Queued rather than terminal, so the re-render stops being what the pane reports. What it
+    // falls back to is the task these bytes came from, which this fixture left `failed` above.
     expect((await session.assetInfo(node.hash!))!.failure).toMatchObject({
-      task: next,
-      status: 'needs_human',
-      later: true,
+      task: shown.sourceTask,
+      later: false,
     });
   });
 });

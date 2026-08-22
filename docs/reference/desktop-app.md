@@ -1209,10 +1209,19 @@ it produces.
   that identity is not terminal. The two part company after an art-notes edit: the slot re-keys, a
   run fails on the new task, and the last good render is still what is on screen — so the band says
   a re-render failed and names the frame the author is looking at, and `driftNote` stands down,
-  because its advice is to regenerate and regenerating is what just failed. `failed` quotes the
+  because the failure already reports that the project has moved on. `failed` quotes the
   retry budget (`config.max_task_attempts`) against the attempt records that carry an error;
   `needs_human` does not, since a P7 refine pass records an attempt without one. **Show task**
   opens the task that gave up, which is not always the one these bytes came from.
+- **Regenerating a failed re-render asks for that render rather than the one on screen.** An
+  authored change re-keys the slot, so the pipeline re-renders it as a matter of course: a fresh
+  node is planned with a retry budget of its own, and that is how a failed or flagged picture is
+  normally recovered (packages/pipeline/src/tests/rerender.test.ts). One edit does not get that.
+  An edit that lands the slot back on an identity which already spent its budget finds it terminal,
+  because `requeueFailed` counts a task's error-carrying attempts for the life of the project.
+  `asset.regenerate` is what asks again. It refuses a `stale` asset, whose own task is an orphan,
+  except when the slot's current identity is `failed` or `needs_human` — then it queues that task,
+  and the picture on screen stays until the new render lands.
 - **The mode strip says which text is actually being sent** — the clauses, a prompt the author wrote
   by hand, or one the agent condensed. Condensing is a button beside it; a condensation whose
   clauses have since moved is **held**, and the banner over the cards says so rather than the pane

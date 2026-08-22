@@ -230,7 +230,7 @@ describe('driftNote', () => {
     expect(driftNote(info({ stale: true }))).toContain('older prompt');
   });
 
-  // Regenerating is what the failed re-render was, so the drift note's advice would be a loop
+  // The failure sentence already carries both halves of this one, about the newer task
   it('stands down when a later render already tried to catch up and failed', () => {
     expect(driftNote(info({ stale: true, failure: failed({ later: true }) }))).toBe('');
     expect(driftNote(info({ stale: true, failure: failed() }))).toContain('older prompt');
@@ -268,10 +268,11 @@ describe('failureNote', () => {
     expect(note).not.toContain('of 2 attempts');
   });
 
-  it('says which frame is on screen when a re-render is what gave up', () => {
-    expect(failureNote(info({ failure: failed({ later: true }) }))).toContain(
-      'last frame that got through',
-    );
+  // Regenerating is the only thing that reaches a spent identity, so the note has to offer it
+  it('says which frame is on screen when a re-render is what gave up, and what to do', () => {
+    const note = failureNote(info({ failure: failed({ later: true }) }));
+    expect(note).toContain('last frame that got through');
+    expect(note).toContain('Regenerate');
   });
 
   it('reports a task that recorded no reason rather than trailing off', () => {
