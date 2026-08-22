@@ -109,7 +109,7 @@ describe('visibility outranks tier', () => {
   });
 
   test('two visible secondaries fall back to EDITORS order', () => {
-    // Branches and Coverage both claim a scene as `secondary`; Branches is listed first.
+    // Branches and Shot Coverage both claim a scene as `secondary`; Branches is listed first.
     const panes = [...documents, pane('timeline'), pane('branches')];
     expect(opened(routeFor({ node: NODES.scene, panes }))).toBe('branches');
   });

@@ -299,7 +299,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   `scene.lines`, so reordering `coversLines` is not an edit but extending coverage is: the question
   is whether this frame illustrates the words it is against. Every surface that can change prose owes
   the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it —
-  see [`desktop-app.md`](desktop-app.md#coverage). Plan:
+  see [`desktop-app.md`](desktop-app.md#shot-coverage). Plan:
   [`../plans/archive/line-editing-in-floor.md`](../plans/archive/line-editing-in-floor.md).
 - **A scene's heading is the one scene edit that _does_ invalidate art, and it is priced before it
   runs.** A location reaches a shot's task inputs twice — `buildShotPrompt` bakes `location.name`

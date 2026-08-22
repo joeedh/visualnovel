@@ -78,7 +78,6 @@ export class DocumentsEditor extends VnEditor {
     return {
       tagname: 'vn-documents-editor-x',
       areaname: 'documents',
-      uiname: 'Documents',
       icon: -1,
     };
   }

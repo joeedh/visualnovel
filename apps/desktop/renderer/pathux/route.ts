@@ -1,7 +1,7 @@
 /**
  * Which editor a clicked document-tree node opens, and where. Pure arithmetic over the claims
  * declared beside the editor names and a description of the mesh, so the answer to "why did this
- * click land in Coverage" is a table lookup that can be tested without a screen.
+ * click land in Shot Coverage" is a table lookup that can be tested without a screen.
  *
  * Routing stays in the renderer because only the mesh knows which panes exist; main answers
  * `view.*` optimistically and takes a correction back from `applyView`, and a second, main-side
@@ -79,7 +79,7 @@ export function routeFor(req: RouteRequest): Route {
 
 /**
  * Visibility first, tier second, taken literally. A visible secondary claimant beats a hidden
- * primary one, so clicking a scene with Coverage open and Script closed lands in Coverage. That is
+ * primary one, so clicking a scene with Shot Coverage open and Script closed lands there. That is
  * what "a visible editor always outranks a hidden one" says, and it respects where the author is
  * already looking. Swapping the first two comparisons is the whole change if that is ever wrong.
  */

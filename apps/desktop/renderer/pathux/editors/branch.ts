@@ -139,7 +139,6 @@ export class BranchEditor extends VnEditor {
     return {
       tagname: 'vn-branch-editor-x',
       areaname: 'branches',
-      uiname: 'Branches',
       icon: -1,
     };
   }

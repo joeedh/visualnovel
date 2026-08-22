@@ -66,7 +66,6 @@ export class SkillsEditor extends VnEditor {
     return {
       tagname: 'vn-skills-editor-x',
       areaname: 'skills',
-      uiname: 'Skills',
       icon: -1,
     };
   }

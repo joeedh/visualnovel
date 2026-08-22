@@ -34,7 +34,6 @@ export class ProjectEditor extends VnEditor {
     return {
       tagname: 'vn-project-editor-x',
       areaname: 'project',
-      uiname: 'Project',
       icon: -1,
     };
   }

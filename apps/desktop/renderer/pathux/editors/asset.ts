@@ -92,7 +92,6 @@ export class AssetEditor extends VnEditor {
     return {
       tagname: 'vn-asset-editor-x',
       areaname: 'asset',
-      uiname: 'Asset',
       icon: -1,
     };
   }

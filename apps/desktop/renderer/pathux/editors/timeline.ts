@@ -167,7 +167,6 @@ export class TimelineEditor extends VnEditor {
     return {
       tagname: 'vn-timeline-editor-x',
       areaname: 'timeline',
-      uiname: 'Coverage',
       icon: -1,
     };
   }

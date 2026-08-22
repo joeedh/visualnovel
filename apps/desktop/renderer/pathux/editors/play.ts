@@ -48,7 +48,6 @@ export class PlayEditor extends VnEditor {
     return {
       tagname: 'vn-play-editor-x',
       areaname: 'play',
-      uiname: 'Play',
       icon: -1,
     };
   }

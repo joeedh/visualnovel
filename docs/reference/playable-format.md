@@ -79,7 +79,7 @@ Ink, …); it is a thin, ordered view over the existing `Scene`/`Shot`/`Asset` t
   `@vn/pipeline`/`@vn/scheduler`.
 - **The first shot covering a line wins**, which is why the coverage timeline refuses double
   coverage rather than silently hiding the second shot's frame — see
-  [`desktop-app.md`](desktop-app.md#coverage).
+  [`desktop-app.md`](desktop-app.md#shot-coverage).
 
 ## The web export
 

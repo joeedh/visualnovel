@@ -8,7 +8,7 @@
  *
  * The mechanism is one field rather than a copy of the state. {@link PinField} names which
  * selection the pane is about, and only that read is frozen. Everything else — the project title,
- * the busy flags, and the rest of the selection — is still live, so a pinned Coverage holds its
+ * the busy flags, and the rest of the selection — is still live, so a pinned Shot Coverage holds its
  * scene and still highlights the selected shot.
  *
  * Pure, and with no `pathux` import, so the node-only jest project can test the proxy's two rules:

@@ -59,7 +59,6 @@ export class InspectorEditor extends VnEditor {
     return {
       tagname: 'vn-inspector-editor-x',
       areaname: 'inspector',
-      uiname: 'Inspector',
       icon: -1,
     };
   }

@@ -55,7 +55,6 @@ export class WikiEditor extends VnEditor {
     return {
       tagname: 'vn-wiki-editor-x',
       areaname: 'wiki',
-      uiname: 'Wiki',
       icon: -1,
     };
   }

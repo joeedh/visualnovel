@@ -27,7 +27,7 @@ describe('what a pinned editor reads', () => {
     live.shotId = 'sh2';
     live.projectTitle = 'Test4';
     live.busyWhat = 'a pipeline run';
-    // A pinned Coverage holds its scene and still follows the selected shot, so a pinned pane is a
+    // A pinned Shot Coverage holds its scene and still follows the selected shot, so a pinned pane is a
     // second view of the project rather than a frozen copy of it.
     expect(view.shotId).toBe('sh2');
     expect(view.projectTitle).toBe('Test4');

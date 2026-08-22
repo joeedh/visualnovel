@@ -41,7 +41,6 @@ export class OnboardingEditor extends VnEditor {
     return {
       tagname: 'vn-onboarding-editor-x',
       areaname: 'onboarding',
-      uiname: 'Setup',
       icon: -1,
     };
   }

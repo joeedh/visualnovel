@@ -20,7 +20,7 @@ traps written down, is [`../plans/archive/pathux-desktop-rewrite.md`](../plans/a
 - [Branches](#branches)
 - [Script](#script)
 - [Convo](#convo)
-- [Coverage](#coverage)
+- [Shot Coverage](#shot-coverage)
 - [Tasks, Task Graph and Inspector](#tasks-task-graph-and-inspector)
 - [Play](#play)
 - [Wiki](#wiki)
@@ -385,11 +385,11 @@ are the bridge's.
 - **An editor that follows a selection can be pinned off it.** Blender's idea, and the same icon:
   a pane holding one scene while the author reads another is how two parts of a story get compared
   at all. An editor becomes pinnable by declaring **one** field in `EDITORS` — `pins: 'sceneId'`
-  for Script and Coverage, `'docPath'` for Wiki, `'assetHash'` for Asset, `'taskHash'` for
+  for Script and Shot Coverage, `'docPath'` for Wiki, `'assetHash'` for Asset, `'taskHash'` for
   Inspector — and everything else follows from that declaration: `VnEditor.pinToggle` draws the
   toggle with a sentence built from the field's noun, and `registerEditor` splices
   `pinned : bool; pinnedTo : string` into the struct, so a pin survives a restart in five panes or
-  in none rather than in four. **One field, not the whole selection**: a pinned Coverage holds its
+  in none rather than in four. **One field, not the whole selection**: a pinned Shot Coverage holds its
   scene and still follows the selected shot, which is what makes a pinned pane a second view of the
   project rather than a photograph of one.
   - **The pin is a lens over `ui`, not a copy of it.** `VnEditor.get ui()` returns a `pinnedView`
@@ -737,7 +737,7 @@ the same events** to write the transcript — see the threads bullet below.
   is left — a long narration turn once cut it to a couple of hundred pixels and put the plan card
   off screen. `.dbox .line` is capped in `em` (so it tracks the prose size) and scrolls itself.
 
-## Coverage
+## Shot Coverage
 
 `editors/timeline.ts` — a scene's screenplay down the pane with the shots covering it bracketed
 beside it, and the wardrobe under it. It runs **vertically** because screenplays do.
@@ -1122,13 +1122,13 @@ with tests beside them.
   than a score. Each entry in `src/shared/editors.ts` declares a `claims` predicate over the node —
   `primary` or `secondary` or nothing — and `pathux/route.ts` ranks the claimants by **visibility
   first, tier second**, breaking a tie on `EDITORS` order. The consequence is deliberate: a visible
-  *secondary* beats a hidden *primary*, so clicking a scene with Coverage open and Script closed
-  lands in Coverage, which is where the author is already looking.
+  *secondary* beats a hidden *primary*, so clicking a scene with Shot Coverage open and Script
+  closed lands in Shot Coverage, which is where the author is already looking.
 
   | node | primary | secondary |
   | --- | --- | --- |
-  | `scene` | Script | Branches, Coverage |
-  | `shot` | Coverage | — |
+  | `scene` | Script | Branches, Shot Coverage |
+  | `shot` | Shot Coverage | — |
   | `character`, `location` | Wiki — *only if the entity has a sheet* | — |
   | `wiki` | Wiki | — |
   | `skill` | Skills | — |

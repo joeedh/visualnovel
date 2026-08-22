@@ -36,13 +36,13 @@ export const EDITORS = [
   { id: 'convo', title: 'Convo', what: 'the vnauthor conversation' },
   {
     id: 'timeline',
-    title: 'Coverage',
+    title: 'Shot Coverage',
     what: 'a scene against the shots that illustrate it',
     claims: (node: ClaimNode) => {
       if (node.kind === 'shot') return 'primary';
       return node.kind === 'scene' ? 'secondary' : undefined;
     },
-    // Pins the scene rather than the shot. A pinned Coverage still highlights whichever shot is
+    // Pins the scene rather than the shot. A pinned Shot Coverage still highlights whichever shot is
     // selected; holding both still would make its own rows unclickable.
     pins: 'sceneId',
   },
@@ -167,7 +167,7 @@ export type EditorId = (typeof EDITORS)[number]['id'];
  *
  * One field per editor rather than a set, and it is always the field naming which thing the pane
  * is about. A pane that froze the rest of the selection with it would stop responding to its own
- * rows: Coverage holds the scene and still follows the shot.
+ * rows: Shot Coverage holds the scene and still follows the shot.
  */
 export type PinField = 'sceneId' | 'docPath' | 'assetHash' | 'taskHash';
 

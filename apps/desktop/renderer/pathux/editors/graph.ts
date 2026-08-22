@@ -59,7 +59,6 @@ export class TaskGraphEditor extends VnEditor {
     return {
       tagname: 'vn-graph-editor-x',
       areaname: 'taskgraph',
-      uiname: 'Task Graph',
       icon: -1,
     };
   }

@@ -241,7 +241,6 @@ export class ConvoEditor extends VnEditor {
     return {
       tagname: 'vn-convo-editor-x',
       areaname: 'convo',
-      uiname: 'Convo',
       icon: -1,
     };
   }

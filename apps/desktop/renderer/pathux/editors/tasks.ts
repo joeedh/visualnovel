@@ -52,7 +52,6 @@ export class TaskListEditor extends VnEditor {
     return {
       tagname: 'vn-tasks-editor-x',
       areaname: 'tasklist',
-      uiname: 'Tasks',
       icon: -1,
     };
   }

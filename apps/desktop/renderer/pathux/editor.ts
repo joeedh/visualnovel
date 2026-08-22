@@ -10,6 +10,7 @@ import {
 import {
   EDITOR_IDS,
   PIN_NOUN,
+  editorTitle,
   editorTooltip,
   pinFieldOf,
   type EditorId,
@@ -286,21 +287,28 @@ export function registerEditor(
   nstructjs.register(cls);
 
   editors.set(areaname, cls);
-  describe(cls, areaname);
+  label(cls, areaname);
 }
 
 /**
- * Give the class's `define()` the sentence `shared/editors.ts` already writes down, which is what
- * path.ux's docker puts on the pane tab. It is spliced here, like the struct name above, rather
- * than typed into each `define()`, so the tab and the Editors menu show the same sentence from
- * the same list. Chrome is in no list and gets no sentence; the header bar has no tab to hover.
+ * Give the class's `define()` the name and the sentence `shared/editors.ts` already writes down.
+ * path.ux puts the first on the pane tab and in its own area-switcher menu, and the second in the
+ * tab's tooltip.
+ *
+ * Both are spliced here, like the struct name above, rather than typed into each `define()`, so
+ * renaming an editor is one edit and the tab, the switcher and View ▸ Editors cannot come to
+ * disagree. Chrome is in no list and keeps whatever its own `define()` says; the header bar has no
+ * tab to hover and never reaches a switcher. path.ux reads both keys lazily, so splicing them
+ * after `VnEditor.register` is in time.
  */
-function describe(cls: typeof VnEditor, areaname: string): void {
+function label(cls: typeof VnEditor, areaname: string): void {
   if (!(EDITOR_IDS as readonly string[]).includes(areaname)) return;
 
-  const description = editorTooltip(areaname as EditorId);
+  const id = areaname as EditorId;
+  const uiname = editorTitle(id);
+  const description = editorTooltip(id);
   const define = cls.define.bind(cls);
-  cls.define = () => ({ ...define(), description });
+  cls.define = () => ({ ...define(), uiname, description });
 }
 
 VnEditor.STRUCT = closeStruct(nstructjs.STRUCT.inherit(VnEditor, Area, 'vn.VnEditor'));

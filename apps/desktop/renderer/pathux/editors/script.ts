@@ -151,7 +151,6 @@ export class ScriptEditor extends VnEditor {
     return {
       tagname: 'vn-script-editor-x',
       areaname: 'script',
-      uiname: 'Script',
       icon: -1,
     };
   }

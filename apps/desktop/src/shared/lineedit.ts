@@ -1,5 +1,5 @@
 /**
- * Retyping one line, in the two surfaces that offer it: the Coverage editor's timeline and the
+ * Retyping one line, in the two surfaces that offer it: the Shot Coverage timeline and the
  * Script editor's lines. Both open a textarea over a row and both commit `story.setLineText`, so
  * the decisions here are made once rather than twice: what a draft amounts to as a line, whether
  * an edit happened at all, and how a precondition reads.

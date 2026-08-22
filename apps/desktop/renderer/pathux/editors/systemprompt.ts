@@ -34,7 +34,6 @@ export class SystemPromptEditor extends VnEditor {
     return {
       tagname: 'vn-systemprompt-editor-x',
       areaname: 'systemprompt',
-      uiname: 'System Prompt',
       icon: -1,
     };
   }
