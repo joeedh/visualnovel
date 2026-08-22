@@ -55,13 +55,13 @@
      the pipeline should rerender it.
 [x]: when an asset editor is showing the more recent asset of a slot, and the pipeline generates 
      a new asset for that slot, the editor should show the new asset automatically.
-[ ]: the task graph should have a searchable list of asset slots, clicking one lets 
+[x]: the task graph should have a searchable list of asset slots, clicking one lets 
      you see just the graph uses to generate the slot.  it should arrange the nodes 
 	 in a nice manner.
 [x]: the asset editor for failed shots should have a 'fix with agent' button 
      that shows the convo editor with a new thread (if current thread isn't empty)
 	 and a prompt for the agent to fix the asset prefilled.
-[ ]: do not use sugiyama layout for the global task graph view 
+[x]: do not use sugiyama layout for the global task graph view 
    - it might work for individual asset subgraphs, so use it for those and we'll try it.
 [x]: clicking on a scene should show it in any open play editors 
 [x]: clicking on a shot in the coverage editor (or the document tree) should show it in the play editor.

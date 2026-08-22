@@ -1021,6 +1021,30 @@ and each fix is a pure function tested in node:
   dashed and **is** addressable — clicking it moves the selection to its subject and, when
   something already fills it, its asset hash. Nothing estimates a count any more.
 
+**The overview is clustered; the layered layout is kept for what is small by construction.** A
+shared portrait is `refs`'d by every shot that uses it, and `rankNodes` is longest-path, so every
+one of those shots lands in the same rank — a character in thirty scenes produces a thirty-wide
+rank before crossing-reduction runs. `clusteredGraphOf` groups the tasks and slots by scene,
+character and location first, so `layoutGraph` is handed a graph bounded by the scene plus
+character plus location count rather than by the task count. A cluster carries a per-`TaskStatus`
+count and an unplanned count instead of any per-member detail. Cluster edges are `model.edges`
+projected through `clusterKeyOf` on both ends, deduped and kept as the firmest kind present
+(`dep` > `ref` > `slot`), with self-loops dropped. The barrier stays a real node: a cluster ranks
+below it if any member is below, and a gate-pending character's own cluster is exempted from
+ranking entirely, because it mixes the gated portrait with the sheets downstream of it.
+
+**A cluster or a slot opens a task-level view, still on the layered layout.** Clicking a cluster
+runs `clusterMembers`, which keeps that cluster's own nodes and only the edges internal to it;
+the search box above the canvas filters `PipelineStatus.slots` by label and picking a result runs
+`subgraphFor`, the ancestor closure of one slot walked backward over `model.edges` (the barrier's
+ranking-only edges are not walked). The barrier is drawn in a slot's subgraph only when the slot
+is below the gate or is a pending seed. A `scene:`/`char:` cluster click also moves the shared
+selection; a `loc:` cluster moves none, because `Selection` addresses a location through
+`docPath`. `← Overview` clears the scope, and a scope naming an id the next plan no longer
+carries falls back to the overview. The scope is part of the pane's `stateKey` and is
+deliberately not persisted the way `tidy` is. Plan:
+[`../plans/archive/clustering-the-global-task-graph.md`](../plans/archive/clustering-the-global-task-graph.md).
+
 **Tidy is a second layout, not a second graph.** The graph view's `Tidy` tick re-runs
 `layoutGraph` with `tidy: true`, which spends more ordering sweeps and then straightens each rank
 with weighted isotonic regression (PAVA): writing a node's left edge as `u + prefix` turns "keep

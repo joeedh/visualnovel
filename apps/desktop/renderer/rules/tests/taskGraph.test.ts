@@ -6,7 +6,11 @@ import {
   buildDepEdges,
   buildRefEdges,
   buildSlotEdges,
+  clusterKeyOf,
+  clusterMembers,
+  clusteredGraphOf,
   slotNodeIds,
+  subgraphFor,
   subjectOf,
   taskGraphOf,
 } from '../taskGraph.js';
@@ -104,6 +108,21 @@ const sheetSlot = (id: string, over: Partial<SlotNode> = {}): SlotNode =>
 
 const shotSlot = (sceneId: string, shotId: string, refs: string[], over: Partial<SlotNode> = {}) =>
   slot(`shot:${sceneId}/${shotId}`, { kind: 'shot', sceneId, shotId }, { refs, ...over });
+
+const taskView = (t: Task) => ({
+  kind: 'task' as const,
+  id: t.hash,
+  task: t,
+  subject: subjectOf(t),
+});
+const slotView = (s: SlotNode) => ({ kind: 'slot' as const, id: `slot:${s.key}`, slot: s });
+
+/** How many nodes sit in the busiest rank — what a layout is unreadable for being too much of. */
+const widestRank = (layout: { nodes: readonly { rank: number }[] }): number => {
+  const perRank = new Map<number, number>();
+  for (const node of layout.nodes) perRank.set(node.rank, (perRank.get(node.rank) ?? 0) + 1);
+  return Math.max(...perRank.values());
+};
 
 describe('subjectOf', () => {
   it('names what each kind is of, not what kind it is', () => {
@@ -346,5 +365,210 @@ describe('taskGraphOf', () => {
     expect(layout.nodes).toHaveLength(390);
     expect(routes).toHaveLength(420);
     expect(elapsed).toBeLessThan(1000);
+  });
+});
+
+describe('clusterKeyOf', () => {
+  it('names the subject each slot binding is about', () => {
+    expect(clusterKeyOf(slotView(portraitSlot('aiko')))).toBe('char:aiko');
+    expect(clusterKeyOf(slotView(sheetSlot('aiko')))).toBe('char:aiko');
+    expect(clusterKeyOf(slotView(shotSlot('arrival', 'beat1', [])))).toBe('scene:arrival');
+    const plateSlot = slot('plate:roof/day', { kind: 'plate', locationId: 'roof', variant: 'day' });
+    expect(clusterKeyOf(slotView(plateSlot))).toBe('loc:roof');
+    // `buildSlotGraph` emits no `asset` binding, so this case exists only to be total.
+    const pinned = slot('asset:beef', { kind: 'asset', hash: 'beef' });
+    expect(clusterKeyOf(slotView(pinned))).toBe('other:asset:beef');
+  });
+
+  it('reads a shot task’s scene out of its namespaced id', () => {
+    expect(clusterKeyOf(taskView(shot('s', 'arrival__beat1', [], [])))).toBe('scene:arrival');
+    expect(clusterKeyOf(taskView(plate('l', 'classroom')))).toBe('loc:classroom');
+    expect(clusterKeyOf(taskView(portrait('p', 'aiko')))).toBe('char:aiko');
+  });
+
+  it('stands a review on its own, since it is about one task rather than a subject', () => {
+    const review = task({
+      hash: 'rv',
+      kind: 'vision_review',
+      inputs: { target: 'assetPor', spec: '', refs: [], modelId: 'mock-text' },
+    });
+    expect(clusterKeyOf(taskView(review))).toBe('other:rv');
+  });
+
+  it('has no cluster for the barrier, which belongs to the whole graph', () => {
+    expect(clusterKeyOf({ kind: 'barrier', id: BARRIER_ID, pending: ['aiko'] })).toBeNull();
+  });
+});
+
+/**
+ * Two scenes off one character and one location. `shotB` refs the plate its own scene already
+ * depends on through `shotA`, which is the pair that has to survive as the firmer of the two.
+ */
+const spread = (): PipelineStatus =>
+  status([
+    plate('loc', 'classroom', 'assetLoc'),
+    portrait('por', 'aiko', 'assetPor'),
+    shot('shotA', 'arrival__beat1', ['assetPor'], ['loc']),
+    shot('shotB', 'arrival__beat2', ['assetPor', 'assetLoc'], ['shotA']),
+    shot('shotC', 'rooftop__beat1', ['assetPor'], []),
+  ]);
+
+describe('clusteredGraphOf', () => {
+  const clustered = clusteredGraphOf(taskGraphOf(spread(), null));
+
+  it('draws one box per subject', () => {
+    expect([...clustered.nodes.keys()]).toEqual([
+      'char:aiko',
+      'loc:classroom',
+      'scene:arrival',
+      'scene:rooftop',
+    ]);
+  });
+
+  it('rolls the members up by state', () => {
+    const scene = clustered.nodes.get('scene:arrival');
+    expect(scene).toMatchObject({ kind: 'cluster', group: 'scene', label: 'arrival', members: 2 });
+    expect(scene?.kind === 'cluster' && scene.counts).toMatchObject({ pending: 2, done: 0 });
+    const character = clustered.nodes.get('char:aiko');
+    expect(character?.kind === 'cluster' && character.counts.done).toBe(1);
+  });
+
+  it('draws one edge per coupled pair, at the firmest kind between them', () => {
+    expect(clustered.edges).toEqual([
+      {
+        id: 'cluster:char:aiko->scene:arrival',
+        from: 'char:aiko',
+        to: 'scene:arrival',
+        kind: 'ref',
+      },
+      {
+        id: 'cluster:char:aiko->scene:rooftop',
+        from: 'char:aiko',
+        to: 'scene:rooftop',
+        kind: 'ref',
+      },
+      {
+        id: 'cluster:loc:classroom->scene:arrival',
+        from: 'loc:classroom',
+        to: 'scene:arrival',
+        kind: 'dep',
+      },
+    ]);
+  });
+
+  it('drops an edge between two members of the same cluster', () => {
+    expect(clustered.edges.some((e) => e.from === e.to)).toBe(false);
+  });
+
+  // The pending character's own cluster holds both sides of the line: the portrait the gate waits
+  // for, and the sheets drawn from it. Neither side is the truth about the cluster as a whole.
+  it('gives a gate-pending character’s own cluster no ranking edge, and a downstream one both', () => {
+    const downstream = slot(
+      'sheet:ren/uniform/front',
+      { kind: 'sheet', characterId: 'ren', outfit: 'uniform', angle: 'front' },
+      { refs: ['portrait:aiko'] },
+    );
+    const model = taskGraphOf(
+      status(
+        [],
+        ['aiko'],
+        [
+          portraitSlot('aiko'),
+          sheetSlot('aiko'),
+          shotSlot('arrival', 'beat1', ['portrait:aiko']),
+          downstream,
+        ],
+      ),
+      story([{ id: 'arrival', characters: ['aiko'] }]),
+    );
+    const ranking = clusteredGraphOf(model).graph.edges.filter(
+      (e) => e.from === BARRIER_ID || e.to === BARRIER_ID,
+    );
+    expect(ranking.some((e) => e.from === 'char:aiko' || e.to === 'char:aiko')).toBe(false);
+    expect(ranking).toContainEqual(expect.objectContaining({ from: BARRIER_ID, to: 'char:ren' }));
+    expect(ranking).toContainEqual(
+      expect.objectContaining({ from: BARRIER_ID, to: 'scene:arrival' }),
+    );
+  });
+
+  // The bug this clustering exists for: one shared portrait puts every shot that refs it in the
+  // same rank, so the picture is as wide as the project has shots.
+  it('keeps the overview narrow where the task graph fans out', () => {
+    const tasks: Task[] = [portrait('por', 'aiko', 'assetPor')];
+    for (let i = 0; i < 50; i++) {
+      tasks.push(shot(`shot${i}`, `scene${i % 10}__beat${i}`, ['assetPor'], []));
+    }
+    const model = taskGraphOf(status(tasks), null);
+    expect(widestRank(layoutGraph(model.graph))).toBe(50);
+    expect(widestRank(layoutGraph(clusteredGraphOf(model).graph))).toBe(10);
+  });
+
+  // `layoutGraph` promises the same graph draws the same picture, and its input order is part of
+  // the graph, so the derivation has to emit clusters and their edges in a stated order.
+  it('emits the same order every time it runs', () => {
+    const once = clusteredGraphOf(taskGraphOf(spread(), null));
+    const twice = clusteredGraphOf(taskGraphOf(spread(), null));
+    expect(once.graph.nodes.map((n) => n.id)).toEqual(twice.graph.nodes.map((n) => n.id));
+    expect(once.graph.edges.map((e) => e.id)).toEqual(twice.graph.edges.map((e) => e.id));
+    expect([...once.nodes.keys()]).toEqual([...twice.nodes.keys()]);
+  });
+});
+
+describe('clusterMembers', () => {
+  const model = taskGraphOf(spread(), null);
+
+  it('opens one cluster back up at task granularity', () => {
+    const members = clusterMembers(model, 'scene:arrival');
+    expect([...members.nodes.keys()]).toEqual(['shotA', 'shotB']);
+    expect(members.edges).toEqual([
+      { id: 'dep:shotA->shotB', from: 'shotA', to: 'shotB', kind: 'dep' },
+    ]);
+  });
+
+  it('leaks no edge whose other end is outside the cluster', () => {
+    const members = clusterMembers(model, 'char:aiko');
+    expect([...members.nodes.keys()]).toEqual(['por']);
+    expect(members.edges).toEqual([]);
+  });
+
+  it('is empty for a cluster the latest plan no longer holds', () => {
+    expect(clusterMembers(model, 'scene:retired').nodes.size).toBe(0);
+  });
+});
+
+describe('subgraphFor', () => {
+  const model = taskGraphOf(spread(), null);
+
+  it('keeps the target and everything upstream of it, and nothing else', () => {
+    const drawn = subgraphFor(model, 'shotA');
+    expect([...drawn.nodes.keys()].sort()).toEqual(['loc', 'por', 'shotA']);
+    expect(drawn.edges.map((e) => e.id).sort()).toEqual(['dep:loc->shotA', 'ref:por->shotA']);
+  });
+
+  it('walks past the first rank, so a diamond brings its whole history', () => {
+    const drawn = subgraphFor(model, 'shotB');
+    expect([...drawn.nodes.keys()].sort()).toEqual(['loc', 'por', 'shotA', 'shotB']);
+  });
+
+  it('is the target alone when nothing feeds it', () => {
+    const alone = taskGraphOf(status([], [], [portraitSlot('ren')]), null);
+    const drawn = subgraphFor(alone, 'slot:portrait:ren');
+    expect([...drawn.nodes.keys()]).toEqual(['slot:portrait:ren']);
+    expect(drawn.edges).toEqual([]);
+  });
+
+  it('is empty for a target the latest plan no longer holds', () => {
+    expect(subgraphFor(model, 'retired').nodes.size).toBe(0);
+  });
+
+  it('draws the gate only for a picture the gate has something to do with', () => {
+    const gated = taskGraphOf(
+      status([], ['aiko'], [portraitSlot('aiko'), sheetSlot('aiko'), portraitSlot('ren')]),
+      null,
+    );
+    expect(subgraphFor(gated, 'slot:sheet:aiko/uniform/front').barrier).not.toBeNull();
+    // The portrait the gate is waiting for is what the gate is about, so it carries the rule too.
+    expect(subgraphFor(gated, 'slot:portrait:aiko').barrier).not.toBeNull();
+    expect(subgraphFor(gated, 'slot:portrait:ren').barrier).toBeNull();
   });
 });

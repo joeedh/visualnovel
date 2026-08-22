@@ -4,11 +4,17 @@ import { routeEdges } from '../../graph/edges.js';
 import { layoutGraph, type GraphLayout } from '../../graph/layout.js';
 import {
   BARRIER_ID,
+  clusterMembers,
+  clusteredGraphOf,
+  slotNodeIds,
+  subgraphFor,
   taskGraphOf,
+  type ClusterKind,
+  type ClusterNodeView,
   type TaskGraphModel,
   type TaskNodeView,
 } from '../../rules/taskGraph.js';
-import { card, dot, mono, row, stamp, statusColour, subject } from '../dom.js';
+import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
 import { isSelected, selectionForTask, type Selection } from '../selection.js';
@@ -17,7 +23,13 @@ import { TOKENS, alpha } from '../tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
 import type { LaidOutNode } from '../../graph/types.js';
-import type { PipelineStatus, SlotNode, StoryGraph } from '../../../src/shared/ipc.js';
+import type { PipelineStatus, SlotNode, StoryGraph, TaskStatus } from '../../../src/shared/ipc.js';
+
+/**
+ * Which part of the graph a pane is showing, with `null` for the clustered overview. The name is
+ * carried rather than derived, because the box it was read from is not in the scoped view.
+ */
+type Scope = { kind: 'cluster' | 'slot'; id: string; name: string } | null;
 
 /**
  * The pipeline as a DAG. The derivation lives in `rules/taskGraph.ts` — what the gate barrier is,
@@ -31,10 +43,18 @@ import type { PipelineStatus, SlotNode, StoryGraph } from '../../../src/shared/i
  * Selection belongs to the shell, not to this editor: clicking a shot task moves
  * `ui.shotId`/`ui.sceneId` and clicking a character task moves `ui.characterId`, and the
  * highlight is derived back out of those ids, so a shot picked here is the shot the runner plays.
+ *
+ * The pane opens on the clustered overview rather than on the whole task graph. A shared portrait
+ * is referenced by every shot that uses it, which puts every one of those shots in the same rank,
+ * so a project with a character in thirty scenes lays out thirty boxes wide. Individual tasks are
+ * reached by opening one cluster or by searching for a slot, and both of those are small enough
+ * for the layered layout by construction — see `rules/taskGraph.ts`.
  */
 export class TaskGraphEditor extends VnEditor {
   private bar!: Container;
   private canvas!: GraphCanvas;
+  private search!: HTMLInputElement;
+  private results!: HTMLDivElement;
 
   private status: PipelineStatus | undefined;
   /** Read only by the barrier's un-approved-after-planning case, which is undetectable without it. */
@@ -42,8 +62,23 @@ export class TaskGraphEditor extends VnEditor {
   private failure = '';
 
   private model: TaskGraphModel | undefined;
+  /**
+   * What is actually laid out: the clustered overview, or the one cluster or slot `scope` names.
+   * Every drawn thing — the nodes, the edges, the gate rule — is read from here rather than from
+   * `model`, which stays the whole graph the scopes are cut out of.
+   */
+  private view: TaskGraphModel | undefined;
   private layout: GraphLayout | undefined;
   private routes: EdgeRoute[] = [];
+
+  /**
+   * Which part of the graph is open. Deliberately not persisted with the pane like `tidy`: it names
+   * a node id that the next plan can retire, and a reopened project showing one retired slot's
+   * ancestors reads as a project that lost its graph.
+   */
+  private scope: Scope = null;
+  /** What the slot search box holds. A filter is a question about right now, so it is not saved. */
+  private query = '';
 
   /**
    * Straighten the columns as well as ordering them. A view setting, not a model one — the graph
@@ -73,9 +108,135 @@ export class TaskGraphEditor extends VnEditor {
       onPick: (hit) => this.onPick(hit),
       onSurfaceChange: () => this.fitOnce(),
     });
-    this.appendSurface(this.canvas.element);
+    Object.assign(this.canvas.element.style, { flex: '1 1 auto', minHeight: '0px' });
+
+    const column = document.createElement('div');
+    Object.assign(column.style, { display: 'flex', flexDirection: 'column', minHeight: '0px' });
+    column.append(this.buildSearchRow(), this.canvas.element);
+    this.appendSurface(column);
 
     void this.load();
+  }
+
+  /**
+   * The slot search. It sits outside the header bar, which is rebuilt on every redraw and would
+   * take the caret with it on each keystroke. Its results are drawn over the canvas rather than
+   * above it, so picking one does not move the graph out from under the pointer.
+   */
+  private buildSearchRow(): HTMLElement {
+    const bar = document.createElement('div');
+    Object.assign(bar.style, {
+      position: 'relative',
+      flex: '0 0 auto',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '5px 8px',
+      borderBottom: `1px solid ${TOKENS.inkLine}`,
+      background: TOKENS.ink,
+    });
+
+    this.search = document.createElement('input');
+    this.search.placeholder = 'find a picture';
+    this.search.title =
+      'Show only what one picture is drawn from — type part of its name and pick it from the list';
+    Object.assign(this.search.style, {
+      flex: '1 1 auto',
+      minWidth: '0px',
+      padding: '3px 7px',
+      color: TOKENS.paper,
+      background: TOKENS.inkSunken,
+      border: `1px solid ${TOKENS.inkLine}`,
+      borderRadius: `${TOKENS.radiusChrome}px`,
+      fontFamily: TOKENS.mono,
+      fontSize: '11.5px',
+    });
+    this.search.addEventListener('input', () => {
+      this.query = this.search.value;
+      this.renderResults();
+    });
+    // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
+    // keys opens the palette on the first `/` of a query.
+    this.search.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key !== 'Escape' || this.query === '') return;
+      this.clearQuery();
+    });
+
+    this.results = document.createElement('div');
+    Object.assign(this.results.style, {
+      display: 'none',
+      position: 'absolute',
+      zIndex: '5',
+      top: '100%',
+      left: '8px',
+      width: 'min(420px, calc(100% - 16px))',
+      maxHeight: '260px',
+      overflowY: 'auto',
+      border: `1px solid ${TOKENS.inkLine}`,
+      borderRadius: `${TOKENS.radiusChrome}px`,
+      background: TOKENS.inkRaised,
+      boxShadow: `0 6px 18px ${alpha(TOKENS.ink, 0.6)}`,
+    });
+
+    bar.append(this.search, this.results);
+    return bar;
+  }
+
+  /**
+   * The rows under the search box: every slot whose name contains the query. The list is capped,
+   * because a project holds a picture per shot and a hundred rows is not a list anyone reads.
+   */
+  private renderResults(): void {
+    const query = this.query.trim().toLowerCase();
+    const status = this.status;
+    this.results.replaceChildren();
+    if (query === '' || !status) {
+      this.results.style.display = 'none';
+      return;
+    }
+
+    const ids = slotNodeIds(status);
+    const hits = status.slots.filter((slot) => slot.label.toLowerCase().includes(query));
+    for (const slot of hits.slice(0, MAX_RESULTS)) {
+      const id = ids.get(slot.key);
+      if (id) this.results.appendChild(this.resultRow(slot, id));
+    }
+    if (hits.length === 0) this.results.appendChild(note('nothing by that name'));
+    else if (hits.length > MAX_RESULTS) {
+      this.results.appendChild(note(`${hits.length - MAX_RESULTS} more — keep typing`));
+    }
+    this.results.style.display = 'block';
+  }
+
+  private resultRow(slot: SlotNode, id: string): HTMLElement {
+    const entry = document.createElement('button');
+    entry.textContent = slot.label;
+    entry.title = `Show only the work ${slot.label} is drawn from`;
+    Object.assign(entry.style, {
+      display: 'block',
+      width: '100%',
+      textAlign: 'left',
+      cursor: 'pointer',
+      padding: '4px 8px',
+      color: TOKENS.paper,
+      background: 'transparent',
+      border: 'none',
+      borderBottom: `1px solid ${TOKENS.inkLine}`,
+      fontFamily: TOKENS.mono,
+      fontSize: '11px',
+    });
+    entry.addEventListener('click', () => {
+      this.clearQuery();
+      this.setScope({ kind: 'slot', id, name: slot.label });
+    });
+    return entry;
+  }
+
+  private clearQuery(): void {
+    this.query = '';
+    this.search.value = '';
+    this.renderResults();
   }
 
   override update() {
@@ -105,12 +266,37 @@ export class TaskGraphEditor extends VnEditor {
     const status = this.status;
     if (status) {
       this.model = taskGraphOf(status, this.story);
-      this.layout = layoutGraph(this.model.graph, { tidy: this.tidy });
-      this.routes = routeEdges(this.layout, this.model.edges);
+      this.view = this.scoped(this.model);
+      this.layout = layoutGraph(this.view.graph, { tidy: this.tidy });
+      this.routes = routeEdges(this.layout, this.view.edges);
     }
     this.fitted = false;
     this.redraw();
     this.fitOnce();
+    this.renderResults();
+  }
+
+  /**
+   * The graph the scope asks for, and the overview when there is no scope. A scope naming a cluster
+   * or a slot the fresh model no longer holds is dropped rather than drawn: a re-plan can retire the
+   * picture the author was looking at, and an empty canvas would not say what happened.
+   */
+  private scoped(model: TaskGraphModel): TaskGraphModel {
+    const scope = this.scope;
+    if (scope?.kind === 'cluster') {
+      const members = clusterMembers(model, scope.id);
+      if (members.nodes.size > 0) return members;
+    } else if (scope?.kind === 'slot' && model.nodes.has(scope.id)) {
+      return subgraphFor(model, scope.id);
+    }
+    this.scope = null;
+    return clusteredGraphOf(model);
+  }
+
+  /** Open one part of the graph, or the overview again when `next` is null. */
+  private setScope(next: Scope): void {
+    this.scope = next;
+    this.rebuild();
   }
 
   private fitOnce(): void {
@@ -143,6 +329,7 @@ export class TaskGraphEditor extends VnEditor {
       ui.shotId,
       ui.characterId,
       this.tidy ? 'tidy' : 'plain',
+      this.scope ? `${this.scope.kind}:${this.scope.id}` : 'overview',
     ].join('|');
   }
 
@@ -173,6 +360,12 @@ export class TaskGraphEditor extends VnEditor {
         : `${tasks} task${tasks === 1 ? '' : 's'}${unplanned > 0 ? ` · ${unplanned} not yet planned` : ''}`,
     ).style['padding'] = '0px 8px';
 
+    if (this.scope) {
+      this.bar.label(`showing ${this.scope.name}`).style['padding'] = '0px 8px';
+      this.bar.button('← Overview', () => this.setScope(null)).description =
+        'Go back to the whole project, grouped by scene, character and location';
+    }
+
     const tidy = this.bar.check(undefined, 'Tidy') as Check;
     tidy.checked = this.tidy;
     tidy.description =
@@ -197,7 +390,7 @@ export class TaskGraphEditor extends VnEditor {
    * rather than as one more node's width.
    */
   private gateRule(layout: GraphLayout): SVGSVGElement | undefined {
-    const gate = this.model?.barrier ? layout.byId.get(BARRIER_ID) : undefined;
+    const gate = this.view?.barrier ? layout.byId.get(BARRIER_ID) : undefined;
     if (!gate) return undefined;
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -216,7 +409,8 @@ export class TaskGraphEditor extends VnEditor {
 
   private onPick(hit: GraphPick): void {
     if (hit.type !== 'node') return;
-    const view = this.model?.nodes.get(hit.node.id);
+    const view = this.view?.nodes.get(hit.node.id);
+    if (view?.kind === 'cluster') return this.openCluster(view);
     // A slot is a picture with a real address, so it moves the selection the way a task does. The
     // barrier's own affordance is the approve button drawn on it, so clicking it does nothing here.
     if (view?.kind === 'slot') return this.pickSlot(view.slot);
@@ -255,11 +449,24 @@ export class TaskGraphEditor extends VnEditor {
     this.announce();
   }
 
+  /**
+   * Open one cluster's own members. A scene or a character cluster moves the shared selection too,
+   * since both name something the other editors show. A location is not a selectable subject, so a
+   * location cluster changes only what this pane draws.
+   */
+  private openCluster(view: ClusterNodeView): void {
+    if (view.group === 'scene') this.ui.sceneId = view.label;
+    else if (view.group === 'char') this.ui.characterId = view.label;
+    if (view.group === 'scene' || view.group === 'char') this.announce();
+    this.setScope({ kind: 'cluster', id: view.id, name: view.label });
+  }
+
   private renderNode(node: LaidOutNode): HTMLElement | null {
-    const view = this.model?.nodes.get(node.id);
+    const view = this.view?.nodes.get(node.id);
     if (!view) return null;
     if (view.kind === 'barrier') return this.gateNode(view.pending);
     if (view.kind === 'slot') return slotNode(view);
+    if (view.kind === 'cluster') return clusterNode(view);
     return taskNode(view, isSelected(view, this.selection()));
   }
 
@@ -325,6 +532,28 @@ export class TaskGraphEditor extends VnEditor {
 /** How far past the outermost node the gate rule runs, so it reads as spanning the graph. */
 const RULE_OVERHANG = 64;
 
+/** How many slots the search offers at once. Past this the query is the thing to narrow. */
+const MAX_RESULTS = 12;
+
+/** What a cluster is called on its box, in the words the rest of the app uses. */
+const GROUP_WORD: Record<ClusterKind, string> = {
+  scene: 'scene',
+  char: 'character',
+  loc: 'location',
+  other: 'task',
+};
+
+/** The states a cluster reports, worst first, so a failure is the first number read. */
+const COUNT_ORDER: readonly TaskStatus[] = ['failed', 'needs_human', 'running', 'pending', 'done'];
+
+const STATUS_WORD: Record<TaskStatus, string> = {
+  failed: 'failed',
+  needs_human: 'needs you',
+  running: 'running',
+  pending: 'waiting',
+  done: 'done',
+};
+
 /**
  * Solid edges are the dependencies the scheduler orders on; dashed edges are the refs that fed
  * the prompt.
@@ -363,6 +592,42 @@ function taskNode(view: Extract<TaskNodeView, { kind: 'task' }>, selected: boole
   box.appendChild(head);
   box.appendChild(subject(view.subject, TOKENS.paper));
   return box;
+}
+
+/**
+ * One subject's tasks and slots drawn as a single box: what the members are about, how many are in
+ * each state, and how many are pictures nothing has planned yet. Clicking it opens those members.
+ */
+function clusterNode(view: ClusterNodeView): HTMLElement {
+  const box = nodeCard();
+  box.style.borderLeft = `2px solid ${TOKENS.signalDeep}`;
+
+  const head = row();
+  head.appendChild(mono(GROUP_WORD[view.group], TOKENS.mist));
+  const members = mono(`${view.members} in here`, TOKENS.mistDim);
+  members.style.marginLeft = 'auto';
+  head.appendChild(members);
+
+  box.appendChild(head);
+  box.appendChild(subject(view.label, TOKENS.paper));
+  box.appendChild(countLine(view));
+  return box;
+}
+
+/** A cluster's members by state, each coloured as the same state's dot is. Zeroes are left out. */
+function countLine(view: ClusterNodeView): HTMLElement {
+  const line = row();
+  line.style.gap = '6px';
+  for (const status of COUNT_ORDER) {
+    const count = view.counts[status];
+    if (count > 0) {
+      line.appendChild(mono(`${count} ${STATUS_WORD[status]}`, statusColour(status), 9.5));
+    }
+  }
+  if (view.unplanned > 0) {
+    line.appendChild(mono(`${view.unplanned} unplanned`, TOKENS.mistDim, 9.5));
+  }
+  return line;
 }
 
 /**

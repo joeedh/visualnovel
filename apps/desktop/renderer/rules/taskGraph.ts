@@ -16,7 +16,7 @@
  *    task hash, rather than drawing the same future twice — once as a promise and once as work.
  *    An unplanned slot is an addressable picture with a real name, so nothing here estimates.
  */
-import type { PipelineStatus, SlotNode, StoryGraph, Task } from '../../src/shared/ipc';
+import type { PipelineStatus, SlotNode, StoryGraph, Task, TaskStatus } from '../../src/shared/ipc';
 import type { Graph, GraphEdge, GraphNode } from '../graph/types.js';
 
 /** One size for tasks and slots, so the two never misalign within a rank. */
@@ -24,12 +24,38 @@ export const TASK_NODE = { width: 178, height: 46 };
 /** The barrier reserves a rank of its own; the rule itself is drawn across the layout bounds. */
 export const BARRIER_NODE = { width: 268, height: 34 };
 export const BARRIER_ID = 'gate:barrier';
+/** A cluster carries a line of counts the other kinds do not, so it is the taller box. */
+export const CLUSTER_NODE = { width: 196, height: 62 };
 
 /** What a node in the task graph stands for — the view renders one shape per member. */
 export type TaskNodeView =
   | { kind: 'task'; id: string; task: Task; subject: string }
   | { kind: 'slot'; id: string; slot: SlotNode }
   | { kind: 'barrier'; id: string; pending: string[] };
+
+/** What a cluster is of. `other` is the bucket for a task that names no subject at all. */
+export type ClusterKind = 'scene' | 'char' | 'loc' | 'other';
+
+/**
+ * Every task and slot with one subject, drawn as a single box. The overview is built from these
+ * rather than from tasks: a portrait referenced by thirty shots puts all thirty in one rank, and
+ * the picture is then too wide to read at any zoom that still shows a node.
+ */
+export interface ClusterNodeView {
+  kind: 'cluster';
+  /** `<ClusterKind>:<subject>` — what `clusterMembers` takes back to open it. */
+  id: string;
+  group: ClusterKind;
+  label: string;
+  /** How many members are in each task state. */
+  counts: Record<TaskStatus, number>;
+  /** Members that are slots: pictures the project implies that nothing has planned. */
+  unplanned: number;
+  members: number;
+}
+
+/** Every shape a node in a drawn graph can take. */
+export type GraphNodeView = TaskNodeView | ClusterNodeView;
 
 /** A slot drawn as itself gets a node id of its own, so it can never collide with a task hash. */
 export const slotNodeId = (key: string): string => `slot:${key}`;
@@ -39,7 +65,7 @@ export interface TaskGraphModel {
   graph: Graph;
   /** The edges actually drawn: a subset of `graph.edges`, since the barrier's are structural. */
   edges: GraphEdge[];
-  nodes: Map<string, TaskNodeView>;
+  nodes: Map<string, GraphNodeView>;
   /** The slots drawn as themselves — pictures the project implies that nothing has planned. */
   unplanned: SlotNode[];
   /** Present only while the gate holds something up. */
@@ -188,6 +214,19 @@ export function barrierFor(
   return { pending: [...status.gatePending], below };
 }
 
+/** The barrier's box, which grows so each further pending character's button fits on it. */
+const barrierBox = (pending: readonly string[]): GraphNode => ({
+  id: BARRIER_ID,
+  ...BARRIER_NODE,
+  width: BARRIER_NODE.width + Math.max(0, pending.length - 1) * 96,
+});
+
+/** A ranking-only edge placing one node above or below the barrier. Never routed. */
+const rankingEdge = (id: string, gated: boolean): GraphEdge =>
+  gated
+    ? { id: `gate>${id}`, from: BARRIER_ID, to: id }
+    : { id: `gate<${id}`, from: id, to: BARRIER_ID };
+
 /**
  * Composes the whole view model. The layout graph carries ranking-only edges into and out of the
  * barrier: every node above it points at it, and it points at every node it blocks, so blocked
@@ -199,7 +238,7 @@ export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): T
   const ids = slotNodeIds(status);
   const unplanned = status.slots.filter((slot) => ids.get(slot.key) === slotNodeId(slot.key));
 
-  const nodes = new Map<string, TaskNodeView>();
+  const nodes = new Map<string, GraphNodeView>();
   const boxes: GraphNode[] = [];
   for (const task of status.tasks) {
     nodes.set(task.hash, { kind: 'task', id: task.hash, task, subject: subjectOf(task) });
@@ -217,19 +256,10 @@ export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): T
   const ranking: GraphEdge[] = [];
   if (barrier) {
     nodes.set(BARRIER_ID, { kind: 'barrier', id: BARRIER_ID, pending: barrier.pending });
-    boxes.push({
-      id: BARRIER_ID,
-      ...BARRIER_NODE,
-      width: BARRIER_NODE.width + Math.max(0, barrier.pending.length - 1) * 96,
-    });
+    boxes.push(barrierBox(barrier.pending));
     for (const box of boxes) {
       if (box.id === BARRIER_ID) continue;
-      const gated = barrier.below.has(box.id);
-      ranking.push(
-        gated
-          ? { id: `gate>${box.id}`, from: BARRIER_ID, to: box.id }
-          : { id: `gate<${box.id}`, from: box.id, to: BARRIER_ID },
-      );
+      ranking.push(rankingEdge(box.id, barrier.below.has(box.id)));
     }
   }
 
@@ -240,4 +270,229 @@ export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): T
     unplanned,
     barrier,
   };
+}
+
+const zeroCounts = (): Record<TaskStatus, number> => ({
+  pending: 0,
+  running: 0,
+  done: 0,
+  failed: 0,
+  needs_human: 0,
+});
+
+/** Which coupling survives when a cluster pair carries more than one edge between its members. */
+const FIRMNESS: Record<string, number> = { dep: 3, ref: 2, slot: 1 };
+
+/**
+ * The cluster a node belongs to. The barrier belongs to none, and neither does a cluster itself.
+ *
+ * A task and a slot are read from different fields — `task.inputs` and `slot.binding` — so nothing
+ * here is shared with `subjectOf` or with the editor's `pickSlot`.
+ */
+export function clusterKeyOf(view: GraphNodeView): string | null {
+  if (view.kind === 'task') {
+    const inputs = view.task.inputs;
+    if ('shotId' in inputs) return `scene:${sceneOfShot(inputs.shotId)}`;
+    if ('characterId' in inputs) return `char:${inputs.characterId}`;
+    if ('locationId' in inputs) return `loc:${inputs.locationId}`;
+    // A review or a refinement is about one task rather than about a subject, so it stands alone.
+    return `other:${view.task.hash}`;
+  }
+  if (view.kind === 'slot') {
+    const binding = view.slot.binding;
+    if (binding.kind === 'shot') return `scene:${binding.sceneId}`;
+    if (binding.kind === 'portrait' || binding.kind === 'sheet') {
+      return `char:${binding.characterId}`;
+    }
+    if (binding.kind === 'plate') return `loc:${binding.locationId}`;
+    // `buildSlotGraph` never emits an `asset` binding, so no real slot reaches this line.
+    return `other:${view.slot.key}`;
+  }
+  return null;
+}
+
+const groupOf = (clusterId: string): ClusterKind =>
+  clusterId.slice(0, clusterId.indexOf(':')) as ClusterKind;
+
+/** The subject a cluster is named by. An `other:` cluster is named by its one member instead. */
+function clusterLabel(clusterId: string, view: GraphNodeView): string {
+  if (groupOf(clusterId) !== 'other') return clusterId.slice(clusterId.indexOf(':') + 1);
+  if (view.kind === 'task') return view.subject || view.task.kind;
+  return view.kind === 'slot' ? view.slot.label : clusterId;
+}
+
+/**
+ * The overview: one box per scene, character and location, with the edges between them.
+ *
+ * Cluster ids and cluster edges are both emitted in sorted order rather than in the order the
+ * members were walked, because `layoutGraph` promises the same graph draws the same picture and
+ * its input order is part of the graph.
+ *
+ * A cluster ranks below the barrier when any of its members does. The one exception is a
+ * gate-pending character's own cluster, which is given no ranking edge at all: it holds both the
+ * portrait the gate is waiting for (above the line) and the sheets drawn from it (below), so
+ * neither side is the truth about the cluster as a whole.
+ */
+export function clusteredGraphOf(model: TaskGraphModel): TaskGraphModel {
+  const clusterOf = new Map<string, string>();
+  const clusters = new Map<string, ClusterNodeView>();
+  const gated = new Set<string>();
+
+  for (const [id, view] of model.nodes) {
+    const key = clusterKeyOf(view);
+    if (!key) continue;
+    clusterOf.set(id, key);
+    let cluster = clusters.get(key);
+    if (!cluster) {
+      cluster = {
+        kind: 'cluster',
+        id: key,
+        group: groupOf(key),
+        label: clusterLabel(key, view),
+        counts: zeroCounts(),
+        unplanned: 0,
+        members: 0,
+      };
+      clusters.set(key, cluster);
+    }
+    cluster.members++;
+    if (view.kind === 'task') cluster.counts[view.task.status]++;
+    else cluster.unplanned++;
+    if (model.barrier?.below.has(id)) gated.add(key);
+  }
+
+  const ids = [...clusters.keys()].sort();
+  const nodes = new Map<string, GraphNodeView>();
+  const boxes: GraphNode[] = [];
+  for (const id of ids) {
+    nodes.set(id, clusters.get(id) as ClusterNodeView);
+    boxes.push({ id, ...CLUSTER_NODE });
+  }
+
+  const firmest = new Map<string, GraphEdge>();
+  for (const edge of model.edges) {
+    const from = clusterOf.get(edge.from);
+    const to = clusterOf.get(edge.to);
+    if (!from || !to || from === to) continue;
+    const id = `cluster:${from}->${to}`;
+    const held = firmest.get(id);
+    if (held && (FIRMNESS[held.kind ?? ''] ?? 0) >= (FIRMNESS[edge.kind ?? ''] ?? 0)) continue;
+    firmest.set(id, { id, from, to, kind: edge.kind });
+  }
+  const edges = [...firmest.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  const ranking: GraphEdge[] = [];
+  const barrier = model.barrier;
+  if (barrier) {
+    nodes.set(BARRIER_ID, { kind: 'barrier', id: BARRIER_ID, pending: barrier.pending });
+    boxes.push(barrierBox(barrier.pending));
+    const mixed = new Set(barrier.pending.map((character) => `char:${character}`));
+    for (const id of ids) {
+      if (mixed.has(id)) continue;
+      ranking.push(rankingEdge(id, gated.has(id)));
+    }
+  }
+
+  return {
+    graph: { nodes: boxes, edges: [...edges, ...ranking] },
+    edges,
+    nodes,
+    unplanned: model.unplanned,
+    barrier,
+  };
+}
+
+/**
+ * One scope of the task graph, at task granularity: the kept nodes, the edges with both ends among
+ * them, and the barrier only where the caller says the scope has anything to do with the gate.
+ */
+function scopedView(
+  model: TaskGraphModel,
+  keep: ReadonlySet<string>,
+  withBarrier: boolean,
+): TaskGraphModel {
+  const nodes = new Map<string, GraphNodeView>();
+  const boxes: GraphNode[] = [];
+  const unplanned: SlotNode[] = [];
+  for (const [id, view] of model.nodes) {
+    if (!keep.has(id)) continue;
+    nodes.set(id, view);
+    boxes.push({ id, ...TASK_NODE });
+    if (view.kind === 'slot') unplanned.push(view.slot);
+  }
+
+  const edges = model.edges.filter((edge) => keep.has(edge.from) && keep.has(edge.to));
+
+  const ranking: GraphEdge[] = [];
+  const barrier = withBarrier ? model.barrier : null;
+  if (barrier) {
+    nodes.set(BARRIER_ID, { kind: 'barrier', id: BARRIER_ID, pending: barrier.pending });
+    boxes.push(barrierBox(barrier.pending));
+    for (const box of boxes) {
+      if (box.id === BARRIER_ID) continue;
+      ranking.push(rankingEdge(box.id, barrier.below.has(box.id)));
+    }
+  }
+
+  return {
+    graph: { nodes: boxes, edges: [...edges, ...ranking] },
+    edges,
+    nodes,
+    unplanned,
+    barrier,
+  };
+}
+
+/** What one cluster holds, laid out as tasks and slots again. Empty for a cluster that is gone. */
+export function clusterMembers(model: TaskGraphModel, clusterId: string): TaskGraphModel {
+  const keep = new Set<string>();
+  for (const [id, view] of model.nodes) if (clusterKeyOf(view) === clusterId) keep.add(id);
+  return scopedView(model, keep, false);
+}
+
+/** Whether a node is a portrait the gate is still waiting on: the work the gate is about. */
+function isGateSeed(view: GraphNodeView, pending: ReadonlySet<string>): boolean {
+  if (view.kind === 'task') {
+    const inputs = view.task.inputs;
+    return (
+      view.task.kind === 'portrait' && 'characterId' in inputs && pending.has(inputs.characterId)
+    );
+  }
+  if (view.kind === 'slot') {
+    const binding = view.slot.binding;
+    return binding.kind === 'portrait' && pending.has(binding.characterId);
+  }
+  return false;
+}
+
+/**
+ * Everything one picture is drawn from: `targetId` plus its ancestors, walked backwards over the
+ * drawn edges. The barrier's ranking edges are not walked — they are not in `model.edges` — and the
+ * barrier is drawn only when the target is held up by the gate or is what the gate is waiting for,
+ * so a picture with nothing to do with the gate does not gain a rule it has no relationship to.
+ */
+export function subgraphFor(model: TaskGraphModel, targetId: string): TaskGraphModel {
+  const target = model.nodes.get(targetId);
+  if (!target) return scopedView(model, new Set(), false);
+
+  const sources = new Map<string, string[]>();
+  for (const edge of model.edges) {
+    sources.set(edge.to, [...(sources.get(edge.to) ?? []), edge.from]);
+  }
+
+  const keep = new Set([targetId]);
+  const queue = [targetId];
+  for (let i = 0; i < queue.length; i++) {
+    for (const from of sources.get(queue[i] as string) ?? []) {
+      if (keep.has(from)) continue;
+      keep.add(from);
+      queue.push(from);
+    }
+  }
+
+  const barrier = model.barrier;
+  const concerns =
+    barrier !== null &&
+    (barrier.below.has(targetId) || isGateSeed(target, new Set(barrier.pending)));
+  return scopedView(model, keep, concerns);
 }

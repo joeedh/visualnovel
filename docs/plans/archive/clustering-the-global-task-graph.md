@@ -1,8 +1,8 @@
 # Plan: clustering the global task graph
 
-**Status:** planned.
-**Depends on:** [task DAG view](archive/task-dag-view.md) (the editor and `renderer/graph/`
-primitives this plan extends), [the full slot graph and approving upstream first](archive/the-full-slot-graph-and-approving-upstream-first.md)
+**Status:** shipped.
+**Depends on:** [task DAG view](task-dag-view.md) (the editor and `renderer/graph/`
+primitives this plan extends), [the full slot graph and approving upstream first](the-full-slot-graph-and-approving-upstream-first.md)
 (`SlotNode`, `barrierFor`'s walk).
 **Size:** medium. Two new pure derivations plus a scope state in one existing editor; no
 change to `renderer/graph/layout.ts`, `edges.ts`, `canvas.ts` or `hit.ts`, and no change to
@@ -176,7 +176,7 @@ this plan is that the existing layered layout is fine at the sizes it is now alw
 
 - Editing, retrying, or any write path from the graph — unchanged from the original plan.
 - Replay (scrubbing through a run) — already deferred in
-  [`archive/task-dag-view.md`](archive/task-dag-view.md#stretch-replay).
+  [`task-dag-view.md`](task-dag-view.md#stretch-replay).
 - Any change to `renderer/graph/`'s layout, routing, or hit-testing code.
 - The document tree's own search bar (a separate `todos.md` item) — this plan's search is local
   to the task graph editor and returns slots, not documents.
@@ -184,7 +184,7 @@ this plan is that the existing layered layout is fine at the sizes it is now alw
 ## Pressure test
 
 A fresh-context agent attacked this plan against the actual code before implementation, per
-[`docs/reference/conventions.md`](../reference/conventions.md). Findings and dispositions:
+[`docs/reference/conventions.md`](../../reference/conventions.md). Findings and dispositions:
 
 1. **Fixed.** The plan originally claimed a cluster click could move the shared selection "the
    way `pickSlot` already does" for every cluster kind, including location. There is no
@@ -224,11 +224,17 @@ A fresh-context agent attacked this plan against the actual code before implemen
 
 ## Done
 
-- [ ] `clusterKeyOf` / `clusteredGraphOf` / `clusterMembers` / `subgraphFor`, tested
-- [ ] Overview shows clusters, not individual tasks, and stays narrow on a many-shots-per-
+- [x] `clusterKeyOf` / `clusteredGraphOf` / `clusterMembers` / `subgraphFor`, tested
+- [x] Overview shows clusters, not individual tasks, and stays narrow on a many-shots-per-
       character fixture
-- [ ] Searchable slot list opens a slot's ancestor subgraph via `subgraphFor`
-- [ ] Clicking a cluster opens `clusterMembers`, moving the shared selection for a `scene:`/
+- [x] Searchable slot list opens a slot's ancestor subgraph via `subgraphFor`
+- [x] Clicking a cluster opens `clusterMembers`, moving the shared selection for a `scene:`/
       `char:` cluster (a `loc:` cluster moves none, per Pressure test Finding 1)
-- [ ] "← Overview" returns to the clustered view
-- [ ] Gate barrier renders correctly at cluster granularity, including the mixed-cluster case
+- [x] "← Overview" returns to the clustered view
+- [x] Gate barrier renders correctly at cluster granularity, including the mixed-cluster case
+
+Verified live over CDP against `examples/test4` (503 tasks, 232 slots): the raw graph put every
+shot sharing a portrait in one rank, and the clustered overview draws 93 boxes across 2 ranks.
+Searching `auria` listed four slots; picking the portrait drew one node, and picking the model
+sheet drew its two ancestors. Opening the `ud_final_boss` cluster drew its eleven `shot_image`
+members, and "← Overview" returned to the 93-box view.
