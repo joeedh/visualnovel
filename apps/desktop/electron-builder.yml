@@ -33,6 +33,12 @@ files:
 extraResources:
   - from: docs/guides/api-keys.md
     to: docs/guides/api-keys.md
+  # The debug agent reads this app's own source to explain a bad conversation, so an install ships
+  # it: `sourceRoot()` in `@vn/agentreport` looks under `process.resourcesPath` for a directory
+  # spelt exactly this way, and `scripts/package.desktop.mjs` fills it with that package's own
+  # `READABLE` manifest. Unpacked rather than in the asar because the read tools use plain `fs`.
+  - from: source
+    to: source
 
 # Nothing is unpacked from the asar, and that is a finding rather than an omission: no native
 # module ships, and the only executable the app spawns is the machine's own `git`, which was

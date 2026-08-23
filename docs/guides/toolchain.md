@@ -89,7 +89,16 @@ about how it fits the rest of the toolchain:
   after every check that only watches for a window. `scripts/smoke.desktop.mjs` launches the built
   binary with `--smoke`, which forces one import of each and exits; `src/main/smoke.ts` holds the
   logic and its tests. It runs with the vendor key variables blanked, because a smoke test that
-  quietly leans on the developer's key is not a test of the installer.
+  quietly leans on the developer's key is not a test of the installer. The same run checks that
+  `sourceRoot()` finds the shipped source, which fails the same silent way: the app is perfectly
+  usable, and only the debug agent's source box refuses.
+- **The installer carries the app's own source, at `<resourcesPath>/source`.** The debug agent
+  reads it to explain a bad conversation. `scripts/package.desktop.mjs` bundles
+  `packages/agentreport/src/sourcemap.ts` to a throwaway CJS file (the trick
+  `gen-command-catalog.mjs` uses on the command registry) and walks `READABLE` through that
+  module's own `denied` and `textFile`, so what ships and what the agent will read are one list.
+  Roughly 800 files and 8 MB, which is why `DENY` has to name every build directory: an undenied
+  `apps/desktop/.package` would copy the previous run's image into the next run's.
 - **`apps/desktop/package.json`'s `version` is the app version.** The root and every package stay
   at `0.0.0` — they are private and unpublished, so versioning them buys nothing. A release tag is
   *asserted* against that field rather than written into it, and a build made between releases

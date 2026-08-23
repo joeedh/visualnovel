@@ -27,9 +27,21 @@ export const READABLE = [
 /**
  * Paths never walked or read, even under a readable root. `keys` is here as well as in the
  * project-side refusal, because an analyst that has just read a private manuscript must not be one
- * step from a credential.
+ * step from a credential. The `apps/desktop` entries are build and dev output that exists only in a
+ * checkout; `scripts/package.desktop.mjs` copies this manifest into the installer, so one left out
+ * would package the previous run's output into the next run's.
  */
-export const DENY = ['node_modules', 'dist', '.git', 'keys', 'vendor/path.ux/scripts/lib'] as const;
+export const DENY = [
+  'node_modules',
+  'dist',
+  '.git',
+  '.turbo',
+  'keys',
+  'vendor/path.ux/scripts/lib',
+  'apps/desktop/.package',
+  'apps/desktop/release',
+  'apps/desktop/.vndesktop',
+] as const;
 
 /** File kinds worth reading. Anything else is a binary or a build artefact. */
 export const TEXT_EXTENSIONS = [

@@ -38,6 +38,16 @@ describe('denied', () => {
     expect(denied('scripts/vn-cdp.mjs')).toBe(false);
     expect(denied('packages/util/src/lib/a.ts')).toBe(false);
   });
+
+  // The packaging script copies this manifest into the installer, so an undenied build directory
+  // would put the previous run's app image inside the next run's
+  it("denies the desktop app's own build and dev output", () => {
+    expect(denied('apps/desktop/.package/source/CLAUDE.md')).toBe(true);
+    expect(denied('apps/desktop/release/win-unpacked/resources/app.asar')).toBe(true);
+    expect(denied('apps/desktop/.vndesktop/project.yaml')).toBe(true);
+    expect(denied('apps/desktop/.turbo/turbo-build.log')).toBe(true);
+    expect(denied('apps/desktop/src/main/index.ts')).toBe(false);
+  });
 });
 
 describe('readableSourcePath', () => {

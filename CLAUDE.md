@@ -63,23 +63,23 @@ everything. Details: [`docs/guides/toolchain.md`](docs/guides/toolchain.md), and
 
 Run from the repo root.
 
-| Task                         | Command                                                                 |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| Typecheck (the gate)         | `pnpm check`                                                            |
-| Test (all)                   | `pnpm test`                                                             |
-| Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                         |
-| Lint (eslint + format check) | `pnpm lint`                                                             |
-| Auto-format                  | `pnpm format`                                                           |
-| Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/**`)                             |
-| Check doc links              | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)   |
-| Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)          |
-| Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)               |
-| Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`) |
-| Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                      |
-| Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)              |
-| Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs resolve)          |
-| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/guides/api-keys.md` only)  |
-| Audit the key-guide wording  | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)        |
+| Task                         | Command                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| Typecheck (the gate)         | `pnpm check`                                                                  |
+| Test (all)                   | `pnpm test`                                                                   |
+| Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                               |
+| Lint (eslint + format check) | `pnpm lint`                                                                   |
+| Auto-format                  | `pnpm format`                                                                 |
+| Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/**`)                                   |
+| Check doc links              | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)         |
+| Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)                |
+| Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)                     |
+| Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`)       |
+| Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                            |
+| Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)                    |
+| Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs and the source resolve) |
+| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/guides/api-keys.md` only)        |
+| Audit the key-guide wording  | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)              |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 
@@ -306,8 +306,11 @@ The document tree, asset naming and `doc.rename`:
 - The app ships as an installer, and it checks for `git` at runtime rather than bundling
   it. `pnpm package` uses a hoisted scratch install, because pnpm's symlink farm does not
   survive into an app image, and `pnpm smoke` proves the two lazily-imported SDKs resolve
-  in the built binary. On a machine without git the app still opens, and files a durable
-  note explaining why saving does not work.
+  in the built binary. The installer also carries the app's own source, unpacked at
+  `<resourcesPath>/source`, for the debug agent to read; the packaging script copies
+  `@vn/agentreport`'s `READABLE` manifest rather than a list of its own, and `pnpm smoke`
+  checks that `sourceRoot()` finds it. On a machine without git the app still opens, and
+  files a durable note explaining why saving does not work.
   ([`docs/plans/archive/packaging-the-desktop-app.md`](docs/plans/archive/packaging-the-desktop-app.md))
 - A VN can be published to the web as a light novel, and the renderer is committed into the
   project. `renderSite` turns the playable into one HTML page per scene, with `choices` and
@@ -471,9 +474,9 @@ below stay here because they are rules you need while the work is happening.
   The same rule applies to this file and the prose in `docs/`. Specific patterns to catch:
   - **Inverted syntax and personification** — the sentence performs rather than informs.
   - **Metaphorical equations** — "The leak scan is the refusal", "what ships is identity",
-    "the project as commands"
-    do not get hung up on the specific connector word, e.g. 'is' vs 'as'.
-    Say what happens instead: "Refuses if the leak scan finds a known name still in the body."
+    "the project as commands". The connector word varies — do not get hung up on "is"
+    versus "as". Say what happens instead: "Refuses if the leak scan finds a known name
+    still in the body."
   - **Fragment openers that defer the subject** — "The redactor to scan a report with: the one
     that wrote it, else one built from the project as it stands." Lead with a complete sentence
     and name each case as you reach it.
@@ -502,8 +505,8 @@ below stay here because they are rules you need while the work is happening.
     "Commands for the prompt an asset is generated from" — and demote the rest to a
     complement. A trailing ", as X" or ", in the form of X" is the same metaphorical equation
     above smuggled in through an adjunct.
-- **Reserve backticks for code symbols.** Identifiers, types, commands, file globs the reader
-  will type: those get backticks. A file path cited as a reference —
+- **Reserve backticks for code symbols.** Backticks belong on identifiers, types, commands,
+  and file globs the reader will type. A file path cited as a reference —
   `(docs/plans/archive/chunked-prompts.md §5)` — does not, because marking it up gives it the
   same weight as the identifiers around it and dilutes them.
 - **A comment describes the code directly beneath it.** A comment placed above an `if` is read

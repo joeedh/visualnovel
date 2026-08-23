@@ -1,10 +1,11 @@
 /**
- * Ask the *packaged* app whether it can still find its two external SDKs.
+ * Ask the *packaged* app whether it can still find its two external SDKs and its source snapshot.
  *
  * `scripts/package.desktop.mjs` builds the app image from a scratch hoisted install precisely
  * because pnpm's symlinked `node_modules` does not survive being copied into one. This is the
  * check that the workaround worked, and it has to run the built executable — a test run from the
- * repo would resolve the SDKs out of the workspace and pass no matter what shipped.
+ * repo would resolve the SDKs out of the workspace, and would walk up to the checkout for the
+ * source, so it would pass no matter what shipped.
  *
  * Usage: `node scripts/smoke.desktop.mjs [path-to-executable]`. With no argument it looks for the
  * unpacked build `--dir` leaves behind, so `pnpm package:dir && pnpm smoke` is the loop.
@@ -59,9 +60,9 @@ if (!line) {
 
 const report = JSON.parse(line.slice(SMOKE_PREFIX.length));
 for (const check of report.checks) {
-  console.log(`  ${check.ok ? 'ok  ' : 'FAIL'} ${check.spec} — ${check.detail}`);
+  console.log(`  ${check.ok ? 'ok  ' : 'FAIL'} ${check.what} — ${check.detail}`);
 }
 if (!report.ok || failed) {
-  throw new Error('the packaged app cannot load both model SDKs');
+  throw new Error('the packaged app failed its self-check');
 }
-console.log('[smoke] both SDKs resolved from the app image');
+console.log('[smoke] both SDKs and the source snapshot resolved from the app image');

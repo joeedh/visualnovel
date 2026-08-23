@@ -64,7 +64,7 @@ transcript lacks is `commands.jsonl`) and `@vn/providers`; the boundaries rule f
 | `report.ts`       | `analysisSchema` — the report shape both analysis paths produce              |
 | `analyze.ts`      | `createAnalyst`, the two analysis paths, and redaction on both sides of the model |
 | `render.ts`       | the one markdown renderer both paths share                                   |
-| `sourcemap.ts`    | `READABLE` / `DENY` — the declared manifest of what source may be read       |
+| `sourcemap.ts`    | `READABLE` / `DENY` — the declared manifest of what source may be read, and what the installer copies |
 | `sourcetools.ts`  | `grep`, `read_file`, `fetch_api_docs`, and the shared `Budget`               |
 | `requesttools.ts` | `list_requests` / `read_request` over a frozen capture snapshot              |
 | `issue.ts`        | `ISSUE_REPO`, `issueUrl`, `PASTE_BODY` — the GitHub issue URL and its check  |
@@ -168,10 +168,16 @@ as `resolveKeys` does everywhere else.
 
 ### What source it may read
 
-The install ships full source unpacked (an `extraResource`, not inside `app.asar`), and the
+The install ships full source unpacked, at `<resourcesPath>/source` (an `extraResource`, not inside
+`app.asar`, because the read tools use plain `fs`), and the
 readable set is a **declared manifest** in `sourcemap.ts` — `READABLE` names `packages`, `apps`,
 `docs`, `scripts`, `CLAUDE.md` and `package.json`; `DENY` removes `node_modules`, build output,
-`.git`, `keys` and the minified vendor blobs. `docs/` and `CLAUDE.md` are the highest-value
+`.git`, `keys` and the minified vendor blobs. That manifest is also what `scripts/package.desktop.mjs`
+copies into the image: it bundles `sourcemap.ts` and walks `READABLE` through the same `denied` and
+`textFile` predicates the tools use, rather than restating the list, because a packaging manifest
+that disagreed would turn an honest refusal into "no such file". `pnpm smoke` asks the built binary
+whether `sourceRoot()` answers, so a `to:` renamed on one side fails at package time rather than in
+a report months later. `docs/` and `CLAUDE.md` are the highest-value
 entries: they state the invariants in prose, so a report can cite the contract that was broken
 rather than paraphrase code. Refusals that matter: `keys/**` by name and before the generic
 sentence, symlinks by `lstat` in both the walk and the read, and `fetch_api_docs` takes a

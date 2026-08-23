@@ -1,6 +1,7 @@
 /**
- * `--smoke` checks the one thing a packaged build cannot answer by opening a window: whether the
- * two SDKs left out of the bundle still resolve.
+ * `--smoke` checks what a packaged build cannot answer by opening a window: whether the two SDKs
+ * left out of the bundle still resolve, and whether the source the debug agent reads is in the
+ * image.
  *
  * Everything in this app is bundled into `dist/` except two things. `scripts/aliases.mjs` leaves
  * `@google/genai` and `@anthropic-ai/sdk` external, and both are reached through a dynamic
@@ -9,16 +10,22 @@
  * opens a project, and throws `Cannot find module` the first time the agent is asked for
  * anything. Every check short of this one passes.
  *
- * The packaged executable does that import and nothing else. It takes no key, makes no call, and
+ * The source check has the same shape. `extraResources` and `sourceRoot()` have to agree on one
+ * directory name, and when they do not, the app runs correctly and Help ▸ Report a Difficult
+ * Agent… refuses the source box — months later, on someone else's machine.
+ *
+ * The packaged executable does those reads and nothing else. It takes no key, makes no call, and
  * opens no window, because constructing a client is a local act. Whether the key it was handed is
  * any good is `project.testKey`'s question, not this one.
  */
+import { sourceRoot } from '@vn/agentreport';
 
 /** The dynamic `import()`, as a parameter — because it is the only part a test cannot run. */
 export type Loader = (spec: string) => Promise<unknown>;
 
 export interface SmokeCheck {
-  spec: string;
+  /** What was checked: a module specifier, or `source`. */
+  what: string;
   ok: boolean;
   /** One line for a human reading CI output. Never anything that came from a key. */
   detail: string;
@@ -45,7 +52,10 @@ const SDKS: { spec: string; pick: (mod: any) => unknown }[] = [
  * counts as a failure: the import having succeeded is not the same as the backend being able to
  * use what it got back.
  */
-export async function runSmoke(load: Loader): Promise<SmokeReport> {
+export async function runSmoke(
+  load: Loader,
+  findSource: () => Promise<string | undefined> = sourceRoot,
+): Promise<SmokeReport> {
   const checks: SmokeCheck[] = [];
   for (const { spec, pick } of SDKS) {
     try {
@@ -53,17 +63,25 @@ export async function runSmoke(load: Loader): Promise<SmokeReport> {
         | (new (opts: { apiKey: string }) => unknown)
         | undefined;
       if (typeof Client !== 'function') {
-        checks.push({ spec, ok: false, detail: 'resolved, but exports no constructor' });
+        checks.push({ what: spec, ok: false, detail: 'resolved, but exports no constructor' });
         continue;
       }
       // A placeholder key, because a constructor that reached out would be a bug in the SDK. It
       // is a literal rather than a real one on purpose: this must run where no key is set.
       new Client({ apiKey: 'smoke-test-not-a-key' });
-      checks.push({ spec, ok: true, detail: 'resolved and constructed' });
+      checks.push({ what: spec, ok: true, detail: 'resolved and constructed' });
     } catch (err) {
-      checks.push({ spec, ok: false, detail: (err as Error).message });
+      checks.push({ what: spec, ok: false, detail: (err as Error).message });
     }
   }
+
+  const root = await findSource().catch(() => undefined);
+  checks.push({
+    what: 'source',
+    ok: root !== undefined,
+    detail: root ?? 'not found — the debug agent will refuse to read the source',
+  });
+
   return { ok: checks.every((c) => c.ok), checks };
 }
 

@@ -12,10 +12,12 @@
  * Usage: `node scripts/package.desktop.mjs [--dir]` — `--dir` stops at the unpacked app, which
  * is what to use while iterating, since building the NSIS installer is the slow half.
  */
+import { build } from 'esbuild';
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { REPO_ROOT } from './aliases.mjs';
+import { cp, lstat, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { alias, EXTERNAL, REPO_ROOT } from './aliases.mjs';
 
 const APP = join(REPO_ROOT, 'apps', 'desktop');
 const SCRATCH = join(APP, '.package');
@@ -34,6 +36,73 @@ async function electronVersion() {
   } catch {
     throw new Error('electron is not installed in apps/desktop — run `pnpm install` first');
   }
+}
+
+/**
+ * `READABLE`, `denied` and `textFile` out of `@vn/agentreport`, which is TypeScript in a
+ * source-only workspace. Bundled to a throwaway CJS file and required, the way
+ * `gen-command-catalog.mjs` reaches the command registry.
+ *
+ * Reading them rather than restating them here is the whole point: the debug agent refuses a path
+ * outside `READABLE` by name, so a manifest that disagreed with what shipped would turn an honest
+ * refusal into "no such file".
+ */
+async function sourceManifest() {
+  const tmp = join(APP, 'dist', '.sourcemap-entry.cjs');
+  await build({
+    entryPoints: [join(REPO_ROOT, 'packages', 'agentreport', 'src', 'sourcemap.ts')],
+    outfile: tmp,
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    target: 'node20',
+    alias,
+    external: EXTERNAL,
+    logLevel: 'warning',
+  });
+  try {
+    const { READABLE, denied, textFile } = createRequire(import.meta.url)(tmp);
+    return { READABLE, denied, textFile };
+  } finally {
+    await rm(tmp, { force: true });
+  }
+}
+
+/**
+ * Copy the readable manifest into `dest`, returning what was written. Symlinks are skipped rather
+ * than followed, matching the read tools, so a pnpm link cannot pull a dependency tree in sideways.
+ */
+async function snapshotSource(dest) {
+  const { READABLE, denied, textFile } = await sourceManifest();
+  let files = 0;
+  let bytes = 0;
+
+  const walk = async (rel) => {
+    const abs = join(REPO_ROOT, rel);
+    let stat;
+    try {
+      stat = await lstat(abs);
+    } catch {
+      return;
+    }
+    if (stat.isSymbolicLink()) return;
+    if (stat.isFile()) {
+      if (!textFile(rel)) return;
+      await mkdir(dirname(join(dest, rel)), { recursive: true });
+      await cp(abs, join(dest, rel));
+      files++;
+      bytes += stat.size;
+      return;
+    }
+    if (!stat.isDirectory()) return;
+    for (const entry of await readdir(abs, { withFileTypes: true })) {
+      const child = `${rel}/${entry.name}`;
+      if (!denied(child)) await walk(child);
+    }
+  };
+
+  for (const entry of READABLE) await walk(entry);
+  return { files, bytes };
 }
 
 const app = await read(APP, 'package.json');
@@ -83,6 +152,13 @@ await mkdir(join(SCRATCH, 'docs', 'guides'), { recursive: true });
 await cp(
   join(REPO_ROOT, 'docs', 'guides', 'api-keys.md'),
   join(SCRATCH, 'docs', 'guides', 'api-keys.md'),
+);
+
+// `sourceRoot()` looks for `<resourcesPath>/source`, so the directory name is part of the contract
+// with `@vn/agentreport`, not a choice made here.
+const snapshot = await snapshotSource(join(SCRATCH, 'source'));
+console.log(
+  `[package] source snapshot: ${snapshot.files} file(s), ${(snapshot.bytes / 1024 / 1024).toFixed(1)} MB`,
 );
 
 // `--ignore-workspace` because the scratch tree sits inside the monorepo and pnpm would

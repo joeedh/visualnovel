@@ -149,14 +149,17 @@ const boundaryRules = Object.entries(ALLOWED).map(([from, allow]) => ({
 export default tseslint.config(
   {
     // `vendor/**` is submodules — path.ux lints in its own repo, under its own rules.
-    // `.claude/worktrees/**` is a second checkout of this same repo: flat config reads neither
-    // `.gitignore` nor `.prettierignore`, so without this `eslint .` from here lints every
-    // branch anyone has open, and a lint error on one of them fails the run on master.
+    // `.claude/worktrees/**` is a second checkout of this same repo, and
+    // `apps/desktop/.package/**` holds a staged copy of the source the installer ships: flat
+    // config reads neither `.gitignore` nor `.prettierignore`, so without these `eslint .` from
+    // here lints every branch anyone has open plus a duplicate of the whole workspace, and a lint
+    // error in either fails the run on master.
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
       '**/*.tmp-*',
       'apps/*/dist/**',
+      'apps/desktop/.package/**',
       'coverage/**',
       'vendor/**',
       '.claude/worktrees/**',

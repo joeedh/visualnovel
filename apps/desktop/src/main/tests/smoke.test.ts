@@ -1,7 +1,8 @@
 /**
- * The packaged-build self-check, with `import()` faked. Only the packaged executable can prove
- * the two SDKs are in the app image. What is testable here is that the check does not call a
- * resolved-but-wrong module a success.
+ * The packaged-build self-check, with `import()` and the source lookup faked. Only the packaged
+ * executable can prove the two SDKs and the source snapshot are in the app image. What is testable
+ * here is that the check does not call a resolved-but-wrong module a success, and does not call a
+ * missing source tree one either.
  */
 import { formatSmoke, runSmoke, SMOKE_PREFIX } from '../smoke.js';
 
@@ -13,45 +14,71 @@ class Fake {
 const good = async (spec: string) =>
   spec === '@google/genai' ? { GoogleGenAI: Fake } : { default: Fake };
 
+const foundSource = async () => '/resources/source';
+const noSource = async () => undefined;
+
 describe('runSmoke', () => {
-  it('passes when both modules resolve and construct', async () => {
-    const report = await runSmoke(good);
+  it('passes when both modules resolve and the source is there', async () => {
+    const report = await runSmoke(good, foundSource);
     expect(report.ok).toBe(true);
-    expect(report.checks.map((c) => c.spec)).toEqual(['@anthropic-ai/sdk', '@google/genai']);
+    expect(report.checks.map((c) => c.what)).toEqual([
+      '@anthropic-ai/sdk',
+      '@google/genai',
+      'source',
+    ]);
   });
 
   it('reports the module that could not be found, and keeps going', async () => {
     const report = await runSmoke(async (spec) => {
       if (spec === '@anthropic-ai/sdk') throw new Error("Cannot find module '@anthropic-ai/sdk'");
       return { GoogleGenAI: Fake };
-    });
+    }, foundSource);
     expect(report.ok).toBe(false);
-    expect(report.checks[0]).toMatchObject({ spec: '@anthropic-ai/sdk', ok: false });
-    expect(report.checks[1]).toMatchObject({ spec: '@google/genai', ok: true });
+    expect(report.checks[0]).toMatchObject({ what: '@anthropic-ai/sdk', ok: false });
+    expect(report.checks[1]).toMatchObject({ what: '@google/genai', ok: true });
   });
 
   // A bare `await import(spec)` would miss this failure, where the file resolves but is not the SDK
   it('fails a module that resolved to something without a constructor', async () => {
-    const report = await runSmoke(async () => ({ default: 42 }));
+    const report = await runSmoke(async () => ({ default: 42 }), foundSource);
     expect(report.ok).toBe(false);
     expect(report.checks[0]!.detail).toMatch(/no constructor/);
   });
 
   it('fails a constructor that throws rather than reporting a pass', async () => {
-    const report = await runSmoke(async () => ({
-      default: class {
-        constructor() {
-          throw new Error('boom');
-        }
-      },
-    }));
+    const report = await runSmoke(
+      async () => ({
+        default: class {
+          constructor() {
+            throw new Error('boom');
+          }
+        },
+      }),
+      foundSource,
+    );
     expect(report.ok).toBe(false);
     expect(report.checks[0]!.detail).toBe('boom');
   });
 
+  // The failure this exists for: an image that runs perfectly and shipped no source
+  it('fails an image whose source snapshot is missing, with both SDKs fine', async () => {
+    const report = await runSmoke(good, noSource);
+    expect(report.ok).toBe(false);
+    expect(report.checks.slice(0, 2).every((c) => c.ok)).toBe(true);
+    expect(report.checks[2]).toMatchObject({ what: 'source', ok: false });
+  });
+
+  it('treats a source lookup that threw as a missing source', async () => {
+    const report = await runSmoke(good, async () => {
+      throw new Error('EACCES');
+    });
+    expect(report.ok).toBe(false);
+    expect(report.checks[2]).toMatchObject({ what: 'source', ok: false });
+  });
+
   // The placeholder key stays inside the smoke module, so the formatted line cannot carry it out
   it('says nothing about the placeholder key it constructed with', async () => {
-    const line = formatSmoke(await runSmoke(good));
+    const line = formatSmoke(await runSmoke(good, foundSource));
     expect(line.startsWith(SMOKE_PREFIX)).toBe(true);
     expect(line).not.toMatch(/apiKey|smoke-test-not-a-key/);
     expect(JSON.parse(line.slice(SMOKE_PREFIX.length)).ok).toBe(true);
