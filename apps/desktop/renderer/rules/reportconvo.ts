@@ -13,7 +13,7 @@ import {
   type Convo,
   type ThreadHeader,
 } from '../../src/shared/convo.js';
-import type { ReportRow, ReportStateView } from '../../src/shared/ipc.js';
+import type { CommandCheck, ReportRow, ReportStateView } from '../../src/shared/ipc.js';
 
 /** What the dialogue box says before the analyst has been asked anything. */
 export const REPORT_OPENING = 'Pick the conversation that went wrong, then press Start.';
@@ -59,6 +59,30 @@ export function emptyReport(): ReportConvo {
     setup: { thread: '', model: '', effort: '', source: false, detail: false },
     threads: [],
     note: '',
+  };
+}
+
+/** How one of the two grant boxes draws. */
+export interface GrantBox {
+  checked: boolean;
+  disabled: boolean;
+  tooltip: string;
+}
+
+/**
+ * One grant box, from what has been granted and what `report.grant` said about granting it. A grant
+ * does not come back off, so a ticked box is disabled and reads the command's refusal rather than
+ * the offer it was ticked from. `offer` stands in until a verdict arrives.
+ */
+export function grantBox(
+  granted: boolean,
+  verdict: CommandCheck | undefined,
+  offer: string,
+): GrantBox {
+  return {
+    checked: granted,
+    disabled: granted || verdict?.state === 'refuse',
+    tooltip: verdict?.message || offer,
   };
 }
 

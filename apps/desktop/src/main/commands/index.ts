@@ -70,6 +70,7 @@ import {
 } from './project.js';
 import {
   reportAgent,
+  reportGrant,
   reportOpen,
   reportOpenIssue,
   reportSay,
@@ -207,6 +208,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectSetKey,
     projectTestKey,
     reportAgent,
+    reportGrant,
     reportOpen,
     reportOpenIssue,
     reportSay,

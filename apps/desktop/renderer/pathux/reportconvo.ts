@@ -134,7 +134,7 @@ export async function sayToReport(text: string): Promise<void> {
 }
 
 /** The commands that answer with the whole conversation, so the pane redraws from one place. */
-const STATE_COMMANDS = new Set(['report.open', 'report.say', 'report.state']);
+const STATE_COMMANDS = new Set(['report.grant', 'report.open', 'report.say', 'report.state']);
 
 export function installReportConvo(): void {
   api.on('report:event', (event) => set(reduceRow(state, { kind: 'event', event })));

@@ -1606,6 +1606,40 @@ export class WorkspaceSession {
   }
 
   /**
+   * What granting one kind of access would do, without doing it. Each refusal is a sentence a
+   * ticked-and-disabled box shows verbatim. The requests are counted off the snapshot the analysis
+   * froze rather than off the live ring, because that is what a grant would actually hand over.
+   */
+  async previewGrant(kind: AnalystGrant['kind']): Promise<PromptResult> {
+    const open = this.analysis;
+    if (!open || !this.analyst) return { ok: false, message: NO_REPORT };
+    if (this.reportGrants[kind]) {
+      return {
+        ok: false,
+        message:
+          kind === 'source'
+            ? 'The debug agent has already been shown the source.'
+            : 'The debug agent has already been shown the requests.',
+      };
+    }
+    if (kind === 'source' && !(await sourceRoot())) return { ok: false, message: NO_SOURCE };
+    if (kind === 'detail' && open.parts.snapshot.headers().length === 0) {
+      return {
+        ok: false,
+        message:
+          'Nothing was sent to the model API in this session, so there are no requests to read.',
+      };
+    }
+    return {
+      ok: true,
+      message:
+        kind === 'source'
+          ? 'The debug agent gets the source with your next message.'
+          : 'The debug agent gets the requests with your next message.',
+    };
+  }
+
+  /**
    * Give the open conversation more to read. The tools are advertised from the next turn, so this
    * is accepted while a turn is in flight and lands behind it.
    */

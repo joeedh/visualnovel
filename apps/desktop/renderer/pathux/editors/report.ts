@@ -11,6 +11,7 @@ import {
   startReport,
   threadRow,
 } from '../reportconvo.js';
+import { grantBox } from '../../rules/reportconvo.js';
 import type { FiledReport, ReportConvo } from '../../rules/reportconvo.js';
 import type { ChoiceRow } from '../commandform.js';
 import type { CommandCheck } from '../../../src/shared/ipc.js';
@@ -58,11 +59,28 @@ const REPORT_CSS = `
   cursor: pointer;
 }
 .cv-surface .setup-check input { margin-top: 3px; cursor: pointer; }
+.cv-surface .setup-check input:disabled { cursor: default; }
+.cv-surface .setup-check.spent { color: var(--mist-dim); cursor: default; }
+.cv-surface .setup.grants { margin-top: 12px; }
 /* Sodium, the warm this shell keeps for the author's own turn: the pane opened by itself and this
    is the sentence saying why. */
 .cv-surface .setup-note { color: var(--sodium); font-size: 13px; }
 .cv-surface .filed-where { color: var(--mist-dim); font-size: 12.5px; margin-top: 8px; }
 `;
+
+/** One of the two accesses `report.grant` hands over. */
+type GrantKind = keyof ReportConvo['granted'];
+
+// What each access buys, worded once: the setup card offers the two before the conversation starts
+// and the opened card offers the same two after it has, and a reader who ticks one late should read
+// the sentence they read early.
+const SOURCE_TIP =
+  "The debug agent reads this app's own code and design docs, so it can point at the rule that was " +
+  'broken instead of guessing from the conversation. Slower, and it spends more of your tokens.';
+const DETAIL_TIP =
+  'When the API rejected a request by position — "messages.1.content.0" — only the request itself ' +
+  'says what was at that position. They stay on this machine: they are read on your own key and ' +
+  'none of what it finds there goes into the report.';
 
 export class ReportEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -73,6 +91,10 @@ export class ReportEditor extends VnEditor {
   private verdict?: CommandCheck;
   /** The setup the verdict was asked about, so a stale answer is dropped rather than drawn. */
   private checkedKey = '';
+  /** `report.grant`'s own verdict on each access, for the two boxes on the opened card. */
+  private grants: Partial<Record<GrantKind, CommandCheck>> = {};
+  /** The conversation and grants the two verdicts were asked about. */
+  private grantKey = '';
   /** Whether the setup card is up while a conversation is already open. */
   private changing = false;
 
@@ -131,6 +153,13 @@ export class ReportEditor extends VnEditor {
       void this.recheck(key);
     }
 
+    const grantKey = JSON.stringify({ thread: state.thread?.id ?? '', granted: state.granted });
+    if (grantKey !== this.grantKey) {
+      this.grantKey = grantKey;
+      this.grants = {};
+      void this.regrant(grantKey);
+    }
+
     this.transcript.textContent = '';
     if (!state.thread || this.changing) this.transcript.appendChild(this.setupCard(state));
     else this.transcript.appendChild(this.openedCard(state));
@@ -158,6 +187,20 @@ export class ReportEditor extends VnEditor {
     const verdict = await check('report.open', { ...reportConvo().setup, note: '' });
     if (this.checkedKey !== key) return;
     this.verdict = verdict;
+    this.rebuild();
+  }
+
+  /**
+   * Ask `report.grant` what it would say to each of the two boxes. Both are asked at once, because
+   * the boxes are drawn together and a box with no answer yet carries no sentence to show.
+   */
+  private async regrant(key: string): Promise<void> {
+    const [source, detail] = await Promise.all([
+      check('report.grant', { access: 'source' }),
+      check('report.grant', { access: 'detail' }),
+    ]);
+    if (this.grantKey !== key) return;
+    this.grants = { source, detail };
     this.rebuild();
   }
 
@@ -207,23 +250,13 @@ export class ReportEditor extends VnEditor {
       );
 
     fields.appendChild(
-      this.tick(
-        'Read the source code',
-        state.setup.source,
-        "The debug agent reads this app's own code and design docs, so it can point at the rule " +
-          'that was broken instead of guessing from the conversation. Slower, and it spends more ' +
-          'of your tokens.',
-        (on) => setSetup({ source: on }),
+      this.tick('Read the source code', state.setup.source, SOURCE_TIP, (on) =>
+        setSetup({ source: on }),
       ),
     );
     fields.appendChild(
-      this.tick(
-        'Read the requests this app sent',
-        state.setup.detail,
-        'When the API rejected a request by position — "messages.1.content.0" — only the request ' +
-          'itself says what was at that position. They stay on this machine: they are read on ' +
-          'your own key and none of what it finds there goes into the report.',
-        (on) => setSetup({ detail: on }),
+      this.tick('Read the requests this app sent', state.setup.detail, DETAIL_TIP, (on) =>
+        setSetup({ detail: on }),
       ),
     );
     body.appendChild(fields);
@@ -278,19 +311,15 @@ export class ReportEditor extends VnEditor {
 
     const body = el('div', 'plan-body');
     body.appendChild(el('div', 'plan-sum', state.thread?.title ?? ''));
-    const read = [
-      state.granted.source ? 'the source code' : '',
-      state.granted.detail ? 'the requests this app sent' : '',
-    ].filter(Boolean);
-    body.appendChild(
-      el(
-        'div',
-        'filed-where',
-        read.length === 0
-          ? `${state.setup.model} is reading the conversation and nothing else.`
-          : `${state.setup.model} is also reading ${read.join(' and ')}.`,
-      ),
-    );
+    body.appendChild(el('div', 'filed-where', `${state.setup.model} is reading it.`));
+
+    // The same two boxes the setup card offers, still offered part way through. A tick lands on the
+    // next message rather than on the turn in flight, so ticking one while the debug agent is
+    // answering is accepted.
+    const fields = el('div', 'setup grants');
+    fields.appendChild(this.drawGrant('source', 'Read the source code', SOURCE_TIP));
+    fields.appendChild(this.drawGrant('detail', 'Read the requests this app sent', DETAIL_TIP));
+    body.appendChild(fields);
 
     const acts = el('div', 'plan-acts');
     const another = this.button(
@@ -369,6 +398,30 @@ export class ReportEditor extends VnEditor {
     select.value = value;
     select.addEventListener('change', () => onPick(select.value));
     row.appendChild(select);
+    return row;
+  }
+
+  /** One access the open conversation can still be given, drawn as `grantBox` decided it. */
+  private drawGrant(kind: GrantKind, label: string, offer: string): HTMLElement {
+    const box = grantBox(reportConvo().granted[kind], this.grants[kind], offer);
+
+    const row = el('label', box.disabled ? 'setup-check spent' : 'setup-check');
+    row.title = box.tooltip;
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = box.checked;
+    input.disabled = box.disabled;
+    input.title = box.tooltip;
+    input.addEventListener('change', () => {
+      // Disabled before the answer lands, because a second press could only ask for what the first
+      // press already asked for.
+      input.disabled = true;
+      void exec('report.grant', { access: kind }).then(report);
+    });
+
+    row.appendChild(input);
+    row.appendChild(el('span', '', label));
     return row;
   }
 

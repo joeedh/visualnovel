@@ -139,6 +139,36 @@ export const reportStop = define({
   },
 });
 
+export const reportGrant = define({
+  id: 'report.grant',
+  title: 'Let the debug agent read more',
+  description:
+    'Give the open debug conversation the source code or the requests this app sent. The debug ' +
+    'agent is told about them with your next message, so a grant made while it is answering ' +
+    'lands on the turn after that.',
+  mutating: false,
+  props: {
+    // `prop.oneOf` rather than two booleans: one tick is one grant, and a form that could turn a
+    // box back off would promise something the conversation cannot deliver.
+    access: prop.oneOf(['source', 'detail'] as const, 'what to let it read', {
+      default: 'source',
+    }),
+  },
+  async check(props, ctx) {
+    return verdict(await ctx.host.session.previewGrant(props.access));
+  },
+  async run(props, ctx) {
+    const state = await ctx.host.session.grantReport(props.access);
+    return {
+      message:
+        props.access === 'source'
+          ? 'The debug agent can read the source from your next message.'
+          : 'The debug agent can read this session’s requests from your next message.',
+      data: state,
+    };
+  },
+});
+
 export const reportState = define({
   id: 'report.state',
   title: 'Read the debug conversation',

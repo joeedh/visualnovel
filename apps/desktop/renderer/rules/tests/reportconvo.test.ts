@@ -7,6 +7,7 @@ import {
   REPORT_OPENING,
   emptyReport,
   fromState,
+  grantBox,
   reduceRow,
   type ReportConvo,
 } from '../reportconvo.js';
@@ -113,5 +114,57 @@ describe('rebuilding from what main holds', () => {
       state([], { granted: { source: true, detail: false } }),
     );
     expect(granted.granted).toEqual({ source: true, detail: false });
+  });
+});
+
+/**
+ * The two boxes on the opened card. A mock workspace refuses to open a conversation at all, so
+ * these are what says the boxes are right; the setup card's own two are verified over CDP.
+ */
+describe('a grant box', () => {
+  const OFFER = 'The debug agent reads this app’s own code and design docs.';
+
+  it('offers an access while the command still accepts it', () => {
+    const accept = { state: 'accept' as const, message: 'The debug agent gets the source.' };
+    expect(grantBox(false, accept, OFFER)).toEqual({
+      checked: false,
+      disabled: false,
+      tooltip: 'The debug agent gets the source.',
+    });
+  });
+
+  it('reads the offer until a verdict lands', () => {
+    expect(grantBox(false, undefined, OFFER)).toEqual({
+      checked: false,
+      disabled: false,
+      tooltip: OFFER,
+    });
+  });
+
+  it('sticks on a grant already made, and says the command refused to repeat it', () => {
+    const refuse = {
+      state: 'refuse' as const,
+      message: 'The debug agent has already been shown the source.',
+    };
+    expect(grantBox(true, refuse, OFFER)).toEqual({
+      checked: true,
+      disabled: true,
+      tooltip: 'The debug agent has already been shown the source.',
+    });
+  });
+
+  it('greys an access there is nothing to hand over, unticked, with the reason', () => {
+    const refuse = { state: 'refuse' as const, message: 'Nothing was sent to the model API.' };
+    expect(grantBox(false, refuse, OFFER)).toEqual({
+      checked: false,
+      disabled: true,
+      tooltip: 'Nothing was sent to the model API.',
+    });
+  });
+
+  /** A verdict lags a grant by one round trip, and the tick is what already happened. */
+  it('stays ticked while the stale verdict still says yes', () => {
+    const accept = { state: 'accept' as const, message: 'The debug agent gets the source.' };
+    expect(grantBox(true, accept, OFFER).disabled).toBe(true);
   });
 });

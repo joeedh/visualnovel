@@ -200,13 +200,13 @@ describe('the desktop registry', () => {
    *
    * A handful of non-mutators declare one anyway, and each is an act with a cost that is not a
    * write. The `report.*` commands put nothing in the project, but three of them spend a real
-   * model's time on a real key and the fourth opens a public issue tracker on text — so "run it
-   * and find out" is the wrong answer to any of them. `project.testKey` is the same shape and
-   * cheaper:
-   * it calls a provider for real, so whether a key even resolves is worth answering first. The
-   * three stops are the converse: they interrupt an act rather than performing one, so there is
-   * state to read — whether a run, a turn or a report is in progress — and the answer is what greys
-   * the Stop button and says why.
+   * model's time on a real key and one opens a public issue tracker on text — so "run it and find
+   * out" is the wrong answer to any of them. `report.grant` spends nothing itself and widens what
+   * the next turn reads, and its refusals are the tooltips on the two boxes that offer it.
+   * `project.testKey` is the same shape and cheaper: it calls a provider for real, so whether a key
+   * even resolves is worth answering first. The three stops are the converse: they interrupt an act
+   * rather than performing one, so there is state to read — whether a run, a turn or a report is in
+   * progress — and the answer is what greys the Stop button and says why.
    */
   it('declares a precondition on what an act would cost, and on the three interrupters', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
@@ -245,6 +245,7 @@ describe('the desktop registry', () => {
       'prompt.setChunk',
       'prompt.setCustom',
       'report.agent',
+      'report.grant',
       'report.open',
       'report.openIssue',
       'report.say',
@@ -300,6 +301,7 @@ describe('the desktop registry', () => {
       // grey until a key resolves, and this is the sentence it shows for why.
       'project.testKey',
       'report.agent',
+      'report.grant',
       'report.open',
       'report.openIssue',
       'report.say',

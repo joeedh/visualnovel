@@ -307,6 +307,18 @@ that has already gone.
 announces it on the next turn, and the two refusals. Landed after the pane exists because the
 refusals are tooltips.
 
+The supersede message needed no new code: `createAnalyst.grant` already called
+`agent.refreshSystem`, and `Agent.refreshSystem` on a live transcript files each changed section as
+a message that supersedes it by name. What the stage adds is `session.previewGrant`, which answers
+what a grant would do without doing it, and `report.grant`, whose `check` is that answer. The pane's
+opened card grows the same two boxes the setup card offers, each ticking through the command and
+each disabled once granted, with the command's own refusal as its tooltip.
+
+The boxes on the opened card cannot be reached under `--mock`, because a mock workspace refuses to
+open a conversation at all. Their decision is therefore `grantBox` in `renderer/rules/`, covered by
+jest; what CDP verifies is that `report.grant` refuses both accesses by name with nothing open, that
+the catalog carries its two-value enum, and that the setup card still draws.
+
 ### 5. Transcripts, ten deep
 
 `<userConfigDir>/debug-transcripts/`, the versioned line format, the prune, and the rule that tool
