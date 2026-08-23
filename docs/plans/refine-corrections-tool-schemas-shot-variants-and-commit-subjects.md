@@ -571,12 +571,11 @@ The `deleteShot` warning about paid-for art was worth flagging. None of that is 
   (`packages/agentreport/package.json:10`, `eslint.config.mjs:47-57`), so change 3 is legal. The
   `@vn/authoring` → `@vn/pipeline` prohibition quoted above constrains the reported agent, not the
   analyst.
-- **This overlaps [`the-debug-agent-as-a-conversation.md`](the-debug-agent-as-a-conversation.md),
-  which rebuilds `analyzeWithTools` into a held conversation.** Nothing here contradicts it —
+- **This overlaps [`archive/the-debug-agent-as-a-conversation.md`](archive/the-debug-agent-as-a-conversation.md),
+  which rebuilt `analyzeWithTools` into a held conversation.** Nothing here contradicts it —
   changes 1 and 3 are about what goes into the request and what the renderer prints, and change 2
-  needs only that something still knows which tools ran. Whichever lands second adapts to the
-  other; if that plan lands first, change 2 keys off the held agent's tool log rather than off a
-  single `analyzeWithTools` call.
+  needs only that something still knows which tools ran. That plan has landed, so change 2 keys off
+  the held analyst's tool log rather than off a single `analyzeWithTools` call.
 - **The scope is the failure modes above and nothing wider.** The report's four behavioural
   recommendations for `vnauthor` are not adopted: three are wrong or impossible for the reasons
   given, and the fourth (art notes belonged in the first pass) is defensible but ignores that the

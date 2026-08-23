@@ -224,7 +224,7 @@ The pipeline is presentation-agnostic and stops at `manifest.json`. `@vn/export`
 the model and manifest into a small in-house playable (`story.play.json`), and the Electron
 app plays it. This is deliberately not an external DSL export.
 Format: [`docs/reference/playable-format.md`](docs/reference/playable-format.md). The shell,
-the canvas, the fifteen editors, the session store, the seeded workspace, and every
+the canvas, the sixteen editors, the session store, the seeded workspace, and every
 behaviour below in full: [`docs/reference/desktop-app.md`](docs/reference/desktop-app.md).
 What persists where: [`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md).
 The document tree, asset naming and `doc.rename`:
@@ -280,10 +280,16 @@ The document tree, asset naming and `doc.rename`:
 - A bad conversation is diagnosed on the author's own key, and the fiction's names never
   leave the machine. Redaction is enforced at a code boundary rather than requested in a
   prompt, and nothing is posted automatically. "The debug agent" always means this one: the
-  agent Help ▸ Report a Difficult Agent… runs (`report.agent`, implemented in
-  `@vn/agentreport`) to read the reported thread and draft the issue. `@vn/agentreport` and
+  agent Help ▸ Report a Difficult Agent… runs (implemented in `@vn/agentreport`) to read the
+  reported thread and draft the issue. `@vn/agentreport` and
   its plans also call it "the analyst"; the two names mean the same agent. It is not
-  `vnauthor`, and it is not a debugging tool for this repository.
+  `vnauthor`, and it is not a debugging tool for this repository. It is a conversation in a
+  popup pane rather than one call the app makes: the author answers it, grants source and
+  request access part way through, stops a turn after the step it is on, and gets a fresh
+  report card each time it revises one. `report.agent` stays as the headless one-shot that
+  scripts and the API-fault seam use. The conversation is written down at
+  `<userConfigDir>/debug-transcripts/`, ten deep with the oldest pruned as a new one starts,
+  and a tool's result is never written there.
   ([`docs/reference/agent-report.md`](docs/reference/agent-report.md))
 - Every API request is kept in memory, and its contents never reach the report. A bounded
   ring in `@vn/providers` (64 MB / 64 entries, always on) holds them, so a 400 that names a
@@ -322,7 +328,7 @@ There is no React and no room vocabulary. path.ux is a git submodule at `vendor/
 so a fresh clone needs `git submodule update --init --recursive` (`pnpm check:setup` reports
 this by name). Six rules cause the most mistakes:
 
-- The fifteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
+- The sixteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
   `registerEditor(cls, 'vn.Name')` is the only way to register one, because a hand-written
   name string breaks under minification. That list also carries each editor's `claims`
   predicate, ranked in `renderer/pathux/route.ts`, and a `pins` field for the one selection
@@ -334,9 +340,10 @@ this by name). Six rules cause the most mistakes:
   once by the shell, keeps unoffered editors out of the pane header's own dropdown, which
   path.ux builds from its registry rather than from ours. This is deliberately not
   `AreaFlags.HIDDEN`: hidden describes the editor itself, while not-listed describes this
-  application's menus. Two editors carry the flag. Setup will stop being a pane once a
-  preferences window exists to hold it, and System Prompt exists for inspecting a
-  misbehaving turn rather than for day-to-day work.
+  application's menus. Three editors carry the flag. Setup will stop being a pane once a
+  preferences window exists to hold it, System Prompt exists for inspecting a
+  misbehaving turn rather than for day-to-day work, and Debug Agent is somewhere Help sends
+  the author rather than somewhere they arrange a window to keep.
 - `src/shared/` is in the browser bundle, so everything it imports must be node-free.
   Neither `tsgo` pass catches a violation; only `vite build` does.
 - Raw DOM surfaces go in the shadow root via `VnEditor.appendSurface`, each with its own

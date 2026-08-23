@@ -7,8 +7,8 @@ import {
   OFFERED_EDITOR_IDS,
   type EditorId,
 } from '../../../src/shared/editors.js';
-import { BUSY_PASS, BUSY_RUN, stopsWhat } from '../../../src/shared/ipc.js';
 import type { PropValue } from '../../../src/shared/ipc.js';
+import { busyControls, type BusyControls } from '../../rules/busy.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
 import {
   check,
@@ -89,6 +89,8 @@ export class VnHeaderEditor extends VnEditor {
 
   /** The busy indicator while a run is on, so its tooltip can be retitled without a rebuild. */
   private spinner: Label | undefined;
+  /** What the work in flight draws, kept so the spinner can be retitled from the same table. */
+  private controls: BusyControls | undefined;
 
   /** The remembered projects, and the one that is open, as `workspace.recent` last answered. */
   private recents: string[] = [];
@@ -324,9 +326,12 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * The run button, and — only while one is running — the spinner and the stop button. All three
-   * read `ui.busy*`, which main pushes on both edges of the work and on every task between, so
-   * none of them keeps a flag of its own that a crashed run could leave set.
+   * The run button, and — only while work the header stops is running — the spinner and the stop
+   * button. All three read `ui.busy*`, which main pushes on both edges of the work and on every
+   * task between, so none of them keeps a flag of its own that a crashed run could leave set.
+   *
+   * Which work gets a spinner and what its Stop runs is `busyControls`. An authoring turn is not in
+   * that table, because the conversation editor owns its Stop button.
    */
   private runControls(): void {
     const busy = this.ui.busyWhat;
@@ -340,10 +345,9 @@ export class VnHeaderEditor extends VnEditor {
         : 'Preview what a run would do. This window cannot call a model.';
 
     this.spinner = undefined;
-    // An approve-and-generate pass is generative work with a Stop of its own, and it holds the
-    // session through the gaps between its rounds — so the spinner and the button stay drawn there
-    // rather than blinking out while the pass approves.
-    if (busy !== BUSY_RUN && busy !== BUSY_PASS) return;
+    const controls = busyControls(busy);
+    this.controls = controls;
+    if (!controls) return;
 
     const spinner = this.bar.label('◴');
     this.spinner = spinner;
@@ -360,8 +364,8 @@ export class VnHeaderEditor extends VnEditor {
       iterations: Infinity,
     });
 
-    const stop = this.bar.button('■', () => void exec('pipeline.stop').then(report));
-    stop.description = stopsWhat(busy);
+    const stop = this.bar.button('■', () => void exec(controls.stop).then(report));
+    stop.description = controls.stops;
     stop.setCSSAfter(() => (stop.style['color'] = 'var(--vermilion, #e5534b)'));
   }
 
@@ -387,12 +391,8 @@ export class VnHeaderEditor extends VnEditor {
    * finishing would rebuild the whole bar, restarting the rotation from zero every few seconds.
    */
   private sayProgress(): void {
-    const ui = this.ui;
-    if (!this.spinner) return;
-    const left = ui.busyPending;
-    this.spinner.description =
-      `The pipeline is running — ${ui.busyRan} task(s) done, ` +
-      `${left} ${left === 1 ? 'task' : 'tasks'} left.`;
+    if (!this.spinner || !this.controls) return;
+    this.spinner.description = this.controls.progress(this.ui.busyRan, this.ui.busyPending);
   }
 
   /** A row packs its labels flush, so each one carries its own gutter. */

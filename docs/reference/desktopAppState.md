@@ -20,6 +20,7 @@
 - [Design Rationale](#design-rationale)
   * [Why so little persistent UI state?](#why-so-little-persistent-ui-state)
   * [Why a main-process file, not localStorage, for the layout?](#why-a-main-process-file-not-localstorage-for-the-layout)
+  * [Why the arrangement lives in the project rather than the install?](#why-the-arrangement-lives-in-the-project-rather-than-the-install)
   * [Why re-read project files on each call?](#why-re-read-project-files-on-each-call)
   * [Why localStorage for playthrough?](#why-localstorage-for-playthrough)
   * [Why build the playable on-demand?](#why-build-the-playable-on-demand)

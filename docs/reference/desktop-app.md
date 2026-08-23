@@ -30,6 +30,7 @@ traps written down, is [`../plans/archive/pathux-desktop-rewrite.md`](../plans/a
 - [Project](#project)
 - [System Prompt](#system-prompt)
 - [Setup](#setup)
+- [Debug Agent](#debug-agent)
 - [Remembered UI state (two `session.json` files)](#remembered-ui-state-two-sessionjson-files)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
@@ -179,29 +180,31 @@ are the bridge's.
   [`desktopAppState.md`](desktopAppState.md#multiple-windows-of-the-same-workspace).
   Full design: [`../plans/multiple-windows.md`](../plans/multiple-windows.md).
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all fifteen (`branches`, `script`, `convo`,
+  `apps/desktop/src/shared/editors.ts` holds all sixteen (`branches`, `script`, `convo`,
   `timeline`, `tasklist`, `taskgraph`, `inspector`, `play`, `skills`, `wiki`, `documents`, `asset`,
-  `project`, `systemprompt`, `onboarding`) with their titles. It is in
+  `project`, `systemprompt`, `onboarding`, `report`) with their titles. It is in
   `src/shared/` because
   `view.*` runs in **main** like every other command and builds its props from that list, while the
   renderer registers each editor class under the matching area name; `checkEditorNames()` warns at
   boot if the two ever disagree. Each entry also declares what it will show for a clicked
-  document-tree node (see [Documents](#documents)), so a sixteenth editor that forgets to is
+  document-tree node (see [Documents](#documents)), so a seventeenth editor that forgets to is
   visibly claim-less in the same file that names it rather than silently unreachable from the tree.
   The header bar is deliberately absent from the list — it is chrome,
   not somewhere the author navigates to.
 - **An editor can be named without being listed** — `offered: false` on its entry, which today
-  Setup and System Prompt carry. `view.open(editor='onboarding')` still works, the palette still finds it,
+  Setup, System Prompt and Debug Agent carry. `view.open(editor='onboarding')` still works, the palette still finds it,
   and a saved layout that holds it still restores; what the flag removes is the two places an
   author *browses* editors. `OFFERED_EDITOR_IDS` narrows View ▸ Editors, and the shell installs
   `isOfferedEditor` as path.ux's `setAreaMenuFilter`, which is what keeps it out of the pane
   header's own change-editor dropdown — a menu path.ux builds from its registry rather than from
   ours, so nothing on our side could have filtered it. This is deliberately **not**
   `AreaFlags.HIDDEN`: hidden is a property of the editor, and being uninteresting to browse is a
-  property of *this* application. `EDITOR_IDS` still covers all fifteen, so `view.*`'s props are
+  property of *this* application. `EDITOR_IDS` still covers all sixteen, so `view.*`'s props are
   unaffected. Once a Setup that is really a preferences window has somewhere to be, it stops
   being a pane at all and the flag goes with it; System Prompt keeps the flag for the opposite
   reason — it is a place to look when a turn misbehaves, and it will never be a place to work.
+  Debug Agent keeps it for the same reason as System Prompt, and is reached from Help ▸ Report a
+  Difficult Agent… and from the card an API fault raises.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows an editor
   in the active pane or in a new pane split off it (`here` | `left` | `right` | `above` | `below` |
   `elsewhere` | `window`); asking for one already open `here` is a focus, not a second copy.
@@ -1515,6 +1518,56 @@ knows nothing about.
   durable notification linking here — skipped under `--mock`, which calls no provider, and posted
   at most once per project, guarded by scanning the log for an existing notification pointing at
   this editor, since the notification log dedupes by id rather than by message.
+
+## Debug Agent
+
+`editors/report.ts` — a conversation with the agent that reads a conversation that went wrong. It
+is a **popup** pane (`view.open(editor='report' where='popup')`) and `offered: false` (above), so it
+is named but not browsable and claims no document-tree node: its subject is a thread rather than a
+document. What the analyst may read, what it redacts and where the report is archived are in
+[`agent-report.md`](agent-report.md); what follows is the pane.
+
+- **Help ▸ Report a Difficult Agent… opens the pane; the pane starts the analysis.** The menu entry
+  calls `seedReport`, which fills the setup card in and raises the popup. The card is the form the
+  command dialog used to collect — thread, model, effort, and the two reading boxes — with a Start
+  button that invokes `report.open`. The API-fault card (`bridge.ts`) calls the same helper with
+  both boxes ticked and its note, so both entry points land on the same card. Once started, the card
+  collapses to a line saying what was chosen.
+- **A turn is bounded and the conversation is not.** Each message runs under the same per-turn token
+  ceiling and step cap a headless analysis uses. There is deliberately no conversation-wide ceiling:
+  the author is at the keyboard, Stop is the bound, and the spend is on their own key.
+- **Stop is cooperative and the button says so** — *"The turn ends after the step it is on."* No
+  backend streams, so a stop lands after the request in flight returns. `report.stop` is the one
+  command accepted mid-turn; `report.say` refuses with "The analyst is still answering", which the
+  send button shows as its refusal.
+- **`submit_report` is a card in the transcript, not the end of anything.** The conversation stays
+  open, so "you did not mention that it ignored the outfit marker" produces a revised report and a
+  second card; the earlier card stays, showing what it said. The card carries the review-and-file
+  buttons and the warning that the issue body has to be pasted.
+- **Both accesses can be granted part way through**, through `report.grant`. `run` builds its tool
+  catalog once per turn, so a grant made during one lands on the next, and the box's tooltip says
+  so. Granting is one-way: tools already used cannot be un-remembered from the transcript, so a
+  ticked box is disabled with that as its reason. Each box is refused by name when there is nothing
+  to grant — no source shipped with the build, or nothing was sent to a model API this session. The
+  decision is `grantBox` in `renderer/rules/`, tested by jest, because a mock workspace refuses to
+  open a conversation at all.
+- **Turn events ride `report:event`, not `agent:event`.** Putting the analyst on the authoring
+  agent's channel would write the debug agent's turns into the thread being analysed, corrupting the
+  evidence for the next report of the same thread. A pane that mounts mid-conversation catches up by
+  asking `report.state` and reducing the rows it returns through the same reducer
+  (`renderer/pathux/reportconvo.ts`) that reduces live events.
+- **A report turn is busy work; an idle conversation is not.** Each turn is wrapped in
+  `while('an agent report', …)` rather than the conversation, so the in-flight set is empty between
+  turns and an authoring turn started while the pane sits open is still stoppable. The header's
+  spinner and Stop come from `busyControls` (`renderer/rules/busy.ts`), a table keyed by busy kind;
+  an authoring turn is deliberately absent from it, because the Convo editor owns that button.
+- **The conversation is written down, ten deep**, at `<userConfigDir>/debug-transcripts/` — user-level
+  state, outside every repository. A new conversation prunes the oldest as it starts rather than as
+  it ends, so a crashed run cannot leave an eleventh, and names are ISO stamps so name order is time
+  order. One JSON object per line, each carrying its own version, so an unknown line is skipped
+  rather than failing the read. A line comes from the same reducer the pane draws with, and
+  `FeedItem.detail` is dropped there and nowhere else: that is where a tool's result lives, and the
+  request captures in particular are the author's own traffic.
 
 ## Remembered UI state (two `session.json` files)
 

@@ -11,7 +11,7 @@
      compaction will not modify the transcript but instead append the compacted history to it.  
 	 create a tool for the agent to search the uncompacted history similar to how claude code 
 	 does it.
-[ ]: execute docs/plans/the-debug-agent-as-a-conversation.md
+[x]: execute docs/plans/the-debug-agent-as-a-conversation.md
 [x]: overlapping notifications popup is still not fixed, you will have to run a headed 
      test and take screenshots yourself to fix it.  note it needs fairly long notification
 	 text to happen.

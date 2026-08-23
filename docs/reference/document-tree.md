@@ -19,6 +19,7 @@ reasoning behind each decision:
 - [Where it lives](#where-it-lives)
 - [Right-click menus](#right-click-menus)
 - [Renaming in place](#renaming-in-place)
+- [Opening a shot's frame](#opening-a-shots-frame)
 - [Deliberately absent](#deliberately-absent)
 
 <!-- tocstop -->

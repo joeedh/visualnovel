@@ -1,6 +1,6 @@
 # The debug agent as a conversation
 
-Status: **planned**
+Status: **shipped**
 
 Supersedes most of [`watching-and-stopping-an-agent-report.md`](watching-and-stopping-an-agent-report.md).
 Two parts of that plan survive here and are carried in full: the busy state the header draws a
@@ -437,3 +437,30 @@ that gets fixed afterwards is the one an author uses daily.
 `report.ts:41`; `header.ts:305`; `session.ts` 911, 4185) and the stop button quoted a tooltip
 `agent.stop` does not have. All corrected against the files; the two that were only decorative were
 dropped rather than re-pinned.
+
+## As shipped
+
+Six stages, landed in order, each green on its own. Every decision above holds; what follows is what
+the code settled that the plan left open, beyond the per-stage notes already recorded above.
+
+`ask_user` from the analyst is still not drawn in the pane. `permission:ask` is one channel shared
+with the authoring agent and carries no origin, so the convo pane draws every ask including the
+analyst's; giving an ask an origin belongs with the attended-permission work. The attended
+`Permission` exists in `@vn/agentreport` and is covered by its tests, so the headless "nobody is
+here to answer" is confined to `report.agent` as planned — what is missing is only the pane that
+would draw the question.
+
+The header's table is `busyControls` in `renderer/rules/busy.ts` rather than a literal inside
+`runControls`. It names renderer command ids and the sentences a tooltip and a spinner show, so it
+belongs with the renderer's other pure logic, where jest can reach it; `header.ts` keeps the handle
+it returns so the spinner is retitled from the same table it was drawn from. `stopsWhat` stays in
+`src/shared/ipc.ts` unchanged, so `pipeline.stop`'s own answer and the header's tooltip are one
+sentence. The report's Stop tooltip is a literal in the table rather than the catalog's text,
+because `renderer/rules/catalog.ts` offers no per-id lookup.
+
+The Tests section asks for `busyState()` carrying the counter during a report and being cleared
+after it. That is not covered by jest: driving it needs a real turn, and a mock workspace refuses to
+open a conversation at all, so there is nothing to assert against under `--mock`. The mechanism it
+would have tested is `while()`, which already zeroes `this.progress` when the in-flight set empties
+and is exercised by the pipeline's own coverage; what is new here is `showReport` bumping
+`progress.ran` per tool event, which CDP reads off a live turn.

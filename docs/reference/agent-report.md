@@ -9,24 +9,28 @@
 - [The analyst](#the-analyst)
   * [What source it may read](#what-source-it-may-read)
   * [The request-capture tools](#the-request-capture-tools)
-- [The dialog](#the-dialog)
+- [The setup, and the conversation](#the-setup-and-the-conversation)
 - [Review, then the issue](#review-then-the-issue)
 - [Deliberately absent](#deliberately-absent)
 
 <!-- tocstop -->
 
 How **Help ▸ Report a Difficult Agent…** works as shipped: an author picks a conversation that
-went badly, optionally says what they had actually wanted, and a dedicated **debug agent** —
-running on the author's own model key, on the author's own machine — reads the thread, works out
-what went wrong, and drafts a report. The author reviews and edits the draft, and one click opens
-a pre-filled GitHub issue titled `AGENTREPORT: …`. Nothing is ever posted for them.
+went badly, says what they had actually wanted, and a dedicated **debug agent** — running on the
+author's own model key, on the author's own machine — reads the thread, works out what went wrong,
+and drafts a report. It is a conversation rather than one answer: the author replies, grants it
+more to read, stops a turn, and gets a revised report whenever it files one. The author reviews and
+edits the draft, and one click opens a pre-filled GitHub issue titled `AGENTREPORT: …`. Nothing is
+ever posted for them.
 
 The pure logic lives in **`@vn/agentreport`**; the desktop app's main process is its only
-consumer (`apps/desktop/src/main/commands/report.ts` defines `report.agent` and
-`report.openIssue`). The plans that built it, with the implementation history:
+consumer (`apps/desktop/src/main/commands/report.ts` defines the seven `report.*` commands). The
+plans that built it, with the implementation history:
 [`../plans/archive/reporting-a-difficult-agent.md`](../plans/archive/reporting-a-difficult-agent.md)
 and, for the request-capture tools,
-[`../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`](../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md).
+[`../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`](../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md);
+for the pane and the held conversation,
+[`../plans/archive/the-debug-agent-as-a-conversation.md`](../plans/archive/the-debug-agent-as-a-conversation.md).
 
 ## The privacy model
 
@@ -58,7 +62,7 @@ transcript lacks is `commands.jsonl`) and `@vn/providers`; the boundaries rule f
 | `transcript.ts`   | `assemble` / `toMarkdown` — evidence from a thread plus the command log      |
 | `redact.ts`       | `buildRedactor` / `sourcesFrom` — the substitution boundary and `leaks()`    |
 | `report.ts`       | `analysisSchema` — the report shape both analysis paths produce              |
-| `analyze.ts`      | the two analysis paths, and redaction on both sides of the model             |
+| `analyze.ts`      | `createAnalyst`, the two analysis paths, and redaction on both sides of the model |
 | `render.ts`       | the one markdown renderer both paths share                                   |
 | `sourcemap.ts`    | `READABLE` / `DENY` — the declared manifest of what source may be read       |
 | `sourcetools.ts`  | `grep`, `read_file`, `fetch_api_docs`, and the shared `Budget`               |
@@ -117,14 +121,17 @@ Two paths, different in kind, producing the same `analysisSchema` shape rendered
 `render.ts`:
 
 - **Without source** — one structured call through `chatBackendFor` + `withStructuredRetry`; no
-  agent loop at all.
+  agent loop at all. This is the headless path only: the conversational one always builds a loop,
+  if only over `submit_report`, because a single structured call is nothing to talk to.
 - **With source** — the `@vn/authoring` loop with an injected registry of exactly four tools:
   `grep`, `read_file`, `fetch_api_docs`, and `submit_report`, whose validated args end the run.
-  Plans are auto-approved (the registry holds nothing that could act on one), `ask_user` is
-  answered with a fixed "nobody is here", and a confirmation is refused rather than approved.
+  Plans are auto-approved (the registry holds nothing that could act on one) and a confirmation is
+  refused rather than approved. `ask_user` is answered with a fixed "nobody is here" under
+  `report.agent`; in the pane someone is there, and the question parks the turn instead.
   If this path fails, it **falls back to the cheap one** rather than erroring, and the report
   records `fellBack` — so `readSource` on a finished report means the analyst actually read
-  source, not that it was allowed to.
+  source, not that it was allowed to. A run the author **stopped** returns a distinct stopped
+  outcome and the fallback is not taken, because a stop must not spend another call.
 
 `readSource` is set by watching the tools rather than by the offer: each source tool is wrapped so
 that calling it records the fact, and a run that had the source and never opened it has its
@@ -184,21 +191,52 @@ threads the flag into `chatConversation`'s capture — so taking it does not put
 prompts back in the ring. The cost of that is deliberate: a failing request from the analyst itself
 is the one fault class the request-diagnosis tools cannot see.
 
-## The dialog
+## The setup, and the conversation
 
-`report.agent` is the one **checked non-mutator** in the registry — a check is a precondition on
-an act with a cost, and this one spends a minute of a real model's time on a real key. Its
-refusals, shown verbatim by the form: mock providers first (a mock backend would fabricate a
-diagnosis), then no conversations recorded, an unknown thread, no key for the **chosen** model
-(naming the vendor), and `source` ticked on a build that did not ship its source.
+Help ▸ Report a Difficult Agent… opens the Debug Agent pane, whose first card holds what the
+command dialog used to collect: the thread, the model, the effort, and the two reading boxes. The
+card seeds the newest thread (not the "active" one, which is usually empty), the bound model, and
+the bound effort **stepped up to at least `medium`** for this run only — nothing rebinds the
+conversation's own settings. Model and effort advice comes from
+`apps/desktop/src/shared/advice.ts` (`adviseModel` / `adviseEffort` / `adviseRun`), and it is the
+card's advice line: the Start button means *this will run*, the sentence says what it will cost.
 
-The dialog seeds the newest thread (not the "active" one, which is usually empty), the bound
-model, and the bound effort **stepped up to at least `medium`** for this run only — nothing
-rebinds the conversation's own settings. Model and effort advice comes from
-`apps/desktop/src/shared/advice.ts` (`adviseModel` / `adviseEffort` / `adviseRun`) and rides the
-form's accept note: the tick means *this will run*, the sentence says what it will cost. The
-full dialog mechanics — the `choices`-as-a-function vocabulary, the preview opened from an
-`onExec` watch — are in [`desktop-app.md`](desktop-app.md) under the Help menu.
+`report.open` and `report.agent` are **checked non-mutators** — a check is a precondition on an act
+with a cost, and this one spends a minute of a real model's time on a real key. Both refuse through
+`previewReport`, so the Start button and the headless form show the same sentences: mock providers
+first (a mock backend would fabricate a diagnosis), then no conversations recorded, an unknown
+thread, no key for the **chosen** model (naming the vendor), and `source` ticked on a build that
+did not ship its source.
+
+Past the card it is a conversation rather than one call: the author answers, sends more, and gets a
+revised report card whenever the analyst files one. Each turn is bounded by the same per-turn token
+ceiling and step cap a headless analysis uses; the conversation is not bounded, because the author
+is at the keyboard and the spend is on their own key. Stop ends the turn after the step it is on —
+`Agent.stop()` is read at the top of each step and no backend streams — and a stopped run returns a
+stopped outcome, so the single-call fallback is **not** taken: a stop must not spend another call.
+The conversational path always runs a loop, if only over `submit_report`, because a single
+structured call is nothing to talk to; the cheap unlooped path survives under `report.agent`.
+
+Both reading doors can also be opened part way through, through `report.grant`. `run` builds its
+tool catalog once per turn, so a grant lands on the next turn and its box says so, and granting is
+one-way because tools already used cannot be un-remembered from the transcript. Everything the
+analyst says is redacted before it reaches the pane, through the same `Redactor` the report is
+scanned with — a chat saying "Yuki" beside a report saying "Character A" reads as a bug, and one
+rule is easier to keep than two.
+
+`LOOP_PROTOCOL`'s "call `submit_report` exactly once" is kept verbatim for `report.agent` and
+replaced on the conversational path, which is told to file a report before finishing any turn it
+has concluded in and to file a revised one whenever the author's next message changes the
+conclusion. `unattended()`'s "nobody is here to answer" is likewise kept for the headless path only:
+in the pane an `ask_user` parks the turn and puts the question in the transcript.
+
+The conversation is written down at `<userConfigDir>/debug-transcripts/`, outside every repository,
+one versioned JSON object per line. Ten are kept and a new conversation prunes the oldest as it
+starts, so a crashed run cannot leave an eleventh. A line comes from the same reducer the pane draws
+with, and **a tool's result is never written**: the request captures in particular are the author's
+own traffic. The thread is named there by id and a filed report is written without its archive path,
+because neither has been through the redactor. The pane itself is in
+[`desktop-app.md`](desktop-app.md) under Debug Agent.
 
 ## Review, then the issue
 
