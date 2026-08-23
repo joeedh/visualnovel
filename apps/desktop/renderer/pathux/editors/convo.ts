@@ -9,6 +9,7 @@ import {
   askFormNow,
   convo,
   decide,
+  reopenedThread,
   revision,
   setAskForm,
   takeSeed,
@@ -32,6 +33,7 @@ import {
   uncachedTokens,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
+import { resumeRefusal } from '../../../src/shared/threads.js';
 import type { AskForm } from '../../rules/askform.js';
 import type { ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
 
@@ -137,10 +139,13 @@ export class ConvoEditor extends VnEditor {
     if (this.budgetSay() !== this.budgetKey) this.sayBudget();
   }
 
-  /** What the bar draws from. Three session facts, none of them the conversation's. */
+  /**
+   * What the bar draws from. Three session facts, none of them the conversation's, plus which saved
+   * conversation is on screen for reading — the Continue button exists only while one is.
+   */
   private stateKey(): string {
     const ui = this.ui;
-    return `${ui.agentMode}|${ui.model}|${ui.effort}`;
+    return `${ui.agentMode}|${ui.model}|${ui.effort}|${reopenedThread()?.id ?? ''}`;
   }
 
   /**
@@ -225,6 +230,21 @@ export class ConvoEditor extends VnEditor {
     fresh.description =
       'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
       'stays under Threads.';
+
+    // Drawn only while a saved conversation is on screen, because there is nothing to continue
+    // while the live one is. The refusal is the renderer's four checks; main runs a fifth over the
+    // protocol its backend speaks, which only main knows.
+    const opened = reopenedThread();
+    if (opened) {
+      const refusal = resumeRefusal(opened.title, opened.resume, { model: ui.model });
+      const cont = low.button(
+        'Continue',
+        () => void exec('agent.resumeThread', { id: opened.id }).then(report),
+      );
+      cont.description =
+        refusal ?? 'Continue this conversation — the agent is shown everything above.';
+      cont.disabled = refusal !== undefined;
+    }
 
     this.bar.flushUpdate();
   }

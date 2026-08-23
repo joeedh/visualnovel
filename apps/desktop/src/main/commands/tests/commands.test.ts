@@ -213,6 +213,7 @@ describe('the desktop registry', () => {
       'agent.editLine',
       'agent.fixAsset',
       'agent.renameThread',
+      'agent.resumeThread',
       'agent.stop',
       'art.generate',
       'art.promote',
@@ -295,6 +296,10 @@ describe('the desktop registry', () => {
       // that never failed, or a turn already running has to exist before the click.
       'agent.editLine',
       'agent.fixAsset',
+      // Hands the agent a stored conversation and writes nothing. A conversation recorded through
+      // another vendor cannot be continued at all, so the Continue button is greyed with the
+      // sentence saying which vendor it wants.
+      'agent.resumeThread',
       'agent.stop',
       'pipeline.stop',
       // Writes nothing and calls a provider, which is the cost. The Setup pane's Test button is

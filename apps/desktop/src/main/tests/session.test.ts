@@ -18,12 +18,14 @@ import {
   discoverSkills,
   newSkillTemplate,
   skillRoots,
+  type AgentMessage,
   type ApiFailure,
   type ApiRecovery,
 } from '@vn/authoring';
 import { openGit } from '@vn/git';
-import { readShots, writeShots } from '@vn/store';
+import { ProjectPaths, readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
+import { nativeFile, readNative } from '../threads.js';
 import type { AskQuestion, Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
@@ -1771,5 +1773,65 @@ describe('WorkspaceSession — conversation threads', () => {
 
   it('refuses to rename when there is nothing open', async () => {
     await expect(sessionFor(p).renameThread('', 'x')).rejects.toThrow(/no conversation is open/);
+  });
+
+  it('continues a saved conversation, and writes the next turn into it', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('give Aiko a jacket');
+    const [first] = (await session.threads()).threads;
+    await session.clearAgent();
+
+    await session.resumeThread(first!.id);
+    const held = (session as unknown as { agent?: { transcript: readonly AgentMessage[] } }).agent!
+      .transcript;
+    expect(held.some((m) => m.role === 'user' && m.content === 'give Aiko a jacket')).toBe(true);
+    // The gap note is filed last, so it is the newest thing the model reads before the new turn.
+    expect(held[held.length - 1]!.role).toBe('context');
+    expect(String(held[held.length - 1]!.content)).toContain('read a file again');
+
+    await session.runAgent('and boots');
+    expect((await session.threads()).threads).toHaveLength(1);
+    const record = await session.openThreadForReading(first!.id);
+    expect(record.items.map((i) => i.text)).toEqual(expect.arrayContaining(['and boots']));
+  });
+
+  it('numbers a continued turn past the messages already in the log', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('first');
+    const [thread] = (await session.threads()).threads;
+    await session.clearAgent();
+    const before = (await readNative(new ProjectPaths(p.dir), thread!.id))!.messages;
+
+    await session.resumeThread(thread!.id);
+    await session.runAgent('second');
+    const after = (await readNative(new ProjectPaths(p.dir), thread!.id))!.messages;
+
+    expect(after.length).toBeGreaterThan(before.length);
+    expect(after.map((m) => m.n)).toEqual(after.map((_m, i) => i));
+    // One header, written when the conversation was opened, and not written again by the resume.
+    expect(after.filter((m) => m.role === 'user').map((m) => m.content)).toEqual([
+      'first',
+      'second',
+    ]);
+  });
+
+  it('refuses a conversation recorded before there was a history to continue from', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('first');
+    const [thread] = (await session.threads()).threads;
+    await session.clearAgent();
+    await fs.rm(nativeFile(new ProjectPaths(p.dir), thread!.id));
+
+    expect(await session.resumeRefusalFor(thread!.id)).toContain(
+      'recorded before conversations could be continued',
+    );
+    await expect(session.resumeThread(thread!.id)).rejects.toThrow(/only its transcript/);
+  });
+
+  it('refuses the conversation that is already open', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('first');
+    const [thread] = (await session.threads()).threads;
+    expect(await session.resumeRefusalFor(thread!.id)).toContain('already the open conversation');
   });
 });

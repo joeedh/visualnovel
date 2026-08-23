@@ -156,6 +156,7 @@ import {
   loadContext,
   newSkillTemplate,
   readApiPlan,
+  restorable,
   skillId,
   skillRoots,
   systemSections,
@@ -308,10 +309,12 @@ import {
   proposed,
   queried,
   received,
+  replayed,
   type Convo,
   type ThreadUsage,
 } from '../shared/convo.js';
 import {
+  ConflictedLogError,
   NATIVE_VERSION,
   appendItem,
   appendNative,
@@ -321,14 +324,17 @@ import {
   listThreads,
   nativeFile,
   openThread,
+  readNative,
   readThread,
   retitleThread,
   threadFile,
   titleFrom,
   type NativeLine,
+  type NativeLog,
   type ThreadHeader,
   type ThreadRecord,
 } from './threads.js';
+import { resumeRefusal, type OpenedThread, type ResumeState } from '../shared/threads.js';
 import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
 import { adviseRun, analysisEffort } from '../shared/advice.js';
 import {
@@ -684,6 +690,26 @@ function wroteAuthoredInput(events: readonly AgentEvent[]): boolean {
       e.type === 'tool' &&
       (e.result.written ?? []).some((p) => MAPPED_DIRS.some((dir) => p.startsWith(dir))),
   );
+}
+
+/**
+ * What a resumed conversation is told about the gap it is being continued across. Derived from the
+ * header on every resume rather than written into the log, so a thread continued three times
+ * carries one note rather than three.
+ *
+ * The second sentence is the load-bearing one: `edit_file` runs against a ledger of what this
+ * conversation has read, and restoring the messages does not restore the ledger.
+ */
+function resumedNote(header: ThreadHeader): AgentMessage {
+  const archived = header.archived?.[header.archived.length - 1];
+  const saved = archived ? ` It was last saved into git at ${archived.commit.slice(0, 8)}.` : '';
+  return {
+    role: 'context',
+    content:
+      'This conversation was closed and has now been reopened, so the project may have changed ' +
+      `since the messages above.${saved} Nothing read earlier in it still counts as read: read a ` +
+      'file again before editing it.',
+  };
 }
 
 /**
@@ -1465,7 +1491,7 @@ export class WorkspaceSession {
    * back, so leaving the previous turns in its context while the screen shows another
    * conversation would leave the author and the agent talking about different things.
    */
-  async openThreadForReading(id: string): Promise<ThreadRecord> {
+  async openThreadForReading(id: string): Promise<OpenedThread> {
     const record = await readThread(new ProjectPaths(this.dir), id);
     await this.clearAgent();
     // Reopened on the binding it was recorded with, because a conversation reads as the model
@@ -1475,6 +1501,79 @@ export class WorkspaceSession {
     if (record.effort && (EFFORT_CHOICES as readonly string[]).includes(record.effort)) {
       await this.setEffort(record.effort as EffortChoice);
     }
+    const { state } = await this.resumeState(id);
+    return { ...record, resume: state };
+  }
+
+  /**
+   * What thread `id`'s stored history says about continuing it, and the log the answer came from.
+   *
+   * A log a merge damaged is reported rather than thrown: the answer is a refusal either way, and
+   * the refusal has to reach a greyed button as a sentence.
+   */
+  private async resumeState(id: string): Promise<{ state: ResumeState; log?: NativeLog }> {
+    try {
+      const log = await readNative(new ProjectPaths(this.dir), id);
+      return log ? { state: { header: log.header }, log } : { state: {} };
+    } catch (err) {
+      if (err instanceof ConflictedLogError) return { state: { damaged: true } };
+      throw err;
+    }
+  }
+
+  /**
+   * Why thread `id` cannot be continued on the binding in force, or `undefined`. What
+   * `agent.resumeThread` refuses with, and what its menu entry is greyed with.
+   *
+   * The agent is built first because building the backend is what settles which protocol it speaks
+   * and which model it is bound to, and both are what the stored conversation is checked against.
+   */
+  async resumeRefusalFor(id: string): Promise<string | undefined> {
+    const record = await readThread(new ProjectPaths(this.dir), id);
+    if (this.thread?.id === id) {
+      return `“${record.title}” is already the open conversation.`;
+    }
+    await this.ensureAgent();
+    const { state } = await this.resumeState(id);
+    return resumeRefusal(record.title, state, { model: this.model, backend: this.native.kind });
+  }
+
+  /**
+   * Continue a saved conversation: hand the agent the messages it was recorded with, then bind the
+   * session to the thread they came from so later turns append to the same two files.
+   *
+   * Continuing happens on the model bound now rather than the one the conversation was recorded
+   * with. `setModel` already promises a mid-conversation swap keeps the transcript, and the check
+   * above has already refused a swap the stored messages could not survive.
+   */
+  async resumeThread(id: string): Promise<ThreadRecord> {
+    const paths = new ProjectPaths(this.dir);
+    const record = await readThread(paths, id);
+    const agent = await this.ensureAgent();
+    const { state, log } = await this.resumeState(id);
+    const refusal = resumeRefusal(record.title, state, {
+      model: this.model,
+      backend: this.native.kind,
+    });
+    if (refusal) throw new Error(refusal);
+    if (!log) throw new Error(`“${record.title}” has no history to continue from`);
+
+    // Closes and commits whatever was open first, because `restore` replaces the transcript and a
+    // half-written thread left bound would take the resumed conversation's later lines.
+    await this.clearAgent();
+    const stored = log.messages.map(({ n: _n, ...message }) => message);
+    agent.restore({
+      messages: [...restorable(stored), resumedNote(record)],
+      sections: log.sections,
+    });
+
+    const { items, ...header } = record;
+    this.thread = header;
+    this.convo = replayed(this.convo, items, '');
+    // Past the highest `n` the log holds, so a message written now cannot take the number of one
+    // already in the file. The header is not rewritten: line 0 still describes this conversation.
+    const highest = log.messages.reduce((max, message) => Math.max(max, message.n), -1);
+    this.native = { ...this.native, sections: log.sections, n: highest + 1, opened: true };
     return record;
   }
 

@@ -132,7 +132,7 @@ export const agentClear = define({
 });
 
 /**
- * The four thread commands. None is `undoable`, because `vngen/state` sits outside the undo
+ * The five thread commands. None is `undoable`, because `vngen/state` sits outside the undo
  * snapshot, so a journal entry could not actually restore a transcript. `agent.renameThread` is
  * the only one marked `mutating`, and only because it writes a file.
  */
@@ -170,6 +170,34 @@ export const agentOpenThread = define({
   async run({ id }, ctx) {
     const record = await ctx.host.session.openThreadForReading(id);
     return { message: `Reopened “${record.title}” for reading.`, data: record };
+  },
+});
+
+/**
+ * Continuing, which is the one thread command that changes what the agent holds. It is checked
+ * rather than merely offered: a conversation recorded through another vendor or another protocol
+ * cannot be handed to the model bound now, and the check is where that sentence comes from.
+ */
+export const agentResumeThread = define({
+  id: 'agent.resumeThread',
+  title: 'Continue conversation',
+  description: 'Continue a saved conversation. The agent is shown everything already in it.',
+  mutating: false,
+  props: { id: prop.string('the conversation to continue') },
+  check: async ({ id }, ctx) => {
+    const free = idle(ctx.host);
+    if (!free.ok) return free;
+    const { threads } = await ctx.host.session.threads();
+    const found = threads.find((thread) => thread.id === id);
+    if (!found) return { ok: false, reason: `No conversation ${id}.` };
+    const refusal = await ctx.host.session.resumeRefusalFor(id);
+    return refusal
+      ? { ok: false, reason: refusal }
+      : { ok: true, note: `Continues “${found.title}”.` };
+  },
+  async run({ id }, ctx) {
+    const record = await ctx.host.session.resumeThread(id);
+    return { message: `Continuing “${record.title}”.`, data: record };
   },
 });
 

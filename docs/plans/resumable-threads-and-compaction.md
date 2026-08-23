@@ -627,6 +627,33 @@ Tests: `resumeRefusal` for each of the five cases and for the allowed sibling-mo
 (`apps/desktop/src/shared/tests/`); a session test that resumes a thread written by an earlier
 session and asserts the agent's next turn sees the earlier messages.
 
+Six things landed differently from the sketch above.
+
+- `resumeRefusal` takes the thread's title, a `ResumeState` and a `ResumeBinding` rather than a
+  header, because two of the five answers are about a log that yielded no header: one a merge
+  damaged, and one that was never written. `ResumeBinding.backend` is optional, so the renderer
+  runs the first four checks and main runs all five. The renderer cannot derive the bound protocol
+  without repeating the fact that only Anthropic implements `chatConversation`, and the case the
+  plan names as the acceptance criterion — an Anthropic thread against a Gemini binding — is the
+  vendor check, which the renderer does run.
+- The damaged check runs first rather than third. `readNative` throws on a conflict marker, so a
+  damaged log has no header for the version, vendor or protocol checks to read.
+- `NATIVE_VERSION` moved from `main/threads.ts` into `shared/threads.ts`, re-exported from where it
+  was, so the writer of line 0 and the check against it share one number.
+- Nothing is rebound. The refusal has already excluded every stored conversation the model bound
+  now could not read, and `setModel` already promises a mid-conversation swap keeps the transcript,
+  so continuing on a sibling model needs no rebinding. `resumeNote` names the swap for a surface
+  that wants to show it.
+- The gap note is filed on every resume rather than only when the thread has been archived. The
+  commit is one clause of it; the sentence that has to be there either way is that the read ledger
+  did not survive, since `restore` drops it and `edit_file` refuses a file this conversation has
+  not read. It goes into `restore`'s message array rather than through a new public `append`, and
+  is deliberately not written to the log: it is derived from the header, so the next resume derives
+  it again.
+- The Convo pane draws the Continue button only while a saved conversation is on screen for
+  reading. `pathux/agent.ts` holds that thread in `reopenedThread()`, and the pane's `stateKey`
+  keys on its id.
+
 ### Stage 6 — compaction
 
 - `packages/authoring/src/compact.ts`: `compactionPrompt(messages)` and

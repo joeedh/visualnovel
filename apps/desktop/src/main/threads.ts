@@ -27,6 +27,9 @@ import type {
 } from '../shared/convo.js';
 
 export type { ResumeHeader, ThreadArchive, ThreadHeader, ThreadRecord };
+// Re-exported so a reader of the native log finds the version beside the writer of it. The
+// declaration is in `shared/` because the resume check compares against it from both processes.
+export { NATIVE_VERSION } from '../shared/threads.js';
 
 /** The title a thread is created with, before a first turn names it. */
 export const NEW_THREAD_TITLE = 'New conversation';
@@ -365,9 +368,6 @@ export async function retitleThread(
 // The backend's own messages, verbatim. None of the clamps above apply: a transcript a model can
 // continue from has to be exactly what the model was sent. The separate file is also what keeps a
 // reader of the display log walking kilobytes of feed rather than megabytes of tool output.
-
-/** The native log's format version, written at line 0 and checked before a thread is resumed. */
-export const NATIVE_VERSION = 1;
 
 /** Refuses a native log that a three-way merge wrote two versions into. */
 export class ConflictedLogError extends Error {
