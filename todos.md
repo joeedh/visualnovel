@@ -65,7 +65,7 @@
    - it might work for individual asset subgraphs, so use it for those and we'll try it.
 [x]: clicking on a scene should show it in any open play editors 
 [x]: clicking on a shot in the coverage editor (or the document tree) should show it in the play editor.
-[ ]: write a report on supporting a manga or anime shot composition style, where 
+[x]: write a report on supporting a manga or anime shot composition style, where 
      instead of portraits popping up on the screen (as light novels often do) 
 	 each shot would fully frame characters.  cross reference with the ai shot 
 	 framing report.
