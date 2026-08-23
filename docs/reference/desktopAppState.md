@@ -70,45 +70,73 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 
 **What:** The arrangement of panes the user built, and the selection they left in it.
 
-**Storage:** `<userConfigDir()>/desktop/session.json` — the same home `@vn/config` gives API keys,
-`%LOCALAPPDATA%\vnauthor\desktop` on Windows (override with `VN_DESKTOP_HOME`). Outside the repo,
-so nothing gitignores it, and outside the bundle on purpose: a packaged app's `__dirname` is inside
-`app.asar`, which is a file. **The file is global per install** — and that is exactly why the keys
-inside it are not.
+**Storage:** two files, both `SessionStore` (`src/main/sessionstore.ts`), which is a flat
+key/value store over one directory:
+
+| File | Holds | Notes |
+|------|-------|-------|
+| `<root>/.vnstudio/session.json` | every `pathux.` key: the mesh, the selection, the applied template, the window list | the project's own, beside its layout templates. **Gitignored** |
+| `<userConfigDir()>/desktop/session.json` | `agent.budget`, `vn.notifications.filter`, the recents list | the install's, `%LOCALAPPDATA%\vnauthor\desktop` on Windows (override with `VN_DESKTOP_HOME`) |
+
+The install file is the same home `@vn/config` gives API keys: outside the repo, and outside the
+bundle on purpose, because a packaged app's `__dirname` is inside `app.asar`, which is a file.
+
+The arrangement is the project's because that is the unit an author moves. It used to live in the
+install file under a key carrying a digest of the project path, so renaming the directory lost the
+arrangement, a second install opened the project to a default screen, and clearing one project's
+state cleared every project's. It is gitignored rather than committed because it changes on every
+border drag: a tracked file would churn `git status`, conflict on every pull, and make
+`UndoJournal.check` refuse every undo, since `Git.writeTree` runs `git add -A` in a scratch index
+and would see the file move. The shareable half of an arrangement is a
+[layout template](desktop-app.md#layout-templates), which _is_ committed. The ignore entry is the
+glob `.vnstudio/session.json*`, because `writeFileAtomic` leaves a `.tmp-<hex>` sibling during a
+write, and `UNDO_PATHS` excludes the same glob so a hand-edited `.gitignore` cannot break undo.
 
 **Shape:** a flat `Record<string, SessionValue>` with dotted keys. The three that describe a
-window are scoped **by workspace and by window index**, built in `src/shared/sessionkeys.ts`:
-`pathux.<workspace>.window.<n>.{layout,selection,template}`, plus one list per workspace,
-`pathux.<workspace>.windows`. `<workspace>` is a short digest of the resolved, case-normalized
-root; `<n>` is the index main handed the window.
+window are scoped **by window index**, built in `src/shared/sessionkeys.ts`:
+`pathux.window.<n>.{layout,selection,template}`, plus one list, `pathux.windows`. `<n>` is the
+index main handed the window.
 
 ```jsonc
 {
-  "pathux.1h2k3j4.window.0.layout": { /* nstructjs-serialized screen, magic "VNSC" */ },
-  "pathux.1h2k3j4.window.0.template": "writing",
-  "pathux.1h2k3j4.window.0.selection": {
+  "pathux.window.0.layout": { /* nstructjs-serialized screen, magic "VNSC" */ },
+  "pathux.window.0.template": "writing",
+  "pathux.window.0.selection": {
     "sceneId": "arrival",
     "shotId": "",
     "characterId": "aiko",
     "docPath": "characters/aiko/character.md",
+    "assetHash": "9f2c…",
+    "taskHash": "",
   },
-  "pathux.1h2k3j4.window.1.layout": { /* the second window's own mesh */ },
-  "pathux.1h2k3j4.windows": [{ "id": 0, "bounds": { "x": 0, "y": 0, "width": 1360, "height": 860 } }],
+  "pathux.window.1.layout": { /* the second window's own mesh */ },
+  "pathux.windows": [{ "id": 0, "bounds": { "x": 0, "y": 0, "width": 1360, "height": 860 } }],
 }
 ```
 
-Both halves of the key are load-bearing, and the template is where a flat key failed loudly:
+The window index is load-bearing, and the template is where a flat key failed loudly:
 `view.applyLayout` in window A wrote `pathux.template`, and `view.resetLayout` in window B then
-re-applied **A's** template to B. The workspace half matters because the file is install-global —
-two instances on two repos would otherwise both write `window.0.layout`.
+re-applied **A's** template to B.
+
+**Which file a key lands in is decided by the key alone.** `isProjectKey` is the single authority
+and answers by prefix: a `pathux.` key that is not one of the flat legacy names belongs to the
+project. `SessionState` (`src/main/sessionstate.ts`) holds both stores and routes every read and
+write, and `CommandHost.state` is that router rather than a store — otherwise `view.*` would keep
+writing the template to the install file, and `view.resetLayout` in project B would re-apply
+project A's template. The renderer sees one merged snapshot, so nothing in it has to know there
+are two files.
 
 A renderer learns which window it is from its own url (`?window=<n>&ws=<scope>`), not over IPC:
-the layout and the selection are restored before the first paint, and `workspace.index()` has
-not come back yet. The flat `pathux.{layout,selection,template}` an older install left behind are
-read **once**, as window 0 of the first workspace opened, and never written again.
+the layout and the selection are restored before the first paint, and `workspace.index()` has not
+come back yet. `ws` is the workspace digest, and every project-key write carries it, so main can
+drop a write made by a window that has not finished reloading after a workspace switch. The flat
+`pathux.{layout,selection,template}` an older install left behind are read **once**, as window 0,
+and never written again; a project opened for the first time seeds its file from the install's
+keys for that workspace, leaving the install's copies in place.
 
-Not every key is a window fact: the recents list and `vn.notifications.filter` stay flat, because
-they are preferences of the install.
+A project whose `.vnstudio` cannot be opened keeps no arrangement, after one logged warning:
+reads answer the default and project-key writes are dropped. The install file is unaffected,
+because a preference is not the project's to lose.
 
 **Lifecycle:**
 - Main opens the store during `app.whenReady()`, before any window exists
@@ -118,9 +146,23 @@ they are preferences of the install.
 - `pathux/persist.ts` writes both keys, debounced 400 ms, and again on `beforeunload` — a quit
   does not run the debounce. The layout reports through `VnScreen.onLayoutChange` (every split,
   join, border drag and window resize); the selection through `DataPathWatcher`s on `ui.sceneId`
-  / `ui.shotId` / `ui.characterId` / `ui.docPath`, which is the same push the widgets get
-- `ui.taskHash` is deliberately **not** written: it is a content hash that re-keys whenever a
-  prompt changes, so one remembered across a re-plan names nothing
+  / `ui.shotId` / `ui.characterId` / `ui.docPath` / `ui.assetHash` / `ui.taskHash`, which is the
+  same push the widgets get. Every persisted field needs a watcher of its own, because clicking an
+  asset moves no other field and nothing else would schedule the save
+- **A restored id is checked against the project, once, after the first paint** (`settleSelection`
+  in `renderer/pathux/shell.ts`, deciding through `renderer/rules/uistate.ts`). One `asset.info`
+  repairs `assetHash`: it fails for a hash the manifest no longer holds, which clears the
+  selection, and carries `newerTake` for a take a later render replaced, which the selection
+  follows. `sceneId` and `characterId` are cleared when the workspace index does not list them,
+  and `shotId` goes with its scene. `docPath` is **not** pruned, because the doc tree caps a
+  branch and has a second file-tree mode, so absence from a fetched tree is not evidence the file
+  is gone. Every write back is guarded on the field still holding what restore put there, since
+  the author may have clicked something in between
+- `ui.taskHash` is persisted with no repair rule: a task hash is `sha256(kind, inputs)` and is
+  stable while the inputs are, and the inspector already answers one the current status does not
+  carry by fetching once and drawing nothing
+- **A workspace switch reloads every window** rather than re-applying in place, so each one
+  re-runs the boot path against the newly opened project's file
 - **A field a pane remembers rides in the layout blob**, not beside it: `registerEditor` takes an
   optional `fields` list and nstructjs writes those properties into the pane's own struct, so the
   documents editor's tree/file mode survives a restart *and* survives being torn into a new pane.
@@ -134,14 +176,16 @@ they are preferences of the install.
   `view.saveLayout` / `view.resetLayout`, and it is a *pointer into the project* — the slug of the
   layout template the window is showing. Main derives *which* window's key from `ctx.origin`; a
   command with no origin — the agent, CDP — uses the focused window, because that is where its
-  effect lands. The arrangement itself still lives in `pathux.layout`,
+  effect lands. The arrangement itself still lives in `pathux.window.<n>.layout`,
   because which panes are open is a window fact even when a project named the arrangement. See
   [Layout templates](desktop-app.md#layout-templates)
 - Writes are merged **per key** under a `mkdir` lock, so two running instances don't clobber
   each other's keys (same key is last-flush-wins)
-- **Survives:** app restart. **Lost when:** the file is deleted
+- **Survives:** app restart, and renaming or copying the project directory. **Lost when:** the
+  file is deleted, or the project is cloned somewhere else, since git does not carry it
 
-**Code:** `src/main/sessionstore.ts`, `renderer/pathux/persist.ts`
+**Code:** `src/main/sessionstate.ts`, `src/main/sessionstore.ts`, `src/shared/sessionkeys.ts`,
+`renderer/pathux/persist.ts`, `renderer/rules/uistate.ts`
 
 ---
 
@@ -160,7 +204,8 @@ a widget that would change the project dispatches a command instead.
 |-------|------|-------|
 | `sceneId` / `shotId` / `characterId` | `string` (`''` = nothing) | The one authored selection every editor observes, and any editor may publish. **Persisted** (category 2) |
 | `docPath` | `string` (`''` = nothing) | Which document the wiki editor is on — the fourth selection field, and the one that names a **path** rather than an id, because a free-form note under `wiki/` has no id. `view.open`/`view.focus` publish it from their `subject` prop. **Persisted** (category 2) |
-| `taskHash` | `string` | Which task the inspector is open on. Machine identity, so deliberately not persisted |
+| `taskHash` | `string` | Which task the inspector is open on. **Persisted** (category 2), with no repair rule: the hash is stable while its inputs are, and the inspector draws nothing for one it cannot find |
+| `assetHash` | `string` | Which asset the asset editor is open on. **Persisted** (category 2), and repaired at boot through one `asset.info` |
 | `projectTitle` | `string` | Pushed from `workspace:index` |
 | `model` | `string` | Text model id, for the header badge |
 | `agentMode` | `'plan' \| 'execute'` | Mirrored from `agent.setMode`'s outcome and from `agent:event` |
@@ -311,6 +356,16 @@ and only *reports* a leftover `screenplay/`.
 ```
 Renderer                         Main                     Files
 ────────────────────────────────────────────────────────────
+  preload
+       ├─ sendSync('session:snapshot:sync')
+       │    └─────────────────────→ SessionState.snapshot()
+       │                             ├─ desktop/session.json  (this install)
+       │                             └─ .vnstudio/session.json (this project)
+       │    ←──────────────────── the two, as one map
+       │
+  shell.start(), before the first paint
+       ├─ restoreLayout / restoreSelection, off that map
+       │
   installBridge (shell boot)
        │
        ├─ invoke('workspace:index')
@@ -323,6 +378,11 @@ Renderer                         Main                     Files
        │    ←──────────────────── return WorkspaceIndex
        │
        └─ ui.projectTitle / ui.errors / ui.warnings → notifyChange()
+
+  shell.start() tail, after the first paint
+       └─ settleSelection(restored)
+            ├─ asset.info      → repair or clear ui.assetHash
+            └─ workspace:index → clear a scene or character it does not list
 ```
 
 ### 2. User Types in the Convo Editor
@@ -422,15 +482,15 @@ invoke('pipeline:run', { mock })
 | Data | Where | Persists? | Who Reads | Who Writes |
 |------|-------|-----------|-----------|-----------|
 | Playthrough position | `localStorage` | ✓ Survives restart | Runner component | Save button |
-| Pane layout | `desktop/session.json` (`pathux.<ws>.window.<n>.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
-| Selected scene/shot/character/document | `desktop/session.json` (`pathux.<ws>.window.<n>.selection`) | ✓ Survives restart | `restoreSelection` | The `ui.*` datapath watchers |
-| A field a pane remembers (the documents editor's mode) | `desktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
-| Whether a pane is pinned, and to what | `desktop/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The pin toggle, via `VnScreen.onLayoutChange` |
-| Which layout template the window shows | `desktop/session.json` (`pathux.<ws>.window.<n>.template`) | ✓ Survives restart | `view.layouts`, the layout watch | `view.applyLayout` / `saveLayout` / `resetLayout`, in main |
+| Pane layout | `.vnstudio/session.json` (`pathux.window.<n>.layout`) | ✓ Survives restart | `restoreLayout` | Every split/join/drag, debounced |
+| Selected scene/shot/character/document/asset/task | `.vnstudio/session.json` (`pathux.window.<n>.selection`) | ✓ Survives restart | `restoreSelection`, then `settleSelection` | The `ui.*` datapath watchers |
+| A field a pane remembers (the documents editor's mode) | `.vnstudio/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The editor, via `layoutChanged()` |
+| Whether a pane is pinned, and to what | `.vnstudio/session.json` (inside the window's `…layout`) | ✓ Survives restart | nstructjs, with the pane | The pin toggle, via `VnScreen.onLayoutChange` |
+| Which layout template the window shows | `.vnstudio/session.json` (`pathux.window.<n>.template`) | ✓ Survives restart | `view.layouts`, the layout watch | `view.applyLayout` / `saveLayout` / `resetLayout`, in main |
 | The layout templates themselves | `.vnstudio/layouts/*.json` (the **project** repo) | ✓ On disk, committed | `view.layouts` / `view.applyLayout` | `view.saveLayout`, `view.resetLayout`, `ensureLayouts` |
 | The conversation on screen | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
 | The conversation as a transcript | `vngen/state/threads/<id>.jsonl` | ✓ Survives restart | `agent.threads` / `agent.openThread` | Main, one line per feed item plus one per API call's receipt, as the turn runs |
-| Header facts, `taskHash`, per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
+| Header facts and per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |
 | Project config | Files | ✓ On disk | Main (lazy load) | Author / editor |
 | Story model | Files | ✓ On disk | Main (lazy load) | Pipeline + authoring agent |
@@ -440,6 +500,7 @@ invoke('pipeline:run', { mock })
 | Command history | `vngen/state/commands.jsonl` | ✓ On disk | `CommandStack` (`command:history`) | Every command execution, via `onRecord` |
 | Notifications | `vngen/state/notifications.jsonl` | ✓ On disk | `notify:list` / the bell | Every filed command outcome, every pipeline task, every shell notice |
 | Which categories the list shows | `desktop/session.json` (`vn.notifications.filter`) | ✓ Survives restart | `pathux/notifications.ts` | The filter popup and the "show deleted" box |
+| Which projects were opened recently, and the agent's token budget | `desktop/session.json` (`workspace.recent`, `agent.budget`) | ✓ Survives restart, on this machine | `recentWorkspaces`, the agent runner | `rememberWorkspace`, `agent.setBudget` |
 | Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | Every undoable command — the eighteen `story.*` ones, the document writers, and the two that write layout templates |
 
 ---
@@ -451,11 +512,14 @@ When the app restarts:
 1. **Renderer memory → all cleared.** The transcript, the header facts and every draft are gone.
 2. **localStorage → playthrough saved.** If the author was in the Play editor, click Load to
    restore position.
-3. **`desktop/session.json` → the pane layout and the selection are restored**, synchronously,
-   before the first paint. A layout that will not load falls back to the Writing arrangement — the
-   documents tree, the script with the branch cards behind it, and the agent — rather than failing.
-   the window's template key comes back too, and the layout watch seeds from it **without re-applying**, so
-   a border dragged last session is not thrown away by a template that also describes this window.
+3. **`.vnstudio/session.json` → the pane layout and the selection are restored**, synchronously,
+   before the first paint, from the project that is opening. A layout that will not load falls back
+   to the Writing arrangement — the documents tree, the script with the branch cards behind it, and
+   the agent — rather than failing. The window's template key comes back too, and the layout watch
+   seeds from it **without re-applying**, so a border dragged last session is not thrown away by a
+   template that also describes this window. What the selection names may be gone by now, so
+   `settleSelection` checks it once the first paint is up: the asset hash is repaired through one
+   `asset.info` call, and a scene or character the workspace index does not list is cleared.
 4. **Project files → unchanged.** Workspace loads with latest committed state.
 5. **Main process → rebuilds on first use.**
    - First IPC call (e.g., `workspace:index`) → lazy-loads project, creates Agent
@@ -493,7 +557,7 @@ The **conversation on screen is not recovered**: the renderer opens on an empty 
 | `command:check` | `{ id, props? }` | CommandCheck | No (a read, never a gate — `exec` re-decides) |
 | `command:undo` | none | CommandOutcome | **Yes** (restores a snapshot; refuses on drift) |
 | `command:redo` | none | CommandOutcome | **Yes** |
-| `session:set` | `{ key, value }` | void | **Yes** (`desktop/session.json`) |
+| `session:set` | `{ key, value, scope? }` | void | **Yes** — a `pathux.` key to `.vnstudio/session.json`, everything else to `desktop/session.json` |
 
 The `story:*` reads and the `command:*` family are the two halves of one rule: **commands are
 the only write path.** There is no mutating IPC channel for the branch editor or the timeline —
@@ -501,7 +565,10 @@ a read channel feeds the view, and every edit is a `story.*` command with a `Com
 See [`command-system.md`](command-system.md).
 
 `session:snapshot:sync` is the odd one out: a **synchronous** `ipcMain.on` channel the preload
-calls once, before first paint, so the renderer never renders a default layout and then jumps.
+calls once, before first paint, so the renderer never renders a default layout and then jumps. It
+answers with the two session files as one map, so the renderer reads a flat key/value store and
+never learns which file a key came from. The two key sets are disjoint, so the merge decides
+nothing.
 
 `pipeline:status` returns tasks **narrowed at the boundary** (`src/main/reviews.ts`), not raw
 pipeline tasks. `TaskAttempt.reviews` is `unknown[]` in `@vn/types` because it is read back from
@@ -533,10 +600,23 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
   pane layout, and the selection it was left on. Derived or transient state stays ephemeral.
 
 ### Why a main-process file, not localStorage, for the layout?
-- It is about the **install**, not a workspace or an origin; a future preferences pane needs to
-  write it from main.
-- The preload can read a main-process file **synchronously** before first paint. Two Electron
-  instances would also clobber each other in `localStorage`; per-key merge under a lock does not.
+- The preload can read a main-process file **synchronously** before first paint, so a saved
+  arrangement never appears as a jump away from the default. Two Electron instances would also
+  clobber each other in `localStorage`; per-key merge under a lock does not.
+- Main is also where the split by ownership can be made at all. `localStorage` is keyed by origin,
+  which is one bucket for every project the install ever opens.
+
+### Why the arrangement lives in the project rather than the install?
+- An arrangement describes the project it was made for. Its panes are pinned to that project's
+  scenes and characters, and its selection names ids only that project has, so it belongs beside
+  the project rather than in a file about this machine.
+- The install file needed a key per project instead, which grows without bound and cannot be
+  cleaned up: nothing tells the app that a project it opened last year was deleted. Moving or
+  renaming a project also lost its arrangement, because the key was a digest of the path.
+- The file is still gitignored, so an arrangement stays in the clone it was made in. Committing it
+  would put a `git status` entry under every pane drag, conflict on every pull, and make
+  `UndoJournal.check` refuse — `Git.writeTree` stages with `git add -A`, so a debounced write
+  landing mid-command reads as worktree drift.
 
 ### Why re-read project files on each call?
 - Ensures the main process always sees the latest disk state (e.g., if user hand-edits a file).
@@ -572,10 +652,11 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
 - **A window is a renderer, not an app instance.** One process, one `WorkspaceSession`, one
   `CommandStack`, one undo history, N windows onto it. The earlier note here — "separate app
   instance per window" — described a thing the app never did and must not do; see the lock below.
-- **Session store:** one `SessionStore` for the process. The per-key `mkdir`-locked merge still
-  matters, but between *instances on different projects*, not between windows: a window's own
-  keys are scoped by index, so two windows arranging their panes differently no longer race.
-  A lock left behind by a killed instance is broken after 5s.
+- **Session store:** two `SessionStore`s for the process, the install's and the open project's,
+  behind one `SessionState`. The per-key `mkdir`-locked merge still matters, but between
+  *instances on different projects*, not between windows: a window's own keys are scoped by
+  index, so two windows arranging their panes differently no longer race. A lock left behind by a
+  killed instance is broken after 5s.
 - **localStorage:** shared by origin, so playthrough saves still clobber each other (last window
   wins). Unchanged by any of this — it is the renderer's own store, keyed by nothing.
 - **One instance per workspace, enforced.** Two processes on one project collide in
@@ -597,10 +678,14 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
 - **A switch is a teardown.** The session, the command stack, the undo journal, the repo map and
   the undo revision are all rebuilt against the new root, so undo never crosses a project
   boundary, and nothing may cache the root — `vnasset://` resolves `ProjectPaths` per request.
-  The renderer gets a `{ type: 'workspace' }` effect and treats it as a remount.
-- The layout and the selection are **per workspace and per window**, so a switch opens the
-  arrangement that workspace last had rather than carrying the previous project's selection into
-  a project with none of those ids.
+  Every window is then reloaded, which re-runs the boot path against the new project's own session
+  file. The `{ type: 'workspace' }` effect is still pushed, for whichever windows have not
+  reloaded yet.
+- The layout and the selection live in the project and are keyed **per window**, so a switch opens
+  the arrangement that workspace last had rather than carrying the previous project's selection
+  into a project with none of those ids. A window that has not reloaded yet cannot write into the
+  project just opened: it stamps every write with the scope it was loaded for, and main drops a
+  stamp naming another project.
 - A switch acquires the new workspace's lock before it tears anything down, and releases the old
   one after. Switching to a project another instance owns is refused, and that instance is
   brought forward instead.

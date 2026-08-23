@@ -1,6 +1,6 @@
 # Remembering UI state in the project
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -12,7 +12,7 @@ Two claims in that sentence need separating, because only one of them is about w
 live.
 
 **Where it is stored.** Layout _templates_ are project-owned already
-(`.vnstudio/layouts/<slug>.json`, [`archive/layout-templates-and-the-view-menu.md`](archive/layout-templates-and-the-view-menu.md)).
+(`.vnstudio/layouts/<slug>.json`, [`layout-templates-and-the-view-menu.md`](layout-templates-and-the-view-menu.md)).
 The live arrangement is not: every window fact — the mesh, the selection, the applied template,
 the window list and their bounds — goes into `<userConfigDir()>/desktop/session.json`, which is
 install-global. `sessionkeys.ts` compensates by putting a digest of the project path into each
@@ -94,7 +94,7 @@ in `shared/sessionkeys.ts` is the single authority, and the rule is deliberately
 rather than by enumeration: a `pathux.` key that is not one of `LEGACY_KEYS` belongs to the
 project. That covers the window keys and the window list, leaves `agent.budget`,
 `vn.notifications.filter` and the recents list in the install file, and answers correctly for a
-`pathux.` key a later plan adds — [`needs-approval-icon-in-the-toolbar.md`](needs-approval-icon-in-the-toolbar.md)
+`pathux.` key a later plan adds — [`needs-approval-icon-in-the-toolbar.md`](../needs-approval-icon-in-the-toolbar.md)
 proposes `pathux.<scope>.approvalOrder`, which becomes `pathux.approvalOrder` and needs no
 routing change.
 
@@ -262,11 +262,11 @@ selection through the boot path that already exists.
 
 ### Stage 5 — the documentation
 
-- [`../reference/desktopAppState.md`](../reference/desktopAppState.md): the storage section
+- [`../reference/desktopAppState.md`](../../reference/desktopAppState.md): the storage section
   (:73-107), the boot-order list (:454), the two state tables (:425-429, :442) and the IPC table
   (:496). The worked key example is rewritten without the digest, and the new file gets its own
   row.
-- [`../reference/desktop-app.md`](../reference/desktop-app.md): the "Remembered UI state"
+- [`../reference/desktop-app.md`](../../reference/desktop-app.md): the "Remembered UI state"
   section (:1517-1532) and its TOC entry, plus the template note at :436-437.
 - Stale comments: `persist.ts:1-16` (which still names `.vndesktop/session.json` and calls it
   install-global), `sessionkeys.ts`'s header, `sessionstore.ts:3-7`, `view.ts:28-32`,
@@ -296,7 +296,7 @@ selection through the boot path that already exists.
 ## Pressure test
 
 Reviewed in a fresh context per
-[`../reference/conventions.md`](../reference/conventions.md#plans). Twelve findings came back;
+[`../reference/conventions.md`](../../reference/conventions.md#plans). Twelve findings came back;
 each was checked against the source before being accepted.
 
 **Fixed.**

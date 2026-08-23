@@ -30,7 +30,7 @@ traps written down, is [`../plans/archive/pathux-desktop-rewrite.md`](../plans/a
 - [Project](#project)
 - [System Prompt](#system-prompt)
 - [Setup](#setup)
-- [Remembered UI state (`desktop/session.json`)](#remembered-ui-state-desktopsessionjson)
+- [Remembered UI state (two `session.json` files)](#remembered-ui-state-two-sessionjson-files)
 - [Which project is open](#which-project-is-open)
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
 
@@ -432,11 +432,13 @@ branch cards behind it, the agent) and **Art** (the documents tree, one asset wi
 the pipeline queue). Full write-up:
 [`../plans/archive/layout-templates-and-the-view-menu.md`](../plans/archive/layout-templates-and-the-view-menu.md).
 
-- **The template is the saved arrangement; the live mesh is not.** What is on screen right now
-  stays per install in `desktop/session.json` under `pathux.layout`, for the reason
-  [`desktopAppState.md`](desktopAppState.md) gives — it is a window fact. `pathux.template`, beside
-  it, is the slug last applied: the pointer between the two. So `view.applyLayout` is neither
-  mutating nor undoable, while `view.saveLayout` and `view.resetLayout` are both.
+- **The template is the saved arrangement; the live mesh is not.** A template is committed with the
+  project. What is on screen right now goes in the project's gitignored
+  `.vnstudio/session.json` under `pathux.window.<n>.layout`, for the reason
+  [`desktopAppState.md`](desktopAppState.md) gives — it is a window fact.
+  `pathux.window.<n>.template`, beside it, is the slug last applied: the pointer between the two.
+  So `view.applyLayout` is neither mutating nor undoable, while `view.saveLayout` and
+  `view.resetLayout` are both.
 - **A template holds a recipe or a saved mesh, and which one says where it came from.** The shipped
   layouts are declarative recipes (`{split, at, first, second}` down to `{pane: [editor, …]}`)
   because **main writes those with no renderer in the loop** — scaffolding a project, ensuring an
@@ -1514,31 +1516,50 @@ knows nothing about.
   at most once per project, guarded by scanning the log for an existing notification pointing at
   this editor, since the notification log dedupes by id rather than by message.
 
-## Remembered UI state (`desktop/session.json`)
+## Remembered UI state (two `session.json` files)
 
-The layout, the selection (and anything else the shell should remember) live in a flat key/value
-file the main process owns — `apps/desktop/src/main/sessionstore.ts`, **global per install** rather
-than per workspace. It sits at `<userConfigDir()>/desktop/session.json` — the same home
-`@vn/config` gives API keys (`%LOCALAPPDATA%\vnauthor` on Windows), so user-level state has one
-address rather than two. `VN_DESKTOP_HOME` relocates it, which is how a test gets its own; a
-development run deliberately shares the installed app's, because a second home is how a recents
-list quietly forks in two. It is emphatically **not** a path under the bundle: a packaged app's
-`__dirname` is inside `app.asar`, which is a *file*, so a store derived from it fails `ENOTDIR`
-before the first window and the app hangs with nothing on screen. Full write-up:
-[`desktopAppState.md`](desktopAppState.md).
+Everything the shell should remember lives in flat key/value files the main process owns
+(`apps/desktop/src/main/sessionstore.ts`), split by what the state is about. One `SessionState`
+(`sessionstate.ts`) routes every read and write, and `isProjectKey` is the only thing that decides
+which file a key lands in. Full write-up: [`desktopAppState.md`](desktopAppState.md).
 
-- **Two keys, debounced.** `pathux.layout` is the nstructjs-serialized screen (JSON, magic `VNSC`,
-  written through path.ux's own `simple.saveFile`, which stamps the struct schema into the blob so a
-  layout written before path.ux changed a `STRUCT` still reads back). `pathux.selection` is the
-  three authored ids. Both flush 400 ms after the last change and again on `beforeunload`, since a
-  quit does not run the debounce.
+- **The project's own file**, `<root>/.vnstudio/session.json`, holds every `pathux.` key: each
+  window's mesh, its selection, the template it has applied, and the list of open windows with
+  their bounds. It sits beside the layout templates, and it is gitignored — an arrangement stays in
+  the clone it was made in, and a debounced write mid-command would otherwise read as worktree
+  drift to `UndoJournal.check`.
+- **The install's file**, `<userConfigDir()>/desktop/session.json`, holds what is about this
+  machine: `agent.budget`, the notification filter, and the recents list. That is the same home
+  `@vn/config` gives API keys (`%LOCALAPPDATA%\vnauthor` on Windows), so user-level state has one
+  address rather than two. `VN_DESKTOP_HOME` relocates it, which is how a test gets its own; a
+  development run deliberately shares the installed app's, because a second home is how a recents
+  list quietly forks in two. It is emphatically **not** a path under the bundle: a packaged app's
+  `__dirname` is inside `app.asar`, which is a *file*, so a store derived from it fails `ENOTDIR`
+  before the first window and the app hangs with nothing on screen.
+
+- **Three keys per window, debounced.** `pathux.window.<n>.layout` is the nstructjs-serialized
+  screen (JSON, magic `VNSC`, written through path.ux's own `simple.saveFile`, which stamps the
+  struct schema into the blob so a layout written before path.ux changed a `STRUCT` still reads
+  back). `pathux.window.<n>.selection` is six ids — scene, shot, character, document, asset and
+  task. `pathux.window.<n>.template` is the applied layout template. All flush 400 ms after the
+  last change and again on `beforeunload`, since a quit does not run the debounce.
+- **What a restored selection names may be gone.** `settleSelection` checks it once, after the
+  first paint: `asset.info` repairs a hash a later render replaced and clears one the manifest no
+  longer holds, and a scene or character the workspace index does not list is cleared, taking the
+  shot with the scene. Each write back is guarded on the field still holding what restore put
+  there.
 - **Nothing here may block boot.** A layout that will not load — corrupt, or naming an editor this
   build has not got — is discarded with a warning and the default screen takes its place. A missing
   or unreadable file reads back as `{}`, which is also how a hand-edited file with a UTF-8 BOM
-  behaves; quietly, so do not debug through one.
-- **Synchronous first read.** The preload does one `sendSync('session:snapshot:sync')`, so the
-  remembered layout is the first thing painted rather than a jump away from the default.
-- **Multi-instance by construction.** Nothing stops two app instances sharing the file, so a
+  behaves; quietly, so do not debug through one. A project whose `.vnstudio` cannot be written
+  keeps no arrangement at all: writes are dropped and reads answer the default.
+- **Synchronous first read.** The preload does one `sendSync('session:snapshot:sync')` and gets
+  both files as one map, so the remembered layout is the first thing painted rather than a jump
+  away from the default.
+- **A workspace switch reloads every window**, which re-runs the boot path against the new
+  project's file. A window that has not reloaded yet stamps its writes with the scope it was
+  loaded for, so its last flush cannot land in the project just opened.
+- **Multi-instance by construction.** Nothing stops two app instances sharing a file, so a
   flush takes a `mkdir` lock (stale ones, >5s, are broken), re-reads the file _inside_ the lock,
   and applies **only its dirty keys** over what it finds. Different keys from different
   instances both survive; the same key is last-flush-wins.
