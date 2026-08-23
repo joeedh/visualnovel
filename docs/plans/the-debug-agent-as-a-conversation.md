@@ -324,6 +324,24 @@ the catalog carries its two-value enum, and that the setup card still draws.
 `<userConfigDir>/debug-transcripts/`, the versioned line format, the prune, and the rule that tool
 results are not written.
 
+A line is taken from the same reducer the pane draws with, rather than written a second time from
+the row: `transcriptBody` runs one `ReportRow` through `asked` or `received` and writes the feed
+item's role and text, dropping `FeedItem.detail`. That is where the tool results go, and dropping
+the whole field is what keeps them out. A row about the machinery — a token count, a retry —
+produces no line at all.
+
+Two lines are not rows of the conversation. `opened` is the setup card as it collapsed, and
+`granted` is each access handed over part way through; neither carries content of its own, and
+together they are what explains the tool names that follow. The `opened` line names the thread by
+id rather than by title, because a title is the author's own words and nothing outside the redacted
+evidence has been through the redactor. A filed report is written without the path its archived
+copy went to, for the same reason: that path sits under the author's home directory.
+
+Writes are queued rather than awaited. The events of a turn arrive from a synchronous push, and a
+transcript that cannot be written must not take down the conversation it is recording — so
+`beginTranscript` returns nothing when the directory cannot be opened, and a failed append is
+dropped while the next line still tries.
+
 ### 6. The header, and the documentation
 
 The busy-kind table and the spinner. Then `docs/reference/agent-report.md` and the

@@ -329,10 +329,12 @@ import {
   analysisParts,
   detailGrant,
   makeRedactor,
+  openTranscript,
   saveReport,
   sourceGrant,
   type AnalysisParts,
   type AnalysisRequest,
+  type Transcript,
 } from './agentreport.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
@@ -810,6 +812,8 @@ export class WorkspaceSession {
   private reportRows: ReportRow[] = [];
   /** Which access has been granted. One-way, so neither ever goes back to false. */
   private reportGrants = { source: false, detail: false };
+  /** Where the open debug conversation is being written down, when there was somewhere to write it. */
+  private transcript: Transcript | undefined;
 
   constructor(
     readonly dir: string,
@@ -1545,6 +1549,7 @@ export class WorkspaceSession {
     this.analysis = { req, parts, thread: header };
     this.reportRows = [];
     this.reportGrants = { source: req.source, detail: req.detail === true };
+    this.transcript = await this.beginTranscript(req, header.id);
     this.redaction = parts.redactor;
     this.analyst = createAnalyst({
       ...parts.options,
@@ -1559,9 +1564,42 @@ export class WorkspaceSession {
     return this.reportState();
   }
 
+  /**
+   * Start writing this conversation down, or carry on without one. A transcript is for reading back
+   * later, so failing to open one is not a reason to refuse an analysis the author is waiting on.
+   *
+   * The conversation's id is written rather than its title, because a title is the author's own
+   * words and nothing outside the redacted evidence has been through the redactor.
+   */
+  private async beginTranscript(
+    req: AnalysisRequest,
+    thread: string,
+  ): Promise<Transcript | undefined> {
+    try {
+      const transcript = await openTranscript();
+      transcript.write({
+        kind: 'opened',
+        thread,
+        model: req.modelId,
+        source: req.source,
+        detail: req.detail === true,
+        ...(req.effort ? { effort: req.effort } : {}),
+      });
+      return transcript;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Add one row to the conversation, and to the file it is being written down in. */
+  private recordReport(row: ReportRow): void {
+    this.reportRows.push(row);
+    this.transcript?.row(row);
+  }
+
   /** One more message to the open conversation, and the turn it starts. */
   async sayToReport(text: string): Promise<ReportStateView> {
-    this.reportRows.push({ kind: 'said', text });
+    this.recordReport({ kind: 'said', text });
     await this.reportTurn(text);
     return this.reportState();
   }
@@ -1582,7 +1620,7 @@ export class WorkspaceSession {
       const turn = await analyst.ask(text);
       if (!turn.report || !evidence) return;
       const body = renderReport(turn.report, evidence);
-      this.reportRows.push({
+      this.recordReport({
         kind: 'filed',
         report: turn.report,
         title: reportTitle(turn.report),
@@ -1597,7 +1635,7 @@ export class WorkspaceSession {
    * what is kept and what is shown carry pseudonyms the same way the finished report does.
    */
   private showReport(event: AgentEvent): void {
-    this.reportRows.push({ kind: 'event', event });
+    this.recordReport({ kind: 'event', event });
     if (event.type === 'tool') {
       this.progress = { ran: this.progress.ran + 1, pending: 0 };
       this.announceBusy();
@@ -1650,6 +1688,7 @@ export class WorkspaceSession {
       kind === 'source' ? await sourceGrant(open.req, open.parts.budget) : detailGrant(open.parts),
     );
     this.reportGrants[kind] = true;
+    this.transcript?.write({ kind: 'granted', access: kind });
     return this.reportState();
   }
 
