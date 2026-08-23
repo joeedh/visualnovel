@@ -7,6 +7,7 @@
  * what their next turn runs on.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
+import { BUSY_REPORT } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -61,6 +62,45 @@ export const reportAgent = define({
     const draft = await ctx.host.session.reportAgent(props);
     const read = draft.report.readSource ? ' It read the source.' : '';
     return { message: `${draft.report.analysis.summary}${read}`, data: { ...draft } };
+  },
+});
+
+export const reportStop = define({
+  id: 'report.stop',
+  title: 'Stop the debug agent',
+  description: 'End the turn the debug agent is on after the step it is on. What it said is kept.',
+  mutating: false,
+  props: {},
+  check(_props, ctx) {
+    if (!ctx.host.session.running(BUSY_REPORT))
+      return Promise.resolve({ ok: false, reason: 'The debug agent is idle.' });
+    return Promise.resolve({ ok: true, note: 'The turn ends after the step it is on.' });
+  },
+  run(_props, ctx) {
+    const asked = ctx.host.session.stopReport();
+    return Promise.resolve({
+      message: asked ? 'Stopping after the step in progress.' : 'The debug agent is idle.',
+    });
+  },
+});
+
+export const reportState = define({
+  id: 'report.state',
+  title: 'Read the debug conversation',
+  description:
+    'Return the debug conversation so far, so a pane opened part way through shows what it ' +
+    'missed. Reads nothing and spends nothing.',
+  mutating: false,
+  props: {},
+  run(_props, ctx) {
+    const state = ctx.host.session.reportState();
+    const rows = state.rows.length;
+    return Promise.resolve({
+      message: state.thread
+        ? `${rows} row${rows === 1 ? '' : 's'} about “${state.thread.title}”.`
+        : 'No debug conversation is open.',
+      data: state,
+    });
   },
 });
 

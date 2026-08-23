@@ -20,6 +20,7 @@ import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {
   emitEvent: () => {},
+  emitReport: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
   requestAnswer: () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),

@@ -14,6 +14,7 @@ import { WorkspaceSession, describeKeySource, type SessionDeps } from '../sessio
 
 const deps: SessionDeps = {
   emitEvent: () => {},
+  emitReport: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
   requestAnswer: () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),

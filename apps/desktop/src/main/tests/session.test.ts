@@ -31,6 +31,7 @@ import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
 // The three permission doors answer as an abandoned window would: no plan, no answers, no consent
 const deps: SessionDeps = {
   emitEvent: () => {},
+  emitReport: () => {},
   requestPlan: () => Promise.resolve({ approved: false }),
   requestAnswer: () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),

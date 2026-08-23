@@ -202,12 +202,12 @@ describe('the desktop registry', () => {
    * write. The two `report.*` commands put nothing in the project, but one spends a minute of a
    * real model's time on a real key and the other opens a public issue tracker on text — so "run
    * it and find out" is the wrong answer to both. `project.testKey` is the same shape and cheaper:
-   * it calls a provider for real, so whether a key even resolves is worth answering first. The two
-   * stops are the converse: they interrupt an act rather than performing one, so there is state to
-   * read — whether a run or a turn is in progress — and the answer is what greys the Stop button
-   * and says why.
+   * it calls a provider for real, so whether a key even resolves is worth answering first. The
+   * three stops are the converse: they interrupt an act rather than performing one, so there is
+   * state to read — whether a run, a turn or a report is in progress — and the answer is what greys
+   * the Stop button and says why.
    */
-  it('declares a precondition on what an act would cost, and on the two interrupters', () => {
+  it('declares a precondition on what an act would cost, and on the three interrupters', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
       'agent.editLine',
       'agent.fixAsset',
@@ -245,6 +245,7 @@ describe('the desktop registry', () => {
       'prompt.setCustom',
       'report.agent',
       'report.openIssue',
+      'report.stop',
       'story.assignLineIds',
       'story.decomposeAll',
       'story.deleteLine',
@@ -297,6 +298,7 @@ describe('the desktop registry', () => {
       'project.testKey',
       'report.agent',
       'report.openIssue',
+      'report.stop',
       // A window writes nothing, but closing one is not free either: the tooltip on a disabled
       // or last-window control is this check's sentence, so both declare one.
       'window.close',

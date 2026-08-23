@@ -11,6 +11,7 @@ import {
   type EffortChoice,
 } from '@vn/types';
 import { assetOpener, lineOpener } from '../../shared/agentseed.js';
+import { BUSY_AGENT } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -47,8 +48,9 @@ export const agentStop = define({
   mutating: false,
   props: {},
   check(_props, ctx) {
-    const busy = ctx.host.session.busy();
-    if (busy !== 'an agent turn')
+    // Asks whether an agent turn is in flight rather than whether it is what `busy()` names: a
+    // report turn running alongside it would otherwise make this refuse the turn it can stop
+    if (!ctx.host.session.running(BUSY_AGENT))
       return Promise.resolve({ ok: false, reason: 'The agent is idle.' });
     return Promise.resolve({ ok: true, note: 'The turn ends after the step it is on.' });
   },

@@ -85,7 +85,7 @@ export interface Evidence {
  * Applied once, at the boundary, so nothing downstream has to remember: the analyst's prompt, the
  * rendered issue body and the copy saved to disk are all derived from an already-clean value
  * rather than each redacting for itself. Redaction is idempotent, so the second application in
- * `userPrompt` costs nothing and is kept as a second line of defence.
+ * `openingMessage` costs nothing and is kept as a second line of defence.
  *
  * Ids, sequence numbers, statuses and timestamps are left alone — they name nothing outside this
  * report. Everything `toMarkdown` renders is covered, and a field it starts rendering must be

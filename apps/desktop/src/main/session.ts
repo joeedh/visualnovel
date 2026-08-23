@@ -240,15 +240,19 @@ import {
 } from '@vn/types';
 import {
   assertIssueUrl,
+  createAnalyst,
   fitBody,
   issueUrl,
+  openingMessage,
   renderReport,
   reportTitle,
   sourceRoot,
+  type Analyst,
+  type AnalystGrant,
   type Redactor,
   type Report,
 } from '@vn/agentreport';
-import { BUSY_PASS, BUSY_RUN } from '../shared/ipc.js';
+import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, BUSY_RUN, busyName } from '../shared/ipc.js';
 import type {
   AgentSystem,
   ApproveResult,
@@ -264,6 +268,8 @@ import type {
   PipelineRunResult,
   PipelineStatus,
   ProjectView,
+  ReportRow,
+  ReportStateView,
   SceneCoverage,
   SceneEditResult,
   StoryGraph,
@@ -317,7 +323,17 @@ import {
 } from './threads.js';
 import type { ChunkRefInfo, PromptView } from '../shared/prompt.js';
 import { adviseRun, analysisEffort } from '../shared/advice.js';
-import { NO_SOURCE, analyseThread, makeRedactor, saveReport } from './agentreport.js';
+import {
+  NO_SOURCE,
+  analyseThread,
+  analysisParts,
+  detailGrant,
+  makeRedactor,
+  saveReport,
+  sourceGrant,
+  type AnalysisParts,
+  type AnalysisRequest,
+} from './agentreport.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 class MockAgentBackend implements AgentBackend {
@@ -333,6 +349,12 @@ class MockAgentBackend implements AgentBackend {
 /** Hooks the session uses to reach the renderer: events out, and the three permission doors. */
 export interface SessionDeps {
   emitEvent(event: AgentEvent): void;
+  /**
+   * One event of the analyst's turn. A separate door from {@link emitEvent} because a debug
+   * conversation is about the authoring agent rather than part of it, and putting it on the same
+   * channel would record it into the very thread being analysed.
+   */
+  emitReport(event: AgentEvent): void;
   requestPlan(plan: Plan): Promise<PlanDecision>;
   /**
    * The author's answers to a form, one per question and in its order. An empty string is a
@@ -565,6 +587,12 @@ export interface ReportDraft {
   file?: string;
 }
 
+/** What every `report.*` command that needs a live conversation refuses with when there is none. */
+export const NO_REPORT = 'No debug conversation is open.';
+
+/** What `report.say` refuses with while a turn is in flight. `report.stop` is accepted instead. */
+export const REPORT_BUSY = 'The analyst is still answering.';
+
 /** Where `report.openIssue` sent the author, and whether the report had to be cut to fit. */
 export interface IssueOpened {
   url: string;
@@ -766,6 +794,23 @@ export class WorkspaceSession {
    * names, and the question being asked is whether this report still says one.
    */
   private redaction: Redactor | undefined;
+  /**
+   * The debug conversation, while one is open. Held here for the reason {@link cancel} is: a stop
+   * arrives from a command that is not the one running the turn it stops.
+   */
+  private analyst: Analyst | undefined;
+  /**
+   * What the open debug conversation was assembled from. A grant made part way through builds its
+   * tools against these, so it reads the evidence the conversation started with and spends the
+   * budget the earlier turns have already drawn on.
+   */
+  private analysis:
+    | { req: AnalysisRequest; parts: AnalysisParts; thread: ThreadHeader }
+    | undefined;
+  /** Every row of the open debug conversation, in order. What `report.state` returns. */
+  private reportRows: ReportRow[] = [];
+  /** Which access has been granted. One-way, so neither ever goes back to false. */
+  private reportGrants = { source: false, detail: false };
 
   constructor(
     readonly dir: string,
@@ -779,7 +824,15 @@ export class WorkspaceSession {
    * cancels, and a session that is busy is simply one nobody should replace yet.
    */
   busy(): string | undefined {
-    return [...this.inFlight][0];
+    return busyName(this.inFlight);
+  }
+
+  /**
+   * Whether one named kind of work is in flight, whatever else is. A stop asks this rather than
+   * reading {@link busy}, which names one kind and would hide the very work being stopped.
+   */
+  running(what: string): boolean {
+    return this.inFlight.has(what);
   }
 
   /** What `busy()` says, plus how far along it is — the shape the window is pushed. */
@@ -833,8 +886,18 @@ export class WorkspaceSession {
    * progress finishes, so the transcript stays complete and the next turn reads a whole one.
    */
   stopAgent(): boolean {
-    if (this.busy() !== 'an agent turn' || !this.agent) return false;
+    if (!this.running(BUSY_AGENT) || !this.agent) return false;
     this.agent.stop();
+    return true;
+  }
+
+  /**
+   * Ask the analyst turn in flight to end. Same contract as {@link stopAgent}, and the same reason
+   * it is a separate handle: the convo editor's Stop button has no authority over a report.
+   */
+  stopReport(): boolean {
+    if (!this.running(BUSY_REPORT) || !this.analyst) return false;
+    this.analyst.stop();
     return true;
   }
 
@@ -1096,7 +1159,7 @@ export class WorkspaceSession {
    * nothing instead of a sentence about a scene that is gone.
    */
   async runAgent(input: string, scene?: string): Promise<RunResult> {
-    return this.while('an agent turn', async () => {
+    return this.while(BUSY_AGENT, async () => {
       const agent = await this.ensureAgent();
       await this.refreshProjectMap();
       // This session outlives every rewrite of the project map, the agent's own `update_context`
@@ -1424,6 +1487,23 @@ export class WorkspaceSession {
    * open across it.
    */
   async reportAgent(ask: ReportAsk): Promise<ReportDraft> {
+    const { req } = await this.analysisRequest(ask);
+    return this.while(BUSY_REPORT, async () => {
+      const { report, evidence, redactor } = await analyseThread(req);
+      this.redaction = redactor;
+      const body = renderReport(report, evidence);
+      return { report, title: reportTitle(report), body, ...(await this.keepReport(body)) };
+    });
+  }
+
+  /**
+   * Everything an analysis is asked for, resolved: which conversation, which model, which key.
+   * Shared by the one-shot report and the conversation, so neither can read a different thread or
+   * resolve a key the other would not have found.
+   */
+  private async analysisRequest(
+    ask: ReportAsk,
+  ): Promise<{ req: AnalysisRequest; header: ThreadHeader }> {
     const target = await this.reportTarget(ask);
     if (!target.ok) throw new Error(target.message);
 
@@ -1434,8 +1514,9 @@ export class WorkspaceSession {
       require: [chatVendorFor(modelId)],
     });
 
-    return this.while('an agent report', async () => {
-      const { report, evidence, redactor } = await analyseThread({
+    return {
+      header: target.header,
+      req: {
         dir: this.dir,
         paths: project.paths,
         config: project.config,
@@ -1450,12 +1531,95 @@ export class WorkspaceSession {
         ...(ask.note.trim() ? { wanted: ask.note } : {}),
         ...(this.deps.appVersion ? { appVersion: this.deps.appVersion } : {}),
         ...(this.deps.userData ? { userData: this.deps.userData } : {}),
-      });
+      },
+    };
+  }
 
-      this.redaction = redactor;
-      const body = renderReport(report, evidence);
-      return { report, title: reportTitle(report), body, ...(await this.keepReport(body)) };
+  /**
+   * Start a debug conversation about one thread and run its opening turn. Whatever was open is
+   * dropped: there is one analyst per app instance, so every window that opens the pane follows
+   * the same transcript rather than starting a second analysis of the same thread.
+   */
+  async openReport(ask: ReportAsk): Promise<ReportStateView> {
+    const { req, header } = await this.analysisRequest(ask);
+    const parts = await analysisParts(req);
+    this.analysis = { req, parts, thread: header };
+    this.reportRows = [];
+    this.reportGrants = { source: req.source, detail: req.detail === true };
+    this.redaction = parts.redactor;
+    this.analyst = createAnalyst({
+      ...parts.options,
+      host: {
+        ask: (form) => this.deps.requestAnswer([...form]),
+        onEvent: (event) => this.showReport(event),
+      },
     });
+    // The evidence is the opening message rather than a row, because the pane draws the setup card
+    // in its place — the author has not said anything yet
+    await this.reportTurn(openingMessage(parts.options));
+    return this.reportState();
+  }
+
+  /** One more message to the open conversation, and the turn it starts. */
+  async sayToReport(text: string): Promise<ReportStateView> {
+    this.reportRows.push({ kind: 'said', text });
+    await this.reportTurn(text);
+    return this.reportState();
+  }
+
+  /**
+   * Run one turn. Each turn takes the busy flag rather than the conversation taking it once, so an
+   * open pane does not make the session busy for as long as it sits there.
+   */
+  private reportTurn(text: string): Promise<void> {
+    const analyst = this.analyst;
+    if (!analyst) throw new Error(NO_REPORT);
+    return this.while(BUSY_REPORT, async () => {
+      const turn = await analyst.ask(text);
+      if (turn.report) this.reportRows.push({ kind: 'filed', report: turn.report });
+    });
+  }
+
+  /**
+   * Record one event of the turn in flight and push it to every window. It arrives redacted, so
+   * what is kept and what is shown carry pseudonyms the same way the finished report does.
+   */
+  private showReport(event: AgentEvent): void {
+    this.reportRows.push({ kind: 'event', event });
+    if (event.type === 'tool') {
+      this.progress = { ran: this.progress.ran + 1, pending: 0 };
+      this.announceBusy();
+    }
+    this.deps.emitReport(event);
+  }
+
+  /**
+   * Give the open conversation more to read. The tools are advertised from the next turn, so this
+   * is accepted while a turn is in flight and lands behind it.
+   */
+  async grantReport(kind: AnalystGrant['kind']): Promise<ReportStateView> {
+    const open = this.analysis;
+    if (!open || !this.analyst) throw new Error(NO_REPORT);
+    this.analyst.grant(
+      kind === 'source' ? await sourceGrant(open.req, open.parts.budget) : detailGrant(open.parts),
+    );
+    this.reportGrants[kind] = true;
+    return this.reportState();
+  }
+
+  /**
+   * The conversation as main holds it. A pane that mounts part way through asks for this and
+   * reduces the rows the way it reduces live events, so there is one reducer rather than a second
+   * read path that can disagree with it.
+   */
+  reportState(): ReportStateView {
+    const open = this.analysis;
+    return {
+      ...(open ? { thread: { id: open.thread.id, title: open.thread.title } } : {}),
+      busy: this.running(BUSY_REPORT),
+      granted: { ...this.reportGrants },
+      rows: [...this.reportRows],
+    };
   }
 
   /**

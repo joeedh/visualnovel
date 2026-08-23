@@ -24,7 +24,10 @@ import {
   Agent,
   NativeAgentBackend,
   StructuredAgentBackend,
+  type AgentEvent,
+  type AskQuestion,
   type Permission,
+  type SystemSection,
   type Tool,
   type ToolContext,
 } from '@vn/authoring';
@@ -62,13 +65,25 @@ const SYSTEM = [
  * it just as much, and folding the two together would leave such a run finishing without a report
  * and silently falling back to the single call.
  */
-const LOOP_PROTOCOL = [
+const LOOP_PROTOCOL =
+  'When you are finished, call submit_report exactly once. Do not finish your turn without it.';
+
+/**
+ * The same protocol for a run the author is sitting in front of. "Exactly once" is wrong here: a
+ * conversation that has already filed a report and is then told what it missed has to file another
+ * one, and the sentence above forbids it.
+ */
+const CHAT_PROTOCOL = [
+  'You are talking to the author. Answer what they ask, in a few sentences unless they want more,',
+  'and say plainly when the evidence does not settle something.',
   '',
-  'When you are finished, call submit_report exactly once. Do not finish your turn without it.',
+  'Call submit_report before you finish any turn you have reached a conclusion in. When a later',
+  'message changes that conclusion, call it again with a whole revised report rather than a',
+  'correction — the newest report is the one that gets filed, and the earlier ones stay in the',
+  'conversation for the author to compare against.',
 ].join('\n');
 
 const SOURCE_ACCESS = [
-  '',
   "You can read the tool's own source code, its documentation, and the files of the project the",
   'author was working on. Use it to check what the agent was actually able to do before you',
   'conclude what it should have done, and to point each recommendation at the file that would',
@@ -84,7 +99,6 @@ const SOURCE_ACCESS = [
  * paragraph is a second layer rather than the mechanism.
  */
 const REQUEST_ACCESS = [
-  '',
   'You can also read the requests the app actually sent to the model API, which is what a',
   'positional error like "messages.1.content.0" points into. Start with list_requests to find the',
   'one that failed, then read_request with no path for its shape — that alone answers most',
@@ -111,8 +125,12 @@ function reportedTools(tools: readonly ToolSummary[]): string {
   ].join('\n');
 }
 
-/** The evidence, plus whatever the author said they were trying to do. */
-function userPrompt(opts: AnalyzeOptions): string {
+/**
+ * The evidence, plus whatever the author said they were trying to do. Exported because a
+ * conversation opens on it: the pane's first message is the same one the headless path makes its
+ * only call with, so both paths show the analyst the same thing.
+ */
+export function openingMessage(opts: AnalyzeOptions): string {
   const { redactor } = opts;
   const parts = [redactor.apply(toMarkdown(opts.evidence))];
   const said = opts.wanted?.trim();
@@ -227,10 +245,23 @@ function unattended(): Permission {
   };
 }
 
+/**
+ * Someone is at the keyboard, so a question reaches them. Plans are still approved without asking
+ * and confirmations are still refused, for the reason they are on the headless path: the registry
+ * holds read tools and nothing that could act on either answer.
+ */
+function attended(host: AnalystHost): Permission {
+  return {
+    approvePlan: async () => ({ approved: true }),
+    confirmAction: async () => false,
+    ask: (form) => host.ask(form),
+  };
+}
+
 /** The one call the cheap path makes. */
 async function analyzeDirectly(opts: AnalyzeOptions): Promise<Analysis> {
   const prompt = [
-    userPrompt(opts),
+    openingMessage(opts),
     '',
     'Reply with a single JSON object and nothing else, with these fields:',
     '  summary, whatHappened, whatWentWrong[], rootCause,',
@@ -245,12 +276,14 @@ async function analyzeDirectly(opts: AnalyzeOptions): Promise<Analysis> {
  * other tool's, so the structure is enforced by the same mechanism and there is no second
  * round-trip asking the model for JSON it has already written.
  */
-function submitTool(sink: { report?: Analysis }): Tool<Analysis> {
+function submitTool(sink: { report?: Analysis }, attending: boolean): Tool<Analysis> {
   return {
     name: 'submit_report',
-    description:
-      'File your finished report. Call this exactly once, when you have concluded. ' +
-      'After it returns, finish your turn.',
+    description: attending
+      ? 'File your report. Call this once per turn you have concluded in, and again with a ' +
+        'whole revised report when a later message changes your conclusion.'
+      : 'File your finished report. Call this exactly once, when you have concluded. ' +
+        'After it returns, finish your turn.',
     mutating: false,
     args: analysisArgs,
     async run(args) {
@@ -274,39 +307,144 @@ function watched(tool: Tool, read: { source: boolean }): Tool {
   };
 }
 
+/** Every string the analyst wrote, with the names taken back out. */
+function redactDeep(value: unknown, redactor: Redactor): unknown {
+  if (typeof value === 'string') return redactor.apply(value);
+  if (Array.isArray(value)) return value.map((item) => redactDeep(item, redactor));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, val]) => [key, redactDeep(val, redactor)]),
+    );
+  }
+  return value;
+}
+
 /**
- * The looping path, run whenever the analyst has anything to read.
- *
- * The analyst reads whichever registries were handed in: the source tools, the request tools, or
- * both. The system prompt is assembled to match, so the analyst is never told it can read something
- * it has no tool for. The branch turns on whether any tools were handed in rather than on a flag.
+ * One turn's event, ready to show. Every field the model wrote is redacted and every field the loop
+ * wrote — the discriminant, the tool's name, a usage count — is left alone, so a reducer can still
+ * switch on it after a fiction that named a character "message" has been through.
  */
-async function analyzeWithTools(
-  opts: AnalyzeOptions,
-  ctx: ToolContext,
-): Promise<{ analysis?: Analysis; why?: string; readSource: boolean }> {
+function redactEvent(event: AgentEvent, redactor: Redactor): AgentEvent {
+  const say = (text: string): string => redactor.apply(text);
+  switch (event.type) {
+    case 'message':
+    case 'final':
+      return { ...event, text: say(event.text) };
+    case 'tool':
+      return {
+        ...event,
+        args: redactDeep(event.args, redactor),
+        result: { ...event.result, output: say(event.result.output) },
+      };
+    case 'blocked':
+      return {
+        ...event,
+        reason: say(event.reason),
+        ...(event.args === undefined ? {} : { args: redactDeep(event.args, redactor) }),
+      };
+    case 'plan':
+      return {
+        ...event,
+        plan: {
+          ...event.plan,
+          summary: say(event.plan.summary),
+          steps: event.plan.steps.map(say),
+          files: event.plan.files.map(say),
+          ...(event.plan.risks ? { risks: event.plan.risks.map(say) } : {}),
+        },
+      };
+    case 'api':
+      return { ...event, message: say(event.message) };
+    default:
+      return event;
+  }
+}
+
+/** What a live analyst needs from whoever is watching it. */
+export interface AnalystHost {
+  /** Put the analyst's questions to the author, one answer per question. */
+  ask(form: readonly AskQuestion[]): Promise<string[]>;
+  /** Each event of the turn in flight, already redacted. */
+  onEvent?(event: AgentEvent): void;
+}
+
+/** Read tools handed to a live analyst part way through. */
+export interface AnalystGrant {
+  /** Which access this is, which decides the system-prompt section that announces it. */
+  kind: 'source' | 'detail';
+  /** Read tools only, the same rule the initial registries follow. */
+  tools: Map<string, Tool>;
+}
+
+export interface AnalystOptions extends AnalyzeOptions {
+  /**
+   * The context every tool runs in. A source run usually carries its own in {@link SourceAccess},
+   * and this is what a detail-only run and a later source grant use.
+   */
+  ctx: ToolContext;
+  /** Present when someone is at the keyboard. Absent runs the headless permission. */
+  host?: AnalystHost;
+}
+
+/** How one turn of a conversation with the analyst ended. */
+export interface AnalystTurn {
+  /** What the analyst said last, redacted. */
+  final: string;
+  /** The report filed during this turn, when one was filed. */
+  report?: Report;
+  /** True when the turn ended because {@link Analyst.stop} was called rather than by concluding. */
+  stopped: boolean;
+}
+
+/** A conversation with the analyst, held open across turns. */
+export interface Analyst {
+  /** Run one turn to completion. */
+  ask(text: string): Promise<AnalystTurn>;
+  /** End the turn in flight after the step it is on. */
+  stop(): void;
+  /** Add read tools. They are advertised from the next turn, not this one. */
+  grant(access: AnalystGrant): void;
+  /** The most recent report filed in this conversation. */
+  readonly filed: Report | undefined;
+}
+
+/**
+ * A conversation with the analyst, which one turn is a special case of.
+ *
+ * There is deliberately no fallback here. `analyze` keeps one because a headless run that files
+ * nothing has produced nothing, but a conversation the author stopped has already been told what to
+ * do, and answering a stop with another model call spends money they just asked not to spend.
+ */
+export function createAnalyst(opts: AnalystOptions): Analyst {
   const sink: { report?: Analysis } = {};
   const read = { source: false };
-  const registry = new Map([
-    ...[...(opts.source?.registry ?? [])].map(
-      ([name, tool]) => [name, watched(tool, read)] as [string, Tool],
-    ),
-    ...(opts.detail ?? []),
-  ]);
-  const submit = submitTool(sink);
+  const offered = { source: Boolean(opts.source), detail: Boolean(opts.detail) };
+  const registry = new Map<string, Tool>();
+  const add = (kind: AnalystGrant['kind'], tools: Map<string, Tool>): void => {
+    for (const [name, tool] of tools) {
+      registry.set(name, kind === 'source' ? watched(tool, read) : tool);
+    }
+  };
+  if (opts.source) add('source', opts.source.registry);
+  if (opts.detail) add('detail', opts.detail);
+  const attending = opts.host !== undefined;
+  const submit = submitTool(sink, attending);
   registry.set(submit.name, submit as Tool);
 
-  const system = [
-    SYSTEM,
-    opts.source ? SOURCE_ACCESS : '',
-    opts.detail ? REQUEST_ACCESS : '',
-    LOOP_PROTOCOL,
-  ].join('');
+  // Named parts rather than one string: a grant supersedes the section it adds and leaves the rest
+  // of the cached prefix alone.
+  const sections = (): SystemSection[] => [
+    { name: 'analyst', text: SYSTEM },
+    ...(offered.source ? [{ name: 'source access', text: SOURCE_ACCESS }] : []),
+    ...(offered.detail ? [{ name: 'request access', text: REQUEST_ACCESS }] : []),
+    { name: 'protocol', text: attending ? CHAT_PROTOCOL : LOOP_PROTOCOL },
+  ];
 
   // The same probe the desktop app and vnauthor use. Takes the native path when the backend offers
   // a conversation seam, so each iteration reads the transcript out of cache instead of re-paying
   // for it, and the structured path when it does not
   const chat = opts.backend;
+  const onEvent = opts.host?.onEvent;
   const agent = new Agent({
     backend: chat.chatConversation
       ? new NativeAgentBackend(chat)
@@ -314,18 +452,46 @@ async function analyzeWithTools(
     // Every tool here is needed. Deferring them would buy no context back and would hide
     // submit_report behind tool search, which ends the run without a report
     deferTools: false,
-    ctx,
-    permission: unattended(),
-    system,
+    ctx: opts.source?.ctx ?? opts.ctx,
+    permission: opts.host ? attended(opts.host) : unattended(),
+    system: '',
     registry,
     maxIterations: opts.maxIterations ?? 24,
+    ...(onEvent ? { onEvent: (event) => onEvent(redactEvent(event, opts.redactor)) } : {}),
+  });
+  agent.refreshSystem(sections());
+
+  let filed: Report | undefined;
+
+  const reportOf = (analysis: Analysis): Report => ({
+    analysis: scrub(confidenceOf(analysis, offered.source, read.source), opts.redactor),
+    model: opts.backend.modelId,
+    readSource: read.source,
+    ...statementOf(opts),
   });
 
-  const result = await agent.run(userPrompt(opts));
-  if (sink.report) return { analysis: sink.report, readSource: read.source };
   return {
-    why: `the analyst finished without filing one — it said: ${result.final}`,
-    readSource: read.source,
+    get filed() {
+      return filed;
+    },
+    stop() {
+      agent.stop();
+    },
+    grant(access) {
+      offered[access.kind] = true;
+      add(access.kind, access.tools);
+      agent.refreshSystem(sections());
+    },
+    async ask(text) {
+      sink.report = undefined;
+      const result = await agent.run(text);
+      if (sink.report) filed = reportOf(sink.report);
+      return {
+        final: opts.redactor.apply(result.final),
+        ...(sink.report ? { report: filed } : {}),
+        stopped: result.stopped === true,
+      };
+    },
   };
 }
 
@@ -361,16 +527,13 @@ export async function analyze(opts: AnalyzeOptions): Promise<Report> {
   // A detail-only run has no source root, so its context comes in beside the tools rather than
   // with them
   if ((opts.source || opts.detail) && ctx) {
-    const { analysis, why, readSource } = await analyzeWithTools(opts, ctx);
-    if (analysis) {
-      const capped = confidenceOf(analysis, Boolean(opts.source), readSource);
-      return { analysis: scrub(capped, opts.redactor), model, readSource, ...said };
-    }
+    const turn = await createAnalyst({ ...opts, ctx }).ask(openingMessage(opts));
+    if (turn.report) return turn.report;
     return {
       analysis: scrub(await analyzeDirectly(opts), opts.redactor),
       model,
       readSource: false,
-      fellBack: why,
+      fellBack: `the analyst finished without filing one — it said: ${turn.final}`,
       ...said,
     };
   }

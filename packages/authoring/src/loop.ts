@@ -176,6 +176,12 @@ export interface RunResult {
   final: string;
   mode: AgentMode;
   events: AgentEvent[];
+  /**
+   * True when the turn ended because {@link Agent.stop} cut it short. A stop that arrives while the
+   * model is writing its last reply does not set this: the turn concluded on its own, and a caller
+   * that reads its own request flag instead would report a finished answer as an abandoned one.
+   */
+  stopped?: boolean;
 }
 
 /** Everything the agent needs to drive a conversation. */
@@ -691,7 +697,7 @@ export class Agent {
         const text = 'Stopped at your request.';
         this.messages.push({ role: 'assistant', content: text });
         emit({ type: 'final', text });
-        return { final: text, mode: this.mode, events };
+        return { final: text, mode: this.mode, events, stopped: true };
       }
 
       // The same rule `stop()` follows, for the same reason: a budget exhausted mid-reply still

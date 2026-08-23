@@ -506,6 +506,7 @@ let appVersion = app.getVersion();
 
 const deps: SessionDeps = {
   emitEvent: (event) => broadcast('agent:event', event),
+  emitReport: (event) => broadcast('report:event', event),
   requestPlan: (plan) =>
     askWindow(pendingPlans, (id, target) => {
       const request: PlanRequest = { id, plan };

@@ -42,6 +42,9 @@ import type {
   PropValue,
   UndoState,
 } from '@vn/commands';
+import type { Report } from '@vn/agentreport';
+
+export type { Report } from '@vn/agentreport';
 
 export type {
   CatalogEntry,
@@ -80,6 +83,31 @@ export const BUSY_RUN = 'a pipeline run';
  * name, because the pass is what a second run would collide with.
  */
 export const BUSY_PASS = 'an approve-and-generate pass';
+
+/** What `busy.what` says while the authoring agent is answering. */
+export const BUSY_AGENT = 'an agent turn';
+
+/**
+ * What `busy.what` says while the debug analyst is answering. One turn is held rather than the
+ * whole conversation, so the session reads idle between the author's messages.
+ */
+export const BUSY_REPORT = 'an agent report';
+
+/**
+ * Which work `busy()` names when more than one kind is in flight. A pipeline run outranks an
+ * answering agent because it is the one a second run would collide with, and the two agents outrank
+ * nothing else because nothing else runs beside them.
+ */
+export const BUSY_ORDER = [BUSY_PASS, BUSY_RUN, BUSY_REPORT, BUSY_AGENT] as const;
+
+/**
+ * Which of several kinds of work in flight the header names, by {@link BUSY_ORDER}. Anything
+ * unranked answers last, so a kind added without a rank still shows rather than disappearing.
+ */
+export function busyName(inFlight: Iterable<string>): string | undefined {
+  const set = new Set(inFlight);
+  return BUSY_ORDER.find((kind) => set.has(kind)) ?? [...set][0];
+}
 
 /**
  * What Stop is about to do to the work named. `pipeline.stop` answers with it and the header's
@@ -836,9 +864,36 @@ export interface AgentSystem {
   modelId: string;
 }
 
+/**
+ * One row of a debug conversation, in the order it happened. The pane reduces a live `report:event`
+ * and a row returned by `report.state` through the same function, so a pane that mounts part way
+ * through shows what a pane that was there all along shows.
+ */
+export type ReportRow =
+  | { kind: 'said'; text: string }
+  | { kind: 'event'; event: AgentEvent }
+  | { kind: 'filed'; report: Report };
+
+/** The debug conversation as main holds it. Returned by `report.state`. */
+export interface ReportStateView {
+  /** The conversation under analysis. Absent when no debug conversation is open. */
+  thread?: { id: string; title: string };
+  /** True while a turn is in flight, which is when `report.say` is refused. */
+  busy: boolean;
+  /** Which access the analyst has been given. Granting is one-way, so neither ever goes back. */
+  granted: { source: boolean; detail: boolean };
+  rows: ReportRow[];
+}
+
 /** Events pushed from main to the renderer (fire-and-forget). */
 export interface EventChannels {
   'agent:event': AgentEvent;
+  /**
+   * One event of the analyst's turn, already redacted. Deliberately not `agent:event`: that channel
+   * is recorded into the author's own thread, and the debug agent's turns would then become
+   * evidence in the next report of the conversation they were about.
+   */
+  'report:event': AgentEvent;
   'permission:plan': PlanRequest;
   'permission:ask': AskRequest;
   'permission:confirm': ConfirmRequest;

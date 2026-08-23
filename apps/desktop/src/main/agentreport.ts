@@ -24,13 +24,15 @@ import {
   sourceRoot,
   sourcesFrom,
   Budget,
+  type AnalystGrant,
+  type AnalystOptions,
   type Evidence,
   type Redactor,
   type Report,
   type SourceAccess,
   type ToolSummary,
 } from '@vn/agentreport';
-import { captureSnapshot } from '@vn/providers';
+import { captureSnapshot, type CaptureSnapshot } from '@vn/providers';
 import { evidenceFor } from './commandlog.js';
 
 export interface AnalysisRequest {
@@ -130,21 +132,31 @@ async function sourceAccess(req: AnalysisRequest, budget: Budget): Promise<Sourc
   };
 }
 
+/** Everything one analysis is built from, whether it runs headless or as a conversation. */
+export interface AnalysisParts {
+  /** Ready to hand to `analyze` or, with a host added, to `createAnalyst`. */
+  options: AnalystOptions;
+  evidence: Evidence;
+  redactor: Redactor;
+  /** The frozen capture ring, kept so a later grant reads what was there when the analysis began. */
+  snapshot: CaptureSnapshot;
+  /** One budget across every kind of reading the analysis does, grants included. */
+  budget: Budget;
+}
+
 /**
- * Read one conversation and say what went wrong.
+ * Assemble one analysis: the redactor, the redacted evidence, the backend and whichever read tools
+ * the author allowed.
  *
  * The redactor is built before the evidence is read, and the evidence is redacted here, so the
  * model, the rendered issue and the copy saved to disk all read the same redacted value. Nothing
- * downstream has to remember to redact. The redactor is returned so the leak scan over the
- * finished report runs against the same pseudonym table the report was written with.
+ * downstream has to remember to redact. The redactor is returned so the leak scan over the finished
+ * report runs against the same pseudonym table the report was written with.
  */
-export async function analyseThread(
-  req: AnalysisRequest,
-): Promise<{ report: Report; evidence: Evidence; redactor: Redactor }> {
+export async function analysisParts(req: AnalysisRequest): Promise<AnalysisParts> {
   const redactor = makeRedactor(req.dir, req.model);
   // Frozen before anything is read, and before the analyst's own turns could add to the ring
   const snapshot = captureSnapshot();
-  // One budget covers the whole analysis, across every kind of reading it does
   const budget = new Budget();
 
   const evidence = redactEvidence(
@@ -155,18 +167,45 @@ export async function analyseThread(
     redactor,
   );
 
-  const report = await analyze({
+  return {
     evidence,
-    backend: analystBackend(req.modelId, req.config, req.keys, req.effort),
     redactor,
-    ...(req.wanted?.trim() ? { wanted: req.wanted } : {}),
-    ...(req.reportedTools?.length ? { reportedTools: req.reportedTools } : {}),
-    ...(req.source ? { source: await sourceAccess(req, budget) } : {}),
-    ...(req.detail ? { detail: createRequestTools({ snapshot, redactor, budget }) } : {}),
-    // A detail-only run has no source root to take a context from, so it supplies its own. The
-    // request tools use neither the workspace nor the git; only the loop's type asks for them.
-    ctx: { workspace: new Workspace(req.dir), git: openGit(req.dir) },
-  });
+    snapshot,
+    budget,
+    options: {
+      evidence,
+      backend: analystBackend(req.modelId, req.config, req.keys, req.effort),
+      redactor,
+      ...(req.wanted?.trim() ? { wanted: req.wanted } : {}),
+      ...(req.reportedTools?.length ? { reportedTools: req.reportedTools } : {}),
+      ...(req.source ? { source: await sourceAccess(req, budget) } : {}),
+      ...(req.detail ? { detail: createRequestTools({ snapshot, redactor, budget }) } : {}),
+      // A detail-only run has no source root to take a context from, so it supplies its own. The
+      // request tools use neither the workspace nor the git; only the loop's type asks for them.
+      ctx: { workspace: new Workspace(req.dir), git: openGit(req.dir) },
+    },
+  };
+}
 
-  return { report, evidence, redactor };
+/** The source tools, as a grant a live analyst can be given part way through. */
+export async function sourceGrant(req: AnalysisRequest, budget: Budget): Promise<AnalystGrant> {
+  const access = await sourceAccess(req, budget);
+  return { kind: 'source', tools: access.registry };
+}
+
+/** The request-capture tools, as a grant a live analyst can be given part way through. */
+export function detailGrant(parts: AnalysisParts): AnalystGrant {
+  const { snapshot, redactor, budget } = parts;
+  return { kind: 'detail', tools: createRequestTools({ snapshot, redactor, budget }) };
+}
+
+/**
+ * Read one conversation and say what went wrong, in one call and without anyone watching. This is
+ * what `report.agent` runs.
+ */
+export async function analyseThread(
+  req: AnalysisRequest,
+): Promise<{ report: Report; evidence: Evidence; redactor: Redactor }> {
+  const { options, evidence, redactor } = await analysisParts(req);
+  return { report: await analyze(options), evidence, redactor };
 }
