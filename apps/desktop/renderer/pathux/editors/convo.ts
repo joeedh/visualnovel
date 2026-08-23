@@ -227,7 +227,8 @@ export class ConvoEditor extends VnEditor {
 
     this.threadsBtn = low.button('Threads', () => void this.showThreads());
     this.threadsBtn.description =
-      'Saved conversations. Reopening one is read-only — the agent is not shown it.';
+      'Saved conversations. Reopening one is read-only — the agent is not shown it until ' +
+      'Continue hands it back.';
 
     // Beside the list rather than only inside it: starting a fresh conversation is the commonest
     // thing anyone opens that menu for, and it is one gesture, not two.

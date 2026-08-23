@@ -694,16 +694,37 @@ the same events** to write the transcript — see the threads bullet below.
   reached from the palette, and `agent.openThread`. Named gap: `window.vn`/CDP goes straight to
   main and none of them emits an event, so a clear run that way leaves an open pane's transcript
   standing.
-- **A conversation is a thread, and it is written down as it happens.** Main appends one JSONL
-  line per feed item to `vngen/state/threads/<id>.jsonl` — lazily, so an app opened and closed
-  without a word writes no file — titled from the first thing the author said. The bar's
-  **Threads** button opens path.ux's searchable menu (`startMenu(…, true)`) over `agent.threads`,
-  newest first, the open one bulleted; a separator; **New conversation**. **Reopening one is
-  read-only**: the pane replays the stored feed and the dialogue box says the agent has not been
-  shown it, because restoring the model's own messages is separate work. The next thing typed
-  therefore starts a new thread rather than continuing what was read. Undo cannot take a
-  transcript back — its shadow snapshots exclude `vngen/state`, which is the point of putting
-  them there.
+- **A conversation is a thread, and it is written down twice as it happens.** Main appends one
+  JSONL line per feed item to `vngen/state/threads/<id>.jsonl` — lazily, so an app opened and
+  closed without a word writes no file — titled from the first thing the author said. Beside it
+  sits `<id>.native.jsonl`, the model's own messages in the shape the backend sent them, which is
+  what a resume needs and what nothing on screen reads. The bar's **Threads** button opens
+  path.ux's searchable menu (`startMenu(…, true)`) over `agent.threads`, newest first, the open one
+  bulleted; a separator; **New conversation**. **Reopening one is read-only**: the pane replays the
+  stored feed and the dialogue box says the agent has not been shown it. Undo cannot take a
+  transcript back — its shadow snapshots exclude `vngen/state`, which is the point of putting them
+  there.
+- **A reopened conversation is continued from its own history.** **Continue**
+  (`agent.resumeThread`) is drawn beside Threads only while a saved conversation is on screen. It
+  hands the agent the native log's messages, binds the session to that thread, and the next turn
+  appends to the same two files. Continuing happens on the model bound now rather than the one the
+  conversation was recorded with, because the check has already refused a binding the stored
+  messages could not survive: a thread written before this shipped kept only its transcript, a log
+  merged from two clones is no longer intact, a log from a newer version of the app is not read,
+  and a vendor or protocol the bound model does not speak would send blocks it cannot read. Each
+  refusal greys the button with its own sentence and ends with *"Open it for reading instead."*
+  Where Continue is refused, the next thing typed starts a fresh thread, which is also what the two
+  surface openers below do to a conversation already on screen.
+- **A long conversation is compacted rather than truncated.** **Compact** (`agent.compact`)
+  summarizes everything said so far on the model the conversation is bound to and hands the agent
+  the summary in place of the messages. Nothing is rewritten: the summary is one more line in each
+  log, so the transcript on screen is untouched and the pane draws a labelled rule where the
+  summary begins. The button's title says what it would do — the size once a turn has reported one,
+  and that a large conversation is worth compacting — and it is greyed with a sentence while a turn
+  is running, while a conversation is open for reading, and when nothing has been said since the
+  last compaction. The summary's preface tells the agent that nothing it read still counts as read,
+  and names the two tools that reach what the summary left out: `search_history` finds a phrase in
+  the turns the summary replaced, and `read_history` returns one of them in full.
 - **The turns a decision hangs on are in it.** Main records both sides of every permission door at
   its own `permission()` seam — the plan with its steps and files, the verdict as the author's turn
   with whatever feedback came with it, a question with the shortlist it offered — and the loop files

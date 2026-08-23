@@ -509,6 +509,7 @@ invoke('pipeline:run', { mock })
 | The layout templates themselves | `.vnstudio/layouts/*.json` (the **project** repo) | ✓ On disk, committed | `view.layouts` / `view.applyLayout` | `view.saveLayout`, `view.resetLayout`, `ensureLayouts` |
 | The conversation on screen | Renderer memory (`pathux/agent.ts`) | ✗ Lost on restart | Every convo pane | Agent events + `agent.run` |
 | The conversation as a transcript | `vngen/state/threads/<id>.jsonl` | ✓ Survives restart | `agent.threads` / `agent.openThread` | Main, one line per feed item plus one per API call's receipt, as the turn runs |
+| The conversation as the model saw it | `vngen/state/threads/<id>.native.jsonl` | ✓ Survives restart | `agent.resumeThread` / `agent.compact` and the agent's own `search_history` | Main, one line per model message, as the turn runs |
 | Header facts and per-editor drafts | Renderer memory | ✗ Lost on restart | The header and each editor | Bridge pushes + user gestures |
 | Agent context | Main process memory | ✗ Lost on restart | Agent instance | agent:run IPC |
 | Project config | Files | ✓ On disk | Main (lazy load) | Author / editor |
@@ -544,7 +545,9 @@ When the app restarts:
    - First IPC call (e.g., `workspace:index`) → lazy-loads project, creates Agent
    - Subsequent calls → may rebuild project (no cache) but reuse Agent
 
-The **conversation on screen is not recovered**: the renderer opens on an empty pane and main starts a fresh `Agent`, though the Agent loads `AICONTEXT.md` to restore plan-mode context (via `@vn/authoring`'s persistent system prompt). What _is_ recovered is the **transcript** — every turn was written to `vngen/state/threads/<id>.jsonl` as it ran, and the convo pane's **Threads** menu reopens one. Reopening replays the stored feed and says so in the dialogue box: the model is not shown a word of it, because restoring the agent's own messages is a separate piece of work.
+The **conversation on screen is not recovered**: the renderer opens on an empty pane and main starts a fresh `Agent`, though the Agent loads `AICONTEXT.md` to restore plan-mode context (via `@vn/authoring`'s persistent system prompt). What _is_ recovered is the **transcript** — every turn was written to `vngen/state/threads/<id>.jsonl` as it ran, and the convo pane's **Threads** menu reopens one. Reopening replays the stored feed and says so in the dialogue box: the model is not shown a word of it. **Continue** is what shows it to the model, and it reads the other file: `<id>.native.jsonl` holds the same conversation as the messages the backend sent, so the agent picks up where it left off. The two files are written from the same events but are not projections of one another, and only the transcript is ever drawn.
+
+The native log is the larger of the two by a wide margin, because it holds every tool call and every tool result at full length while the transcript clamps each line to a few hundred characters. A conversation that read a dozen files leaves a native log measured in megabytes. Both files are append-only and are committed with the rest of `vngen/state/`, so a project's history carries them. The project's `.gitattributes` marks `vngen/state/threads/*.native.jsonl` as `-merge`, because a log git merged line by line is a conversation nobody had; Continue refuses one carrying a conflict marker by name rather than resuming it short. **Compact** is what bounds a live conversation rather than the file: it appends a summary line and the agent is handed the summary in place of the messages, while every line the summary covers stays on disk for `search_history` to find.
 
 ---
 

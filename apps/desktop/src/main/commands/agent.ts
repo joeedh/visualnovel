@@ -164,7 +164,9 @@ export const agentNewThread = define({
 export const agentOpenThread = define({
   id: 'agent.openThread',
   title: 'Open conversation',
-  description: 'Replay a saved conversation on screen. Read-only: the agent is not shown it.',
+  description:
+    'Replay a saved conversation on screen. Read-only: the agent is not shown it until ' +
+    'Continue hands it back.',
   mutating: false,
   props: { id: prop.string('the conversation to reopen') },
   async run({ id }, ctx) {

@@ -84,6 +84,12 @@ A thread recorded before the detailed format (tool args, results, untruncated te
 enrichment in the plan) is flagged `thin`, and the report carries a line saying the transcript
 predates the format, so a maintainer knows why the evidence is sparse.
 
+The evidence is the display log and never `<id>.native.jsonl`. The native log is what a resume
+and the agent's own history tools read; it holds the same conversation at full length, including
+tool results that were never drawn, and none of it passes the redactor. A `compaction` line in the
+display log is ignored for the same reason it is harmless: it summarizes turns that are still
+above it, so a report that reads the items reads what the summary covered rather than the summary.
+
 `toMarkdown` fences tool args and output with a backtick run longer than any in the text, because
 a report about an agent that mangled a markdown file must not end its own code block midway.
 

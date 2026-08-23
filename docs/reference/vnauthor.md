@@ -46,9 +46,12 @@ between plan and execute mode. `/model` and `/effort` rebuild the backend and ho
 the running agent, preserving conversation state.
 
 **The REPL keeps no transcript.** A conversation here lives as long as the process does, and
-`/clear` ends it with nothing written down. The desktop app saves the same turns to
-`vngen/state/threads/<id>.jsonl` (see [`desktop-app.md`](desktop-app.md)); nothing stops the REPL
-from writing to the same place, and it does not yet.
+`/clear` ends it with nothing written down. The desktop app writes two files per conversation:
+the turns as they are drawn, at `vngen/state/threads/<id>.jsonl`, and the model's own messages at
+`<id>.native.jsonl`, which is what its Continue button reads to pick a conversation back up (see
+[`desktop-app.md`](desktop-app.md)). Nothing stops the REPL from writing either file, and it
+writes neither yet, so a conversation here cannot be continued after `/exit` and the two
+`search_history` and `read_history` tools the desktop registers are absent here.
 
 Offline smoke test:
 

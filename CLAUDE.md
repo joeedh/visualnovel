@@ -249,9 +249,14 @@ The document tree, asset naming and `doc.rename`:
   `.vnstudio/layouts/<slug>.json`, marked `-merge`, and a conflicted template is refused by
   name.
   ([`docs/plans/archive/layout-templates-and-the-view-menu.md`](docs/plans/archive/layout-templates-and-the-view-menu.md))
-- A conversation is stored as a thread, appended to `vngen/state/threads/<id>.jsonl`. A
-  reopened thread is read-only.
-  ([`docs/plans/archive/conversation-threads.md`](docs/plans/archive/conversation-threads.md))
+- A conversation is stored as a thread, appended to `vngen/state/threads/<id>.jsonl`, with the
+  model's own messages beside it at `<id>.native.jsonl`. A reopened thread is read-only until
+  Continue, which is offered when the native log is present and refused by name when the bound
+  model could not be sent what it holds. Compacting appends a summary to both logs and rewrites
+  neither, and the agent reaches the turns a summary replaced through `search_history` and
+  `read_history`.
+  ([`docs/plans/archive/conversation-threads.md`](docs/plans/archive/conversation-threads.md),
+  [`docs/plans/archive/resumable-threads-and-compaction.md`](docs/plans/archive/resumable-threads-and-compaction.md))
 - Turn cost is reported as an event, and it counts API calls rather than turns. A missing
   receipt produces no total (never `0`), and a cache split may arrive marked as an
   estimate.

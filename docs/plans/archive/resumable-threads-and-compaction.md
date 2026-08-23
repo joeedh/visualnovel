@@ -8,7 +8,7 @@ Status: **planned**
 
 ## Context
 
-From [`../../todos.md`](../../todos.md):
+From [`../../../todos.md`](../../../todos.md):
 
 > make agent threads resumable. the user should be given the option to compact the thread
 > history; compaction will not modify the transcript but instead append the compacted history
@@ -34,7 +34,7 @@ Every claim below was read out of the file named.
   `listThreads` pre-filters lines by substring, admitting only `"thread"`, `"title"`,
   `"binding"` and `"archived"`. `lines()` drops a line that will not parse. An unknown line
   type is therefore ignored by every existing reader, which
-  [`recording-cache-misses-in-a-thread.md`](recording-cache-misses-in-a-thread.md) already
+  [`recording-cache-misses-in-a-thread.md`](../recording-cache-misses-in-a-thread.md) already
   verified independently when it claimed the line type name `usage`.
 - **`listThreads` decides what a thread is from the filename**, at `threads.ts:170`:
   `files.filter((f) => f.endsWith('.jsonl'))`, with the id taken as everything before the
@@ -194,7 +194,7 @@ Five checks, in this order, each with a sentence the author reads:
    real hazard rather than a precaution:
    `packages/authoring/src/backend.ts`'s `turnOf` builds Anthropic `tool_result` shapes with
    `tool_use_id`, and a native assistant turn stores the provider's own blocks.
-   [`four-chat-vendors-and-two-more-image-providers.md`](four-chat-vendors-and-two-more-image-providers.md)
+   [`four-chat-vendors-and-two-more-image-providers.md`](../four-chat-vendors-and-two-more-image-providers.md)
    records the same hazard as unfixed today for a live model switch, and this plan does not
    depend on that one landing.
 5. **Backend.** The stored `backend` must match `agent`'s current backend. Refusal:
@@ -782,6 +782,47 @@ Six things landed differently from the sketch above.
 - A resumed conversation's first `edit_file` on a file the earlier sitting read is refused with
   the read-it-first sentence rather than editing against a stale hash.
 - `pnpm check`, `pnpm test` and `pnpm lint` are green at every stage.
+
+## As shipped
+
+Shipped in eight stages, each landing green under `pnpm check`, `pnpm test` and `pnpm lint`. Each
+stage carries its own "things landed differently" note beside its checklist; what follows is the
+whole-plan shape those notes add up to, plus the decisions that belong to no single stage.
+
+What an author sees: a saved conversation reopens read-only as before, and a **Continue** button
+appears beside **Threads** while one is on screen. Pressing it hands the agent the messages from
+the thread's native log and binds the session to that thread, so later turns append to the same two
+files. A **Compact** button beside it summarizes everything said so far and hands the agent the
+summary in place of the messages; the transcript on screen is untouched and a labelled rule marks
+where the summary begins. The agent reaches the turns a summary replaced through two tools,
+`search_history` and `read_history`, which the compaction preface names so a deferred tool is
+learned about at the moment it becomes useful.
+
+Four decisions crossed every stage.
+
+- **Two files, not one enriched file.** The display log stays clamped and drawable; the native log
+  stays verbatim and is never drawn. Nothing projects one into the other, which is what lets the
+  transcript keep its clamps while a resume keeps its fidelity.
+- **A refusal is a sentence, computed before the gesture.** Continue and Compact are both greyed
+  with the reason rather than failing on click. The renderer restates the checks it can see and
+  main stays the authority, so the two never disagree about whether a thing is possible — only
+  about how early the author learns it.
+- **Nothing is rewritten, at any stage.** Every write is an append: a rename, a compaction, a
+  resumed turn. A test asserts the byte range of both logs before a compaction is unchanged after
+  it, which is what makes the pair safe to commit and safe to union-read.
+- **The read ledger goes with the messages.** A compaction empties it, and the summary's preface
+  says so, because a file read before the summary is not a file the agent can still edit against a
+  known hash.
+
+Two things in the plan were not built, both deliberately.
+
+- **The REPL still writes neither log.** §1 said nothing stops `vnauthor` from writing to the same
+  place, and nothing does; it remains a conversation that ends with the process. Registering the
+  two history tools there would mean giving the REPL a transcript first, which is its own decision.
+- **No compaction is automatic.** The plan never proposed one, and the Compact button's title
+  saying a conversation is worth compacting is as far as this goes. A turn that would exceed the
+  context is still the author's problem to notice, which keeps the model call compaction costs an
+  explicit choice.
 
 ## Undoing this
 
