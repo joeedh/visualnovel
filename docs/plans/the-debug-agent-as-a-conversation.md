@@ -45,12 +45,20 @@ builds one of these, runs it once and throws it away. The main-side work is hold
 - **The pane is a popup, through machinery that already exists.** `view.open(editor,
   where='popup')` opens a floating pane with a titlebar and a close button
   (`renderer/pathux/view.ts:129`).
-- **Help ▸ Report a Difficult Agent… invokes `report.open`, and `report.open` ends in that call.**
-  The menu entry (`renderer/pathux/editors/header.ts:673`) does not open the pane itself, because
-  the session the pane reads has to exist before the pane mounts and only main can create it.
-  `report.open` creates the analyst session and pushes the `command:ui` effect naming the editor,
-  the way `view.*` already answers. One entry point, so the API-error seam and the menu take the
-  same route.
+- **Help ▸ Report a Difficult Agent… opens the pane; the pane starts the analysis.** The menu entry
+  (`renderer/pathux/editors/header.ts:673`) seeds the setup card and runs
+  `view.open(editor='report' where='popup')`. The pane mounts, reads `report.state`, and draws the
+  setup card; the card's Start button invokes `report.open`, which creates the analyst session, runs
+  the opening turn and pushes the `command:ui` effect naming the editor — a focus, since the pane is
+  already up. The API-error seam (`bridge.ts:323`) calls the same renderer helper with both reading
+  boxes ticked and its note, so both entry points land on the same card.
+
+  An earlier draft of this bullet had the menu entry invoke `report.open` directly, on the grounds
+  that "the session the pane reads has to exist before the pane mounts". That premise is false:
+  `report.state` answers `{ busy: false, granted: {…}, rows: [] }` with no thread, which is exactly
+  what an unstarted setup card needs. The two readings also could not both hold — a menu entry that
+  starts the analysis leaves the setup card nothing to set up — and starting a paid model call from
+  a menu click with nothing to confirm is the worse of the two.
 - **It is named but not listed.** `{ id: 'report', title: 'Debug Agent', offered: false }` in
   `src/shared/editors.ts` keeps it out of View ▸ Editors (`OFFERED_EDITOR_IDS`) and out of the
   pane header's own dropdown (`isOfferedEditor`, installed once as path.ux's `setAreaMenuFilter`).
@@ -275,11 +283,17 @@ pane exists.
 `{ id: 'report', offered: false }` in `editors.ts`; `POPUP_SIZE` becomes per-editor;
 `renderer/pathux/reportconvo.ts` reduces `report:event` and the rows `report.state` returns;
 `renderer/pathux/editors/report.ts` draws the setup card, the transcript, the composer and the
-filed-report card. `report.open` and `report.say` land with it. Help ▸ Report a Difficult Agent…
-(`header.ts:673`) invokes `report.open` instead of `openReportDialog`; `openReportDialog` and its
-`ReportSeed` move to seeding the pane's setup card, so the API-error path (`bridge.ts:323`) still
-lands on a thread with both boxes ticked. The finished-report card hands over to the existing
-`openReportPreview`, unchanged.
+filed-report card. `report.open` and `report.say` land with it. `openReportDialog` and its
+`ReportSeed` become `seedReport`, which seeds the setup card and opens the pane; Help ▸ Report a
+Difficult Agent… (`header.ts:673`) and the API-error path (`bridge.ts:323`) both call it, so the
+error path still lands on a card with both boxes ticked. The setup card's Start button is what
+invokes `report.open`. The finished-report card hands over to the existing `openReportPreview`,
+unchanged.
+
+An `ask_user` from the analyst is deliberately not drawn here. `permission:ask` is one channel
+shared with the authoring agent and carries no origin, so the convo pane draws every ask, including
+the analyst's. Giving the ask an origin belongs with the attended-permission work rather than with
+the pane.
 
 The issue hand-off changes here too, because this is where the author reaches it: `openIssue` fills
 the URL with the paste instruction rather than the report, `fitBody` and `truncated` go, and
@@ -325,8 +339,11 @@ also lists the ids. `docs/plans/index.md` rows flip and both files move to `arch
 - `apps/desktop/src/shared/tests/editors.test.ts` — `report` is absent from `OFFERED_EDITOR_IDS`
   and `isOfferedEditor('report')` is false. It goes here, beside the existing coverage of both, and
   not in the renderer's tests: `editors.ts` is shared code and this is a fact about the list.
-- `apps/desktop/renderer/pathux/tests/` — the `reportconvo` reducers, which are pure, over both a
-  live event and a `report.state` row.
+- `apps/desktop/renderer/rules/tests/reportconvo.test.ts` — the `reportconvo` reducers, which are
+  pure, over both a live event and a `report.state` row. They live in `renderer/rules/` rather than
+  beside the store in `renderer/pathux/`, because the store reaches `renderer/api.ts`, which reads
+  `window` at module scope; the node-only jest project cannot load anything importing it, which is
+  what splits this stage's renderer work across two files.
 - The pane is a rendered surface, so it is verified live over CDP per the repo rule: run a report
   against a cheap model, read the composer's stop button and the two grant checkboxes off the mesh,
   and confirm the pane is absent from both menus an author browses.
@@ -376,8 +393,9 @@ backend. 6. `report.state` added, because a pane mounted mid-conversation had no
 `maxIterations` stated, and the absence of a conversation-wide ceiling made a decision rather than
 an omission. 9. `LOOP_PROTOCOL`'s "exactly once" reconciled with a report that can be superseded.
 10. The transcript writer placed in `main/` beside `saveReport`. 11. The Help entry's route settled
-— it invokes `report.open`, which ends in `view.open`, rather than the menu opening the pane
-itself. 12. Stage 6 counts the sixteenth editor in the four places that say fifteen. 13. The
+— the menu calls `seedReport`, which fills the setup card in and opens the pane, and the card's
+Start button is what invokes `report.open`. The command still ends in `view.open`, which is how the
+palette and CDP raise a pane the menu did not. 12. Stage 6 counts the sixteenth editor in the four places that say fifteen. 13. The
 editors assertion moved to `apps/desktop/src/shared/tests/`, where both functions are already
 covered.
 

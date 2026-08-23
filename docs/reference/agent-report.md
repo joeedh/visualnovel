@@ -63,7 +63,7 @@ transcript lacks is `commands.jsonl`) and `@vn/providers`; the boundaries rule f
 | `sourcemap.ts`    | `READABLE` / `DENY` — the declared manifest of what source may be read       |
 | `sourcetools.ts`  | `grep`, `read_file`, `fetch_api_docs`, and the shared `Budget`               |
 | `requesttools.ts` | `list_requests` / `read_request` over a frozen capture snapshot              |
-| `issue.ts`        | `ISSUE_REPO`, `issueUrl`, `fitBody` — the GitHub issue URL and its budgets   |
+| `issue.ts`        | `ISSUE_REPO`, `issueUrl`, `PASTE_BODY` — the GitHub issue URL and its check  |
 
 All but `analyze.ts` are pure and node-tested in `src/tests/`.
 
@@ -213,10 +213,11 @@ pseudonyms.
 Opening the browser opens an **unsubmitted** form on `github.com/joeedh/visualnovel/issues/new`
 (`ISSUE_REPO` is a build-time constant, not the git remote — a packaged app has no checkout and a
 fork's remote points at the fork). The URL is asserted (`origin` and exact pathname) before
-`shell.openExternal`, because the body is agent-authored text. GitHub's URL limit means `fitBody`
-trims the body in a stated order and puts the full report on the clipboard, saying so in the
-trimmed text. The preview stays open after the browser launches — nothing has been posted yet,
-and dismissing it would take away the only copy at the moment the author is reading it over.
+`shell.openExternal`, because the body is agent-authored text. The report itself never travels on
+the URL: the whole of it goes on the clipboard, and the form is prefilled with `PASTE_BODY`, so a
+long conversation and a short one ask the author for the same one action. The preview stays open
+after the browser launches — nothing has been posted yet, and dismissing it would take away the
+only copy at the moment the author is reading it over.
 
 ## Deliberately absent
 

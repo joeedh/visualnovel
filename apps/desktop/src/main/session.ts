@@ -239,9 +239,9 @@ import {
   type TaskKind,
 } from '@vn/types';
 import {
+  PASTE_BODY,
   assertIssueUrl,
   createAnalyst,
-  fitBody,
   issueUrl,
   openingMessage,
   renderReport,
@@ -593,10 +593,9 @@ export const NO_REPORT = 'No debug conversation is open.';
 /** What `report.say` refuses with while a turn is in flight. `report.stop` is accepted instead. */
 export const REPORT_BUSY = 'The analyst is still answering.';
 
-/** Where `report.openIssue` sent the author, and whether the report had to be cut to fit. */
+/** Where `report.openIssue` sent the author. */
 export interface IssueOpened {
   url: string;
-  truncated: boolean;
 }
 
 /**
@@ -1570,13 +1569,26 @@ export class WorkspaceSession {
   /**
    * Run one turn. Each turn takes the busy flag rather than the conversation taking it once, so an
    * open pane does not make the session busy for as long as it sits there.
+   *
+   * A report filed by the turn is rendered and archived here, on the same terms as the one-shot
+   * path: the pane cannot render one itself, and a second report supersedes the first on disk
+   * without disturbing the card the first one left in the transcript.
    */
   private reportTurn(text: string): Promise<void> {
     const analyst = this.analyst;
     if (!analyst) throw new Error(NO_REPORT);
+    const evidence = this.analysis?.parts.evidence;
     return this.while(BUSY_REPORT, async () => {
       const turn = await analyst.ask(text);
-      if (turn.report) this.reportRows.push({ kind: 'filed', report: turn.report });
+      if (!turn.report || !evidence) return;
+      const body = renderReport(turn.report, evidence);
+      this.reportRows.push({
+        kind: 'filed',
+        report: turn.report,
+        title: reportTitle(turn.report),
+        body,
+        ...(await this.keepReport(body)),
+      });
     });
   }
 
@@ -1664,20 +1676,21 @@ export class WorkspaceSession {
     const leaked = (await this.reportRedaction()).leaks(input.body);
     if (leaked.length > 0) return { ok: false, message: leakSentence(leaked) };
 
-    const { truncated } = fitBody(input.body);
-    const cut = truncated
-      ? ' It is too long for a URL, so the issue gets the findings and your clipboard gets all of it.'
-      : '';
     return {
       ok: true,
-      message: `Opens a new issue in your browser. Nothing is posted until you press Create.${cut}`,
+      message:
+        'Copies the report to your clipboard and opens a new issue in your browser, for you to ' +
+        'paste it into. Nothing is posted until you press Create.',
     };
   }
 
   /**
-   * Put the whole report on the clipboard, then open GitHub's new-issue form on as much of it as a
-   * URL will hold. The clipboard write comes first deliberately: the browser is where the author
-   * loses the report if the URL had to be trimmed, and it has to already be in hand by then.
+   * Put the whole report on the clipboard, then open GitHub's new-issue form prefilled with the
+   * instruction to paste it. The clipboard write comes first deliberately: the browser is where
+   * the author needs the report, and it has to already be in hand by then.
+   *
+   * The report itself never travels on the URL. A length limit that changed what the author had to
+   * do is a limit they had to learn, so the form always says the same thing.
    *
    * The leak scan runs again here rather than trusting `previewIssue`: a caller may skip the
    * check (CDP can call this directly), and the one thing this must never do is publish a name.
@@ -1689,14 +1702,13 @@ export class WorkspaceSession {
     const open = this.deps.openExternal;
     if (!open) throw new Error('This build cannot open a browser.');
 
-    const { body, truncated } = fitBody(input.body);
-    const url = issueUrl({ title: input.title, body });
+    const url = issueUrl({ title: input.title, body: PASTE_BODY });
     // Checks the URL that reaches the shell rather than trusting what `issueUrl` composed
     assertIssueUrl(url);
 
     this.deps.writeClipboard?.(input.body);
     await open(url.href);
-    return { url: url.href, truncated };
+    return { url: url.href };
   }
 
   /** Portrait candidates for a character at the approval gate (from the manifest). */

@@ -868,11 +868,15 @@ export interface AgentSystem {
  * One row of a debug conversation, in the order it happened. The pane reduces a live `report:event`
  * and a row returned by `report.state` through the same function, so a pane that mounts part way
  * through shows what a pane that was there all along shows.
+ *
+ * A filed row carries the rendered markdown as well as the structured report. `renderReport` reads
+ * the evidence and lives in a node-dependent package, so main renders it once and the pane hands
+ * what it gets to the preview dialog.
  */
 export type ReportRow =
   | { kind: 'said'; text: string }
   | { kind: 'event'; event: AgentEvent }
-  | { kind: 'filed'; report: Report };
+  | { kind: 'filed'; report: Report; title: string; body: string; file?: string };
 
 /** The debug conversation as main holds it. Returned by `report.state`. */
 export interface ReportStateView {

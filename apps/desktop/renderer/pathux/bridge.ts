@@ -28,7 +28,7 @@ import { shouldFileCommand } from '../../src/shared/notify.js';
 import type { ShellApp } from './context.js';
 import { notificationsChanged, refreshNotifications } from './notifications.js';
 import { closePalette, openPalette } from './palette.js';
-import { openReportDialog } from './report.js';
+import { seedReport } from './reportconvo.js';
 import { applyView } from './view.js';
 
 let host: ShellApp | undefined;
@@ -320,7 +320,7 @@ export function installBridge(app: ShellApp): void {
       // The API rejected what was sent rather than being unreachable, so the request itself is the
       // evidence, and it lives only in this process until the ring rolls over. Both reading boxes
       // come ticked because this is the case they exist for; the author may untick either.
-      void openReportDialog({
+      void seedReport({
         ...(effect.thread ? { thread: effect.thread } : {}),
         source: true,
         detail: true,

@@ -27,81 +27,11 @@ const ISSUE_PATH = `/${ISSUE_REPO}/issues/new`;
 export const URL_LIMIT = 8000;
 
 /**
- * What is left for the body once the origin, the path, a full-length title and the label are on
- * the URL. Percent-encoding inflates markdown badly — a newline is three characters, a backtick
- * three, an em dash nine — so this is a much smaller document than the number suggests.
+ * What the issue form is prefilled with. The report itself goes on the clipboard, so the author
+ * does the same thing every time rather than learning a length limit that changes what they have
+ * to do.
  */
-export const BODY_BUDGET = 6000;
-
-const TRIMMED_NOTE =
-  '_This report was trimmed to fit a link. The full report, including the redacted ' +
-  'conversation, is on your clipboard — paste it in below._';
-
-/**
- * Sections shed to make a report fit, least load-bearing first. The summary, the root cause, the
- * recommendations and the provenance are never shed: they are what the issue is for, and an issue
- * that arrives without them is worse than one that arrives trimmed.
- */
-const SHEDDABLE = ['From the transcript', 'What happened', 'What went wrong'] as const;
-
-/** What a string costs as a query-parameter value — the only length that matters here. */
-function cost(text: string): number {
-  return encodeURIComponent(text).length;
-}
-
-function escapeRe(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Drop the folded conversation. It is by far the largest part and never survives a trim. */
-function withoutTranscript(body: string): string {
-  return body.replace(/\n*<details>[\s\S]*?<\/details>\s*$/, '\n').trimEnd();
-}
-
-/** Drop one `###` section, heading and all, up to the next heading or the end. */
-function withoutSection(body: string, heading: string): string {
-  const pattern = new RegExp(`\\n*### ${escapeRe(heading)}\\n[\\s\\S]*?(?=\\n### |$)`);
-  return body.replace(pattern, '').trimEnd();
-}
-
-/**
- * The longest prefix that fits. Encoded length is monotonic in the prefix, so a binary search
- * lands on it without encoding the whole document once per character.
- */
-function shrink(text: string, budget: number): string {
-  let lo = 0;
-  let hi = text.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (cost(text.slice(0, mid)) <= budget) lo = mid;
-    else hi = mid - 1;
-  }
-  return text.slice(0, lo).trimEnd();
-}
-
-/**
- * The report, cut down to something a URL will carry, and whether anything was lost.
- *
- * A `truncated` body ends with a line telling the author the whole report is on their clipboard.
- * Putting it there is the caller's job.
- */
-export function fitBody(report: string, limit = BODY_BUDGET): { body: string; truncated: boolean } {
-  if (cost(report) <= limit) return { body: report, truncated: false };
-
-  const note = `\n\n${TRIMMED_NOTE}\n`;
-  const budget = Math.max(0, limit - cost(note));
-
-  let kept = withoutTranscript(report);
-  for (const heading of SHEDDABLE) {
-    if (cost(kept) <= budget) break;
-    kept = withoutSection(kept, heading);
-  }
-  if (cost(kept) > budget) kept = shrink(kept, budget);
-
-  // `limit` is never exceeded, so a limit too small even for the note truncates the note as well
-  const body = `${kept}${note}`;
-  return { body: cost(body) <= limit ? body : shrink(body, limit), truncated: true };
-}
+export const PASTE_BODY = 'paste report here (it should be in your clipboard)';
 
 /**
  * Refuses a URL that is not the new-issue form. The body is text a model wrote, and a composed

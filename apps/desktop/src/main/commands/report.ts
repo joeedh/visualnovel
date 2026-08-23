@@ -65,6 +65,61 @@ export const reportAgent = define({
   },
 });
 
+export const reportOpen = define({
+  id: 'report.open',
+  title: 'Talk to the debug agent about a conversation',
+  description:
+    'Start a conversation with the debug agent about a conversation that went wrong. It runs on ' +
+    'your own machine with your own model key, names from your story are replaced before the ' +
+    'model sees them, and you can keep talking to it until the report says what happened.',
+  mutating: false,
+  // The same field set `report.agent` takes, because the two paths resolve the same request and a
+  // field one of them did not accept would be a second way to ask for an analysis.
+  props: reportAgent.props,
+  async check(props, ctx) {
+    return verdict(await ctx.host.session.previewReport(props));
+  },
+  async run(props, ctx) {
+    const state = await ctx.host.session.openReport(props);
+    // A focus rather than an opening in practice: the setup card that started this is already the
+    // pane. The push is still made, since CDP and the palette can reach this with no pane open.
+    ctx.host.ui({ type: 'view', action: 'open', editor: 'report', where: 'popup' }, ctx.origin);
+    return { message: `Reading “${state.thread?.title ?? 'the conversation'}”.`, data: state };
+  },
+});
+
+export const reportSay = define({
+  id: 'report.say',
+  title: 'Say something to the debug agent',
+  description: 'Send one more message to the open debug conversation and run its turn.',
+  mutating: false,
+  props: {
+    text: prop.string('what to say to the debug agent', { default: '', multiline: true }),
+  },
+  check(props, ctx) {
+    const state = ctx.host.session.reportState();
+    if (!state.thread)
+      return Promise.resolve({
+        ok: false,
+        reason: 'No debug conversation is open — start one from Help ▸ Report a Difficult Agent….',
+      });
+    if (state.busy)
+      return Promise.resolve({ ok: false, reason: 'The debug agent is still on the last turn.' });
+    if (!props.text.trim())
+      return Promise.resolve({ ok: false, reason: 'There is nothing to say.' });
+    return Promise.resolve({ ok: true, note: `Asks about “${state.thread.title}”.` });
+  },
+  async run(props, ctx) {
+    const state = await ctx.host.session.sayToReport(props.text);
+    const filed = state.rows.filter((row) => row.kind === 'filed').length;
+    return {
+      message:
+        filed > 0 ? 'The debug agent answered and filed a report.' : 'The debug agent answered.',
+      data: state,
+    };
+  },
+});
+
 export const reportStop = define({
   id: 'report.stop',
   title: 'Stop the debug agent',
@@ -108,8 +163,8 @@ export const reportOpenIssue = define({
   id: 'report.openIssue',
   title: 'Open a GitHub issue on this report',
   description:
-    'Copy the report to your clipboard and open a new issue in your browser, filled in. ' +
-    'Nothing is posted until you press Create there.',
+    'Copy the report to your clipboard and open a new issue in your browser, for you to paste it ' +
+    'into. Nothing is posted until you press Create there.',
   mutating: false,
   props: {
     title: prop.string('the issue title'),
@@ -122,8 +177,9 @@ export const reportOpenIssue = define({
     return verdict(await ctx.host.session.previewIssue(props));
   },
   async run(props, ctx) {
-    const { truncated } = await ctx.host.session.openIssue(props);
-    const cut = truncated ? ' The full report is on your clipboard.' : '';
-    return { message: `Opened a new issue in your browser.${cut}` };
+    await ctx.host.session.openIssue(props);
+    return {
+      message: 'Copied the report to your clipboard and opened a new issue in your browser.',
+    };
   },
 });

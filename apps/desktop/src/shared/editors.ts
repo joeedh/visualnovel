@@ -113,6 +113,14 @@ export const EDITORS = [
     // nothing because no document-tree node names an API key.
     offered: false,
   },
+  {
+    id: 'report',
+    title: 'Debug Agent',
+    what: 'a conversation with the agent that reads a conversation that went wrong',
+    // Named but not listed: reached from Help ▸ Report a Difficult Agent… and from the card an API
+    // fault raises. It claims nothing because its subject is a thread rather than a document.
+    offered: false,
+  },
 ] as const;
 
 /**

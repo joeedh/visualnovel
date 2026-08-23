@@ -68,7 +68,14 @@ import {
   projectSetKey,
   projectTestKey,
 } from './project.js';
-import { reportAgent, reportOpenIssue, reportState, reportStop } from './report.js';
+import {
+  reportAgent,
+  reportOpen,
+  reportOpenIssue,
+  reportSay,
+  reportState,
+  reportStop,
+} from './report.js';
 import {
   storyAssignLineIds,
   storyCoverage,
@@ -200,7 +207,9 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectSetKey,
     projectTestKey,
     reportAgent,
+    reportOpen,
     reportOpenIssue,
+    reportSay,
     reportState,
     reportStop,
     storyAssignLineIds,

@@ -1,10 +1,9 @@
 import {
-  BODY_BUDGET,
   ISSUE_LABEL,
   ISSUE_REPO,
+  PASTE_BODY,
   URL_LIMIT,
   assertIssueUrl,
-  fitBody,
   issueUrl,
 } from '../issue.js';
 import { renderReport } from '../render.js';
@@ -51,52 +50,21 @@ function evidence(turns: number): Evidence {
   };
 }
 
-describe('fitting a report into a link', () => {
-  it('leaves a short report exactly as it was', () => {
-    const body = renderReport(report, evidence(1));
-    const fitted = fitBody(body);
-    expect(fitted.truncated).toBe(false);
-    expect(fitted.body).toBe(body);
+describe('the prefilled body', () => {
+  it('is the paste instruction, whatever the report is', () => {
+    // The report itself never travels on the URL, so a conversation of any length fits and the
+    // author does the same thing every time.
+    expect(PASTE_BODY).toContain('clipboard');
+    const url = issueUrl({ title: 'AGENTREPORT: x', body: PASTE_BODY });
+    expect(url.searchParams.get('body')).toBe(PASTE_BODY);
   });
 
-  it('sheds the folded conversation first, and says the whole thing is on the clipboard', () => {
-    const fitted = fitBody(renderReport(report, evidence(200)));
-    expect(fitted.truncated).toBe(true);
-    expect(fitted.body).not.toContain('<details>');
-    expect(fitted.body).toContain('on your clipboard');
-  });
-
-  it('keeps what the issue is for, whatever else it has to drop', () => {
-    const fitted = fitBody(renderReport(report, evidence(200)));
-    expect(fitted.body).toContain('## The agent rewrote a scene it was only asked to read');
-    expect(fitted.body).toContain('### Root cause');
-    expect(fitted.body).toContain('### Recommendations');
-    expect(fitted.body).toContain('- **Never write in plan mode** (`loop.ts`)');
-    expect(fitted.body).toContain('### How this was analysed');
-  });
-
-  it('sheds sections in order once the transcript is gone', () => {
-    // Small enough that dropping the transcript is not sufficient, large enough that it must
-    // give up the quoted evidence and then the narrative to fit.
-    const fitted = fitBody(renderReport(report, evidence(200)), 900);
-    expect(fitted.body).not.toContain('### From the transcript');
-    expect(fitted.body).not.toContain('### What happened');
-    expect(fitted.body).toContain('### Recommendations');
-  });
-
-  it('never exceeds the budget it was given, even when every section is sheddable', () => {
-    for (const limit of [3000, 900, 400, 200]) {
-      const fitted = fitBody(renderReport(report, evidence(200)), limit);
-      expect(encodeURIComponent(fitted.body).length).toBeLessThanOrEqual(limit);
-    }
-  });
-
-  it('leaves room on the URL for the origin, the title and the label', () => {
+  it('leaves room on the URL for the origin, a long title and the label', () => {
     const long = { ...report, analysis: { ...report.analysis, summary: 'x'.repeat(120) } };
-    const { body } = fitBody(renderReport(long, evidence(200)));
-    const url = issueUrl({ title: `AGENTREPORT: ${'x'.repeat(120)}`, body });
+    // Rendered so the test still fails if a report ever reaches the URL again
+    expect(renderReport(long, evidence(200)).length).toBeGreaterThan(URL_LIMIT);
+    const url = issueUrl({ title: `AGENTREPORT: ${'x'.repeat(120)}`, body: PASTE_BODY });
     expect(url.toString().length).toBeLessThanOrEqual(URL_LIMIT);
-    expect(BODY_BUDGET).toBeLessThan(URL_LIMIT);
   });
 });
 

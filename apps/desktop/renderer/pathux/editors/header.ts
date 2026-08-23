@@ -29,7 +29,7 @@ import { openCommandDialog } from '../dialog.js';
 import { openDiagnostics } from '../diagnostics.js';
 import { openNotifications, rectOf } from '../notifications.js';
 import { openPalette } from '../palette.js';
-import { openReportDialog } from '../report.js';
+import { seedReport } from '../reportconvo.js';
 import { paneToUse } from '../panes.js';
 import { panesOf } from '../view.js';
 
@@ -675,7 +675,7 @@ export class VnHeaderEditor extends VnEditor {
       Menu.SEP,
       {
         name: 'Report a Difficult Agent…',
-        callback: () => void openReportDialog(),
+        callback: () => void seedReport(),
         tooltip:
           'Have a conversation that went wrong read by a debug agent, and draft a bug report ' +
           'from it. Runs on your own model key; names from your story are replaced first.',

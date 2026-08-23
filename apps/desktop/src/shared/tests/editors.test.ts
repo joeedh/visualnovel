@@ -86,14 +86,15 @@ describe('what an editor can be pinned to', () => {
 });
 
 /**
- * Named but not listed. Setup is reached from one File-menu entry and the system prompt from the
- * palette, neither of which is a place an author browses editors. Narrowing the vocabulary
- * instead of the offer would take the editor away from `view.open`, the palette, CDP and any
- * layout that already held it.
+ * Named but not listed. Setup is reached from one File-menu entry, the system prompt from the
+ * palette, and the debug agent from one Help-menu entry and from the card an API fault raises —
+ * none of which is a place an author browses editors. Narrowing the vocabulary instead of the
+ * offer would take the editor away from `view.open`, the palette, CDP and any layout that already
+ * held it.
  */
 describe('the offered subset', () => {
   /** In `EDITORS` order, which is the order `editorNameProblems` answers in. */
-  const UNOFFERED = ['systemprompt', 'onboarding'] as const;
+  const UNOFFERED = ['systemprompt', 'onboarding', 'report'] as const;
 
   it('leaves an unoffered editor out of what an author browses', () => {
     for (const id of UNOFFERED) {
@@ -106,6 +107,7 @@ describe('the offered subset', () => {
     expect(EDITOR_IDS).toContain('onboarding');
     expect(editorTitle('onboarding')).toBe('Setup');
     expect(editorTitle('systemprompt')).toBe('System Prompt');
+    expect(editorTitle('report')).toBe('Debug Agent');
     // The boot check covers it like any other: an unoffered editor going missing from the
     // registry is exactly as broken as an offered one going missing.
     const others = EDITOR_IDS.filter((id) => !UNOFFERED.some((hidden) => hidden === id));

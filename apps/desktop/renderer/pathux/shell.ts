@@ -39,6 +39,7 @@ import './editors/inspector.js';
 import './editors/onboarding.js';
 import './editors/systemprompt.js';
 import './editors/project.js';
+import './editors/report.js';
 import './editors/script.js';
 import './editors/skills.js';
 import './editors/tasks.js';
@@ -49,6 +50,7 @@ import { PlayEditor } from './editors/play.js';
 import { installKeymap } from './keymap.js';
 import { installLayoutWatch } from './layouts.js';
 import { installReportPreview } from './report.js';
+import { installReportConvo } from './reportconvo.js';
 import {
   installPersistence,
   loadScreen,
@@ -100,6 +102,9 @@ class Shell implements ShellApp {
     // After the bridge, and whether or not a convo pane is open: the agent streams into the
     // store from boot, so a pane opened later shows what was already said.
     installAgent();
+    // The same reason, for the other agent: a report pane restored from a layout has to show the
+    // conversation main is already holding.
+    installReportConvo();
     installPersistence(this);
     // After the bridge, which is where `exec` and the invalidate feed come from.
     installLayoutWatch();

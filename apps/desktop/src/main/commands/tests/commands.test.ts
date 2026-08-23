@@ -199,9 +199,10 @@ describe('the desktop registry', () => {
    * read.
    *
    * A handful of non-mutators declare one anyway, and each is an act with a cost that is not a
-   * write. The two `report.*` commands put nothing in the project, but one spends a minute of a
-   * real model's time on a real key and the other opens a public issue tracker on text — so "run
-   * it and find out" is the wrong answer to both. `project.testKey` is the same shape and cheaper:
+   * write. The `report.*` commands put nothing in the project, but three of them spend a real
+   * model's time on a real key and the fourth opens a public issue tracker on text — so "run it
+   * and find out" is the wrong answer to any of them. `project.testKey` is the same shape and
+   * cheaper:
    * it calls a provider for real, so whether a key even resolves is worth answering first. The
    * three stops are the converse: they interrupt an act rather than performing one, so there is
    * state to read — whether a run, a turn or a report is in progress — and the answer is what greys
@@ -244,7 +245,9 @@ describe('the desktop registry', () => {
       'prompt.setChunk',
       'prompt.setCustom',
       'report.agent',
+      'report.open',
       'report.openIssue',
+      'report.say',
       'report.stop',
       'story.assignLineIds',
       'story.decomposeAll',
@@ -297,7 +300,9 @@ describe('the desktop registry', () => {
       // grey until a key resolves, and this is the sentence it shows for why.
       'project.testKey',
       'report.agent',
+      'report.open',
       'report.openIssue',
+      'report.say',
       'report.stop',
       // A window writes nothing, but closing one is not free either: the tooltip on a disabled
       // or last-window control is this check's sentence, so both declare one.

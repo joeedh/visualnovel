@@ -110,6 +110,15 @@ function flashed(screen: VnScreen, effect: ViewEffect, correction: string | null
  */
 const POPUP_SIZE: [number, number] = [520, 420];
 
+/** The editors that open larger than {@link POPUP_SIZE}, because a conversation needs the room. */
+const POPUP_SIZES: Partial<Record<EditorId, [number, number]>> = {
+  report: [760, 720],
+};
+
+function popupSize(editor: EditorId): [number, number] {
+  return POPUP_SIZES[editor] ?? POPUP_SIZE;
+}
+
 /**
  * How wide the popup's close button is drawn, in pixels.
  *
@@ -178,10 +187,11 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
   // A popup is a window of its own rather than a place in the mesh, so it neither splits nor
   // covers a pane, and nothing the author arranged moves to make room for it
   if (where === 'popup') {
+    const [wide, tall] = popupSize(editor);
     const sarea = screen.popupArea(cls as unknown as Parameters<VnScreen['popupArea']>[0], {
       title: editorTitle(editor),
-      width: Math.min(POPUP_SIZE[0], screen.size[0] * 0.9),
-      height: Math.min(POPUP_SIZE[1], screen.size[1] * 0.9),
+      width: Math.min(wide, screen.size[0] * 0.9),
+      height: Math.min(tall, screen.size[1] * 0.9),
     });
     growCloseButton(sarea as unknown as ScreenArea);
     // After `popupArea`, so the editor's own `init()` has already run and this only has to change
