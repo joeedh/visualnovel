@@ -797,8 +797,14 @@ export interface InvokeChannels {
   /** Restores a snapshot; refuses (never guesses) if the workspace moved — see `@vn/commands`. */
   'command:undo': () => CommandOutcome;
   'command:redo': () => CommandOutcome;
-  /** Persist one piece of UI state; the initial read is the synchronous preload snapshot. */
-  'session:set': (payload: { key: string; value: SessionValue }) => void;
+  /**
+   * Persist one piece of UI state; the initial read is the synchronous preload snapshot.
+   *
+   * `scope` is the project the window was loaded for. Main drops a project key stamped with
+   * another project, which is what stops a window that has not reloaded yet from writing its old
+   * arrangement into the project just opened.
+   */
+  'session:set': (payload: { key: string; value: SessionValue; scope?: string }) => void;
   /**
    * Every notification the project holds, oldest first, already deduped across a union merge.
    * A read; every change to one goes through a `notify.*` command like any other mutation.
@@ -859,12 +865,14 @@ export interface DesktopApi {
   ): Promise<ReturnType<InvokeChannels[C]>>;
   on<C extends EventChannel>(channel: C, listener: (payload: EventChannels[C]) => void): () => void;
   /**
-   * Persisted UI state (see `SessionStore`). `initial()` is deliberately synchronous — an
-   * async fetch would paint the panels at their defaults and then jump to the saved widths.
+   * Persisted UI state (see `SessionState`), both files merged into one map. `initial()` is
+   * deliberately synchronous — an async fetch would paint the panels at their defaults and then
+   * jump to the saved widths. A project key is written with the scope this window was loaded
+   * for.
    */
   session: {
     initial(): Record<string, SessionValue>;
-    set(key: string, value: SessionValue): void;
+    set(key: string, value: SessionValue, scope?: string): void;
   };
 }
 

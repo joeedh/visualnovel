@@ -28,7 +28,7 @@ const api: DesktopApi = {
   },
   session: {
     initial: () => initialSession,
-    set: (key, value) => void ipcRenderer.invoke('session:set', { key, value }),
+    set: (key, value, scope) => void ipcRenderer.invoke('session:set', { key, value, scope }),
   },
 };
 

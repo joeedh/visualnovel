@@ -34,7 +34,6 @@ import { DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
 import { BUDGET_KEY } from './commands/agent.js';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
-import { ensureLayouts } from './layouts.js';
 import { installNotifications, notifications, notify } from './notifications.js';
 import {
   checkGit,
@@ -48,6 +47,7 @@ import { formatSmoke, runSmoke } from './smoke.js';
 import { categoryOfCommand, shouldFileCommand } from '../shared/notify.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
 import { SessionStore } from './sessionstore.js';
+import { SessionState } from './sessionstate.js';
 import {
   acquireWorkspace,
   focusOwner,
@@ -62,15 +62,16 @@ import {
   type RememberedWindow,
   type WindowId,
 } from './windows.js';
-import { workspaceScope, windowsKey } from '../shared/sessionkeys.js';
+import { workspaceScope, WINDOWS_KEY } from '../shared/sessionkeys.js';
 import {
-  adoptGitAttributes,
+  commitScaffolding,
   ensureRepo,
   inspectWorkspace,
   openWorkspace,
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
+  writeScaffolding,
 } from './workspace.js';
 import type {
   EventChannel,
@@ -141,7 +142,7 @@ protocol.registerSchemesAsPrivileged([
 const windows = new Windows<BrowserWindow>();
 let session: WorkspaceSession | null = null;
 let stack: CommandStack<CommandHost> | null = null;
-let sessionStore: SessionStore | null = null;
+let sessionState: SessionState | null = null;
 /** The lock on the open project — one instance per workspace (`./instancelock.ts`). */
 let instanceLock: InstanceLock | null = null;
 
@@ -256,7 +257,7 @@ async function resolveWorkspace(): Promise<void> {
     workspaceRoot = resolvePath(project);
     return;
   }
-  const recent = recentWorkspaces(getSessionStore()).find((dir) => existsSync(dir));
+  const recent = recentWorkspaces(getSessionState()).find((dir) => existsSync(dir));
   if (recent) {
     workspaceRoot = recent;
     return;
@@ -317,7 +318,10 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   ownedRepos.length = 0;
   undoRevision = 0;
   await openRepos();
-  rememberWorkspace(getSessionStore(), opened.root);
+  // Before any window is told about the switch, so the arrangement of the project being left is
+  // flushed and the reload below reads the new project's own file.
+  await getSessionState().openProject(opened.root);
+  rememberWorkspace(getSessionState(), opened.root);
   // Pushed directly rather than through the command host: the stack that is running the command
   // asking for this switch is the one being discarded. Every window remounts — the workspace is
   // process-wide, so opening another project tears all of them down.
@@ -345,6 +349,11 @@ const ownedRepos: Git[] = [];
  */
 async function openRepos(): Promise<void> {
   const root = workspace();
+  // Written whatever git can do, because these are files the app needs rather than history: only
+  // committing them wants a repository. `openWorkspace` runs the same pair, but it runs only for
+  // an explicit `workspace.open` — a project reached from the recents list or `VN_PROJECT` gets
+  // its layout templates, its merge attribute and its ignore line here.
+  const scaffolded = await writeScaffolding(root);
   // Everything down to the checkpoint spawns `git`, and on a machine without it the first call
   // would throw before any window exists, so the app would never appear. Branching on the
   // doctor's finding beats a try/catch, which would have to guess which failures mean "no git".
@@ -355,10 +364,9 @@ async function openRepos(): Promise<void> {
       if (ref.owned) ownedRepos.push(openGit(ref.root));
       else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
     }
-    // Done here rather than in `openWorkspace`, which runs only for an explicit `workspace.open`
-    // — a project reached from the recents list or `VN_PROJECT` would never get the attribute.
-    // Skipped when the project sits inside a larger repo: that history is somebody else's, as above.
-    if (refs.some((ref) => ref.role === 'project' && ref.owned)) await adoptGitAttributes(root);
+    // Before the checkpoint, so what was just written lands under a subject saying what it is
+    // rather than under "Changes made outside the app".
+    await commitScaffolding(root, scaffolded);
     const committed = await committer().checkpoint('Changes made outside the app');
     for (const c of committed) {
       console.log(`[vnstudio] checkpoint ${c.sha.slice(0, 8)} in ${c.repo}`);
@@ -525,25 +533,28 @@ function getSession(): WorkspaceSession {
     session = new WorkspaceSession(workspace(), MOCK, deps);
     // The one agent setting that outlives the run: what a turn may spend is a decision about
     // this machine's bill, so it is restored here rather than re-chosen every launch.
-    session.budget = getSessionStore().get<BudgetChoice>(BUDGET_KEY, DEFAULT_BUDGET);
+    session.budget = getSessionState().get<BudgetChoice>(BUDGET_KEY, DEFAULT_BUDGET);
   }
   return session;
 }
 
 /** Opened once during `app.whenReady()`, before any window can ask for its snapshot. */
-function getSessionStore(): SessionStore {
-  if (!sessionStore) throw new Error('the session store is only available after app ready');
-  return sessionStore;
+function getSessionState(): SessionState {
+  if (!sessionState) throw new Error('the session store is only available after app ready');
+  return sessionState;
 }
 
 /**
- * Every write broadcasts, whoever made it — that is what lets `view.panelSize` move a panel
- * live. The echo back to the window that made the change re-applies the same value.
+ * Open the install-global store and the router over it. The project's own store is opened
+ * separately, once the workspace root is known.
+ *
+ * Every write broadcasts, whoever made it and whichever file it lands in.
  */
 async function openSessionStore(): Promise<void> {
-  sessionStore = await SessionStore.open(undefined, (key, value: SessionValue) => {
+  const notify = (key: string, value: SessionValue): void => {
     broadcast('session:changed', { key, value });
-  });
+  };
+  sessionState = new SessionState(await SessionStore.open(undefined, notify), notify);
 }
 
 const registry = createDesktopRegistry();
@@ -553,8 +564,17 @@ const registry = createDesktopRegistry();
  * `build/` is content-addressed and `state/` is an append-only log — rolling either back would
  * throw away work a later run has to pay for again, and excluding them is also what keeps a
  * `pipeline.run` between two edits from reading as workspace drift.
+ *
+ * The session file is excluded for the same reason: rearranging panes writes it, and a snapshot
+ * that covered it would read every such write as drift and refuse to undo. The glob also covers
+ * the `.tmp-<hex>` sibling `writeFileAtomic` leaves beside it mid-write.
  */
-const UNDO_PATHS = ['.', ':(exclude)vngen/build', ':(exclude)vngen/state'];
+const UNDO_PATHS = [
+  '.',
+  ':(exclude)vngen/build',
+  ':(exclude)vngen/state',
+  ':(exclude).vnstudio/session.json*',
+];
 
 /** Counts undo/redo moves, so a room knows when the files changed under it. */
 let undoRevision = 0;
@@ -570,7 +590,7 @@ function getStack(): CommandStack<CommandHost> {
     const git = openGit(root);
     const host: CommandHost = {
       session: getSession(),
-      state: getSessionStore(),
+      state: getSessionState(),
       // A `view.*` effect is targeted at the window whose palette or menu ran the command.
       // `windowFor` falls back to the focused window for the agent, CDP and main.
       ui: (effect: UiEffect, target?: WindowId) => sendTo(target, 'command:ui', effect),
@@ -741,11 +761,13 @@ function registerIpc(): void {
   handle('notify:list', () => notifications().list());
   handle('notify:post', (_origin, input) => notifications().post(input));
 
-  handle('session:set', (_origin, payload) => getSessionStore().set(payload.key, payload.value));
+  handle('session:set', (_origin, payload) =>
+    getSessionState().set(payload.key, payload.value, payload.scope),
+  );
   // Synchronous on purpose (so the preload can hand the renderer its state before first
   // paint) and therefore registered directly: `handle` above is `ipcMain.handle`-only.
   ipcMain.on('session:snapshot:sync', (event) => {
-    event.returnValue = getSessionStore().snapshot();
+    event.returnValue = getSessionState().snapshot();
   });
 }
 
@@ -776,7 +798,7 @@ function registerAssetProtocol(): void {
   });
 }
 
-/** The scope segment every one of this workspace's session keys hangs off. */
+/** The scope this workspace's windows stamp their session writes with. */
 function scope(): string {
   return workspaceScope(workspace());
 }
@@ -793,7 +815,7 @@ function getWindowList(): WindowList {
     // The cast is the JSON boundary: `RememberedWindow` is plain data all the way down, but
     // `SessionValue` is an index-signature type and a named interface does not satisfy one.
     windowList = new WindowList((open) =>
-      getSessionStore().set(windowsKey(scope()), open as unknown as SessionValue),
+      getSessionState().set(WINDOWS_KEY, open as unknown as SessionValue),
     );
   }
   return windowList;
@@ -832,7 +854,7 @@ function focusFrontWindow(): void {
  * from one that never opened.
  */
 function rememberedWindows(): RememberedWindow[] {
-  const stored = getSessionStore().snapshot()[windowsKey(scope())];
+  const stored = getSessionState().snapshot()[WINDOWS_KEY];
   if (!Array.isArray(stored)) return [];
   const displays = screen.getAllDisplays();
   const out: RememberedWindow[] = [];
@@ -969,11 +991,11 @@ void app.whenReady().then(async () => {
     return;
   }
 
-  // Also in `openWorkspace`, but neither `--project` nor the recents branch goes through it -
-  // and those are the normal launch paths, so without this the layout files never land.
-  await ensureLayouts(workspace());
+  // Before the first window, which reads its arrangement out of this file synchronously in its
+  // preload.
+  await getSessionState().openProject(workspace());
   await openRepos();
-  rememberWorkspace(getSessionStore(), workspace());
+  rememberWorkspace(getSessionState(), workspace());
   registerAssetProtocol();
   registerIpc();
 
@@ -1004,12 +1026,13 @@ app.on('before-quit', () => {
   // what is left - so without this the arrangement would be rewritten down to nothing on the way
   // out. Snapshot the open set first, then stop writing for the rest of the process.
   if (boundsTimer !== undefined) clearTimeout(boundsTimer);
-  if (sessionStore && workspaceRoot) getWindowList().freeze(liveWindows());
+  if (sessionState && workspaceRoot) getWindowList().freeze(liveWindows());
 });
 app.on('before-quit', (event) => {
-  if (flushingOnQuit || !sessionStore) return;
+  const state = sessionState;
+  if (flushingOnQuit || !state) return;
   flushingOnQuit = true;
   event.preventDefault();
   const deadline = new Promise<void>((resolve) => setTimeout(resolve, QUIT_FLUSH_MS).unref?.());
-  void Promise.race([sessionStore.close().catch(() => {}), deadline]).finally(() => app.quit());
+  void Promise.race([state.close().catch(() => {}), deadline]).finally(() => app.quit());
 });

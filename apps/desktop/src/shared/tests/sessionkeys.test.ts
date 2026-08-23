@@ -1,16 +1,18 @@
 /**
- * The per-window session keys. The shape of these strings is what keeps two windows from sharing
- * one mesh and two projects from sharing one window 0. Neither collision raises an error at
- * runtime, so the keys are pinned here instead.
+ * The per-window session keys, and which of the two session files each one lands in. The shape of
+ * these strings is what keeps two windows from sharing one mesh, and a key routed to the wrong
+ * file raises no error at runtime, so both are pinned here.
  */
 import {
   LEGACY_KEYS,
+  WINDOWS_KEY,
+  isProjectKey,
   layoutKey,
+  scopedWindowKeys,
   selectionKey,
   templateKey,
   windowIdentity,
   windowKeyPrefix,
-  windowsKey,
   workspaceScope,
 } from '../sessionkeys.js';
 
@@ -30,37 +32,66 @@ describe('workspaceScope', () => {
 });
 
 describe('the keys a window owns', () => {
-  const scope = workspaceScope('C:/dev/story');
-
-  it('hang off one prefix, per workspace and per window', () => {
-    expect(windowKeyPrefix(scope, 2)).toBe(`pathux.${scope}.window.2.`);
-    expect(layoutKey(scope, 2)).toBe(`pathux.${scope}.window.2.layout`);
-    expect(selectionKey(scope, 2)).toBe(`pathux.${scope}.window.2.selection`);
-    expect(templateKey(scope, 2)).toBe(`pathux.${scope}.window.2.template`);
+  it('hang off one prefix, per window and with no scope segment', () => {
+    expect(windowKeyPrefix(2)).toBe('pathux.window.2.');
+    expect(layoutKey(2)).toBe('pathux.window.2.layout');
+    expect(selectionKey(2)).toBe('pathux.window.2.selection');
+    expect(templateKey(2)).toBe('pathux.window.2.template');
   });
 
-  it('never collide across windows or across projects', () => {
-    const other = workspaceScope('C:/dev/other');
-    const keys = [
-      layoutKey(scope, 0),
-      layoutKey(scope, 1),
-      layoutKey(other, 0),
-      templateKey(scope, 0),
-      selectionKey(scope, 0),
-      windowsKey(scope),
-      windowsKey(other),
-    ];
+  it('never collide across windows', () => {
+    const keys = [layoutKey(0), layoutKey(1), templateKey(0), selectionKey(0), WINDOWS_KEY];
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('keeps the window list per workspace but not per window', () => {
-    expect(windowsKey(scope)).toBe(`pathux.${scope}.windows`);
+  it('keeps the window list per project but not per window', () => {
+    expect(WINDOWS_KEY).toBe('pathux.windows');
   });
 
   it('is none of the flat keys an older install wrote', () => {
     const legacy = new Set<string>(Object.values(LEGACY_KEYS));
-    expect(legacy.has(layoutKey(scope, 0))).toBe(false);
-    expect(legacy.has(templateKey(scope, 0))).toBe(false);
+    expect(legacy.has(layoutKey(0))).toBe(false);
+    expect(legacy.has(templateKey(0))).toBe(false);
+  });
+});
+
+describe('isProjectKey', () => {
+  it('claims every pathux key, including one no version has written yet', () => {
+    expect(isProjectKey(layoutKey(0))).toBe(true);
+    expect(isProjectKey(WINDOWS_KEY)).toBe(true);
+    expect(isProjectKey('pathux.approvalOrder')).toBe(true);
+  });
+
+  it('leaves the install preferences alone', () => {
+    expect(isProjectKey('agent.budget')).toBe(false);
+    expect(isProjectKey('vn.notifications.filter')).toBe(false);
+    expect(isProjectKey('workspace.recent')).toBe(false);
+  });
+
+  it('leaves the flat legacy keys in the install file, where they were written', () => {
+    for (const key of Object.values(LEGACY_KEYS)) expect(isProjectKey(key)).toBe(false);
+  });
+});
+
+describe('scopedWindowKeys', () => {
+  const scope = workspaceScope('C:/dev/story');
+  const other = workspaceScope('C:/dev/other');
+
+  it('takes one workspace out of the install file, unscoped', () => {
+    const snapshot = {
+      [`pathux.${scope}.window.0.layout`]: 'mine',
+      [`pathux.${scope}.windows`]: 'list',
+      [`pathux.${other}.window.0.layout`]: 'theirs',
+      'agent.budget': 'medium',
+    };
+    expect(scopedWindowKeys(snapshot, scope)).toEqual({
+      'pathux.window.0.layout': 'mine',
+      'pathux.windows': 'list',
+    });
+  });
+
+  it('answers nothing for a workspace the install file never held', () => {
+    expect(scopedWindowKeys({ 'agent.budget': 'medium' }, scope)).toEqual({});
   });
 });
 

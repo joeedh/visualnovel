@@ -1,12 +1,12 @@
 /**
- * Layout and selection, remembered across launches. Both go into the same
- * `.vndesktop/session.json` the React rooms used, under two new keys — the flat
- * `panel.<id>.width` keys retire with the rooms that wrote them.
+ * Layout and selection, remembered across launches. Both land in the project's own
+ * `.vnstudio/session.json` (`../../src/main/sessionstate.ts` routes them there), under one key
+ * per window, because a mesh is the one thing every window has its own of.
  *
- * Both keys are per window and per workspace (`../../src/shared/sessionkeys.ts`), because
- * `session.json` is install-global and a mesh is the one thing every window has its own of.
  * Which window this is arrives on the url rather than over IPC: restoring happens before the
- * first paint, and `workspace.index()` has not come back yet.
+ * first paint, and `workspace.index()` has not come back yet. The workspace digest arrives the
+ * same way, and every write carries it so main can drop one made for a project that has since
+ * been closed.
  *
  * The layout is nstructjs rather than hand-rolled JSON, through path.ux's own
  * `simple.saveFile`/`loadFile`: those stamp the struct schema into the blob, so a layout
@@ -28,14 +28,14 @@ import type { ShellState } from './state.js';
 
 const ME = windowIdentity(location.search);
 
-const LAYOUT_KEY = layoutKey(ME.scope, ME.window);
-const SELECTION_KEY = selectionKey(ME.scope, ME.window);
+const LAYOUT_KEY = layoutKey(ME.window);
+const SELECTION_KEY = selectionKey(ME.window);
 
 /**
  * What an install written before windows were plural left behind, read as window 0.
  *
- * Only window 0 may inherit it, and only for a read — the first save writes the scoped key and
- * the flat one is never written again. Without this an existing install would open, once, to a
+ * Only window 0 may inherit it, and only for a read — the first save writes the per-window key
+ * and the flat one is never written again. Without this an existing install would open, once, to a
  * default screen with nothing selected, which reads as data loss even though nothing was lost.
  */
 function stored(key: string, legacy: string): unknown {
@@ -125,7 +125,7 @@ export function currentScreen(shell: ShellApp): unknown {
 
 export function saveLayout(shell: ShellApp): void {
   const blob = currentScreen(shell);
-  if (blob !== undefined) api.session.set(LAYOUT_KEY, blob as Record<string, never>);
+  if (blob !== undefined) api.session.set(LAYOUT_KEY, blob as Record<string, never>, ME.scope);
 }
 
 /**
@@ -195,7 +195,7 @@ export function saveSelection(ui: ShellState): void {
     characterId: ui.characterId,
     docPath: ui.docPath,
   };
-  api.session.set(SELECTION_KEY, selection);
+  api.session.set(SELECTION_KEY, selection, ME.scope);
 }
 
 /** Restore the ids before the screen is built, so the first paint is the saved one. */

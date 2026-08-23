@@ -1,5 +1,5 @@
 import type { WorkspaceSession } from '../session.js';
-import type { SessionStore } from '../sessionstore.js';
+import type { SessionAccess } from '../sessionstate.js';
 import type { UiEffect } from '../../shared/ipc.js';
 import type { WindowId } from '../windows.js';
 
@@ -30,8 +30,11 @@ export interface DirectoryPickOptions {
  */
 export interface CommandHost {
   session: WorkspaceSession;
-  /** Persisted UI state. Named `state` to keep it distinct from the `session` field. */
-  state: SessionStore;
+  /**
+   * Persisted UI state, routed to the project's file or the install's by key. Named `state` to
+   * keep it distinct from the `session` field.
+   */
+  state: SessionAccess;
   /**
    * Push a UI change to a renderer over the `command:ui` event channel.
    *

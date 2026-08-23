@@ -1,6 +1,7 @@
 /**
- * Persisted desktop UI state: a flat key/value file the shell uses for things that should
- * outlive a launch (panel widths today). Global per install, not per workspace.
+ * Persisted desktop UI state: a flat key/value file for things that should outlive a launch.
+ * One store is one directory, and the app opens two of them — the install's own and the open
+ * project's. Which one a key lands in is `./sessionstate.ts`'s decision, not this file's.
  *
  * Not to be confused with `WorkspaceSession`, which is the backend session (agent, project
  * model, pipeline). This is only remembered UI state, and it is reachable from a command as

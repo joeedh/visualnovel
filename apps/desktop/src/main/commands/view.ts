@@ -18,7 +18,7 @@ import {
 } from '../../shared/layouts.js';
 import { listLayouts, readLayout, resetLayouts, writeLayout } from '../layouts.js';
 import type { CommandHost } from './host.js';
-import { templateKey, workspaceScope } from '../../shared/sessionkeys.js';
+import { templateKey } from '../../shared/sessionkeys.js';
 
 const define = defineFor<CommandHost>();
 
@@ -27,15 +27,14 @@ const define = defineFor<CommandHost>();
  *
  * The key is derived from who asked rather than being a module constant: with a flat
  * `pathux.template`, `view.applyLayout` in window A wrote it and `view.resetLayout` in window B
- * then re-applied A's template to B. It is also derived from the workspace, because
- * `session.json` is install-global and two instances on two repos would otherwise share one
- * window 0.
+ * then re-applied A's template to B. The workspace is not part of it, because the key routes to
+ * the project's own session file (`../sessionstate.ts`).
  *
  * A command with no origin (the agent, CDP, main itself) is recorded against the window its
  * effect will land in, which is the focused one.
  */
-function templateKeyFor(ctx: { root: string; origin?: number; host: CommandHost }): string {
-  return templateKey(workspaceScope(ctx.root), ctx.origin ?? ctx.host.focusedWindow());
+function templateKeyFor(ctx: { origin?: number; host: CommandHost }): string {
+  return templateKey(ctx.origin ?? ctx.host.focusedWindow());
 }
 
 const WHERE: Record<OpenWhere, string> = {

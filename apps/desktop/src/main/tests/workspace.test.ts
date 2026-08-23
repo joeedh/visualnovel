@@ -9,8 +9,9 @@ import { noteGitHealth } from '../doctor.js';
 import {
   RECENT_KEY,
   RECENT_MAX,
+  SESSION_IGNORE,
   START_SCENE,
-  adoptGitAttributes,
+  commitScaffolding,
   createRoot,
   createWorkspace,
   ensureGitAttributes,
@@ -21,6 +22,7 @@ import {
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
+  writeScaffolding,
   type RecentStore,
 } from '../workspace.js';
 
@@ -451,39 +453,74 @@ describe('ensureGitAttributes', () => {
     await openWorkspace(root);
     expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain(line);
   }, 20_000);
+});
 
-  // The boot path never calls `openWorkspace` — it resolves a root from the recents list and goes
-  // straight to the repos — so `adoptGitAttributes` is what reaches a reopened project.
-  it('adopts the attribute on its own commit, leaving nothing for the open-time checkpoint', async () => {
-    await writeFile(join(root, 'project.yaml'), 'title: "Older"\n');
-    await ensureRepo(root);
+// The boot path never calls `openWorkspace` — it resolves a root from the recents list and goes
+// straight to the repos — so this pair is what reaches a reopened project.
+describe('scaffolding', () => {
+  let root: string;
 
-    expect(await adoptGitAttributes(root)).toBe(true);
-    expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain(line);
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vn-scaffold-'));
+  });
 
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true, maxRetries: 3 });
+  });
+
+  /** A project committed before this app scaffolded anything, which is what the pair is for. */
+  async function olderProject(dir: string): Promise<void> {
+    await writeFile(join(dir, 'project.yaml'), 'title: "Older"\n');
+    await writeFile(join(dir, '.gitignore'), 'keys\n');
+    const git = openGit(dir);
+    await git.init();
+    await git.config('user.email', 'test@localhost');
+    await git.config('user.name', 'Test');
+    await git.commit({ message: 'Existing project files', paths: ['-A'] });
+  }
+
+  it('writes each file on its own commit, leaving nothing for the open-time checkpoint', async () => {
+    await olderProject(root);
+
+    const wrote = await writeScaffolding(root);
+    expect(wrote.attributes).toBe(true);
+    expect(wrote.ignores).toBe(true);
+    expect(wrote.layouts.length).toBeGreaterThan(0);
+    expect(await readFile(join(root, '.gitignore'), 'utf8')).toContain(SESSION_IGNORE);
+
+    await commitScaffolding(root, wrote);
     const git = openGit(root);
-    expect((await git.log())[0]?.subject).toBe('Union-merge the notification log');
+    expect((await git.log()).map((c) => c.subject)).toEqual([
+      'Ignore the remembered window arrangement',
+      'Add the shipped layout templates',
+      'Union-merge the notification log',
+      'Existing project files',
+    ]);
     expect((await git.status()).dirty).toBe(false);
   }, 20_000);
 
-  it('writes the attribute but not a commit when the project sits inside a foreign repo', async () => {
+  it('writes the files but no commit when the project sits inside a foreign repo', async () => {
     await ensureRepo(root);
     const dir = join(root, 'inside');
     await mkdir(dir);
     await writeFile(join(dir, 'project.yaml'), 'title: "Nested"\n');
 
-    expect(await adoptGitAttributes(dir)).toBe(true);
-    expect(await readFile(join(dir, '.gitattributes'), 'utf8')).toContain(line);
+    await commitScaffolding(dir, await writeScaffolding(dir));
+    expect(await readFile(join(dir, '.gitattributes'), 'utf8')).toContain(
+      'vngen/state/notifications.jsonl merge=union',
+    );
     expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
   }, 20_000);
 
-  it('says no and commits nothing when the attribute is already there', async () => {
-    await writeFile(join(root, 'project.yaml'), 'title: "Older"\n');
-    await ensureGitAttributes(root);
-    await ensureRepo(root);
+  it('writes nothing and commits nothing the second time', async () => {
+    await olderProject(root);
+    await commitScaffolding(root, await writeScaffolding(root));
+    const before = await openGit(root).log();
 
-    expect(await adoptGitAttributes(root)).toBe(false);
-    expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
+    const again = await writeScaffolding(root);
+    expect(again).toEqual({ attributes: false, ignores: false, layouts: [] });
+    await commitScaffolding(root, again);
+    expect(await openGit(root).log()).toEqual(before);
   }, 20_000);
 });
 

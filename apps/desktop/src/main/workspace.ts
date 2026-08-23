@@ -27,11 +27,19 @@ const SKIP = new Set(['vngen', 'keys', '.git', 'node_modules']);
 const FALLBACK_IDENTITY = { name: 'VN Studio', email: 'vnstudio@localhost' };
 
 /**
+ * The remembered window arrangement, ignored rather than committed. It changes on every border
+ * drag, so tracking it would churn `git status`, conflict on every pull, and make `UndoJournal`
+ * refuse an undo because `Git.writeTree` runs `git add -A` and would see it move. The glob also
+ * covers the `.tmp-<hex>` sibling `writeFileAtomic` leaves beside a file mid-write.
+ */
+export const SESSION_IGNORE = '.vnstudio/session.json*';
+
+/**
  * What a project's `.gitignore` starts as. `vngen/` is deliberately absent, because the generated
  * tree is committed on purpose. `keys` is the load-bearing line: commit-on-save runs
  * `git commit -A`, so a key git can see is committed within the second.
  */
-const DEFAULT_IGNORES = ['keys', 'node_modules', '.DS_Store'];
+const DEFAULT_IGNORES = ['keys', 'node_modules', '.DS_Store', SESSION_IGNORE];
 
 /**
  * Ensure `root/.gitignore` ignores each of `entries`, appending only what is missing and
@@ -47,6 +55,44 @@ export async function ensureIgnored(root: string, entries: string[]): Promise<bo
   const head = before === '' || before.endsWith('\n') ? before : `${before}\n`;
   await writeFileAtomic(path, `${head}${missing.join('\n')}\n`);
   return true;
+}
+
+/** What a scaffolding pass wrote, so the commit half knows which commits there are to make. */
+export interface Scaffolding {
+  attributes: boolean;
+  ignores: boolean;
+  /** Workspace-relative paths of the layout templates that were written. */
+  layouts: string[];
+}
+
+/**
+ * Write the files a project needs from this app: the shipped layout templates, the union-merge
+ * attribute, and the ignore line for the session file. Idempotent, and it writes whatever repo
+ * encloses `root` — the files belong to the project either way, and only committing them is
+ * somebody else's business.
+ */
+export async function writeScaffolding(root: string): Promise<Scaffolding> {
+  return {
+    layouts: await ensureLayouts(root),
+    attributes: await ensureGitAttributes(root),
+    ignores: await ensureIgnored(root, [SESSION_IGNORE]),
+  };
+}
+
+/**
+ * Commit what `writeScaffolding` wrote, one subject each. Does nothing unless the repository is
+ * the project's own, on the grounds `ownsRepo` gives.
+ *
+ * Committing is not optional: opening a project must not leave the worktree dirty, or the
+ * open-time checkpoint sweeps these files up under "Changes made outside the app".
+ */
+export async function commitScaffolding(root: string, wrote: Scaffolding): Promise<void> {
+  if (!(await ownsRepo(root))) return;
+  const git = openGit(root);
+  if (wrote.attributes)
+    await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
+  if (wrote.layouts.length > 0) await git.commit({ message: LAYOUTS_COMMIT, paths: wrote.layouts });
+  if (wrote.ignores) await git.commit({ message: IGNORES_COMMIT, paths: ['.gitignore'] });
 }
 
 export interface SeedResult {
@@ -194,49 +240,19 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
   if (!found.project) {
     await writeFileAtomic(join(root, CONFIG_FILENAME), `title: ${JSON.stringify(title)}\n`);
   }
-  // Before `ensureRepo`, so a repository initialized here takes these in its first commit; a
-  // repository that already exists gets its own commits below. Opening a project must not leave
-  // the worktree dirty, or the open-time checkpoint sweeps these up as changes made outside the app
-  const wroteLayouts = await ensureLayouts(root);
-  const wroteAttributes = await ensureGitAttributes(root);
+  // Before `ensureRepo`, so a repository initialized here takes these in its first commit.
+  const wrote = await writeScaffolding(root);
   const fresh = !(await openGit(root).isRepo());
-  const git = await ensureRepo(root, found.project ? 'Existing project files' : 'New project');
-  // A repo `ensureRepo` just initialized is the project's by construction. One that was already
-  // there may be a repo the project merely sits inside, and scaffolding must not write two
-  // commits into somebody else's history.
-  if (!fresh && (await ownsRepo(root))) {
-    if (wroteAttributes) {
-      await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
-    }
-    if (wroteLayouts.length > 0) {
-      await git.commit({ message: LAYOUTS_COMMIT, paths: wroteLayouts });
-    }
-  }
+  await ensureRepo(root, found.project ? 'Existing project files' : 'New project');
+  // A repo `ensureRepo` just initialized already holds these files, under the subject that says
+  // what the commit is. One that was already there gets a commit each.
+  if (!fresh) await commitScaffolding(root, wrote);
   return { root, created: !found.project, title };
-}
-
-/**
- * Gives the same guarantee to a project that is reached rather than opened. `openWorkspace` runs
- * on an explicit `workspace.open`, but the ordinary boot path resolves a root from the recents
- * list or `VN_PROJECT` and goes straight to the repos, so a project the author simply reopened
- * gets the attribute here rather than only at create time.
- *
- * Commits what it wrote, for the reason `openWorkspace` gives: the app's open-time checkpoint
- * would otherwise sweep this file up under "Changes made outside the app".
- */
-export async function adoptGitAttributes(root: string): Promise<boolean> {
-  if (!(await ensureGitAttributes(root))) return false;
-  // `isRepo` would be true of a project sitting inside a larger repo, and this must not commit
-  // there. The caller asks the same question first; asking again here keeps the answer with the
-  // write
-  if (await ownsRepo(root)) {
-    await openGit(root).commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
-  }
-  return true;
 }
 
 const GITATTRIBUTES_COMMIT = 'Union-merge the notification log';
 const LAYOUTS_COMMIT = 'Add the shipped layout templates';
+const IGNORES_COMMIT = 'Ignore the remembered window arrangement';
 
 /** The one attribute a project needs from this app; `GITATTRIBUTES_TEXT` states why. */
 const GITATTRIBUTES_LINE = 'vngen/state/notifications.jsonl merge=union';
