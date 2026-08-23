@@ -323,9 +323,14 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   await getSessionState().openProject(opened.root);
   rememberWorkspace(getSessionState(), opened.root);
   // Pushed directly rather than through the command host: the stack that is running the command
-  // asking for this switch is the one being discarded. Every window remounts — the workspace is
-  // process-wide, so opening another project tears all of them down.
+  // asking for this switch is the one being discarded. It reaches whichever windows have not
+  // reloaded yet; the rest re-read the project at boot.
   broadcast('command:ui', { type: 'workspace', root: opened.root, title: opened.title });
+  // Every window remounts — the workspace is process-wide, so opening another project tears all
+  // of them down. A reload re-runs the boot path, which is what restores this project's layout,
+  // template and selection. Building a new mesh under the live one instead would leave the
+  // removed screen holding its window listeners and answering the pointer from underneath.
+  for (const { id, handle } of windows.all()) loadWindow(handle, id);
   nameWindows(opened.title);
   return { root: opened.root, title: opened.title };
 }
@@ -875,6 +880,28 @@ interface NewWindowOptions {
   bounds?: { x: number; y: number; width: number; height: number };
 }
 
+/**
+ * Point a window at the renderer, for the workspace open right now. A window knows its own index
+ * and its workspace from its url: the preload can read `location.search` before first paint,
+ * which is why `session.initial()` is `sendSync` at all, and for free the index lands in the CDP
+ * target list, which is what makes `--window` work.
+ *
+ * Called again to reload a window after a workspace switch, which is why the url is built here
+ * rather than inline in `createWindow`.
+ */
+function loadWindow(win: BrowserWindow, id: WindowId, options: NewWindowOptions = {}): void {
+  const query: Record<string, string> = { window: String(id), ws: scope() };
+  if (options.editor) query.editor = options.editor;
+  if (options.subject) query.subject = options.subject;
+  if (DEV_URL) {
+    const url = new URL(DEV_URL);
+    for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+    void win.loadURL(url.toString());
+  } else {
+    void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'), { query });
+  }
+}
+
 function createWindow(options: NewWindowOptions = {}): WindowId {
   const win = new BrowserWindow({
     width: 1360,
@@ -892,19 +919,7 @@ function createWindow(options: NewWindowOptions = {}): WindowId {
   });
   const id = windows.add(win);
 
-  // A window knows its own index - and its workspace - from its URL. The preload can read
-  // `location.search` before first paint, which is why `session.initial()` is `sendSync` at all,
-  // and for free the index lands in the CDP target list, which is what makes `--window` work.
-  const query: Record<string, string> = { window: String(id), ws: scope() };
-  if (options.editor) query.editor = options.editor;
-  if (options.subject) query.subject = options.subject;
-  if (DEV_URL) {
-    const url = new URL(DEV_URL);
-    for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
-    void win.loadURL(url.toString());
-  } else {
-    void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'), { query });
-  }
+  loadWindow(win, id, options);
 
   win.on('focus', () => windows.touch(id));
   win.on('moved', rememberWindows);
