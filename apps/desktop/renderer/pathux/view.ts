@@ -15,6 +15,7 @@ import { editorClass, type VnEditor } from './editor.js';
 import { flashRect } from './flash.js';
 import { closeIcon } from './icons.js';
 import { markApplied } from './layouts.js';
+import { layoutChanged } from './persist.js';
 import {
   NO_PANE,
   paneElsewhere,
@@ -32,7 +33,15 @@ type ViewEffect = Extract<UiEffect, { type: 'view' }>;
 export function applyView(app: ShellApp, effect: ViewEffect): string | null {
   const screen = app.screen;
   if (!screen) return null;
+  const correction = route(app, screen, effect);
+  // A pane that swaps editors leaves the mesh the same shape, so `onLayoutChange` never fires and
+  // the window would come back showing whatever it showed before the swap. A correction means the
+  // mesh did not move, and there is then nothing new to save.
+  if (correction === null) layoutChanged();
+  return correction;
+}
 
+function route(app: ShellApp, screen: VnScreen, effect: ViewEffect): string | null {
   switch (effect.action) {
     case 'open':
       return flashed(

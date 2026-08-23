@@ -155,6 +155,18 @@ because a preference is not the project's to lose.
   / `ui.shotId` / `ui.characterId` / `ui.docPath` / `ui.assetHash` / `ui.taskHash`, which is the
   same push the widgets get. Every persisted field needs a watcher of its own, because clicking an
   asset moves no other field and nothing else would schedule the save
+- **A selection field announces its own write** (`ShellState.onSelect`, wired to `api.notifyChange`
+  in `renderer/pathux/shell.ts`). Editors assign `ui.sceneId` and its five siblings as plain
+  properties, and path.ux wakes a `DataPathWatcher` only from its own `setValue`, so without the
+  hook the watchers above never fire and nothing is saved. The six fields are accessors over one
+  private record for that reason; an unchanged value reports nothing
+- **Those watchers are `immediate` rather than the default `raf`.** A hidden or minimized window
+  runs no animation frames, so a raf-coalesced watcher stays dirty until the window is shown again
+  and a quit in between loses the selection. `schedule` has a 400 ms debounce of its own
+- **A `view.*` effect schedules the save itself** (`applyView` in `renderer/pathux/view.ts`, on any
+  effect the mesh did not correct). A pane that swaps editors leaves the mesh the same shape, so
+  `onLayoutChange` does not fire, and without this the window comes back showing whatever it showed
+  before the swap
 - **A restored id is checked against the project, once, after the first paint** (`settleSelection`
   in `renderer/pathux/shell.ts`, deciding through `renderer/rules/uistate.ts`). One `asset.info`
   repairs `assetHash`: it fails for a hash the manifest no longer holds, which clears the

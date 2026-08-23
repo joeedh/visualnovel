@@ -6,13 +6,64 @@
 import { DEFAULT_BUDGET, DEFAULT_EFFORT, type BudgetChoice, type EffortChoice } from '@vn/types';
 import type { AgentMode } from '../../src/shared/ipc.js';
 
+/** The fields that say what the author is looking at, and the only ones that report a write. */
+export type SelectionField =
+  | 'sceneId'
+  | 'shotId'
+  | 'characterId'
+  | 'docPath'
+  | 'taskHash'
+  | 'assetHash';
+
 export class ShellState {
+  private selection: Record<SelectionField, string> = {
+    sceneId: '',
+    shotId: '',
+    characterId: '',
+    docPath: '',
+    taskHash: '',
+    assetHash: '',
+  };
+
+  /**
+   * Called after a selection field changes, with the field that moved.
+   *
+   * Every editor assigns these fields directly, and path.ux wakes a `DataPathWatcher` only from
+   * its own `setValue`. Without this hook a raw assignment reaches no watcher, so neither a widget
+   * bound to `ui.sceneId` nor the session's own persistence hears about it. `shell.ts` wires it to
+   * `api.notifyChange`.
+   */
+  onSelect: (field: SelectionField) => void = () => {};
+
+  private select(field: SelectionField, value: string): void {
+    if (this.selection[field] === value) return;
+    this.selection[field] = value;
+    this.onSelect(field);
+  }
+
   /**
    * The one selection every editor observes. Empty string means nothing selected.
    */
-  sceneId = '';
-  shotId = '';
-  characterId = '';
+  get sceneId(): string {
+    return this.selection.sceneId;
+  }
+  set sceneId(value: string) {
+    this.select('sceneId', value);
+  }
+
+  get shotId(): string {
+    return this.selection.shotId;
+  }
+  set shotId(value: string) {
+    this.select('shotId', value);
+  }
+
+  get characterId(): string {
+    return this.selection.characterId;
+  }
+  set characterId(value: string) {
+    this.select('characterId', value);
+  }
 
   /**
    * The document a document editor is on, as a workspace-relative path rather than an id. That is
@@ -20,21 +71,36 @@ export class ShellState {
    * it by. The tree publishes this path and the wiki editor observes it. It persists alongside the
    * ids above.
    */
-  docPath = '';
+  get docPath(): string {
+    return this.selection.docPath;
+  }
+  set docPath(value: string) {
+    this.select('docPath', value);
+  }
 
   /**
    * The task the inspector is looking at, as `sha256(kind, inputs)` rather than an authored id.
    * Persisted with no repair rule: the hash is stable while its inputs are, and the inspector
    * answers one the current status does not carry by fetching once and drawing nothing.
    */
-  taskHash = '';
+  get taskHash(): string {
+    return this.selection.taskHash;
+  }
+  set taskHash(value: string) {
+    this.select('taskHash', value);
+  }
 
   /**
    * The asset the asset editor is looking at, by content hash. Persisted, and repaired at boot
    * through one `asset.info`: a hash the manifest no longer holds clears the selection, and a
    * superseded take moves to `newerTake` (`../rules/uistate.ts`).
    */
-  assetHash = '';
+  get assetHash(): string {
+    return this.selection.assetHash;
+  }
+  set assetHash(value: string) {
+    this.select('assetHash', value);
+  }
 
   /**
    * What the header shows. All of it is pushed in by `bridge.ts` from the workspace index,

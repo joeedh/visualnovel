@@ -76,6 +76,9 @@ class Shell implements ShellApp {
     this.toolstack = new ToolStack();
     this.api = defineShellApi();
     this.ui = new ShellState();
+    // Editors write the selection as plain fields, which path.ux cannot see. Announcing the write
+    // here is what wakes both a widget bound to the path and the session's persistence watchers.
+    this.ui.onSelect = (field) => this.api.notifyChange(`ui.${field}`);
     this.ctx = new ShellContext(this);
     this.toolstack.setRestrictedToolContext(this.ctx as unknown as ContextLike);
   }

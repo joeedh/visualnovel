@@ -251,10 +251,17 @@ export function installPersistence(shell: ShellApp): void {
     'ui.assetHash',
     'ui.taskHash',
   ];
+  // `immediate` rather than the default `raf`: a hidden or minimized window runs no animation
+  // frames, so a raf-coalesced watcher stays dirty and never fires. `schedule` has a debounce of
+  // its own, so firing on the write costs nothing.
   for (const path of paths) {
     watchers.push(
-      new DataPathWatcher(shell.api, shell.ctx as unknown as ContextLike, path, () =>
-        schedule(shell),
+      new DataPathWatcher(
+        shell.api,
+        shell.ctx as unknown as ContextLike,
+        path,
+        () => schedule(shell),
+        { debounce: 'immediate' },
       ).subscribe(),
     );
   }

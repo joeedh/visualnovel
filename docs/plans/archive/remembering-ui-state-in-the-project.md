@@ -290,7 +290,10 @@ selection through the boot path that already exists.
    scope digest loses today).
 4. Delete a selected scene's file outside the app, relaunch: the app opens, the scene selection
    is empty, and nothing throws.
-5. Corrupt `.vnstudio/session.json` to `{`, relaunch: default screen, one warning, no hang.
+5. Corrupt `.vnstudio/session.json` to `{`, relaunch: default screen, no hang, and the file is
+   rebuilt. The warning is logged once per read of the bad file, so a boot that reseeds the
+   project store logs it twice: once when the store opens, and once in the merge read the
+   seeding flush does before it overwrites the file.
 6. Re-render a selected shot, relaunch: the asset editor lands on the new asset rather than the
    superseded take. Then walk back to an earlier take by hand and confirm the pane stays there
    while a re-render lands, which is the behaviour `watchSlot` exists for.
@@ -337,6 +340,23 @@ each was checked against the source before being accepted.
 **Recorded rather than fixed.** The reviewer asked for the arrangement to be shared across
 clones. That is what layout templates are, and they are already committed; a live arrangement
 that git tracks would break undo through `Git.writeTree`, which is the first decision above.
+
+## Found in live verification
+
+Walking the list above on `examples/test4` turned up three defects the unit tests could not see.
+All three are fixed, and each has a test or a documented rule behind it now.
+
+1. A pane that swaps editors leaves the mesh the same shape, so `VnScreen.onLayoutChange` never
+   fires and the window came back showing the editor it held before the swap. `applyView` schedules
+   the save itself, on any effect the mesh did not correct.
+2. Nothing announced a selection write. Every editor assigns `ui.sceneId` and its siblings as plain
+   properties, and path.ux wakes a `DataPathWatcher` only from its own `setValue`, so the six
+   watchers this plan installs never fired. The fields are accessors over one private record now,
+   and `ShellState.onSelect` reaches `api.notifyChange`. Steps 2 and 6 appeared to pass beforehand
+   only because finding 1's save was covering for them.
+3. Those watchers took path.ux's default `raf` debounce, and a hidden or minimized window runs no
+   animation frames, so the save stayed scheduled until the window was shown again. They are
+   `immediate`; the 400 ms debounce in `schedule` is what coalescing the write costs.
 
 ## Undoing this
 
