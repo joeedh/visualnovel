@@ -11,7 +11,10 @@
  * carries the counter over, so a cleared conversation never reuses an id.
  */
 import { charge } from '@vn/types';
-import type { CacheVerdict } from '@vn/authoring';
+import type { ChatVendor } from '@vn/types';
+// Type-only, for the reason `ipc.ts` gives: `@vn/authoring` reads the filesystem, and these
+// shapes are named here only as data that has already crossed the wire.
+import type { BackendKind, CacheVerdict, SystemSection } from '@vn/authoring';
 import type {
   AgentEvent,
   AskQuestion,
@@ -115,6 +118,30 @@ export interface ThreadArchive {
 export interface ThreadRecord extends ThreadHeader {
   items: FeedItem[];
   usage?: ThreadUsage[];
+}
+
+/**
+ * Line 0 of a thread's native log — what the conversation was recorded through. It lives here for
+ * the reason {@link ThreadHeader} does: the renderer greys the Continue button on the same check
+ * main runs, so both sides name this shape.
+ */
+export interface ResumeHeader {
+  /** Format version. A log written by a newer version is refused rather than read on a guess. */
+  v: number;
+  /** The thread this log belongs to, so a file separated from its name still says which. */
+  thread: string;
+  at: string;
+  backend: BackendKind;
+  /**
+   * The vendor in force when the thread was written. Stored rather than recomputed on read: every
+   * copy of the rule falls back to `gemini` for an id it does not know, so recomputing it over a
+   * model the current table has forgotten would answer `gemini` without saying it was guessing.
+   */
+  vendor: ChatVendor;
+  model?: string;
+  effort?: string;
+  /** The system prompt as named sections, in `joinSections` order. */
+  sections: SystemSection[];
 }
 
 /**

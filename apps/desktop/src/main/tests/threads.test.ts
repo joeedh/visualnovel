@@ -4,18 +4,25 @@ import { join } from 'node:path';
 import { ProjectPaths } from '@vn/store';
 import type { FeedItem, ThreadUsage } from '../../shared/convo.js';
 import {
+  ConflictedLogError,
+  NATIVE_VERSION,
   NEW_THREAD_TITLE,
   appendItem,
+  appendNative,
   appendUsage,
   archiveThread,
   bindThread,
   listThreads,
+  nativeFile,
+  nativeHeader,
   openThread,
+  readNative,
   readThread,
   retitleThread,
   threadFile,
   threadsDir,
   titleFrom,
+  type NativeLine,
 } from '../threads.js';
 
 const item = (id: number, role: FeedItem['role'], text: string): FeedItem => ({ id, role, text });
@@ -287,6 +294,188 @@ describe('receipts in a thread', () => {
     await appendUsage(paths, id, { step: 1, input: 10, output: 2, verdict: 'cold', at: 'a' });
 
     expect((await listThreads(paths)).map((header) => header.id)).toEqual([id]);
+  });
+});
+
+describe('the native log', () => {
+  let root: string;
+  let paths: ProjectPaths;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vn-native-'));
+    paths = new ProjectPaths(root);
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const header = (thread: string): NativeLine => ({
+    v: NATIVE_VERSION,
+    type: 'resume',
+    thread,
+    at: '2026-08-22T14:00:28.041Z',
+    backend: 'native',
+    vendor: 'anthropic',
+    model: 'claude-opus-5',
+    effort: 'low',
+    sections: [
+      { name: 'BUILT-IN', text: 'the contract' },
+      { name: 'PROJECT MAP (GENERATED_CONTEXT.md)', text: 'the cast' },
+    ],
+  });
+
+  const msg = (n: number, over: Partial<Extract<NativeLine, { type: 'msg' }>>): NativeLine => ({
+    type: 'msg',
+    n,
+    at: '2026-08-22T14:00:29.000Z',
+    role: 'user',
+    content: '',
+    ...over,
+  });
+
+  it('sits beside the display log, under the same id', () => {
+    expect(nativeFile(paths, '20260822-140028')).toBe(
+      join(threadsDir(paths), '20260822-140028.native.jsonl'),
+    );
+  });
+
+  it('round-trips the header and every message, verbatim', async () => {
+    const id = '20260822-140028';
+    const blocks = [{ type: 'tool_use', id: 'toolu_01A', name: 'read_file' }];
+    await appendNative(paths, id, header(id));
+    await appendNative(paths, id, msg(0, { content: 'Draft the second scene.' }));
+    await appendNative(paths, id, msg(1, { role: 'assistant', content: blocks }));
+    await appendNative(
+      paths,
+      id,
+      msg(2, { role: 'observation', toolUseId: 'toolu_01A', content: 'INT.' }),
+    );
+
+    const log = await readNative(paths, id);
+    expect(log!.header).toMatchObject({
+      v: NATIVE_VERSION,
+      backend: 'native',
+      vendor: 'anthropic',
+    });
+    expect(log!.messages).toEqual([
+      { n: 0, role: 'user', content: 'Draft the second scene.' },
+      { n: 1, role: 'assistant', content: blocks },
+      { n: 2, role: 'observation', toolUseId: 'toolu_01A', content: 'INT.' },
+    ]);
+    // None of the display log's clamps apply: a resume replays exactly what was sent.
+    expect(log!.compaction).toBeUndefined();
+  });
+
+  it('folds a sections delta onto the header, replacing in place and appending what is new', async () => {
+    const id = '20260822-140028';
+    await appendNative(paths, id, header(id));
+    await appendNative(paths, id, {
+      type: 'sections',
+      n: 4,
+      at: '2026-08-22T14:01:00.000Z',
+      set: [
+        { name: 'PROJECT MAP (GENERATED_CONTEXT.md)', text: 'the cast, rewritten' },
+        { name: 'PROJECT CONTEXT (AICONTEXT.md)', text: 'be terse' },
+      ],
+      unset: [],
+    });
+
+    expect((await readNative(paths, id))!.sections).toEqual([
+      { name: 'BUILT-IN', text: 'the contract' },
+      { name: 'PROJECT MAP (GENERATED_CONTEXT.md)', text: 'the cast, rewritten' },
+      { name: 'PROJECT CONTEXT (AICONTEXT.md)', text: 'be terse' },
+    ]);
+  });
+
+  it('drops a section the delta unset', async () => {
+    const id = '20260822-140028';
+    await appendNative(paths, id, header(id));
+    await appendNative(paths, id, {
+      type: 'sections',
+      n: 4,
+      at: '2026-08-22T14:01:00.000Z',
+      set: [],
+      unset: ['PROJECT MAP (GENERATED_CONTEXT.md)'],
+    });
+
+    expect((await readNative(paths, id))!.sections).toEqual([
+      { name: 'BUILT-IN', text: 'the contract' },
+    ]);
+  });
+
+  it('reads the newest compaction, and keeps the messages it covers', async () => {
+    const id = '20260822-140028';
+    await appendNative(paths, id, header(id));
+    for (const n of [0, 1, 2]) await appendNative(paths, id, msg(n, { content: `line ${n}` }));
+    await appendNative(paths, id, {
+      type: 'compact',
+      at: '2026-08-22T14:03:11.204Z',
+      covers: { from: 0, to: 1 },
+      role: 'context',
+      content: 'first summary',
+    });
+    await appendNative(paths, id, {
+      type: 'compact',
+      at: '2026-08-22T14:09:11.204Z',
+      covers: { from: 0, to: 2 },
+      role: 'context',
+      content: 'second summary',
+      model: 'claude-opus-5',
+      usage: { input: 41208, output: 1104 },
+    });
+
+    const log = await readNative(paths, id);
+    expect(log!.compaction).toMatchObject({
+      content: 'second summary',
+      covers: { from: 0, to: 2 },
+    });
+    // What a compaction covers stays in the file — it is what a history search reads.
+    expect(log!.messages).toHaveLength(3);
+  });
+
+  it('skips a line a crash cut off, and refuses one a merge wrote two versions into', async () => {
+    const id = '20260822-140028';
+    await appendNative(paths, id, header(id));
+    await appendNative(paths, id, msg(0, { content: 'kept' }));
+    await appendFile(nativeFile(paths, id), '{"type":"msg","n":1,"role":"us');
+
+    expect((await readNative(paths, id))!.messages).toHaveLength(1);
+
+    await appendFile(nativeFile(paths, id), '\n<<<<<<< HEAD\n');
+    await expect(readNative(paths, id)).rejects.toThrow(ConflictedLogError);
+    // The cheap header read catches it too, though it parses only line 0.
+    await expect(nativeHeader(paths, id)).rejects.toThrow(ConflictedLogError);
+  });
+
+  it('answers absent for a thread written before the format existed', async () => {
+    const { id } = await openThread(paths, { title: 'older' });
+    await appendItem(paths, id, item(1, 'user', 'hello'));
+
+    expect(await readNative(paths, id)).toBeUndefined();
+    expect(await nativeHeader(paths, id)).toBeUndefined();
+  });
+
+  it('reads line 0 alone, past a message that quotes the word', async () => {
+    const id = '20260822-140028';
+    await appendNative(paths, id, header(id));
+    await appendNative(paths, id, msg(0, { content: 'what does {"type":"resume"} mean?' }));
+
+    expect(await nativeHeader(paths, id)).toMatchObject({ thread: id, model: 'claude-opus-5' });
+  });
+
+  it('is one conversation: the listing counts it once and the display log is unchanged', async () => {
+    const { id } = await openThread(paths, { title: 'both files' });
+    await appendItem(paths, id, item(1, 'user', 'hello'));
+    const before = await readFile(threadFile(paths, id), 'utf8');
+    const read = await readThread(paths, id);
+
+    await appendNative(paths, id, header(id));
+    await appendNative(paths, id, msg(0, { content: 'hello' }));
+
+    expect((await listThreads(paths)).map((t) => t.title)).toEqual(['both files']);
+    expect(await readFile(threadFile(paths, id), 'utf8')).toBe(before);
+    expect(await readThread(paths, id)).toEqual(read);
   });
 });
 

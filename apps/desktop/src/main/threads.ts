@@ -15,8 +15,10 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { appendJsonl, ensureDir } from '@vn/util';
 import type { ProjectPaths } from '@vn/store';
+import type { AgentMessage, SystemSection } from '@vn/authoring';
 import type {
   FeedItem,
+  ResumeHeader,
   ThreadArchive,
   ThreadHeader,
   ThreadRecord,
@@ -24,7 +26,7 @@ import type {
   ToolDetail,
 } from '../shared/convo.js';
 
-export type { ThreadArchive, ThreadHeader, ThreadRecord };
+export type { ResumeHeader, ThreadArchive, ThreadHeader, ThreadRecord };
 
 /** The title a thread is created with, before a first turn names it. */
 export const NEW_THREAD_TITLE = 'New conversation';
@@ -64,6 +66,12 @@ export function threadFile(paths: ProjectPaths, id: string): string {
   return join(threadsDir(paths), `${id}.jsonl`);
 }
 
+/**
+ * What marks the second file a thread has, holding the backend's own messages verbatim. The native
+ * log is described where its readers and writers are, at the foot of this file.
+ */
+const NATIVE_SUFFIX = '.native.jsonl';
+
 /** A thread's title, from the first thing the author said: one line, trimmed at a word boundary. */
 export function titleFrom(text: string): string {
   const flat = text.replace(/\s+/g, ' ').trim();
@@ -101,8 +109,15 @@ function stamp(at: Date): string {
 /**
  * Every line a file holds that parses. A crash mid-append leaves a half-written last line, and a
  * bad line is skipped rather than thrown over so the rest of the transcript still lists.
+ *
+ * `refuseConflicts` turns that tolerance off for one case: a conflict marker means a three-way
+ * merge wrote two versions into the file, and skipping the unparseable lines would hand back a
+ * quietly truncated log. The check runs before `keep`, so a filtered read still catches it.
  */
-async function lines(file: string, keep?: (raw: string) => boolean): Promise<ThreadLine[]> {
+async function lines<T = ThreadLine>(
+  file: string,
+  opts: { keep?: (raw: string) => boolean; refuseConflicts?: boolean } = {},
+): Promise<T[]> {
   let text: string;
   try {
     text = await readFile(file, 'utf8');
@@ -111,11 +126,12 @@ async function lines(file: string, keep?: (raw: string) => boolean): Promise<Thr
     throw err;
   }
 
-  const out: ThreadLine[] = [];
+  const out: T[] = [];
   for (const raw of text.split('\n')) {
-    if (raw.trim() === '' || (keep && !keep(raw))) continue;
+    if (opts.refuseConflicts && raw.startsWith('<<<<<<<')) throw new ConflictedLogError(file);
+    if (raw.trim() === '' || (opts.keep && !opts.keep(raw))) continue;
     try {
-      out.push(JSON.parse(raw) as ThreadLine);
+      out.push(JSON.parse(raw) as T);
     } catch {
       // A line that will not parse is a line that was never finished being written.
     }
@@ -169,7 +185,12 @@ export async function listThreads(paths: ProjectPaths): Promise<ThreadHeader[]> 
     throw err;
   }
 
-  const ids = files.filter((f) => f.endsWith('.jsonl')).map((f) => f.slice(0, -'.jsonl'.length));
+  // A native log is the same conversation and would otherwise list a second time — and listing it
+  // means running the pre-filter over every verbatim line the model was ever sent. Thread ids are
+  // timestamps, so none ends in `.native` and is excluded by accident.
+  const ids = files
+    .filter((f) => f.endsWith('.jsonl') && !f.endsWith(NATIVE_SUFFIX))
+    .map((f) => f.slice(0, -'.jsonl'.length));
   const headers: ThreadHeader[] = [];
   for (const id of ids.sort().reverse()) {
     // Tool args are in the file too, so this filter lets the odd item line through to be parsed
@@ -179,7 +200,7 @@ export async function listThreads(paths: ProjectPaths): Promise<ThreadHeader[]> 
       raw.includes('"title"') ||
       raw.includes('"binding"') ||
       raw.includes('"archived"');
-    const header = headerOf(id, await lines(threadFile(paths, id), keep));
+    const header = headerOf(id, await lines(threadFile(paths, id), { keep }));
     if (header) headers.push(header);
   }
   return headers;
@@ -337,4 +358,152 @@ export async function retitleThread(
   now = new Date(),
 ): Promise<void> {
   await appendJsonl(threadFile(paths, id), { type: 'title', title, at: now.toISOString() });
+}
+
+// ---- The native log ----
+
+// The backend's own messages, verbatim. None of the clamps above apply: a transcript a model can
+// continue from has to be exactly what the model was sent. The separate file is also what keeps a
+// reader of the display log walking kilobytes of feed rather than megabytes of tool output.
+
+/** The native log's format version, written at line 0 and checked before a thread is resumed. */
+export const NATIVE_VERSION = 1;
+
+/** Refuses a native log that a three-way merge wrote two versions into. */
+export class ConflictedLogError extends Error {
+  constructor(readonly file: string) {
+    super(`${file} holds a merge conflict, so the conversation in it is no longer intact`);
+  }
+}
+
+/**
+ * One message as the log stores it. `n` counts messages ever appended to this thread and never
+ * restarts, so it still names a message after a compaction rebuilds the live array from zero.
+ */
+export interface StoredMessage extends AgentMessage {
+  n: number;
+}
+
+/** A compaction: the summary that stands in for `covers`, and what producing it cost. */
+export interface ThreadCompaction {
+  /** The `n` range the summary replaces, inclusive. */
+  covers: { from: number; to: number };
+  role: AgentMessage['role'];
+  content: string;
+  at: string;
+  model?: string;
+  usage?: { input: number; output: number };
+}
+
+/** A thread's native log, folded into the four things a reader asks it for. */
+export interface NativeLog {
+  header: ResumeHeader;
+  messages: StoredMessage[];
+  /** The header's sections with every later delta folded on, in order. */
+  sections: SystemSection[];
+  /** The newest compaction, when the author has compacted. */
+  compaction?: ThreadCompaction;
+}
+
+export type NativeLine =
+  | ({ type: 'resume' } & ResumeHeader)
+  | ({ type: 'msg'; at: string } & StoredMessage)
+  | { type: 'sections'; n: number; at: string; set: SystemSection[]; unset: string[] }
+  | ({ type: 'compact' } & ThreadCompaction);
+
+export function nativeFile(paths: ProjectPaths, id: string): string {
+  return join(threadsDir(paths), `${id}${NATIVE_SUFFIX}`);
+}
+
+/** Append one line. Callers are the session's `onMessage` hook and its compaction. */
+export async function appendNative(
+  paths: ProjectPaths,
+  id: string,
+  line: NativeLine,
+): Promise<void> {
+  await appendJsonl(nativeFile(paths, id), line);
+}
+
+/** Line 0's fields, without the `type` that belongs only in the file. */
+function resumeHeaderOf(line: { type: 'resume' } & ResumeHeader): ResumeHeader {
+  const { v, thread, at, backend, vendor, model, effort, sections } = line;
+  return {
+    v,
+    thread,
+    at,
+    backend,
+    vendor,
+    sections: sections ?? [],
+    ...(model === undefined ? {} : { model }),
+    ...(effort === undefined ? {} : { effort }),
+  };
+}
+
+/**
+ * Line 0 alone, for a caller deciding whether a thread can be continued. A `msg` line holding the
+ * words `"type":"resume"` would have to have been written with those quotes unescaped, which JSON
+ * does not do, so the pre-filter reaches line 0 and nothing else.
+ */
+export async function nativeHeader(
+  paths: ProjectPaths,
+  id: string,
+): Promise<ResumeHeader | undefined> {
+  const parsed = await lines<NativeLine>(nativeFile(paths, id), {
+    keep: (raw) => raw.includes('"type":"resume"'),
+    refuseConflicts: true,
+  });
+  const first = parsed.find((line) => line.type === 'resume');
+  return first ? resumeHeaderOf(first) : undefined;
+}
+
+/**
+ * The whole log. Answers `undefined` for a thread that has no native file and for one carrying no
+ * header — every thread written before the format existed is one of those, and a resume refuses
+ * them by name rather than treating an absent file as an error.
+ */
+export async function readNative(paths: ProjectPaths, id: string): Promise<NativeLog | undefined> {
+  const parsed = await lines<NativeLine>(nativeFile(paths, id), { refuseConflicts: true });
+  const first = parsed.find((line) => line.type === 'resume');
+  if (!first) return undefined;
+  const header = resumeHeaderOf(first);
+
+  // A delta replaces a section of the same name where it stands, because `joinSections`
+  // concatenates in order and the author's context has to keep reading last.
+  const sections = [...header.sections];
+  const compactions: ThreadCompaction[] = [];
+  const messages: StoredMessage[] = [];
+  for (const line of parsed) {
+    if (line.type === 'msg') {
+      const { n, role, content, toolUseId } = line;
+      messages.push({ n, role, content, ...(toolUseId === undefined ? {} : { toolUseId }) });
+    } else if (line.type === 'sections') {
+      for (const name of line.unset ?? []) {
+        const at = sections.findIndex((section) => section.name === name);
+        if (at >= 0) sections.splice(at, 1);
+      }
+      for (const section of line.set ?? []) {
+        const at = sections.findIndex((held) => held.name === section.name);
+        if (at >= 0) sections[at] = section;
+        else sections.push(section);
+      }
+    } else if (line.type === 'compact') {
+      const { covers, role, content, at, model, usage } = line;
+      compactions.push({
+        covers,
+        role,
+        content,
+        at,
+        ...(model === undefined ? {} : { model }),
+        ...(usage === undefined ? {} : { usage }),
+      });
+    }
+  }
+
+  const newest = compactions[compactions.length - 1];
+  return {
+    header,
+    messages,
+    sections,
+    ...(newest === undefined ? {} : { compaction: newest }),
+  };
 }

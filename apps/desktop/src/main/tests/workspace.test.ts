@@ -439,6 +439,15 @@ describe('ensureGitAttributes', () => {
     expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain('*.png binary\n#');
   });
 
+  it('gives a project that has only the older attribute the newer one', async () => {
+    await writeFile(join(root, '.gitattributes'), `${line}\n`);
+    expect(await ensureGitAttributes(root)).toBe(true);
+
+    const text = await readFile(join(root, '.gitattributes'), 'utf8');
+    expect(text.split(line)).toHaveLength(2);
+    expect(text).toContain('vngen/state/threads/*.native.jsonl -merge');
+  });
+
   it('says no and writes nothing the second time', async () => {
     await ensureGitAttributes(root);
     const before = await readFile(join(root, '.gitattributes'), 'utf8');
@@ -495,7 +504,7 @@ describe('scaffolding', () => {
     expect((await git.log()).map((c) => c.subject)).toEqual([
       'Ignore the remembered window arrangement',
       'Add the shipped layout templates',
-      'Union-merge the notification log',
+      'Set how git merges the state logs',
       'Existing project files',
     ]);
     expect((await git.status()).dirty).toBe(false);

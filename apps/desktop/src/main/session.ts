@@ -163,17 +163,21 @@ import {
   workspaceTextLLM,
   type AgentBackend,
   type AgentEvent,
+  type AgentMessage,
   type AgentMode,
   type ApiFailure,
   type Approvable,
   type ApiRecovery,
   type AskQuestion,
+  type BackendKind,
   type GeneratedContextState,
   type GeneratedCounts,
   type Permission,
   type Plan,
   type PlanDecision,
   type RunResult,
+  type SectionDelta,
+  type SystemSection,
   type ToolContext,
   type UploadBatch,
   type WorkspaceIndex,
@@ -308,16 +312,20 @@ import {
   type ThreadUsage,
 } from '../shared/convo.js';
 import {
+  NATIVE_VERSION,
   appendItem,
+  appendNative,
   appendUsage,
   archiveThread,
   bindThread,
   listThreads,
+  nativeFile,
   openThread,
   readThread,
   retitleThread,
   threadFile,
   titleFrom,
+  type NativeLine,
   type ThreadHeader,
   type ThreadRecord,
 } from './threads.js';
@@ -768,6 +776,17 @@ export class WorkspaceSession {
   /** The thread being written to. Opened by the first turn, never by opening the app. */
   private thread: ThreadHeader | undefined;
   /**
+   * The native log's state for the open thread: which protocol the backend speaks, the sections
+   * the next header line will carry, how many messages have been appended, and whether that header
+   * has been written yet.
+   */
+  private native = {
+    kind: 'mock' as BackendKind,
+    sections: [] as SystemSection[],
+    n: 0,
+    opened: false,
+  };
+  /**
    * Ids for the plan and question cards main reduces for the transcript. They are inert here —
    * the card the author clicks is the renderer's — but the reducers are shared, so they are given
    * distinct ones rather than a repeated zero.
@@ -990,6 +1009,53 @@ export class WorkspaceSession {
   }
 
   /**
+   * Queue one native-log write behind the display log's, so the two files stay in the order the
+   * conversation happened and `runAgent`'s single await covers both. A write that fails costs a
+   * warning: a thread that cannot be continued later is not a reason to fail the turn in hand.
+   */
+  private writeNative(id: string, line: NativeLine): void {
+    const paths = new ProjectPaths(this.dir);
+    this.writes = this.writes
+      .then(() => appendNative(paths, id, line))
+      .catch((err: unknown) => {
+        console.warn(`[vnstudio] could not append to the history of thread ${id}: ${String(err)}`);
+      });
+  }
+
+  /**
+   * Write one message down verbatim, opening the log with its header line the first time. The
+   * header is written here rather than by `beginThread` because it records what the conversation
+   * is being had through, and the backend is not settled until a turn is about to run.
+   */
+  private recordMessage(message: AgentMessage): void {
+    const id = this.thread?.id;
+    if (!id) return;
+    if (!this.native.opened) {
+      this.native.opened = true;
+      this.writeNative(id, {
+        v: NATIVE_VERSION,
+        type: 'resume',
+        thread: id,
+        at: new Date().toISOString(),
+        backend: this.native.kind,
+        vendor: chatVendorFor(this.model),
+        sections: this.native.sections,
+        ...(this.model === '' ? {} : { model: this.model }),
+        ...(this.effort === undefined ? {} : { effort: this.effort }),
+      });
+    }
+    const { role, content, toolUseId } = message;
+    this.writeNative(id, {
+      type: 'msg',
+      n: this.native.n++,
+      at: new Date().toISOString(),
+      role,
+      content,
+      ...(toolUseId === undefined ? {} : { toolUseId }),
+    });
+  }
+
+  /**
    * The backend for the next turn. A chat backend that can hold a conversation gets the native
    * backend, which is the cached path. Every other backend gets the text path.
    *
@@ -998,6 +1064,14 @@ export class WorkspaceSession {
    * that is still single-shot and still caches nothing.
    */
   private async buildBackend(config: ProjectConfig, model?: string): Promise<AgentBackend> {
+    const backend = await this.chooseBackend(config, model);
+    // Kept here because `Agent` does not expose the backend it was handed, and the native log has
+    // to record which protocol its messages are in for a later resume to refuse the wrong one.
+    this.native.kind = backend.kind;
+    return backend;
+  }
+
+  private async chooseBackend(config: ProjectConfig, model?: string): Promise<AgentBackend> {
     if (this.mock) return new MockAgentBackend();
     const modelId = model ?? config.models.text;
     const keys = await resolveKeys(config, {
@@ -1051,6 +1125,7 @@ export class WorkspaceSession {
         if (event.type === 'api') this.announceApi(event);
       },
       onApiError: (failure) => this.recoverApi(failure),
+      onMessage: (message) => this.recordMessage(message),
     });
     return this.agent;
   }
@@ -1171,7 +1246,9 @@ export class WorkspaceSession {
       // included, so the map is re-read per turn and never outranks the tool output. Refreshed
       // section by section, so a rewrite supersedes itself rather than invalidating the cached
       // prefix.
-      agent.refreshSystem(systemSections(await loadContext(this.dir)));
+      const sections = systemSections(await loadContext(this.dir));
+      const delta = agent.refreshSystem(sections);
+      this.noteSections(sections, delta);
       const focus = scene ? focusOnScene(await this.index(), scene) : undefined;
       await this.beginThread(input);
       this.record((convo) => asked(convo, input));
@@ -1185,6 +1262,24 @@ export class WorkspaceSession {
         // take the answer with it.
         await this.writes;
       }
+    });
+  }
+
+  /**
+   * Keep the native log's copy of the system prompt current. This runs before the turn's thread
+   * exists, so on a thread's first turn the sections go into the header line the first message
+   * writes, and from the second turn on a change is appended as a delta.
+   */
+  private noteSections(sections: SystemSection[], delta: SectionDelta | undefined): void {
+    this.native.sections = sections;
+    const id = this.thread?.id;
+    if (!id || !this.native.opened || !delta) return;
+    this.writeNative(id, {
+      type: 'sections',
+      n: this.native.n,
+      at: new Date().toISOString(),
+      set: delta.set,
+      unset: delta.unset,
     });
   }
 
@@ -1308,6 +1403,8 @@ export class WorkspaceSession {
     await this.commitThread();
     this.thread = undefined;
     this.convo = emptyConvo('');
+    // The next thread opens its own log, from message zero and with its own header.
+    this.native = { ...this.native, sections: [], n: 0, opened: false };
   }
 
   /**
@@ -1330,12 +1427,17 @@ export class WorkspaceSession {
       const git = openGit(this.dir);
       if (!(await git.isRepo())) return;
       const file = threadFile(paths, thread.id);
+      // Both files in one commit, so a conversation and the history that makes it resumable are
+      // never in the project separately. `lastCommitFor` still asks about the display log, which
+      // is the file every thread has.
+      const native = nativeFile(paths, thread.id);
+      const hasNative = await exists(native);
       // Nothing to commit means commit-on-save already recorded this transcript, so the answer is
       // the commit that did — the pointer records where the conversation is, not who put it there.
       const sha =
         (await git.commit({
           message: `Close conversation: ${thread.title}`,
-          paths: [file],
+          paths: hasNative ? [file, native] : [file],
           trailers: { 'Vn-Thread': thread.id },
         })) ?? (await git.lastCommitFor(file));
       if (sha) await archiveThread(paths, thread.id, sha);

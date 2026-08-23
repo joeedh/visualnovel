@@ -579,6 +579,25 @@ for everything else. Both `agent.ts` call sites now call it, so agreement is str
 Nothing reads the file yet. The stage is green and starts accumulating history, which is what
 makes stage 5 testable against real transcripts.
 
+Five things landed differently from the sketch above.
+
+- `ResumeHeader` lives in `apps/desktop/src/shared/convo.ts` rather than in `main/threads.ts`,
+  because stage 5's `resumeRefusal` reads it from the renderer as well as from main. It reaches
+  `BackendKind` and `SystemSection` by type-only import, which `ipc.ts` already does for the same
+  package and the same reason.
+- The conflict refusal is an opt-in `refuseConflicts` flag on the shared `lines()` helper,
+  checked before the `keep` pre-filter so `nativeHeader`'s filtered read catches a damaged file
+  too. It throws a `ConflictedLogError` carrying the path, which stage 5 catches by type.
+- The header stores the vendor rather than leaving it to be recomputed on read. Every copy of the
+  rule answers `gemini` for an id it does not know, so recomputing over a model the current table
+  has forgotten would answer without saying it was guessing.
+- `buildBackend` splits into a recording wrapper over a new `chooseBackend`, because `Agent` does
+  not expose the backend it was handed and the log has to record which protocol its messages are
+  in. Every rebuild — `ensureAgent`, `setModel`, `setEffort` — passes through the wrapper.
+- `ensureGitAttributes` now holds a list of blocks and appends whichever it cannot find. The
+  single-line `includes` check it had would have read a project created before this stage as
+  already attributed, and never given it the new line.
+
 Tests (`apps/desktop/src/main/tests/threads.test.ts`): a round trip through `appendNative` /
 `readNative`; a garbage line is skipped and a conflict marker is refused; `readNative` on a
 thread with no native file answers absent rather than throwing; `listThreads` on a directory

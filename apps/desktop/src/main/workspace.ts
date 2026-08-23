@@ -263,34 +263,52 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
   return { root, created: !found.project, title };
 }
 
-const GITATTRIBUTES_COMMIT = 'Union-merge the notification log';
+const GITATTRIBUTES_COMMIT = 'Set how git merges the state logs';
 const LAYOUTS_COMMIT = 'Add the shipped layout templates';
 const IGNORES_COMMIT = 'Ignore the remembered window arrangement';
 
-/** The one attribute a project needs from this app; `GITATTRIBUTES_TEXT` states why. */
-const GITATTRIBUTES_LINE = 'vngen/state/notifications.jsonl merge=union';
-const GITATTRIBUTES_TEXT =
-  '# The notification log is append-only and its read/hidden flags are patched in place.\n' +
-  '# Union-merge it: two branches’ notifications combine instead of conflicting, and the\n' +
-  '# reader dedupes by id and ORs the flags, so a line that comes back twice folds cleanly.\n' +
-  `${GITATTRIBUTES_LINE}\n`;
+/**
+ * The attributes a project needs from this app, each with the paragraph saying why. They are
+ * separate blocks rather than one because a project created before the second one existed has the
+ * first already, and {@link ensureGitAttributes} appends whichever it cannot find.
+ */
+const GITATTRIBUTES_BLOCKS = [
+  {
+    line: 'vngen/state/notifications.jsonl merge=union',
+    why:
+      '# The notification log is append-only and its read/hidden flags are patched in place.\n' +
+      '# Union-merge it: two branches’ notifications combine instead of conflicting, and the\n' +
+      '# reader dedupes by id and ORs the flags, so a line that comes back twice folds cleanly.\n',
+  },
+  {
+    line: 'vngen/state/threads/*.native.jsonl -merge',
+    why:
+      '# A conversation’s native log is what the agent is replayed when a thread is continued.\n' +
+      '# Refuse to merge it: conflict markers would be dropped as unparseable lines, and the\n' +
+      '# conversation would then resume from a history that was quietly truncated.\n',
+  },
+];
+
+const GITATTRIBUTES_TEXT = GITATTRIBUTES_BLOCKS.map((b) => `${b.why}${b.line}\n`).join('\n');
 
 /**
- * Give an existing project the union-merge attribute it was created without. Idempotent, and it
- * appends rather than writes: a `.gitattributes` is the user's file and may already say plenty.
+ * Give an existing project the merge attributes it was created without. Idempotent, and it appends
+ * rather than writes: a `.gitattributes` is the user's file and may already say plenty.
  *
  * This deliberately does not carry this repo's own `* text=auto eol=lf`. `merge` and `text`/`eol`
- * are orthogonal attributes, so the line stands alone, and a project is the author's repository
+ * are orthogonal attributes, so the lines stand alone, and a project is the author's repository
  * rather than somewhere to install this app's line-ending policy. `initRepoAt` already sets
  * `core.autocrlf=false`.
  */
 export async function ensureGitAttributes(root: string): Promise<boolean> {
   const path = join(root, '.gitattributes');
   const current = await readFile(path, 'utf8').catch(() => undefined);
-  if (current?.includes(GITATTRIBUTES_LINE)) return false;
+  const owed = GITATTRIBUTES_BLOCKS.filter((block) => !current?.includes(block.line));
+  if (owed.length === 0) return false;
 
   const prefix = current === undefined || current === '' || current.endsWith('\n') ? '' : '\n';
-  await writeFile(path, `${current ?? ''}${prefix}${GITATTRIBUTES_TEXT}`);
+  const text = owed.map((block) => `${block.why}${block.line}\n`).join('\n');
+  await writeFile(path, `${current ?? ''}${prefix}${text}`);
   return true;
 }
 
