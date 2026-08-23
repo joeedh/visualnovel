@@ -50,6 +50,8 @@ import {
 
 /** A backend that does no LLM work: it just acknowledges, so the REPL runs offline. */
 class MockAgentBackend implements AgentBackend {
+  readonly kind = 'mock';
+
   next(): Promise<{ final: string }> {
     return Promise.resolve({
       final:

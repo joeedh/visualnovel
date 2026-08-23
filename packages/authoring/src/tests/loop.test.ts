@@ -10,6 +10,8 @@ import {
   apiBackoffMs,
   createRegistry,
   focusOnScene,
+  lastCompleteTurn,
+  restorable,
   type AgentBackend,
   type AgentMessage,
   type AgentEvent,
@@ -345,6 +347,7 @@ describe('a call to the model that failed', () => {
   /** A backend that throws the first `fails` times it is called, then answers. */
   function brittleBackend(fails: number, answer = 'made it'): AgentBackend & { calls: number } {
     const backend = {
+      kind: 'mock' as const,
       calls: 0,
       next(): Promise<{ final: string }> {
         backend.calls++;
@@ -442,6 +445,7 @@ describe('a call to the model that failed', () => {
     try {
       const seen: ApiFailure[] = [];
       const backend: AgentBackend = {
+        kind: 'mock',
         next: () =>
           Promise.reject(
             new RetryableProviderError('chat: 429 slow down', { retryAfterMs: 4_000 }),
@@ -463,6 +467,7 @@ describe('a call to the model that failed', () => {
     try {
       const seen: ApiFailure[] = [];
       const backend: AgentBackend = {
+        kind: 'mock',
         next: () => Promise.reject(new ProviderError('chat: 401 bad key')),
       };
       const { error, events } = await runWith(ctx, backend, (failure) => {
@@ -892,6 +897,7 @@ interface Recorded {
 function recordingBackend(): AgentBackend & { seen: Recorded[] } {
   const seen: Recorded[] = [];
   return {
+    kind: 'mock',
     seen,
     next(system, messages, tools) {
       seen.push({ system, messages: messages.map((m) => ({ ...m })), tools });
@@ -1086,6 +1092,7 @@ function meteredBackend(usage: {
   cacheRead?: number;
 }): AgentBackend & { steps: number; systemSaid: string[] } {
   const state = {
+    kind: 'mock' as const,
     steps: 0,
     systemSaid: [] as string[],
     next(_system: string, messages: AgentMessage[]) {
@@ -1220,6 +1227,7 @@ describe('a tool that throws mid-turn', () => {
       const calls: AgentMessage[][] = [];
       let step = 0;
       const backend: AgentBackend = {
+        kind: 'mock',
         next(_system, messages) {
           calls.push(messages.map((m) => ({ ...m })));
           step++;
@@ -1268,6 +1276,7 @@ describe('repairing a thread a crash left mid-call', () => {
       const calls: AgentMessage[][] = [];
       let step = 0;
       const backend: AgentBackend = {
+        kind: 'mock',
         next(_system, messages) {
           calls.push(messages.map((m) => ({ ...m })));
           step++;
@@ -1304,5 +1313,175 @@ describe('repairing a thread a crash left mid-call', () => {
     } finally {
       await cleanup();
     }
+  });
+});
+
+describe('resuming a stored conversation', () => {
+  const STORED: AgentMessage[] = [
+    { role: 'user', content: 'who is Aiko?' },
+    { role: 'assistant', content: 'A transfer student.' },
+  ];
+
+  const SECTIONS: SystemSection[] = [
+    { name: 'BUILT-IN', text: 'the contract' },
+    { name: 'PROJECT CONTEXT (AICONTEXT.md)', text: 'be terse' },
+  ];
+
+  it('carries the stored messages and prompt into the next turn', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      agent.restore({ messages: STORED, sections: SECTIONS });
+      expect(agent.transcript).toEqual(STORED);
+
+      await agent.run('and her outfit?');
+      const seen = backend.seen[0]!;
+      expect(seen.system).toContain('be terse');
+      expect(roled(seen, 'user')).toEqual(['who is Aiko?', 'and her outfit?']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('answers a call the stored transcript stopped in the middle of', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      const interrupted: AgentMessage[] = [
+        { role: 'user', content: 'rename the scene' },
+        {
+          role: 'assistant',
+          content: [{ type: 'tool_use', id: 'toolu_lost', name: 'edit_file', input: {} }],
+        },
+      ];
+
+      agent.restore({ messages: restorable(interrupted), sections: SECTIONS });
+      const answer = agent.transcript.find((m) => m.toolUseId === 'toolu_lost');
+      expect(String(answer?.content)).toContain('interrupted before it could report a result');
+      expect(answer?.role).toBe('observation');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('shows a tool the author’s restored turns, not just this turn’s', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      let heard: readonly string[] = [];
+      const listen: Tool<Record<string, never>> = {
+        name: 'listen',
+        description: 'report what the author said',
+        mutating: false,
+        args: z.object({}),
+        run: (_args, toolCtx) => {
+          heard = toolCtx.said?.() ?? [];
+          return Promise.resolve({ ok: true, output: 'heard' });
+        },
+      };
+      const agent = new Agent({
+        backend: new StructuredAgentBackend(
+          new RecordedChatBackend('mock', [
+            JSON.stringify({ tool: 'listen', args: {} }),
+            JSON.stringify({ final: 'ok' }),
+          ]),
+        ),
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        registry: createRegistry([listen as Tool]),
+      });
+      agent.restore({ messages: STORED, sections: SECTIONS });
+      await agent.run('and her outfit?');
+      expect(heard).toEqual(['who is Aiko?', 'and her outfit?']);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('files a supersede message only for the section that moved after a restore', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const backend = recordingBackend();
+      const agent = new Agent({ backend, ctx, permission: scriptPermission(), system: 'SYS' });
+      agent.restore({ messages: STORED, sections: SECTIONS });
+
+      // The restored sections are what the stored prompt was built from, so re-handing them is
+      // not a change and must not cost a cache breakpoint.
+      expect(agent.refreshSystem(SECTIONS)).toBeUndefined();
+
+      const moved: SystemSection[] = [
+        SECTIONS[0]!,
+        { name: 'PROJECT CONTEXT (AICONTEXT.md)', text: 'be terse, and never guess' },
+      ];
+      expect(agent.refreshSystem(moved)).toEqual({ set: [moved[1]], unset: [] });
+
+      await agent.run('go on');
+      const filed = roled(backend.seen[0]!, 'system');
+      expect(filed).toHaveLength(2); // the superseded section, plus the mode
+      expect(filed[0]).toContain('be terse, and never guess');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('tells the host about what a turn appends and not about what it restored', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const written: AgentMessage[] = [];
+      const agent = new Agent({
+        backend: recordingBackend(),
+        ctx,
+        permission: scriptPermission(),
+        system: 'SYS',
+        onMessage: (m) => written.push(m),
+      });
+      agent.restore({ messages: STORED, sections: SECTIONS });
+      expect(written).toEqual([]);
+
+      await agent.run('and her outfit?');
+      expect(written.map((m) => m.role)).toEqual(['user', 'system', 'assistant']);
+      expect(written[0]!.content).toBe('and her outfit?');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('where a transcript can be cut', () => {
+  const call = (id: string): AgentMessage => ({
+    role: 'assistant',
+    content: [{ type: 'tool_use', id, name: 'read_file', input: {} }],
+  });
+
+  it('will not cut between a tool call and its answer', () => {
+    const messages: AgentMessage[] = [
+      { role: 'user', content: 'go' },
+      call('t1'),
+      { role: 'observation', content: 'contents', toolUseId: 't1' },
+      { role: 'assistant', content: 'done' },
+      call('t2'),
+    ];
+    // Index 1 and index 4 are both open calls; index 2 is the answer to the first, and cutting
+    // there would leave its observation at the top of what remains.
+    expect(lastCompleteTurn(messages)).toBe(3);
+  });
+
+  it('will not cut where the next message is an observation', () => {
+    // The structured path's calls are JSON in an assistant message, so nothing reads as open and
+    // only the observation below index 1 keeps it from qualifying.
+    const messages: AgentMessage[] = [
+      { role: 'user', content: 'go' },
+      { role: 'assistant', content: '{"tool":"read_file","args":{}}' },
+      { role: 'observation', content: 'contents' },
+    ];
+    expect(lastCompleteTurn(messages)).toBe(2);
+    expect(lastCompleteTurn(messages.slice(0, 2))).toBe(1);
+  });
+
+  it('answers -1 for a transcript with nowhere to cut', () => {
+    expect(lastCompleteTurn([])).toBe(-1);
+    expect(lastCompleteTurn([call('t1')])).toBe(-1);
   });
 });

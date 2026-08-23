@@ -116,6 +116,12 @@ function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage 
 }
 
 /**
+ * The three tool-call protocols a backend can speak. `native` sends provider tool blocks,
+ * `structured` asks for one JSON object per turn, and `mock` answers from a script.
+ */
+export type BackendKind = 'native' | 'structured' | 'mock';
+
+/**
  * The protocol the loop targets; swap implementations to change tool-call mechanics.
  *
  * There is no `mode` parameter: the plan/execute mode is filed into `messages` as a `system`
@@ -123,6 +129,12 @@ function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage 
  * depends on.
  */
 export interface AgentBackend {
+  /**
+   * Which protocol this backend speaks. A stored transcript can only be replayed to a backend of
+   * the same kind, because the native path's messages carry provider blocks the structured path
+   * does not understand.
+   */
+  readonly kind: BackendKind;
   next(system: string, messages: AgentMessage[], tools: ToolSpec[]): Promise<AgentTurn>;
   /**
    * The conversation was cleared and the next call starts from nothing. Called by `Agent.clear`,
@@ -170,8 +182,11 @@ export function messageText(content: string | unknown[]): string {
     .join('\n');
 }
 
-/** Render the transcript for a single-turn text backend. */
-function renderTranscript(messages: AgentMessage[]): string {
+/**
+ * Render the transcript as labelled prose, for a single-turn text backend and for anything else
+ * that must show a conversation to a model as one block of text.
+ */
+export function renderTranscript(messages: readonly AgentMessage[]): string {
   return messages
     .map((m) => {
       const label =
@@ -208,6 +223,8 @@ function errorText(err: unknown): string {
  * own tool search, and there is nothing here to search.
  */
 export class StructuredAgentBackend implements AgentBackend {
+  readonly kind = 'structured';
+
   constructor(
     private readonly chat: ChatBackend,
     private readonly opts: { attempts?: number } = {},
@@ -311,6 +328,8 @@ function turnOf(m: AgentMessage): ChatTurn {
  * be answered. Same `AgentBackend` contract as Path A, so the conversation loop is unchanged.
  */
 export class NativeAgentBackend implements AgentBackend {
+  readonly kind = 'native';
+
   /** Where the previous request put its trailing breakpoint — the one this request reads from. */
   private prevBreak = -1;
   /** The previous call's receipt and the moment it arrived, which is what a verdict compares. */

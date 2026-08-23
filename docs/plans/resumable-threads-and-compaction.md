@@ -517,9 +517,12 @@ what is being written.
   installs came from the log it would write to.
 - `refreshSystem` returns its delta, `{ set: SystemSection[]; unset: string[] } | undefined`,
   instead of `void`. Stage 3's call site needs to know what changed and cannot see private
-  state.
+  state. `undefined` covers both cases with nothing to record: the prompt was replaced outright
+  on an empty transcript, or every section already read the way it was handed in.
 - Add `lastCompleteTurn(messages): number` (exported): the largest index whose prefix leaves no
-  tool call unanswered. Used by stage 5's compaction.
+  tool call unanswered and whose next message is not an `observation`. Used by stage 5's
+  compaction. The second clause is what carries the structured path, where calls are JSON in an
+  assistant message and nothing ever reads as open.
 - Add `restorable(messages)` (exported): `repairDanglingCalls` applied to a restored array, so a
   conversation interrupted mid-tool-call resumes rather than 400s.
 - Export `renderTranscript` from `backend.ts`, and add `kind: 'native' | 'structured' | 'mock'`
@@ -788,9 +791,11 @@ Twenty-two findings came back. What each one changed is below.
   beside its display log is what makes that obvious in `git status` and `git log`. A test pins
   the filter, which is what the alternative was buying.
 - The reviewer's cut-point definition carried a second clause — that `messages[to+1]` must not
-  be an `observation`. It is implied by the first: an observation at `to+1` answers a call at or
-  below `to`, which the prefix-answered property already excludes. It is kept as a test
-  assertion rather than as part of the definition.
+  be an `observation`. This section first recorded it as implied by the first clause; that was
+  wrong, and stage 2 kept the clause. It is implied only on the native path, where a call is a
+  `tool_use` block the prefix-answered test can see. On the structured path a call is JSON
+  inside an assistant message, so nothing ever reads as open, every index satisfies the first
+  clause, and the second clause is the only thing keeping a cut between a call and its answer.
 
 ### Citations
 

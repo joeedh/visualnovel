@@ -220,6 +220,12 @@ export interface AgentOptions {
    * (retry, or swap the backend and retry) without the loop knowing anything about providers.
    */
   onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
+  /**
+   * Called once for every message appended to the transcript, in the order they are appended. A
+   * host that logs the conversation writes each message as it happens rather than diffing the
+   * transcript after a turn. Messages installed by {@link Agent.restore} do not fire it.
+   */
+  onMessage?: (message: AgentMessage) => void;
 }
 
 /**
@@ -419,6 +425,87 @@ export function askObservation(form: readonly AskQuestion[], answers: readonly s
   return `User answered:\n${lines.join('\n')}`;
 }
 
+/** What a tool call left owed when a transcript stops in the middle of one. */
+const INTERRUPTED_CALL =
+  'Error: this tool call was interrupted before it could report a result. It may have ' +
+  'partially applied. Re-read the affected file(s) to see what is actually on disk ' +
+  'before retrying or continuing.';
+
+/** The `tool_use` ids an assistant turn's provider blocks asked for. */
+function toolUseIds(content: string | unknown[]): string[] {
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter(
+      (block): block is { type: string; id: string } =>
+        typeof block === 'object' &&
+        block !== null &&
+        (block as { type?: unknown }).type === 'tool_use' &&
+        typeof (block as { id?: unknown }).id === 'string',
+    )
+    .map((block) => block.id);
+}
+
+/**
+ * The observations a transcript owes: one per `tool_use` in its trailing assistant turn that no
+ * `tool_result` answers. Only a trailing turn can be owed answers, because anything older was
+ * already replied to or the API would have refused at the time.
+ */
+function danglingRepairs(messages: readonly AgentMessage[]): AgentMessage[] {
+  const last = messages[messages.length - 1];
+  const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+  if (!lastAssistant || !Array.isArray(lastAssistant.content)) return [];
+  // `last` may be one of the trailing turn's own observations.
+  if (last !== lastAssistant && last?.role !== 'observation') return [];
+  const from = messages.indexOf(lastAssistant);
+  const answered = new Set(
+    messages
+      .slice(from + 1)
+      .filter((m) => m.role === 'observation' && m.toolUseId)
+      .map((m) => m.toolUseId),
+  );
+  return toolUseIds(lastAssistant.content)
+    .filter((id) => !answered.has(id))
+    .map((id) => ({ role: 'observation' as const, content: INTERRUPTED_CALL, toolUseId: id }));
+}
+
+/**
+ * A stored transcript with its unanswered tool calls answered, ready to hand to
+ * {@link Agent.restore}. A conversation the app was closed in the middle of resumes instead of
+ * failing every later turn with the same 400.
+ */
+export function restorable(messages: readonly AgentMessage[]): AgentMessage[] {
+  return [...messages, ...danglingRepairs(messages)];
+}
+
+/**
+ * The last index a transcript may be cut after: every tool call above it is answered above it,
+ * and the message below it is not an observation whose call would be left behind. Answers -1
+ * when there is no such index.
+ *
+ * The second condition carries the structured path on its own. There the calls are JSON in an
+ * assistant message rather than `tool_use` blocks, so nothing is ever counted open and every
+ * index would otherwise qualify — including the one between a call and its observation.
+ */
+export function lastCompleteTurn(messages: readonly AgentMessage[]): number {
+  const open = new Set<string>();
+  let complete = -1;
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i]!;
+    if (m.role === 'assistant') for (const id of toolUseIds(m.content)) open.add(id);
+    if (m.role === 'observation' && m.toolUseId) open.delete(m.toolUseId);
+    if (open.size === 0 && messages[i + 1]?.role !== 'observation') complete = i;
+  }
+  return complete;
+}
+
+/** What changed in the system prompt's sections, as {@link Agent.refreshSystem} reports it. */
+export interface SectionDelta {
+  /** Sections whose text is new or different, in the order they were given. */
+  set: SystemSection[];
+  /** Sections that no longer exist. */
+  unset: string[];
+}
+
 /**
  * Drives a ReAct conversation: the backend proposes one action per step, the loop gates
  * and dispatches it, and the observation feeds the next step. Conversation state persists
@@ -437,6 +524,7 @@ export class Agent {
   private readonly deferTools: boolean;
   private readonly onEvent?: (event: AgentEvent) => void;
   private readonly onApiError?: (failure: ApiFailure) => Promise<ApiRecovery>;
+  private readonly onMessage?: (message: AgentMessage) => void;
   private readonly messages: AgentMessage[] = [];
   /** Workspace-relative paths the agent has written since the last commit (commit scope). */
   private readonly editedPaths = new Set<string>();
@@ -482,6 +570,35 @@ export class Agent {
     this.deferTools = opts.deferTools ?? true;
     this.onEvent = opts.onEvent;
     this.onApiError = opts.onApiError;
+    this.onMessage = opts.onMessage;
+  }
+
+  /** Append one message to the transcript and tell the host about it. */
+  private append(message: AgentMessage): void {
+    this.messages.push(message);
+    this.onMessage?.(message);
+  }
+
+  /** The conversation so far, for a host that stores it or measures where to cut it. */
+  get transcript(): readonly AgentMessage[] {
+    return this.messages;
+  }
+
+  /**
+   * Continue a stored conversation: install its messages and the sections its system prompt was
+   * built from, and drop everything `clear` drops. The caller passes messages through
+   * {@link restorable} first, because a transcript stopped mid-tool-call is one a native API
+   * refuses outright.
+   *
+   * {@link AgentOptions.onMessage} does not fire. These messages came from the log it writes to.
+   */
+  restore(state: { messages: readonly AgentMessage[]; sections: SystemSection[] }): void {
+    this.clear();
+    // Filled in place rather than reassigned, because `ctx.said` closes over the array.
+    for (const m of state.messages) this.messages.push(m);
+    this.sections = new Map(state.sections.map((s) => [s.name, s.text]));
+    this.system = joinSections(state.sections);
+    this.stopped = false;
   }
 
   /** The mode the machine is currently in. */
@@ -562,25 +679,33 @@ export class Agent {
    * On an empty transcript that means replacing the prompt; on a live one it means filing each
    * changed section as a message that supersedes it by name, because the prompt is the front of
    * the cached prefix and appending is the only edit that keeps the rest of it.
+   *
+   * Answers what changed, so a host storing the prompt can store the change rather than recompute
+   * it from private state. Answers `undefined` when there is nothing to record: the prompt was
+   * replaced outright, or every section already read the way it was handed in.
    */
-  refreshSystem(sections: SystemSection[]): void {
+  refreshSystem(sections: SystemSection[]): SectionDelta | undefined {
     if (this.messages.length === 0) {
       this.system = joinSections(sections);
       this.sections = new Map(sections.map((s) => [s.name, s.text]));
-      return;
+      return undefined;
     }
+    const delta: SectionDelta = { set: [], unset: [] };
     const seen = new Set<string>();
     for (const section of sections) {
       seen.add(section.name);
       if (this.sections.get(section.name) === section.text) continue;
       this.pendingSystem.push(supersedeMessage(section));
       this.sections.set(section.name, section.text);
+      delta.set.push(section);
     }
     for (const name of [...this.sections.keys()]) {
       if (seen.has(name)) continue;
       this.pendingSystem.push(withdrawMessage(name));
       this.sections.delete(name);
+      delta.unset.push(name);
     }
+    return delta.set.length + delta.unset.length === 0 ? undefined : delta;
   }
 
   /**
@@ -625,39 +750,8 @@ export class Agent {
    * new user message, is what lets an already-damaged thread carry on.
    */
   private repairDanglingCalls(): void {
-    const last = this.messages[this.messages.length - 1];
-    const lastAssistant = [...this.messages].reverse().find((m) => m.role === 'assistant');
-    if (!lastAssistant || !Array.isArray(lastAssistant.content)) return;
-    // Only a trailing assistant turn can be owed answers; anything older was already replied
-    // to (or the API would have refused at the time). `last` may be one of its observations.
-    if (last !== lastAssistant && last?.role !== 'observation') return;
-    const asked = lastAssistant.content
-      .filter(
-        (block): block is { type: string; id: string } =>
-          typeof block === 'object' &&
-          block !== null &&
-          (block as { type?: unknown }).type === 'tool_use' &&
-          typeof (block as { id?: unknown }).id === 'string',
-      )
-      .map((block) => block.id);
-    const from = this.messages.indexOf(lastAssistant);
-    const answered = new Set(
-      this.messages
-        .slice(from + 1)
-        .filter((m) => m.role === 'observation' && m.toolUseId)
-        .map((m) => m.toolUseId),
-    );
-    for (const id of asked) {
-      if (answered.has(id)) continue;
-      this.messages.push({
-        role: 'observation',
-        content:
-          'Error: this tool call was interrupted before it could report a result. It may have ' +
-          'partially applied. Re-read the affected file(s) to see what is actually on disk ' +
-          'before retrying or continuing.',
-        toolUseId: id,
-      });
-    }
+    // Through `append`, because a repair is part of the transcript the next turn reads.
+    for (const repair of danglingRepairs(this.messages)) this.append(repair);
   }
 
   /**
@@ -675,15 +769,15 @@ export class Agent {
     };
 
     this.repairDanglingCalls();
-    if (focus) this.messages.push({ role: 'context', content: focus });
-    this.messages.push({ role: 'user', content: userInput });
+    if (focus) this.append({ role: 'context', content: focus });
+    this.append({ role: 'user', content: userInput });
     // Filed after the user's message, never before it: a system message may not open a
     // conversation and must follow a user turn. Sections first, mode last, so policy reads last.
     for (const content of this.pendingSystem.splice(0)) {
-      this.messages.push({ role: 'system', content });
+      this.append({ role: 'system', content });
     }
     if (this.filedMode !== this.mode) {
-      this.messages.push({ role: 'system', content: modeMessage(this.mode) });
+      this.append({ role: 'system', content: modeMessage(this.mode) });
       this.filedMode = this.mode;
     }
     const tools = this.toolSpecs();
@@ -695,7 +789,7 @@ export class Agent {
       // Between steps, so a stop lands after the tool in flight rather than during it.
       if (this.stopped) {
         const text = 'Stopped at your request.';
-        this.messages.push({ role: 'assistant', content: text });
+        this.append({ role: 'assistant', content: text });
         emit({ type: 'final', text });
         return { final: text, mode: this.mode, events, stopped: true };
       }
@@ -725,9 +819,9 @@ export class Agent {
       if (turn.message) narration.push(turn.message);
       for (const action of actions) narration.push(callRecord(action));
       if (turn.final !== undefined && turn.final !== turn.message) narration.push(turn.final);
-      if (turn.raw) this.messages.push({ role: 'assistant', content: turn.raw });
+      if (turn.raw) this.append({ role: 'assistant', content: turn.raw });
       else if (narration.length) {
-        this.messages.push({ role: 'assistant', content: narration.join('\n') });
+        this.append({ role: 'assistant', content: narration.join('\n') });
       }
       if (turn.message) emit({ type: 'message', text: turn.message });
 
@@ -757,7 +851,7 @@ export class Agent {
             `what is actually on disk, then retry the edit — or repair from that state — before ` +
             `moving on.`;
         }
-        this.messages.push({
+        this.append({
           role: 'observation',
           content: observation,
           ...(action.id ? { toolUseId: action.id } : {}),
@@ -769,7 +863,7 @@ export class Agent {
       // write and invalidates nothing.
       if (!warned && spent >= this.budget * 0.8) {
         warned = true;
-        this.messages.push({
+        this.append({
           role: 'system',
           content: budgetWarning(Math.max(0, this.budget - spent)),
         });
@@ -867,7 +961,7 @@ export class Agent {
       /\s+/g,
       ' ',
     );
-    this.messages.push({ role: 'assistant', content: text });
+    this.append({ role: 'assistant', content: text });
     emit({ type: 'final', text });
     return { final: text, mode: this.mode, events };
   }
