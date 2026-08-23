@@ -45,6 +45,14 @@ model-specific material will rot within months; the structural findings should o
   * [Two families, and the split that matters](#two-families-and-the-split-that-matters)
   * [There is no validated automated metric for whole-character consistency](#there-is-no-validated-automated-metric-for-whole-character-consistency)
   * [What the practitioner community actually does](#what-the-practitioner-community-actually-does)
+- [Inserting a character into an existing plate](#inserting-a-character-into-an-existing-plate)
+  * [Four method families, and the conditioning generations behind them](#four-method-families-and-the-conditioning-generations-behind-them)
+  * [One benchmark measures it, and the numbers are discouraging](#one-benchmark-measures-it-and-the-numbers-are-discouraging)
+  * [What is actually hard, and which parts are measured](#what-is-actually-hard-and-which-parts-are-measured)
+  * [The domain gap again, in methods and data this time](#the-domain-gap-again-in-methods-and-data-this-time)
+  * [Evaluation: five metrics carry a human-correlation number, and none covers scale](#evaluation-five-metrics-carry-a-human-correlation-number-and-none-covers-scale)
+  * [Cost and control against re-rendering the whole frame](#cost-and-control-against-re-rendering-the-whole-frame)
+  * [Which hosted APIs can insert into a plate today](#which-hosted-apis-can-insert-into-a-plate-today)
 - [Where the inference runs](#where-the-inference-runs)
   * [One question partitions the market](#one-question-partitions-the-market)
   * [Which image APIs expose structural control](#which-image-apis-expose-structural-control)
@@ -65,6 +73,7 @@ model-specific material will rot within months; the structural findings should o
   * [The loop already exists](#the-loop-already-exists)
   * [The `framing` enum should stay, and there is a repo-specific reason](#the-framing-enum-should-stay-and-there-is-a-repo-specific-reason)
   * [Four changes, in order of value](#four-changes-in-order-of-value)
+  * [Inserting the cast into a rendered plate: not yet, and the seam is already there](#inserting-the-cast-into-a-rendered-plate-not-yet-and-the-seam-is-already-there)
 - [What remains unverified](#what-remains-unverified)
 
 <!-- tocstop -->
@@ -369,6 +378,11 @@ it is *full shot*, not "extreme long", and **MovieNet does not annotate camera a
 > ([arXiv:2412.14484](https://arxiv.org/abs/2412.14484)) orchestrates **human poses**, not cameras,
 > and does not belong in a shot-listing citation list.
 
+The gap described here is a gap in *measurement* — the classifiers work on stylised 2D or they do not,
+and it can be checked either way. For compositing a character into an existing background the same gap
+appears in the methods and the training data instead, and there it is total rather than uneven:
+[The domain gap again, in methods and data this time](#the-domain-gap-again-in-methods-and-data-this-time).
+
 ### Learned camera control is mostly aimed at video
 
 **CameraCtrl** ([2404.02101](https://arxiv.org/abs/2404.02101)), **MotionCtrl**
@@ -483,6 +497,11 @@ Four distinct mechanisms, and conflating them causes real integration bugs:
 | **Sequence concatenation with a RoPE position offset** | Reference tokens appended to the sequence, offset in position space so they do not collide | **FLUX.1 Kontext**, OminiControl, Qwen-Image-Edit-2509 | The dominant modern approach |
 | **Attention masking** | Regions controlled by masking attention, **zero new parameters** | **EliGen** | Cheapest possible |
 | **LoRA on existing blocks** | No new modules at all | **OminiControl**, at **0.1%** added parameters | Ablation: F1 **0.38 vs 0.23** |
+
+The second row is also the mechanism behind handing a model a finished background and a character
+reference and asking it to combine them. That is a different task from control, it is measured
+separately and much worse, and it has its own section:
+[Inserting a character into an existing plate](#inserting-a-character-into-an-existing-plate).
 
 ### Control strength has three orthogonal axes
 
@@ -849,6 +868,332 @@ video-orbit turnaround method reports "approximately **75%+**" success.
 
 **The number to carry into a cost model is that rate.** A pipeline that assumes one generation per
 shot is wrong by a factor of two to four.
+
+**Identity across many *backgrounds* is a separate and even less measured case.** See
+[Inserting a character into an existing plate](#inserting-a-character-into-an-existing-plate) below:
+no method paper in the insertion literature reports how identity degrades as the number of plates
+grows.
+
+---
+
+## Inserting a character into an existing plate
+
+Everything above assumes a frame is generated whole. There is a second workflow, and this survey
+originally omitted it: **render a location once, then insert the cast into that same picture for each
+shot**, so the background is reused rather than re-derived per frame. This is the cel model — the
+reason cels exist at all is that one painted background can sit under many character layers — and it
+maps directly onto slots this repository already has.
+
+**The short version: the workflow is old, the tooling is new, and the published evidence for the
+generative-edit version of it is thin, almost entirely photographic, and mostly discouraging.**
+
+### Four method families, and the conditioning generations behind them
+
+| Family | What you hand it | Representative systems | Licence of the strongest members |
+| --- | --- | --- | --- |
+| **Mask-driven exemplar inpainting** | plate + mask + one reference image | AnyDoor ([2307.09481](https://arxiv.org/abs/2307.09481)), MimicBrush ([2406.07547](https://arxiv.org/abs/2406.07547)), IMPRINT ([2403.10701](https://arxiv.org/abs/2403.10701)), Insert Anything ([2504.15009](https://arxiv.org/abs/2504.15009)), IC-Custom ([2507.01926](https://arxiv.org/abs/2507.01926)), OmniPaint ([2503.08677](https://arxiv.org/abs/2503.08677)) | **Split.** AnyDoor MIT, MimicBrush Apache-2.0, MADD BSD-3; the 2025–26 leaders are all FLUX.1 [dev]-lineage and **non-commercial** |
+| **Sequence concatenation** | plate and reference as two context images, no mask | FLUX.1 Kontext ([2506.15742](https://arxiv.org/abs/2506.15742)), Qwen-Image-Edit-2509/2511, OmniGen2 ([2506.18871](https://arxiv.org/abs/2506.18871)), UNO ([2504.02160](https://arxiv.org/abs/2504.02160)), DreamO ([2504.16915](https://arxiv.org/abs/2504.16915)) | Qwen-Image-Edit and OmniGen2 **Apache-2.0**; Kontext non-commercial; UNO's **weights are CC BY-NC 4.0** despite Apache-2.0 code |
+| **Layered / RGBA conditioning** | a foreground layer and a background layer, composited without re-inference | LayerDiffuse ([2402.17113](https://arxiv.org/abs/2402.17113)), LASAGNA ([2601.15507](https://arxiv.org/abs/2601.15507)), LayerCraft ([2504.00010](https://arxiv.org/abs/2504.00010)) | LayerDiffuse **Apache-2.0**; LASAGNA and LayerCraft unreleased |
+| **Harmonization as a later stage** | an already-composited image, corrected in passes | libcom / BCMI stack; survey [2106.14490](https://arxiv.org/abs/2106.14490) | libcom is a toolbox, per-model licences vary |
+
+**The first family's history is three conditioning generations, and the difference between them is
+measured.** Paint-by-Example ([2211.13227](https://arxiv.org/abs/2211.13227)) compresses the exemplar
+to a single CLIP class token, so identity is weak by construction. AnyDoor and IMPRINT add a second
+path carrying high-frequency detail alongside a DINOv2 identity embedding. The 2025–26 systems
+concatenate reference tokens into a DiT's sequence and train a LoRA on a frozen backbone — IC-Custom's
+is 49.26M parameters, "just 0.4% of the original FLUX model's 12B parameters". **MimicBrush's own
+ablation prices the progression** on part composition (DINO-I): CLIP encoder 45.03 → DINOv2 encoder
+48.34 → **full attention over reference tokens 56.48**.
+
+**The libcom taxonomy is the one to quote for the fourth family**, because it names the stages a
+composite is corrected in: **placement → blending → harmonization → shadow → reflection → quality
+assessment**. Note what is *absent* from it. **Scale correction, perspective correction and identity
+preservation are not stages in that taxonomy at all.**
+
+> **The layered family does not do what its name suggests.** LayerDiffuse's background-conditioned
+> mode *generates* a new foreground from text; you cannot hand it your character. The only layered
+> system that genuinely takes a given foreground and a given background is **LASAGNA**, and its
+> dataset and benchmark are "will be publicly released" rather than released. ART
+> ([2502.18364](https://arxiv.org/abs/2502.18364), CVPR 2025) is worse than unavailable: **Microsoft
+> withdrew the weights**, stating the model "was trained using data that may have come from illegal
+> sources".
+
+### One benchmark measures it, and the numbers are discouraging
+
+The sequence-concatenation row in
+[What replaced ControlNet on DiT models](#what-replaced-controlnet-on-dit-models) is the mechanism
+every modern edit model uses, and the obvious way to attempt this workflow is to hand such a model a
+plate and a character sheet. **That capability is measured in exactly one mainstream benchmark, and it
+is measured badly.**
+
+**OmniContext**, the benchmark shipped with OmniGen2 ([2506.18871](https://arxiv.org/abs/2506.18871)),
+has eight splits grouped SINGLE / MULTIPLE / SCENE. The SCENE group is precisely "put this given
+subject into this given background image", and it includes a `scene_character` split. It is scored by
+a GPT-4.1 judge on prompt following and subject consistency. From its Table 4:
+
+| Model | `single_character` | `scene_character` |
+| --- | --- | --- |
+| **Qwen-Image-Edit-2509** | **8.35** | **5.16** |
+| OmniGen2 | — | 7.75 |
+| GPT-4o | 8.90 | 8.80 |
+| UNO | — | 2.06 |
+| BAGEL | — | 4.07 |
+| **FLUX.1 Kontext max** | scored | **not evaluated — blank on every SCENE column** |
+
+**Read the first row.** The same model that handles a character alone nearly perfectly loses roughly
+3.2 points the moment the character has to go into a supplied plate. And Kontext is blank for a stated
+reason — its own paper says: "While our formulation naturally covers multiple input images, we focus
+on single context images for conditioning at this time."
+
+**The capability is asserted where it is not measured.** Qwen-Image-Edit-2509's model card advertises
+"person + scene" composition and publishes no numbers for it; OmniContext's 5.16 is the only
+independent measurement of that claim, and it is a third party's.
+
+**No other headline edit benchmark contains the task.** KontextBench's five categories are local
+editing, global editing, character reference, style reference and text editing — and "character
+reference" means a character re-rendered into a *text-described* environment, not a supplied plate.
+GEdit-Bench's "subject-add" is text-driven from a single image. ImgEdit-Bench and CompBench are
+instruction-driven throughout. GEditBench v2 excludes the task in as many words: "we exclude
+multi-image input editing tasks from our benchmark".
+
+### What is actually hard, and which parts are measured
+
+| Failure | Measured? | Best evidence |
+| --- | --- | --- |
+| **The plate comes back damaged** | **Yes, and well** | Latent-mask compositing "produces large artifacts at mask seams and global degradation and color shifts" ([2512.05198](https://arxiv.org/abs/2512.05198)), whose fix cuts edge error by up to 53%. REED-VAE ([2504.18989](https://arxiv.org/abs/2504.18989)) shows encode/decode **with no edit at all** falling from PSNR 26.09 at 5 iterations to **14.84 at 25** |
+| **The "untouched" background is not untouched** | **Yes** | PIE-Bench computes background preservation strictly outside the annotated mask; the best method reaches **PSNR 27.22** there |
+| **Output does not register with input** | **Practitioner only** | "Pixel drift" on Qwen-Image-Edit — a slight zoom or few-pixel shift so outputs "don't align when layered in editing software" (QwenLM/Qwen-Image issue #229; HF Qwen-Image-Edit discussion #16). ⚠️ Unquantified, and both threads are open with no maintainer reply |
+| **Colour and lighting mismatch** | **Measured on the wrong data** | iHarmony4 (73,146 pairs) is real photographs whose foreground was **recoloured**. Only Hday2night — 444 pairs, **0.6%** — has a genuinely foreign foreground |
+| **Scale and ground-plane placement** | **Barely** | TopNet ([2304.03372](https://arxiv.org/abs/2304.03372)) isolates scale with location held fixed: **IoU>0.95 in 27.04% of cases**. GraPLUS ([2503.15761](https://arxiv.org/abs/2503.15761)) reports **16.5%** of placements within a 0.8 scale ratio |
+| **Contact shadow** | **Measured, uninformatively** | On DESOBA, global SSIM is 0.93–0.99 for *every* method including the worst, and local SSIM is 0.24–0.38 for everyone including the winner. Only local RMSE discriminates |
+| **Perspective mismatch** | **Yes, and validated against humans** | APFD ([2212.03239](https://arxiv.org/abs/2212.03239)) — see the evaluation subsection below |
+| **Identity drift across many plates** | **No** | No method paper in this literature reports it |
+
+**Three of these deserve the detail.**
+
+**Placement quality is measured by one lumped binary, and it is not measuring geometry.** SimOPA, from
+the OPA dataset ([2107.01889](https://arxiv.org/abs/2107.01889)), is a classifier over
+composite-plus-mask trained on 62,074 human-labelled placements, reaching F1 0.780 / balanced accuracy
+0.842. **OPA's own annotation guidelines fold scale, occlusion and perspective into that single
+binary** — one guideline reads "The perspective of foreground object should look reasonable", and
+there is no per-factor label. The consequence is visible in one paper's own tables: **GraPLUS reports
+92.1% SimOPA "accuracy" alongside a mean IoU of 0.203 and a 16.5% scale-within-0.8 rate.** A number
+that high next to numbers that low is not measuring geometric correctness. GOPI
+([2608.06836](https://arxiv.org/abs/2608.06836)) states the underlying reason: "the physical scale of
+the inserted furniture relative to the scene cannot be uniquely determined, making physically grounded
+furniture placement underdetermined from image evidence alone."
+
+**Ground contact is unmeasured even by the paper named after it.** "Floating No More"
+([2407.18914](https://arxiv.org/abs/2407.18914)) reports AbsRel, δ₁, Chamfer distance and pixel-height
+field errors. **It has no metric for floating, tilt or ground contact.** The problem is stated in prose
+and demonstrated in figures.
+
+**Shadow generation admits its own metrics do not work.** DMASNet
+([2306.17358](https://arxiv.org/abs/2306.17358)) scores *worse* than the previous state of the art on
+RMSE, S-RMSE and PSNR, argues it is nonetheless better, and says so directly: "The mismatch between
+quantitative evaluation and qualitative evaluation motivates us to include more metrics." SGDiffusion
+([2403.15234](https://arxiv.org/abs/2403.15234)) generates five results per test image and "select[s]
+the one closest to the ground-truth" — an oracle selection against the answer. ⚠️ **Across the whole
+DESOBA line, no paper reports a correlation between its metrics and human judgement**, including the
+four that ran user studies.
+
+> **The occlusion limitation is architectural, not incidental.** ObjectStitch states it plainly:
+> "masking the output image… prohibits our model from generating global effects, i.e. shadow can only
+> be synthesized within the mask." A mask-driven insert cannot cast a shadow onto the plate outside
+> its own mask. "Thinking Outside the BBox" ([2409.04559](https://arxiv.org/abs/2409.04559)) exists
+> specifically to fix this, and **has no code or weights.**
+
+### The domain gap again, in methods and data this time
+
+[The domain gap is real, and it is uneven](#the-domain-gap-is-real-and-it-is-uneven) found the gap in
+*measurement*: shot-scale classifiers survive the jump to stylised 2D and camera-geometry classifiers
+do not. **Here the gap is in the methods and the training data, and it is not uneven — it is total.**
+
+**There is no published method, dataset or benchmark whose task is inserting an illustrated foreground
+into an illustrated background.** That negative comes from roughly fifteen query formulations plus an
+entry-by-entry pass over the field's own curated lists (BCMI's Awesome-Image-Harmonization,
+Awesome-Generative-Image-Composition and Awesome-Object-Insertion), and it is stated here as a
+confident negative rather than a certainty.
+
+**What exists instead is the inverse problem.** Cross-domain composition puts a *photographic or
+synthetic* foreground into a *stylized* background: Insert In Style
+([2511.15197](https://arxiv.org/abs/2511.15197)), Chameleon
+([2606.01079](https://arxiv.org/abs/2606.01079)), AIComposer
+([2507.20721](https://arxiv.org/abs/2507.20721)), Magic Insert
+([2407.02489](https://arxiv.org/abs/2407.02489)), TF-ICON
+([2307.12493](https://arxiv.org/abs/2307.12493)). libcom's `PainterlyHarmonizationModel` is defined the
+same way — "artistic background and photorealistic foreground". **The word "anime" appears in none of
+their style lists.** Chameleon enumerates 1,171 styles including "cartoon, comics, kids' drawing";
+Insert In Style names cartoon, Ghibli, pixel art, vector illustration, pencil sketch and Chinese ink.
+**AIComposer's 367-example extended benchmark is the largest concentration of illustrated content
+found in any composition benchmark anywhere, and it is 367 examples.**
+
+**Their measured margins over off-the-shelf editors are small and mixed.** Insert In Style against
+FLUX.1 Kontext on its own benchmark: CLIP-I 0.761 vs 0.665, but style consistency (CSD) **0.466 vs
+0.470 — Kontext wins the style metric.** The real gap is identity, not style, which is the opposite of
+what the framing "stylized composition" suggests.
+
+**Four further facts, each independently sourced:**
+
+- **iHarmony4 is 100% photographic**, so the entire harmonization literature's pixel metrics are
+  calibrated on photographs.
+- **Anime degrades measurably worse than photographs under the same models.** Qwen-Image-Edit-2511 at
+  square resolutions produces washed-out output that "lose[s] the subject's likeness significantly" on
+  an anime-style example, reproduced across three independent configurations including full BF16 with
+  no LoRA, which rules out quantization (QwenLM/Qwen-Image issue #243, open). Step-distilled variants
+  hurt 2D art specifically (ModelTC/LightX2V issue #904). ⚠️ **Both are practitioner bug reports, not
+  papers.**
+- **The identity machinery underneath the tooling is photographic.** InstantID and PuLID take
+  embeddings from InsightFace; FLUX.1 Kontext measures its own multi-turn character consistency with
+  **AuraFace, a human face recogniser**, so its headline consistency claim is not validated on drawn
+  faces at all.
+- **The standard identity metric is anti-correlated with human judgement on illustration.** CHARIS
+  ([2511.08087](https://arxiv.org/abs/2511.08087)) is the only identity study that breaks correlation
+  out by visual style, and its DINOv2 row reads **Pearson r = −0.071 on vector art** (CLIP 0.168,
+  CHARIS 0.372; human–human baseline 0.651–0.829).
+
+**Two things cut the other way, and they are the reason not to dismiss the workflow outright.** A
+SIGGRAPH 2026 anime layer-decomposition paper, See-through
+([2602.03749](https://arxiv.org/abs/2602.03749)), omits background reconstruction and says why:
+"production pipelines typically replace it with a new scene." And the VN engine is already a
+compositor — Ren'Py's `scene` and `show` put a background and character sprites on the same `master`
+layer as separate displayables. **Plate-plus-sprite is the native data model of the medium.** The
+question this section answers is narrower: whether a *generative edit* is the right way to produce
+that composite. On the published evidence, it is not yet.
+
+### Evaluation: five metrics carry a human-correlation number, and none covers scale
+
+| Metric | Correlation with human judgement | Scope |
+| --- | --- | --- |
+| **APFD** ([2212.03239](https://arxiv.org/abs/2212.03239)) | **Pearson 0.87** (median), from 2AFC on *composited* images | Camera perspective of an inserted object only |
+| **HarmonyIQA** ([2501.01116](https://arxiv.org/abs/2501.01116)) | SRCC 0.7848 | Colour and light harmonization only |
+| **Self-CIDS** ([2505.24862](https://arxiv.org/abs/2505.24862)) | Pearson 0.7956 | Character drift across a story, **aggregated over styles** |
+| **CANVAS's VLM judge** ([2604.13452](https://arxiv.org/abs/2604.13452)) | Pearson 0.74, Fleiss κ 0.74 | Multi-frame character consistency |
+| **SimOPA** ([2107.01889](https://arxiv.org/abs/2107.01889)) | bAcc 0.842 against binary labels | Lumped placement rationality; never correlated against a preference ranking |
+
+**Every other metric in routine use has no published human correlation**: MSE, fMSE and PSNR on
+iHarmony4; the six-metric DESOBA set; and every score in libcom's own Composite-Image-Evaluation list
+(harmony, OPA, FOS, CLIP, DINO, FID, QS), whose README makes no correlation claim.
+
+**Two of the five are worth reading carefully.** APFD is the strongest result in this whole area — it
+was validated on exactly this task, ranking composites of a 3D object rendered under perturbed camera
+parameters, and raw camera-parameter deltas do *worse* than the dense field (FoV deviation scores
+**−0.08**). But it covers perspective and nothing else. HarmonyIQA is built from ccHarmony
+composite/reference pairs, **so only colour and light vary across its 1,350 images** — placement,
+scale, perspective and shadow are correct by construction in all of them. **HarmonyIQA cannot tell you
+whether a character is the wrong size or floating.**
+
+**Nothing measures scale plausibility without a ground-truth box**, which is the metric a VN would
+most want, and it is the same gap this survey already identified for whole-frame generation in
+[What remains unverified](#what-remains-unverified).
+
+**On identity metrics specifically, the guidance is to avoid CLIP-I.** ObjectMate
+([2412.08645](https://arxiv.org/abs/2412.08645)) measured agreement with human judgement on object
+insertion at **CLIP-I 60.4%, DINO 71.8%, instance-retrieval features 79.5%**. And the field says
+outright that the pixel metrics do not transfer to this question: ZeroComp
+([2410.08168](https://arxiv.org/abs/2410.08168)) states that "recent evidence has shown they do not
+correlate with human perception when evaluating the realism of composited images", and reports its
+metrics alongside that disclaimer.
+
+**No method paper permutes identity against many backgrounds.** AnyDoor came closest — 30 subjects ×
+80 COCO backgrounds, 2,400 images — and used it only for ablations, never for a baseline comparison.
+The infrastructure to do it properly exists (MureCom's 20 backgrounds × 3 identities × 5 reference
+views per category; ORIDa's 200 objects across ~50 scenes each) and is used almost exclusively by the
+one lab that built it.
+
+### Cost and control against re-rendering the whole frame
+
+**Insertion does not save plate renders, and it is worth being clear about that before costing it.** A
+location plate is rendered once per variant and reused as a *reference* either way; whole-frame
+generation already pays for the plate exactly once. **What insertion buys is background stability** —
+a plate that is byte-identical across a scene's shots rather than re-derived, with the drift that
+implies. **What it costs** is a mask (or a model that picks placement, which measures worse), a
+possible harmonization pass, the plate-damage risk above, and a per-call price that is generally
+higher than a plain generate.
+
+**Letting the model choose placement is measurably worse than supplying a mask.** MADD
+([2412.14462](https://arxiv.org/abs/2412.14462)) prices it in its own ablation: mask 13.53 FID / 0.8727
+CLIP → bbox 13.60 / 0.8658 → point 13.66 / 0.8567 → **null 13.96 / 0.8034**. The only system that both
+picks placement and accepts your character image ("Thinking Outside the BBox") has no released code.
+
+**Multi-character shots are where the hosted route breaks first.** The one API that does the literal
+task in a single call accepts **one** character reference. A two-character shot is two masked passes,
+which is two opportunities to damage the plate and two chances for the second pass to disturb the
+first insert.
+
+**Practitioners who succeed at this avoid a full-image generative edit entirely**, and the tooling
+they build says why. `ComfyUI-Inpaint-CropAndStitch` (1.1k stars, officially forked by ComfyUI) sells
+itself on one sentence: it "does not modify the unmasked part of the image, **not even passing it
+through VAE encode and decode**". A separate community node exists purely to undo accumulated VAE
+colour drift. The one first-person anime account found doing frame-level work on a reused plate
+inpaints at 0.5 denoise and then **composites the result back onto the untouched plate in an image
+editor**, calling the process "boring, tedious and time consuming". ⚠️ **This is practitioner
+evidence — a CivitAI article and GitHub repositories, not papers** — and the largest practitioner
+forums (all of Reddit, Lemma Soft) were unreachable to the research for this section, so its absences
+prove less than its presences.
+
+**The control comparison is genuinely favourable to insertion in one respect and unfavourable in
+another.** A mask states where the character goes, which whole-frame generation cannot. But the three
+axes in [Control strength has three orthogonal axes](#control-strength-has-three-orthogonal-axes) do
+not apply: inpainting exposes a denoise strength, not a conditioning scale with a start and end
+fraction, so the "structure early, detail late" trade that section recommends is unavailable on this
+path.
+
+### Which hosted APIs can insert into a plate today
+
+Read from live OpenAPI specs on 2026-08-22, in the same format as
+[Which image APIs expose structural control](#which-image-apis-expose-structural-control).
+**"Yes" here means plate + mask + character reference in one call.**
+
+| API | Plate + mask + character ref | Parameters | Seed | Price |
+| --- | --- | --- | --- | --- |
+| **Ideogram `/v1/ideogram-v3/inpaint`** | **Yes — the only first-party endpoint that does the literal task** | `image`, `mask`, `character_reference_images` (**1 max**), `character_reference_images_mask`, `style_reference_images`, `seed`. **No strength parameter** | ✅ | ⚠️ **not directly readable** (Cloudflare-challenged pricing page); the same model on fal/Replicate is **$0.10 / $0.15 / $0.20** by rendering speed, plus an unpublished character-reference surcharge |
+| **fal `ideogram/character/edit`** | **Yes** — same model | `image_url`, `mask_url`, `reference_image_urls` (1), `reference_mask_urls`, `seed`, `rendering_speed` | ✅ **and echoed in the output** | $0.10 / $0.15 / $0.20 |
+| **Adobe Firefly `/v3/images/{precise,adaptive}-composite`** | **Yes**, and purpose-built for it | `background.fillAreaMask`, `object.image`, `object.mask`, `preserveBackground`, **`harmonization`**, **`shadowIntensity`**, `seeds[]` | ✅ | ⚠️ **not fetched** (enterprise quote; every Firefly legal and pricing page timed out) |
+| **fal `flux-general/inpainting`** | **Yes**, with the most knobs and the most wiring | `mask_url` + `strength`, `reference_image_url` + `reference_strength`, N `ip_adapters[]`, `loras[]`, `controlnets[]` — 36 parameters | ✅ | **$0.075/MP** |
+| **BFL `/v1/flux-pro-1.0-fill-finetuned`** | **Partly** — identity comes from a trained finetune, not an image | `image`, `mask`, `finetune_id`, `finetune_strength` | ✅ | $0.05 |
+| **OpenAI `/v1/images/edits`** | **No** — masks and up to 16 references, but see the seed column | `image` (≤16), `mask` (**applies to the first image only**), `input_fidelity` | ❌ **no seed on any image endpoint, any model** | token-metered; `gpt-image-2` output $30/M |
+| **Google Gemini** | **No** — "semantic masking" is conversational; there is no mask parameter | up to 14 reference images | ⚠️ **documented only on the legacy `generateContent` config**, absent from the current image path | 2.5 Flash $0.039 |
+| **Stability** | **No** — masks everywhere, **no subject-reference input anywhere** | `inpaint`, `erase`, `search-and-replace`; `background_reference` is documented as transferring **style**, not a subject | ✅ | $0.05/image |
+| **Recraft / Runway / Luma** | **No** | Recraft inpaints without a reference; Runway and Luma take references without a mask | Recraft ❌, Luma ❌ | — |
+
+**Four specifics worth knowing before committing.**
+
+**Mask polarity is inverted between the two leading candidates, and it is a real integration trap.**
+BFL Fill: "Black areas (0%) indicate no modification, while white areas (100%) specify areas for
+inpainting." Ideogram inpaint: "Black regions in the mask should match up with the regions of the
+image that you would like to edit." OpenAI is a third convention again — **alpha = 0** marks the
+editable region. A shared mask-generation path has to invert per backend.
+
+**The one API that ever exposed this as a first-class operation has been withdrawn.** Vertex AI's
+`imagen-3.0-capability-001` carried `REFERENCE_TYPE_SUBJECT` alongside `REFERENCE_TYPE_MASK` and
+`EDIT_MODE_INPAINT_INSERTION`. Google's migration notice states that "All Imagen models are deprecated
+and will shut down as early as August 17, 2026" — five days before this was checked.
+
+**OpenAI's absent seed is disqualifying for a content-addressed pipeline**, exactly as it is in the
+structural-control table above, and for the same reason. It is otherwise the strongest option on
+rights: an explicit assignment of output ownership, and training on customer content only by opt-in.
+
+**Prefer fal over Replicate for the Google and ByteDance families.** The same models expose `seed` on
+one host and not the other, and fal both guarantees reproducibility in writing and returns the
+resolved seed in its output, so a run left unseeded is still recordable. Replicate does neither.
+Against that, fal's terms contain **no output-ownership clause at all** — only disclaimers — where
+Replicate assigns output rights explicitly.
+
+**The licence picture is the reverse of the intuition, and it extends
+[The FLUX licence constraint](#the-flux-licence-constraint).** Every FLUX editing model with a mask is
+non-commercial to self-host: `FLUX.1-Fill-dev`, `FLUX.1-Kontext-dev` and `FLUX.2-dev` all carry a
+FLUX non-commercial licence on Hugging Face, and BFL's own pricing document describes FLUX.2 [dev] as
+"Open weights, non-commercial (no hosted API)". The two most-cited subject-insertion adapters are
+permissive **code on non-commercial base weights** — DreamO is tagged `apache-2.0` but is FLUX-based,
+and UNO declares `base_model: black-forest-labs/FLUX.1-dev` in its own card metadata while releasing
+its weights under CC BY-NC 4.0. **Qwen-Image-Edit-2509/2511 and OmniGen2 are the only genuinely
+Apache-2.0 multi-reference editors, and neither takes a mask.** As before, the constraint binds on
+running the weights, not on the pictures: outputs are unrestricted.
+
+**So the honest self-hosting shortlist, weights released and licence shippable, is MimicBrush
+(Apache-2.0), AnyDoor (MIT) and MADD (BSD-3)** — all mask-driven, all 2024-era quality, and all
+trained on photographs.
 
 ---
 
@@ -1287,6 +1632,51 @@ Toric space and a 3D blocking stage — the Architecture C material — connect 
 sketched in [`comparable-systems.md`](comparable-systems.md), and should follow the measurement work
 rather than precede it.
 
+### Inserting the cast into a rendered plate: not yet, and the seam is already there
+
+The workflow in
+[Inserting a character into an existing plate](#inserting-a-character-into-an-existing-plate) maps onto
+slots this repository already has. A `plate:` is base art for a location and a `shot:` is a frame, so
+"render the plate once, insert the cast per shot" is a change to what a `shot_image` task *does* rather
+than a change to the slot graph. **Three facts about the current code make the change smaller than it
+looks, and one makes it larger.**
+
+**The plate already leads every shot's references.** `shotInputs` in `packages/artgen/src/prompts.ts`
+resolves the plate the shot is set in plus each subject's portrait or sheet, and the plate comes first
+in the reference list. The planner passes `[locAsset, ...subjectRefs]`. So the model is already being
+shown the plate; the difference is only whether it is asked to *preserve* those pixels or to take them
+as guidance.
+
+**The provider seam for it exists and is nominal.** `ImageProvider` in
+`packages/types/src/providers.ts` declares both `generate(prompt, refs, params)` and
+`edit(base, prompt, refs, params)`, and `runModelSheet` already uses the edit shape while
+`makeShotRunner` calls `generate`. But the Gemini backend implements `edit` as
+`run([base, ...refs], prompt, params)` — the base image is just prepended to the references, so the two
+entry points are the same call. **Switching a shot to "edit" today would change nothing about what the
+model receives.**
+
+**What is missing is the mask.** `ImageParams` carries `modelId`, `aspect`, `seed` and `extra`, and
+there is no mask field anywhere. That is not an oversight to correct casually: the default image model
+is `gemini-2.5-flash-image`, and **the Gemini image API has no binary mask parameter at all** — its
+documented inpainting is conversational. Getting a real mask means a second backend, which means the
+API table above becomes a procurement decision rather than a config change.
+
+**The argument against doing it now is the evidence, not the plumbing.** The one benchmark that
+measures this task scores a strong Apache-2.0 editor at 5.16 where it scores 8.35 on the same character
+without a plate. Latent-mask compositing is measured to damage the region it was told not to touch, and
+the pipeline's own asset store would then hold plates that quietly differ shot to shot — which is worse
+for provenance than re-deriving each frame, because the drift is invisible rather than expected. **No
+published method, dataset or benchmark targets illustrated-foreground-into-illustrated-background**, and
+the identity metric a pipeline would naturally reach for is anti-correlated with human judgement on
+vector art. The practitioners who make this work end with a paint-program composite onto an untouched
+plate, which is not something a generative pipeline can do for them.
+
+**One cheap experiment is worth running before any of this.** The current path already hands the model
+the plate as reference zero. Measuring how much the background actually drifts across a scene's shots
+under that arrangement — same plate, same seed, varying subjects — costs one small run and tells you
+whether background instability is a real problem here or a hypothetical one. **The published evidence
+does not support adopting insertion; it does support measuring the thing insertion would fix.**
+
 ---
 
 ## What remains unverified
@@ -1359,6 +1749,36 @@ steady.
 > affiliation. **That is false** — the rendered HTML title block reads "Affiliation: Northern Caribbean
 > University". The error came from reading the arXiv `/abs` page, which shows affiliations for no paper
 > at all. The citation remains unused in this survey, but not on that ground.
+
+**On inserting a character into an existing plate.** The section added for that workflow rests on
+several things that could not be confirmed:
+
+- **Ideogram's own API pricing table** could not be read — the pricing page returns a Cloudflare
+  challenge to a non-browser fetcher. The per-render figures quoted are the resellers' (fal and
+  Replicate), and **the surcharge for a character reference is not published anywhere found**.
+- **Every Adobe Firefly pricing and legal page timed out** behind a WAF. Firefly's composite endpoints
+  are the only hosted API with explicit `harmonization` and `shadowIntensity` controls, so its cost and
+  its output-rights terms are the largest unpriced item in that table.
+- **OpenAI's per-image price rows** for `gpt-image-1.5` and `gpt-image-1.5-mini` were not read; only
+  the token rates for `gpt-image-2` were.
+- **The illustrated fraction of every benchmark used here is unknown.** KontextBench, PIE-Bench,
+  MuLAn-LAION and OmniContext do not report a style breakdown, so "these numbers are photographic" is
+  an inference from their sources rather than a published statistic.
+- **LASAGNA's dataset and benchmark are announced, not released**, so the one layered system that takes
+  a given foreground into a given background cannot be checked.
+- **The absence claims about illustrated composition are bounded by an access hole.** All of Reddit was
+  hard-blocked to the research (r/comfyui, r/StableDiffusion and r/RenPy went unsampled), Lemma Soft
+  Forums returned 403, two anime-compositing write-ups returned 403, and **no Japanese-language search
+  was run at all** — which is the language the relevant practitioner community most likely writes in.
+- **No "one in N generations is usable" figure exists** for character insertion into a plate, in either
+  the literature or the practitioner sources reached. The two-to-four-times figure in
+  [What the practitioner community actually does](#what-the-practitioner-community-actually-does) is
+  for whole-frame generation and **should not be assumed to transfer**.
+- **Reported human-correlation numbers for HarmonyIQA and DreamBench++ vary between secondary sources.**
+  The figures quoted here are the ones that appeared in the papers' own abstracts or tables; ⚠️ where a
+  survey restated them differently, the discrepancy was not resolved.
+- **Pixel drift on Qwen-Image-Edit is unquantified.** Both GitHub threads describing it are open with no
+  maintainer reply, and no measurement of the shift in pixels was found.
 
 **On method.** Web-search budget was exhausted early, so discovery relied on direct fetches and
 structured APIs (arXiv, DBLP, Semantic Scholar, GitHub, HuggingFace, Civitai). **Absence of evidence

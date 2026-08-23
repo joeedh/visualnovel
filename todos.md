@@ -69,6 +69,6 @@
      instead of portraits popping up on the screen (as light novels often do) 
 	 each shot would fully frame characters.  cross reference with the ai shot 
 	 framing report.
-[ ]: see if the ai framing report includes methods that use generative ai to edit 
+[x]: see if the ai framing report includes methods that use generative ai to edit 
      reference shots and insert characters into them.  if not use an agent to research
 	 that and add it to the report.
