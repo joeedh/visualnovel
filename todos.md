@@ -39,7 +39,7 @@
      recreated in one task and inform the user to run the pipeline, instead it 
 	 should pop up a dialog asking the user if they want to run the whole pipeline.
 [x]: the 'x' icon in floating editors is too small
-[ ]: the complete ux state should be saved in projects not just the layout,
+[x]: the complete ux state should be saved in projects not just the layout,
      e.g. active assets scenes wikie pages etc.  this should be error-tolerant since the user 
 	 may update the project repo on their own outside the desktop app.
 [ ]: write a report on creating unit tests to test prompt caching.  they would 
