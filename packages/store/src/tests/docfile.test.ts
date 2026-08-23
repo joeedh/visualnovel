@@ -7,7 +7,13 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sha256, writeFileAtomic } from '@vn/util';
-import { MAX_DOC_BYTES, checkDocWrite, readDocFile, writeDocFile } from '../docfile.js';
+import {
+  MAX_DOC_BYTES,
+  SECRETS_REFUSAL,
+  checkDocWrite,
+  readDocFile,
+  writeDocFile,
+} from '../docfile.js';
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'vn-docfile-'));
@@ -34,6 +40,25 @@ describe('reading a document', () => {
   it('refuses a path outside the workspace', async () => {
     const root = await tempRoot();
     expect(reason(await readDocFile(root, '../elsewhere.md'))).toMatch(/outside the workspace/);
+  });
+
+  it('refuses keys/ whether or not the file is there, and refuses the directory itself', async () => {
+    const root = await tempRoot();
+    await writeFileAtomic(join(root, 'keys', 'anthropic.txt'), 'sk-ant-real-key\n');
+
+    expect(reason(await readDocFile(root, 'keys/anthropic.txt'))).toBe(SECRETS_REFUSAL);
+    expect(reason(await readDocFile(root, 'keys/absent.txt'))).toBe(SECRETS_REFUSAL);
+    expect(reason(await readDocFile(root, 'keys'))).toBe(SECRETS_REFUSAL);
+    // Windows resolves this to the same directory, so the refusal cannot be case-sensitive.
+    expect(reason(await readDocFile(root, 'Keys/anthropic.txt'))).toBe(SECRETS_REFUSAL);
+  });
+
+  it('allows a keys directory that is not the project’s own', async () => {
+    const root = await tempRoot();
+    await writeFileAtomic(join(root, 'wiki', 'keys', 'notes.md'), '# Keys of the city\n');
+
+    const read = await readDocFile(root, 'wiki/keys/notes.md');
+    expect(read.ok).toBe(true);
   });
 
   it('refuses a missing file and a directory by name', async () => {
@@ -90,6 +115,13 @@ describe('saving a document', () => {
     await writeFileAtomic(join(root, 'wiki', 'note.md'), 'one\n');
     const check = await checkDocWrite(root, 'wiki/note.md', 'two\n', hash, 'story.*');
     expect(check.ok).toBe(true);
+  });
+
+  it('refuses keys/ before it considers what is being written', async () => {
+    const root = await tempRoot();
+    expect(reason(await checkDocWrite(root, 'keys/anthropic.txt', 'x', '', 'story.*'))).toBe(
+      SECRETS_REFUSAL,
+    );
   });
 
   it('refuses scenes/ by naming the writer that owns it', async () => {

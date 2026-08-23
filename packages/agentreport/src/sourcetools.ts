@@ -9,7 +9,13 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { z } from 'zod';
-import { readDocFile, resolveInWorkspace, workspacePath } from '@vn/store';
+import {
+  inSecretsDir,
+  readDocFile,
+  resolveInWorkspace,
+  SECRETS_REFUSAL,
+  workspacePath,
+} from '@vn/store';
 import { sha256 } from '@vn/util';
 import type { Tool, ToolResult } from '@vn/authoring';
 import { denied, normalize, readableSourcePath, READABLE, textFile } from './sourcemap.js';
@@ -110,9 +116,7 @@ async function symlinked(root: string, abs: string): Promise<boolean> {
  * say "build output" about a secret.
  */
 function refuseByPolicy(where: Where, rel: string): string | undefined {
-  if (where === 'project' && normalize(rel).split('/')[0] === 'keys') {
-    return 'keys/ holds API credentials and is never readable.';
-  }
+  if (where === 'project' && inSecretsDir(normalize(rel))) return SECRETS_REFUSAL;
   if (denied(rel)) {
     return `${rel} is not part of what this build ships for reading (build output, dependencies, or credentials).`;
   }

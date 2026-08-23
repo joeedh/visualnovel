@@ -108,9 +108,10 @@ Every claim below was read out of the file named.
 
 ### 0. No workspace read reaches `keys/`
 
-`resolveInWorkspace` gains a refusal for any path whose first segment is `keys`, so
-`readDocFile` and every writer built on it answer *"keys/ holds API keys and is not readable"*
-rather than the file.
+`readDocFile` and `checkDocWrite` refuse a path whose first segment is `keys` with a sentence of
+its own, so no document surface reads or writes the project's own key directory. The sentence is
+`@vn/agentreport`'s, which already refuses the same directory for the debug agent's source
+reader: *"keys/ holds API credentials and is never readable."*
 
 This is a pre-existing hole rather than one this plan opens: `read_file({ path:
 'keys/anthropic.txt' })` succeeds today, and the key becomes a tool observation. What makes it
@@ -120,10 +121,13 @@ anywhere. The native log records the same observation verbatim, unbounded, in a 
 committed and that a resume replays to a provider. Adding that file on top of a readable
 `keys/` would turn a bounded mistake into a durable one.
 
-The refusal goes in `resolveInWorkspace` rather than in the native writer because that is the
-one function every document path passes through, so it closes `doc.read` and the writers at the
-same time, and it is the answer the author sees rather than a silent hole in a log. It is
-stage 1, and it lands before anything writes a native log.
+The refusal goes in `@vn/store` rather than in the native writer because `readDocFile` and
+`checkDocWrite` are the two functions every document path passes through, so one pair of checks
+closes `read_file`, `write_file`, `edit_file`, `doc.read` and `doc.write` together, and the
+answer is a sentence the author sees rather than a silent hole in a log. Not in
+`resolveInWorkspace`: it returns `string | null` and has nowhere to put a reason, so the refusal
+would arrive worded as "outside the workspace". It is stage 1, and it lands before anything
+writes a native log.
 
 ### 1. The backend-native messages live in a second file beside the display log
 
@@ -481,15 +485,22 @@ Each stage is a commit that is green under `pnpm check`, `pnpm test` and `pnpm l
 
 `packages/store/src/docfile.ts`.
 
-- `resolveInWorkspace` returns null for a path whose first segment is `keys`, and `readDocFile`
-  answers *"keys/ holds API keys and is not readable"* rather than the generic
-  outside-the-workspace sentence, so the refusal names its own reason.
+- `inSecretsDir(path)` and `SECRETS_REFUSAL` beside `guardedDir`, which is the analogous
+  "who owns this path" predicate. `readDocFile` checks before its `stat`, so the refusal is the
+  same whether or not a key file is there; `checkDocWrite` checks before `guardedDir`.
+- The comparison is case-insensitive, because Windows resolves `Keys/` to the same directory and
+  refusing a differently-cased directory on a case-sensitive filesystem costs nothing.
 - Every caller inherits it: `read_file`, `write_file`, `edit_file`, `doc.read` and `doc.write`.
+- `@vn/agentreport`'s `refuseByPolicy` drops its own copy of the rule and calls these, so the
+  sentence is written once.
+- `docs/guides/api-keys.md`'s "Keeping a key safe" list gains the fact, because it is the guide
+  the Setup editor renders and a reader there is asking exactly this question.
 
 Tests (`packages/store/src/tests/docfile.test.ts`): a file under `keys/` is refused by name
-whether or not it exists; `keys` itself is refused; a path merely containing the segment deeper
-down (`wiki/keys/notes.md`) is allowed, because the guard is about the project's own key
-directory rather than the word.
+whether or not it exists; `keys` itself is refused; `Keys/` is refused; a path merely containing
+the segment deeper down (`wiki/keys/notes.md`) is allowed, because the guard is about the
+project's own key directory rather than the word; `checkDocWrite` refuses before it considers
+what is being written.
 
 ### Stage 2 — `Agent.restore` and one place messages are appended
 
@@ -629,9 +640,6 @@ an empty query.
 - `docs/reference/desktopAppState.md`: a row for `vngen/state/threads/<id>.native.jsonl` beside
   the existing transcript row, its size warning, and the paragraph that ends "the model is not
   shown a word of it" rewritten.
-- `docs/reference/document-tree.md` or wherever `keys/` is described as readable: stage 1's
-  refusal, and `docs/guides/api-keys.md` gains the sentence that the agent cannot read the
-  directory.
 - `docs/reference/vnauthor.md`: the paragraph saying the REPL keeps no transcript gains the fact
   that the native log is what a resume reads, and that the REPL still writes neither.
 - `docs/reference/agent-report.md`: the report reads the display log and never the native one,

@@ -42,6 +42,21 @@ export function guardedDir(path: string): 'scenes' | null {
   return path.replace(/\\/g, '/').split('/')[0] === 'scenes' ? 'scenes' : null;
 }
 
+/**
+ * What every document surface answers for the project's own key directory. Worded to match
+ * `@vn/agentreport`'s source reader, which already refuses the same directory.
+ */
+export const SECRETS_REFUSAL = 'keys/ holds API credentials and is never readable.';
+
+/**
+ * True for a workspace-relative path inside `keys/`. Compared case-insensitively, because
+ * Windows resolves `Keys/` to the same directory and refusing a differently-cased directory on
+ * a case-sensitive filesystem costs nothing.
+ */
+export function inSecretsDir(path: string): boolean {
+  return path.replace(/\\/g, '/').split('/')[0]?.toLowerCase() === 'keys';
+}
+
 /** One document as read: its bytes decoded, and the hash a later write carries back. */
 export interface DocFile {
   /** Workspace-relative, forward-slashed. */
@@ -83,6 +98,8 @@ export async function readDocFile(
   const abs = resolveInWorkspace(root, path);
   if (!abs) return refuse(`path "${path}" is outside the workspace`);
   const rel = workspacePath(root, abs);
+  // Before the stat, so the refusal is the same whether or not a key file happens to be there.
+  if (inSecretsDir(rel)) return refuse(SECRETS_REFUSAL);
 
   let stat;
   try {
@@ -153,6 +170,7 @@ export async function checkDocWrite(
   if (!abs) return refuse(`path "${path}" is outside the workspace`);
   const rel = workspacePath(root, abs);
 
+  if (inSecretsDir(rel)) return refuse(SECRETS_REFUSAL);
   if (guardedDir(rel)) return refuse(`${rel} is written by ${sceneWriter}, not whole`);
 
   const bytes = Buffer.from(text, 'utf8');

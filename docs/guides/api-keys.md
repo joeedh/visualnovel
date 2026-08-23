@@ -98,6 +98,10 @@ pane names the source it actually read, so it will tell you.
 - Never commit one. `keys/` is gitignored, the user-level directory is in no repository, and
   the command history records the value as `<secret>` — but a key pasted into a scene, a wiki
   page or a commit message is in git forever.
+- The agent cannot read `keys/`. Every document surface — the agent's `read_file`, the Documents
+  editor, and the debug agent's source reader — answers "keys/ holds API credentials and is never
+  readable." rather than the file, so a key cannot reach a saved conversation by being read into
+  one.
 - Both consoles let you revoke a key and issue a new one, which is the fix if one does leak.
   Revoking is instant and costs nothing.
 - A key is per-machine by design here: the user-level directory is the local one on Windows
