@@ -2,6 +2,7 @@ import { mkdtemp, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
+import { UndoJournal } from '@vn/commands';
 import { loadConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import { ProjectPaths, loadInputs } from '@vn/store';
@@ -22,6 +23,7 @@ import {
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
+  UNDO_PATHS,
   writeScaffolding,
   type RecentStore,
 } from '../workspace.js';
@@ -521,6 +523,26 @@ describe('scaffolding', () => {
     expect(again).toEqual({ attributes: false, ignores: false, layouts: [] });
     await commitScaffolding(root, again);
     expect(await openGit(root).log()).toEqual(before);
+  }, 20_000);
+
+  // `git add -A` fails when a pathspec names an ignored file, and `:(exclude)<file>` counts as
+  // naming one, so a session file listed in both places left every command with no undo point.
+  it('snapshots a scaffolded project that has written its session file', async () => {
+    await olderProject(root);
+    await commitScaffolding(root, await writeScaffolding(root));
+    await mkdir(join(root, '.vnstudio'), { recursive: true });
+    await writeFile(join(root, '.vnstudio', 'session.json'), '{"pathux.windows":[0]}\n');
+    await writeFile(join(root, '.vnstudio', 'session.json.tmp-ab12'), '{}\n');
+
+    const journal = new UndoJournal({ git: openGit(root), paths: UNDO_PATHS });
+    const pre = await journal.capture(1, 'pre');
+    expect(pre).not.toBeNull();
+
+    // A later pane drag is not workspace drift: the snapshot never saw the file to begin with.
+    await writeFile(join(root, '.vnstudio', 'session.json'), '{"pathux.windows":[0,1]}\n');
+    const post = await journal.capture(1, 'post');
+    expect(post!.tree).toBe(pre!.tree);
+    expect(await journal.check(journal.point(pre!, post!), 'post')).toMatchObject({ ok: true });
   }, 20_000);
 });
 

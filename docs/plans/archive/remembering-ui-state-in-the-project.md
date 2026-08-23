@@ -80,8 +80,12 @@ The ignored line is the glob `.vnstudio/session.json*`, not the bare path.
 `writeFileAtomic` writes `<path>.tmp-<hex>` beside its target and unlinks it in a `finally`, so
 a bare path leaves a window in which an untracked sibling exists. The window is short, and undo
 is the only thing that reads the tree during it, but a glob costs nothing.
-`UNDO_PATHS` gains `:(exclude).vnstudio/session.json*` as well, so a project whose `.gitignore`
-was edited by hand cannot break undo.
+The plan also gave `UNDO_PATHS` a matching `:(exclude).vnstudio/session.json*`, so that a project
+whose `.gitignore` was edited by hand could not break undo. That entry was removed during
+implementation: `git add -A` fails outright when a pathspec names an ignored file, and an exclude
+pathspec counts as naming one, so the guard made every snapshot throw and left every command with
+no undo point. The ignore line alone keeps the file out, and `writeScaffolding` rewrites it on
+every open.
 
 **Project keys drop the scope segment.** In a file that is already the project's, a digest of
 the project path is both redundant and wrong: it is what makes moving the directory lose the
@@ -201,7 +205,8 @@ store means reads answer the default and writes are dropped.
   `rememberedWindows` and `scope()`'s remaining callers.
 - `switchWorkspace` closes the old project store and opens the new one before the `workspace`
   effect is broadcast. `before-quit` flushes both.
-- `UNDO_PATHS` gains `:(exclude).vnstudio/session.json*`.
+- `UNDO_PATHS` moves to `workspace.ts`, beside the ignore line that is what actually keeps the
+  session file out of a snapshot.
 
 `apps/desktop/src/main/commands/host.ts` — `CommandHost.state` narrows to the structural
 `{get, set}` the commands actually use, which the existing test fake already satisfies.
@@ -289,7 +294,7 @@ selection through the boot path that already exists.
 6. Re-render a selected shot, relaunch: the asset editor lands on the new asset rather than the
    superseded take. Then walk back to an earlier take by hand and confirm the pane stays there
    while a re-render lands, which is the behaviour `watchSlot` exists for.
-7. Undo still works after a session write (the `UNDO_PATHS` exclusion).
+7. Undo still works after a session write (the `.gitignore` line).
 8. `project.open` a second project and back: each window reloads and opens into its own
    arrangement, and neither project's file has picked up the other's keys.
 
@@ -307,7 +312,7 @@ each was checked against the source before being accepted.
    window list would have stayed install-global. `SessionState` is the fix, and narrowing
    `CommandHost.state` is what makes a direct store reference a type error.
 3. `writeFileAtomic` leaves a `.tmp-<hex>` sibling during a write, which a bare ignore line does
-   not match. The ignore entry and the `UNDO_PATHS` exclusion are globs.
+   not match, so the ignore entry is a glob.
 4. The plan claimed a second machine would get the arrangement, which a gitignored file cannot
    do. The claim is gone from the Context and from the index row, and what does improve is
    stated instead.

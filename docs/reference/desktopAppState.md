@@ -90,7 +90,13 @@ border drag: a tracked file would churn `git status`, conflict on every pull, an
 and would see the file move. The shareable half of an arrangement is a
 [layout template](desktop-app.md#layout-templates), which _is_ committed. The ignore entry is the
 glob `.vnstudio/session.json*`, because `writeFileAtomic` leaves a `.tmp-<hex>` sibling during a
-write, and `UNDO_PATHS` excludes the same glob so a hand-edited `.gitignore` cannot break undo.
+write.
+
+The ignore entry is also the only thing keeping the file out of an undo snapshot. `UNDO_PATHS`
+deliberately does not list it: `git add -A` fails outright when a pathspec names an ignored file,
+and `:(exclude)<file>` counts as naming one, so a fourth entry there made every snapshot throw and
+left every command with no undo point at all. `writeScaffolding` rewrites the ignore line on every
+open, so a hand-edited `.gitignore` is repaired rather than guarded against.
 
 **Shape:** a flat `Record<string, SessionValue>` with dotted keys. The three that describe a
 window are scoped **by window index**, built in `src/shared/sessionkeys.ts`:

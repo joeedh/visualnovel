@@ -35,6 +35,19 @@ const FALLBACK_IDENTITY = { name: 'VN Studio', email: 'vnstudio@localhost' };
 export const SESSION_IGNORE = '.vnstudio/session.json*';
 
 /**
+ * What an undo snapshot covers: the authored documents, and nothing the pipeline generated.
+ * `build/` is content-addressed and `state/` is an append-only log — rolling either back would
+ * throw away work a later run has to pay for again, and excluding them is also what keeps a
+ * `pipeline.run` between two edits from reading as workspace drift.
+ *
+ * `SESSION_IGNORE` is what keeps the session file out, rather than a fourth entry here.
+ * `git add -A` fails outright when a pathspec names an ignored file, and an exclude pathspec
+ * counts as naming one, so listing the session file would make every snapshot throw and leave
+ * no undo point at all.
+ */
+export const UNDO_PATHS = ['.', ':(exclude)vngen/build', ':(exclude)vngen/state'];
+
+/**
  * What a project's `.gitignore` starts as. `vngen/` is deliberately absent, because the generated
  * tree is committed on purpose. `keys` is the load-bearing line: commit-on-save runs
  * `git commit -A`, so a key git can see is committed within the second.

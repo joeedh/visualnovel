@@ -71,6 +71,7 @@ import {
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
+  UNDO_PATHS,
   writeScaffolding,
 } from './workspace.js';
 import type {
@@ -563,23 +564,6 @@ async function openSessionStore(): Promise<void> {
 }
 
 const registry = createDesktopRegistry();
-
-/**
- * What an undo snapshot covers: the authored documents, and nothing the pipeline generated.
- * `build/` is content-addressed and `state/` is an append-only log — rolling either back would
- * throw away work a later run has to pay for again, and excluding them is also what keeps a
- * `pipeline.run` between two edits from reading as workspace drift.
- *
- * The session file is excluded for the same reason: rearranging panes writes it, and a snapshot
- * that covered it would read every such write as drift and refuse to undo. The glob also covers
- * the `.tmp-<hex>` sibling `writeFileAtomic` leaves beside it mid-write.
- */
-const UNDO_PATHS = [
-  '.',
-  ':(exclude)vngen/build',
-  ':(exclude)vngen/state',
-  ':(exclude).vnstudio/session.json*',
-];
 
 /** Counts undo/redo moves, so a room knows when the files changed under it. */
 let undoRevision = 0;
