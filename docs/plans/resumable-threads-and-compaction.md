@@ -538,16 +538,23 @@ and on one whose next message is an `observation`.
 
 ### Stage 3 — the vendor rule has one home
 
-`packages/types`, `packages/providers/src/factory.ts`, `apps/authoring/src/agent.ts`.
+`packages/types`, `packages/config/src/keys.ts`, `packages/providers/src/factory.ts`,
+`apps/authoring/src/agent.ts`.
 
-- `chatVendorFor` moves to `@vn/types`. `@vn/providers` re-exports it so its callers are
-  unchanged. `chatBackendFor` and the inline expression at `agent.ts:90` both call it, which
-  also fixes the third copy's disagreement about the `anthropic` prefix.
-- It is a separate stage because it touches three packages and fixes an existing inconsistency,
+- `chatVendorFor` moves to `@vn/types`, into `textmodels.ts`, which already holds the model list
+  for the same reason: the renderer asks these questions and cannot import a package that loads
+  a vendor SDK. `@vn/providers` re-exports it so its callers are unchanged. `chatBackendFor` and
+  the inline expression at `agent.ts:90` both call it, which also fixes the third copy's
+  disagreement about the `anthropic` prefix.
+- Its return type is a new `ChatVendor` in `@vn/types`, because `ResolvedKeys` lives in
+  `@vn/config` and `@vn/config` already imports `@vn/types`. `ResolvedKeys` becomes
+  `Record<ChatVendor, string>`, so the vendor list is written once rather than twice.
+- It is a separate stage because it touches four packages and fixes an existing inconsistency,
   and because stage 4's check cannot import from `@vn/providers` at all.
 
-Tests: the existing provider tests cover the rule; add one asserting the two `agent.ts` call
-sites and `chatVendorFor` agree on an `anthropic/`-prefixed id.
+Tests (`packages/types/src/tests/textmodels.test.ts`): `chatVendorFor` answers `anthropic` for
+a bare `claude-` id, an `anthropic/`-prefixed one, and either cased differently, and `gemini`
+for everything else. Both `agent.ts` call sites now call it, so agreement is structural.
 
 ### Stage 4 — the native log is written
 

@@ -1,4 +1,4 @@
-import type { EffortChoice, Providers } from '@vn/types';
+import { chatVendorFor, type EffortChoice, type Providers } from '@vn/types';
 import type { ProjectConfig, ResolvedKeys } from '@vn/config';
 import type { ChatBackend, RefLoader } from './backend.js';
 import { createAnthropicChat } from './backends/anthropic.js';
@@ -7,11 +7,9 @@ import { ChatTextLLM } from './text.js';
 import { ChatVisionReviewer } from './review.js';
 import { BackendImageProvider } from './image.js';
 
-/** Which key a chat model id needs. The one place that rule is written down. */
-export function chatVendorFor(modelId: string): keyof ResolvedKeys {
-  const id = modelId.toLowerCase();
-  return id.startsWith('claude') || id.startsWith('anthropic') ? 'anthropic' : 'gemini';
-}
+// Re-exported from where the rule now lives, so the callers that reach it through this package
+// are unchanged.
+export { chatVendorFor } from '@vn/types';
 
 /**
  * Pick the vendor for a model id and a stable reviewer label. Exported because a plain chat call

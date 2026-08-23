@@ -8,6 +8,7 @@
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { openGit } from '@vn/git';
 import {
+  chatVendorFor,
   createAnthropicChat,
   createGeminiChat,
   type ChatBackend,
@@ -61,17 +62,15 @@ class MockAgentBackend implements AgentBackend {
   }
 }
 
-/** Choose the vendor backend for a text model id (mirrors @vn/providers’ private picker). */
+/** Choose the vendor backend for a text model id. */
 function chatBackendFor(
   modelId: string,
   keys: { gemini: string; anthropic: string },
   effort?: EffortChoice,
 ): ChatBackend {
-  const id = modelId.toLowerCase();
-  if (id.startsWith('claude') || id.startsWith('anthropic')) {
-    return createAnthropicChat(keys.anthropic, modelId, { effort });
-  }
-  return createGeminiChat(keys.gemini, modelId);
+  return chatVendorFor(modelId) === 'anthropic'
+    ? createAnthropicChat(keys.anthropic, modelId, { effort })
+    : createGeminiChat(keys.gemini, modelId);
 }
 
 /**
@@ -91,10 +90,9 @@ export async function buildAgentBackend(
   if (opts.mock) return new MockAgentBackend();
   const config = await loadConfig(dir);
   const modelId = opts.model ?? config.models.text;
-  const vendor = modelId.toLowerCase().startsWith('claude') ? 'anthropic' : 'gemini';
   const keys = await resolveKeys(config, {
     secretsDirs: await secretDirsFor(dir),
-    require: [vendor],
+    require: [chatVendorFor(modelId)],
   });
   const chat = chatBackendFor(modelId, keys, opts.effort);
   if (!opts.noNative && chat.chatConversation) return new NativeAgentBackend(chat);

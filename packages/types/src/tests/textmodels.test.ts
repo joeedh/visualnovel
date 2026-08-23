@@ -1,11 +1,25 @@
 import {
   DEFAULT_EFFORT,
   EFFORT_CHOICES,
+  chatVendorFor,
   effortChoicesFor,
   effortLabel,
   resolveEffort,
   supportsEffort,
 } from '../textmodels.js';
+
+describe('chatVendorFor', () => {
+  it('reads both spellings of an Anthropic id, cased either way', () => {
+    for (const id of ['claude-opus-5', 'anthropic/claude-opus-5', 'Anthropic/Claude-Opus-5']) {
+      expect(chatVendorFor(id)).toBe('anthropic');
+    }
+  });
+
+  it('sends everything else to gemini, which is what an unknown id resolves a key for', () => {
+    expect(chatVendorFor('gemini-2.5-pro')).toBe('gemini');
+    expect(chatVendorFor('some-local-model')).toBe('gemini');
+  });
+});
 
 describe('effortChoicesFor', () => {
   it('offers the full ladder and no-thinking on Opus 4.7+ and the 5s', () => {

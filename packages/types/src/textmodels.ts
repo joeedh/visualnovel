@@ -5,6 +5,20 @@
  * vendor SDK.
  */
 
+/** The vendors a chat model can belong to, and therefore the keys one can need. */
+export type ChatVendor = 'gemini' | 'anthropic';
+
+/**
+ * Which key a chat model id needs. The one place that rule is written down.
+ *
+ * It lives beside the model list rather than in `@vn/providers` for the reason at the top of this
+ * file: the renderer asks the same question and cannot import a package that loads a vendor SDK.
+ */
+export function chatVendorFor(modelId: string): ChatVendor {
+  const id = modelId.toLowerCase();
+  return id.startsWith('claude') || id.startsWith('anthropic') ? 'anthropic' : 'gemini';
+}
+
 /** The effort levels a surface may offer, in order. A tuple, so a command prop can name it. */
 export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 

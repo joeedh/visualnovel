@@ -1,14 +1,14 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import type { ProjectConfig } from '@vn/types';
+import type { ChatVendor, ProjectConfig } from '@vn/types';
 import { ConfigError, exists, readText } from '@vn/util';
 
-/** Resolved API keys. Values are secrets and MUST never be logged (report §8, §11). */
-export interface ResolvedKeys {
-  gemini: string;
-  anthropic: string;
-}
+/**
+ * Resolved API keys, one per vendor a model id can name. Values are secrets and MUST never be
+ * logged (report §8, §11).
+ */
+export type ResolvedKeys = Record<ChatVendor, string>;
 
 /** The vendors a key is resolved for. Ordered, so a UI can offer them without inventing a list. */
 export const KEY_VENDORS = ['gemini', 'anthropic'] as const;
