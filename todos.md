@@ -42,7 +42,7 @@
 [x]: the complete ux state should be saved in projects not just the layout,
      e.g. active assets scenes wikie pages etc.  this should be error-tolerant since the user 
 	 may update the project repo on their own outside the desktop app.
-[ ]: write a report on creating unit tests to test prompt caching.  they would 
+[x]: write a report on creating unit tests to test prompt caching.  they would 
      only be run when approved by the user and not part of pnpm test and use real api keys.  
 	 both the vn agent and the debug agent would be tested.  one test for every supported 
 	 model.
