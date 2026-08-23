@@ -95,6 +95,17 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   slot is approved when the character's `approvedPortrait` names it — that is the P3 gate, read
   from the model — and every other slot when the asset filling it has `accepted === true`.
   Conflating them is the bug the approval frontier exists to prevent.
+- **Acceptance is exclusive per slot.** `pick` returns nothing when two candidates for one slot are
+  both `accepted`, so a slot in that state resolves to nothing, reads as empty, and un-settles
+  everything drawn from it. `AssetStore.accept(hash, supersede)` therefore takes the takes being
+  replaced and clears their flags in the same manifest write, and `supersededBy` computes that list
+  from the slot the asset fills. The shot runner passes it when a clean attempt is accepted, and
+  `session.acceptAsset` passes it when an author accepts one by hand. A `portrait:` supersedes
+  nothing, because its slot answers to the gate rather than to `accepted`; a `sheet:` supersedes
+  nothing without an `angleOf` lookup, because four angles of one outfit share one binding and are
+  four pictures rather than four takes. Nothing in the manifest records when a picture was rendered
+  — it is written hash-sorted — so a surface that cannot resolve a slot must say so rather than
+  guess which take is newest.
 - **Getting a storyboard is an explicit act, and a fallback is never persisted.**
   `work/shots/<sceneId>.json` wins forever once written and an **absent** file is the only signal
   meaning "decompose this scene" — a signal the batch reads and a hand-placed first shot

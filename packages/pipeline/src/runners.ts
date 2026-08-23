@@ -15,6 +15,7 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { mergeReports } from '@vn/providers';
+import { supersededBy } from '@vn/artgen';
 import { refinePrompt } from './p6.js';
 import { shotSpec } from './prompts.js';
 import type { RunDeps } from './pipeline.js';
@@ -140,7 +141,15 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       task.attempts.push(record);
 
       if (!merged.blocking) {
-        await deps.store.accept(ref.hash);
+        // Accepting the frame un-accepts the takes it replaces, including this task's own earlier
+        // attempts and any frame an older task left for the same shot. Two accepted candidates make
+        // the slot unresolvable, so the shot would read as unrendered and everything drawn from it
+        // would re-render.
+        const asset = deps.store.manifest().find((a) => a.hash === ref.hash);
+        const supersede = asset
+          ? supersededBy(asset, { model: deps.model, assets: deps.store.manifest() })
+          : [];
+        await deps.store.accept(ref.hash, supersede);
         if (found) found.shot.status = 'accepted';
         return { status: 'done', output: ref.hash };
       }

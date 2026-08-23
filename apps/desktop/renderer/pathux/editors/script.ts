@@ -170,6 +170,10 @@ export class ScriptEditor extends VnEditor {
     // frames rebuilt with it would flicker for a keystroke that only moved the caret.
     this.frames = el('div', 'sc-frames') as HTMLDivElement;
 
+    // Whether re-reading the page would take a draft with it. `loadScene` clears the open row and
+    // the pending act, so every unattended re-read is held behind this.
+    const settled = (): boolean => !this.editing && !this.pending && !this.drag;
+
     // The scene on screen can be rewritten by something that is not this pane — the agent in
     // execute mode is the usual one. A page nobody is in the middle of follows; one with an open
     // row or a held line does not, because re-reading would take the draft with it. That is what
@@ -177,20 +181,28 @@ export class ScriptEditor extends VnEditor {
     this.watch(
       () =>
         onWrote((paths) => {
-          if (this.editing || this.pending || this.drag) return;
+          if (!settled()) return;
           if (touchesScene(paths, this.ui.sceneId)) void this.loadScene();
         }),
       // Coming back on screen, the pane cannot know which paths moved while it was away, so it
       // re-reads the scene on the same terms the watch would have.
       () => {
-        if (!this.editing && !this.pending && !this.drag) void this.loadScene();
+        if (settled()) void this.loadScene();
       },
     );
 
     // Rendering a shot is not a write to the scene file, so the frames follow the coarser signal:
-    // a frame generated while its scene is open should appear under the prose that ordered it.
+    // a frame generated while its scene is open should appear under the prose that ordered it. The
+    // page is re-read too, because which asset a shot holds is answered by `story:coverage` rather
+    // than by the tree — accepting a frame changes the picture with the scene file untouched. Held
+    // under the same guard as the write watch, since re-reading discards a draft.
     this.watch(
-      () => onInvalidate(() => void this.loadTree()),
+      () =>
+        onInvalidate(() => {
+          void this.loadTree();
+          if (settled()) void this.loadScene();
+        }),
+      // Only the tree here: the watch above already re-reads the scene on attach.
       () => void this.loadTree(),
     );
     void this.loadTree();

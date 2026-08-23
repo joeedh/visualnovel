@@ -87,6 +87,34 @@ describe('bindings', () => {
   });
 });
 
+describe('accept', () => {
+  it('un-accepts the takes it supersedes, and persists both halves together', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const old = await store.write(bytes('OLD'), 'png', meta('shot_image'));
+    const fresh = await store.write(bytes('NEW'), 'png', meta('shot_image'));
+    await store.accept(old.hash);
+    await store.accept(fresh.hash, [old.hash]);
+
+    // Read back from disk: a manifest recording two accepted takes is the state this prevents.
+    const reopened = (await AssetStore.open(paths)).manifest();
+    expect(reopened.filter((a) => a.accepted).map((a) => a.hash)).toEqual([fresh.hash]);
+  });
+
+  it('re-accepting an already-accepted asset still clears what it supersedes', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const old = await store.write(bytes('OLD'), 'png', meta('shot_image'));
+    const fresh = await store.write(bytes('NEW'), 'png', meta('shot_image'));
+    await store.accept(fresh.hash);
+    await store.accept(old.hash);
+    await store.accept(fresh.hash, [old.hash]);
+    expect(
+      (await AssetStore.open(paths)).manifest().find((a) => a.hash === old.hash)!.accepted,
+    ).toBe(false);
+  });
+});
+
 describe('base states', () => {
   it('absent: no assets/ directory, and the first base write creates it', async () => {
     const paths = new ProjectPaths(await tempRoot());

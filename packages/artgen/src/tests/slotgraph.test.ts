@@ -14,6 +14,7 @@ import {
   imageParams,
   resolveSlot,
   slotTaskHash,
+  supersededBy,
   type SlotGraphContext,
 } from '../index.js';
 
@@ -218,5 +219,42 @@ describe('resolveSlot', () => {
     const decided = resolveSlot({ kind: 'portrait', characterId: 'aiko' }, ctx());
     expect(decided.ok).toBe(true);
     if (decided.ok) expect(slotTaskHash(decided.plan)).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('supersededBy', () => {
+  const frame = (hash: string, accepted = false): Asset =>
+    asset(hash, 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], accepted);
+
+  it('names the accepted takes of the same slot, and nothing else', () => {
+    const other = asset(
+      'elsewhere',
+      'shot_image',
+      [{ sceneId: 'arrival', shotId: 'arrival__b' }],
+      true,
+    );
+    const c = ctx({ assets: [frame('new'), frame('old', true), frame('draft'), other] });
+    expect(supersededBy(frame('new'), c)).toEqual(['old']);
+  });
+
+  it('supersedes nothing for a portrait, which answers to the gate rather than to acceptance', () => {
+    const c = ctx({
+      assets: [
+        asset('p-new', 'portrait', [{ characterId: 'aiko' }]),
+        asset('p-aiko', 'portrait', [{ characterId: 'aiko' }], true),
+      ],
+    });
+    expect(supersededBy(asset('p-new', 'portrait', [{ characterId: 'aiko' }]), c)).toEqual([]);
+  });
+
+  it('supersedes no sheet without an angle lookup, since four angles share one binding', () => {
+    const sheet = (hash: string, accepted = false): Asset =>
+      asset(hash, 'model_sheet', [{ characterId: 'aiko', outfit: 'default' }], accepted);
+    const assets = [sheet('front'), sheet('side', true)];
+    expect(supersededBy(sheet('front'), ctx({ assets }))).toEqual([]);
+    // With one, the angles separate and only a take of the same angle is superseded.
+    const angles: Record<string, string> = { 'task-front': 'front', 'task-side': 'front' };
+    const seeing = ctx({ assets, angleOf: (task) => (task ? angles[task] : undefined) });
+    expect(supersededBy(sheet('front'), seeing)).toEqual(['side']);
   });
 });

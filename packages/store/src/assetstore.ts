@@ -157,12 +157,27 @@ export class AssetRoot {
     return fs.readFile(this.fileOf(ref));
   }
 
-  /** Mark an asset accepted (an approved portrait or an accepted shot). */
-  async accept(hash: string): Promise<boolean> {
+  /**
+   * Mark an asset accepted (an approved portrait or an accepted shot) and un-accept the takes it
+   * replaces, in one write. Returns whether this root holds `hash`.
+   *
+   * The two halves are persisted together because a manifest recording both as accepted leaves the
+   * slot unresolvable, so a crash between two writes would be the state this is preventing. Hashes
+   * in `supersede` that this root does not hold are ignored; `AssetStore.accept` routes the call to
+   * the root the slot's art lives in, and a slot's candidates share a kind and so share a root.
+   */
+  async accept(hash: string, supersede: readonly string[] = []): Promise<boolean> {
     const asset = this.index.get(hash);
-    if (!asset || asset.accepted) return asset !== undefined;
+    if (!asset) return false;
+    let changed = !asset.accepted;
     asset.accepted = true;
-    await this.persist();
+    for (const other of supersede) {
+      const sibling = other === hash ? undefined : this.index.get(other);
+      if (!sibling?.accepted) continue;
+      sibling.accepted = false;
+      changed = true;
+    }
+    if (changed) await this.persist();
     return true;
   }
 
@@ -253,8 +268,9 @@ export class AssetStore implements IAssetStore {
     return all;
   }
 
-  async accept(hash: string): Promise<void> {
-    if (!(await this.baseRoot.accept(hash))) await this.projectRoot.accept(hash);
+  async accept(hash: string, supersede: readonly string[] = []): Promise<void> {
+    if (!(await this.baseRoot.accept(hash, supersede)))
+      await this.projectRoot.accept(hash, supersede);
   }
 
   private rootFor(kind: AssetKind): AssetRoot {

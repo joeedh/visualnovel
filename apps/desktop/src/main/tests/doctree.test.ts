@@ -519,7 +519,7 @@ describe('the Assets branch, one row per slot', () => {
 
   const kinds = (tree: { roots: DocNode[] }) => branch(tree.roots, 'branch:assets').children!;
 
-  it('folds an earlier take under the picture that replaced it, and counts rows', () => {
+  it('folds the other takes under the picture the slot holds, and counts rows', () => {
     const portraits = kinds(withOldTake())[0]!;
     // One row, because one slot. The heading counts the rows it draws, so two takes of one
     // portrait count once.
@@ -528,20 +528,20 @@ describe('the Assets branch, one row per slot', () => {
 
     const current = portraits.children![0]!;
     expect(current.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
-    // The row's note has to say that a second click opens the earlier takes, since nothing else
+    // The row's note has to say that a second click opens the other takes, since nothing else
     // in the tree behaves this way.
-    expect(current.note).toContain('click again to see history');
-    expect(current.children![0]!.note).toContain('earlier take');
+    expect(current.note).toContain('click again to see the rest');
+    expect(current.children![0]!.note).toContain('Another take');
   });
 
-  it('opens on the newest take where the slot could not choose between them', () => {
-    // `pick` declines on a tie. Manifest order is the only record of when a picture was made, so
-    // the row opens on the newest. That is not a verdict: both candidates are still listed one
-    // per row in the Unapproved branch, where the choice is made.
+  it('says nothing is settled where the slot could not choose between the takes', () => {
+    // `pick` declines on a tie, and nothing in this projection records when a picture was made —
+    // the manifest is written hash-sorted. The row therefore names no take as the current one; the
+    // choice is made in the Unapproved branch, where both are listed one per row.
     const portraits = kinds(withOldTake({ hash: undefined }))[0]!;
     expect(portraits.label).toBe('Portraits (1)');
-    expect(portraits.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
-    expect(portraits.children![0]!.children!.map((n) => n.id)).toEqual([`asset:${HASH_A}`]);
+    expect(portraits.children![0]!.note).toContain('nothing is settled here');
+    expect(portraits.children![0]!.note).toContain('1 other take');
   });
 
   it('files a picture two slots claim under the first of them', () => {

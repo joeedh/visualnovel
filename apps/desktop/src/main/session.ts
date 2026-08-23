@@ -122,6 +122,7 @@ import {
   slotLabel,
   slotOf,
   slotTaskHash,
+  supersededBy,
   subjectEntity,
   suspensionMap,
   uploadOf,
@@ -2446,13 +2447,19 @@ export class WorkspaceSession {
    * Mark an asset as the accepted one for what it satisfies. Generic across both roots, and it
    * asks {@link previewAccept} itself rather than trusting that a check already ran — a caller
    * may skip the check, so the command cannot rely on it having happened.
+   *
+   * Accepting is exclusive per slot: the takes this one replaces are un-accepted in the same write,
+   * because a slot with two accepted candidates cannot be resolved and reads as empty.
    */
   async acceptAsset(hash: string): Promise<{ ok: boolean; message: string }> {
     const allowed = await this.previewAccept(hash);
     if (!allowed.ok) return allowed;
     const project = await loadProject(this.dir);
     if (!project.store.has(hash)) return { ok: false, message: `No asset "${hash}" in the store.` };
-    await project.store.accept(hash);
+    const assets = project.store.manifest();
+    const asset = assets.find((a) => a.hash === hash);
+    const ctx = { ...labelContext(project.model, project.graph), assets };
+    await project.store.accept(hash, asset ? supersededBy(asset, ctx) : []);
     return { ok: true, message: `Accepted ${hash.slice(0, 8)}.` };
   }
 

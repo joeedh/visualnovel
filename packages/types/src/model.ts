@@ -87,8 +87,12 @@ export interface AssetStore {
   /** Absolute path of a stored asset. */
   pathOf(ref: AssetRef): string;
   manifest(): readonly Asset[];
-  /** Mark an asset accepted (an approved portrait or an accepted shot). */
-  accept(hash: string): Promise<void>;
+  /**
+   * Mark an asset accepted (an approved portrait or an accepted shot), un-accepting the hashes in
+   * `supersede` in the same write. Acceptance is exclusive per slot: a slot holding two accepted
+   * candidates cannot be resolved, so it reads as empty.
+   */
+  accept(hash: string, supersede?: readonly string[]): Promise<void>;
   /** The base root's state; absent on a store that has only one root (test fakes). */
   readonly base?: BaseAssets;
 }

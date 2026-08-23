@@ -24,7 +24,16 @@
  * The reverse index lives here rather than on `TaskGraph` deliberately: `Task.deps` is documented
  * incomplete and is not hashed, so inverting it would answer a question nobody asks.
  */
-import type { AnyTask, AssetRef, RefBinding, Scene, Shot, TaskInputs, TaskStatus } from '@vn/types';
+import type {
+  AnyTask,
+  Asset,
+  AssetRef,
+  RefBinding,
+  Scene,
+  Shot,
+  TaskInputs,
+  TaskStatus,
+} from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import {
   allCharacters,
@@ -35,7 +44,7 @@ import {
 } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
 import { type BindingContext, candidatesFor, resolveBinding } from './refs.js';
-import { refsOfSlot, slotKey, slotLabel } from './refcycle.js';
+import { refsOfSlot, slotKey, slotLabel, slotOf } from './refcycle.js';
 import type { RungContext } from './resolve.js';
 import {
   imageParams,
@@ -227,6 +236,25 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
           'An upload and a concept are their own identity — there is no task under them to be the output of.',
       };
   }
+}
+
+/**
+ * The accepted assets that accepting `asset` replaces: every other accepted candidate for the slot
+ * it fills. Acceptance is exclusive per slot because `pick` declines a slot holding two accepted
+ * candidates, and the slot then reads as empty and everything drawn from it re-renders.
+ *
+ * A `portrait:` supersedes nothing: its slot answers to the P3 gate rather than to `Asset.accepted`,
+ * and the gate already holds one answer. A `sheet:` supersedes nothing unless `ctx.angleOf` is
+ * supplied, because without it `candidatesFor` returns all four angles of the outfit, which are four
+ * different pictures rather than four takes of one.
+ */
+export function supersededBy(asset: Asset, ctx: BindingContext): string[] {
+  const slot = slotOf(asset, ctx.angleOf?.(asset.sourceTask));
+  if (!slot || slot.kind === 'portrait') return [];
+  if (slot.kind === 'sheet' && !ctx.angleOf) return [];
+  return candidatesFor(slot, ctx)
+    .filter((a) => a.accepted && a.hash !== asset.hash)
+    .map((a) => a.hash);
 }
 
 /** One picture this project implies, whether or not anything has drawn it. */

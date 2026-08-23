@@ -260,8 +260,8 @@ function driftedImages(input: DocTreeInput): Set<string> {
 
 /**
  * The manifest, filed by slot: one row per slot address (`aiko portrait`, `cafe — night plate`)
- * showing what fills it now, with every earlier take of the same slot folded underneath. A slot
- * rendered eight times is one row rather than eight near-identical thumbnails told apart by hash.
+ * showing what fills it now, with the slot's other takes folded underneath. A slot rendered eight
+ * times is one row rather than eight near-identical thumbnails told apart by hash.
  *
  * A picture no slot claims is listed on its own beneath the slots of its kind. The graph enumerates
  * slots only, so its silence about a concept, an upload, a reference or a base-root asset says
@@ -273,9 +273,6 @@ function driftedImages(input: DocTreeInput): Set<string> {
 function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const stale = driftedImages(input);
   const byHash = new Map(input.manifest.map((a) => [a.hash, a]));
-  // Manifest order is the order the pictures were made in, so later means newer. Nothing else in
-  // the shape knows when a render happened, and a slot's candidate list is a set, not a history.
-  const madeAt = new Map(input.manifest.map((a, i) => [a.hash, i]));
 
   // No `path` on an asset row: it is addressed by hash, and a path here would send a click down the
   // document-opening route, which reads a file as text.
@@ -300,35 +297,39 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
     const slot = input.slots?.nodes.get(key);
     if (!slot) continue;
     // Only takes that no earlier slot claimed: one picture can satisfy two slots, and filing it
-    // twice would make one render read as two
-    const takes = slot.candidates
-      .filter((hash) => byHash.has(hash) && !claimed.has(hash))
-      .sort((a, b) => madeAt.get(a)! - madeAt.get(b)!);
+    // twice would make one render read as two. Left in candidate order, which is the manifest's
+    // hash order: nothing in this projection records when a picture was rendered, so the list is a
+    // set rather than a history and no row may be presented as the latest.
+    const takes = slot.candidates.filter((hash) => byHash.has(hash) && !claimed.has(hash));
     if (takes.length === 0) continue;
     for (const hash of takes) claimed.add(hash);
 
-    // The slot shows what it resolved to, or the newest take when `pick` declined for want of
-    // certainty. That choice does not judge the drafts: choosing between them happens in the
+    // The slot shows what it resolved to. When it resolved to nothing the fold is headed by the
+    // first take and says the slot holds none of them, because naming one of several drafts as the
+    // current picture is the answer `pick` declined to give. Choosing between them happens in the
     // Unapproved branch, which still lists all of them one per row.
-    const current =
-      slot.hash !== undefined && takes.includes(slot.hash) ? slot.hash : takes.at(-1)!;
-    const past = takes.filter((hash) => hash !== current).reverse();
+    const settled = slot.hash !== undefined && takes.includes(slot.hash);
+    const current = settled ? slot.hash! : takes[0]!;
+    const others = takes.filter((hash) => hash !== current);
+    const count = `${others.length} other take${others.length === 1 ? '' : 's'}`;
     add(
       byHash.get(current)!.kind,
       row(byHash.get(current)!, {
-        note:
-          past.length === 0
+        note: settled
+          ? others.length === 0
             ? `${slot.label}. Show the asset in the asset editor.`
-            : `${slot.label}, and ${past.length} earlier take${past.length === 1 ? '' : 's'}. ` +
-              'Show the asset in the asset editor; click again to see history.',
-        ...(past.length === 0
+            : `${slot.label}, and ${count}. ` +
+              'Show the asset in the asset editor; click again to see the rest.'
+          : `${slot.label} — nothing is settled here${others.length === 0 ? '' : `, and there are ${count}`}. ` +
+            'Show the asset in the asset editor.',
+        ...(others.length === 0
           ? {}
           : {
               children: capped(
                 `takes:${key}`,
-                past.map((hash) =>
+                others.map((hash) =>
                   row(byHash.get(hash)!, {
-                    note: `An earlier take of ${slot.label}. Show it in the asset editor.`,
+                    note: `Another take of ${slot.label}. Show it in the asset editor.`,
                   }),
                 ),
                 cap,
