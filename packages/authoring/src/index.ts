@@ -9,5 +9,6 @@ export * from './skills.js';
 export * from './backend.js';
 export * from './loop.js';
 export * from './compact.js';
+export * from './history.js';
 export * from './apierror.js';
 export * from './approve.js';

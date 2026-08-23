@@ -32,11 +32,14 @@ export function compactionPrompt(messages: readonly AgentMessage[]): AgentMessag
 }
 
 // Read before the summary. The read ledger goes with the messages, so a file the agent read
-// before a compaction counts as unread after it.
+// before a compaction counts as unread after it. Naming the two history tools here is where a
+// deferred tool is learned about, so a host that compacts registers `historyTools`.
 const PREFACE =
   'Everything said in this conversation before this point has been replaced by the summary ' +
   'below, to save room. Nothing you read earlier still counts as read: read a file again before ' +
-  'you edit it.';
+  'you edit it. What the summary leaves out is still on record — search_history finds a phrase in ' +
+  'the turns it replaced, and read_history returns one of them in full by the number the search ' +
+  'reports. Use them rather than asking the author to repeat something.';
 
 /**
  * The message a summary is carried as. `context` rather than `user`, so the agent does not read

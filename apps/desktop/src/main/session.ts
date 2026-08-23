@@ -155,6 +155,7 @@ import {
   composeSystem,
   createRegistry,
   discoverSkills,
+  historyTools,
   lastCompleteTurn,
   focusOnScene,
   loadContext,
@@ -177,6 +178,7 @@ import {
   type BackendKind,
   type GeneratedContextState,
   type GeneratedCounts,
+  type HistoryReader,
   type Permission,
   type Plan,
   type PlanDecision,
@@ -1118,6 +1120,23 @@ export class WorkspaceSession {
     return chat.chatConversation ? new NativeAgentBackend(chat) : new StructuredAgentBackend(chat);
   }
 
+  /**
+   * The history `search_history` and `read_history` read: the open conversation's native log,
+   * which keeps every message a compaction replaced. It is resolved per call rather than captured,
+   * because the agent outlives the thread that is open in it, and a thread that has not been
+   * written yet has nothing to search.
+   */
+  private history(): HistoryReader {
+    return {
+      messages: async () => {
+        const id = this.thread?.id;
+        if (!id) return [];
+        const log = await readNative(new ProjectPaths(this.dir), id).catch(() => undefined);
+        return log?.messages ?? [];
+      },
+    };
+  }
+
   private async ensureAgent(): Promise<Agent> {
     if (this.agent) return this.agent;
     const workspace = new Workspace(this.dir);
@@ -1151,6 +1170,7 @@ export class WorkspaceSession {
     this.agent = new Agent({
       backend: await this.buildBackend(config),
       ctx,
+      registry: createRegistry(historyTools(this.history())),
       permission: this.permission(),
       system: composeSystem(context),
       budget: this.budget,

@@ -719,6 +719,25 @@ sentence names the scope; `read_history` on an unknown `n` refuses by name; a co
 `read_history` still returns a covered message; `tool('search_history').args.safeParse` rejects
 an empty query.
 
+Six things landed differently from the sketch above.
+
+- `HistoryMessage.content` is `string | unknown[]` and `history.ts` flattens it with `messageText`.
+  The native log stores a native turn's tool blocks as an array, so a host that handed back only
+  strings would have to render them itself and two hosts would render them differently.
+- Two more constants: `HISTORY_WINDOW` for the characters either side of a match and
+  `HISTORY_MESSAGE` for the characters of one `read_history`. The plan states both numbers in
+  prose, and a comment or a test citing a bare `80` goes stale the first time it changes.
+- `limit` narrows the cap and cannot widen it: the answer is
+  `Math.min(limit ?? HISTORY_HITS, HISTORY_HITS)`. A tool argument is model-supplied, so it decides
+  how little to return rather than how much.
+- Every match in a message is reported rather than the first, since the plan asks for one line per
+  hit. A message that matches repeatedly is bounded by the same two caps as everything else.
+- The desktop resolves the reader per call rather than capturing one at `ensureAgent`. The agent
+  outlives the thread open in it, so a captured reader would answer for whichever thread was open
+  when the agent was built. A session with no thread answers with no history.
+- A native log that cannot be read answers empty rather than throwing. A conflicted log is already
+  refused by name at `resumeRefusalFor`, and a search is not the place to report a merge.
+
 ### Stage 8 — documentation
 
 - `docs/reference/desktop-app.md`, the threads bullet: it currently says reopening is read-only

@@ -21,6 +21,8 @@ import {
   type AgentMessage,
   type ApiFailure,
   type ApiRecovery,
+  type Tool,
+  type ToolContext,
 } from '@vn/authoring';
 import { openGit } from '@vn/git';
 import { ProjectPaths, readShots, writeShots } from '@vn/store';
@@ -1886,6 +1888,23 @@ describe('WorkspaceSession — conversation threads', () => {
     expect(String(held[0]!.content)).toContain('[mock]');
     expect(held.some((m) => m.content === 'and boots')).toBe(true);
     expect(held.some((m) => m.content === 'give Aiko a jacket')).toBe(false);
+  });
+
+  it('a compacted turn is still findable, and readable in full, by the agent’s own tools', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('give Aiko a jacket');
+    await session.compactThread();
+
+    const registry = (session as unknown as { agent?: { registry: Map<string, Tool> } }).agent!
+      .registry;
+    const ctx = {} as ToolContext;
+
+    const found = await registry.get('search_history')!.run({ query: 'a jacket' }, ctx);
+    expect(found.ok).toBe(true);
+    expect(found.output).toContain('#0 user');
+
+    const read = await registry.get('read_history')!.run({ n: 0 }, ctx);
+    expect(read.output).toContain('give Aiko a jacket');
   });
 
   it('refuses to compact nothing, and to compact twice with nothing said between', async () => {
