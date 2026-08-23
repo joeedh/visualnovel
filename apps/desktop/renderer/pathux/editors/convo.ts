@@ -14,168 +14,26 @@ import {
   takeSeed,
 } from '../agent.js';
 import { exec, report, setBudget, setEffort, setModel, toggleMode } from '../bridge.js';
+import {
+  AskCards,
+  CHAT_CSS,
+  ChatStage,
+  compact,
+  el,
+  turnRow,
+  type AskHost,
+} from '../chatsurface.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
-import STUDIO_CSS from '../../styles/studio.css?inline';
 import {
   threadDetail,
   threadLabel,
   tokensDetail,
   uncachedTokens,
-  type FeedItem,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
-import {
-  answersOf,
-  answersOnPick,
-  blankPages,
-  goTo,
-  isFirst,
-  isLast,
-  isPicked,
-  pageLabel,
-  pageOf,
-  pick,
-  type,
-  type AskForm,
-} from '../../rules/askform.js';
-import type { AskRequest, ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
-
-/**
- * The frame around `studio.css`, which is imported as-is: the transcript, the dialogue box and the
- * plan card are the React shell's, down to the sodium glow. This supplies the reset that does not
- * cross the shadow boundary, and `.convo` filling the surface instead of a grid column of
- * `.studio`.
- */
-const SURFACE_CSS = `
-* { box-sizing: border-box; margin: 0; padding: 0; }
-.convo.cv-surface {
-  height: 100%;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.5;
-}
-.cv-surface button { font-family: inherit; color: inherit; cursor: pointer; }
-.cv-surface .composer .send:disabled { opacity: 0.45; cursor: default; }
-
-/* Stop takes Send's shape and stands where the eye is already going, but only while a turn is in
-   flight — an idle composer has nothing to interrupt, and a permanently greyed square would say
-   otherwise. Vermilion, the one colour this shell spends on stopping things. */
-.cv-surface .composer .stop {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-soft);
-  border: 1px solid var(--ink-line);
-  background: var(--ink-raised);
-  place-items: center;
-  color: var(--vermilion);
-  font-size: 13px;
-}
-.cv-surface .composer .stop:hover {
-  border-color: var(--vermilion);
-}
-
-/* A plan is the machine proposing, so it is signal. A question and a confirmation are the
-   author's own turn to take — sodium, the same warm the header uses for the human side. */
-.cv-surface .plan.ask,
-.cv-surface .plan.confirm {
-  border-color: rgba(244, 162, 76, 0.4);
-  background: linear-gradient(180deg, rgba(244, 162, 76, 0.07), rgba(244, 162, 76, 0.015));
-}
-.cv-surface .plan.ask .plan-head,
-.cv-surface .plan.confirm .plan-head {
-  color: var(--sodium);
-}
-.cv-surface .ask-input {
-  width: 100%;
-  margin-bottom: 12px;
-  background: var(--ink-sunken);
-  border: 1px solid var(--ink-line);
-  border-radius: var(--r-soft);
-  padding: 10px 13px;
-  color: var(--paper);
-  font: inherit;
-  font-size: 13.5px;
-}
-.cv-surface .ask-input:focus {
-  outline: none;
-  border-color: var(--sodium);
-}
-
-/* Openers offered by whatever started this conversation. Between the dialogue box and the
-   composer, because that is the gap the eye crosses on the way to typing — and they *fill* the
-   composer, so they read as drafts rather than as buttons that do something. */
-.cv-surface .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-.cv-surface .chips button {
-  border: 1px solid var(--ink-line);
-  border-radius: 999px;
-  background: var(--ink-raised);
-  color: var(--mist);
-  font-size: 12.5px;
-  padding: 6px 13px;
-  text-align: left;
-}
-.cv-surface .chips button:hover {
-  color: var(--paper);
-  border-color: var(--sodium);
-}
-
-/* The shortlist on an ask card. Full-width rows rather than chips: these are answers, and an
-   answer is read before it is clicked, so it gets a line of its own. */
-.cv-surface .ask-choices {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-.cv-surface .ask-choices button {
-  border: 1px solid var(--ink-line);
-  border-radius: var(--r-soft);
-  background: var(--ink-sunken);
-  color: var(--paper);
-  font-size: 13.5px;
-  padding: 9px 13px;
-  text-align: left;
-}
-.cv-surface .ask-choices button:hover {
-  border-color: var(--sodium);
-}
-.cv-surface .ask-choices button.picked {
-  border-color: var(--sodium);
-  background: rgba(244, 162, 76, 0.12);
-}
-
-/* Where the author is in a form of several. It sits in the card's own head rather than above the
-   question, so the question itself is still the first thing read. */
-.cv-surface .plan.ask .plan-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-.cv-surface .ask-page {
-  color: var(--mist-dim);
-  letter-spacing: 0.08em;
-}
-/* Paging goes left, away from the button that ends the form: a mis-aimed click should not
-   submit a form the author was only stepping through. */
-.cv-surface .ask-nav {
-  display: flex;
-  gap: 9px;
-  margin-right: auto;
-}
-.cv-surface .ask-nav button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-`;
+import type { AskForm } from '../../rules/askform.js';
+import type { ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
 
 /**
  * The vnauthor conversation: the transcript, the plan card, the dialogue box and the composer.
@@ -189,25 +47,15 @@ const SURFACE_CSS = `
  *
  * The conversation itself lives in `agent.ts`, subscribed at boot, rather than here: the agent
  * streams whether or not this pane is open, and a pane opened afterwards has to show what was
- * already said.
+ * already said. What it draws with comes from `chatsurface.ts`, which the debug agent's pane
+ * draws with too.
  */
 export class ConvoEditor extends VnEditor {
   private bar!: Container;
   private surface!: HTMLDivElement;
   private transcript!: HTMLDivElement;
-  private lineEl!: HTMLDivElement;
-  /**
-   * The composer, built once and never rebuilt. It is what the author is typing into and what a
-   * seed lands in, so it outlives every redraw of the transcript above it.
-   */
-  private input!: HTMLInputElement;
-  private sendBtn!: HTMLButtonElement;
-  /** Shown only while a turn is in flight; `agent.stop` refuses an idle agent by name anyway. */
-  private stopBtn!: HTMLButtonElement;
-  /** The one word said while a turn is in flight; a CSS animation does the rest. */
-  private workingEl!: HTMLDivElement;
-  /** Where `Convo.suggestions` are drawn. Empty unless the conversation was seeded with some. */
-  private chipsEl!: HTMLDivElement;
+  private stage!: ChatStage;
+  private asks!: AskCards;
   /** Kept because the thread menu opens under it, and only the button knows where that is. */
   private threadsBtn!: Button;
   /**
@@ -226,20 +74,6 @@ export class ConvoEditor extends VnEditor {
   private budgetKey = '';
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
-  /** The form page whose box already took focus, so a redraw does not steal the caret back. */
-  private focusedAsk = '';
-  /** The live Submit answers button, so typing can keep its tooltip's blank count true. */
-  private sendAct: HTMLButtonElement | null = null;
-  /**
-   * The ask card's element, kept so a rebuild the author did not cause reattaches it rather than
-   * rebuilding it. `rebuild` replaces the transcript wholesale, and a redraw landing between a
-   * click's press and its release detaches the row under the pointer — the click then never
-   * fires, and the author's pick silently goes nowhere. The two keys say when the card is
-   * genuinely stale: a different request, or a form the author has since moved.
-   */
-  private askCardEl: HTMLElement | null = null;
-  private askCardRequest: AskRequest | null = null;
-  private askCardForm: AskForm | null = null;
 
   static override define() {
     return {
@@ -257,14 +91,42 @@ export class ConvoEditor extends VnEditor {
     this.bar = (this.header as Container).col();
     this.rebuildBar();
 
-    this.adoptStyle(STUDIO_CSS + SURFACE_CSS);
+    this.adoptStyle(CHAT_CSS);
     this.surface = el('div', 'convo cv-surface') as HTMLDivElement;
     this.transcript = el('div', 'transcript') as HTMLDivElement;
     this.surface.appendChild(this.transcript);
-    this.surface.appendChild(this.stage());
+
+    this.stage = new ChatStage({
+      nameplate: 'VNAUTHOR',
+      placeholder: 'Reply to vnauthor, or ask for a change…',
+      inputTitle: 'Say what you want changed. Enter sends it; the agent answers with a plan.',
+      sendTitle: 'Send what is in the box to the agent',
+      // Through the registry like everything else, so interrupting from here and interrupting
+      // from the palette are one act with one record. A turn that ended in the meantime is
+      // refused in the command's own words
+      stopTitle: 'Stop the agent after the step it is on. What it already did is kept.',
+      onSend: (text) => void ask(text),
+      onStop: () => void exec('agent.stop').then(report),
+      onPalette: () => openPalette(),
+    });
+    this.surface.appendChild(this.stage.root);
     this.appendSurface(this.surface);
 
+    this.asks = new AskCards(this.askHost());
+
     this.rebuild();
+  }
+
+  /** The vnauthor side of a question card: the store in `agent.ts`, and this pane's redraw. */
+  private askHost(): AskHost {
+    return {
+      head: 'VNAUTHOR ASKS',
+      formFor: (request) => askFormFor(request),
+      formNow: () => askFormNow(),
+      setForm: (next: AskForm, redraw = true) => setAskForm(next, redraw),
+      send: (answers) => answer(answers),
+      redraw: () => this.rebuild(),
+    };
   }
 
   override update() {
@@ -471,71 +333,6 @@ export class ConvoEditor extends VnEditor {
     startMenu(menu, rect.x, rect.y + rect.height, true, 0);
   }
 
-  /** The dialogue box and the composer: the same element whatever the transcript is doing. */
-  private stage(): HTMLElement {
-    const stage = el('div', 'stage');
-
-    const dbox = el('div', 'dbox');
-    dbox.appendChild(el('div', 'nameplate', 'VNAUTHOR'));
-    this.lineEl = el('div', 'line') as HTMLDivElement;
-    dbox.appendChild(this.lineEl);
-    // Built once and shown while busy: a turn that says nothing for half a minute is otherwise
-    // indistinguishable from one that never started. `@keyframes` animates the one word
-    this.workingEl = el('div', 'working', 'working') as HTMLDivElement;
-    dbox.appendChild(this.workingEl);
-    stage.appendChild(dbox);
-
-    this.chipsEl = el('div', 'chips') as HTMLDivElement;
-    stage.appendChild(this.chipsEl);
-
-    const composer = el('div', 'composer');
-    this.input = document.createElement('input');
-    this.input.name = 'composer';
-    this.input.placeholder = 'Reply to vnauthor, or ask for a change…';
-    this.input.title = 'Say what you want changed. Enter sends it; the agent answers with a plan.';
-    // The shell keymap is a bubble-phase window listener, so a composer that does not stop its
-    // own keys opens the palette on the first `/` the author types.
-    this.input.addEventListener('keydown', (event) => {
-      event.stopPropagation();
-      if (event.key === 'Enter') this.send();
-    });
-    composer.appendChild(this.input);
-
-    const slash = document.createElement('button');
-    slash.className = 'cmdbtn';
-    slash.textContent = '/';
-    slash.title = 'Open the palette and run a command by name (/)';
-    slash.addEventListener('click', () => openPalette());
-    composer.appendChild(slash);
-
-    this.sendBtn = document.createElement('button');
-    this.sendBtn.className = 'send';
-    this.sendBtn.textContent = '↑';
-    this.sendBtn.title = 'Send what is in the box to the agent';
-    this.sendBtn.addEventListener('click', () => this.send());
-    composer.appendChild(this.sendBtn);
-
-    // Through the registry like everything else, so interrupting from here and interrupting from
-    // the palette are one act with one record. A turn that ended in the meantime is refused in
-    // the command's own words
-    this.stopBtn = document.createElement('button');
-    this.stopBtn.className = 'stop';
-    this.stopBtn.textContent = '■';
-    this.stopBtn.title = 'Stop the agent after the step it is on. What it already did is kept.';
-    this.stopBtn.addEventListener('click', () => void exec('agent.stop').then(report));
-    composer.appendChild(this.stopBtn);
-
-    stage.appendChild(composer);
-    return stage;
-  }
-
-  private send(): void {
-    const text = this.input.value;
-    if (!text.trim()) return;
-    this.input.value = '';
-    void ask(text);
-  }
-
   // -------------------------------------------------------------------------
   // Drawing
   // -------------------------------------------------------------------------
@@ -544,19 +341,17 @@ export class ConvoEditor extends VnEditor {
     this.drawn = revision();
     const state = convo();
 
-    this.lineEl.textContent = state.line;
+    this.stage.say(state.line);
     this.sayTokens();
     this.sayBudget();
-    this.sendBtn.disabled = state.busy;
-    this.stopBtn.style.display = state.busy ? 'grid' : 'none';
-    this.workingEl.style.display = state.busy ? 'block' : 'none';
-    this.drawChips(state.suggestions);
+    this.stage.setBusy(state.busy);
+    this.stage.setChips(state.suggestions);
 
     // Detaching the reused ask card drops focus to the body even though the node survives, so the
     // caret is restored once the card is back in the document
     const root = this.transcript.getRootNode() as Document | ShadowRoot;
     const active = root.activeElement as HTMLElement | null;
-    const refocus = active && this.askCardEl?.contains(active) ? active : null;
+    const refocus = this.asks.holds(active) ? active : null;
 
     this.transcript.textContent = '';
     if (state.feed.length === 0 && !state.plan && !state.question && !state.confirm) {
@@ -564,54 +359,16 @@ export class ConvoEditor extends VnEditor {
         el('div', 'empty-hint', 'Ask vnauthor to change a character, scene, or location.'),
       );
     }
-    for (const item of state.feed) this.transcript.appendChild(this.turn(item));
+    for (const item of state.feed) this.transcript.appendChild(turnRow(item));
     if (state.plan) this.transcript.appendChild(this.planCard(state.plan.plan));
-    if (state.question) this.transcript.appendChild(this.askCardFor(state.question));
+    if (state.question) this.transcript.appendChild(this.asks.cardFor(state.question));
     if (state.confirm) this.transcript.appendChild(this.confirmCard(state.confirm));
     // The transcript is bottom-aligned, so what just happened is what is on screen.
     this.transcript.scrollTop = this.transcript.scrollHeight;
     refocus?.focus();
 
     const seeded = takeSeed();
-    if (seeded !== null) {
-      this.input.value = seeded;
-      this.input.focus();
-      this.input.setSelectionRange(seeded.length, seeded.length);
-    }
-  }
-
-  /**
-   * The openers, as chips. Clicking one fills the composer and focuses it, and sends nothing. The
-   * chip teaches the shape of a useful prompt, and sending it would remove the moment where the
-   * author edits it into what they actually meant.
-   */
-  private drawChips(suggestions: readonly string[]): void {
-    this.chipsEl.textContent = '';
-    for (const text of suggestions) {
-      const chip = document.createElement('button');
-      chip.textContent = text;
-      chip.title = 'Put this in the composer to edit before you send it — clicking sends nothing.';
-      chip.addEventListener('click', () => {
-        this.input.value = text;
-        this.input.focus();
-        this.input.setSelectionRange(text.length, text.length);
-      });
-      this.chipsEl.appendChild(chip);
-    }
-  }
-
-  private turn(item: FeedItem): HTMLElement {
-    if (item.role === 'user') {
-      const turn = el('div', 'turn-user');
-      turn.appendChild(el('div', 'who', 'AUTHOR'));
-      turn.appendChild(el('div', 'bubble', item.text));
-      return turn;
-    }
-    // A tool call and a refusal use the same shape with the verb coloured differently, so a
-    // blocked call reads as the same act stopped
-    const action = el('div', item.role === 'blocked' ? 'action blocked' : 'action');
-    action.appendChild(el('span', item.role === 'agent' ? '' : 'verb', item.text));
-    return action;
+    if (seeded !== null) this.stage.fill(seeded);
   }
 
   /** The gate between plan mode and execute mode, as a card in the transcript. */
@@ -664,262 +421,6 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * The agent asked something and its turn is parked on the answer. It takes the plan card's shape
-   * because it is the same kind of moment, with the conversation stopped and waiting on the author,
-   * and the box takes focus on arrival since nothing else on this pane is worth typing into.
-   *
-   * A request carries a form: usually one question, sometimes several the model wants settled
-   * together. Several are drawn one page at a time with ‹ Back / Next › between them and one
-   * Submit answers at the end, because a wall of four questions reads as a chore while one
-   * question with a pager reads as a question. A single question draws as it always did.
-   */
-  private askCard(request: AskRequest): HTMLElement {
-    const form = askFormFor(request);
-    const page = pageOf(form);
-    const card = el('div', 'plan ask');
-    const head = el('div', 'plan-head', 'VNAUTHOR ASKS');
-    const where = pageLabel(form);
-    if (where) {
-      const pager = el('span', 'ask-page', where);
-      pager.title = 'The agent asked these together; answer them all, then submit once.';
-      head.appendChild(pager);
-    }
-    card.appendChild(head);
-
-    const body = el('div', 'plan-body');
-    body.appendChild(el('div', 'plan-sum', page?.question ?? ''));
-
-    const choices = page?.choices ?? [];
-    const first = choices.length ? this.drawChoices(body, form, choices) : null;
-    const field = this.drawAnswerBox(body, form, choices.length > 0);
-
-    body.appendChild(this.drawActs(form, choices.length > 0));
-    card.appendChild(body);
-
-    // Keyed per page rather than per request: paging to question 3 puts the caret on question 3,
-    // and an event that redraws the card mid-answer leaves the caret where the author put it
-    const here = `${request.id}:${form.at}`;
-    if (this.focusedAsk !== here) {
-      this.focusedAsk = here;
-      // The card is not in the document until `rebuild` has appended it. With a list, the list is
-      // what the author came to read, so the caret starts there rather than in the box.
-      queueMicrotask(() => (first ?? field).focus());
-    }
-    return card;
-  }
-
-  /**
-   * The card, reused while nothing about it has changed. Every author-driven change — paging,
-   * picking, answering — goes through {@link page} or {@link sendAnswers} and makes a new form
-   * or clears the question, so a fresh element is built exactly when the card should look
-   * different; a rebuild caused by anything else reattaches the element the author is mid-click
-   * on. Typing is the one change that redraws nothing by design, so the input handler keeps the
-   * form key in step itself.
-   */
-  private askCardFor(request: AskRequest): HTMLElement {
-    const form = askFormFor(request);
-    if (this.askCardEl && this.askCardRequest === request && this.askCardForm === form) {
-      return this.askCardEl;
-    }
-    this.askCardRequest = request;
-    this.askCardForm = form;
-    this.askCardEl = this.askCard(request);
-    return this.askCardEl;
-  }
-
-  /** Apply a transition to the form and redraw the card around it. */
-  private page(next: AskForm): void {
-    setAskForm(next);
-    this.rebuild();
-  }
-
-  /**
-   * The shortlist. On a lone single-pick question a click answers outright — there is nothing
-   * else to say — while every other shape ticks and waits, because a form has more pages to fill
-   * in and a multi-pick's second choice is the whole point.
-   *
-   * A tick redraws nothing. Rebuilding the card would take the row out from under the pointer
-   * between one click and the next and scroll the list as it went, and a click whose row is gone
-   * is never delivered — which is how a picked answer reaches the agent as no answer at all. The
-   * rows and the tooltip are updated in place instead, and the cache key follows the form the way
-   * typing's does.
-   *
-   * Returns the first row so the card can start the focus there.
-   */
-  private drawChoices(body: HTMLElement, form: AskForm, choices: string[]): HTMLButtonElement {
-    const multi = pageOf(form)?.multi === true;
-    const outright = answersOnPick(form);
-    const list = el('div', 'ask-choices');
-    const rows = choices.map((choice) => {
-      const row = document.createElement('button');
-      row.textContent = choice;
-      row.title = multi
-        ? `Include “${choice}” in your answer. Pick as many as apply.`
-        : outright
-          ? `Answer “${choice}”.`
-          : `Answer “${choice}” to this question. The rest of the form stays as you left it.`;
-      if (isPicked(form, choice)) row.classList.add('picked');
-      row.addEventListener('click', () => {
-        // Whatever was typed beside the list rides along, on an outright pick too: a choice
-        // qualified in the box is one answer, and sending the choice alone would drop half of it.
-        const picked = pick(askFormNow() ?? form, choice);
-        if (outright) return this.sendAnswers(answersOf(picked));
-        if (!multi) return this.page(goTo(picked, picked.at + 1));
-        // Picking the last question's answer must not submit: on the last page the pick simply
-        // stands, and Submit is the one thing that ends the form.
-        setAskForm(picked, false);
-        this.askCardForm = picked;
-        rows.forEach((r, i) => r.classList.toggle('picked', isPicked(picked, choices[i]!)));
-        if (this.sendAct) this.sendAct.title = this.sendTitle(picked, true);
-      });
-      list.appendChild(row);
-      return row;
-    });
-    body.appendChild(list);
-    return rows[0]!;
-  }
-
-  /** The free-text box under the list, or instead of it where the question offered none. */
-  private drawAnswerBox(body: HTMLElement, form: AskForm, listed: boolean): HTMLInputElement {
-    const field = document.createElement('input');
-    field.className = 'ask-input';
-    field.placeholder = listed
-      ? 'Or type an answer of your own…'
-      : 'Answer, or press Enter to say nothing…';
-    field.title = listed
-      ? 'Answer in your own words instead of picking from the list.'
-      : 'Answer the question. Sending an empty box says you have nothing to add.';
-    field.value = form.typed[form.at] ?? '';
-    // Typing does not redraw — that would take the caret away mid-word — so what was typed is
-    // written into the form on every keystroke instead, where a redraw will find it again.
-    field.addEventListener('input', () => {
-      const typed = type(askFormNow() ?? form, field.value);
-      setAskForm(typed, false);
-      // The element on screen already shows this keystroke, so the card key follows the form:
-      // otherwise the next unrelated rebuild would count typing as staleness and rebuild the
-      // card, which is exactly the redraw-under-the-pointer this cache exists to prevent.
-      this.askCardForm = typed;
-      // The tooltip counts what is still blank, and typing is exactly what stops one being blank.
-      if (this.sendAct) this.sendAct.title = this.sendTitle(typed, listed);
-    });
-    field.addEventListener('keydown', (event) => {
-      event.stopPropagation();
-      if (event.key !== 'Enter') return;
-      const now = askFormNow() ?? form;
-      if (isLast(now)) this.reply();
-      else this.page(goTo(now, now.at + 1));
-    });
-    body.appendChild(field);
-    return field;
-  }
-
-  /** Back / Next on the left, and the one button that ends the form on the right. */
-  private drawActs(form: AskForm, listed: boolean): HTMLElement {
-    const acts = el('div', 'plan-acts');
-    if (form.questions.length > 1) {
-      const nav = el('div', 'ask-nav');
-      nav.appendChild(
-        this.navButton('‹ Back', isFirst(form), 'Go back to the previous question.', () =>
-          this.page(goTo(askFormNow() ?? form, form.at - 1)),
-        ),
-      );
-      nav.appendChild(
-        this.navButton('Next ›', isLast(form), 'Go on to the next question.', () =>
-          this.page(goTo(askFormNow() ?? form, form.at + 1)),
-        ),
-      );
-      acts.appendChild(nav);
-    }
-
-    const send = document.createElement('button');
-    send.className = 'btn primary';
-    send.textContent = form.questions.length > 1 ? 'Submit answers' : 'Answer →';
-    send.title = this.sendTitle(form, listed);
-    send.addEventListener('click', () => this.reply());
-    this.sendAct = send;
-    acts.appendChild(send);
-    if (listed) acts.appendChild(this.chatButton(form));
-    return acts;
-  }
-
-  /**
-   * What the one button that ends the form promises. A blank answer is a real answer (the tool
-   * exists to hear "nothing to add") so what is still empty is named in the tooltip rather than
-   * used to grey the button out. Recomputed on every keystroke, because a stale count would
-   * misstate what the author just typed.
-   */
-  private sendTitle(form: AskForm, listed: boolean): string {
-    if (form.questions.length === 1) {
-      return listed
-        ? 'Send what you picked, plus anything you typed.'
-        : 'Send this answer and let the agent carry on.';
-    }
-    const blank = blankPages(form);
-    if (!blank.length) return 'Send all your answers and let the agent carry on.';
-    return (
-      `Send all ${form.questions.length} answers. Question${blank.length > 1 ? 's' : ''} ` +
-      `${blank.join(', ')} will go back blank, which the agent reads as “nothing to add”.`
-    );
-  }
-
-  private navButton(
-    text: string,
-    disabled: boolean,
-    title: string,
-    onClick: () => void,
-  ): HTMLButtonElement {
-    const button = document.createElement('button');
-    button.className = 'btn';
-    button.textContent = text;
-    button.disabled = disabled;
-    // A greyed control says why, and here the why is simply where the author is in the form.
-    button.title = disabled
-      ? text.startsWith('‹')
-        ? 'This is the first question.'
-        : 'This is the last question.'
-      : title;
-    button.addEventListener('click', onClick);
-    return button;
-  }
-
-  /**
-   * The way out of a list that does not have the answer on it. It answers rather than dismissing
-   * the card, because the turn is parked on this reply and a card closed without one would hang.
-   * What it sends is the author's own position, and the transcript shows it as theirs.
-   *
-   * On a form it fills in every question the author left unanswered and leaves the answered ones
-   * alone, since declining to pick can be meant about some of a form and not the rest.
-   */
-  private chatButton(form: AskForm): HTMLButtonElement {
-    const chat = document.createElement('button');
-    chat.className = 'btn';
-    chat.textContent = 'Chat about this';
-    chat.title =
-      form.questions.length > 1
-        ? 'Answer every question you have left blank with “let us talk it through” and send.'
-        : 'Answer that you would rather talk it through than pick from the list.';
-    chat.addEventListener('click', () => {
-      const said = 'None of those — let us talk it through before I pick.';
-      this.sendAnswers(answersOf(askFormNow() ?? form).map((a) => (a === '' ? said : a)));
-    });
-    return chat;
-  }
-
-  /** What Answer → and Submit answers send: every page's picks, then what was typed. */
-  private reply(): void {
-    const now = askFormNow();
-    if (now) this.sendAnswers(answersOf(now));
-  }
-
-  /** The form itself is cleared by `answer`, since it belongs to the question rather than here. */
-  private sendAnswers(answers: string[]): void {
-    this.askCardEl = null;
-    this.askCardRequest = null;
-    this.askCardForm = null;
-    answer(answers);
-  }
-
-  /**
    * An always-confirm tool, waiting. Deny comes first and is the unaccented one: the author is
    * being asked to spend money or rewrite history, so the accented button is never the one the
    * hand lands on by default.
@@ -957,20 +458,6 @@ export class ConvoEditor extends VnEditor {
     button.addEventListener('click', () => allow(allowed));
     return button;
   }
-}
-
-/** A token count at a glance: `842`, `12.3k`, `1.4M`. The exact figures are in the tooltip. */
-function compact(n: number): string {
-  if (n < 1000) return String(n);
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
-  return `${(n / 1_000_000).toFixed(2)}M`;
-}
-
-function el(tag: string, className: string, text?: string): HTMLElement {
-  const node = document.createElement(tag);
-  node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
 }
 
 registerEditor(ConvoEditor, 'vn.ConvoEditor');
