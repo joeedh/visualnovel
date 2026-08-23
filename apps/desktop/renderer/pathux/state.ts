@@ -23,16 +23,16 @@ export class ShellState {
   docPath = '';
 
   /**
-   * The task the inspector is looking at. This is machine identity rather than an authored id: a
-   * content hash that re-keys whenever a prompt changes. It is not persisted, because a hash
-   * remembered across a re-plan names nothing.
+   * The task the inspector is looking at, as `sha256(kind, inputs)` rather than an authored id.
+   * Persisted with no repair rule: the hash is stable while its inputs are, and the inspector
+   * answers one the current status does not carry by fetching once and drawing nothing.
    */
   taskHash = '';
 
   /**
-   * The asset the asset editor is looking at, by content hash. This is machine identity like
-   * `taskHash` and is not persisted for the same reason: an asset regenerated between launches has
-   * different bytes, so the hash remembered from last time names nothing.
+   * The asset the asset editor is looking at, by content hash. Persisted, and repaired at boot
+   * through one `asset.info`: a hash the manifest no longer holds clears the selection, and a
+   * superseded take moves to `newerTake` (`../rules/uistate.ts`).
    */
   assetHash = '';
 

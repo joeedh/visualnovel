@@ -13,8 +13,10 @@ import {
   type DataAPI,
 } from 'pathux';
 import { installAgent } from './agent.js';
+import { api } from '../api.js';
 import { defineShellApi } from './api.js';
 import { exec, installBridge } from './bridge.js';
+import type { AssetInfo } from '../../src/shared/ipc.js';
 import { editorNameProblems, isOfferedEditor } from '../../src/shared/editors.js';
 import {
   DEFAULT_RECIPE,
@@ -54,7 +56,9 @@ import {
   restoreSelection,
   saveLayout,
   watchLayout,
+  type StoredSelection,
 } from './persist.js';
+import { prunedIds, repairedAsset, type SelectedIds } from '../rules/uistate.js';
 import { VnScreen } from './screen.js';
 import { ShellState } from './state.js';
 import { installTheme } from './theme.js';
@@ -77,7 +81,7 @@ class Shell implements ShellApp {
   }
 
   start() {
-    restoreSelection(this.ui);
+    const restored = restoreSelection(this.ui);
     if (!restoreLayout(this)) this.buildDefaultScreen();
 
     const screen = this.screen as VnScreen;
@@ -98,6 +102,58 @@ class Shell implements ShellApp {
     installLayoutWatch();
     installReportPreview();
     this.showRequestedEditor();
+    void this.settleSelection(restored);
+  }
+
+  /**
+   * Check the restored selection against what the project holds now. The author may have deleted
+   * a scene, renamed a character or re-rendered a shot in another window, in git, or on another
+   * machine, and nothing about restoring the ids proves any of them still name anything.
+   *
+   * Runs once, after the first paint, so a field is written back only while it still holds what
+   * restore put there — the author may have clicked something in between.
+   */
+  private async settleSelection(restored: StoredSelection): Promise<void> {
+    await Promise.all([this.repairAsset(restored), this.pruneIds(restored)]);
+  }
+
+  /**
+   * Move the restored asset selection to the bytes filling its slot now, or clear it. One
+   * `asset.info` answers both halves: it fails for a hash the manifest no longer holds and
+   * carries `newerTake` for one a later render replaced.
+   *
+   * The command is invoked directly rather than through `exec`, which announces a failure with no
+   * record in the note frame. A hash that is gone is the ordinary case this exists to handle, and
+   * an asset pane restored onto the same hash already reports it.
+   */
+  private async repairAsset(restored: StoredSelection): Promise<void> {
+    if (restored.assetHash === '') return;
+    const outcome = await api.invoke('command:exec', {
+      id: 'asset.info',
+      props: { hash: restored.assetHash },
+      source: 'ui',
+    });
+    const info = outcome.ok ? (outcome.data as AssetInfo) : undefined;
+    const repaired = repairedAsset(restored.assetHash, {
+      ok: outcome.ok,
+      ...(info?.newerTake !== undefined ? { newerTake: info.newerTake } : {}),
+    });
+    if (this.ui.assetHash === restored.assetHash) this.ui.assetHash = repaired;
+  }
+
+  /**
+   * Clear a restored scene or character the workspace index does not list. The index is fetched
+   * here rather than taken from `refreshWorkspace`, which runs after every command and would
+   * re-run this each time.
+   */
+  private async pruneIds(restored: StoredSelection): Promise<void> {
+    if (restored.sceneId === '' && restored.characterId === '') return;
+    const index = await api.invoke('workspace:index');
+    const cleared = prunedIds(restored, index);
+    const ui = this.ui;
+    for (const field of Object.keys(cleared) as (keyof SelectedIds)[]) {
+      if (ui[field] === restored[field]) ui[field] = '';
+    }
   }
 
   /**

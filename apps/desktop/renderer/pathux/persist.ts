@@ -58,15 +58,21 @@ const DEBOUNCE_MS = 400;
  * `docPath` is a path rather than an id and is the one entry here that names a file. It has to be
  * a path, because `DocNode.path` and `EntityLinks.sheet` are paths and a free-form note under
  * `wiki/` has no id at all. It is still a selection rather than a buffer: the tree publishes it
- * and an editor reads it. `taskHash` stays out, as machine identity that re-keys whenever a
- * prompt changes.
+ * and an editor reads it.
+ *
+ * The two hashes are saved as well, and both may name nothing by the next launch. `assetHash` is
+ * repaired against `asset.info` once the first paint is up (`../rules/uistate.ts`); `taskHash` has
+ * no repair rule, because a task hash is stable while its inputs are and the inspector already
+ * answers a miss by fetching once and drawing nothing.
  */
-interface StoredSelection {
+export interface StoredSelection {
   [k: string]: string;
   sceneId: string;
   shotId: string;
   characterId: string;
   docPath: string;
+  assetHash: string;
+  taskHash: string;
 }
 
 /**
@@ -194,21 +200,36 @@ export function saveSelection(ui: ShellState): void {
     shotId: ui.shotId,
     characterId: ui.characterId,
     docPath: ui.docPath,
+    assetHash: ui.assetHash,
+    taskHash: ui.taskHash,
   };
   api.session.set(SELECTION_KEY, selection, ME.scope);
 }
 
-/** Restore the ids before the screen is built, so the first paint is the saved one. */
-export function restoreSelection(ui: ShellState): void {
+/**
+ * Restore the selection before the screen is built, so the first paint is the saved one, and
+ * answer what was written. The caller checks that against the project — see `settleSelection` in
+ * `./shell.ts` — and clears only a field still holding what this put there.
+ */
+export function restoreSelection(ui: ShellState): StoredSelection {
   const saved = stored(SELECTION_KEY, LEGACY_KEYS.selection);
-  if (saved === undefined || saved === null || typeof saved !== 'object' || Array.isArray(saved))
-    return;
-
-  const selection = saved as Partial<StoredSelection>;
-  ui.sceneId = selection.sceneId ?? '';
-  ui.shotId = selection.shotId ?? '';
-  ui.characterId = selection.characterId ?? '';
-  ui.docPath = selection.docPath ?? '';
+  if (saved !== undefined && saved !== null && typeof saved === 'object' && !Array.isArray(saved)) {
+    const selection = saved as Partial<StoredSelection>;
+    ui.sceneId = selection.sceneId ?? '';
+    ui.shotId = selection.shotId ?? '';
+    ui.characterId = selection.characterId ?? '';
+    ui.docPath = selection.docPath ?? '';
+    ui.assetHash = selection.assetHash ?? '';
+    ui.taskHash = selection.taskHash ?? '';
+  }
+  return {
+    sceneId: ui.sceneId,
+    shotId: ui.shotId,
+    characterId: ui.characterId,
+    docPath: ui.docPath,
+    assetHash: ui.assetHash,
+    taskHash: ui.taskHash,
+  };
 }
 
 /**
@@ -220,7 +241,17 @@ export function installPersistence(shell: ShellApp): void {
   host = shell;
   watchLayout(shell);
 
-  for (const path of ['ui.sceneId', 'ui.shotId', 'ui.characterId', 'ui.docPath']) {
+  // Every persisted field needs a watcher of its own: the debounce is scheduled from here, and
+  // clicking an asset or a task moves nothing else.
+  const paths = [
+    'ui.sceneId',
+    'ui.shotId',
+    'ui.characterId',
+    'ui.docPath',
+    'ui.assetHash',
+    'ui.taskHash',
+  ];
+  for (const path of paths) {
     watchers.push(
       new DataPathWatcher(shell.api, shell.ctx as unknown as ContextLike, path, () =>
         schedule(shell),
