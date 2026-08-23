@@ -7,12 +7,14 @@ import {
   ConflictedLogError,
   NATIVE_VERSION,
   NEW_THREAD_TITLE,
+  appendCompaction,
   appendItem,
   appendNative,
   appendUsage,
   archiveThread,
   bindThread,
   listThreads,
+  liveMessages,
   nativeFile,
   nativeHeader,
   openThread,
@@ -226,6 +228,39 @@ describe('threads', () => {
     expect((await readThread(paths, id)).items).toEqual([
       { ...item(1, 'tool', 'read_file'), at: 'then' },
     ]);
+    expect((await readThread(paths, id)).compactions).toEqual([]);
+  });
+
+  it('reads compactions in the order they happened, alongside an untouched transcript', async () => {
+    const { id } = await openThread(paths);
+    await appendItem(paths, id, item(1, 'user', 'first'));
+    await appendCompaction(paths, id, {
+      afterId: 1,
+      covers: 4,
+      text: 'one',
+      model: 'claude-opus-5',
+    });
+    await appendItem(paths, id, item(2, 'user', 'second'));
+    await appendCompaction(paths, id, { afterId: 2, covers: 9, text: 'two' });
+
+    const record = await readThread(paths, id);
+    expect(record.items.map((i) => i.text)).toEqual(['first', 'second']);
+    expect(record.compactions.map((c) => [c.afterId, c.covers, c.text])).toEqual([
+      [1, 4, 'one'],
+      [2, 9, 'two'],
+    ]);
+    expect(record.compactions[0]!.model).toBe('claude-opus-5');
+    expect(record.compactions[0]!.at).toBeTruthy();
+  });
+
+  it('caps a long summary the way it caps a turn, and keeps what was cut', async () => {
+    const { id } = await openThread(paths);
+    await appendCompaction(paths, id, { afterId: 0, covers: 2, text: 'z'.repeat(20_000) });
+
+    const [mark] = (await readThread(paths, id)).compactions;
+    expect(mark!.text.length).toBeLessThan(410);
+    expect(mark!.full!.length).toBeLessThan(8100);
+    expect(mark!.full!.length).toBeGreaterThan(mark!.text.length);
   });
 });
 
@@ -432,6 +467,38 @@ describe('the native log', () => {
     });
     // What a compaction covers stays in the file — it is what a history search reads.
     expect(log!.messages).toHaveLength(3);
+    // The newest compaction covers every message there is, so a resume is handed the summary alone.
+    expect(liveMessages(log!)).toEqual([{ role: 'context', content: 'second summary' }]);
+  });
+
+  it('hands back the summary followed by whatever was said after it', async () => {
+    const id = '20260822-140028';
+    await appendNative(paths, id, header(id));
+    for (const n of [0, 1]) await appendNative(paths, id, msg(n, { content: `line ${n}` }));
+    await appendNative(paths, id, {
+      type: 'compact',
+      at: '2026-08-22T14:03:11.204Z',
+      covers: { from: 0, to: 1 },
+      role: 'context',
+      content: 'the summary',
+    });
+    await appendNative(paths, id, msg(2, { content: 'said afterwards' }));
+
+    expect(liveMessages((await readNative(paths, id))!)).toEqual([
+      { role: 'context', content: 'the summary' },
+      { role: 'user', content: 'said afterwards' },
+    ]);
+  });
+
+  it('hands back every message when the conversation has never been compacted', async () => {
+    const id = '20260822-140028';
+    await appendNative(paths, id, header(id));
+    for (const n of [0, 1]) await appendNative(paths, id, msg(n, { content: `line ${n}` }));
+
+    expect(liveMessages((await readNative(paths, id))!).map((m) => m.content)).toEqual([
+      'line 0',
+      'line 1',
+    ]);
   });
 
   it('skips a line a crash cut off, and refuses one a merge wrote two versions into', async () => {

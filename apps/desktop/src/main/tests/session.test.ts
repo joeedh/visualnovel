@@ -1834,4 +1834,71 @@ describe('WorkspaceSession — conversation threads', () => {
     const [thread] = (await session.threads()).threads;
     expect(await session.resumeRefusalFor(thread!.id)).toContain('already the open conversation');
   });
+
+  it('compacting replaces what the agent carries and leaves the transcript alone', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('give Aiko a jacket');
+    const [thread] = (await session.threads()).threads;
+
+    const mark = await session.compactThread();
+    expect(mark.covers).toBeGreaterThan(0);
+
+    const held = (session as unknown as { agent?: { transcript: readonly AgentMessage[] } }).agent!
+      .transcript;
+    expect(held).toHaveLength(1);
+    expect(held[0]!.role).toBe('context');
+    expect(String(held[0]!.content)).toContain('[mock]');
+    expect(String(held[0]!.content)).toContain('read a file again');
+    expect(held.some((m) => m.content === 'give Aiko a jacket')).toBe(false);
+
+    // Nothing is rewritten: the turns the summary covers are still in the display log, with the
+    // rule filed alongside them.
+    const record = await session.openThreadForReading(thread!.id);
+    expect(record.items.map((i) => i.text)).toEqual(expect.arrayContaining(['give Aiko a jacket']));
+    expect(record.compactions).toHaveLength(1);
+    expect(record.compactions[0]!.text).toContain('[mock]');
+  });
+
+  it('a turn after a compaction is sent the summary rather than the turns it covers', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('give Aiko a jacket');
+    await session.compactThread();
+    await session.runAgent('and boots');
+
+    const held = (session as unknown as { agent?: { transcript: readonly AgentMessage[] } }).agent!
+      .transcript;
+    expect(held[0]!.role).toBe('context');
+    expect(held.some((m) => m.content === 'and boots')).toBe(true);
+    expect(held.some((m) => m.content === 'give Aiko a jacket')).toBe(false);
+  });
+
+  it('continues a compacted conversation from the summary and what followed it', async () => {
+    const session = sessionFor(p);
+    await session.runAgent('give Aiko a jacket');
+    await session.compactThread();
+    await session.runAgent('and boots');
+    const [thread] = (await session.threads()).threads;
+    await session.clearAgent();
+
+    await session.resumeThread(thread!.id);
+    const held = (session as unknown as { agent?: { transcript: readonly AgentMessage[] } }).agent!
+      .transcript;
+    expect(String(held[0]!.content)).toContain('[mock]');
+    expect(held.some((m) => m.content === 'and boots')).toBe(true);
+    expect(held.some((m) => m.content === 'give Aiko a jacket')).toBe(false);
+  });
+
+  it('refuses to compact nothing, and to compact twice with nothing said between', async () => {
+    const session = sessionFor(p);
+    expect(await session.compactRefusalFor()).toContain('Nothing has been said');
+    await expect(session.compactThread()).rejects.toThrow(/Nothing has been said/);
+
+    await session.runAgent('first');
+    expect(await session.compactRefusalFor()).toBeUndefined();
+    await session.compactThread();
+    expect(await session.compactRefusalFor()).toContain('compacted already');
+
+    await session.runAgent('second');
+    expect(await session.compactRefusalFor()).toBeUndefined();
+  });
 });

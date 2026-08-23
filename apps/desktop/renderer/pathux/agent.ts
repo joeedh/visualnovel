@@ -15,6 +15,7 @@ import {
   answeredQuestion,
   asked,
   cleared,
+  compacted,
   confirmAsked,
   confirmDecided,
   decided,
@@ -24,6 +25,7 @@ import {
   queried,
   received,
   replayed,
+  type CompactionMark,
   type Convo,
   type ThreadRecord,
 } from '../../src/shared/convo.js';
@@ -220,7 +222,7 @@ export function installAgent(): void {
       const record = outcome.data as OpenedThread | undefined;
       if (record) {
         reading = record;
-        set(replayed(state, record.items, REOPENED));
+        set(replayed(state, record.items, REOPENED, record.compactions));
         // Main has already rebound the agent to this conversation's model. The bar is told
         // directly, because no effect reports a model change.
         noteBinding(record.model, record.effort);
@@ -231,8 +233,12 @@ export function installAgent(): void {
       // The same replay, on a live conversation. The binding is left alone: continuing happens on
       // the model bound now, which is what main checked the stored history against.
       reading = null;
-      if (record) set(replayed(state, record.items, RESUMED));
+      if (record) set(replayed(state, record.items, RESUMED, record.compactions));
       setMode('plan');
+    } else if (id === 'agent.compact') {
+      // The rule joins the transcript that is already on screen; nothing above it is redrawn.
+      const mark = outcome.data as CompactionMark | undefined;
+      if (mark) set(compacted(state, mark));
     } else if (id === 'upload.files' || id === 'upload.pick') {
       // The seeded turn is the command's sentence rather than the model's, so the conversation
       // opens on the author's question. `seed` is present only when bytes landed, so a cancelled

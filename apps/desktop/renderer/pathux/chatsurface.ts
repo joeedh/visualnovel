@@ -21,7 +21,7 @@ import {
   type,
   type AskForm,
 } from '../rules/askform.js';
-import type { FeedItem } from '../../src/shared/convo.js';
+import type { CompactionMark, FeedItem } from '../../src/shared/convo.js';
 import type { AskRequest } from '../../src/shared/ipc.js';
 
 /**
@@ -158,6 +158,45 @@ const SURFACE_CSS = `
   opacity: 0.45;
   cursor: default;
 }
+
+/* Where the agent's memory of the conversation was replaced by a summary. A rule rather than a
+   turn: nobody said it, and the turns above it are still there to read. */
+.cv-surface .compaction {
+  margin: 16px 0;
+}
+.cv-surface .compaction .rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mist-dim);
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.cv-surface .compaction .rule::before,
+.cv-surface .compaction .rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ink-line);
+}
+.cv-surface .compaction .rule:hover {
+  color: var(--mist);
+}
+.cv-surface .compaction .summary {
+  margin-top: 9px;
+  padding: 10px 13px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  background: var(--ink-sunken);
+  color: var(--mist);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
 `;
 
 /** What a chat pane adopts. `studio.css` first, so the frame around it wins. */
@@ -190,6 +229,31 @@ export function turnRow(item: FeedItem): HTMLElement {
   const action = el('div', item.role === 'blocked' ? 'action blocked' : 'action');
   action.appendChild(el('span', item.role === 'agent' ? '' : 'verb', item.text));
   return action;
+}
+
+/**
+ * Where a compaction happened, drawn between the turns it covers and the ones after it. Clicking
+ * the rule opens the summary the agent is carrying in place of everything above.
+ */
+export function compactionRule(mark: CompactionMark): HTMLElement {
+  const row = el('div', 'compaction');
+  const rule = document.createElement('button');
+  rule.className = 'rule';
+  rule.textContent = `compacted ${mark.covers} messages`;
+  rule.title =
+    `Compacted ${mark.covers} messages — the agent sees a summary in place of everything above ` +
+    'this line. Click to read the summary. Nothing was deleted.';
+  rule.setAttribute('aria-expanded', 'false');
+  const summary = el('div', 'summary', mark.full ?? mark.text);
+  summary.style.display = 'none';
+  rule.addEventListener('click', () => {
+    const open = summary.style.display === 'none';
+    summary.style.display = open ? 'block' : 'none';
+    rule.setAttribute('aria-expanded', String(open));
+  });
+  row.appendChild(rule);
+  row.appendChild(summary);
+  return row;
 }
 
 /** The wording and the callbacks a pane's dialogue box and composer are built from. */

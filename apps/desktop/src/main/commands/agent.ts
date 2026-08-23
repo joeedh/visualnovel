@@ -132,9 +132,9 @@ export const agentClear = define({
 });
 
 /**
- * The five thread commands. None is `undoable`, because `vngen/state` sits outside the undo
- * snapshot, so a journal entry could not actually restore a transcript. `agent.renameThread` is
- * the only one marked `mutating`, and only because it writes a file.
+ * The six thread commands. None is `undoable`, because `vngen/state` sits outside the undo
+ * snapshot, so a journal entry could not actually restore a transcript. `agent.renameThread` and
+ * `agent.compact` are the two marked `mutating`, and only because each writes a file.
  */
 export const agentThreads = define({
   id: 'agent.threads',
@@ -229,6 +229,33 @@ export const agentRenameThread = define({
   async run({ id, title }, ctx) {
     const header = await ctx.host.session.renameThread(id, title);
     return { message: `Renamed to “${header.title}”.`, data: header };
+  },
+});
+
+/**
+ * Compacting: a summary of what has been said replaces the messages the agent carries, so a long
+ * conversation keeps going without resending every turn. It is `mutating` because it appends to
+ * both of the thread's logs, and it costs a model call, which is what the check reports.
+ */
+export const agentCompact = define({
+  id: 'agent.compact',
+  title: 'Compact conversation',
+  description:
+    'Summarize this conversation so the agent carries a summary instead of every turn. Nothing ' +
+    'is deleted — the transcript on screen is unchanged.',
+  mutating: true,
+  props: {},
+  check: async (_props, ctx) => {
+    const free = idle(ctx.host);
+    if (!free.ok) return free;
+    const refusal = await ctx.host.session.compactRefusalFor();
+    return refusal
+      ? { ok: false, reason: refusal }
+      : { ok: true, note: 'Costs one model call, on the model this conversation is bound to.' };
+  },
+  async run(_props, ctx) {
+    const mark = await ctx.host.session.compactThread();
+    return { message: `Compacted ${mark.covers} messages.`, data: mark };
   },
 });
 

@@ -59,6 +59,7 @@ describe('the desktop registry', () => {
   it('marks the file-writing commands mutating', () => {
     const mutating = commands.filter((c) => c.mutating).map((c) => c.id);
     expect(mutating).toEqual([
+      'agent.compact',
       'agent.renameThread',
       'agent.run',
       'art.generate',
@@ -137,8 +138,8 @@ describe('the desktop registry', () => {
    * reversal), write into a different tree than the one a snapshot covers
    * (`workspace.open`/`pick`/`create`), copy bytes in from outside the tree and close the
    * conversation a snapshot cannot restore (`upload.*`), write under `vngen/state`, which the
-   * snapshot deliberately excludes (`agent.renameThread` — a transcript must survive undoing the
-   * edits it produced), write a credential to a gitignored file (`project.setKey`: an undo point is
+   * snapshot deliberately excludes (`agent.renameThread` and `agent.compact` — a transcript must
+   * survive undoing the edits it produced), write a credential to a gitignored file (`project.setKey`: an undo point is
    * a git snapshot, and snapshotting a key is the one thing that command exists to avoid), or
    * straddle both classes (`gate.approve` flips `character.md` and marks the asset accepted in
    * `manifest.json`) — see `docs/plans/archive/command-undo-redo.md`.
@@ -210,6 +211,7 @@ describe('the desktop registry', () => {
    */
   it('declares a precondition on what an act would cost, and on the three interrupters', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
+      'agent.compact',
       'agent.editLine',
       'agent.fixAsset',
       'agent.renameThread',

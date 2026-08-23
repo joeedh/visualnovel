@@ -110,6 +110,23 @@ export interface ThreadArchive {
 }
 
 /**
+ * A compaction as the transcript shows it: where the rule is drawn, how much of the conversation
+ * the summary stands in for, and the summary itself. `text` is clamped where it is written down,
+ * exactly as a {@link FeedItem} is, and `full` carries what was cut.
+ */
+export interface CompactionMark {
+  /** The feed item the rule is drawn under. Zero when nothing had been said above it. */
+  afterId: number;
+  /** How many messages the summary replaced, for the rule's sentence. */
+  covers: number;
+  text: string;
+  full?: string;
+  at?: string;
+  /** The model that wrote the summary. */
+  model?: string;
+}
+
+/**
  * A whole saved conversation: the header plus every transcript line, in order.
  *
  * `usage` is absent on a thread that recorded no receipts, which is every thread written before
@@ -117,6 +134,8 @@ export interface ThreadArchive {
  */
 export interface ThreadRecord extends ThreadHeader {
   items: FeedItem[];
+  /** Every compaction the conversation has had, oldest first. */
+  compactions: CompactionMark[];
   usage?: ThreadUsage[];
 }
 
@@ -239,6 +258,27 @@ export function uncachedTokens(tokens: Convo['tokens']): number {
 }
 
 /**
+ * How much conversation the agent may be carrying before the Compact button asks for attention.
+ * Measured against `Convo.context`, which is one request's input rather than a running total.
+ */
+export const COMPACT_HINT_TOKENS = 120_000;
+
+/** Tooltip for the Compact button: what compacting does, and how much there is to compact. */
+export function contextDetail(convo: Convo): string {
+  const what =
+    'Summarize what has been said so far, so the agent carries a summary instead of every turn. ' +
+    'Nothing is deleted — the summary is added to the saved conversation, and the turns above it ' +
+    'stay readable.';
+  if (convo.context === undefined) {
+    return `${what} How much the agent is carrying is not known until a turn has run.`;
+  }
+  const size = `The last turn sent it ${convo.context.toLocaleString()} tokens of conversation.`;
+  return convo.context >= COMPACT_HINT_TOKENS
+    ? `${what} ${size} That is large enough to be worth compacting.`
+    : `${what} ${size}`;
+}
+
+/**
  * A tool line as the transcript shows it: the tool's name plus the one argument saying what it
  * acted on, so a row reads `read_file wiki/hollow-court.md` rather than `read_file`.
  *
@@ -343,6 +383,14 @@ export interface Convo {
    * rather than when one ends, so the label a finished turn leaves behind says what it cost.
    */
   turnSpend: number;
+  /**
+   * How much conversation the last request carried, in tokens — the whole prefix, cached part
+   * included, which is what compaction shrinks. Absent until a turn has run, and dropped again by
+   * a compaction, because what the next request will carry is not known until it has been made.
+   */
+  context?: number;
+  /** The compactions this conversation has had, oldest first, each drawn as a rule. */
+  compactions: readonly CompactionMark[];
   /** Feed ids issued so far. */
   seq: number;
 }
@@ -358,6 +406,7 @@ export function emptyConvo(line: string): Convo {
     suggestions: [],
     tokens: { input: 0, output: 0 },
     turnSpend: 0,
+    compactions: [],
     seq: 0,
   };
 }
@@ -439,7 +488,14 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       // Sticky once set. A running total that mixes a bill with a guess is a guess, and Gemini
       // reports nothing at all for the first calls of a conversation
       if (convo.tokens.cacheEstimated || event.cacheEstimated) tokens.cacheEstimated = true;
-      return { ...convo, tokens, turnSpend: convo.turnSpend + charge(event) };
+      // `input` is the whole prefix the call sent, cache reads included, so the newest one is how
+      // much conversation the agent is carrying right now
+      return {
+        ...convo,
+        tokens,
+        turnSpend: convo.turnSpend + charge(event),
+        context: event.input,
+      };
     }
     case 'message':
     case 'final':
@@ -548,7 +604,26 @@ export function offered(convo: Convo, line: string, suggestions: readonly string
  * Stored items keep the ids they were written with, and `seq` resumes past the highest of them, so
  * a turn typed after a replay cannot collide with one being replayed.
  */
-export function replayed(convo: Convo, items: readonly FeedItem[], banner: string): Convo {
+export function replayed(
+  convo: Convo,
+  items: readonly FeedItem[],
+  banner: string,
+  marks: readonly CompactionMark[] = [],
+): Convo {
   const highest = items.reduce((max, item) => Math.max(max, item.id), 0);
-  return { ...emptyConvo(banner), feed: [...items], seq: Math.max(convo.seq, highest) };
+  return {
+    ...emptyConvo(banner),
+    feed: [...items],
+    compactions: [...marks],
+    seq: Math.max(convo.seq, highest),
+  };
+}
+
+/**
+ * A compaction landed. Its rule joins the transcript, and the context figure is dropped: what the
+ * next request will carry is not known until it has been made.
+ */
+export function compacted(convo: Convo, mark: CompactionMark): Convo {
+  const { context: _context, ...rest } = convo;
+  return { ...rest, compactions: [...convo.compactions, mark] };
 }

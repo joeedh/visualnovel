@@ -17,6 +17,7 @@ import { appendJsonl, ensureDir } from '@vn/util';
 import type { ProjectPaths } from '@vn/store';
 import type { AgentMessage, SystemSection } from '@vn/authoring';
 import type {
+  CompactionMark,
   FeedItem,
   ResumeHeader,
   ThreadArchive,
@@ -26,7 +27,7 @@ import type {
   ToolDetail,
 } from '../shared/convo.js';
 
-export type { ResumeHeader, ThreadArchive, ThreadHeader, ThreadRecord };
+export type { CompactionMark, ResumeHeader, ThreadArchive, ThreadHeader, ThreadRecord };
 // Re-exported so a reader of the native log finds the version beside the writer of it. The
 // declaration is in `shared/` because the resume check compares against it from both processes.
 export { NATIVE_VERSION } from '../shared/threads.js';
@@ -58,6 +59,7 @@ type ThreadLine =
   | ({ type: 'item'; at: string } & FeedItem)
   | { type: 'title'; title: string; at: string }
   | { type: 'binding'; model?: string; effort?: string; at: string }
+  | ({ type: 'compaction'; at: string } & CompactionMark)
   | ({ type: 'archived' } & ThreadArchive)
   | ({ type: 'usage' } & ThreadUsage);
 
@@ -242,7 +244,17 @@ export async function readThread(paths: ProjectPaths, id: string): Promise<Threa
       ...(verdict === undefined ? {} : { verdict }),
       at,
     }));
-  return { ...header, items, ...(usage.length === 0 ? {} : { usage }) };
+  const compactions = parsed
+    .filter((line) => line.type === 'compaction')
+    .map(({ afterId, covers, text, full, at, model }) => ({
+      afterId,
+      covers,
+      text,
+      ...(full === undefined ? {} : { full }),
+      ...(at === undefined ? {} : { at }),
+      ...(model === undefined ? {} : { model }),
+    }));
+  return { ...header, items, compactions, ...(usage.length === 0 ? {} : { usage }) };
 }
 
 /**
@@ -308,6 +320,28 @@ export async function appendUsage(
   usage: ThreadUsage,
 ): Promise<void> {
   await appendJsonl(threadFile(paths, id), { type: 'usage', ...usage });
+}
+
+/**
+ * The rule a compaction leaves in the display log. Nothing above it is touched: the transcript a
+ * reader scrolls is the same after compacting as before, and this line only says where the agent's
+ * own memory of it was replaced by a summary. Clamped exactly as a transcript line is.
+ */
+export async function appendCompaction(
+  paths: ProjectPaths,
+  id: string,
+  mark: CompactionMark,
+  now = new Date(),
+): Promise<void> {
+  const text = clamp(mark.text);
+  const full = mark.full ?? mark.text;
+  await appendJsonl(threadFile(paths, id), {
+    type: 'compaction',
+    ...mark,
+    text,
+    ...(full.length > text.length ? { full: clamp(full, FULL_MAX) } : {}),
+    at: mark.at ?? now.toISOString(),
+  });
 }
 
 /**
@@ -506,4 +540,17 @@ export async function readNative(paths: ProjectPaths, id: string): Promise<Nativ
     sections,
     ...(newest === undefined ? {} : { compaction: newest }),
   };
+}
+
+/**
+ * The conversation a resume hands the agent: the newest summary, then every message it does not
+ * cover. A log that has never been compacted answers with all of its messages. A second compaction
+ * covers everything the first did, so only the newest is read.
+ */
+export function liveMessages(log: NativeLog): AgentMessage[] {
+  const { compaction } = log;
+  const kept = compaction ? log.messages.filter((m) => m.n > compaction.covers.to) : log.messages;
+  const messages = kept.map(({ n: _n, ...message }) => message);
+  if (!compaction) return messages;
+  return [{ role: compaction.role, content: compaction.content }, ...messages];
 }

@@ -20,6 +20,7 @@ import {
   CHAT_CSS,
   ChatStage,
   compact,
+  compactionRule,
   el,
   turnRow,
   type AskHost,
@@ -27,10 +28,12 @@ import {
 import { VnEditor, registerEditor } from '../editor.js';
 import { openPalette } from '../palette.js';
 import {
+  contextDetail,
   threadDetail,
   threadLabel,
   tokensDetail,
   uncachedTokens,
+  type Convo,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
 import { resumeRefusal } from '../../../src/shared/threads.js';
@@ -65,6 +68,8 @@ export class ConvoEditor extends VnEditor {
    * finishing would otherwise rebuild the whole bar mid-turn, closing any menu open over it.
    */
   private tokensLbl?: Label;
+  /** Retitled and greyed in place, for the reason {@link tokensLbl} is retitled in place. */
+  private compactBtn?: Button;
   private budgetMenu?: DropBox;
   private drawn = -1;
   /**
@@ -231,6 +236,9 @@ export class ConvoEditor extends VnEditor {
       'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
       'stays under Threads.';
 
+    this.compactBtn = low.button('Compact', () => void exec('agent.compact').then(report));
+    this.sayCompact();
+
     // Drawn only while a saved conversation is on screen, because there is nothing to continue
     // while the live one is. The refusal is the renderer's four checks; main runs a fifth over the
     // protocol its backend speaks, which only main knows.
@@ -301,6 +309,37 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
+   * Why compacting is refused here, or `undefined`. Three of main's own refusals, restated against
+   * what the renderer can see, so the button is greyed with a sentence rather than reporting one a
+   * click later. Main's check stays the authority and answers the rest on the click.
+   */
+  private compactRefusal(state: Convo): string | undefined {
+    if (state.busy) return 'A turn is still running; wait for it to finish.';
+    if (reopenedThread()) {
+      return 'This conversation is open for reading. Continue it before compacting it.';
+    }
+    const last = state.feed[state.feed.length - 1];
+    if (!last) return 'Nothing has been said in this conversation yet.';
+    if (state.compactions[state.compactions.length - 1]?.afterId === last.id) {
+      return 'This conversation was compacted already, and nothing has been said since.';
+    }
+    return undefined;
+  }
+
+  /**
+   * The Compact button, retitled in place for the reason the token counter is: what it says changes
+   * on every step of a turn, and rebuilding the bar closes a menu open over it. Past
+   * `COMPACT_HINT_TOKENS` the tooltip says the conversation is large enough to be worth compacting.
+   */
+  private sayCompact(): void {
+    if (!this.compactBtn) return;
+    const state = convo();
+    const refusal = this.compactRefusal(state);
+    this.compactBtn.disabled = refusal !== undefined;
+    this.compactBtn.description = refusal ?? contextDetail(state);
+  }
+
+  /**
    * The saved conversations, drawn as path.ux's searchable menu, which is what a list that only
    * grows needs.
    *
@@ -363,6 +402,7 @@ export class ConvoEditor extends VnEditor {
 
     this.stage.say(state.line);
     this.sayTokens();
+    this.sayCompact();
     this.sayBudget();
     this.stage.setBusy(state.busy);
     this.stage.setChips(state.suggestions);
@@ -379,7 +419,20 @@ export class ConvoEditor extends VnEditor {
         el('div', 'empty-hint', 'Ask vnauthor to change a character, scene, or location.'),
       );
     }
-    for (const item of state.feed) this.transcript.appendChild(turnRow(item));
+    // Each rule goes under the line it was drawn after, so the turns a summary covers stay above
+    // it. A mark whose line is gone falls through to the end rather than being dropped.
+    const marks = [...state.compactions];
+    const rulesUpTo = (id: number): void => {
+      while (marks.length > 0 && marks[0]!.afterId <= id) {
+        this.transcript.appendChild(compactionRule(marks.shift()!));
+      }
+    };
+    rulesUpTo(0);
+    for (const item of state.feed) {
+      this.transcript.appendChild(turnRow(item));
+      rulesUpTo(item.id);
+    }
+    rulesUpTo(Number.MAX_SAFE_INTEGER);
     if (state.plan) this.transcript.appendChild(this.planCard(state.plan.plan));
     if (state.question) this.transcript.appendChild(this.asks.cardFor(state.question));
     if (state.confirm) this.transcript.appendChild(this.confirmCard(state.confirm));

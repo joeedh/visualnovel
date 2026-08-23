@@ -1,10 +1,13 @@
 import {
+  COMPACT_HINT_TOKENS,
   answered,
   answeredQuestion,
   asked,
   cleared,
+  compacted,
   confirmAsked,
   confirmDecided,
+  contextDetail,
   decided,
   emptyConvo,
   offered,
@@ -422,6 +425,62 @@ describe('replaying a saved thread', () => {
   test('a turn typed afterwards cannot reuse a replayed id', () => {
     const after = asked(replayed(emptyConvo(opening), saved, banner), 'and a scarf');
     expect(after.feed[2]).toEqual({ id: 3, role: 'user', text: 'and a scarf' });
+  });
+
+  test('brings back the rules a compaction drew, and shows none where there were none', () => {
+    const marks = [{ afterId: 1, covers: 6, text: 'the summary' }];
+    expect(replayed(emptyConvo(opening), saved, banner, marks).compactions).toEqual(marks);
+    expect(replayed(emptyConvo(opening), saved, banner).compactions).toEqual([]);
+  });
+});
+
+describe('compacting', () => {
+  const mark = { afterId: 2, covers: 8, text: 'the summary' };
+
+  test('adds a rule without touching the transcript above it', () => {
+    const convo = compacted(
+      replayed(emptyConvo(opening), [{ id: 2, role: 'user', text: 'go' }], ''),
+      mark,
+    );
+    expect(convo.compactions).toEqual([mark]);
+    expect(convo.feed).toHaveLength(1);
+  });
+
+  test('keeps every rule, oldest first', () => {
+    const second = { afterId: 5, covers: 3, text: 'a later summary' };
+    expect(compacted(compacted(emptyConvo(opening), mark), second).compactions).toEqual([
+      mark,
+      second,
+    ]);
+  });
+
+  test('drops the context figure, because what the next request carries is not known yet', () => {
+    const carrying = received(emptyConvo(opening), { type: 'usage', input: 90_000, output: 400 });
+    expect(carrying.context).toBe(90_000);
+    expect(compacted(carrying, mark).context).toBeUndefined();
+  });
+});
+
+describe('what the Compact button says it would do', () => {
+  test('says the size is not known until a turn has run', () => {
+    const detail = contextDetail(emptyConvo(opening));
+    expect(detail).toContain('not known until a turn has run');
+    expect(detail).toContain('Nothing is deleted');
+  });
+
+  test('names the size once a turn has reported one', () => {
+    const convo = received(emptyConvo(opening), { type: 'usage', input: 41_208, output: 900 });
+    expect(contextDetail(convo)).toContain('41,208 tokens');
+    expect(contextDetail(convo)).not.toContain('worth compacting');
+  });
+
+  test('says a large conversation is worth compacting', () => {
+    const convo = received(emptyConvo(opening), {
+      type: 'usage',
+      input: COMPACT_HINT_TOKENS,
+      output: 900,
+    });
+    expect(contextDetail(convo)).toContain('worth compacting');
   });
 });
 

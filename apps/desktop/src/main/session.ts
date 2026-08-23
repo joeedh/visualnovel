@@ -142,6 +142,7 @@ import {
 import {
   API_RETRIES,
   Agent,
+  COMPACTION_SYSTEM,
   TRIAGE_MODEL,
   NativeAgentBackend,
   StructuredAgentBackend,
@@ -149,9 +150,12 @@ import {
   apiRecoveryQuestion,
   archiveUpload,
   PROJECT_SKILLS_DIR,
+  compactRange,
+  compactionPrompt,
   composeSystem,
   createRegistry,
   discoverSkills,
+  lastCompleteTurn,
   focusOnScene,
   loadContext,
   newSkillTemplate,
@@ -304,24 +308,28 @@ import {
   answered,
   answeredQuestion,
   asked,
+  compacted,
   decided,
   emptyConvo,
   proposed,
   queried,
   received,
   replayed,
+  type CompactionMark,
   type Convo,
   type ThreadUsage,
 } from '../shared/convo.js';
 import {
   ConflictedLogError,
   NATIVE_VERSION,
+  appendCompaction,
   appendItem,
   appendNative,
   appendUsage,
   archiveThread,
   bindThread,
   listThreads,
+  liveMessages,
   nativeFile,
   openThread,
   readNative,
@@ -803,14 +811,16 @@ export class WorkspaceSession {
   private thread: ThreadHeader | undefined;
   /**
    * The native log's state for the open thread: which protocol the backend speaks, the sections
-   * the next header line will carry, how many messages have been appended, and whether that header
-   * has been written yet.
+   * the next header line will carry, how many messages have been appended, whether that header has
+   * been written yet, and how far a compaction has covered.
    */
   private native = {
     kind: 'mock' as BackendKind,
     sections: [] as SystemSection[],
     n: 0,
     opened: false,
+    /** The highest `n` the newest summary replaces. Undefined until the author compacts. */
+    compactedTo: undefined as number | undefined,
   };
   /**
    * Ids for the plan and question cards main reduces for the transcript. They are inert here —
@@ -1430,7 +1440,7 @@ export class WorkspaceSession {
     this.thread = undefined;
     this.convo = emptyConvo('');
     // The next thread opens its own log, from message zero and with its own header.
-    this.native = { ...this.native, sections: [], n: 0, opened: false };
+    this.native = { ...this.native, sections: [], n: 0, opened: false, compactedTo: undefined };
   }
 
   /**
@@ -1561,20 +1571,120 @@ export class WorkspaceSession {
     // Closes and commits whatever was open first, because `restore` replaces the transcript and a
     // half-written thread left bound would take the resumed conversation's later lines.
     await this.clearAgent();
-    const stored = log.messages.map(({ n: _n, ...message }) => message);
     agent.restore({
-      messages: [...restorable(stored), resumedNote(record)],
+      messages: [...restorable(liveMessages(log)), resumedNote(record)],
       sections: log.sections,
     });
 
-    const { items, ...header } = record;
+    const { items, compactions, ...header } = record;
     this.thread = header;
-    this.convo = replayed(this.convo, items, '');
+    this.convo = replayed(this.convo, items, '', compactions);
     // Past the highest `n` the log holds, so a message written now cannot take the number of one
     // already in the file. The header is not rewritten: line 0 still describes this conversation.
     const highest = log.messages.reduce((max, message) => Math.max(max, message.n), -1);
-    this.native = { ...this.native, sections: log.sections, n: highest + 1, opened: true };
+    this.native = {
+      ...this.native,
+      sections: log.sections,
+      n: highest + 1,
+      opened: true,
+      compactedTo: log.compaction?.covers.to,
+    };
     return record;
+  }
+
+  /**
+   * Why the open conversation cannot be compacted, or `undefined`. What `agent.compact` refuses
+   * with, and what its button is greyed with.
+   *
+   * The third case is the one worth naming: a turn that ended part way through a tool call cannot
+   * be compacted, because the summary would cover messages the agent is still holding, and the
+   * live conversation and the log would then disagree about what has been replaced.
+   */
+  async compactRefusalFor(): Promise<string | undefined> {
+    if (!this.thread) return 'Nothing has been said in this conversation yet.';
+    const live = (await this.ensureAgent()).transcript;
+    const cut = lastCompleteTurn(live);
+    if (cut < 0) return 'This conversation has no finished turn to summarize yet.';
+    if (cut !== live.length - 1) {
+      return 'The last turn stopped part way through a tool call. Send another turn first.';
+    }
+    if (this.native.compactedTo === this.native.n - 1) {
+      return 'This conversation was compacted already, and nothing has been said since.';
+    }
+    return undefined;
+  }
+
+  /**
+   * Compact the open conversation: summarize everything said so far on the model the conversation
+   * is bound to, hand the agent the summary in place of the messages, and append both records.
+   *
+   * Nothing is rewritten. The summary is one more line in each log, so the transcript on screen is
+   * unchanged and a later resume reads the summary plus whatever was said after it. The read
+   * ledger goes with the messages, which `compactionMessage` tells the agent about.
+   */
+  async compactThread(): Promise<CompactionMark> {
+    return this.while(BUSY_AGENT, async () => {
+      const refusal = await this.compactRefusalFor();
+      if (refusal) throw new Error(refusal);
+      const thread = this.thread;
+      if (!thread) throw new Error('no conversation is open');
+
+      const agent = await this.ensureAgent();
+      const covered = [...agent.transcript];
+      const backend = await this.buildBackend(await loadConfig(this.dir), this.model || undefined);
+      const turn = await backend.next(COMPACTION_SYSTEM, compactionPrompt(covered), []);
+      // A backend with nothing to call answers in `final`; `message` covers one that narrates
+      // instead, so a summary is never lost to which field it arrived in.
+      const summary = (turn.final ?? turn.message ?? '').trim();
+      if (!summary) throw new Error('the model returned no summary, so nothing was compacted');
+
+      // The call's own cost is reported before the compaction lands, because `compacted` drops the
+      // context figure and this event would otherwise set it again from the prefix just replaced.
+      if (turn.usage) {
+        const event: AgentEvent = { type: 'usage', ...turn.usage };
+        this.record((convo) => received(convo, event));
+        this.deps.emitEvent(event);
+      }
+
+      const { messages } = compactRange(covered, summary);
+      const head = messages[0];
+      if (!head) throw new Error('the summary could not be built');
+      const mode = agent.currentMode;
+      agent.restore({ messages, sections: this.native.sections });
+      // `restore` clears the agent, which puts it back in plan mode. The summary replaces what was
+      // said, not the author's decision about what the agent may do.
+      agent.setMode(mode);
+
+      const at = new Date().toISOString();
+      const to = this.native.n - 1;
+      this.native.compactedTo = to;
+      this.writeNative(thread.id, {
+        type: 'compact',
+        covers: { from: 0, to },
+        role: head.role,
+        content: typeof head.content === 'string' ? head.content : JSON.stringify(head.content),
+        at,
+        ...(this.model === '' ? {} : { model: this.model }),
+        ...(turn.usage ? { usage: { input: turn.usage.input, output: turn.usage.output } } : {}),
+      });
+
+      const mark: CompactionMark = {
+        afterId: this.convo.feed[this.convo.feed.length - 1]?.id ?? 0,
+        covers: covered.length,
+        text: summary,
+        at,
+        ...(this.model === '' ? {} : { model: this.model }),
+      };
+      this.convo = compacted(this.convo, mark);
+      const paths = new ProjectPaths(this.dir);
+      this.writes = this.writes
+        .then(() => appendCompaction(paths, thread.id, mark))
+        .catch((err: unknown) => {
+          console.warn(`[vnstudio] could not record the compaction: ${String(err)}`);
+        });
+      await this.writes;
+      return mark;
+    });
   }
 
   /** Rename a thread; an empty id means the one being written to. Refuses when there is none. */

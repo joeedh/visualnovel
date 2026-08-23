@@ -674,6 +674,38 @@ order; `contextDetail` says the size is unknown when no turn has run; a mock-bac
 test that compacts and then runs a turn, asserting the request carries the summary and not the
 covered messages.
 
+Eight things landed differently from the sketch above.
+
+- `compactRange(messages, summary)` takes the summary rather than a cut index, and answers the
+  index it used. `lastCompleteTurn` gives the largest valid cut and has no "largest valid index at
+  or below `to`" form, so a `to` parameter would need one written for a caller that does not exist:
+  the only caller compacts everything said so far.
+- `Convo.context` is the usage event's `input` alone rather than `input + cacheRead + cacheWrite`.
+  `usageOf` in `packages/providers/src/backends/anthropic.ts` already folds both cache figures into
+  `input`, so the sum would count the cached prefix twice.
+- The native log's `covers` is always `{ from: 0, to: n - 1 }`, where `n` is the next message
+  number the session would write. A live transcript index cannot be mapped back to a stored `n`,
+  because the host injects messages that carry no `n` and `resumedNote` sits at the end rather than
+  the head. `compactRefusalFor` instead refuses whenever `lastCompleteTurn` is not the last message,
+  which keeps the live conversation and the log covering the same range. `from` is 0 because a
+  second compaction covers what the first did.
+- The mode is re-applied after `restore`. `Agent.restore` clears the agent first, which puts it
+  back in plan mode and empties the read ledger. The summary replaces what was said, not the
+  author's decision about what the agent may do. The emptied ledger is what the summary's preface
+  warns the agent about.
+- The usage event is emitted before the compaction lands, because `compacted` drops `context` and
+  an event arriving after it would set it again from the prefix just replaced.
+- The feed rule is a labelled rule that expands in place, not a popup. Its visible text is
+  `compacted <n> messages` and the full sentence lives in the tooltip, since a sentence stretched
+  across a hairline rule reads badly.
+- The renderer restates three of main's refusals against what it can see — a running turn, a thread
+  open for reading, and nothing said since the last compaction — so the button is greyed with a
+  sentence rather than reporting one a click later. Main's `check` stays the authority and answers
+  the rest.
+- `appendCompaction` clamps a summary exactly as it clamps a transcript line: 400 characters shown,
+  up to 8000 kept in `full`. A thread stays a log rather than an archive, and the rule's expanded
+  panel shows `full`.
+
 ### Stage 7 — searching the uncompacted history
 
 - `packages/authoring/src/history.ts`: `HistoryReader`, `historyTools(reader)`, `HISTORY_HITS`,
