@@ -1,6 +1,10 @@
 /* Design tokens, resets, and the two accent hues every room spends. */
 
 :root {
+  /* Scrollbars and native form controls are painted by Chromium, which reads this rather than
+     `prefers-color-scheme`. Without it they render light against the dark palette below. */
+  color-scheme: dark;
+
   --ink: #0e1116;
   --ink-raised: #161a22;
   --ink-sunken: #0a0d12;

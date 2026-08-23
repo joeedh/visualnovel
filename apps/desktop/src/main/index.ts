@@ -17,6 +17,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  nativeTheme,
   net,
   protocol,
   screen,
@@ -958,6 +959,11 @@ void app.whenReady().then(async () => {
     app.exit(report.ok ? 0 : 1);
     return;
   }
+
+  // The renderer has one palette and it is dark, so following the OS would put a light native
+  // dialog in front of it. Covers Electron-owned surfaces only; scrollbars and form controls
+  // inside the renderer follow `color-scheme` in renderer/styles/tokens.css.
+  nativeTheme.themeSource = 'dark';
 
   // No stock menu: this shell has its own bar, and the File/Edit/View scaffolding named things
   // it does not have. Quit and DevTools are the two accelerators worth keeping - they come back

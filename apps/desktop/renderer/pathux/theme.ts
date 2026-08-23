@@ -2,12 +2,11 @@ import { CSSFont, setTheme } from 'pathux';
 import { TOKENS, alpha } from './tokens.js';
 
 /**
- * `tokens.css` re-expressed as a path.ux theme. path.ux applies `DefaultTheme` at module load and
- * `setTheme` merges two levels deep over it, so this file is an override tree rather than a fork
- * of the default. Because the merge stops at two levels, a sub-record (`button.disabled`,
- * `menu.MenuSeparator`) is replaced wholesale rather than merged into, so a key it omits falls
- * back to the style class's own top level rather than to the default's sub-record. Style classes
- * absent here keep path.ux's own values.
+ * The path.ux theme for this app, built from the design tokens in `tokens.css`.
+ * `setTheme` merges only two levels deep over the `DefaultTheme` applied at module load,
+ * so a sub-record here (`button.disabled`, `menu.MenuSeparator`) replaces the default's
+ * wholesale: a missing key resolves against the style class's top level, not the default
+ * sub-record. Style classes absent here keep path.ux's own values.
  */
 
 function font(
