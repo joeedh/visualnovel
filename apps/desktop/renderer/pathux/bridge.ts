@@ -26,6 +26,7 @@ import type {
 } from '../../src/shared/ipc.js';
 import { shouldFileCommand } from '../../src/shared/notify.js';
 import type { ShellApp } from './context.js';
+import { approvalsChanged, refreshApprovals } from './approvals.js';
 import { notificationsChanged, refreshNotifications } from './notifications.js';
 import { closePalette, openPalette } from './palette.js';
 import { seedReport } from './reportconvo.js';
@@ -371,6 +372,12 @@ That is a fault in what was ` +
     if (payload.note) say(payload.note.message, payload.note.level === 'error');
   });
 
+  // The push carries nothing, so the badge and an open list both come from the refetch it starts.
+  api.on('approval:changed', () => {
+    approvalsChanged();
+  });
+
   void refreshWorkspace();
   void refreshNotifications();
+  void refreshApprovals();
 }

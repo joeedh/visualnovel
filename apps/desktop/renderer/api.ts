@@ -422,6 +422,9 @@ const fallback: DesktopApi = {
         return Promise.resolve([]);
       case 'notify:post':
         return Promise.reject(new Error('(preview) no notification log'));
+      // Nothing can be waiting on approval without a project to draw it for
+      case 'approval:list':
+        return Promise.resolve([]);
       case 'command:exec':
         return Promise.resolve({ ok: false, error: '(preview) no command stack' });
       // Answers `undeclared` rather than `refuse`, because a preview has no precondition to

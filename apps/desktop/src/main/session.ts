@@ -287,6 +287,7 @@ import type {
   StoryGraph,
 } from '../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../shared/apikeys.js';
+import { reorderApprovals, type ApprovalQueue } from './approvals.js';
 import { readResource } from './resources.js';
 import { notify } from './notifications.js';
 import {
@@ -2230,6 +2231,15 @@ export class WorkspaceSession {
       }
     }
     return out;
+  }
+
+  /**
+   * The same list, ordered for reading rather than for approving: whatever `previousOrder` has
+   * not seen goes on top. The caller owns `previousOrder` because it outlives the session — it is
+   * persisted per project, so the list survives a restart.
+   */
+  async approvalQueue(previousOrder: readonly string[]): Promise<ApprovalQueue> {
+    return reorderApprovals(await this.approvable(), previousOrder);
   }
 
   /** Approve one `Approvable` through whichever door it belongs to. */

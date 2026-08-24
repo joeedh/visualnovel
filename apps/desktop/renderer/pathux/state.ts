@@ -131,6 +131,12 @@ export class ShellState {
    * never disagree about which ones count.
    */
   unread = 0;
+  /**
+   * How many pictures are waiting on approval, blocked ones included. Pushed by
+   * `pathux/approvals.ts` for the same reason `unread` is: the badge and the list it opens must
+   * count the same rows.
+   */
+  needsApproval = 0;
   canUndo = false;
   canRedo = false;
   undoLabel = '';

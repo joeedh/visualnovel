@@ -1,6 +1,6 @@
 # Needs-approval icon next to the notification bell
 
-Status: **planned**
+Status: **shipped**
 
 ## Context
 
@@ -204,6 +204,27 @@ approval" distinct from the bell; confirm visually once running.
   puts the new take back at the top. Restart the app and confirm the order survived. Also verify
   an agent turn that approves or regenerates an asset updates the badge without any manual
   refresh.
+
+## What shipped
+
+Three things differ from the design above. Each was forced by the code as it stands rather
+than chosen.
+
+- **`APPROVAL_ORDER_KEY` instead of `approvalOrderKey(scope)`.** `sessionkeys.ts` no longer
+  scopes a project key by workspace: `SessionState.isProjectKey` routes every `pathux.` key
+  except three legacy flat ones into the open project's own `.vnstudio/session.json`. A plain
+  `'pathux.approvalOrder'` is therefore already per-project, and switching projects reads the
+  new project's file rather than a differently-scoped key in one shared file.
+- **`where: 'elsewhere'` instead of `where: 'active'`.** `OPEN_WHERE` has no `'active'` member.
+  `'elsewhere'` is what the document tree's own asset row uses.
+- **The anchor helpers moved to `popup.ts`.** The review asked for `rectOf` to be reused from
+  `notifications.ts` rather than copied. `place()` needed reusing as well, so `Anchor`,
+  `rectOf` and `place` (renamed `placeUnder`) now live in `popup.ts`, which both lists import.
+
+Verified live over CDP against a testkit project with six unapproved assets: the badge counts
+them, the popup lists them under `AWAITING APPROVAL · 6`, a row opens the Asset editor on that
+hash, `gate.approve` drops the badge to 5 without a refresh, and a hand-reversed stored order
+is honoured on the next launch.
 
 ## Plan review
 

@@ -58,6 +58,44 @@ export function stylePopup(popup: Container, screen: Screenish, width: number, t
   });
 }
 
+/**
+ * Where a popup hangs from: the on-screen box of the control that opened it. `screen.popup` takes
+ * client coordinates and the screen fills the window, so a `getBoundingClientRect()` goes straight
+ * in with no conversion.
+ */
+export interface Anchor {
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Put a `width`-wide popup under `anchor`, right edges aligned, and keep it on screen.
+ *
+ * Right edges are aligned rather than left ones because every control that opens a popup this way
+ * sits at the right end of a bar, and a wide box starting there would hang off the edge of the
+ * window. A caller with no anchor to give (the palette, the agent) gets the top right corner.
+ */
+export function placeUnder(
+  screenWidth: number,
+  anchor: Anchor | undefined,
+  fallbackY: number,
+  width: number,
+): [number, number] {
+  if (!anchor) return [Math.max(8, screenWidth - width - 16), fallbackY];
+  const x = Math.min(Math.max(8, anchor.right - width), Math.max(8, screenWidth - width - 8));
+  return [x, anchor.bottom + 4];
+}
+
+/**
+ * The on-screen box of a widget, for hanging a popup under. Answers `undefined` for anything not
+ * laid out yet, so a caller with nothing to measure gets the corner fallback rather than `0, 0`.
+ */
+export function rectOf(widget: unknown): Anchor | undefined {
+  const box = (widget as { getBoundingClientRect?: () => DOMRect }).getBoundingClientRect?.();
+  if (!box || (box.width === 0 && box.height === 0)) return undefined;
+  return { right: box.right, bottom: box.bottom };
+}
+
 /** Where a popup of this width starts, so it is centred and never off the left edge. */
 export function popupLeft(screen: Screenish, width: number): number {
   const room = Math.max(240, (screen.size[0] ?? width) - MARGIN * 2);

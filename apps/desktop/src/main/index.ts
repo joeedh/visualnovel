@@ -63,7 +63,8 @@ import {
   type RememberedWindow,
   type WindowId,
 } from './windows.js';
-import { workspaceScope, WINDOWS_KEY } from '../shared/sessionkeys.js';
+import { workspaceScope, APPROVAL_ORDER_KEY, WINDOWS_KEY } from '../shared/sessionkeys.js';
+import { sameApprovals } from './approvals.js';
 import {
   commitScaffolding,
   ensureRepo,
@@ -317,6 +318,11 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   workspaceRoot = opened.root;
   session = null;
   stack = null;
+  // A recompute scheduled by the project being left would read the new project's order key and
+  // write the old project's hashes into it.
+  if (approvalTimer) clearTimeout(approvalTimer);
+  approvalTimer = null;
+  broadcastApprovals = [];
   ownedRepos.length = 0;
   undoRevision = 0;
   await openRepos();
@@ -476,6 +482,49 @@ installNotifications({
   // the other monitor should still see what happened, and every window's bell count stays current.
   push: (note) => broadcast('notify:changed', { note }),
 });
+
+/**
+ * How long after a mutating command the approval list is recomputed. `approvable()` reloads and
+ * reparses the whole project, so an agent turn making six edits in a row recomputes once.
+ */
+const APPROVAL_DEBOUNCE_MS = 150;
+
+let approvalTimer: NodeJS.Timeout | null = null;
+
+/** The hashes last pushed, so a recompute that changed nothing does not redraw every window. */
+let broadcastApprovals: string[] = [];
+
+/**
+ * Recount what is waiting on approval, persist the order it is read in, and tell the windows when
+ * the set has changed.
+ *
+ * Failures are logged rather than thrown. This runs detached from whichever command scheduled it,
+ * so there is nobody left to answer, and a project that will not load mid-edit is not that
+ * command's error to report.
+ */
+async function recomputeApprovals(): Promise<void> {
+  if (!workspaceRoot) return;
+  try {
+    const previous = getSessionState().get<string[]>(APPROVAL_ORDER_KEY, []);
+    const { order } = await getSession().approvalQueue(previous);
+    getSessionState().set(APPROVAL_ORDER_KEY, order);
+    if (sameApprovals(order, broadcastApprovals)) return;
+    broadcastApprovals = order;
+    broadcast('approval:changed', {});
+  } catch (err) {
+    console.warn(`[vnstudio] could not recount what is waiting on approval: ${String(err)}`);
+  }
+}
+
+/** Coalesce a burst of commands into one recompute. */
+function scheduleApprovals(): void {
+  if (approvalTimer) return;
+  approvalTimer = setTimeout(() => {
+    approvalTimer = null;
+    void recomputeApprovals();
+  }, APPROVAL_DEBOUNCE_MS);
+  approvalTimer.unref?.();
+}
 
 /**
  * The window that started the current agent turn, remembered from `agent:run`'s sender. There is
@@ -666,6 +715,10 @@ function getStack(): CommandStack<CommandHost> {
             source: record.source === 'agent' || record.source === 'cdp' ? record.source : 'ui',
           });
         }
+        // Scheduled rather than awaited: a recount reloads the project, and this hook sits on the
+        // critical path of every command, including a one-line prose edit.
+        // An undo restores files nobody edited through a command, so it counts as well.
+        if (record.stack || record.mutating) scheduleApprovals();
         // Broadcast, because an undo is a fact about the worktree rather than an answer to one
         // window. Ctrl+Z in window B deliberately undoes an edit made in window A: undo is a
         // shadow snapshot of the whole worktree, so a per-window stack would misstate what it restores.
@@ -751,6 +804,15 @@ function registerIpc(): void {
 
   handle('notify:list', () => notifications().list());
   handle('notify:post', (_origin, input) => notifications().post(input));
+
+  // The read is also what remembers the order: a hash the stored order has not seen is new since
+  // the list was last drawn, and stays on top until something reads past it.
+  handle('approval:list', async () => {
+    const previous = getSessionState().get<string[]>(APPROVAL_ORDER_KEY, []);
+    const { items, order } = await getSession().approvalQueue(previous);
+    getSessionState().set(APPROVAL_ORDER_KEY, order);
+    return items;
+  });
 
   handle('session:set', (_origin, payload) =>
     getSessionState().set(payload.key, payload.value, payload.scope),

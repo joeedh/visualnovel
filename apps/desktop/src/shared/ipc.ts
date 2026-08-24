@@ -13,6 +13,7 @@ import type { Coverage as PkgCoverage, ShotSpan as PkgShotSpan } from '@vn/scrip
 import type {
   AgentEvent,
   AgentMode,
+  Approvable,
   AskQuestion,
   Plan,
   PlanDecision,
@@ -843,6 +844,11 @@ export interface InvokeChannels {
    * command's outcome, which main would otherwise never hear about.
    */
   'notify:post': (input: NotificationInput) => Notification;
+  /**
+   * Every picture waiting on approval, most recently surfaced first. A read; approving one goes
+   * through `asset.accept` or `gate.approve` like any other mutation.
+   */
+  'approval:list': () => Approvable[];
 }
 
 /**
@@ -908,6 +914,11 @@ export interface EventChannels {
    * know that its count is stale.
    */
   'notify:changed': { note?: Notification };
+  /**
+   * The set of pictures waiting on approval changed. Carries nothing: the list refetches either
+   * way, and the badge only needs to know its count is stale.
+   */
+  'approval:changed': Record<string, never>;
   /** A session key changed — either by this window or by a command that wrote one. */
   'session:changed': { key: string; value: SessionValue };
   log: { level: 'info' | 'warn' | 'error'; message: string };

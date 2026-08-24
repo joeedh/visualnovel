@@ -264,6 +264,16 @@ are the bridge's.
   can name a scene that does not exist in others — `start:` pointing at nothing is exactly that).
   The ordering and the two sentences a row needs are `src/shared/diagnostics.ts`, so the node-only
   jest project tests them and the popup stays widgets.
+- **The art waiting on approval is counted beside the bell, newest first.** The 🎨 badge counts
+  what `session.approvable()` returns, and the popup it opens lists one row per picture: a
+  blocked row says what it is waiting on, a row whose slot already has an approved take says
+  what approving it replaces, and clicking a row opens the Asset editor on that hash. Nothing is
+  approved from the popup — the decision leaves as `asset.accept` or `gate.approve` like any
+  other mutation. Whatever the stored order has not seen goes on top, and the order is written
+  to the project's own session file (`APPROVAL_ORDER_KEY`), so a batch that arrived while the
+  author was away is still at the top after a restart. The recount is scheduled rather than
+  awaited off `CommandStack.onRecord`, debounced, because it reloads the project and that hook
+  sits on the critical path of every command.
 - **The View menu is two submenus and two acts.** **Editors** is every editor by name, each entry a
   `view.open`; **Layout** is the project's [layout templates](#layout-templates) plus Save Current
   Layout As… and Reset View Layout…; then Close Pane… and Split Area, the latter moved down from the

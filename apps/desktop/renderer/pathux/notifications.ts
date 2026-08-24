@@ -21,7 +21,7 @@ import { exec, shell } from './bridge.js';
 import { openCommandDialog } from './dialog.js';
 import { VN_ICONS } from './icons.js';
 import { paragraph } from './paragraph.js';
-import { INSET, onPopupClosed, stylePopup } from './popup.js';
+import { INSET, onPopupClosed, placeUnder, rectOf, stylePopup, type Anchor } from './popup.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
@@ -38,34 +38,6 @@ const ACTION = 48;
 const PROSE = WIDTH - INSET - ACTION;
 
 const FILTER_KEY = 'vn.notifications.filter';
-
-/**
- * Where a popup hangs from: the on-screen box of the control that opened it. `screen.popup` takes
- * client coordinates and the screen fills the window, so a `getBoundingClientRect()` goes straight
- * in with no conversion.
- */
-export interface Anchor {
-  right: number;
-  bottom: number;
-}
-
-/**
- * Put a `width`-wide popup under `anchor`, right edges aligned, and keep it on screen.
- *
- * Right edges are aligned rather than left ones because both controls that open a popup sit at the
- * right end of a bar, and a wide box starting at the bell would hang off the edge of the window. A
- * caller with no anchor to give (the palette, the agent) gets the top right corner.
- */
-function place(
-  screenWidth: number,
-  anchor: Anchor | undefined,
-  fallbackY: number,
-  width: number,
-): [number, number] {
-  if (!anchor) return [Math.max(8, screenWidth - width - 16), fallbackY];
-  const x = Math.min(Math.max(8, anchor.right - width), Math.max(8, screenWidth - width - 8));
-  return [x, anchor.bottom + 4];
-}
 
 let cached: Notification[] = [];
 let filter: NotificationFilter = restoreFilter();
@@ -136,7 +108,7 @@ class NotificationList {
 
     // Hung under the bell that opened it, since a fixed `y` lands far from the bell in a window
     // whose chrome is taller than the header
-    const [x, y] = place(screen.size[0], anchor, 40, WIDTH);
+    const [x, y] = placeUnder(screen.size[0], anchor, 40, WIDTH);
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
     stylePopup(this.popup, screen, WIDTH, y);
 
@@ -313,7 +285,7 @@ class FilterPopup {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the filter on');
 
-    const [x, y] = place(screen.size[0], anchor, 80, FILTER_WIDTH);
+    const [x, y] = placeUnder(screen.size[0], anchor, 80, FILTER_WIDTH);
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
     stylePopup(this.popup, screen, FILTER_WIDTH, y);
 
@@ -362,16 +334,6 @@ class FilterPopup {
     list?.render();
     this.render();
   }
-}
-
-/**
- * The on-screen box of a widget, for hanging a popup under. Answers `undefined` for anything not
- * laid out yet, so a caller with nothing to measure gets the corner fallback rather than `0, 0`.
- */
-export function rectOf(widget: unknown): Anchor | undefined {
-  const box = (widget as { getBoundingClientRect?: () => DOMRect }).getBoundingClientRect?.();
-  if (!box || (box.width === 0 && box.height === 0)) return undefined;
-  return { right: box.right, bottom: box.bottom };
 }
 
 /** Opens the list, or closes it if it is already open, so the bell never stacks two popups. */

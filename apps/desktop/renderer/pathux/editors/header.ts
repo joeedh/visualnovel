@@ -27,7 +27,9 @@ import { currentLayoutFile, fetchLayouts } from '../layouts.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
 import { openDiagnostics } from '../diagnostics.js';
-import { openNotifications, rectOf } from '../notifications.js';
+import { openApprovals } from '../approvals.js';
+import { openNotifications } from '../notifications.js';
+import { rectOf } from '../popup.js';
 import { openPalette } from '../palette.js';
 import { seedReport } from '../reportconvo.js';
 import { paneToUse } from '../panes.js';
@@ -183,6 +185,7 @@ export class VnHeaderEditor extends VnEditor {
       ui.errors,
       ui.warnings,
       ui.unread,
+      ui.needsApproval,
       ui.canUndo,
       ui.canRedo,
       ui.undoLabel,
@@ -315,6 +318,13 @@ export class VnHeaderEditor extends VnEditor {
 
     // The rect is read inside the callback, not here: the bar is still being built at this point
     // and the button has not been laid out, so a rect taken now is the zero one.
+    const waiting = this.bar.button(ui.needsApproval ? `🎨 ${ui.needsApproval}` : '🎨', () =>
+      openApprovals(rectOf(waiting)),
+    );
+    waiting.description = ui.needsApproval
+      ? `Show the art waiting on approval — ${ui.needsApproval}`
+      : 'No art is waiting on approval';
+
     const bell = this.bar.button(ui.unread ? `🔔 ${ui.unread}` : '🔔', () =>
       openNotifications(rectOf(bell)),
     );

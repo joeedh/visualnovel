@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PROJECT_STATE_DIR, SessionState } from '../sessionstate.js';
 import { SessionStore } from '../sessionstore.js';
-import { layoutKey, workspaceScope, WINDOWS_KEY } from '../../shared/sessionkeys.js';
+import {
+  layoutKey,
+  workspaceScope,
+  APPROVAL_ORDER_KEY,
+  WINDOWS_KEY,
+} from '../../shared/sessionkeys.js';
 
 const LAYOUT = layoutKey(0);
 
@@ -64,6 +69,24 @@ describe('SessionState', () => {
 
       expect(JSON.parse(await readFile(sessionFile(root), 'utf8'))[LAYOUT]).toBe('first');
       expect(JSON.parse(await readFile(sessionFile(other), 'utf8'))[LAYOUT]).toBe('second');
+    } finally {
+      await rm(other, { recursive: true, force: true, maxRetries: 3 });
+    }
+  });
+
+  it('keeps the approval order with the project it was read from', async () => {
+    const other = await mkdtemp(join(tmpdir(), 'vn-other-'));
+    try {
+      await state.openProject(root);
+      state.set(APPROVAL_ORDER_KEY, ['a', 'b']);
+      await state.flush();
+      await state.openProject(other);
+
+      expect(state.get<string[]>(APPROVAL_ORDER_KEY, [])).toEqual([]);
+      expect(JSON.parse(await readFile(sessionFile(root), 'utf8'))[APPROVAL_ORDER_KEY]).toEqual([
+        'a',
+        'b',
+      ]);
     } finally {
       await rm(other, { recursive: true, force: true, maxRetries: 3 });
     }

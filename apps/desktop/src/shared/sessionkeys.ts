@@ -60,6 +60,14 @@ export function templateKey(window: number): string {
 export const WINDOWS_KEY = 'pathux.windows';
 
 /**
+ * The order the needs-approval list is shown in, as an array of asset hashes, newest first.
+ *
+ * A project key, so it lands in that project's own `session.json` and switching projects reads
+ * the new one's order rather than carrying the previous project's over.
+ */
+export const APPROVAL_ORDER_KEY = 'pathux.approvalOrder';
+
+/**
  * The keys an install written before windows were plural still holds. They are read once, as
  * window 0 of whichever workspace opens first, and then left alone — an existing install must not
  * open to a default screen, and nothing needs them after the first save writes the current key.

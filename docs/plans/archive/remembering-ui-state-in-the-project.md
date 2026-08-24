@@ -98,7 +98,7 @@ in `shared/sessionkeys.ts` is the single authority, and the rule is deliberately
 rather than by enumeration: a `pathux.` key that is not one of `LEGACY_KEYS` belongs to the
 project. That covers the window keys and the window list, leaves `agent.budget`,
 `vn.notifications.filter` and the recents list in the install file, and answers correctly for a
-`pathux.` key a later plan adds — [`needs-approval-icon-in-the-toolbar.md`](../needs-approval-icon-in-the-toolbar.md)
+`pathux.` key a later plan adds — [`needs-approval-icon-in-the-toolbar.md`](needs-approval-icon-in-the-toolbar.md)
 proposes `pathux.<scope>.approvalOrder`, which becomes `pathux.approvalOrder` and needs no
 routing change.
 
