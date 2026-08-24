@@ -23,5 +23,11 @@
 	 of 'approve'.  Make sure to update all the context menus in the document 
 	 tree with an 'approve' item.
 [ ]: add an unapprove_assets tool to the vn agent miroring approve_assets.
+[ ]: make sure the debug agent can access the bundled source tree in installed
+     builds
+[ ]: clicking the model name in the main menu bar should let you select the model
+[ ]: you should be able to click 'accept' on old versions of assets, in which case the 
+     existing asset and its prompts will become stale and the old one (including its
+	 prompt chunks) will be set at the latest one in the slot.
+[ ]: the asset editor should have a download button for the rendered image
 
-	 
