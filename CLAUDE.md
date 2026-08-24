@@ -55,6 +55,12 @@ skips it. Anyone who has built path.ux before tends to forget that step, because
 `node_modules` is already on disk. On a clean checkout the symptom is scores of "has no
 exported member" errors inside `vendor/`, which name a symbol rather than the missing
 install. `pnpm check:setup` also fails on this by name.
+nstructjs is a submodule as well, at `vendor/nstructjs`, and the desktop app depends on it as
+`link:../../vendor/nstructjs` rather than on the published package. It is used through the build
+output it commits, so it needs no install of its own, and `pnpm check:setup` exempts it. path.ux
+imports nstructjs too: the vite alias and the `nstructjs` path in `renderer/tsconfig.json` and
+`pathux-types.tsconfig.json` redirect those imports to the submodule, so path.ux's own install of
+the published package goes unused here.
 Then `pnpm check && pnpm test && pnpm lint` should be green, and `pnpm build` bundles
 everything. Details: [`docs/guides/toolchain.md`](docs/guides/toolchain.md), and
 [`docs/reference/desktop-app.md`](docs/reference/desktop-app.md) for the submodule's role.

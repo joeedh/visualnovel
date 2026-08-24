@@ -22,6 +22,13 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PATH_RE = /^\s*path\s*=\s*(.+?)\s*$/gm;
 
+/**
+ * Submodules that are consumed as a published package would be, from the build output they
+ * commit. Nothing here reads their sources, so their own dependencies are never needed and an
+ * absent `node_modules` is not a problem to report.
+ */
+const PREBUILT = new Set(['vendor/nstructjs']);
+
 /** The `path =` entries of a `.gitmodules` file; empty when there is no such file. */
 async function declaredPaths(gitmodules) {
   const content = await fs.readFile(gitmodules, 'utf8').catch(() => null);
@@ -61,6 +68,7 @@ async function survey(base, found = { missing: [], uninstalled: [] }) {
       continue;
     }
     if (
+      !PREBUILT.has(relative(dir)) &&
       (await exists(join(dir, 'package.json'))) &&
       !(await isPopulated(join(dir, 'node_modules')))
     ) {

@@ -15,7 +15,13 @@
     "rootDir": "../../vendor/path.ux/scripts",
     "declarationDir": "dist/pathux-types",
     "lib": ["ESNext", "DOM", "DOM.Iterable", "ESNext.Disposable"],
-    "types": []
+    "types": [],
+    "paths": {
+      // path.ux imports nstructjs, and its own install puts the published package in
+      // `vendor/path.ux/node_modules`. This declaration build reads the submodule instead, so
+      // the types behind `pathux.d.ts` match what vite bundles.
+      "nstructjs": ["../../vendor/nstructjs/build/structjs.d.ts"]
+    }
   },
   "files": ["../../vendor/path.ux/scripts/pathux.ts"]
 }

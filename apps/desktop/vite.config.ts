@@ -15,10 +15,11 @@ export default defineConfig({
   resolve: {
     alias: {
       // path.ux is a git submodule compiled from source rather than a pnpm workspace member, so
-      // there is no prebuilt `dist/pathux.js`. `nstructjs` is its only runtime dependency, pinned
-      // here so it resolves to the copy this app installs rather than one above `vendor/`
+      // there is no prebuilt `dist/pathux.js`. `nstructjs` is its only runtime dependency and is
+      // a submodule too; the alias covers path.ux's own imports, which would otherwise resolve to
+      // the npm copy in `vendor/path.ux/node_modules`
       pathux: resolve(__dirname, '../../vendor/path.ux/scripts/pathux.ts'),
-      nstructjs: resolve(__dirname, 'node_modules/nstructjs'),
+      nstructjs: resolve(__dirname, '../../vendor/nstructjs'),
     },
   },
   // path.ux uses auto-accessor fields (`accessor x = 1`), which rollup's parser cannot read.

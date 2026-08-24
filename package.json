@@ -12,7 +12,10 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "electron"
-    ]
+    ],
+    "overrides": {
+      "nstructjs": "link:./vendor/nstructjs"
+    }
   },
   "scripts": {
     "check": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",

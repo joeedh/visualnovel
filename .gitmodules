@@ -1,3 +1,6 @@
 [submodule "vendor/path.ux"]
 	path = vendor/path.ux
 	url = https://github.com/joeedh/path.ux
+[submodule "vendor/nstructjs"]
+	path = vendor/nstructjs
+	url = https://github.com/joeedh/STRUCT.git

@@ -83,7 +83,12 @@ fresh clone needs `git submodule update --init --recursive` — and then
 `pnpm --dir vendor/path.ux install`, because path.ux keeps its own lockfile and is not a pnpm
 workspace member, so the root install does not reach it. `pnpm check:setup`
 (`scripts/check-submodules.mjs`, also the first step of `@vn/desktop`'s `build`) fails by name on
-either one rather than letting the resolver complain. Vite compiles path.ux's TypeScript source through an
+either one rather than letting the resolver complain. **nstructjs is a git submodule too**, at
+`vendor/nstructjs`, and is consumed from the build output it commits, so it needs no install of
+its own. `@vn/desktop` depends on it as `link:../../vendor/nstructjs`, and the vite alias plus the
+`nstructjs` entry in `renderer/tsconfig.json` and `pathux-types.tsconfig.json` point there as
+well — path.ux imports nstructjs, and its own install puts the published package in
+`vendor/path.ux/node_modules`, which those three redirect. Vite compiles path.ux's TypeScript source through an
 alias — there is no prebuilt bundle to keep in sync — while `tsgo` checks us against
 declarations regenerated from that same source on every `check` (`build:pathux-types` →
 `apps/desktop/dist/pathux-types`, gitignored). `vendor/**` is excluded from prettier and eslint:
