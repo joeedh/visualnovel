@@ -325,6 +325,14 @@ The agent's editing surface, built on path.ux's `validateGraphDSL`/`buildGraphFr
 Tests: round-trip `applyGraphDSL(g, graphToDSL(g))` is a no-op diff; a renamed-id node is
 a delete-plus-add; positions survive edits; each diagnostic reaches the caller.
 
+Deviation, as built: `applyGraphDSL` takes a parsed value or the JSON text of one, because
+the commands hold text and the tools hold a value, and JSON that does not parse is reported
+as a `bad-json` diagnostic with the live graph handed straight back. A prop is written into
+the description only where it differs from a freshly built node of the same type, which
+keeps a description short without changing what it builds. Links are read from each input
+socket's authored `edges` rather than from `resolvedEdges()`, so a group's proxy sockets
+stay the group's own business rather than becoming links an agent has to reproduce.
+
 ### Stage 4 — the cost model and the shipped price table
 
 - Each spec may declare `estimate(props, inputContext) → [{service, model, unit, count}]`
@@ -480,7 +488,12 @@ than because it is waiting.
   built; the `PinField` union (editors.ts:180) is closed, so it gains `'graphSlug'` with
   a `PIN_NOUN` entry and the selection plumbing behind it; and
   renderer/tsconfig.json's `paths` gains `@vn/gengraph`, `pathux-graph` and their deps
-  so the renderer pass still typechecks.
+  so the renderer pass still typechecks. `@vn/gengraph`'s main entry is not yet loadable
+  in the renderer: `validate.ts` takes the slot vocabulary from `@vn/artgen`, whose barrel
+  reaches `node:fs/promises` through upload.ts, and the renderer imports `@vn/artgen`
+  type-only today for that reason (ipc.ts:230). Neither `tsgo` pass catches this, so it
+  surfaces at `vite build`. This stage moves `parseSlot` and the vocabulary beside it to a
+  pure entry both packages import, rather than routing gengraph's import around the barrel.
 - Editor #17: an `EDITORS` entry `{id: 'gengraph', title: 'Gen Graph', what: …}` in
   apps/desktop/src/shared/editors.ts, offered (unlike Setup and Debug Agent). Claim
   resolution is decided by tier, not by `EDITORS` order — Task Graph's slot claim
