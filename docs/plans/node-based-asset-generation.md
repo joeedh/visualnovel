@@ -834,6 +834,43 @@ directory by a test. The fixture's node class is named for the type it declares,
 Tests: table merge precedence, the request-gated population flow with a scripted agent,
 and the ported Gemini plugin running a fixture graph against mock services.
 
+**Deviation, Stage 12.** Five things differ from the bullets above.
+
+Precedence between tables already shipped in Stage 5, so the third bullet's work is the
+attribution rather than the ordering. `priceEstimate` already read an ordered list of
+tables and let the first that priced a model win. What Stage 12 adds is `table` on each
+priced line, naming which one answered, and `genPriceTables`, which puts the tables in the
+order the bullet describes: the author's own, then the shipped one, then each installed
+plugin's. Assembling that list needs the filesystem, so the host-side call that reads the
+author's table and the installed manifests is `hostPriceTables` in `@vn/pipeline`. It
+cannot live in `@vn/cli`, which the boundaries rule forbids from importing `@vn/gengraph`.
+
+There is no web-search seam to give a price agent, so the Gemini agent fetches the vendor's
+pricing page through `services.fetch` and hands the text to `services.text`. Every request
+is recorded in the provider ring that way, which is what the bullet asks for, and the page
+is the vendor's own published prices rather than a search result. The agent refuses when
+the page cannot be read, rather than falling back on what the model remembers, because a
+figure nobody published is worse than no figure.
+
+A plugin's price agent names the model it wants to read the page with, but that name does
+not choose a backend. `createGenServices`'s text service answers every call with the
+project's one configured text provider, so the named model records what the plugin was
+written against. Giving a plugin a text backend of its own is not part of this stage.
+
+The Gemini plugin's sources live at a repo-root `plugins/gemini/` directory rather than in
+a package. A plugin is installed by copying its directory under `userConfigDir()/plugins/`,
+so it has to be a directory that stands on its own, and it imports `@vn/gengraph/plugin`,
+which the boundaries rule forbids to anything under `packages/` or `apps/`. The directory
+is in the root tsconfig's `include`, so its sources are typechecked, linted and formatted
+like the rest of the repository, and the boundaries block matches neither `plugins/**` path.
+
+Porting the two node runtimes did not free `createGeminiImage`'s seat in factory.ts. The
+plugin's runtimes register under their own type names (`GeminiImage`, `GeminiEditImage`)
+beside the built-in ones rather than replacing them, so a graph reaches the vendor directly
+only once the author installs the plugin and uses those node types. The built-in image node
+still runs through the host's image backend, which is what a project with no plugins
+installed depends on.
+
 ## Verification
 
 - Every stage: `pnpm check`, `pnpm test`, `pnpm lint` green before commit.

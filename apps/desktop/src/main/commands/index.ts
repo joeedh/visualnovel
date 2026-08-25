@@ -64,7 +64,7 @@ import {
   notifyUnhide,
 } from './notify.js';
 import { pipelineApproveAndRun, pipelineRun, pipelineStatus, pipelineStop } from './pipeline.js';
-import { pluginInstall, pluginList, pluginRemove } from './plugin.js';
+import { pluginInstall, pluginList, pluginPrices, pluginRemove } from './plugin.js';
 import {
   promptAddRef,
   promptCheck,
@@ -225,6 +225,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     pipelineStop,
     pluginInstall,
     pluginList,
+    pluginPrices,
     pluginRemove,
     promptAddRef,
     promptCheck,

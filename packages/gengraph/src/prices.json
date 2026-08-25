@@ -1,4 +1,5 @@
 {
+  "name": "shipped",
   "pricesAsOf": "2026-08-25",
   "source": "published list prices, refreshed as part of the release process",
   "models": {

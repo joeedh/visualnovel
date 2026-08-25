@@ -6,6 +6,8 @@
 import { z } from 'zod';
 
 import { GEN_PLUGIN_API_VERSION } from './plugin.js';
+import { genPriceModels } from './prices.js';
+import type { GenPriceTable } from './prices.js';
 
 /** The capabilities of {@link GenServices}, which is what a manifest names one by one. */
 export const GEN_SERVICE_NAMES = ['image', 'text', 'blobs', 'assets', 'fetch', 'key'] as const;
@@ -21,16 +23,11 @@ const NAME = /^[a-z0-9][a-z0-9-]*$/;
 /** A relative path inside the plugin's own directory, which is where its sources live. */
 const ENTRY = /^[A-Za-z0-9_][A-Za-z0-9_./-]*\.ts$/;
 
+// No `name`: a fragment is named after the plugin that declared it, by `pluginPriceTable`.
 const priceTable = z.object({
   pricesAsOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   source: z.string().optional(),
-  models: z.record(
-    z.object({
-      image: z.number().nonnegative().optional(),
-      'mtok-in': z.number().nonnegative().optional(),
-      'mtok-out': z.number().nonnegative().optional(),
-    }),
-  ),
+  models: genPriceModels,
 });
 
 const manifest = z.object({
@@ -50,6 +47,12 @@ const manifest = z.object({
   entry: z.string().regex(ENTRY).default('index.ts'),
   /** Prices for the models it calls, in the shape of a price table, consulted last. */
   prices: priceTable.optional(),
+  /**
+   * True when the plugin answers a price refresh by asking a model what its vendor charges.
+   * The refresh runs on the author's own key and only when they ask for one, so the install
+   * confirmation names the capability.
+   */
+  priceAgent: z.boolean().default(false),
 });
 
 /** A parsed manifest. Its `prices` fragment has the shape of a {@link GenPriceTable}. */
@@ -106,10 +109,22 @@ export function installDescription(m: GenPluginManifest): string {
     m.keys.length === 0
       ? 'needs no API key'
       : `needs the ${list([...m.keys].sort())} key${m.keys.length === 1 ? '' : 's'}`;
+  const prices = m.priceAgent
+    ? ' It can also look up what its models charge, which spends money on your own key and ' +
+      'happens only when you ask for it.'
+    : '';
   return (
     `${m.name} ${m.version} adds ${types} and runs with this application's own permissions. ` +
-    `${reaches}, and ${keys}.`
+    `${reaches}, and ${keys}.${prices}`
   );
+}
+
+/**
+ * The price table a manifest declares, named after the plugin so an estimate can say which
+ * table priced a line. A plugin declaring no prices has none.
+ */
+export function pluginPriceTable(m: GenPluginManifest): GenPriceTable | undefined {
+  return m.prices === undefined ? undefined : { name: m.name, ...m.prices };
 }
 
 function list(items: readonly string[]): string {

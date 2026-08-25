@@ -33,5 +33,5 @@
       "nstructjs": ["./vendor/nstructjs/build/structjs.d.ts"]
     }
   },
-  "include": ["packages/*/src/**/*.ts", "apps/*/src/**/*.ts"]
+  "include": ["packages/*/src/**/*.ts", "apps/*/src/**/*.ts", "plugins/*/**/*.ts"]
 }

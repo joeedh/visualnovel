@@ -22,5 +22,6 @@ export * from './dsl.js';
 export * from './edit.js';
 export * from './cost.js';
 export * from './prices.js';
+export * from './priceagent.js';
 export * from './manifest.js';
 export * from './nodes/index.js';

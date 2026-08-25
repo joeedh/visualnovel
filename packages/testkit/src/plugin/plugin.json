@@ -7,6 +7,7 @@
   "services": ["text"],
   "keys": ["TESTKIT_API_KEY"],
   "entry": "index.ts",
+  "priceAgent": true,
   "prices": {
     "pricesAsOf": "2026-01-01",
     "source": "made up, for a fixture",

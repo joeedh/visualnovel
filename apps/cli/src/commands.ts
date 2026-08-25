@@ -22,6 +22,7 @@ import {
   decomposeAll,
   gateStatus,
   graphRuntime,
+  hostPriceTables,
   priceSlots,
   readProjectGraphs,
   reportGraphs,
@@ -236,7 +237,10 @@ async function printGraphStatus(project: LoadedProject): Promise<void> {
   for (const problem of problems) ok(`Graph not loaded — ${problem}`);
   if (docs.length === 0) return;
 
-  const report = reportGraphs(docs, { maxRefineAttempts: project.config.max_refine_attempts });
+  const report = reportGraphs(docs, {
+    maxRefineAttempts: project.config.max_refine_attempts,
+    tables: await hostPriceTables(),
+  });
   ok(`Generation graphs: ${docs.length} (${report.bound.size} slot(s) bound)`);
   for (const slot of report.conflicts) {
     ok(`  ${slot}: more than one active output claims it, so no graph draws it`);
@@ -355,7 +359,10 @@ async function loadGraphs(
 async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[]): Promise<void> {
   if (docs.length === 0) return;
 
-  const report = reportGraphs(docs, { maxRefineAttempts: project.config.max_refine_attempts });
+  const report = reportGraphs(docs, {
+    maxRefineAttempts: project.config.max_refine_attempts,
+    tables: await hostPriceTables(),
+  });
   const slots = unrenderedBoundSlots(report, {
     model: project.model,
     config: project.config,

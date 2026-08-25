@@ -16,6 +16,7 @@ import {
   readGenPlugin,
   readInstalledPlugins,
   removeGenPlugin,
+  userPriceFile,
 } from '@vn/gengraph/state';
 import { pluginBundler } from '../plugins.js';
 import type { CommandHost } from './host.js';
@@ -86,6 +87,46 @@ export const pluginInstall = define({
     return {
       message: `Installed ${active.manifest.name} ${active.manifest.version}.`,
       data: { name: active.manifest.name, dir: installed.dir },
+    };
+  },
+});
+
+export const pluginPrices = define({
+  id: 'plugin.prices',
+  title: 'Refresh what a plugin’s models charge…',
+  description:
+    'Ask a plugin to look up what its vendor charges and fold the answer into your own price ' +
+    'table. It calls a model on your own key, so nothing is looked up until you ask. The ' +
+    'models it does not mention keep the prices they already had.',
+  mutating: true,
+  undoable: false,
+  props: {
+    name: prop.string(NAME),
+  },
+  async check({ name }) {
+    const installed = await readInstalledPlugins();
+    const entry = installed.find((e) => e.name === name);
+    if (entry === undefined)
+      return { ok: false, reason: `no plugin called "${name}" is installed` };
+    if (entry.manifest?.priceAgent !== true) {
+      return { ok: false, reason: `${name} does not look up what its models charge` };
+    }
+    return { ok: true, note: `writes ${userPriceFile()}` };
+  },
+  async run({ name }, ctx) {
+    if (!ctx.confirm) throw new Error('refreshing prices needs confirmation, and no gate is wired');
+    const asked = await ctx.confirm(
+      `${name} will call a model on your own key to look up what its vendor charges. Do it now?`,
+    );
+    if (!asked) return { message: 'Cancelled.' };
+
+    const done = await ctx.host.session.refreshPrices(name);
+    if (!done.ok) throw new Error(done.reason);
+
+    const count = done.models.length;
+    return {
+      message: `Priced ${count} model${count === 1 ? '' : 's'} as of ${done.pricesAsOf}.`,
+      data: { name, models: done.models, pricesAsOf: done.pricesAsOf },
     };
   },
 });

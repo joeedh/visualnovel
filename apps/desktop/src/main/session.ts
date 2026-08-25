@@ -91,6 +91,7 @@ import {
   graphJournalFile,
   invalidateGenGraph,
   readGraphJournal,
+  refreshUserPrices,
   type GenRunContext,
 } from '@vn/gengraph/state';
 import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
@@ -103,6 +104,7 @@ import {
   decomposeAllPreview,
   driftOf,
   gateStatus,
+  hostPriceTables,
   indexGraphs,
   isApproved,
   slotOfTask,
@@ -5127,16 +5129,16 @@ export class WorkspaceSession {
   }
 
   /**
-   * What one graph is expected to spend if it runs from nothing, priced against the shipped
-   * table. The refine tail is counted `max_refine_attempts` times, so the figure is the worst
-   * case rather than what a run that passes first time costs.
+   * What one graph is expected to spend if it runs from nothing. The refine tail is counted
+   * `max_refine_attempts` times, so the figure is the worst case rather than what a run that
+   * passes first time costs.
    */
   async graphEstimate(slug: GraphSlug): Promise<
     | { ok: false; reason: string }
     | {
         ok: true;
         estimate: GenPricedEstimate;
-        /** Set when the shipped table is older than `PRICES_STALE_DAYS`. */
+        /** Set when the oldest table an estimate drew on is older than `PRICES_STALE_DAYS`. */
         stale: boolean;
       }
   > {
@@ -5147,13 +5149,35 @@ export class WorkspaceSession {
     const counted = estimateGraph(read.graph, {
       maxRefineAttempts: config.max_refine_attempts,
     });
-    const estimate = priceEstimate(counted.lines);
+    const estimate = priceEstimate(counted.lines, await hostPriceTables());
     const asOf = estimate.pricesAsOf;
     return {
       ok: true,
       estimate,
       stale: asOf !== undefined && pricesAreStale(asOf, new Date()),
     };
+  }
+
+  /**
+   * Runs a plugin's price agent and folds what it answers into the author's own table. The
+   * caller has confirmed the spend, because the agent calls a model on the author's key.
+   */
+  async refreshPrices(
+    plugin: string,
+  ): Promise<{ ok: true; models: string[]; pricesAsOf: string } | { ok: false; reason: string }> {
+    const project = await loadProject(this.dir);
+    const deps = await buildGenDeps(project, false);
+    const services = createGenServices({
+      model: project.model,
+      store: project.store,
+      providers: deps.providers,
+      imageBackend: deps.imageBackend,
+      ...(deps.keys === undefined ? {} : { keys: deps.keys }),
+    });
+
+    const done = await refreshUserPrices(plugin, services, new Date());
+    if (!done.ok) return done;
+    return { ok: true, models: done.models, pricesAsOf: done.table.pricesAsOf };
   }
 
   /**

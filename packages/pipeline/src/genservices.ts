@@ -25,8 +25,11 @@ export interface GenServicesDeps {
   providers: Providers;
   /** The byte-level image seam, from `createImageBackend` or a mock backend. */
   imageBackend: ImageBackend;
-  /** Where a node's intermediate pictures land, from `@vn/gengraph/state`. */
-  blobs: GenBlobService;
+  /**
+   * Where a node's intermediate pictures land, from `@vn/gengraph/state`. A caller with no
+   * graph behind it leaves this out, and every blob call then refuses by name.
+   */
+  blobs?: GenBlobService;
   /** Resolved keys, so a plugin node can ask for the one its vendor needs. */
   keys?: Partial<ResolvedKeys>;
 }
@@ -64,9 +67,9 @@ function assetService(model: ProjectModel, store: AssetStore): GenAssetService {
 }
 
 /**
- * The configured text model, whatever model id a node names. A node's own model id becomes
- * real in Stage 12, where providers are ported to plugins and a backend can be built per
- * call; until then the project's one text provider answers.
+ * The configured text model, whatever model id a node names. The project's one text provider
+ * answers every call, so a node naming a second text model is quoted against that id and run
+ * against this one. Threading a per-call backend through here is unshipped work.
  */
 function textService(providers: Providers): GenTextService {
   return {
@@ -75,6 +78,14 @@ function textService(providers: Providers): GenTextService {
     structured: <T>(_modelId: string, prompt: string, parse: (raw: string) => T, system?: string) =>
       providers.text.structured(prompt, parse, system),
   };
+}
+
+/** Stands in where there is no graph to write blobs for, so the refusal names the reason. */
+function noBlobs(): GenBlobService {
+  const refuse = (): never => {
+    throw new Error('these services were built without a graph, so they hold no blob store');
+  };
+  return { read: refuse, write: refuse };
 }
 
 function headersOf(response: Response): Record<string, string> {
@@ -134,7 +145,7 @@ export function createGenServices(deps: GenServicesDeps): GenServices {
       ): Promise<ImageResult> => imageBackend.edit(base, prompt, refs, params),
     },
     text: textService(deps.providers),
-    blobs: deps.blobs,
+    blobs: deps.blobs ?? noBlobs(),
     assets: assetService(deps.model, deps.store),
     fetch: ringFetch,
     key: (name: string) => Promise.resolve(deps.keys?.[name as keyof ResolvedKeys]),

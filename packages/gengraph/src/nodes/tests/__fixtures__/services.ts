@@ -5,7 +5,13 @@
 import type { AssetRef, ImageParams, ImageResult } from '@vn/types';
 import { sha256 } from '@vn/util';
 
-import type { GenBlobRef, GenImageInput, GenServices } from '../../../index.js';
+import type {
+  GenBlobRef,
+  GenFetchInit,
+  GenFetchResult,
+  GenImageInput,
+  GenServices,
+} from '../../../index.js';
 
 export interface MockImageCall {
   kind: 'generate' | 'edit';
@@ -21,9 +27,21 @@ export interface MockTextCall {
   system?: string;
 }
 
+export interface MockFetchCall {
+  url: string;
+  init: GenFetchInit;
+}
+
+/** What a scripted request answers with. An absent status counts as 200. */
+export interface MockFetchReply {
+  status?: number;
+  body?: string | Uint8Array;
+}
+
 export interface MockServices extends GenServices {
   images: MockImageCall[];
   texts: MockTextCall[];
+  fetches: MockFetchCall[];
   blobs: GenServices['blobs'] & { stored: Map<string, Uint8Array> };
   /** Bytes keyed by `<hash>.<ext>`, the way the asset store addresses them. */
   assetBytes: Map<string, Uint8Array>;
@@ -37,6 +55,10 @@ export interface MockServices extends GenServices {
 export interface MockOptions {
   reply?: string;
   drawn?: Partial<ImageResult>;
+  /** Answers a node's own request. A test leaving it out has every request refused. */
+  answer?: (call: MockFetchCall) => MockFetchReply;
+  /** The keys a node may ask for, keyed by the name it asks under. */
+  keys?: Record<string, string>;
 }
 
 export function bytes(text: string): Uint8Array {
@@ -58,6 +80,7 @@ export function mockServices(options: MockOptions = {}): MockServices {
   const mock: MockServices = {
     images: [],
     texts: [],
+    fetches: [],
     assetBytes,
     slotAssets,
     reply: options.reply ?? 'a rewritten line',
@@ -110,8 +133,22 @@ export function mockServices(options: MockOptions = {}): MockServices {
       slot: (slotKey: string) => Promise.resolve(slotAssets.get(slotKey)),
     },
 
-    fetch: () => Promise.reject(new Error('no built-in node makes a request of its own')),
-    key: () => Promise.resolve(undefined),
+    fetch: (url: string, init: GenFetchInit = {}): Promise<GenFetchResult> => {
+      const call: MockFetchCall = { url, init };
+      mock.fetches.push(call);
+
+      if (options.answer === undefined) {
+        return Promise.reject(new Error('this test scripted no answer for a request'));
+      }
+      const reply = options.answer(call);
+      const body = reply.body ?? '';
+      return Promise.resolve({
+        status: reply.status ?? 200,
+        headers: {},
+        bytes: typeof body === 'string' ? bytes(body) : body,
+      });
+    },
+    key: (name: string) => Promise.resolve(options.keys?.[name]),
   };
 
   return mock;

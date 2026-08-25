@@ -23,6 +23,7 @@ const UNKNOWN: GenCostLine = {
 };
 
 const USER_TABLE: GenPriceTable = {
+  name: 'yours',
   pricesAsOf: '2026-08-01',
   models: { 'gemini-2.5-flash-image': { image: 0.02 }, 'no-such-model': { 'mtok-in': 7 } },
 };

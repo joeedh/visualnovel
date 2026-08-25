@@ -16,6 +16,8 @@ import {
 } from 'pathux-toolprop';
 
 import { ImageSocket, RefsSocket, TextSocket } from './nodes/sockets.js';
+import { registerGenPriceAgent } from './priceagent.js';
+import type { GenPriceAgent } from './priceagent.js';
 import { mtok } from './prices.js';
 import { registerGenNode, registerGenRuntime } from './registry.js';
 import type { GenNodeRun, GenNodeSpec } from './registry.js';
@@ -44,7 +46,8 @@ export type {
   GenTextService,
 } from './services.js';
 export type { GenImageRef } from './nodes/sockets.js';
-export type { GenPriceTable } from './prices.js';
+export type { GenPriceAgent } from './priceagent.js';
+export type { GenPriceModels, GenPriceTable } from './prices.js';
 
 /**
  * What `plugin.json` declares of the API it was written against. A plugin naming a version
@@ -73,8 +76,19 @@ export interface GenPluginApi {
   registerNode(spec: GenNodeSpec): void;
   /** Binds a declared type's work. Refuses a type name this plugin did not declare. */
   registerRuntime(typeName: string, run: GenNodeRun): void;
+  /**
+   * Binds the agent a price refresh runs. Refuses a plugin whose manifest does not declare
+   * `priceAgent`, because the install confirmation names that capability and an author who
+   * was not told about it did not agree to a model call.
+   */
+  registerPriceAgent(agent: GenPriceAgent): void;
   /** Millions of tokens, which is what a `mtok-in` or `mtok-out` count is measured in. */
   mtok(tokens: number): number;
+}
+
+/** What a manifest declares beyond its node types, which `genPluginApi` holds a plugin to. */
+export interface GenPluginCapabilities {
+  priceAgent?: boolean;
 }
 
 /** What a plugin's entry module default-exports. */
@@ -86,12 +100,15 @@ export interface GenPluginModule {
 }
 
 /**
- * Builds the API one plugin is activated with. The two registration functions are wrapped
- * rather than passed through, so every type a plugin declares is recorded against its name
- * and a runtime for a type the plugin did not declare is refused here rather than reaching
- * the shared registry.
+ * Builds the API one plugin is activated with. Every registration function is wrapped rather
+ * than passed through, so what a plugin registers is recorded against its name, and anything
+ * its manifest does not declare is refused here rather than reaching the shared registry.
  */
-export function genPluginApi(pluginName: string, declared: readonly string[]): GenPluginApi {
+export function genPluginApi(
+  pluginName: string,
+  declared: readonly string[],
+  capabilities: GenPluginCapabilities = {},
+): GenPluginApi {
   const allowed = new Set(declared);
 
   return {
@@ -121,6 +138,14 @@ export function genPluginApi(pluginName: string, declared: readonly string[]): G
         );
       }
       registerGenRuntime(typeName, run);
+    },
+    registerPriceAgent(agent) {
+      if (capabilities.priceAgent !== true) {
+        throw new Error(
+          `plugin ${pluginName} registered a price agent, which its manifest does not declare`,
+        );
+      }
+      registerGenPriceAgent(pluginName, agent);
     },
     mtok,
   };

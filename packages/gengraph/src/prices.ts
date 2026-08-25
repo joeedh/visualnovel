@@ -1,14 +1,37 @@
+import { z } from 'zod';
+
 import shipped from './prices.json';
 import type { GenCostLine, GenCostUnit } from './registry.js';
 
+/** Dollars per unit, keyed by model id. This is the half of a table a price agent answers with. */
+export type GenPriceModels = Record<string, Partial<Record<GenCostUnit, number>>>;
+
+/**
+ * The shape a model's prices are read as at every boundary: a manifest's fragment, and what a
+ * plugin's price agent hands back. A negative figure or a unit nothing counts in is refused
+ * here rather than reaching an estimate.
+ */
+export const genPriceModels = z.record(
+  z.object({
+    image: z.number().nonnegative().optional(),
+    'mtok-in': z.number().nonnegative().optional(),
+    'mtok-out': z.number().nonnegative().optional(),
+  }),
+);
+
 /** Dollars per unit for the models one table knows about. */
 export interface GenPriceTable {
+  /** How an estimate names this table when it says which one priced a line. */
+  name: string;
   /** The day the prices were last refreshed, as `YYYY-MM-DD`. */
   pricesAsOf: string;
   /** Where the figures came from, for a reader deciding whether to trust them. */
   source?: string;
-  models: Record<string, Partial<Record<GenCostUnit, number>>>;
+  models: GenPriceModels;
 }
+
+/** The name the per-user table carries, which is also what a line it priced is attributed to. */
+export const USER_PRICES_NAME = 'yours';
 
 /**
  * The table shipped with the app, refreshed at release. It covers the models this
@@ -26,6 +49,8 @@ const MS_PER_DAY = 86_400_000;
 export interface GenPricedLine extends GenCostLine {
   /** What the line costs. No table priced the model when this is absent. */
   usd?: number;
+  /** The name of the table the rate came from. Absent on a line no table priced. */
+  table?: string;
 }
 
 export interface GenPricedEstimate {
@@ -66,11 +91,23 @@ export function priceEstimate(
 
     dates.push(table.pricesAsOf);
     usd += rate * line.count;
-    priced.push({ ...line, usd: rate * line.count });
+    priced.push({ ...line, usd: rate * line.count, table: table.name });
   }
 
   dates.sort();
   return { lines: priced, usd, unpriced, pricesAsOf: dates[0] };
+}
+
+/**
+ * The tables an estimate is priced against, in the order {@link priceEstimate} consults them.
+ * The author's own table wins over the shipped one, and a plugin's declared fragment is
+ * consulted last, because a plugin prices the models it calls and the two above it price the
+ * models this application configures.
+ */
+export function genPriceTables(
+  opts: { user?: GenPriceTable; plugins?: readonly GenPriceTable[] } = {},
+): GenPriceTable[] {
+  return [...(opts.user === undefined ? [] : [opts.user]), SHIPPED_PRICES, ...(opts.plugins ?? [])];
 }
 
 /**

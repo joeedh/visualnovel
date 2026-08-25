@@ -14,11 +14,13 @@ import {
   activeOutputs,
   bindSlots,
   estimateGraph,
+  genPriceTables,
   priceEstimate,
   pricesAreStale,
   registerGenRuntimes,
 } from '@vn/gengraph';
 import type {
+  GenPriceTable,
   GenPricedEstimate,
   Graph,
   GraphId,
@@ -30,8 +32,10 @@ import {
   graphBlobStore,
   graphDrift,
   graphSlugs,
+  installedPriceTables,
   readGraphDoc,
   readGraphJournal,
+  readUserPrices,
   type GraphRead,
 } from '@vn/gengraph/state';
 import type { GenServicesDeps } from './genservices.js';
@@ -141,6 +145,26 @@ export interface GraphsReportOptions {
   maxRefineAttempts?: number;
   /** The clock a price table's age is measured against. Defaults to the current time. */
   now?: Date;
+  /**
+   * The price tables to consult, in order, the way `genPriceTables` arranges them. Only the
+   * shipped table is consulted when this is left out, so a host that has not read the author's
+   * own table still prices the models this repository configures.
+   */
+  tables?: readonly GenPriceTable[];
+}
+
+/**
+ * The tables a host prices an estimate against, in the order they are consulted: the author's
+ * own first, then the one this release shipped with, then whatever the installed plugins
+ * declare. It reads the per-user directory rather than the project, so two projects on one
+ * machine quote the same figures.
+ */
+export async function hostPriceTables(): Promise<GenPriceTable[]> {
+  const user = await readUserPrices();
+  return genPriceTables({
+    ...(user === undefined ? {} : { user }),
+    plugins: await installedPriceTables(),
+  });
 }
 
 /**
@@ -161,7 +185,10 @@ export function reportGraphs(
         ? {}
         : { maxRefineAttempts: opts.maxRefineAttempts }),
     });
-    const estimate = priceEstimate(counted.lines);
+    const estimate =
+      opts.tables === undefined
+        ? priceEstimate(counted.lines)
+        : priceEstimate(counted.lines, opts.tables);
     if (estimate.pricesAsOf !== undefined) {
       dates.push(estimate.pricesAsOf);
     }

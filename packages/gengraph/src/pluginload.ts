@@ -295,7 +295,11 @@ export async function activateGenPlugin(
   }
 
   try {
-    module.default(genPluginApi(read.manifest.name, read.manifest.nodeTypes));
+    module.default(
+      genPluginApi(read.manifest.name, read.manifest.nodeTypes, {
+        priceAgent: read.manifest.priceAgent,
+      }),
+    );
   } catch (err) {
     return { ok: false, reason: `${read.manifest.name} failed while activating: ${String(err)}` };
   }
