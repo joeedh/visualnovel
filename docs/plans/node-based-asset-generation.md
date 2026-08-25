@@ -297,6 +297,16 @@ Pure logic, no I/O beyond an injected blob store.
 Tests: hash stability and propagation, journal replay including a crashed half-written
 line, blob round-trip, drift on a prop edit and no drift on a layout move.
 
+The package gained a second entry point here, which the plan did not call for. Paths,
+hashing, the journal's file half and the blob store all reach `node:` modules, and Stage
+10 has the desktop renderer importing `@vn/gengraph`, so those four live at
+`@vn/gengraph/state` and the main entry stays free of them. This is the split
+`@vn/scriptedit` and `@vn/scriptedit/write` already make, and it is wired in the same
+three places: the package's `exports`, the root tsconfig's `paths`, and `SUBPATHS` in
+scripts/aliases.mjs. The journal's record types and its replay are pure, so they stay on
+the main entry beside the validator. `nodeHash` needs no `typeVersion` on `GenNodeSpec`
+after all: path.ux already carries one on `NodeDef` and writes it onto every node.
+
 ### Stage 3 — the DSL: read, replace, diff
 
 The agent's editing surface, built on path.ux's `validateGraphDSL`/`buildGraphFromDSL`

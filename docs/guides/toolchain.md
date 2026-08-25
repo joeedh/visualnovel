@@ -159,8 +159,9 @@ package can typecheck, pass its tests, and still fail to bundle:
 Vite is the fifth resolver and needs nothing: it reads the workspace symlink and the package's
 own `exports` map.
 
-**A subpath export** — `@vn/scriptedit/write` is the only one — costs two more entries, because a
-subpath names its source file rather than `index.ts`: a `paths` line of its own in the root
+**A subpath export** — `@vn/scriptedit/write` and `@vn/gengraph/state` are the two — costs two more
+entries, because a subpath names its source file rather than `index.ts`: a `paths` line of its own
+in the root
 `tsconfig`, and the `'^@vn/([^/]+)/([^/]+)$'` rule in jest's `moduleNameMapper`. `scripts/aliases.mjs`
 carries them in a `SUBPATHS` list beside `PACKAGES`. Split a package this way when **one half must
 stay out of the renderer's bundle**: the renderer imports `apps/desktop/src/shared/`, so anything

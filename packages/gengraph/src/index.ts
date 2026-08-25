@@ -3,7 +3,8 @@
  * graph module: everything else in the repository reaches nodes, sockets and graphs
  * through here, so one import path carries the vendor alias and the node registry stays
  * a single map. It holds no `fs` and no DOM, because the desktop renderer, the CLI and
- * the authoring agent all load the same graph files.
+ * the authoring agent all load the same graph files. Everything that does touch the
+ * filesystem is reached through `@vn/gengraph/state` instead.
  */
 export * from 'pathux-graph';
 
@@ -11,3 +12,4 @@ export * from './registry.js';
 export * from './services.js';
 export * from './graphfile.js';
 export * from './validate.js';
+export * from './journal.js';

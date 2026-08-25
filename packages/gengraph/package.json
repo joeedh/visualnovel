@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./state": "./src/state.ts"
   },
   "dependencies": {
     "@vn/types": "workspace:*",
