@@ -99,6 +99,18 @@ export function pricesAreStale(
   return Number.isNaN(age) || age > staleAfterDays;
 }
 
+/**
+ * One sentence pricing a run. The desktop confirmation and the authoring agent's both quote
+ * it, so an author reads the same figure whichever of the two asks them to approve the spend.
+ */
+export function estimateSentence(estimate: GenPricedEstimate, stale: boolean): string {
+  const unpriced = new Set(estimate.unpriced.map((line) => line.model));
+  const missing =
+    unpriced.size === 0 ? '' : `, with no price for ${[...unpriced].sort().join(', ')}`;
+  const age = stale ? ', from a price table over three months old' : '';
+  return `About $${estimate.usd.toFixed(2)}${missing}${age}.`;
+}
+
 /** Millions of tokens, which is what a `mtok-in` or `mtok-out` count is measured in. */
 export function mtok(tokens: number): number {
   return tokens / 1_000_000;

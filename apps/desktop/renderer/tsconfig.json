@@ -11,6 +11,8 @@
       "@vn/debug2d": ["../../../packages/debug2d/src/index.ts"],
       "@vn/types": ["../../../packages/types/src/index.ts"],
       "pathux": ["../dist/pathux-types/pathux.d.ts"],
+      "pathux-graph": ["../dist/pathux-types/graph/index.d.ts"],
+      "pathux-toolprop": ["../dist/pathux-types/path-controller/toolsys/toolprop.d.ts"],
       "nstructjs": ["../../../vendor/nstructjs/build/structjs.d.ts"]
     }
   },

@@ -72,6 +72,7 @@ import {
 } from '@vn/store';
 import {
   estimateGraph,
+  estimateSentence,
   executeGenGraph,
   genNodeSpec,
   invalidateGenGraph,
@@ -1238,6 +1239,17 @@ export class WorkspaceSession {
           const result = await this.runPipeline(this.mock);
           return { ran: result.ran, failed: result.failed, blockedOnGate: result.blockedOnGate };
         },
+      },
+      // Reading and editing a graph need no host, so only the run is wired here. It is the same
+      // pair of calls `gengraph.run` makes, priced by the same sentence the author confirms.
+      graphs: {
+        estimate: async (slug) => {
+          const counted = await this.graphEstimate(slug);
+          return counted.ok
+            ? { ok: true, note: estimateSentence(counted.estimate, counted.stale) }
+            : { ok: false, reason: counted.reason };
+        },
+        run: (slug, opts) => this.runGraph(slug, { force: opts.force, mock: this.mock }),
       },
     };
     const context = await loadContext(this.dir);

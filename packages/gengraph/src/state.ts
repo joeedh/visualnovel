@@ -6,6 +6,7 @@
  * the split `@vn/scriptedit` and `@vn/scriptedit/write` already make.
  */
 export * from './paths.js';
+export * from './document.js';
 export * from './hash.js';
 export * from './journalfile.js';
 export * from './blobs.js';

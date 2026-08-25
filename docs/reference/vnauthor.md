@@ -11,6 +11,7 @@ validated input files in a clean commit. Design:
 - [Running it](#running-it)
 - [How it works](#how-it-works)
 - [Tools](#tools)
+  * [Generation graphs](#generation-graphs)
   * [Concept images](#concept-images)
   * [Revising planned art](#revising-planned-art)
   * [Approving art on the author's say-so](#approving-art-on-the-authors-say-so)
@@ -188,7 +189,7 @@ agent honors.
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 45 tools. **M** marks `mutating: true`
+The registry is `packages/authoring/src/tools.ts` — 49 tools. **M** marks `mutating: true`
 (blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
 whatever the mode).
 
@@ -199,11 +200,12 @@ whatever the mode).
 | Entity editing | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M** |
 | Scene prose | `edit_scene` **M** |
 | Branch wiring | `edit_branches` **M** |
-| Wardrobe | `set_outfit` **M** |
+| Wardrobe | `set_outfit` **M**, `set_variant` **M** |
 | Storyboards | `read_shots`, `set_coverage` **M**, `propose_storyboard` (costs a model call, writes nothing), `write_storyboard` **M** |
 | Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
 | Approval | `approve_assets` **M** (confirms its own list) |
+| Generation graphs | `read_asset_graph`, `edit_asset_graph` **M**, `run_asset_graph` **M** (confirms a priced run) |
 | Raw write | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`) |
 | Context | `update_context` **M**, `regenerate_context` **M** |
 | Git (read) | `git_status`, `git_log`, `git_show`, `git_diff` |
@@ -251,6 +253,34 @@ chunk; present, the subject's override is written to `work/shots/<sceneId>.json`
 that shot. `outfit=""` clears either and lets the level below answer. The wardrobe itself is
 authored on the character sheet (`edit_character`'s `outfits` / `defaultOutfit`), so the set
 `set_outfit` will accept is the set the sheet declares.
+
+### Generation graphs
+
+A generation graph is the node network a picture is drawn by, stored at
+`vngen/work/graphs/<slug>.json`. Three tools reach one, and they share their decisions with the
+`gengraph.*` commands by importing `@vn/gengraph` rather than by invoking the registry, which is
+the same arrangement `edit_scene` has with `story.*`.
+
+- **A graph is read and written whole, and diffed by node id.** `read_asset_graph` gives back
+  every node with its type and authored values plus every link, and leaves out where the nodes sit
+  on the canvas, so writing one back never moves what the author arranged. `edit_asset_graph` takes
+  that same description back: a node kept under the id it had keeps its position and keeps its
+  journal record, and a node left out is removed.
+- **A description that will not build is refused with every problem in it.** The file is left
+  exactly as it was, and the model gets the whole list rather than the first line, so one round
+  trip repairs a description it wrote. A graph that builds but is still incomplete is written and
+  its remaining diagnostics reported, because a half-built graph is a normal thing to save.
+- **Only the run needs a host.** Reading and editing go straight to the files through
+  `@vn/gengraph/state`, so both work wherever the project is opened. `run_asset_graph` goes through
+  `ToolContext.graphs`, wired by the host that owns the executor and the image backend, and refuses
+  by naming the desktop app where nothing wired it.
+- **A run is quoted before it is confirmed.** The estimate comes back in the sentence
+  `estimateSentence` builds, which is the sentence the desktop's own confirmation shows, so an
+  author reads the same figure whichever half asks. The card goes through `ctx.confirm` rather than
+  `confirm: true`, because the generic prompt shows a tool name and its arguments and could not
+  carry a price.
+- **A run fills no slot.** It writes journal records and blobs, and a picture enters the asset
+  store only where a planned task names the graph.
 
 ### Concept images
 

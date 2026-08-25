@@ -282,6 +282,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/gengraph':
+        specifier: workspace:*
+        version: link:../gengraph
       '@vn/git':
         specifier: workspace:*
         version: link:../git

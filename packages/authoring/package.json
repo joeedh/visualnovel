@@ -10,6 +10,7 @@
     "@vn/artgen": "workspace:*",
     "@vn/bible": "workspace:*",
     "@vn/config": "workspace:*",
+    "@vn/gengraph": "workspace:*",
     "@vn/git": "workspace:*",
     "@vn/model": "workspace:*",
     "@vn/parse": "workspace:*",

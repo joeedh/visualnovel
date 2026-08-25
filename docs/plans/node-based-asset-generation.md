@@ -1,6 +1,6 @@
 # Node-based asset generation
 
-Status: **in progress**, Stages 1 to 7 shipped. This plan distills
+Status: **in progress**, Stages 1 to 8 shipped. This plan distills
 [`../research/node-based-asset-generation.md`](../research/node-based-asset-generation.md)
 into committable stages. The research doc settled nine load-bearing decisions with the user
 on 2026-08-24; none of them is reopened here, and where a stage below elaborates one it says
@@ -547,6 +547,34 @@ improving-the-authoring-agent rule).
 Tests: tool-level round-trip against a fixture project, a refused run in plan mode, a
 diagnostic fed back verbatim, and a boundaries check that `@vn/authoring` still imports
 neither `pipeline` nor `scheduler`.
+
+Deviation, as built: reading and writing a graph document moved out of the desktop app into
+`packages/gengraph/src/document.ts`, reachable as `@vn/gengraph/state`. Only the run is an
+injected capability, so the two read tools have to reach the files themselves, and
+`@vn/authoring` cannot import the desktop app. That also moves `nodeIdOf`, which Stage 7's
+note above places in apps/desktop/src/main/graphs.ts. What stays in that file is the git
+half: a conflicted graph is still refused there, because `gengraph`'s boundaries allow-list
+excludes `@vn/git`. The moved names are re-exported from it under the identifiers its
+existing callers already use, so `writeGraph` and `deleteGraph` still resolve.
+
+Stage 7's `estimateLine` became `estimateSentence` in `prices.ts`, so the desktop
+confirmation and the agent's quote one sentence rather than two spellings of one figure.
+`GenEditResult`'s refusal gained `details?: string[]`, filled from the diagnostics
+`decideApply` already had, because a model repairing a description it wrote needs every
+problem in it rather than the first.
+
+Each tool's arguments differ from the line above in one way. `read_asset_graph`'s `slug` is
+optional and omitting it lists the project's graphs, since with three tools nothing else
+names one. `edit_asset_graph` takes `nodes` and `links` as structured zod arguments rather
+than the string `gengraph.apply` must take, because a tool schema has no reason to inherit
+`@vn/commands`'s missing JSON prop kind. `run_asset_graph` leaves `confirm` unset and calls
+`ctx.confirm` with a priced card, the way `approve_assets` does, because loop.ts's generic
+prompt shows a tool name and its arguments and cannot carry an estimate.
+
+Two wiring changes came with them. `AGENT_WRITERS.graphs` now names `edit_asset_graph`,
+which is the change Stage 7's note above anticipated. `apps/desktop/renderer/tsconfig.json`
+gained the `pathux-graph` and `pathux-toolprop` aliases the root config already carried,
+because the renderer's typecheck now reaches `@vn/gengraph` through `@vn/authoring`.
 
 ### Stage 9 — CLI surfacing
 

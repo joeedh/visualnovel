@@ -52,6 +52,9 @@ import {
   scenePlanMessage,
 } from '@vn/scriptedit/write';
 import { loadConfig } from '@vn/config';
+import { decideGenEdit, graphToDSL, validateGenGraph } from '@vn/gengraph';
+import type { GenDiagnostic, GenPropValue } from '@vn/gengraph';
+import { graphSlugs, readGraphDoc, writeGraphDoc } from '@vn/gengraph/state';
 import {
   SAID_WINDOW,
   approvalCard,
@@ -132,6 +135,22 @@ export interface PipelineControl {
 }
 
 /**
+ * Running a generation graph, as an injected capability. A run spends real image generations
+ * through the executor and the journal, which `@vn/authoring` has no host for, so whichever
+ * host owns those supplies this. Reading and editing a graph need neither and go straight to
+ * the files under `vngen/work/graphs/`.
+ */
+export interface GraphControl {
+  /** What one run is expected to spend, in the sentence the desktop confirmation quotes. */
+  estimate(slug: string): Promise<{ ok: false; reason: string } | { ok: true; note: string }>;
+  /** Execute the graph to its active output, resuming from the journal unless `force`. */
+  run(
+    slug: string,
+    opts: { force: boolean },
+  ): Promise<{ ok: boolean; message: string; written: string[] }>;
+}
+
+/**
  * What the agent was last shown of each workspace file, keyed by workspace-relative path. Each
  * entry holds the hash it read at and whether it saw all of it. This records the conversation
  * rather than the disk: nothing watches the filesystem, and a write compares a fresh read
@@ -179,6 +198,12 @@ export interface ToolContext {
    * the REPL, `approve_assets` refuses and names the host that can.
    */
   approval?: ApprovalControl;
+  /**
+   * Running a generation graph, wired by the host that owns the executor and the image backend.
+   * Absent in bare contexts, where `run_asset_graph` refuses and names the host that can. Reading
+   * and editing a graph do not go through it, so both work wherever the project is opened.
+   */
+  graphs?: GraphControl;
   /**
    * The author's own turns this conversation, oldest first, supplied by the agent loop. It reads
    * the transcript rather than the disk on purpose: consent is judged from what the author said
@@ -1475,14 +1500,10 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
   },
 };
 
-/**
- * What each guarded directory's writer is called from this agent's side. No tool here edits a
- * generation graph yet, so that one names the surface an author reaches instead of a tool the
- * agent could be asked to call.
- */
+/** What each guarded directory's writer is called from this agent's side. */
 const AGENT_WRITERS: GuardedWriters = {
   scenes: 'edit_scene',
-  graphs: "the desktop app's Gen Graph editor",
+  graphs: 'edit_asset_graph',
 };
 
 /**
@@ -2427,6 +2448,136 @@ async function runTriage(
   return backend ? triageApprovals(backend, req) : offlineTriage(req);
 }
 
+// ── Generation graphs ───────────────────────────────────────────────────────
+
+/** One diagnostic as a bullet the model can act on, naming the node it is about. */
+const diagLine = (d: GenDiagnostic): string =>
+  `  • node ${String(d.nodeId)} [${d.code}]: ${d.message}`;
+
+const readAssetGraphTool: Tool<{ slug?: string }> = {
+  name: 'read_asset_graph',
+  description:
+    'Read one generation graph — the node network a picture is drawn by — as the same description `edit_asset_graph` takes back: every node with its type and the values written on it, and every link between them. Where the nodes sit on the canvas is left out on purpose, so writing a graph back never moves what the author arranged there. Anything wrong with the graph is listed after it: a node type no plugin provides, a link whose two ends disagree, a slot string that does not parse. Called with no name it lists the graphs this project holds, which is how you find one to read.',
+  mutating: false,
+  args: z.object({
+    slug: z.string().optional().describe('which graph, by the name its file carries'),
+  }),
+  async run(a, ctx) {
+    const root = ctx.workspace.root;
+    if (a.slug === undefined) {
+      const slugs = await graphSlugs(root);
+      if (slugs.length === 0) {
+        return ok('This project holds no generation graphs.', { data: { slugs } });
+      }
+      return ok(`${slugs.length} graph(s): ${slugs.join(', ')}`, { data: { slugs } });
+    }
+
+    const read = await readGraphDoc(root, a.slug);
+    if (!read.ok) return fail(read.reason);
+
+    const dsl = graphToDSL(read.graph);
+    const problems = read.diagnostics.map(diagLine);
+    const tail = problems.length === 0 ? '' : `\n\nProblems with it:\n${problems.join('\n')}`;
+    return ok(`${read.path}:\n${JSON.stringify(dsl, null, 2)}${tail}`, {
+      data: { dsl, diagnostics: read.diagnostics },
+    });
+  },
+};
+
+const editAssetGraphTool: Tool<{
+  slug: string;
+  nodes: { id: string | number; type: string; props?: Record<string, GenPropValue> }[];
+  links: (string | number)[][];
+}> = {
+  name: 'edit_asset_graph',
+  description:
+    'Rewrite one generation graph from a whole description — the form `read_asset_graph` gives back. Read it first: what you pass is the graph in full, so a node you leave out is removed. A node kept under the id it already had keeps its position on the canvas and keeps the record of what it has already run, so re-describing a graph does not by itself spend anything. A description that will not build is refused with every problem in it listed, and the file on disk is left exactly as it was. It writes the document and draws nothing; `run_asset_graph` is what spends.',
+  mutating: true,
+  args: z.object({
+    slug: z.string().describe('which graph, by the name its file carries'),
+    nodes: z
+      .array(
+        z.object({
+          id: z
+            .union([z.string(), z.number()])
+            .describe('the id it keeps; reuse the one read_asset_graph gave to keep its record'),
+          type: z.string().describe('the node type, such as `GenImage`'),
+          props: z
+            .record(z.union([z.string(), z.number(), z.boolean()]))
+            .optional()
+            .describe('the authored values on it, by the names its type declares'),
+        }),
+      )
+      .describe('every node the graph should hold once this is applied'),
+    links: z
+      .array(z.array(z.union([z.string(), z.number()])))
+      .describe('every link, each written as [fromNode, fromSocket, toNode, toSocket]'),
+  }),
+  async run(a, ctx) {
+    const root = ctx.workspace.root;
+    const read = await readGraphDoc(root, a.slug);
+    if (!read.ok) return fail(read.reason);
+
+    const description = { nodes: a.nodes, links: a.links };
+    const decided = decideGenEdit(read.graph, { op: 'apply', description });
+    if (!decided.ok) {
+      const listed: string[] = decided.details ?? [];
+      const bullets = listed.map((d) => `  • ${d}`).join('\n');
+      return fail(
+        `Nothing was written and the ${a.slug} graph is unchanged: ${decided.reason}` +
+          (bullets === '' ? '' : `\n${bullets}`),
+      );
+    }
+
+    const applied = decided.apply();
+    const path = await writeGraphDoc(root, a.slug, applied.graph);
+    // Reported rather than refused, the way an opened graph reports the same problems: a graph
+    // is authored a piece at a time, and a half-built one is a normal thing to save.
+    const left = validateGenGraph(applied.graph);
+    const tail =
+      left.length === 0 ? '' : `\n\nStill wrong with it:\n${left.map(diagLine).join('\n')}`;
+    return ok(`${decided.note}${tail}`, { written: [path], data: { diagnostics: left } });
+  },
+};
+
+const runAssetGraphTool: Tool<{ slug: string; force?: boolean }> = {
+  name: 'run_asset_graph',
+  description:
+    'Run one generation graph now, up to the output node it is set to terminate on. It spends real image generations, so the author is quoted what the run is expected to cost and confirms it before anything happens. Every node whose inputs still match what it last ran resumes from that record instead of running again, which is why re-running an unchanged graph costs nothing; `force` runs the paid nodes over regardless. Nothing enters the asset store here — a graph fills a slot only where a planned task names it.',
+  mutating: true,
+  args: z.object({
+    slug: z.string().describe('which graph, by the name its file carries'),
+    force: z
+      .boolean()
+      .optional()
+      .describe('run the paid nodes again rather than resuming what they already produced'),
+  }),
+  async run(a, ctx) {
+    if (!ctx.graphs) {
+      return fail(
+        'running a graph draws pictures through the executor, which vnauthor does not do — open the project in the desktop app.',
+      );
+    }
+    if (!ctx.confirm) {
+      return fail('nobody is here to confirm the spend, so no graph may be run.');
+    }
+
+    const priced = await ctx.graphs.estimate(a.slug);
+    if (!priced.ok) return fail(priced.reason);
+
+    const force = a.force === true;
+    const resumed = force
+      ? 'It runs every paid node again.'
+      : 'It resumes what the journal already holds.';
+    if (!(await ctx.confirm(`Run the ${a.slug} graph? ${priced.note} ${resumed}`))) {
+      return ok('Nothing run — you said no.');
+    }
+
+    const ran = await ctx.graphs.run(a.slug, { force });
+    return ran.ok ? ok(ran.message, { written: ran.written }) : fail(ran.message);
+  },
+};
+
 /** Escape a string for use as a literal regex (search default). */
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -2464,6 +2615,9 @@ export const ALL_TOOLS: Tool[] = [
   viewImageTool,
   regenerateAssetTool,
   approveAssetsTool,
+  readAssetGraphTool,
+  editAssetGraphTool,
+  runAssetGraphTool,
   writeFileTool,
   editFileTool,
   updateContextTool,

@@ -40,9 +40,23 @@ export interface GenEditDecision {
   apply(): GenApplied;
 }
 
-export type GenEditResult = ({ ok: true } & GenEditDecision) | { ok: false; reason: string };
+export type GenEditResult =
+  | ({ ok: true } & GenEditDecision)
+  | {
+      ok: false;
+      reason: string;
+      /**
+       * Every problem found, when the edit was refused over more than one. A host that can
+       * show a list shows this, and one that has room for a sentence shows `reason` alone.
+       */
+      details?: string[];
+    };
 
-const refuse = (reason: string): GenEditResult => ({ ok: false, reason });
+const refuse = (reason: string, details?: string[]): GenEditResult => ({
+  ok: false,
+  reason,
+  ...(details === undefined ? {} : { details }),
+});
 
 /**
  * Decides one edit against the graph as it stands. Nothing here writes, so a host may call it
@@ -284,7 +298,10 @@ function decideApply(graph: Graph, edit: GenEdit & { op: 'apply' }): GenEditResu
   if (first !== undefined) {
     const rest = result.diagnostics.length - 1;
     const more = rest === 0 ? '' : ` (and ${plural(rest, 'other problem')})`;
-    return refuse(`the description cannot be applied: ${first.message}${more}`);
+    return refuse(
+      `the description cannot be applied: ${first.message}${more}`,
+      result.diagnostics.map((d) => d.message),
+    );
   }
 
   const counts = [

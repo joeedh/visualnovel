@@ -10,8 +10,8 @@
  * no JSON prop kind, and the string DSL a command is typed in is text throughout.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
-import { Graph, decideGenEdit, readGenPropValue } from '@vn/gengraph';
-import type { GenApplied, GenEdit, GraphId } from '@vn/gengraph';
+import { Graph, decideGenEdit, estimateSentence, readGenPropValue } from '@vn/gengraph';
+import type { GenApplied, GenEdit, GenPricedEstimate, GraphId } from '@vn/gengraph';
 import {
   deleteGraph,
   isGraphSlug,
@@ -372,15 +372,8 @@ export const gengraphEstimate = define({
 });
 
 /** One sentence pricing a graph, which is also what `gengraph.run` confirms against. */
-function estimateLine(counted: {
-  estimate: { usd: number; unpriced: { model: string }[] };
-  stale: boolean;
-}): string {
-  const unpriced = new Set(counted.estimate.unpriced.map((line) => line.model));
-  const missing =
-    unpriced.size === 0 ? '' : `, with no price for ${[...unpriced].sort().join(', ')}`;
-  const stale = counted.stale ? ', from a price table over three months old' : '';
-  return `About $${counted.estimate.usd.toFixed(2)}${missing}${stale}.`;
+function estimateLine(counted: { estimate: GenPricedEstimate; stale: boolean }): string {
+  return estimateSentence(counted.estimate, counted.stale);
 }
 
 export const gengraphRun = define({
