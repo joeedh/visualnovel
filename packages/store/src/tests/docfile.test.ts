@@ -13,11 +13,14 @@ import {
   checkDocWrite,
   readDocFile,
   writeDocFile,
+  type GuardedWriters,
 } from '../docfile.js';
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'vn-docfile-'));
 }
+
+const WRITERS: GuardedWriters = { scenes: 'story.*', graphs: 'gengraph.*' };
 
 const reason = (r: { ok: boolean; reason?: string }): string => (r.ok ? '' : (r.reason ?? ''));
 
@@ -92,7 +95,7 @@ describe('saving a document', () => {
 
   it('writes when the hash still matches, and reports the new one', async () => {
     const { root, hash } = await seeded('one\n');
-    const write = await writeDocFile(root, 'wiki/note.md', 'two\n', hash, 'story.*');
+    const write = await writeDocFile(root, 'wiki/note.md', 'two\n', hash, WRITERS);
     expect(write.ok).toBe(true);
     if (!write.ok) return;
     expect(write.hash).toBe(sha256('two\n'));
@@ -103,7 +106,7 @@ describe('saving a document', () => {
   it('refuses when the file changed underneath, by content and not by clock', async () => {
     const { root, hash } = await seeded('one\n');
     await writeFileAtomic(join(root, 'wiki', 'note.md'), 'somebody else\n');
-    expect(reason(await checkDocWrite(root, 'wiki/note.md', 'two\n', hash, 'story.*'))).toMatch(
+    expect(reason(await checkDocWrite(root, 'wiki/note.md', 'two\n', hash, WRITERS))).toMatch(
       /changed underneath this edit/,
     );
   });
@@ -113,36 +116,45 @@ describe('saving a document', () => {
     // An undo runs `git read-tree -u --reset`, which rewrites every file, so the mtime moved and
     // the content did not. Identical content is not a conflict.
     await writeFileAtomic(join(root, 'wiki', 'note.md'), 'one\n');
-    const check = await checkDocWrite(root, 'wiki/note.md', 'two\n', hash, 'story.*');
+    const check = await checkDocWrite(root, 'wiki/note.md', 'two\n', hash, WRITERS);
     expect(check.ok).toBe(true);
   });
 
   it('refuses keys/ before it considers what is being written', async () => {
     const root = await tempRoot();
-    expect(reason(await checkDocWrite(root, 'keys/anthropic.txt', 'x', '', 'story.*'))).toBe(
+    expect(reason(await checkDocWrite(root, 'keys/anthropic.txt', 'x', '', WRITERS))).toBe(
       SECRETS_REFUSAL,
     );
   });
 
   it('refuses scenes/ by naming the writer that owns it', async () => {
     const root = await tempRoot();
-    const check = await checkDocWrite(root, 'scenes/s1.md', 'x', '', 'story.*');
+    const check = await checkDocWrite(root, 'scenes/s1.md', 'x', '', WRITERS);
     expect(reason(check)).toBe('scenes/s1.md is written by story.*, not whole');
+  });
+
+  it('refuses a generation graph, which deserializes rather than reading as text', async () => {
+    const root = await tempRoot();
+    const check = await checkDocWrite(root, 'vngen/work/graphs/aiko.json', '{}', '', WRITERS);
+    expect(reason(check)).toBe('vngen/work/graphs/aiko.json is written by gengraph.*, not whole');
+    const lib = await checkDocWrite(root, 'vngen/work/graphs/lib/pose.json', '{}', '', WRITERS);
+    expect(reason(lib)).toMatch(/written by gengraph\.\*/);
+    // A sibling whose name merely starts the same way is an ordinary document.
+    const beside = await checkDocWrite(root, 'vngen/work/graphsnotes.md', 'x', '', WRITERS);
+    expect(beside.ok).toBe(true);
   });
 
   it('refuses a path outside the workspace and one past the bound', async () => {
     const root = await tempRoot();
-    expect(reason(await checkDocWrite(root, '../x.md', 'x', '', 'story.*'))).toMatch(/outside/);
+    expect(reason(await checkDocWrite(root, '../x.md', 'x', '', WRITERS))).toMatch(/outside/);
     const big = 'a'.repeat(MAX_DOC_BYTES + 1);
-    expect(reason(await checkDocWrite(root, 'big.md', big, '', 'story.*'))).toMatch(
-      /past the 1 MB/,
-    );
+    expect(reason(await checkDocWrite(root, 'big.md', big, '', WRITERS))).toMatch(/past the 1 MB/);
   });
 
   it('refuses front-matter that will not parse at all', async () => {
     const { root, hash } = await seeded('---\nid: note\n---\n\nbody\n');
     const broken = '---\nid: [unclosed\n---\n\nbody\n';
-    expect(reason(await checkDocWrite(root, 'wiki/note.md', broken, hash, 'story.*'))).toMatch(
+    expect(reason(await checkDocWrite(root, 'wiki/note.md', broken, hash, WRITERS))).toMatch(
       /front-matter will not parse/,
     );
   });
@@ -150,23 +162,23 @@ describe('saving a document', () => {
   it('saves front-matter that parses but is not a valid entity — that is a diagnostic', async () => {
     const { root, hash } = await seeded('---\nid: ada\ntype: character\nname: Ada\n---\n\nx\n');
     const halfTyped = '---\nid: ada\ntype: character\nname:\n---\n\nx\n';
-    expect((await checkDocWrite(root, 'wiki/note.md', halfTyped, hash, 'story.*')).ok).toBe(true);
+    expect((await checkDocWrite(root, 'wiki/note.md', halfTyped, hash, WRITERS)).ok).toBe(true);
   });
 
   it('refuses a save that drops a type: tag the file had — that is a deletion', async () => {
     const { root, hash } = await seeded('---\nid: ada\ntype: character\n---\n\nx\n');
     const untagged = '---\nid: ada\n---\n\nx\n';
-    expect(reason(await checkDocWrite(root, 'wiki/note.md', untagged, hash, 'story.*'))).toMatch(
+    expect(reason(await checkDocWrite(root, 'wiki/note.md', untagged, hash, WRITERS))).toMatch(
       /drops it — that deletes the character/,
     );
   });
 
   it('refuses a create over an existing file, and a save over one that is gone', async () => {
     const { root, hash } = await seeded('one\n');
-    expect(reason(await checkDocWrite(root, 'wiki/note.md', 'x', '', 'story.*'))).toBe(
+    expect(reason(await checkDocWrite(root, 'wiki/note.md', 'x', '', WRITERS))).toBe(
       'wiki/note.md already exists',
     );
-    expect(reason(await checkDocWrite(root, 'wiki/gone.md', 'x', hash, 'story.*'))).toMatch(
+    expect(reason(await checkDocWrite(root, 'wiki/gone.md', 'x', hash, WRITERS))).toMatch(
       /is gone/,
     );
   });

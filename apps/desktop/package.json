@@ -31,6 +31,7 @@
     "@vn/config": "workspace:*",
     "@vn/debug2d": "workspace:*",
     "@vn/export": "workspace:*",
+    "@vn/gengraph": "workspace:*",
     "@vn/git": "workspace:*",
     "@vn/model": "workspace:*",
     "@vn/parse": "workspace:*",

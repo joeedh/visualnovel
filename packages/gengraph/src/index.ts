@@ -18,6 +18,7 @@ export * from './validate.js';
 export * from './journal.js';
 export * from './execute.js';
 export * from './dsl.js';
+export * from './edit.js';
 export * from './cost.js';
 export * from './prices.js';
 export * from './nodes/index.js';

@@ -33,13 +33,32 @@ export function workspacePath(root: string, abs: string): string {
   return relative(root, abs).split('\\').join('/');
 }
 
+/** A directory whose files a validated writer owns, so no surface may write one whole. */
+export type GuardedDir = 'scenes' | 'graphs';
+
+/** What each guarded directory's writer is called on the calling surface. */
+export type GuardedWriters = Record<GuardedDir, string>;
+
+// `vngen/work/graphs` rather than a bare `work/graphs`, because ProjectPaths.work already
+// carries the `vngen/` prefix and this compares against a workspace-relative path. Written
+// literally because @vn/store sits below @vn/gengraph, which owns the constant.
+const GUARDED_DIRS: ReadonlyArray<readonly [GuardedDir, string]> = [
+  ['scenes', 'scenes'],
+  ['graphs', 'vngen/work/graphs'],
+];
+
 /**
- * The validated writer that owns a path, or null when no writer owns it. A chunk written whole is
- * unvalidated, so it can carry duplicate line ids, a lost heading, or a scene id that no longer
- * matches the filename. Every scene writer checks each of those before it writes.
+ * The guarded directory a path is in, or null when no validated writer owns it. A chunk written
+ * whole is unvalidated, so it can carry duplicate line ids, a lost heading, or a scene id that no
+ * longer matches the filename. A graph file is worse: it deserializes into a node graph, and a
+ * whole-file save would land past every semantic check the graph commands run.
  */
-export function guardedDir(path: string): 'scenes' | null {
-  return path.replace(/\\/g, '/').split('/')[0] === 'scenes' ? 'scenes' : null;
+export function guardedDir(path: string): GuardedDir | null {
+  const rel = path.replace(/\\/g, '/');
+  for (const [dir, prefix] of GUARDED_DIRS) {
+    if (rel === prefix || rel.startsWith(`${prefix}/`)) return dir;
+  }
+  return null;
 }
 
 /**
@@ -153,8 +172,8 @@ export interface DocWritePlan {
 /**
  * Every refusal a save can earn, decided rather than performed: outside the workspace, a path a
  * validated writer owns, past the bound, unparseable front-matter, a dropped `type:` tag, and a
- * file that changed underneath. `sceneWriter` names the writer `scenes/` belongs to from the
- * caller's side, so the guard's sentence points at the one that caller should have used.
+ * file that changed underneath. `writers` names each guarded directory's writer from the caller's
+ * side, so the guard's sentence points at the one that caller should have used.
  *
  * `seenHash` is the hash `readDocFile` returned; the empty string means "I expect no file here",
  * which is how a freshly created document saves before it has ever been read.
@@ -164,14 +183,15 @@ export async function checkDocWrite(
   path: string,
   text: string,
   seenHash: string,
-  sceneWriter: string,
+  writers: GuardedWriters,
 ): Promise<DocResult<DocWritePlan>> {
   const abs = resolveInWorkspace(root, path);
   if (!abs) return refuse(`path "${path}" is outside the workspace`);
   const rel = workspacePath(root, abs);
 
   if (inSecretsDir(rel)) return refuse(SECRETS_REFUSAL);
-  if (guardedDir(rel)) return refuse(`${rel} is written by ${sceneWriter}, not whole`);
+  const guarded = guardedDir(rel);
+  if (guarded) return refuse(`${rel} is written by ${writers[guarded]}, not whole`);
 
   const bytes = Buffer.from(text, 'utf8');
   if (bytes.length > MAX_DOC_BYTES) return refuse(tooBig(rel, bytes.length));
@@ -234,9 +254,9 @@ export async function writeDocFile(
   path: string,
   text: string,
   seenHash: string,
-  owner: string,
+  writers: GuardedWriters,
 ): Promise<DocResult<DocWritePlan>> {
-  const plan = await checkDocWrite(root, path, text, seenHash, owner);
+  const plan = await checkDocWrite(root, path, text, seenHash, writers);
   if (!plan.ok) return plan;
   await writeFileAtomic(plan.file, text);
   return plan;

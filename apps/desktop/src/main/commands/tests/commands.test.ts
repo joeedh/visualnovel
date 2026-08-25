@@ -25,6 +25,7 @@ describe('the desktop registry', () => {
       'command',
       'doc',
       'gate',
+      'gengraph',
       'interaction',
       'notify',
       'pipeline',
@@ -76,6 +77,16 @@ describe('the desktop registry', () => {
       'doc.rename',
       'doc.write',
       'gate.approve',
+      'gengraph.addNode',
+      'gengraph.apply',
+      'gengraph.create',
+      'gengraph.delete',
+      'gengraph.link',
+      'gengraph.removeNode',
+      'gengraph.run',
+      'gengraph.setActiveOutput',
+      'gengraph.setProp',
+      'gengraph.unlink',
       'notify.deleteAll',
       'pipeline.approveAndRun',
       'pipeline.run',
@@ -146,7 +157,9 @@ describe('the desktop registry', () => {
    *
    * `view.saveLayout` and `view.resetLayout` are the exception that proves the rule: a layout
    * template is not a document, but it is an authored file inside the snapshot's pathspec, so undo
-   * restores it exactly the way it restores a scene.
+   * restores it exactly the way it restores a scene. A generation graph is the same shape: the
+   * document at `vngen/work/graphs/` is authored and undoable, while `gengraph.run` is not,
+   * because what it writes is a journal record and a blob under `vngen/state`.
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
@@ -155,6 +168,15 @@ describe('the desktop registry', () => {
       'doc.create',
       'doc.rename',
       'doc.write',
+      'gengraph.addNode',
+      'gengraph.apply',
+      'gengraph.create',
+      'gengraph.delete',
+      'gengraph.link',
+      'gengraph.removeNode',
+      'gengraph.setActiveOutput',
+      'gengraph.setProp',
+      'gengraph.unlink',
       'project.setArtStyle',
       'prompt.addRef',
       'prompt.clear',
@@ -231,6 +253,16 @@ describe('the desktop registry', () => {
       'doc.rename',
       'doc.write',
       'gate.approve',
+      'gengraph.addNode',
+      'gengraph.apply',
+      'gengraph.create',
+      'gengraph.delete',
+      'gengraph.link',
+      'gengraph.removeNode',
+      'gengraph.run',
+      'gengraph.setActiveOutput',
+      'gengraph.setProp',
+      'gengraph.unlink',
       'notify.deleteAll',
       'pipeline.approveAndRun',
       'pipeline.run',

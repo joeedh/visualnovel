@@ -287,6 +287,17 @@ const GITATTRIBUTES_BLOCKS = [
       '# Refuse to merge it: conflict markers would be dropped as unparseable lines, and the\n' +
       '# conversation would then resume from a history that was quietly truncated.\n',
   },
+  {
+    line: 'vngen/work/graphs/*.json -merge',
+    why:
+      '# A generation graph is serialized node ids and socket references rather than prose.\n' +
+      '# Refuse to merge it: a textual merge can pair an edge with a node the other side\n' +
+      '# renumbered, which deserializes into a graph nobody authored.\n',
+  },
+  {
+    line: 'vngen/work/graphs/lib/*.json -merge',
+    why: '# A saved node group is a graph fragment, and merges no better than a whole one.\n',
+  },
 ];
 
 const GITATTRIBUTES_TEXT = GITATTRIBUTES_BLOCKS.map((b) => `${b.why}${b.line}\n`).join('\n');

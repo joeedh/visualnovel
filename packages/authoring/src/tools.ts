@@ -71,6 +71,7 @@ import {
   workspacePath,
   writeDocFile,
   writeShots,
+  type GuardedWriters,
 } from '@vn/store';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 import {
@@ -1475,12 +1476,23 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
 };
 
 /**
- * The validated writer a path belongs to, or null when no tool owns it. `guardedDir` covers
- * `scenes/` for every surface; the two entity directories are this agent's own rule, because a
- * sheet hand-written as raw YAML bypasses the schema entirely.
+ * What each guarded directory's writer is called from this agent's side. No tool here edits a
+ * generation graph yet, so that one names the surface an author reaches instead of a tool the
+ * agent could be asked to call.
+ */
+const AGENT_WRITERS: GuardedWriters = {
+  scenes: 'edit_scene',
+  graphs: "the desktop app's Gen Graph editor",
+};
+
+/**
+ * The validated writer a path belongs to, or null when no tool owns it. `guardedDir` covers the
+ * directories every surface refuses; the two entity directories are this agent's own rule, because
+ * a sheet hand-written as raw YAML bypasses the schema entirely.
  */
 function ownedElsewhere(path: string): string | null {
-  if (guardedDir(path)) return 'edit_scene';
+  const guarded = guardedDir(path);
+  if (guarded) return AGENT_WRITERS[guarded];
   const top = path.split('/')[0];
   if (top === 'characters') return 'create_character / edit_character';
   if (top === 'locations') return 'create_location / edit_location';
@@ -1518,7 +1530,7 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
       path,
       a.content,
       seen?.hash ?? '',
-      'edit_scene',
+      AGENT_WRITERS,
     );
     if (!written.ok) return fail(written.reason);
     ctx.seen?.set(path, { hash: written.hash, whole: true });
@@ -1663,7 +1675,7 @@ const editFileTool: Tool<{
 
     // The same writer the Wiki pane saves through, so front-matter that will not parse and a
     // dropped `type:` tag earn the same refusal here as they do there.
-    const written = await writeDocFile(ctx.workspace.root, path, text, seen.hash, 'edit_scene');
+    const written = await writeDocFile(ctx.workspace.root, path, text, seen.hash, AGENT_WRITERS);
     if (!written.ok) return fail(written.reason);
     ctx.seen?.set(path, { hash: written.hash, whole: seen.whole });
 

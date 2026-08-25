@@ -68,18 +68,44 @@ import {
   type DocFile,
   type DocResult,
   type DocWritePlan,
+  type GuardedWriters,
 } from '@vn/store';
+import {
+  estimateGraph,
+  executeGenGraph,
+  genNodeSpec,
+  invalidateGenGraph,
+  priceEstimate,
+  pricesAreStale,
+  registerGenRuntimes,
+  type GenPricedEstimate,
+  type GenRunContext,
+  type Graph as GenGraph,
+  type GraphId,
+  type GraphJournalRecord,
+} from '@vn/gengraph';
+import {
+  appendGraphJournal,
+  graphBlobStore,
+  graphJournalFile,
+  readGraphJournal,
+} from '@vn/gengraph/state';
 import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, sha256, writeFileAtomic } from '@vn/util';
 import {
   basePromptOf,
   baseRefusal,
+  createGenServices,
   decomposeAll,
   decomposeAllPreview,
   driftOf,
   gateStatus,
+  indexGraphs,
   isApproved,
+  slotOfTask,
   type DecomposeAllResult,
+  type GraphRuntime,
+  type LoadedGraph,
 } from '@vn/pipeline';
 import {
   adopt,
@@ -136,9 +162,12 @@ import {
   captureSnapshot,
   chatBackendFor,
   chatVendorFor,
+  createImageBackend,
   createMockProviders,
   createProviders,
+  StubImageBackend,
   type ChatBackend,
+  type ImageBackend,
 } from '@vn/providers';
 import {
   API_RETRIES,
@@ -288,6 +317,7 @@ import type {
 } from '../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../shared/apikeys.js';
 import { reorderApprovals, type ApprovalQueue } from './approvals.js';
+import { graphSlugs, nodeIdOf, readGraph, type GraphSlug } from './graphs.js';
 import { readResource } from './resources.js';
 import { notify } from './notifications.js';
 import {
@@ -673,8 +703,8 @@ export function describeKeySource(projectDir: string, status: VendorKeyStatus | 
 const TREE_SKIP = new Set(['.git', 'node_modules', '.vnstudio']);
 const TREE_MAX_FILES = 5000;
 
-/** The command namespace that owns `scenes/**` — named in the refusal a whole-file save gets. */
-const SCENE_WRITER = 'story.*';
+/** The command namespaces that own the guarded directories, named in a whole-file save's refusal. */
+const DOC_WRITERS: GuardedWriters = { scenes: 'story.*', graphs: 'gengraph.*' };
 
 /** The four things `doc.create` scaffolds. A note is a title and nothing else. */
 export type NewDocKind = 'character' | 'location' | 'note' | 'skill';
@@ -764,19 +794,63 @@ async function loadProject(dir: string): Promise<LoadedProject> {
   };
 }
 
-async function buildProviders(project: LoadedProject, mock: boolean): Promise<Providers> {
+/** One loaded graph, keyed by the slug its document and its journal are both filed under. */
+interface LoadedGraphDoc extends LoadedGraph {
+  slug: GraphSlug;
+}
+
+/**
+ * The output nodes a run may target, each with the slot it binds. A type that binds a slot but
+ * carries no `active` prop is always active, which is the rule `indexGraphs` binds slots by.
+ */
+function activeOutputs(graph: GenGraph): { id: GraphId; slot: string }[] {
+  const out: { id: GraphId; slot: string }[] = [];
+  for (const node of graph.nodes) {
+    const key = genNodeSpec(node.def.typeName)?.slotProp;
+    if (key === undefined || node.props.active?.getValue() === false) continue;
+    out.push({ id: node.id, slot: String(node.props[key]?.getValue() ?? '').trim() });
+  }
+  return out;
+}
+
+/** The output node a run targets when none is named, which is the first one still active. */
+function activeOutputOf(graph: GenGraph): GraphId | undefined {
+  return activeOutputs(graph)[0]?.id;
+}
+
+/** What a run reaches the outside world through, whether it runs tasks or a generation graph. */
+interface GenDeps {
+  providers: Providers;
+  /** The byte-level seam a graph's image nodes call, beneath the provider the runners use. */
+  imageBackend: ImageBackend;
+  /** Absent under `mock`, where nothing is resolved and no vendor is reached. */
+  keys?: ResolvedKeys;
+}
+
+async function buildGenDeps(project: LoadedProject, mock: boolean): Promise<GenDeps> {
   const loadRef = async (ref: { hash: string; ext: string }) => ({
     bytes: await project.store.read(ref),
     ext: ref.ext,
   });
-  if (mock) return createMockProviders({ refLoader: loadRef });
+  if (mock) {
+    const imageBackend = new StubImageBackend();
+    return { providers: createMockProviders({ refLoader: loadRef, imageBackend }), imageBackend };
+  }
   // `gemini` is required because the pipeline's image tasks cannot run without it; the chat
   // backends degrade more gracefully and are checked where they are built.
   const keys = await resolveKeys(project.config, {
     secretsDirs: await secretDirsFor(project.dir),
     require: ['gemini'],
   });
-  return createProviders({ config: project.config, keys, loadRef });
+  return {
+    providers: createProviders({ config: project.config, keys, loadRef }),
+    imageBackend: createImageBackend(project.config, keys),
+    keys,
+  };
+}
+
+async function buildProviders(project: LoadedProject, mock: boolean): Promise<Providers> {
+  return (await buildGenDeps(project, mock)).providers;
 }
 
 /** Backend state for a single workspace, addressed by the IPC handlers in `index.ts`. */
@@ -2562,6 +2636,10 @@ export class WorkspaceSession {
    * Put an asset's task back to `pending` so the next run re-renders it. Appending a `pending`
    * snapshot to `tasks.jsonl` performs the requeue — `loadGraph` replays last-writer-wins, which
    * is how `requeueFailed` already works — so this needs no new scheduler machinery.
+   *
+   * A slot a generation graph draws needs a second step. The graph's own journal resumes every
+   * node whose hash still matches, so requeuing the task alone would replay the same picture out
+   * of the journal; the paid nodes upstream of that graph's output are invalidated as well.
    */
   async regenerateAsset(
     hash: string,
@@ -2575,11 +2653,44 @@ export class WorkspaceSession {
       output: undefined,
       error: undefined,
     });
+    const written = [relPath(this.dir, project.paths.tasksLog)];
+    const invalidated = await this.invalidateBound(project, decided.task);
+    if (invalidated !== undefined) written.push(invalidated);
     return {
       ok: true,
       message: `Queued ${decided.task.kind} ${decided.task.hash.slice(0, 8)} for re-run.`,
-      written: [relPath(this.dir, project.paths.tasksLog)],
+      written,
     };
+  }
+
+  /**
+   * Invalidates the paid nodes feeding the graph bound to this task's slot, and reports the
+   * journal that was appended to. Answers undefined when no graph claims the slot, which is
+   * every task in a project that has authored none.
+   */
+  private async invalidateBound(
+    project: LoadedProject,
+    task: AnyTask,
+  ): Promise<string | undefined> {
+    const slot = slotOfTask(task, project.model);
+    if (slot === undefined) return undefined;
+
+    const git = openGit(this.dir);
+    for (const slug of await graphSlugs(this.dir)) {
+      const read = await readGraph(this.dir, slug, git);
+      if (!read.ok) continue;
+
+      const bound = activeOutputs(read.graph).find((output) => output.slot === slot);
+      if (bound === undefined) continue;
+
+      await invalidateGenGraph(
+        read.graph,
+        { record: (record: GraphJournalRecord) => appendGraphJournal(project.paths, slug, record) },
+        [bound.id],
+      );
+      return relPath(this.dir, graphJournalFile(project.paths, slug));
+    }
+    return undefined;
   }
 
   /** What `art.setNotes` would do, without writing it. */
@@ -4012,7 +4123,7 @@ export class WorkspaceSession {
 
   /** What a save would do, decided without writing — what `doc.write`'s precondition reports. */
   previewDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocWritePlan>> {
-    return checkDocWrite(this.dir, path, text, seenHash, SCENE_WRITER);
+    return checkDocWrite(this.dir, path, text, seenHash, DOC_WRITERS);
   }
 
   /**
@@ -4022,7 +4133,7 @@ export class WorkspaceSession {
    * a refusal, exactly the split `loadInputs` already draws.
    */
   async saveDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocSaveResult>> {
-    const plan = await writeDocFile(this.dir, path, text, seenHash, SCENE_WRITER);
+    const plan = await writeDocFile(this.dir, path, text, seenHash, DOC_WRITERS);
     if (!plan.ok) return plan;
     const diagnostic = entityDiagnostic(plan.path, plan.doc);
     return {
@@ -4087,7 +4198,7 @@ export class WorkspaceSession {
   async previewCreate(kind: NewDocKind, name: string): Promise<DocResult<DocWritePlan>> {
     const scaffold = this.newDoc(kind, name);
     if (!scaffold) return { ok: false, reason: `"${name}" does not name a ${kind}` };
-    return checkDocWrite(this.dir, scaffold.path, scaffold.text, '', SCENE_WRITER);
+    return checkDocWrite(this.dir, scaffold.path, scaffold.text, '', DOC_WRITERS);
   }
 
   /**
@@ -4101,7 +4212,7 @@ export class WorkspaceSession {
   ): Promise<DocResult<DocSaveResult & { id: string }>> {
     const scaffold = this.newDoc(kind, name);
     if (!scaffold) return { ok: false, reason: `"${name}" does not name a ${kind}` };
-    const written = await writeDocFile(this.dir, scaffold.path, scaffold.text, '', SCENE_WRITER);
+    const written = await writeDocFile(this.dir, scaffold.path, scaffold.text, '', DOC_WRITERS);
     if (!written.ok) return written;
     return {
       ok: true,
@@ -4909,6 +5020,166 @@ export class WorkspaceSession {
    * work has not run. So it is reported, never refused — and the keys a real run needs are
    * checked separately, since a dry run needs none.
    */
+  /**
+   * Every graph the project holds, with its journal replayed and its blobs kept under its own
+   * slug. A graph that will not load is left out and its problem reported, because a run that
+   * quietly fell back to the fixed runners would draw a picture nobody asked for.
+   */
+  private async loadGraphs(
+    project: LoadedProject,
+    deps: GenDeps,
+  ): Promise<{ loaded: LoadedGraphDoc[]; problems: string[] }> {
+    registerGenRuntimes();
+
+    const git = openGit(this.dir);
+    const loaded: LoadedGraphDoc[] = [];
+    const problems: string[] = [];
+
+    for (const slug of await graphSlugs(this.dir)) {
+      const read = await readGraph(this.dir, slug, git);
+      if (!read.ok) {
+        problems.push(read.reason);
+        continue;
+      }
+      loaded.push({
+        slug,
+        graph: read.graph,
+        journal: await readGraphJournal(project.paths, slug),
+        services: createGenServices({
+          model: project.model,
+          store: project.store,
+          providers: deps.providers,
+          imageBackend: deps.imageBackend,
+          blobs: graphBlobStore(project.paths, slug),
+          ...(deps.keys === undefined ? {} : { keys: deps.keys }),
+        }),
+        record: (record: GraphJournalRecord) => appendGraphJournal(project.paths, slug, record),
+      });
+    }
+
+    return { loaded, problems };
+  }
+
+  /**
+   * The slot→graph index a run consults, or undefined when the project holds no graph to
+   * consult. A graph that will not load and a slot two graphs claim are both filed as
+   * notifications rather than thrown: the run still has the fixed runners to draw the rest of
+   * the wave with, and refusing to start would cost the author that work.
+   */
+  private async graphRuntime(
+    project: LoadedProject,
+    deps: GenDeps,
+  ): Promise<GraphRuntime | undefined> {
+    const { loaded, problems } = await this.loadGraphs(project, deps);
+    for (const problem of problems) {
+      void notify({ category: 'error', level: 'warn', source: 'pipeline', message: problem });
+    }
+    if (loaded.length === 0) return undefined;
+
+    const { runtime, conflicts } = indexGraphs(loaded);
+    for (const slot of conflicts) {
+      void notify({
+        category: 'error',
+        level: 'warn',
+        source: 'pipeline',
+        message: `More than one active output claims ${slot}, so no graph draws it.`,
+      });
+    }
+    return runtime;
+  }
+
+  /**
+   * What one graph is expected to spend if it runs from nothing, priced against the shipped
+   * table. The refine tail is counted `max_refine_attempts` times, so the figure is the worst
+   * case rather than what a run that passes first time costs.
+   */
+  async graphEstimate(slug: GraphSlug): Promise<
+    | { ok: false; reason: string }
+    | {
+        ok: true;
+        estimate: GenPricedEstimate;
+        /** Set when the shipped table is older than `PRICES_STALE_DAYS`. */
+        stale: boolean;
+      }
+  > {
+    const read = await readGraph(this.dir, slug, openGit(this.dir));
+    if (!read.ok) return { ok: false, reason: read.reason };
+
+    const { config } = await loadProject(this.dir);
+    const counted = estimateGraph(read.graph, {
+      maxRefineAttempts: config.max_refine_attempts,
+    });
+    const estimate = priceEstimate(counted.lines);
+    const asOf = estimate.pricesAsOf;
+    return {
+      ok: true,
+      estimate,
+      stale: asOf !== undefined && pricesAreStale(asOf, new Date()),
+    };
+  }
+
+  /**
+   * Run one graph interactively, through the executor and the journal the scheduler runs it
+   * through. Nothing enters the asset store here: a picture becomes an asset only on the bound
+   * path, where a task's slot names the graph that draws it. `force` invalidates every paid
+   * ancestor of the target first, so re-running an unchanged graph is a request rather than a
+   * resume that does nothing.
+   */
+  async runGraph(
+    slug: GraphSlug,
+    opts: { node?: string; force?: boolean; mock?: boolean } = {},
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const read = await readGraph(this.dir, slug, openGit(this.dir));
+    if (!read.ok) return { ok: false, message: read.reason, written: [] };
+
+    const target =
+      opts.node === undefined ? activeOutputOf(read.graph) : nodeIdOf(read.graph, opts.node);
+    if (target === undefined) {
+      return {
+        ok: false,
+        message: `the ${slug} graph has no active output node, so there is nothing to run to`,
+        written: [],
+      };
+    }
+    if (read.graph.nodeIdMap.get(target) === undefined) {
+      return { ok: false, message: `the ${slug} graph holds no node ${target}`, written: [] };
+    }
+
+    return this.while(BUSY_RUN, async () => {
+      const project = await loadProject(this.dir);
+      const deps = await buildGenDeps(project, opts.mock ?? false);
+      const entry = (await this.loadGraphs(project, deps)).loaded.find((g) => g.slug === slug);
+      if (entry === undefined) {
+        return { ok: false, message: `the ${slug} graph could not be loaded`, written: [] };
+      }
+
+      const ctx: GenRunContext = {
+        services: entry.services,
+        journal: entry.journal,
+        record: entry.record,
+      };
+      const result = await executeGenGraph(read.graph, ctx, {
+        targets: [target],
+        ...(opts.force === true ? { force: true } : {}),
+      });
+
+      const written = [relPath(this.dir, graphJournalFile(project.paths, slug))];
+      const failure = result.failures[0];
+      if (failure !== undefined) {
+        return { ok: false, message: `node ${failure.nodeId} failed: ${failure.error}`, written };
+      }
+      const ran = result.ran.length;
+      const skipped = result.skipped.length;
+      return {
+        ok: true,
+        message:
+          `Ran ${ran} node${ran === 1 ? '' : 's'} in ${slug}` +
+          `${skipped === 0 ? '' : `, resuming ${skipped} from the journal`}.`,
+        written,
+      };
+    });
+  }
+
   async runPreconditions(mock: boolean): Promise<{
     pending: number;
     byKind: Record<string, number>;
@@ -4931,15 +5202,18 @@ export class WorkspaceSession {
         keyError = err instanceof Error ? err.message : String(err);
       }
     }
+    const deps = await buildGenDeps(project, true);
+    const graphs = await this.graphRuntime(project, deps);
     const summary = await runPipeline({
       model: project.model,
       graph: project.graph,
       store: project.store,
-      providers: await buildProviders(project, true),
+      providers: deps.providers,
       config: project.config,
       paths: project.paths,
       dryRun: true,
       now: () => new Date().toISOString(),
+      ...(graphs === undefined ? {} : { graphs }),
     });
     return {
       pending: summary.preview.pendingTasks,
@@ -5006,17 +5280,19 @@ export class WorkspaceSession {
     this.cancel = cancel;
     const { summary, assets } = await this.while(BUSY_RUN, async () => {
       const project = await loadProject(this.dir);
-      const providers = await buildProviders(project, mock);
+      const deps = await buildGenDeps(project, mock);
+      const graphs = await this.graphRuntime(project, deps);
       const ran = await runPipeline({
         model: project.model,
         graph: project.graph,
         store: project.store,
-        providers,
+        providers: deps.providers,
         config: project.config,
         paths: project.paths,
         dryRun: mock,
         now: () => new Date().toISOString(),
         signal: cancel.signal,
+        ...(graphs === undefined ? {} : { graphs }),
         onProgress: (p) => {
           this.progress = { ran: p.ran, pending: p.pending };
           this.announceBusy();

@@ -1,6 +1,6 @@
 # Node-based asset generation
 
-Status: **planned**. This plan distills
+Status: **in progress**, Stages 1 to 7 shipped. This plan distills
 [`../research/node-based-asset-generation.md`](../research/node-based-asset-generation.md)
 into committable stages. The research doc settled nine load-bearing decisions with the user
 on 2026-08-24; none of them is reopened here, and where a stage below elaborates one it says
@@ -495,6 +495,37 @@ Graphs become authored documents, writable only through commands.
 Tests: command round-trips over a temp project (create → addNode → link → apply → undo),
 each declared refusal, the `-merge` line landing exactly once, and provenance records
 carrying no key material (`prop.secret` is not needed here — no command takes a secret).
+
+Deviation, as built: `gengraph.apply` takes its description as a string prop and parses it,
+because `@vn/commands` has no JSON prop kind. `gengraph.setProp` takes a string `value` for
+the same reason, read through `readGenPropValue` against the type the node's own property
+declares. `PropBuilders.string`'s digest overload was widened to accept `multiline`, since no
+command before this one needed both and a whole DSL description needs the text box.
+
+A twelfth command, `gengraph.list`, was added beyond the eleven listed above, because the
+document tree and the palette both enumerate graphs and neither can call `listGraphs`
+directly. The interactive `gengraph.run` writes journal records and blobs but never an asset;
+a picture enters the store only through the bound or scheduled path, which keeps `adoptSlot`
+the one `done` record produced outside the scheduler.
+
+`doc.*`'s refusal names a different writer on each side. The desktop names `gengraph.*`, and
+the authoring agent names the desktop app's Gen Graph editor, because the agent has no graph
+tool until Stage 8 and a refusal must not name something the author cannot reach. Stage 8
+changes the agent's half to `edit_asset_graph`.
+
+The desktop reports a conflicted graph and a doubly-claimed slot as notifications rather than
+throwing, unlike `@vn/testkit`, which throws. `nodeIdOf` lives in
+apps/desktop/src/main/graphs.ts rather than in the command file, because `session.runGraph`
+resolves a typed node id the same way the commands do and path.ux keys nodes by number by
+default. `readGraph` calls `registerGenNodes()` itself rather than leaving it to each caller,
+since deserializing names node types and a forgotten call reads as a corrupt file.
+
+The group library needed two changes the plan did not anticipate. `readGraph` binds
+`groupLoader`/`groupSaver` to `work/graphs/lib/` and then calls `resolveGroups()`, folding
+each failed reference into an `unresolved-group` diagnostic against the instance that
+references it, so a graph whose definition went missing still opens. `validateGenGraph` skips
+path.ux's own `GroupNode`, `GroupInputNode` and `GroupOutputNode`, because those types carry
+no registry entry and would otherwise be reported as a missing plugin.
 
 ### Stage 8 — the agent tools
 

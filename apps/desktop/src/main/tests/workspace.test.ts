@@ -448,6 +448,18 @@ describe('ensureGitAttributes', () => {
     expect(text).toContain('vngen/state/threads/*.native.jsonl -merge');
   });
 
+  // A graph document is nstructjs JSON, so a textual merge of one deserializes into a graph
+  // nobody authored. The block has to arrive once and stay once, however often the app runs.
+  it('refuses to merge a generation graph, and says so exactly once', async () => {
+    await writeFile(join(root, '.gitattributes'), `${line}\n`);
+    await ensureGitAttributes(root);
+    await ensureGitAttributes(root);
+
+    const text = await readFile(join(root, '.gitattributes'), 'utf8');
+    expect(text.match(/vngen\/work\/graphs\/\*\.json -merge/g)).toHaveLength(1);
+    expect(text.match(/vngen\/work\/graphs\/lib\/\*\.json -merge/g)).toHaveLength(1);
+  });
+
   it('says no and writes nothing the second time', async () => {
     await ensureGitAttributes(root);
     const before = await readFile(join(root, '.gitattributes'), 'utf8');

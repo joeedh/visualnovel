@@ -164,6 +164,9 @@ importers:
       '@vn/export':
         specifier: workspace:*
         version: link:../../packages/export
+      '@vn/gengraph':
+        specifier: workspace:*
+        version: link:../../packages/gengraph
       '@vn/git':
         specifier: workspace:*
         version: link:../../packages/git

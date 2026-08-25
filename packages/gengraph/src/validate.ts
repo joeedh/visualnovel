@@ -9,13 +9,21 @@ export type GenDiagnosticCode =
   | 'orphaned-socket'
   | 'link-type-mismatch'
   | 'slot-unparsed'
-  | 'slot-is-asset';
+  | 'slot-is-asset'
+  | 'unresolved-group';
 
 export interface GenDiagnostic {
   code: GenDiagnosticCode;
   message: string;
   nodeId: GraphId;
 }
+
+/**
+ * Node types path.ux itself supplies for grouping. They carry no generation step and no
+ * registry entry, and their sockets come from a group's boundary rather than from a type
+ * definition, so validating one against the gen registry would report a missing plugin.
+ */
+const STRUCTURAL_TYPES = new Set(['GroupNode', 'GroupInputNode', 'GroupOutputNode']);
 
 /**
  * Checks a loaded graph against the registry: node types, props and sockets that the
@@ -30,6 +38,7 @@ export function validateGenGraph(graph: Graph): GenDiagnostic[] {
 
   for (const node of graph.nodes) {
     const typeName = node.def.typeName;
+    if (STRUCTURAL_TYPES.has(typeName)) continue;
     const spec = genNodeSpec(typeName);
 
     if (spec === undefined) {

@@ -38,6 +38,20 @@ import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
 import { docCreate, docRead, docRename, docWrite } from './doc.js';
 import { gateApprove, gateCandidates } from './gate.js';
+import {
+  gengraphAddNode,
+  gengraphApply,
+  gengraphCreate,
+  gengraphDelete,
+  gengraphEstimate,
+  gengraphLink,
+  gengraphList,
+  gengraphRemoveNode,
+  gengraphRun,
+  gengraphSetActiveOutput,
+  gengraphSetProp,
+  gengraphUnlink,
+} from './gengraph.js';
 import { interactionList, interactionTargets } from './interaction.js';
 import {
   notifyClear,
@@ -181,6 +195,18 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     docWrite,
     gateApprove,
     gateCandidates,
+    gengraphAddNode,
+    gengraphApply,
+    gengraphCreate,
+    gengraphDelete,
+    gengraphEstimate,
+    gengraphLink,
+    gengraphList,
+    gengraphRemoveNode,
+    gengraphRun,
+    gengraphSetActiveOutput,
+    gengraphSetProp,
+    gengraphUnlink,
     interactionList,
     interactionTargets,
     notifyClear,

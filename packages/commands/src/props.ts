@@ -82,7 +82,7 @@ interface Opts<T extends PropValue> {
  */
 interface PropBuilders {
   string(description: string): Prop<string, true>;
-  string(description: string, opts: { digest: true }): Prop<string, true>;
+  string(description: string, opts: { digest: true; multiline?: boolean }): Prop<string, true>;
   string(description: string, opts: Opts<string> & { default: string }): Prop<string, false>;
 
   directory(description: string): Prop<string, true>;
