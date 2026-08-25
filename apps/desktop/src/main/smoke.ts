@@ -1,14 +1,19 @@
 /**
- * `--smoke` checks what a packaged build cannot answer by opening a window: whether the two SDKs
- * left out of the bundle still resolve, and whether the source the debug agent reads is in the
- * image.
+ * `--smoke` checks what a packaged build cannot answer by opening a window: whether the three
+ * packages left out of the bundle still resolve, whether the plugin bundler can transform, and
+ * whether the source the debug agent reads is in the image.
  *
- * Everything in this app is bundled into `dist/` except two things. `scripts/aliases.mjs` leaves
- * `@google/genai` and `@anthropic-ai/sdk` external, and both are reached through a dynamic
- * `import()` at the moment a model is first called. A packaging mistake that loses them (most
- * likely pnpm's symlink farm surviving into the app image) produces an installer that launches,
- * opens a project, and throws `Cannot find module` the first time the agent is asked for
- * anything. Every check short of this one passes.
+ * Everything in this app is bundled into `dist/` except three packages. `scripts/aliases.mjs`
+ * leaves `@google/genai`, `@anthropic-ai/sdk` and `esbuild` external, and each is reached
+ * through a dynamic `import()` at the moment it is first needed. A packaging mistake that loses
+ * them (most likely pnpm's symlink farm surviving into the app image) produces an installer that
+ * launches, opens a project, and throws `Cannot find module` the first time the agent is asked
+ * for anything. Every check short of this one passes.
+ *
+ * esbuild is checked by running a transform rather than by resolving it, because it drives a
+ * binary in a sibling package and finds that binary by a path relative to its own file. A module
+ * that resolved while its binary stayed inside the asar would pass a resolution check and fail
+ * the first plugin install.
  *
  * The source check has the same shape. `extraResources` and `sourceRoot()` have to agree on one
  * directory name, and when they do not, the app runs correctly and Help ▸ Report a Difficult
@@ -47,6 +52,33 @@ const SDKS: { spec: string; pick: (mod: any) => unknown }[] = [
   { spec: '@google/genai', pick: (mod) => mod?.GoogleGenAI ?? mod?.default },
 ];
 
+/** The plugin bundler's specifier, which `apps/desktop/src/main/plugins.ts` imports lazily. */
+const BUNDLER = 'esbuild';
+
+/**
+ * Transform one line of TypeScript with the plugin bundler, which is what proves the binary
+ * beside it shipped and can be spawned. The source is a literal, so this reads no file and
+ * needs no plugin installed.
+ */
+async function transformCheck(load: Loader): Promise<SmokeCheck> {
+  try {
+    const mod = (await load(BUNDLER)) as {
+      transform?: (src: string, opts: { loader: string }) => Promise<{ code: string }>;
+    };
+    if (typeof mod.transform !== 'function') {
+      return { what: BUNDLER, ok: false, detail: 'resolved, but exports no transform' };
+    }
+    const { code } = await mod.transform('const n: number = 1; export default n;', {
+      loader: 'ts',
+    });
+    return code.includes('1')
+      ? { what: BUNDLER, ok: true, detail: 'resolved and transformed' }
+      : { what: BUNDLER, ok: false, detail: 'transformed to something unexpected' };
+  } catch (err) {
+    return { what: BUNDLER, ok: false, detail: (err as Error).message };
+  }
+}
+
 /**
  * Load each SDK and construct one client from it. A resolved module whose constructor is missing
  * counts as a failure: the import having succeeded is not the same as the backend being able to
@@ -74,6 +106,8 @@ export async function runSmoke(
       checks.push({ what: spec, ok: false, detail: (err as Error).message });
     }
   }
+
+  checks.push(await transformCheck(load));
 
   const root = await findSource().catch(() => undefined);
   checks.push({

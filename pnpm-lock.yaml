@@ -200,6 +200,9 @@ importers:
       '@vn/util':
         specifier: workspace:*
         version: link:../../packages/util
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
       nstructjs:
         specifier: link:../../vendor/nstructjs
         version: link:../../vendor/nstructjs
@@ -383,6 +386,9 @@ importers:
       '@vn/util':
         specifier: workspace:*
         version: link:../util
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   packages/git:
     dependencies:

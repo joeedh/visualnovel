@@ -736,6 +736,30 @@ session, both of which already import the state entry.
   time. Whether the packaged app carries the native esbuild binary or esbuild-wasm is the
   one open packaging question the research doc leaves; this stage decides it by
   measuring both in `pnpm package` and records the answer here.
+
+  **The answer is native `esbuild`.** Size does not decide it: the two hoisted installs
+  come to 11 MB native against 12 MB wasm, and both work with pnpm's build scripts
+  blocked. Speed does not decide it either, at the scale a plugin install runs at — one
+  transform takes 74 ms native against 288 ms wasm. What decides it is that `esbuild-wasm`
+  does not avoid spawning a process. Its Node API builds the same service-and-child-process
+  machinery the native package does, and `esbuildCommandAndArgs()` in
+  esbuild-wasm/lib/main.js spawns literally `node bin/esbuild` — a `node` on PATH that a
+  packaged app cannot assume. Its browser build avoids that, but it needs a global `self`,
+  which the Electron main process must not be given because both model SDKs branch on it,
+  and its Go shim stubs `fs` with ENOSYS, so it cannot read a plugin's entry file to bundle
+  it at all. Native esbuild ships and pins its own binary and needs nothing on the machine.
+  The cost is one `asarUnpack` entry in apps/desktop/electron-builder.yml, which previously
+  recorded that nothing was unpacked. That note was a finding rather than a trust boundary,
+  and `extraResources` already ships an unpacked `source/`, so the file now records the
+  binary and why. Unpacking it is not enough on its own: esbuild derives the binary's path
+  from its own file, its own file is inside the asar, and Electron redirects a read into
+  the unpacked tree but not a spawn, so the spawn fails with ENOENT. The app sets
+  `ESBUILD_BINARY_PATH` — esbuild's own override — to the unpacked path before the import,
+  and only when packaged. `pnpm smoke` runs a transform in the built binary rather than
+  resolving the module, because a module that resolves while its binary cannot be spawned
+  passes a resolution check and fails the first install. `apps/desktop/src/main/plugins.ts` still
+  defers the import until a plugin needs building, so a machine with no plugin installed
+  never starts the child process.
 - Install is an explicit confirmation naming the manifest's declared services and key
   names (decision 3); installed plugins run trusted. Keys resolve through the existing
   four-place `resolveKeys` chain and are set by `project.setKey`; nothing new touches key
@@ -751,6 +775,47 @@ session, both of which already import the state entry.
 Tests: manifest schema cases, a fixture plugin transpiled and loaded with its node type
 registered and runnable against mock services, the writer refusal, and a packaged-app
 smoke assertion in `pnpm smoke` that the transpile toolchain resolves.
+
+**Deviation, Stage 11.** Six things differ from the bullets above.
+
+The agent's writer refusal is checked against an absolute path and runs ahead of the
+workspace check rather than after it. `write_file` and `edit_file` resolve their path
+through `resolveInWorkspace`, which already refuses anything outside the open workspace,
+and the plugins root is outside every workspace. Placed after that check the refusal could
+never fire, and the agent would be told the path is out of bounds rather than that a plugin
+is installed by a person. `pluginWriteRefusal` therefore takes the absolute path both tools
+were handed, before either resolves it.
+
+The plugin API reaches a plugin as the argument to `activate`, not as a specifier its
+bundle resolves at run time. A per-user directory cannot resolve `@vn/gengraph/plugin`, and
+bundling the package in instead would give the plugin a second copy of the registry maps,
+so every node type it registered would land where the host never reads. A plugin imports
+the subpath type-only, esbuild marks it `external`, and `buildGenPlugin` refuses a bundle
+whose text still names the specifier.
+
+esbuild is injected rather than depended on. `@vn/gengraph` declares the `GenEsbuild` shape
+it needs and takes a `GenPluginBundler` from its caller, so the package carries no build
+tool and the desktop app decides which esbuild build ships with it.
+
+The bundle format is CommonJS and it is loaded with `createRequire`. Both hosts that load a
+plugin are CommonJS: the desktop app's main bundle is `dist/main/index.cjs`, and jest's
+runtime cannot import an ES module at all.
+
+`plugin.install` does not use the command framework's `confirm: true` flag. That flag
+produces one static question naming the command's title, and what the author has to read is
+which services and key names this particular manifest declared. The command therefore calls
+`ctx.confirm` itself with `installDescription`'s sentence, and refuses outright in a context
+with no gate wired.
+
+The fixture plugin lives at `packages/testkit/src/plugin/` rather than under
+`packages/gengraph/src/tests/`. `boundaryRules.gengraph` carries no self-entry and the rule
+defaults to `disallow`, so a file inside `packages/gengraph` importing
+`@vn/gengraph/plugin` is a lint error. `testkit` already lists `gengraph`, and nothing may
+import `testkit`, so the fixture is reachable from the loader's tests and from nowhere in
+the shipping graph. Keeping it in a package also means its sources are typechecked, linted
+and formatted like the rest of the repository instead of being written into a temporary
+directory by a test. The fixture's node class is named for the type it declares, because
+`registerNodeType` refuses a class whose name and `graphDef().typeName` differ.
 
 ### Stage 12 — prices from plugins, and porting the built-in providers
 

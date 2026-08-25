@@ -26,6 +26,7 @@
       "@vn/testkit": ["./packages/testkit/src/index.ts"],
       "@vn/gengraph": ["./packages/gengraph/src/index.ts"],
       "@vn/gengraph/state": ["./packages/gengraph/src/state.ts"],
+      "@vn/gengraph/plugin": ["./packages/gengraph/src/plugin.ts"],
       "@vn/cli": ["./apps/cli/src/index.ts"],
       "pathux-graph": ["./apps/desktop/dist/pathux-types/graph/index.d.ts"],
       "pathux-toolprop": ["./apps/desktop/dist/pathux-types/path-controller/toolsys/toolprop.d.ts"],

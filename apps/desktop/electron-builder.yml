@@ -17,9 +17,9 @@ directories:
   output: ../release
 
 # esbuild and Vite bundle every `@vn/*` package, `nstructjs` and the whole of path.ux into
-# `dist/`. `scripts/aliases.mjs` declares only three externals, one of which is Electron itself,
-# so the two model SDKs are the entire runtime dependency tree. This list is explicit rather than
-# a default glob because the exclusion below is the kind of thing a default would ship.
+# `dist/`. `scripts/aliases.mjs` declares only four externals, one of which is Electron itself,
+# so the two model SDKs and esbuild are the entire runtime dependency tree. This list is explicit
+# rather than a default glob because the exclusion below is the kind of thing a default would ship.
 files:
   - dist/**
   - package.json
@@ -40,10 +40,19 @@ extraResources:
   - from: source
     to: source
 
-# Nothing is unpacked from the asar, and that is a finding rather than an omission: no native
-# module ships, and the only executable the app spawns is the machine's own `git`, which was
-# never in the image to begin with.
 asar: true
+
+# esbuild builds a generation plugin, and it does that work in a binary it spawns rather than in
+# JavaScript. It finds that binary by a path relative to its own file, so a copy left inside the
+# asar resolves as a module and then fails on the first plugin install. The platform package
+# (`@esbuild/win32-x64` and its siblings) is where the binary itself lives.
+#
+# The two model SDKs stay packed, and the machine's own `git` was never in the image to begin
+# with, so this is the only executable the app spawns from beside itself. `pnpm smoke` runs a
+# transform in the built binary, which is what catches a regression here.
+asarUnpack:
+  - node_modules/esbuild/**
+  - node_modules/@esbuild/**
 
 win:
   target: nsis

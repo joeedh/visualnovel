@@ -45,13 +45,18 @@ const shared = {
   // developer's own. See the file for why the default has to be on for everything else.
   setupFiles: ['<rootDir>/scripts/jest-setup.cjs'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
-  // Linked worktrees under .claude/worktrees, and the source snapshot
-  // `scripts/package.desktop.mjs` stages for the installer, each contain full
-  // copies of every package.json, which the haste map indexes regardless of
-  // testMatch, producing "duplicate @vn/x" errors. Excluded here rather than
-  // moved into `roots`, since roots is scoped by directory and the crawl still
-  // needs to reach `packages/` and `apps/` at the repo root.
-  modulePathIgnorePatterns: ['<rootDir>/.claude/worktrees', '<rootDir>/apps/desktop/.package'],
+  // Linked worktrees under .claude/worktrees, the source snapshot
+  // `scripts/package.desktop.mjs` stages for the installer, and the app image
+  // electron-builder writes that snapshot into each contain full copies of every
+  // package.json, which the haste map indexes regardless of testMatch, producing
+  // "duplicate @vn/x" errors. Excluded here rather than moved into `roots`, since
+  // roots is scoped by directory and the crawl still needs to reach `packages/`
+  // and `apps/` at the repo root.
+  modulePathIgnorePatterns: [
+    '<rootDir>/.claude/worktrees',
+    '<rootDir>/apps/desktop/.package',
+    '<rootDir>/apps/desktop/release',
+  ],
   moduleNameMapper: {
     // Strip the explicit .js extension used in source so jest resolves the .ts file.
     '^(\\.{1,2}/.*)\\.js$': '$1',

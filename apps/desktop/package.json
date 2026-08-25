@@ -43,6 +43,7 @@
     "@vn/taskgraph": "workspace:*",
     "@vn/types": "workspace:*",
     "@vn/util": "workspace:*",
+    "esbuild": "^0.24.2",
     "nstructjs": "link:../../vendor/nstructjs",
     "zod": "^3.24.1"
   },

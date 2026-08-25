@@ -44,6 +44,7 @@ import {
   GIT_MISSING_MESSAGE,
 } from './doctor.js';
 import { describeVersion, shortSha } from './version.js';
+import { activatePlugins, pointAtUnpackedBinary } from './plugins.js';
 import { formatSmoke, runSmoke } from './smoke.js';
 import { categoryOfCommand, shouldFileCommand } from '../shared/notify.js';
 import { WorkspaceSession, type SessionDeps } from './session.js';
@@ -1017,6 +1018,9 @@ void app.whenReady().then(async () => {
   // build runs about its own module resolution, and anything it opened would be a side effect
   // whose failure is not the one being reported.
   if (cliArgs.smoke) {
+    // The same preparation a plugin build does, so the check exercises the path the app takes
+    // rather than a bare import that would find the binary missing for a different reason.
+    pointAtUnpackedBinary();
     const report = await runSmoke((spec) => import(spec));
     process.stdout.write(formatSmoke(report) + '\n');
     app.exit(report.ok ? 0 : 1);
@@ -1067,6 +1071,11 @@ void app.whenReady().then(async () => {
   rememberWorkspace(getSessionState(), workspace());
   registerAssetProtocol();
   registerIpc();
+
+  // Before the first window, because a graph opened in one resolves its node types out of the
+  // registry these activations land in. A refusal is filed as a notification rather than thrown,
+  // so one bad plugin does not stop the app from opening.
+  await activatePlugins();
 
   // Restore the arrangement this workspace was left in - each window at its own index, so each
   // one comes back into its own layout, selection and template rather than a default screen.

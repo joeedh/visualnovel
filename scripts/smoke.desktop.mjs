@@ -1,5 +1,6 @@
 /**
- * Ask the *packaged* app whether it can still find its two external SDKs and its source snapshot.
+ * Ask the packaged app whether it can still reach its three external packages and its source
+ * snapshot.
  *
  * `scripts/package.desktop.mjs` builds the app image from a scratch hoisted install precisely
  * because pnpm's symlinked `node_modules` does not survive being copied into one. This is the
@@ -65,4 +66,6 @@ for (const check of report.checks) {
 if (!report.ok || failed) {
   throw new Error('the packaged app failed its self-check');
 }
-console.log('[smoke] both SDKs and the source snapshot resolved from the app image');
+console.log(
+  '[smoke] the SDKs, the plugin bundler and the source snapshot all work from the app image',
+);

@@ -140,6 +140,7 @@ await writeFile(
       dependencies: {
         '@anthropic-ai/sdk': app.dependencies['@anthropic-ai/sdk'],
         '@google/genai': app.dependencies['@google/genai'],
+        esbuild: app.dependencies['esbuild'],
       },
     },
     null,
@@ -163,7 +164,7 @@ console.log(
 
 // `--ignore-workspace` because the scratch tree sits inside the monorepo and pnpm would
 // otherwise resolve against it; `hoisted` because that is the entire point of this directory.
-console.log('[package] hoisted install of the two runtime dependencies');
+console.log('[package] hoisted install of the runtime dependencies');
 execFileSync('pnpm', ['install', '--ignore-workspace', '--config.node-linker=hoisted'], {
   cwd: SCRATCH,
   stdio: 'inherit',

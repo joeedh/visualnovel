@@ -54,7 +54,7 @@ import {
 import { loadConfig } from '@vn/config';
 import { decideGenEdit, graphToDSL, validateGenGraph } from '@vn/gengraph';
 import type { GenDiagnostic, GenPropValue } from '@vn/gengraph';
-import { graphSlugs, readGraphDoc, writeGraphDoc } from '@vn/gengraph/state';
+import { graphSlugs, pluginWriteRefusal, readGraphDoc, writeGraphDoc } from '@vn/gengraph/state';
 import {
   SAID_WINDOW,
   approvalCard,
@@ -1530,6 +1530,11 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
   mutating: true,
   args: z.object({ path: z.string(), content: z.string() }),
   async run(a, ctx) {
+    // Before the workspace check, because the plugins root is outside every workspace and
+    // `resolveInWorkspace` would otherwise refuse the path as out of bounds without saying why.
+    const pluginRefusal = pluginWriteRefusal(a.path);
+    if (pluginRefusal) return fail(pluginRefusal);
+
     const abs = resolveInWorkspace(ctx.workspace.root, a.path);
     if (!abs) return fail(`path "${a.path}" is outside the workspace`);
     const path = workspacePath(ctx.workspace.root, abs);
@@ -1638,6 +1643,10 @@ const editFileTool: Tool<{
       .min(1),
   }),
   async run(a, ctx) {
+    // The same gate `write_file` has, and ahead of the workspace check for the same reason.
+    const pluginRefusal = pluginWriteRefusal(a.path);
+    if (pluginRefusal) return fail(pluginRefusal);
+
     const abs = resolveInWorkspace(ctx.workspace.root, a.path);
     if (!abs) return fail(`path "${a.path}" is outside the workspace`);
     const path = workspacePath(ctx.workspace.root, abs);

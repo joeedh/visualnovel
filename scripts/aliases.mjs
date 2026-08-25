@@ -30,14 +30,18 @@ export const PACKAGES = [
   'gengraph',
 ];
 
-/** Electron is provided by the runtime; the model SDKs are heavy and lazy-imported. */
-export const EXTERNAL = ['electron', '@google/genai', '@anthropic-ai/sdk'];
+/**
+ * Electron is provided by the runtime; the model SDKs and the plugin bundler are heavy and
+ * lazy-imported. esbuild refuses to run at all when it is bundled, because it locates the
+ * binary it drives by a relative path from its own file.
+ */
+export const EXTERNAL = ['electron', '@google/genai', '@anthropic-ai/sdk', 'esbuild'];
 
 /**
  * Subpath exports, which esbuild can't derive from the list above. A subpath names its source
  * file, so `@vn/scriptedit/write` is `packages/scriptedit/src/write.ts`.
  */
-const SUBPATHS = ['scriptedit/write', 'gengraph/state', 'artgen/slotaddr'];
+const SUBPATHS = ['scriptedit/write', 'gengraph/state', 'gengraph/plugin', 'artgen/slotaddr'];
 
 export const alias = Object.fromEntries([
   ...PACKAGES.map((n) => [`@vn/${n}`, resolve(REPO_ROOT, `packages/${n}/src/index.ts`)]),

@@ -14,3 +14,7 @@ export * from './hash.js';
 export * from './journalfile.js';
 export * from './blobs.js';
 export * from './drift.js';
+export * from './pluginload.js';
+// The manifest is re-exported here as well as from the main entry, because a host that
+// installs a plugin reads its manifest and never touches the rest of the browser-side API.
+export * from './manifest.js';
