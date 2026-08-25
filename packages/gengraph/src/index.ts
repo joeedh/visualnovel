@@ -15,6 +15,7 @@ export * from './registry.js';
 export * from './services.js';
 export * from './graphfile.js';
 export * from './validate.js';
+export * from './slots.js';
 export * from './journal.js';
 export * from './execute.js';
 export * from './dsl.js';

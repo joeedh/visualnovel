@@ -71,10 +71,10 @@ import {
   type GuardedWriters,
 } from '@vn/store';
 import {
+  activeOutputs,
   estimateGraph,
   estimateSentence,
   executeGenGraph,
-  genNodeSpec,
   invalidateGenGraph,
   priceEstimate,
   pricesAreStale,
@@ -798,20 +798,6 @@ async function loadProject(dir: string): Promise<LoadedProject> {
 /** One loaded graph, keyed by the slug its document and its journal are both filed under. */
 interface LoadedGraphDoc extends LoadedGraph {
   slug: GraphSlug;
-}
-
-/**
- * The output nodes a run may target, each with the slot it binds. A type that binds a slot but
- * carries no `active` prop is always active, which is the rule `indexGraphs` binds slots by.
- */
-function activeOutputs(graph: GenGraph): { id: GraphId; slot: string }[] {
-  const out: { id: GraphId; slot: string }[] = [];
-  for (const node of graph.nodes) {
-    const key = genNodeSpec(node.def.typeName)?.slotProp;
-    if (key === undefined || node.props.active?.getValue() === false) continue;
-    out.push({ id: node.id, slot: String(node.props[key]?.getValue() ?? '').trim() });
-  }
-  return out;
 }
 
 /** The output node a run targets when none is named, which is the first one still active. */

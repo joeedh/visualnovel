@@ -6,6 +6,7 @@ import { TaskGraph, logTask } from '@vn/taskgraph';
 import { pool } from '@vn/util';
 import {
   baseRefusal,
+  boundGraph,
   createRunners,
   costPreview,
   gateStatus,
@@ -139,6 +140,9 @@ function inputRefHashes(task: AnyTask): string[] {
 export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   const { model, graph, store, providers, config, paths, logger, now, dryRun, onProgress } = opts;
   const deps: RunDeps = { model, store, providers, logger, now, graphs: opts.graphs };
+  // A task a graph draws is priced by the graph rather than by its own call count, so the
+  // preview asks the same index the runner does.
+  const drawnByGraph = (task: AnyTask): boolean => boundGraph(task, deps) !== undefined;
   const runners: Record<TaskKind, Runner> = createRunners(config);
   const ran: AnyTask[] = [];
 
@@ -162,7 +166,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     const gate = gateStatus(model);
     return {
       ran,
-      preview: costPreview(graph, config),
+      preview: costPreview(graph, config, drawnByGraph),
       gate,
       blockedOnGate: false,
       retried: [],
@@ -199,7 +203,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     const gate = gateStatus(model);
     return {
       ran,
-      preview: costPreview(graph, config),
+      preview: costPreview(graph, config, drawnByGraph),
       gate,
       blockedOnGate: !gate.cleared,
       retried,
@@ -300,7 +304,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   const gate = gateStatus(model);
   return {
     ran,
-    preview: costPreview(graph, config),
+    preview: costPreview(graph, config, drawnByGraph),
     gate,
     // The run halts at the gate when characters used by reachable scenes await approval.
     blockedOnGate: !gate.cleared,

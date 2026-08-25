@@ -7,7 +7,7 @@
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
 import { slotKey } from '@vn/artgen';
-import { executeGenGraph, genNodeSpec, registerGenRuntimes } from '@vn/gengraph';
+import { activeOutputs, executeGenGraph, genNodeSpec, registerGenRuntimes } from '@vn/gengraph';
 import type {
   GenImageRef,
   GenOutputs,
@@ -68,21 +68,15 @@ export function indexGraphs(loaded: readonly LoadedGraph[]): GraphIndex {
   const conflicts = new Set<string>();
 
   for (const entry of loaded) {
-    for (const node of entry.graph.nodes) {
-      const key = genNodeSpec(node.def.typeName)?.slotProp;
-      if (key === undefined || node.props.active?.getValue() === false) {
+    for (const output of activeOutputs(entry.graph)) {
+      if (output.slot.length === 0) {
         continue;
       }
-
-      const slot = String(node.props[key]?.getValue() ?? '').trim();
-      if (slot.length === 0) {
+      if (bound.has(output.slot)) {
+        conflicts.add(output.slot);
         continue;
       }
-      if (bound.has(slot)) {
-        conflicts.add(slot);
-        continue;
-      }
-      bound.set(slot, { ...entry, target: node.id });
+      bound.set(output.slot, { ...entry, target: output.id });
     }
   }
 

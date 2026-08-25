@@ -18,9 +18,27 @@ import {
   setCharacterApproval,
 } from '@vn/store';
 import { buildPlayable, loadSceneShots, writePlayable } from '@vn/export';
-import { decomposeAll, gateStatus, suspendedAssets } from '@vn/pipeline';
+import {
+  decomposeAll,
+  gateStatus,
+  graphRuntime,
+  priceSlots,
+  readProjectGraphs,
+  reportGraphs,
+  suspendedAssets,
+  unrenderedBoundSlots,
+  type GraphDoc,
+  type GraphRuntime,
+} from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
-import { assertValid, buildProviders, loadProject, type LoadedProject } from './project.js';
+import {
+  assertValid,
+  buildGenDeps,
+  buildProviders,
+  loadProject,
+  type GenDeps,
+  type LoadedProject,
+} from './project.js';
 
 /** Parsed CLI invocation: positional args + `--flag[=value]` / `-o <value>` options. */
 export interface Args {
@@ -209,6 +227,30 @@ export async function cmdExport(args: Args): Promise<number> {
 }
 
 /**
+ * The graphs the project holds, and the output nodes whose graph has been edited since they
+ * last ran. Drift is reported rather than acted on, the posture a prose edit already takes:
+ * a drifted node keeps the picture it drew until someone asks for another one.
+ */
+async function printGraphStatus(project: LoadedProject): Promise<void> {
+  const { docs, problems } = await readProjectGraphs(project.dir, project.paths);
+  for (const problem of problems) ok(`Graph not loaded — ${problem}`);
+  if (docs.length === 0) return;
+
+  const report = reportGraphs(docs, { maxRefineAttempts: project.config.max_refine_attempts });
+  ok(`Generation graphs: ${docs.length} (${report.bound.size} slot(s) bound)`);
+  for (const slot of report.conflicts) {
+    ok(`  ${slot}: more than one active output claims it, so no graph draws it`);
+  }
+  for (const drift of report.drifted.slice(0, FAILURES_SHOWN)) {
+    const slot = drift.slot ? ` (${drift.slot})` : '';
+    ok(`  drifted: ${drift.slug} node ${String(drift.nodeId)}${slot} — edited since it last ran`);
+  }
+  if (report.drifted.length > FAILURES_SHOWN) {
+    ok(`  … and ${report.drifted.length - FAILURES_SHOWN} more drifted`);
+  }
+}
+
+/**
  * `vngen status [dir]` — task/asset/approval summary (report §10).
  *
  * `status` does not plan, so its counts are of every node in `tasks.jsonl`, including orphans
@@ -259,6 +301,7 @@ export async function cmdStatus(args: Args): Promise<number> {
     ok(`    ${t.kind} ${t.hash.slice(0, 12)} — ${t.error ?? 'no reason recorded'}`);
   }
   if (failed.length > FAILURES_SHOWN) ok(`    … and ${failed.length - FAILURES_SHOWN} more`);
+  await printGraphStatus(project);
   const gate = gateStatus(project.model);
   ok(`Gate: ${gate.cleared ? 'cleared' : `awaiting approval — ${gate.pending.join(', ')}`}`);
   return 0;
@@ -275,12 +318,71 @@ function printRefusal(summary: RunSummary): boolean {
   return true;
 }
 
+/**
+ * The project's generation graphs, wired to the services a run reaches the outside world
+ * through. A graph that will not load and a slot two graphs claim are both printed rather than
+ * refused: the fixed runners still draw the rest of the wave, and stopping would cost that work.
+ */
+async function loadGraphs(
+  project: LoadedProject,
+  build: () => Promise<GenDeps>,
+): Promise<{ docs: GraphDoc[]; runtime?: GraphRuntime }> {
+  const { docs, problems } = await readProjectGraphs(project.dir, project.paths);
+  for (const problem of problems) ok(`Graph not loaded — ${problem}`);
+  // `build` is deferred because a project with no graph needs no image key, and resolving one
+  // would refuse a run that was never going to call the backend behind it.
+  if (docs.length === 0) return { docs };
+
+  const deps = await build();
+  const { runtime, conflicts } = graphRuntime(project.paths, docs, {
+    model: project.model,
+    store: project.store,
+    providers: deps.providers,
+    imageBackend: deps.imageBackend,
+    ...(deps.keys === undefined ? {} : { keys: deps.keys }),
+  });
+  for (const slot of conflicts) {
+    ok(`More than one active output claims ${slot}, so no graph draws it.`);
+  }
+  return { docs, runtime };
+}
+
+/**
+ * What the graphs are expected to spend, printed under the call counts it replaces. Every slot
+ * a graph draws and nothing has drawn yet is priced, planned or not, because the planner runs
+ * one wave per run and a slot a later wave unlocks would otherwise be quoted at nothing.
+ */
+async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[]): Promise<void> {
+  if (docs.length === 0) return;
+
+  const report = reportGraphs(docs, { maxRefineAttempts: project.config.max_refine_attempts });
+  const slots = unrenderedBoundSlots(report, {
+    model: project.model,
+    config: project.config,
+    assets: project.store.manifest(),
+    shots: await loadSceneShots(project.paths, project.model),
+    graph: project.graph,
+  });
+  const cost = priceSlots(report, slots);
+
+  ok('Generation graphs:');
+  ok(`  slots to draw: ${cost.slots} of ${report.bound.size} bound`);
+  ok(`  estimated:     $${cost.usd.toFixed(2)}`);
+  if (cost.unpriced.length) ok(`  no price for:  ${cost.unpriced.join(', ')}`);
+  if (report.pricesAsOf) {
+    ok(`  prices as of ${report.pricesAsOf}${report.stale ? ' — over three months old' : ''}`);
+  }
+}
+
 /** Print the planned-work preview from a dry-run summary (shared by `cost` and `run --mock`). */
 function printPreview(summary: RunSummary, header: string): void {
   if (printRefusal(summary)) return;
   const { preview } = summary;
   ok(header);
   ok(`  pending tasks: ${preview.pendingTasks}`);
+  if (preview.boundTasks) {
+    ok(`  drawn by a graph: ${preview.boundTasks} (counted by the graph estimate below)`);
+  }
   ok(`  image calls:   ${preview.imageCalls}`);
   ok(`  review calls:  ${preview.reviewCalls}`);
   for (const [kind, n] of Object.entries(preview.byKind)) if (n) ok(`    ${kind}: ${n}`);
@@ -332,9 +434,17 @@ export async function cmdCost(args: Args, logger: Logger): Promise<number> {
   const project = await loadProject(dir);
   if (project.model.diagnostics.length) reportDiagnostics(project.model);
   assertValid(project.model);
-  const providers = await buildProviders(project, { mock: true, logger });
-  const summary = await runPipeline({ ...project, providers, dryRun: true, logger });
+  const deps = await buildGenDeps(project, { mock: true, logger });
+  const graphs = await loadGraphs(project, () => Promise.resolve(deps));
+  const summary = await runPipeline({
+    ...project,
+    providers: deps.providers,
+    dryRun: true,
+    logger,
+    ...(graphs.runtime === undefined ? {} : { graphs: graphs.runtime }),
+  });
   printPreview(summary, 'Cost preview (upper bound):');
+  await printGraphCost(project, graphs.docs);
   return summary.refused ? 1 : 0;
 }
 
@@ -365,6 +475,12 @@ export async function cmdRun(
 
   await writeStoryGraph(project.paths, toMermaid(project.model));
   const providers = providersOverride ?? (await buildProviders(project, { mock, logger }));
+  // The graphs are indexed against the providers the run actually uses, so an overridden bundle
+  // draws the graph's pictures too rather than only the tasks the fixed runners take.
+  const graphs = await loadGraphs(project, async () => ({
+    ...(await buildGenDeps(project, { mock, logger })),
+    providers,
+  }));
 
   const summary = await runPipeline({
     ...project,
@@ -372,10 +488,12 @@ export async function cmdRun(
     dryRun: mock,
     logger,
     now: () => new Date().toISOString(),
+    ...(graphs.runtime === undefined ? {} : { graphs: graphs.runtime }),
   });
 
   if (mock) {
     printPreview(summary, 'Dry run (--mock) — planned work, nothing generated:');
+    await printGraphCost(project, graphs.docs);
     return summary.refused ? 1 : 0;
   }
   if (printRefusal(summary)) return 1;

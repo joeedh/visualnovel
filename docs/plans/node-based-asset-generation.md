@@ -1,6 +1,6 @@
 # Node-based asset generation
 
-Status: **in progress**, Stages 1 to 8 shipped. This plan distills
+Status: **in progress**, Stages 1 to 9 shipped. This plan distills
 [`../research/node-based-asset-generation.md`](../research/node-based-asset-generation.md)
 into committable stages. The research doc settled nine load-bearing decisions with the user
 on 2026-08-24; none of them is reopened here, and where a stage below elaborates one it says
@@ -588,6 +588,33 @@ which re-exports Stage 2's and Stage 4's pure functions; the CLI adds no direct 
 keeping the allow-list consumers at three.
 
 Tests: cost and status output over a testkit project with one bound slot.
+
+**Deviation, Stage 9.** Four things differ from the paragraph above, and three of them are
+consequences of the CLI's allow-list rather than choices.
+
+`apps/cli` may import neither `@vn/gengraph` nor `@vn/artgen`, so `buildSlotGraph` is
+reached through `@vn/pipeline` as well. `packages/pipeline/src/graphload.ts` holds
+everything both hosts do with a project's graphs: `readProjectGraphs` (which takes the
+reader as a parameter, because the desktop session reads a graph through git and the CLI
+reads the file), `graphRuntime`, `reportGraphs`, `unrenderedBoundSlots` and `priceSlots`.
+The CLI names no artgen or gengraph symbol.
+
+`vngen run` had never set `RunDeps.graphs`, so the CLI ignored generation graphs entirely
+and Stage 6's runner seam covered only the desktop app. Pricing bound slots in `cost`
+while `run` drew them the old way would have quoted a number no run could produce, so
+the run wiring landed here: `apps/cli/src/project.ts` gained `buildGenDeps`, which
+returns the image backend beside the providers, and `buildProviders` is now the provider
+half of it.
+
+`costPreview` takes a `drawnByGraph` predicate and reports `CostPreview.boundTasks`. A
+task a graph draws is still counted as pending, but contributes no image or review calls,
+because the graph's own estimate prices it node by node and counting both would charge for
+it twice. The scheduler supplies the predicate from the same `boundGraph` index the runner
+consults.
+
+The rule that an output node binds a slot when it names one and is not inactive had three
+implementations (`indexGraphs`, the desktop session, and this stage's report). It is now
+`activeOutputs` in `packages/gengraph/src/slots.ts`, which all three call.
 
 ### Stage 10 — the Gen Graph editor pane
 

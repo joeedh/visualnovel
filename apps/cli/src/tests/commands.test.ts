@@ -7,13 +7,17 @@ import { parseFountain } from '@vn/parse';
 import { AssetStore, ProjectPaths } from '@vn/store';
 import type { Playable } from '@vn/types';
 import { makeProject, SCRIPTS } from '@vn/testkit';
+import { GenDerivedPrompt, GenImage, GenOutput, Graph, registerGenRuntimes } from '@vn/gengraph';
+import { graphDocFile, writeGraphDoc } from '@vn/gengraph/state';
 import {
   cmdApprove,
+  cmdCost,
   cmdDecompose,
   cmdExport,
   cmdImport,
   cmdRun,
   cmdScreenplay,
+  cmdStatus,
   parseArgs,
   type ApproveIO,
 } from '../commands.js';
@@ -572,6 +576,75 @@ describe('cmdApprove — interactive (no character)', () => {
       const { code, out } = await capture(() => cmdApprove({ positional: [dir], flags: {} }));
       expect(code).toBe(0);
       expect(out).toContain('Nothing to approve');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+/** A derived prompt drawn through one image node into an output bound to `slot`. */
+function boundGraph(slot: string): Graph {
+  const graph = new Graph();
+  const prompt = new GenDerivedPrompt();
+  const image = new GenImage();
+  const output = new GenOutput();
+
+  graph.add(prompt);
+  graph.add(image);
+  graph.add(output);
+  graph.connect(prompt.outputs.prompt, image.inputs.prompt);
+  graph.connect(image.outputs.image, output.inputs.image);
+  output.props['slot']!.setValue(slot);
+
+  return graph;
+}
+
+/** A project whose `portrait:aiko` slot one graph draws, with nothing drawn yet. */
+async function projectWithGraph(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
+  registerGenRuntimes();
+  const p = await makeProject({ script: SCRIPTS.linear });
+  await writeGraphDoc(p.dir, 'portraits', boundGraph('portrait:aiko'));
+  return { dir: p.dir, cleanup: () => p.cleanup() };
+}
+
+describe('a project whose slot a generation graph draws', () => {
+  it('prices the slot in `cost` and leaves its task out of the call counts', async () => {
+    const { dir, cleanup } = await projectWithGraph();
+    try {
+      const { code, out } = await capture(() =>
+        cmdCost({ positional: [dir], flags: {} }, silentLogger),
+      );
+
+      expect(code).toBe(0);
+      expect(out).toContain('drawn by a graph: 1');
+      expect(out).toContain('Generation graphs:');
+      expect(out).toContain('slots to draw: 1 of 1 bound');
+      expect(out).toMatch(/estimated: +\$\d+\.\d\d/);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('names the graph and what it binds in `status`', async () => {
+    const { dir, cleanup } = await projectWithGraph();
+    try {
+      const { code, out } = await capture(() => cmdStatus({ positional: [dir], flags: {} }));
+
+      expect(code).toBe(0);
+      expect(out).toContain('Generation graphs: 1 (1 slot(s) bound)');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reports a graph it cannot read rather than falling back to the fixed runners', async () => {
+    const { dir, cleanup } = await projectWithGraph();
+    try {
+      await fs.writeFile(graphDocFile(new ProjectPaths(dir), 'portraits'), 'not json', 'utf8');
+      const { out } = await capture(() => cmdStatus({ positional: [dir], flags: {} }));
+
+      expect(out).toContain('Graph not loaded —');
+      expect(out).not.toContain('Generation graphs: 1');
     } finally {
       await cleanup();
     }

@@ -34,6 +34,11 @@ export interface CostPreview {
   byKind: Record<TaskKind, number>;
   /** Pending tasks counted (status `pending`). */
   pendingTasks: number;
+  /**
+   * Pending tasks a generation graph draws. Their calls are left out of `imageCalls` and
+   * `reviewCalls`, because what a graph spends is counted node by node rather than per task.
+   */
+  boundTasks: number;
 }
 
 const ZERO_BY_KIND = (): Record<TaskKind, number> => ({
@@ -51,12 +56,21 @@ const ZERO_BY_KIND = (): Record<TaskKind, number> => ({
  * task is one call; a shot task is the P7 worst case — up to `max_refine_attempts` image
  * calls, each critiqued by every configured reviewer. This is the upper bound shown before
  * spending money; the actual run usually costs less because most shots pass on attempt one.
+ *
+ * `drawnByGraph` names the tasks a generation graph draws. Those are still counted as pending
+ * work, but they contribute no calls: the graph's own estimate prices them node by node, and
+ * counting both would charge for each of them twice.
  */
-export function costPreview(graph: TaskGraph, config: ProjectConfig): CostPreview {
+export function costPreview(
+  graph: TaskGraph,
+  config: ProjectConfig,
+  drawnByGraph?: (task: AnyTask) => boolean,
+): CostPreview {
   const byKind = ZERO_BY_KIND();
   let imageCalls = 0;
   let reviewCalls = 0;
   let pendingTasks = 0;
+  let boundTasks = 0;
   const reviewers = config.models.vision.length;
   const maxAttempts = Math.max(1, config.max_refine_attempts);
 
@@ -64,6 +78,10 @@ export function costPreview(graph: TaskGraph, config: ProjectConfig): CostPrevie
     if (task.status !== 'pending') continue;
     pendingTasks += 1;
     byKind[task.kind] += 1;
+    if (drawnByGraph?.(task) === true) {
+      boundTasks += 1;
+      continue;
+    }
     if (task.kind === 'shot_image') {
       imageCalls += maxAttempts;
       reviewCalls += maxAttempts * reviewers;
@@ -77,7 +95,7 @@ export function costPreview(graph: TaskGraph, config: ProjectConfig): CostPrevie
     }
   }
 
-  return { imageCalls, reviewCalls, byKind, pendingTasks };
+  return { imageCalls, reviewCalls, byKind, pendingTasks, boundTasks };
 }
 
 /** Pending tasks in the graph, in topological order (what a run would execute). */
