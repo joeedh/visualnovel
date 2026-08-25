@@ -30,17 +30,23 @@ export interface GenTextService {
   ): Promise<T>;
 }
 
+/** A reference picture as the model receives it, with the extension its mime type is read from. */
+export interface GenImageInput {
+  bytes: Uint8Array;
+  ext: string;
+}
+
 /**
  * The two image calls, taking reference pictures as bytes rather than as an
  * {@link AssetRef}, because a node's references come from the blob store its upstream
  * wrote to. The host adapter reads them out of whichever store holds them.
  */
 export interface GenImageService {
-  generate(prompt: string, refs: Uint8Array[], params: ImageParams): Promise<ImageResult>;
+  generate(prompt: string, refs: GenImageInput[], params: ImageParams): Promise<ImageResult>;
   edit(
-    base: Uint8Array,
+    base: GenImageInput,
     prompt: string,
-    refs: Uint8Array[],
+    refs: GenImageInput[],
     params: ImageParams,
   ): Promise<ImageResult>;
 }

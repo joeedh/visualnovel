@@ -226,7 +226,10 @@ describe('the image nodes', () => {
 
     await run(GenImage, { prompt: 'a lantern', refs });
 
-    expect(mock.images[0]?.refs).toEqual([bytes('a sheet'), bytes('an earlier take')]);
+    expect(mock.images[0]?.refs.map((r) => r.bytes)).toEqual([
+      bytes('a sheet'),
+      bytes('an earlier take'),
+    ]);
   });
 
   it('passes the aspect and seed the node authors', async () => {
@@ -253,7 +256,7 @@ describe('the image nodes', () => {
     await run(GenEditImage, { base: { store: 'asset', ...asset }, prompt: 'open the curtains' });
 
     expect(mock.images[0]?.kind).toBe('edit');
-    expect(mock.images[0]?.base).toEqual(bytes('the first take'));
+    expect(mock.images[0]?.base?.bytes).toEqual(bytes('the first take'));
   });
 
   it('refuses an edit with nothing to redraw', async () => {

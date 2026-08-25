@@ -3,7 +3,19 @@ import type { GraphId } from 'pathux-graph';
 /** Carried on every record, because git union-merges the journal across clones. */
 export const GRAPH_JOURNAL_VERSION = 1;
 
-export type GenNodeStatus = 'running' | 'done' | 'failed';
+/**
+ * Reports where a node's last run got to. A deliberate re-render writes `invalidated`,
+ * because the node's hash has not moved and only a record retiring its last answer can
+ * make it run again.
+ */
+export type GenNodeStatus = 'running' | 'done' | 'failed' | 'invalidated';
+
+const STATUSES: ReadonlySet<GenNodeStatus> = new Set<GenNodeStatus>([
+  'running',
+  'done',
+  'failed',
+  'invalidated',
+]);
 
 /** What one node's run consumed, in the units a price table charges for. */
 export interface GenUsage {
@@ -109,7 +121,7 @@ function parseRecord(line: string): GraphJournalRecord | undefined {
   if (typeof record.at !== 'string') {
     return undefined;
   }
-  if (record.status !== 'running' && record.status !== 'done' && record.status !== 'failed') {
+  if (!STATUSES.has(record.status as GenNodeStatus)) {
     return undefined;
   }
 

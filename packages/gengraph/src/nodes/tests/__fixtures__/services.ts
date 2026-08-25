@@ -5,13 +5,13 @@
 import type { AssetRef, ImageParams, ImageResult } from '@vn/types';
 import { sha256 } from '@vn/util';
 
-import type { GenBlobRef, GenServices } from '../../../index.js';
+import type { GenBlobRef, GenImageInput, GenServices } from '../../../index.js';
 
 export interface MockImageCall {
   kind: 'generate' | 'edit';
   prompt: string;
-  base?: Uint8Array;
-  refs: Uint8Array[];
+  base?: GenImageInput;
+  refs: GenImageInput[];
   params: ImageParams;
 }
 
@@ -69,11 +69,11 @@ export function mockServices(options: MockOptions = {}): MockServices {
     },
 
     image: {
-      generate: (prompt: string, refs: Uint8Array[], params: ImageParams) => {
+      generate: (prompt: string, refs: GenImageInput[], params: ImageParams) => {
         mock.images.push({ kind: 'generate', prompt, refs, params });
         return Promise.resolve(mock.drawn);
       },
-      edit: (base: Uint8Array, prompt: string, refs: Uint8Array[], params: ImageParams) => {
+      edit: (base: GenImageInput, prompt: string, refs: GenImageInput[], params: ImageParams) => {
         mock.images.push({ kind: 'edit', prompt, base, refs, params });
         return Promise.resolve(mock.drawn);
       },

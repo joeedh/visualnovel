@@ -1,6 +1,6 @@
 import { chatVendorFor, type EffortChoice, type Providers } from '@vn/types';
 import type { ProjectConfig, ResolvedKeys } from '@vn/config';
-import type { ChatBackend, RefLoader } from './backend.js';
+import type { ChatBackend, ImageBackend, RefLoader } from './backend.js';
 import { createAnthropicChat } from './backends/anthropic.js';
 import { createGeminiChat, createGeminiImage } from './backends/gemini.js';
 import { ChatTextLLM } from './text.js';
@@ -37,6 +37,15 @@ export function chatBackendFor(
 }
 
 /**
+ * The byte-level image seam for the project's configured image model. Exported because a
+ * generation graph attaches references it read out of its own blob store, which have no
+ * `AssetRef` to resolve, so it calls the backend rather than the `ImageProvider` above it.
+ */
+export function createImageBackend(config: ProjectConfig, keys: ResolvedKeys): ImageBackend {
+  return createGeminiImage(keys.gemini, config.models.image);
+}
+
+/**
  * Build the concrete provider bundle from project config + resolved keys (report §8).
  * Providers are swapped purely by changing model ids in `project.yaml`; nothing else in
  * the pipeline needs to know which vendor is behind an interface.
@@ -48,10 +57,7 @@ export function createProviders(opts: {
 }): Providers {
   const { config, keys, loadRef } = opts;
 
-  const image = new BackendImageProvider(
-    createGeminiImage(keys.gemini, config.models.image),
-    loadRef,
-  );
+  const image = new BackendImageProvider(createImageBackend(config, keys), loadRef);
 
   const reviewers = config.models.vision.map((modelId) => {
     const { backend, label } = chatBackendFor(modelId, keys);

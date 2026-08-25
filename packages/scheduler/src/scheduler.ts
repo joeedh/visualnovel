@@ -13,6 +13,7 @@ import {
   runTask,
   type CostPreview,
   type GateStatus,
+  type GraphRuntime,
   type RunDeps,
   type Runner,
 } from '@vn/pipeline';
@@ -42,6 +43,11 @@ export interface RunOptions {
    * of those transitions is what makes a run resumable.
    */
   signal?: AbortSignal;
+  /**
+   * The generation graphs the host has loaded, indexed by the slot each active output binds
+   * to. A task whose slot no graph names runs the code it ran before graphs existed.
+   */
+  graphs?: GraphRuntime;
 }
 
 /** Where a run has got to, as {@link RunOptions.onProgress} sees it. */
@@ -132,7 +138,7 @@ function inputRefHashes(task: AnyTask): string[] {
  */
 export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   const { model, graph, store, providers, config, paths, logger, now, dryRun, onProgress } = opts;
-  const deps: RunDeps = { model, store, providers, logger, now };
+  const deps: RunDeps = { model, store, providers, logger, now, graphs: opts.graphs };
   const runners: Record<TaskKind, Runner> = createRunners(config);
   const ran: AnyTask[] = [];
 

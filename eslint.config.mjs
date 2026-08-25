@@ -95,6 +95,7 @@ const ALLOWED = {
     'commands',
     'taskgraph',
     'providers',
+    'gengraph',
     'pipeline',
     'scheduler',
   ],

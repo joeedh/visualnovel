@@ -16,6 +16,8 @@
     "@vn/git": "workspace:*",
     "@vn/taskgraph": "workspace:*",
     "@vn/providers": "workspace:*",
+    "@vn/gengraph": "workspace:*",
+    "@vn/pipeline": "workspace:*",
     "@vn/scheduler": "workspace:*",
     "yaml": "^2.6.1"
   }

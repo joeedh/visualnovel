@@ -16,6 +16,7 @@ export * from './services.js';
 export * from './graphfile.js';
 export * from './validate.js';
 export * from './journal.js';
+export * from './execute.js';
 export * from './dsl.js';
 export * from './cost.js';
 export * from './prices.js';

@@ -416,6 +416,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/gengraph':
+        specifier: workspace:*
+        version: link:../gengraph
       '@vn/model':
         specifier: workspace:*
         version: link:../model
@@ -518,6 +521,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/gengraph':
+        specifier: workspace:*
+        version: link:../gengraph
       '@vn/git':
         specifier: workspace:*
         version: link:../git
@@ -527,6 +533,9 @@ importers:
       '@vn/parse':
         specifier: workspace:*
         version: link:../parse
+      '@vn/pipeline':
+        specifier: workspace:*
+        version: link:../pipeline
       '@vn/providers':
         specifier: workspace:*
         version: link:../providers

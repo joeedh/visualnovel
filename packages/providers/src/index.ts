@@ -25,10 +25,12 @@ export {
 } from '@vn/types';
 export { createGeminiChat, createGeminiImage, type GeminiClient } from './backends/gemini.js';
 export {
+  captureRequest,
   capturedRequest,
   capturedRequests,
   captureSnapshot,
   clearCaptures,
+  type Capture,
   type CapturedHeader,
   type CaptureSnapshot,
 } from './backends/capture.js';

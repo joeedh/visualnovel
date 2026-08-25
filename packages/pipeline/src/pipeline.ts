@@ -1,6 +1,7 @@
 import type { AnyTask, Logger, ProjectModel, Providers, TaskGraph, TaskKind } from '@vn/types';
 import type { AssetStore } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import type { GraphRuntime } from './graphrun.js';
 
 /**
  * Everything a runner needs to execute one task (report §5, §8). This is not the graph: the
@@ -15,6 +16,12 @@ export interface RunDeps {
   logger?: Logger;
   /** Injected clock for provenance stamps (ISO string). */
   now?: () => string;
+  /**
+   * The generation graphs the host has loaded, and the services they run against. A task
+   * whose slot no graph binds runs the same code it did before graphs existed, so a project
+   * with no graphs never reaches this.
+   */
+  graphs?: GraphRuntime;
 }
 
 /** A dry-run estimate of the generative work a plan implies (report §10 cost preview). */

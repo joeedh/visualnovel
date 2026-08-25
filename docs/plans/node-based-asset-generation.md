@@ -436,6 +436,34 @@ mock providers; resume skips clean nodes; a refine attempt re-runs only the tail
 asset store's record is shape-identical between graph and legacy paths; `adoptSlot`'s
 refusals are untouched.
 
+Deviation, as built: a node hash covers what feeds a node rather than what the node
+produced, so a node that ran again may have answered differently at the same hash. The
+executor tracks the nodes it ran and forces everything below them, which is what makes the
+resume rule correct rather than merely cheap. `runBoundGraph` advances the binding's journal
+to what the run left behind, so a refine attempt resumes the nodes the attempt before it
+already ran; the journal's maps are read-only, so the binding gets a replacement object
+rather than a mutation. A failure blocks only the branch below the node that failed, and
+branches beside it still run, so one dead model call does not cost the graph its
+deterministic prep.
+
+`GenServices` lives on each loaded graph rather than on the runtime, because the blob store
+is kept per graph slug and a service object shared across graphs could not name one. The
+image service is the byte-level `ImageBackend` seam, which is what lets a graph and a task
+runner draw the same picture from the same prompt and refs; `createImageBackend` builds the
+real one and the testkit passes a mock. The text service ignores a node's `model` prop and
+answers from the project's one text provider, because building a backend per call arrives
+with the plugin port in Stage 12. `params` on a bound run come from the graph's own image
+nodes rather than from the task, since choosing them is what an author put the node there
+for, and a picture's asset record still names the task's refs, because the manifest
+addresses assets and a graph reference may be a blob. `indexGraphs` leaves a slot two active
+outputs claim bound to no graph and reports it, because which graph drew the picture would
+otherwise depend on the order the host loaded them in. The run context takes a `usage` hook
+the host answers, since the services report no usage of their own.
+
+`invalidateGenGraph` ships here as `executeGenGraph`'s `force` path and as an exported
+function, but `PipelineControl.regenerate` is wired to it in Stage 7: a session holds no
+graphs until `work/graphs/` exists, so there is nothing for a regenerate to invalidate yet.
+
 ### Stage 7 — graph documents and the `gengraph.*` commands
 
 Graphs become authored documents, writable only through commands.

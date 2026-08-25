@@ -26,6 +26,9 @@ import {
   createMockProviders,
   type ImageBackend,
 } from '@vn/providers';
+import type { Graph } from '@vn/gengraph';
+import { appendGraphJournal, graphBlobStore, readGraphJournal } from '@vn/gengraph/state';
+import { createGenServices, indexGraphs, type GraphRuntime, type LoadedGraph } from '@vn/pipeline';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import {
   characterDoc,
@@ -66,6 +69,12 @@ export interface RunOptions {
   imageBackend?: ImageBackend;
   /** Receive the scheduler's structured events (`task.start` / `task.end`). */
   logger?: Logger;
+  /**
+   * Generation graphs this run's tasks are bound to, keyed by the slug their journal and
+   * blobs are kept under. Each is indexed by the slot its active output names, so a task
+   * filling that slot draws through the graph and every other task runs unchanged.
+   */
+  graphs?: Record<string, Graph>;
 }
 
 export interface MakeProjectOptions {
@@ -193,12 +202,13 @@ export class TestProject {
   /** Reload, then run the real scheduler — with mock providers unless `opts.providers` says otherwise. */
   async run(opts: RunOptions = {}): Promise<RunSummary> {
     const { config, model, store, graph } = await this.reload();
+    const imageBackend = opts.imageBackend ?? (await this.images()) ?? new StubImageBackend();
     const providers =
       opts.providers ??
       createMockProviders({
         reviewResponses: opts.reviewResponses,
         refLoader: async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
-        imageBackend: opts.imageBackend ?? (await this.images()),
+        imageBackend,
       });
     return runPipeline({
       model,
@@ -209,7 +219,44 @@ export class TestProject {
       paths: this.paths,
       dryRun: opts.dryRun,
       logger: opts.logger,
+      ...(opts.graphs === undefined
+        ? {}
+        : {
+            graphs: await this.graphRuntime(opts.graphs, { model, store, providers, imageBackend }),
+          }),
     });
+  }
+
+  /**
+   * The slot→graph index a run consults, with each graph's journal replayed from disk and
+   * its blobs kept under its own slug. The services are the run's own, so a node draws
+   * through the same backend the unbound task runners do.
+   */
+  private async graphRuntime(
+    graphs: Record<string, Graph>,
+    deps: {
+      model: ProjectModel;
+      store: AssetStore;
+      providers: Providers;
+      imageBackend: ImageBackend;
+    },
+  ): Promise<GraphRuntime> {
+    const loaded: LoadedGraph[] = [];
+
+    for (const [slug, graph] of Object.entries(graphs)) {
+      loaded.push({
+        graph,
+        journal: await readGraphJournal(this.paths, slug),
+        services: createGenServices({ ...deps, blobs: graphBlobStore(this.paths, slug) }),
+        record: (record) => appendGraphJournal(this.paths, slug, record),
+      });
+    }
+
+    const { runtime, conflicts } = indexGraphs(loaded);
+    if (conflicts.length > 0) {
+      throw new Error(`more than one active output claims ${conflicts.join(', ')}`);
+    }
+    return runtime;
   }
 
   /**

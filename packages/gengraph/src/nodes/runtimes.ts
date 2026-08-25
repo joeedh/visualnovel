@@ -3,12 +3,12 @@
  * through the {@link GenServices} it is handed, so the same twelve types run against real
  * providers in the app and against mocks in a test.
  */
-import type { ImageParams } from '@vn/types';
+import type { ImageParams, ImageResult } from '@vn/types';
 import type { NodeTypeConstructor } from 'pathux-graph';
 
 import { registerGenRuntime } from '../registry.js';
 import type { GenInputs, GenNodeRun, GenProps } from '../registry.js';
-import type { GenServices } from '../services.js';
+import type { GenImageInput, GenServices } from '../services.js';
 import {
   GenDerivedPrompt,
   GenEditImage,
@@ -30,7 +30,10 @@ import type { GenImageRef } from './sockets.js';
 const SLOTS = ['a', 'b', 'c'] as const;
 
 /** The bytes behind a picture, read from whichever of the two stores holds it. */
-export async function readImageBytes(services: GenServices, ref: GenImageRef): Promise<Uint8Array> {
+export async function readImageBytes(
+  services: GenServices,
+  ref: GenImageRef,
+): Promise<GenImageInput> {
   const bytes =
     ref.store === 'asset'
       ? await services.assets.read({ hash: ref.hash, ext: ref.ext })
@@ -39,7 +42,7 @@ export async function readImageBytes(services: GenServices, ref: GenImageRef): P
   if (bytes === undefined) {
     throw new Error(`the ${ref.store} store holds no bytes for '${ref.hash}'`);
   }
-  return bytes;
+  return { bytes, ext: ref.ext };
 }
 
 function text(value: unknown): string {
@@ -62,8 +65,8 @@ function refsOf(value: unknown): GenImageRef[] {
     : [];
 }
 
-async function readRefs(services: GenServices, value: unknown): Promise<Uint8Array[]> {
-  const out: Uint8Array[] = [];
+async function readRefs(services: GenServices, value: unknown): Promise<GenImageInput[]> {
+  const out: GenImageInput[] = [];
   for (const ref of refsOf(value)) {
     out.push(await readImageBytes(services, ref));
   }
@@ -139,14 +142,22 @@ function bind(cls: NodeTypeConstructor, run: GenNodeRun): void {
   registerGenRuntime(cls.graphDef().typeName, run);
 }
 
-/** Turns the model's picture into a blob every node below it can read. */
+/**
+ * Turns the model's picture into a blob every node below it can read. The model id and the
+ * prompt ride along in the journal record rather than on a socket, because a host stamping
+ * the picture's provenance needs to know what drew it and what it was asked for.
+ */
 async function storeImage(
   services: GenServices,
-  bytes: Uint8Array,
-  ext: string,
-): Promise<{ image: GenImageRef }> {
-  const ref = await services.blobs.write(bytes, ext);
-  return { image: { store: 'blob', hash: ref.hash, ext: ref.ext } };
+  result: ImageResult,
+  prompt: string,
+): Promise<{ image: GenImageRef; modelId: string; prompt: string }> {
+  const ref = await services.blobs.write(result.bytes, result.ext);
+  return {
+    image: { store: 'blob', hash: ref.hash, ext: ref.ext },
+    modelId: result.modelId,
+    prompt,
+  };
 }
 
 function requireImage(inputs: GenInputs, key: string, what: string): GenImageRef {
@@ -203,23 +214,25 @@ export function registerGenRuntimes(): void {
   });
 
   bind(GenImage, async (inputs, props, services) => {
+    const prompt = joinPrompt(text(inputs.prompt), text(inputs.refine));
     const result = await services.image.generate(
-      joinPrompt(text(inputs.prompt), text(inputs.refine)),
+      prompt,
       await readRefs(services, inputs.refs),
       imageParamsOf(props),
     );
-    return storeImage(services, result.bytes, result.ext);
+    return storeImage(services, result, prompt);
   });
 
   bind(GenEditImage, async (inputs, props, services) => {
     const base = requireImage(inputs, 'base', 'this edit-image node');
+    const prompt = text(inputs.prompt);
     const result = await services.image.edit(
       await readImageBytes(services, base),
-      text(inputs.prompt),
+      prompt,
       await readRefs(services, inputs.refs),
       imageParamsOf(props),
     );
-    return storeImage(services, result.bytes, result.ext);
+    return storeImage(services, result, prompt);
   });
 
   bind(GenRefList, async (inputs) => {

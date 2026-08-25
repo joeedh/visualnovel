@@ -50,6 +50,12 @@ tests of the pure planners where building on disk would just be noise.
   would change the task set every run). Scenes are not nodes: a fully-run project settles at
   `L + 4C + 2N` tasks, and reaching that total needs a real `run()`, not a `dryRun`.
 
+- **`p.run({ graphs })`** binds generation graphs to slots for the length of one run. Each
+  entry is keyed by the slug its journal and blobs are filed under, and the run indexes them
+  by the slot each active output claims, so a task whose slot one of them names draws through
+  the graph and every other task runs the path it ran before graphs existed. Two active
+  outputs claiming one slot throws by name rather than letting load order decide.
+
 ## Placeholder art and the recorded corpus
 
 - **Mock runs produce placeholder art, and it is marked as such.** `StubImageBackend` emits a
