@@ -7,17 +7,18 @@
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
 import { slotKey } from '@vn/artgen';
-import { bindSlots, executeGenGraph, genNodeSpec, registerGenRuntimes } from '@vn/gengraph';
+import { bindSlots, genNodeSpec, registerGenRuntimes } from '@vn/gengraph';
 import type {
   GenImageRef,
   GenOutputs,
-  GenRunContext,
   GenServices,
   Graph,
   GraphId,
   GraphJournal,
   GraphJournalRecord,
 } from '@vn/gengraph';
+import { executeGenGraph } from '@vn/gengraph/state';
+import type { GenRunContext } from '@vn/gengraph/state';
 import type { RunDeps } from './pipeline.js';
 
 /** The type names of the three nodes a host seeds, which are also the seed's keys. */

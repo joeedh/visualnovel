@@ -71,6 +71,7 @@ describe('what an editor can be pinned to', () => {
     expect(pinFieldOf('wiki')).toBe('docPath');
     expect(pinFieldOf('asset')).toBe('assetHash');
     expect(pinFieldOf('inspector')).toBe('taskHash');
+    expect(pinFieldOf('gengraph')).toBe('graphSlug');
     // Convo follows nothing, and an unregistered name is not an error.
     expect(pinFieldOf('convo')).toBeUndefined();
     expect(pinFieldOf('nope')).toBeUndefined();

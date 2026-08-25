@@ -673,6 +673,59 @@ its own: the slot move, `ClaimNode.boundGraph`, the `'graphSlug'` pin and the re
 tsconfig paths are a commit a reader would want to land on without the pane's surface code
 in front of them.
 
+**Deviation, Stage 10b.** Four things the bullets above do not name are needed before the
+pane can draw anything.
+
+The renderer gains an IPC channel that reads a graph document, `gengraph:doc`. No channel
+named a graph before this stage: `workspace:doctree` and `story:graph` are the closest,
+and neither reaches `vngen/work/graphs/`. The channel ships the file's nstructjs JSON
+rather than the DSL, because `graphToDSL` carries topology and authored values and no
+layout at all, and the pane needs each node's `pos` and `size` to draw it where the author
+left it. Both `nstructjs` and `pathux-graph` are already aliased for the renderer, so the
+renderer reads the JSON back into a real `Graph` through `readGraphFile`.
+
+`GenEdit` gains a `moveNodes` op and `gengraph.*` gains a `gengraph.moveNodes` command,
+because path.ux's delegate emits `moveNode`, `moveNodes` and `arrange` and the seven ops
+`GenEdit` shipped with include no move. Without them a drag has nothing to commit into and
+the pane could not lay a graph out at all. The move list is encoded as text on the
+command, following `gengraph.apply`: `@vn/commands` has no JSON or list prop kind.
+
+The delegate's `check` calls `decideGenEdit` in the renderer rather than `stack.check` over
+IPC. `NodeGraphDelegate.check` is synchronous and runs per frame during a drag
+(`_previewMove` dims the frame it would refuse, and `linkdrag._targetOk` asks once per
+candidate socket), while `command:check` is an async round trip. Both sides run the same
+decision function, so the mid-gesture verdict still matches the verdict on commit, which is
+what the rule asks for. `perform` then dispatches the matching `gengraph.*` command through
+`command:exec`, so every write still goes through the registry.
+
+`Selection` gains a `graphSlug` field, which is the selection plumbing the first bullet
+leaves unnamed. `selectionForNode` had no `slot` case, so clicking a slot row returned the
+selection unchanged and `pick` took its early return without routing anywhere. A bound slot
+now selects the graph that draws it, which both publishes `ui.graphSlug` and lets the click
+route to whichever editor claims the row.
+
+A fifth thing: node properties are not edited through path.ux's datapath binding. The pane
+leaves `graphPath` empty, so `NodeGraphView.watchPath` installs no datapath watch, but
+`syncGraph` still stamps every non-group frame with `` `${currentGraphPath}.nodes[<id>]` ``,
+which is `.nodes["1"]` rather than the empty string the two guards in `NodeFrame` test for.
+path.ux therefore builds prop rows and inline socket editors against a path that cannot
+resolve. The pane subclasses `NodeGraphView` and clears each frame's `nodePath` after
+`syncGraph` runs, which is safe because `propEditRow` catches its own resolution failure and
+the resync is synchronous, so no unresolvable row reaches a paint. Each built-in node's
+`createUI` is then registered renderer-side, drawing controls that dispatch
+`gengraph.setProp` through `command:exec`. Registering the graph as a `DataStruct` in
+`defineShellApi` was the alternative and is rejected: `Node`'s own `props` list writes with
+`target.setValue(val)` directly, so every prop edit would bypass the command registry, which
+is the one write path this application has.
+
+A sixth: `executeGenGraph` and `invalidateGenGraph` moved from the package's main entry to
+`@vn/gengraph/state`. Stage 2 put the four filesystem modules there and left the executor on
+the main entry, which looked pure — it opens no file itself — but it hashes every node through
+`@vn/util`, which reaches `node:crypto`. Nothing caught it until this stage, because the pane is
+the renderer's first value import of `@vn/gengraph` and only `vite build` resolves a `node:`
+module for the browser. The two callers are `@vn/pipeline`'s graph runner and the desktop
+session, both of which already import the state entry.
+
 ### Stage 11 — plugins: manifest, toolchain, confirmed install
 
 - A plugin is a directory with `plugin.json` (name, version, node types, services called,

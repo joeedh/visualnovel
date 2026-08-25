@@ -75,22 +75,23 @@ import {
   bindSlots,
   estimateGraph,
   estimateSentence,
-  executeGenGraph,
-  invalidateGenGraph,
   priceEstimate,
   pricesAreStale,
   registerGenRuntimes,
+  writeGraphFile,
   type GenPricedEstimate,
-  type GenRunContext,
   type Graph as GenGraph,
   type GraphId,
   type GraphJournalRecord,
 } from '@vn/gengraph';
 import {
   appendGraphJournal,
+  executeGenGraph,
   graphBlobStore,
   graphJournalFile,
+  invalidateGenGraph,
   readGraphJournal,
+  type GenRunContext,
 } from '@vn/gengraph/state';
 import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, sha256, writeFileAtomic } from '@vn/util';
@@ -306,6 +307,7 @@ import type {
   DocSaveResult,
   DocTree,
   GateCandidate,
+  GraphDocRead,
   KeyScope,
   KeyStatusView,
   PipelineRunResult,
@@ -5106,6 +5108,22 @@ export class WorkspaceSession {
       });
     }
     return runtime;
+  }
+
+  /**
+   * One graph's document, for a renderer that cannot reach the file. The graph is serialized
+   * back to the file's own layout rather than to the DSL, because the DSL carries no node
+   * positions and the pane has to draw the graph where the author left it.
+   */
+  async graphDoc(slug: GraphSlug): Promise<GraphDocRead> {
+    const read = await readGraph(this.dir, slug, openGit(this.dir));
+    if (!read.ok) return { ok: false, reason: read.reason };
+    return {
+      ok: true,
+      path: read.path,
+      file: writeGraphFile(read.graph),
+      diagnostics: read.diagnostics,
+    };
   }
 
   /**

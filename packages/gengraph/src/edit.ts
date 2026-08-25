@@ -24,7 +24,16 @@ export type GenEdit =
   | { op: 'unlink'; to: GraphId; toSocket: string; from?: GraphId; fromSocket?: string }
   | { op: 'setProp'; node: GraphId; key: string; value: GenPropValue }
   | { op: 'setActiveOutput'; node: GraphId }
+  /** Where nodes now sit. One drag moves every node it caught, so a move takes a list. */
+  | { op: 'moveNodes'; moves: readonly GenNodeMove[] }
   | { op: 'apply'; description: unknown };
+
+/** One node's new position in graph space. */
+export interface GenNodeMove {
+  node: GraphId;
+  x: number;
+  y: number;
+}
 
 /** What an applied edit left behind. */
 export interface GenApplied {
@@ -76,6 +85,8 @@ export function decideGenEdit(graph: Graph, edit: GenEdit): GenEditResult {
       return decideSetProp(graph, edit);
     case 'setActiveOutput':
       return decideSetActive(graph, edit);
+    case 'moveNodes':
+      return decideMove(graph, edit);
     case 'apply':
       return decideApply(graph, edit);
   }
@@ -290,6 +301,47 @@ function claims(node: Node, slot: string): boolean {
   const key = genNodeSpec(node.def.typeName)?.slotProp;
   if (key === undefined || node.props.active === undefined) return false;
   return String(node.props[key]?.getValue() ?? '').trim() === slot;
+}
+
+/**
+ * Decides a drag. Every node named must exist and land on a finite position, because the whole
+ * drag is written as one edit and a graph half-moved reads as a layout the author never made.
+ */
+function decideMove(graph: Graph, edit: GenEdit & { op: 'moveNodes' }): GenEditResult {
+  if (edit.moves.length === 0) return refuse('this move names no node');
+
+  const problems: string[] = [];
+  const moved: { node: Node; x: number; y: number }[] = [];
+
+  for (const move of edit.moves) {
+    const node = graph.nodeIdMap.get(move.node);
+    if (node === undefined) {
+      problems.push(missing(move.node));
+      continue;
+    }
+    if (!Number.isFinite(move.x) || !Number.isFinite(move.y)) {
+      problems.push(`the ${nameOf(node)} node was moved to a position that is not a number`);
+      continue;
+    }
+    moved.push({ node, x: move.x, y: move.y });
+  }
+
+  const first = problems[0];
+  if (first !== undefined) return refuse(first, problems);
+
+  const what =
+    moved.length === 1 ? `the ${nameOf(moved[0]!.node)} node` : plural(moved.length, 'node');
+  return {
+    ok: true,
+    note: `Moves ${what}.`,
+    apply: () => {
+      for (const { node, x, y } of moved) {
+        node.pos[0] = x;
+        node.pos[1] = y;
+      }
+      return { graph };
+    },
+  };
 }
 
 function decideApply(graph: Graph, edit: GenEdit & { op: 'apply' }): GenEditResult {

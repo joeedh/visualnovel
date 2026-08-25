@@ -284,6 +284,7 @@ export class SkillsEditor extends VnEditor {
       characterId: ui.characterId,
       docPath: ui.docPath,
       assetHash: ui.assetHash,
+      graphSlug: ui.graphSlug,
     };
   }
 }

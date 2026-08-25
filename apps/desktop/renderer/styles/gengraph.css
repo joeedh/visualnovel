@@ -1,0 +1,57 @@
+/*
+ * The Gen Graph pane's surface. Adopted into the pane's shadow root by `editors/nodes.ts`, never
+ * imported by `index.css` — document rules do not cross that boundary, so the reset is here too.
+ *
+ * The node frames are not styled from here. Each frame builds its rows inside a shadow root of
+ * its own, which this sheet does not reach, so those rows carry inline styles instead. Custom
+ * properties do inherit across a shadow boundary, so both halves spend the same tokens.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.gg-surface {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gg-notes {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+  color: var(--vermilion);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-line;
+}
+
+/* Drawn over the canvas rather than in place of it, so an empty graph still pans and takes a
+   node from the add menu. */
+.gg-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--mist);
+  pointer-events: none;
+}
+
+.gg-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}

@@ -159,6 +159,10 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
     // An asset carries no `path` on purpose — it is addressed by hash, which is its key here.
     case 'asset':
       return { ...current, assetHash: key };
+    // A slot a graph draws selects that graph, which is what the Gen Graph pane opens on. A slot
+    // no graph draws names nothing the shell tracks, so it costs the author nothing to click.
+    case 'slot':
+      return node.boundGraph === undefined ? current : { ...current, graphSlug: node.boundGraph };
     default:
       return current;
   }

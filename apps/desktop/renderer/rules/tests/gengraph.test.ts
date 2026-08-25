@@ -1,0 +1,125 @@
+import type { GraphEdit } from 'pathux';
+
+import { commandFor, genEditFor } from '../gengraph.js';
+
+/** The kinds that reach a command, so a gesture the pane can write is never refused by mistake. */
+describe('a gesture read as an edit', () => {
+  it('writes a single drag as the same one-node move a multi-drag writes', () => {
+    const one = genEditFor({ kind: 'moveNode', graphPath: '', nodeId: '3', x: 10, y: 20 });
+    expect(one).toEqual({
+      ok: true,
+      edit: { op: 'moveNodes', moves: [{ node: '3', x: 10, y: 20 }] },
+    });
+  });
+
+  it('reads a box drag and an auto-arrange the same way', () => {
+    const moves = [
+      { nodeId: '1', x: 0, y: 0 },
+      { nodeId: '2', x: 40, y: 0 },
+    ];
+    const dragged = genEditFor({ kind: 'moveNodes', graphPath: '', moves });
+    const arranged = genEditFor({ kind: 'arrange', graphPath: '', moves });
+    expect(dragged).toEqual(arranged);
+    expect(dragged).toMatchObject({ edit: { moves: [{ node: '1' }, { node: '2' }] } });
+  });
+
+  it('carries the drop position an added node was placed at', () => {
+    expect(
+      genEditFor({ kind: 'addNode', graphPath: '', nodeType: 'GenImage', x: 5, y: 7 }),
+    ).toEqual({ ok: true, edit: { op: 'addNode', type: 'GenImage', pos: [5, 7] } });
+  });
+
+  it('names both ends of a link, and of the link a drag severs', () => {
+    const ends = {
+      graphPath: '',
+      srcNode: '1',
+      srcSocket: 'image',
+      dstNode: '2',
+      dstSocket: 'base',
+    } as const;
+    expect(genEditFor({ kind: 'connect', ...ends })).toEqual({
+      ok: true,
+      edit: { op: 'link', from: '1', fromSocket: 'image', to: '2', toSocket: 'base' },
+    });
+    // An unlink gesture always names its source, so it cuts the one link rather than the input.
+    expect(genEditFor({ kind: 'disconnect', ...ends })).toEqual({
+      ok: true,
+      edit: { op: 'unlink', to: '2', toSocket: 'base', from: '1', fromSocket: 'image' },
+    });
+  });
+});
+
+/**
+ * A refusal here is what stops path.ux performing an edit the application would never write. The
+ * verdict has to be the refusal rather than silence, because `_dispatch` performs whatever
+ * `check` accepts and then resyncs from a graph that never changed.
+ */
+describe('a gesture with no command behind it', () => {
+  const KINDS = [
+    'duplicateNode',
+    'replaceNode',
+    'exposeEntry',
+    'reorderEntry',
+    'repointEntry',
+    'removeEntry',
+  ];
+
+  it.each(KINDS)('refuses %s by name', (kind) => {
+    const result = genEditFor({ kind, graphPath: '' } as unknown as GraphEdit);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason.length).toBeGreaterThan(0);
+  });
+
+  it('answers for a kind it has never heard of rather than throwing', () => {
+    const result = genEditFor({ kind: 'teleport', graphPath: '' } as unknown as GraphEdit);
+    expect(result).toEqual({ ok: false, reason: "'teleport' is not offered here" });
+  });
+});
+
+describe('the command an edit is written through', () => {
+  it('sends a move list as the JSON the command parses', () => {
+    const command = commandFor('plates', {
+      op: 'moveNodes',
+      moves: [{ node: 7, x: 1.5, y: -2 }],
+    });
+    expect(command.id).toBe('gengraph.moveNodes');
+    expect(JSON.parse(String(command.props.moves))).toEqual([{ node: '7', x: 1.5, y: -2 }]);
+  });
+
+  it('places a node at the origin when the edit named no position', () => {
+    expect(commandFor('plates', { op: 'addNode', type: 'GenOutput' }).props).toEqual({
+      slug: 'plates',
+      type: 'GenOutput',
+      x: 0,
+      y: 0,
+    });
+  });
+
+  // The command reads an empty source as "cut every link into this input", which is what an
+  // unlink carrying no source means.
+  it('leaves the source empty when the edit named none', () => {
+    expect(commandFor('plates', { op: 'unlink', to: '2', toSocket: 'base' }).props).toEqual({
+      slug: 'plates',
+      to: '2',
+      toSocket: 'base',
+      from: '',
+      fromSocket: '',
+    });
+  });
+
+  it('types a property value as text, whatever the value is', () => {
+    const props = commandFor('plates', { op: 'setProp', node: '1', key: 'active', value: true });
+    expect(props.props).toEqual({ slug: 'plates', node: '1', key: 'active', value: 'true' });
+  });
+
+  it('sends a whole-graph description as JSON', () => {
+    const command = commandFor('plates', { op: 'apply', description: { nodes: [] } });
+    expect(command.id).toBe('gengraph.apply');
+    expect(JSON.parse(String(command.props.description))).toEqual({ nodes: [] });
+  });
+
+  it('names an id the same way whether it arrived as a string or a number', () => {
+    expect(commandFor('plates', { op: 'removeNode', node: 4 }).props.node).toBe('4');
+    expect(commandFor('plates', { op: 'setActiveOutput', node: '4' }).props.node).toBe('4');
+  });
+});

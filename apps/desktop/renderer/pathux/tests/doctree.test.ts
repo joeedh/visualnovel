@@ -20,7 +20,14 @@ import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import type { Selection } from '../selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
 
-const NONE: Selection = { sceneId: '', shotId: '', characterId: '', docPath: '', assetHash: '' };
+const NONE: Selection = {
+  sceneId: '',
+  shotId: '',
+  characterId: '',
+  docPath: '',
+  assetHash: '',
+  graphSlug: '',
+};
 
 const node = (id: string, kind: DocNode['kind'], over: Partial<DocNode> = {}): DocNode => ({
   id,
@@ -259,6 +266,23 @@ describe('selectionForNode', () => {
     });
     expect(nodeIsSelected(asset, { ...NONE, assetHash: 'a1b2c3d4' })).toBe(true);
     expect(nodeIsSelected(asset, NONE)).toBe(false);
+  });
+
+  /**
+   * A slot names the graph that draws it, which is what the Gen Graph pane opens on. A slot no
+   * graph draws returns the identical object, so the click routes nowhere and costs nothing.
+   */
+  it('names the graph a slot is bound to, and nothing for an unbound one', () => {
+    const bound = node('slot:portrait:aiko', 'slot', { boundGraph: 'portraits' });
+    expect(selectionForNode(bound, { ...NONE, docPath: 'wiki/a.md' })).toEqual({
+      ...NONE,
+      docPath: 'wiki/a.md',
+      graphSlug: 'portraits',
+    });
+
+    const unbound = node('slot:portrait:rin', 'slot');
+    const current: Selection = { ...NONE, graphSlug: 'portraits' };
+    expect(selectionForNode(unbound, current)).toBe(current);
   });
 
   it('leaves an entity with no sheet on the document it was already on', () => {

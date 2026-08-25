@@ -156,6 +156,10 @@ const ALLOWED = {
     'scheduler',
     'authoring',
     'debug2d',
+    // The renderer is a path.ux screen mesh, so it imports the library directly. Only the
+    // aliases the root tsconfig maps land here; `pathux` itself resolves nowhere from this
+    // config and is unclassified.
+    'pathux',
   ],
 };
 

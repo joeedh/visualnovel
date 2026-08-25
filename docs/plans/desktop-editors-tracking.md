@@ -152,9 +152,13 @@ because the next batch of plans should follow it too:
 
 Decided against in the survey, recorded here so it does not get re-proposed:
 
-- **Prompt node editor.** Converts deterministic plumbing into user data, and every edit
-  rehashes downstream tasks — casual fiddling silently invalidates generated art. A read-only
-  prompt breakdown in the inspector gets most of the value at none of the cost.
+- **Prompt node editor.** Superseded by the Gen Graph pane
+  ([`node-based-asset-generation.md`](node-based-asset-generation.md)), which answers the objection
+  this entry was written for. The objection was that turning deterministic plumbing into user data
+  rehashes downstream tasks on every edit, so casual fiddling silently invalidates generated art. A
+  generation graph is a document the author opts into per slot, the deterministic runners are still
+  there for every slot nothing is bound to, and a node's journal records what each hash produced,
+  so an edit that invalidates work says which work.
 - **Agent trace visualizer** — not an editor, not a current pain point.
 - **Command history / git lane view** — low value until an undo strategy is chosen
   ([`../history/gitUndoOptions.md`](../history/gitUndoOptions.md)).

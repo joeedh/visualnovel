@@ -21,6 +21,11 @@ export interface Selection {
    * its bytes, not its recipe), so like `docPath` it is carried through untouched here.
    */
   assetHash: string;
+  /**
+   * The generation graph, by slug. No task names one either: a slot names a graph and a task
+   * names a slot, so the document tree resolves it and every rule here carries it through.
+   */
+  graphSlug: string;
 }
 
 /** Shot ids are namespaced `<sceneId>__<raw>`, which is a shot task's only link to a scene. */

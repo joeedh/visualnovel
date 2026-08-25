@@ -19,6 +19,7 @@ import {
   gengraphDelete,
   gengraphLink,
   gengraphList,
+  gengraphMoveNodes,
   gengraphRemoveNode,
   gengraphSetActiveOutput,
   gengraphSetProp,
@@ -287,6 +288,30 @@ describe('what the gengraph commands refuse', () => {
     );
   }, 20_000);
 
+  it('writes a whole drag at once, and refuses a move list that is not JSON', async () => {
+    const image = await addNode('portrait', 'GenImage');
+    const output = await addNode('portrait', 'GenOutput');
+
+    await run(gengraphMoveNodes, {
+      slug: 'portrait',
+      moves: JSON.stringify([
+        { node: image, x: 12, y: 34 },
+        { node: output, x: 200, y: 34 },
+      ]),
+    });
+
+    const built = await loaded('portrait');
+    expect([...built.nodeIdMap.get(Number(image))!.pos]).toEqual([12, 34]);
+    expect([...built.nodeIdMap.get(Number(output))!.pos]).toEqual([200, 34]);
+
+    expect(await refusal(gengraphMoveNodes, { slug: 'portrait', moves: '[{nope' })).toContain(
+      'not JSON',
+    );
+    expect(
+      await refusal(gengraphMoveNodes, { slug: 'portrait', moves: '[{"node":"1"}]' }),
+    ).toContain('numeric `x` and `y`');
+  }, 20_000);
+
   it('refuses a description that is not JSON, and leaves the graph alone', async () => {
     await addNode('portrait', 'GenImage');
     expect(await refusal(gengraphApply, { slug: 'portrait', description: '{nope' })).toContain(
@@ -345,6 +370,7 @@ describe('what a graph command records', () => {
       gengraphCreate,
       gengraphDelete,
       gengraphLink,
+      gengraphMoveNodes,
       gengraphRemoveNode,
       gengraphSetActiveOutput,
       gengraphSetProp,

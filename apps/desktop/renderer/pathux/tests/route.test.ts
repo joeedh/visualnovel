@@ -121,6 +121,16 @@ describe('a claim looks at the node, not just its kind', () => {
     expect(opened(route)).toBe('');
   });
 
+  // Task Graph says whether a slot has been drawn; the generation graph says how it will be, so a
+  // bound slot opens the graph and Task Graph drops to `secondary` for it.
+  test('a slot a generation graph draws opens Gen Graph instead of Task Graph', () => {
+    const bound = node('slot', { id: 'slot:plate:cafe/night', boundGraph: 'plates' });
+    expect(opened(routeFor({ node: bound, panes: documents }))).toBe('gengraph');
+    expect(opened(routeFor({ node: bound, panes: [...documents, pane('taskgraph')] }))).toBe(
+      'taskgraph',
+    );
+  });
+
   test('a binary file in file mode is not read as a document', () => {
     const png = node('file', { id: 'file:art/cafe.png', path: 'art/cafe.png' });
     expect(opened(routeFor({ node: png, panes: documents }))).toBe('');

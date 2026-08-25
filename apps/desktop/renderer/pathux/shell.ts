@@ -36,6 +36,7 @@ import './editors/convo.js';
 import './editors/documents.js';
 import './editors/graph.js';
 import './editors/inspector.js';
+import './editors/nodes.js';
 import './editors/onboarding.js';
 import './editors/systemprompt.js';
 import './editors/project.js';

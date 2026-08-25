@@ -349,6 +349,59 @@ describe('choosing the active output', () => {
   });
 });
 
+describe('moving nodes', () => {
+  it('writes every position in one edit, and names the node when there is only one', () => {
+    const { graph, image, output } = bound();
+
+    expect(
+      note(decideGenEdit(graph, { op: 'moveNodes', moves: [{ node: image.id, x: 5, y: 6 }] })),
+    ).toBe('Moves the Generate image node.');
+
+    const edit: GenEdit = {
+      op: 'moveNodes',
+      moves: [
+        { node: image.id, x: 5, y: 6 },
+        { node: output.id, x: 70, y: 80 },
+      ],
+    };
+    expect(note(decideGenEdit(graph, edit))).toBe('Moves 2 nodes.');
+    apply(graph, edit);
+
+    expect([...image.pos]).toEqual([5, 6]);
+    expect([...output.pos]).toEqual([70, 80]);
+  });
+
+  it('refuses a move naming no node at all', () => {
+    expect(reason(decideGenEdit(new Graph(), { op: 'moveNodes', moves: [] }))).toBe(
+      'this move names no node',
+    );
+  });
+
+  it('moves nothing when one node in the drag has gone, and lists every problem', () => {
+    const { graph, image } = bound();
+    const before = [...image.pos];
+
+    const decided = decideGenEdit(graph, {
+      op: 'moveNodes',
+      moves: [
+        { node: image.id, x: 5, y: 6 },
+        { node: 4242, x: 7, y: 8 },
+      ],
+    });
+
+    expect(reason(decided)).toBe('this graph holds no node 4242');
+    expect(decided.ok ? [] : decided.details).toEqual(['this graph holds no node 4242']);
+    expect([...image.pos]).toEqual(before);
+  });
+
+  it('refuses a position that is not a number, because the file would carry it', () => {
+    const { graph, image } = bound();
+    expect(
+      reason(decideGenEdit(graph, { op: 'moveNodes', moves: [{ node: image.id, x: NaN, y: 0 }] })),
+    ).toBe('the Generate image node was moved to a position that is not a number');
+  });
+});
+
 describe('replacing the whole graph with a description', () => {
   it('keeps a node the description names by id and counts what changed', () => {
     const { graph, image, output } = bound();

@@ -182,6 +182,7 @@ export class DocumentsEditor extends VnEditor {
       characterId: ui.characterId,
       docPath: ui.docPath,
       assetHash: ui.assetHash,
+      graphSlug: ui.graphSlug,
     };
   }
 
@@ -602,6 +603,7 @@ export class DocumentsEditor extends VnEditor {
     ui.characterId = next.characterId;
     ui.docPath = next.docPath;
     ui.assetHash = next.assetHash;
+    ui.graphSlug = next.graphSlug;
     this.announce();
     this.rebuild();
   }

@@ -44,6 +44,7 @@ import type {
   UndoState,
 } from '@vn/commands';
 import type { Report } from '@vn/agentreport';
+import type { GenDiagnostic } from '@vn/gengraph';
 
 export type { Report } from '@vn/agentreport';
 
@@ -770,6 +771,16 @@ export interface SceneEditResult {
 }
 
 /**
+ * One generation graph as the renderer receives it. The file's own nstructjs JSON travels rather
+ * than the DSL, because the DSL carries topology and authored values and no layout, and the pane
+ * has to draw each node where the author left it. The renderer reads it back into a `Graph` with
+ * `readGraphFile`, which is the same call `@vn/gengraph/state` makes on the main side.
+ */
+export type GraphDocRead =
+  | { ok: true; path: string; file: Record<string, unknown>; diagnostics: GenDiagnostic[] }
+  | { ok: false; reason: string };
+
+/**
  * Channels invoked by the renderer and answered by main (request → response).
  * Keep the key as the literal channel string; the value types the (args) → result.
  */
@@ -820,6 +831,11 @@ export interface InvokeChannels {
    * contains. A read; the edit goes through a `story.*` command like every other mutation.
    */
   'story:coverage': (sceneId: string) => SceneCoverage;
+  /**
+   * One generation graph's document. A read; every edit to a graph goes through a `gengraph.*`
+   * command, so the pane re-reads this after each one rather than patching what it holds.
+   */
+  'gengraph:doc': (slug: string) => GraphDocRead;
   /** The live registry projection — never the generated file, so the two can't diverge. */
   'command:catalog': () => CommandCatalog;
   'command:exec': (request: CommandExecRequest) => CommandOutcome;

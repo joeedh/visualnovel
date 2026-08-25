@@ -4,14 +4,15 @@
  * mutation here goes through `decideGenEdit`, which is the same rule the authoring agent's graph
  * tool runs. A refusal therefore reads identically in both hosts.
  *
- * Two props are strings that carry something richer. `gengraph.setProp` takes its value as text
- * and lets the node's own property decide how to read it, and `gengraph.apply` takes a whole DSL
- * description as text and parses it. Neither is a design choice about graphs: `@vn/commands` has
- * no JSON prop kind, and the string DSL a command is typed in is text throughout.
+ * Three props are strings that carry something richer. `gengraph.setProp` takes its value as text
+ * and lets the node's own property decide how to read it, `gengraph.apply` takes a whole DSL
+ * description as text and parses it, and `gengraph.moveNodes` takes its list of positions the same
+ * way. None is a design choice about graphs: `@vn/commands` has no JSON or list prop kind, and the
+ * string DSL a command is typed in is text throughout.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { Graph, decideGenEdit, estimateSentence, readGenPropValue } from '@vn/gengraph';
-import type { GenApplied, GenEdit, GenPricedEstimate, GraphId } from '@vn/gengraph';
+import type { GenApplied, GenEdit, GenNodeMove, GenPricedEstimate, GraphId } from '@vn/gengraph';
 import {
   deleteGraph,
   isGraphSlug,
@@ -323,6 +324,57 @@ export const gengraphSetActiveOutput = define({
     return edit(ctx, slug, (graph) => ({ op: 'setActiveOutput', node: nodeIdOf(graph, node) }));
   },
 });
+
+export const gengraphMoveNodes = define({
+  id: 'gengraph.moveNodes',
+  title: 'Move nodes',
+  description:
+    'Put nodes where a drag left them. One drag is one edit, so a graph is never half-moved and ' +
+    'one undo puts every node back. A move naming a node the graph has lost is refused whole.',
+  mutating: true,
+  undoable: true,
+  props: {
+    slug: prop.string(SLUG),
+    moves: prop.string('the new positions, as JSON `[{"node":"1","x":0,"y":0}]`', {
+      digest: true,
+      multiline: true,
+    }),
+  },
+  async check({ slug, moves }, ctx) {
+    return verdict(await decide(ctx, slug, (graph) => movesOf(graph, moves)));
+  },
+  async run({ slug, moves }, ctx) {
+    return edit(ctx, slug, (graph) => movesOf(graph, moves));
+  },
+});
+
+/** Reads the move list, refusing anything that is not a list of node ids with two numbers. */
+function movesOf(graph: Graph, said: string): EditPlan {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(said);
+  } catch (err) {
+    return { refuse: `that move list is not JSON: ${(err as Error).message}` };
+  }
+  if (!Array.isArray(parsed)) return { refuse: 'a move list is a JSON array' };
+
+  const moves: GenNodeMove[] = [];
+  for (const entry of parsed) {
+    if (entry === null || typeof entry !== 'object') {
+      return { refuse: 'every move in the list is an object naming a node and where it went' };
+    }
+    const move = entry as { node?: unknown; x?: unknown; y?: unknown };
+    if (typeof move.x !== 'number' || typeof move.y !== 'number') {
+      return { refuse: 'every move in the list needs a numeric `x` and `y`' };
+    }
+    if (typeof move.node !== 'string' && typeof move.node !== 'number') {
+      return { refuse: 'every move in the list needs the `node` it is about' };
+    }
+    moves.push({ node: nodeIdOf(graph, String(move.node)), x: move.x, y: move.y });
+  }
+
+  return { op: 'moveNodes', moves };
+}
 
 export const gengraphApply = define({
   id: 'gengraph.apply',

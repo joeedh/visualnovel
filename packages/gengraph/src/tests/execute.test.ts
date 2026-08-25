@@ -6,11 +6,12 @@ import {
   GenTaskRefs,
   GenTemplate,
   Graph,
-  executeGenGraph,
   registerGenRuntimes,
   replayJournal,
 } from '../index.js';
-import type { GenRunContext, GraphJournalRecord, Node } from '../index.js';
+import type { GraphJournalRecord, Node } from '../index.js';
+import { executeGenGraph } from '../execute.js';
+import type { GenRunContext } from '../execute.js';
 import { bytes, mockServices, putAsset } from '../nodes/tests/__fixtures__/services.js';
 import type { MockServices } from '../nodes/tests/__fixtures__/services.js';
 

@@ -783,6 +783,7 @@ function registerIpc(): void {
   handle('story:play', () => getSession().playable());
   handle('story:graph', () => getSession().storyGraph());
   handle('story:coverage', (_origin, sceneId) => getSession().sceneCoverage(sceneId));
+  handle('gengraph:doc', (_origin, slug) => getSession().graphDoc(slug));
 
   // `catalogOf`, not a second `toCatalog` call: the two drifted, and the channel served a
   // catalog with no interactions while `commands.json` listed five.
