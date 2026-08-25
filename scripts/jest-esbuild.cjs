@@ -9,10 +9,17 @@
  */
 const { transformSync } = require('esbuild');
 
+/** path.ux carries a few vendored `.js` files, which reach this transform as plain ESM. */
+function loaderFor(filename) {
+  if (filename.endsWith('.tsx')) return 'tsx';
+  if (filename.endsWith('.ts')) return 'ts';
+  return 'js';
+}
+
 module.exports = {
   process(source, filename) {
     const result = transformSync(source, {
-      loader: filename.endsWith('.tsx') ? 'tsx' : 'ts',
+      loader: loaderFor(filename),
       format: 'cjs',
       target: 'node20',
       sourcemap: 'inline',

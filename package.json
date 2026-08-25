@@ -18,8 +18,8 @@
     }
   },
   "scripts": {
-    "check": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
-    "typecheck": "tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
+    "check": "pnpm --filter @vn/desktop build:pathux-types && tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
+    "typecheck": "pnpm --filter @vn/desktop build:pathux-types && tsgo --noEmit -p tsconfig.json && pnpm check:renderer",
     "check:renderer": "pnpm --filter @vn/desktop check",
     "check:setup": "node scripts/check-submodules.mjs",
     "test": "jest",

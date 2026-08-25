@@ -23,7 +23,11 @@
       "@vn/pipeline": ["./packages/pipeline/src/index.ts"],
       "@vn/scheduler": ["./packages/scheduler/src/index.ts"],
       "@vn/testkit": ["./packages/testkit/src/index.ts"],
-      "@vn/cli": ["./apps/cli/src/index.ts"]
+      "@vn/gengraph": ["./packages/gengraph/src/index.ts"],
+      "@vn/cli": ["./apps/cli/src/index.ts"],
+      "pathux-graph": ["./apps/desktop/dist/pathux-types/graph/index.d.ts"],
+      "pathux-toolprop": ["./apps/desktop/dist/pathux-types/path-controller/toolsys/toolprop.d.ts"],
+      "nstructjs": ["./vendor/nstructjs/build/structjs.d.ts"]
     }
   },
   "include": ["packages/*/src/**/*.ts", "apps/*/src/**/*.ts"]

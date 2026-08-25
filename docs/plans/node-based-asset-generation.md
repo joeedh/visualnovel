@@ -195,8 +195,13 @@ same commit, because nothing in the package resolves without it:
 
 - `pnpm-workspace.yaml` needs no edit (it globs `packages/*`); jest.config.cjs `PACKAGES`
   gains `'gengraph'`; scripts/aliases.mjs `PACKAGES` gains `'gengraph'`.
-- One new alias name, `pathux-graph`, through which `@vn/gengraph` alone imports the
-  graph module. It resolves to **source** where code runs and to **declarations** where
+- Two new alias names, `pathux-graph` and `pathux-toolprop`, through which `@vn/gengraph`
+  alone imports the graph module and the `ToolProperty` classes. The plan called for one.
+  `scripts/graph/index.ts` re-exports the node, socket and graph classes but not the
+  property classes a node spec declares its props with, and reaching them through the
+  `pathux` alias would put a second copy of path.ux in the bundle, so the second name is
+  wired the same way and in the same five places as the first.
+  They resolve to **source** where code runs and to **declarations** where
   code is only checked. Source: scripts/aliases.mjs (picked up by esbuild.desktop.mjs,
   esbuild.cli.mjs, esbuild.authoring.mjs and gen-command-catalog.mjs), jest's shared
   `moduleNameMapper`, and apps/desktop/vite.config.ts beside the existing `pathux` alias.
@@ -249,6 +254,21 @@ Tests: registry round-trip, a graph file round-trip through JSON, each semantic-
 case, and a headless import test that spawns an actual `node` child process — inside jest
 the esbuild transform and the module mapper stand between the test and the module, so an
 in-runner import would prove less than path.ux's own addendum test does.
+
+Three things had to change in path.ux before this stage could be green. Each is recorded
+here because the plan assumed the library as it stood.
+
+- `ToolProperty.STRUCT` declared `subtype : int;` while `ToolProperty.subtype` is optional
+  and defaults to `undefined`, so `writeJSON` emitted no value and `validateJSON` rejected
+  every graph carrying a property. The STRUCT now writes `0` when the field is unset, which
+  is what makes decision 2's boundary check possible at all.
+- Importing path.ux started a 250 ms interval that sweeps expired `TimeoutPromise`s, and
+  node holds its event loop open for a pending interval, so a headless host never exited.
+  The timer is now `unref`'d, which a browser ignores because a timer id there is a number.
+- eslint's TypeScript resolver follows `pathux-graph` to the declaration tree under
+  `apps/desktop/dist/`, so `boundaries/element-types` read every use of the vendored
+  library as `@vn/gengraph` importing the desktop app. eslint.config.mjs classifies that
+  tree as its own `pathux` element, listed before `desktop` so it matches first.
 
 ### Stage 2 — node identity, the journal, and drift
 
@@ -439,7 +459,10 @@ Tests: cost and status output over a testkit project with one bound slot.
 
 **Prerequisite: path.ux stage V2** (`NodeGraphView` and the `NodeGraphDelegate` seam,
 vendor/path.ux/documentation/plans/node-editor-view.md). This stage starts when V2 lands
-and not before; nothing in Stages 1–9 waits on it.
+and not before; nothing in Stages 1–9 waits on it. The prerequisite is met: path.ux marks
+editor stages V1 through V4 complete in vendor/path.ux/documentation/plans/node-editor-tasklist.md,
+so Stage 10 is unblocked and keeps its position in the order for the reasons below rather
+than because it is waiting.
 
 - Enabling work first, because the current claim machinery cannot express this editor:
   `ClaimNode` (editors.ts:133) is `{kind, path?}` and carries no binding information, so

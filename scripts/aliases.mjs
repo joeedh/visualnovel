@@ -27,6 +27,7 @@ export const PACKAGES = [
   'pipeline',
   'scheduler',
   'authoring',
+  'gengraph',
 ];
 
 /** Electron is provided by the runtime; the model SDKs are heavy and lazy-imported. */
@@ -44,4 +45,16 @@ export const alias = Object.fromEntries([
     const [pkg, entry] = p.split('/');
     return [`@vn/${p}`, resolve(REPO_ROOT, `packages/${pkg}/src/${entry}.ts`)];
   }),
+  // @vn/gengraph's door to path.ux's graph module and the ToolProperty classes node
+  // specs are authored with (the graph module does not re-export them). Where code is
+  // only type-checked, the root tsconfig maps the same names to declarations emitted
+  // by the desktop app's build:pathux-types pass.
+  ['pathux-graph', resolve(REPO_ROOT, 'vendor/path.ux/scripts/graph/index.ts')],
+  [
+    'pathux-toolprop',
+    resolve(REPO_ROOT, 'vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts'),
+  ],
+  // Pinned to the vendored submodule so one nstructjs STRUCT registry serves both
+  // path.ux and this repo; a second copy would register nothing path.ux's classes use.
+  ['nstructjs', resolve(REPO_ROOT, 'vendor/nstructjs/build/nstructjs_es6.js')],
 ]);

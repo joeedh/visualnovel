@@ -60,7 +60,22 @@ const ALLOWED = {
   debug2d: [],
   taskgraph: ['types', 'util', 'store'],
   providers: ['types', 'util', 'config'],
-  pipeline: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'providers', 'artgen'],
+  pipeline: [
+    'types',
+    'util',
+    'config',
+    'model',
+    'store',
+    'taskgraph',
+    'providers',
+    'artgen',
+    'gengraph',
+  ],
+  // The node-graph runtime for asset generation: node model, graph files, journal and
+  // executor over path.ux's graph module (node-based-asset-generation plan). A leaf like
+  // `artgen` — the pipeline, the desktop app and `authoring` all reach it, so it lives in
+  // none of them, and it may not import the pipeline or scheduler.
+  gengraph: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'artgen', 'pathux'],
   // `config` and `store` are pass-through only: the scheduler takes a `ProjectConfig` and a
   // `ProjectPaths` in `RunOptions` and hands them to `@vn/pipeline`, which owns both.
   scheduler: ['types', 'util', 'config', 'store', 'taskgraph', 'pipeline'],
@@ -95,6 +110,7 @@ const ALLOWED = {
     'scriptedit',
     'bible',
     'artgen',
+    'gengraph',
     'providers',
     'git',
   ],
@@ -129,6 +145,7 @@ const ALLOWED = {
     'scriptedit',
     'bible',
     'artgen',
+    'gengraph',
     'git',
     'commands',
     'agentreport',
@@ -206,6 +223,7 @@ export default tseslint.config(
         { type: 'scriptedit', pattern: 'packages/scriptedit', mode: 'folder' },
         { type: 'bible', pattern: 'packages/bible', mode: 'folder' },
         { type: 'artgen', pattern: 'packages/artgen', mode: 'folder' },
+        { type: 'gengraph', pattern: 'packages/gengraph', mode: 'folder' },
         { type: 'git', pattern: 'packages/git', mode: 'folder' },
         { type: 'commands', pattern: 'packages/commands', mode: 'folder' },
         { type: 'agentreport', pattern: 'packages/agentreport', mode: 'folder' },
@@ -218,6 +236,11 @@ export default tseslint.config(
         { type: 'testkit', pattern: 'packages/testkit', mode: 'folder' },
         { type: 'cli', pattern: 'apps/cli', mode: 'folder' },
         { type: 'authoring-app', pattern: 'apps/authoring', mode: 'folder' },
+        // path.ux's declarations, which the check surface resolves `pathux-graph` and
+        // `pathux-toolprop` to. Listed before `desktop` because the tree is built into
+        // `apps/desktop/dist/`, which would otherwise classify an import of the vendored
+        // library as an import of the app. Elements match in order.
+        { type: 'pathux', pattern: 'apps/desktop/dist/pathux-types', mode: 'folder' },
         { type: 'desktop', pattern: 'apps/desktop', mode: 'folder' },
       ],
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],

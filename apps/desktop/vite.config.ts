@@ -19,6 +19,13 @@ export default defineConfig({
       // a submodule too; the alias covers path.ux's own imports, which would otherwise resolve to
       // the npm copy in `vendor/path.ux/node_modules`
       pathux: resolve(__dirname, '../../vendor/path.ux/scripts/pathux.ts'),
+      // @vn/gengraph's door to the graph module and the ToolProperty classes node specs
+      // are authored with; the same names resolve to declarations in the root tsconfig.
+      'pathux-graph': resolve(__dirname, '../../vendor/path.ux/scripts/graph/index.ts'),
+      'pathux-toolprop': resolve(
+        __dirname,
+        '../../vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
+      ),
       nstructjs: resolve(__dirname, '../../vendor/nstructjs'),
     },
   },

@@ -9,6 +9,7 @@ wired that way" companion.
 
 - [Typecheck](#typecheck)
 - [Bundling](#bundling)
+- [Vendored libraries](#vendored-libraries)
 - [Packaging the desktop app](#packaging-the-desktop-app)
 - [Adding a package](#adding-a-package)
 - [Lint](#lint)
@@ -63,6 +64,38 @@ wired that way" companion.
   `apps/desktop/dist/commands.json` (see [`../reference/command-system.md`](../reference/command-system.md)). Both
   bundle scripts share one alias map, `scripts/aliases.mjs`, so their package lists can't
   drift.
+
+## Vendored libraries
+
+Three alias names reach the two vendored submodules. `pathux` is the whole library and only
+the renderer imports it. `pathux-graph` and `pathux-toolprop` are `@vn/gengraph`'s door onto
+path.ux's node-graph module and the `ToolProperty` classes a node spec declares its props
+with; the graph module does not re-export the property classes, which is why the second name
+exists. `nstructjs` is the serializer both path.ux and this repo use.
+
+- **An alias resolves to source where code runs and to declarations where code is only
+  checked.** The run surfaces are `scripts/aliases.mjs` (read by `esbuild.desktop.mjs`,
+  `esbuild.cli.mjs`, `esbuild.authoring.mjs` and `gen-command-catalog.mjs`), jest's shared
+  `moduleNameMapper`, and `apps/desktop/vite.config.ts`; all three name a `.ts` file under
+  `vendor/`. The check surfaces are the root `tsconfig.json` and
+  `apps/desktop/renderer/tsconfig.json`, which name `.d.ts` files under
+  `apps/desktop/dist/pathux-types/`. Declarations rather than source, because path.ux's
+  import chain reaches DOM types that the root program's `lib` does not carry.
+- **`pnpm check` builds the declarations before it reads them.** The root `check` script runs
+  `pnpm --filter @vn/desktop build:pathux-types` first, which is
+  `tsgo -p apps/desktop/pathux-types.tsconfig.json`. Reordering those two steps produces a
+  flat pass that resolves `pathux-graph` to nothing on a clean checkout.
+- **Every checker that sees two of these names resolves them through the same declaration
+  output.** path.ux classes carry private members, so a `Graph` typed from source and a
+  `Graph` typed from declarations are nominally incompatible duplicates rather than the same
+  class. The same reasoning pins `nstructjs` to `vendor/nstructjs` everywhere: two copies in
+  one process means two STRUCT registries, and a class registered in one is unreadable by the
+  other.
+- **eslint classifies the declaration tree as its own element.** `boundaries/elements` in
+  `eslint.config.mjs` carries a `pathux` entry for `apps/desktop/dist/pathux-types`, listed
+  before the `desktop` entry so it matches first. Without it the TypeScript resolver reports
+  an import of the vendored library as an import of the desktop app, and the layering rule
+  refuses it.
 
 ## Packaging the desktop app
 

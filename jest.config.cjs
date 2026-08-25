@@ -28,12 +28,19 @@ const PACKAGES = [
   'pipeline',
   'scheduler',
   'testkit',
+  'gengraph',
 ];
 
 /** @type {import('jest').Config} */
 const shared = {
   testEnvironment: 'node',
-  transform: { '^.+\\.tsx?$': '<rootDir>/scripts/jest-esbuild.cjs' },
+  // The `.js` half covers path.ux's vendored ESM (lz-string, reached through toolprop),
+  // which node cannot require and jest would otherwise hand to its runtime untransformed.
+  // node_modules stays out of it through jest's default transformIgnorePatterns.
+  transform: {
+    '^.+\\.tsx?$': '<rootDir>/scripts/jest-esbuild.cjs',
+    '^.+\\.m?js$': '<rootDir>/scripts/jest-esbuild.cjs',
+  },
   // Points $VNAUTHOR_HOME somewhere empty, so a test that resolves keys cannot read the
   // developer's own. See the file for why the default has to be on for everything else.
   setupFiles: ['<rootDir>/scripts/jest-setup.cjs'],
@@ -53,6 +60,14 @@ const shared = {
     '^@vn/([^/]+)$': '<rootDir>/packages/$1/src/index.ts',
     // A subpath export names its source file: `@vn/scriptedit/write` → `src/write.ts`.
     '^@vn/([^/]+)/([^/]+)$': '<rootDir>/packages/$1/src/$2.ts',
+    // @vn/gengraph's door to path.ux's graph module and the ToolProperty classes node
+    // specs are authored with; source here, declarations in the root tsconfig's paths.
+    '^pathux-graph$': '<rootDir>/vendor/path.ux/scripts/graph/index.ts',
+    '^pathux-toolprop$': '<rootDir>/vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
+    // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
+    // same build ships beside it in CommonJS. Shared because both the desktop app and
+    // @vn/gengraph depend on it, always as the `vendor/nstructjs` submodule.
+    '^nstructjs$': '<rootDir>/vendor/nstructjs/build/_nstructjs.js',
   },
 };
 
@@ -90,10 +105,6 @@ module.exports = {
         // that adopts a stylesheet must still be importable by a node-only test.
         '\\.css\\?inline$': '<rootDir>/scripts/jest-css-inline.cjs',
         ...shared.moduleNameMapper,
-        // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
-        // same build ships beside it in CommonJS. Only the desktop app depends on it, and it is
-        // the `vendor/nstructjs` submodule rather than the published package.
-        '^nstructjs$': '<rootDir>/vendor/nstructjs/build/_nstructjs.js',
       },
     },
   ],
