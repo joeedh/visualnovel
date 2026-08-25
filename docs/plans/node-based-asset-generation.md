@@ -350,6 +350,17 @@ Tests: a three-node graph's estimate, the refine multiplier hitting only the tai
 unpriced line, and a `pricesAsOf` staleness helper (pure date math, no clock read inside
 the package).
 
+Deviation, as built: the refine entry point is found from two new spec markers rather than
+from node type names, because Stage 5 is what introduces the types the rule names.
+`refineInput` names the socket a refine pass re-enters at, and `refineFallback` marks the
+node the pass falls back to while that socket is unwired. Stage 5 sets them on the
+Generate-image and Derived-prompt nodes. A node's estimate is handed the set of its wired
+input keys, which is enough for a critique node to report nothing while nothing feeds it,
+and no upstream values, which do not exist before a run. The shipped table covers the
+models this repository configures by default rather than every model a project can name: a
+figure nobody has checked is worse than an unpriced line, and the release refresh and the
+user-level table of Stage 12 fill the rest in.
+
 ### Stage 5 — the built-in node set
 
 The starter set from research §"The starter set", specs plus runtimes, runnable entirely
