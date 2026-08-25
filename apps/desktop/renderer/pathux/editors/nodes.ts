@@ -16,7 +16,7 @@ import type { EditVerdict, GraphEdit, NodeGraphDelegate } from 'pathux';
 import { PropTypes, type ToolProperty } from 'pathux-toolprop';
 
 import { api } from '../../api.js';
-import { commandFor, genEditFor } from '../../rules/gengraph.js';
+import { commandFor, contestedSlots, genEditFor } from '../../rules/gengraph.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { exec, onInvalidate, say } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
@@ -182,6 +182,13 @@ export class GenGraphEditor extends VnEditor {
       const parsed = readGraphFile(read.file);
       this.graph = parsed.graph;
       this.notes = [...parsed.diagnostics, ...read.diagnostics].map((note) => note.message);
+      if (parsed.graph !== undefined) {
+        this.notes.push(
+          ...contestedSlots(parsed.graph).map(
+            (slot) => `More than one active output claims ${slot}, so no graph draws it.`,
+          ),
+        );
+      }
     }
     this.paint();
   }
@@ -311,7 +318,7 @@ function buildNodeUI(node: GenNode, body: Container): void {
     // time, and there is no edit for turning one off.
     const row =
       slotProp !== undefined && key === 'active'
-        ? activeRow(node, prop, body)
+        ? activeRow(node, body, outputSettled(node, slotProp))
         : valueRow(node, key, prop, body);
     root.appendChild(row);
   }
@@ -349,17 +356,29 @@ function valueRow(node: GenNode, key: string, prop: ToolProperty, body: Containe
   return row;
 }
 
-function activeRow(node: GenNode, prop: ToolProperty, body: Container): HTMLElement {
+/**
+ * True where this output is active and no rival claims its slot. An output that shares its slot
+ * with another active one is not settled, because standing the rival down is the edit that fixes
+ * the slot and it is reached through this row.
+ */
+function outputSettled(node: GenNode, slotProp: string): boolean {
+  if (node.props.active?.getValue() !== true) return false;
+  if (node.graph === undefined) return true;
+
+  const slot = String(node.props[slotProp]?.getValue() ?? '').trim();
+  return !contestedSlots(node.graph).includes(slot);
+}
+
+function activeRow(node: GenNode, body: Container, settled: boolean): HTMLElement {
   const row = document.createElement('div');
   row.style.cssText = ROW_STYLE;
 
-  const on = Boolean(prop.getValue());
   const button = document.createElement('button');
-  button.textContent = on ? 'Active output' : 'Make active';
-  button.disabled = on;
+  button.textContent = settled ? 'Active output' : 'Make active';
+  button.disabled = settled;
   button.style.cssText = BUTTON_STYLE;
-  button.style.opacity = on ? '0.6' : '1';
-  button.title = on
+  button.style.opacity = settled ? '0.6' : '1';
+  button.title = settled
     ? 'This is already the output a run evaluates for its slot'
     : 'Make this the output a run evaluates, standing down the others on the same slot';
   button.addEventListener('click', () => raise(body, { op: 'setActiveOutput', node: node.id }));

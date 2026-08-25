@@ -1,6 +1,7 @@
+import { GenOutput, Graph, registerGenNodes } from '@vn/gengraph';
 import type { GraphEdit } from 'pathux';
 
-import { commandFor, genEditFor } from '../gengraph.js';
+import { commandFor, contestedSlots, genEditFor } from '../gengraph.js';
 
 /** The kinds that reach a command, so a gesture the pane can write is never refused by mistake. */
 describe('a gesture read as an edit', () => {
@@ -121,5 +122,49 @@ describe('the command an edit is written through', () => {
   it('names an id the same way whether it arrived as a string or a number', () => {
     expect(commandFor('plates', { op: 'removeNode', node: 4 }).props.node).toBe('4');
     expect(commandFor('plates', { op: 'setActiveOutput', node: '4' }).props.node).toBe('4');
+  });
+});
+
+/**
+ * A node added to a graph arrives active, so two outputs on one slot is a state an author reaches
+ * by adding the second one. The pane reports it and keeps the button that resolves it live.
+ */
+describe('slots more than one active output claims', () => {
+  registerGenNodes();
+
+  /** One output node per entry, each active unless the entry says otherwise. */
+  function graphOf(outputs: readonly { slot: string; active?: boolean }[]): Graph {
+    const graph = new Graph();
+    for (const entry of outputs) {
+      const output = new GenOutput();
+      graph.add(output);
+      output.props['slot']!.setValue(entry.slot);
+      if (entry.active === false) output.props['active']!.setValue(false);
+    }
+    return graph;
+  }
+
+  it('finds nothing where each slot is claimed once', () => {
+    const graph = graphOf([{ slot: 'portrait:aiko' }, { slot: 'plate:gate/day' }]);
+    expect(contestedSlots(graph)).toEqual([]);
+  });
+
+  it('names a slot once, however many outputs claim it', () => {
+    const claims = [
+      { slot: 'portrait:aiko' },
+      { slot: 'portrait:aiko' },
+      { slot: 'portrait:aiko' },
+    ];
+    expect(contestedSlots(graphOf(claims))).toEqual(['portrait:aiko']);
+  });
+
+  it('reads an output the author stood down as no claim at all', () => {
+    const graph = graphOf([{ slot: 'portrait:aiko' }, { slot: 'portrait:aiko', active: false }]);
+    expect(contestedSlots(graph)).toEqual([]);
+  });
+
+  // Two outputs naming no slot bind nothing, so neither contests the other.
+  it('leaves an unnamed slot out', () => {
+    expect(contestedSlots(graphOf([{ slot: '' }, { slot: '' }]))).toEqual([]);
   });
 });

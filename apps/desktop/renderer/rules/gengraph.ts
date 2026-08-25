@@ -7,7 +7,7 @@
  * node-only jest project runs it. `pathux` is imported type-only because jest resolves
  * `pathux-graph` and `pathux-toolprop` and not the widget barrel.
  */
-import type { GenEdit } from '@vn/gengraph';
+import { activeOutputs, type GenEdit, type Graph } from '@vn/gengraph';
 import type { GraphEdit } from 'pathux';
 
 /** One `gengraph.*` invocation, in the shape `exec` takes. */
@@ -32,6 +32,24 @@ const UNSUPPORTED: Record<string, string> = {
   repointEntry: 'a generation graph is one flat graph, so it has no group properties to repoint',
   removeEntry: 'a generation graph is one flat graph, so it has no group properties to remove',
 };
+
+/**
+ * The slots more than one active output claims. `bindSlots` leaves such a slot bound to no graph,
+ * and a new output node arrives active, so the pane both reports the slot and keeps offering
+ * `gengraph.setActiveOutput` on an output that is already active.
+ */
+export function contestedSlots(graph: Graph): string[] {
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+
+  for (const output of activeOutputs(graph)) {
+    if (output.slot === '') continue;
+    if (seen.has(output.slot)) twice.add(output.slot);
+    seen.add(output.slot);
+  }
+
+  return [...twice];
+}
 
 /** Reads a gesture as the edit this application decides, refusing the kinds it cannot write. */
 export function genEditFor(edit: GraphEdit): GenEditFor {
