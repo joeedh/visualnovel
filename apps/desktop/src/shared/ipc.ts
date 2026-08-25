@@ -497,6 +497,12 @@ export interface DocNode {
    * {@link DocNode.id} instead, the way `assetNode` writes one.
    */
   hash?: string;
+  /**
+   * The slug of the generation graph whose active output binds this slot. Only a `slot` row
+   * carries one, and only while exactly one graph claims the address. Editor claims read it, so
+   * a bound slot opens the graph that draws it rather than the fixed task pipeline.
+   */
+  boundGraph?: string;
   children?: DocNode[];
 }
 

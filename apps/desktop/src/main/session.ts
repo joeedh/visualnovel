@@ -72,6 +72,7 @@ import {
 } from '@vn/store';
 import {
   activeOutputs,
+  bindSlots,
   estimateGraph,
   estimateSentence,
   executeGenGraph,
@@ -4065,7 +4066,28 @@ export class WorkspaceSession {
         config: project.config,
         graph: project.graph,
       }),
+      boundGraphs: await this.boundGraphSlugs(),
     });
+  }
+
+  /**
+   * Which graph draws each slot, for the tree rows the Gen Graph pane claims. This reads the
+   * graph files and nothing else, so a tree read costs no journal replay and no services. A
+   * graph that will not load is skipped silently, because `docTree` is called on every change
+   * and the load path already files a notification naming it.
+   */
+  private async boundGraphSlugs(): Promise<Map<string, string>> {
+    registerGenRuntimes();
+
+    const git = openGit(this.dir);
+    const loaded: { slug: string; graph: GenGraph }[] = [];
+    for (const slug of await graphSlugs(this.dir)) {
+      const read = await readGraph(this.dir, slug, git);
+      if (read.ok) loaded.push({ slug, graph: read.graph });
+    }
+
+    const { bound } = bindSlots(loaded);
+    return new Map([...bound].map(([slot, { entry }]) => [slot, entry.slug]));
   }
 
   /**

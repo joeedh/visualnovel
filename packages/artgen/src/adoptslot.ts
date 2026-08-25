@@ -20,7 +20,7 @@ import { VnError } from '@vn/util';
 import { proseHash } from './drift.js';
 import { adopt } from './adopt.js';
 import { baseRefusal } from './base.js';
-import { slotLabel } from './refcycle.js';
+import { slotLabel } from './slotaddr.js';
 import { type Decided, type ResolvedSlot, resolveSlot, slotTaskHash } from './slotgraph.js';
 
 export interface AdoptSlotDeps {

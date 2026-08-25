@@ -43,6 +43,11 @@ export interface DocTreeInput {
    */
   slots?: SlotGraph;
   /**
+   * The generation graph each slot is drawn by, keyed by `slotKey`. Slots absent from the map are
+   * drawn by the fixed task pipeline, and a caller that has read no graphs passes nothing.
+   */
+  boundGraphs?: ReadonlyMap<string, string>;
+  /**
    * The project's skills, if the caller looked for them. An empty array is not the same as absent:
    * undefined leaves the branch out entirely (which is what a caller that knows nothing about
    * skills wants), while an empty array draws an empty heading on purpose — see
@@ -393,6 +398,7 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
       unrendered.push(
         node(`slot:${key}`, 'slot', slot.label, {
           ...(slot.status ? { badge: slot.status } : {}),
+          ...boundGraphOf(input, key),
           note:
             slot.blocked ??
             'Nothing has been drawn for this slot yet — run the pipeline to make it.',
@@ -429,6 +435,12 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
       ...group('unapproved:unrendered', 'Not yet rendered', unrendered),
     ],
   });
+}
+
+/** The `boundGraph` field for one slot row, spread in so an unbound slot carries no key. */
+function boundGraphOf(input: DocTreeInput, key: string): { boundGraph?: string } {
+  const slug = input.boundGraphs?.get(key);
+  return slug === undefined ? {} : { boundGraph: slug };
 }
 
 /** What a backlink entry is about: one of the three things a document in this project can be. */

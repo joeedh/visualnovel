@@ -322,6 +322,23 @@ describe('the Unapproved branch', () => {
     ]);
   });
 
+  it('names the graph that draws a slot, and leaves the field off one no graph draws', () => {
+    const drawn = slot(
+      'plate:gate/night',
+      { kind: 'plate', locationId: 'gate', variant: 'night' },
+      {},
+    );
+    const rows = treeWith(slots([plate, drawn]), {
+      boundGraphs: new Map([['plate:gate/night', 'plates']]),
+    })!.children![0]!.children!;
+
+    expect(rows.map((n) => [n.id, n.boundGraph])).toEqual([
+      ['slot:plate:gate/day', undefined],
+      ['slot:plate:gate/night', 'plates'],
+    ]);
+    expect('boundGraph' in rows[0]!).toBe(false);
+  });
+
   it('reads a portrait’s approval off the gate, never off Asset.accepted', () => {
     // `a` is `accepted: true` and still waiting, because a portrait's approval comes from the P3
     // gate and from nothing else.

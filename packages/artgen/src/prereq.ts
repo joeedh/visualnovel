@@ -18,7 +18,8 @@
 import type { Asset, AssetKind, ProjectModel } from '@vn/types';
 import { isApproved } from './gate.js';
 import { assetSlotLabel } from './describe.js';
-import { slotKey, slotOf } from './refcycle.js';
+import { slotOf } from './refcycle.js';
+import { slotKey } from './slotaddr.js';
 import type { BindingContext } from './refs.js';
 import type { RungContext } from './resolve.js';
 import { upstreamOf } from './upstream.js';

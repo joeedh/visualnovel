@@ -134,6 +134,11 @@ export interface ClaimNode {
   kind: DocNodeKind;
   /** Workspace-relative. Absent for a grouping, and for an entity with no sheet. */
   path?: string;
+  /**
+   * The generation graph that draws this slot, for a `slot` node one graph binds. Main stamps it
+   * where the tree is built, because a claim cannot read the project.
+   */
+  boundGraph?: string;
 }
 
 /** What an editor will show for a clicked document-tree node, and how well. */
@@ -177,7 +182,7 @@ export type EditorId = (typeof EDITORS)[number]['id'];
  * is about. A pane that froze the rest of the selection with it would stop responding to its own
  * rows: Shot Coverage holds the scene and still follows the shot.
  */
-export type PinField = 'sceneId' | 'docPath' | 'assetHash' | 'taskHash';
+export type PinField = 'sceneId' | 'docPath' | 'assetHash' | 'taskHash' | 'graphSlug';
 
 /** What a pinned editor is holding, in the author's words. Used in the pin's own tooltip. */
 export const PIN_NOUN: Record<PinField, string> = {
@@ -185,6 +190,7 @@ export const PIN_NOUN: Record<PinField, string> = {
   docPath: 'document',
   assetHash: 'asset',
   taskHash: 'task',
+  graphSlug: 'generation graph',
 };
 
 /**

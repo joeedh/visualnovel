@@ -16,6 +16,7 @@ export * from './coverage.js';
 export * from './condense.js';
 export * from './resolve.js';
 export * from './refs.js';
+export * from './slotaddr.js';
 export * from './refcycle.js';
 export * from './slotgraph.js';
 export * from './upstream.js';

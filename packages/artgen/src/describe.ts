@@ -12,7 +12,8 @@ import type { Asset } from '@vn/types';
 import type { AssetStore } from '@vn/store';
 import type { ChatBackend } from '@vn/providers';
 import { VnError } from '@vn/util';
-import { slotLabel, slotOf } from './refcycle.js';
+import { slotOf } from './refcycle.js';
+import { slotLabel } from './slotaddr.js';
 
 export interface DescribeDeps {
   store: AssetStore;

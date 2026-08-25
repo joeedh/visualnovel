@@ -1,4 +1,4 @@
-import { parseSlot } from '@vn/artgen';
+import { parseSlot } from '@vn/artgen/slotaddr';
 import type { Graph, GraphId, Node } from 'pathux-graph';
 
 import { genNodeSpec } from './registry.js';

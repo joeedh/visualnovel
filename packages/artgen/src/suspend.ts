@@ -12,7 +12,7 @@
  * the pinned reference (§13) is what makes suspension possible.
  */
 import { refDrift, resolveBinding, type BindingContext } from './refs.js';
-import { slotLabel } from './refcycle.js';
+import { slotLabel } from './slotaddr.js';
 import type { RungContext } from './resolve.js';
 import { attachedRefs } from './upstream.js';
 

@@ -37,7 +37,7 @@ export const EXTERNAL = ['electron', '@google/genai', '@anthropic-ai/sdk'];
  * Subpath exports, which esbuild can't derive from the list above. A subpath names its source
  * file, so `@vn/scriptedit/write` is `packages/scriptedit/src/write.ts`.
  */
-const SUBPATHS = ['scriptedit/write', 'gengraph/state'];
+const SUBPATHS = ['scriptedit/write', 'gengraph/state', 'artgen/slotaddr'];
 
 export const alias = Object.fromEntries([
   ...PACKAGES.map((n) => [`@vn/${n}`, resolve(REPO_ROOT, `packages/${n}/src/index.ts`)]),

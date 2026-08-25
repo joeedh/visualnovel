@@ -13,6 +13,7 @@
       "@vn/scriptedit/write": ["./packages/scriptedit/src/write.ts"],
       "@vn/bible": ["./packages/bible/src/index.ts"],
       "@vn/artgen": ["./packages/artgen/src/index.ts"],
+      "@vn/artgen/slotaddr": ["./packages/artgen/src/slotaddr.ts"],
       "@vn/git": ["./packages/git/src/index.ts"],
       "@vn/commands": ["./packages/commands/src/index.ts"],
       "@vn/agentreport": ["./packages/agentreport/src/index.ts"],

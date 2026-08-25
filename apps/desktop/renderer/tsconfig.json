@@ -5,8 +5,10 @@
     "types": ["node", "jest"],
     "moduleResolution": "bundler",
     "paths": {
+      "@vn/artgen/slotaddr": ["../../../packages/artgen/src/slotaddr.ts"],
       "@vn/authoring": ["../../../packages/authoring/src/index.ts"],
       "@vn/commands": ["../../../packages/commands/src/index.ts"],
+      "@vn/gengraph": ["../../../packages/gengraph/src/index.ts"],
       "@vn/git": ["../../../packages/git/src/index.ts"],
       "@vn/debug2d": ["../../../packages/debug2d/src/index.ts"],
       "@vn/types": ["../../../packages/types/src/index.ts"],

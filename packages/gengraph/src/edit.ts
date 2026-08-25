@@ -4,7 +4,7 @@
  * the decision's `apply` only once it means to write. The desktop commands and the authoring
  * agent's graph tool both go through here, so a refusal reads the same in both.
  */
-import { parseSlot } from '@vn/artgen';
+import { parseSlot } from '@vn/artgen/slotaddr';
 import { nodePropTarget } from 'pathux-graph';
 import type { Graph, GraphId, Node, NodeSocketBase } from 'pathux-graph';
 import { PropTypes } from 'pathux-toolprop';

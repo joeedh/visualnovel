@@ -660,6 +660,19 @@ than because it is waiting.
 Tests: the pure routing/claims logic in a `tests/` sibling; the surface itself verified
 live over CDP, as with every editor.
 
+**Deviation, Stage 10.** The pure entry the first bullet leaves unnamed is
+`@vn/artgen/slotaddr`, a second export of `@vn/artgen` holding `slotKey`, `slotLabel` and
+`parseSlot`. A separate package would have been the alternative, and it was not worth one:
+the three functions are the vocabulary the rest of `@vn/artgen` is written in, and moving
+them out would have inverted that package's dependency on its own addresses. The barrel
+re-exports the new module, so every existing `@vn/artgen` consumer is unchanged, and
+`@vn/gengraph` names the subpath instead.
+
+The stage lands as two green commits rather than one, because the enabling work stands on
+its own: the slot move, `ClaimNode.boundGraph`, the `'graphSlug'` pin and the renderer
+tsconfig paths are a commit a reader would want to land on without the pane's surface code
+in front of them.
+
 ### Stage 11 — plugins: manifest, toolchain, confirmed install
 
 - A plugin is a directory with `plugin.json` (name, version, node types, services called,

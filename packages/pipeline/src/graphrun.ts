@@ -7,7 +7,7 @@
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
 import { slotKey } from '@vn/artgen';
-import { activeOutputs, executeGenGraph, genNodeSpec, registerGenRuntimes } from '@vn/gengraph';
+import { bindSlots, executeGenGraph, genNodeSpec, registerGenRuntimes } from '@vn/gengraph';
 import type {
   GenImageRef,
   GenOutputs,
@@ -58,33 +58,17 @@ export interface GraphIndex {
 }
 
 /**
- * Indexes the loaded graphs by the slot each active output binds to. A slot two active
- * outputs claim is left unbound and reported, because which graph drew the picture would
- * otherwise depend on the order the host happened to load them in. A type that names a slot
- * but carries no `active` prop is always active.
+ * Indexes the loaded graphs by the slot each active output binds to, through the same
+ * `bindSlots` rule the document tree and the CLI's report read. A slot two active outputs
+ * claim is left unbound and reported.
  */
 export function indexGraphs(loaded: readonly LoadedGraph[]): GraphIndex {
-  const bound = new Map<string, GraphBinding>();
-  const conflicts = new Set<string>();
-
-  for (const entry of loaded) {
-    for (const output of activeOutputs(entry.graph)) {
-      if (output.slot.length === 0) {
-        continue;
-      }
-      if (bound.has(output.slot)) {
-        conflicts.add(output.slot);
-        continue;
-      }
-      bound.set(output.slot, { ...entry, target: output.id });
-    }
+  const { bound, conflicts } = bindSlots(loaded);
+  const index = new Map<string, GraphBinding>();
+  for (const [slot, { entry, target }] of bound) {
+    index.set(slot, { ...entry, target });
   }
-
-  for (const slot of conflicts) {
-    bound.delete(slot);
-  }
-
-  return { runtime: { bound: (slot) => bound.get(slot) }, conflicts: [...conflicts] };
+  return { runtime: { bound: (slot) => index.get(slot) }, conflicts };
 }
 
 /** The slot a task fills, which is the address a graph binds itself to. */

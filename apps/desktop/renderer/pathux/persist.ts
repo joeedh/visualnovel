@@ -73,6 +73,7 @@ export interface StoredSelection {
   docPath: string;
   assetHash: string;
   taskHash: string;
+  graphSlug: string;
 }
 
 /**
@@ -202,6 +203,7 @@ export function saveSelection(ui: ShellState): void {
     docPath: ui.docPath,
     assetHash: ui.assetHash,
     taskHash: ui.taskHash,
+    graphSlug: ui.graphSlug,
   };
   api.session.set(SELECTION_KEY, selection, ME.scope);
 }
@@ -221,6 +223,7 @@ export function restoreSelection(ui: ShellState): StoredSelection {
     ui.docPath = selection.docPath ?? '';
     ui.assetHash = selection.assetHash ?? '';
     ui.taskHash = selection.taskHash ?? '';
+    ui.graphSlug = selection.graphSlug ?? '';
   }
   return {
     sceneId: ui.sceneId,
@@ -229,6 +232,7 @@ export function restoreSelection(ui: ShellState): StoredSelection {
     docPath: ui.docPath,
     assetHash: ui.assetHash,
     taskHash: ui.taskHash,
+    graphSlug: ui.graphSlug,
   };
 }
 
@@ -250,6 +254,7 @@ export function installPersistence(shell: ShellApp): void {
     'ui.docPath',
     'ui.assetHash',
     'ui.taskHash',
+    'ui.graphSlug',
   ];
   // `immediate` rather than the default `raf`: a hidden or minimized window runs no animation
   // frames, so a raf-coalesced watcher stays dirty and never fires. `schedule` has a debounce of

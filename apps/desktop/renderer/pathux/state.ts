@@ -13,7 +13,8 @@ export type SelectionField =
   | 'characterId'
   | 'docPath'
   | 'taskHash'
-  | 'assetHash';
+  | 'assetHash'
+  | 'graphSlug';
 
 export class ShellState {
   private selection: Record<SelectionField, string> = {
@@ -23,6 +24,7 @@ export class ShellState {
     docPath: '',
     taskHash: '',
     assetHash: '',
+    graphSlug: '',
   };
 
   /**
@@ -100,6 +102,18 @@ export class ShellState {
   }
   set assetHash(value: string) {
     this.select('assetHash', value);
+  }
+
+  /**
+   * The generation graph a node editor is on, by slug — the name of its file under
+   * `work/graphs/`. Selecting a slot one graph draws publishes that graph's slug here. Persisted,
+   * and a slug no file answers for leaves the pane empty rather than repaired.
+   */
+  get graphSlug(): string {
+    return this.selection.graphSlug;
+  }
+  set graphSlug(value: string) {
+    this.select('graphSlug', value);
   }
 
   /**

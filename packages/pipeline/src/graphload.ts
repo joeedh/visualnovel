@@ -12,6 +12,7 @@ import type { ProjectPaths } from '@vn/store';
 import { buildSlotGraph } from '@vn/artgen';
 import {
   activeOutputs,
+  bindSlots,
   estimateGraph,
   priceEstimate,
   pricesAreStale,
@@ -150,9 +151,7 @@ export function reportGraphs(
   docs: readonly GraphDoc[],
   opts: GraphsReportOptions = {},
 ): GraphsReport {
-  const bound = new Map<string, GraphSlotEstimate>();
-  const claimed = new Set<string>();
-  const conflicts = new Set<string>();
+  const priced: { slug: string; graph: Graph; estimate: GenPricedEstimate }[] = [];
   const drifted: GraphSlotDrift[] = [];
   const dates: string[] = [];
 
@@ -166,21 +165,11 @@ export function reportGraphs(
     if (estimate.pricesAsOf !== undefined) {
       dates.push(estimate.pricesAsOf);
     }
+    priced.push({ slug: doc.slug, graph: doc.graph, estimate });
 
-    const slotOfNode = new Map<GraphId, string>();
-    for (const output of activeOutputs(doc.graph)) {
-      slotOfNode.set(output.id, output.slot);
-      if (output.slot.length === 0) {
-        continue;
-      }
-      if (claimed.has(output.slot)) {
-        conflicts.add(output.slot);
-        continue;
-      }
-      claimed.add(output.slot);
-      bound.set(output.slot, { slug: doc.slug, nodeId: output.id, estimate });
-    }
-
+    const slotOfNode = new Map<GraphId, string>(
+      activeOutputs(doc.graph).map((output) => [output.id, output.slot]),
+    );
     for (const drift of graphDrift(doc.graph, doc.journal)) {
       drifted.push({
         slug: doc.slug,
@@ -190,15 +179,19 @@ export function reportGraphs(
     }
   }
 
-  for (const slot of conflicts) {
-    bound.delete(slot);
-  }
+  const { bound: claims, conflicts } = bindSlots(priced);
+  const bound = new Map<string, GraphSlotEstimate>(
+    [...claims].map(([slot, { entry, target }]) => [
+      slot,
+      { slug: entry.slug, nodeId: target, estimate: entry.estimate },
+    ]),
+  );
 
   dates.sort();
   const pricesAsOf = dates[0];
   return {
     bound,
-    conflicts: [...conflicts],
+    conflicts,
     drifted,
     ...(pricesAsOf === undefined ? {} : { pricesAsOf }),
     stale: pricesAsOf === undefined ? false : pricesAreStale(pricesAsOf, opts.now ?? new Date()),

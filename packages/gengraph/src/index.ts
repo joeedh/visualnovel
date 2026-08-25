@@ -4,10 +4,9 @@
  * through here, so one import path carries the vendor alias and the node registry stays
  * a single map. It reaches no `fs` of its own and no DOM, because the desktop renderer,
  * the CLI and the authoring agent all load the same graph files. Everything that does
- * touch the filesystem is reached through `@vn/gengraph/state` instead. One import is
- * still node-side: `validate.ts` takes the slot vocabulary from `@vn/artgen`, whose barrel
- * reaches `node:fs/promises`, so the renderer cannot load this entry until that vocabulary
- * moves somewhere pure (recorded under Stage 10 of the plan).
+ * touch the filesystem is reached through `@vn/gengraph/state` instead. The slot vocabulary
+ * comes from `@vn/artgen/slotaddr` rather than that package's barrel, which reaches
+ * `node:fs/promises` and would fail the renderer's bundle without failing either typecheck.
  */
 export * from 'pathux-graph';
 

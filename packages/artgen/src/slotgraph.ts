@@ -44,7 +44,8 @@ import {
 } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
 import { type BindingContext, candidatesFor, resolveBinding } from './refs.js';
-import { refsOfSlot, slotKey, slotLabel, slotOf } from './refcycle.js';
+import { refsOfSlot, slotOf } from './refcycle.js';
+import { slotKey, slotLabel } from './slotaddr.js';
 import type { RungContext } from './resolve.js';
 import {
   imageParams,
