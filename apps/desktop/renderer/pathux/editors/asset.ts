@@ -579,7 +579,9 @@ export class AssetEditor extends VnEditor {
     task.description = 'Show the task that produced this asset in the inspector';
 
     // The same entries the tree's right-click offers, raised from the pane already showing the
-    // asset — which is also the check that `menuFor` is node-shaped rather than tree-shaped.
+    // asset — which is also the check that `menuFor` is node-shaped rather than tree-shaped. The
+    // slot travels with the node, or the entries that need one would be missing here alone.
+    const node = { ...assetNode(this.shown), ...(info?.slot ? { slot: info.slot } : {}) };
     const acts = this.bar.button('⋯', () => {
       const box = acts.getBoundingClientRect();
       void showContextMenu(
@@ -587,7 +589,7 @@ export class AssetEditor extends VnEditor {
         box.left,
         box.bottom,
         info?.hash ?? '',
-        menuFor(assetNode(this.shown)),
+        menuFor(node),
       );
     });
     acts.disabled = !info;

@@ -38,6 +38,11 @@ export interface GraphJournalRecord {
   v: number;
   nodeId: GraphId;
   nodeHash: string;
+  /**
+   * The node's hash over the authored graph alone, which drift is measured against. Absent
+   * on a record written before the field existed, and such a record reports no drift.
+   */
+  authoredHash?: string;
   status: GenNodeStatus;
   /** Socket name to value, as the run left it. Written on a `done` record. */
   output?: Record<string, unknown>;

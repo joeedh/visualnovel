@@ -26,15 +26,16 @@ export type Route =
   | { action: 'open'; editor: EditorId; where: OpenWhere; subject: string };
 
 /**
- * Which selection field an editor's subject comes from. A path and a hash are not interchangeable
- * (pointing `docPath` at a `.png` would have the wiki editor `doc.read` a binary), so an editor
- * with no entry here has no subject, and the field it does not name is left alone.
+ * Which selection field an editor's subject comes from. A path, a hash and a graph name are not
+ * interchangeable (pointing `docPath` at a `.png` would have the wiki editor `doc.read` a binary),
+ * so an editor with no entry here has no subject, and the field it does not name is left alone.
  */
-export const SUBJECT_OF: Partial<Record<EditorId, 'docPath' | 'assetHash'>> = {
+export const SUBJECT_OF: Partial<Record<EditorId, 'docPath' | 'assetHash' | 'graphSlug'>> = {
   wiki: 'docPath',
   skills: 'docPath',
   documents: 'docPath',
   asset: 'assetHash',
+  gengraph: 'graphSlug',
 };
 
 interface Claimant {
@@ -100,6 +101,8 @@ function subjectFor(editor: EditorId, node: DocNode): string {
       return node.path ?? '';
     case 'assetHash':
       return node.kind === 'asset' ? nodeKey(node) : '';
+    case 'graphSlug':
+      return node.boundGraph ?? '';
     default:
       return '';
   }

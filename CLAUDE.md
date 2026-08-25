@@ -46,8 +46,8 @@ pnpm --dir vendor/path.ux install         # path.ux has its own lockfile; the ro
 pnpm check:setup                               # fails by name if either of the two is still owed
 ```
 
-Note: path.ux is a submodule with submodules wired into the build as a
-vite alias; `pnpm check:setup`
+path.ux is a submodule that carries submodules of its own, wired into the build as a
+vite alias. `pnpm check:setup`
 (`scripts/check-submodules.mjs`, also the desktop build's first step) is needed to properly
 surface errors. Checking out the submodule does not install its dependencies: path.ux is its own
 project with its own lockfile, and it is not a pnpm workspace member, so the root install
@@ -62,8 +62,8 @@ imports nstructjs too: the vite alias and the `nstructjs` path in `renderer/tsco
 `pathux-types.tsconfig.json` redirect those imports to the submodule, so path.ux's own install of
 the published package goes unused here.
 Then `pnpm check && pnpm test && pnpm lint` should be green, and `pnpm build` bundles
-everything. Details: [`docs/guides/toolchain.md`](docs/guides/toolchain.md), and
-[`docs/reference/desktop-app.md`](docs/reference/desktop-app.md) for the submodule's role.
+everything. [`docs/guides/toolchain.md`](docs/guides/toolchain.md) covers the details, and
+[`docs/reference/desktop-app.md`](docs/reference/desktop-app.md) covers the submodule's role.
 
 ## Commands
 
@@ -145,7 +145,8 @@ providers   │      ╲ ╲  │
 
 ### Core ideas
 
-Core application contracts; breaking one costs money or corrupts provenance. See
+The bullets below are the core application contracts, and breaking one costs money or
+corrupts provenance. See
 [`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md) for
 full details including failure modes. Read the pipeline-contracts doc in full before changing
 bullet points, make sure to read any documents linked in the corresponding bullet point inside
@@ -197,6 +198,14 @@ the pipeline-contracts doc.
 - **Drift reporting.** A prose edit never invalidates art. Drift is reported instead, via
   `Shot.proseHash` with `driftOf` re-derived on every read. A scene's heading is the
   exception: `story.setHeading` re-renders the scene and restages every shot.
+- **Graph drift.** Editing a generation graph does invalidate the slots it draws, which is
+  the opposite of the prose posture above. A bound graph is the slot's runner, so a task's
+  hash does not move when the graph is edited; `requeueDrifted` puts the drifted task back
+  to `pending` instead, and `RunSummary.redrawn` names what a run redrew. Drift is measured
+  on `authoredHashes`, which reads the prompt, references and critique a run seeds as
+  though nothing had been seeded, because `graphHashes` moves with the task rather than
+  with the graph.
+  ([`docs/plans/node-based-asset-generation.md`](docs/plans/node-based-asset-generation.md))
 - **Line ids.** Line ids are allocated once and persisted, and reading never writes
   (`story.assignLineIds`).
 - **Round-trip.** A scene survives a round-trip through text:
@@ -220,9 +229,9 @@ the pipeline-contracts doc.
 vngen run | approve | status | graph | export | cost | import | screenplay   [dir]
 ```
 
-Flags, `--mock` semantics, key resolution, the on-disk project layout, and the
-`templates/basic` walkthrough: [`docs/guides/cli.md`](docs/guides/cli.md). Two things are
-worth knowing before running anything. `--mock` writes no assets and needs no keys. In a
+[`docs/guides/cli.md`](docs/guides/cli.md) documents the flags, `--mock` semantics, key
+resolution, the on-disk project layout, and the `templates/basic` walkthrough. Two things
+are worth knowing before running anything. `--mock` writes no assets and needs no keys. In a
 real project `vngen/` is committed, because it is the reproducible output of a run rather
 than something to gitignore.
 
@@ -231,12 +240,13 @@ than something to gitignore.
 The pipeline is presentation-agnostic and stops at `manifest.json`. `@vn/export` projects
 the model and manifest into a small in-house playable (`story.play.json`), and the Electron
 app plays it. This is deliberately not an external DSL export.
-Format: [`docs/reference/playable-format.md`](docs/reference/playable-format.md). The shell,
+[`docs/reference/playable-format.md`](docs/reference/playable-format.md) specifies the
+format. [`docs/reference/desktop-app.md`](docs/reference/desktop-app.md) covers the shell,
 the canvas, the sixteen editors, the session store, the seeded workspace, and every
-behaviour below in full: [`docs/reference/desktop-app.md`](docs/reference/desktop-app.md).
-What persists where: [`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md).
-The document tree, asset naming and `doc.rename`:
-[`docs/reference/document-tree.md`](docs/reference/document-tree.md).
+behaviour below in full.
+[`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md) records what
+persists where, and [`docs/reference/document-tree.md`](docs/reference/document-tree.md)
+covers the document tree, asset naming and `doc.rename`.
 
 - One workspace is open at a time, and opening another tears the first down. Creating a
   workspace scaffolds files where opening does not, in its own dialog, into its own
@@ -374,8 +384,8 @@ this by name). Six rules cause the most mistakes:
 
 Every desktop action is a registered command rather than a bespoke IPC channel. A command
 has typed properties, a string DSL (`namespace.command(a='x' b=1)`), git-stamped
-provenance, and one JSON catalog. Full write-up:
-[`docs/reference/command-system.md`](docs/reference/command-system.md).
+provenance, and one JSON catalog.
+[`docs/reference/command-system.md`](docs/reference/command-system.md) is the full write-up.
 
 - `@vn/commands` is the framework. The desktop app owns the commands, in
   `apps/desktop/src/main/commands/`, as thin wrappers over `WorkspaceSession`.
@@ -476,47 +486,9 @@ below stay here because they are rules you need while the work is happening.
 
 ### Comments
 
-- **Comments are plain declarative prose — no epigrams.** State the constraint or decision
-  directly: "An empty answer is deliberate and is passed to the model as-is", not "Empty is an
-  answer — silence, said out loud." If a sentence needs a second read to parse, rewrite it.
-  The same rule applies to this file and the prose in `docs/`. Specific patterns to catch:
-  - **Inverted syntax and personification** — the sentence performs rather than informs.
-  - **Metaphorical equations** — "The leak scan is the refusal", "what ships is identity",
-    "the project as commands". The connector word varies — do not get hung up on "is"
-    versus "as". Say what happens instead: "Refuses if the leak scan finds a known name
-    still in the body."
-  - **Fragment openers that defer the subject** — "The redactor to scan a report with: the one
-    that wrote it, else one built from the project as it stands." Lead with a complete sentence
-    and name each case as you reach it.
-  - **Double negatives** — "the palette cannot be relied on not to". State the positive claim.
-  - **Pronouns and ellipses that point outside the sentence** — "the second case", "asking
-    twice is how…" — each sentence should carry its own referents.
-  - **"Clause A, else B" constructions** — "Resolve a push's destination: the named window
-    when it still exists, else the focused window falling back to the most recently focused
-    one." Spell out the cases as ordinary sentences instead: "Pushes to the named window if it
-    still exists. Otherwise pushes to the focused window, or the most recently focused window
-    if none is focused."
-  - **Adverbs hung off the end of a noun phrase** — "the next pointerdown anywhere", "the
-    handler above". The adverb postmodifies the noun, but the reader cannot tell on first pass
-    whether it attaches to the noun or to the clause's verb, and an event or API name coined
-    from a verb ("pointerdown") re-parses as a clause when an adverb follows it. Attach the
-    qualification to a verb, or state it as its own fact: "the listener is on `window`".
-  - **Non-assertive words under a definite** — "any", "anywhere", "ever" range over
-    alternatives, so they fight a definite description that names exactly one thing. "A press
-    anywhere dismisses it" reads fine; "the next pointerdown anywhere" does not.
-  - **Rhetorical emphasis** — `**bold**` and `*italics*` in a comment mark the sentence the
-    author found most interesting, not the one the reader needs first. Put the load-bearing
-    claim in the first sentence and drop the markup.
-  - **A head noun that is not what the code is** — a module of commands documented as "The
-    prompt an asset is generated from, as commands" asserts that the module is a prompt, then
-    retracts it through a preposition. Lead with the head noun that names the declaration —
-    "Commands for the prompt an asset is generated from" — and demote the rest to a
-    complement. A trailing ", as X" or ", in the form of X" is the same metaphorical equation
-    above smuggled in through an adjunct.
-- **Reserve backticks for code symbols.** Backticks belong on identifiers, types, commands,
-  and file globs the reader will type. A file path cited as a reference —
-  `(docs/plans/archive/chunked-prompts.md §5)` — does not, because marking it up gives it the
-  same weight as the identifiers around it and dilutes them.
+Comments are prose, so the Prose rules below govern them as well. The rules in this section
+are the ones that apply only to code.
+
 - **A comment describes the code directly beneath it.** A comment placed above an `if` is read
   as a caption for the branch it guards, so one that explains the opposite case belongs on the
   `else`, or should be reworded to describe the test itself. Misplacing a comment this way is a
@@ -542,17 +514,16 @@ below stay here because they are rules you need while the work is happening.
   looking at the surrounding code still could not derive it — an ordering constraint, a platform
   quirk, a decision with a live alternative. "Why this is the good version" and "what would go
   wrong under the naive one" are commit-message material.
-- **Bracket a subordinate alternative rather than fencing it with commas.** Parentheses mark the
-  material as skippable, so the reader gets a complete sentence either way; paired commas leave
-  it unclear whether the second comma closes an interpolation or opens a new clause. Write
-  "Dropping onto itself (or onto a neighbor it would split against) is not a rip". Drop any comma
-  that would follow the closing bracket — it separates the subject from its verb.
-- **A doc comment continues its declaration; it does not restate it.** Prefer a noun phrase or a
-  bare predicate — "Pointer ids currently down.", "Detected via the presence of multiple pointer
-  ids." — to a full sentence that re-supplies the subject the declaration already names. A doc
-  comment that reads as a standalone paragraph is usually rationale in disguise.
-- **An inline `//` note is a fragment with no terminal period; a `/** … \*/` doc comment is a
-  punctuated sentence.\*\* One line each, unless the fact genuinely needs two.
+- **A doc comment continues its declaration; it does not restate it.** Do not re-supply the
+  subject the declaration already names, and do not narrate the signature. A field or property
+  takes a noun phrase or a bare predicate — "Pointer ids currently down.", "Detected via the
+  presence of multiple pointer ids." A class, function or method takes a predicate, because the
+  reader needs to know what it does — "Draws the links beneath the node frames in screen space."
+  A headless noun phrase over a class or a function is a fragment opener; do not use one.
+  A doc comment that reads as a standalone paragraph is usually rationale in disguise.
+- **Inline notes and doc comments are punctuated differently.** An inline `//` note is a
+  fragment with no terminal period; a `/** … */` doc comment is a punctuated sentence. One
+  line each, unless the fact genuinely needs two.
 - **Non-doc comments use `//`.** Doc comments use proper `/** … */` brackets. Don't use
   `/* … */` for ordinary inline commentary.
 - **Non-doc comments are at most 3 lines.** A longer block comment is allowed sparingly —
@@ -563,6 +534,66 @@ below stay here because they are rules you need while the work is happening.
 - **Temporary comments are marked `CLAUDENOTE:`.** Any scratch/working comment Claude
   writes gets that prefix, and all of them must be removed before the final commit of a
   plan (or at the end of the plan, whichever comes first).
+
+#### Prose
+
+These rules govern every piece of prose in the repository. They apply to code comments, to
+this file, and to everything under `docs/`.
+
+- **Write plain declarative prose — no epigrams.** State the constraint or decision
+  directly: "An empty answer is deliberate and is passed to the model as-is", not "Empty is an
+  answer — silence, said out loud." If a sentence needs a second read to parse, rewrite it.
+  Specific patterns to catch:
+  - **Inverted syntax and personification** — the sentence performs rather than informs.
+  - **Metaphorical equations** — "The leak scan is the refusal", "what ships is identity",
+    "the project as commands". The connector word varies — do not get hung up on "is"
+    versus "as". Say what happens instead: "Refuses if the leak scan finds a known name
+    still in the body."
+  - **Fragment openers that defer the subject — never use this pattern.** Naming a placeholder
+    and then withholding the real content behind a colon or a dash is always wrong: "The
+    redactor to scan a report with: the one that wrote it, else one built from the project as it
+    stands." Lead with a complete sentence and name each case as you reach it. A doc comment is
+    not an exception, and deleting the label is not the fix, because the apposition left behind
+    is still headless. Supply a predicate instead. Write "Draws the links beneath the node
+    frames in screen space." rather than "The link underlay: a screen-space canvas beneath the
+    node frames." or the bare "Screen-space canvas beneath the node frames."
+  - **Double negatives** — "the palette cannot be relied on not to". State the positive claim.
+  - **Pronouns and ellipses that point outside the sentence** — "the second case", "asking
+    twice is how…" — each sentence should carry its own referents.
+  - **"Clause A, else B" constructions** — "Resolve a push's destination: the named window
+    when it still exists, else the focused window falling back to the most recently focused
+    one." Spell out the cases as ordinary sentences instead: "Pushes to the named window if it
+    still exists. Otherwise pushes to the focused window, or the most recently focused window
+    if none is focused."
+  - **Adverbs hung off the end of a noun phrase** — "the next pointerdown anywhere", "the
+    handler above". The adverb postmodifies the noun, but the reader cannot tell on first pass
+    whether it attaches to the noun or to the clause's verb, and an event or API name coined
+    from a verb ("pointerdown") re-parses as a clause when an adverb follows it. Attach the
+    qualification to a verb, or state it as its own fact: "the listener is on `window`".
+  - **Non-assertive words under a definite** — "any", "anywhere", "ever" range over
+    alternatives, so they fight a definite description that names exactly one thing. "A press
+    anywhere dismisses it" reads fine; "the next pointerdown anywhere" does not.
+  - **Rhetorical emphasis** — bold and italics inside a sentence mark the clause the author
+    found most interesting, not the one the reader needs first. Put the load-bearing claim in
+    the first sentence and drop the markup. A bolded lead-in that labels a Markdown bullet is
+    structure rather than emphasis, and is fine.
+  - **A head noun that is not what the thing is** — a module of commands documented as "The
+    prompt an asset is generated from, as commands" asserts that the module is a prompt, then
+    retracts it through a preposition. Lead with the head noun that names the thing —
+    "Commands for the prompt an asset is generated from" — and demote the rest to a
+    complement. A trailing ", as X" or ", in the form of X" is the same metaphorical equation
+    above smuggled in through an adjunct.
+- **Reserve backticks for code symbols.** Backticks belong on identifiers, types, commands,
+  and file globs the reader will type. A file path cited mid-sentence as a reference —
+  docs/plans/archive/chunked-prompts.md §5 — takes none, because marking it up gives it the
+  same weight as the identifiers around it and dilutes them. Markdown link text is the one
+  exception and keeps its backticks, where the marking separates a path from the prose around
+  it rather than competing with nearby identifiers.
+- **Bracket a subordinate alternative rather than fencing it with commas.** Parentheses mark the
+  material as skippable, so the reader gets a complete sentence either way; paired commas leave
+  it unclear whether the second comma closes an interpolation or opens a new clause. Write
+  "Dropping onto itself (or onto a neighbor it would split against) is not a rip". Drop any comma
+  that would follow the closing bracket — it separates the subject from its verb.
 
 ### Plans
 

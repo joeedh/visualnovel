@@ -269,6 +269,22 @@ describe('selectionForNode', () => {
   });
 
   /**
+   * A picture a graph drew selects that graph alongside the hash, so an open Gen Graph pane follows
+   * the click. The Asset editor still claims the row, since this publishes rather than routes.
+   */
+  it('names the graph a drawn picture came from as well as the picture', () => {
+    const drawn = node('asset:a1b2c3d4', 'asset', {
+      slot: 'portrait:aiko',
+      boundGraph: 'portraits',
+    });
+    expect(selectionForNode(drawn, NONE)).toEqual({
+      ...NONE,
+      assetHash: 'a1b2c3d4',
+      graphSlug: 'portraits',
+    });
+  });
+
+  /**
    * A slot names the graph that draws it, which is what the Gen Graph pane opens on. A slot no
    * graph draws returns the identical object, so the click routes nowhere and costs nothing.
    */
@@ -490,17 +506,30 @@ describe('menuFor', () => {
     for (const entry of entries.slice(0, 4)) expect(entry.props).toEqual({ hash: 'a1b2c3' });
   });
 
-  it('offers a slot the three ways of getting bytes into it, address intact', () => {
+  // The Assets branch draws a filled slot as the picture in it, so this is the only place most
+  // slots can be right-clicked. A picture no slot claims offers nothing to wire a graph to.
+  it('offers a graph on a picture a slot claims, and not on one nothing claims', () => {
+    const filled = node('asset:a1b2c3', 'asset', { slot: 'portrait:aiko' });
+    expect(menuFor(filled)[4]).toEqual({
+      label: 'Create a graph for this slot',
+      id: 'gengraph.createForSlot',
+      props: { slot: 'portrait:aiko' },
+    });
+    expect(idsOf(node('asset:a1b2c3', 'asset'))).not.toContain('gengraph.createForSlot');
+  });
+
+  it('offers a slot each way of filling it, address intact', () => {
     // The key keeps its own colon: `slot:` names the row, `plate:cafe/night` is the address, and
-    // both `asset.upload` and `asset.adopt` take that string verbatim as their `slot` prop.
+    // the three entries that name a slot take that string verbatim as their `slot` prop.
     const entries = menuFor(node('slot:plate:cafe/night', 'slot'));
     expect(entries.map((entry) => entry.id)).toEqual([
       'asset.upload',
       'asset.adopt',
+      'gengraph.createForSlot',
       MENU_SEP,
       'pipeline.run',
     ]);
-    for (const entry of entries.slice(0, 2)) {
+    for (const entry of entries.slice(0, 3)) {
       expect(entry.props).toEqual({ slot: 'plate:cafe/night' });
     }
   });

@@ -1,6 +1,6 @@
 import type { Graph, GraphId, Node } from 'pathux-graph';
 
-import { graphHashes } from './hash.js';
+import { authoredHashes, graphHashes } from './hash.js';
 import { journalRecord } from './journal.js';
 import type { GenUsage, GraphJournal, GraphJournalRecord } from './journal.js';
 import { genNodeRuntime, genNodeSpec } from './registry.js';
@@ -66,6 +66,7 @@ export async function executeGenGraph(
   seedInputs(graph, options.seeds);
 
   const hashes = graphHashes(graph);
+  const authored = authoredHashes(graph);
   const wanted = ancestorsOf(graph, options.targets);
   const order = graph.sort().order.filter((node) => wanted.has(node.id));
 
@@ -81,12 +82,13 @@ export async function executeGenGraph(
     await ctx.record(record);
   };
 
-  const hashOf = (node: Node): string => {
-    const hash = hashes.get(node.id);
-    if (hash === undefined) {
+  const hashOf = (node: Node): { nodeHash: string; authoredHash: string } => {
+    const nodeHash = hashes.get(node.id);
+    const authoredHash = authored.get(node.id);
+    if (nodeHash === undefined || authoredHash === undefined) {
       throw new Error(`node ${String(node.id)} has no hash, so it cannot be run`);
     }
-    return hash;
+    return { nodeHash, authoredHash };
   };
 
   if (options.force === true) {
@@ -123,7 +125,7 @@ export async function executeGenGraph(
     if (
       !stale &&
       prior?.status === 'done' &&
-      prior.nodeHash === hash &&
+      prior.nodeHash === hash.nodeHash &&
       prior.output !== undefined
     ) {
       applyOutputs(node, prior.output);
@@ -138,7 +140,7 @@ export async function executeGenGraph(
       continue;
     }
 
-    await write(journalRecord({ nodeId: node.id, nodeHash: hash, status: 'running', at: stamp() }));
+    await write(journalRecord({ nodeId: node.id, ...hash, status: 'running', at: stamp() }));
 
     let outputs: GenOutputs;
     try {
@@ -157,7 +159,7 @@ export async function executeGenGraph(
     await write(
       journalRecord({
         nodeId: node.id,
-        nodeHash: hash,
+        ...hash,
         status: 'done',
         output: outputs,
         at: stamp(),
@@ -168,10 +170,12 @@ export async function executeGenGraph(
 
   return result;
 
-  async function fail(node: Node, hash: string, error: string): Promise<void> {
-    await write(
-      journalRecord({ nodeId: node.id, nodeHash: hash, status: 'failed', error, at: stamp() }),
-    );
+  async function fail(
+    node: Node,
+    hash: { nodeHash: string; authoredHash: string },
+    error: string,
+  ): Promise<void> {
+    await write(journalRecord({ nodeId: node.id, ...hash, status: 'failed', error, at: stamp() }));
     blocked.add(node.id);
     result.failures.push({ nodeId: node.id, error });
   }
@@ -189,20 +193,24 @@ export async function invalidateGenGraph(
   targets: readonly GraphId[],
 ): Promise<GraphId[]> {
   const hashes = graphHashes(graph);
+  const authored = authoredHashes(graph);
   const wanted = ancestorsOf(graph, targets);
   const at = (ctx.now?.() ?? new Date()).toISOString();
   const invalidated: GraphId[] = [];
 
   for (const node of graph.nodes) {
-    const hash = hashes.get(node.id);
-    if (!wanted.has(node.id) || hash === undefined) {
+    const nodeHash = hashes.get(node.id);
+    const authoredHash = authored.get(node.id);
+    if (!wanted.has(node.id) || nodeHash === undefined || authoredHash === undefined) {
       continue;
     }
     if (genNodeSpec(node.def.typeName)?.spends !== true) {
       continue;
     }
 
-    await ctx.record(journalRecord({ nodeId: node.id, nodeHash: hash, status: 'invalidated', at }));
+    await ctx.record(
+      journalRecord({ nodeId: node.id, nodeHash, authoredHash, status: 'invalidated', at }),
+    );
     invalidated.push(node.id);
   }
 
@@ -212,7 +220,9 @@ export async function invalidateGenGraph(
 /**
  * Writes the host's values onto the default of each seeded input socket. `graphHashes`
  * already reads an unconnected input through its default, so a seeded prompt reaches the
- * hash with no special case and nothing about it is persisted as authored state.
+ * hash with no special case and nothing about it is persisted as authored state. The socket
+ * must be the one the type's spec declares, because `authoredHashes` reads that declaration
+ * to tell a task's own values apart from the graph an author wrote.
  */
 function seedInputs(graph: Graph, seeds: GenExecuteOptions['seeds']): void {
   if (seeds === undefined) {
@@ -229,6 +239,11 @@ function seedInputs(graph: Graph, seeds: GenExecuteOptions['seeds']): void {
       const prop = node.inputs[key]?.defaultProp;
       if (prop === undefined) {
         throw new Error(`node type '${node.def.typeName}' takes no seeded input '${key}'`);
+      }
+      if (genNodeSpec(node.def.typeName)?.seededInput !== key) {
+        throw new Error(
+          `node type '${node.def.typeName}' does not declare '${key}' as its seeded input, so a value put there would be read as authored graph state`,
+        );
       }
       prop.setValue(value);
     }

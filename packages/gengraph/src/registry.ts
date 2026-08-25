@@ -46,6 +46,11 @@ export interface GenNodeSpec {
   slotProp?: string;
   /** What one run costs. A type with no estimate is taken to spend nothing. */
   estimate?: GenNodeEstimate;
+  /**
+   * Names the input socket a host fills before a run. Its value belongs to the task rather
+   * than to the graph, so `authoredHashes` reads it as though nothing had been seeded.
+   */
+  seededInput?: string;
   /** Names the input socket a refine pass re-enters this node's chain at. */
   refineInput?: string;
   /** True for the node a refine pass re-enters at while no refine input is wired. */
@@ -58,18 +63,24 @@ const runtimes = new Map<string, GenNodeRun>();
 
 /**
  * Registers a node type with path.ux and records its generator spec. A declared
- * slotProp is checked against a constructed instance, so a typo fails here rather
- * than silently leaving an output node unable to name the slot it fills.
+ * slotProp or seededInput is checked against a constructed instance, so a typo fails here
+ * rather than silently leaving an output node unable to name the slot it fills, or a
+ * seeded value counted as authored graph state.
  */
 export function registerGenNode(spec: GenNodeSpec): void {
   registerNodeType(spec.cls);
 
   const typeName = spec.cls.graphDef().typeName;
 
-  if (spec.slotProp !== undefined) {
+  if (spec.slotProp !== undefined || spec.seededInput !== undefined) {
     const probe = new spec.cls();
-    if (probe.props[spec.slotProp] === undefined) {
+    if (spec.slotProp !== undefined && probe.props[spec.slotProp] === undefined) {
       throw new Error(`${typeName}: slotProp '${spec.slotProp}' names no prop on this node type`);
+    }
+    if (spec.seededInput !== undefined && probe.inputs[spec.seededInput] === undefined) {
+      throw new Error(
+        `${typeName}: seededInput '${spec.seededInput}' names no input on this node type`,
+      );
     }
   }
 

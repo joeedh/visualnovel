@@ -31,6 +31,17 @@ export class TestSource extends Node<Sockets, { blob: TestBlobSocket; amount: Fl
   }
 }
 
+/** A source whose one input a host fills, standing in for the derived-prompt node. */
+export class TestSeeded extends Node<{ amount: FloatSocket }, { blob: TestBlobSocket }> {
+  static override graphDef(): NodeDef {
+    return {
+      typeName: 'TestSeeded',
+      inputs: { amount: new FloatSocket('in') },
+      outputs: { blob: new TestBlobSocket('out') },
+    };
+  }
+}
+
 export class TestOutput extends Node<{ image: TestBlobSocket }, Sockets> {
   static override graphDef(): NodeDef {
     return {
@@ -41,9 +52,10 @@ export class TestOutput extends Node<{ image: TestBlobSocket }, Sockets> {
   }
 }
 
-/** Registers both types. Safe to call twice; the second call overwrites the first. */
+/** Registers all three types. Safe to call twice; the second call overwrites the first. */
 export function registerTestNodes(): void {
   registerGenNode({ cls: TestSource });
+  registerGenNode({ cls: TestSeeded, seededInput: 'amount' });
   registerGenNode({ cls: TestOutput, spends: true, slotProp: 'slot' });
 }
 

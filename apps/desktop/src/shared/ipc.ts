@@ -499,11 +499,19 @@ export interface DocNode {
    */
   hash?: string;
   /**
-   * The slug of the generation graph whose active output binds this slot. Only a `slot` row
-   * carries one, and only while exactly one graph claims the address. Editor claims read it, so
-   * a bound slot opens the graph that draws it rather than the fixed task pipeline.
+   * The slug of the generation graph whose active output binds this row's slot, set only while
+   * exactly one graph claims the address. A `slot` row carries one, and so does an `asset` row a
+   * slot claims, which is what lets clicking either put that graph on screen. Editor claims read
+   * it too, so a bound slot opens the graph that draws it rather than the fixed task pipeline.
    */
   boundGraph?: string;
+  /**
+   * The slot address this row's picture fills, for an `asset` row a slot claims. The Assets
+   * branch draws a filled slot as the picture in it rather than as a `slot` row, so without this
+   * the address would be readable only out of the row's sentence. A picture no slot claims — a
+   * concept, an upload, a base asset — carries none.
+   */
+  slot?: string;
   children?: DocNode[];
 }
 

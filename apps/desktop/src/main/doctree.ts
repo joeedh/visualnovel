@@ -320,6 +320,8 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
     add(
       byHash.get(current)!.kind,
       row(byHash.get(current)!, {
+        slot: key,
+        ...boundGraphOf(input, key),
         note: settled
           ? others.length === 0
             ? `${slot.label}. Show the asset in the asset editor.`
@@ -334,6 +336,8 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
                 `takes:${key}`,
                 others.map((hash) =>
                   row(byHash.get(hash)!, {
+                    slot: key,
+                    ...boundGraphOf(input, key),
                     note: `Another take of ${slot.label}. Show it in the asset editor.`,
                   }),
                 ),
@@ -414,6 +418,8 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
       waiting.push(
         node(`asset:${hash}`, 'asset', assetLabelOf(input, asset), {
           badge: slot.binding.kind,
+          slot: key,
+          ...boundGraphOf(input, key),
           note: `Waiting on approval for ${slot.label}.`,
         }),
       );

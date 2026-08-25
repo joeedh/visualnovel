@@ -140,8 +140,9 @@ Facts the stages below build on, checked against the working tree on 2026-08-24.
 Each stage cites these by number. The full argument for each is in the research doc.
 
 1. **A bound graph is the slot's runner.** The graph changes how a task runs, never what
-   it is. Task hashes do not move when a graph is edited; the difference shows as drift.
-   One journal serves scheduled and interactive runs.
+   it is. Task hashes do not move when a graph is edited; the difference shows as drift,
+   and the next run puts the drifted slot's task back to `pending` rather than giving it a
+   new identity. One journal serves scheduled and interactive runs.
 2. **The path.ux graph is the model.** Main holds real `Graph` objects; files are
    nstructjs JSON checked by nstructjs's `validateJSON` on load, with the semantic pass
    (props against spec, socket compatibility, slot-key parse) in `@vn/gengraph`.
@@ -282,8 +283,8 @@ Pure logic, no I/O beyond an injected blob store.
   (with `work/graphs/lib/` for groups) and journals plus blobs under `vngen/state/graphs/`.
   Stage 6's index and its tests read these constants; Stage 7 builds the commands on them.
 - **Journal.** `vngen/state/graphs/<slug>.jsonl`, append-only full snapshots
-  `{v, nodeId, nodeHash, status, output?, usage?, error?, at}` — `v` on every line, the
-  notifications.jsonl precedent for a committed file that will outlive its schema —
+  `{v, nodeId, nodeHash, authoredHash, status, output?, usage?, error?, at}` — `v` on every
+  line, the notifications.jsonl precedent for a committed file that will outlive its schema —
   replayed last-writer-wins the way `state/tasks.jsonl` is. Deliberately outside undo,
   like the rest of `state/` (the exclusion already in undo.ts covers it). One journal per
   graph serves the scheduler and the interactive pane alike.
@@ -291,8 +292,9 @@ Pure logic, no I/O beyond an injected blob store.
   hash, referenced from journal records, committed to the project repo, never entering
   either asset root (decision 7).
 - **Drift.** `graphDrift(graph, journal)`: recompute the active Output node's hash and
-  compare with the journal's last `done` record for that node. Reported, never an
-  invalidation — the same posture as `Shot.proseHash`.
+  compare with the journal's last `done` record for that node. The plan had this reported
+  and never acted on, the same posture as `Shot.proseHash`; it now invalidates the slot,
+  and the two paragraphs below record how.
 
 Tests: hash stability and propagation, journal replay including a crashed half-written
 line, blob round-trip, drift on a prop edit and no drift on a layout move.
@@ -306,6 +308,30 @@ three places: the package's `exports`, the root tsconfig's `paths`, and `SUBPATH
 scripts/aliases.mjs. The journal's record types and its replay are pure, so they stay on
 the main entry beside the validator. `nodeHash` needs no `typeVersion` on `GenNodeSpec`
 after all: path.ux already carries one on `NodeDef` and writes it onto every node.
+
+Every record carries a second hash, which the plan did not call for. Stage 6's runner seeds
+the task's prompt, its references and the critique onto input defaults before hashing, so
+`nodeHash` moves with the task a run was made for. That is load-bearing twice: it is what
+makes a task whose artNotes changed redraw rather than resume the cached picture, and what
+makes a refine attempt's new critique re-run the tail. It also means comparing `nodeHash`
+against the graph on disk reports drift after every run, whether or not anyone edited
+anything. `authoredHashes` reads each host-seeded input as though nothing had been seeded
+onto it, so it covers the authored graph alone, and drift is measured on it. A node type
+names the input a host fills through `seededInput` on its registration, and `seedInputs`
+refuses to seed an input that is not declared, so a fourth seeded node type cannot quietly
+reinstate the false positive. A record written before the field existed reports no drift.
+
+Drift invalidates the slot rather than only being reported, which reverses this stage's
+last bullet. `requeueDrifted` (`@vn/scheduler`) puts every planned `done` or `needs_human`
+task whose bound graph has drifted back to `pending` once per run, before the wave loop, and
+`RunSummary.redrawn` names them for the CLI and the run notification. Decision 1 still
+holds, because the task's hash does not move: this is a status change on the task the plan
+already asked for, not a new one. A `failed` task is left to `requeueFailed` and its attempt
+budget. A successful redraw clears the drift by writing the graph's new authored hash into
+the journal, and a graph that fails writes no such record, so requeueing a failure here
+would ask for the same paid work on every run for ever. The requeue happens at run time
+rather than at the graph write because undo excludes `state/` and `build/`: undoing a graph
+edit restores the authored hash, the drift disappears, and nothing is redrawn.
 
 ### Stage 3 — the DSL: read, replace, diff
 
@@ -615,6 +641,10 @@ consults.
 The rule that an output node binds a slot when it names one and is not inactive had three
 implementations (`indexGraphs`, the desktop session, and this stage's report). It is now
 `activeOutputs` in `packages/gengraph/src/slots.ts`, which all three call.
+
+`vngen status` says of a drifted node that the next run redraws it, and `vngen run` counts
+the tasks it put back to `pending` beside the ones it retried. The cost preview counts them
+too, under its pending line, so `vngen cost` quotes a redraw before it is paid for.
 
 ### Stage 10 — the Gen Graph editor pane
 

@@ -305,6 +305,7 @@ describe('the Unapproved branch', () => {
         kind: 'asset',
         label: 'aaaaaaaa.png',
         badge: 'portrait',
+        slot: 'portrait:aiko',
         note: 'Waiting on approval for portrait:aiko.',
       },
     ]);

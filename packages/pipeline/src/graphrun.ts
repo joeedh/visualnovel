@@ -17,7 +17,7 @@ import type {
   GraphJournal,
   GraphJournalRecord,
 } from '@vn/gengraph';
-import { executeGenGraph } from '@vn/gengraph/state';
+import { executeGenGraph, graphDrift } from '@vn/gengraph/state';
 import type { GenRunContext } from '@vn/gengraph/state';
 import type { RunDeps } from './pipeline.js';
 
@@ -152,6 +152,35 @@ export function boundGraph(task: AnyTask, deps: RunDeps): GraphBinding | undefin
     registered = true;
   }
   return runtime.bound(slot);
+}
+
+/**
+ * The tasks whose bound graph has been edited since it last drew their slot. A task's hash
+ * does not move when a graph is edited, because the graph is the slot's runner rather than
+ * part of what the slot is, so this is the only signal that the picture is out of date.
+ * Each graph is compared once however many tasks reach it.
+ */
+export function driftedTasks(tasks: Iterable<AnyTask>, deps: RunDeps): AnyTask[] {
+  const perGraph = new Map<Graph, ReadonlySet<GraphId>>();
+  const stale: AnyTask[] = [];
+
+  for (const task of tasks) {
+    const binding = boundGraph(task, deps);
+    if (binding === undefined) {
+      continue;
+    }
+
+    let drifted = perGraph.get(binding.graph);
+    if (drifted === undefined) {
+      drifted = new Set(graphDrift(binding.graph, binding.journal).map((d) => d.nodeId));
+      perGraph.set(binding.graph, drifted);
+    }
+    if (drifted.has(binding.target)) {
+      stale.push(task);
+    }
+  }
+
+  return stale;
 }
 
 /**

@@ -11,16 +11,26 @@
  * string DSL a command is typed in is text throughout.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
-import { Graph, decideGenEdit, estimateSentence, readGenPropValue } from '@vn/gengraph';
+import {
+  Graph,
+  bindSlots,
+  decideGenEdit,
+  defaultSlotGraph,
+  estimateSentence,
+  readGenPropValue,
+  slotRefusal,
+} from '@vn/gengraph';
 import type { GenApplied, GenEdit, GenNodeMove, GenPricedEstimate, GraphId } from '@vn/gengraph';
 import {
   deleteGraph,
+  graphSlugs,
   isGraphSlug,
   listGraphs,
   nodeIdOf,
   readGraph,
   writeGraph,
 } from '../graphs.js';
+import type { GraphSlug } from '../graphs.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -124,6 +134,126 @@ export const gengraphCreate = define({
     return { message: `Created the ${name} graph.`, data: { slug: name, path }, written: [path] };
   },
 });
+
+export const gengraphCreateForSlot = define({
+  id: 'gengraph.createForSlot',
+  title: 'Create a graph for a slot',
+  description:
+    'Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt ' +
+    'and the task references feed an image node, and its picture fills the slot. A slot another ' +
+    'graph already draws is refused, because two graphs claiming one slot bind neither.',
+  mutating: true,
+  undoable: true,
+  props: {
+    slot: prop.string('which slot the graph fills, as the document tree writes it'),
+    name: prop.string('what to call it; an empty name is derived from the slot', { default: '' }),
+    open: prop.boolean('show the new graph in the Gen Graph editor', { default: true }),
+  },
+  async check({ slot, name }, ctx) {
+    const planned = await planForSlot(ctx, slot, name);
+    if ('refuse' in planned) return { ok: false, reason: planned.refuse };
+    return {
+      ok: true,
+      note: `writes vngen/work/graphs/${planned.slug}.json, bound to ${slot.trim()}`,
+    };
+  },
+  async run({ slot, name, open }, ctx) {
+    const planned = await planForSlot(ctx, slot, name);
+    if ('refuse' in planned) throw new Error(planned.refuse);
+
+    const said = slot.trim();
+    const path = await writeGraph(ctx.root, planned.slug, defaultSlotGraph(said));
+    // Shows the graph by the route a click on the slot now takes, so the four nodes are on screen
+    // rather than somewhere the author has to go looking for. A Gen Graph pane already open is
+    // focused and re-pointed rather than duplicated, and the tree that raised the menu is left be
+    if (open) {
+      ctx.host.ui(
+        {
+          type: 'view',
+          action: 'open',
+          editor: 'gengraph',
+          where: 'elsewhere',
+          subject: planned.slug,
+        },
+        ctx.origin,
+      );
+    }
+    return {
+      message: `Created the ${planned.slug} graph, which draws ${said}.`,
+      data: { slug: planned.slug, slot: said, path },
+      written: [path],
+    };
+  },
+});
+
+/**
+ * Decides what to call the graph a slot is about to be given, or refuses the request in one
+ * sentence. The `check` and the `run` beside it both call this, so the name the check reports
+ * is the name the run writes.
+ */
+async function planForSlot(
+  ctx: { root: string; git: Parameters<typeof readGraph>[2] },
+  slot: string,
+  name: string,
+): Promise<{ slug: string } | { refuse: string }> {
+  const said = slot.trim();
+  if (said === '') return { refuse: 'a graph bound to a slot needs the slot it draws' };
+
+  const bad = slotRefusal(said);
+  if (bad !== undefined) return { refuse: bad };
+
+  const slugs = await graphSlugs(ctx.root);
+  const claimed = await claimOf(ctx, slugs, said);
+  if (claimed !== undefined) return { refuse: claimed };
+
+  const taken = new Set<string>(slugs);
+  const wanted = name.trim();
+  if (wanted === '') return { slug: freeName(slugOfSlot(said), taken) };
+
+  if (!isGraphSlug(wanted)) return { refuse: `'${wanted}' is not a graph name` };
+  if (taken.has(wanted)) return { refuse: `this project already has a ${wanted} graph` };
+  return { slug: wanted };
+}
+
+/** Reports that another graph already draws this slot, through the rule a run binds by. */
+async function claimOf(
+  ctx: { root: string; git: Parameters<typeof readGraph>[2] },
+  slugs: readonly GraphSlug[],
+  slot: string,
+): Promise<string | undefined> {
+  const loaded: { slug: GraphSlug; graph: Graph }[] = [];
+  for (const slug of slugs) {
+    const read = await readGraph(ctx.root, slug, ctx.git);
+    // An unreadable graph is reported where it is listed; what it claims cannot be read here.
+    if (read.ok) loaded.push({ slug, graph: read.graph });
+  }
+
+  const { bound, conflicts } = bindSlots(loaded);
+  const owner = bound.get(slot);
+  if (owner !== undefined) return `the ${owner.entry.slug} graph already draws ${slot}`;
+  if (conflicts.includes(slot)) {
+    return `more than one graph already claims ${slot}, so that slot is bound to none of them`;
+  }
+  return undefined;
+}
+
+/** Turns a slot address into a graph name, replacing the punctuation a name cannot carry. */
+function slugOfSlot(slot: string): string {
+  const said = slot
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return isGraphSlug(said) ? said : 'graph';
+}
+
+/** The first of `base`, `base-2`, `base-3` that no graph file already carries. */
+function freeName(base: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(base)) return base;
+
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
 
 export const gengraphDelete = define({
   id: 'gengraph.delete',

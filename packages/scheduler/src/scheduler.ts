@@ -9,6 +9,7 @@ import {
   boundGraph,
   createRunners,
   costPreview,
+  driftedTasks,
   gateStatus,
   planTasks,
   runTask,
@@ -74,6 +75,11 @@ export interface RunSummary {
   /** Hashes of `failed` tasks this run put back to `pending` before the wave loop. */
   retried: string[];
   /**
+   * Hashes of tasks this run put back to `pending` because the generation graph bound to
+   * their slot has been edited since it drew them.
+   */
+  redrawn: string[];
+  /**
    * Tasks the current plan wants that are `failed` — including failures inherited from an
    * earlier run, which `ran` cannot see. Intersected with the last planning pass, because
    * `tasks.jsonl` is never pruned and an orphan must not make a run report a failure forever.
@@ -118,6 +124,34 @@ export function requeueFailed(
     if (task.attempts.filter((a) => a.error).length >= maxAttempts) continue;
     graph.setStatus(task.hash, 'pending', { error: undefined });
     requeued.push(task);
+  }
+  return requeued;
+}
+
+/**
+ * Put back to `pending` every task whose bound generation graph has been edited since it drew
+ * the slot, so this run redraws it. Editing a graph does not move the task's hash, so without
+ * this the `done` record keeps its picture for the life of the project and the edit shows up
+ * only as a drift report.
+ *
+ * `plannedHashes` bounds it to what the current plan asked for, on the same reasoning as
+ * {@link requeueFailed}. `failed` is left to that function and its attempt budget: a redraw
+ * clears the drift by writing the graph's new hash into its journal, and a graph that fails
+ * writes no such hash, so requeueing a failure here would ask for the same work on every run.
+ */
+export function requeueDrifted(
+  taskGraph: TaskGraph,
+  plannedHashes: ReadonlySet<string>,
+  deps: RunDeps,
+): AnyTask[] {
+  const drawn = taskGraph
+    .all()
+    .filter(
+      (t) => plannedHashes.has(t.hash) && (t.status === 'done' || t.status === 'needs_human'),
+    );
+  const requeued = driftedTasks(drawn, deps);
+  for (const task of requeued) {
+    taskGraph.setStatus(task.hash, 'pending', { output: undefined, error: undefined });
   }
   return requeued;
 }
@@ -170,6 +204,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       gate,
       blockedOnGate: false,
       retried: [],
+      redrawn: [],
       failed: [],
       needsHuman: [],
       base: store.base,
@@ -190,6 +225,12 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   if (!dryRun) for (const node of requeued) await logTask(paths, node);
   if (retried.length) logger?.info('task.retry', { hashes: retried });
 
+  // After the retries, so a task both a failure and a graph edit want back is requeued once.
+  const stale = requeueDrifted(graph, new Set(firstPass.map((t) => t.hash)), deps);
+  const redrawn = stale.map((t) => t.hash);
+  if (!dryRun) for (const node of stale) await logTask(paths, node);
+  if (redrawn.length) logger?.info('task.redraw', { hashes: redrawn });
+
   // The live set is what the current plan asked for, deduped back to canonical nodes. Every
   // terminal-state report is derived from this rather than from what this process happened to
   // touch, so a failure inherited from an earlier run still counts and an orphan never does.
@@ -207,6 +248,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       gate,
       blockedOnGate: !gate.cleared,
       retried,
+      redrawn,
       failed: live(plannedNow, 'failed'),
       needsHuman: live(plannedNow, 'needs_human'),
       base: store.base,
@@ -309,6 +351,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     // The run halts at the gate when characters used by reachable scenes await approval.
     blockedOnGate: !gate.cleared,
     retried,
+    redrawn,
     failed: live(plannedNow, 'failed'),
     needsHuman: live(plannedNow, 'needs_human'),
     base: store.base,

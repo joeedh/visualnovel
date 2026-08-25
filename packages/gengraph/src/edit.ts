@@ -254,7 +254,7 @@ function decideSetProp(graph: Graph, edit: GenEdit & { op: 'setProp' }): GenEdit
  * Checks the slot an output node names. Wording matches `validateGenGraph`, so an author
  * reads the same sentence whether the slot was refused at the edit or reported on a load.
  */
-function slotRefusal(said: string): string | undefined {
+export function slotRefusal(said: string): string | undefined {
   const slot = said.trim();
   // An empty slot is how an unbound graph is authored, so clearing one is a real edit.
   if (slot === '') return undefined;

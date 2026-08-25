@@ -9,13 +9,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { UndoJournal, digestProps } from '@vn/commands';
 import type { CommandContext } from '@vn/commands';
+import { bindSlots } from '@vn/gengraph';
 import { openGit } from '@vn/git';
+import type { UiEffect } from '../../../shared/ipc.js';
 import { readGraph } from '../../graphs.js';
 import { UNDO_PATHS } from '../../workspace.js';
 import {
   gengraphAddNode,
   gengraphApply,
   gengraphCreate,
+  gengraphCreateForSlot,
   gengraphDelete,
   gengraphLink,
   gengraphList,
@@ -29,7 +32,11 @@ import type { CommandHost } from '../host.js';
 
 let root: string;
 
+/** Where a command's `view` effects land, so a run that moves the author can be read back. */
+let pushed: UiEffect[] = [];
+
 beforeEach(async () => {
+  pushed = [];
   root = await mkdtemp(join(tmpdir(), 'vn-gengraph-'));
   await writeFile(join(root, 'project.yaml'), 'title: Graphs\n');
   const git = openGit(root);
@@ -46,7 +53,12 @@ afterEach(async () => {
 
 /** Enough context for commands that never reach the session, which is every editing one. */
 function ctx(): CommandContext<CommandHost> {
-  return { root, git: openGit(root), log: () => {} } as unknown as CommandContext<CommandHost>;
+  return {
+    root,
+    git: openGit(root),
+    log: () => {},
+    host: { ui: (effect: UiEffect) => pushed.push(effect) },
+  } as unknown as CommandContext<CommandHost>;
 }
 
 /** Runs one command and reports what it wrote, the way the executor does. */
@@ -152,6 +164,46 @@ describe('the gengraph commands over a project', () => {
     expect((await run(gengraphList, {})).message).toContain('1 graph');
   }, 20_000);
 
+  it('creates a graph a slot is already bound to, named after the address', async () => {
+    const made = await run(gengraphCreateForSlot, {
+      slot: 'plate:cafe/night',
+      name: '',
+      open: true,
+    });
+    expect((made.data as { slug: string }).slug).toBe('plate-cafe-night');
+
+    const graph = await loaded('plate-cafe-night');
+    expect(graph.nodes.map((n) => n.def.typeName).sort()).toEqual([
+      'GenDerivedPrompt',
+      'GenImage',
+      'GenOutput',
+      'GenTaskRefs',
+    ]);
+    expect(bindSlots([{ graph }]).bound.has('plate:cafe/night')).toBe(true);
+    // The graph the author just asked for is the one on screen, named as the subject rather than
+    // left for the selection to catch up with
+    expect(pushed).toEqual([
+      {
+        type: 'view',
+        action: 'open',
+        editor: 'gengraph',
+        where: 'elsewhere',
+        subject: 'plate-cafe-night',
+      },
+    ]);
+  }, 20_000);
+
+  it('leaves the panes alone when the run was not asked to show it', async () => {
+    await run(gengraphCreateForSlot, { slot: 'plate:cafe/day', name: '', open: false });
+    expect(pushed).toEqual([]);
+  }, 20_000);
+
+  it('takes the next free name where the derived one is a graph already', async () => {
+    await run(gengraphCreate, { name: 'shot-cafe-1' });
+    const made = await run(gengraphCreateForSlot, { slot: 'shot:cafe/1', name: '', open: false });
+    expect((made.data as { slug: string }).slug).toBe('shot-cafe-1-2');
+  }, 20_000);
+
   it('severs one named link, and every link into an input when none is named', async () => {
     await run(gengraphCreate, { name: 'sw' });
     const a = await addNode('sw', 'GenImage');
@@ -187,6 +239,23 @@ describe('what the gengraph commands refuse', () => {
     expect(await refusal(gengraphCreate, { name: 'portrait' })).toContain('already has');
     expect(await refusal(gengraphCreate, { name: 'not a slug' })).toContain('is not a graph name');
   });
+
+  it('refuses a slot another graph draws, an address that is not one, and no slot', async () => {
+    await run(gengraphCreateForSlot, { slot: 'shot:cafe/1', name: '', open: false });
+
+    expect(
+      await refusal(gengraphCreateForSlot, { slot: 'shot:cafe/1', name: '', open: false }),
+    ).toBe('the shot-cafe-1 graph already draws shot:cafe/1');
+    expect(await refusal(gengraphCreateForSlot, { slot: 'cafe', name: '', open: false })).toBe(
+      "'cafe' is not a slot address",
+    );
+    expect(await refusal(gengraphCreateForSlot, { slot: '  ', name: '', open: false })).toContain(
+      'needs the slot it draws',
+    );
+    expect(
+      await refusal(gengraphCreateForSlot, { slot: 'shot:cafe/2', name: 'portrait', open: false }),
+    ).toContain('already has a portrait graph');
+  }, 20_000);
 
   it('names a graph that is not there rather than reporting an empty one', async () => {
     expect(await refusal(gengraphAddNode, { slug: 'missing', type: 'GenImage', x: 0, y: 0 })).toBe(

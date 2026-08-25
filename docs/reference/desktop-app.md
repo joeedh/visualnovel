@@ -1149,6 +1149,14 @@ property that commits through `gengraph.setProp`. An input carrying a link has n
 value comes from upstream. An Output node draws a button that runs `gengraph.setActiveOutput`
 rather than a checkbox, since standing one output up stands its rivals down.
 
+**An edit here redraws what the graph draws.** A gesture that changes the authored graph spends
+nothing when it is made, and the next `pipeline.run` puts the bound slot's task back to `pending`
+and draws it again — so a picture can change without the author naming it, and the run's
+notification says how many were redrawn for an edited graph. The task's hash does not move, because
+the graph is the slot's runner rather than part of what the slot is. Undoing the edit before the next
+run leaves nothing to redraw, since the journal the comparison reads sits under `state/`, which undo
+excludes.
+
 ## Play
 
 `editors/play.ts` — the runner. `pathux/play/playback.ts` is the pure half (frames, navigation, the

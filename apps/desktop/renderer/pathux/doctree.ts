@@ -156,9 +156,13 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
     case 'skill':
     case 'file':
       return node.path === undefined ? current : { ...current, docPath: node.path };
-    // An asset carries no `path` on purpose — it is addressed by hash, which is its key here.
-    case 'asset':
-      return { ...current, assetHash: key };
+    // An asset carries no `path` on purpose — it is addressed by hash, which is its key here. A
+    // picture drawn by a graph selects that graph as well, so an open Gen Graph pane follows the
+    // click without taking it: the Asset editor still claims the picture, and routing is unchanged.
+    case 'asset': {
+      const picked = { ...current, assetHash: key };
+      return node.boundGraph === undefined ? picked : { ...picked, graphSlug: node.boundGraph };
+    }
     // A slot a graph draws selects that graph, which is what the Gen Graph pane opens on. A slot
     // no graph draws names nothing the shell tracks, so it costs the author nothing to click.
     case 'slot':
@@ -256,6 +260,17 @@ function wikiCreate(): MenuEntry[] {
 }
 
 /**
+ * Offers to wire a graph that draws `slot`, where the row names one. An asset row names a slot only
+ * when a slot claims that picture, so a concept, an upload or a base asset offers nothing here. The
+ * command decides whether the address can have a graph, since a slot another graph already draws is
+ * refused by name.
+ */
+function graphAct(slot: string | undefined): MenuEntry[] {
+  if (slot === undefined || slot === '') return [];
+  return [{ label: 'Create a graph for this slot', id: 'gengraph.createForSlot', props: { slot } }];
+}
+
+/**
  * What the story offers wherever it is right-clicked: from the branch that heads it and from any
  * scene under it. A scene's own acts sit above these, so the scene menu is a superset — the same
  * two commands, in the same words, wherever the pointer was.
@@ -332,7 +347,7 @@ export function menuFor(node: DocNode): MenuEntry[] {
           form: true,
         },
       ];
-    // All four acts are offered and each command declares its own refusal: `asset.accept` names
+    // Every act is offered and each command declares its own refusal: `asset.accept` names
     // `gate.approve` for a portrait and `art.promote` for a concept, and those two refuse
     // everything else. There is no 'reject', because rejecting a candidate is approving another
     case 'asset':
@@ -341,6 +356,7 @@ export function menuFor(node: DocNode): MenuEntry[] {
         { label: 'Accept', id: 'asset.accept', props: { hash: key } },
         { label: 'Approve as a portrait…', id: 'gate.approve', props: { hash: key }, form: true },
         { label: 'Promote to a plate…', id: 'art.promote', props: { hash: key }, form: true },
+        ...graphAct(node.slot),
         { label: MENU_SEP, id: MENU_SEP },
         {
           label: 'Open in the Asset editor',
@@ -348,13 +364,14 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { editor: 'asset', where: 'elsewhere', subject: key },
         },
       ];
-    // A slot has no bytes, so every act on one is about making some: hand a file in, adopt one
-    // already in the store, or run the pipeline. All three take the address as it is written in the
-    // tree, and a `portrait:` slot's two upload entries give `adoptionForSlot`'s own refusal
+    // A slot has no bytes, so every act on one is about making some: hand a file in, adopt one from
+    // the store, wire a graph that draws it, or run the pipeline. The first three take the address
+    // the tree writes, and a `portrait:` slot's upload entries give `adoptionForSlot`'s own refusal
     case 'slot':
       return [
         { label: 'Upload a file for this…', id: 'asset.upload', props: { slot: key }, form: true },
         { label: 'Adopt an asset for this…', id: 'asset.adopt', props: { slot: key }, form: true },
+        ...graphAct(key),
         { label: MENU_SEP, id: MENU_SEP },
         { label: 'Run pipeline…', id: 'pipeline.run', form: true },
       ];

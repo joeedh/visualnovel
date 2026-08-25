@@ -5419,11 +5419,15 @@ export class WorkspaceSession {
     const how = mock ? 'Dry run' : 'Run';
     const gate = summary.blockedOnGate ? ', halted at the character gate' : '';
     const ended = summary.stopped ? 'stopped' : 'finished';
+    // Named, because otherwise a picture the author did not ask for changes with no explanation
+    const redrawn = summary.redrawn.length
+      ? `, ${summary.redrawn.length} redrawn for an edited graph`
+      : '';
     void notify({
       category: 'pipeline',
       level: summary.failed.length > 0 ? 'warn' : 'info',
       source: 'pipeline',
-      message: `${how} ${ended}: ${ran} task${ran === 1 ? '' : 's'}, ${summary.failed.length} failed${gate}.`,
+      message: `${how} ${ended}: ${ran} task${ran === 1 ? '' : 's'}, ${summary.failed.length} failed${redrawn}${gate}.`,
     });
   }
 }

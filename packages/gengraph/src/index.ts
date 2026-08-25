@@ -20,6 +20,7 @@ export * from './slots.js';
 export * from './journal.js';
 export * from './dsl.js';
 export * from './edit.js';
+export * from './defaults.js';
 export * from './cost.js';
 export * from './prices.js';
 export * from './priceagent.js';

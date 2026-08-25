@@ -239,8 +239,8 @@ export class GenOutput extends Node<{ image: ImageSocket }, Sockets> {
  * registration overwrites the one before it.
  */
 export function registerGenNodes(): void {
-  registerGenNode({ cls: GenDerivedPrompt, refineFallback: true });
-  registerGenNode({ cls: GenTaskRefs });
+  registerGenNode({ cls: GenDerivedPrompt, seededInput: 'prompt', refineFallback: true });
+  registerGenNode({ cls: GenTaskRefs, seededInput: 'assets' });
   registerGenNode({ cls: GenSlotRef });
   registerGenNode({ cls: GenTemplate });
   registerGenNode({
@@ -278,7 +278,7 @@ export function registerGenNodes(): void {
   });
   registerGenNode({ cls: GenRefList });
   registerGenNode({ cls: GenImageFile });
-  registerGenNode({ cls: GenRefinePrompt });
+  registerGenNode({ cls: GenRefinePrompt, seededInput: 'text' });
   registerGenNode({ cls: GenSwitch });
   registerGenNode({ cls: GenOutput, slotProp: 'slot' });
 }

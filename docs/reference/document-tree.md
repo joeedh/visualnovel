@@ -135,6 +135,12 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
 - **An asset node carries no `path`.** It is bytes in a content-addressed store, not a document —
   and a `path` is what the pane routes to the `wiki` editor, which would then `doc.read` a PNG.
   Clicking one names `ui.assetHash` instead and opens the `asset` editor.
+- **A row a generation graph draws names that graph as well.** Both a `slot` row and an `asset` row
+  a slot claims carry `boundGraph`, the slug of the graph whose active output binds the address, set
+  only while exactly one graph claims it. Clicking either publishes `ui.graphSlug`, so a Gen Graph
+  pane already open follows the click. It only publishes: `EDITORS` has the Gen Graph editor claim
+  the `slot` row and not the `asset` row, since `routeFor` ranks a visible claimant above a hidden
+  one and an open Gen Graph pane would otherwise take clicks on pictures away from the Asset editor.
 - **A node carries identity, never a click action.** It would be tidy to ship the command
   invocation a click runs, the way an interaction target does — but selection is renderer state
   (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`, `ui.assetHash`), not something main
@@ -237,14 +243,14 @@ entry is an invocation rather than a callback, is in
 | `branch:locations` | New location sheet… |
 | `branch:story` | New scene… · Export Fountain |
 | `branch:skills` | New skill… · Ask the agent for a skill… |
-| `asset` | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Open in the Asset editor |
+| `asset` | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Create a graph for this slot (only where a slot claims the picture) · Open in the Asset editor |
 | `scene` | Assign line ids · New scene… · Export Fountain |
 | `shot` | Set coverage… · Set outfit… |
-| `slot` | Upload a file for this… · Adopt an asset for this… · Run pipeline… |
+| `slot` | Upload a file for this… · Adopt an asset for this… · Create a graph for this slot · Run pipeline… |
 | `skill` | Open in the Skills pane · Ask the agent to change this skill… |
 | `branch:assets`, `assetkind`, `wiki`, `dir`, `file`, `more` | none — no menu opens at all |
 
-Four things this table settles:
+What this table settles:
 
 - **A right-click selects but does not open.** The menu acts on the node under the cursor, so the
   selection is published first — otherwise "Regenerate" and whatever the asset pane happens to be
@@ -262,6 +268,12 @@ Four things this table settles:
   with their refusals rather than guessing which applies. There is no _reject_: rejecting a
   candidate is approving a different one, and inventing the command inside a menu would be
   designing the gate through a menu.
+- **A slot is right-clicked as a picture far more often than as a `slot` row.** A `slot` row is
+  drawn only under Unapproved ▸ Not yet rendered, for a slot with no candidates at all; everywhere
+  else the Assets branch draws the picture filling it. _Create a graph for this slot_ is therefore
+  offered from both kinds, and an `asset` row carries the address it fills in `slot` so the entry
+  can take it. A picture no slot claims — a concept, an upload, a base asset — carries no address
+  and is offered nothing.
 - **A kind with nothing to offer is named, not skipped.** A wiki note is the interesting one —
   nothing binds to it, and `doc.write` needs the text, so its only act is the one a plain click
   already performs. `branch:wiki` is the exception among the headings, because it is a place: it is

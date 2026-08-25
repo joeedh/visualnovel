@@ -30,4 +30,16 @@
      existing asset and its prompts will become stale and the old one (including its
 	 prompt chunks) will be set at the latest one in the slot.
 [ ]: the asset editor should have a download button for the rendered image
+[ ]: the node editor doesn't redraw itself after being resized by the user 
+[ ]: create a delete hotkey in the node editor for deleting nodes
+[ ]: the unapproved assets subtree in the document tree should not show stale assets
+[ ]: create a separate 'stale' subtree instead
+[ ]: clicking a shot in the document tree should make it active in the 
+     gen graph editor if a graph is bound to it 
+[x]: add a 'create shot graph' context menu entry when right clicking asset slots
+[ ]: make the gen graph editor match the rest of the app's dark theming.
+[ ]: the pending approval dropdown thingy in the main menu bar should not show stale 
+     assets.
+[ ]: the GenTemplate node's a/b/c sockets should be renamed varA varB varC 
+[ ]: the document tree should have a gen graph subtree
 

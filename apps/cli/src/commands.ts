@@ -229,8 +229,8 @@ export async function cmdExport(args: Args): Promise<number> {
 
 /**
  * The graphs the project holds, and the output nodes whose graph has been edited since they
- * last ran. Drift is reported rather than acted on, the posture a prose edit already takes:
- * a drifted node keeps the picture it drew until someone asks for another one.
+ * last ran. A drifted node keeps the picture it drew until the next `vngen run`, which puts
+ * the slot's task back to `pending` and draws it again.
  */
 async function printGraphStatus(project: LoadedProject): Promise<void> {
   const { docs, problems } = await readProjectGraphs(project.dir, project.paths);
@@ -247,7 +247,7 @@ async function printGraphStatus(project: LoadedProject): Promise<void> {
   }
   for (const drift of report.drifted.slice(0, FAILURES_SHOWN)) {
     const slot = drift.slot ? ` (${drift.slot})` : '';
-    ok(`  drifted: ${drift.slug} node ${String(drift.nodeId)}${slot} — edited since it last ran`);
+    ok(`  drifted: ${drift.slug} node ${String(drift.nodeId)}${slot} — the next run redraws it`);
   }
   if (report.drifted.length > FAILURES_SHOWN) {
     ok(`  … and ${report.drifted.length - FAILURES_SHOWN} more drifted`);
@@ -387,6 +387,9 @@ function printPreview(summary: RunSummary, header: string): void {
   const { preview } = summary;
   ok(header);
   ok(`  pending tasks: ${preview.pendingTasks}`);
+  if (summary.redrawn.length) {
+    ok(`    of those, redrawn for an edited graph: ${summary.redrawn.length}`);
+  }
   if (preview.boundTasks) {
     ok(`  drawn by a graph: ${preview.boundTasks} (counted by the graph estimate below)`);
   }
@@ -510,6 +513,7 @@ export async function cmdRun(
   const { failed, needsHuman } = summary;
   ok(`Ran ${summary.ran.length} task(s).`);
   if (summary.retried.length) ok(`  retried from an earlier run: ${summary.retried.length}`);
+  if (summary.redrawn.length) ok(`  redrawn for an edited graph: ${summary.redrawn.length}`);
   if (failed.length) ok(`  failed: ${failed.length}`);
   if (needsHuman.length) ok(`  needs human: ${needsHuman.length}`);
   ok(`Assets in manifest: ${project.store.manifest().length}`);
