@@ -378,6 +378,24 @@ Tests: each node's runtime against a scripted mock service; the Derived-prompt n
 reproducing byte-identically what the current runner composes for a fixture slot, which is
 the property decision 1 rests on.
 
+Deviation, as built: three socket types are declared alongside the nodes, because path.ux
+ships float and vec3 and both describe geometry. A picture on a socket names the store that
+holds its bytes rather than only its hash, so a node reading an asset does not have to copy
+it into the blob store first, and an image output feeds a reference-list input as a one-item
+list through the destination half of path.ux's coercion. The three host-seeded nodes take
+their value on an input socket rather than in a prop, which is what lets `graphHashes` read
+a seeded value through the socket's `defaultProp` with no special case, and keeps the
+seeded prompt out of the document's authored state. Task refs are seeded as the JSON an
+`AssetRef[]` writes to, on a text input, because a reference-list socket has no
+`ToolProperty` to carry a default. The image nodes hold their seed as a string where empty
+means unauthored, because a `FloatProperty` always carries a value and zero is a valid seed;
+a seed that does not read as a number refuses rather than being dropped. An LLM-rewrite
+node's estimate uses nominal token counts, since an estimate runs before any input has a
+value. The output node declares no output socket, and its runtime returns the terminal
+picture so the journal's `done` record answers what the slot holds. Blend is left out of the
+Switch/Blend pair and stays unimplemented: nothing in the repository composites two
+pictures, so a blend node would be a refusal wearing a node's shape.
+
 ### Stage 6 — the executor and the graph runner
 
 - **Executor** (in `@vn/gengraph`): takes the graph and a **target node set**, and
