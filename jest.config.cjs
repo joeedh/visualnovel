@@ -44,6 +44,8 @@ const shared = {
   // Points $VNAUTHOR_HOME somewhere empty, so a test that resolves keys cannot read the
   // developer's own. See the file for why the default has to be on for everything else.
   setupFiles: ['<rootDir>/scripts/jest-setup.cjs'],
+  // Raises the per-test timeout; see the file for why it is not a `testTimeout` key.
+  setupFilesAfterEnv: ['<rootDir>/scripts/jest-timeout.cjs'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   // Linked worktrees under .claude/worktrees, the source snapshot
   // `scripts/package.desktop.mjs` stages for the installer, and the app image
@@ -72,7 +74,7 @@ const shared = {
     // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
     // same build ships beside it in CommonJS. Shared because both the desktop app and
     // @vn/gengraph depend on it, always as the `vendor/nstructjs` submodule.
-    '^nstructjs$': '<rootDir>/vendor/nstructjs/build/_nstructjs.js',
+    '^nstructjs$': '<rootDir>/vendor/nstructjs/build/nstructjs-jest.js',
   },
 };
 

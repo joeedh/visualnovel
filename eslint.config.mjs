@@ -213,6 +213,12 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  // The one script that runs inside jest rather than beside it, so it sees the framework's
+  // globals. A `.test.ts` file needs no such entry: typescript-eslint turns `no-undef` off.
+  {
+    files: ['scripts/jest-timeout.cjs'],
+    languageOptions: { globals: { jest: 'readonly' } },
+  },
   {
     files: ['packages/**/*.ts', 'apps/**/*.ts'],
     plugins: { import: importPlugin, boundaries },
