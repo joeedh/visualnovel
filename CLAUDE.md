@@ -114,7 +114,7 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store ─ export scriptedit bible artgen   git ──── commands
+  │   model store ─ export scriptedit bible artgen gengraph   git ──── commands
   │     │   │  │  ╲     │
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
@@ -132,10 +132,12 @@ providers   │      ╲ ╲  │
   `@vn/scheduler`. The boundaries rule checks each import statement rather than the
   transitive closure, so routing a forbidden import through an allowed leaf package still
   violates the design and must not be done.
-- Five leaves share that constrained allow-list. `@vn/export`, `@vn/scriptedit`,
-  `@vn/bible` and `@vn/artgen` are leaves because two hosts (the desktop app and
-  `vnauthor`) must run the same rules, so the rules cannot live in either host.
-  `@vn/agentreport` is a leaf because its one host is the desktop app; it additionally
+- Six leaves share that constrained allow-list. `@vn/export`, `@vn/scriptedit`,
+  `@vn/bible`, `@vn/artgen` and `@vn/gengraph` are leaves because two hosts (the desktop
+  app and `vnauthor`) must run the same rules, so the rules cannot live in either host.
+  `@vn/gengraph` has a third host in `@vn/pipeline`, which runs a bound graph, and it is
+  forbidden from importing the pipeline or the scheduler for the same reason `@vn/artgen`
+  is. `@vn/agentreport` is a leaf because its one host is the desktop app; it additionally
   imports `@vn/commands` for the command records that transcripts do not contain.
 - Two packages sit outside the graph. `@vn/debug2d` imports nothing from `packages/` and
   is dev-only in the renderer. `@vn/testkit` may import every layer, and nothing may
