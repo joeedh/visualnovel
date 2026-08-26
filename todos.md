@@ -42,4 +42,6 @@
      assets.
 [ ]: the GenTemplate node's a/b/c sockets should be renamed varA varB varC 
 [ ]: the document tree should have a gen graph subtree
+[ ]: editing a node property in the gen graph editor is slow — planned in
+     docs/plans/gengraph-editing-cost-tasklist.md
 
