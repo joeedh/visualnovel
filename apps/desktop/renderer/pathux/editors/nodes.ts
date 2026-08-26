@@ -11,7 +11,14 @@ import {
   type Graph,
   type Node as GenNode,
 } from '@vn/gengraph';
-import { Context, NodeGraphView, UIBase, type Container, type ContextLike } from 'pathux';
+import {
+  Context,
+  NodeGraphView,
+  PackFlags,
+  UIBase,
+  type Container,
+  type ContextLike,
+} from 'pathux';
 import type { DataAPI, EditVerdict, GraphEdit, NodeGraphDelegate } from 'pathux';
 import type { ToolProperty } from 'pathux-toolprop';
 
@@ -126,6 +133,9 @@ export class GenGraphEditor extends VnEditor {
     this.appendSurface(surface);
 
     this.view = UIBase.createElement('nodegraphview-x') as NodeGraphView;
+    // prevent sliders and textboxes from updating in realtime
+    this.view.inherit_packflag |= PackFlags.NO_REALTIME;
+
     this.view.parentWidget = this.container;
     canvas.appendChild(this.view);
     // Per instance, because two Gen Graph panes may be open on different slugs and one `graph`

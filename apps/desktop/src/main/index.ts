@@ -1001,10 +1001,14 @@ function createWindow(options: NewWindowOptions = {}): WindowId {
   });
 
   // Removing the stock menu (see `app.whenReady`) also removed F12, and the renderer cannot open
-  // its own devtools, so the accelerator is caught here. Registered per window on purpose: a
+  // its own devtools, so the accelerators are caught here (F12 and Ctrl+I alone).
+  // Registered per window on purpose: a
   // module global would target the wrong window once more than one exists.
   win.webContents.on('before-input-event', (_event, input) => {
-    if (input.type === 'keyDown' && input.key === 'F12') win.webContents.toggleDevTools();
+    if (input.type !== 'keyDown') return;
+    const ctrlI =
+      input.control && !input.shift && !input.alt && !input.meta && input.key.toLowerCase() === 'i';
+    if (input.key === 'F12' || ctrlI) win.webContents.toggleDevTools();
   });
 
   // The wiki pane's `beforeunload` guard refuses to unload while a draft is unsaved, and Electron
@@ -1048,7 +1052,7 @@ void app.whenReady().then(async () => {
 
   // No stock menu: this shell has its own bar, and the File/Edit/View scaffolding named things
   // it does not have. Quit and DevTools are the two accelerators worth keeping - they come back
-  // as `window.quit` on Ctrl+Q in the renderer's keymap and F12 in `createWindow`.
+  // as `window.quit` on Ctrl+Q in the renderer's keymap and F12 / Ctrl+I in `createWindow`.
   Menu.setApplicationMenu(null);
 
   // Before anything opens a workspace, because a missing git is what opening one will fail on.

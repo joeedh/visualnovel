@@ -44,4 +44,7 @@
 [ ]: the document tree should have a gen graph subtree
 [ ]: editing a node property in the gen graph editor is slow — planned in
      docs/plans/gengraph-editing-cost-tasklist.md
-
+[ ]: the gen graph editor should have a button to view its associated asset if it has one
+	 in the asset editor
+[ ]: when editing text properties in the gen graph editor they should only commit 
+     when the textbox loses focus or the user presses enter.	 

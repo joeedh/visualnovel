@@ -7,7 +7,10 @@
     "tsconfig.base.json",
     "scripts/*.mjs",
     "packages/*/src/**",
-    "packages/*/package.json"
+    "packages/*/package.json",
+    "vendor/path.ux/scripts/**",
+    "vendor/nstructjs/build/**",
+    "vendor/nstructjs/package.json"
   ],
   "tasks": {
     "build": {

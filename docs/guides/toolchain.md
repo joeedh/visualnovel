@@ -59,6 +59,12 @@ wired that way" companion.
   `packages/*/src/**`, the esbuild scripts, and the tsconfigs as `globalDependencies`, which
   is what actually invalidates an app's cache. Outputs are `dist/**`; the local cache lives in
   `.turbo` (gitignored).
+- **The vendored submodules are `globalDependencies` too.** The renderer compiles path.ux and
+  nstructjs from the submodule via vite aliases rather than from a package, so nothing in
+  `apps/desktop` changes when they do. Without `vendor/path.ux/scripts/**` and
+  `vendor/nstructjs/build/**` on the list, `pnpm build` replays a cached `dist/**` over a
+  freshly built one and the app runs the previous path.ux. The glob stops at `scripts/` and
+  `build/` because each submodule carries a `node_modules` that would otherwise be hashed.
 - **The desktop bundle has a third step, `build:catalog`.** `scripts/gen-command-catalog.mjs`
   bundles `apps/desktop/src/main/commands/catalog-entry.ts` and writes
   `apps/desktop/dist/commands.json` (see [`../reference/command-system.md`](../reference/command-system.md)). Both

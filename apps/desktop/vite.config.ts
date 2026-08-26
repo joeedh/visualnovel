@@ -37,6 +37,9 @@ export default defineConfig({
     target: 'es2022',
     outDir: resolve(__dirname, 'dist/renderer'),
     emptyOutDir: true,
+    // Vite defaults this off, which leaves the renderer as the one bundle DevTools cannot map
+    // back to source; the main and preload bundles have carried maps all along.
+    sourcemap: true,
   },
   server: { port: 5176 },
 });
