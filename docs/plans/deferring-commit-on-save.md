@@ -453,7 +453,8 @@ each, which is 913 ms of it: 3 for `gitState`, 7 per undo snapshot, 5 for the co
 `prune`, and 2 for `readGraph`'s conflict check. So batching wins by removing spawns rather
 than by avoiding a large scan, which is worth 5 spawns per deferred edit — a run of thirty
 saves 29 × 5, about 5 seconds. It also means any alternative that narrows a pathspec instead
-buys nothing.
+buys nothing. Stage 5's "Re-measured" below is the same harness run against the shipped
+change, and it lands where this paragraph predicts.
 
 **Serializing mutating commands costs throughput, and the node editor does not pay it.** The
 same 20 edits run four at a time take 320 ms of wall clock each while each `exec` still takes
@@ -587,6 +588,28 @@ plus a manual check over CDP in Stage 5.
 Verification: over CDP, drag a slider on a node and then run a `story.*` edit; assert with
 `git log` that the drag produced one commit whose `Vn-Batch` names the run, and that the story
 edit's commit names only the scene file. Re-run Stage 0's measurement and record the delta.
+
+#### Re-measured
+
+Stage 0's harness again, on the same machine in one session, 2000 committed assets and 30
+timed edits, with the run ending in a `dispose()` so the batch's own commit is charged to the
+run that deferred it. The two rows differ only in whether `gengraphSetProp` declares
+`defersCommit`, so the pair is a before and after rather than two readings taken a stage apart.
+
+| Per edit, mean over 30 | Before | After |
+| --- | --- | --- |
+| wall clock | 1036.4 ms | 824.7 ms |
+| `exec` end to end | 967.9 ms | 747.3 ms |
+| `gitState()` | 108.6 ms | 109.8 ms |
+| the journal's two `capture` calls | 542.6 ms | 550.4 ms |
+| `Committer.commit` | 229.0 ms | never called |
+| the read, the write and everything else | 87.7 ms | 87.1 ms |
+| git subprocesses | 26.0 | 21.2 |
+
+211.7 ms per edit, 20.4% of the wall clock, and 6.4 seconds over the run. The 4.8 subprocesses
+that go are the commit's 5, less the one flush amortized across 30 edits, which is what the
+Stage 0 arithmetic predicted. Every other term is unmoved, so the corrected premise holds in
+both directions: the commit was never the bulk of the cost, and removing it costs nothing else.
 
 ### Stage 6 — docs
 

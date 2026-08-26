@@ -412,6 +412,8 @@ export const gengraphSetProp = define({
     'does not parse is refused, and so is one addressing an asset rather than a slot.',
   mutating: true,
   undoable: true,
+  // Dragging a slider sends one of these per frame, and each is a separate undo point either way.
+  defersCommit: true,
   props: {
     slug: prop.string(SLUG),
     node: prop.string(NODE),
@@ -463,6 +465,8 @@ export const gengraphMoveNodes = define({
     'one undo puts every node back. A move naming a node the graph has lost is refused whole.',
   mutating: true,
   undoable: true,
+  // A drag across the canvas sends one of these per frame, the way `gengraph.setProp` does.
+  defersCommit: true,
   props: {
     slug: prop.string(SLUG),
     moves: prop.string('the new positions, as JSON `[{"node":"1","x":0,"y":0}]`', {
