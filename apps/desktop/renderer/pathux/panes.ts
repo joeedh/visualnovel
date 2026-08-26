@@ -23,12 +23,12 @@ export interface Pane {
   /** Chrome (the header) rather than somewhere the author navigates to. */
   chrome: boolean;
   /**
-   * A floating popup window rather than a tile in the mesh.
+   * This pane is a floating popup window rather than a tile in the mesh.
    *
-   * It is on screen and it shows an editor, so {@link paneShowing} finds it — asking for the
-   * Tasks editor while a Tasks popup is up means that one. Everything else here is about
-   * arranging the mesh, and a popup is not in the mesh: splitting one, collapsing one, or
-   * covering one with a different editor are all things the author never asked for.
+   * It is on screen and shows an editor, so {@link paneShowing} finds it: asking for the
+   * Tasks editor while a Tasks popup is up returns that popup. Everything else here is about
+   * arranging the mesh, and a popup is not part of the mesh, so splitting one, collapsing one,
+   * or covering one with a different editor are all things the author never asked for.
    */
   floating: boolean;
   active: boolean;

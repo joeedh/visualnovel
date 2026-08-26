@@ -46,7 +46,7 @@ async function run(invocation) {
   return outcome.data;
 }
 
-/** The same, but the refusal is the answer being looked for. */
+/** Runs the same call, but expects it to be refused and returns the refusal. */
 async function refused(invocation) {
   const outcome = await exec(socket, invocation);
   ok(!outcome.ok, `${invocation} was accepted, and should not have been`);
@@ -350,9 +350,9 @@ await step(5, 'a clause reorders by keyboard and by drag, and nothing moves earl
   return dropped.join(' → ');
 });
 
-// Under `--mock` the canned answer is the *identity* condensation over the flattened chunks
+// Under `--mock` the canned answer is the identity condensation over the flattened chunks
 // (`session.ts`'s `condensingText`), so what can be checked here is that the structured path ran
-// and its answer was stored — not that a model reworded anything.
+// and its answer was stored, not that a model reworded anything.
 await step(6, 'condensing writes an agent prompt that covers the clauses', async () => {
   await run(`prompt.condense(hash='${subject}')`);
   const after = await info();

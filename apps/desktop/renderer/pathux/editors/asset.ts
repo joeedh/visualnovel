@@ -169,7 +169,7 @@ export class AssetEditor extends VnEditor {
       this.info = outcome.data as AssetInfo;
       const watch = watchSlot(was, this.info, this.holding);
       this.holding = watch.holding;
-      // A pinned pane holds what it was pinned to, which is the whole point of the pin.
+      // A pinned pane keeps showing what it was pinned to, so it never follows here.
       if (watch.follow !== '' && !this.pinned) {
         this.ui.assetHash = watch.follow;
         this.announce();
@@ -772,8 +772,8 @@ export class AssetEditor extends VnEditor {
     b.addEventListener('click', () => this.showTask(failure.task));
     band.appendChild(b);
 
-    // On the band rather than in the bar: the offer only exists while there is a failure to read,
-    // and this is where the author is reading it.
+    // Placed on the band rather than the bar, because the offer exists only while there is a
+    // failure here for the author to read.
     const fix = button('as-mode', 'Fix with agent');
     fix.title =
       'Open a conversation about this failure, with what it said already in the composer. Nothing is sent';
@@ -1056,7 +1056,8 @@ export class AssetEditor extends VnEditor {
     }
     head.appendChild(badges);
 
-    // The full hash, not the short one: this is the pane you copy an identity out of.
+    // Shows the full hash rather than the short one, since this pane is what an author copies
+    // an identity out of.
     head.appendChild(el('div', 'as-hash', `${info.hash}.${info.ext}`));
     return head;
   }

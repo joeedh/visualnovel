@@ -1,5 +1,5 @@
 /**
- * Where a model key goes, and what the app is willing to say about one it did not write.
+ * Tests where a model key goes, and what the app is willing to say about one it did not write.
  *
  * The invariant under test is the same in both halves: a key value reaches exactly one file and
  * nothing else. Every message, every status row and every recorded property is checked for the

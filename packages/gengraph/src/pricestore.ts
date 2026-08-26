@@ -1,7 +1,7 @@
 /**
- * The author's own price table, and the refresh that fills it in. It is per-user rather than
- * per-project, because what a vendor charges is the same in every project on the machine and
- * a figure looked up once should not have to be looked up again in the next one.
+ * Stores the author's own price table and refreshes it. The table is scoped per-user rather
+ * than per-project, because what a vendor charges is the same in every project on the machine,
+ * and a figure looked up once should not have to be looked up again in the next one.
  */
 import { userConfigDir } from '@vn/config';
 import type { UserDirEnv } from '@vn/config';

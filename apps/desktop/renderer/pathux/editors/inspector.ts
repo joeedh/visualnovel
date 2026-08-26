@@ -191,7 +191,8 @@ export class InspectorEditor extends VnEditor {
     head.appendChild(st);
     box.appendChild(head);
 
-    // The full hash, not the short one: this is the pane you copy an identity out of.
+    // This shows the full hash, not the short one, because this pane is where an identity is
+    // copied out of.
     const hash = mono(task.hash, TOKENS.mistDim, 10);
     hash.style.wordBreak = 'break-all';
     box.appendChild(hash);

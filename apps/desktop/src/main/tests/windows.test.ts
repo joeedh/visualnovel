@@ -53,7 +53,7 @@ describe('Windows', () => {
     expect(windows.focused()).toBe(0);
     expect(windows.focusedHandle()).toBe(a);
 
-    // A closed window must drop out of the recency list, not merely out of the map — otherwise
+    // A closed window must drop out of the recency list, not merely out of the map. Otherwise
     // the app keeps addressing a window that is gone.
     windows.remove(0);
     expect(windows.focused()).toBe(1);

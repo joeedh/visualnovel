@@ -19,7 +19,7 @@ export function orderDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic
   ];
 }
 
-/** `3 errors · 1 warning`, or the one that is not zero, or nothing at all. */
+/** Formats the counts as `3 errors · 1 warning`; a zero count is omitted, and the result is empty when both are zero. */
 export function diagnosticSummary(diagnostics: readonly Diagnostic[]): string {
   const errors = diagnostics.filter((d) => d.severity === 'error').length;
   const warnings = diagnostics.length - errors;

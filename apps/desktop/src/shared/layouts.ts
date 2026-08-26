@@ -63,7 +63,7 @@ export interface LayoutFile {
   screen?: unknown;
 }
 
-/** A template as a list needs it — enough to draw a row, never the arrangement itself. */
+/** Carries enough about a template to draw a row in a list, never the arrangement itself. */
 export interface LayoutSummary {
   slug: string;
   title: string;

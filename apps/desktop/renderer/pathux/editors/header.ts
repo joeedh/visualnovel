@@ -203,8 +203,8 @@ export class VnHeaderEditor extends VnEditor {
    * signal that the list is stale, and the guard is what keeps `rebuild` from fetching forever.
    */
   private refreshRecents(): void {
-    // Keyed on the root, not the title: two projects may be called the same thing, and the list
-    // the second one showed would then be the first one's, forever.
+    // Keyed on the root, not the title. Two projects may be called the same thing, and keying on
+    // the title would show the second project's list under the first project's name, forever.
     const key = this.ui.projectRoot;
     if (this.recentsFor === key) return;
     this.recentsFor = key;
@@ -316,8 +316,8 @@ export class VnHeaderEditor extends VnEditor {
         ? 'Plan mode: the agent reads but never writes. Click to let it apply edits.'
         : 'Execute mode: the agent may apply edits. Click to make it read-only again.';
 
-    // The rect is read inside the callback, not here: the bar is still being built at this point
-    // and the button has not been laid out, so a rect taken now is the zero one.
+    // The rect is read inside the callback, not here. The bar is still being built at this point
+    // and the button has not been laid out yet, so a rect taken now would be the zero one.
     const waiting = this.bar.button(ui.needsApproval ? `🎨 ${ui.needsApproval}` : '🎨', () =>
       openApprovals(rectOf(waiting)),
     );
@@ -496,8 +496,9 @@ export class VnHeaderEditor extends VnEditor {
         tooltip: 'How to get a model key, which of yours are set, and where they are read from',
       },
       Menu.SEP,
-      // Not fired from the menu either: `upload.pick` is `confirm`, and the dialog is where a
-      // command says what it is about to do before the OS chooser takes over the screen.
+      // This is not fired from the menu either. `upload.pick` is `confirm`, so the dialog runs
+      // first and says what the command is about to do before the OS chooser takes over the
+      // screen.
       {
         name: 'Upload Files…',
         callback: () => openCommandDialog('upload.pick'),
@@ -625,9 +626,9 @@ export class VnHeaderEditor extends VnEditor {
         tooltip: 'Reapply the act that was just undone',
       },
       Menu.SEP,
-      // Formed rather than fired: the command is `confirm`, and its dialog is where it says how
-      // many pictures it is about to approve and how many tasks it is about to run — which is the
-      // one thing an author wants to read before an unattended pass spends real model calls.
+      // This opens a dialog rather than firing directly, because the command is `confirm`. The
+      // dialog says how many pictures it is about to approve and how many tasks it is about to
+      // run, which an author wants to read before an unattended pass spends real model calls.
       {
         name: 'Approve & Generate All…',
         callback: () => openCommandDialog('pipeline.approveAndRun'),

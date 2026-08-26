@@ -19,7 +19,7 @@
 import { touches } from '../../src/shared/writes.js';
 import type { DocFile, DocSaveResult } from '../../src/shared/ipc.js';
 
-/** What a buffer needs the app for, which is nothing but the two document commands. */
+/** The only two document commands a buffer needs from the app: reading and writing a file. */
 export interface DocIo {
   read(path: string): Promise<{ ok: true; file: DocFile } | { ok: false; error: string }>;
   write(
@@ -100,7 +100,7 @@ export class DocBuffer {
     return this.isDirty;
   }
 
-  /** The last thing worth saying about this buffer — a refusal, a diagnostic, or nothing. */
+  /** The most recent message about this buffer: a refusal, a diagnostic, or an empty string. */
   get note(): string {
     return this.message;
   }

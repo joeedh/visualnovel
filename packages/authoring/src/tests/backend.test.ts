@@ -42,7 +42,7 @@ function convoChat(
 
 describe('NativeAgentBackend', () => {
   it('throws if the chat backend cannot hold a conversation', () => {
-    // `chatWithTools` alone is not enough: it is single-shot, so it caches nothing.
+    // `chatWithTools` alone is not enough, because it is single-shot and caches nothing.
     const plain: ChatBackend = {
       modelId: 'plain',
       message: () => Promise.resolve(''),

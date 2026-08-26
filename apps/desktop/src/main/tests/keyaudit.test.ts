@@ -193,8 +193,9 @@ describe('renderReview', () => {
     expect(md).toContain('## anthropic — could not be checked');
   });
 
-  // This prevents one report: every page failed to load and the top line reads as a clean week.
-  // A run that looked at nothing has to say so in its first sentence.
+  // This test guards against a specific failure: every page fails to load, yet the top line
+  // reads as a clean week. The rendered report states in its first sentence when a run checked
+  // nothing.
   it('never reports a pass for a week in which nothing was checked', () => {
     const md = renderReview(
       [unreadable('gemini', 'timed out'), unreadable('anthropic', 'no key')],

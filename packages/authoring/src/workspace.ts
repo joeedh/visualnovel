@@ -338,8 +338,9 @@ export class Workspace {
   }
 
   /**
-   * The shot-override rule. The storyboard is read here for the reason {@link shotOrder} reads
-   * it — the rule needs the shots, and nothing above this hands them down.
+   * Resolves the shot-override rule for an outfit. The storyboard is read here, as it is in
+   * {@link shotOrder}, because resolving the outfit needs the shots, and nothing above this
+   * method hands them down.
    */
   async shotOutfit(
     sceneId: string,

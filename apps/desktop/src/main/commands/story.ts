@@ -703,7 +703,7 @@ export const storyDecomposeAll = define({
     'and write the cast sheets first — a character the project does not have yet is dropped from ' +
     'the shots silently and permanently.',
   mutating: true,
-  // One undo point for the whole batch, which is the reason this is one command and not N.
+  // One undo point covers the whole batch, so this runs as one command rather than N.
   undoable: true,
   // Confirmed because it costs a model call per scene, and because the storyboard it writes is
   // never regenerated afterwards.

@@ -119,8 +119,8 @@ async function resolve(
     ...(deps.config.start ? { start: deps.config.start } : {}),
   });
 
-  // A shot's frame is stamped where it was decomposed, so the storyboard is loaded here and handed
-  // to `resolveSlot` as well — it needs the same shots to say what the frame's identity is.
+  // A shot's frame is stamped where the scene was decomposed, so this loads the storyboard and
+  // passes it to `resolveSlot` too, which needs the same shots to compute the frame's identity.
   const shots = new Map<string, readonly Shot[]>();
   let stamp: ShotStamp | undefined;
   if (slot.kind === 'shot') {

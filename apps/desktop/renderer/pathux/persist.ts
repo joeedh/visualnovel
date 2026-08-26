@@ -271,8 +271,8 @@ export function installPersistence(shell: ShellApp): void {
     );
   }
 
-  // A quit does not run the debounce, so the last `DEBOUNCE_MS` of a drag would otherwise be the
-  // one thing not remembered
+  // A quit skips the debounce, so this handler saves directly. Otherwise the last
+  // `DEBOUNCE_MS` of a drag would go unsaved
   window.addEventListener('beforeunload', () => {
     if (timer !== undefined) clearTimeout(timer);
     saveLayout(shell);

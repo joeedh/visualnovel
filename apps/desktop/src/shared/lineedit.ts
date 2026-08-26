@@ -41,9 +41,9 @@ export function commitOf(line: CoverageLine, draft: string): Invocation | null {
  * A one-line message above the rows. `preview` says what would happen; `ok` and `refused` say
  * what did happen.
  *
- * Both ways a command reports before it runs land here — a `check` asked while the author types,
- * and a `Verdict` judged while something is carried — so the two surfaces cannot disagree about
- * which of those reads as a warning.
+ * Both ways a command reports before it runs produce this same type — a `check` asked while the
+ * author types, and a `Verdict` judged while something is carried — so the two surfaces cannot
+ * disagree about which one reads as a warning.
  */
 export interface Notice {
   tone: 'ok' | 'refused' | 'preview';

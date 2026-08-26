@@ -9,7 +9,7 @@
 import type { ChunkCategory, ChunkEdit, ChunkOrigin, PromptChunk, PromptOverride } from '@vn/types';
 import { sha256 } from '@vn/util';
 
-/** A chunk plus what an override did to it. `text` is what would actually be sent. */
+/** Represents a chunk together with what an override did to it. `text` holds what would actually be sent. */
 export interface EffectiveChunk extends PromptChunk {
   /** The builder's own text, before any edit. */
   derived: string;

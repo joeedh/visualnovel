@@ -405,7 +405,7 @@ export class TimelineEditor extends VnEditor {
     return note;
   }
 
-  /** One door: a button over one command, checked before it is drawn. */
+  /** Renders a button over one command, checked before it is drawn. */
   private door(
     label: string,
     id: string,
@@ -857,9 +857,10 @@ export class TimelineEditor extends VnEditor {
     }
 
     if (this.create) {
-      // The sweep's preview is the rows themselves: the shot does not exist yet, so there is no
-      // bracket to ghost — the claim tint says which lines the drop would cover. Only for a drop
-      // that would be accepted; a refused sweep keeps its reason in the notice and tints nothing.
+      // The sweep previews by tinting the rows themselves, because the shot does not exist yet and
+      // there is no bracket to ghost; the claim tint marks which lines the drop would cover. This
+      // applies only to a drop that would be accepted — a refused sweep keeps its reason in the
+      // notice and tints nothing
       if (!this.create.lines || !this.create.verdict?.accept) return;
       const swept = new Set(this.create.lines);
       for (const row of this.coverage.rows) {
@@ -889,9 +890,8 @@ export class TimelineEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   private openEditor(line: CoverageLine): void {
-    // Mid-write the refusal is spoken: the author clicked squarely on a line and gets the
-    // sentence. Mid-drag (`canEdit`, below) it is silent, because the click landed nowhere by
-    // design.
+    // This shows the refusal sentence mid-write, when the author clicks squarely on a line. It
+    // shows nothing mid-drag (`canEdit`, below), because the click lands nowhere by design
     if (this.busy.pending) return this.say(WRITE_PENDING);
     if (!canEdit(this.mode())) return;
     this.settled = false;

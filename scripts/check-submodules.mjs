@@ -54,11 +54,11 @@ async function exists(path) {
 }
 
 /**
- * Walk submodules depth-first, collecting two different kinds of not-ready: declared but empty,
- * and checked out but never installed. The second is the subtler one — a submodule with a
- * `package.json` of its own is not a workspace member, so the root `pnpm install` does not reach
- * it, and what it needs is missing without anything saying so. path.ux is exactly that shape, and
- * the failure it produces is a wall of "has no exported member" from inside `vendor/`.
+ * Walks submodules depth-first, collecting two kinds of not-ready: declared but empty, and
+ * checked out but never installed. The second kind is subtler: a submodule with its own
+ * `package.json` is not a workspace member, so the root `pnpm install` does not reach it, and
+ * what it needs goes missing without anything saying so. path.ux is exactly that shape, and the
+ * failure it produces is a wall of "has no exported member" errors from inside `vendor/`.
  */
 async function survey(base, found = { missing: [], uninstalled: [] }) {
   for (const rel of await declaredPaths(join(base, '.gitmodules'))) {

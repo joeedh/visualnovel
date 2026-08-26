@@ -225,7 +225,7 @@ export interface ReplOptions {
   noNative?: boolean;
   /** What one turn may spend, in non-cached tokens. Defaults to the agent's own default (200k). */
   budget?: BudgetChoice;
-  /** Inject a channel (tests); defaults to the real terminal. */
+  /** A channel to inject for tests; defaults to the real terminal. */
   channel?: Channel;
 }
 

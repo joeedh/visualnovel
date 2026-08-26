@@ -151,9 +151,9 @@ export class WikiEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /**
-   * Refetch the tree the strip reads. A failure is silent, because the pane's job is the document
-   * in the box and a backlink panel that could not be built is not something the author can act on
-   * while typing.
+   * Refetches the tree the strip reads. A failure stays silent, because the pane displays the
+   * document in the box, not backlinks, and an author cannot act on a backlink panel that could
+   * not be built while typing.
    */
   private async loadTree(): Promise<void> {
     try {

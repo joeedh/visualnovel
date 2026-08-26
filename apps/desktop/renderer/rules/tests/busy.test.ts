@@ -1,8 +1,8 @@
 /**
- * Which long-running work the header offers to stop, and what it says while it runs.
+ * This file covers which long-running work the header offers to stop, and what it says while it runs.
  *
- * The one that matters is the absence: an authoring turn draws no Stop in the header, because the
- * conversation editor owns that button and two of them would disagree about who ended the turn.
+ * The absence matters most: an authoring turn draws no Stop in the header, because the
+ * conversation editor owns that button, and two Stop buttons would disagree about who ended the turn.
  */
 import { busyControls } from '../busy.js';
 import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, BUSY_RUN } from '../../../src/shared/ipc.js';

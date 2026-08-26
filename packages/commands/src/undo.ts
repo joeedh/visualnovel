@@ -132,12 +132,10 @@ export class UndoJournal {
   }
 
   /**
-   * Whether every repo's working copy is still exactly where `point`'s `side` left it.
-   *
-   * This is the §7 guard, and it closes path-scoped restore's worst failure mode: an author
-   * who hand-edited a file since the command ran would otherwise have that edit silently
-   * discarded. Trees are content-addressed, so each comparison is one sha, and all of them
-   * happen before any repo is touched.
+   * Checks whether every repo's working copy is still exactly where `point`'s `side` left it,
+   * which is the §7 guard against path-scoped restore silently discarding a hand-edit an author
+   * made to a file after the command ran. Each comparison is one content-addressed sha, and all
+   * of them happen before any repo is touched.
    */
   async check(
     point: UndoPoint,

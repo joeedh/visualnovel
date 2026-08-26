@@ -120,9 +120,9 @@ export function newShot<S extends CoverShot>(
     lines: readonly string[];
     framing?: Shot['framing'] | undefined;
     /**
-     * Character ids in frame, in the order they matter. An empty list means the speakers of the
-     * claimed lines, which is also what omitting it means — a shot framing nobody is what
-     * narration already produces, and is not worth a second way of saying it.
+     * Character ids in frame, in the order they matter. An empty list and an omitted list both
+     * default to the speakers of the claimed lines, since a shot framing nobody is what narration
+     * already produces and does not need a second way of saying it.
      */
     subjects?: readonly string[] | undefined;
     /** The scene's location variant ids, for validating the default. */

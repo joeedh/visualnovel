@@ -652,7 +652,8 @@ describe('planTasks (unavailable base assets)', () => {
     const why = baseRefusal({ state: 'unavailable', root: '/p/assets', count: 0 });
     expect(why).toContain('/p/assets');
     expect(why).toContain('restore');
-    // The other two states are not a refusal — `absent` is a brand-new or legacy project.
+    // Neither of the other two states produces a refusal. `absent` covers a brand-new or legacy
+    // project.
     expect(baseRefusal({ state: 'absent', root: '/p/assets', count: 0 })).toBeUndefined();
     expect(baseRefusal({ state: 'ready', root: '/p/assets', count: 4 })).toBeUndefined();
     expect(baseRefusal(undefined)).toBeUndefined();

@@ -25,9 +25,12 @@ import { dirname, resolve } from 'node:path';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const desktop = resolve(root, 'apps/desktop');
 
-/** Whether nothing is listening on loopback there — asked by binding it, which is the only answer
- *  that is not a guess. The gap between releasing it here and Electron taking it is a race we
- *  accept: it is a developer loop, and the alternative is holding a socket the child cannot have. */
+/**
+ * Checks whether nothing is listening on loopback at this port by binding it, which is the only
+ * answer that is not a guess. Releasing the port here and Electron taking it later leaves a race,
+ * and this accepts that race deliberately because it runs only in a developer loop, where the
+ * alternative would hold a socket the child process cannot have.
+ */
 function isFree(candidate) {
   return new Promise((ok) => {
     const probe = createServer();

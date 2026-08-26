@@ -449,7 +449,7 @@ function boundGraphOf(input: DocTreeInput, key: string): { boundGraph?: string }
   return slug === undefined ? {} : { boundGraph: slug };
 }
 
-/** What a backlink entry is about: one of the three things a document in this project can be. */
+/** A backlink entry's subject is one of the three things a document in this project can be. */
 type Subject = { characterId: string } | { locationId: string } | { sceneId: string };
 
 /** Whether a scene names this subject at all — its cast, its setting, or its own id. */

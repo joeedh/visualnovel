@@ -327,7 +327,7 @@ describe('the desktop registry', () => {
       'upload.pick',
       'view.resetLayout',
       'view.saveLayout',
-      // Neither writes anything; both say what pressing it costs, which is a window or all of them.
+      // window.close and window.quit write nothing. Each describes what pressing it costs: one window for window.close, all of them for window.quit.
       'window.close',
       'window.quit',
       'workspace.create',

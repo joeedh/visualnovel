@@ -66,8 +66,8 @@ describe('reading the answer back', () => {
     expect(read('switch to GPT-5 please')).toEqual({ do: 'switch', model: 'gpt-5' });
   });
 
-  // Silence and an unreadable answer both stop the turn, since nobody said to spend more of the
-  // author's money
+  // Silence and an unreadable answer both stop the turn, because neither one authorizes
+  // spending more of the author's money
   it('stops on the stop row, on silence, and on anything it cannot read', () => {
     expect(read('Stop this turn')).toEqual({ do: 'stop' });
     expect(read('   ')).toEqual({ do: 'stop' });

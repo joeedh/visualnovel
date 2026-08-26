@@ -89,7 +89,7 @@ const guarded = define({
   },
 });
 
-/** A precondition and the run it does not gate: `check` refuses, `run` goes ahead anyway. */
+/** This command declares a precondition but does not gate on it: `check` refuses while `run` proceeds anyway. */
 const checked = define({
   id: 'demo.checked',
   title: 'Checked',
@@ -166,8 +166,8 @@ describe('CommandStack.exec', () => {
   });
 
   /**
-   * The bytes are in the file and in the undo snapshot; `commands.jsonl` keeps a fingerprint.
-   * The half that matters most is the second assertion — the command itself is not digested.
+   * The bytes are in the file and in the undo snapshot, and `commands.jsonl` keeps a fingerprint.
+   * The second assertion matters most: it checks that the command itself is not digested.
    */
   it('records a digest of a bulk prop, and still hands the command the real text', async () => {
     const { stack, host, persisted } = setup();
@@ -317,8 +317,8 @@ describe('CommandStack.check', () => {
   });
 
   /**
-   * The rule the whole three-state design exists for. A command with no precondition has said
-   * nothing about whether it would run; answering `accept` would be inventing an opinion.
+   * This is the reason the three-state design exists. A command with no precondition carries
+   * no information about whether it would run, so answering `accept` would invent an opinion.
    */
   it('reports a command with no check as undeclared, never as an accept', async () => {
     const { stack } = setup();
@@ -534,7 +534,7 @@ describe('undo/redo', () => {
     await stack.exec('demo.edit', { to: 'w1' }, 'ui');
     expect(stack.history()[1]!.undo).toMatchObject({ changed: false });
 
-    // Undo names the edit that is actually visible, not the one that wrote nothing.
+    // Undo names the edit that changed the tree; the no-op edit before it is skipped.
     expect(stack.undoState().undoLabel).toBe("demo.edit(to='w1')");
     expect(stack.undoCandidate()!.seq).toBe(1);
     await stack.undo();

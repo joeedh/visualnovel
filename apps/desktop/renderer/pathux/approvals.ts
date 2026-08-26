@@ -102,8 +102,8 @@ class ApprovalList {
   }
 
   /**
-   * One picture. A blocked row is drawn like any other and stays clickable: what it is waiting on
-   * is worth reading, and the Asset editor is where that sentence is acted on.
+   * Draws one picture's row. A blocked row is drawn like any other and stays clickable, because
+   * what it is waiting on is worth reading, and the Asset editor is where the author acts on it.
    */
   private row(rows: Container, item: Approvable, ruled: boolean): void {
     const row = rows.col();

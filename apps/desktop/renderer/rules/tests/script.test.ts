@@ -372,7 +372,7 @@ describe('a drag, from a pointer position to an invocation', () => {
   });
 
   it('finds no verdict where the drop would reorder nothing', () => {
-    // Over its own row, and over the point just above it — both leave the order as it was.
+    // Dropping the line over its own row, or over the point just above it, leaves the order as it was.
     expect(dropAt('a:L2', 30)).toBeNull();
     expect(dropAt('a:L2', 10)).toBeNull();
   });

@@ -1,8 +1,8 @@
 /**
- * Approving art on the author's say-so. Three things are worth pinning: that the authority is the
- * author's own words and not the agent's argument, that nothing outside the host's list can be
- * approved however it is named, and that the author sees the final list before anything is
- * written.
+ * Tests for approving art from what the author actually said. They pin three things: approval
+ * authority comes from the author's own words, never the agent's argument; nothing outside the
+ * host's list can be approved, however it is named; and the author sees the final list before
+ * anything is written.
  */
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -82,8 +82,8 @@ describe('reading what the author asked for', () => {
     expect(prompt).not.toContain('assistant');
   });
 
-  // The model is told not to approve where the author did not ask, and the code enforces that
-  // anyway because the failure is silent
+  // The model is told not to approve anything the author did not ask for. This test checks
+  // that the code enforces the same rule, because a model that ignores it would fail silently
   it('drops everything when the answer is that they did not ask', () => {
     const answered: ApprovalTriage = { asked: false, reason: 'no', hashes: [AIKO.hash] };
     expect(narrowTriage(answered, ALL).hashes).toEqual([]);
@@ -108,7 +108,7 @@ describe('the offline matcher', () => {
     expect(triage.hashes).toEqual([PLATE.hash]);
   });
 
-  // The reason is what the author reads on the card, so it must not read like a model's judgement.
+  // The author reads this reason on the approval card, so it must not sound like a model's judgement.
   it('says out loud that no model read anything', () => {
     expect(offlineTriage({ said: ['approve it'], assets: ALL }).reason).toContain(
       'without a model',

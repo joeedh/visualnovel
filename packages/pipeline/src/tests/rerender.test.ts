@@ -96,8 +96,8 @@ describe('an authored change to a picture the pipeline gave up on', () => {
       const target = await shotRung(p, flagged);
       await setArtNotes({ config, paths: p.paths }, { target, notes: 'low angle, long lens' });
 
-      // `needs_human` is never requeued — it is a request for a human, not a fault — so the only
-      // thing that gets this frame drawn again is the new identity the note gives it.
+      // `needs_human` is never requeued, because it asks for a human rather than reporting a
+      // fault. Only the new identity the note gives the frame gets it drawn again.
       const third = await p.run();
       const redone = third.ran.find((t) => t.kind === 'shot_image' && t.status === 'done');
       expect(redone).toBeDefined();

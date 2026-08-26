@@ -99,7 +99,7 @@ export const uploadPick = define({
   async run(_props, ctx) {
     const picked = await ctx.host.pickFiles(undefined, ctx.origin);
     if (picked.length === 0) return { message: 'Cancelled.' };
-    // The dialog is not a permission: files the command would refuse are refused here too.
+    // Picking a file in the dialog grants no permission; upload still refuses any file the command would refuse.
     return upload(picked, ctx);
   },
 });

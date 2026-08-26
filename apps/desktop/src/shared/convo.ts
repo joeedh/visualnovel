@@ -219,15 +219,15 @@ export function tokensDetail(tokens: Convo['tokens']): string {
   if (cacheRead === undefined && cacheWrite === undefined) {
     lines.push(sent);
   } else {
-    // The counter's own figure goes ahead of the two it is derived from, so the first number the
-    // reader meets is the one they were hovering over
+    // The counter's own figure is listed before the two it is derived from, so it is the first
+    // number the reader meets, matching the figure they were hovering over
     lines.push(
       `The counter shows ${uncachedTokens(tokens).toLocaleString()} — the part charged at full ` +
         'price.',
       sent,
     );
     const read = cacheRead ?? 0;
-    // The share is of what was sent, because that is the half caching moves
+    // The share is computed against input tokens, since caching moves the sent half rather than the received half
     const share = input === 0 ? 0 : Math.round((read / input) * 100);
     lines.push(
       cacheEstimated

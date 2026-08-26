@@ -38,7 +38,7 @@ export type LineOp =
   | {
       ok: true;
       message: string;
-      /** Scenes to write whole. A chunk not named here is left exactly as it is. */
+      /** These are the scenes to write in full. A chunk not named here is left exactly as it is. */
       writes: Scene[];
       /** Scene chunks to delete. */
       removes: string[];
@@ -374,7 +374,7 @@ export function setSpeaker(state: ScriptState, args: { line: string; speaker: st
 // ---------------------------------------------------------------------------
 
 /**
- * Create an empty chunk. It is deliberately not wired to anything: a new scene is unreachable
+ * Creates an empty chunk, deliberately not wired to anything. A new scene stays unreachable
  * until something points at it, and inventing an edge is `story.setNext`'s job, not this one's.
  */
 export function newScene(state: ScriptState, args: { scene: string; heading: string }): LineOp {
@@ -456,8 +456,9 @@ export function setHeading(state: ScriptState, args: { scene: string; heading: s
 }
 
 /**
- * Remove a chunk, refusing while anything still points at it. That is the same failure as a
- * `dangling_goto` diagnostic, and it is better to refuse than to let a delete manufacture one.
+ * Removes a chunk, refusing while anything still points at it. A delete that went through anyway
+ * would produce the same failure a `dangling_goto` diagnostic reports, so refusing is better than
+ * letting a delete manufacture one.
  */
 export function deleteScene(state: ScriptState, args: { scene: string }): LineOp {
   const scene = state.scenes.get(args.scene);

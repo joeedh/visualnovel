@@ -24,7 +24,8 @@ import { connect, evaluate, pageTarget } from './cdp.mjs';
 
 const argv = process.argv.slice(2);
 
-// `--window <n>` may sit anywhere, because it says *where* rather than *what*.
+// `--window <n>` may sit anywhere among the arguments because it selects where to run the
+// expression, not what expression to run.
 let windowIndex = 0;
 const at = argv.indexOf('--window');
 if (at !== -1) {

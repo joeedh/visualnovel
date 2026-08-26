@@ -151,7 +151,7 @@ describe('announcementFor', () => {
   it('links an act rather than an address', () => {
     const note = announcementFor(checkAgainst('0.3.1', release('v0.4.0')), false);
     expect(note?.link).toEqual({ command: LINK_COMMANDS.releases });
-    // The whole shape exists for one rule: nothing the app opens is a URL it was handed.
+    // This design enforces one rule: the app never opens a URL it was handed.
     expect(JSON.stringify(note?.link)).not.toContain('http');
   });
 

@@ -855,9 +855,9 @@ export class WorkspaceSession {
    * silently inherits a vendor default. */
   effort: EffortChoice = DEFAULT_EFFORT;
   /**
-   * What one turn may spend, in non-cached tokens. Unlike the model and the effort this is not
-   * something the backend is built with — it is the loop's own meter — so setting it rebuilds
-   * nothing and works under `--mock` like anything else the loop decides.
+   * Caps the non-cached tokens a single turn may spend. Unlike the model and the effort, this
+   * is not something the backend is built with; it is the loop's own meter, so setting it
+   * rebuilds nothing and works under `--mock` like anything else the loop decides.
    */
   budget: BudgetChoice = DEFAULT_BUDGET;
 
@@ -1266,13 +1266,14 @@ export class WorkspaceSession {
   }
 
   /**
-   * A call to the model failed. Put it to the author with what can be done about it, once — the
-   * answer buys a grant of attempts, and the loop spends them without asking again.
+   * A call to the model failed. This asks the author once what can be done about it. The
+   * author's answer buys a grant of attempts, and the loop spends that grant without asking
+   * again.
    *
-   * A second failure after the grant is spent does not ask again: the author already chose a
-   * recovery and it did not work, so re-offering the same three options would just repeat the
-   * question. The turn ends instead; the conversation is intact, so resending it is one
-   * keystroke.
+   * A second failure after the grant is spent does not ask again, because the author already
+   * chose a recovery and it did not work, so re-offering the same three options would just
+   * repeat the question. The turn ends instead. The conversation stays intact, so resending it
+   * takes one keystroke.
    */
   private async recoverApi(failure: ApiFailure): Promise<ApiRecovery> {
     if (failure.attempt > 1) return { do: 'stop' };
@@ -1393,8 +1394,8 @@ export class WorkspaceSession {
         if (wroteAuthoredInput(result.events)) this.mapStale = true;
         return result;
       } finally {
-        // The turn is not over until what it said is on disk; a crash a moment later must not
-        // take the answer with it.
+        // The turn is not over until the reply is written to disk. A crash a moment later must
+        // not take the answer with it.
         await this.writes;
       }
     });
@@ -1467,9 +1468,9 @@ export class WorkspaceSession {
   }
 
   /**
-   * Hot-swap the reasoning setting the same way. A model that honours none keeps the setting
-   * anyway — `supportsEffort` is what a surface greys out on, and the backend simply omits the
-   * knob — so switching back to a model that does needs no second gesture.
+   * Hot-swaps the reasoning setting the same way. A model that honours none keeps the setting
+   * anyway. A surface greys itself out based on `supportsEffort`, and the backend simply omits
+   * the knob, so switching back to a model that does honour it needs no second gesture.
    */
   async setEffort(effort: EffortChoice): Promise<EffortChoice> {
     this.effort = effort;
@@ -1543,16 +1544,18 @@ export class WorkspaceSession {
   }
 
   /**
-   * Put the conversation being closed into the project's history, and write down where it landed.
+   * Puts the conversation being closed into the project's history, and writes down where it
+   * landed.
    *
-   * Clearing is the moment a transcript stops being watched: nothing appends to that file again,
-   * and the next thing to touch `vngen/state/` may well be an author tidying it. A commit here is
-   * what makes "what did the agent do last Tuesday" answerable at all — the `Vn-Thread` trailer
-   * is how a diagnostic finds it (`git log --grep`), and the pointer written back into the thread
-   * is how it finds it without searching.
+   * Clearing a thread stops it from being watched. Nothing appends to that file again after
+   * clearing, and the next thing to touch `vngen/state/` may well be an author tidying it. A
+   * commit here makes "what did the agent do last Tuesday" answerable. The `Vn-Thread` trailer
+   * lets a diagnostic find the commit through `git log --grep`, and the pointer written back
+   * into the thread lets the thread find the commit without searching.
    *
-   * Never fatal. A project that is not a repo, a repo with no committer identity, a read-only
-   * volume: none of those are reasons to refuse to start a new conversation.
+   * This never fails, even when the project is not a repo, the repo has no committer identity,
+   * or the volume is read-only. None of those is a reason to refuse to start a new
+   * conversation.
    */
   private async commitThread(): Promise<void> {
     const thread = this.thread;
@@ -2820,8 +2823,9 @@ export class WorkspaceSession {
     const rung = rungOf(asset);
     const override = rung ? overrideAt(rung, { model: project.model, shots }) : undefined;
     const composed = composePrompt(chunks, override);
-    // Only a whole-prompt rewrite can lose a clause; in chunks mode the text is the chunks, and
-    // marking them would say "not found" about words that are demonstrably there.
+    // Only a whole-prompt rewrite can lose a clause. In chunks mode the composed text is built
+    // directly from the chunks, so marking them would say "not found" about words that are
+    // demonstrably there.
     const marks =
       composed.mode === 'chunks'
         ? undefined
@@ -3796,8 +3800,9 @@ export class WorkspaceSession {
   }
 
   /**
-   * The rule behind both adoption halves: read the slot address, then let `adoptionForSlot` say
-   * everything else. `bytes` is for the pre-upload case, where the hash is not in the store yet.
+   * Both adoption halves follow the same rule. Read the slot address, then let
+   * `adoptionForSlot` decide everything else. `bytes` is for the pre-upload case, where the
+   * hash is not in the store yet.
    */
   private async adoptPlan(
     hash: string,

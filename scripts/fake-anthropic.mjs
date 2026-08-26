@@ -118,8 +118,8 @@ export function startFakeAnthropic(opts = {}) {
   const analyst = opts.analyst?.length ? [...opts.analyst] : DEFAULT_ANALYST;
   let analystStep = 0;
   const log = opts.log ?? ((line) => process.stdout.write(line + '\n'));
-  // Handed the raw body and who sent it. The only way to see what a tool call *returned*: the
-  // result rides in the next request as an observation, and nothing else here reads bodies.
+  // Handed the raw body and who sent it. This is the only way to see what a tool call returned,
+  // because the result rides in the next request as an observation, and nothing else here reads bodies.
   const inspect = opts.inspect ?? (() => {});
   /** Every call it saw: the path, the size, and what it answered. Never the body. */
   const calls = [];
@@ -138,8 +138,8 @@ export function startFakeAnthropic(opts = {}) {
         return;
       }
 
-      // The analyst is answered from its own script and never refused: it is the thing being
-      // watched, not the thing being broken.
+      // The analyst is answered from its own script and never refused, because it is the thing
+      // this fake is watching rather than the thing it is testing failure paths against.
       if (isAnalyst(raw)) {
         inspect(raw, 'analyst');
         // Cycled rather than clamped to the last entry. The author may run the report more than

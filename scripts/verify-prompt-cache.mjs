@@ -1,27 +1,27 @@
 /**
- * Prove that the agent's prompt prefix is actually being cached
+ * This proves that the agent's prompt prefix is actually being cached
  * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md` § Tests).
  *
- * Everything about caching that a unit test can check is a claim about the *request* — where the
- * breakpoints are, what defers, what was echoed — and those are checked in
- * `packages/providers/src/backends/tests/`. A cache **hit** only exists in the vendor's reply, so
- * it takes a real key and a real bill. This is that ritual, and it runs the one the configured
- * `models.text` calls for:
+ * A unit test can only check claims about the request itself, such as where the breakpoints are,
+ * what defers, and what was echoed, and those are checked in
+ * `packages/providers/src/backends/tests/`. A cache hit only exists in the vendor's reply, so
+ * checking one takes a real key and a real bill. This script is that ritual, and it runs the one
+ * the configured `models.text` calls for:
  *
- * - **Claude** — two steps of one conversation, asserting step 1 wrote a prefix and step 2 read
- *   it back. The breakpoints are ours to place, so the proof is that they were placed.
- * - **Gemini** — five calls carrying a byte-identical prefix, asserting that *some* call came back
- *   reporting one. There is nothing to place: the implicit cache is opportunistic, and it says
- *   nothing at all on many calls that hit (`docs/plans/archive/gemini-estimated-cache-hit-rate.md`), which
- *   is why five and not two.
+ * - Claude: two steps of one conversation, asserting step 1 wrote a prefix and step 2 read it
+ *   back. The breakpoints are ours to place, so the proof is that they were placed.
+ * - Gemini: five calls carrying a byte-identical prefix, asserting that some call came back
+ *   reporting a hit. There is nothing to place, because the implicit cache is opportunistic and
+ *   says nothing at all on many calls that hit
+ *   (`docs/plans/archive/gemini-estimated-cache-hit-rate.md`), which is why five calls and not two.
  *
  * Usage:
  *   node scripts/verify-prompt-cache.mjs [dir]        # costs money; a handful of small calls
  *
- * It is deliberately **not** in `package.json`'s scripts and `pnpm test` will not run it, exactly
- * like its sibling `scripts/verify-prompt-chunks.mjs`. The key is resolved through `resolveKeys`
- * and never printed — the standing rule in `CLAUDE.md`, restated here because a script that talks
- * to a paid API is where it gets forgotten.
+ * This script is deliberately not in `package.json`'s scripts, and `pnpm test` will not run it,
+ * exactly like its sibling `scripts/verify-prompt-chunks.mjs`. The key is resolved through
+ * `resolveKeys` and never printed. That is the standing rule in `CLAUDE.md`, restated here because
+ * a script that talks to a paid API is where it gets forgotten.
  */
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
@@ -154,15 +154,17 @@ async function verifyClaude(mod, config, modelId) {
 }
 
 /**
- * Five calls carrying one prefix. There is nothing to place and nothing to echo — Gemini's
- * implicit cache either matches the front of the request or it does not — so the claim is only
- * that it eventually says it did, and that what it says arrives marked as the estimate it is.
+ * Sends five calls carrying one prefix. Gemini's implicit cache either matches the front of the
+ * request or it does not, and there is nothing to place and nothing to echo, so the claim this
+ * checks is only that it eventually reports a hit, and that what it reports arrives marked as the
+ * estimate it is.
  *
- * Five rather than two because it is slow to start and then intermittent. Two runs on 2026-08-18
- * over a byte-identical 3.4k-token prefix: one reported nothing for calls 1–2 and 88% of the input
- * for 3–5; the other reported nothing at all except on call 4. So the claim this can honestly
- * make is *some* call, and a run that reports a hit on none of five is the only failure — which is
- * also why a conversation's running total is an estimate rather than a bill.
+ * Five calls are sent rather than two because the cache is slow to start and then intermittent.
+ * Two runs on 2026-08-18 over a byte-identical 3.4k-token prefix: one reported nothing for calls
+ * 1-2 and 88% of the input for 3-5; the other reported nothing at all except on call 4. So the
+ * claim this can honestly make is that some call reports a hit, and a run that reports a hit on
+ * none of five is the only failure. That intermittency is also why a conversation's running total
+ * is an estimate rather than a bill.
  */
 async function verifyGemini(mod, config, modelId) {
   const CALLS = 5;

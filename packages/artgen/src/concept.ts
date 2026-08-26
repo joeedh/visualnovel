@@ -44,7 +44,7 @@ export interface ConceptRequest {
 
 export interface ConceptResult {
   ref: AssetRef;
-  /** What it bound to, however that was decided — so a surface can say which it picked. */
+  /** What the concept bound to, whichever way that was decided, so a surface can report which one it picked. */
   subject?: ConceptSubject;
   prompt: string;
   /** Absolute path of the bytes, for a surface that wants to name the file. */

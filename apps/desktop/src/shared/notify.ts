@@ -52,7 +52,7 @@ export function shouldFileCommand(record: {
   return record.status === 'error' || record.mutating;
 }
 
-/** What the author has chosen to see. Every category on and nothing archived is the default. */
+/** Records what the author has chosen to see. The default has every category on and nothing archived. */
 export interface NotificationFilter {
   categories: readonly NotificationCategory[];
   /** "Show deleted": include the ones hidden by an × or by Clear. */

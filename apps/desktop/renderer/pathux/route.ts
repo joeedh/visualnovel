@@ -47,9 +47,9 @@ interface Claimant {
 }
 
 /**
- * Where a click on this node should land. The fallback for a claimant that is not visible is
- * `elsewhere`, which `paneElsewhere` already reads as "the biggest pane that is not the one
- * asking", so the tree never opens something over itself and this needs no notion of which pane
+ * Computes where a click on this node should land. A claimant that is not visible falls back to
+ * `elsewhere`. `paneElsewhere` reads `elsewhere` as the biggest pane that is not the one asking,
+ * so the tree never opens something over itself, and this function needs no notion of which pane
  * the click came from.
  */
 export function routeFor(req: RouteRequest): Route {

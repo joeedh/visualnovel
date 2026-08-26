@@ -239,7 +239,7 @@ describe('the merge policy', () => {
     const entry = status.entries.find((item) => item.path === path);
     expect(entry && isConflictCode(entry.x, entry.y)).toBe(true);
 
-    // Not a mangled three-way merge: the file is still exactly one side, and it is ours.
+    // The file was never three-way merged; it still holds exactly our own side, unmangled.
     const text = await readFile(join(root, path), 'utf8');
     expect(text).not.toContain('<<<<<<<');
     expect(JSON.parse(text).title).toBe('Mine');

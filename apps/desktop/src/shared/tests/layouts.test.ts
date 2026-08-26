@@ -97,9 +97,10 @@ describe('the shipped layouts', () => {
     expect(SHIPPED_LAYOUTS[0]?.recipe).toBe(DEFAULT_RECIPE);
   });
 
-  // A regression pin on the arrangement the app has always booted into. `splitArea`'s fraction
-  // is of the area being divided, so the nesting — not the numbers — is what puts Documents at
-  // 18% rather than 30%; changing either without meaning to would go unnoticed otherwise.
+  // This pins a regression on the arrangement the app has always booted into. `splitArea`'s
+  // fraction is of the area being divided, so the nesting, not the numbers, is what puts
+  // Documents at 18% rather than 30%; changing either without meaning to would go unnoticed
+  // otherwise.
   it('put Writing where the shell has always built it', () => {
     expect(recipeEditors(DEFAULT_RECIPE)).toEqual(['documents', 'script', 'branches', 'convo']);
     expect(flatten(DEFAULT_RECIPE)).toEqual([

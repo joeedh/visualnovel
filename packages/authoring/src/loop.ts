@@ -378,8 +378,8 @@ const planSchema = z.object({
 
 const askSchema = z.object({ question: z.string().min(1) });
 
-// At least two choices: a "shortlist" of one is a leading question, and disagreeing with it
-// would force the author into the text box.
+// Requires at least two choices, because a shortlist of one gives the author nothing to
+// disagree with except falling back to the free-text box.
 const oneChoiceSchema = z.object({
   question: z.string().min(1),
   choices: z.array(z.string().min(1)).min(2),
@@ -396,8 +396,8 @@ const formItemSchema = oneChoiceSchema.extend({
 });
 
 /**
- * Both shapes are accepted: one question is the common case and should not have to be wrapped
- * in an array to be asked.
+ * Accepts either shape. A single question is the common case, so it need not be wrapped in an
+ * array to be asked.
  */
 const choiceSchema = z.union([
   oneChoiceSchema,

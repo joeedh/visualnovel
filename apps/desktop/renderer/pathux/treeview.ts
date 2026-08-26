@@ -24,13 +24,13 @@ import TREEVIEW_CSS from '../styles/treeview.css?inline';
 
 export { TREEVIEW_CSS };
 
-/** How close two clicks on one row have to be to mean "the second one". The platform default. */
+/** The maximum interval between two clicks on one row that counts as a second click, set to the platform default. */
 export const DOUBLE_CLICK_MS = 500;
 
 /** What only the host knows about a row, and the renderer cannot derive from the node. */
 export interface RowLook {
   selected: boolean;
-  /** Never `''` — a row that hovers silently is the bug this field exists to prevent. */
+  /** Must never be `''`; an empty title would let a row hover silently, the bug this field exists to prevent. */
   title: string;
 }
 
@@ -44,7 +44,7 @@ export interface TreeHandlers {
   onMenu?(row: DocRow, x: number, y: number): void;
 }
 
-/** The last row clicked and when — how a second click on the same one is recognised. */
+/** Records the last row clicked and when, so a second click on the same row can be recognised. */
 export interface ClickLatch {
   id: string;
   at: number;

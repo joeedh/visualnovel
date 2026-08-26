@@ -81,7 +81,7 @@ export interface Unwire {
 
 export type Drag = Press | Splice | Connect | Unwire;
 
-/** Where the pointer is and what is under it, as the surface answers those questions. */
+/** Where the pointer is and what is under it, computed by the surface on each move. */
 export interface Aim {
   /** The pointer in world units. */
   at: Point;

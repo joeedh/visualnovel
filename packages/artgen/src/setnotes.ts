@@ -329,7 +329,7 @@ function resolveNotes(existing: string | undefined, req: SetNotesRequest): strin
   }
 }
 
-/** The sentence for what is about to happen — the author's word for it, not the field's. */
+/** Describes the change in the author's own terms for the mode, not the field name. */
 function noteSentence(mode: NotesMode, notes: string, label: string): string {
   if (!notes) return `Cleared art notes on ${label}.`;
   return mode === 'append' ? `Appended to art notes on ${label}.` : `Set art notes on ${label}.`;

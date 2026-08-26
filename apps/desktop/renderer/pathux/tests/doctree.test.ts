@@ -445,8 +445,9 @@ describe('menuFor', () => {
   });
 
   it('offers the wiki branch the three things a page can be', () => {
-    // `branch:wiki` is the top of the wiki tree an author right-clicks; the `wikidir:` nodes are
-    // the folders inside it, which a flat `wiki/` never has at all. Both offer the same three.
+    // `branch:wiki` is the top of the wiki tree an author right-clicks. The `wikidir:` nodes are
+    // the folders inside that tree, which a flat `wiki/` directory never has. Both node kinds
+    // offer the same three menu entries.
     for (const wiki of [node('branch:wiki', 'branch'), node('wikidir:lore', 'wikidir')]) {
       const entries = menuFor(wiki);
       expect(entries.map((entry) => entry.props?.['kind'])).toEqual([

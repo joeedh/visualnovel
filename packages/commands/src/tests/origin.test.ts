@@ -38,7 +38,7 @@ const slow = define({
   async run(_props, ctx) {
     const before = ctx.origin;
     await (ctx.host.gate ?? Promise.resolve());
-    // The second read is the one that used to be wrong: by now another exec has been through.
+    // This second read of ctx.origin used to return the wrong value, because another exec had already run by now.
     return { message: 'done', data: { before, after: ctx.origin } };
   },
   check(_props, ctx) {

@@ -196,7 +196,7 @@ export class Pending<T> {
 
   constructor(private readonly abandoned: T) {}
 
-  /** What a request answers with when there is nobody to ask — a denial, or silence. */
+  /** The value a request receives when there is nobody left to ask, such as a denial or silence. */
   get abandonedValue(): T {
     return this.abandoned;
   }
@@ -216,7 +216,7 @@ export class Pending<T> {
     entry.resolve(value);
   }
 
-  /** Nobody is left to ask at all — a workspace torn down, the last window gone. */
+  /** Abandons every pending request; this runs when a workspace tears down or its last window closes. */
   abandon(): void {
     const waiters = [...this.waiting.values()];
     this.waiting.clear();

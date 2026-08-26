@@ -20,8 +20,8 @@ describe('checkGit', () => {
     expect(await checkGit(async () => ({ code: 1, stdout: '' }))).toEqual({ ok: false });
   });
 
-  // ENOENT arrives as a rejection rather than an exit code, and it is the case that actually
-  // happens: git is not on PATH at all.
+  // ENOENT arrives as a rejection rather than an exit code. This is the case that actually
+  // happens when git is not on PATH at all.
   it('counts a probe that throws as absent', async () => {
     expect(await checkGit(() => Promise.reject(new Error('spawn git ENOENT')))).toEqual({
       ok: false,

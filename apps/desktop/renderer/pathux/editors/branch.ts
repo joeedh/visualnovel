@@ -128,7 +128,7 @@ export class BranchEditor extends VnEditor {
   private selected: string | null = null;
   private drag: Drag | null = null;
   private notice: Notice | null = null;
-  /** A scene asked for and not yet written. What is edited is the command's own props. */
+  /** A scene the author asked for but has not yet written; editing it changes the command's own props. */
   private naming: NewScene | null = null;
 
   /** The open label editor, held across redraws: an `<input>` keeps its value, not its focus. */
@@ -758,7 +758,7 @@ const EMPTY_STORY: StoryGraph = { scenes: [], edges: [], diagnostics: [] };
 const reducedMotion = (): boolean =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/** A `next` the runner will never follow is struck through: it is inert, not gone. */
+/** Draws a `next` the runner will never follow struck through, because it is inert, not gone. */
 function wireStyle(edge: EdgeRoute): EdgeStyle {
   if (edge.kind === 'inert') {
     return { stroke: TOKENS.mistDim, width: 1, dash: '3 4', opacity: 0.45 };

@@ -937,7 +937,7 @@ describe('WorkspaceSession — the story bible', () => {
 });
 
 /**
- * The whole-document read and write behind `doc.*`. The refusals are where the risk is: a save
+ * Tests the whole-document read and write behind `doc.*`. These refusals matter most: a save
  * that overwrites someone else's edit, a save that quietly deletes an entity, and prose written
  * by the one path that does not validate it.
  */
@@ -1231,8 +1231,9 @@ describe('WorkspaceSession — over a generated project', () => {
     expect(await session.acceptAsset('not-a-real-hash')).toMatchObject({ ok: false });
   });
 
-  // A precondition is only a sentence a surface may show, not a gate the act may lean on. `exec`
-  // re-decides for itself, so the refusal has to live where the writing happens.
+  // A precondition check only produces a sentence a surface may show; the act itself may not
+  // rely on it as a gate. `exec` re-decides for itself, so this test checks that the refusal
+  // happens at the point where the write occurs.
   it('refuses a portrait and a concept in the act, not only in the check', async () => {
     const { store } = await p.reload();
     const portrait = store.manifest().find((a) => a.kind === 'portrait')!.hash;

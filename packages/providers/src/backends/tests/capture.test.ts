@@ -92,8 +92,8 @@ describe('capturing a request', () => {
       process.env.VN_CAPTURE_BYTES = '200';
       const small = await captureRequest('convo', BODY);
       const huge = await captureRequest('convo', sized(5000));
-      // The oversized one is on the ring and marked, and it did not evict what came before it
-      // trying to make room it could never have.
+      // The oversized entry stays on the ring, marked, and does not evict the entry that came
+      // before it, since making room for it was never possible.
       expect(capturedRequests().map((h) => [h.seq, h.dropped])).toEqual([
         [small.seq, false],
         [huge.seq, true],

@@ -17,7 +17,7 @@ import {
 } from '@vn/types';
 
 export interface Advice {
-  /** `ok` has nothing to say and its `text` is empty. */
+  /** An `ok` level has nothing to say, and its `text` is empty. */
   level: 'ok' | 'note' | 'warn';
   text: string;
 }
@@ -106,8 +106,8 @@ export function adviseModel(modelId: string, withSource: boolean): Advice {
 }
 
 /**
- * What to say about how hard the model thinks. Only asked of a model with a reasoning setting;
- * for a model without one, `adviseModel` carries the advice and the row is not drawn.
+ * Advises how hard the model should think. Only called for a model with a reasoning setting; for
+ * a model without one, `adviseModel` carries the advice instead and this row is not drawn.
  */
 export function adviseEffort(modelId: string, effort: EffortChoice): Advice {
   if (!supportsEffort(modelId)) return fine;

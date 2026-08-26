@@ -213,7 +213,7 @@ describe('the tokens tooltip', () => {
     expect(said).not.toContain('put there for next time');
   });
 
-  // The author is being told what their conversation cost, not what a response body said
+  // The author is told what their conversation cost, never the words a response body used for it
   test('uses none of the API’s words for these numbers', () => {
     const said = tokensDetail({ input: 1200, output: 300, cacheRead: 900, cacheWrite: 100 });
     expect(said).not.toMatch(/\b(input|output|cache read|cache write|prefix|billed)\b/i);

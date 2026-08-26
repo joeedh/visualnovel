@@ -287,8 +287,8 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     progress();
 
     await pool(ready, config.concurrency, async (task) => {
-      // The cap means most of a wave is still queued when a stop arrives, so this is where the
-      // bulk of it is refused — `pool` has no way to drop what it has not started.
+      // The cap means most of a wave is still queued when a stop arrives, and this check refuses
+      // the bulk of it, since `pool` has no way to drop a task it has not started.
       if (opts.signal?.aborted) {
         stopped = true;
         return;

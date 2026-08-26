@@ -174,7 +174,8 @@ export function buildRedactor(sources: RedactionSources): Redactor {
   const aliases: Alias[] = [];
   const add = (source: string | undefined, rest: Omit<Alias, 'source'>) => {
     const trimmed = source?.trim();
-    // Length is judged on the letters, not the punctuation: `A'` is one identifying character.
+    // Length is judged on the letters only, not the punctuation, so `A'` counts as one
+    // identifying character
     if (trimmed && longEnough(bare(trimmed))) aliases.push({ source: trimmed, ...rest });
   };
 

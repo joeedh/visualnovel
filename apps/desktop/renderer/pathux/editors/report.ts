@@ -278,8 +278,9 @@ export class ReportEditor extends VnEditor {
   }
 
   /**
-   * Start, and what it would cost. A refusal is `report.open`'s own sentence, so the reason a
-   * greyed button will not run is the reason the command would have given.
+   * Renders the start button and what it would cost. A refusal shows `report.open`'s own
+   * sentence, so the reason a greyed button will not run matches the reason the command would
+   * have given.
    */
   private startButton(state: ReportConvo): HTMLElement {
     const refused = this.verdict?.state === 'refuse';

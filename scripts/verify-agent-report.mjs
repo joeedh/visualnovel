@@ -194,8 +194,8 @@ async function preflight(baseUrl) {
     () => undefined,
     (e) => e,
   );
-  // The fact the whole feature turns on: a 400 whose only content is a position is a fault in the
-  // request, which is the one kind the app offers to look into.
+  // The whole feature depends on this reading: a 400 whose only content is a position counts as
+  // a fault in the request, and a fault in the request is the one kind the app offers to look into.
   check(
     'a positional 400 reads as a fault in the request',
     vn.faultKind(err) === 'request',
@@ -335,8 +335,8 @@ check(
   body.length > 0 && leaked.length === 0,
   leaked.length ? `found: ${leaked.join(', ')}` : `checked ${forbidden.length} name(s)`,
 );
-// The whole privacy claim of this feature in one line: the requests are read on the author's own
-// key and nothing read that way is in what would be posted.
+// This feature reads the requests on the author's own key, and nothing read that way appears in
+// what gets posted. Those two facts together are its whole privacy guarantee.
 check(
   'nothing from the captured requests is in the report',
   body.length > 0 && !body.includes('tool_search_tool_result'),

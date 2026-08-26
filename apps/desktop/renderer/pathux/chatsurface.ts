@@ -517,8 +517,8 @@ export class AskCards {
         const picked = pick(this.host.formNow() ?? form, choice);
         if (outright) return this.sendAnswers(answersOf(picked));
         if (!multi) return this.page(goTo(picked, picked.at + 1));
-        // Picking the last question's answer must not submit: on the last page the pick simply
-        // stands, and Submit is the one thing that ends the form.
+        // Picking the last question's answer must not submit. On the last page the pick simply
+        // stands, and Submit remains the one thing that ends the form.
         this.host.setForm(picked, false);
         this.cardForm = picked;
         rows.forEach((r, i) => r.classList.toggle('picked', isPicked(picked, choices[i]!)));
@@ -551,7 +551,7 @@ export class AskCards {
       // otherwise the next unrelated rebuild would count typing as staleness and rebuild the
       // card, which is exactly the redraw-under-the-pointer this cache exists to prevent.
       this.cardForm = typed;
-      // The tooltip counts what is still blank, and typing is exactly what stops one being blank.
+      // The tooltip counts what is still blank, and this keystroke may have just filled one in.
       if (this.sendAct) this.sendAct.title = this.sendTitle(typed, listed);
     });
     field.addEventListener('keydown', (event) => {

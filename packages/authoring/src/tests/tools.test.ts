@@ -746,8 +746,9 @@ describe('edit_scene', () => {
       expect(r.ok).toBe(true);
       expect(r.output).toContain('1 shot(s) lose 1 line(s) of coverage');
       expect(r.output).toContain('1 shot(s) end up covering nothing');
-      // The shot is kept, covering nothing: it is real and paid for, and deleting art is the
-      // author's call. The storyboard is rewritten to say so, and that file is in `written`.
+      // The shot stays in the storyboard even though it now covers nothing, because its art was
+      // already generated and paid for, and only the author may delete it. The storyboard file
+      // is rewritten to record that, and it appears in `written`.
       const after = await readShots(paths, 'arrival');
       expect(after?.shots.map((s) => s.coversLines)).toEqual([[]]);
       expect(r.written).toContain('vngen/work/shots/arrival.json');
@@ -1861,7 +1862,7 @@ describe('edit_file', () => {
       expect(await fs.readFile(join(dir, 'wiki', 'district.md'), 'utf8')).toContain(
         'The district burned in the last week of March.',
       );
-      // Whole lines, three of context each side, and never the whole document back.
+      // The diff returns whole lines, three of context on each side, never the whole document.
       expect(r.output).toContain('- The district burned in spring.');
       expect(r.output).toContain('+ The district burned in the last week of March.');
       expect(r.output).toContain('  # The Third District');

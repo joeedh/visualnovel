@@ -316,7 +316,7 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   // After the last step that can throw, and before both `suspend()` and the root moving: a batch
   // that failed to commit files a notification, which belongs to the project it was edited in.
   await stack?.dispose();
-  // The agent being dropped may be parked on a question nobody is going to answer now.
+  // A turn parked on a question ends here, because nobody is left to answer it once the workspace switches.
   abandonPending();
   notifications().suspend();
   workspaceRoot = opened.root;
@@ -881,8 +881,8 @@ let windowList: WindowList | null = null;
 
 function getWindowList(): WindowList {
   if (!windowList) {
-    // The cast is the JSON boundary: `RememberedWindow` is plain data all the way down, but
-    // `SessionValue` is an index-signature type and a named interface does not satisfy one.
+    // The cast crosses the JSON boundary: `RememberedWindow` is plain data all the way down, but
+    // `SessionValue` is an index-signature type, and a named interface does not satisfy one.
     windowList = new WindowList((open) =>
       getSessionState().set(WINDOWS_KEY, open as unknown as SessionValue),
     );

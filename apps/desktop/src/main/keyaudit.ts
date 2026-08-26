@@ -181,9 +181,9 @@ export function auditPrompt(opts: {
 }
 
 /**
- * Validate one reply, and hold it to the vendor it was asked about.
+ * Validates one reply and holds it to the vendor it was asked about.
  *
- * A model that answers about the wrong vendor is not a small error here: the two sections are
+ * A model that answers about the wrong vendor causes real harm here, because the two sections are
  * structurally identical, so a swapped reply would read as a plausible review of the wrong file.
  */
 export function parseReview(raw: unknown, vendor: string): VendorReview {

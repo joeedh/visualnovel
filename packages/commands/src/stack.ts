@@ -189,8 +189,8 @@ export class CommandStack<Host = unknown> {
       startedAt,
     };
 
-    // Snapshot before the command runs, not after it fails: a command that half-ran has still
-    // written, and the pre-state is the only thing that describes where it started.
+    // The snapshot is taken before the command runs, because a command that fails partway
+    // through can still have written files, and only the pre-state describes where it started.
     const journal = command.undoable && command.mutating ? this.opts.journal : undefined;
     const pre = await this.capture(journal, seq, 'pre');
 

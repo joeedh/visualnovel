@@ -97,7 +97,7 @@ export function textFile(name: string): boolean {
   return (TEXT_EXTENSIONS as readonly string[]).some((ext) => lower.endsWith(ext));
 }
 
-/** Two files that together mean "this is the source tree and not some directory above it". */
+/** These two files, found together, mark a directory as the source tree rather than some directory above it. */
 const MARKERS = ['CLAUDE.md', 'packages'];
 
 async function looksLikeSource(dir: string): Promise<boolean> {

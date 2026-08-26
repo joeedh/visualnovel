@@ -132,8 +132,8 @@ describe('terminalPermission', () => {
     expect(answer).toEqual(['neither — let us talk']);
   });
 
-  // A terminal has no Back button, so a form is put one question at a time. The numbering is the
-  // only thing telling the author how much is left.
+  // A terminal has no Back button, so the form shows one question at a time. The numbering tells
+  // the author how many questions remain.
   it('puts a form one question at a time, saying where in it they are', async () => {
     const { channel, out } = scriptChannel(['1', 'quietly']);
     const answers = await terminalPermission(channel).ask([

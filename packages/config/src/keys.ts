@@ -210,7 +210,7 @@ async function resolveOne(
   return (await locateOne(envName, files, secretsDirs)).value;
 }
 
-/** What resolution found for one vendor — never the key itself. */
+/** Records what key resolution found for one vendor, without exposing the key value itself. */
 export interface VendorKeyStatus {
   vendor: keyof ResolvedKeys;
   /** Whether a key resolved at all. */

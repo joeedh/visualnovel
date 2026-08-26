@@ -6,7 +6,7 @@
 import { DEFAULT_BUDGET, DEFAULT_EFFORT, type BudgetChoice, type EffortChoice } from '@vn/types';
 import type { AgentMode } from '../../src/shared/ipc.js';
 
-/** The fields that say what the author is looking at, and the only ones that report a write. */
+/** Names the fields that say what the author is looking at; these are the only fields that report a write. */
 export type SelectionField =
   | 'sceneId'
   | 'shotId'

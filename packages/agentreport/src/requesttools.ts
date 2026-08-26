@@ -60,8 +60,8 @@ function firstLine(text: string): string {
 }
 
 /**
- * One line describing a content block: what kind it is, what it is called, and how big — never
- * what it says. Answers a positional error without returning any content.
+ * Describes a content block in one line: its kind, its name, and its size, never what it says.
+ * Used to answer a positional error without returning any content.
  */
 function describeBlock(block: unknown): string {
   if (typeof block === 'string') return `text, ${block.length} chars`;

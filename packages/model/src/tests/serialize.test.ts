@@ -178,9 +178,9 @@ describe('art notes', () => {
 });
 
 /**
- * The seed rides the same five rungs art notes do, and is written the same way — with one
- * difference that has to be pinned separately: 0 is a seed, so `null` and not falsiness is how
- * an author clears one.
+ * The seed is stored at the same five rungs as art notes, and written the same way. One
+ * difference needs its own test: 0 is a valid seed, so clearing a seed must check for
+ * `null` rather than falsiness.
  */
 describe('image seeds', () => {
   const seeded = parseFrontMatter(

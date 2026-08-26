@@ -9,9 +9,10 @@ import type { Evidence } from '../transcript.js';
 type Reply = { tool: string; args: unknown } | { text: string };
 
 /**
- * A conversation backend that answers from a script and counts both seams. `direct` counting is the
- * point of the fake as much as the script is: the single-call path is what a stopped turn must not
- * reach, and one spurious fallback is exactly one call.
+ * A conversation backend that answers from a script and counts both seams: direct calls and
+ * fallback calls. Counting `direct` calls matters as much as the script itself, because a
+ * stopped turn must never reach the single-call path, and any spurious fallback still counts
+ * as exactly one call.
  */
 class Convo implements ChatBackend {
   readonly modelId = 'claude-sonnet-5';

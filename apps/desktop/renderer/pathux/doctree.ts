@@ -103,12 +103,12 @@ export function toggleExpanded(expanded: ReadonlySet<string>, id: string): Set<s
 }
 
 /**
- * What a tree opens on: its roots, and nothing below them. In document mode that is the branch
- * headings, which is a table of contents; expanding further would print every scene, every shot
- * and the whole manifest before the author has asked for any of it.
+ * A tree opens on its roots, and nothing below them. In document mode the roots are the branch
+ * headings, which act as a table of contents. Expanding further would print every scene, every
+ * shot and the whole manifest before the author has asked for any of it.
  *
- * A branch with no children is not opened, which is why an empty Skills branch draws no twisty —
- * the heading is still there, and still right-clickable, which is the whole point of drawing it.
+ * A branch with no children is not opened, so an empty Skills branch draws no twisty. The
+ * heading is still there, and still right-clickable, which is the whole point of drawing it.
  */
 export function defaultExpanded(roots: readonly DocNode[]): Set<string> {
   return new Set(roots.filter((node) => node.children?.length).map((node) => node.id));
@@ -271,9 +271,9 @@ function graphAct(slot: string | undefined): MenuEntry[] {
 }
 
 /**
- * What the story offers wherever it is right-clicked: from the branch that heads it and from any
- * scene under it. A scene's own acts sit above these, so the scene menu is a superset — the same
- * two commands, in the same words, wherever the pointer was.
+ * These entries appear wherever the story is right-clicked, from the branch that heads it and
+ * from any scene under it. A scene's own acts sit above these, so the scene menu ends up a
+ * superset: the same two commands, in the same words, wherever the pointer was.
  */
 function storyActs(): MenuEntry[] {
   return [

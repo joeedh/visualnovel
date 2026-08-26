@@ -7,7 +7,7 @@
  */
 import type { AssetInfo, SceneCoverage } from './ipc.js';
 
-/** How much of somebody else's words an opener quotes before it elides them. */
+/** The opener quotes up to this many characters of somebody else's words before eliding the rest. */
 const QUOTED = 90;
 
 /** One line, whitespace collapsed, cut at `max` characters. */

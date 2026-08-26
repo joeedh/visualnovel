@@ -1,6 +1,6 @@
 /**
- * Reading a picture back. The seam is a plain `ChatBackend`, so the test records what was actually
- * sent (one image and one question) and pins the refusal that keeps an answer honest.
+ * Tests reading a picture back through a plain `ChatBackend` seam. The test records what was
+ * actually sent (one image and one question) and pins the refusal that keeps an answer honest.
  */
 import { SCRIPTS, makeProject } from '@vn/testkit';
 import { RecordedChatBackend, type ChatRequest } from '@vn/providers';
@@ -67,8 +67,8 @@ describe('describeAsset', () => {
     }
   });
 
-  // A task that is queued but not run has no picture; describing the previous render instead
-  // would be an answer about the wrong image, which is worse than no answer.
+  // A task that is queued but not run has no picture yet. Describing the previous render
+  // instead would answer about the wrong image, which is worse than answering nothing
   it('refuses an asset the store has never heard of, and spends nothing', async () => {
     const { p, sent, deps } = await fixture();
     try {

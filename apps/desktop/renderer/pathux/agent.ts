@@ -104,8 +104,8 @@ export async function ask(text: string): Promise<void> {
 }
 
 /**
- * Answer the plan card. `plan:decision` is not a command — it is the reply to a request main is
- * already blocked on, and the agent's own permission gate owns what it means.
+ * Answer the plan card. `plan:decision` is not a command; it replies to a request main is
+ * already blocked on, and the agent's own permission gate decides what the reply means.
  */
 export async function decide(approved: boolean): Promise<void> {
   const request = state.plan;

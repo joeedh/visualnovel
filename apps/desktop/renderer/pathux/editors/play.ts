@@ -109,8 +109,9 @@ export class PlayEditor extends VnEditor {
   }
 
   /**
-   * A project with no `story.play.json` — or none open at all — is an ordinary state, not a
-   * crash, so the reason goes on the stage where an author reading it can act on it.
+   * A project with no `story.play.json`, or with no project open at all, counts as an ordinary
+   * state rather than a crash, so this puts the reason on the stage where an author reading it
+   * can act on it.
    */
   private async loadPlayable(): Promise<void> {
     try {

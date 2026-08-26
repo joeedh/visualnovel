@@ -546,8 +546,8 @@ describe('the Assets branch, one row per slot', () => {
 
     const current = portraits.children![0]!;
     expect(current.children!.map((n) => n.id)).toEqual([`asset:${OLD}`]);
-    // The row's note has to say that a second click opens the other takes, since nothing else
-    // in the tree behaves this way.
+    // The row's note must say that a second click opens the other takes. This test checks for
+    // that wording because nothing else in the tree behaves this way.
     expect(current.note).toContain('click again to see the rest');
     expect(current.children![0]!.note).toContain('Another take');
   });

@@ -27,7 +27,7 @@ export type RenameResult =
 /** The first top-level `title:` entry in a front-matter block, and its value. */
 const TITLE_LINE = /^title:[^\n]*(?:\n[ \t]+[^\n]*)*\n?/m;
 
-/** An ATX H1 — `# Something` — on its own line. Not `##`, which is a section. */
+/** Matches an ATX H1 (`# Something`) on its own line, not `##`, which marks a section. */
 const H1_LINE = /^#[ \t]+[^\n]*/m;
 
 /** Splice `text` around one match, leaving every other byte where it was. */

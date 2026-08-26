@@ -175,8 +175,8 @@ describe('faultKind', () => {
   });
 
   it('reads a status Anthropic put only at the head of its message', () => {
-    // No "status" or "code" word before the number, which is the one shape `STATUS_IN_TEXT`
-    // deliberately will not match — and the shape both vendors actually send.
+    // No "status" or "code" word appears before the number here. `STATUS_IN_TEXT` deliberately
+    // does not match this shape, and both vendors actually send messages in this shape.
     expect(faultKind(wrapped(new Error('400 {"type":"error"}')))).toBe('request');
   });
 

@@ -110,10 +110,10 @@ export interface CaptureOptions {
 const IGNORED: Capture = { seq: 0, failed: async () => {} };
 
 /**
- * Keep `body`, and hand back somewhere to file the failure.
+ * Keeps `body` and hands back somewhere to file the failure.
  *
- * Every filesystem error is swallowed to a warning: a diagnostic that breaks the thing it was
- * turned on to diagnose is worse than no diagnostic, and an unwritable dump directory is the
+ * Every filesystem error is swallowed to a warning, because a diagnostic that breaks the thing it
+ * was turned on to diagnose is worse than no diagnostic, and an unwritable dump directory is the
  * author's typo rather than a reason to fail the turn.
  */
 export async function captureRequest(

@@ -126,7 +126,7 @@ export class OnboardingEditor extends VnEditor {
     }
   }
 
-  /** One vendor: what the page says about it, and what this machine has for it. */
+  /** Renders one vendor's card, showing what the guide says about the vendor and what key this machine has for the vendor. */
   private vendorCard(vendor: KeyGuideVendor): HTMLElement {
     const view = this.vendorStatus(vendor.vendor);
     const card = el('div', 'ob-card');

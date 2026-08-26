@@ -332,13 +332,13 @@ export const timelineCover = defineInteraction<CoverState>({
 });
 
 /**
- * Dragging a whole bracket onto another one. The targets are the other shots rather than the
- * lines: a shot's position is where its covered lines sit, so "put this shot after that one" is
- * the only way to say it without the author computing rows. {@link TOP} is a target too — the
- * same insertion point `script.moveLine` offers.
+ * Reorders shots by dragging a whole bracket onto another one. The targets are the other shots
+ * rather than the lines: a shot's position is where its covered lines sit, so "put this shot
+ * after that one" is the only way to say it without the author computing rows. {@link TOP} is a
+ * target too, the same insertion point `script.moveLine` offers.
  *
- * An interleaved shot is on screen in more than one place and has no single position, so it comes
- * back as a refusal on every target rather than as a gesture that quietly does something else.
+ * An interleaved shot is on screen in more than one place and has no single position, so dragging
+ * it onto any target returns a refusal rather than a gesture that quietly does something else.
  */
 export const timelineReorder = defineInteraction<CoverState>({
   id: 'timeline.reorder',

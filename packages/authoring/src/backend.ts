@@ -95,8 +95,9 @@ export interface AgentTurn {
 export type CacheVerdict = 'cold' | 'hit' | 'expired' | 'miss';
 
 /**
- * Add up two receipts. `undefined` throughout means nothing was reported, not that it was free —
- * so a cache field stays absent until some attempt actually reported one.
+ * Adds two token-usage receipts together. `undefined` throughout means nothing was reported,
+ * not that usage was free, so a cache field stays absent until some attempt actually reports
+ * one.
  */
 function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage | undefined {
   if (!b) return a;

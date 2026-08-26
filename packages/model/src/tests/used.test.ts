@@ -1,8 +1,8 @@
 /**
- * The four enumerators the planner and the slot graph share. What is pinned here is not the
- * planner's behaviour — `@vn/pipeline`'s own suites cover that — but the fact that both callers
- * get the same answer, since a slot the graph promises and the planner never plans is the one bug
- * this shape of graph can have.
+ * Covers the four enumerators the planner and the slot graph share. This does not pin the
+ * planner's behaviour, which `@vn/pipeline`'s own suites cover; it pins that both callers get the
+ * same answer, since a slot the graph promises and the planner never plans is the one bug this
+ * shape of graph can have.
  */
 import type { Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';

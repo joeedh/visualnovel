@@ -1,14 +1,14 @@
 /**
- * What a right-click offers, and whether the author may take it.
+ * Builds what a right-click offers, and checks whether the author may take each entry.
  *
- * An entry is an invocation, not a callback: a command id and its props, resolved through
- * `stack.check` before the menu opens and through `exec` when it is clicked. A menu item that is
- * not a command has no place here — if an action is worth a right-click it is worth being in the
+ * An entry holds a command id and its props rather than a callback. `stack.check` resolves it
+ * before the menu opens, and `exec` resolves it again when it is clicked. A menu item that is
+ * not a command has no place here: if an action is worth a right-click it is worth being in the
  * palette, the catalog and the provenance log, and a bespoke `contextmenu` handler that calls
- * `exec` without checking is how a surface starts offering what the command would refuse.
+ * `exec` without checking would let a surface offer what the command would refuse.
  *
- * Pure, with no `pathux` import, so the resolution rules are testable in node. Opening the menu on
- * a screen is `showmenu.ts`.
+ * This module is pure, with no `pathux` import, so the resolution rules are testable in node.
+ * Opening the menu on a screen happens in `showmenu.ts`.
  */
 import type { CommandCheck, PropValue } from '../../src/shared/ipc.js';
 

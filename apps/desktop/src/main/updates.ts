@@ -28,7 +28,7 @@ export const RELEASES_API = `https://api.github.com/repos/${ISSUE_REPO}/releases
  */
 export const RELEASES_PAGE = `https://github.com/${ISSUE_REPO}/releases/latest`;
 
-/** How long to wait before deciding GitHub is not answering. A check nobody asked for may not hang. */
+/** Milliseconds to wait before treating GitHub as not answering. A background check the author did not request must never hang indefinitely. */
 export const CHECK_TIMEOUT_MS = 8000;
 
 /**
@@ -66,7 +66,7 @@ export interface UpdateCheck {
   running: string;
   /** The released version, present only when one could be read. */
   latest?: string;
-  /** One sentence, written to be the whole answer on its own. */
+  /** A single sentence that fully answers the check on its own, needing no further explanation. */
   message: string;
 }
 
@@ -171,9 +171,8 @@ export function checkAgainst(running: string, payload: unknown): UpdateCheck {
 }
 
 /**
- * The durable notification a check earns, or `undefined` for one that earns none.
- *
- * Two rules, and both are the plan's:
+ * Builds the durable notification a check earns, or returns `undefined` for one that earns
+ * none. This function follows two rules, both specified by the plan:
  *
  * - An available update is always announced, quiet or not. That is the point of the periodic
  *   check, and it is the one thing here worth surviving the frame being dismissed.
@@ -183,8 +182,8 @@ export function checkAgainst(running: string, payload: unknown): UpdateCheck {
  *   `shouldFileCommand` whatever `quiet` said, which is the notification the plan avoids posting.
  *
  * The link names a command, never a URL. `app.openReleases` derives its own address from
- * `ISSUE_REPO`, so a notification — a line of a file git union-merges across clones — can ask for
- * the releases page and cannot ask for anything else.
+ * `ISSUE_REPO`. A notification is stored as a line in a file that git union-merges across
+ * clones, so it can ask for the releases page and cannot ask for anything else.
  */
 export function announcementFor(check: UpdateCheck, quiet: boolean): NotificationInput | undefined {
   if (check.state === 'available') {

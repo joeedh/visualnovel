@@ -151,9 +151,10 @@ export class SkillsEditor extends VnEditor {
     this.text.addEventListener('input', () => {
       this.buf.text = this.text.value;
     });
-    // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a sentence. Ctrl+S is caught here for the same
-    // reason: it is the save gesture, and the browser's own is not.
+    // The screen keymap is a bubble-phase window listener, so a text box that does not stop its
+    // own keydown events opens the palette when the author types the first `/` of a sentence.
+    // This handler catches Ctrl+S for the same reason: Ctrl+S is the save gesture, and the
+    // browser's own save shortcut does not save this file
     this.text.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
@@ -205,8 +206,8 @@ export class SkillsEditor extends VnEditor {
   private paint(): void {
     const open = this.buf.path !== '';
     this.text.disabled = !open;
-    // Only when it actually differs: assigning `value` moves the caret, and the buffer already
-    // holds what the author is typing.
+    // This assigns `text.value` only when it actually differs from the buffer, because assigning
+    // `value` moves the caret, and the buffer already holds what the author is typing
     if (this.text.value !== this.buf.text) this.text.value = this.buf.text;
     this.pathEl.textContent = open ? this.buf.path : '';
     this.pathEl.title = this.pathEl.textContent;
@@ -237,7 +238,7 @@ export class SkillsEditor extends VnEditor {
 
     const rows = flattenTree(this.roots, this.expanded);
     if (rows.length === 0) {
-      // The empty case says what to do about it, because the button that does it is right above.
+      // This message says nothing about adding a skill, because the New Skill button sits right above
       this.rows.appendChild(el('div', 'sk-empty', 'No skills yet.'));
       return;
     }

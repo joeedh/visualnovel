@@ -69,9 +69,9 @@ const LOOP_PROTOCOL =
   'When you are finished, call submit_report exactly once. Do not finish your turn without it.';
 
 /**
- * The same protocol for a run the author is sitting in front of. "Exactly once" is wrong here: a
- * conversation that has already filed a report and is then told what it missed has to file another
- * one, and the sentence above forbids it.
+ * The submit_report protocol for a run the author is sitting in front of. LOOP_PROTOCOL's
+ * "exactly once" is wrong here: a conversation that has already filed a report and is then told
+ * what it missed has to file another one, and LOOP_PROTOCOL's wording forbids that.
  */
 const CHAT_PROTOCOL = [
   'You are talking to the author. Answer what they ask, in a few sentences unless they want more,',
@@ -193,7 +193,7 @@ export interface ToolSummary {
 
 /** The read tools the analyst gets when the author lets it look at the source. */
 export interface SourceAccess {
-  /** Read tools only. Nothing here may write, and the loop blocks anything that says it does. */
+  /** Holds read-only tools; the loop blocks any tool that declares a write capability. */
   registry: Map<string, Tool>;
   ctx: ToolContext;
 }

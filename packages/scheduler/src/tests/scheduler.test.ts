@@ -85,7 +85,7 @@ describe('runPipeline — gate-as-barrier end-to-end', () => {
       // Capped at max_refine_attempts (2), each recorded for provenance.
       expect(shots.every((t) => t.attempts.length === 2)).toBe(true);
       expect(shots.every((t) => t.attempts.every((a) => a.output))).toBe(true);
-      // `error` is the reason for the terminal state, whatever the state — here P7's give-up.
+      // `error` records the reason for the terminal state, whatever the state; here it is P7's give-up.
       expect(shots.every((t) => t.error?.includes('still has blocking defects'))).toBe(true);
     } finally {
       await p.cleanup();

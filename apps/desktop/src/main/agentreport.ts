@@ -49,7 +49,7 @@ export interface AnalysisRequest {
   /** The model doing the reading, already resolved from the dialog or from the bound model. */
   modelId: string;
   effort?: EffortChoice;
-  /** What the author said they had wanted. Redacted like everything else. */
+  /** The author's stated intent, redacted like every other field here. */
   wanted?: string;
   /**
    * The tools the agent under report could call, so a recommendation is written against what that

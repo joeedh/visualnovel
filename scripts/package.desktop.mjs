@@ -131,8 +131,9 @@ await writeFile(
       version: app.version,
       private: true,
       main: app.main,
-      // electron-builder warns without one, and it is not ceremony: NSIS puts it in the
-      // installer's own file properties, which is where Windows shows it during an install.
+      // electron-builder warns when this is missing, and the warning is not ceremony.
+      // NSIS copies this value into the installer's own file properties, which is where
+      // Windows displays it during an install.
       description: app.description,
       author: 'Joe Eagar',
       license: 'UNLICENSED',

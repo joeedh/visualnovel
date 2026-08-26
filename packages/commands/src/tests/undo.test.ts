@@ -167,7 +167,7 @@ describe('UndoJournal', () => {
         'refs/vn/undo/3/pre',
       ]);
 
-      // Idempotent, and it never reaches into the window it is meant to keep.
+      // Pruning again is idempotent; it never removes refs inside the window it keeps.
       await journal.prune();
       expect(await git.listRefs('refs/vn/undo')).toHaveLength(4);
     } finally {

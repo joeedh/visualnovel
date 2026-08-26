@@ -162,7 +162,7 @@ export class ConvoEditor extends VnEditor {
     const ui = this.ui;
 
     this.bar.clear();
-    // Row one is what a turn is answered with; row two is what it costs and where it is kept
+    // Row one shows what answered a turn. Row two shows what it cost and where the thread is kept.
     const top = this.bar.row();
     const low = this.bar.row();
 
@@ -230,8 +230,9 @@ export class ConvoEditor extends VnEditor {
       'Saved conversations. Reopening one is read-only — the agent is not shown it until ' +
       'Continue hands it back.';
 
-    // Beside the list rather than only inside it: starting a fresh conversation is the commonest
-    // thing anyone opens that menu for, and it is one gesture, not two.
+    // This button sits beside the Threads list rather than only inside it. Starting a fresh
+    // conversation is the commonest thing anyone opens that menu for, and putting it here makes
+    // it one gesture instead of two.
     const fresh = low.button('New', () => void exec('agent.newThread'));
     fresh.description =
       'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +

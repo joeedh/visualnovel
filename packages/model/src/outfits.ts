@@ -21,9 +21,9 @@ export interface ResolvedOutfit {
 }
 
 /**
- * The outfit a subject wears in a scene, and where it came from. `character` may be absent —
- * a shot can name a subject the model does not have — in which case only the two authored
- * levels can answer and the fallback is the literal `default`.
+ * Resolves the outfit a subject wears in a scene, and which level answered. `character` may
+ * be absent, because a shot can name a subject the model does not have. When it is absent,
+ * only the two authored levels can answer, and the fallback is the literal `default`.
  */
 export function outfitFor(
   subject: Pick<ShotSubject, 'characterId' | 'outfit'>,

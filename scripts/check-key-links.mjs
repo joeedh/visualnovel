@@ -149,9 +149,9 @@ if (broken) {
 
 console.log('\nEvery link in docs/guides/api-keys.md resolves.');
 if (unverified > 0) {
-  // Said every run, not just the first, because the number going up is the signal. One vendor
-  // hiding its console behind a sign-in is a fact about that vendor; a second one doing it means
-  // this check is quietly stopping being a check, and nobody would notice from a green tick.
+  // This prints every run, not just the first, because a reader needs to see the number going
+  // up. One vendor hiding its console behind a sign-in is a fact about that vendor. A second
+  // vendor doing it means this check is losing coverage, and a green tick would not show that.
   console.log(
     `${unverified} of them could not really be checked — the host answers everything, so the ` +
       'link is only known to be pointing somewhere that is up. Read those by eye now and then.',

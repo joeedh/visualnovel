@@ -47,7 +47,7 @@ class Preview {
   private check: CommandCheck | undefined;
   /** A late check must not redraw a dismissed dialog. */
   private live = true;
-  /** One browser window per press. The command is quick, but a double click is two tabs. */
+  /** Opens one browser window per press; the command is quick, but a double click still opens two tabs. */
   private filing = false;
   /** Whether the browser has been handed this report at least once. */
   private filed = false;

@@ -44,10 +44,11 @@ import type { Invocation } from '@vn/commands';
 import type { CoverageLine, DocTree, SceneCoverage, StoryGraph } from '../../../src/shared/ipc.js';
 
 /**
- * The frame `script.css` does not supply. That sheet is imported as-is because it is still the
+ * Supplies the frame `script.css` does not. That sheet is imported as-is because it is still the
  * React column's sheet and one copy is the point, so only two things are added here: a reset,
- * because the page's own does not cross the shadow boundary, and the notice, which was the bar's
- * right edge and here is a strip above the page (a path.ux label cannot carry the tone colours).
+ * because the page's own does not cross the shadow boundary, and the notice, which appeared as
+ * the bar's right edge in React and appears here as a strip above the page, because a path.ux
+ * label cannot carry the tone colours.
  */
 const SURFACE_CSS = `
 * { box-sizing: border-box; }
@@ -319,9 +320,9 @@ export class ScriptEditor extends VnEditor {
   }
 
   /**
-   * Refetch the tree the frames are read out of. A failure is swallowed: the pane's job is the
-   * prose, and a backlink panel that could not be built is not news an author can act on
-   * mid-sentence.
+   * Refetches the tree the frames are read out of. A failure is swallowed, because the pane
+   * displays the prose, not backlinks, and an author cannot act on a backlink panel that could
+   * not be built while typing mid-sentence.
    */
   private async loadTree(): Promise<void> {
     try {
@@ -503,7 +504,7 @@ export class ScriptEditor extends VnEditor {
     });
   }
 
-  /** Pick a frame: the shell's selection moves to it, and the routing rule says where it opens. */
+  /** Picks a frame, moves the shell's selection to it, and lets the routing rule decide where it opens. */
   private openAsset(hash: string): void {
     this.ui.assetHash = hash;
     this.announce();
@@ -709,8 +710,9 @@ export class ScriptEditor extends VnEditor {
   }
 
   /**
-   * The pending act's strip: what it would do, the props still being chosen, and the two gestures
-   * that end it. Its sentence is in the notice, beside everything else a command has said.
+   * Renders the pending act's strip, showing what it would do, the props still being chosen,
+   * and the two gestures that end it. Its sentence appears in the notice, beside everything
+   * else a command has said.
    */
   private strip(scene: SceneCoverage, pending: Pending): HTMLElement {
     const box = el('div', `sc-pend ${pending.act}`);
@@ -871,9 +873,10 @@ export class ScriptEditor extends VnEditor {
   }
 
   /**
-   * Open a row. It deliberately does not clear the notice: the continuation an act opens carries
-   * on from that act, and what the command said about it is still the last thing that happened.
-   * A row the author opens is a new act, so `openLine`/`compose` clear it themselves.
+   * Opens a row without clearing the notice, because the continuation an act opens carries on
+   * from that act, and what the command said about it is still the last thing that happened.
+   * A row the author opens directly is a new act, so `openLine` and `compose` clear the notice
+   * themselves.
    */
   private open(row: { editing: Editing; draft: string }): void {
     this.settled = false;

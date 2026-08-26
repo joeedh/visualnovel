@@ -83,8 +83,8 @@ describe('promoteAction', () => {
     expect(promoteAction(concept())).toEqual({ ok: true, locationId: 'cafe' });
   });
 
-  // A character's look is the gate's business — `character.md` and `approved.png` are what
-  // actually clear one, and promotion writes neither.
+  // A character's look is the gate's business. Only character.md and approved.png actually
+  // clear the gate, and promotion writes neither.
   it('refuses a character concept, and a plate that is already what it is', () => {
     const person = promoteAction(concept({ rungs: [{ target: 'character:aiko', label: 'Aiko' }] }));
     expect(person).toEqual({ ok: false, reason: expect.stringContaining('approval gate') });
@@ -284,8 +284,8 @@ describe('regenerateAction', () => {
     expect(action.note).toContain('Dry run is unticked');
   });
 
-  // Nothing reaches a task that gave up once its budget is spent, so a run is the wrong offer —
-  // the same exception main makes ahead of its own stale refusal
+  // A task that gave up once its budget is spent reaches nothing further, so a run is the wrong
+  // offer here. Main makes the same exception ahead of its own stale refusal.
   it('still requeues a stale asset whose slot has since failed', () => {
     expect(regenerateAction(info({ stale: true, failure: failed({ later: true }) }))).toMatchObject(
       {
@@ -326,7 +326,7 @@ describe('failureNote', () => {
     expect(note).not.toContain('of 2 attempts');
   });
 
-  // Regenerating is the only thing that reaches a spent identity, so the note has to offer it
+  // Only regenerating reaches an asset whose identity is spent, so the failure note offers it
   it('says which frame is on screen when a re-render is what gave up, and what to do', () => {
     const note = failureNote(info({ failure: failed({ later: true }) }));
     expect(note).toContain('last frame that got through');
