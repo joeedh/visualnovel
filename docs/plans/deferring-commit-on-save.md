@@ -268,8 +268,8 @@ With more than one, the subject names the last act and states how many came with
 ```
 Set model on GenImage (and 29 more edits)
 
-Vn-Batch: 30 seqs 41,43,44-70
-Vn-Seq: 70
+Vn-Batch: 30 seqs 41,43,45-72
+Vn-Seq: 72
 Vn-Command: gengraph.setProp, gengraph.moveNodes
 Vn-Source: ui
 ```
@@ -285,9 +285,9 @@ reader who already knows to look for it. The span goes in the new trailer instea
 `Vn-Batch` carries the count and the exact seqs. The seqs a batch covers are not contiguous:
 `exec` allocates a seq before it knows whether the command defers (stack.ts:99), so a
 non-mutating command between two deferring ones consumes one without joining the batch, and so
-does a deferring command that throws. A run is written as a comma-separated list with hyphenated
-runs, and the recovery story in finding 4 depends on it being exact rather than on it looking
-tidy.
+does a deferring command that throws. The seqs are written as a comma-separated list with runs of
+two or more hyphenated, and the recovery story in finding 4 depends on the list being exact
+rather than on it looking tidy.
 
 `Vn-Invocation` is dropped for a multi-record batch: thirty invocations do not belong in a
 commit message, and each one is already in `commands.jsonl` keyed by a seq `Vn-Batch` names.
@@ -297,7 +297,11 @@ in the case this plan is for.
 The count must survive truncation. `subject()` caps at `SUBJECT_MAX` and appends an ellipsis
 (commit.ts:32, :39-43), so appending `(and 29 more edits)` to a long base subject and then
 capping would eat the count — the one part of the line that says the commit is a batch.
-`commitBatch` truncates the base subject to leave room for the suffix, then appends.
+`commitBatch` truncates the base subject to leave room for the suffix, then appends. Stage 1
+therefore gave `subject()` an optional cap, and applied it to the fallback as well as to the
+message: a record with no message falls back to its invocation, which has no length bound of its
+own, so leaving that branch untruncated would push the count past the cap in the one case the
+suffix exists for.
 
 ### `record.commits` and the record's shape
 

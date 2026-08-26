@@ -44,6 +44,14 @@ function record(over: Partial<CommandRecord> = {}): CommandRecord {
   };
 }
 
+/** The `Vn-*` trailer lines of a commit, in the order they were written. */
+async function trailersOf(git: Git, sha: string): Promise<string[]> {
+  return (await git.show(sha))
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('Vn-'));
+}
+
 describe('Committer', () => {
   it("commits the whole worktree under the record's message, with provenance trailers", async () => {
     const { dir, git, cleanup } = await tempProject();
@@ -150,6 +158,112 @@ describe('Committer', () => {
       expect(blank!.subject).toBe("story.moveLine(line='L4')");
     } finally {
       await cleanup();
+    }
+  }, 20_000);
+});
+
+describe('Committer.commitBatch', () => {
+  it('commits nothing for an empty batch', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      expect(await new Committer({ repos: () => [git] }).commitBatch([])).toEqual([]);
+      expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
+      expect(await git.isDirty()).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('produces the same subject and trailers as commit() for one record', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      const committer = new Committer({ repos: () => [git] });
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      const [alone] = await committer.commit(record());
+      await fs.writeFile(join(dir, 'doc.md'), 'edited again\n');
+      const [batched] = await committer.commitBatch([record()]);
+
+      const [second, first] = await git.log(2);
+      expect(second!.subject).toBe(first!.subject);
+      expect(await trailersOf(git, batched!.sha)).toEqual(await trailersOf(git, alone!.sha));
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('names the last act and the count, and folds the run into one set of trailers', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      const records = Array.from({ length: 30 }, (_, i) =>
+        record({
+          seq: 41 + i,
+          id: i % 2 === 0 ? 'gengraph.setProp' : 'gengraph.moveNodes',
+          invocation: `gengraph.setProp(value=${i})`,
+          message: `Set aspect to 16:${i}`,
+        }),
+      );
+
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      const [commit] = await new Committer({ repos: () => [git] }).commitBatch(records);
+
+      expect((await git.log(1))[0]!.subject).toBe('Set aspect to 16:29 (and 29 more edits)');
+      expect(await trailersOf(git, commit!.sha)).toEqual([
+        'Vn-Batch: 30 seqs 41-70',
+        'Vn-Seq: 70',
+        'Vn-Command: gengraph.setProp, gengraph.moveNodes',
+        'Vn-Source: ui',
+      ]);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('renders the gaps in a batch rather than a span across them', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      const records = [41, 43, 45, 46, 47].map((seq) => record({ seq }));
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      const [commit] = await new Committer({ repos: () => [git] }).commitBatch(records);
+      expect(await trailersOf(git, commit!.sha)).toContain('Vn-Batch: 5 seqs 41,43,45-47');
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('keeps the count when the base subject is long enough to be truncated', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      await new Committer({ repos: () => [git] }).commitBatch([
+        record({ seq: 1 }),
+        record({ seq: 2, message: `${'a very long summary '.repeat(8)}.` }),
+      ]);
+
+      const [head] = await git.log(1);
+      expect(head!.subject).toHaveLength(72);
+      expect(head!.subject.endsWith('… (and 1 more edit)')).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('produces one commit in each repo the run touched', async () => {
+    const one = await tempProject();
+    const two = await tempProject();
+    try {
+      await fs.writeFile(join(one.dir, 'doc.md'), 'edited\n');
+      await fs.writeFile(join(two.dir, 'doc.md'), 'edited\n');
+      const committer = new Committer({ repos: () => [one.git, two.git] });
+      const commits = await committer.commitBatch([record({ seq: 1 }), record({ seq: 2 })]);
+
+      expect(commits.map((c) => c.repo)).toEqual([one.dir, two.dir]);
+      for (const git of [one.git, two.git]) {
+        expect((await git.log(1))[0]!.subject).toBe('Moved L4 into scene two (and 1 more edit)');
+      }
+    } finally {
+      await one.cleanup();
+      await two.cleanup();
     }
   }, 20_000);
 });

@@ -34,12 +34,13 @@ const SUBJECT_MAX = 72;
 /**
  * The first line of `text` as a git subject, or `fallback` when it has none. Only the first line
  * is taken: git reads a blank line as the start of a body, so truncating a longer text mid-word
- * would leave a stray paragraph of it as the commit message body.
+ * would leave a stray paragraph of it as the commit message body. `max` is lowered by
+ * `commitBatch` to reserve room for a suffix that must survive truncation.
  */
-function subject(text: string, fallback: string): string {
+function subject(text: string, fallback: string, max = SUBJECT_MAX): string {
   const line = text.trim().split('\n')[0]!.trim().replace(/\.$/, '');
-  if (line.length === 0) return fallback;
-  return line.length <= SUBJECT_MAX ? line : `${line.slice(0, SUBJECT_MAX - 1).trimEnd()}…`;
+  const chosen = line.length === 0 ? fallback : line;
+  return chosen.length <= max ? chosen : `${chosen.slice(0, max - 1).trimEnd()}…`;
 }
 
 function trailersOf(record: CommandRecord): Record<string, string> {
@@ -59,6 +60,43 @@ function trailersOf(record: CommandRecord): Record<string, string> {
   return trailers;
 }
 
+/** First-seen order, so `Vn-Command` reads in the order the acts ran. */
+function distinct(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+/**
+ * `seqs` as a comma-separated list with runs of two or more hyphenated: `41,43,45-72`. The seqs a
+ * batch covers have gaps in them, so a first-to-last span would claim records the commit does not
+ * contain.
+ */
+function seqRanges(seqs: number[]): string {
+  const sorted = [...seqs].sort((a, b) => a - b);
+  const parts: string[] = [];
+  for (let i = 0; i < sorted.length; ) {
+    let end = i;
+    while (end + 1 < sorted.length && sorted[end + 1] === sorted[end]! + 1) end++;
+    parts.push(end > i ? `${sorted[i]}-${sorted[end]}` : String(sorted[i]));
+    i = end + 1;
+  }
+  return parts.join(',');
+}
+
+/**
+ * Provenance for a run of acts folded into one commit. `Vn-Seq` keeps its meaning — one integer,
+ * the last record — so a reader that parses it as a number is not given a wrong answer; the span
+ * goes in `Vn-Batch`. `Vn-Invocation` is dropped, since thirty invocations do not belong in a
+ * commit message and each is already in `commands.jsonl` under a seq `Vn-Batch` names.
+ */
+function trailersOfBatch(records: CommandRecord[]): Record<string, string> {
+  return {
+    'Vn-Batch': `${records.length} seqs ${seqRanges(records.map((r) => r.seq))}`,
+    'Vn-Seq': String(records[records.length - 1]!.seq),
+    'Vn-Command': distinct(records.map((r) => r.id)).join(', '),
+    'Vn-Source': distinct(records.map((r) => r.source)).join(', '),
+  };
+}
+
 export class Committer {
   constructor(private readonly opts: CommitterOptions) {}
 
@@ -68,6 +106,29 @@ export class Committer {
       subject(record.subject ?? record.message, record.invocation),
       trailersOf(record),
     );
+  }
+
+  /**
+   * Commit a run of acts as one commit per repo. The subject names the last act, which is the
+   * state the commit contains and the edit the author most recently made, and states how many
+   * came with it. One record produces byte-identical output to `commit(record)`, and an empty
+   * batch touches no repo.
+   */
+  async commitBatch(records: CommandRecord[]): Promise<CommitResult[]> {
+    if (records.length === 0) return [];
+    if (records.length === 1) return this.commit(records[0]!);
+
+    const more = records.length - 1;
+    const suffix = ` (and ${more} more edit${more === 1 ? '' : 's'})`;
+    const last = records[records.length - 1]!;
+    // The count is the one part of the line that says the commit is a batch, so the base subject
+    // is capped short of it rather than the whole line being capped afterwards.
+    const base = subject(
+      last.subject ?? last.message,
+      last.invocation,
+      SUBJECT_MAX - suffix.length,
+    );
+    return this.run(`${base}${suffix}`, trailersOfBatch(records));
   }
 
   /**
