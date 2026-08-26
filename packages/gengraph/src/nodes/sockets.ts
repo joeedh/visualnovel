@@ -4,7 +4,7 @@
  */
 import { NodeSocketBase, registerSocketType } from 'pathux-graph';
 import type { SocketDir, SocketTypeDef } from 'pathux-graph';
-import { StringProperty } from 'pathux-toolprop';
+import { PropFlags, StringProperty } from 'pathux-toolprop';
 
 import type { GenBlobRef } from '../services.js';
 
@@ -19,11 +19,17 @@ export class TextSocket extends NodeSocketBase<'text', string> {
     return { typeName: 'TextSocket', type: 'text', uiName: 'Text', color: '#9c8f6a' };
   }
 
-  constructor(dir: SocketDir = 'in') {
+  /**
+   * Takes the name and description its row is drawn with, because an unconnected input is
+   * edited on that row and every control this application draws carries a tooltip.
+   */
+  constructor(dir: SocketDir = 'in', uiname?: string, description?: string) {
     super(dir);
 
     if (dir === 'in') {
-      this.defaultProp = new StringProperty('');
+      // `NO_UNDO` for the same reason the node props carry it: the write is an application
+      // command, so path.ux's own toolstack must not also record it.
+      this.defaultProp = new StringProperty('', undefined, uiname, description, PropFlags.NO_UNDO);
     }
   }
 }

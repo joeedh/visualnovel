@@ -1,4 +1,6 @@
-import { Graph, readGraphFile, writeGraphFile } from '../index.js';
+import { PropFlags } from 'pathux-toolprop';
+
+import { GenImage, Graph, readGraphFile, registerGenNodes, writeGraphFile } from '../index.js';
 import type { GraphId } from '../index.js';
 import {
   TestOutput,
@@ -73,5 +75,52 @@ describe('the graph file', () => {
     expect(read.graph).toBeUndefined();
     expect(read.diagnostics.map((d) => d.code)).toEqual(['malformed-graph-file']);
     expect(read.diagnostics[0]?.message).not.toBe('');
+  });
+});
+
+/** The metadata a row is drawn from, as a file written before it was declared carries it. */
+interface FileProp {
+  uiname: string;
+  description: string;
+  flag: number;
+}
+
+// A socket declaring no default is written as null rather than left out.
+function blank(prop: FileProp | null | undefined): void {
+  if (prop === null || prop === undefined) return;
+
+  prop.uiname = '';
+  prop.description = '';
+  prop.flag = 0;
+}
+
+registerGenNodes();
+
+/**
+ * A property is serialized whole, so a graph written before a name or a description was declared
+ * carries the empty ones. The node editor draws its rows from that metadata, so a file left to
+ * speak for itself would draw a control with no tooltip.
+ */
+describe('what a file is not trusted for', () => {
+  it("puts a node type's declared row text and flags back", () => {
+    const graph = new Graph();
+    graph.add(new GenImage());
+
+    const json = JSON.parse(JSON.stringify(writeGraphFile(graph))) as {
+      nodes: { props: FileProp[]; inputs: { defaultProp?: FileProp | null }[] }[];
+    };
+    for (const prop of json.nodes[0]!.props) blank(prop);
+    for (const input of json.nodes[0]!.inputs) blank(input.defaultProp);
+
+    const node = readGraphFile(json).graph?.nodes[0];
+    const model = node?.props['model'];
+    expect(model?.uiname).toBe('Model');
+    expect(model?.description).not.toBe('');
+    expect((model?.flag ?? 0) & (PropFlags.NO_UNDO ?? 0)).not.toBe(0);
+
+    // The socket defaults are the rows this matters most for: they are the ones path.ux binds.
+    const prompt = node?.inputs['prompt']?.defaultProp;
+    expect(prompt?.uiname).toBe('Prompt');
+    expect(prompt?.description).not.toBe('');
   });
 });

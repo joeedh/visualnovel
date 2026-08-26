@@ -5,7 +5,7 @@
  */
 import { Node } from 'pathux-graph';
 import type { NodeDef, Sockets } from 'pathux-graph';
-import { BoolProperty, StringProperty } from 'pathux-toolprop';
+import { BoolProperty, PropFlags, StringProperty } from 'pathux-toolprop';
 
 import { mtok } from '../prices.js';
 import { registerGenNode } from '../registry.js';
@@ -18,6 +18,20 @@ import { ImageSocket, RefsSocket, TextSocket } from './sockets.js';
 const NOMINAL_IN_TOKENS = 1_000;
 const NOMINAL_OUT_TOKENS = 500;
 
+/**
+ * A string prop, named and described for the row path.ux draws it as. `NO_UNDO` keeps the
+ * write off path.ux's own toolstack, because a graph is edited through `gengraph.*` commands
+ * and the application's undo stack is the one that holds them.
+ */
+function str(value: string, uiname: string, description: string): StringProperty {
+  return new StringProperty(value, undefined, uiname, description, PropFlags.NO_UNDO);
+}
+
+/** A boolean prop, on the same terms as `str`. */
+function bool(value: boolean, uiname: string, description: string): BoolProperty {
+  return new BoolProperty(value, undefined, uiname, description, PropFlags.NO_UNDO);
+}
+
 /** The prompt the host derived for the bound slot, passed through unchanged. */
 export class GenDerivedPrompt extends Node<{ prompt: TextSocket }, { prompt: TextSocket }> {
   static override graphDef(): NodeDef {
@@ -25,7 +39,9 @@ export class GenDerivedPrompt extends Node<{ prompt: TextSocket }, { prompt: Tex
       typeName: 'GenDerivedPrompt',
       uiName: 'Derived prompt',
       description: 'Carries the prompt the host derived for the slot this graph is bound to.',
-      inputs: { prompt: new TextSocket('in') },
+      inputs: {
+        prompt: new TextSocket('in', 'Prompt', 'The prompt the host seeds this graph with.'),
+      },
       outputs: { prompt: new TextSocket('out') },
       typeVersion: 1,
     };
@@ -39,7 +55,13 @@ export class GenTaskRefs extends Node<{ assets: TextSocket }, { refs: RefsSocket
       typeName: 'GenTaskRefs',
       uiName: 'Task refs',
       description: "Carries the reference pictures the host resolved for this graph's task.",
-      inputs: { assets: new TextSocket('in') },
+      inputs: {
+        assets: new TextSocket(
+          'in',
+          'Assets',
+          'The reference pictures the host seeds, as a JSON list of assets.',
+        ),
+      },
       outputs: { refs: new RefsSocket('out') },
       typeVersion: 1,
     };
@@ -54,7 +76,9 @@ export class GenSlotRef extends Node<Sockets, { image: ImageSocket }> {
       uiName: 'Slot ref',
       description: 'Reads the asset another slot holds right now, such as a plate or a sheet.',
       outputs: { image: new ImageSocket('out') },
-      props: { slot: new StringProperty('') },
+      props: {
+        slot: str('', 'Slot', 'Which slot to read the current asset of, such as plate:garden.'),
+      },
       typeVersion: 1,
     };
   }
@@ -73,9 +97,19 @@ export class GenTemplate extends Node<
       typeName: 'GenTemplate',
       uiName: 'Text',
       description: 'Authored text, with {a}, {b} and {c} replaced by what feeds those inputs.',
-      inputs: { a: new TextSocket('in'), b: new TextSocket('in'), c: new TextSocket('in') },
+      inputs: {
+        a: new TextSocket('in', 'A', 'Text that replaces {a} in the template.'),
+        b: new TextSocket('in', 'B', 'Text that replaces {b} in the template.'),
+        c: new TextSocket('in', 'C', 'Text that replaces {c} in the template.'),
+      },
       outputs: { text: new TextSocket('out') },
-      props: { template: new StringProperty('') },
+      props: {
+        template: str(
+          '',
+          'Template',
+          'The text this node passes on, with {a}, {b} and {c} filled in.',
+        ),
+      },
       typeVersion: 1,
     };
   }
@@ -88,12 +122,12 @@ export class GenRewrite extends Node<{ text: TextSocket }, { text: TextSocket }>
       typeName: 'GenRewrite',
       uiName: 'LLM rewrite',
       description: 'Rewrites the text feeding it through a language model.',
-      inputs: { text: new TextSocket('in') },
+      inputs: { text: new TextSocket('in', 'Text', 'The text to rewrite.') },
       outputs: { text: new TextSocket('out') },
       props: {
-        model: new StringProperty('claude-opus-4-8'),
-        instruction: new StringProperty(''),
-        system: new StringProperty(''),
+        model: str('claude-opus-4-8', 'Model', 'Which language model rewrites the text.'),
+        instruction: str('', 'Instruction', 'What to ask the model to do to the text.'),
+        system: str('', 'System', 'The system prompt sent ahead of the instruction.'),
       },
       typeVersion: 1,
     };
@@ -111,15 +145,19 @@ export class GenImage extends Node<
       uiName: 'Generate image',
       description: 'Draws a picture from the prompt and references feeding it.',
       inputs: {
-        prompt: new TextSocket('in'),
+        prompt: new TextSocket('in', 'Prompt', 'What to draw.'),
         refs: new RefsSocket('in'),
-        refine: new TextSocket('in'),
+        refine: new TextSocket('in', 'Refine', 'A critique to draw against, from an earlier pass.'),
       },
       outputs: { image: new ImageSocket('out') },
       props: {
-        model: new StringProperty('gemini-2.5-flash-image'),
-        aspect: new StringProperty(''),
-        seed: new StringProperty(''),
+        model: str('gemini-2.5-flash-image', 'Model', 'Which image model draws the picture.'),
+        aspect: str(
+          '',
+          'Aspect',
+          'The aspect ratio to ask for, such as 16:9. Empty asks for none.',
+        ),
+        seed: str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
       },
       typeVersion: 1,
     };
@@ -138,14 +176,18 @@ export class GenEditImage extends Node<
       description: 'Redraws the picture feeding it, guided by a prompt and further references.',
       inputs: {
         base: new ImageSocket('in'),
-        prompt: new TextSocket('in'),
+        prompt: new TextSocket('in', 'Prompt', 'What to change about the picture.'),
         refs: new RefsSocket('in'),
       },
       outputs: { image: new ImageSocket('out') },
       props: {
-        model: new StringProperty('gemini-2.5-flash-image'),
-        aspect: new StringProperty(''),
-        seed: new StringProperty(''),
+        model: str('gemini-2.5-flash-image', 'Model', 'Which image model redraws the picture.'),
+        aspect: str(
+          '',
+          'Aspect',
+          'The aspect ratio to ask for, such as 16:9. Empty asks for none.',
+        ),
+        seed: str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
       },
       typeVersion: 1,
     };
@@ -182,7 +224,10 @@ export class GenImageFile extends Node<Sockets, { image: ImageSocket }> {
       uiName: 'Image file',
       description: 'Names a picture already in the asset store, by content hash.',
       outputs: { image: new ImageSocket('out') },
-      props: { hash: new StringProperty(''), ext: new StringProperty('png') },
+      props: {
+        hash: str('', 'Hash', 'The content hash of the picture in the asset store.'),
+        ext: str('png', 'Extension', "The stored file's extension, without the dot."),
+      },
       typeVersion: 1,
     };
   }
@@ -195,7 +240,9 @@ export class GenRefinePrompt extends Node<{ text: TextSocket }, { text: TextSock
       typeName: 'GenRefinePrompt',
       uiName: 'Refine prompt',
       description: 'Carries the critique a refine pass wrote, and is empty until one has run.',
-      inputs: { text: new TextSocket('in') },
+      inputs: {
+        text: new TextSocket('in', 'Text', 'The critique a refine pass wrote.'),
+      },
       outputs: { text: new TextSocket('out') },
       typeVersion: 1,
     };
@@ -211,7 +258,7 @@ export class GenSwitch extends Node<{ a: ImageSocket; b: ImageSocket }, { image:
       description: 'Passes on picture a or picture b, so a branch is tried without rewiring.',
       inputs: { a: new ImageSocket('in'), b: new ImageSocket('in') },
       outputs: { image: new ImageSocket('out') },
-      props: { useB: new BoolProperty(false) },
+      props: { useB: bool(false, 'Use b', 'Pass on picture b rather than picture a.') },
       typeVersion: 1,
     };
   }
@@ -228,7 +275,14 @@ export class GenOutput extends Node<{ image: ImageSocket }, Sockets> {
       uiName: 'Output image',
       description: 'Fills the named slot with the picture feeding it.',
       inputs: { image: new ImageSocket('in') },
-      props: { slot: new StringProperty(''), active: new BoolProperty(true) },
+      props: {
+        slot: str('', 'Slot', 'Which slot this graph fills, such as portrait:aiko.'),
+        active: bool(
+          true,
+          'Active',
+          'Evaluate this output for its slot, standing down the others claiming it.',
+        ),
+      },
       typeVersion: 1,
     };
   }

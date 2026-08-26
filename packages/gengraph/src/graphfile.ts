@@ -6,6 +6,7 @@ import {
   type StructableInstance,
 } from 'nstructjs';
 import { Graph, GroupDef } from 'pathux-graph';
+import type { ToolProperty } from 'pathux-toolprop';
 
 export type GraphFileDiagnosticCode = 'malformed-graph-file' | 'unreadable-graph-file';
 
@@ -35,9 +36,10 @@ export function writeGraphFile(graph: Graph): Record<string, unknown> {
  */
 export function readGraphFile(json: unknown): GraphFileRead {
   const read = readStruct(json, Graph, 'graph');
-  return read.value === undefined
-    ? { diagnostics: read.diagnostics }
-    : { graph: read.value, diagnostics: read.diagnostics };
+  if (read.value === undefined) return { diagnostics: read.diagnostics };
+
+  restampDeclared(read.value);
+  return { graph: read.value, diagnostics: read.diagnostics };
 }
 
 /** The group definition as JSON values, for one file under the project's graph library. */
@@ -52,9 +54,37 @@ export function writeGroupFile(def: GroupDef): Record<string, unknown> {
  */
 export function readGroupFile(json: unknown): GroupFileRead {
   const read = readStruct(json, GroupDef, 'group');
-  return read.value === undefined
-    ? { diagnostics: read.diagnostics }
-    : { def: read.value, diagnostics: read.diagnostics };
+  if (read.value === undefined) return { diagnostics: read.diagnostics };
+
+  restampDeclared(read.value.subgraph);
+  return { def: read.value, diagnostics: read.diagnostics };
+}
+
+/**
+ * Puts each node's declared row metadata back after a read. nstructjs serializes a property
+ * whole, so a graph written before a name, a description or a flag was declared loads carrying
+ * the empty ones the file holds and draws rows with no tooltip. What an author set is the value
+ * and `wasSet`; everything the editor reads to draw the row belongs to the node type.
+ */
+function restampDeclared(graph: Graph): void {
+  for (const node of graph.nodes) {
+    const def = node.def;
+
+    for (const key of Object.keys(def.props ?? {})) {
+      stamp(def.props?.[key], node.props[key]);
+    }
+    for (const key of Object.keys(def.inputs ?? {})) {
+      stamp(def.inputs?.[key]?.defaultProp, node.inputs[key]?.defaultProp);
+    }
+  }
+}
+
+function stamp(declared: ToolProperty | undefined, loaded: ToolProperty | undefined): void {
+  if (declared === undefined || loaded === undefined) return;
+
+  loaded.uiname = declared.uiname;
+  loaded.description = declared.description;
+  loaded.flag = declared.flag;
 }
 
 export interface GroupFileRead {

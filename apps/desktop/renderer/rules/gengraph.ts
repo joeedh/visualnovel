@@ -7,7 +7,7 @@
  * node-only jest project runs it. `pathux` is imported type-only because jest resolves
  * `pathux-graph` and `pathux-toolprop` and not the widget barrel.
  */
-import { activeOutputs, type GenEdit, type Graph } from '@vn/gengraph';
+import { activeOutputs, genNodeSpec, type GenEdit, type Graph } from '@vn/gengraph';
 import type { GraphEdit } from 'pathux';
 
 /** One `gengraph.*` invocation, in the shape `exec` takes. */
@@ -49,6 +49,19 @@ export function contestedSlots(graph: Graph): string[] {
   }
 
   return [...twice];
+}
+
+/**
+ * True where the graph carries output nodes and none of them is active. Standing the last one
+ * down is a legal edit rather than a refused one, so the pane reports the state the same way it
+ * reports a contested slot. A graph with no output node at all is half-authored and says nothing.
+ */
+export function noActiveOutput(graph: Graph): boolean {
+  const outputs = graph.nodes.filter(
+    (node) => genNodeSpec(node.def.typeName)?.slotProp !== undefined,
+  );
+
+  return outputs.length > 0 && activeOutputs(graph).length === 0;
 }
 
 /** Reads a gesture as the edit this application decides, refusing the kinds it cannot write. */

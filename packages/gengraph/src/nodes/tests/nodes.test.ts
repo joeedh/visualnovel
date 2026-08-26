@@ -1,6 +1,8 @@
 import { buildPortraitChunks, renderPrompt } from '@vn/artgen';
 import { projectConfig } from '@vn/types';
 import type { Character } from '@vn/types';
+import { PropFlags } from 'pathux-toolprop';
+import type { ToolProperty } from 'pathux-toolprop';
 
 import {
   GenDerivedPrompt,
@@ -18,6 +20,9 @@ import {
   Graph,
   genNodeRuntime,
   genNodeSpec,
+  genNodeTypes,
+  nodePropKeys,
+  nodePropTarget,
   registerGenRuntimes,
 } from '../../index.js';
 import type {
@@ -349,5 +354,38 @@ describe('the socket types', () => {
 
   it('reads an unwired text input as the empty string', () => {
     expect(new GenTemplate().inputs.a.getValue()).toBe('');
+  });
+});
+
+describe('what a node type declares about its editable values', () => {
+  /** Every value the node editor draws a row for, across all twelve types. */
+  function editable(): { where: string; prop: ToolProperty }[] {
+    const found: { where: string; prop: ToolProperty }[] = [];
+    for (const cls of genNodeTypes().values()) {
+      const node = new cls();
+      for (const key of nodePropKeys(node)) {
+        const prop = nodePropTarget(node, key);
+        if (prop !== undefined) found.push({ where: `${node.def.typeName}.${key}`, prop });
+      }
+    }
+    return found;
+  }
+
+  it('names and describes every one, because the row it is drawn as needs a tooltip', () => {
+    const bare = editable()
+      .filter(({ prop }) => !prop.uiname || !prop.description)
+      .map(({ where }) => where);
+
+    expect(bare).toEqual([]);
+  });
+
+  it("keeps every one off path.ux's own undo stack", () => {
+    // path.ux types its flag table as a plain string record, so the constant reads as optional.
+    const noUndo = PropFlags.NO_UNDO ?? 0;
+    const undoable = editable()
+      .filter(({ prop }) => (prop.flag & noUndo) === 0)
+      .map(({ where }) => where);
+
+    expect(undoable).toEqual([]);
   });
 });

@@ -254,10 +254,16 @@ without the write seam would draw rows that edit the graph in memory and persist
 deleted as well, `GenGraphView` has nothing left to override, so the subclass goes and the pane
 uses `NodeGraphView` directly.
 
-**Switch off path.ux's datapath undo.** `view.useDataPathUndo = false`, which every child
-inherits through `getUseDataPathUndo`'s parent walk. Without it a bound write goes onto path.ux's
-own toolstack and its coalescing re-enters the `change` listener, sending a second command per
-edit.
+**Switch off path.ux's datapath undo, per property.** Every bound property declares
+`PropFlags.NO_UNDO`. Without it a bound write goes onto path.ux's own toolstack and its
+coalescing re-enters the `change` listener, sending a second command per edit.
+
+The plan originally set `view.useDataPathUndo = false` and relied on every child inheriting it
+through `getUseDataPathUndo`'s parent walk. That does not work. `ui.ts:1284` reads
+`this.useDataPathUndo && !(prop.flag & PropFlags.NO_UNDO)` when it builds the widget, and
+`propEditRow` builds the widget before its caller assigns `row.parentWidget`, so the parent walk
+finds no parent and reads the default. The property flag is honoured at the same line regardless
+of parenting, and it travels with the declaration rather than with whoever hosts the row.
 
 **Delete the hand-rolled rows.** `buildNodeUI` (`nodes.ts:306`), `valueRow` (`:329`),
 `stopOwnEvents` (`:396`), `raise` (`:402`), the four style constants (`:291`–`:299`) and the
@@ -282,9 +288,14 @@ default (`packages/gengraph/src/edit.ts:226`), as does the DSL.
 `weigh` already uses at `:254`, documented pure and safe to call twice), and either sends the
 command or reverts.
 
-Subscriptions are torn off in `load()` before the graph is replaced, and re-established in
-`paint()`. A leak here is a listener holding a discarded `Graph` and firing a command for a node
-that is no longer on screen. The tear-off removes only what the pane added: `_adoptProp` already
+Subscriptions are torn off at the top of `paint()` and re-established at its end, rather than in
+`load()` as first planned. `paint()` is the one place the view is pointed at a graph, and `load()`
+is not on every path that reaches it, so tearing off there would leave a reload's listeners
+behind. Each subscription record holds its own target reference, so the tear-off does not depend
+on the graph the pane currently holds. A leak here is a listener holding a discarded `Graph` and
+firing a command for a node that is no longer on screen; `onPropWrite` additionally drops a write
+whose node no longer belongs to the graph on screen, which covers a listener that outlives its
+graph by a frame. The tear-off removes only what the pane added: `_adoptProp` already
 registers a `change` listener of its own per node (`vendor/path.ux/scripts/graph/node.ts:196`),
 and clearing the list wholesale would break the node's own bookkeeping.
 
@@ -346,6 +357,18 @@ binding without the declarations would ship twelve node types of untooltipped co
 break the repo's no-exceptions tooltip rule. The declarations land in this stage, ahead of the
 deletion.
 
+**A file does not speak for its own rows.** Declaring the metadata is not enough on its own,
+which the plan did not anticipate. nstructjs serializes a `ToolProperty` whole — `uiname`,
+`description` and `flag` alongside the value — and `Node.loadSTRUCT` adopts the property object
+the file carries, so a graph written before these declarations existed loads with the empty
+`uiname` and `description` it was written with and without `NO_UNDO`. Verified live against a
+scratch project before the fix: the row for `model` came back as
+`{ui: 'model', desc: '', flag: 256}`, drew a tooltip reading `model`, and sat on path.ux's undo
+stack. What an author sets is the value and `wasSet`; everything a row is drawn from belongs to
+the node type. `readGraphFile` and `readGroupFile` therefore restamp `uiname`, `description` and
+`flag` from `node.def` after each read. The fix lives in `@vn/gengraph` rather than in path.ux:
+it keeps the submodule commit from widening, and the node-only jest project can test it.
+
 ## Stage 4 — stop the echo
 
 `bridge.ts:187` invalidates on every successful mutating command, so a prop edit the pane just
@@ -374,7 +397,8 @@ identity and position the renderer would otherwise have to mirror.
 `dispatch()` (`nodes.ts:240`) already applies `moveNodes` locally as well as sending it, for a
 different reason recorded at `:243`. This stage does not change it.
 
-`useDataPathUndo` is switched off in stage 3 rather than asserted here, because it defaults on.
+path.ux's datapath undo is switched off in stage 3 rather than asserted here, because it
+defaults on.
 
 ## Stage 5 — documentation
 
@@ -398,7 +422,8 @@ add this plan to `docs/plans/index.md`.
 | Revert through `api.setValue` | `target.setValue` directly | A direct write skips `notifyPathChange`, so the widget repaints only through the `dataPathPolling` fallback |
 | Subscribe over `nodePropKeys` | Subscribe over `node.props` | `_inlineKeys` admits only keys absent from `node.props`, so the socket rows this plan exists for would be silent |
 | Untick sends `setProp active=false` | Refuse the untick; keep `activeRow` | `decideSetActive` takes no value and always sets `true`, so there is no off edit to route into and no refusal to quote. `setProp` on a bool prop is already accepted |
-| Switch `useDataPathUndo` off explicitly | Rely on it being off | It defaults to `true` (`ui_base_props.ts:24`), and its coalescing re-enters the `change` listener |
+| `PropFlags.NO_UNDO` on each declaration | `view.useDataPathUndo = false` on the view | `useDataPathUndo` defaults to `true` and its parent walk runs before `propEditRow`'s caller parents the row, so the view's value is never read. The flag is read at the same line whatever the row's parent is |
+| `readGraphFile` restamps the declared metadata | Trust what the file carries | nstructjs serializes a property whole, so an existing graph loads carrying the empty `uiname` and `description` it was written with, and draws untooltipped rows on path.ux's undo stack |
 | A one-shot skip armed from `onExec` | Key the skip off `ctx.origin` | `ctx.origin` is main-only and `onInvalidate` passes no arguments, so the renderer cannot attribute an invalidation |
 | `active` bound as a checkbox mapped to `setActiveOutput` | `activeRow` installed through `buildExtraUI` | `buildExtraUI` is read inside `super.syncGraph()` and `syncContents` does not re-run it, so that route needs a new path.ux hook. Binding removes four functions instead of keeping one |
 | Echo suppression for `setProp` only | Suppression for every `gengraph.*` command | `setProp` is the only edit whose local and written results are provably identical |
@@ -408,8 +433,8 @@ add this plan to `docs/plans/index.md`.
 - A gen node's unconnected input shows its editor on the socket's own row, aligned with the
   terminal.
 - Connecting that socket removes the editor without a file reload; disconnecting restores it.
-- Typing a value writes it through `gengraph.setProp` and does not reload the pane, and the
-  selection survives.
+- Typing a value writes it through `gengraph.setProp` and the selection survives. The reload it
+  currently still costs is stage 4's to remove, so check that half there.
 - A malformed slot address is refused with `decideSetProp`'s own sentence and the field returns
   to its previous value.
 - Editing an unconnected input's default on its socket row sends a command and writes the file,
@@ -418,7 +443,9 @@ add this plan to `docs/plans/index.md`.
 - An edit pushes exactly one command and exactly one entry onto the app's undo stack, and
   path.ux's own toolstack receives nothing.
 - Over CDP: a press inside a prop row does not start a frame drag, and typing in a bound text
-  field does not trigger the pane's delete-node hotkey.
+  field deletes no node. The pane turns out to bind deletion to a toolbar button and a
+  right-click entry rather than to a key, so the hazard this criterion was written for does not
+  exist here; the check confirms that rather than a guard.
 - Every control the pane draws has a tooltip, and it comes from the property declaration.
 - Two Gen Graph panes open on different slugs each edit their own graph.
 - A node type registered after module load draws its rows, which the deleted prototype patch
@@ -429,20 +456,23 @@ add this plan to `docs/plans/index.md`.
 ## Open questions
 
 - **Where the per-prop subscriptions are torn down when the pane closes rather than reloads.**
-  `VnEditor` teardown needs auditing for the hook, and the listener set must not outlive the
-  editor.
-- **Is a slot with no active output a legal state?** Unticking `active` on the only output
-  claiming a slot leaves nothing to draw it. `contestedSlots` warns about a slot claimed twice
-  and says nothing about one claimed zero times, so either the untick needs a matching warning in
-  `this.notes` or the state needs a rule. This is the one question the active-output binding
-  opens, and it should be answered before stage 3 rather than during it.
+  Answered in stage 3. `on_remove()` unsubscribes, because path.ux detaches an editor on a tab
+  switch. The return path needs nothing of its own: `on_area_active` re-arms the `watch()`, and
+  its `onReturn` runs `load()` → `paint()`, which resubscribes.
+- **Is a slot with no active output a legal state?** Answered before stage 3: legal, and the pane
+  says so. The untick ships as a plain `gengraph.setProp active=false`, and `noActiveOutput` in
+  `apps/desktop/renderer/rules/gengraph.ts` puts a line in the pane's `notes` strip beside the
+  contested-slot warning, naming that the slot falls back to the built-in runner. The rule is
+  renderer-side; `@vn/gengraph` gains nothing. A graph carrying no output node at all is
+  half-authored and says nothing.
 - **What a bound row shows while its command is in flight.** The reload stage 4 removes is what
   currently hides the gap between a keystroke and the file being written. A refusal arriving two
   hundred milliseconds after the author moved on is a field that changes under them, and nothing
   in this plan decides whether the row is disabled, marked, or left alone.
-- **Whether `copyTo`'s shared callback arrays are stage 1's problem.** A copied property firing
-  the original's listeners is a live defect that anything built on `on('change')` sits next to.
-  Fixing it widens a submodule commit; leaving it means writing down that the seam has a known
-  sharp edge.
+- **Whether `copyTo`'s shared callback arrays are stage 1's problem.** Left unfixed, and the seam
+  does not reach it. `nodePropStruct` binds a copy, but the pane subscribes to
+  `nodePropTarget(node, key)`, which is the node's real property, and the copy's `customGetSet`
+  setter writes through to it. So no listener this pane installs sits on a copied property. The
+  defect stands for a caller that copies a property carrying listeners of its own.
 - **Whether the notes strip should also carry the refusal**, since `say` is transient and a
   reverted field gives the author no lasting record of why.

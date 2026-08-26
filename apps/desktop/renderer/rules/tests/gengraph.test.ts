@@ -1,7 +1,7 @@
-import { GenOutput, Graph, registerGenNodes } from '@vn/gengraph';
+import { GenImage, GenOutput, Graph, registerGenNodes } from '@vn/gengraph';
 import type { GraphEdit } from 'pathux';
 
-import { commandFor, contestedSlots, genEditFor } from '../gengraph.js';
+import { commandFor, contestedSlots, genEditFor, noActiveOutput } from '../gengraph.js';
 
 /** The kinds that reach a command, so a gesture the pane can write is never refused by mistake. */
 describe('a gesture read as an edit', () => {
@@ -125,25 +125,25 @@ describe('the command an edit is written through', () => {
   });
 });
 
+registerGenNodes();
+
+/** One output node per entry, each active unless the entry says otherwise. */
+function graphOf(outputs: readonly { slot: string; active?: boolean }[]): Graph {
+  const graph = new Graph();
+  for (const entry of outputs) {
+    const output = new GenOutput();
+    graph.add(output);
+    output.props['slot']!.setValue(entry.slot);
+    if (entry.active === false) output.props['active']!.setValue(false);
+  }
+  return graph;
+}
+
 /**
  * A node added to a graph arrives active, so two outputs on one slot is a state an author reaches
  * by adding the second one. The pane reports it and keeps the button that resolves it live.
  */
 describe('slots more than one active output claims', () => {
-  registerGenNodes();
-
-  /** One output node per entry, each active unless the entry says otherwise. */
-  function graphOf(outputs: readonly { slot: string; active?: boolean }[]): Graph {
-    const graph = new Graph();
-    for (const entry of outputs) {
-      const output = new GenOutput();
-      graph.add(output);
-      output.props['slot']!.setValue(entry.slot);
-      if (entry.active === false) output.props['active']!.setValue(false);
-    }
-    return graph;
-  }
-
   it('finds nothing where each slot is claimed once', () => {
     const graph = graphOf([{ slot: 'portrait:aiko' }, { slot: 'plate:gate/day' }]);
     expect(contestedSlots(graph)).toEqual([]);
@@ -166,5 +166,36 @@ describe('slots more than one active output claims', () => {
   // Two outputs naming no slot bind nothing, so neither contests the other.
   it('leaves an unnamed slot out', () => {
     expect(contestedSlots(graphOf([{ slot: '' }, { slot: '' }]))).toEqual([]);
+  });
+});
+
+/**
+ * Unticking the last active output leaves a graph that draws nothing. The pane reports that
+ * rather than refusing the edit, so the report has to tell the two silent cases apart.
+ */
+describe('a graph with nothing left to draw', () => {
+  it('reports a graph whose every output was stood down', () => {
+    const graph = graphOf([
+      { slot: 'portrait:aiko', active: false },
+      { slot: 'plate:gate/day', active: false },
+    ]);
+    expect(noActiveOutput(graph)).toBe(true);
+  });
+
+  it('says nothing while one output is still active', () => {
+    const graph = graphOf([{ slot: 'portrait:aiko' }, { slot: 'plate:gate/day', active: false }]);
+    expect(noActiveOutput(graph)).toBe(false);
+  });
+
+  // An output naming no slot still terminates a run, so a graph carrying one is not silent.
+  it('counts an active output that names no slot', () => {
+    expect(noActiveOutput(graphOf([{ slot: '' }]))).toBe(false);
+  });
+
+  it('says nothing about a graph with no output node yet', () => {
+    const graph = new Graph();
+    graph.add(new GenImage());
+    expect(noActiveOutput(graph)).toBe(false);
+    expect(noActiveOutput(new Graph())).toBe(false);
   });
 });
