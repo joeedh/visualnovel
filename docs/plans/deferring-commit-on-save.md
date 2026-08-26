@@ -540,9 +540,8 @@ successful flush commits all of them under one subject.
 
 ### Stage 4 — desktop wiring
 
-- `switchWorkspace` (index.ts:299) awaits `getStack().flushCommits()` at the top of the
-  function, before `notifications().suspend()` (:318) and before `workspaceRoot` is reassigned
-  (:319), then calls `dispose()` on the stack it is dropping.
+- `switchWorkspace` (index.ts:299) awaits `stack?.dispose()` on the stack it is dropping, before
+  `notifications().suspend()` (:318) and before `workspaceRoot` is reassigned (:319).
 - The second `before-quit` handler (index.ts:1109) races `Promise.all([state.close(), flush])`
   against `QUIT_FLUSH_MS` rather than adding a third racer that would let the quit proceed as
   soon as `state.close()` settled.
@@ -550,6 +549,32 @@ successful flush commits all of them under one subject.
   losing a panel width (index.ts:1098-1100), and this plan's own premise is that `add -A` is
   slowest on exactly the projects that accumulate the largest batches.
 - `getStack()` (index.ts:684) passes `onCommitError`, wired to `notify`.
+
+Stage 4 corrected three of those bullets.
+
+**One call at the switch, not a flush and then a dispose.** The bullet asked for
+`getStack().flushCommits()` at the top of the function and `dispose()` later. Two things make
+that wrong. `getStack()` builds a stack where none exists, so a switch before the first command
+would construct one only to drop it; the local `stack` is asked instead. And the top of the
+function is ahead of the workspace lock (index.ts:304-311) and `openWorkspace` (:313), either of
+which can throw — a stack disposed there would stop deferring for the rest of a session that
+never switched. The single call sits after both, still ahead of `suspend()` and the root moving.
+
+**`dispose()` does not take the mutual-exclusion chain.** `switchWorkspace` is reached only from
+`host.openWorkspace`, and all three commands that call it are `mutating: true`
+(commands/workspace.ts:107, :137, :157), so it always runs inside a command that already holds
+the chain. A serialized flush there would queue behind the command awaiting it and never return,
+hanging the app on every project switch. The direct flush is also safe rather than merely
+necessary: that command flushed before it ran, and a deferring act is mutating and so cannot have
+started since, which leaves the batch provably empty at that point.
+`flushCommits()` keeps the chain and stays the entry point for a caller outside a command, which
+is what quit is. A test in commit.test.ts calls `dispose()` from inside a mutating command, so
+the deadlock cannot come back.
+
+**`QUIT_FLUSH_MS` stays at 2000.** The premise the bullet asked it to be revisited against is the
+one Stage 0 falsified: a commit costs about 230 ms and does not grow with the project, because
+the cost is git's own process startup rather than the size of the tree `-A` stages. Its comment
+now names both writes the quit is holding open for.
 
 The desktop jest project is node-only, so these are covered by the existing main-process tests
 plus a manual check over CDP in Stage 5.

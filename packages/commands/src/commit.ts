@@ -68,9 +68,9 @@ function distinct(values: string[]): string[] {
 /**
  * `seqs` as a comma-separated list with runs of two or more hyphenated: `41,43,45-72`. The seqs a
  * batch covers have gaps in them, so a first-to-last span would claim records the commit does not
- * contain.
+ * contain. Exported so a host reporting a failed batch names the same acts the trailer would have.
  */
-function seqRanges(seqs: number[]): string {
+export function seqRanges(seqs: number[]): string {
   const sorted = [...seqs].sort((a, b) => a - b);
   const parts: string[] = [];
   for (let i = 0; i < sorted.length; ) {

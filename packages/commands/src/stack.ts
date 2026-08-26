@@ -455,8 +455,9 @@ export class CommandStack<Host = unknown> {
   }
 
   /**
-   * Commit the pending batch as one commit per repo, and report what landed. Called by the host
-   * at the boundaries the stack cannot see: a workspace switch, and quit.
+   * Commit the pending batch as one commit per repo, and report what landed. Waits for a mutating
+   * command already in flight, so call it from outside one: quit does, and a command that called
+   * it would queue behind itself and never return.
    */
   async flushCommits(): Promise<CommitResult[]> {
     return this.serialize(() => this.flush());
@@ -466,10 +467,16 @@ export class CommandStack<Host = unknown> {
    * Commit what is pending and stop deferring. The host calls this on a stack it is dropping: a
    * timer that outlived one would fire against a committer whose repos have since been refilled
    * with the next project's, and commit one project's edits into another.
+   *
+   * The flush does not take the chain, because the one caller is inside the mutating command that
+   * asked for the switch and already holds it. That command flushed before it ran, and a
+   * deferring act is mutating and so cannot have started since, which is what makes the direct
+   * call safe rather than merely necessary.
    */
   async dispose(): Promise<CommitResult[]> {
     this.disposed = true;
-    return this.flushCommits();
+    this.cancel();
+    return this.flush();
   }
 
   /** Restart the idle countdown, so a batch is bounded by the last act rather than the first. */

@@ -30,7 +30,7 @@ import { ProjectPaths } from '@vn/store';
 import { openGit, type Git } from '@vn/git';
 import { appendJsonl } from '@vn/util';
 import { Workspace } from '@vn/authoring';
-import { CommandStack, Committer, UndoJournal } from '@vn/commands';
+import { CommandStack, Committer, UndoJournal, seqRanges } from '@vn/commands';
 import { DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
 import { BUDGET_KEY } from './commands/agent.js';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
@@ -313,6 +313,9 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   const opened = await openWorkspace(root);
   if (instanceLock && instanceLock !== lock) await instanceLock.release();
   instanceLock = lock;
+  // After the last step that can throw, and before both `suspend()` and the root moving: a batch
+  // that failed to commit files a notification, which belongs to the project it was edited in.
+  await stack?.dispose();
   // The agent being dropped may be parked on a question nobody is going to answer now.
   abandonPending();
   notifications().suspend();
@@ -699,6 +702,17 @@ function getStack(): CommandStack<CommandHost> {
         paths: UNDO_PATHS,
       }),
       committer: committer(),
+      // A held-back run of edits that could not be committed is the one commit-on-save failure an
+      // author has to act on, so it is filed durably rather than logged. The edits are on disk and
+      // the stack keeps the batch, so the next flush retries.
+      onCommitError: (error, records) => {
+        void notify({
+          category: 'error',
+          level: 'error',
+          message: `${records.length} edit(s) (seq ${seqRanges(records.map((r) => r.seq))}) are saved but not committed: ${String(error)}`,
+          source: 'ui',
+        });
+      },
       onRecord: async (record) => {
         // The revision tells the renderer that files moved without it moving them. An undo or redo
         // always counts, as does a mutating command from the agent, CDP or main, whose changes the
@@ -1095,8 +1109,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Quitting is synchronous, so hold it open for the one flush that may still be debounced - but
-// bounded: losing a remembered panel width is a smaller failure than a quit that never lands.
+// Quitting is synchronous, so hold it open for the two writes that may still be owed: the
+// debounced session state, and a run of edits whose commit is deferred. Bounded either way,
+// because losing a panel width or a commit subject is a smaller failure than a quit that never
+// lands. 2000 covers a commit, which costs about 230 ms and does not grow with the project: the
+// cost is git's own process startup rather than the size of the tree `-A` stages.
 const QUIT_FLUSH_MS = 2000;
 let flushingOnQuit = false;
 app.on('before-quit', () => {
@@ -1107,10 +1124,16 @@ app.on('before-quit', () => {
   if (sessionState && workspaceRoot) getWindowList().freeze(liveWindows());
 });
 app.on('before-quit', (event) => {
+  if (flushingOnQuit) return;
   const state = sessionState;
-  if (flushingOnQuit || !state) return;
+  // Asked of the stack only where one exists, since `getStack()` would build one on the way out.
+  const batch = stack?.flushCommits();
+  if (!state && !batch) return;
   flushingOnQuit = true;
   event.preventDefault();
   const deadline = new Promise<void>((resolve) => setTimeout(resolve, QUIT_FLUSH_MS).unref?.());
-  void Promise.race([state.close().catch(() => {}), deadline]).finally(() => app.quit());
+  // Awaited together and raced as one, since racing them separately against the deadline would
+  // let the quit land the moment the faster of the two settled.
+  const owed = Promise.all([state?.close().catch(() => {}), batch?.catch(() => {})]);
+  void Promise.race([owed, deadline]).finally(() => app.quit());
 });

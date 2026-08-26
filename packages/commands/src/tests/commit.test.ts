@@ -491,7 +491,7 @@ async function batchSetup(
     ...(opts.journal ? { journal: new UndoJournal({ git }) } : {}),
     ...(opts.onCommitError ? { onCommitError: opts.onCommitError } : {}),
   });
-  return { dir, git, stack, gate, timer, cleanup };
+  return { dir, git, stack, gate, timer, registry, cleanup };
 }
 
 describe('deferred commit-on-save', () => {
@@ -669,6 +669,33 @@ describe('the idle flush', () => {
       expect(after.ok && after.record.commitDeferred).toBeUndefined();
       expect(after.ok && after.record.commits).toHaveLength(1);
       expect(timer.armedMs()).toBeNull();
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('is given up from inside the command dropping the stack, without deadlocking', async () => {
+    const { git, stack, registry, cleanup } = await batchSetup();
+    try {
+      registry.register(
+        define({
+          id: 'demo.switch',
+          title: 'Switch',
+          description: 'Drop the stack from inside a command, the way a workspace switch does.',
+          mutating: true,
+          props: {},
+          async run() {
+            // The desktop reaches `dispose` this way and no other. Through the chain it would
+            // queue behind the command calling it and never return.
+            await stack.dispose();
+            return { message: 'switched' };
+          },
+        }),
+      );
+      await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+      expect((await stack.exec('demo.switch', {}, 'ui')).ok).toBe(true);
+      // `demo.switch` writes nothing, so it leaves no commit of its own behind the flushed batch.
+      expect((await git.log()).map((c) => c.subject)).toEqual(['wrote a.md', 'init']);
     } finally {
       await cleanup();
     }
