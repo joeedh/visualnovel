@@ -214,7 +214,31 @@ duplicate overlay is worth knowing about before something does.
 
 The view stays pointed at `''` through this stage, so nothing on screen changes. Acceptance is
 over CDP: `ctx.api.getValue(ctx, 'graph')` inside the pane resolves to the live `Graph`, and
-`'graph.nodes["<id>"].props[\'prompt\'].value'` resolves to that node's value.
+`graph.nodes[<id>].props['slot'].value` resolves to that node's value.
+
+### As shipped
+
+The root carries the tool system as well as `graph`. `defineGraphApi` ends with the same
+`buildToolSysAPI(api, false, root)` call `defineShellApi` makes, because the view's own gestures
+run as ToolOps and a ToolOp reads its defaults through whichever API its context carries.
+
+Accepted over CDP against a `templates/basic` project with a `portrait:aiko` graph.
+`ctx.api.getValue(ctx, 'graph')` inside the pane answers a four-node `Graph`, and every prop path
+on it reads the node's value: `graph.nodes[3].props['slot'].value` is `portrait:aiko`,
+`graph.nodes[2].props['model'].value` is `gemini-2.5-flash-image`. The pane still draws four
+frames, each still stamped with an empty `nodePath`. The plan's example named `props['prompt']`,
+which is an input on the derived-prompt node rather than a prop, so the sentence above names a
+real one instead.
+
+The derived stack holds three overlays rather than two. path.ux derives a context per area
+before the editor sees it, so `this.ctx` already carries the shell's `VnOverlay` plus that one,
+and the override makes a third.
+
+A shell datapath does not resolve through the graph API. `ctx.api.getValue(ctx, 'ui.graphSlug')`
+throws `invalid path` inside the view, because the graph API's root declares no `ui`. Nothing
+under the view binds a shell path today, and the editor itself reads `this.ui` off its own
+context rather than the view's, so this costs nothing yet. A widget under the view that needs one
+is fixed by declaring the member on the graph API's root, not by pointing the widget elsewhere.
 
 ## Stage 3 — hand the rows to path.ux
 

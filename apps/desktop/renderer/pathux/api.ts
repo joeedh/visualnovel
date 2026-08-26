@@ -1,4 +1,6 @@
 import { DataAPI, DataStruct, buildToolSysAPI } from 'pathux';
+import { defineGraphAPI } from 'pathux-graph';
+import type { Graph } from 'pathux-graph';
 import { ShellState } from './state.js';
 
 /**
@@ -38,6 +40,26 @@ export function defineShellApi(): DataAPI {
   // path.ux's last-tool widget reads this off the context root.
   root.dynamicStruct('last_tool', 'last_tool', 'Last Tool');
 
+  buildToolSysAPI(api, false, root);
+  return api;
+}
+
+/**
+ * A second DataAPI, rooted on one generation graph, for a Gen Graph pane to hand its view. The
+ * pane replaces the graph object on every reload, so `graph` resolves through `getGraph` rather
+ * than through a member of the context.
+ */
+export function defineGraphApi(getGraph: () => Graph | undefined): DataAPI {
+  const api = new DataAPI();
+  const root = new DataStruct();
+  api.setRoot(root);
+
+  root
+    .struct('graph', 'graph', 'Generation Graph', defineGraphAPI(api))
+    .customGet(() => getGraph());
+
+  // The view's own gestures run as ToolOps, which read their defaults through whichever API the
+  // context carries.
   buildToolSysAPI(api, false, root);
   return api;
 }
