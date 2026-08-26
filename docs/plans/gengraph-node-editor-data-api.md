@@ -71,8 +71,9 @@ any widget rather than from one known call site.
 
 - **Deferring the graph file write.** Out of scope for both plans in this batch, for the
   reasons recorded in the tasklist.
-- **Deferring the commit.** That is [`deferring-commit-on-save.md`](deferring-commit-on-save.md),
-  which shares no code with this plan.
+- **Deferring the commit.** That is
+  [`archive/deferring-commit-on-save.md`](archive/deferring-commit-on-save.md), which shipped
+  and shares no code with this plan.
 - **A data API for the project model.** `apps/desktop/renderer/pathux/api.ts:5` states the
   app-wide stance, and it stays. This plan describes the graph a pane is showing, which
   path.ux already describes, and nothing else.

@@ -12,6 +12,7 @@ For undo — which is the other half of the same machinery — see
 - [Commit-on-save](#commit-on-save)
   * [The invariant](#the-invariant)
   * [Message shape](#message-shape)
+  * [Deferral](#deferral)
   * [Who does not commit](#who-does-not-commit)
 - [Bootstrap](#bootstrap)
   * [The `.gitattributes` a project gets](#the-gitattributes-a-project-gets)
@@ -81,8 +82,11 @@ become one commit.
 
 ### The invariant
 
-**The app opens on a clean worktree, and every act ends with one.** Under it, "everything dirty"
-and "what this act did" are the same set, so the simplest scope is also the correct one.
+**The app opens on a clean worktree, and every act ends with one, except inside a run of acts
+that defer their commit.** Under it, "everything dirty" and "what this act did" are the same
+set, so the simplest scope is also the correct one. A run of deferring acts is the one place
+the worktree stays dirty between acts, and the next act that does commit flushes the run before
+it runs, so the set is never mixed. "Deferral" below covers it.
 
 Session open establishes it with a **checkpoint commit** in each owned repo:
 `Committer.checkpoint(reason)` commits whatever is already there under a `Vn-Checkpoint: true`
@@ -111,7 +115,53 @@ An undo or redo adds `Vn-Undo:` / `Vn-Redo:` naming the seq it reverses. A check
 `Vn-Checkpoint: true` and no command fields.
 
 The resulting shas land on `CommandRecord.commits` (`{ repo, sha }[]`) in
-`vngen/state/commands.jsonl`, absent on a record that changed nothing or ran without a committer.
+`vngen/state/commands.jsonl`, absent on a record that changed nothing, ran without a committer,
+or deferred its commit into a batch.
+
+### Deferral
+
+A gesture sends one command per frame, and each one committing costs five git subprocesses that
+nobody reads the result of. A command declares `defersCommit: true` to join a batch instead:
+`gengraph.setProp` and `gengraph.moveNodes` are the two that do. The record is written as
+usual, carries `commitDeferred: true` and no `commits`, and the files it wrote stay on disk
+uncommitted until the batch flushes.
+
+Five things flush a batch, and the first four are what keep the invariant above true:
+
+- a mutating command that does not defer, before it runs rather than before it commits, so the
+  flush commit holds the deferred edits and nothing else;
+- `undo()` and `redo()`, so a deferred edit is in history before a restore overwrites it;
+- a workspace switch, which drops the stack the batch lives on;
+- quit, which the app holds open for the commit;
+- 1500 ms of idleness (`BATCH_IDLE_MS`), which bounds how long an author who edits and then
+  stops leaves a dirty worktree behind.
+
+Mutating commands are serialized end to end over that flush, so a deferring command cannot run
+inside another command's `-A` commit. Non-mutating commands stay concurrent and do not flush.
+
+A batch of one commits exactly as it would have undeferred. A batch of more takes the last
+act's subject with the count appended, and its trailers name the run rather than one
+invocation:
+
+```
+Sets 'aspect' on the Generate image node to "4:3" (and 3 more edits)
+
+Vn-Batch: 4 seqs 27,30,33,36
+Vn-Seq: 36
+Vn-Command: gengraph.setProp
+Vn-Source: cdp
+```
+
+`Vn-Seq` stays one integer holding the last seq, because a reader that parses it as a number
+must not get a range. `Vn-Batch` carries the count and the exact seqs, hyphenating runs of two
+or more and leaving the gaps that non-mutating commands took. `Vn-Invocation` is dropped, since
+`commands.jsonl` holds each one under the seq the range names. Two distinct commands in one
+batch produce two `Vn-Command` trailers.
+
+A flush that fails keeps the batch for the next flush to retry and files a durable notification
+naming the count and the seq range. The edits are on disk either way; what a lost batch costs
+is the attribution, since the next session's checkpoint commit picks the bytes up under
+"Changes made outside the app".
 
 ### Who does not commit
 
@@ -231,8 +281,10 @@ in the worktree, so it cannot perturb a snapshot tree taken either side of it.
   and does not widen to match the commit scope. The two answer different questions: *what changed*
   versus *what may be rolled back*. An undo therefore commits a worktree that is
   documents-rolled-back plus generated-as-is, which is exactly what is on disk.
-- **The drift refusal gets stronger.** A clean worktree becomes the norm, so a check that fails now
-  means something really did change outside the app.
+- **The drift refusal gets stronger.** A clean worktree is the norm between acts of different
+  kinds, so a check that fails means something really did change outside the app — which is why
+  `undo()` and `redo()` flush a pending batch first rather than letting a deferred edit read as
+  drift.
 - Undo also works where commit-on-save refuses: a shadow ref writes nobody's history, so a project
   nested in a larger repo still snapshots as it did before.
 

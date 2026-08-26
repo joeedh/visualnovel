@@ -222,6 +222,7 @@ interface CommandRecord {
   undo?: { pre: string; post: string; changed: boolean }; // shadow snapshots; absent ⇒ not an undo point
   stack?: 'undo' | 'redo'; // set on the stack's own entries, which are history, not undo points
   commits?: { repo: string; sha: string }[]; // what commit-on-save wrote; absent ⇒ nothing was
+  commitDeferred?: true; // the commit joined a batch, so `commits` is absent for that reason
 }
 ```
 
@@ -276,6 +277,13 @@ takes the whole worktree (`git add -A`), the journal only the document class. A 
 implementation already commits declares `commitsItself: true` and the committer leaves it alone;
 that is how `vnauthor`'s one-commit-per-approved-plan survives. Which repos, what the message
 looks like, and why the CLI stays out of it: [`repos-and-commits.md`](repos-and-commits.md).
+
+A command a gesture sends once per frame declares `defersCommit: true` instead. Its commit joins
+a batch that the next non-deferring mutating command, an undo, a redo, a workspace switch, a
+quit, or 1500 ms of idleness commits as one. The record is written as usual with
+`commitDeferred: true` and no `commits`. The flush runs before the next command's `run` rather
+than before its commit, so that command's commit holds only its own files, and mutating commands
+are serialized end to end to keep that true when two arrive at once.
 
 ---
 
@@ -515,7 +523,10 @@ its effect into the asking mesh, and `view.applyLayout` write the asking window'
 "the focused window", because that is where an unaddressed effect would land anyway.
 
 It is applied as a **per-execution shallow overlay** on the context, never assigned to the shared
-one. Commands overlap: a mutable `context.origin` set before `run` reads correctly until two
+one. Commands still overlap — the stack serializes mutating ones over the whole span from the
+commit flush through `run` to the commit, and leaves non-mutating ones concurrent, so a
+non-mutating command runs against anything. A mutable `context.origin` set before `run` reads
+correctly until two
 windows dispatch at once, at which point the second write lands while the first is still awaiting
 and its effect goes to the wrong window — a bug invisible in a single-window app and
 unreproducible by hand in a multi-window one. `packages/commands/src/tests/origin.test.ts` parks

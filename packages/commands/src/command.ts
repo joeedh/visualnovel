@@ -165,7 +165,9 @@ export interface CommandRecord {
   undo?: UndoPoint;
   /**
    * Commits this act produced under commit-on-save, one per repo that had something to commit.
-   * Absent on a record from a stack with no committer, and on one that changed nothing.
+   * Absent on a record from a stack with no committer, on one that changed nothing, and on one
+   * that deferred its commit into a batch, which `commitDeferred` distinguishes from the other
+   * two.
    */
   commits?: { repo: string; sha: string }[];
   /** Set when this act's commit was held back to be folded into a later flush. */

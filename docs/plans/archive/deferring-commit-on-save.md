@@ -1,6 +1,6 @@
 # Deferring commit-on-save
 
-Status: **planned**
+Status: **shipped** (see [As shipped](#as-shipped))
 
 A run of consecutive commands that opted into deferral should produce one git commit rather
 than one per command. The batching lives in `@vn/commands` beside the committer, because
@@ -56,7 +56,7 @@ not claim it is load-bearing today.
 
 Each was checked against the working tree on the `gengraph` branch. Findings 7 to 9 came from
 the pressure test at
-[`../research/pressure-test-deferring-commit-on-save.md`](../research/pressure-test-deferring-commit-on-save.md),
+[`../../research/pressure-test-deferring-commit-on-save.md`](../../research/pressure-test-deferring-commit-on-save.md),
 which verified the citations below and attacked the design; what it found is folded in here
 rather than left in the report.
 
@@ -150,7 +150,7 @@ Two more facts the design leans on:
   reads mid-edit, and what `written` means — and it is not designed here.
 - **The DataAPI rewrite of the node editor.** Coalescing a slider drag into one command in the
   renderer would attack the same cost from the other end. That is
-  [`gengraph-node-editor-data-api.md`](gengraph-node-editor-data-api.md), a separate change that
+  [`../gengraph-node-editor-data-api.md`](../gengraph-node-editor-data-api.md), a separate change that
   does not block this one; the two compose, since fewer commands and cheaper commands are
   independent wins.
 - **Narrowing the commit scope.** Committing `record.written` instead of `-A` is refused by
@@ -210,7 +210,7 @@ Deliberately not triggers:
 - **A non-mutating command.** It commits nothing, so it cannot steal the batch, and flushing
   on every `asset.info` or `bible.search` would undo most of the saving.
 - **A window closing.** One app instance owns the workspace and all its windows
-  ([`multiple-windows.md`](multiple-windows.md)), `window.close` is not mutating
+  ([`../multiple-windows.md`](../multiple-windows.md)), `window.close` is not mutating
   (docs/reference/command-system.md:503-506), and the worktree does not belong to the window
   that is going away.
 - **A write that commits outside `exec`.** There is none that can sweep a batch. `commitScaffolding`
@@ -695,4 +695,35 @@ both directions: the commit was never the bulk of the cost, and removing it cost
 - **Does the invariant's wording need to change in `commit.ts`'s doc comment?** The comment at
   commit.ts:8-11 justifies `-A` by the invariant. It stays true between acts of different
   kinds and becomes false within a run of deferring ones. Stage 6 rewords it; the exact
-  sentence is not settled here.
+  sentence is not settled here. Shipped as a widening rather than an exception: within a run,
+  everything dirty is what the whole run did, which is what `commitBatch` describes.
+
+## As shipped
+
+All seven stages landed, one commit each. `pnpm check`, `pnpm test` (3365 tests, 231 suites)
+and `pnpm lint` are green. Every acceptance criterion above is covered by a test in
+`packages/commands/src/tests/commit.test.ts`, and the three CDP checks Stage 5 asked for were
+run against a real project.
+
+### Deviations
+
+- **The premise was wrong, and Stage 0 is why the plan says so.** The commit is 23% of an edit
+  rather than the bulk of it; the undo journal's two `capture` calls cost 2.4 times what it
+  costs. The change still wins 20% of the wall clock, for the reasons under "Measured" and
+  "Re-measured", and the cost is git's process startup rather than the size of the tree `-A`
+  stages — so an alternative that narrowed the pathspec instead would have bought nothing.
+- **The undo test asserts the opposite of what Stage 2 asked for.** A pending edit to any file
+  other than the undo target's own is drift, and `UndoJournal.check` refuses before the undo
+  commits anything, so the state the bullet described is unreachable. The reachable case is a
+  deferring command that is itself the target, where the flush is what keeps its edit in
+  history at all. Recorded in full under Stage 2.
+- **`dispose()` does not take the mutual-exclusion chain, and `flushCommits()` does.** All
+  three commands that reach `switchWorkspace` are mutating, so a serialized flush there queues
+  behind the command awaiting it and deadlocks every workspace switch. The direct path is safe
+  rather than merely necessary: that command flushed before it ran, and a deferring act is
+  mutating and so cannot have started since. Covered by a test that calls `dispose()` from
+  inside a mutating command. Recorded under Stage 4.
+- **`dispose()` also stops the stack deferring**, which the plan did not say. A stack that kept
+  deferring after its timer was cancelled would hold a batch nothing would ever flush.
+- **`seqRanges` is exported.** The desktop's failure notification names the same seqs the
+  trailer would have carried, and rendering them twice in two places would let them drift.

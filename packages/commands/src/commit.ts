@@ -8,7 +8,10 @@
  * Scope is the whole worktree (`-A`) per repo rather than the paths a command claimed it wrote.
  * A declared `written` set is unverified (`docs/history/gitUndoOptions.md` §3). The whole worktree
  * rests on a stronger invariant anyway: the app opens on a clean worktree and every act ends with
- * one, so "everything dirty" and "what this act did" are the same set.
+ * one, so "everything dirty" and "what this act did" are the same set. A run of acts that defer
+ * their commit is the one exception, and it widens the set rather than mixing it: everything
+ * dirty is then what the whole run did, which is exactly what `commitBatch` describes. The stack
+ * flushes the run before any other act runs, so no act's commit ever holds another's files.
  */
 import type { Git } from '@vn/git';
 import type { CommandRecord } from './command.js';

@@ -411,7 +411,10 @@ provenance, and one JSON catalog.
   ([`docs/plans/archive/document-tree-context-menus.md`](docs/plans/archive/document-tree-context-menus.md))
 - Provenance, undo and commits are each opt-in: `vngen/state/commands.jsonl` for
   provenance; shadow-snapshot undo, which refuses to run rather than guessing when the
-  worktree has drifted; and per-repo commit-on-save.
+  worktree has drifted; and per-repo commit-on-save. A command a gesture sends once per frame
+  declares `defersCommit`, and a run of them commits once; the next act that commits flushes
+  the run before it runs, so no commit holds another act's files, and mutating commands are
+  serialized to keep that true when two arrive at once.
   ([`docs/reference/repos-and-commits.md`](docs/reference/repos-and-commits.md))
 - `view.*` commands run in main and push a `command:ui` effect naming an editor, never a
   room. Main answers optimistically, and the mesh returns a correction.
