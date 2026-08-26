@@ -150,7 +150,7 @@ Two more facts the design leans on:
   reads mid-edit, and what `written` means — and it is not designed here.
 - **The DataAPI rewrite of the node editor.** Coalescing a slider drag into one command in the
   renderer would attack the same cost from the other end. That is
-  [`../gengraph-node-editor-data-api.md`](../gengraph-node-editor-data-api.md), a separate change that
+  [`gengraph-node-editor-data-api.md`](gengraph-node-editor-data-api.md), a separate change that
   does not block this one; the two compose, since fewer commands and cheaper commands are
   independent wins.
 - **Narrowing the commit scope.** Committing `record.written` instead of `-A` is refused by

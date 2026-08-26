@@ -352,7 +352,7 @@ covers the document tree, asset naming and `doc.rename`.
 The renderer is a path.ux screen mesh: panes subdivide the window, each showing one editor.
 There is no React and no room vocabulary. path.ux is a git submodule at `vendor/path.ux`,
 so a fresh clone needs `git submodule update --init --recursive` (`pnpm check:setup` reports
-this by name). Six rules cause the most mistakes:
+this by name). Seven rules cause the most mistakes:
 
 - The sixteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
   `registerEditor(cls, 'vn.Name')` is the only way to register one, because a hand-written
@@ -379,6 +379,10 @@ this by name). Six rules cause the most mistakes:
   rendering. The jest desktop project is node-only, so surfaces are verified live over CDP.
 - A mid-gesture verdict must match the verdict that would apply on commit, layout changes
   on commit, and an editor with an open text row stops its own keydown events.
+- `renderer/pathux/api.ts` is rooted on `ShellState` and defines nothing for documents. One
+  editor overrides it: Gen Graph roots a second `DataAPI` on the graph it has open, through
+  `ctx.override({api})` per instance, so path.ux builds the node rows. A bound write is still
+  judged and sent as a command, so `@vn/commands` remains the write path.
 
 ## Command system
 

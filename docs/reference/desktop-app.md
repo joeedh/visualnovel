@@ -323,8 +323,12 @@ are the bridge's.
   whenever a prompt changes, so one remembered across a re-plan names nothing. They are two fields
   rather than one because an art-notes edit re-keys the **task** while the asset it produced keeps
   its hash — a pane on one must not be dragged off its subject by the other. `ShellState` is the root of the
-  path.ux DataAPI and the only thing a widget may bind to directly — document state never lands
-  here, because `@vn/commands` is the write path.
+  app-wide path.ux DataAPI, and the only thing a widget bound through `ctx.api` may reach —
+  document state never lands here, because `@vn/commands` is the write path. One editor overrides
+  that API for itself. Gen Graph builds a second `DataAPI` rooted on the graph it has open and
+  installs it through `ctx.override({api})`, per instance, so path.ux's node view can bind the
+  rows it draws. `api.ts` is untouched by this: the override lives and dies with the pane, and a
+  write through it is still judged and sent as a command.
 - **Keyboard is per-area first.** path.ux routes a keystroke to the focused area's keymaps and
   falls through to the screen's, so the shell claims only `/` (palette), Ctrl+Z / Ctrl+Shift+Z /
   Ctrl+Y, Shift+Tab and Ctrl+Q (quit — it came with the stock menu, which main deletes). Escape is nobody's: a popup installs its own while it is up. An editor that
@@ -1138,16 +1142,35 @@ commit. A refused gesture says its refusal, except a refused drag, which path.ux
 fading the frame it would not move.
 
 A drag is applied to the graph on screen as well as sent, because the view resyncs its frames from
-`node.pos` the moment `perform` returns. Everything else waits for the reload `exec` triggers, so
-the pane always draws what the file holds.
+`node.pos` the moment `perform` returns. Every other gesture waits for the reload `exec` triggers,
+so the pane always draws what the file holds. A property write is the exception, described below.
 
-**Node properties are not bound through the data API.** The pane leaves the view's graph path
-empty, which installs no datapath watch, and clears the path `syncGraph` stamps onto each frame,
-which drops the rows path.ux would have built against a path that cannot resolve. Each built-in
-node's `createUI` is patched renderer-side instead, drawing a text field or a checkbox per editable
-property that commits through `gengraph.setProp`. An input carrying a link has no row, because its
-value comes from upstream. An Output node draws a button that runs `gengraph.setActiveOutput`
-rather than a checkbox, since standing one output up stands its rivals down.
+**Node properties are bound through a data API scoped to this pane.** `defineGraphApi` builds a
+`DataAPI` rooted on one member — the graph on screen — and the editor installs it through
+`ctx.override({api})` at `init`, one per instance, because two panes may be open on different
+slugs and one member cannot answer for both. The app-wide API in `renderer/pathux/api.ts` is
+unchanged and still defines nothing for graphs. With the view pointed at `graph`, path.ux's
+`NodeFrame` builds the prop rows itself, and an unconnected input's editor sits on the socket's
+own row; connecting the socket removes it. Every bound write is heard through a `change` listener
+per property, judged by `decideGenEdit`, and sent as the command that writes it. A refused write
+is put back through the same API rather than prevented, because `change` is a notification and
+cannot veto. `active` on an output binds as a checkbox: ticking sends `gengraph.setActiveOutput`,
+which stands the rivals claiming its slot down, and unticking sends a plain
+`gengraph.setProp active=false`. A graph whose outputs are all inactive is a legal state, and the
+strip above the canvas says the slot falls back to the built-in runner.
+
+Every bound property is declared `PropFlags.NO_UNDO`, so path.ux's own datapath undo never sees a
+write the app's undo stack already holds, and it carries a `uiname` and a `description` so each
+row is labelled and tooltipped from the declaration. `readGraphFile` restamps all three after a
+read: nstructjs serializes a property whole, so a file written before those fields existed loads
+carrying empty ones.
+
+**A pane does not reload on its own property write.** A successful mutating command invalidates
+every listener, which would rebuild the graph under the widget being typed into. The pane arms a
+one-shot skip from an `onExec` watcher, which runs immediately before the invalidation the same
+`exec` raises, and matches the outcome to what it sent by the four props a `gengraph.setProp`
+carries — so a second pane open on the same graph still reloads. Only `setProp` is skipped,
+because it is the only edit whose local and written results come from the same `decideGenEdit`.
 
 **An edit here redraws what the graph draws.** A gesture that changes the authored graph spends
 nothing when it is made, and the next `pipeline.run` puts the bound slot's task back to `pending`

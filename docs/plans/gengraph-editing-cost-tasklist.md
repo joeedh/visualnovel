@@ -1,6 +1,6 @@
 # The cost of editing a generation graph — tasklist
 
-Status: **planned**. Two plans, independent of each other, both aimed at the same complaint:
+Status: **shipped**. Two plans, independent of each other, both aimed at the same complaint:
 dragging a slider or typing into a field in the Gen Graph pane is slow, and it is slow for
 reasons that have nothing to do with the graph.
 
@@ -10,7 +10,7 @@ are, why they are separate, and what order they can be taken in.
 | # | Plan | Covers |
 | --- | --- | --- |
 | 1 | [`archive/deferring-commit-on-save.md`](archive/deferring-commit-on-save.md) | Batching the git commit a run of consecutive edits produces, in `@vn/commands`. Shipped |
-| 2 | [`gengraph-node-editor-data-api.md`](gengraph-node-editor-data-api.md) | A scoped path.ux DataAPI over the live graph, so the pane stops rebuilding every widget by hand and stops reloading the whole file per edit |
+| 2 | [`archive/gengraph-node-editor-data-api.md`](archive/gengraph-node-editor-data-api.md) | A scoped path.ux DataAPI over the live graph, so the pane stops rebuilding every widget by hand and stops reloading the whole file per edit. Shipped |
 
 ## What the cost is made of
 
@@ -56,7 +56,7 @@ recommended only because it is smaller and its risk is better understood.
 ## The list
 
 - [x] 1 — defer and batch commit-on-save
-- [ ] 2 — a scoped DataAPI for the node editor
+- [x] 2 — a scoped DataAPI for the node editor
 
 ## Non-goals for the batch
 

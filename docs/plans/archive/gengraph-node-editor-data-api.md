@@ -1,8 +1,8 @@
 # A scoped DataAPI for the node editor
 
-Status: **planned**. Part of
-[`gengraph-editing-cost-tasklist.md`](gengraph-editing-cost-tasklist.md), independent of the
-other plan there.
+Status: **shipped**. Part of
+[`../gengraph-editing-cost-tasklist.md`](../gengraph-editing-cost-tasklist.md), independent of
+the other plan there.
 
 The Gen Graph pane draws its node rows by hand because the application has no data API to bind
 them to. This plan gives that one editor a DataAPI of its own, scoped to the graph on screen,
@@ -72,7 +72,7 @@ any widget rather than from one known call site.
 - **Deferring the graph file write.** Out of scope for both plans in this batch, for the
   reasons recorded in the tasklist.
 - **Deferring the commit.** That is
-  [`archive/deferring-commit-on-save.md`](archive/deferring-commit-on-save.md), which shipped
+  [`deferring-commit-on-save.md`](deferring-commit-on-save.md), which shipped
   and shares no code with this plan.
 - **A data API for the project model.** `apps/desktop/renderer/pathux/api.ts:5` states the
   app-wide stance, and it stays. This plan describes the graph a pane is showing, which
@@ -84,7 +84,7 @@ any widget rather than from one known call site.
 ## What this plan got wrong before the pressure test
 
 The pressure test is at
-[`../research/pressure-test-gengraph-node-editor-data-api.md`](../research/pressure-test-gengraph-node-editor-data-api.md).
+[`../../research/pressure-test-gengraph-node-editor-data-api.md`](../../research/pressure-test-gengraph-node-editor-data-api.md).
 Three of the plan's premises were false, and the stages below are written against the
 corrections rather than the originals. They are recorded because each one would have been
 discovered mid-implementation, and two of them silently.
@@ -409,13 +409,18 @@ defaults on.
 
 ## Stage 5 — documentation
 
-`docs/reference/desktop-app.md`'s Gen Graph section, and the paragraph in `CLAUDE.md` naming
-the sixteen editors, both describe the pane as building its own rows. Update both. Record in
-`docs/reference/desktop-app.md` that one editor holds a scoped DataAPI and why the app-wide
-stance in `api.ts` is unchanged.
+`docs/reference/desktop-app.md`'s Gen Graph section describes the pane as building its own rows.
+Update it, and record there that one editor holds a scoped DataAPI and why the app-wide stance in
+`api.ts` is unchanged. That file's `ShellState` bullet also calls the shell API the only thing a
+widget may bind to, which this plan makes untrue.
 
-Tick the row in [`gengraph-editing-cost-tasklist.md`](gengraph-editing-cost-tasklist.md) and
-add this plan to `docs/plans/index.md`.
+`CLAUDE.md`'s paragraph naming the sixteen editors turned out to say nothing about how the pane
+draws its rows, so there was nothing there to correct. What it was missing is the stance itself:
+its list of renderer rules never mentioned `api.ts`. The rule and its one exception land there as
+a seventh bullet.
+
+Tick the row in [`../gengraph-editing-cost-tasklist.md`](../gengraph-editing-cost-tasklist.md)
+and update this plan's row in `docs/plans/index.md`.
 
 ## Decisions
 
