@@ -80,6 +80,14 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
    */
   commitsItself?: boolean;
   /**
+   * Whether the stack may hold this command's commit back and fold it into a later one, so that
+   * a run of consecutive edits costs one commit rather than one each. The batch is ended by the
+   * next mutating command that does not defer, by undo or redo, and by an idle interval, so the
+   * worktree is dirty only between the edits of one run. Only meaningful with `mutating: true`
+   * and without `commitsItself`.
+   */
+  defersCommit?: boolean;
+  /**
    * Reports whether this would run now, and why not. Never a gate on `run`, which re-decides
    * against the state it actually finds: a check that passed followed by a run that refuses is a
    * race the caller must tolerate, whereas a check that gated would turn that race into a state
@@ -160,6 +168,8 @@ export interface CommandRecord {
    * Absent on a record from a stack with no committer, and on one that changed nothing.
    */
   commits?: { repo: string; sha: string }[];
+  /** Set when this act's commit was held back to be folded into a later flush. */
+  commitDeferred?: true;
   /**
    * Set on the stack's own undo/redo entries. They mutate the worktree, so they are recorded,
    * but they are history rather than undo points and are skipped when choosing a candidate.

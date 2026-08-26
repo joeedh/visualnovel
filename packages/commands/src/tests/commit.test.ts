@@ -7,6 +7,7 @@ import { Committer } from '../commit.js';
 import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
 import { CommandStack } from '../stack.js';
+import { UndoJournal } from '../undo.js';
 
 /** A repo with a deterministic identity (no global config bleed). */
 async function initRepo(dir: string): Promise<Git> {
@@ -359,6 +360,218 @@ describe('commit-on-save through the stack', () => {
       expect(outcome.ok && outcome.record.commits).toBeUndefined();
       expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
       expect(await git.isDirty()).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+});
+
+/** The paths a commit touched, from its patch. */
+async function filesIn(git: Git, sha: string): Promise<string[]> {
+  return [...(await git.show(sha)).matchAll(/^diff --git a\/(\S+) /gm)].map((m) => m[1]!).sort();
+}
+
+/** A latch a test opens by hand, and a promise that settles once a command reaches it. */
+function latch() {
+  let open!: () => void;
+  let arrive!: () => void;
+  const held = new Promise<void>((resolve) => (open = resolve));
+  const entered = new Promise<void>((resolve) => (arrive = resolve));
+  return { held, entered, open, arrive };
+}
+
+/** A stack whose commands each write one named file, two of which defer their commits. */
+async function batchSetup(
+  opts: { committer?: boolean; repos?: (git: Git) => Git[]; journal?: boolean } = {},
+) {
+  const { dir, git, cleanup } = await tempProject();
+  const gate = latch();
+  const write = (file: string): Promise<void> => fs.writeFile(join(dir, file), `${file}\n`);
+  const registry = new CommandRegistry<Host>();
+  registry.registerAll([
+    define({
+      id: 'demo.defer',
+      title: 'Defer',
+      description: 'Write a document, leaving the commit to a later act.',
+      mutating: true,
+      undoable: true,
+      defersCommit: true,
+      props: { file: prop.string('the document to write') },
+      async run(props) {
+        await write(props.file);
+        return { message: `wrote ${props.file}` };
+      },
+    }),
+    define({
+      id: 'demo.slow',
+      title: 'Slow',
+      description: 'Write a document, then wait to be released.',
+      mutating: true,
+      defersCommit: true,
+      props: { file: prop.string('the document to write') },
+      async run(props) {
+        await write(props.file);
+        gate.arrive();
+        await gate.held;
+        return { message: `wrote ${props.file}` };
+      },
+    }),
+    define({
+      id: 'demo.write',
+      title: 'Write',
+      description: 'Write a document and commit it.',
+      mutating: true,
+      undoable: true,
+      props: { file: prop.string('the document to write') },
+      async run(props) {
+        await write(props.file);
+        return { message: `wrote ${props.file}` };
+      },
+    }),
+    define({
+      id: 'demo.look',
+      title: 'Look',
+      description: 'Reads and writes nothing.',
+      mutating: false,
+      props: {},
+      run: () => Promise.resolve({ message: 'looked' }),
+    }),
+  ]);
+  const repos = opts.repos ?? ((only: Git) => [only]);
+  const stack = new CommandStack<Host>({
+    registry,
+    context: { root: dir, git, host: { writes: 0 }, log: () => {} },
+    ...(opts.committer === false ? {} : { committer: new Committer({ repos: () => repos(git) }) }),
+    ...(opts.journal ? { journal: new UndoJournal({ git }) } : {}),
+  });
+  return { dir, git, stack, gate, cleanup };
+}
+
+describe('deferred commit-on-save', () => {
+  it('holds a run of deferring commands back, and marks each record', async () => {
+    const { git, stack, cleanup } = await batchSetup();
+    try {
+      for (const file of ['a.md', 'b.md', 'c.md']) {
+        const outcome = await stack.exec('demo.defer', { file }, 'ui');
+        expect(outcome.ok && outcome.record.commitDeferred).toBe(true);
+        expect(outcome.ok && outcome.record.commits).toBeUndefined();
+      }
+      expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
+      expect(await git.isDirty()).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('gives the run its own commit before the next act writes anything', async () => {
+    const { git, stack, cleanup } = await batchSetup();
+    try {
+      for (const file of ['a.md', 'b.md', 'c.md']) {
+        await stack.exec('demo.defer', { file }, 'ui');
+      }
+      const outcome = await stack.exec('demo.write', { file: 'd.md' }, 'ui');
+
+      const [own, flushed] = await git.log(2);
+      expect(own!.subject).toBe('wrote d.md');
+      expect(flushed!.subject).toBe('wrote c.md (and 2 more edits)');
+      expect(outcome.ok && outcome.record.commits?.[0]!.sha).toBe(own!.hash);
+
+      // The reason the flush runs before `run` rather than before the commit: at that moment the
+      // only dirty content is the deferred edits, so neither commit can claim the other's files.
+      expect(await filesIn(git, flushed!.hash)).toEqual(['a.md', 'b.md', 'c.md']);
+      expect(await filesIn(git, own!.hash)).toEqual(['d.md']);
+      expect(await git.isDirty()).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('is not ended by a command that writes nothing, and does not claim the seq it took', async () => {
+    const { git, stack, cleanup } = await batchSetup();
+    try {
+      await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+      await stack.exec('demo.look', {}, 'ui');
+      await stack.exec('demo.defer', { file: 'b.md' }, 'ui');
+      expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
+
+      const commits = await stack.flushCommits();
+      expect(await trailersOf(git, commits[0]!.sha)).toContain('Vn-Batch: 2 seqs 1,3');
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('never defers when no committer is wired', async () => {
+    const { git, stack, cleanup } = await batchSetup({ committer: false });
+    try {
+      const outcome = await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+      expect(outcome.ok && outcome.record.commitDeferred).toBeUndefined();
+      expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('drains the batch on a machine that owns no repo to commit into', async () => {
+    let owned: Git[] = [];
+    const { git, stack, cleanup } = await batchSetup({ repos: () => owned });
+    try {
+      for (const file of ['a.md', 'b.md', 'c.md']) {
+        await stack.exec('demo.defer', { file }, 'ui');
+      }
+      expect(await stack.flushCommits()).toEqual([]);
+
+      // The three are gone rather than waiting for a repo that may never arrive, so the next
+      // batch holds the fourth edit alone. The trailers are what say so: `-A` sweeps the three
+      // files into the commit either way, and a lingering batch would name them here.
+      await stack.exec('demo.defer', { file: 'd.md' }, 'ui');
+      owned = [git];
+      const commits = await stack.flushCommits();
+      const trailers = await trailersOf(git, commits[0]!.sha);
+      expect(trailers).toContain('Vn-Seq: 4');
+      expect(trailers.some((line) => line.startsWith('Vn-Batch:'))).toBe(false);
+      expect((await git.log(1))[0]!.subject).toBe('wrote d.md');
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('commits the run before undo restores over it', async () => {
+    const { git, stack, cleanup } = await batchSetup({ journal: true });
+    try {
+      await stack.exec('demo.write', { file: 'd.md' }, 'ui');
+      await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+
+      // The deferring act is itself the undo target: any earlier one is refused, because a
+      // pending batch is drift against the snapshot `UndoJournal.check` compares to.
+      const undone = await stack.undo();
+      expect(undone.ok).toBe(true);
+
+      const [own, flushed] = await git.log(2);
+      expect(flushed!.subject).toBe('wrote a.md');
+      expect(await filesIn(git, flushed!.hash)).toEqual(['a.md']);
+      // Without the flush the restore would delete a.md having never committed it, and the only
+      // record of the edit would be gone.
+      expect(own!.subject.startsWith('Undid demo.defer')).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  }, 30_000);
+
+  it('keeps a command that started first out of a commit that started second', async () => {
+    const { git, stack, gate, cleanup } = await batchSetup();
+    try {
+      const slow = stack.exec('demo.slow', { file: 'a.md' }, 'ui');
+      await gate.entered;
+      // Issued while `demo.slow` is inside `run`, with a.md already on disk. Unserialized, its
+      // `-A` commit sweeps a.md into the same commit as d.md.
+      const fast = stack.exec('demo.write', { file: 'd.md' }, 'ui');
+      gate.open();
+      await Promise.all([slow, fast]);
+
+      const [own, flushed] = await git.log(2);
+      expect(await filesIn(git, own!.hash)).toEqual(['d.md']);
+      expect(await filesIn(git, flushed!.hash)).toEqual(['a.md']);
     } finally {
       await cleanup();
     }

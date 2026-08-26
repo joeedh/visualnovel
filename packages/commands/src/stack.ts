@@ -8,11 +8,17 @@
  */
 import { digestProps } from './digest.js';
 import { formatCommand, parseCommand, DslError } from './dsl.js';
-import { coerceProps, type PropSpecMap } from './props.js';
+import { coerceProps, type PropSpecMap, type PropValue } from './props.js';
 import type { CommandRegistry } from './registry.js';
 import type { Committer, CommitResult } from './commit.js';
 import type { Snapshot, UndoJournal, UndoPoint } from './undo.js';
-import type { CommandContext, CommandOutcome, CommandRecord, CommandSource } from './command.js';
+import type {
+  Command,
+  CommandContext,
+  CommandOutcome,
+  CommandRecord,
+  CommandSource,
+} from './command.js';
 
 const NO_JOURNAL =
   'undo is unavailable here — no snapshot journal is wired (see docs/history/gitUndoOptions.md)';
@@ -33,6 +39,17 @@ export interface CommandStackOptions<Host> {
   committer?: Committer;
 }
 
+/** One step between an undo point's two snapshots, in either direction. */
+interface Move {
+  target: CommandRecord;
+  kind: 'undo' | 'redo';
+  point: UndoPoint;
+  from: 'pre' | 'post';
+  to: 'pre' | 'post';
+  /** Applied once the working copy has moved, to update the redo stack. */
+  done: () => void;
+}
+
 /** What the UI needs to render undo/redo affordances honestly. */
 export interface UndoState {
   canUndo: boolean;
@@ -47,6 +64,11 @@ export class CommandStack<Host = unknown> {
   /** Undone records, most recent last — the redo stack. */
   private readonly undone: CommandRecord[] = [];
   private seq = 0;
+  /** Records whose commits were held back, oldest first. */
+  private pending: CommandRecord[] = [];
+  /** Mutating commands run one at a time; this is the tail of that queue. */
+  private chain: Promise<void> = Promise.resolve();
+  private flushing: Promise<CommitResult[]> | null = null;
 
   constructor(private readonly opts: CommandStackOptions<Host>) {}
 
@@ -94,6 +116,34 @@ export class CommandStack<Host = unknown> {
       }
     }
 
+    // A deferring command joins the batch instead of committing; anything else mutating ends it.
+    const defers = Boolean(
+      command.defersCommit && command.mutating && !command.commitsItself && this.opts.committer,
+    );
+
+    const run = (): Promise<CommandOutcome> =>
+      this.runCommand({ command, props, ctx, id, source, defers });
+
+    // Mutating commands contend for one worktree and one `-A` commit scope, so one takes the
+    // chain for the whole span from the flush through `run` to the commit. Overlapping them
+    // would let one command's write land on disk inside another's commit.
+    return command.mutating ? this.serialize(run) : run();
+  }
+
+  /** The part of `exec` that runs under the chain: flush, snapshot, run, snapshot, commit. */
+  private async runCommand(opts: {
+    command: Command<PropSpecMap, Host>;
+    props: Record<string, PropValue>;
+    ctx: CommandContext<Host>;
+    id: string;
+    source: CommandSource;
+    defers: boolean;
+  }): Promise<CommandOutcome> {
+    const { command, props, ctx, id, source, defers } = opts;
+    // Before `run` rather than before the commit: at this moment the only dirty content is the
+    // deferred edits, so the flush commit contains exactly them.
+    if (command.mutating && !defers) await this.flush();
+
     const startedAt = this.now();
     const { head, dirty } = await this.gitState();
     const seq = ++this.seq;
@@ -128,8 +178,13 @@ export class CommandStack<Host = unknown> {
         ...(output.written ? { written: output.written } : {}),
         ...(journal && pre && post ? { undo: journal.point(pre, post) } : {}),
       };
-      const commits = await this.commit(command.mutating && !command.commitsItself, record);
-      if (commits.length > 0) record.commits = commits;
+      if (defers) {
+        record.commitDeferred = true;
+        this.pending.push(record);
+      } else {
+        const commits = await this.commit(command.mutating && !command.commitsItself, record);
+        if (commits.length > 0) record.commits = commits;
+      }
       // A fresh act invalidates every redo behind it — the branch they belonged to is gone.
       if (command.mutating) this.undone.length = 0;
       await this.record(record);
@@ -282,14 +337,16 @@ export class CommandStack<Host = unknown> {
   }
 
   /** The shared body of undo and redo: guard, restore, record. */
-  private async move(opts: {
-    target: CommandRecord;
-    kind: 'undo' | 'redo';
-    point: UndoPoint;
-    from: 'pre' | 'post';
-    to: 'pre' | 'post';
-    done: () => void;
-  }): Promise<CommandOutcome> {
+  private move(opts: Move): Promise<CommandOutcome> {
+    // Restoring overwrites the worktree and then commits it with `-A`, so a pending batch has to
+    // land as its own commit before either of those touches the deferred edits.
+    return this.serialize(async () => {
+      await this.flush();
+      return this.moveBody(opts);
+    });
+  }
+
+  private async moveBody(opts: Move): Promise<CommandOutcome> {
     const journal = this.opts.journal!;
     const { target, kind } = opts;
     const startedAt = this.now();
@@ -353,6 +410,56 @@ export class CommandStack<Host = unknown> {
       this.opts.context.log('warn', `undo snapshot (${label} ${seq}) failed: ${String(err)}`);
       return null;
     }
+  }
+
+  /**
+   * Runs `body` after every mutating command already queued, and hands the next one a settled
+   * chain whether this one resolved or threw.
+   */
+  private serialize<T>(body: () => Promise<T>): Promise<T> {
+    const next = this.chain.then(body);
+    this.chain = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+
+  /**
+   * Commit the pending batch as one commit per repo, and report what landed. Called by the host
+   * at the boundaries the stack cannot see: a workspace switch, and quit.
+   */
+  async flushCommits(): Promise<CommitResult[]> {
+    return this.serialize(() => this.flush());
+  }
+
+  /**
+   * Drain the batch. A second caller awaits the first rather than starting a second commit over
+   * the same repos. An empty result drains as a success: `Committer` returns one both for
+   * nothing to commit and for a machine with no repo at all, and keeping the batch there would
+   * make it grow for the whole session. Only a throw keeps it, for the next flush to retry.
+   */
+  private flush(): Promise<CommitResult[]> {
+    if (this.flushing) return this.flushing;
+    if (this.pending.length === 0) return Promise.resolve([]);
+    const records = this.pending;
+    this.pending = [];
+    const run = (async () => {
+      try {
+        return (await this.opts.committer?.commitBatch(records)) ?? [];
+      } catch (err) {
+        this.pending = [...records, ...this.pending];
+        this.opts.context.log(
+          'warn',
+          `commit-on-save (batch of ${records.length}) failed: ${String(err)}`,
+        );
+        return [];
+      } finally {
+        this.flushing = null;
+      }
+    })();
+    this.flushing = run;
+    return run;
   }
 
   /**

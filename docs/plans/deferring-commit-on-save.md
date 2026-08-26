@@ -502,8 +502,16 @@ Tests in `packages/commands/src/tests/commit.test.ts` and `stack.test.ts`:
   commit.
 - A non-mutating command between two deferring ones does not flush, and the seq it consumed is
   absent from the eventual `Vn-Batch`.
-- `undo()` with a batch pending flushes first, and the undo's own commit does not name the
-  deferred files.
+- `undo()` with a batch pending flushes first, so the deferred edit is in history before the
+  restore overwrites it.
+
+  Stage 2 corrected this bullet, which asked for the flush to be observed through the undo's own
+  commit not naming the deferred files. That state is unreachable. `UndoJournal.check` compares
+  the current tree against the target point's snapshot (undo.ts:142-197), so a pending edit to
+  any file other than the target's own is drift and undo refuses before it commits anything. The
+  one case that does reach the restore is a deferring command that is itself the undo target,
+  and there the flush is what keeps its edit in history at all: without it the restore deletes a
+  file that was never committed. The test asserts that instead.
 - A stack with no committer never defers anything and never sets `commitDeferred`.
 - A committer that owns no repos drains: three deferring commands then a flush leaves nothing
   pending, and the fourth deferring command's batch starts empty.
@@ -597,7 +605,7 @@ edit's commit names only the scene file. Re-run Stage 0's measurement and record
 - A committer owning no repos never leaves a batch pending.
 - A non-deferring command run after a batch produces two commits, and `git show --name-only`
   on its commit names only the files it wrote.
-- `undo()` after a batch flushes first, and the undo's commit names only the restored files.
+- `undo()` after a batch flushes first, so the batch is in history before the restore runs.
 - Every batched `CommandRecord` in `commands.jsonl` carries `commitDeferred: true` and no
   `commits`; every non-batched one is unchanged.
 - A single deferring command followed by an idle interval commits with today's subject and
