@@ -497,10 +497,10 @@ below stay here because they are rules you need while the work is happening.
 Comments are prose, so the Prose rules below govern them as well. The rules in this section
 are the ones that apply only to code.
 
-- **A comment describes the code directly beneath it.** A comment placed above an `if` is read
-  as a caption for the branch it guards, so one that explains the opposite case belongs on the
-  `else`, or should be reworded to describe the test itself. Misplacing a comment this way is a
-  correctness bug, not a style one.
+- **A comment describes the code directly beneath it.** Placing a comment above an `if`
+  captions the branch it guards, so a comment explaining the opposite case belongs on the
+  `else`, or should be reworded to describe the test itself. Misplacing a comment this way
+  breaks correctness, not just style.
 - **Delete commented-out code — never leave it as commentary.** Git history holds it. A
   commented-out call, import or block explains nothing about the code that survives, and it
   goes stale silently because nothing type-checks it.
@@ -515,13 +515,13 @@ are the ones that apply only to code.
   cannot be fixed. Try to avoid names longer than three words or 25 characters
   (10 characters or less is preferred).
 - **Comment the consequence, not the arguments.** Options passed at a call site (`capture`,
-  `passive`, a flag, a lifetime) are already on screen. Say what the reader cannot see: what
-  the call does to everything around it. "Does not inhibit the event from reaching other
-  consumers" earns its line; "registered `passive` so it cannot call `preventDefault`" does not.
+  `passive`, a flag, a lifetime) are already on screen. State what the reader cannot see: what
+  the call does to everything around it. Write "Does not inhibit the event from reaching other
+  consumers", not "registered `passive` so it cannot call `preventDefault`".
 - **State facts; do not defend the design.** Rationale belongs in a comment only when a reader
   looking at the surrounding code still could not derive it — an ordering constraint, a platform
-  quirk, a decision with a live alternative. "Why this is the good version" and "what would go
-  wrong under the naive one" are commit-message material.
+  quirk, a decision with a live alternative. Explaining why this approach beats a naive one, or
+  what would go wrong under that naive approach, belongs in the commit message instead.
 - **A doc comment continues its declaration; it does not restate it.** Do not re-supply the
   subject the declaration already names, and do not narrate the signature. A field or property
   takes a noun phrase or a bare predicate — "Pointer ids currently down.", "Detected via the
@@ -537,8 +537,8 @@ are the ones that apply only to code.
 - **Non-doc comments are at most 3 lines.** A longer block comment is allowed sparingly —
   budget roughly one per 500 lines of a file — for genuinely load-bearing context that
   can't be stated in three lines.
-- **Doc comments stay reasonably concise.** Say what the thing is and any non-obvious
-  contract; don't restate the signature or narrate the implementation.
+- **Doc comments stay reasonably concise.** Cover the declaration's purpose and any
+  non-obvious contract; don't restate the signature or narrate the implementation.
 - **Temporary comments are marked `CLAUDENOTE:`.** Any scratch/working comment Claude
   writes gets that prefix, and all of them must be removed before the final commit of a
   plan (or at the end of the plan, whichever comes first).
@@ -590,9 +590,9 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
   that `git bisect` always lands on a buildable tree and `git log -p <file>` reads as that
   file's history. A stage that only compiles once the next stage arrives belongs in the
   next stage.
-- Rewrite only what nobody else has. Rebasing, squashing and `--fixup` are for a branch
-  still in hand; once history is published and someone could have pulled it, it is
-  append-only.
+- Only rewrite history nobody else has pulled yet. Rebasing, squashing and `--fixup` are for
+  a branch still in hand; once history is published and someone could have pulled it, treat
+  it as append-only.
 
 ### Tooltips
 
@@ -600,9 +600,9 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
   text fields, menu and palette entries, tree rows, thumbnails, drag handles, icon-only
   controls: if the author can click, type into, or drag it, it says what it does on
   hover. A control shipped without one is an unfinished control.
-- Say what it does, not what it is named. "Leave this clause out of the prompt" beats
-  "Mute". Where the label already says everything (a plain `OK`), the tooltip adds the
-  consequence instead of repeating the word.
+- Describe what a control does rather than naming it. Write "Leave this clause out of the
+  prompt" rather than "Mute". Where the label already says everything (a plain `OK`), the
+  tooltip adds the consequence instead of repeating the word.
 - A disabled control's tooltip states why it refused. When a command declined through
   `stack.check`, show that sentence verbatim — a greyed control that will not say why is
   the same bug as a hidden one.
