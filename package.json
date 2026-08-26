@@ -10,8 +10,10 @@
   "packageManager": "pnpm@10.33.2",
   "pnpm": {
     "onlyBuiltDependencies": [
+      "comment-lint",
+      "electron",
       "esbuild",
-      "electron"
+      "unrs-resolver"
     ],
     "overrides": {
       "nstructjs": "link:./vendor/nstructjs"
@@ -23,7 +25,8 @@
     "check:renderer": "pnpm --filter @vn/desktop check",
     "check:setup": "node scripts/check-submodules.mjs",
     "test": "jest",
-    "lint": "eslint --cache . && pnpm format:check && pnpm check:doclinks",
+    "lint": "eslint --cache . && pnpm format:check && pnpm check:doclinks && pnpm lint:comments",
+    "lint:comments": "commentlint .",
     "check:doclinks": "node scripts/check-doc-links.mjs",
     "format": "prettier --cache --write .",
     "format:check": "prettier --cache --check .",
@@ -47,6 +50,7 @@
     "@types/jest": "^29.5.12",
     "@types/node": "^22.10.2",
     "@typescript/native-preview": "latest",
+    "comment-lint": "^0.3.3",
     "esbuild": "^0.24.2",
     "eslint": "^9.17.0",
     "eslint-import-resolver-typescript": "^4.4.5",

@@ -1,0 +1,4 @@
+{
+  "exclude": ["vendor/path.ux/**", "vendor/nstructjs/**"],
+  "cache": true
+}
