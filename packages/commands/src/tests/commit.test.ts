@@ -6,7 +6,7 @@ import { defineFor, type CommandRecord } from '../command.js';
 import { Committer } from '../commit.js';
 import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
-import { CommandStack } from '../stack.js';
+import { BATCH_IDLE_MS, CommandStack } from '../stack.js';
 import { UndoJournal } from '../undo.js';
 
 /** A repo with a deterministic identity (no global config bleed). */
@@ -380,9 +380,53 @@ function latch() {
   return { held, entered, open, arrive };
 }
 
+/** A hand-driven stand-in for `setTimeout`, so a test fires the idle flush rather than waiting. */
+function fakeTimer() {
+  const armed = new Map<number, { fn: () => void; ms: number }>();
+  let next = 1;
+  return {
+    set(fn: () => void, ms: number): number {
+      const handle = next++;
+      armed.set(handle, { fn, ms });
+      return handle;
+    },
+    clear(handle: unknown): void {
+      armed.delete(handle as number);
+    },
+    /** The delay the armed timer waits for, or null when none is armed. */
+    armedMs(): number | null {
+      return [...armed.values()][0]?.ms ?? null;
+    },
+    /** Run every armed timer, as the event loop would. */
+    fire(): void {
+      const due = [...armed.values()];
+      armed.clear();
+      for (const { fn } of due) fn();
+    },
+  };
+}
+
+/**
+ * Waits for a flush the stack started on its own, which it does not hand back a promise for.
+ * Throws rather than hanging when the commit never arrives, so a broken timer fails by name.
+ */
+async function committed(git: Git, count: number): Promise<string[]> {
+  for (let i = 0; i < 100; i++) {
+    const log = await git.log();
+    if (log.length >= count) return log.map((c) => c.subject);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`only ${(await git.log()).length} commit(s) landed, expected ${count}`);
+}
+
 /** A stack whose commands each write one named file, two of which defer their commits. */
 async function batchSetup(
-  opts: { committer?: boolean; repos?: (git: Git) => Git[]; journal?: boolean } = {},
+  opts: {
+    committer?: boolean;
+    repos?: (git: Git) => Git[];
+    journal?: boolean;
+    onCommitError?(error: unknown, records: CommandRecord[]): void;
+  } = {},
 ) {
   const { dir, git, cleanup } = await tempProject();
   const gate = latch();
@@ -438,13 +482,16 @@ async function batchSetup(
     }),
   ]);
   const repos = opts.repos ?? ((only: Git) => [only]);
+  const timer = fakeTimer();
   const stack = new CommandStack<Host>({
     registry,
     context: { root: dir, git, host: { writes: 0 }, log: () => {} },
+    timer,
     ...(opts.committer === false ? {} : { committer: new Committer({ repos: () => repos(git) }) }),
     ...(opts.journal ? { journal: new UndoJournal({ git }) } : {}),
+    ...(opts.onCommitError ? { onCommitError: opts.onCommitError } : {}),
   });
-  return { dir, git, stack, gate, cleanup };
+  return { dir, git, stack, gate, timer, cleanup };
 }
 
 describe('deferred commit-on-save', () => {
@@ -572,6 +619,87 @@ describe('deferred commit-on-save', () => {
       const [own, flushed] = await git.log(2);
       expect(await filesIn(git, own!.hash)).toEqual(['d.md']);
       expect(await filesIn(git, flushed!.hash)).toEqual(['a.md']);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+});
+
+describe('the idle flush', () => {
+  it('commits a batch that nothing else came to end', async () => {
+    const { git, stack, timer, cleanup } = await batchSetup();
+    try {
+      await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+      await stack.exec('demo.defer', { file: 'b.md' }, 'ui');
+      expect(timer.armedMs()).toBe(BATCH_IDLE_MS);
+
+      timer.fire();
+      expect(await committed(git, 2)).toEqual(['wrote b.md (and 1 more edit)', 'init']);
+      expect(await git.isDirty()).toBe(false);
+      // The fired flush is not handed back, so join the chain it took before tearing the repo down.
+      await stack.flushCommits();
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('is cancelled by a flush, so it cannot fire against an empty batch', async () => {
+    const { git, stack, timer, cleanup } = await batchSetup();
+    try {
+      await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+      await stack.flushCommits();
+      expect(timer.armedMs()).toBeNull();
+
+      timer.fire();
+      expect((await git.log()).map((c) => c.subject)).toEqual(['wrote a.md', 'init']);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('is given up on dispose, along with deferring at all', async () => {
+    const { git, stack, timer, cleanup } = await batchSetup();
+    try {
+      await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+      await stack.dispose();
+      expect(timer.armedMs()).toBeNull();
+      expect(await git.isDirty()).toBe(false);
+
+      const after = await stack.exec('demo.defer', { file: 'b.md' }, 'ui');
+      expect(after.ok && after.record.commitDeferred).toBeUndefined();
+      expect(after.ok && after.record.commits).toHaveLength(1);
+      expect(timer.armedMs()).toBeNull();
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('keeps a batch its commit refused, reports it once, and lands it all later', async () => {
+    let broken = true;
+    const reported: { error: unknown; records: CommandRecord[] }[] = [];
+    const { git, stack, cleanup } = await batchSetup({
+      repos: (only) => {
+        if (broken) throw new Error('git is not available');
+        return [only];
+      },
+      onCommitError: (error, records) => void reported.push({ error, records }),
+    });
+    try {
+      await stack.exec('demo.defer', { file: 'a.md' }, 'ui');
+      await stack.exec('demo.defer', { file: 'b.md' }, 'ui');
+      expect(await stack.flushCommits()).toEqual([]);
+      expect(reported).toHaveLength(1);
+      expect(String(reported[0]!.error)).toContain('git is not available');
+      expect(reported[0]!.records.map((r) => r.seq)).toEqual([1, 2]);
+      expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
+
+      broken = false;
+      await stack.exec('demo.defer', { file: 'c.md' }, 'ui');
+      await stack.flushCommits();
+      const [head] = await git.log(1);
+      expect(head!.subject).toBe('wrote c.md (and 2 more edits)');
+      expect(await filesIn(git, head!.hash)).toEqual(['a.md', 'b.md', 'c.md']);
+      expect(reported).toHaveLength(1);
     } finally {
       await cleanup();
     }

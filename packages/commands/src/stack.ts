@@ -23,6 +23,12 @@ import type {
 const NO_JOURNAL =
   'undo is unavailable here — no snapshot journal is wired (see docs/history/gitUndoOptions.md)';
 
+/**
+ * How long a batch waits for the next deferring act before committing itself. Bounds how long an
+ * author who edits and then stops leaves a dirty worktree behind.
+ */
+export const BATCH_IDLE_MS = 1500;
+
 export interface CommandStackOptions<Host> {
   registry: CommandRegistry<Host>;
   context: CommandContext<Host>;
@@ -37,6 +43,20 @@ export interface CommandStackOptions<Host> {
    * (tests, testkit, the CLI) out of the author's history.
    */
   committer?: Committer;
+  /**
+   * Injectable timer for the idle flush, so tests fire it rather than sleeping. `set` returns a
+   * handle that is handed back to `clear`. Defaults to the global `setTimeout`/`clearTimeout`.
+   */
+  timer?: {
+    set(fn: () => void, ms: number): unknown;
+    clear(handle: unknown): void;
+  };
+  /**
+   * Called when a batch fails to commit, with the records still pending. A commit failure must
+   * not fail the acts that already ran and already wrote, so the stack keeps the batch for the
+   * next flush to retry and reports it here; the desktop turns that into a durable notification.
+   */
+  onCommitError?(error: unknown, records: CommandRecord[]): void;
 }
 
 /** One step between an undo point's two snapshots, in either direction. */
@@ -69,6 +89,9 @@ export class CommandStack<Host = unknown> {
   /** Mutating commands run one at a time; this is the tail of that queue. */
   private chain: Promise<void> = Promise.resolve();
   private flushing: Promise<CommitResult[]> | null = null;
+  /** The armed idle flush, if the batch is waiting on one. */
+  private idle: unknown = null;
+  private disposed = false;
 
   constructor(private readonly opts: CommandStackOptions<Host>) {}
 
@@ -117,8 +140,13 @@ export class CommandStack<Host = unknown> {
     }
 
     // A deferring command joins the batch instead of committing; anything else mutating ends it.
+    // A disposed stack defers nothing, since it no longer arms the timer that would drain it.
     const defers = Boolean(
-      command.defersCommit && command.mutating && !command.commitsItself && this.opts.committer,
+      command.defersCommit &&
+      command.mutating &&
+      !command.commitsItself &&
+      this.opts.committer &&
+      !this.disposed,
     );
 
     const run = (): Promise<CommandOutcome> =>
@@ -181,6 +209,7 @@ export class CommandStack<Host = unknown> {
       if (defers) {
         record.commitDeferred = true;
         this.pending.push(record);
+        this.arm();
       } else {
         const commits = await this.commit(command.mutating && !command.commitsItself, record);
         if (commits.length > 0) record.commits = commits;
@@ -434,12 +463,45 @@ export class CommandStack<Host = unknown> {
   }
 
   /**
+   * Commit what is pending and stop deferring. The host calls this on a stack it is dropping: a
+   * timer that outlived one would fire against a committer whose repos have since been refilled
+   * with the next project's, and commit one project's edits into another.
+   */
+  async dispose(): Promise<CommitResult[]> {
+    this.disposed = true;
+    return this.flushCommits();
+  }
+
+  /** Restart the idle countdown, so a batch is bounded by the last act rather than the first. */
+  private arm(): void {
+    if (this.disposed) return;
+    this.cancel();
+    const fire = (): void => {
+      this.idle = null;
+      void this.flushCommits();
+    };
+    const timer = this.opts.timer;
+    this.idle = timer ? timer.set(fire, BATCH_IDLE_MS) : setTimeout(fire, BATCH_IDLE_MS);
+  }
+
+  private cancel(): void {
+    if (this.idle === null) return;
+    const timer = this.opts.timer;
+    if (timer) timer.clear(this.idle);
+    else clearTimeout(this.idle as ReturnType<typeof setTimeout>);
+    this.idle = null;
+  }
+
+  /**
    * Drain the batch. A second caller awaits the first rather than starting a second commit over
    * the same repos. An empty result drains as a success: `Committer` returns one both for
    * nothing to commit and for a machine with no repo at all, and keeping the batch there would
    * make it grow for the whole session. Only a throw keeps it, for the next flush to retry.
    */
   private flush(): Promise<CommitResult[]> {
+    // Here rather than only in `flushCommits`, so no path leaves a timer to fire against a batch
+    // that has already drained.
+    this.cancel();
     if (this.flushing) return this.flushing;
     if (this.pending.length === 0) return Promise.resolve([]);
     const records = this.pending;
@@ -453,6 +515,7 @@ export class CommandStack<Host = unknown> {
           'warn',
           `commit-on-save (batch of ${records.length}) failed: ${String(err)}`,
         );
+        this.report(err, records);
         return [];
       } finally {
         this.flushing = null;
@@ -460,6 +523,15 @@ export class CommandStack<Host = unknown> {
     })();
     this.flushing = run;
     return run;
+  }
+
+  /** Tells the host a batch is still on disk. A hook that throws must not fail the flush. */
+  private report(error: unknown, records: CommandRecord[]): void {
+    try {
+      this.opts.onCommitError?.(error, records);
+    } catch (err) {
+      this.opts.context.log('warn', `commit failure not reported: ${String(err)}`);
+    }
   }
 
   /**

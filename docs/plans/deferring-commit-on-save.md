@@ -383,6 +383,11 @@ the next firing finding an empty batch. `switchWorkspace` drops the stack with `
 :468-470). A timer surviving that boundary would fire against a discarded stack and commit into
 the project the author just opened.
 
+Stage 3 gave `dispose()` one thing beyond cancel-and-flush: a disposed stack stops deferring, so
+a command that reaches it after the host let it go commits for itself. Without that, `dispose()`
+and `flushCommits()` would be the same call under two names, and a late act would join a batch
+with nothing left to drain it.
+
 Killed with the timer pending, the batch is exactly finding 4: the bytes are on disk, and the
 next session's checkpoint commits them under "Changes made outside the app". The subject is
 then inaccurate about where the edits came from, and this plan accepts that rather than
