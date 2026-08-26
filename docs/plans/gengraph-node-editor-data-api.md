@@ -153,6 +153,38 @@ Tests: a case per property type in path.ux asserting that a `change` listener re
 `getValue()` sees the value that was just set, plus one asserting a rejected null still fires
 nothing.
 
+### As shipped
+
+The base class sources the fired argument itself. `ToolProperty.setValue` fires
+`this._fire("change", this.getValue())` rather than the argument it was handed, and every
+subclass stores before chaining to it. That is narrower than "pass the value to `_fire`" above:
+three overrides chained with no argument at all (`FloatArrayProperty`, `ArrayBufferProperty`,
+`StringSetProperty`), and sourcing the argument in one place fixes all three without editing
+seventeen call sites. It also makes the argument and `getValue()` the same value on every
+property type, which is what the test asserts.
+
+Twelve of the seventeen overrides already stored first and were left untouched. Four were
+reordered, and one more defect turned up beyond the five the audit named: `Vec4Property.setValue`
+(`toolprop.ts:2068`) fired before padding a short input vector, so a listener on a four-component
+property set from `[1, 2]` saw the previous `z` and `w`. The fire now happens after the padding.
+
+The three flagged cases were decided as follows.
+
+- The null early-return in `_NumberPropertyBase` stays. A rejected value fires nothing, and
+  `IntProperty`'s own early-return stays for the same reason. Three tests lock it: a null to an
+  `IntProperty`, an undefined to a `FloatProperty`, and an out-of-range value to an
+  `EnumProperty`.
+- `copyTo`'s shared callback arrays are left alone. Stage 3 is unaffected because
+  `Node._adoptProp` (`graph/node.ts:191`) already clones each array per instance before
+  subscribing, and it says why in a comment.
+- The `ui_lasttool.ts:180` behaviour change is a fix. Under the old ordering a string property
+  fired before `this.data` was assigned, so `on_change`'s `ctx.toolstack.rerun(tool)` re-ran the
+  tool with the value the author had just replaced.
+
+One firing path stays outside the invariant. `controller_abstract.ts:307` fires `change` itself
+after a raw model write, with the value it wrote rather than one read back through `getValue()`,
+so the test asserts the invariant of `setValue` rather than of `change`.
+
 ## Stage 2 — the graph DataAPI and the derived context
 
 Add `defineGraphApi(getGraph)` beside `defineShellApi` in
