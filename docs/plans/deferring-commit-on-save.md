@@ -11,9 +11,10 @@ editing a node property in the Gen Graph editor.
 
 Editing a node property in the Gen Graph editor sends one command per change. The editor's
 `perform` delegate calls `send`, which calls `exec` with no coalescing
-(apps/desktop/renderer/pathux/editors/nodes.ts:227, :240, :273-277), so a drag on a slider or
-a keystroke in a text field is one `gengraph.setProp`. Each of those reads the graph file,
-writes it back (apps/desktop/src/main/commands/gengraph.ts:54, :79) and then commits.
+(apps/desktop/renderer/pathux/editors/nodes.ts:227, :240, :273-277), so every committed field
+edit is one `gengraph.setProp` and every finished node drag is one `gengraph.moveNodes`. Each
+of those reads the graph file, writes it back
+(apps/desktop/src/main/commands/gengraph.ts:54, :79) and then commits.
 
 The commit is on the command's critical path:
 
@@ -26,7 +27,8 @@ The commit is on the command's critical path:
   The scope is the whole worktree per repo, with no exclusions and no reference to the undo
   journal's pathspec. `Git.commit` runs `git add -A` first (packages/git/src/git.ts:189,
   :172-174). In a real project `vngen/` is committed, generated assets included, so the add
-  stats a tree that may hold thousands of images.
+  stats a tree that may hold thousands of images. Stage 0 measured that scan and found it flat
+  in the number of images, so the size of that tree is not what the time is made of.
 
 Two corrections to that reading, both of which change what this plan can promise.
 
@@ -36,9 +38,11 @@ which is `git status --porcelain` over the whole worktree (packages/git/src/git.
 That is the same scan class as `git add -A`. `isRepo()` and `head()` are two more spawns.
 An undoable command adds two `git write-tree` calls over the document pathspec
 (undo.ts:89, called from stack.ts:117 and :121). So a single `gengraph.setProp` today spawns
-git at least seven times, and deferring the commit removes two of them. If `isDirty` is the
-dominant term rather than `add -A`, this plan buys less than it looks like it will, which is
-why Stage 0 measures before Stage 5 changes anything.
+git many times over, and deferring the commit removes only the spawns the commit itself makes.
+If `isDirty` is the dominant term rather than `add -A`, this plan buys less than it looks like
+it will, which is why Stage 0 measures before Stage 5 changes anything. Stage 0 counted 26
+spawns per edit and found that the commit makes 5 of them; the numbers are under "Measured"
+below.
 
 **`commitsItself` is a framework field with no shipped user.** It is declared at
 packages/commands/src/command.ts:81 and read at stack.ts:131, and the only place that sets it
@@ -403,6 +407,57 @@ premise — that the commit dominates — is read from the code rather than meas
 commit is not dominant, Stage 5 still lands but the plan's claim about the win is corrected
 here rather than after the fact.
 
+#### Measured
+
+Windows 11, git 2.51, one repo, warm cache. The harness seeds a temp project — 20 scenes, a
+default `portrait` slot graph, and N 32 KB files under `vngen/build/assets/`, all committed —
+and then runs the real `gengraphSetProp` through a real `CommandStack` with a real
+`UndoJournal` on `UNDO_PATHS` and a real `Committer`. One warm-up edit, then 20 timed edits,
+each setting the `GenImage` node's `aspect`. Every term is timed inside the same `exec` rather
+than in a phase of its own, and the timing follows the async call chain, so a git call made
+inside `capture` or `commit` is not also counted against `gitState`.
+
+Per edit, mean over 20 edits, at 2000 committed assets:
+
+| Term | ms | Share of `exec` | git subprocesses |
+| --- | --- | --- | --- |
+| `exec` end to end | 1004 | 100% | 24 |
+| `gitState()` | 113 | 11% | 3 |
+| the journal's two `capture` calls | 566 | 56% | 14 |
+| `Committer.commit` | 232 | 23% | 5 |
+| the read, the write and everything else | 93 | 9% | 2 |
+
+`journal.prune` costs a further 73 ms over 2 subprocesses. The stack starts it without awaiting
+it (stack.ts:136, :379), so it lands outside `exec` and outside the table.
+
+**The commit is not dominant, and Stage 5 wins about a quarter of an edit.** The undo journal's
+two `capture` calls cost 2.4 times what the commit costs. Deferring commit-on-save takes 232 ms
+off 1004, which is worth having and is not the bulk of the cost. The other three quarters stay
+where they are: `capture` cannot be deferred without changing what undo can restore, and
+`gitState` runs before the command that would have opted out of it.
+
+**The time is process startup, not tree size.** The same 20 edits cost 1012 ms each at 0
+assets, 1004 ms at 2000, and 1011 ms at 6000. git's index stat cache makes an unchanged tree
+cheap to rescan, so neither `git add -A` nor `git status --porcelain` grows with
+`vngen/build/assets/`. What the 1004 ms is made of is 26 git subprocesses at roughly 35 ms
+each, which is 913 ms of it: 3 for `gitState`, 7 per undo snapshot, 5 for the commit, 2 for
+`prune`, and 2 for `readGraph`'s conflict check. So batching wins by removing spawns rather
+than by avoiding a large scan, which is worth 5 spawns per deferred edit — a run of thirty
+saves 29 × 5, about 5 seconds. It also means any alternative that narrows a pathspec instead
+buys nothing.
+
+**Serializing mutating commands costs throughput, and the node editor does not pay it.** The
+same 20 edits run four at a time take 320 ms of wall clock each while each `exec` still takes
+1115 ms, so git's subprocesses overlap well and Stage 2's chain gives that up. What pays for
+that is a host issuing mutating commands back to back, which means the agent's tool loop. The
+node editor is not one: `perform` fires once per finished drag
+(vendor/path.ux/scripts/editors/nodeeditor/nodegraphview.ts:466-490, and the per-pointer-move
+call at :456 is `check`, which stays in the renderer), and a value row commits on DOM `change`
+rather than on input (nodes.ts:349-352), so its commands are one per authorial act and arrive
+separated by human time. The chain also removes a race the overlap creates: two edits of one
+graph file read, decide and write with no lock (gengraph.ts:75-79), so today's final state is
+whichever write lands last rather than the last edit the author made.
+
 ### Stage 1 — `Committer.commitBatch`
 
 `packages/commands/src/commit.ts` gains `commitBatch(records: CommandRecord[])` and a
@@ -551,9 +606,12 @@ edit's commit names only the scene file. Re-run Stage 0's measurement and record
 
 ## Open questions
 
-- **How much concurrency does serializing mutating commands actually cost?** The chain is
-  necessary by finding 7, but nothing measures what it costs a host that runs several mutating
-  commands at once — the agent's tool loop is the case to check. Stage 0's harness can answer it.
+- **How much concurrency does serializing mutating commands actually cost?** Answered by Stage
+  0: four `gengraph.setProp` invocations at once cost 320 ms of wall clock each against 1185 ms
+  run one at a time, so the chain gives up a factor of 3.7 on this machine where a host issues
+  mutating commands back to back. The node editor does not, for the reasons under "Measured", so
+  the cost falls on the agent's tool loop, whose mutating commands touch different files and were
+  not measured here.
 - **Should prose typing defer too?** The scene editors send one command per authorial act
   rather than per keystroke (docs/reference/command-system.md:529-531), so they are not the
   same problem. Whether `art.setNotes` or the `prompt.*` chunk editors would benefit is not
@@ -561,9 +619,10 @@ edit's commit names only the scene file. Re-run Stage 0's measurement and record
 - **Should losing window focus flush?** It would shorten the window in finding 4 without a
   timer firing, and it needs a main-process focus hook this plan does not otherwise touch.
   Left out of Stage 3; revisit if the timer proves too coarse.
-- **What should `BATCH_IDLE_MS` be?** 1500 is a guess. Stage 0's measurement of a single
-  commit's cost should inform it: the timer wants to be long enough that a slider drag never
-  crosses it and short enough that an author who walks away leaves nothing pending.
+- **What should `BATCH_IDLE_MS` be?** 1500 is a guess, and Stage 0 leaves it standing. One
+  commit costs 232 ms, and a serialized edit costs about 770 ms once the commit is deferred, so
+  1500 ms is roughly two edits' worth: long enough that a drag cannot cross it and short enough
+  that an author who stops leaves nothing pending for long.
 - **Should the open-time checkpoint distinguish a lost batch?** It would need to tell edits
   made outside the app from edits made inside it and never flushed, and nothing on disk
   records the difference today. Accepted as-is, and named here so a future reader does not
