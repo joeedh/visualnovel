@@ -1,7 +1,7 @@
 import { GenImage, GenOutput, Graph, registerGenNodes } from '@vn/gengraph';
 import type { GraphEdit } from 'pathux';
 
-import { commandFor, contestedSlots, genEditFor, noActiveOutput } from '../gengraph.js';
+import { commandFor, contestedSlots, genEditFor, noActiveOutput, setPropKey } from '../gengraph.js';
 
 /** The kinds that reach a command, so a gesture the pane can write is never refused by mistake. */
 describe('a gesture read as an edit', () => {
@@ -122,6 +122,44 @@ describe('the command an edit is written through', () => {
   it('names an id the same way whether it arrived as a string or a number', () => {
     expect(commandFor('plates', { op: 'removeNode', node: 4 }).props.node).toBe('4');
     expect(commandFor('plates', { op: 'setActiveOutput', node: '4' }).props.node).toBe('4');
+  });
+});
+
+/**
+ * The pane skips the reload its own property write comes back as, and matches the outcome to the
+ * write by this key. A key that matched too loosely would leave a second pane on the same graph
+ * showing a value it never wrote.
+ */
+describe('the key a property write is matched back by', () => {
+  // The record the outcome carries has crossed the IPC boundary and been coerced on the way, so
+  // the key is read from four named fields rather than from the object's shape.
+  it('matches an outcome to the command it was sent as', () => {
+    const props = commandFor('plates', { op: 'setProp', node: 1, key: 'model', value: 'gemini' });
+    const record = { ...JSON.parse(JSON.stringify(props.props)), source: 'ui', seq: 12 };
+    expect(setPropKey(record)).toBe(setPropKey(props.props));
+  });
+
+  it('separates two panes writing the same property on different graphs', () => {
+    const edit = { op: 'setProp', node: 1, key: 'model', value: 'gemini' } as const;
+    expect(setPropKey(commandFor('plates', edit).props)).not.toBe(
+      setPropKey(commandFor('portraits', edit).props),
+    );
+  });
+
+  it('separates two writes that differ only in the value', () => {
+    const props = (value: string) =>
+      commandFor('plates', { op: 'setProp', node: 1, key: 'prompt', value }).props;
+    expect(setPropKey(props('a dark room'))).not.toBe(setPropKey(props('a dark room ')));
+  });
+
+  // Every field is text by the time it is a prop, so a value carrying a separator must not be
+  // able to read as a different node's write.
+  it('separates a value that looks like the fields around it', () => {
+    const props = (node: string, value: string) =>
+      commandFor('plates', { op: 'setProp', node, key: 'prompt', value }).props;
+    expect(setPropKey(props('1', '","prompt","x'))).not.toBe(
+      setPropKey(props('1","prompt","x', '')),
+    );
   });
 });
 

@@ -16,10 +16,16 @@ import type { DataAPI, EditVerdict, GraphEdit, NodeGraphDelegate } from 'pathux'
 import type { ToolProperty } from 'pathux-toolprop';
 
 import { api } from '../../api.js';
-import { commandFor, contestedSlots, genEditFor, noActiveOutput } from '../../rules/gengraph.js';
+import {
+  commandFor,
+  contestedSlots,
+  genEditFor,
+  noActiveOutput,
+  setPropKey,
+} from '../../rules/gengraph.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../api.js';
-import { exec, onInvalidate, say } from '../bridge.js';
+import { exec, onExec, onInvalidate, say } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 
 /**
@@ -54,8 +60,8 @@ export class GenGraphEditor extends VnEditor {
   /** The graph on screen, which trails `ui.graphSlug` by one read. */
   private graph: Graph | undefined;
   private slug = '';
-  /** What the read and the file itself had to say, shown above the canvas. */
-  private notes: string[] = [];
+  /** What the read and the file itself had to say. The graph's own notes are derived per paint. */
+  private readNotes: string[] = [];
   /** Rising with every read, so a slow answer for a graph the pane has left is dropped. */
   private token = 0;
 
@@ -65,6 +71,11 @@ export class GenGraphEditor extends VnEditor {
   private propWatches: PropWatch[] = [];
   /** True while a refusal is being written back, so the write does not read as an author's. */
   private reverting = false;
+
+  /** The `gengraph.setProp` writes this pane has sent and has yet to hear an outcome for. */
+  private sent = new Set<string>();
+  /** Armed by this pane's own accepted write, and consumed by the reload that follows it. */
+  private skipReload = false;
 
   static override define() {
     return {
@@ -136,10 +147,32 @@ export class GenGraphEditor extends VnEditor {
       this.view.openAddMenu([event.clientX - rect.x, event.clientY - rect.y]);
     });
 
+    // `onInvalidate` is called with no arguments, so a listener cannot tell what moved the
+    // project. The outcome can, and this fires immediately before the invalidation `exec` raises.
+    this.watch(() =>
+      onExec((id, outcome) => {
+        if (id !== 'gengraph.setProp' || outcome.record === undefined) return;
+        if (this.sent.delete(setPropKey(outcome.record.props)) && outcome.ok) {
+          this.skipReload = true;
+        }
+      }),
+    );
+
     // A command this pane sent is not the only thing that rewrites a graph: the agent's graph tool,
     // an undo and a `gengraph.*` invocation from the palette all reach the same file.
     this.watch(
-      () => onInvalidate(() => void this.load(this.slug)),
+      () =>
+        onInvalidate(() => {
+          // This pane's own write comes back as a whole-file reload under the widget being typed
+          // into, and carries nothing new: main wrote the value `decideGenEdit` accepted here.
+          // The strip still repaints, because standing the last output down changes what it says.
+          if (this.skipReload) {
+            this.skipReload = false;
+            this.paintNotes();
+          } else {
+            void this.load(this.slug);
+          }
+        }),
       () => void this.load(this.slug),
     );
 
@@ -169,7 +202,7 @@ export class GenGraphEditor extends VnEditor {
 
     if (slug === '') {
       this.graph = undefined;
-      this.notes = [];
+      this.readNotes = [];
       this.paint();
       return;
     }
@@ -179,31 +212,45 @@ export class GenGraphEditor extends VnEditor {
 
     if (!read.ok) {
       this.graph = undefined;
-      this.notes = [read.reason];
+      this.readNotes = [read.reason];
     } else {
       const parsed = readGraphFile(read.file);
       this.graph = parsed.graph;
-      this.notes = [...parsed.diagnostics, ...read.diagnostics].map((note) => note.message);
-      if (parsed.graph !== undefined) {
-        this.notes.push(
-          ...contestedSlots(parsed.graph).map(
-            (slot) => `More than one active output claims ${slot}, so no graph draws it.`,
-          ),
-        );
-        if (noActiveOutput(parsed.graph)) {
-          this.notes.push(
-            'No output here is active, so this graph draws nothing and the slot falls back to ' +
-              'the built-in runner.',
-          );
-        }
-      }
+      this.readNotes = [...parsed.diagnostics, ...read.diagnostics].map((note) => note.message);
     }
     this.paint();
   }
 
   /**
-   * Points the view at what was read, keeping the selection across the reload. Every edit reloads
-   * the whole file, so a selection dropped here would be a selection that lasted one gesture.
+   * What the graph on screen says about itself. Derived rather than read, because a bound write
+   * whose reload is skipped changes both of these without the file being read again.
+   */
+  private stateNotes(): string[] {
+    if (this.graph === undefined) return [];
+
+    const notes = contestedSlots(this.graph).map(
+      (slot) => `More than one active output claims ${slot}, so no graph draws it.`,
+    );
+    if (noActiveOutput(this.graph)) {
+      notes.push(
+        'No output here is active, so this graph draws nothing and the slot falls back to ' +
+          'the built-in runner.',
+      );
+    }
+    return notes;
+  }
+
+  /** Repaints the strip above the canvas, leaving the graph beneath it alone. */
+  private paintNotes(): void {
+    const notes = [...this.readNotes, ...this.stateNotes()];
+
+    this.notesEl.textContent = notes.join('\n');
+    this.notesEl.style.display = notes.length === 0 ? 'none' : 'block';
+  }
+
+  /**
+   * Points the view at what was read, keeping the selection across the reload. Every edit but a
+   * property write reloads the whole file, so a selection dropped here would last one gesture.
    */
   private paint(): void {
     this.unsubscribe();
@@ -216,8 +263,7 @@ export class GenGraphEditor extends VnEditor {
     this.view.syncGraph();
     this.subscribe();
 
-    this.notesEl.textContent = this.notes.join('\n');
-    this.notesEl.style.display = this.notes.length === 0 ? 'none' : 'block';
+    this.paintNotes();
     this.emptyEl.textContent =
       this.slug === ''
         ? 'Pick a slot a generation graph draws to see the graph here.'
@@ -268,10 +314,14 @@ export class GenGraphEditor extends VnEditor {
       : { ok: false, reason: decision.reason };
   }
 
-  /** Sends one edit as the command that writes it. `exec` reloads this pane through its own hook. */
+  /**
+   * Sends one edit as the command that writes it. `exec` reloads this pane through its own hook,
+   * except for the property writes noted here, which the watcher in `init` skips the reload for.
+   */
   private send(edit: GenEdit): void {
     if (this.slug === '') return;
     const command = commandFor(this.slug, edit);
+    if (edit.op === 'setProp') this.sent.add(setPropKey(command.props));
     void exec(command.id, command.props);
   }
 

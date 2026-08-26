@@ -383,6 +383,13 @@ about. The pane arms a one-shot skip instead: an `onExec` watcher fires at `brid
 immediately before `invalidate()` at `:187`, and the pane arms the skip there when the outcome
 is its own `gengraph.setProp`. The next invalidation consumes it.
 
+"Its own" is read from the write rather than from the command id, because two panes may be open
+on one graph and only the one that sent the write may skip. `setPropKey` renders the four props
+a `setProp` carries as one string, the pane holds the keys it has sent, and an outcome whose key
+it holds is its own. The strip above the canvas still repaints on a skipped reload: standing the
+last output down is a `setProp`, and the note saying the graph now draws nothing is derived from
+the graph rather than from the read.
+
 The earlier rationale for narrowing by window was also backwards. A `setProp` issued from
 another window does not reload this pane today — `onRecord` leaves `ui`-sourced commands out
 because `exec` already invalidated locally (`main/index.ts:706`) — so the case this was said to
@@ -433,8 +440,10 @@ add this plan to `docs/plans/index.md`.
 - A gen node's unconnected input shows its editor on the socket's own row, aligned with the
   terminal.
 - Connecting that socket removes the editor without a file reload; disconnecting restores it.
-- Typing a value writes it through `gengraph.setProp` and the selection survives. The reload it
-  currently still costs is stage 4's to remove, so check that half there.
+- Typing a value writes it through `gengraph.setProp` and the selection survives. Stage 4 removes
+  the reload it costs, and the graph on screen is the same object it was before the write.
+- A second pane open on the same graph reloads on the write the first pane skipped, and a tick of
+  `active` reloads both, because `setActiveOutput` is not narrowed out.
 - A malformed slot address is refused with `decideSetProp`'s own sentence and the field returns
   to its previous value.
 - Editing an unconnected input's default on its socket row sends a command and writes the file,
@@ -465,8 +474,9 @@ add this plan to `docs/plans/index.md`.
   contested-slot warning, naming that the slot falls back to the built-in runner. The rule is
   renderer-side; `@vn/gengraph` gains nothing. A graph carrying no output node at all is
   half-authored and says nothing.
-- **What a bound row shows while its command is in flight.** The reload stage 4 removes is what
-  currently hides the gap between a keystroke and the file being written. A refusal arriving two
+- **What a bound row shows while its command is in flight.** Still open after stage 4, and now
+  visible: the reload that hid the gap between a keystroke and the file being written is gone,
+  and the row shows the accepted value throughout. A refusal arriving two
   hundred milliseconds after the author moved on is a field that changes under them, and nothing
   in this plan decides whether the row is disabled, marked, or left alone.
 - **Whether `copyTo`'s shared callback arrays are stage 1's problem.** Left unfixed, and the seam

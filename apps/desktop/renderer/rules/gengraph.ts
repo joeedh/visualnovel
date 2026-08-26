@@ -64,6 +64,16 @@ export function noActiveOutput(graph: Graph): boolean {
   return outputs.length > 0 && activeOutputs(graph).length === 0;
 }
 
+/**
+ * What one `gengraph.setProp` writes, as a single string. A pane matches an outcome against the
+ * writes it sent this way, so a second pane open on the same graph is never told that someone
+ * else's write was its own.
+ */
+export function setPropKey(props: Record<string, unknown>): string {
+  // JSON rather than a joined string, because a prompt is a value and carries any separator.
+  return JSON.stringify([props['slug'], props['node'], props['key'], props['value']].map(String));
+}
+
 /** Reads a gesture as the edit this application decides, refusing the kinds it cannot write. */
 export function genEditFor(edit: GraphEdit): GenEditFor {
   switch (edit.kind) {
