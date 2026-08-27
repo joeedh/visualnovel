@@ -1,57 +1,23 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openGit, type Git } from '@vn/git';
-import { UndoJournal, type UndoPoint } from '../undo.js';
-
-/** A repo with a deterministic identity (no global config bleed). */
-async function initRepo(dir: string): Promise<Git> {
-  const git = openGit(dir);
-  await git.init();
-  await git.config('user.email', 'test@example.com');
-  await git.config('user.name', 'Test');
-  await git.config('core.autocrlf', 'false');
-  return git;
-}
+import type { UndoPoint } from '../command.js';
+import { UndoJournal } from '../undo.js';
 
 /**
- * A real repo, because the journal's whole job is git behaviour: what a snapshot includes,
- * whether the working copy actually moves, and whether drift is detected. The stack's
+ * Real directories, because the journal's whole job is filesystem behaviour: what a snapshot
+ * includes, whether the working copy actually moves, and whether drift is detected. The stack's
  * bookkeeping around it is tested against a fake in `stack.test.ts`.
  */
-async function tempWorkspace() {
+async function tempWorkspace(opts: { keep?: number; maxBytes?: number } = {}) {
   const dir = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'vn-undo-')));
-  const git = await initRepo(dir);
   await fs.mkdir(join(dir, 'gen'), { recursive: true });
   await fs.writeFile(join(dir, 'doc.md'), 'authored\n');
-  await fs.writeFile(join(dir, 'gen/asset.bin'), 'generated\n');
-  await git.commit({ message: 'init', paths: ['.'] });
+  await fs.writeFile(join(dir, 'gen/output.txt'), 'generated\n');
 
   // The desktop app's scoping: documents in, generated output out.
-  const journal = new UndoJournal({ git, paths: ['.', ':(exclude)gen'], keep: 2 });
-  return { dir, git, journal, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
-}
-
-/** A project with the story bible in its own nested repo — the multi-repo case, minimally. */
-async function tempMultiRepo() {
-  const dir = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'vn-undo-multi-')));
-  const project = await initRepo(dir);
-  await fs.writeFile(join(dir, 'doc.md'), 'authored\n');
-  await project.commit({ message: 'init', paths: ['.'] });
-
-  const wikiDir = join(dir, 'wiki');
-  await fs.mkdir(wikiDir);
-  const wiki = await initRepo(wikiDir);
-  await fs.writeFile(join(wikiDir, 'lore.md'), 'lore\n');
-  await wiki.commit({ message: 'init', paths: ['.'] });
-
-  const journal = new UndoJournal({ git: [project, wiki], keep: 2 });
-  return {
-    dir,
-    wikiDir,
-    journal,
-    cleanup: () => fs.rm(dir, { recursive: true, force: true }),
-  };
+  const journal = new UndoJournal({ root: dir, exclude: ['gen'], keep: 2, ...opts });
+  return { dir, journal, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }
 
 const read = (dir: string, name: string) => fs.readFile(join(dir, name), 'utf8');
@@ -62,49 +28,52 @@ async function move(
   point: UndoPoint,
   from: 'pre' | 'post',
   to: 'pre' | 'post',
-): Promise<string[]> {
+): Promise<void> {
   const checked = await journal.check(point, from);
   if (!checked.ok) throw new Error(checked.error);
-  const { moved, error } = await journal.restore(checked.trees, point, to);
+  const { error } = await journal.restore(checked.tree, point, to);
   if (error !== undefined) throw new Error(error);
-  return moved;
+}
+
+/** The two snapshots bracketing an edit, with the edit made by `edit`. */
+async function bracket(journal: UndoJournal, seq: number, edit: () => Promise<void>) {
+  const pre = (await journal.capture(seq))!;
+  await edit();
+  const post = (await journal.capture(seq))!;
+  return journal.point(pre, post);
 }
 
 describe('UndoJournal', () => {
   it('captures, restores, and leaves generated output alone', async () => {
     const { dir, journal, cleanup } = await tempWorkspace();
     try {
-      const pre = (await journal.capture(1, 'pre'))!;
-      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
-      await fs.writeFile(join(dir, 'gen/asset.bin'), 'regenerated\n');
-      const post = (await journal.capture(1, 'post'))!;
-      const point = journal.point(pre, post);
+      const point = await bracket(journal, 1, async () => {
+        await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+        await fs.writeFile(join(dir, 'gen/output.txt'), 'regenerated\n');
+      });
       expect(point.changed).toBe(true);
-      expect(point.repos).toBeUndefined(); // one repo: the record keeps its old shape
 
       await move(journal, point, 'post', 'pre');
       expect(await read(dir, 'doc.md')).toBe('authored\n');
-      // Excluded from the pathspec, so it is in neither tree and undo has no opinion on it.
-      expect(await read(dir, 'gen/asset.bin')).toBe('regenerated\n');
+      // Excluded, so it is in neither tree and undo has no opinion on it.
+      expect(await read(dir, 'gen/output.txt')).toBe('regenerated\n');
 
       await move(journal, point, 'pre', 'post');
       expect(await read(dir, 'doc.md')).toBe('edited\n');
     } finally {
       await cleanup();
     }
-  }, 20_000);
+  });
 
   it('round-trips a created and a deleted document', async () => {
     const { dir, journal, cleanup } = await tempWorkspace();
     try {
-      const pre = (await journal.capture(1, 'pre'))!;
-      await fs.writeFile(join(dir, 'new.md'), 'a new scene\n');
-      await fs.rm(join(dir, 'doc.md'));
-      const post = (await journal.capture(1, 'post'))!;
-      const point = journal.point(pre, post);
+      const point = await bracket(journal, 1, async () => {
+        await fs.writeFile(join(dir, 'new.md'), 'a new scene\n');
+        await fs.rm(join(dir, 'doc.md'));
+      });
 
-      // The half `git restore` cannot do: undoing a creation means deleting the file, and
-      // undoing a deletion means bringing it back.
+      // Undoing a creation means deleting the file, and undoing a deletion means bringing it back.
       await move(journal, point, 'post', 'pre');
       await expect(read(dir, 'new.md')).rejects.toThrow(/ENOENT/);
       expect(await read(dir, 'doc.md')).toBe('authored\n');
@@ -115,14 +84,50 @@ describe('UndoJournal', () => {
     } finally {
       await cleanup();
     }
-  }, 20_000);
+  });
+
+  it('round-trips a whole directory of documents', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace();
+    try {
+      const point = await bracket(journal, 1, async () => {
+        await fs.mkdir(join(dir, 'scenes/act1'), { recursive: true });
+        await fs.writeFile(join(dir, 'scenes/act1/open.md'), 'INT. ROOM\n');
+      });
+
+      await move(journal, point, 'post', 'pre');
+      await expect(fs.stat(join(dir, 'scenes'))).rejects.toThrow(/ENOENT/);
+
+      await move(journal, point, 'pre', 'post');
+      expect(await read(dir, 'scenes/act1/open.md')).toBe('INT. ROOM\n');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('leaves a skipped file behind when the directory around it is undone away', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace();
+    try {
+      const point = await bracket(journal, 1, async () => {
+        await fs.mkdir(join(dir, 'work'), { recursive: true });
+        await fs.writeFile(join(dir, 'work/notes.md'), 'notes\n');
+      });
+      // Written after the snapshot and never part of it: media is skipped wherever it sits.
+      await fs.writeFile(join(dir, 'work/plate.png'), 'bytes');
+
+      await move(journal, point, 'post', 'pre');
+      await expect(read(dir, 'work/notes.md')).rejects.toThrow(/ENOENT/);
+      expect(await read(dir, 'work/plate.png')).toBe('bytes');
+    } finally {
+      await cleanup();
+    }
+  });
 
   it('accepts a workspace still where the snapshot left it, and refuses one that moved', async () => {
     const { dir, journal, cleanup } = await tempWorkspace();
     try {
-      const snap = (await journal.capture(1, 'post'))!;
+      const snap = (await journal.capture(1))!;
       const point = journal.point(snap, snap);
-      expect(await journal.check(point, 'post')).toEqual({ ok: true, trees: { [dir]: snap.tree } });
+      expect(await journal.check(point, 'post')).toEqual({ ok: true, tree: snap });
 
       await fs.writeFile(join(dir, 'doc.md'), 'hand-edited\n');
       const drifted = await journal.check(point, 'post');
@@ -131,114 +136,113 @@ describe('UndoJournal', () => {
     } finally {
       await cleanup();
     }
-  }, 20_000);
+  });
 
-  it('ignores changes to generated output when deciding whether the workspace moved', async () => {
+  it('ignores generated output and media when deciding whether the workspace moved', async () => {
     const { dir, journal, cleanup } = await tempWorkspace();
     try {
-      const snap = (await journal.capture(1, 'post'))!;
+      const snap = (await journal.capture(1))!;
       // A pipeline run between the command and the undo must not block it: `gen/` is excluded
-      // from the document tree, so a new asset does not read as drift.
-      await fs.writeFile(join(dir, 'gen/new-asset.bin'), 'more output\n');
+      // from the document tree, and art is skipped wherever it lands.
+      await fs.writeFile(join(dir, 'gen/new-output.txt'), 'more output\n');
+      await fs.writeFile(join(dir, 'portrait.png'), 'pretend art');
+      // The temp sibling an atomic write leaves behind is mid-write by definition.
+      await fs.writeFile(join(dir, 'doc.md.tmp-ab12cd'), 'half a save');
       expect((await journal.check(journal.point(snap, snap), 'post')).ok).toBe(true);
     } finally {
       await cleanup();
     }
-  }, 20_000);
+  });
 
-  it('keeps the refs private, and prunes to the most recent commands', async () => {
-    const { dir, git, journal, cleanup } = await tempWorkspace();
+  it('re-reads a document only when it moved', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace();
     try {
+      await journal.capture(1);
+      const before = journal.store.stats().blobs;
+      expect(await journal.capture(1)).toBe(await journal.currentTree());
+      expect(journal.store.stats().blobs).toBe(before);
+
+      await fs.writeFile(join(dir, 'doc.md'), 'a different length entirely\n');
+      await journal.capture(2);
+      expect(journal.store.stats().blobs).toBe(before + 1);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('prunes to the most recent commands and refuses what it dropped', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace();
+    try {
+      const points: UndoPoint[] = [];
       for (const seq of [1, 2, 3]) {
-        await fs.writeFile(join(dir, 'doc.md'), `v${seq}\n`);
-        await journal.capture(seq, 'pre');
-        await journal.capture(seq, 'post');
+        points.push(
+          await bracket(journal, seq, () => fs.writeFile(join(dir, 'doc.md'), `v${seq}\n`)),
+        );
       }
-      expect(await git.listRefs('refs/vn/undo')).toHaveLength(6);
-      // Nothing about this is visible in the author's own history.
-      expect((await git.log()).map((c) => c.subject)).toEqual(['init']);
+      journal.prune();
 
-      await journal.prune();
-      const kept = (await git.listRefs('refs/vn/undo')).map((r) => r.ref).sort();
-      expect(kept).toEqual([
-        'refs/vn/undo/2/post',
-        'refs/vn/undo/2/pre',
-        'refs/vn/undo/3/post',
-        'refs/vn/undo/3/pre',
-      ]);
-
-      // Pruning again is idempotent; it never removes refs inside the window it keeps.
-      await journal.prune();
-      expect(await git.listRefs('refs/vn/undo')).toHaveLength(4);
+      // Two commands are kept, so the oldest one's starting tree is gone and undo says so rather
+      // than restoring something it no longer holds. Its `post` tree survives because the next
+      // command opened on the same bytes, and identical trees are one tree.
+      const dropped = await journal.check(points[0]!, 'pre');
+      expect(dropped.ok).toBe(false);
+      expect(dropped.ok === false && dropped.error).toMatch(/no longer held/);
+      expect((await journal.check(points[2]!, 'post')).ok).toBe(true);
     } finally {
       await cleanup();
     }
-  }, 20_000);
+  });
 
-  it('keeps everything while under the limit, including on an empty namespace', async () => {
-    const { journal, git, cleanup } = await tempWorkspace();
+  it('drops older commands to stay inside its byte ceiling', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace({ keep: 50, maxBytes: 4096 });
     try {
-      await journal.prune();
-      await journal.capture(1, 'pre');
-      await journal.prune();
-      expect(await git.listRefs('refs/vn/undo')).toHaveLength(1);
+      const points: UndoPoint[] = [];
+      for (const seq of [1, 2, 3, 4, 5]) {
+        points.push(
+          await bracket(journal, seq, () =>
+            fs.writeFile(join(dir, 'doc.md'), `${String(seq).repeat(2000)}\n`),
+          ),
+        );
+      }
+      journal.prune();
+
+      expect(journal.store.stats().bytes).toBeLessThanOrEqual(4096);
+      // The newest command survives whatever the total, or there would be nothing to undo.
+      expect((await journal.check(points[4]!, 'post')).ok).toBe(true);
+      expect((await journal.check(points[0]!, 'post')).ok).toBe(false);
     } finally {
       await cleanup();
     }
-  }, 20_000);
+  });
 
-  it('reports no snapshot outside a repo rather than throwing', async () => {
-    const dir = await fs.mkdtemp(join(tmpdir(), 'vn-nogit-'));
+  it('is not charged for the bytes a host pinned beside it', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace({ keep: 50, maxBytes: 4096 });
     try {
-      const journal = new UndoJournal({ git: openGit(dir) });
-      expect(await journal.capture(1, 'pre')).toBeNull();
-      expect(await journal.currentTree()).toBeNull();
-      const point: UndoPoint = { pre: 'anything', post: 'anything', changed: false };
-      expect(await journal.check(point, 'post')).toMatchObject({ ok: false });
-    } finally {
-      await fs.rm(dir, { recursive: true, force: true });
-    }
-  }, 20_000);
+      // A file cache sharing this store holds an asset against collection. Counting it against
+      // the undo ceiling would trade the author's undo history for the host's cache.
+      journal.store.pin(journal.store.putBlob(Buffer.alloc(8192, 7)));
 
-  it('snapshots and restores every repo one act touched', async () => {
-    const { dir, wikiDir, journal, cleanup } = await tempMultiRepo();
-    try {
-      const pre = (await journal.capture(1, 'pre'))!;
-      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
-      await fs.writeFile(join(wikiDir, 'lore.md'), 'more lore\n');
-      const post = (await journal.capture(1, 'post'))!;
+      const points: UndoPoint[] = [];
+      for (const seq of [1, 2, 3]) {
+        points.push(
+          await bracket(journal, seq, () => fs.writeFile(join(dir, 'doc.md'), `v${seq}\n`)),
+        );
+      }
+      journal.prune();
 
-      const point = journal.point(pre, post);
-      expect(point.changed).toBe(true);
-      expect(Object.keys(point.repos ?? {}).sort()).toEqual([dir, wikiDir].sort());
-
-      const moved = await move(journal, point, 'post', 'pre');
-      expect(moved.sort()).toEqual([dir, wikiDir].sort());
-      expect(await read(dir, 'doc.md')).toBe('authored\n');
-      expect(await read(wikiDir, 'lore.md')).toBe('lore\n');
+      // The pin alone puts the store over the ceiling, and the oldest snapshot survives anyway.
+      expect(journal.store.stats().bytes).toBeGreaterThan(4096);
+      expect(journal.store.tree(points[0]!.pre)).toBeDefined();
     } finally {
       await cleanup();
     }
-  }, 20_000);
+  });
 
-  it('refuses as a unit when one repo drifted, leaving both worktrees alone', async () => {
-    const { dir, wikiDir, journal, cleanup } = await tempMultiRepo();
-    try {
-      const pre = (await journal.capture(1, 'pre'))!;
-      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
-      await fs.writeFile(join(wikiDir, 'lore.md'), 'more lore\n');
-      const point = journal.point(pre, (await journal.capture(1, 'post'))!);
-
-      await fs.writeFile(join(wikiDir, 'lore.md'), 'hand-edited elsewhere\n');
-      const checked = await journal.check(point, 'post');
-      expect(checked.ok).toBe(false);
-      expect(checked.ok === false && checked.error).toMatch(/wiki/);
-
-      // The clean repo is not restored on the strength of a check that failed in the other one.
-      expect(await read(dir, 'doc.md')).toBe('edited\n');
-      expect(await read(wikiDir, 'lore.md')).toBe('hand-edited elsewhere\n');
-    } finally {
-      await cleanup();
-    }
-  }, 20_000);
+  it('reports no snapshot outside a directory rather than throwing', async () => {
+    const journal = new UndoJournal({ root: join(tmpdir(), 'vn-undo-nowhere') });
+    expect(await journal.capture(1)).toBeNull();
+    expect(await journal.currentTree()).toBeNull();
+    const point: UndoPoint = { pre: 'anything', post: 'anything', changed: false };
+    expect(await journal.check(point, 'post')).toMatchObject({ ok: false });
+  });
 });

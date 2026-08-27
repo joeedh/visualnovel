@@ -4,7 +4,7 @@
  *
  * `vngen/state/` is where this project already keeps its append-only logs (`tasks.jsonl`,
  * `commands.jsonl`), `vngen/` is committed in a user's project so a transcript travels with the
- * work it produced, and undo's shadow snapshots exclude `vngen/state` — so undoing the edit a
+ * work it produced, and undo's snapshots exclude `vngen/state` — so undoing the edit a
  * conversation made never deletes the conversation that explains it.
  *
  * It lives in the desktop app rather than `@vn/store` because a transcript is not one of a
@@ -148,7 +148,7 @@ function headerOf(id: string, parsed: ThreadLine[]): ThreadHeader | undefined {
   const first = parsed.find((line) => line.type === 'thread');
   if (!first) return undefined;
 
-  const { title, startedAt, commit, model, effort } = first;
+  const { title, startedAt, model, effort } = first;
   const renamed = parsed.filter((line) => line.type === 'title');
   const last = renamed[renamed.length - 1];
   // A conversation is had at whatever it was last switched to, so the newest binding wins over
@@ -169,7 +169,6 @@ function headerOf(id: string, parsed: ThreadLine[]): ThreadHeader | undefined {
     id,
     title: last ? last.title : title,
     startedAt,
-    ...(commit === undefined ? {} : { commit }),
     ...(bound.model === undefined ? {} : { model: bound.model }),
     ...(bound.effort === undefined ? {} : { effort: bound.effort }),
     ...(archived.length === 0 ? {} : { archived }),
@@ -264,7 +263,7 @@ export async function readThread(paths: ProjectPaths, id: string): Promise<Threa
  */
 export async function openThread(
   paths: ProjectPaths,
-  info: { title?: string; commit?: string; model?: string; effort?: string } = {},
+  info: { title?: string; model?: string; effort?: string } = {},
   now = new Date(),
 ): Promise<ThreadHeader> {
   await ensureDir(threadsDir(paths));
@@ -278,7 +277,6 @@ export async function openThread(
     id,
     title: info.title ?? NEW_THREAD_TITLE,
     startedAt: now.toISOString(),
-    ...(info.commit === undefined ? {} : { commit: info.commit }),
     ...(info.model === undefined ? {} : { model: info.model }),
     ...(info.effort === undefined ? {} : { effort: info.effort }),
   };

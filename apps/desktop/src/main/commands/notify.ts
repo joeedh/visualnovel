@@ -4,7 +4,7 @@
  * agent and CDP can archive, unarchive and purge exactly as the dialog does.
  *
  * None is `undoable`, for the reason `agent.ts` already gives for threads: `vngen/state` is
- * outside `UNDO_PATHS`, so a journal entry could not restore a flag. They are `mutating: false`
+ * outside `UNDO_EXCLUDES`, so a journal entry could not restore a flag. They are `mutating: false`
  * for the same reason — nothing under the undo snapshot changes — apart from the one that
  * destroys the file.
  */

@@ -47,11 +47,11 @@ type Decided =
  * beside it call this and get the same answer.
  */
 async function decide(
-  ctx: { root: string; git: Parameters<typeof readGraph>[2] },
+  ctx: { root: string },
   slug: string,
   plan: (graph: Graph) => EditPlan,
 ): Promise<Decided> {
-  const read = await readGraph(ctx.root, slug, ctx.git);
+  const read = await readGraph(ctx.root, slug);
   if (!read.ok) return { ok: false, reason: read.reason };
 
   const edit = plan(read.graph);
@@ -68,7 +68,7 @@ function verdict(decided: Decided): CheckResult {
 
 /** Decides an edit, writes what it produced, and reports the sentence the decision carried. */
 async function edit(
-  ctx: { root: string; git: Parameters<typeof readGraph>[2] },
+  ctx: { root: string },
   slug: string,
   plan: (graph: Graph) => EditPlan,
 ): Promise<{ message: string; data: { node?: GraphId }; written: string[] }> {
@@ -96,7 +96,7 @@ export const gengraphList = define({
   mutating: false,
   props: {},
   async run(_props, ctx) {
-    const graphs = await listGraphs(ctx.root, ctx.git);
+    const graphs = await listGraphs(ctx.root);
     const broken = graphs.filter((entry) => entry.problem !== undefined).length;
     const said = broken === 0 ? '' : `, ${broken} of them unreadable`;
     return {
@@ -121,13 +121,13 @@ export const gengraphCreate = define({
     if (!isGraphSlug(name)) {
       return { ok: false, reason: `'${name}' is not a graph name` };
     }
-    const read = await readGraph(ctx.root, name, ctx.git);
+    const read = await readGraph(ctx.root, name);
     if (read.ok) return { ok: false, reason: `this project already has a ${name} graph` };
     return { ok: true, note: `writes vngen/work/graphs/${name}.json` };
   },
   async run({ name }, ctx) {
     if (!isGraphSlug(name)) throw new Error(`'${name}' is not a graph name`);
-    const read = await readGraph(ctx.root, name, ctx.git);
+    const read = await readGraph(ctx.root, name);
     if (read.ok) throw new Error(`this project already has a ${name} graph`);
 
     const path = await writeGraph(ctx.root, name, new Graph());
@@ -192,7 +192,7 @@ export const gengraphCreateForSlot = define({
  * is the name the run writes.
  */
 async function planForSlot(
-  ctx: { root: string; git: Parameters<typeof readGraph>[2] },
+  ctx: { root: string },
   slot: string,
   name: string,
 ): Promise<{ slug: string } | { refuse: string }> {
@@ -217,13 +217,13 @@ async function planForSlot(
 
 /** Reports that another graph already draws this slot, through the rule a run binds by. */
 async function claimOf(
-  ctx: { root: string; git: Parameters<typeof readGraph>[2] },
+  ctx: { root: string },
   slugs: readonly GraphSlug[],
   slot: string,
 ): Promise<string | undefined> {
   const loaded: { slug: GraphSlug; graph: Graph }[] = [];
   for (const slug of slugs) {
-    const read = await readGraph(ctx.root, slug, ctx.git);
+    const read = await readGraph(ctx.root, slug);
     // An unreadable graph is reported where it is listed; what it claims cannot be read here.
     if (read.ok) loaded.push({ slug, graph: read.graph });
   }
@@ -268,13 +268,13 @@ export const gengraphDelete = define({
     slug: prop.string(SLUG),
   },
   async check({ slug }, ctx) {
-    const read = await readGraph(ctx.root, slug, ctx.git);
+    const read = await readGraph(ctx.root, slug);
     if (!read.ok) return { ok: false, reason: read.reason };
     const count = read.graph.nodes.length;
     return { ok: true, note: `deletes ${read.path} and the ${count} nodes in it` };
   },
   async run({ slug }, ctx) {
-    const read = await readGraph(ctx.root, slug, ctx.git);
+    const read = await readGraph(ctx.root, slug);
     if (!read.ok) throw new Error(read.reason);
     const path = await deleteGraph(ctx.root, slug);
     return { message: `Deleted the ${slug} graph.`, data: { slug }, written: [path] };
@@ -580,7 +580,7 @@ export const gengraphRun = define({
     force: prop.boolean('re-run the paid nodes rather than resuming them', { default: false }),
   },
   async check({ slug, force }, ctx) {
-    const read = await readGraph(ctx.root, slug, ctx.git);
+    const read = await readGraph(ctx.root, slug);
     if (!read.ok) return { ok: false, reason: read.reason };
 
     const counted = await ctx.host.session.graphEstimate(slug);

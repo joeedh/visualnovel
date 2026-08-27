@@ -18,23 +18,23 @@ import {
   ipcMain,
   Menu,
   nativeTheme,
-  net,
   protocol,
   screen,
   shell,
 } from 'electron';
 import { existsSync } from 'node:fs';
 import { join, resolve as resolvePath } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { ProjectPaths } from '@vn/store';
 import { openGit, type Git } from '@vn/git';
 import { appendJsonl } from '@vn/util';
 import { Workspace } from '@vn/authoring';
-import { CommandStack, Committer, UndoJournal, seqRanges } from '@vn/commands';
+import { CommandStack, Committer, seqRanges } from '@vn/commands';
+import { UndoJournal } from '@vn/commands/snapshot';
 import { DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
 import { BUDGET_KEY } from './commands/agent.js';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
+import { fileCache, forgetFiles, snapshotStore } from './filecache.js';
 import { installNotifications, notifications, notify } from './notifications.js';
 import {
   checkGit,
@@ -74,7 +74,7 @@ import {
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
-  UNDO_PATHS,
+  UNDO_EXCLUDES,
   writeScaffolding,
 } from './workspace.js';
 import type {
@@ -328,6 +328,8 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   approvalTimer = null;
   broadcastApprovals = [];
   ownedRepos.length = 0;
+  // The stack and its undo history are rebuilt against the new root, so nothing held may cross.
+  forgetFiles();
   undoRevision = 0;
   await openRepos();
   // Before any window is told about the switch, so the arrangement of the project being left is
@@ -354,7 +356,7 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
  * A repo appears here only when the directory is its own root. A project opened inside a larger
  * repo (a checkout of this monorepo, say) resolves to that repo, and committing `-A` there
  * would sweep in files that have nothing to do with the project — so commit-on-save stays off
- * rather than guessing at a scope. Undo is unaffected: shadow refs write nobody's history.
+ * rather than guessing at a scope. Undo is unaffected: it snapshots a directory, not a repo.
  */
 const ownedRepos: Git[] = [];
 
@@ -695,12 +697,9 @@ function getStack(): CommandStack<CommandHost> {
         // then a `confirm: true` command is reachable only from the UI's own affordances.
         confirm: () => Promise.resolve(true),
       },
-      // Undo still works where commit-on-save refuses: a shadow ref writes nobody's history,
-      // so a project nested in a larger repo falls back to snapshotting that repo as before.
-      journal: new UndoJournal({
-        git: ownedRepos.length > 0 ? ownedRepos : git,
-        paths: UNDO_PATHS,
-      }),
+      // Undo still works where commit-on-save refuses: a snapshot is held in memory and writes
+      // nobody's history, so a project nested in a larger repo is snapshotted like any other.
+      journal: new UndoJournal({ root, store: snapshotStore, exclude: UNDO_EXCLUDES }),
       committer: committer(),
       // A held-back run of edits that could not be committed is the one commit-on-save failure an
       // author has to act on, so it is filed durably rather than logged. The edits are on disk and
@@ -735,8 +734,8 @@ function getStack(): CommandStack<CommandHost> {
         // An undo restores files nobody edited through a command, so it counts as well.
         if (record.stack || record.mutating) scheduleApprovals();
         // Broadcast, because an undo is a fact about the worktree rather than an answer to one
-        // window. Ctrl+Z in window B deliberately undoes an edit made in window A: undo is a
-        // shadow snapshot of the whole worktree, so a per-window stack would misstate what it restores.
+        // window. Ctrl+Z in window B deliberately undoes an edit made in window A: undo restores a
+        // snapshot of the whole worktree, so a per-window stack would misstate what it restores.
         broadcast('command:ui', {
           type: 'undo',
           state: getStack().undoState(),
@@ -853,18 +852,39 @@ function registerIpc(): void {
  *
  * The root is resolved per request, not captured: after `switchWorkspace` a captured one would
  * serve the previous project's bytes at the new project's hashes.
+ *
+ * Bytes come from the file cache, which never has to revalidate them: a stored asset's name is
+ * the hash of its own contents, so the file at a given path either holds those bytes or does not
+ * exist. A request the cache answers touches no disk at all, which is what makes a gallery of
+ * forty thumbnails redraw without forty reads.
  */
 function registerAssetProtocol(): void {
-  protocol.handle('vnasset', (request) => {
+  protocol.handle('vnasset', async (request) => {
     const host = new URL(request.url).hostname;
     const dot = host.lastIndexOf('.');
     const hash = dot > 0 ? host.slice(0, dot) : host;
     const ext = dot > 0 ? host.slice(dot + 1) : 'png';
     const paths = new ProjectPaths(workspace());
-    const base = paths.baseAssetFile(hash, ext);
-    const file = existsSync(base) ? base : paths.assetFile(hash, ext);
-    return net.fetch(pathToFileURL(file).toString());
+    for (const file of [paths.baseAssetFile(hash, ext), paths.assetFile(hash, ext)]) {
+      const bytes = await fileCache.asset(file).catch(() => null);
+      if (bytes) return new Response(bytes, { headers: { 'content-type': assetType(ext) } });
+    }
+    // A missing file simply fails the request, and the caller falls back to a placeholder.
+    return new Response(null, { status: 404 });
   });
+}
+
+/** What `<img>` and `fetch` are told a stored asset is, from the extension its name carries. */
+function assetType(ext: string): string {
+  const known: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+  };
+  return known[ext.toLowerCase()] ?? 'application/octet-stream';
 }
 
 /** The scope this workspace's windows stamp their session writes with. */

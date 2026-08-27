@@ -25,6 +25,16 @@ on, and it is worth being able to re-read when the next data class wants undoing
 The short version: **the record shape is the commitment; the mechanism is not.** Every
 strategy below is built from fields v1 already writes, so adopting one is additive.
 
+That last sentence was then tested. [`../plans/archive/undo-refactor.md`](../plans/archive/undo-refactor.md)
+replaced the git shadow commits §8 recommended with an in-memory content-addressed store of the
+same blob/tree shape, and neither the record shape nor any of §8's three properties — snapshots of
+the document tree, split by data class, refuse rather than guess — had to change. What did change:
+undo history now lasts a session rather than living in an object database, a snapshot covers a
+directory rather than a repository, and the merge-conflict refusal §7 asked for is deferred rather
+than shipped. Read §5 for the reasoning and
+[`../reference/command-system.md`](../reference/command-system.md#undo-is-opt-in-and-rests-on-content-addressed-snapshots)
+for what is running now.
+
 ---
 
 ## 1. Where v1 leaves off

@@ -140,7 +140,7 @@ export const viewLayouts = define({
   mutating: false,
   props: {},
   async run(_props, ctx) {
-    const layouts = await listLayouts(ctx.root, ctx.git);
+    const layouts = await listLayouts(ctx.root);
     const active = ctx.host.state.get(templateKeyFor(ctx), '');
     const broken = layouts.filter((entry) => entry.problem).length;
     return {
@@ -161,7 +161,7 @@ export const viewApplyLayout = define({
   mutating: false,
   props: { name: prop.string('the layout’s slug, as `view.layouts` lists it') },
   async run({ name }, ctx) {
-    const read = await readLayout(ctx.root, name, ctx.git);
+    const read = await readLayout(ctx.root, name);
     if (!read.ok) throw new Error(read.reason);
 
     ctx.host.state.set(templateKeyFor(ctx), name);
@@ -202,7 +202,7 @@ export const viewSaveLayout = define({
     if (!parsed.ok)
       return { ok: false, reason: `that arrangement cannot be saved: ${parsed.problem}` };
 
-    const existing = (await listLayouts(ctx.root, ctx.git)).find((entry) => entry.slug === slug);
+    const existing = (await listLayouts(ctx.root)).find((entry) => entry.slug === slug);
     return {
       ok: true,
       note: existing
@@ -239,7 +239,7 @@ export const viewResetLayout = define({
     }),
   },
   async check({ scope }, ctx) {
-    const layouts = await listLayouts(ctx.root, ctx.git);
+    const layouts = await listLayouts(ctx.root);
     const mine = layouts.filter((entry) => entry.source === 'saved');
     const kept =
       scope === 'all'
@@ -253,11 +253,11 @@ export const viewResetLayout = define({
     // Re-apply the arrangement that was on screen, so the window is never left showing an
     // arrangement no file describes any more
     const wanted = ctx.host.state.get(templateKeyFor(ctx), DEFAULT_LAYOUT) || DEFAULT_LAYOUT;
-    let read = await readLayout(ctx.root, wanted, ctx.git);
+    let read = await readLayout(ctx.root, wanted);
     let slug = wanted;
     if (!read.ok) {
       slug = DEFAULT_LAYOUT;
-      read = await readLayout(ctx.root, slug, ctx.git);
+      read = await readLayout(ctx.root, slug);
     }
     if (read.ok) {
       ctx.host.state.set(templateKeyFor(ctx), slug);

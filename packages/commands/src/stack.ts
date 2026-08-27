@@ -1,27 +1,27 @@
 /**
  * The one execution path for every command, and the history of what ran.
  *
- * Undo is opt-in per command and rests on shadow snapshots (`undo.ts`): with a journal wired,
- * a command marked `undoable` is bracketed by two captures of the document tree, and undo/redo
- * move the working copy between them. Without one, the stack behaves exactly as it did before
- * undo existed and refuses both.
+ * Undo is opt-in per command and rests on content-addressed snapshots (`undo.ts`): with a journal
+ * wired, a command marked `undoable` is bracketed by two captures of the document tree, and
+ * undo/redo move the working copy between them. Without one, the stack behaves exactly as it did
+ * before undo existed and refuses both.
  */
 import { digestProps } from './digest.js';
 import { formatCommand, parseCommand, DslError } from './dsl.js';
 import { coerceProps, type PropSpecMap, type PropValue } from './props.js';
 import type { CommandRegistry } from './registry.js';
 import type { Committer, CommitResult } from './commit.js';
-import type { Snapshot, UndoJournal, UndoPoint } from './undo.js';
+import type { UndoJournal } from './undo.js';
 import type {
   Command,
   CommandContext,
   CommandOutcome,
   CommandRecord,
   CommandSource,
+  UndoPoint,
 } from './command.js';
 
-const NO_JOURNAL =
-  'undo is unavailable here — no snapshot journal is wired (see docs/history/gitUndoOptions.md)';
+const NO_JOURNAL = 'undo is unavailable here — no snapshot journal is wired';
 
 /**
  * How long a batch waits for the next deferring act before committing itself. Bounds how long an
@@ -347,8 +347,8 @@ export class CommandStack<Host = unknown> {
    * Move the working copy forward to the record's `post` snapshot.
    *
    * This restores the post-state and never replays `invocation`: a replay is a re-run, and for
-   * anything touching a model or reading changed inputs it would produce a different result
-   * (`docs/history/gitUndoOptions.md` §7). The invocation stays on the record for exactly that use.
+   * anything touching a model or reading changed inputs it would produce a different result. The
+   * invocation stays on the record for exactly that use.
    */
   async redo(): Promise<CommandOutcome> {
     const journal = this.opts.journal;
@@ -383,13 +383,10 @@ export class CommandStack<Host = unknown> {
       const checked = await journal.check(opts.point, opts.from);
       if (!checked.ok)
         return { ok: false, error: `cannot ${kind} ${target.invocation}: ${checked.error}` };
-      const { moved, error } = await journal.restore(checked.trees, opts.point, opts.to);
-      if (error !== undefined) {
-        // Restore is not atomic across repos, so name the ones that moved rather than letting
-        // the failure read as a no-op the caller can retry from where it started.
-        const partial = moved.length > 0 ? ` (restored: ${moved.join(', ')})` : '';
-        return { ok: false, error: `${kind} failed: ${error}${partial}` };
-      }
+      const { error } = await journal.restore(checked.tree, opts.point, opts.to);
+      // A restore that failed part way through leaves the worktree between the two trees, so the
+      // failure is reported rather than thrown: a caller told nothing happened would be wrong.
+      if (error !== undefined) return { ok: false, error: `${kind} failed: ${error}` };
     } catch (err) {
       return {
         ok: false,
@@ -431,10 +428,10 @@ export class CommandStack<Host = unknown> {
     journal: UndoJournal | undefined,
     seq: number,
     label: 'pre' | 'post',
-  ): Promise<Snapshot | null> {
+  ): Promise<string | null> {
     if (!journal) return null;
     try {
-      return await journal.capture(seq, label);
+      return await journal.capture(seq);
     } catch (err) {
       this.opts.context.log('warn', `undo snapshot (${label} ${seq}) failed: ${String(err)}`);
       return null;
@@ -559,12 +556,10 @@ export class CommandStack<Host = unknown> {
   /** Housekeeping, so it can never fail the command it follows. */
   private prune(journal: UndoJournal | undefined): void {
     if (!journal) return;
-    const warn = (err: unknown): void =>
-      this.opts.context.log('warn', `undo snapshots not pruned: ${String(err)}`);
     try {
-      void journal.prune().catch(warn);
+      journal.prune();
     } catch (err) {
-      warn(err);
+      this.opts.context.log('warn', `undo snapshots not pruned: ${String(err)}`);
     }
   }
 

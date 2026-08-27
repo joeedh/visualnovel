@@ -1,6 +1,6 @@
 # Undo refactor: drop git as the undo mechanism
 
-Status: **planned**
+Status: **shipped**
 
 ## What this builds
 
@@ -160,5 +160,72 @@ commit-on-save machinery, not on undo.
 
 ## Review
 
-Not pressure-tested. This plan reflects a single design conversation and has not been
-attacked by a fresh-context reviewer.
+Not pressure-tested before the work started. This plan reflected a single design conversation
+and was not attacked by a fresh-context reviewer, so the objections below were found during
+implementation instead, and each is answered in **As shipped**.
+
+## As shipped
+
+Seven things the plan did not settle, and what was decided.
+
+**An in-memory store cannot hold a project's art.** The plan said "walk the document-class
+pathspec (the same paths `UndoJournal` scopes to today)". Those paths include
+`assets/objects/`, `vngen/work/characters/*/candidates/`, `approved.png`, the outfit sheets and
+`characters/<id>/refs/` — hundreds of megabytes of images in a real project, which git kept in
+an on-disk object database and this store would have kept in the heap. `ContentStore` therefore
+skips **media by extension** (`MEDIA_EXTS`) wherever it sits. This costs nothing: every
+undoable command is a document edit, and the commands that write art (`art.*`, `asset.*`,
+`gate.approve`, `upload.*`) are all deliberately not undoable — the reasoning is already written
+out in [`../../reference/command-system.md`](../../reference/command-system.md). It also strengthens
+the drift check the same way excluding `vngen/build` does, since a pipeline run that draws a
+frame between an edit and its undo is no longer drift. `assets/objects` is named in
+`UNDO_EXCLUDES` as well, to prune the walk rather than stat every object.
+
+**Nothing replaced `.gitignore`.** `git add -A` never staged an ignored file, so the old
+snapshot silently excluded `keys/`, `node_modules/`, `.git/` and `.vnstudio/session.json*`. A
+plain directory walk sees all of them. `.git` and `node_modules` are skipped by the store,
+`writeFileAtomic`'s `.tmp-<hex>` sibling is skipped by name, and `keys` and
+`.vnstudio/session.json` are named in `UNDO_EXCLUDES`. The `keys/` entry is the load-bearing
+one: without it an undo could delete a credential the author had just saved.
+
+**Multi-repo went away entirely, not partly.** `wiki/` and `assets/` are always inside the
+project root (`ProjectPaths`), and a snapshot now covers a directory, so walking the root
+already covers them however they are versioned. `UndoJournal` takes one `root`; `UndoPoint` is
+`{pre, post, changed}` with no `repos`; `check` returns one tree and `restore` takes one. The
+partial-restore reporting in `CommandStack.moveBody` went with it. `Committer` still takes the
+repo list, and is untouched.
+
+**`(mtime, size)` alone is not a safe short-circuit.** A write landing inside the filesystem's
+timestamp resolution leaves both unchanged over different bytes, which would make an undo
+silently not restore an edit. The store records whether a file's mtime was strictly older than
+the moment it was read, and never trusts a record twice that was not — git's "racily clean"
+rule. The cost is one extra read of a file the first time it is captured after a write.
+
+**Snapshots are bounded by bytes as well as by count.** `keep` (50 commands) does not bound
+memory on its own, so `prune` also drops the oldest commands while the store is over
+`maxBytes` (64 MB), always keeping the newest command's pair. Undo depth degrades under
+pressure rather than correctness; `check` names a snapshot it no longer holds instead of
+restoring something approximate.
+
+**`@vn/commands` needed a second entry.** The old journal reached git through an injected
+`Git`, so the whole package was browser-safe and the renderer's bundle resolved no `node:`
+module at all. `ContentStore` and the new `UndoJournal` import `node:fs` directly, and a barrel
+over both put `node:fs`, `node:path` and `node:crypto` in the renderer bundle, which failed the
+build on `createHash`. The snapshot half is therefore `@vn/commands/snapshot`, on the pattern
+`@vn/scriptedit/write` already set. `UndoPoint` moved to `command.ts`, since it is part of the
+record every host reads rather than of the journal that produces it, and the alias list in
+`scripts/aliases.mjs` names the new entry the way esbuild needs.
+
+**The thread `commit` field was surfaced after all.** The plan said it was not surfaced in the
+renderer. `threadDetail` in `apps/desktop/src/shared/convo.ts` put the short sha in a thread
+row's tooltip, so that clause went with the field. `@vn/agentreport` keeps its own optional
+`commit?` on its structurally-similar `ThreadRecord` and simply never sees one now, which
+needs no change there and keeps the package out of this plan's scope.
+
+Two smaller notes. `isConflictCode` went with `conflictedPaths`/`conflictedGraphs` — it only
+ever interpreted `git status` for them — and the merge-policy test now asserts the `UU` status
+pair directly, so it still proves the `-merge` attribute works. The document half of the file
+cache is wired where this app performs its own I/O (`layouts.ts`, the document writes in
+`session.ts`) and folds `writeDocFile`'s bytes in with `fileCache.note` afterwards, because
+routing the write itself through the cache would mean changing `@vn/store`, which is out of
+scope for the reason the **Known gap** above gives.

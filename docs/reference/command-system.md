@@ -9,7 +9,7 @@
 - [The DSL](#the-dsl)
 - [The stack](#the-stack)
   * [`CommandRecord`](#commandrecord)
-  * [Undo is opt-in, and rests on shadow snapshots](#undo-is-opt-in-and-rests-on-shadow-snapshots)
+  * [Undo is opt-in, and rests on content-addressed snapshots](#undo-is-opt-in-and-rests-on-content-addressed-snapshots)
   * [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
 - [The registered commands](#the-registered-commands)
   * [The `window.` namespace](#the-window-namespace)
@@ -219,7 +219,7 @@ interface CommandRecord {
   message: string;
   written?: string[]; // workspace-relative paths the command wrote
   error?: string;
-  undo?: { pre: string; post: string; changed: boolean }; // shadow snapshots; absent ⇒ not an undo point
+  undo?: { pre: string; post: string; changed: boolean }; // tree hashes; absent ⇒ not an undo point
   stack?: 'undo' | 'redo'; // set on the stack's own entries, which are history, not undo points
   commits?: { repo: string; sha: string }[]; // what commit-on-save wrote; absent ⇒ nothing was
   commitDeferred?: true; // the commit joined a batch, so `commits` is absent for that reason
@@ -230,13 +230,16 @@ interface CommandRecord {
 at `vngen/state/commands.jsonl` — alongside the pipeline's own `tasks.jsonl`, and for the same
 reason: an append-only log that can be replayed and diffed.
 
-### Undo is opt-in, and rests on shadow snapshots
+### Undo is opt-in, and rests on content-addressed snapshots
 
 v1 shipped undo-less on purpose — a half-working undo on an author's only copy of their
 screenplay is worse than none. It landed once the story editors made destructive edits
-reachable from a *gesture*. The mechanism is
-[`../history/gitUndoOptions.md`](../history/gitUndoOptions.md) §8: **shadow snapshots** of the document tree, **split
-by data class**, and **refuse rather than guess** when the repo moved. Full write-up:
+reachable from a *gesture*. The shape of it comes from
+[`../history/gitUndoOptions.md`](../history/gitUndoOptions.md) §8: **snapshots** of the document
+tree, **split by data class**, and **refuse rather than guess** when the worktree moved. The
+mechanism underneath was git shadow commits until
+[`../plans/archive/undo-refactor.md`](../plans/archive/undo-refactor.md) replaced it with an in-memory store of
+the same shape; the three properties above are unchanged. Full write-up of the original:
 [`../plans/archive/command-undo-redo.md`](../plans/archive/command-undo-redo.md).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
@@ -246,19 +249,34 @@ by data class**, and **refuse rather than guess** when the repo moved. Full writ
   `project.setArtStyle` and the `prompt.*` chunk editors. A command whose writes are generated
   output, or that straddles both classes, stays out. The `↺` column in the table below is the
   list — read it there rather than counting here, because the set grows.
-- **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of
-  an undoable command into detached commits parked under `refs/vn/undo/<seq>/{pre,post}`. HEAD
-  never moves and the index is never touched. Snapshots are scoped to the document class
-  (`['.', ':(exclude)vngen/build', ':(exclude)vngen/state']`), which is both why a `pipeline.run`
-  between two edits is not drift and why hashing stays sub-second on a 100 MB workspace.
+- **The store is `ContentStore` (`@vn/commands/snapshot`).** Files hash to blobs and directories to
+  sorted entry lists, so identical directory states share a tree hash and a comparison is one
+  string. It holds bytes in memory and touches disk only to walk, read and restore — no
+  repository, no `git` binary, no object database. `apps/desktop`'s own file reads and writes go
+  through the same store (`main/filecache.ts`), so a document the app just wrote is already
+  hashed by the time the snapshot after it reaches that path.
+- **Bracketing.** With an `UndoJournal` wired, the stack captures the worktree either side of an
+  undoable command and keeps the two tree hashes on the record. Snapshots are scoped to the
+  document class — `UNDO_EXCLUDES` leaves out `vngen/build`, `vngen/state`, `assets/objects`,
+  `keys/` and the session file, and the store leaves out media wherever it sits — which is both
+  why a `pipeline.run` between two edits is not drift and why a capture is flat in the size of a
+  project's art. A capture re-reads only the files whose `(mtime, size)` moved.
+- **History lasts the session.** Nothing is written to disk to make a snapshot, so closing the
+  app ends the undo history. Older snapshots are dropped past `keep` (50 commands) and again
+  while the store is over its byte ceiling; undo names what it no longer holds rather than
+  restoring something approximate.
 - **`changed` is measured, not claimed.** `undo.changed` compares the two trees. `written` is
-  what a command *said* it wrote; two equal tree shas are proof. A `changed: false` record is
+  what a command *said* it wrote; two equal tree hashes are proof. A `changed: false` record is
   walked past, so a no-op edit never becomes the undo point.
-- **Drift refuses.** Undo snapshots the worktree first; if that tree isn't the candidate's
+- **Drift refuses.** Undo hashes the worktree first; if that tree isn't the candidate's
   `post` tree, something changed since the command ran and undo declines by name rather than
   discarding it.
 - **Redo restores the post state**, never replays `invocation` — a replay is a *re-run*.
 - **A stack without a journal behaves exactly as before**: `undo()` / `.redo()` refuse.
+
+A restore writes only the files whose hashes differ and deletes only the paths the snapshot
+recorded, so a generated asset sitting in a directory undo empties is left where it is, and a
+file nobody edited keeps its mtime.
 
 Undo and redo each append their own `CommandRecord` tagged `stack`, so `commands.jsonl` does
 not lie about what touched the worktree.
@@ -326,7 +344,7 @@ refusals.
 | `doc.rename` ✍ ↺ ✓             | `path`, `name`                    | Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |
 | `gate.candidates`              | `characterId`                     | Pending portrait candidates for one character.            |
 | `gate.approve` ✍ ✓             | `characterId`, `hash`             | Flips `character.md`; writes the approved PNG + manifest.  |
-| `gengraph.list`                | —                                 | Every generation graph the project holds, with the sentence a conflicted or unreadable one earns instead of opening. |
+| `gengraph.list`                | —                                 | Every generation graph the project holds, with the sentence an unreadable one earns instead of opening. |
 | `gengraph.create` ✍ ↺ ✓        | `name`                            | Start an empty graph at `vngen/work/graphs/<slug>.json`. The slug comes from the name once, at creation, so a graph is renamed the way a scene is — not at all. |
 | `gengraph.createForSlot` ✍ ↺ ✓ | `slot`, `name` (default `''`), `open` (default `true`) | Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt and the task references feed an image node, and its picture fills the slot. An empty `name` is derived from the slot address, and takes the next free `<base>-2` where a graph of that name exists. A slot another graph already draws is refused, because two active outputs claiming one slot leave it bound to neither. `open` shows the new graph in the Gen Graph editor, focusing a pane already open on one rather than making a second. This is what _Create a graph for this slot_ dispatches, on a slot row and on a picture a slot claims alike. |
 | `gengraph.delete` ✍ ⚠ ↺ ✓      | `slug`                            | Remove a graph's document. Its journal and blobs under `vngen/state/graphs/` stay, being the record of runs that happened. |
@@ -383,7 +401,7 @@ refusals.
 | `project.pagesStatus`          | `branch` (default `gh-pages`)     | Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly. |
 | `project.installPages` ✍ ⚠     | `branch` (default `gh-pages`)     | Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it writes `.github/` and `.vnstudio/`, outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md). |
 | `project.setArtStyle` ✍ ⚠ ↺ ✓  | `style` (default `''`)            | The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
-| `project.setKey` ✍ ✓           | `provider` (`gemini`\|`anthropic`), `key` (**secret**) | Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: an undo point is a git snapshot, and snapshotting a credential is what this command exists to avoid. |
+| `project.setKey` ✍ ✓           | `provider` (`gemini`\|`anthropic`), `key` (**secret**) | Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
 | `agent.run` ✍                  | `input`                           | One agent turn. Mutating: a turn in execute mode writes.   |
 | `agent.setMode`                | `mode` (`plan` \| `execute`)      |                                                            |
 | `agent.setModel`               | `modelId`                         | Hot-swaps the text model, preserving conversation state.   |
@@ -421,7 +439,7 @@ refusals.
 | `view.close`                   | —                                 | Collapses the active pane into its neighbour; the last pane is kept. |
 | `view.layout`                  | —                                 | Throws the remembered arrangement away and rebuilds the default one, ignoring the project's layout templates. The escape hatch; the menu offers `view.applyLayout` instead. |
 | `view.layouts`                 | —                                 | Every layout template the project has, and which one the window is showing. One a merge left unresolved is listed with the reason rather than left out. |
-| `view.applyLayout`             | `name`                            | Rearranges the whole window to one of the project's layout templates. Refuses a missing, unreadable or conflicted one by name. |
+| `view.applyLayout`             | `name`                            | Rearranges the whole window to one of the project's layout templates. Refuses a missing or unreadable one by name. |
 | `view.saveLayout` ✍ ↺ ✓        | `name`, `layout` (digest)         | Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away. |
 | `view.resetLayout` ✍ ⚠ ↺ ✓     | `scope` (`shipped`\|`all`, default `shipped`) | Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved. |
 | `view.palette`                 | `open` (default `true`)           | Opens or closes the command palette.                       |
@@ -432,8 +450,8 @@ refusals.
 `doc.write`, `doc.create`, `doc.rename`, `art.setNotes`, the eight `prompt.*` writers,
 `project.setArtStyle`, and the two `view.*` commands that write layout templates. Those last two
 are the only undoable commands that are not document edits, and they qualify for exactly the same
-reason: a template is an ordinary file in the project, inside the snapshot pathspec, so undo puts
-the author's back.
+reason: a template is an ordinary file in the project, inside the class a snapshot covers, so undo
+puts the author's back.
 Which panes are open is *not* — that is a window fact remembered per install, which is why
 `view.applyLayout` is neither mutating nor undoable. `asset.accept` and `asset.regenerate` write into the generated class instead (a
 manifest, a status log), so neither is undoable and neither needs to be: accepting again and
@@ -449,15 +467,15 @@ the `done` record `tasks.jsonl` has no un-appending for is reason enough on its 
 is recoverable the honest way instead, by adopting the earlier hash back. `gate.approve` straddles both data classes — undoing `character.md` would leave
 `manifest.json` still marking the asset `accepted` — `story.export`, `story.screenplay` and
 `pipeline.run` write only generated output, and `agent.run` owns its own commits, one per approved
-plan. `workspace.import` restructures the whole worktree, which is what a shadow snapshot is worst
+plan. `workspace.import` restructures the whole worktree, which is what a whole-tree snapshot is worst
 at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can perform;
 `workspace.reindex` writes one derived file, and undoing it means running it again;
-`project.setKey` writes a *gitignored* one on purpose — an undo point is a git snapshot, and
-snapshotting a credential is the one thing that command exists to avoid;
+`project.setKey` writes into `keys/`, which `UNDO_EXCLUDES` keeps outside the snapshot on
+purpose, so no undo can write over or delete a credential;
 `upload.files`/`upload.pick` copy bytes in from outside the tree *and* close the conversation that
 was open, which `vngen/state` being outside the snapshot means undo could not put back; and
 `workspace.open`/`workspace.pick`/`workspace.create` write into a *different* tree than the one a
-snapshot covers, so a shadow ref in the old repo could not restore it anyway. The reasoning is in
+snapshot covers, and switching workspaces drops the journal along with the stack. The reasoning is in
 [`../plans/archive/command-undo-redo.md`](../plans/archive/command-undo-redo.md).
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer

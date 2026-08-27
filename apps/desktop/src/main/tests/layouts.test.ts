@@ -7,7 +7,6 @@ import { LAYOUT_ATTRIBUTE, shippedLayoutFile } from '../../shared/layouts.js';
 import {
   ensureLayoutAttributes,
   ensureLayouts,
-  isConflictCode,
   listLayouts,
   readLayout,
   resetLayouts,
@@ -180,17 +179,6 @@ describe('resetLayouts', () => {
   });
 });
 
-describe('isConflictCode', () => {
-  it('knows the porcelain codes that mean a merge is unresolved', () => {
-    for (const code of ['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU']) {
-      expect(isConflictCode(code[0]!, code[1]!)).toBe(true);
-    }
-    for (const code of [' M', 'M ', 'A ', '??', 'R ', 'MM']) {
-      expect(isConflictCode(code[0]!, code[1]!)).toBe(false);
-    }
-  });
-});
-
 /** Raw git, for the subcommands `Git` deliberately does not expose (branching, merging). */
 function runGit(args: string[]): Promise<number> {
   return new Promise((resolve) => {
@@ -234,28 +222,18 @@ describe('the merge policy', () => {
 
     expect(await runGit(['merge', 'other'])).not.toBe(0);
 
-    const git = openGit(root);
-    const status = await git.status();
+    // Git reports `UU` when both sides changed the file and it merged neither.
+    const status = await openGit(root).status();
     const entry = status.entries.find((item) => item.path === path);
-    expect(entry && isConflictCode(entry.x, entry.y)).toBe(true);
+    expect(entry && `${entry.x}${entry.y}`).toBe('UU');
 
     // The file was never three-way merged; it still holds exactly our own side, unmangled.
     const text = await readFile(join(root, path), 'utf8');
     expect(text).not.toContain('<<<<<<<');
     expect(JSON.parse(text).title).toBe('Mine');
 
-    // The app reports the conflict rather than applying the layout.
-    const read = await readLayout(root, 'writing', git);
-    expect(read.ok).toBe(false);
-    expect(!read.ok && read.reason).toContain('mid-merge');
-    expect(
-      (await listLayouts(root, git)).find((item) => item.slug === 'writing')?.problem,
-    ).toContain('pick a side');
-
-    // Runs the commands those two refusals tell the author to type.
-    expect(await runGit(['checkout', '--ours', path])).toBe(0);
-    expect(await runGit(['add', path])).toBe(0);
-    const resolved = await readLayout(root, 'writing', git);
-    expect(resolved.ok && resolved.file.title).toBe('Mine');
+    // The worktree still holds our own side, so that is what the app opens.
+    const read = await readLayout(root, 'writing');
+    expect(read.ok && read.file.title).toBe('Mine');
   }, 30000);
 });

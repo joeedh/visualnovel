@@ -98,6 +98,7 @@ import {
 } from '@vn/gengraph/state';
 import { loadGraph, logTask, type TaskGraph } from '@vn/taskgraph';
 import { exists, readText, sha256, writeFileAtomic } from '@vn/util';
+import { fileCache } from './filecache.js';
 import {
   basePromptOf,
   baseRefusal,
@@ -1455,13 +1456,9 @@ export class WorkspaceSession {
   private async beginThread(input: string): Promise<void> {
     if (this.thread) return;
     const paths = new ProjectPaths(this.dir);
-    const commit = await openGit(this.dir)
-      .head()
-      .catch(() => null);
     try {
       this.thread = await openThread(paths, {
         title: titleFrom(input),
-        ...(commit === null ? {} : { commit }),
         ...(this.model === '' ? {} : { model: this.model }),
         ...(this.effort === undefined ? {} : { effort: this.effort }),
       });
@@ -2858,9 +2855,8 @@ export class WorkspaceSession {
     const slot = slotOfTask(task, project.model);
     if (slot === undefined) return undefined;
 
-    const git = openGit(this.dir);
     for (const slug of await graphSlugs(this.dir)) {
-      const read = await readGraph(this.dir, slug, git);
+      const read = await readGraph(this.dir, slug);
       if (!read.ok) continue;
 
       const bound = activeOutputs(read.graph).find((output) => output.slot === slot);
@@ -3790,7 +3786,7 @@ export class WorkspaceSession {
             ? applyLocationEdit(doc.doc, locationOverrideEdit(project, rung, next.override))
             : applyCharacterEdit(doc.doc, characterOverrideEdit(project, rung, next.override));
         if (!edited.ok) throw new Error(`Edit rejected: ${edited.diagnostic.message}`);
-        await writeFileAtomic(doc.file, docToMarkdown(edited.value.doc));
+        await fileCache.write(doc.file, docToMarkdown(edited.value.doc));
       },
     };
   }
@@ -4267,11 +4263,10 @@ export class WorkspaceSession {
   private async graphIndex(): Promise<{ graphs: GraphEntry[]; bound: Map<string, string> }> {
     registerGenRuntimes();
 
-    const git = openGit(this.dir);
     const graphs: GraphEntry[] = [];
     const loaded: { slug: string; graph: GenGraph }[] = [];
     for (const slug of await graphSlugs(this.dir)) {
-      const read = await readGraph(this.dir, slug, git);
+      const read = await readGraph(this.dir, slug);
       graphs.push({
         slug,
         file: graphPath(this.dir, slug),
@@ -4349,6 +4344,9 @@ export class WorkspaceSession {
   async saveDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocSaveResult>> {
     const plan = await writeDocFile(this.dir, path, text, seenHash, DOC_WRITERS);
     if (!plan.ok) return plan;
+    // `writeDocFile` is `@vn/store`'s, so the bytes are handed to the cache afterwards rather
+    // than written through it: the undo snapshot that follows this save then needs no re-read.
+    await fileCache.note(plan.file, text);
     const diagnostic = entityDiagnostic(plan.path, plan.doc);
     return {
       ok: true,
@@ -4428,6 +4426,7 @@ export class WorkspaceSession {
     if (!scaffold) return { ok: false, reason: `"${name}" does not name a ${kind}` };
     const written = await writeDocFile(this.dir, scaffold.path, scaffold.text, '', DOC_WRITERS);
     if (!written.ok) return written;
+    await fileCache.note(written.file, scaffold.text);
     return {
       ok: true,
       id: scaffold.id,
@@ -4678,7 +4677,7 @@ export class WorkspaceSession {
     }
 
     for (const { source, text } of plan.pending) {
-      await writeFileAtomic(source.file, source.prefix + text);
+      await fileCache.write(source.file, source.prefix + text);
     }
     return {
       ok: true,
@@ -5192,7 +5191,7 @@ export class WorkspaceSession {
       return { ok: false, message: 'There is no scene to write.', written: [] };
     }
     const file = join(this.dir, 'screenplay.fountain');
-    await writeFileAtomic(file, scriptFromScenes(project.model, { clean }));
+    await fileCache.write(file, scriptFromScenes(project.model, { clean }));
     return {
       ok: true,
       message: `Wrote ${project.model.scenes.size} scene(s) to screenplay.fountain${
@@ -5245,12 +5244,11 @@ export class WorkspaceSession {
   ): Promise<{ loaded: LoadedGraphDoc[]; problems: string[] }> {
     registerGenRuntimes();
 
-    const git = openGit(this.dir);
     const loaded: LoadedGraphDoc[] = [];
     const problems: string[] = [];
 
     for (const slug of await graphSlugs(this.dir)) {
-      const read = await readGraph(this.dir, slug, git);
+      const read = await readGraph(this.dir, slug);
       if (!read.ok) {
         problems.push(read.reason);
         continue;
@@ -5308,7 +5306,7 @@ export class WorkspaceSession {
    * positions and the pane has to draw the graph where the author left it.
    */
   async graphDoc(slug: GraphSlug): Promise<GraphDocRead> {
-    const read = await readGraph(this.dir, slug, openGit(this.dir));
+    const read = await readGraph(this.dir, slug);
     if (!read.ok) return { ok: false, reason: read.reason };
     return {
       ok: true,
@@ -5332,7 +5330,7 @@ export class WorkspaceSession {
         stale: boolean;
       }
   > {
-    const read = await readGraph(this.dir, slug, openGit(this.dir));
+    const read = await readGraph(this.dir, slug);
     if (!read.ok) return { ok: false, reason: read.reason };
 
     const { config } = await loadProject(this.dir);
@@ -5381,7 +5379,7 @@ export class WorkspaceSession {
     slug: GraphSlug,
     opts: { node?: string; force?: boolean; mock?: boolean } = {},
   ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const read = await readGraph(this.dir, slug, openGit(this.dir));
+    const read = await readGraph(this.dir, slug);
     if (!read.ok) return { ok: false, message: read.reason, written: [] };
 
     const target =

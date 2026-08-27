@@ -52,7 +52,7 @@ describe('threads', () => {
 
   it('round-trips a conversation', async () => {
     const at = new Date('2026-08-15T14:22:33');
-    const header = await openThread(paths, { commit: 'a1b2c3d', model: 'claude-opus-5' }, at);
+    const header = await openThread(paths, { model: 'claude-opus-5' }, at);
     expect(header.id).toBe('20260815-142233');
     expect(header.title).toBe(NEW_THREAD_TITLE);
 
@@ -67,7 +67,6 @@ describe('threads', () => {
     expect(read.items).toMatchObject(items);
     // Every stored line is stamped, which is what a report uses to line a conversation up
     expect(read.items.every((stored) => !Number.isNaN(Date.parse(stored.at!)))).toBe(true);
-    expect(read.commit).toBe('a1b2c3d');
     expect(read.model).toBe('claude-opus-5');
     expect(read.startedAt).toBe(at.toISOString());
   });

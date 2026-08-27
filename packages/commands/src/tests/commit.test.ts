@@ -488,7 +488,7 @@ async function batchSetup(
     context: { root: dir, git, host: { writes: 0 }, log: () => {} },
     timer,
     ...(opts.committer === false ? {} : { committer: new Committer({ repos: () => repos(git) }) }),
-    ...(opts.journal ? { journal: new UndoJournal({ git }) } : {}),
+    ...(opts.journal ? { journal: new UndoJournal({ root: dir }) } : {}),
     ...(opts.onCommitError ? { onCommitError: opts.onCommitError } : {}),
   });
   return { dir, git, stack, gate, timer, registry, cleanup };

@@ -3,10 +3,10 @@
  * the one-time migration into the chunk format.
  *
  * No mutator here is `undoable`. `workspace.import` restructures the whole worktree, which a
- * shadow snapshot handles worst, and the `.imported` rename it leaves behind is a reversal the
- * author can perform themselves. `workspace.reindex` writes one derived file, and undoing it means
- * running it again. `workspace.open`, `pick` and `create` write into a different tree than the one
- * the undo journal snapshots, so a shadow ref in the old repo could not restore it anyway.
+ * snapshot handles worst, and the `.imported` rename it leaves behind is a reversal the author can
+ * perform themselves. `workspace.reindex` writes one derived file, and undoing it means running it
+ * again. `workspace.open`, `pick` and `create` write into a different tree than the one the undo
+ * journal snapshots, and switching workspaces drops that journal along with the stack.
  */
 import { existsSync } from 'node:fs';
 import { basename, resolve } from 'node:path';

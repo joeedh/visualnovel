@@ -6,7 +6,7 @@
  * question about it.
  *
  * Neither is `undoable`. The copy is trivially reversible in Explorer, but the act also closes the
- * open conversation and starts a new one, and a shadow snapshot cannot put a conversation back —
+ * open conversation and starts a new one, and an undo snapshot cannot put a conversation back —
  * `vngen/state` is outside it by design.
  */
 import { defineFor, prop, type CommandContext } from '@vn/commands';

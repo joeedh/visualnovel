@@ -1,7 +1,7 @@
-import { readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Git } from '@vn/git';
-import { ensureDir, exists, sha256, writeFileAtomic } from '@vn/util';
+import { ensureDir, exists, sha256 } from '@vn/util';
+import { fileCache } from './filecache.js';
 import {
   LAYOUT_ATTRIBUTE,
   LAYOUT_ATTRIBUTES_BLOCK,
@@ -30,32 +30,6 @@ function fingerprint(text: string): string {
   return sha256(text).slice(0, 16);
 }
 
-/**
- * Whether this pair of porcelain status codes means a merge left the path unresolved. Pure so
- * the merge policy is testable without a repo; `git status` is the only source of these codes.
- */
-export function isConflictCode(x: string, y: string): boolean {
-  const code = `${x}${y}`;
-  return ['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU'].includes(code);
-}
-
-/** Which layout paths git is currently reporting as conflicted, workspace-relative. */
-async function conflictedPaths(git: Git | undefined): Promise<Set<string>> {
-  if (!git) return new Set();
-  try {
-    const status = await git.status();
-    return new Set(
-      status.entries
-        .filter(
-          (entry) => isConflictCode(entry.x, entry.y) && entry.path.startsWith(`${LAYOUT_DIR}/`),
-        )
-        .map((entry) => entry.path),
-    );
-  } catch {
-    return new Set();
-  }
-}
-
 async function slugsOnDisk(root: string): Promise<string[]> {
   try {
     return (await readdir(join(root, LAYOUT_DIR)))
@@ -72,21 +46,13 @@ async function slugsOnDisk(root: string): Promise<string[]> {
  * with no file still appears, answered for by its built-in definition, so the feature works in a
  * project that predates it.
  */
-export async function listLayouts(root: string, git?: Git): Promise<LayoutSummary[]> {
-  const conflicted = await conflictedPaths(git);
+export async function listLayouts(root: string): Promise<LayoutSummary[]> {
   const found = new Map<string, LayoutSummary>();
 
   for (const slug of await slugsOnDisk(root)) {
-    const relative = `${LAYOUT_DIR}/${slug}.json`;
-    const text = await readFile(fileFor(root, slug), 'utf8');
+    const text = await fileCache.readText(fileFor(root, slug));
     const parsed = parseLayoutFile(text);
     const shipped = shippedLayoutFile(slug);
-
-    const problem = conflicted.has(relative)
-      ? 'a merge left this layout unresolved — pick a side with `git checkout --ours` or `--theirs`, then `git add` it'
-      : parsed.ok
-        ? undefined
-        : parsed.problem;
 
     found.set(slug, {
       slug,
@@ -94,7 +60,7 @@ export async function listLayouts(root: string, git?: Git): Promise<LayoutSummar
       description: parsed.ok ? parsed.file.description : (shipped?.description ?? ''),
       source: parsed.ok ? parsed.file.source : shipped ? 'shipped' : 'saved',
       fingerprint: fingerprint(text),
-      ...(problem ? { problem } : {}),
+      ...(parsed.ok ? {} : { problem: parsed.problem }),
     });
   }
 
@@ -120,7 +86,7 @@ export type LayoutRead =
   | { ok: false; reason: string };
 
 /** One template, or a sentence saying why it cannot be had. A shipped one needs no file. */
-export async function readLayout(root: string, slug: string, git?: Git): Promise<LayoutRead> {
+export async function readLayout(root: string, slug: string): Promise<LayoutRead> {
   const path = fileFor(root, slug);
   if (!(await exists(path))) {
     const shipped = shippedLayoutFile(slug);
@@ -129,16 +95,7 @@ export async function readLayout(root: string, slug: string, git?: Git): Promise
   }
 
   const relative = `${LAYOUT_DIR}/${slug}.json`;
-  if ((await conflictedPaths(git)).has(relative)) {
-    return {
-      ok: false,
-      reason:
-        `${relative} is mid-merge, so there is no one arrangement to apply. Pick a side with ` +
-        `\`git checkout --ours ${relative}\` or \`--theirs\`, then \`git add\` it.`,
-    };
-  }
-
-  const text = await readFile(path, 'utf8');
+  const text = await fileCache.readText(path);
   const parsed = parseLayoutFile(text);
   if (!parsed.ok) return { ok: false, reason: `${relative} cannot be read: ${parsed.problem}` };
   return { ok: true, file: parsed.file, fingerprint: fingerprint(text) };
@@ -147,7 +104,7 @@ export async function readLayout(root: string, slug: string, git?: Git): Promise
 /** Write one template. Returns the workspace-relative path, which is what `written` reports. */
 export async function writeLayout(root: string, file: LayoutFile): Promise<string> {
   await ensureDir(join(root, LAYOUT_DIR));
-  await writeFileAtomic(fileFor(root, file.slug), serializeLayoutFile(file));
+  await fileCache.write(fileFor(root, file.slug), serializeLayoutFile(file));
   return `${LAYOUT_DIR}/${file.slug}.json`;
 }
 
@@ -188,7 +145,7 @@ export async function ensureLayouts(root: string): Promise<string[]> {
   for (const file of shippedLayoutFiles()) {
     const path = join(root, file.path);
     if (await exists(path)) continue;
-    await writeFileAtomic(path, file.text);
+    await fileCache.write(path, file.text);
     written.push(file.path);
   }
 
@@ -203,10 +160,10 @@ export async function ensureLayouts(root: string): Promise<string[]> {
  */
 export async function ensureLayoutAttributes(root: string): Promise<boolean> {
   const path = join(root, '.gitattributes');
-  const before = (await exists(path)) ? await readFile(path, 'utf8') : '';
+  const before = (await exists(path)) ? await fileCache.readText(path) : '';
   if (before.includes(LAYOUT_ATTRIBUTE)) return false;
 
   const head = before === '' || before.endsWith('\n') ? before : `${before}\n`;
-  await writeFile(path, `${head === '' ? '' : `${head}\n`}${LAYOUT_ATTRIBUTES_BLOCK}`);
+  await fileCache.write(path, `${head === '' ? '' : `${head}\n`}${LAYOUT_ATTRIBUTES_BLOCK}`);
   return true;
 }

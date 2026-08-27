@@ -86,17 +86,15 @@ The arrangement is the project's because that is the unit an author moves. It us
 install file under a key carrying a digest of the project path, so renaming the directory lost the
 arrangement, a second install opened the project to a default screen, and clearing one project's
 state cleared every project's. It is gitignored rather than committed because it changes on every
-border drag: a tracked file would churn `git status`, conflict on every pull, and make
-`UndoJournal.check` refuse every undo, since `Git.writeTree` runs `git add -A` in a scratch index
-and would see the file move. The shareable half of an arrangement is a
-[layout template](desktop-app.md#layout-templates), which _is_ committed. The ignore entry is the
-glob `.vnstudio/session.json*`, because `writeFileAtomic` leaves a `.tmp-<hex>` sibling during a
-write.
+border drag: a tracked file would churn `git status` and conflict on every pull. The shareable half
+of an arrangement is a [layout template](desktop-app.md#layout-templates), which _is_ committed.
+The ignore entry is the glob `.vnstudio/session.json*`, because `writeFileAtomic` leaves a
+`.tmp-<hex>` sibling during a write.
 
-The ignore entry is also the only thing keeping the file out of an undo snapshot. `UNDO_PATHS`
-deliberately does not list it: `git add -A` fails outright when a pathspec names an ignored file,
-and `:(exclude)<file>` counts as naming one, so a fourth entry there made every snapshot throw and
-left every command with no undo point at all. `writeScaffolding` rewrites the ignore line on every
+Undo leaves it alone separately, and for its own reason: `UNDO_EXCLUDES` names
+`.vnstudio/session.json`, and the snapshot store skips a `.tmp-<hex>` sibling wherever it finds
+one. Were it in the snapshot, a pane drag between an edit and the undo of it would read as
+workspace drift and the undo would refuse. `writeScaffolding` rewrites the ignore line on every
 open, so a hand-edited `.gitignore` is repaired rather than guarded against.
 
 **Shape:** a flat `Record<string, SessionValue>` with dotted keys. The three that describe a
@@ -521,7 +519,7 @@ invoke('pipeline:run', { mock })
 | Notifications | `vngen/state/notifications.jsonl` | ✓ On disk | `notify:list` / the bell | Every filed command outcome, every pipeline task, every shell notice |
 | Which categories the list shows | `desktop/session.json` (`vn.notifications.filter`) | ✓ Survives restart | `pathux/notifications.ts` | The filter popup and the "show deleted" box |
 | Which projects were opened recently, and the agent's token budget | `desktop/session.json` (`workspace.recent`, `agent.budget`) | ✓ Survives restart, on this machine | `recentWorkspaces`, the agent runner | `rememberWorkspace`, `agent.setBudget` |
-| Undo snapshots | `refs/vn/undo/<seq>/{pre,post}` (git) | ✓ In the object database | `UndoJournal` | Every undoable command — the eighteen `story.*` ones, the document writers, and the two that write layout templates |
+| Undo snapshots | `ContentStore`, in the main process | ✗ Dropped when the app closes or the workspace switches | `UndoJournal` | Every undoable command — the eighteen `story.*` ones, the document writers, and the two that write layout templates |
 
 ---
 
@@ -636,9 +634,9 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
   cleaned up: nothing tells the app that a project it opened last year was deleted. Moving or
   renaming a project also lost its arrangement, because the key was a digest of the path.
 - The file is still gitignored, so an arrangement stays in the clone it was made in. Committing it
-  would put a `git status` entry under every pane drag, conflict on every pull, and make
-  `UndoJournal.check` refuse — `Git.writeTree` stages with `git add -A`, so a debounced write
-  landing mid-command reads as worktree drift.
+  would put a `git status` entry under every pane drag and conflict on every pull. `UNDO_EXCLUDES`
+  names it separately, so a debounced write landing mid-command does not read as worktree drift and
+  make `UndoJournal.check` refuse.
 
 ### Why re-read project files on each call?
 - Ensures the main process always sees the latest disk state (e.g., if user hand-edits a file).
@@ -681,10 +679,9 @@ the hash, and the Inspector editor needs both halves to build a `vnasset://<hash
   killed instance is broken after 5s.
 - **localStorage:** shared by origin, so playthrough saves still clobber each other (last window
   wins). Unchanged by any of this — it is the renderer's own store, keyed by nothing.
-- **One instance per workspace, enforced.** Two processes on one project collide in
-  `refs/vn/undo/<seq>` — a **per-process** ref namespace whose `seq` restarts at zero, so
-  instance B's first command overwrites the shadow snapshot instance A's first command is
-  holding — and again in the committer's `-A` sweep, which stages the other instance's
+- **One instance per workspace, enforced.** Two processes on one project each hold their own undo
+  history over the same worktree, so a restore in one is drift the other refuses to undo through —
+  and they collide again in the committer's `-A` sweep, which stages the other instance's
   half-written files. Both failures are silent. So `src/main/instancelock.ts` holds a listening
   socket keyed by a digest of the resolved root: binding *is* acquiring, the endpoint dies with
   the process, and a launch on a root somebody already owns hands off — it tells the owner to

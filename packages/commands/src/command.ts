@@ -8,7 +8,6 @@
  */
 import type { Git } from '@vn/git';
 import type { PropSpecMap, PropValue, PropsOf } from './props.js';
-import type { UndoPoint } from './undo.js';
 
 /** Where an invocation came from. Recorded on every `CommandRecord`. */
 export type CommandSource = 'ui' | 'menu' | 'dsl' | 'cdp' | 'agent';
@@ -126,6 +125,21 @@ export function defineFor<Host>(): <M extends PropSpecMap>(
   return (command) => command;
 }
 
+/**
+ * What a record carries about one act's snapshots: the two tree hashes bracketing it, and whether
+ * they differ. It lives here rather than beside the journal that produces it because a record is
+ * read by hosts that never snapshot anything, including the renderer.
+ */
+export interface UndoPoint {
+  pre: string;
+  post: string;
+  /**
+   * Compares the two trees rather than what the command claimed it wrote. False means the
+   * workspace is provably identical either side.
+   */
+  changed: boolean;
+}
+
 /** The outcome of one `CommandStack.exec` — never throws for command-level failure. */
 export type CommandOutcome =
   | { ok: true; record: CommandRecord; data?: unknown }
@@ -157,10 +171,11 @@ export interface CommandRecord {
   written?: string[];
   error?: string;
   /**
-   * Shadow snapshots taken either side of an undoable command — commit shas parked under
-   * `refs/vn/undo/<seq>/`. Absent means the record is not an undo point, which is how history
-   * written before undo existed stays readable. A record with `changed: false` is walked past
-   * rather than reported as reversing something the author would see no trace of.
+   * The two content-addressed trees taken either side of an undoable command. Absent means the
+   * record is not an undo point, which is how history written before undo existed stays readable.
+   * A record with `changed: false` is walked past rather than reported as reversing something the
+   * author would see no trace of. The trees are held for the session that took them, so a record
+   * read back from an earlier run names snapshots nothing holds any more.
    */
   undo?: UndoPoint;
   /**

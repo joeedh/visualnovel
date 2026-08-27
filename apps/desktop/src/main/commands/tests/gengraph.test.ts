@@ -7,13 +7,14 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { UndoJournal, digestProps } from '@vn/commands';
+import { digestProps } from '@vn/commands';
 import type { CommandContext } from '@vn/commands';
+import { UndoJournal } from '@vn/commands/snapshot';
 import { bindSlots } from '@vn/gengraph';
 import { openGit } from '@vn/git';
 import type { UiEffect } from '../../../shared/ipc.js';
 import { readGraph } from '../../graphs.js';
-import { UNDO_PATHS } from '../../workspace.js';
+import { UNDO_EXCLUDES } from '../../workspace.js';
 import {
   gengraphAddNode,
   gengraphApply,
@@ -81,7 +82,7 @@ async function refusal<P>(
 
 /** The graph on disk, which is the only place a command's effect can be read back from. */
 async function loaded(slug: string) {
-  const read = await readGraph(root, slug, openGit(root));
+  const read = await readGraph(root, slug);
   if (!read.ok) throw new Error(read.reason);
   return read.graph;
 }
@@ -391,29 +392,23 @@ describe('what the gengraph commands refuse', () => {
 });
 
 describe('undoing a graph edit', () => {
-  it('restores the document, because a graph lives inside the undo pathspec', async () => {
+  it('restores the document, because a graph is inside the class undo snapshots', async () => {
     await run(gengraphCreate, { name: 'portrait' });
-    await openGit(root).add(['.']);
-    await openGit(root).commit({ message: 'Add the graph' });
 
-    const journal = new UndoJournal({ git: openGit(root), paths: UNDO_PATHS });
-    const before = await journal.capture(1, 'pre');
+    const journal = new UndoJournal({ root, exclude: UNDO_EXCLUDES });
+    const before = await journal.capture(1);
     expect(before).not.toBeNull();
 
     await addNode('portrait', 'GenImage');
-    const after = await journal.capture(1, 'post');
-    expect(after!.tree).not.toBe(before!.tree);
+    const after = await journal.capture(1);
+    expect(after).not.toBe(before);
 
     const point = journal.point(before!, after!);
     const checked = await journal.check(point, 'post');
     expect(checked.ok).toBe(true);
 
-    const moved = await journal.restore(
-      (checked as { trees: Record<string, string> }).trees,
-      point,
-      'pre',
-    );
-    expect(moved.error).toBeUndefined();
+    const restored = await journal.restore((checked as { tree: string }).tree, point, 'pre');
+    expect(restored.error).toBeUndefined();
     expect((await loaded('portrait')).nodes).toHaveLength(0);
   }, 20_000);
 });

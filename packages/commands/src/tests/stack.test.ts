@@ -1,10 +1,16 @@
 import { sha256 } from '@vn/util';
 import { toCatalog } from '../catalog.js';
-import { defineCommand, defineFor, type CommandContext, type CommandRecord } from '../command.js';
+import {
+  defineCommand,
+  defineFor,
+  type CommandContext,
+  type CommandRecord,
+  type UndoPoint,
+} from '../command.js';
 import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
 import { CommandStack } from '../stack.js';
-import type { Snapshot, UndoJournal, UndoPoint } from '../undo.js';
+import type { UndoJournal } from '../undo.js';
 import type { Git } from '@vn/git';
 
 /** Just the slice of Git the stack touches, so tests need no repo on disk. */
@@ -358,28 +364,26 @@ describe('CommandStack.check', () => {
   });
 });
 
-const ROOT = '/ws';
-
 /**
- * The workspace as one value, so the stack's bookkeeping can be tested without a repo. The
- * journal's own git behaviour is exercised against a real repo in `undo.test.ts`.
+ * The workspace as one value, so the stack's bookkeeping can be tested without touching disk. The
+ * journal's own filesystem behaviour is exercised against real directories in `undo.test.ts`.
  */
 class FakeJournal {
   private n = 0;
+  /** Snapshot id → the workspace value it was taken over, standing in for a tree hash. */
   readonly trees = new Map<string, string>();
   readonly captured: string[] = [];
   pruneCalls = 0;
   constructor(private readonly world: { value: string }) {}
 
-  capture(seq: number, label: string): Promise<Snapshot> {
-    const commit = `c${++this.n}`;
-    const snap = { commit, tree: this.world.value };
-    this.trees.set(commit, this.world.value);
-    this.captured.push(`${seq}/${label}`);
-    return Promise.resolve({ ...snap, repos: { [ROOT]: snap } });
+  capture(seq: number): Promise<string> {
+    const id = `c${++this.n}`;
+    this.trees.set(id, this.world.value);
+    this.captured.push(`${seq}/${id}`);
+    return Promise.resolve(id);
   }
-  point(pre: Snapshot, post: Snapshot): UndoPoint {
-    return { pre: pre.commit, post: post.commit, changed: pre.tree !== post.tree };
+  point(pre: string, post: string): UndoPoint {
+    return { pre, post, changed: this.trees.get(pre) !== this.trees.get(post) };
   }
   currentTree(): Promise<string> {
     return Promise.resolve(this.world.value);
@@ -387,25 +391,20 @@ class FakeJournal {
   check(
     point: UndoPoint,
     side: 'pre' | 'post',
-  ): Promise<{ ok: true; trees: Record<string, string> } | { ok: false; error: string }> {
+  ): Promise<{ ok: true; tree: string } | { ok: false; error: string }> {
     const tree = this.trees.get(point[side])!;
     return Promise.resolve(
       tree === this.world.value
-        ? { ok: true, trees: { [ROOT]: tree } }
+        ? { ok: true, tree }
         : { ok: false, error: 'the workspace has changed since that command ran' },
     );
   }
-  restore(
-    _trees: Record<string, string>,
-    point: UndoPoint,
-    side: 'pre' | 'post',
-  ): Promise<{ moved: string[]; error?: string }> {
+  restore(_from: string, point: UndoPoint, side: 'pre' | 'post'): Promise<{ error?: string }> {
     this.world.value = this.trees.get(point[side])!;
-    return Promise.resolve({ moved: [ROOT] });
+    return Promise.resolve({});
   }
-  prune(): Promise<void> {
+  prune(): void {
     this.pruneCalls++;
-    return Promise.resolve();
   }
 }
 
@@ -478,7 +477,7 @@ describe('undo/redo', () => {
     expect(edit!.undo).toEqual({ pre: 'c1', post: 'c2', changed: true });
     expect(generate!.undo).toBeUndefined();
     // Only the opted-in command is snapshotted, and only it pays for the housekeeping.
-    expect(journal.captured).toEqual(['1/pre', '1/post']);
+    expect(journal.captured).toEqual(['1/c1', '1/c2']);
     expect(journal.pruneCalls).toBe(1);
   });
 

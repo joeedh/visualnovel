@@ -8,7 +8,7 @@
  * it would touch.
  *
  * `project.installPages` is `mutating` but not `undoable`. It writes `.github/` and `.vnstudio/`,
- * which are outside the document tree the shadow snapshot covers, and removing it again is a
+ * which are outside the document tree an undo snapshot covers, and removing it again is a
  * `git rm` of two paths rather than a state the app models.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';

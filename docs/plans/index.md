@@ -41,6 +41,7 @@ authoring surface, whose running order and checkboxes are in
 | [`archive/shot-timeline-editor.md`](archive/shot-timeline-editor.md) | shipped | FLOOR's `timeline` mode and `story.setCoverage` |
 | [`archive/command-system.md`](archive/command-system.md) | shipped | `@vn/commands`, the DSL, the catalog, provenance, CDP |
 | [`archive/command-undo-redo.md`](archive/command-undo-redo.md) | shipped | Opt-in undo via shadow snapshots under `refs/vn/undo/<seq>` |
+| [`archive/undo-refactor.md`](archive/undo-refactor.md) | shipped | Undo off git and onto an in-memory content-addressed store, plus the desktop file cache it shares |
 | [`archive/preconditions-and-timeline-interaction.md`](archive/preconditions-and-timeline-interaction.md) | shipped | `Command.check`, `stack.check`'s three states, the `timeline.cover` interaction |
 | [desktop-storage-and-draggable-rail](archive/INDEX.md#desktop-storage-and-draggable-rail) | shipped | `.vndesktop/session.json`, `usePanelWidth`, `view.panelSize` |
 | [`archive/sample-workspace-and-asset-cache.md`](archive/sample-workspace-and-asset-cache.md) | shipped | `examples/mySampleRepo` seeding and the recorded asset corpus |

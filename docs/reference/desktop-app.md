@@ -60,7 +60,7 @@ plays it — deliberately not an external DSL export.
   deliberately not undoable), scoped to this project or to every project on this machine.
   ([`../plans/archive/onboarding-editor-and-user-level-keys.md`](../plans/archive/onboarding-editor-and-user-level-keys.md))
 - Layout templates belong to the project and are never git-merged, living at
-  `.vnstudio/layouts/<slug>.json`; a conflicted template is refused by name.
+  `.vnstudio/layouts/<slug>.json`; a template that will not parse is refused by name.
   ([`../plans/archive/layout-templates-and-the-view-menu.md`](../plans/archive/layout-templates-and-the-view-menu.md))
 - A conversation is stored as a thread at `vngen/state/threads/<id>.jsonl`; a reopened
   thread is read-only until Continue, and compacting appends a summary to the log without
@@ -584,9 +584,9 @@ the pipeline queue). Full write-up:
   overwrites one; putting an edited `writing.json` back is `view.resetLayout`'s job, not something
   opening a project does.
 - **A layout is never merged.** `.gitattributes` marks `.vnstudio/layouts/*.json` `-merge`, so git
-  conflicts the path and leaves *ours* in the worktree; the app then reads `git status` porcelain
-  codes, lists the template with the reason, and **refuses to apply it by name**, quoting
-  `git checkout --ours`/`--theirs`. Applying half a mesh would be worse than saying so. See
+  conflicts the path and leaves *ours* in the worktree, unmangled — applying half a mesh would be
+  worse than either side. The app used to read `git status` and refuse a mid-merge template by
+  name; that went with the undo refactor, so it now opens the side git left there. See
   [`repos-and-commits.md`](repos-and-commits.md).
 - **Undo comes back to the screen, not just the file.** Undo restores the template files, and no
   `view.*` command ran, so nothing pushes an effect. `renderer/pathux/layouts.ts` notices by
@@ -830,7 +830,7 @@ the same events** to write the transcript — see the threads bullet below.
   path.ux's searchable menu (`startMenu(…, true)`) over `agent.threads`, newest first, the open one
   bulleted; a separator; **New conversation**. **Reopening one is read-only**: the pane replays the
   stored feed and the dialogue box says the agent has not been shown it. Undo cannot take a
-  transcript back — its shadow snapshots exclude `vngen/state`, which is the point of putting them
+  transcript back — its snapshots exclude `vngen/state`, which is the point of putting them
   there.
 - **A reopened conversation is continued from its own history.** **Continue**
   (`agent.resumeThread`) is drawn beside Threads only while a saved conversation is on screen. It
@@ -1800,8 +1800,8 @@ which file a key lands in. Full write-up: [`desktopAppState.md`](desktopAppState
 - **The project's own file**, `<root>/.vnstudio/session.json`, holds every `pathux.` key: each
   window's mesh, its selection, the template it has applied, and the list of open windows with
   their bounds. It sits beside the layout templates, and it is gitignored — an arrangement stays in
-  the clone it was made in, and a debounced write mid-command would otherwise read as worktree
-  drift to `UndoJournal.check`.
+  the clone it was made in. `UNDO_EXCLUDES` names it as well, so a debounced write mid-command does
+  not read as worktree drift to `UndoJournal.check`.
 - **The install's file**, `<userConfigDir()>/desktop/session.json`, holds what is about this
   machine: `agent.budget`, the notification filter, and the recents list. That is the same home
   `@vn/config` gives API keys (`%LOCALAPPDATA%\vnauthor` on Windows), so user-level state has one

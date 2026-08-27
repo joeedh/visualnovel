@@ -2,9 +2,11 @@
 
 How the app decides **which git repository owns a path** and **when history gets written**.
 Design and rationale: [`../plans/archive/repo-map-and-commit-on-save.md`](../plans/archive/repo-map-and-commit-on-save.md).
-For undo — which is the other half of the same machinery — see
-[`command-system.md`](command-system.md#undo-is-opt-in-and-rests-on-shadow-snapshots) and the survey it came from,
-[`../history/gitUndoOptions.md`](../history/gitUndoOptions.md).
+Undo used to be the other half of the same machinery and no longer is: it snapshots into an
+in-memory content-addressed store rather than into git
+([`command-system.md`](command-system.md#undo-is-opt-in-and-rests-on-content-addressed-snapshots),
+[`../plans/archive/undo-refactor.md`](../plans/archive/undo-refactor.md)). Commit-on-save is untouched by that, and
+the two still compose — see [How undo composes with it](#how-undo-composes-with-it).
 
 <!-- toc -->
 
@@ -263,43 +265,43 @@ says exactly that.
 that is missing is added. `skeleton()` writes it outright for a new project, so it is in the first
 commit.
 
-Conflict resolution stays out of scope, but *noticing* one does not. `listLayouts` reads
-`git status` porcelain codes (`isConflictCode`: `DD AU UD UA DU AA UU`) and marks the template
-unusable; `view.applyLayout` refuses it, naming the path and quoting the two commands. Applying half
-a mesh would be worse than saying so.
+Conflict resolution stays out of scope, and so does *noticing* one. The app used to read `git
+status` porcelain codes and refuse a mid-merge layout or graph by name; that was dropped with the
+undo refactor, because it only ever served an author running their own git workflow over the
+project and it was the last thing asking git a question on a read path. Until a better-designed
+answer to merge conflicts exists, the app opens whichever side is in the worktree — which `-merge`
+guarantees is **ours**, unmangled.
 
 ## How undo composes with it
 
-The two mechanisms compose **without ordering constraints**, which is what makes commit-on-save a
-small change rather than a redesign: a commit moves a branch ref and the index and changes no file
-in the worktree, so it cannot perturb a snapshot tree taken either side of it.
+The two mechanisms compose **without ordering constraints**, which is what made commit-on-save a
+small change rather than a redesign, and it is also why undo could be lifted out of git without
+disturbing this half: a commit moves a branch ref and the index and changes no file in the
+worktree, so it cannot perturb a snapshot taken either side of it.
 
 - **Undo commits its restore; it never resets.** `git reset` rewrites history, and with
   commit-on-save the commit it would discard may be the only record of a save. Not `git revert`
   either — that applies an inverse *diff* and can conflict, whereas we hold the exact tree.
-- **Undo's scope stays the document class** (`['.', ':(exclude)vngen/build', ':(exclude)vngen/state']`)
-  and does not widen to match the commit scope. The two answer different questions: *what changed*
-  versus *what may be rolled back*. An undo therefore commits a worktree that is
-  documents-rolled-back plus generated-as-is, which is exactly what is on disk.
+- **Undo's scope stays the document class** (`UNDO_EXCLUDES`, plus the media the store skips
+  wherever it sits) and does not widen to match the commit scope. The two answer different
+  questions: *what changed* versus *what may be rolled back*. An undo therefore commits a worktree
+  that is documents-rolled-back plus generated-as-is, which is exactly what is on disk.
 - **The drift refusal gets stronger.** A clean worktree is the norm between acts of different
   kinds, so a check that fails means something really did change outside the app — which is why
   `undo()` and `redo()` flush a pending batch first rather than letting a deferred edit read as
   drift.
-- Undo also works where commit-on-save refuses: a shadow ref writes nobody's history, so a project
-  nested in a larger repo still snapshots as it did before.
+- Undo also works where commit-on-save refuses: a snapshot is held in memory and writes nobody's
+  history, so a project nested in a larger repo snapshots like any other.
 
 ## Multi-repo
 
-`UndoJournal` takes a repo list. One act has one `seq`, and each repo gets its own snapshot pair
-under its own `refs/vn/undo/<seq>/{pre,post}`; the first repo in the list is the **primary**, and
-`UndoPoint.pre`/`post` stay its commits, so records written before multi-repo existed stay readable
-and stay undoable. `UndoPoint.repos` appears only when an act spanned more than one.
+The repo map is a commit-on-save concept, and only that. `Committer` takes the repo list, commits
+each repo that had something to commit, and reports what landed per repo.
 
-`check` inspects **every** repo before **any** is restored, and refuses as a unit — which makes the
-common failure (someone edited a wiki file in another editor) a clean refusal rather than a
-half-restore. It does not make the restore atomic: an I/O error between two repos still leaves one
-moved, so `restore` returns the roots that did move and the failure message names them rather than
-pretending the operation was a no-op.
+Undo has no such notion any more. A snapshot covers a **directory** — the project root — so a
+`wiki/` or `assets/` that happens to be its own repository is snapshotted as part of the project
+like any other subdirectory, and there is no repo-boundary detection on that path at all. What
+used to be "refuse as a unit across repos" is now simply one tree hash compared against one other.
 
 Out of scope everywhere here: remotes, push/pull, conflict resolution, and rewriting the save
 history. A user who wants a tidier log has `git rebase`; the app never rewrites what it wrote.

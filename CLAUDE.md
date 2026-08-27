@@ -202,9 +202,11 @@ provenance, and one JSON catalog.
   ([`docs/reference/command-system.md#from-the-agent`](docs/reference/command-system.md#from-the-agent),
   [`docs/plans/archive/document-tree-context-menus.md`](docs/plans/archive/document-tree-context-menus.md))
 - Provenance, undo and commits are each opt-in: `vngen/state/commands.jsonl` for
-  provenance, shadow-snapshot undo, and per-repo commit-on-save. A command sent once per
+  provenance, undo over an in-memory content-addressed snapshot of the document tree (no git,
+  and no history across a restart), and per-repo commit-on-save. A command sent once per
   frame declares `defersCommit`, and a run of them commits once.
-  ([`docs/reference/repos-and-commits.md`](docs/reference/repos-and-commits.md))
+  ([`docs/reference/repos-and-commits.md`](docs/reference/repos-and-commits.md),
+  [`docs/reference/command-system.md`](docs/reference/command-system.md))
 - `view.*` commands run in main and push a `command:ui` effect naming an editor, never a
   room; main answers optimistically, and the mesh returns a correction.
 - CDP is opt-in in the app and on by default in the developer launchers, through

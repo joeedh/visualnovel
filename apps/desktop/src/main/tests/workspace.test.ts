@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
-import { UndoJournal } from '@vn/commands';
+import { UndoJournal } from '@vn/commands/snapshot';
 import { loadConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import { ProjectPaths, loadInputs } from '@vn/store';
@@ -23,7 +23,7 @@ import {
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
-  UNDO_PATHS,
+  UNDO_EXCLUDES,
   writeScaffolding,
   type RecentStore,
 } from '../workspace.js';
@@ -546,23 +546,29 @@ describe('scaffolding', () => {
     expect(await openGit(root).log()).toEqual(before);
   }, 20_000);
 
-  // `git add -A` fails when a pathspec names an ignored file, and `:(exclude)<file>` counts as
-  // naming one, so a session file listed in both places left every command with no undo point.
+  // Every pane drag rewrites the session file, so a snapshot that saw it would make the next
+  // undo refuse as drift. The `.tmp-` sibling beside it is a write in progress, not a document.
   it('snapshots a scaffolded project that has written its session file', async () => {
     await olderProject(root);
     await commitScaffolding(root, await writeScaffolding(root));
     await mkdir(join(root, '.vnstudio'), { recursive: true });
+    await mkdir(join(root, 'keys'), { recursive: true });
+    await mkdir(join(root, 'vngen', 'build', 'assets'), { recursive: true });
     await writeFile(join(root, '.vnstudio', 'session.json'), '{"pathux.windows":[0]}\n');
     await writeFile(join(root, '.vnstudio', 'session.json.tmp-ab12'), '{}\n');
+    await writeFile(join(root, 'keys', 'gemini'), 'not-a-real-key\n');
 
-    const journal = new UndoJournal({ git: openGit(root), paths: UNDO_PATHS });
-    const pre = await journal.capture(1, 'pre');
+    const journal = new UndoJournal({ root, exclude: UNDO_EXCLUDES });
+    const pre = await journal.capture(1);
     expect(pre).not.toBeNull();
 
-    // A later pane drag is not workspace drift: the snapshot never saw the file to begin with.
+    // A later pane drag is not workspace drift: the snapshot never saw the file to begin with,
+    // and neither the generated tree nor the key beside it is in it either.
     await writeFile(join(root, '.vnstudio', 'session.json'), '{"pathux.windows":[0,1]}\n');
-    const post = await journal.capture(1, 'post');
-    expect(post!.tree).toBe(pre!.tree);
+    await writeFile(join(root, 'vngen', 'build', 'assets', 'cafe1234.png'), 'more output');
+    await writeFile(join(root, 'keys', 'gemini'), 'a-different-key\n');
+    const post = await journal.capture(1);
+    expect(post).toBe(pre);
     expect(await journal.check(journal.point(pre!, post!), 'post')).toMatchObject({ ok: true });
   }, 20_000);
 });

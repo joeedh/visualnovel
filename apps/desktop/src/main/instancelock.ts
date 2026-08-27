@@ -1,12 +1,11 @@
 /**
  * One app instance per workspace, not per install.
  *
- * Two instances on two different repos share nothing that can collide: the undo shadow refs
- * (`refs/vn/undo/<seq>`), the committer's `-A` sweep, the notification log and the agent
- * conversation are all per project. Two instances on the same repo collide in every one of
- * them, and silently, because each stack's `seq` starts at zero, so instance B's first command
- * overwrites the snapshot instance A's first command is holding. The lock is therefore keyed by
- * the resolved root. `app.requestSingleInstanceLock()` is a global lock and is deliberately not
+ * Two instances on two different repos share nothing that can collide: the committer's `-A`
+ * sweep, the notification log and the agent conversation are all per project. Two instances on
+ * the same repo collide in every one of them, and silently: each holds its own undo history over
+ * the same worktree, so a restore in one is drift the other refuses to undo through. The lock is
+ * therefore keyed by the resolved root. `app.requestSingleInstanceLock()` is a global lock and is deliberately not
  * used, because it would also forbid two instances on two different repos.
  *
  * The lock is a listening socket rather than a file, so binding it is acquiring it: the bind

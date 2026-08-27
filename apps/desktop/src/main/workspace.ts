@@ -28,24 +28,29 @@ const FALLBACK_IDENTITY = { name: 'VN Studio', email: 'vnstudio@localhost' };
 
 /**
  * The remembered window arrangement, ignored rather than committed. It changes on every border
- * drag, so tracking it would churn `git status`, conflict on every pull, and make `UndoJournal`
- * refuse an undo because `Git.writeTree` runs `git add -A` and would see it move. The glob also
- * covers the `.tmp-<hex>` sibling `writeFileAtomic` leaves beside a file mid-write.
+ * drag, so tracking it would churn `git status` and conflict on every pull. The glob also covers
+ * the `.tmp-<hex>` sibling `writeFileAtomic` leaves beside a file mid-write.
  */
 export const SESSION_IGNORE = '.vnstudio/session.json*';
 
 /**
- * What an undo snapshot covers: the authored documents, and nothing the pipeline generated.
+ * What an undo snapshot leaves out, as root-relative paths. Everything else under the project
+ * root is the document class, apart from the media files `@vn/commands` skips wherever they sit.
+ *
  * `build/` is content-addressed and `state/` is an append-only log — rolling either back would
  * throw away work a later run has to pay for again, and excluding them is also what keeps a
- * `pipeline.run` between two edits from reading as workspace drift.
- *
- * `SESSION_IGNORE` is what keeps the session file out, rather than a fourth entry here.
- * `git add -A` fails outright when a pathspec names an ignored file, and an exclude pathspec
- * counts as naming one, so listing the session file would make every snapshot throw and leave
- * no undo point at all.
+ * `pipeline.run` between two edits from reading as workspace drift. `assets/objects` is the base
+ * store, which is the same class of thing, and pruning the walk there is worth the entry even
+ * though its bytes are media. `keys/` holds credentials, which no undo may write over or delete,
+ * and the session file moves on every pane drag.
  */
-export const UNDO_PATHS = ['.', ':(exclude)vngen/build', ':(exclude)vngen/state'];
+export const UNDO_EXCLUDES = [
+  'vngen/build',
+  'vngen/state',
+  'assets/objects',
+  'keys',
+  '.vnstudio/session.json',
+];
 
 /**
  * What a project's `.gitignore` starts as. `vngen/` is deliberately absent, because the generated

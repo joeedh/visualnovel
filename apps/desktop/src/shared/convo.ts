@@ -83,8 +83,6 @@ export interface ThreadHeader {
   id: string;
   title: string;
   startedAt: string;
-  /** The commit the conversation opened at, so a decision can be read against the tree it was made on. */
-  commit?: string;
   /**
    * The model the conversation last ran on. Written at line 0 and again whenever the author
    * switches mid-thread, so reopening a thread resumes on the model it ended with rather than the
@@ -186,7 +184,6 @@ export function threadDetail(thread: ThreadHeader): string {
   const parts = [Number.isNaN(at.getTime()) ? thread.startedAt : at.toLocaleString()];
   if (thread.model) parts.push(thread.model);
   if (thread.effort) parts.push(`effort: ${thread.effort}`);
-  if (thread.commit) parts.push(thread.commit.slice(0, 8));
   const saved = thread.archived?.[thread.archived.length - 1];
   if (saved) parts.push(`saved in git as ${saved.commit.slice(0, 8)}`);
   return parts.join(' · ');
