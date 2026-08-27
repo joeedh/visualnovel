@@ -45,11 +45,17 @@ export type SnapNode = {
   raw?: unknown;
 };
 
+export type ShadowRootLike = {
+  children: ArrayLike<ElementLike>;
+};
+
 export type ElementLike = {
   tagName: string;
   id: string;
   classList: { value: string };
   children: ArrayLike<ElementLike>;
+  /** Open shadow root, e.g. path.ux's `UIBase.shadow`; absent or null elsewhere. */
+  shadowRoot?: ShadowRootLike | null;
   getBoundingClientRect(): { x: number; y: number; width: number; height: number };
   getAttribute(name: string): string | null;
   hasAttribute(name: string): boolean;
@@ -144,13 +150,20 @@ export function snapshotDom(doc: DocumentLike): DomSnapshot {
       children: [],
       raw: el,
     };
-    for (let i = 0; i < el.children.length; i++) {
-      const child = el.children[i];
+    visitInto(el.children, node.children);
+    // Open shadow roots (path.ux widgets) are a separate child list from `el.children`;
+    // a closed root is unreachable here and stays structurally invisible, same as to CSS.
+    if (el.shadowRoot) visitInto(el.shadowRoot.children, node.children);
+    return node;
+  }
+
+  function visitInto(elems: ArrayLike<ElementLike>, into: SnapNode[]): void {
+    for (let i = 0; i < elems.length; i++) {
+      const child = elems[i];
       if (!child) continue;
       const snap = visit(child);
-      if (snap) node.children.push(snap);
+      if (snap) into.push(snap);
     }
-    return node;
   }
 
   return { root: visit(rootEl), idOf };

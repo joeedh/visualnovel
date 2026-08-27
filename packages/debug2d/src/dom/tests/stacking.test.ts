@@ -100,6 +100,32 @@ describe('fragmentsFromSnapshot', () => {
     expect(zOf(frags, 'rail').clip).toBeUndefined();
   });
 
+  it('does not clip a position: fixed descendant by a static overflow ancestor it escapes', () => {
+    const shell = el('shell', { overflowX: 'hidden', overflowY: 'hidden' }, [
+      el('panel', { position: 'fixed' }),
+    ]);
+    shell.bounds = { x: 0, y: 0, w: 0, h: 0 };
+    const frags = fragmentsFromSnapshot(el('root', {}, [shell]));
+    expect(zOf(frags, 'panel').clip).toBeUndefined();
+  });
+
+  it('clips a position: fixed descendant along its real containing-block chain', () => {
+    const tree = el('root', { overflowY: 'hidden' }, [
+      el('stage', { transform: 'matrix(1, 0, 0, 1, 0, 0)', overflowY: 'hidden' }, [
+        el('panel', { position: 'fixed' }),
+      ]),
+    ]);
+    tree.bounds = { x: 0, y: 0, w: 300, h: 300 };
+    tree.children[0]!.bounds = { x: 10, y: 10, w: 50, h: 50 };
+    const frags = fragmentsFromSnapshot(tree);
+    // `stage` is an ordinary (non-escaping) child of `root`, so root's own clip still applies
+    // to everything painted through `stage`'s subtree, `panel` included.
+    expect(zOf(frags, 'panel').clip).toEqual([
+      { rect: { x: 0, y: 0, w: 300, h: 300 }, by: 'root' },
+      { rect: { x: 10, y: 10, w: 50, h: 50 }, by: 'stage' },
+    ]);
+  });
+
   it('emits in-flow content in document order', () => {
     const tree = el('root', {}, [el('a', {}, [el('a1', {})]), el('b', {})]);
     expect(fragmentsFromSnapshot(tree).map((f) => f.id)).toEqual(['root', 'a', 'a1', 'b']);

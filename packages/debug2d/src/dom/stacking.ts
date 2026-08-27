@@ -7,8 +7,11 @@
  *
  * Honest approximations (`exactZ: false`, always): positioned `z-index: auto` elements
  * and zero/auto-z contexts paint atomically in one document-order bucket; floats are not
- * distinguished from blocks; overflow clips apply by DOM ancestry even where an
- * absolutely-positioned element would escape them.
+ * distinguished from blocks. A `position: fixed` descendant clips along its real
+ * containing-block chain (the nearest `transform`/`filter`/`backdrop-filter`/`will-change`/
+ * `contain` ancestor, or none), so a `position: static` overflow ancestor it structurally
+ * escapes no longer wrongly clips it. `position: absolute` still clips by raw DOM ancestry
+ * and can still escape a non-positioned overflow ancestor uncaught.
  */
 import type { ClipRef, Fragment, OwnerRef, ZContextRef } from '../types.js';
 import { nodeLabel, resolveOwner } from './attribution.js';
@@ -26,6 +29,21 @@ function zIndexOf(node: SnapNode): number | null {
 function isPositioned(node: SnapNode): boolean {
   const p = node.style.position;
   return p !== undefined && p !== '' && p !== 'static';
+}
+
+/**
+ * Whether a stacking-context reason also establishes a containing block for a
+ * `position: fixed` descendant. Narrower than `contextReason`: `position: fixed` and
+ * `opacity`/`isolation` on the ancestor root a stacking context but not a containing block.
+ */
+function establishesFixedContainingBlock(reason: string | null): boolean {
+  return (
+    reason === 'transform' ||
+    reason === 'filter' ||
+    reason === 'backdrop-filter' ||
+    reason === 'will-change' ||
+    reason === 'contain'
+  );
 }
 
 /** Why this element establishes a stacking context, or null if it does not. */
@@ -55,6 +73,8 @@ function clipsFor(node: SnapNode, inherited: ClipRef[]): ClipRef[] {
 type Item = {
   node: SnapNode;
   clips: ClipRef[];
+  /** The clips a `position: fixed` descendant of this item would inherit. */
+  fixedClips: ClipRef[];
   owner: OwnerRef;
   pe: 'auto' | 'none';
   /** Effective z within the parent context: declared value, or 0 for auto. */
@@ -101,10 +121,14 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
   }
 
   // Gathers this context's paint items. In-flow content is descended into and collected in
-  // document order in `inFlow`; positioned and context-rooting elements go into `bucketed`
+  // document order in `inFlow`; positioned and context-rooting elements go into `bucketed`.
+  // `parentReason` is `parent`'s own stacking-context reason, needed here (not at `parent`'s
+  // own collect() call) because only clipsFor(parent, ...) knows parent's own overflow clip.
   function collect(
     parent: SnapNode,
     clips: ClipRef[],
+    fixedClips: ClipRef[],
+    parentReason: string | null,
     owner: OwnerRef,
     pe: 'auto' | 'none',
     scope: ZContextRef | undefined,
@@ -112,13 +136,15 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
     bucketed: Item[],
   ): void {
     const childClips = clipsFor(parent, clips);
+    const childFixedClips = establishesFixedContainingBlock(parentReason) ? childClips : fixedClips;
     for (const child of parent.children) {
       const childPe = effectivePointerEvents(child, pe);
       const childOwner = resolveOwner(child, owner);
       const reason = contextReason(child);
       const item: Item = {
         node: child,
-        clips: childClips,
+        clips: child.style.position === 'fixed' ? childFixedClips : childClips,
+        fixedClips: childFixedClips,
         owner: childOwner,
         pe: childPe,
         z: zIndexOf(child) ?? 0,
@@ -129,7 +155,17 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
         bucketed.push(item);
       } else {
         inFlow.push(item);
-        collect(child, childClips, childOwner, childPe, scope, inFlow, bucketed);
+        collect(
+          child,
+          childClips,
+          childFixedClips,
+          null,
+          childOwner,
+          childPe,
+          scope,
+          inFlow,
+          bucketed,
+        );
       }
     }
   }
@@ -149,7 +185,17 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
 
     const inFlow: Item[] = [];
     const bucketed: Item[] = [];
-    collect(item.node, item.clips, item.owner, item.pe, childScope, inFlow, bucketed);
+    collect(
+      item.node,
+      item.clips,
+      item.fixedClips,
+      item.reason,
+      item.owner,
+      item.pe,
+      childScope,
+      inFlow,
+      bucketed,
+    );
 
     const byZ = (a: Item, b: Item) => a.z - b.z || a.seq - b.seq;
     for (const it of bucketed.filter((i) => i.z < 0).sort(byZ)) paint(it, childScope);
@@ -163,6 +209,7 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
     {
       node: root,
       clips: [],
+      fixedClips: [],
       owner: resolveOwner(root),
       pe: effectivePointerEvents(root),
       z: 0,
