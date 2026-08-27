@@ -79,6 +79,14 @@ path.ux's node-graph module and the `ToolProperty` classes a node spec declares 
 with; the graph module does not re-export the property classes, which is why the second name
 exists. `nstructjs` is the serializer both path.ux and this repo use.
 
+- **path.ux needs its own install, separately from the root's.** It carries its own
+  `package.json` and lockfile and is not a pnpm workspace member, so `pnpm install` at the
+  root skips it; `git submodule update --init --recursive` only checks out the source, it
+  never runs an install. `pnpm check:setup` (`scripts/check-submodules.mjs`) fails by name
+  when either step is still owed. The symptom on a clean checkout that skipped the second
+  install is scores of "has no exported member" errors inside `vendor/`, naming a symbol
+  rather than the missing install — easy to miss because a contributor who has built
+  path.ux before already has its `node_modules` on disk.
 - **An alias resolves to source where code runs and to declarations where code is only
   checked.** The run surfaces are `scripts/aliases.mjs` (read by `esbuild.desktop.mjs`,
   `esbuild.cli.mjs`, `esbuild.authoring.mjs` and `gen-command-catalog.mjs`), jest's shared

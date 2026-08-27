@@ -1,5 +1,30 @@
 # Pressure test: deferring commit-on-save
 
+<!-- toc -->
+
+- [Where the plan is right, up front](#where-the-plan-is-right-up-front)
+- [Blocking](#blocking)
+  * [1. `CommandStack.exec` is not serialized, so flushing before `command.run` does not establish what the plan says it establishes](#1-commandstackexec-is-not-serialized-so-flushing-before-commandrun-does-not-establish-what-the-plan-says-it-establishes)
+  * [2. The idle timer has no owner, and outlives the stack it belongs to](#2-the-idle-timer-has-no-owner-and-outlives-the-stack-it-belongs-to)
+- [Should-fix](#should-fix)
+  * [3. `Vn-Seq` as a range is wrong whenever the batch's seqs are not contiguous](#3-vn-seq-as-a-range-is-wrong-whenever-the-batchs-seqs-are-not-contiguous)
+  * [4. Changing `Vn-Seq`'s type in place is a silent break, and `Vn-Batch` does not save it](#4-changing-vn-seqs-type-in-place-is-a-silent-break-and-vn-batch-does-not-save-it)
+  * [5. The batched subject can truncate its own count away](#5-the-batched-subject-can-truncate-its-own-count-away)
+  * [6. The `switchWorkspace` flush is placed after the three statements that make its failure path unreportable](#6-the-switchworkspace-flush-is-placed-after-the-three-statements-that-make-its-failure-path-unreportable)
+  * [7. The quit flush inherits a deadline chosen for a much smaller loss, and "joins that race" is under-specified](#7-the-quit-flush-inherits-a-deadline-chosen-for-a-much-smaller-loss-and-joins-that-race-is-under-specified)
+  * [8. On a machine without git the batch accumulates forever, contradicting the plan's own paragraph](#8-on-a-machine-without-git-the-batch-accumulates-forever-contradicting-the-plans-own-paragraph)
+  * [9. Batching commits does not batch undo, and the plan does not say so](#9-batching-commits-does-not-batch-undo-and-the-plan-does-not-say-so)
+  * [10. The flushing command's own `gitDirty` is a stale read](#10-the-flushing-commands-own-gitdirty-is-a-stale-read)
+  * [11. Two docs the change falsifies are not in Stage 6's list](#11-two-docs-the-change-falsifies-are-not-in-stage-6s-list)
+- [Notes](#notes)
+  * [12. The flush triggers are, as far as I can find, exhaustive — and the plan should record the search](#12-the-flush-triggers-are-as-far-as-i-can-find-exhaustive--and-the-plan-should-record-the-search)
+  * [13. Every citation I checked is accurate](#13-every-citation-i-checked-is-accurate)
+  * [14. `CommandRecord.commits` has no production reader, and `commitDeferred` breaks nothing](#14-commandrecordcommits-has-no-production-reader-and-commitdeferred-breaks-nothing)
+  * [15. Undo's mechanism is genuinely untouched](#15-undos-mechanism-is-genuinely-untouched)
+  * [16. What it costs to undo](#16-what-it-costs-to-undo)
+
+<!-- tocstop -->
+
 A fresh-context review of docs/plans/deferring-commit-on-save.md against the working tree on the
 `gengraph` branch. Findings are numbered and carry a severity. The plan's strengths are stated in
 findings 13 through 16 rather than left implicit.

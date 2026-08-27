@@ -11,6 +11,8 @@ traps written down, is [`../plans/archive/pathux-desktop-rewrite.md`](../plans/a
 
 <!-- toc -->
 
+- [Application invariants](#application-invariants)
+- [path.ux renderer rules](#pathux-renderer-rules)
 - [Running it](#running-it)
 - [Renderer layout](#renderer-layout)
 - [The shell](#the-shell)
@@ -37,6 +39,111 @@ traps written down, is [`../plans/archive/pathux-desktop-rewrite.md`](../plans/a
 - [Seeded workspace (`examples/mySampleRepo`)](#seeded-workspace-examplesmysamplerepo)
 
 <!-- tocstop -->
+
+## Application invariants
+
+The pipeline is presentation-agnostic and stops at `manifest.json`. `@vn/export` projects
+the model and manifest into a small in-house playable (`story.play.json`), and this app
+plays it — deliberately not an external DSL export.
+[`playable-format.md`](playable-format.md) specifies the format.
+[`desktopAppState.md`](desktopAppState.md) records what persists where, and
+[`document-tree.md`](document-tree.md) covers the document tree, asset naming and
+`doc.rename`.
+
+- One workspace is open at a time; opening another tears the first down. Creating a
+  workspace scaffolds files, into its own repository, where opening does not.
+  ([`../plans/archive/new-and-open-project.md`](../plans/archive/new-and-open-project.md))
+- Windows do not own state; one app instance owns the workspace and all of its windows,
+  managed through `window.*` and `view.open(where=window)`.
+  ([`../plans/multiple-windows.md`](../plans/multiple-windows.md))
+- Model keys are written to gitignored files and recorded as `<secret>` (`project.setKey`,
+  deliberately not undoable), scoped to this project or to every project on this machine.
+  ([`../plans/archive/onboarding-editor-and-user-level-keys.md`](../plans/archive/onboarding-editor-and-user-level-keys.md))
+- Layout templates belong to the project and are never git-merged, living at
+  `.vnstudio/layouts/<slug>.json`; a conflicted template is refused by name.
+  ([`../plans/archive/layout-templates-and-the-view-menu.md`](../plans/archive/layout-templates-and-the-view-menu.md))
+- A conversation is stored as a thread at `vngen/state/threads/<id>.jsonl`; a reopened
+  thread is read-only until Continue, and compacting appends a summary to the log without
+  rewriting it.
+  ([`../plans/archive/conversation-threads.md`](../plans/archive/conversation-threads.md),
+  [`../plans/archive/resumable-threads-and-compaction.md`](../plans/archive/resumable-threads-and-compaction.md))
+- Turn cost is reported as an event counting API calls rather than turns; a missing receipt
+  produces no total (never `0`).
+  ([`../plans/archive/gemini-estimated-cache-hit-rate.md`](../plans/archive/gemini-estimated-cache-hit-rate.md))
+- Every notification is durable, filed by a single hook to
+  `vngen/state/notifications.jsonl`, one version per line because git union-merges the file.
+  ([`../plans/archive/notifications.md`](../plans/archive/notifications.md))
+- Non-scene documents are written as text, and only by `doc.*`; `scenes/**` is refused
+  outright, because prose belongs to `story.*`.
+- A rename rewrites the field the name was read from and never moves the file; a scene's id
+  is derived from its name once, at creation, which is why a scene is not renamable.
+- Assets are named, and the tree lists slots rather than pictures: one row per slot, with
+  earlier takes folded under the one that replaced them.
+  ([`../plans/archive/asset-names-and-the-asset-editor.md`](../plans/archive/asset-names-and-the-asset-editor.md))
+- One shared widget, `renderAssetStrip`, answers "what was drawn from this document",
+  shared by Documents, Wiki, Script and Scene.
+  ([`../plans/archive/asset-cross-references.md`](../plans/archive/asset-cross-references.md))
+- Uploaded documents are archived verbatim at `archive/<stamp>-<slug>/`, invisible to
+  `search`, the bible, and entity discovery.
+  ([`../plans/archive/upload-and-archive.md`](../plans/archive/upload-and-archive.md))
+- A bad conversation is diagnosed on the author's own key, and the fiction's names never
+  leave the machine. "The debug agent" (implemented in `@vn/agentreport`, also called "the
+  analyst") is the popup-pane conversation Help ▸ Report a Difficult Agent… opens — not
+  `vnauthor`, and not a debugging tool for this repository. `report.agent` is the separate
+  headless one-shot scripts and the API-fault seam use.
+  ([`agent-report.md`](agent-report.md))
+- Every API request is kept in a bounded in-memory ring in `@vn/providers`, never reaching
+  the report, so a 400 that names a byte position can be read against the body it indexes.
+  ([`../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`](../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md))
+- The app ships as an installer and checks for `git` at runtime rather than bundling it; on
+  a machine without git it still opens and files a durable note explaining why saving does
+  not work.
+  ([`../plans/archive/packaging-the-desktop-app.md`](../plans/archive/packaging-the-desktop-app.md))
+- A VN can be published to the web as a light novel: `renderSite` turns the playable into
+  one HTML page per scene, and `project.installPages` commits a dependency-free renderer
+  bundle plus a workflow that force-pushes `gh-pages` with plain `node`. Serving that branch
+  is a repository setting the app can neither make nor read.
+  ([`../guides/github-pages.md`](../guides/github-pages.md))
+- Nothing checks for an update until the author asks, via Help ▸ Check for Updates…
+  (`app.checkForUpdates`); the app never opens an address it was handed.
+  ([`../plans/archive/in-app-update-checks.md`](../plans/archive/in-app-update-checks.md))
+
+## path.ux renderer rules
+
+The renderer is a path.ux screen mesh: panes subdivide the window, each showing one editor.
+There is no React and no room vocabulary. path.ux is a git submodule at `vendor/path.ux`,
+so a fresh clone needs `git submodule update --init --recursive` (`pnpm check:setup` reports
+this by name). Seven rules cause the most mistakes:
+
+- The sixteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
+  `registerEditor(cls, 'vn.Name')` is the only way to register one, because a hand-written
+  name string breaks under minification. That list also carries each editor's `claims`
+  predicate, ranked in `renderer/pathux/route.ts`, and a `pins` field for the one selection
+  an editor can be pinned to. `pins` is declared once, and `registerEditor` splices in the
+  struct fields that persist it.
+- `offered: false` makes an editor registered but not listed: reachable by `view.open`, the
+  palette, and saved layouts, but absent from the two menus an author browses editors in.
+  `OFFERED_EDITOR_IDS` narrows View ▸ Editors. path.ux's `setAreaMenuFilter`, installed
+  once by the shell, keeps unoffered editors out of the pane header's own dropdown, which
+  path.ux builds from its registry rather than from ours. This is deliberately not
+  `AreaFlags.HIDDEN`: hidden describes the editor itself, while not-listed describes this
+  application's menus. Three editors carry the flag. Setup will stop being a pane once a
+  preferences window exists to hold it, System Prompt exists for inspecting a
+  misbehaving turn rather than for day-to-day work, and Debug Agent is somewhere Help sends
+  the author rather than somewhere they arrange a window to keep.
+- `src/shared/` is in the browser bundle, so everything it imports must be node-free.
+  Neither `tsgo` pass catches a violation; only `vite build` does.
+- Raw DOM surfaces go in the shadow root via `VnEditor.appendSurface`, each with its own
+  sheet via `adoptStyle`. The import order in `styles/index.css` determines the cascade
+  order, and `tokens.css` defines the design tokens (no new accent hues).
+- Pure logic goes in `.ts` files with a `tests/` sibling, and the editor stays thin
+  rendering. The jest desktop project is node-only, so surfaces are verified live over CDP.
+- A mid-gesture verdict must match the verdict that would apply on commit, layout changes
+  on commit, and an editor with an open text row stops its own keydown events.
+- `renderer/pathux/api.ts` is rooted on `ShellState` and defines nothing for documents. One
+  editor overrides it: Gen Graph roots a second `DataAPI` on the graph it has open, through
+  `ctx.override({api})` per instance, so path.ux builds the node rows. A bound write is still
+  judged and sent as a command, so `@vn/commands` remains the write path.
 
 ## Running it
 

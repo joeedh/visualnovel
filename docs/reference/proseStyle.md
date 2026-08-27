@@ -1,5 +1,11 @@
 # Prose Style
 
+<!-- toc -->
+
+
+
+<!-- tocstop -->
+
 These rules govern every piece of prose in the repository. They apply to code comments, to
 this file, and to everything under `docs/`.
 

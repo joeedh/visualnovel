@@ -1,5 +1,27 @@
 # Pressure test: a scoped DataAPI for the node editor
 
+<!-- toc -->
+
+- [Where the plan is right](#where-the-plan-is-right)
+- [Findings](#findings)
+  * [1. `useDataPathUndo` is on by default, so the non-goal is false as written — blocking](#1-usedatapathundo-is-on-by-default-so-the-non-goal-is-false-as-written--blocking)
+  * [2. The write seam must iterate `nodePropKeys`, not `node.props` — blocking](#2-the-write-seam-must-iterate-nodepropkeys-not-nodeprops--blocking)
+  * [3. "Unchecking is refused by name" names a refusal that does not exist — blocking](#3-unchecking-is-refused-by-name-names-a-refusal-that-does-not-exist--blocking)
+  * [4. Stage 4's mechanism does not exist in the renderer, and its cross-window rationale is backwards — blocking](#4-stage-4s-mechanism-does-not-exist-in-the-renderer-and-its-cross-window-rationale-is-backwards--blocking)
+  * [5. The revert repaints nothing — should-fix](#5-the-revert-repaints-nothing--should-fix)
+  * [6. Stage 1 understates its own scope — should-fix](#6-stage-1-understates-its-own-scope--should-fix)
+  * [7. Deleting `stopOwnEvents` is defensible, and the plan does not say why — should-fix](#7-deleting-stopownevents-is-defensible-and-the-plan-does-not-say-why--should-fix)
+  * [8. The tooltip audit is a prerequisite, not a step inside stage 3 — should-fix](#8-the-tooltip-audit-is-a-prerequisite-not-a-step-inside-stage-3--should-fix)
+  * [9. The `syncGraph` override is left with no job — note](#9-the-syncgraph-override-is-left-with-no-job--note)
+  * [10. `ctx.override` yields a doubled overlay stack — note](#10-ctxoverride-yields-a-doubled-overlay-stack--note)
+  * [11. The `FrameManager` protection holds; area copying does not — note](#11-the-framemanager-protection-holds-area-copying-does-not--note)
+  * [12. The undo, provenance and pipeline claim holds, conditionally — note](#12-the-undo-provenance-and-pipeline-claim-holds-conditionally--note)
+  * [13. Every widget write flags a renderer-side node dirty — note](#13-every-widget-write-flags-a-renderer-side-node-dirty--note)
+- [What the plan leaves undecided beyond its own open questions](#what-the-plan-leaves-undecided-beyond-its-own-open-questions)
+- [Cost to undo](#cost-to-undo)
+
+<!-- tocstop -->
+
 A fresh-context review of docs/plans/gengraph-node-editor-data-api.md, written without seeing
 the conversation that produced the plan. Every citation below was checked against the code on
 the `gengraph` branch. Findings are numbered and carry a severity: blocking means the stage
