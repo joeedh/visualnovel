@@ -24,19 +24,20 @@ import {
 import type { Button, DataAPI, EditVerdict, GraphEdit, NodeGraphDelegate } from 'pathux';
 import type { ToolProperty } from 'pathux-toolprop';
 
-import { touchesGraph } from '../../../src/shared/writes.js';
+import { graphDocPath, touchesGraph } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
 import {
   commandFor,
   contestedSlots,
   drawnSlot,
   genEditFor,
+  newDocSync,
   noActiveOutput,
-  setPropKey,
+  shouldReload,
 } from '../../rules/gengraph.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../api.js';
-import { exec, onExec, onInvalidate, onWrote, say } from '../bridge.js';
+import { exec, onInvalidate, onWrote, say } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
@@ -87,10 +88,8 @@ export class GenGraphEditor extends VnEditor {
   /** True while a refusal is being written back, so the write does not read as an author's. */
   private reverting = false;
 
-  /** The `gengraph.setProp` writes this pane has sent and has yet to hear an outcome for. */
-  private sent = new Set<string>();
-  /** Armed by this pane's own accepted write, and consumed by the reload that follows it. */
-  private skipReload = false;
+  /** How far this pane's copy of the open graph has been carried, against everyone else's. */
+  private sync = newDocSync();
 
   static override define() {
     return {
@@ -180,44 +179,34 @@ export class GenGraphEditor extends VnEditor {
       return () => observer.disconnect();
     });
 
-    // `onExec` fires immediately before the invalidation an accepted write raises, and carries the
-    // outcome `onWrote`/`onInvalidate` do not, so this is where a `setProp` this pane sent is told
-    // apart from one that reached the file some other way.
-    this.watch(() =>
-      onExec((id, outcome) => {
-        if (id !== 'gengraph.setProp' || outcome.record === undefined) return;
-        if (this.sent.delete(setPropKey(outcome.record.props)) && outcome.ok) {
-          this.skipReload = true;
-        }
-      }),
-    );
-
-    // A command this pane sent is not the only thing that rewrites this graph's file: the agent's
-    // graph tool and a `gengraph.*` invocation from the palette both reach it too. `onWrote` names
-    // the paths a write touched, so a write to some other document is ignored rather than reloading
-    // this one.
+    // A command this pane sent is not the only thing that rewrites this graph's file: another
+    // window, the agent's graph tool and a `gengraph.*` invocation from the palette all reach it
+    // too. `onWrote` names the paths a write touched, so a write to some other document is ignored
+    // rather than reloading this one, and the version it carries says whether this pane has
+    // already been past the state being described.
     this.watch(
       () =>
-        onWrote((paths) => {
+        onWrote((paths, versions) => {
           if (!touchesGraph(paths, this.slug)) return;
-          // This pane's own write comes back as a whole-file reload under the widget being typed
-          // into, and carries nothing new: main wrote the value `decideGenEdit` accepted here.
-          // The strip still repaints, because standing the last output down changes what it says.
-          if (this.skipReload) {
-            this.skipReload = false;
-            this.paintState();
-          } else {
-            void this.load(this.slug);
-          }
+          const version = versions[graphDocPath(this.slug)];
+          if (version !== undefined) this.sync.latest = Math.max(this.sync.latest, version);
+          if (shouldReload(this.sync, version)) void this.load(this.slug);
+          // Nothing new is on the file, but standing the last output down changes what the strip
+          // above the canvas says about the graph, so that much is repainted.
+          else this.paintState();
         }),
       () => void this.load(this.slug),
     );
 
     // Undo and redo restore files no command in this session wrote, so `onWrote` cannot name them
     // — `onInvalidate` is the only signal left for that case. It is coarse, firing on any change
-    // anywhere, but the reload it now causes lands on `syncGraph`'s id-based reconciliation, so it
-    // no longer costs the graph its frames or a widget mid-edit.
-    this.watch(() => onInvalidate(() => void this.load(this.slug)));
+    // anywhere, so it is held off while this pane has a write outstanding: a reload mid-gesture
+    // would show the author their own edit being taken back.
+    this.watch(() =>
+      onInvalidate(() => {
+        if (shouldReload(this.sync, undefined)) void this.load(this.slug);
+      }),
+    );
 
     this.paint(false);
   }
@@ -243,6 +232,14 @@ export class GenGraphEditor extends VnEditor {
     const mine = ++this.token;
     const sameGraph = slug !== '' && slug === this.slug;
     this.slug = slug;
+    // Versions count one document, so pointing the pane at another graph starts them over. A
+    // write still outstanding against the graph being left is dropped with them: its answer can
+    // no longer say anything about what is on screen.
+    if (!sameGraph) this.sync = newDocSync();
+    // This read is what puts the pane back on what the file holds, which is what being stale
+    // meant. Cleared as the read is issued rather than when it lands, so a refusal arriving in
+    // between is still recorded.
+    else this.sync.stale = false;
 
     if (slug === '') {
       this.graph = undefined;
@@ -375,9 +372,22 @@ export class GenGraphEditor extends VnEditor {
   private dispatch(edit: GraphEdit): void {
     const weighed = this.weigh(edit);
     if (!weighed.ok) return;
-    // A drag is applied to the graph on screen as well as sent, because the view resyncs its frames
-    // from `node.pos` the moment this returns and a frame that never moved snaps back.
-    if (weighed.edit.op === 'moveNodes') weighed.decision.apply();
+
+    // Applied to the graph on screen as well as sent. The pane no longer re-reads the file when
+    // its own write comes back, so whatever an edit does has to be done here or it is not shown
+    // until something else forces a read. Both sides decide the edit with `decideGenEdit` against
+    // the same file, and `Graph.add` takes ids from a counter the file itself carries, so a node
+    // created here carries the id main writes for it.
+    const applied = weighed.decision.apply();
+    // A whole-DSL apply answers with a rebuilt graph rather than the one it was handed.
+    this.graph = applied.graph;
+
+    // A drag needs no repaint: the view resyncs its frames from `node.pos` the moment this
+    // returns. Every other edit changed which nodes, links or values exist, and only a repaint
+    // puts that on screen — `refreshGraph` beneath it reconciles by node id, so the frames that
+    // did not change are left alone.
+    if (weighed.edit.op !== 'moveNodes') this.paint(true);
+
     this.send(weighed.edit);
   }
 
@@ -399,8 +409,19 @@ export class GenGraphEditor extends VnEditor {
   private send(edit: GenEdit): void {
     if (this.slug === '') return;
     const command = commandFor(this.slug, edit);
-    if (edit.op === 'setProp') this.sent.add(setPropKey(command.props));
-    void exec(command.id, command.props);
+    const path = graphDocPath(this.slug);
+    this.sync.inflight++;
+    void exec(command.id, command.props).then((outcome) => {
+      this.sync.inflight--;
+      const version = outcome.ok ? outcome.versions?.[path] : undefined;
+      if (version !== undefined) this.sync.mine = Math.max(this.sync.mine, version);
+      // The edit was applied here before it was sent, so a refusal leaves the pane showing
+      // something the file never took. `exec` has already said why; the way back is a read.
+      if (!outcome.ok) this.sync.stale = true;
+      // Every echo that arrived while this pane had writes outstanding was passed over, so a
+      // change somebody else made during that window is picked up here or not at all.
+      if (shouldReload(this.sync, this.sync.latest)) void this.load(this.slug);
+    });
   }
 
   // -------------------------------------------------------------------------

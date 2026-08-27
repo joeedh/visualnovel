@@ -1,4 +1,4 @@
-import { normalizePath, touches, touchesGraph, touchesScene } from '../writes.js';
+import { graphDocPath, normalizePath, touches, touchesGraph, touchesScene } from '../writes.js';
 
 describe('normalizePath', () => {
   it('forward-slashes and drops a ./ prefix', () => {
@@ -35,15 +35,23 @@ describe('touchesScene', () => {
   });
 });
 
+describe('graphDocPath', () => {
+  // Pinned against the path a write actually reports, which is what `writeGraphDoc` returns from
+  // `graphPath`. A bare `work/graphs/...` here matched nothing the app ever wrote.
+  it('is under vngen/, the way ProjectPaths.work is', () => {
+    expect(graphDocPath('portrait')).toBe('vngen/work/graphs/portrait.json');
+  });
+});
+
 describe('touchesGraph', () => {
   it('derives the graph file from the slug', () => {
-    expect(touchesGraph(['work/graphs/portrait.json'], 'portrait')).toBe(true);
-    expect(touchesGraph(['work\\graphs\\portrait.json'], 'portrait')).toBe(true);
+    expect(touchesGraph(['vngen/work/graphs/portrait.json'], 'portrait')).toBe(true);
+    expect(touchesGraph(['vngen\\work\\graphs\\portrait.json'], 'portrait')).toBe(true);
   });
 
   it('ignores another graph, another file, and no graph open', () => {
-    expect(touchesGraph(['work/graphs/backdrop.json'], 'portrait')).toBe(false);
+    expect(touchesGraph(['vngen/work/graphs/backdrop.json'], 'portrait')).toBe(false);
     expect(touchesGraph(['characters/aiko/character.md'], 'portrait')).toBe(false);
-    expect(touchesGraph(['work/graphs/portrait.json'], '')).toBe(false);
+    expect(touchesGraph(['vngen/work/graphs/portrait.json'], '')).toBe(false);
   });
 });

@@ -74,14 +74,43 @@ export function noActiveOutput(graph: Graph): boolean {
   return outputs.length > 0 && activeOutputs(graph).length === 0;
 }
 
+/** What a pane knows about the versions of the one document it is showing. */
+export interface DocSync {
+  /** Writes this pane has sent and not yet had answered. */
+  inflight: number;
+  /** The highest version this pane's own writes produced. */
+  mine: number;
+  /** The highest version anyone has reported for this document. */
+  latest: number;
+  /**
+   * Set when a write refused, which is the one case where the pane holds an edit the file never
+   * took: it applies an edit to its own copy before sending it.
+   */
+  stale: boolean;
+}
+
+/** A pane that has shown nothing and written nothing. */
+export function newDocSync(): DocSync {
+  return { inflight: 0, mine: 0, latest: 0, stale: false };
+}
+
 /**
- * What one `gengraph.setProp` writes, as a single string. A pane matches an outcome against the
- * writes it sent this way, so a second pane open on the same graph is never told that someone
- * else's write was its own.
+ * Whether an echo naming `incoming` should make the pane re-read its document.
+ *
+ * Outstanding local writes settle it before anything else is consulted: a pane applies an edit to
+ * its own copy before sending it, so while anything is unanswered its copy is ahead of whatever
+ * main can report and re-reading would show the author their own edit being undone. The write
+ * that settles the last of them asks again, which is where both a refusal and a change somebody
+ * else made during that window are picked up.
+ *
+ * `undefined` is a signal that named no version — an undo or a redo, which restores files no
+ * command declared. There is nothing to compare, so it is taken at its word.
  */
-export function setPropKey(props: Record<string, unknown>): string {
-  // JSON rather than a joined string, because a prompt is a value and carries any separator.
-  return JSON.stringify([props['slug'], props['node'], props['key'], props['value']].map(String));
+export function shouldReload(sync: DocSync, incoming: number | undefined): boolean {
+  if (sync.inflight > 0) return false;
+  if (sync.stale) return true;
+  if (incoming === undefined) return true;
+  return incoming > sync.mine;
 }
 
 /** Reads a gesture as the edit this application decides, refusing the kinds it cannot write. */

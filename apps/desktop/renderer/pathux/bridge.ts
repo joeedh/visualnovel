@@ -19,6 +19,8 @@ import type {
   AgentEvent,
   CommandCheck,
   CommandOutcome,
+  DocVersions,
+  ExecOutcome,
   Notification,
   NotificationInput,
   PropValue,
@@ -132,24 +134,27 @@ function invalidate(): void {
   for (const listener of invalidators) listener();
 }
 
-type WroteWatcher = (paths: readonly string[]) => void;
+type WroteWatcher = (paths: readonly string[], versions: DocVersions) => void;
 
 const scribes = new Set<WroteWatcher>();
 
 /**
- * Watch which files moved. Neither {@link onExec} nor {@link onInvalidate} answers that, and
- * neither sees the agent at all — its writes never pass through `exec`, they arrive as
- * `agent:event` tool results carrying `ToolResult.written`. Both feed this, so an editor showing a
- * document follows that document whoever rewrote it.
+ * Watch which files moved, and what version each of them now carries. Neither {@link onExec} nor
+ * {@link onInvalidate} answers that, and neither sees the agent at all — its writes never pass
+ * through `exec`. Main raises this for every write by every route, so an editor showing a document
+ * follows that document whoever rewrote it.
+ *
+ * A watcher taking only `paths` still satisfies this, which is what keeps the panes that have no
+ * use for a version unchanged.
  */
 export function onWrote(watcher: WroteWatcher): () => void {
   scribes.add(watcher);
   return () => scribes.delete(watcher);
 }
 
-function wrote(paths: readonly string[]): void {
+function wrote(paths: readonly string[], versions: DocVersions): void {
   if (paths.length === 0) return;
-  for (const watcher of scribes) watcher(paths);
+  for (const watcher of scribes) watcher(paths, versions);
 }
 
 /** What a run has done so far, as the busy push reports it. */
@@ -179,11 +184,12 @@ export function onBusy(listener: (state: BusyState) => void): () => void {
 export async function exec(
   id: string,
   props: Record<string, PropValue> = {},
-): Promise<CommandOutcome> {
+): Promise<ExecOutcome> {
   const outcome = await api.invoke('command:exec', { id, props, source: 'ui' });
   if (!outcome.ok && !outcome.record) say(outcome.error, true);
   for (const watcher of watchers) watcher(id, outcome);
-  if (outcome.ok) wrote(outcome.record.written ?? []);
+  // `wrote` is not raised here. Main broadcasts every write to every window, so raising it from
+  // the outcome as well would tell this window twice and still tell no other window at all.
   if (outcome.ok && outcome.record.mutating) invalidate();
   return outcome;
 }
@@ -355,12 +361,11 @@ That is a fault in what was ` +
       app.ui.retryOf = counting ? event.of : 0;
       touch();
     } else if (event.type === 'tool') {
-      // A tool call is not a command, so `exec` never sees the agent's writes. Both feeds fire,
-      // because a surface that redraws the whole workspace (the document tree) watches the coarse
-      // one and would otherwise sit on a project the agent has since added a scene to.
-      const written = event.result.written ?? [];
-      wrote(written);
-      if (written.length > 0) invalidate();
+      // A tool call is not a command, so `exec` never sees the agent's writes. The paths reach
+      // panes over `documents:wrote` like any other write; what is still owed here is the coarse
+      // signal, which a surface that redraws the whole workspace (the document tree) watches and
+      // would otherwise sit on a project the agent has since added a scene to.
+      if ((event.result.written ?? []).length > 0) invalidate();
     }
   });
 
@@ -375,6 +380,12 @@ That is a fault in what was ` +
   // The push carries nothing, so the badge and an open list both come from the refetch it starts.
   api.on('approval:changed', () => {
     approvalsChanged();
+  });
+
+  // Every write in the app arrives here, whichever window or agent made it, which is what lets a
+  // pane weigh an echo of its own write against one from somewhere else.
+  api.on('documents:wrote', (payload) => {
+    wrote(payload.paths, payload.versions);
   });
 
   void refreshWorkspace();

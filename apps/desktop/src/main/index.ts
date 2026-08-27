@@ -35,6 +35,7 @@ import { BUDGET_KEY } from './commands/agent.js';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
 import { fileCache, forgetFiles, snapshotStore } from './filecache.js';
+import { liveDocs } from './livedocs.js';
 import { installNotifications, notifications, notify } from './notifications.js';
 import {
   checkGit,
@@ -78,8 +79,10 @@ import {
   writeScaffolding,
 } from './workspace.js';
 import type {
+  DocVersions,
   EventChannel,
   EventChannels,
+  ExecOutcome,
   InvokeChannel,
   InvokeChannels,
   PlanDecision,
@@ -187,6 +190,25 @@ function windowFor(target?: WindowId): BrowserWindow | undefined {
 /** Send a process-wide fact to every window, as opposed to an answer to one window's question. */
 function broadcast<C extends EventChannel>(channel: C, payload: EventChannels[C]): void {
   for (const { handle } of windows.all()) handle.webContents.send(channel, payload);
+}
+
+/**
+ * Stamp what a write touched, tell every window, and answer the versions those documents now
+ * carry. Every write path in the app funnels through here, so a pane weighing an echo sees the
+ * agent's writes and another window's writes on the same terms as its own.
+ *
+ * Broadcast rather than answered to the window that asked: a `ui` command in one window used to
+ * reach no other window at all, because `undoRevision` only advances for a restore or for a
+ * mutating record from somewhere other than the UI.
+ */
+function noteWrites(paths: readonly string[]): DocVersions {
+  if (paths.length === 0) return {};
+  const versions = liveDocs.wrote(paths);
+  // Directly rather than through `getSession()`, which would build a session on a path whose only
+  // job is to report a write that has already happened.
+  session?.forgetGraphDocs(paths);
+  broadcast('documents:wrote', { paths: [...paths], versions });
+  return versions;
 }
 
 /** Send an answer to the one window that asked the question. */
@@ -330,6 +352,9 @@ async function switchWorkspace(root: string): Promise<{ root: string; title: str
   ownedRepos.length = 0;
   // The stack and its undo history are rebuilt against the new root, so nothing held may cross.
   forgetFiles();
+  // Versions are keyed workspace-relative, so under a different root the same key names a
+  // different file and a stale count would tell a pane its copy was current.
+  liveDocs.clear();
   undoRevision = 0;
   await openRepos();
   // Before any window is told about the switch, so the arrangement of the project being left is
@@ -561,7 +586,13 @@ function askWindow<T>(pending: Pending<T>, send: (id: number, win: BrowserWindow
 let appVersion = app.getVersion();
 
 const deps: SessionDeps = {
-  emitEvent: (event) => broadcast('agent:event', event),
+  emitEvent: (event) => {
+    // An agent tool call is not a command and never reaches the stack, so its writes are stamped
+    // here instead. Before the event goes out, so a pane cannot be told a tool ran and then be
+    // told separately what it wrote.
+    if (event.type === 'tool') noteWrites(event.result.written ?? []);
+    broadcast('agent:event', event);
+  },
   emitReport: (event) => broadcast('report:event', event),
   requestPlan: (plan) =>
     askWindow(pendingPlans, (id, target) => {
@@ -717,6 +748,11 @@ function getStack(): CommandStack<CommandHost> {
         // always counts, as does a mutating command from the agent, CDP or main, whose changes the
         // renderer never invalidated. A `ui` command is left out because `exec` already invalidated.
         if (record.stack || (record.mutating && record.source !== 'ui')) undoRevision++;
+        // Before the log append, so a window is told a document moved as soon as the command that
+        // moved it has finished writing rather than after the history behind it is durable. The
+        // stamp is in place by the time `command:exec` reads it back, because this hook is
+        // awaited inside the stack before the outcome is returned.
+        noteWrites(record.written ?? []);
         await appendJsonl(paths.commandsLog, record);
         // Files every command's outcome, whoever ran it — the palette, a menu, the agent, CDP.
         // This one hook replaces a `say()` call at each of the thirty places that used to report
@@ -745,6 +781,16 @@ function getStack(): CommandStack<CommandHost> {
     });
   }
   return stack;
+}
+
+/**
+ * Tell the caller which version each document its command wrote now carries, so it can recognize
+ * the echo of its own write. The versions are read rather than stamped: `onRecord` stamped them
+ * and broadcast them already, and stamping again would hand the caller a version no window heard.
+ */
+function withVersions(outcome: ExecOutcome): ExecOutcome {
+  const written = outcome.record?.written ?? [];
+  return written.length === 0 ? outcome : { ...outcome, versions: liveDocs.current(written) };
 }
 
 /**
@@ -802,13 +848,15 @@ function registerIpc(): void {
   // `catalogOf`, not a second `toCatalog` call: the two drifted, and the channel served a
   // catalog with no interactions while `commands.json` listed five.
   handle('command:catalog', () => catalogOf(registry));
-  handle('command:exec', (origin, request) => {
+  handle('command:exec', async (origin, request) => {
     const source = request.source ?? 'ui';
-    if (request.dsl !== undefined) return getStack().execDsl(request.dsl, source, origin);
-    if (request.id === undefined) {
-      return Promise.resolve({ ok: false as const, error: 'command:exec needs an id or a dsl' });
+    if (request.dsl !== undefined) {
+      return withVersions(await getStack().execDsl(request.dsl, source, origin));
     }
-    return getStack().exec(request.id, request.props ?? {}, source, origin);
+    if (request.id === undefined) {
+      return { ok: false as const, error: 'command:exec needs an id or a dsl' };
+    }
+    return withVersions(await getStack().exec(request.id, request.props ?? {}, source, origin));
   });
   handle('command:check', (origin, request) =>
     getStack().check(request.id, request.props ?? {}, origin),

@@ -21,7 +21,7 @@ import {
   type ResolvedKeys,
   type VendorKeyStatus,
 } from '@vn/config';
-import { chmod, mkdir, readdir, readFile, rename } from 'node:fs/promises';
+import { chmod, mkdir, readdir, readFile, rename, stat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
@@ -302,6 +302,7 @@ import {
   type Report,
 } from '@vn/agentreport';
 import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, BUSY_RUN, busyName } from '../shared/ipc.js';
+import { GRAPH_DOCS_DIR } from '../shared/writes.js';
 import type {
   AgentSystem,
   ApproveResult,
@@ -829,6 +830,23 @@ interface LoadedGraphDoc extends LoadedGraph {
   slug: GraphSlug;
 }
 
+/** What one file looked like when something was recorded about it. */
+interface FileStamp {
+  mtimeMs: number;
+  size: number;
+}
+
+/** One graph's last answer, and what its file looked like when that answer was built. */
+interface HeldGraphDoc extends FileStamp {
+  read: GraphDocRead;
+}
+
+/** The stamp for `file`, or undefined when there is nothing there to stamp. */
+async function statOf(file: string): Promise<FileStamp | undefined> {
+  const found = await stat(file).catch(() => null);
+  return found ? { mtimeMs: found.mtimeMs, size: found.size } : undefined;
+}
+
 /** The output node a run targets when none is named, which is the first one still active. */
 function activeOutputOf(graph: GenGraph): GraphId | undefined {
   return activeOutputs(graph)[0]?.id;
@@ -965,6 +983,12 @@ export class WorkspaceSession {
   private reportGrants = { source: false, detail: false };
   /** Where the open debug conversation is being written down, when there was somewhere to write it. */
   private transcript: Transcript | undefined;
+  /**
+   * The last answer `graphDoc` built for each slug, held so a pane re-reading after its own write
+   * does not pay for a parse of bytes it has already seen. Dropped by `forgetGraphDocs`, and
+   * checked against a stat on every serve.
+   */
+  private readonly heldGraphs = new Map<GraphSlug, HeldGraphDoc>();
 
   constructor(
     readonly dir: string,
@@ -5304,16 +5328,52 @@ export class WorkspaceSession {
    * One graph's document, for a renderer that cannot reach the file. The graph is serialized
    * back to the file's own layout rather than to the DSL, because the DSL carries no node
    * positions and the pane has to draw the graph where the author left it.
+   *
+   * Answered from the held parse when a stat says the file has not moved. Building one costs a
+   * read, a JSON parse, an nstructjs deserialize, a walk of the group library off disk, a
+   * validation pass and a re-serialize, and a pane re-reads after every write — so the reads that
+   * change nothing are the ones worth not paying for. The stat is what keeps a writer this
+   * process never saw, such as the CLI or a `git checkout`, from being served a stale parse.
    */
   async graphDoc(slug: GraphSlug): Promise<GraphDocRead> {
+    const file = join(this.dir, graphPath(this.dir, slug));
+    const stat = await statOf(file);
+    const held = this.heldGraphs.get(slug);
+    if (held && stat && held.mtimeMs === stat.mtimeMs && held.size === stat.size) {
+      return held.read;
+    }
+
     const read = await readGraph(this.dir, slug);
-    if (!read.ok) return { ok: false, reason: read.reason };
-    return {
-      ok: true,
-      path: read.path,
-      file: writeGraphFile(read.graph),
-      diagnostics: read.diagnostics,
-    };
+    const answer: GraphDocRead = read.ok
+      ? {
+          ok: true,
+          path: read.path,
+          file: writeGraphFile(read.graph),
+          diagnostics: read.diagnostics,
+        }
+      : { ok: false, reason: read.reason };
+
+    // Stat after the read, so bytes that landed during it are described by the record rather than
+    // hidden by it. A file that has gone leaves nothing held, since there is nothing to check
+    // a later answer against.
+    const after = await statOf(file);
+    if (after) this.heldGraphs.set(slug, { read: answer, ...after });
+    else this.heldGraphs.delete(slug);
+    return answer;
+  }
+
+  /**
+   * Drop every held graph parse when a write names anything under the graph directory.
+   *
+   * All of them rather than the one file written, because a graph resolves group definitions out
+   * of `vngen/work/graphs/lib/` and a stat of the graph's own file cannot notice one of those
+   * changing. The set is a handful of entries, so re-reading them all is cheaper than being wrong.
+   */
+  forgetGraphDocs(written: readonly string[]): void {
+    const dir = `${GRAPH_DOCS_DIR}/`;
+    if (written.some((path) => path.split(sep).join('/').startsWith(dir))) {
+      this.heldGraphs.clear();
+    }
   }
 
   /**

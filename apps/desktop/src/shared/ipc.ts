@@ -789,6 +789,21 @@ export interface SceneEditResult {
 }
 
 /**
+ * How many times each document has been written this session, by workspace-relative path. A
+ * document nothing has written carries no entry, which reads as version zero.
+ *
+ * This is a desktop concern rather than a command-system one: `@vn/commands` is shared with
+ * `vnauthor` and the CLI, neither of which has a window whose copy of a document can fall behind.
+ */
+export type DocVersions = Record<string, number>;
+
+/**
+ * A command's outcome, plus the version each document it wrote now carries. The sender needs its
+ * own write's version to tell the echo of that write apart from somebody else's.
+ */
+export type ExecOutcome = CommandOutcome & { versions?: DocVersions };
+
+/**
  * One generation graph as the renderer receives it. The file's own nstructjs JSON travels rather
  * than the DSL, because the DSL carries topology and authored values and no layout, and the pane
  * has to draw each node where the author left it. The renderer reads it back into a `Graph` with
@@ -856,7 +871,7 @@ export interface InvokeChannels {
   'gengraph:doc': (slug: string) => GraphDocRead;
   /** The live registry projection — never the generated file, so the two can't diverge. */
   'command:catalog': () => CommandCatalog;
-  'command:exec': (request: CommandExecRequest) => CommandOutcome;
+  'command:exec': (request: CommandExecRequest) => ExecOutcome;
   'command:history': (limit?: number) => CommandRecord[];
   /**
    * Reports whether an invocation would run. A read, never a gate — `command:exec` re-decides
@@ -959,6 +974,15 @@ export interface EventChannels {
    * way, and the badge only needs to know its count is stale.
    */
   'approval:changed': Record<string, never>;
+  /**
+   * Documents were written, by any route — a command from any source, or an agent tool call.
+   * Broadcast, so a window learns about a write another window made; deriving this from a
+   * command's own outcome only ever told the window that ran it.
+   *
+   * An undo or a redo raises no such event. A restore writes files no command declared, so there
+   * are no paths to name; `command:ui`'s undo effect stays the signal for that case.
+   */
+  'documents:wrote': { paths: string[]; versions: DocVersions };
   /** A session key changed — either by this window or by a command that wrote one. */
   'session:changed': { key: string; value: SessionValue };
   log: { level: 'info' | 'warn' | 'error'; message: string };

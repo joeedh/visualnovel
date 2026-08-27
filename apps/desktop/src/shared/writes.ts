@@ -30,8 +30,28 @@ export function touchesScene(written: readonly string[], sceneId: string): boole
   return touches(written, `scenes/${sceneId}.md`);
 }
 
+/**
+ * Where generation graph documents live, workspace-relative.
+ *
+ * `vngen/work/`, not a bare `work/`: `ProjectPaths.work` is already under `vngen/`, so that is
+ * what `graphPath` reports and what a `written` list carries. The same note sits on the guarded
+ * directory map in `@vn/store`, which cannot be imported here — this module is bundled into the
+ * renderer and that one reaches `node:fs`.
+ */
+export const GRAPH_DOCS_DIR = 'vngen/work/graphs';
+
+/**
+ * Where one generation graph's document lives. This is the key a pane looks its own document up
+ * by in a version map, so it lives beside the matcher below rather than being spelled out again at
+ * the call site: a matcher and a key that disagree would leave a pane reloading on writes it can
+ * never recognize as its own.
+ */
+export function graphDocPath(slug: string): string {
+  return `${GRAPH_DOCS_DIR}/${slug}.json`;
+}
+
 /** Did any of `written` name the file a generation graph lives in? `work/graphs/<slug>.json`. */
 export function touchesGraph(written: readonly string[], slug: string): boolean {
   if (!slug) return false;
-  return touches(written, `work/graphs/${slug}.json`);
+  return touches(written, graphDocPath(slug));
 }

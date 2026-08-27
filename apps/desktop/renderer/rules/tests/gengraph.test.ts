@@ -6,8 +6,10 @@ import {
   contestedSlots,
   drawnSlot,
   genEditFor,
+  newDocSync,
   noActiveOutput,
-  setPropKey,
+  shouldReload,
+  type DocSync,
 } from '../gengraph.js';
 
 /** The kinds that reach a command, so a gesture the pane can write is never refused by mistake. */
@@ -133,40 +135,55 @@ describe('the command an edit is written through', () => {
 });
 
 /**
- * The pane skips the reload its own property write comes back as, and matches the outcome to the
- * write by this key. A key that matched too loosely would leave a second pane on the same graph
- * showing a value it never wrote.
+ * A pane edits its own copy before the write that edit became has been answered, so an echo can
+ * describe a state it has already moved past. These are the four cases that decides.
  */
-describe('the key a property write is matched back by', () => {
-  // The record the outcome carries has crossed the IPC boundary and been coerced on the way, so
-  // the key is read from four named fields rather than from the object's shape.
-  it('matches an outcome to the command it was sent as', () => {
-    const props = commandFor('plates', { op: 'setProp', node: 1, key: 'model', value: 'gemini' });
-    const record = { ...JSON.parse(JSON.stringify(props.props)), source: 'ui', seq: 12 };
-    expect(setPropKey(record)).toBe(setPropKey(props.props));
+describe('whether an echo means re-read', () => {
+  const at = (over: Partial<DocSync>): DocSync => ({ ...newDocSync(), ...over });
+
+  it('passes over every echo while a write this pane sent is outstanding', () => {
+    // Both an echo naming a version and the version-less one an undo raises: the pane's copy is
+    // ahead of anything main can report either way.
+    expect(shouldReload(at({ inflight: 1 }), 7)).toBe(false);
+    expect(shouldReload(at({ inflight: 1 }), undefined)).toBe(false);
   });
 
-  it('separates two panes writing the same property on different graphs', () => {
-    const edit = { op: 'setProp', node: 1, key: 'model', value: 'gemini' } as const;
-    expect(setPropKey(commandFor('plates', edit).props)).not.toBe(
-      setPropKey(commandFor('portraits', edit).props),
-    );
+  // A refusal recorded while other writes are still outstanding is acted on by the one that
+  // settles the last of them, so holding it here loses nothing.
+  it('waits for the outstanding writes even when one has already refused', () => {
+    expect(shouldReload(at({ inflight: 1, stale: true }), 4)).toBe(false);
   });
 
-  it('separates two writes that differ only in the value', () => {
-    const props = (value: string) =>
-      commandFor('plates', { op: 'setProp', node: 1, key: 'prompt', value }).props;
-    expect(setPropKey(props('a dark room'))).not.toBe(setPropKey(props('a dark room ')));
+  it('passes over the echo of a write this pane made', () => {
+    expect(shouldReload(at({ mine: 4, latest: 4 }), 4)).toBe(false);
   });
 
-  // Every field is text by the time it is a prop, so a value carrying a separator must not be
-  // able to read as a different node's write.
-  it('separates a value that looks like the fields around it', () => {
-    const props = (node: string, value: string) =>
-      commandFor('plates', { op: 'setProp', node, key: 'prompt', value }).props;
-    expect(setPropKey(props('1', '","prompt","x'))).not.toBe(
-      setPropKey(props('1","prompt","x', '')),
-    );
+  it('passes over an echo older than what this pane has written', () => {
+    expect(shouldReload(at({ mine: 4, latest: 4 }), 3)).toBe(false);
+  });
+
+  it('re-reads a write somebody else made', () => {
+    expect(shouldReload(at({ mine: 4, latest: 5 }), 5)).toBe(true);
+  });
+
+  // The catch-up the last outstanding write performs: two echoes were passed over while it was in
+  // flight, and only one of them was this pane's own.
+  it('re-reads once the last outstanding write settles behind a foreign one', () => {
+    expect(shouldReload(at({ mine: 4, latest: 6 }), 6)).toBe(true);
+  });
+
+  // The pane applies an edit before sending it, so a refused write leaves an edit on screen that
+  // the file never took, and only a read puts it back.
+  it('re-reads after a refusal, even though no version moved', () => {
+    expect(shouldReload(at({ mine: 4, latest: 4, stale: true }), 4)).toBe(true);
+  });
+
+  it('re-reads a signal that named no version once nothing is outstanding', () => {
+    expect(shouldReload(at({ mine: 4, latest: 4 }), undefined)).toBe(true);
+  });
+
+  it('starts out re-reading nothing', () => {
+    expect(shouldReload(newDocSync(), 0)).toBe(false);
   });
 });
 
