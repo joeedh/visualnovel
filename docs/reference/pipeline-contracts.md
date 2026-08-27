@@ -248,8 +248,14 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   re-renders them. `buildShotPrompt` takes `shot.artNotes` **only** — an entity's note already
   reached the plates and sheets the shot references, and re-stating it would double the voice.
   Every builder ends in `.filter(Boolean).join(' ')`, so a project that authors no notes produces
-  byte-identical prompts and re-keys nothing; that, not the feature, is the test worth having. Plan:
-  [`../plans/archive/asset-names-and-the-asset-editor.md`](../plans/archive/asset-names-and-the-asset-editor.md).
+  byte-identical prompts and re-keys nothing; that, not the feature, is the test worth having. The
+  agent reaches the same five rungs through the same refusals — `list_assets`, `art_notes` and
+  `set_art_notes` share `@vn/artgen`'s rung parser and write path with the desktop's asset editor,
+  and `describeAsset` (a plain vision question, not the P7 `VisionReviewer`) lets it read a
+  rendered asset back before proposing the next note; `regenerate_asset` is an injected
+  `PipelineControl` capability, confirm-gated always, and refuses outright where the capability is
+  absent (a bare REPL). Plans: [`../plans/archive/asset-names-and-the-asset-editor.md`](../plans/archive/asset-names-and-the-asset-editor.md),
+  [`../plans/archive/agent-art-revision.md`](../plans/archive/agent-art-revision.md).
 - **A prompt is a list of clauses, and an override edits the list rather than the string.** Every
   builder in `@vn/artgen` assembles a `PromptChunk[]` — each clause keyed, categorised, and carrying
   the origin (a builder, or the document and field the sentence came from) that lets a surface offer
@@ -312,6 +318,22 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it —
   see [`desktop-app.md`](desktop-app.md#shot-coverage). Plan:
   [`../plans/archive/line-editing-in-floor.md`](../plans/archive/line-editing-in-floor.md).
+- **Editing a generation graph invalidates the slots it draws — the opposite of the prose posture
+  above.** A bound graph is the slot's runner: editing it never moves the task's hash, so the
+  difference has to show as drift instead. `graphDrift` recomputes each active Output node's hash
+  and compares it against the journal's last `done` record for that node; `requeueDrifted`
+  (`@vn/scheduler`) puts every planned `done` or `needs_human` task whose bound graph has drifted
+  back to `pending`, once per run and before the wave loop, and `RunSummary.redrawn` names them.
+  Drift is measured on `authoredHashes` — each host-seeded input (the derived prompt, task refs)
+  read as though nothing had been seeded onto it — rather than the task's own `nodeHash`, which
+  includes that seeding and would report drift after every run whether or not anyone edited
+  anything. A successful redraw clears the drift by writing the graph's new authored hash into the
+  journal; a graph that fails writes no such record, so a failure is left to `requeueFailed` and
+  its own attempt budget rather than requeued here forever. The requeue happens at run time rather
+  than at the graph write, because undo excludes `vngen/state/`: undoing a graph edit restores the
+  authored hash and the drift disappears before anything is redrawn. Plan:
+  [`../plans/node-based-asset-generation.md`](../plans/node-based-asset-generation.md) (Stage 2;
+  the plan overall is in progress).
 - **A scene's heading is the one scene edit that _does_ invalidate art, and it is priced before it
   runs.** A location reaches a shot's task inputs twice — `buildShotPrompt` bakes `location.name`
   into the prompt, and the plate asset's hash leads the shot's `refs` — so rewriting a heading
