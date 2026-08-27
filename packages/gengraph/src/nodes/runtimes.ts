@@ -27,6 +27,9 @@ import {
 import type { GenImageRef } from './sockets.js';
 
 /** The placeholders a template node fills in, which are also its input socket names. */
+const VARS = ['varA', 'varB', 'varC'] as const;
+
+/** The single-picture inputs a reference list appends, after whatever its list input holds. */
 const SLOTS = ['a', 'b', 'c'] as const;
 
 /** The bytes behind a picture, read from whichever of the two stores holds it. */
@@ -194,8 +197,8 @@ export function registerGenRuntimes(): void {
 
   bind(GenTemplate, async (inputs, props) => {
     let filled = text(props.template);
-    for (const slot of SLOTS) {
-      filled = filled.split(`{${slot}}`).join(text(inputs[slot]));
+    for (const name of VARS) {
+      filled = filled.split(`{${name}}`).join(text(inputs[name]));
     }
     return { text: filled };
   });

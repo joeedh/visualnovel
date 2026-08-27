@@ -334,6 +334,18 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   authored hash and the drift disappears before anything is redrawn. Plan:
   [`../plans/node-based-asset-generation.md`](../plans/node-based-asset-generation.md) (Stage 2;
   the plan overall is in progress).
+- **Renaming a node type's socket or prop takes a migration in the same commit.** path.ux
+  reconciles a loaded node against its definition by key, so a file written before a rename loads
+  with the old key kept as an orphaned socket, the link into it reaching nothing an author can see,
+  and the renamed key sitting at its default — a silent loss of authored wiring, and a hash change
+  that has the next run redraw the slot. `migrateGraphJSON` (`@vn/gengraph/migrate`) replays the
+  renames over the JSON before `readGraphFile` deserializes it, moving sockets, props, links, a
+  group's forwarded rows, and the `{name}` tokens a template embeds. A rename is declared as a
+  `NodeMigration` on the type's `GenNodeSpec`, and `registerGenNode` refuses one whose targets name
+  nothing on the class or whose last step stops short of the declared `typeVersion`. So a rename is
+  two edits: bump `typeVersion`, and add the step that lands on it. The file on disk keeps the old
+  keys until something writes it back, which means the migration has to stay in place rather than
+  being deleted a release later.
 - **A scene's heading is the one scene edit that _does_ invalidate art, and it is priced before it
   runs.** A location reaches a shot's task inputs twice — `buildShotPrompt` bakes `location.name`
   into the prompt, and the plate asset's hash leads the shot's `refs` — so rewriting a heading

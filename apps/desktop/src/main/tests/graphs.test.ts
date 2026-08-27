@@ -36,9 +36,9 @@ function inkWashDef(): GroupDef {
 
   const inText = def.declareInput('text', new TextSocket('in'));
   const outText = def.declareOutput('text', new TextSocket('in'));
-  def.subgraph.connect(inText, inner.inputs.a);
+  def.subgraph.connect(inText, inner.inputs.varA);
   def.subgraph.connect(inner.outputs.text, outText);
-  inner.props.template!.setValue('{a}, in ink wash');
+  inner.props.template!.setValue('{varA}, in ink wash');
 
   return def;
 }

@@ -12,7 +12,7 @@ import {
   registerGenNode,
   registerSocketType,
 } from '../../index.js';
-import type { NodeDef, Sockets, SocketTypeDef } from '../../index.js';
+import type { NodeDef, NodeMigration, Sockets, SocketTypeDef } from '../../index.js';
 
 export class TestBlobSocket extends NodeSocketBase<'blob', string> {
   static override socketDef(): SocketTypeDef {
@@ -52,11 +52,34 @@ export class TestOutput extends Node<{ image: TestBlobSocket }, Sockets> {
   }
 }
 
-/** Registers all three types. Safe to call twice; the second call overwrites the first. */
+/**
+ * A type that has renamed something at each of two versions, so the migration tests can watch two
+ * steps replay over one file and see an output and a prop move as well as an input.
+ */
+export class TestRenamed extends Node<{ from: TestBlobSocket }, { blob: TestBlobSocket }> {
+  static override graphDef(): NodeDef {
+    return {
+      typeName: 'TestRenamed',
+      inputs: { from: new TestBlobSocket('in') },
+      outputs: { blob: new TestBlobSocket('out') },
+      props: { label: new StringProperty('') },
+      typeVersion: 3,
+    };
+  }
+}
+
+/** What `TestRenamed` moved, exported so a test can assert against the same table. */
+export const TEST_RENAMES: NodeMigration[] = [
+  { to: 2, outputs: { out: 'blob' }, props: { name: 'label' } },
+  { to: 3, inputs: { src: 'from' }, placeholders: ['label'] },
+];
+
+/** Registers all four types. Safe to call twice; the second call overwrites the first. */
 export function registerTestNodes(): void {
   registerGenNode({ cls: TestSource });
   registerGenNode({ cls: TestSeeded, seededInput: 'amount' });
   registerGenNode({ cls: TestOutput, spends: true, slotProp: 'slot' });
+  registerGenNode({ cls: TestRenamed, migrations: TEST_RENAMES });
 }
 
 export function setProp(node: Node, key: string, value: unknown): void {

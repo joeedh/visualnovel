@@ -43,10 +43,10 @@ function templateGraph(slot: string): { graph: Graph; text: GenTemplate } {
   graph.add(text);
   graph.add(image);
   graph.add(output);
-  graph.connect(prompt.outputs.prompt, text.inputs.a);
+  graph.connect(prompt.outputs.prompt, text.inputs.varA);
   graph.connect(text.outputs.text, image.inputs.prompt);
   graph.connect(image.outputs.image, output.inputs.image);
-  setProp(text, 'template', '{a}');
+  setProp(text, 'template', '{varA}');
   setProp(output, 'slot', slot);
 
   return { graph, text };
@@ -81,7 +81,7 @@ describe('a run whose bound graph has been edited', () => {
       const drawn = first.ran.find((t) => t.kind === 'portrait');
       expect(drawn).toBeDefined();
 
-      setProp(text, 'template', '{a}, in ink wash');
+      setProp(text, 'template', '{varA}, in ink wash');
       const second = await p.run({ graphs: { [SLUG]: graph } });
 
       expect(second.redrawn).toEqual([drawn!.hash]);
@@ -104,7 +104,7 @@ describe('a run whose bound graph has been edited', () => {
       const { graph, text } = templateGraph('portrait:aiko');
       await p.run({ graphs: { [SLUG]: graph } });
 
-      setProp(text, 'template', '{a}, in ink wash');
+      setProp(text, 'template', '{varA}, in ink wash');
       await p.run({ graphs: { [SLUG]: graph } });
       const third = await p.run({ graphs: { [SLUG]: graph } });
 

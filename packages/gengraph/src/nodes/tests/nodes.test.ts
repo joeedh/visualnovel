@@ -167,7 +167,11 @@ describe('the nodes that read a store', () => {
 describe('the text nodes', () => {
   it('fills a template from its inputs', async () => {
     await expect(
-      run(GenTemplate, { a: 'a cat', b: 'dusk' }, { template: '{a} at {b}, {a} again.' }),
+      run(
+        GenTemplate,
+        { varA: 'a cat', varB: 'dusk' },
+        { template: '{varA} at {varB}, {varA} again.' },
+      ),
     ).resolves.toEqual({ text: 'a cat at dusk, a cat again.' });
   });
 
@@ -353,7 +357,7 @@ describe('the socket types', () => {
   });
 
   it('reads an unwired text input as the empty string', () => {
-    expect(new GenTemplate().inputs.a.getValue()).toBe('');
+    expect(new GenTemplate().inputs.varA.getValue()).toBe('');
   });
 });
 

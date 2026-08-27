@@ -313,7 +313,7 @@ describe('what the gengraph commands refuse', () => {
       from: first,
       fromSocket: 'text',
       to: second,
-      toSocket: 'a',
+      toSocket: 'varA',
     });
     expect(
       await refusal(gengraphLink, {
@@ -321,7 +321,7 @@ describe('what the gengraph commands refuse', () => {
         from: second,
         fromSocket: 'text',
         to: first,
-        toSocket: 'a',
+        toSocket: 'varA',
       }),
     ).toContain('cycle');
   }, 20_000);

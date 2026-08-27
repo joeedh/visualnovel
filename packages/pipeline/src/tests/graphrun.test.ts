@@ -68,7 +68,7 @@ function templateGraph(slot: string, template: string): Graph {
   graph.add(text);
   graph.add(image);
   graph.add(output);
-  graph.connect(prompt.outputs.prompt, text.inputs.a);
+  graph.connect(prompt.outputs.prompt, text.inputs.varA);
   graph.connect(text.outputs.text, image.inputs.prompt);
   graph.connect(image.outputs.image, output.inputs.image);
   setProp(text, 'template', template);
@@ -99,11 +99,11 @@ function refineGraph(slot: string): RefineGraph {
   graph.add(critique);
   graph.add(image);
   graph.add(output);
-  graph.connect(prompt.outputs.prompt, text.inputs.a);
+  graph.connect(prompt.outputs.prompt, text.inputs.varA);
   graph.connect(text.outputs.text, image.inputs.prompt);
   graph.connect(critique.outputs.text, image.inputs.refine);
   graph.connect(image.outputs.image, output.inputs.image);
-  setProp(text, 'template', '{a}');
+  setProp(text, 'template', '{varA}');
   setProp(output, 'slot', slot);
 
   return { graph, text, critique, image };
@@ -142,7 +142,7 @@ describe('a task whose slot a graph is bound to', () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {
       const summary = await p.run({
-        graphs: { [SLUG]: templateGraph('portrait:aiko', '{a}, in ink wash') },
+        graphs: { [SLUG]: templateGraph('portrait:aiko', '{varA}, in ink wash') },
       });
 
       expect(summary.failed).toEqual([]);

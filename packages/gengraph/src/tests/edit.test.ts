@@ -166,10 +166,10 @@ describe('linking and unlinking', () => {
           from: image.id,
           fromSocket: 'image',
           to: template.id,
-          toSocket: 'a',
+          toSocket: 'varA',
         }),
       ),
-    ).toBe("a 'image' output cannot feed the 'text' input 'a'");
+    ).toBe("a 'image' output cannot feed the 'text' input 'varA'");
   });
 
   it('refuses a link that closes a cycle, because a cycle has no order', () => {
@@ -178,7 +178,7 @@ describe('linking and unlinking', () => {
     const b = new GenTemplate();
     graph.add(a);
     graph.add(b);
-    graph.connect(a.outputs.text, b.inputs.a);
+    graph.connect(a.outputs.text, b.inputs.varA);
 
     expect(
       reason(
@@ -187,7 +187,7 @@ describe('linking and unlinking', () => {
           from: b.id,
           fromSocket: 'text',
           to: a.id,
-          toSocket: 'a',
+          toSocket: 'varA',
         }),
       ),
     ).toBe('linking these makes a cycle, and a cycle has no order to run in');

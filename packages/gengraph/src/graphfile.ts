@@ -8,6 +8,8 @@ import {
 import { Graph, GroupDef } from 'pathux-graph';
 import type { ToolProperty } from 'pathux-toolprop';
 
+import { migrateGraphJSON, migrateGroupJSON, type GraphMigration } from './migrate.js';
+
 export type GraphFileDiagnosticCode = 'malformed-graph-file' | 'unreadable-graph-file';
 
 /** Which layout a file was read against, which is all a malformed-file sentence needs. */
@@ -22,6 +24,11 @@ export interface GraphFileRead {
   /** Absent whenever the diagnostics list is non-empty. */
   graph?: Graph;
   diagnostics: GraphFileDiagnostic[];
+  /**
+   * What a rename migration rewrote on the way in, absent where nothing did. The file on disk
+   * still holds the old keys until whatever the host does next writes it back.
+   */
+  migrated?: string[];
 }
 
 /** The graph as JSON values. The caller decides where the bytes go. */
@@ -35,11 +42,12 @@ export function writeGraphFile(graph: Graph): Record<string, unknown> {
  * report the failure against the document the author opened.
  */
 export function readGraphFile(json: unknown): GraphFileRead {
-  const read = readStruct(json, Graph, 'graph');
+  const migration = migrateGraphJSON(json);
+  const read = readStruct(migration.json, Graph, 'graph');
   if (read.value === undefined) return { diagnostics: read.diagnostics };
 
   restampDeclared(read.value);
-  return { graph: read.value, diagnostics: read.diagnostics };
+  return { graph: read.value, diagnostics: read.diagnostics, ...notes(migration) };
 }
 
 /** The group definition as JSON values, for one file under the project's graph library. */
@@ -53,11 +61,17 @@ export function writeGroupFile(def: GroupDef): Record<string, unknown> {
  * into every graph that references it.
  */
 export function readGroupFile(json: unknown): GroupFileRead {
-  const read = readStruct(json, GroupDef, 'group');
+  const migration = migrateGroupJSON(json);
+  const read = readStruct(migration.json, GroupDef, 'group');
   if (read.value === undefined) return { diagnostics: read.diagnostics };
 
   restampDeclared(read.value.subgraph);
-  return { def: read.value, diagnostics: read.diagnostics };
+  return { def: read.value, diagnostics: read.diagnostics, ...notes(migration) };
+}
+
+/** The migration's report as a spread, so a read that rewrote nothing carries no field. */
+function notes(migration: GraphMigration): { migrated?: string[] } {
+  return migration.notes.length === 0 ? {} : { migrated: migration.notes };
 }
 
 /**

@@ -8,7 +8,7 @@ import type { NodeDef, Sockets } from 'pathux-graph';
 import { BoolProperty, PropFlags, StringProperty } from 'pathux-toolprop';
 
 import { mtok } from '../prices.js';
-import { registerGenNode } from '../registry.js';
+import { registerGenNode, type NodeMigration } from '../registry.js';
 import { ImageSocket, RefsSocket, TextSocket } from './sockets.js';
 
 /**
@@ -85,35 +85,46 @@ export class GenSlotRef extends Node<Sockets, { image: ImageSocket }> {
 }
 
 /**
- * Authored text, with `{a}`, `{b}` and `{c}` replaced by whatever feeds those inputs. A
+ * Authored text, with `{varA}`, `{varB}` and `{varC}` replaced by whatever feeds those inputs. A
  * template naming no placeholder is a plain text node.
  */
 export class GenTemplate extends Node<
-  { a: TextSocket; b: TextSocket; c: TextSocket },
+  { varA: TextSocket; varB: TextSocket; varC: TextSocket },
   { text: TextSocket }
 > {
   static override graphDef(): NodeDef {
     return {
       typeName: 'GenTemplate',
       uiName: 'Text',
-      description: 'Authored text, with {a}, {b} and {c} replaced by what feeds those inputs.',
+      description:
+        'Authored text, with {varA}, {varB} and {varC} replaced by what feeds those inputs.',
       inputs: {
-        a: new TextSocket('in', 'A', 'Text that replaces {a} in the template.'),
-        b: new TextSocket('in', 'B', 'Text that replaces {b} in the template.'),
-        c: new TextSocket('in', 'C', 'Text that replaces {c} in the template.'),
+        varA: new TextSocket('in', 'varA', 'Text that replaces {varA} in the template.'),
+        varB: new TextSocket('in', 'varB', 'Text that replaces {varB} in the template.'),
+        varC: new TextSocket('in', 'varC', 'Text that replaces {varC} in the template.'),
       },
       outputs: { text: new TextSocket('out') },
       props: {
         template: str(
           '',
           'Template',
-          'The text this node passes on, with {a}, {b} and {c} filled in.',
+          'The text this node passes on, with {varA}, {varB} and {varC} filled in.',
         ),
       },
-      typeVersion: 1,
+      typeVersion: 2,
     };
   }
 }
+
+/**
+ * The template inputs were `a`, `b` and `c` until v2, which read as anonymous beside a `slot` or a
+ * `prompt`. The authored template says the same names, so it is rewritten alongside them.
+ */
+const TEMPLATE_VARS: NodeMigration = {
+  to: 2,
+  inputs: { a: 'varA', b: 'varB', c: 'varC' },
+  placeholders: ['template'],
+};
 
 /** Rewrites its input through a text model. */
 export class GenRewrite extends Node<{ text: TextSocket }, { text: TextSocket }> {
@@ -296,7 +307,7 @@ export function registerGenNodes(): void {
   registerGenNode({ cls: GenDerivedPrompt, seededInput: 'prompt', refineFallback: true });
   registerGenNode({ cls: GenTaskRefs, seededInput: 'assets' });
   registerGenNode({ cls: GenSlotRef });
-  registerGenNode({ cls: GenTemplate });
+  registerGenNode({ cls: GenTemplate, migrations: [TEMPLATE_VARS] });
   registerGenNode({
     cls: GenRewrite,
     spends: true,

@@ -15,6 +15,7 @@ export * from 'pathux-graph';
 export * from './registry.js';
 export * from './services.js';
 export * from './graphfile.js';
+export * from './migrate.js';
 export * from './validate.js';
 export * from './slots.js';
 export * from './journal.js';

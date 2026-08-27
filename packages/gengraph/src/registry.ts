@@ -1,5 +1,5 @@
 import { registerNodeType } from 'pathux-graph';
-import type { NodeTypeConstructor } from 'pathux-graph';
+import type { Node, NodeTypeConstructor } from 'pathux-graph';
 
 import type { GenServices } from './services.js';
 
@@ -36,6 +36,24 @@ export interface GenEstimateContext {
 /** Answers what one run of a node is expected to spend. */
 export type GenNodeEstimate = (props: GenProps, ctx: GenEstimateContext) => GenCostLine[];
 
+/**
+ * One rename a node type has been through, which `migrateGraphJSON` replays over a file written
+ * before it. Every map runs from the old key to the new one; a key the maps do not mention is
+ * left where it is, so a step names only what moved.
+ */
+export interface NodeMigration {
+  /** The `typeVersion` this step lands on. A node stamped below it is migrated. */
+  to: number;
+  inputs?: Readonly<Record<string, string>>;
+  outputs?: Readonly<Record<string, string>>;
+  props?: Readonly<Record<string, string>>;
+  /**
+   * Props whose text embeds `{input}` tokens naming this type's input sockets, such as a
+   * template. Their tokens follow `inputs`, so authored text keeps pointing at the same wire.
+   */
+  placeholders?: readonly string[];
+}
+
 /** What the generator needs to know about a node type beyond its sockets and props. */
 export interface GenNodeSpec {
   /** The path.ux node class declaring this type's sockets and props. */
@@ -55,6 +73,8 @@ export interface GenNodeSpec {
   refineInput?: string;
   /** True for the node a refine pass re-enters at while no refine input is wired. */
   refineFallback?: boolean;
+  /** Every rename this type has been through, in any order; the last one lands on `typeVersion`. */
+  migrations?: readonly NodeMigration[];
 }
 
 const specs = new Map<string, GenNodeSpec>();
@@ -72,7 +92,7 @@ export function registerGenNode(spec: GenNodeSpec): void {
 
   const typeName = spec.cls.graphDef().typeName;
 
-  if (spec.slotProp !== undefined || spec.seededInput !== undefined) {
+  if (spec.slotProp !== undefined || spec.seededInput !== undefined || spec.migrations) {
     const probe = new spec.cls();
     if (spec.slotProp !== undefined && probe.props[spec.slotProp] === undefined) {
       throw new Error(`${typeName}: slotProp '${spec.slotProp}' names no prop on this node type`);
@@ -82,11 +102,52 @@ export function registerGenNode(spec: GenNodeSpec): void {
         `${typeName}: seededInput '${spec.seededInput}' names no input on this node type`,
       );
     }
+    if (spec.migrations) checkMigrations(typeName, spec, probe);
   }
 
   specs.set(typeName, spec);
   classes.set(typeName, spec.cls);
 }
+
+/**
+ * Checks a type's renames against the class they were written for. A migration is replayed over
+ * files nobody will look at again, so a target that names nothing, or a last step that stops
+ * short of the declared `typeVersion`, has to fail here rather than at the next author's load.
+ */
+function checkMigrations(typeName: string, spec: GenNodeSpec, probe: Node): void {
+  const steps = [...(spec.migrations ?? [])].sort((a, b) => a.to - b.to);
+  const version = spec.cls.graphDef().typeVersion ?? 1;
+  const last = steps[steps.length - 1];
+
+  if (last === undefined || last.to !== version) {
+    throw new Error(
+      `${typeName}: its migrations land on v${last?.to ?? version}, but the type declares v${version}`,
+    );
+  }
+
+  const named = (where: string, keys: Record<string, unknown>, renames?: Renames): void => {
+    for (const to of Object.values(renames ?? {})) {
+      if (keys[to] === undefined) {
+        throw new Error(`${typeName}: a migration renames to '${to}', which is no ${where}`);
+      }
+    }
+  };
+
+  for (const step of steps) {
+    named('input', probe.inputs, step.inputs);
+    named('output', probe.outputs, step.outputs);
+    named('prop', probe.props, step.props);
+    for (const key of step.placeholders ?? []) {
+      if (probe.props[step.props?.[key] ?? key] === undefined) {
+        throw new Error(
+          `${typeName}: a migration reads placeholders from '${key}', which is no prop`,
+        );
+      }
+    }
+  }
+}
+
+type Renames = Readonly<Record<string, string>>;
 
 export function genNodeSpec(typeName: string): GenNodeSpec | undefined {
   return specs.get(typeName);
