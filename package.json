@@ -39,6 +39,7 @@
     "vngen": "node apps/cli/dist/cli.js",
     "vnauthor": "node apps/authoring/dist/vnauthor.js",
     "vndesktop": "node scripts/vndesktop.mjs",
+    "vndesktop:dev": " pnpm --filter @vn/desktop dev",
     "package": "pnpm --filter @vn/desktop package",
     "package:dir": "pnpm --filter @vn/desktop package:dir",
     "smoke": "pnpm --filter @vn/desktop smoke",

@@ -1,9 +1,9 @@
 /**
- * `explainPick` produces an ordered rejection log rather than an inventory (research §6):
- * the winner first, then why each candidate under the point lost. The line "z-index N
- * ignored — X established a stacking context via …" is derived from the culprit the
- * stacking walk retained. Where the computed order and the browser's elementsFromPoint
- * oracle disagree, a ⚠ line reports the disagreement without picking a side.
+ * Explains what a pick at a point hit and why. The report lists the winning fragment
+ * first, then each losing candidate under the point with the reason it lost (clipped
+ * out, ignored z-index, lower in stacking order). When our computed stacking order
+ * disagrees with the browser's own `elementsFromPoint` result, the report adds a ⚠
+ * line describing the disagreement instead of silently trusting either one.
  */
 import { applyToPoint, containsPoint, type Vec2 } from '../geom.js';
 import { insideClips, pickBounds } from '../query/hit.js';
