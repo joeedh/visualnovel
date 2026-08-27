@@ -51,7 +51,7 @@ For each entry in `candidatesNeedingExtraction`:
    was about to disappear.
 
 Once approved, apply the edits to the referencing docs. The plan file itself is not edited
-in this step — the extraction lives in the *referencing* doc, not the plan.
+in this step — the extraction lives in the _referencing_ doc, not the plan.
 
 ## 3. Update the index
 
