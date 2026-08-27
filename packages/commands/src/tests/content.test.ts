@@ -106,10 +106,12 @@ describe('ContentStore', () => {
 
     await write('edited.md', 'after\n');
     const second = await store.capture(dir);
-    await store.restore(dir, second, first);
+    const changed = await store.restore(dir, second, first);
 
     expect(await fs.readFile(join(dir, 'edited.md'), 'utf8')).toBe('before\n');
     expect((await fs.stat(join(dir, 'kept.md'))).mtimeMs).toBe(stamp);
+    // The file it left alone is not reported, which is what makes the list worth filtering on.
+    expect(changed).toEqual(['edited.md']);
   });
 
   it('replaces a file with a directory of the same name, and back', async () => {
@@ -122,10 +124,71 @@ describe('ContentStore', () => {
     await write('thing/inside.md', 'a directory\n');
     const asDir = await store.capture(dir);
 
-    await store.restore(dir, asDir, asFile);
+    const toFile = await store.restore(dir, asDir, asFile);
     expect(await fs.readFile(join(dir, 'thing'), 'utf8')).toBe('a file\n');
+    // A kind change reports the deleted path and the created one separately.
+    expect(toFile).toEqual(['thing/inside.md', 'thing']);
 
-    await store.restore(dir, asFile, asDir);
+    const toDir = await store.restore(dir, asFile, asDir);
     expect(await fs.readFile(join(dir, 'thing/inside.md'), 'utf8')).toBe('a directory\n');
+    expect(toDir).toEqual(['thing', 'thing/inside.md']);
+  });
+
+  /** Every path a restore moves, so a surface following one document can filter for its own. */
+  describe('what a restore reports', () => {
+    it('names a file it created and a file it deleted', async () => {
+      const store = new ContentStore();
+      await write('gone.md', 'here for now\n');
+      const before = await store.capture(dir);
+
+      await fs.rm(join(dir, 'gone.md'));
+      await write('added.md', 'new\n');
+      const after = await store.capture(dir);
+
+      expect((await store.restore(dir, after, before)).sort()).toEqual(['added.md', 'gone.md']);
+    });
+
+    it('names a file nested under directories by its whole path', async () => {
+      const store = new ContentStore();
+      await fs.mkdir(join(dir, 'characters/aiko'), { recursive: true });
+      await write('characters/aiko/character.md', 'before\n');
+      const before = await store.capture(dir);
+
+      await write('characters/aiko/character.md', 'after\n');
+      const after = await store.capture(dir);
+
+      expect(await store.restore(dir, after, before)).toEqual(['characters/aiko/character.md']);
+    });
+
+    it('names nothing where the two trees agree', async () => {
+      const store = new ContentStore();
+      await write('doc.md', 'settled\n');
+      const tree = await store.capture(dir);
+
+      expect(await store.restore(dir, tree, tree)).toEqual([]);
+    });
+
+    // A move that runs out of held bytes part way through has still moved what it reached, so the
+    // caller is handed that list rather than left to assume the worktree never changed.
+    it('keeps what it moved before it ran out of held bytes', async () => {
+      const store = new ContentStore();
+      await write('a.md', 'first\n');
+      const before = await store.capture(dir);
+      await write('a.md', 'second\n');
+      const now = await store.capture(dir);
+
+      // A target naming bytes the store never held. `putTree` sorts by name, so the move writes
+      // `a.md` and then runs out on `b.md`.
+      const restored = store.tree(before)!.find((e) => e.name === 'a.md')!;
+      const target = store.putTree([
+        restored,
+        { name: 'b.md', kind: 'blob', hash: 'ab'.repeat(32) },
+      ]);
+
+      const changed: string[] = [];
+      await expect(store.restore(dir, now, target, changed)).rejects.toThrow(/no longer held/);
+      expect(changed).toEqual(['a.md']);
+      expect(await fs.readFile(join(dir, 'a.md'), 'utf8')).toBe('first\n');
+    });
   });
 });

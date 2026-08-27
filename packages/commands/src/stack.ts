@@ -379,11 +379,13 @@ export class CommandStack<Host = unknown> {
     const journal = this.opts.journal!;
     const { target, kind } = opts;
     const startedAt = this.now();
+    let restored: string[] = [];
     try {
       const checked = await journal.check(opts.point, opts.from);
       if (!checked.ok)
         return { ok: false, error: `cannot ${kind} ${target.invocation}: ${checked.error}` };
-      const { error } = await journal.restore(checked.tree, opts.point, opts.to);
+      const { error, changed } = await journal.restore(checked.tree, opts.point, opts.to);
+      restored = changed;
       // A restore that failed part way through leaves the worktree between the two trees, so the
       // failure is reported rather than thrown: a caller told nothing happened would be wrong.
       if (error !== undefined) return { ok: false, error: `${kind} failed: ${error}` };
@@ -410,6 +412,9 @@ export class CommandStack<Host = unknown> {
       finishedAt: this.now(),
       status: 'ok',
       message: `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.invocation}.`,
+      // What the restore moved, so a surface following a document hears about an undo on the same
+      // channel as the command it is undoing. Absent rather than empty where it moved nothing.
+      ...(restored.length > 0 ? { written: restored } : {}),
     };
     // Commit the restored tree as a new commit rather than moving a branch ref backwards: a
     // reset would discard the commit that is the only record of the save being undone.

@@ -399,9 +399,14 @@ class FakeJournal {
         : { ok: false, error: 'the workspace has changed since that command ran' },
     );
   }
-  restore(_from: string, point: UndoPoint, side: 'pre' | 'post'): Promise<{ error?: string }> {
+  restore(
+    _from: string,
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ error?: string; changed: string[] }> {
     this.world.value = this.trees.get(point[side])!;
-    return Promise.resolve({});
+    // The one file this fake's whole world is, so a restore here reports a move like the real one.
+    return Promise.resolve({ changed: ['world.md'] });
   }
   prune(): void {
     this.pruneCalls++;

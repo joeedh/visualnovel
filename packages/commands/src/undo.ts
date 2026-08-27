@@ -116,17 +116,24 @@ export class UndoJournal {
   }
 
   /**
-   * Move the working copy from the checked tree to the `side` snapshot.
+   * Move the working copy from the checked tree to the `side` snapshot, answering the paths it
+   * moved so a restore reports what it touched the way any other write does.
    *
    * Reports rather than throws, so a failure part way through is described rather than read as a
-   * no-op the caller can retry from where it started.
+   * no-op the caller can retry from where it started. `changed` is carried by the failure too,
+   * because a partial move left those files somewhere new.
    */
-  async restore(from: string, point: UndoPoint, side: 'pre' | 'post'): Promise<{ error?: string }> {
+  async restore(
+    from: string,
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ error?: string; changed: string[] }> {
+    const changed: string[] = [];
     try {
-      await this.store.restore(this.root, from, point[side]);
-      return {};
+      await this.store.restore(this.root, from, point[side], changed);
+      return { changed };
     } catch (err) {
-      return { error: err instanceof Error ? err.message : String(err) };
+      return { error: err instanceof Error ? err.message : String(err), changed };
     }
   }
 

@@ -301,18 +301,29 @@ export class ContentStore {
    * deleting the paths `from` recorded that `to` does not. Anything in neither tree — everything
    * a capture skipped — is left where it is.
    *
+   * Every path written or deleted is appended to `changed`, root-relative and forward-slashed.
+   * An accumulator rather than a return value because a move that throws part way through has
+   * still moved the files it reached, and those are the ones a caller has to report.
+   *
    * Throws when a blob the move needs is no longer held, which is the one failure that means the
    * snapshot has outlived the window the store keeps.
    */
-  async restore(root: string, from: string, to: string): Promise<void> {
-    if (from === to) return;
+  async restore(root: string, from: string, to: string, changed: string[] = []): Promise<string[]> {
+    if (from === to) return changed;
     for (const hash of [from, to]) {
       if (!this.trees.has(hash)) throw new Error(`snapshot ${hash.slice(0, 8)} is no longer held`);
     }
-    await this.restoreDir(root, '', from, to);
+    await this.restoreDir(root, '', from, to, changed);
+    return changed;
   }
 
-  private async restoreDir(root: string, prefix: string, from: string, to: string): Promise<void> {
+  private async restoreDir(
+    root: string,
+    prefix: string,
+    from: string,
+    to: string,
+    changed: string[],
+  ): Promise<void> {
     const dir = prefix === '' ? root : join(root, prefix);
     const before = new Map((this.trees.get(from) ?? []).map((e) => [e.name, e]));
     const after = this.trees.get(to) ?? [];
@@ -325,23 +336,35 @@ export class ContentStore {
       const path = join(dir, entry.name);
       if (entry.kind === 'blob') {
         // A directory standing where a file belongs is what a kind change looks like on disk.
-        if (was?.kind === 'tree') await this.removeDir(root, rel, was.hash);
+        if (was?.kind === 'tree') await this.removeDir(root, rel, was.hash, changed);
         const bytes = this.blobs.get(entry.hash);
         if (!bytes) throw new Error(`the snapshot of ${rel} is no longer held`);
         await writeFileAtomic(path, bytes);
         await this.note(path, bytes);
+        changed.push(rel);
       } else {
-        if (was?.kind === 'blob') await this.removeFile(path);
+        if (was?.kind === 'blob') {
+          await this.removeFile(path);
+          changed.push(rel);
+        }
         await fs.mkdir(path, { recursive: true });
-        await this.restoreDir(root, rel, was?.kind === 'tree' ? was.hash : EMPTY_HASH, entry.hash);
+        await this.restoreDir(
+          root,
+          rel,
+          was?.kind === 'tree' ? was.hash : EMPTY_HASH,
+          entry.hash,
+          changed,
+        );
       }
     }
 
     for (const [name, entry] of before) {
       if (wanted.has(name)) continue;
       const rel = prefix === '' ? name : `${prefix}/${name}`;
-      if (entry.kind === 'blob') await this.removeFile(join(dir, name));
-      else await this.removeDir(root, rel, entry.hash);
+      if (entry.kind === 'blob') {
+        await this.removeFile(join(dir, name));
+        changed.push(rel);
+      } else await this.removeDir(root, rel, entry.hash, changed);
     }
   }
 
@@ -355,11 +378,18 @@ export class ContentStore {
    * by the tree rather than by `rm -r` so that a skipped path sitting in the same directory — a
    * generated asset, an ignored file — survives an undo that removes the documents beside it.
    */
-  private async removeDir(root: string, rel: string, hash: string): Promise<void> {
+  private async removeDir(
+    root: string,
+    rel: string,
+    hash: string,
+    changed: string[],
+  ): Promise<void> {
     const dir = join(root, rel);
     for (const entry of this.trees.get(hash) ?? []) {
-      if (entry.kind === 'blob') await this.removeFile(join(dir, entry.name));
-      else await this.removeDir(root, `${rel}/${entry.name}`, entry.hash);
+      if (entry.kind === 'blob') {
+        await this.removeFile(join(dir, entry.name));
+        changed.push(`${rel}/${entry.name}`);
+      } else await this.removeDir(root, `${rel}/${entry.name}`, entry.hash, changed);
     }
     await fs.rmdir(dir).catch(() => {});
   }
