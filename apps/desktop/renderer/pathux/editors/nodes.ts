@@ -37,7 +37,7 @@ import {
 } from '../../rules/gengraph.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../api.js';
-import { exec, onInvalidate, onWrote, say } from '../bridge.js';
+import { exec, onWrote, say } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
@@ -180,10 +180,11 @@ export class GenGraphEditor extends VnEditor {
     });
 
     // A command this pane sent is not the only thing that rewrites this graph's file: another
-    // window, the agent's graph tool and a `gengraph.*` invocation from the palette all reach it
-    // too. `onWrote` names the paths a write touched, so a write to some other document is ignored
-    // rather than reloading this one, and the version it carries says whether this pane has
-    // already been past the state being described.
+    // window, the agent's graph tool, a `gengraph.*` invocation from the palette and an undo all
+    // reach it too. `onWrote` names the paths a write touched, so a write to some other document
+    // is ignored rather than reloading this one, and the version it carries says whether this pane
+    // has already been past the state being described. It is the only signal this pane needs —
+    // every route that rewrites the file reports what it wrote.
     this.watch(
       () =>
         onWrote((paths, versions) => {
@@ -196,16 +197,6 @@ export class GenGraphEditor extends VnEditor {
           else this.paintState();
         }),
       () => void this.load(this.slug),
-    );
-
-    // Undo and redo restore files no command in this session wrote, so `onWrote` cannot name them
-    // — `onInvalidate` is the only signal left for that case. It is coarse, firing on any change
-    // anywhere, so it is held off while this pane has a write outstanding: a reload mid-gesture
-    // would show the author their own edit being taken back.
-    this.watch(() =>
-      onInvalidate(() => {
-        if (shouldReload(this.sync, undefined)) void this.load(this.slug);
-      }),
     );
 
     this.paint(false);

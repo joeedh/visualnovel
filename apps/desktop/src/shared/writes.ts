@@ -55,3 +55,40 @@ export function touchesGraph(written: readonly string[], slug: string): boolean 
   if (!slug) return false;
   return touches(written, graphDocPath(slug));
 }
+
+/**
+ * The directories `loadInputs` reads, and the one file beside them. `wiki/` is in the list
+ * because entity sheets are discovered by their `type:` tag across three surfaces and the bible
+ * is the third, so a wiki note can be a character. Everything else in `wiki/` is not an input,
+ * which this cannot tell apart without reading the file — so a wiki edit re-derives, and that is
+ * the deliberate false positive.
+ */
+const INPUT_PATHS = [
+  'characters/',
+  'locations/',
+  'scenes/',
+  'screenplay/',
+  'wiki/',
+  'project.yaml',
+];
+
+/**
+ * Did any of `written` reach something the project model is built from?
+ *
+ * The panes that show derived state — the diagnostics count, the document tree, anything off
+ * `workspace:index` — cannot match an exact path, because what they show comes from every input
+ * file at once. This is the question they ask instead, and main asks the same one of the same
+ * list before it re-reads: one predicate, so a pane and the process feeding it cannot disagree
+ * about whether a write mattered.
+ *
+ * A generated write answers false. Art, manifests, task logs and a generation graph are all
+ * under `vngen/` or `assets/`, and none of them changes what `loadInputs` returns.
+ */
+export function touchesInputs(written: readonly string[]): boolean {
+  return written.some((raw) => {
+    const path = normalizePath(raw);
+    return INPUT_PATHS.some((input) =>
+      input.endsWith('/') ? path.startsWith(input) : path === input,
+    );
+  });
+}

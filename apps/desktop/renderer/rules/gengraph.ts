@@ -2,6 +2,8 @@
  * What the Gen Graph pane turns a gesture into: the edit `decideGenEdit` judges, and the
  * `gengraph.*` command that carries it. Six of path.ux's gesture kinds have no command here and
  * are refused by name, so a gesture the application cannot write never reads as accepted.
+ * `DocSync` and `shouldReload` are the other half of the pane's rules: they track the document
+ * versions its writes produce, so an echo of its own write does not make it re-read the file.
  *
  * The pane itself can only be checked live over CDP, so the mapping lives here where the
  * node-only jest project runs it. `pathux` is imported type-only because jest resolves
@@ -113,7 +115,7 @@ export function shouldReload(sync: DocSync, incoming: number | undefined): boole
   return incoming > sync.mine;
 }
 
-/** Reads a gesture as the edit this application decides, refusing the kinds it cannot write. */
+/** Translates a UI gesture into a graph edit, refusing edit kinds this pane cannot write. */
 export function genEditFor(edit: GraphEdit): GenEditFor {
   switch (edit.kind) {
     case 'moveNode':

@@ -1,4 +1,11 @@
-import { graphDocPath, normalizePath, touches, touchesGraph, touchesScene } from '../writes.js';
+import {
+  graphDocPath,
+  normalizePath,
+  touches,
+  touchesGraph,
+  touchesInputs,
+  touchesScene,
+} from '../writes.js';
 
 describe('normalizePath', () => {
   it('forward-slashes and drops a ./ prefix', () => {
@@ -53,5 +60,57 @@ describe('touchesGraph', () => {
     expect(touchesGraph(['vngen/work/graphs/backdrop.json'], 'portrait')).toBe(false);
     expect(touchesGraph(['characters/aiko/character.md'], 'portrait')).toBe(false);
     expect(touchesGraph(['vngen/work/graphs/portrait.json'], '')).toBe(false);
+  });
+});
+
+/**
+ * The question every pane showing derived state asks, and the one main asks before re-reading the
+ * project. What it lets through is what `loadInputs` reads; what it turns away is everything
+ * generated, which is most of what the app writes.
+ */
+describe('touchesInputs', () => {
+  it.each([
+    'characters/aiko/character.md',
+    'locations/rooftop.md',
+    'scenes/arrival.md',
+    'screenplay/story.fountain',
+    'project.yaml',
+  ])('lets %s through', (path) => {
+    expect(touchesInputs([path])).toBe(true);
+  });
+
+  // An entity sheet is found by its `type:` tag across three surfaces and the bible is the third,
+  // so a wiki note can be a character sheet. Which one it is cannot be told from the path.
+  it('lets a wiki note through, because one of them may be an entity sheet', () => {
+    expect(touchesInputs(['wiki/lore/houses.md'])).toBe(true);
+  });
+
+  it.each([
+    'vngen/work/graphs/portrait.json',
+    'vngen/build/manifest.json',
+    'vngen/state/commands.jsonl',
+    'assets/objects/ab12.png',
+    '.aiagent/skills/branching/SKILL.md',
+  ])('turns %s away', (path) => {
+    expect(touchesInputs([path])).toBe(false);
+  });
+
+  it('reads a windows path the same as a posix one', () => {
+    expect(touchesInputs(['characters\\aiko\\character.md'])).toBe(true);
+    expect(touchesInputs(['.\\scenes\\arrival.md'])).toBe(true);
+  });
+
+  it('answers for the whole list, not just its first entry', () => {
+    expect(touchesInputs(['vngen/build/manifest.json', 'scenes/arrival.md'])).toBe(true);
+    expect(touchesInputs(['vngen/build/manifest.json', 'assets/objects/ab12.png'])).toBe(false);
+    expect(touchesInputs([])).toBe(false);
+  });
+
+  // `project.yaml` is matched whole. A directory that starts with the same letters is not an
+  // input, and neither is a file that merely ends with the name.
+  it('does not match a path that only begins or ends like an input', () => {
+    expect(touchesInputs(['characters.md'])).toBe(false);
+    expect(touchesInputs(['project.yaml.bak'])).toBe(false);
+    expect(touchesInputs(['vngen/work/project.yaml'])).toBe(false);
   });
 });

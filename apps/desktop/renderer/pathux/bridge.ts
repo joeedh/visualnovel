@@ -27,6 +27,7 @@ import type {
   UiEffect,
 } from '../../src/shared/ipc.js';
 import { shouldFileCommand } from '../../src/shared/notify.js';
+import { touchesInputs } from '../../src/shared/writes.js';
 import type { ShellApp } from './context.js';
 import { approvalsChanged, refreshApprovals } from './approvals.js';
 import { notificationsChanged, refreshNotifications } from './notifications.js';
@@ -96,6 +97,26 @@ export async function refreshWorkspace(): Promise<void> {
   ui.errors = index.diagnostics.filter((d) => d.severity === 'error').length;
   ui.warnings = index.diagnostics.length - ui.errors;
   touch();
+}
+
+/** How long a burst of input edits is allowed to run before the header is recounted. */
+const REINDEX_IDLE_MS = 150;
+
+let reindexTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Recount the header once a burst of writes has stopped.
+ *
+ * `workspace:index` reloads and revalidates the whole project, so it is worth doing once at the
+ * end of a run of edits rather than after each. Trailing rather than leading: the point is to
+ * show the count the last write produced.
+ */
+function scheduleWorkspaceRefresh(): void {
+  if (reindexTimer !== undefined) clearTimeout(reindexTimer);
+  reindexTimer = setTimeout(() => {
+    reindexTimer = undefined;
+    void refreshWorkspace();
+  }, REINDEX_IDLE_MS);
 }
 
 type ExecWatcher = (id: string, outcome: CommandOutcome) => void;
@@ -303,10 +324,9 @@ export function installBridge(app: ShellApp): void {
       ui.canRedo = effect.state.canRedo;
       ui.undoLabel = effect.state.undoLabel ?? '';
       ui.redoLabel = effect.state.redoLabel ?? '';
-      // An undo or redo wrote files no editor here asked to write, so the whole surface is stale.
-      // This effect is pushed after every command though, and only `revision` tells the two apart:
-      // an ordinary command already invalidated from `exec` and would otherwise count twice.
-      void refreshWorkspace();
+      // The header is not recounted here. This effect is pushed after every command, reads or
+      // refusals included, and a recount reloads the whole project — so it follows the writes
+      // instead, over `documents:wrote` below, where it can be told whether an input moved.
       if (effect.revision !== revision) {
         revision = effect.revision;
         invalidate();
@@ -386,6 +406,10 @@ That is a fault in what was ` +
   // pane weigh an echo of its own write against one from somewhere else.
   api.on('documents:wrote', (payload) => {
     wrote(payload.paths, payload.versions);
+    // The header counts diagnostics off the project model, so it moves only when a file the model
+    // is built from does. A graph edit, a generated asset and a task-log append all write nothing
+    // it reads, and those are most of what the app writes.
+    if (touchesInputs(payload.paths)) scheduleWorkspaceRefresh();
   });
 
   void refreshWorkspace();
