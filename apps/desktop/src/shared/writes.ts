@@ -29,3 +29,9 @@ export function touchesScene(written: readonly string[], sceneId: string): boole
   if (!sceneId) return false;
   return touches(written, `scenes/${sceneId}.md`);
 }
+
+/** Did any of `written` name the file a generation graph lives in? `work/graphs/<slug>.json`. */
+export function touchesGraph(written: readonly string[], slug: string): boolean {
+  if (!slug) return false;
+  return touches(written, `work/graphs/${slug}.json`);
+}

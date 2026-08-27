@@ -1,4 +1,4 @@
-import { normalizePath, touches, touchesScene } from '../writes.js';
+import { normalizePath, touches, touchesGraph, touchesScene } from '../writes.js';
 
 describe('normalizePath', () => {
   it('forward-slashes and drops a ./ prefix', () => {
@@ -32,5 +32,18 @@ describe('touchesScene', () => {
     expect(touchesScene(['scenes/hallway.md'], 'rooftop')).toBe(false);
     expect(touchesScene(['characters/aiko/character.md'], 'rooftop')).toBe(false);
     expect(touchesScene(['scenes/rooftop.md'], '')).toBe(false);
+  });
+});
+
+describe('touchesGraph', () => {
+  it('derives the graph file from the slug', () => {
+    expect(touchesGraph(['work/graphs/portrait.json'], 'portrait')).toBe(true);
+    expect(touchesGraph(['work\\graphs\\portrait.json'], 'portrait')).toBe(true);
+  });
+
+  it('ignores another graph, another file, and no graph open', () => {
+    expect(touchesGraph(['work/graphs/backdrop.json'], 'portrait')).toBe(false);
+    expect(touchesGraph(['characters/aiko/character.md'], 'portrait')).toBe(false);
+    expect(touchesGraph(['work/graphs/portrait.json'], '')).toBe(false);
   });
 });

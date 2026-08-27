@@ -24,6 +24,7 @@ import {
 import type { Button, DataAPI, EditVerdict, GraphEdit, NodeGraphDelegate } from 'pathux';
 import type { ToolProperty } from 'pathux-toolprop';
 
+import { touchesGraph } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
 import {
   commandFor,
@@ -35,7 +36,7 @@ import {
 } from '../../rules/gengraph.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../api.js';
-import { exec, onExec, onInvalidate, say } from '../bridge.js';
+import { exec, onExec, onInvalidate, onWrote, say } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
@@ -179,8 +180,9 @@ export class GenGraphEditor extends VnEditor {
       return () => observer.disconnect();
     });
 
-    // `onInvalidate` is called with no arguments, so a listener cannot tell what moved the
-    // project. The outcome can, and this fires immediately before the invalidation `exec` raises.
+    // `onExec` fires immediately before the invalidation an accepted write raises, and carries the
+    // outcome `onWrote`/`onInvalidate` do not, so this is where a `setProp` this pane sent is told
+    // apart from one that reached the file some other way.
     this.watch(() =>
       onExec((id, outcome) => {
         if (id !== 'gengraph.setProp' || outcome.record === undefined) return;
@@ -190,11 +192,14 @@ export class GenGraphEditor extends VnEditor {
       }),
     );
 
-    // A command this pane sent is not the only thing that rewrites a graph: the agent's graph tool,
-    // an undo and a `gengraph.*` invocation from the palette all reach the same file.
+    // A command this pane sent is not the only thing that rewrites this graph's file: the agent's
+    // graph tool and a `gengraph.*` invocation from the palette both reach it too. `onWrote` names
+    // the paths a write touched, so a write to some other document is ignored rather than reloading
+    // this one.
     this.watch(
       () =>
-        onInvalidate(() => {
+        onWrote((paths) => {
+          if (!touchesGraph(paths, this.slug)) return;
           // This pane's own write comes back as a whole-file reload under the widget being typed
           // into, and carries nothing new: main wrote the value `decideGenEdit` accepted here.
           // The strip still repaints, because standing the last output down changes what it says.
@@ -208,7 +213,13 @@ export class GenGraphEditor extends VnEditor {
       () => void this.load(this.slug),
     );
 
-    this.paint();
+    // Undo and redo restore files no command in this session wrote, so `onWrote` cannot name them
+    // — `onInvalidate` is the only signal left for that case. It is coarse, firing on any change
+    // anywhere, but the reload it now causes lands on `syncGraph`'s id-based reconciliation, so it
+    // no longer costs the graph its frames or a widget mid-edit.
+    this.watch(() => onInvalidate(() => void this.load(this.slug)));
+
+    this.paint(false);
   }
 
   override update() {
@@ -230,12 +241,13 @@ export class GenGraphEditor extends VnEditor {
 
   private async load(slug: string): Promise<void> {
     const mine = ++this.token;
+    const sameGraph = slug !== '' && slug === this.slug;
     this.slug = slug;
 
     if (slug === '') {
       this.graph = undefined;
       this.readNotes = [];
-      this.paint();
+      this.paint(false);
       return;
     }
 
@@ -250,7 +262,7 @@ export class GenGraphEditor extends VnEditor {
       this.graph = parsed.graph;
       this.readNotes = [...parsed.diagnostics, ...read.diagnostics].map((note) => note.message);
     }
-    this.paint();
+    this.paint(sameGraph);
   }
 
   /**
@@ -314,18 +326,19 @@ export class GenGraphEditor extends VnEditor {
   }
 
   /**
-   * Points the view at what was read, keeping the selection across the reload. Every edit but a
-   * property write reloads the whole file, so a selection dropped here would last one gesture.
+   * Points the view at what was read. `sameGraph` marks a reload of the file already on screen —
+   * a reparse of the same slug — and uses `refreshGraph`, which keeps selection, descent and
+   * pan/zoom, and reconciles frames by node id rather than tearing them all down. A genuine slug
+   * change uses `setGraph`, which resets the view to the new graph's own state.
    */
-  private paint(): void {
+  private paint(sameGraph: boolean): void {
     this.unsubscribe();
 
-    const held = [...this.view.selection];
-    this.view.setGraph(this.graph, 'graph');
-    for (const id of held) {
-      if (this.graph?.nodeIdMap.get(id) !== undefined) this.view.selection.add(id);
+    if (sameGraph) {
+      this.view.refreshGraph(this.graph);
+    } else {
+      this.view.setGraph(this.graph, 'graph');
     }
-    this.view.syncGraph();
     this.subscribe();
 
     this.paintState();
