@@ -14,8 +14,8 @@ import { promises as fs } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parseFrontMatter, type EntityDoc } from '@vn/parse';
 import { ENTITY_TAG_KEY, ENTITY_TAGS, type Diagnostic, type EntityTag } from '@vn/types';
-import { exists, readText } from '@vn/util';
-import { taggedKind } from './docfile.js';
+import { exists, pool, readText } from '@vn/util';
+import { READ_CONCURRENCY, taggedKind } from './docfile.js';
 import type { ProjectPaths } from './paths.js';
 import { listWikiFiles } from './tree.js';
 
@@ -69,6 +69,31 @@ function tagConflict(doc: EntityDoc, kind: EntityTag, diagnostics: Diagnostic[])
   return true;
 }
 
+/**
+ * Read every sheet at once and merge what comes back in the order the files were in.
+ *
+ * Each read gets its own diagnostics array rather than sharing one, because appending to a shared
+ * array from concurrent reads would order a load's diagnostics by whichever read finished first.
+ * A project's diagnostics have to be the same list every time it is loaded.
+ */
+async function readAll<T>(
+  items: readonly T[],
+  diagnostics: Diagnostic[],
+  read: (item: T, into: Diagnostic[]) => Promise<Candidate | undefined>,
+): Promise<Candidate[]> {
+  const done = await pool(items, READ_CONCURRENCY, async (item) => {
+    const into: Diagnostic[] = [];
+    return { into, candidate: await read(item, into) };
+  });
+
+  const found: Candidate[] = [];
+  for (const { into, candidate } of done) {
+    diagnostics.push(...into);
+    if (candidate) found.push(candidate);
+  }
+  return found;
+}
+
 /** `characters/<id>/character.md` — the id is the directory name. */
 async function fromCharactersDir(
   paths: ProjectPaths,
@@ -76,16 +101,15 @@ async function fromCharactersDir(
 ): Promise<Candidate[]> {
   if (!(await exists(paths.charactersDir))) return [];
   const entries = await fs.readdir(paths.charactersDir, { withFileTypes: true });
-  const found: Candidate[] = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+  const dirs = entries.filter((entry) => entry.isDirectory());
+
+  return readAll(dirs, diagnostics, async (entry, into) => {
     const file = paths.characterFile(entry.name);
-    if (!(await exists(file))) continue;
-    const doc = await readCandidate(file, entry.name, diagnostics, 'error');
-    if (!doc || tagConflict(doc, ENTITY_TAGS.character, diagnostics)) continue;
-    found.push({ kind: ENTITY_TAGS.character, doc, conventional: true });
-  }
-  return found;
+    if (!(await exists(file))) return undefined;
+    const doc = await readCandidate(file, entry.name, into, 'error');
+    if (!doc || tagConflict(doc, ENTITY_TAGS.character, into)) return undefined;
+    return { kind: ENTITY_TAGS.character, doc, conventional: true };
+  });
 }
 
 /** `locations/<id>.md` — the id is the filename stem. */
@@ -95,30 +119,31 @@ async function fromLocationsDir(
 ): Promise<Candidate[]> {
   if (!(await exists(paths.locationsDir))) return [];
   const entries = await fs.readdir(paths.locationsDir, { withFileTypes: true });
-  const found: Candidate[] = [];
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.md')) continue;
+  const sheets = entries.filter(
+    (entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.md'),
+  );
+
+  return readAll(sheets, diagnostics, async (entry, into) => {
     const id = entry.name.slice(0, -'.md'.length);
-    const doc = await readCandidate(join(paths.locationsDir, entry.name), id, diagnostics, 'error');
-    if (!doc || tagConflict(doc, ENTITY_TAGS.location, diagnostics)) continue;
-    found.push({ kind: ENTITY_TAGS.location, doc, conventional: true });
-  }
-  return found;
+    const doc = await readCandidate(join(paths.locationsDir, entry.name), id, into, 'error');
+    if (!doc || tagConflict(doc, ENTITY_TAGS.location, into)) return undefined;
+    return { kind: ENTITY_TAGS.location, doc, conventional: true };
+  });
 }
 
 /** `wiki/**\/*.md` carrying an entity tag — the id is the filename stem. Untagged files are not
  * inputs; they belong to the story bible and are skipped without a diagnostic. */
 async function fromWiki(paths: ProjectPaths, diagnostics: Diagnostic[]): Promise<Candidate[]> {
-  const found: Candidate[] = [];
-  for (const file of await listWikiFiles(paths)) {
+  const files = await listWikiFiles(paths);
+
+  return readAll(files, diagnostics, async (file, into) => {
     const id = basename(file).slice(0, -'.md'.length);
-    const doc = await readCandidate(file, id, diagnostics, 'warning');
-    if (!doc) continue;
+    const doc = await readCandidate(file, id, into, 'warning');
+    if (!doc) return undefined;
     const kind = taggedKind(doc.doc.data);
-    if (kind === undefined) continue;
-    found.push({ kind, doc, conventional: false });
-  }
-  return found;
+    if (kind === undefined) return undefined;
+    return { kind, doc, conventional: false };
+  });
 }
 
 /**
@@ -177,11 +202,17 @@ export async function discoverEntities(
   paths: ProjectPaths,
   diagnostics: Diagnostic[],
 ): Promise<{ characterDocs: EntityDoc[]; locationDocs: EntityDoc[] }> {
-  const candidates = [
-    ...(await fromCharactersDir(paths, diagnostics)),
-    ...(await fromLocationsDir(paths, diagnostics)),
-    ...(await fromWiki(paths, diagnostics)),
-  ];
+  // The three surfaces are walked together, each collecting its own diagnostics so the merged
+  // list still reads conventional-first however the walks interleave.
+  const surfaces: Diagnostic[][] = [[], [], []];
+  const [characters, locations, wiki] = await Promise.all([
+    fromCharactersDir(paths, surfaces[0]!),
+    fromLocationsDir(paths, surfaces[1]!),
+    fromWiki(paths, surfaces[2]!),
+  ]);
+  for (const found of surfaces) diagnostics.push(...found);
+
+  const candidates = [...characters, ...locations, ...wiki];
   return {
     characterDocs: dedupe(candidates, ENTITY_TAGS.character, diagnostics),
     locationDocs: dedupe(candidates, ENTITY_TAGS.location, diagnostics),

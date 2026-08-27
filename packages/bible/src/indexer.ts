@@ -7,7 +7,8 @@ import { promises as fs } from 'node:fs';
 import { basename, relative } from 'node:path';
 import { parseFrontMatter } from '@vn/parse';
 import { listMarkdownTree } from '@vn/store';
-import { readText } from '@vn/util';
+import { pool, readText } from '@vn/util';
+import { READ_CONCURRENCY } from '@vn/store';
 import type { BibleFile } from './types.js';
 
 const HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
@@ -88,11 +89,11 @@ export async function buildIndex(
   root: string,
   previous: Map<string, IndexedFile> = new Map(),
 ): Promise<IndexedFile[]> {
-  const out: IndexedFile[] = [];
-  for (const abs of await listMarkdownTree(root)) {
+  // Read together rather than one after the next. `pool` preserves input order, so the index is
+  // still ordered by path however the reads interleave.
+  return pool(await listMarkdownTree(root), READ_CONCURRENCY, async (abs) => {
     const { mtimeMs } = await fs.stat(abs);
     const cached = previous.get(abs);
-    out.push(cached && cached.mtimeMs === mtimeMs ? cached : await readIndexed(abs, root, mtimeMs));
-  }
-  return out;
+    return cached && cached.mtimeMs === mtimeMs ? cached : await readIndexed(abs, root, mtimeMs);
+  });
 }

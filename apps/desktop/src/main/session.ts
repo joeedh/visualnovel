@@ -890,7 +890,15 @@ async function buildProviders(project: LoadedProject, mock: boolean): Promise<Pr
 /** Backend state for a single workspace, addressed by the IPC handlers in `index.ts`. */
 export class WorkspaceSession {
   private agent: Agent | undefined;
-  private bibleWorkspace: Workspace | undefined;
+  /**
+   * One `Workspace` for this session, so its story bible is opened once.
+   *
+   * Only the bible handle survives between calls. `Workspace.load()` holds nothing, so every
+   * method here still re-reads the authored input a command may just have written — what is saved
+   * is the full `wiki/` walk that opening a bible performs, which `refresh()` then keeps current
+   * by re-reading only the files whose mtime moved.
+   */
+  private heldWorkspace: Workspace | undefined;
   /** The text model the agent is bound to (what a future `/model` would report). */
   model = '';
   /** The reasoning effort the backend is built with. Always an explicit value, so the app never
@@ -1378,7 +1386,12 @@ export class WorkspaceSession {
   // ---- IPC-facing methods ----
 
   index(): Promise<WorkspaceIndex> {
-    return new Workspace(this.dir).index();
+    return this.workspace().index();
+  }
+
+  /** The session's one workspace. See {@link heldWorkspace} for what it does and does not reuse. */
+  private workspace(): Workspace {
+    return (this.heldWorkspace ??= new Workspace(this.dir));
   }
 
   /** Where the agent's generated project map lives, and whether it is ours to replace. */
@@ -1409,13 +1422,12 @@ export class WorkspaceSession {
   }
 
   /**
-   * Ranked passages from the story bible. Held on one `Workspace` so the index survives between
-   * searches — every other method here rebuilds, because every other method reads authored input
-   * that a command may just have written.
+   * Ranked passages from the story bible. The index survives between searches on the session's
+   * one workspace, and `query` re-walks, so a passage written since the last search is still
+   * found.
    */
   async searchBible(query: string, limit?: number): Promise<Excerpt[]> {
-    this.bibleWorkspace ??= new Workspace(this.dir);
-    const bible = await this.bibleWorkspace.bible();
+    const bible = await this.workspace().bible();
     return bible.query(query, limit === undefined ? {} : { limit });
   }
 
@@ -4244,8 +4256,7 @@ export class WorkspaceSession {
    */
   async docTree(): Promise<DocTree> {
     const project = await loadProject(this.dir);
-    this.bibleWorkspace ??= new Workspace(this.dir);
-    const bible = await this.bibleWorkspace.bible();
+    const bible = await this.workspace().bible();
     await bible.refresh();
 
     const shots = await readAllShots(project, { reportBroken: true });

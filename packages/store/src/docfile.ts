@@ -21,6 +21,16 @@ import { sha256, writeFileAtomic } from '@vn/util';
  */
 export const MAX_DOC_BYTES = 1_000_000;
 
+/**
+ * How many of a project's documents to read at once when loading all of them.
+ *
+ * A load is dominated by waiting on the filesystem rather than by parsing — reading a
+ * 174-file project one file after the next costs five times what reading them together does.
+ * Bounded rather than unbounded so a project with thousands of wiki notes cannot exhaust the
+ * process's file handles.
+ */
+export const READ_CONCURRENCY = 32;
+
 /** Resolve a workspace-relative or absolute path, rejecting anything outside `root`. */
 export function resolveInWorkspace(root: string, path: string): string | null {
   const abs = resolve(root, path);

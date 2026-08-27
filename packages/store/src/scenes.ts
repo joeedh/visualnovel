@@ -17,7 +17,8 @@ import {
   type FrontMatterDoc,
   type SceneChunkDoc,
 } from '@vn/parse';
-import { exists, readText, ValidationError, writeFileAtomic } from '@vn/util';
+import { exists, pool, readText, ValidationError, writeFileAtomic } from '@vn/util';
+import { READ_CONCURRENCY } from './docfile.js';
 import type { ProjectPaths } from './paths.js';
 
 /** Split front-matter from body, turning a YAML syntax error into a diagnostic naming the file. */
@@ -55,11 +56,23 @@ export async function readSceneChunks(paths: ProjectPaths): Promise<SceneChunkDo
     .map((e) => e.name.slice(0, -'.md'.length))
     .sort();
 
-  const chunks: SceneChunkDoc[] = [];
-  for (const id of ids) {
+  // Read together rather than one after the next — a load waits on the filesystem far longer than
+  // it spends parsing. Each result is kept rather than thrown so the failure reported is the one
+  // from the first chunk in id order, not from whichever read happened to finish first.
+  const read = await pool(ids, READ_CONCURRENCY, async (id) => {
     const file = join(paths.scenesDir, `${id}.md`);
-    const text = await readText(file);
-    chunks.push({ id, file, doc: parseChunk(file, text), text });
+    try {
+      const text = await readText(file);
+      return { chunk: { id, file, doc: parseChunk(file, text), text } };
+    } catch (err) {
+      return { err };
+    }
+  });
+
+  const chunks: SceneChunkDoc[] = [];
+  for (const result of read) {
+    if ('err' in result) throw result.err;
+    chunks.push(result.chunk);
   }
   return chunks;
 }
