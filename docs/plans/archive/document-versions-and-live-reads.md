@@ -311,7 +311,7 @@ main writes, on two grounds worth stating because the design rests on them:
 
 - Both sides decide the edit with `decideGenEdit` against the same file, which is already the rule
   the mid-gesture refusal depends on
-  ([`desktop-app.md`](../reference/desktop-app.md#gen-graph)).
+  ([`desktop-app.md`](../../reference/desktop-app.md#gen-graph)).
 - A new node's id comes from `Graph.add`, which allocates from an `idgen` counter the graph's own
   nstructjs struct carries (`vendor/path.ux/scripts/graph/graph.ts:88, 141-150`). Two parses of
   one file therefore hand out the same next id, so the node this creates is the node main writes.
@@ -378,7 +378,9 @@ would be wrong in exactly the cases that are hardest to debug. The invariant in
 - **The re-derivation storm.** Every command triggers `workspace:index` in every window, which
   reloads and revalidates the whole project and walks `wiki/` twice
   (`packages/authoring/src/workspace.ts:192-201`), plus a debounced `recomputeApprovals`. That is
-  the larger latency problem and it is not this plan.
+  the larger latency problem and it is not this plan. Taken up in
+  [`precise-write-signals.md`](precise-write-signals.md), which measured it at ~400 ms per window
+  per command on a 181-file project.
 - **Commit policy.** Untouched here.
 - **The other three `onWrote` consumers.** `script.ts`, `wiki.ts` and `skills.ts` keep working on
   paths alone. `DocBuffer` already refuses a save by content hash

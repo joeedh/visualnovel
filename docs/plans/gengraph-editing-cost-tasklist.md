@@ -1,16 +1,18 @@
 # The cost of editing a generation graph — tasklist
 
-Status: **shipped**. Two plans, independent of each other, both aimed at the same complaint:
+Status: **shipped**. Four plans, independent of each other, all aimed at the same complaint:
 dragging a slider or typing into a field in the Gen Graph pane is slow, and it is slow for
 reasons that have nothing to do with the graph.
 
-Each plan is the authority on its own scope and decisions. This page records what the two
+Each plan is the authority on its own scope and decisions. This page records what the four
 are, why they are separate, and what order they can be taken in.
 
 | # | Plan | Covers |
 | --- | --- | --- |
 | 1 | [`archive/deferring-commit-on-save.md`](archive/deferring-commit-on-save.md) | Batching the git commit a run of consecutive edits produces, in `@vn/commands`. Shipped |
 | 2 | [`archive/gengraph-node-editor-data-api.md`](archive/gengraph-node-editor-data-api.md) | A scoped path.ux DataAPI over the live graph, so the pane stops rebuilding every widget by hand and stops reloading the whole file per edit. Shipped |
+| 3 | [`archive/document-versions-and-live-reads.md`](archive/document-versions-and-live-reads.md) | Per-document write versions, so a pane can tell the echo of its own write from somebody else's and stops snapping a dragged node back. Shipped |
+| 4 | [`archive/precise-write-signals.md`](archive/precise-write-signals.md) | Undo reporting the paths it moved, one `touchesInputs` predicate, the header following writes rather than commands, and a project's documents read in parallel. Shipped |
 
 ## What the cost is made of
 
@@ -39,6 +41,12 @@ The write is deliberately left alone by both: deferring it means the file on dis
 current, which reaches the pipeline, undo, and the content-addressed task hash all at once.
 It is named as a non-goal in both plans rather than scheduled.
 
+Plans 3 and 4 came out of the reload proving to have two more layers under it. Plan 2 stopped
+the pane rebuilding its widgets, but the pane still adopted the echo of its own write, which is
+what made a dragged node snap backwards — plan 3. And underneath that, every command made every
+window reload and revalidate the whole project, measured at ~400 ms per window on a mid-size
+project for a write that touched one file under `vngen/work/graphs/` — plan 4.
+
 ## Why the two are separate
 
 They share a symptom and nothing else.
@@ -57,6 +65,8 @@ recommended only because it is smaller and its risk is better understood.
 
 - [x] 1 — defer and batch commit-on-save
 - [x] 2 — a scoped DataAPI for the node editor
+- [x] 3 — document versions, so a pane skips the echo of its own write
+- [x] 4 — precise write signals, and loading a project in parallel
 
 ## Non-goals for the batch
 
