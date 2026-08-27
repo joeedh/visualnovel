@@ -1010,7 +1010,18 @@ below.
   strip. A slot can hold several takes, so reading the field rather than picking among them opens
   the picture the runner would show. A shot with no frame yet is refused with a sentence in the
   notice row. The document tree answers the same gesture the same way, over `DocNode.hash`
-  ([`document-tree.md`](document-tree.md#opening-a-shots-frame)).
+  ([`document-tree.md`](document-tree.md#opening-a-shots-frame)). It shares the tree's `countClick`,
+  but for its own reason: a bracket never receives a `click` at all, because its pointerdown starts
+  a reorder and `.tl-grid.dragging` drops pointer events on every `.tl-shot`, so the release
+  hit-tests to the band behind it and the pair's common ancestor is the grid. **Presses** are what
+  is counted, and the second one opens on release, and only if the reorder never aimed away from
+  the shot — otherwise dragging a bracket twice quickly would open it instead of moving it.
+  A right-click offers the same thing as **Open shot asset**, from `shotAssetEntry` in
+  `pathux/script.ts` — the rule the script column's own line menu uses, so the two surfaces word
+  their offer and their refusal the same way. It is a plain `view.open` entry rather than a call
+  into `openFrame`, because a right-click entry is a command
+  ([`command-system.md`](command-system.md)), and `view.open` publishes the hash to `ui.assetHash`
+  itself on the way through.
 - **Rows are grid rows, so wrapped prose sizes itself.** The one thing measured is which row
   the pointer is over: a full-width `.tl-band` behind each row, reached by `elementFromPoint`
   once `.tl-grid.dragging` drops pointer events on the script and the brackets.

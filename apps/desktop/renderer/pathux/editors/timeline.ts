@@ -24,11 +24,13 @@ import {
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
 import { onInvalidate } from '../bridge.js';
+import { MENU_SEP } from '../contextmenu.js';
 import type { VnContext } from '../context.js';
 import { openCommandDialog } from '../dialog.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
+import { shotAssetEntry } from '../script.js';
 import { showContextMenu } from '../showmenu.js';
 import {
   aimCreate,
@@ -42,6 +44,7 @@ import {
   type Drag,
   type Reorder,
 } from '../timeline.js';
+import { countClick, NO_CLICK, type ClickLatch } from '../treeview.js';
 import STRIP_CSS from '../../styles/timeline.css?inline';
 import type { Invocation } from '@vn/commands';
 import type {
@@ -116,6 +119,11 @@ const SURFACE_CSS = `
 .tl-note .tl-door:disabled { opacity: 0.5; cursor: default; }
 `;
 
+/** Why a bracket cannot open, worded once so the double-click and the right-click refuse alike. */
+function noFrameYet(shotId: string): string {
+  return `${shotId} has no frame yet — run the pipeline to draw one.`;
+}
+
 /**
  * The coverage strip: a scene's screenplay down the page, and the shots that illustrate it as
  * brackets beside it. The port of FLOOR's `Timeline`, the first editor here with semantic drags,
@@ -151,6 +159,12 @@ export class TimelineEditor extends VnEditor {
   private reorder: Reorder | null = null;
   private create: Create | null = null;
   private notice: Notice | null = null;
+  // A bracket never sees a `click` at all: its own pointerdown starts a reorder, which puts
+  // `.tl-grid.dragging` up and drops pointer events on every `.tl-shot`, so the release hit-tests
+  // to the band behind it and the pair's common ancestor is the grid. Presses are counted instead.
+  private lastClick: ClickLatch = NO_CLICK;
+  /** The shot a counted second press will open, held until the release says it was not a drag. */
+  private openOnRelease: CoverageShot | null = null;
 
   /** The write in flight, if any (`busy.ts`). The timer reveals the bar after `BUSY_DELAY_MS`. */
   private busy: Busy = SETTLED;
@@ -609,18 +623,23 @@ export class TimelineEditor extends VnEditor {
       'drag to move it among the other shots';
     // The drag handles prevent their pointerdown and a bracket does not, because a bracket is
     // also the click target that selects a shot, and a grab that never moves must read as a click.
-    box.addEventListener('pointerdown', () => {
+    box.addEventListener('pointerdown', (event) => {
       if (!canGrab(this.mode())) return this.say(grabRefusal(this.mode()));
+      const { again, next } = countClick(this.lastClick, shotId, event.timeStamp);
+      this.lastClick = next;
+      if (again) this.openOnRelease = shot;
       this.select(shotId);
       this.beginReorder(shotId);
     });
-    box.addEventListener('dblclick', () => this.openFrame(shot));
     // A right-click offers the commands about this one shot, each checked before it is drawn, with
-    // a refusal (deleting the last shot, say) shown rather than hidden.
+    // a refusal (deleting the last shot, say) shown rather than hidden. Leaving for the frame is
+    // offered above the separator, so the destructive entry is never the one under the pointer.
     box.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       event.stopPropagation();
       void showContextMenu(this.ctx as VnContext, event.clientX, event.clientY, shotId, [
+        shotAssetEntry(shot, 'Open shot asset', noFrameYet(shot.id)),
+        { label: MENU_SEP, id: MENU_SEP },
         {
           label: 'Delete this shot',
           id: 'story.deleteShot',
@@ -741,10 +760,7 @@ export class TimelineEditor extends VnEditor {
   private openFrame(shot: CoverageShot): void {
     const image = shot.image;
     if (!image) {
-      return this.say({
-        tone: 'refused',
-        text: `${shot.id} has no frame yet — run the pipeline to draw one.`,
-      });
+      return this.say({ tone: 'refused', text: noFrameYet(shot.id) });
     }
     this.ui.assetHash = image.hash;
     this.announce();
@@ -790,12 +806,19 @@ export class TimelineEditor extends VnEditor {
       const pending = this.drag ?? this.reorder ?? this.create;
       const wasDrag = this.drag !== null;
       const wasCreate = this.create !== null;
+      const stayed = this.reorder !== null && this.reorder.target === this.reorder.shotId;
       this.drag = null;
       this.reorder = null;
       this.create = null;
       this.grid?.classList.remove('dragging');
       held?.forEach((node) => node.classList.remove('dragging'));
       this.paintGesture();
+      // A press that never aimed anywhere is a click rather than a reorder, and a second one opens
+      // the frame. Deferred to here so that dragging a shot twice in quick succession moves it
+      // twice instead of opening it. There is nothing else to settle, hence the return.
+      const opening = this.openOnRelease;
+      this.openOnRelease = null;
+      if (opening && stayed) return this.openFrame(opening);
       // A drop that changes nothing clears its preview, rather than leaving a sentence on screen
       // describing an edit that did not happen. A refused drop keeps its reason.
       if (!pending || (wasDrag && !(pending as Drag).lines)) {

@@ -1,5 +1,13 @@
 import { TOP } from '../../../src/shared/interactions.js';
-import { aim, dropOf, grabLine, lineMenu, noticeOf, shotCovering } from '../script.js';
+import {
+  aim,
+  dropOf,
+  grabLine,
+  lineMenu,
+  noticeOf,
+  shotAssetEntry,
+  shotCovering,
+} from '../script.js';
 import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../src/shared/ipc';
 
 const lines: CoverageLine[] = [
@@ -118,5 +126,18 @@ describe('what right-clicking a line offers', () => {
     // decomposing the scene, the other by running it.
     const [, entry] = lineMenu(scene, 'a:L1');
     expect(entry?.refused).toBe('No shot covers a:L1 yet.');
+  });
+
+  // Shot Coverage right-clicks a bracket, which names the shot outright, so it takes the entry
+  // without the line the script column has to look one up from.
+  test('a bracket asks for the same entry, refusing in the words its own surface uses', () => {
+    expect(shotAssetEntry(drawn, 'Open shot asset', 'never asked')).toEqual({
+      label: 'Open shot asset',
+      id: 'view.open',
+      props: { editor: 'asset', where: 'elsewhere', subject: 'abc123' },
+    });
+    const refused = shotAssetEntry(bare, 'Open shot asset', 'a:S2 has no frame yet.');
+    expect(refused.props).toBeUndefined();
+    expect(refused.refused).toBe('a:S2 has no frame yet.');
   });
 });

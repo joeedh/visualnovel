@@ -71,6 +71,18 @@ export function shotCovering(shots: readonly CoverageShot[], lineId: string): Co
 }
 
 /**
+ * The entry that leaves for a shot's frame in the Asset editor, over the hash the storyboard
+ * itself holds. `missing` is supplied by the caller because only the surface knows how the shot
+ * was named — a line names the shot covering it, a bracket names itself — and a shot with no
+ * picture puts no hash to `view.open`, which is what {@link MenuEntry.refused} is for.
+ */
+export function shotAssetEntry(shot: CoverageShot, label: string, missing: string): MenuEntry {
+  if (!shot.image) return { label, id: 'view.open', refused: missing };
+  const props = { editor: 'asset', where: 'elsewhere', subject: shot.image.hash };
+  return { label, id: 'view.open', props };
+}
+
+/**
  * What right-clicking a line offers: a conversation about the line itself, then the frame drawn
  * from the shot that covers it.
  *
@@ -94,12 +106,5 @@ export function lineMenu(scene: SceneCoverage, lineId: string): MenuEntry[] {
   if (!shot) {
     return [edit, { label, id: 'view.open', refused: `No shot covers ${lineId} yet.` }];
   }
-  if (!shot.image) {
-    return [
-      edit,
-      { label, id: 'view.open', refused: `${shot.id} covers ${lineId} but has not been drawn.` },
-    ];
-  }
-  const props = { editor: 'asset', where: 'elsewhere', subject: shot.image.hash };
-  return [edit, { label, id: 'view.open', props }];
+  return [edit, shotAssetEntry(shot, label, `${shot.id} covers ${lineId} but has not been drawn.`)];
 }
