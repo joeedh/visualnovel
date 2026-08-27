@@ -52,6 +52,16 @@ export function contestedSlots(graph: Graph): string[] {
 }
 
 /**
+ * The one slot this graph draws, or nothing where it draws none it can be held to. A graph with
+ * two active outputs is left out along with a graph with none: `bindSlots` binds neither, so
+ * naming one of the two would send the author to a picture this graph did not draw.
+ */
+export function drawnSlot(graph: Graph): string {
+  const named = activeOutputs(graph).filter((output) => output.slot !== '');
+  return named.length === 1 ? named[0]!.slot : '';
+}
+
+/**
  * True where the graph carries output nodes and none of them is active. Standing the last one
  * down is a legal edit rather than a refused one, so the pane reports the state the same way it
  * reports a contested slot. A graph with no output node at all is half-authored and says nothing.

@@ -142,10 +142,18 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
         docPath: node.path ?? current.docPath,
       };
     }
+    // A shot a graph draws selects that graph too, for the reason the asset case below gives: the
+    // shot's own editors still claim the click, and an open Gen Graph pane follows it.
     case 'shot': {
       const { sceneId, shotId } = splitShot(key);
-      return { ...current, sceneId: sceneId || current.sceneId, shotId };
+      const picked = { ...current, sceneId: sceneId || current.sceneId, shotId };
+      return node.boundGraph === undefined ? picked : { ...picked, graphSlug: node.boundGraph };
     }
+    // A graph is named by its slug rather than by its file, so selecting one leaves `docPath`
+    // alone: `doc.*` refuses `work/graphs/**`, and a graph opened as text would go past every
+    // `gengraph.*` check.
+    case 'graph':
+      return { ...current, graphSlug: key };
     case 'character':
       return { ...current, characterId: key, docPath: node.path ?? current.docPath };
     // A location has no `ui.locationId` to publish, so its sheet is the whole selection — which
@@ -271,6 +279,31 @@ function graphAct(slot: string | undefined): MenuEntry[] {
 }
 
 /**
+ * `app.copy` on this row's id, worded for the kind of thing it names. Every row addressed by an id
+ * an author might type somewhere else — a scene into the agent, a shot into a command, a hash into
+ * a prompt — offers one, because the id is on screen but not selectable.
+ */
+function copyId(what: string, id: string): MenuEntry {
+  return { label: `Copy ${what} id`, id: 'app.copy', props: { text: id, what: `${what} id` } };
+}
+
+/**
+ * What a row's picture offers: approval, or taking one back. Only ever one of the two, since the
+ * other would be refused, and a menu that lists both makes the author read a refusal to find out
+ * which. `gate.approve` and `art.promote` stay on the approving side, where each declares its own
+ * refusal for the kinds it is not for.
+ */
+function approvalActs(hash: string, approved: boolean): MenuEntry[] {
+  if (approved)
+    return [{ label: 'Un-approve', id: 'asset.unapprove', props: { hash }, form: true }];
+  return [
+    { label: 'Accept', id: 'asset.accept', props: { hash } },
+    { label: 'Approve as a portrait…', id: 'gate.approve', props: { hash }, form: true },
+    { label: 'Promote to a plate…', id: 'art.promote', props: { hash }, form: true },
+  ];
+}
+
+/**
  * These entries appear wherever the story is right-clicked, from the branch that heads it and
  * from any scene under it. A scene's own acts sit above these, so the scene menu ends up a
  * superset: the same two commands, in the same words, wherever the pointer was.
@@ -310,6 +343,7 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { target: `location:${key}` },
           form: true,
         },
+        copyId('location', key),
         ...(node.path ? [openSheet(node.path)] : []),
       ];
     case 'character':
@@ -326,10 +360,21 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { target: `character:${key}` },
           form: true,
         },
+        copyId('character', key),
         ...(node.path ? [openSheet(node.path)] : []),
       ];
     case 'wikidir':
       return wikiCreate();
+    // Running and deleting open as forms, so the palette can quote the estimate and take a
+    // confirmation before anything is spent or lost
+    case 'graph':
+      return [
+        { label: 'What would a run cost?', id: 'gengraph.estimate', props: { slug: key } },
+        { label: 'Run this graph…', id: 'gengraph.run', props: { slug: key }, form: true },
+        { label: MENU_SEP, id: MENU_SEP },
+        copyId('graph', key),
+        { label: 'Delete this graph…', id: 'gengraph.delete', props: { slug: key }, form: true },
+      ];
     // The second entry is a form: `agent.run` is handed a first sentence to edit rather than a turn
     // already sent. The skill is named in that sentence, which is how the agent finds it —
     // `discover_skills` already lists them, so nothing else needs to travel
@@ -346,18 +391,17 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { input: `Edit the "${node.label}" skill: ` },
           form: true,
         },
+        copyId('skill', key),
       ];
-    // Every act is offered and each command declares its own refusal: `asset.accept` names
-    // `gate.approve` for a portrait and `art.promote` for a concept, and those two refuse
-    // everything else. There is no 'reject', because rejecting a candidate is approving another
+    // There is no 'reject' among the approving acts, because rejecting a candidate is approving
+    // another
     case 'asset':
       return [
         { label: 'Regenerate…', id: 'asset.regenerate', props: { hash: key }, form: true },
-        { label: 'Accept', id: 'asset.accept', props: { hash: key } },
-        { label: 'Approve as a portrait…', id: 'gate.approve', props: { hash: key }, form: true },
-        { label: 'Promote to a plate…', id: 'art.promote', props: { hash: key }, form: true },
+        ...approvalActs(key, node.approved === true),
         ...graphAct(node.slot),
         { label: MENU_SEP, id: MENU_SEP },
+        copyId('asset', key),
         {
           label: 'Open in the Asset editor',
           id: 'view.open',
@@ -373,11 +417,23 @@ export function menuFor(node: DocNode): MenuEntry[] {
         { label: 'Adopt an asset for this…', id: 'asset.adopt', props: { slot: key }, form: true },
         ...graphAct(key),
         { label: MENU_SEP, id: MENU_SEP },
+        copyId('slot', key),
         { label: 'Run pipeline…', id: 'pipeline.run', form: true },
       ];
+    // The agent entry is a form for the same reason the skill one is: `agent.run` is handed a
+    // first sentence to edit rather than a turn already sent, so the author says what to change
+    // before anything is spent
     case 'scene':
       return [
         { label: 'Assign line ids', id: 'story.assignLineIds', props: { scene: key } },
+        {
+          label: 'Edit in the agent…',
+          id: 'agent.run',
+          props: { input: `edit ${key} ` },
+          form: true,
+        },
+        { label: MENU_SEP, id: MENU_SEP },
+        copyId('scene', key),
         { label: MENU_SEP, id: MENU_SEP },
         ...storyActs(),
       ];
@@ -396,6 +452,13 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { scene: sceneId, shot: shotId },
           form: true,
         },
+        // The frame the storyboard recorded, where there is one, so the picture a shot stands for
+        // is approvable from the row that names it
+        ...(node.hash
+          ? [{ label: MENU_SEP, id: MENU_SEP }, ...approvalActs(node.hash, node.approved === true)]
+          : []),
+        { label: MENU_SEP, id: MENU_SEP },
+        copyId('shot', shotId),
       ];
     }
     // A branch heading is where an author reaches for "another one of these", so each offers what
@@ -411,6 +474,8 @@ export function menuFor(node: DocNode): MenuEntry[] {
           return [newSheet('location', 'New location sheet…')];
         case 'wiki':
           return wikiCreate();
+        case 'graphs':
+          return [{ label: 'New generation graph…', id: 'gengraph.create', form: true }];
         // Two ways to get a skill, and both are forms: the menu can supply neither a name nor a
         // sentence. This is the always-reachable one — the branch is drawn even when empty
         // (`doctree.ts` in main), so the first skill a project ever gets starts here.
@@ -515,6 +580,8 @@ export function nodeIsSelected(node: DocNode, selection: Selection): boolean {
       return selection.docPath !== '' && selection.docPath === node.path;
     case 'asset':
       return selection.assetHash !== '' && selection.assetHash === key;
+    case 'graph':
+      return selection.graphSlug !== '' && selection.graphSlug === key;
     default:
       return false;
   }

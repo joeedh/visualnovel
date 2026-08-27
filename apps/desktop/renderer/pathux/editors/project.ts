@@ -67,7 +67,7 @@ export class ProjectEditor extends VnEditor {
       'The sentence every image prompt opens with. Applying it re-keys every image task.';
     this.styleBox.addEventListener('input', () => this.touched());
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a sentence.
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     this.styleBox.addEventListener('keydown', (event) => event.stopPropagation());
     this.warn = el('div', 'pj-warn') as HTMLDivElement;
     body.append(this.styleBox, this.warn);

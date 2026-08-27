@@ -1,4 +1,5 @@
 import { AreaFlags, Menu, createMenu, type Container, type Label, type MenuTemplate } from 'pathux';
+import { TEXT_MODELS } from '@vn/types';
 import { isLive } from '../../api.js';
 import {
   EDITOR_IDS,
@@ -19,6 +20,7 @@ import {
   quit,
   report,
   say,
+  setModel,
   toggleMode,
 } from '../bridge.js';
 import { pickPaneToClose } from '../closepane.js';
@@ -266,10 +268,10 @@ export class VnHeaderEditor extends VnEditor {
     this.bar.clear();
     this.bar.menu('VN STUDIO', this.appMenu()).description =
       'Open, create and export a project, and everything that acts on the workspace as a whole.';
-    this.bar.menu('View', this.viewMenu()).description =
-      'Split and close panes, and switch between the saved window layouts.';
     this.bar.menu('Edit', this.editMenu()).description =
       'Undo and redo, and the one act that approves and renders the art in a single pass.';
+    this.bar.menu('View', this.viewMenu()).description =
+      'Split and close panes, and switch between the saved window layouts.';
     this.bar.menu('Help', this.helpMenu()).description =
       'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.';
     this.badge(`project ${ui.projectTitle || '—'}`, true);
@@ -298,7 +300,7 @@ export class VnHeaderEditor extends VnEditor {
           : 'List what validation says is wrong with this project';
     }
 
-    this.badge(ui.model, false, 'current agent model - set in convo tab');
+    this.modelMenu();
     this.retryBadge();
     this.badge(
       isLive ? 'live' : 'preview',
@@ -380,6 +382,25 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
+   * The model the agent answers with, as a menu rather than a badge. The conversation editor
+   * offers the same list; both go through `setModel`, so either one switches the other.
+   */
+  private modelMenu(): void {
+    // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
+    // `item[5]` for any row longer than four and would otherwise file the callback under undefined.
+    const rows: MenuTemplate = TEXT_MODELS.map((id) => [
+      id,
+      () => void setModel(id),
+      undefined,
+      undefined,
+      `Answer with ${id} from the next turn on.`,
+      id,
+    ]) as MenuTemplate;
+    const menu = this.bar.menu(this.ui.model || 'model…', rows);
+    menu.description = 'Which model the agent answers with. Switching takes effect next turn.';
+  }
+
+  /**
    * The retry counter, beside the model it is retrying. Drawn only while a retry is in flight.
    * It is a badge rather than a control: the author already answered the card that started the
    * retry, and the Stop button the turn already has is the way to end it early.
@@ -432,7 +453,7 @@ export class VnHeaderEditor extends VnEditor {
       {
         name: 'Command Palette…',
         callback: () => openPalette(),
-        hotkey: '/',
+        hotkey: 'Ctrl+Shift+P',
         tooltip: 'Search every command by name and fill in its arguments',
       },
       Menu.SEP,

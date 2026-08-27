@@ -48,6 +48,12 @@ export interface DocTreeInput {
    */
   boundGraphs?: ReadonlyMap<string, string>;
   /**
+   * The project's generation graphs, if the caller read them. Absent leaves the branch out, which
+   * is what a caller that never enumerated any wants; an empty array draws nothing either, since a
+   * project with no graph has nothing to head.
+   */
+  graphs?: readonly GraphEntry[];
+  /**
    * The project's skills, if the caller looked for them. An empty array is not the same as absent:
    * undefined leaves the branch out entirely (which is what a caller that knows nothing about
    * skills wants), while an empty array draws an empty heading on purpose — see
@@ -71,6 +77,19 @@ export interface SkillEntry {
   file: string;
   /** Whether a person has given it a script to run. */
   script: boolean;
+}
+
+/**
+ * One generation graph, as the tree needs it. Deliberately not `GraphSummary`, which this module
+ * cannot import without pulling git and `@vn/gengraph`'s filesystem half into a pure projection.
+ */
+export interface GraphEntry {
+  /** Identifies the graph everywhere else, and travels in `ui.graphSlug`. */
+  slug: string;
+  /** Its document, workspace-relative with `/` separators. */
+  file: string;
+  /** Why it cannot be opened, where something is wrong with the file. */
+  problem?: string;
 }
 
 /** Workspace-relative, `/`-separated: these are shown to a human and shipped over IPC. */
@@ -120,6 +139,13 @@ const ASSET_KIND_LABELS: Record<AssetKind, string> = {
 
 function storyBranch(input: DocTreeInput, cap: number): DocNode {
   const files = new Map(input.inputs.sceneDocs.map((d) => [d.id, relPath(input.root, d.file)]));
+  const byHash = new Map(input.manifest.map((a) => [a.hash, a]));
+  // A shot row carries its frame's approval so its menu can offer the one act that would not be
+  // refused, the same way an asset row's does
+  const frameApproved = (hash: string | undefined): boolean => {
+    const asset = hash === undefined ? undefined : byHash.get(hash);
+    return asset !== undefined && assetApproved(asset, input.model);
+  };
   const scenes = [...input.model.scenes.values()].map((scene) => {
     const shots = input.shots.get(scene.id);
     const children =
@@ -130,7 +156,11 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
             shots.map((s) =>
               node(`shot:${scene.id}/${s.id}`, 'shot', s.id, {
                 badge: s.framing,
+                // A shot is an address a graph can draw, so its row names the graph the way a slot
+                // row does, and an open Gen Graph pane follows the click to it.
+                ...boundGraphOf(input, `shot:${scene.id}/${s.id}`),
                 ...(s.image ? { hash: s.image } : {}),
+                ...(frameApproved(s.image) ? { approved: true } : {}),
               }),
             ),
             cap,
@@ -284,6 +314,7 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   const row = (a: Asset, over: Partial<DocNode> = {}): DocNode =>
     node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
       ...(stale.has(a.hash) ? { badge: 'stale' } : a.accepted ? { badge: 'accepted' } : {}),
+      ...(assetApproved(a, input.model) ? { approved: true } : {}),
       ...over,
     });
 
@@ -388,6 +419,7 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
   if (!slots) return undefined;
 
   const byHash = new Map(input.manifest.map((a) => [a.hash, a]));
+  const stale = driftedImages(input);
   const waiting: DocNode[] = [];
   const unrendered: DocNode[] = [];
   const seen = new Set<string>();
@@ -412,8 +444,12 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
     }
     for (const hash of slot.candidates) {
       const asset = byHash.get(hash);
-      // One row per picture: a sheet bound to two outfits is still one thing to approve.
-      if (!asset || seen.has(hash) || assetApproved(asset, input.model)) continue;
+      // One row per picture: a sheet bound to two outfits is still one thing to approve. A
+      // drifted one is left to the Stale branch: the prose it illustrates has moved since it was
+      // drawn, so approving it would bless a picture of something the scene no longer says.
+      if (!asset || seen.has(hash) || stale.has(hash) || assetApproved(asset, input.model)) {
+        continue;
+      }
       seen.add(hash);
       waiting.push(
         node(`asset:${hash}`, 'asset', assetLabelOf(input, asset), {
@@ -440,6 +476,71 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
       ...group('unapproved:waiting', 'Awaiting approval', waiting),
       ...group('unapproved:unrendered', 'Not yet rendered', unrendered),
     ],
+  });
+}
+
+/**
+ * The frames whose scene has moved on since they were drawn, as a branch of their own. They are
+ * left out of Unapproved because the act they are waiting for is a redraw rather than approval,
+ * and out of the reader's way in Assets because a drifted picture is the one kind of stale a
+ * glance at a thumbnail cannot catch.
+ *
+ * The rows reuse the `asset:<hash>` ids the Assets branch uses, so selection and the right-click
+ * menu need nothing new. Ordered by name, since drift has no order of its own.
+ */
+function staleBranch(input: DocTreeInput, cap: number): DocNode | undefined {
+  const stale = driftedImages(input);
+  if (stale.size === 0) return undefined;
+  const rows = input.manifest
+    .filter((a) => stale.has(a.hash))
+    .map((a) =>
+      node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
+        badge: 'stale',
+        ...(assetApproved(a, input.model) ? { approved: true } : {}),
+        note: 'The prose this illustrates has changed since it was drawn — regenerate it.',
+      }),
+    )
+    .sort((a, b) => BY_LABEL.compare(a.label, b.label));
+  return node('branch:stale', 'branch', `Stale assets (${rows.length})`, {
+    children: capped('branch:stale', rows, cap),
+  });
+}
+
+/**
+ * The generation graphs the project holds, each headed by the slots it draws. A graph is the one
+ * thing under `vngen/` an author edits directly, so it needs a row of its own: the slot rows
+ * elsewhere reach a graph only where a slot is bound, which leaves a half-wired graph unreachable.
+ *
+ * The children are slot rows, with the same ids the Unapproved branch writes, so selection and the
+ * right-click menu work here with nothing added. A graph claiming no slot draws no twisty, which is
+ * what says it is not wired up yet.
+ */
+function graphBranch(input: DocTreeInput, cap: number): DocNode | undefined {
+  const graphs = input.graphs;
+  if (!graphs || graphs.length === 0) return undefined;
+
+  const drawn = new Map<string, string[]>();
+  for (const [key, slug] of input.boundGraphs ?? []) {
+    drawn.set(slug, [...(drawn.get(slug) ?? []), key]);
+  }
+
+  const rows = graphs.map((graph) => {
+    const slots = (drawn.get(graph.slug) ?? []).sort((a, b) => BY_LABEL.compare(a, b));
+    const children = slots.map((key) =>
+      node(`slot:${key}`, 'slot', input.slots?.nodes.get(key)?.label ?? key, {
+        boundGraph: graph.slug,
+        note: `Drawn by the ${graph.slug} generation graph.`,
+      }),
+    );
+    return node(`graph:${graph.slug}`, 'graph', graph.slug, {
+      path: graph.file,
+      ...(graph.problem ? { badge: 'unreadable', note: graph.problem } : {}),
+      ...(children.length > 0 ? { children: capped(`graph:${graph.slug}`, children, cap) } : {}),
+    });
+  });
+
+  return node('branch:graphs', 'branch', 'Generation graphs', {
+    children: capped('branch:graphs', rows, cap),
   });
 }
 
@@ -521,13 +622,21 @@ export function buildDocTree(input: DocTreeInput): DocTree {
   // Skills sit with the other authored input, after Wiki and before Unapproved, so that nothing
   // comes between Unapproved and Assets
   const skills = skillsBranch(input, cap);
+  // Beside Skills for the same reason: both are authored inputs that live outside the story, and
+  // neither belongs between Unapproved and Assets
+  const graphs = graphBranch(input, cap);
+  const stale = staleBranch(input, cap);
   const roots = [
     storyBranch(input, cap),
     entityBranch(input, 'character'),
     entityBranch(input, 'location'),
     wikiBranch(input),
     ...(skills ? [skills] : []),
+    ...(graphs ? [graphs] : []),
     ...(unapproved ? [unapproved] : []),
+    // Stale sits between them for the same reason Unapproved does: both are views of the nodes
+    // Assets holds, and both are lists of work still owed
+    ...(stale ? [stale] : []),
     assetBranch(input, cap),
   ];
 

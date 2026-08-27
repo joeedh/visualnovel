@@ -148,14 +148,21 @@ describe('the approve_assets tool', () => {
     assets: Approvable[],
     triage: ApprovalTriage,
   ): ApprovalControl & {
-    approved: string[];
+    done: string[];
+    undone: string[];
   } {
     const it = {
-      approved: [] as string[],
+      done: [] as string[],
+      undone: [] as string[],
       list: () => Promise.resolve(assets),
       approve: (item: Approvable) => {
-        it.approved.push(item.hash);
+        it.done.push(item.hash);
         return Promise.resolve({ ok: true, message: `Accepted ${item.hash.slice(0, 8)}.` });
+      },
+      approved: () => Promise.resolve(assets),
+      unapprove: (item: Approvable) => {
+        it.undone.push(item.hash);
+        return Promise.resolve({ ok: true, message: `Un-accepted ${item.hash.slice(0, 8)}.` });
       },
       // Answering `null` puts the offline matcher in charge, so the fixed `triage` is injected
       // by handing back a backend that replies with it.
@@ -184,7 +191,7 @@ describe('the approve_assets tool', () => {
       const result = await run(ctx);
       expect(result.ok).toBe(false);
       expect(result.output).toContain('nobody is here to confirm');
-      expect(approval.approved).toEqual([]);
+      expect(approval.done).toEqual([]);
     } finally {
       await cleanup();
     }
@@ -201,7 +208,7 @@ describe('the approve_assets tool', () => {
       const result = await run(ctx);
       expect(result.ok).toBe(false);
       expect(result.output).toContain('You did not ask me to approve anything');
-      expect(approval.approved).toEqual([]);
+      expect(approval.done).toEqual([]);
     } finally {
       await cleanup();
     }
@@ -227,7 +234,7 @@ describe('the approve_assets tool', () => {
       expect(result.ok).toBe(true);
       // Approval follows the listed order rather than the order the triage model named them in.
       // Upstream first is what lets one call approve a plate and the frame drawn from it.
-      expect(approval.approved).toEqual([PORTRAIT.hash, PLATE.hash]);
+      expect(approval.done).toEqual([PORTRAIT.hash, PLATE.hash]);
       expect(cards[0]).toContain('Approve 2 pictures?');
     } finally {
       await cleanup();
@@ -245,7 +252,7 @@ describe('the approve_assets tool', () => {
       const result = await run(ctx);
       expect(result.ok).toBe(true);
       expect(result.output).toContain('you said no');
-      expect(approval.approved).toEqual([]);
+      expect(approval.done).toEqual([]);
     } finally {
       await cleanup();
     }
@@ -270,7 +277,7 @@ describe('the approve_assets tool', () => {
     try {
       const result = await run(ctx);
       expect(result.ok).toBe(true);
-      expect(approval.approved).toEqual([AIKO.hash]);
+      expect(approval.done).toEqual([AIKO.hash]);
       expect(cards[0]).toContain('Held back');
       expect(cards[0]).toContain('the sketch it was drawn from is unapproved');
     } finally {
@@ -290,7 +297,7 @@ describe('the approve_assets tool', () => {
       const result = await run(ctx);
       expect(result.ok).toBe(false);
       expect(result.output).toContain('waiting on something upstream');
-      expect(approval.approved).toEqual([]);
+      expect(approval.done).toEqual([]);
     } finally {
       await cleanup();
     }
@@ -310,5 +317,88 @@ describe('the approve_assets tool', () => {
     } finally {
       await cleanup();
     }
+  });
+
+  describe('unapprove_assets, the other direction', () => {
+    const unapproveTool = registry.get('unapprove_assets');
+    if (!unapproveTool) throw new Error('no unapprove_assets tool');
+    const undo = (ctx: ToolContext): ReturnType<Tool['run']> => unapproveTool.run({}, ctx);
+
+    it('refuses, and un-approves nothing, when the author did not ask', async () => {
+      const approval = host(ALL, { asked: false, reason: 'you asked for a redraw.', hashes: [] });
+      const { ctx, cleanup } = await tempCtx({
+        approval,
+        said: () => ['redraw the plate'],
+        confirm: () => Promise.resolve(true),
+      });
+      try {
+        const result = await undo(ctx);
+        expect(result.ok).toBe(false);
+        expect(result.output).toContain('You did not ask me to un-approve anything');
+        expect(approval.undone).toEqual([]);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('shows the list, then un-approves it in the order it was listed', async () => {
+      const approval = host(ALL, {
+        asked: true,
+        reason: 'you said "un-approve the art"',
+        hashes: [PLATE.hash, PORTRAIT.hash],
+      });
+      const cards: string[] = [];
+      const { ctx, cleanup } = await tempCtx({
+        approval,
+        said: () => ['un-approve the art'],
+        confirm: (message) => {
+          cards.push(message);
+          return Promise.resolve(true);
+        },
+      });
+      try {
+        const result = await undo(ctx);
+        expect(result.ok).toBe(true);
+        expect(approval.undone).toEqual([PORTRAIT.hash, PLATE.hash]);
+        expect(cards[0]).toContain('Un-approve 2 pictures?');
+        expect(cards[0]).toContain('Aiko — portrait — back to the character gate');
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('writes nothing when the author says no to the card', async () => {
+      const approval = host(ALL, { asked: true, reason: 'r', hashes: [AIKO.hash] });
+      const { ctx, cleanup } = await tempCtx({
+        approval,
+        said: () => ['un-approve it'],
+        confirm: () => Promise.resolve(false),
+      });
+      try {
+        const result = await undo(ctx);
+        expect(result.ok).toBe(true);
+        expect(approval.undone).toEqual([]);
+      } finally {
+        await cleanup();
+      }
+    });
+  });
+});
+
+// The two directions share one matcher, and "un-approve" spells "approve" inside itself, so the
+// words each direction answers to are pinned rather than left to the regex to get right.
+describe('the offline matcher, in both directions', () => {
+  it('does not read a request to un-approve as permission to approve', () => {
+    const triage = offlineTriage({ said: ['un-approve the plate'], assets: ALL });
+    expect(triage.asked).toBe(false);
+  });
+
+  it('reads one, and says no to a redraw', () => {
+    expect(offlineTriage({ said: ['unapprove it'], assets: ALL }, 'unapprove').asked).toBe(true);
+    expect(offlineTriage({ said: ['redraw it'], assets: ALL }, 'unapprove').asked).toBe(false);
+  });
+
+  it('does not read a plain approval as permission to take one back', () => {
+    expect(offlineTriage({ said: ['approve it'], assets: ALL }, 'unapprove').asked).toBe(false);
   });
 });

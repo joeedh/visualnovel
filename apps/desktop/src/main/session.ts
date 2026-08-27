@@ -49,6 +49,7 @@ import {
   AssetStore,
   ProjectPaths,
   checkDocWrite,
+  clearCharacterApproval,
   conventionalKind,
   deleteShots,
   entityDoc,
@@ -59,6 +60,7 @@ import {
   readDocFile,
   readSceneChunks,
   readShots,
+  removeApprovedPortrait,
   setCharacterApproval,
   taggedKind,
   writeApprovedPortrait,
@@ -323,7 +325,7 @@ import type {
 } from '../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../shared/apikeys.js';
 import { reorderApprovals, type ApprovalQueue } from './approvals.js';
-import { graphSlugs, nodeIdOf, readGraph, type GraphSlug } from './graphs.js';
+import { graphPath, graphSlugs, nodeIdOf, readGraph, type GraphSlug } from './graphs.js';
 import { readResource } from './resources.js';
 import { notify } from './notifications.js';
 import {
@@ -339,7 +341,13 @@ import { narrowTask } from './reviews.js';
 import { labelAssets, labelContext } from './assetlabel.js';
 import { deriveChunks, derivePrompt } from './assetprompt.js';
 import { applyPromptEdit, type PromptEdit } from './promptedit.js';
-import { DEFAULT_CAP, buildDocTree, fileTree, type SkillEntry } from './doctree.js';
+import {
+  DEFAULT_CAP,
+  buildDocTree,
+  fileTree,
+  type GraphEntry,
+  type SkillEntry,
+} from './doctree.js';
 import { storyGraphOf } from './storygraph.js';
 import { renameInText } from './rename.js';
 import { confirmDetail } from './toolconfirm.js';
@@ -526,6 +534,21 @@ function suspensionsOf(
     assets: project.store.manifest(),
     shots,
   });
+}
+
+/**
+ * The frames whose scene has moved on since they were drawn. Re-derived on every call, like every
+ * other reading of drift, and the same walk `doctree.ts` makes for the Stale branch — so what the
+ * tree files as stale and what the approval queue leaves out cannot disagree.
+ */
+function driftedFrames(model: ProjectModel, shots: Map<string, Shot[] | null>): Set<string> {
+  const out = new Set<string>();
+  for (const scene of model.scenes.values()) {
+    for (const shot of shots.get(scene.id) ?? []) {
+      if (shot.image !== undefined && driftOf(scene, shot) === 'drifted') out.add(shot.image);
+    }
+  }
+  return out;
 }
 
 /**
@@ -1220,6 +1243,8 @@ export class WorkspaceSession {
       approval: {
         list: () => this.approvable(),
         approve: (item) => this.approveOne(item),
+        approved: () => this.approvedAssets(),
+        unapprove: (item) => this.unapproveOne(item),
         triage: () => this.triageBackend(),
       },
       // The capability `vnauthor` does not have: the same two calls `asset.regenerate` makes, so
@@ -2199,6 +2224,16 @@ export class WorkspaceSession {
     return { url: url.href };
   }
 
+  /**
+   * Put `text` on the system clipboard. Throws where the build has no clipboard, so a caller
+   * reports the failure rather than claiming a copy that never happened.
+   */
+  copyText(text: string): void {
+    const write = this.deps.writeClipboard;
+    if (!write) throw new Error('This build has no clipboard.');
+    write(text);
+  }
+
   /** Portrait candidates for a character at the approval gate (from the manifest). */
   async gateCandidates(characterId: string): Promise<GateCandidate[]> {
     const project = await loadProject(this.dir);
@@ -2276,6 +2311,7 @@ export class WorkspaceSession {
     });
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
+    const drifted = driftedFrames(project.model, shots);
     const out: Approvable[] = [];
     const seen = new Set<string>();
     for (const key of slots.order) {
@@ -2284,8 +2320,12 @@ export class WorkspaceSession {
       for (const hash of slot.candidates) {
         const asset = byHash.get(hash);
         // One row per picture, as the tree does it: a sheet bound to two outfits is still one
-        // thing to approve, and the first slot that names it is the one it is listed under.
-        if (!asset || seen.has(hash) || assetApproved(asset, project.model)) continue;
+        // thing to approve, and the first slot that names it is the one it is listed under. A
+        // drifted frame is left out: the prose it illustrates has moved since it was drawn, so
+        // what it is waiting for is a redraw rather than approval.
+        if (!asset || seen.has(hash) || drifted.has(hash) || assetApproved(asset, project.model)) {
+          continue;
+        }
         seen.add(hash);
         const label = names.get(hash) ?? hash;
         const characterId = asset.satisfies[0]?.characterId;
@@ -2314,6 +2354,48 @@ export class WorkspaceSession {
   }
 
   /**
+   * Every picture that is approved right now, downstream first — the reverse of {@link approvable}
+   * in both the filter and the order, because taking approval back has to run the other way: a
+   * frame stops being accepted before the plate it was drawn from does.
+   */
+  async approvedAssets(): Promise<Approvable[]> {
+    const project = await loadProject(this.dir);
+    const manifest = project.store.manifest();
+    const labels = labelContext(project.model, project.graph);
+    const shots = await readAllShots(project);
+    const slots = buildSlotGraph({
+      ...labels,
+      assets: manifest,
+      shots,
+      config: project.config,
+      graph: project.graph,
+    });
+    const names = labelAssets(manifest, labels);
+    const byHash = new Map(manifest.map((a) => [a.hash, a]));
+    const out: Approvable[] = [];
+    const seen = new Set<string>();
+    for (const key of [...slots.order].reverse()) {
+      const slot = slots.nodes.get(key);
+      if (!slot) continue;
+      for (const hash of slot.candidates) {
+        const asset = byHash.get(hash);
+        if (!asset || seen.has(hash) || !assetApproved(asset, project.model)) continue;
+        seen.add(hash);
+        const characterId = asset.satisfies[0]?.characterId;
+        out.push({
+          hash,
+          kind: asset.kind,
+          label: names.get(hash) ?? hash,
+          slot: slot.label,
+          door: asset.kind === 'portrait' ? 'gate' : 'accept',
+          ...(characterId === undefined ? {} : { characterId }),
+        });
+      }
+    }
+    return out;
+  }
+
+  /**
    * The same list, ordered for reading rather than for approving: whatever `previousOrder` has
    * not seen goes on top. The caller owns `previousOrder` because it outlives the session — it is
    * persisted per project, so the list survives a restart.
@@ -2332,6 +2414,12 @@ export class WorkspaceSession {
       };
     }
     return this.approveCharacter(item.characterId, item.hash);
+  }
+
+  /** Take approval back off one `Approvable`, through whichever door approved it. */
+  async unapproveOne(item: Approvable): Promise<{ ok: boolean; message: string }> {
+    const result = await this.unapproveAsset(item.hash);
+    return { ok: result.ok, message: result.message };
   }
 
   /**
@@ -2551,6 +2639,95 @@ export class WorkspaceSession {
     const ctx = { ...labelContext(project.model, project.graph), assets };
     await project.store.accept(hash, asset ? supersededBy(asset, ctx) : []);
     return { ok: true, message: `Accepted ${hash.slice(0, 8)}.` };
+  }
+
+  /**
+   * Which character a portrait was drawn for, from its widest art-notes rung. The same lookup
+   * `previewAccept` uses to name `gate.approve` in its refusal.
+   */
+  private portraitOwner(info: AssetInfo): string | undefined {
+    return info.rungs[0]?.target.split(':')[1];
+  }
+
+  /**
+   * Answers whether taking approval back off this asset is worth doing. A concept and a reference
+   * are refused by name, for the reason {@link previewAccept} refuses them, since neither is ever
+   * approved and there is nothing to take back. An asset that is not the accepted one is refused
+   * too, since un-approving is about the answer a slot has rather than about a losing take.
+   *
+   * A portrait goes through the P3 gate, so its sentence says what else comes back out with it.
+   */
+  async previewUnapprove(hash: string): Promise<{ ok: boolean; message: string }> {
+    const info = await this.assetInfo(hash);
+    if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.` };
+    if (info.kind === 'concept' || info.kind === 'reference') {
+      return {
+        ok: false,
+        message: `${info.label} is a ${info.kind}; nothing ever approved it, so there is nothing to take back.`,
+      };
+    }
+    if (info.kind === 'portrait') {
+      const who = this.portraitOwner(info);
+      if (!who) return { ok: false, message: `${info.label} names no character.` };
+      const project = await loadProject(this.dir);
+      const character = project.model.characters.get(who);
+      if (!character || !isApproved(character)) {
+        return { ok: false, message: `${who} has no approved portrait.` };
+      }
+      if (character.approvedPortrait !== hash) {
+        return { ok: false, message: `${who}'s approved portrait is a different take.` };
+      }
+      return {
+        ok: true,
+        message: `Would put ${who} back at the gate, dropping approved.png and the hash in their sheet.`,
+      };
+    }
+    if (!info.accepted) return { ok: false, message: `${info.label} is not accepted.` };
+    return { ok: true, message: `Would un-accept ${info.label}, leaving its slot unanswered.` };
+  }
+
+  /**
+   * Take approval back off an asset: the manifest flag for an ordinary one, and for a portrait
+   * the whole P3 gate — the sheet's `status:` and `approved_portrait:`, and `approved.png`.
+   *
+   * Asks {@link previewUnapprove} itself for the reason {@link acceptAsset} asks its own preview:
+   * a caller may skip the check, so the write cannot rely on one having run.
+   *
+   * The bytes are never touched. Everything drawn from what this un-approves keeps its own
+   * approval, and the slot graph reports it as blocked again until something answers the slot.
+   */
+  async unapproveAsset(hash: string): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const allowed = await this.previewUnapprove(hash);
+    if (!allowed.ok) return { ...allowed, written: [] };
+    const info = await this.assetInfo(hash);
+    if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.`, written: [] };
+    const project = await loadProject(this.dir);
+
+    if (info.kind !== 'portrait') {
+      await project.store.unaccept(hash);
+      return {
+        ok: true,
+        message: `Un-accepted ${info.label}.`,
+        written: ['vngen/build/manifest.json'],
+      };
+    }
+
+    const who = this.portraitOwner(info) ?? '';
+    const file = entityFile(project.inputs.characterDocs, who);
+    if (!file || !(await clearCharacterApproval(file))) {
+      return { ok: false, message: `No character file for "${who}".`, written: [] };
+    }
+    await removeApprovedPortrait(project.paths, who);
+    await project.store.unaccept(hash);
+    return {
+      ok: true,
+      message: `${who} is back at the approval gate.`,
+      written: [
+        `characters/${who}/character.md`,
+        `vngen/work/characters/${who}/approved.png`,
+        'vngen/build/manifest.json',
+      ],
+    };
   }
 
   /**
@@ -4054,6 +4231,7 @@ export class WorkspaceSession {
     const shots = await readAllShots(project, { reportBroken: true });
     const manifest = project.store.manifest();
     const labels = labelContext(project.model, project.graph);
+    const { graphs, bound } = await this.graphIndex();
     return buildDocTree({
       root: this.dir,
       model: project.model,
@@ -4075,28 +4253,35 @@ export class WorkspaceSession {
         config: project.config,
         graph: project.graph,
       }),
-      boundGraphs: await this.boundGraphSlugs(),
+      boundGraphs: bound,
+      graphs,
     });
   }
 
   /**
-   * Which graph draws each slot, for the tree rows the Gen Graph pane claims. This reads the
-   * graph files and nothing else, so a tree read costs no journal replay and no services. A
-   * graph that will not load is skipped silently, because `docTree` is called on every change
-   * and the load path already files a notification naming it.
+   * The project's graphs and which slot each one draws, for the tree's own branch and for the
+   * rows the Gen Graph pane claims. One pass over the files and nothing else, so a tree read
+   * costs no journal replay and no services. A graph that will not load still gets a row, with
+   * the reason on it: the branch is where an author goes to find out why.
    */
-  private async boundGraphSlugs(): Promise<Map<string, string>> {
+  private async graphIndex(): Promise<{ graphs: GraphEntry[]; bound: Map<string, string> }> {
     registerGenRuntimes();
 
     const git = openGit(this.dir);
+    const graphs: GraphEntry[] = [];
     const loaded: { slug: string; graph: GenGraph }[] = [];
     for (const slug of await graphSlugs(this.dir)) {
       const read = await readGraph(this.dir, slug, git);
+      graphs.push({
+        slug,
+        file: graphPath(this.dir, slug),
+        ...(read.ok ? {} : { problem: read.reason }),
+      });
       if (read.ok) loaded.push({ slug, graph: read.graph });
     }
 
     const { bound } = bindSlots(loaded);
-    return new Map([...bound].map(([slot, { entry }]) => [slot, entry.slug]));
+    return { graphs, bound: new Map([...bound].map(([slot, { entry }]) => [slot, entry.slug])) };
   }
 
   /**

@@ -6,7 +6,13 @@
  * where backend logic lives, and commands only add naming, typed props, and provenance.
  */
 import { CommandRegistry } from '@vn/commands';
-import { appCheckForUpdates, appKeyGuide, appOpenKeyLink, appOpenReleases } from './app.js';
+import {
+  appCheckForUpdates,
+  appCopy,
+  appKeyGuide,
+  appOpenKeyLink,
+  appOpenReleases,
+} from './app.js';
 import {
   agentClear,
   agentCompact,
@@ -32,6 +38,7 @@ import {
   assetRegenerate,
   assetReplace,
   assetSuspended,
+  assetUnapprove,
   assetUpload,
 } from './asset.js';
 import { bibleSearch } from './bible.js';
@@ -160,6 +167,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
   const registry = new CommandRegistry<CommandHost>();
   registry.registerAll([
     appCheckForUpdates,
+    appCopy,
     appKeyGuide,
     appOpenKeyLink,
     appOpenReleases,
@@ -189,6 +197,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     assetRegenerate,
     assetReplace,
     assetSuspended,
+    assetUnapprove,
     assetUpload,
     bibleSearch,
     commandCheck,

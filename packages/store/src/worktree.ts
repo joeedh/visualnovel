@@ -120,3 +120,28 @@ export async function setCharacterApproval(file: string, portraitHash: string): 
   await writeFileAtomic(file, stringifyFrontMatter(doc.data, doc.body));
   return true;
 }
+
+/**
+ * Undo {@link setCharacterApproval}: put the sheet back to `candidates` and drop the hash it
+ * pointed at. Returns false when the given file does not exist.
+ *
+ * `candidates` rather than `draft` because the portraits that were drawn are still on disk, and
+ * `draft` claims none exist. The candidate images and the manifest entries are untouched, so the
+ * same portrait can be approved again.
+ */
+export async function clearCharacterApproval(file: string): Promise<boolean> {
+  if (!(await exists(file))) return false;
+  const doc = parseFrontMatter(await fs.readFile(file, 'utf8'));
+  doc.data['status'] = 'candidates';
+  delete doc.data['approved_portrait'];
+  await writeFileAtomic(file, stringifyFrontMatter(doc.data, doc.body));
+  return true;
+}
+
+/** Remove the visible `approved.png`, if there is one. The candidates it was copied from stay. */
+export async function removeApprovedPortrait(
+  paths: ProjectPaths,
+  characterId: string,
+): Promise<void> {
+  await fs.rm(paths.approvedPortrait(characterId), { force: true });
+}

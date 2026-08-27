@@ -436,12 +436,17 @@ describe('menuFor', () => {
     expect(idsOf(node('location:cafe', 'location', { path: 'locations/cafe.md' }))).toEqual([
       'art.generate',
       'art.setNotes',
+      'app.copy',
       'view.open',
     ]);
   });
 
   it('leaves out the sheet entry for a location with no sheet of its own', () => {
-    expect(idsOf(node('location:cafe', 'location'))).toEqual(['art.generate', 'art.setNotes']);
+    expect(idsOf(node('location:cafe', 'location'))).toEqual([
+      'art.generate',
+      'art.setNotes',
+      'app.copy',
+    ]);
   });
 
   it('offers the wiki branch the three things a page can be', () => {
@@ -487,7 +492,32 @@ describe('menuFor', () => {
   it('offers the story branch the same acts a scene under it offers', () => {
     expect(idsOf(node('branch:story', 'branch'))).toEqual(['story.newScene', 'story.screenplay']);
     const scene = idsOf(node('scene:greet', 'scene', { path: 'scenes/greet.md' }));
-    expect(scene).toEqual(['story.assignLineIds', MENU_SEP, 'story.newScene', 'story.screenplay']);
+    expect(scene).toEqual([
+      'story.assignLineIds',
+      'agent.run',
+      MENU_SEP,
+      'app.copy',
+      MENU_SEP,
+      'story.newScene',
+      'story.screenplay',
+    ]);
+  });
+
+  // The agent entry hands over a first sentence naming the scene, not a turn already sent: it is a
+  // form, so the author says what to change before the turn is spent.
+  it('prefills the agent with the scene id, and copies that id on its own', () => {
+    const entries = menuFor(node('scene:greet', 'scene'));
+    expect(entries[1]).toEqual({
+      label: 'Edit in the agent…',
+      id: 'agent.run',
+      props: { input: 'edit greet ' },
+      form: true,
+    });
+    expect(entries[3]).toEqual({
+      label: 'Copy scene id',
+      id: 'app.copy',
+      props: { text: 'greet', what: 'scene id' },
+    });
   });
 
   it('offers the assets branch nothing — an asset is rendered, never authored from a name', () => {
@@ -502,9 +532,28 @@ describe('menuFor', () => {
       'gate.approve',
       'art.promote',
       MENU_SEP,
+      'app.copy',
       'view.open',
     ]);
     for (const entry of entries.slice(0, 4)) expect(entry.props).toEqual({ hash: 'a1b2c3' });
+  });
+
+  // The two directions are never offered together, because the other one would be refused and
+  // reading a refusal is a poor way to find out which act a picture has
+  it('offers one already approved the way back instead of the three ways in', () => {
+    const entries = menuFor(node('asset:a1b2c3', 'asset', { approved: true }));
+    expect(entries.map((entry) => entry.id)).toEqual([
+      'asset.regenerate',
+      'asset.unapprove',
+      MENU_SEP,
+      'app.copy',
+      'view.open',
+    ]);
+    expect(entries[1]).toMatchObject({
+      label: 'Un-approve',
+      props: { hash: 'a1b2c3' },
+      form: true,
+    });
   });
 
   // The Assets branch draws a filled slot as the picture in it, so this is the only place most
@@ -528,6 +577,7 @@ describe('menuFor', () => {
       'asset.adopt',
       'gengraph.createForSlot',
       MENU_SEP,
+      'app.copy',
       'pipeline.run',
     ]);
     for (const entry of entries.slice(0, 3)) {
@@ -540,6 +590,24 @@ describe('menuFor', () => {
     expect(entries.map((entry) => entry.props)).toEqual([
       { scene: 'greet', shot: 'greet__s1' },
       { scene: 'greet', shot: 'greet__s1' },
+      undefined,
+      { text: 'greet__s1', what: 'shot id' },
+    ]);
+  });
+
+  // A shot row stands for the frame the storyboard recorded, so the picture is approvable from the
+  // row that names it — and the row knows which of the two directions it has.
+  it('offers a shot its own frame, in whichever direction is left on it', () => {
+    const of = (approved: boolean): string[] =>
+      idsOf(node('shot:greet/greet__s1', 'shot', { hash: 'a1b2c3', approved }));
+    expect(of(false)).toContain('asset.accept');
+    expect(of(true)).toEqual([
+      'story.setCoverage',
+      'story.setOutfit',
+      MENU_SEP,
+      'asset.unapprove',
+      MENU_SEP,
+      'app.copy',
     ]);
   });
 
@@ -567,6 +635,11 @@ describe('menuFor', () => {
         id: 'agent.run',
         props: { input: 'Edit the "Continuity pass" skill: ' },
         form: true,
+      },
+      {
+        label: 'Copy skill id',
+        id: 'app.copy',
+        props: { text: 'continuity-pass', what: 'skill id' },
       },
     ]);
   });
@@ -690,6 +763,7 @@ describe('rowTitle', () => {
       asset: true,
       assetkind: true,
       slot: true,
+      graph: true,
       more: true,
     };
     for (const kind of Object.keys(kinds) as DocNodeKind[]) {

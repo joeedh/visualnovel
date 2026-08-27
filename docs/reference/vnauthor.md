@@ -204,7 +204,7 @@ whatever the mode).
 | Storyboards | `read_shots`, `set_coverage` **M**, `propose_storyboard` (costs a model call, writes nothing), `write_storyboard` **M** |
 | Art (concepts) | `list_images`, `generate_image` **M C**, `edit_image` **M C** |
 | Art (planned) | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C** |
-| Approval | `approve_assets` **M** (confirms its own list) |
+| Approval | `approve_assets` **M**, `unapprove_assets` **M** (each confirms its own list) |
 | Generation graphs | `read_asset_graph`, `edit_asset_graph` **M**, `run_asset_graph` **M** (confirms a priced run) |
 | Raw write | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`) |
 | Context | `update_context` **M**, `regenerate_context` **M** |
@@ -424,6 +424,15 @@ shown to the triage model and held back *after* it, listed under its own heading
 saying what it is waiting on — filtering it out first would make “approve everything” quietly mean
 “approve some of it”. What survives is approved in the order the host listed it, which is upstream
 first, so one call can approve a plate and the frame drawn from it.
+
+**`unapprove_assets` is the same three checks, run the other way.** The host lists what is approved
+rather than what is approvable, the triage model is given its own rule sheet keyed on the words that
+ask for approval to come back off, and the card says what each picture stops being. Two details
+differ. The order is reversed — downstream first, so a frame stops being accepted before the plate
+it was drawn from does, and nothing is left approved over an un-approved reference partway through.
+And the offline stand-in matches the un-approve words by their own pattern first, because
+"un-approve it" contains the string a naive approve matcher reads as consent. Neither direction
+touches the bytes, so the same take can be approved again.
 
 ## The archive
 

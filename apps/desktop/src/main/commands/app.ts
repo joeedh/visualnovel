@@ -60,6 +60,24 @@ export const appOpenKeyLink = define({
   },
 });
 
+export const appCopy = define({
+  id: 'app.copy',
+  title: 'Copy text to the clipboard',
+  description:
+    'Put a short piece of text — the id of a scene, a shot, an asset or a location — on your ' +
+    'system clipboard. `what` names the thing in the sentence the app reports back, so a copy ' +
+    'says which id it took.',
+  mutating: false,
+  props: {
+    text: prop.string('the text to copy'),
+    what: prop.string('what the text is, for the sentence reported back', { default: 'text' }),
+  },
+  async run({ text, what }, ctx) {
+    ctx.host.session.copyText(text);
+    return { message: `Copied ${what}: ${text}` };
+  },
+});
+
 export const appCheckForUpdates = define({
   id: 'app.checkForUpdates',
   title: 'Check for updates',

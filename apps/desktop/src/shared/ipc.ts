@@ -465,6 +465,8 @@ export type DocNodeKind =
   | 'slot'
   /** A reusable playbook under `.aiagent/skills/` — the skill itself, never the files inside it. */
   | 'skill'
+  /** A generation graph under `vngen/work/graphs/`, addressed by its slug rather than its file. */
+  | 'graph'
   | 'dir'
   | 'file'
   | 'more';
@@ -512,6 +514,14 @@ export interface DocNode {
    * concept, an upload, a base asset — carries none.
    */
   slot?: string;
+  /**
+   * Whether this row's picture is approved — accepted for its slot, or past the character gate.
+   * Set on the two rows that stand for one, `asset` and `shot`, and separate from the `accepted`
+   * badge because a drifted picture is
+   * still approved while wearing the `stale` one. The right-click menu reads it to decide whether
+   * it is offering approval or offering to take one back.
+   */
+  approved?: boolean;
   children?: DocNode[];
 }
 

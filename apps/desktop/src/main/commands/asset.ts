@@ -66,6 +66,28 @@ export const assetAccept = define({
   },
 });
 
+export const assetUnapprove = define({
+  id: 'asset.unapprove',
+  title: 'Un-approve asset',
+  description:
+    'Take approval back off this asset, leaving what it answered unanswered again. A portrait ' +
+    'goes back through the P3 gate — the character sheet’s `status:` and `approved_portrait:` ' +
+    'and `approved.png` all come back out with it — and everything else is the manifest flag ' +
+    '`asset.accept` set. The bytes are never touched, so the same take can be approved again.',
+  mutating: true,
+  // Un-approving reopens a gate a run has already passed, which is worth one confirmation
+  confirm: true,
+  props: { hash: prop.string('the asset hash to un-approve') },
+  async check({ hash }, ctx) {
+    return verdict(await ctx.host.session.previewUnapprove(hash));
+  },
+  async run({ hash }, ctx) {
+    const result = await ctx.host.session.unapproveAsset(hash);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
 export const assetUpload = define({
   id: 'asset.upload',
   title: 'Upload reference image',

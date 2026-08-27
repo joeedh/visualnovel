@@ -398,6 +398,74 @@ describe('the Unapproved branch', () => {
   });
 });
 
+describe('the Generation graphs branch', () => {
+  const graphs = [
+    { slug: 'plates', file: 'vngen/work/graphs/plates.json' },
+    { slug: 'portraits', file: 'vngen/work/graphs/portraits.json' },
+  ];
+
+  const treeWith = (over: Partial<DocTreeInput> = {}): DocNode | undefined =>
+    buildDocTree(makeInput({ graphs, ...over })).roots.find((n) => n.id === 'branch:graphs');
+
+  it('is absent for a caller that read no graphs, and for a project holding none', () => {
+    expect(buildDocTree(makeInput()).roots.map((n) => n.id)).not.toContain('branch:graphs');
+    expect(treeWith({ graphs: [] })).toBeUndefined();
+  });
+
+  it('sits with Skills, before the two branches that head Assets', () => {
+    const roots = buildDocTree(makeInput({ graphs, skills: [] })).roots;
+    expect(roots.map((n) => n.id)).toEqual([
+      'branch:story',
+      'branch:characters',
+      'branch:locations',
+      'branch:wiki',
+      'branch:skills',
+      'branch:graphs',
+      'branch:assets',
+    ]);
+  });
+
+  it('gives each graph its slug, its file and no children until a slot is bound', () => {
+    expect(treeWith()!.children).toEqual([
+      { id: 'graph:plates', kind: 'graph', label: 'plates', path: graphs[0]!.file },
+      { id: 'graph:portraits', kind: 'graph', label: 'portraits', path: graphs[1]!.file },
+    ]);
+  });
+
+  it('heads a graph with the slots it draws, using the ids the slot rows elsewhere use', () => {
+    const bound = new Map([
+      ['plate:gate/night', 'plates'],
+      ['plate:gate/day', 'plates'],
+    ]);
+    const rows = treeWith({ boundGraphs: bound })!.children!;
+    expect(rows[0]!.children).toEqual([
+      {
+        id: 'slot:plate:gate/day',
+        kind: 'slot',
+        label: 'plate:gate/day',
+        boundGraph: 'plates',
+        note: 'Drawn by the plates generation graph.',
+      },
+      {
+        id: 'slot:plate:gate/night',
+        kind: 'slot',
+        label: 'plate:gate/night',
+        boundGraph: 'plates',
+        note: 'Drawn by the plates generation graph.',
+      },
+    ]);
+    expect(rows[1]!.children).toBeUndefined();
+  });
+
+  it('still lists a graph that will not load, carrying the reason it gave', () => {
+    const broken = [{ slug: 'plates', file: 'x.json', problem: 'x.json is mid-merge' }];
+    expect(treeWith({ graphs: broken })!.children![0]).toMatchObject({
+      badge: 'unreadable',
+      note: 'x.json is mid-merge',
+    });
+  });
+});
+
 describe('the Skills branch', () => {
   const skill = (over: Partial<SkillEntry> = {}): SkillEntry => ({
     id: 'continuity-pass',

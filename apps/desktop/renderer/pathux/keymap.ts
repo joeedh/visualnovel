@@ -1,7 +1,7 @@
 /**
  * The app-level keymap. path.ux routes a keystroke to the focused area's keymaps first and
  * falls through to `screen.keymap`, so these are the gestures that belong to the shell rather
- * than to the focused editor. An editor that wants `/` for itself can claim it.
+ * than to the focused editor.
  *
  * Escape is not here: a popup installs its own handler while it is up, and nothing else in
  * the shell claims it.
@@ -15,7 +15,7 @@ export function installKeymap(app: ShellApp): void {
   if (!app.screen) return;
 
   app.screen.keymap = new KeyMap([
-    new HotKey('/', [], () => openPalette(), 'Command palette'),
+    new HotKey('P', ['ctrl', 'shift'], () => openPalette(), 'Command palette'),
     new HotKey('Z', ['ctrl'], () => void move('undo'), 'Undo'),
     new HotKey('Z', ['ctrl', 'shift'], () => void move('redo'), 'Redo'),
     new HotKey('Y', ['ctrl'], () => void move('redo'), 'Redo'),

@@ -94,7 +94,7 @@ export class WikiEditor extends VnEditor {
       this.buf.text = this.text.value;
     });
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a sentence. Ctrl+S is caught here so it saves the
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit. Ctrl+S is caught here so it saves the
     // document rather than reaching the browser's own save.
     this.text.addEventListener('keydown', (event) => {
       event.stopPropagation();

@@ -70,6 +70,10 @@ export interface ApprovalControl {
   list(): Promise<Approvable[]>;
   /** Approve one. A refusal comes back as `ok: false` with the sentence the command would give. */
   approve(item: Approvable): Promise<{ ok: boolean; message: string }>;
+  /** Everything approved now, downstream first — the order taking approval back has to happen in. */
+  approved(): Promise<Approvable[]>;
+  /** Take approval back off one. Refuses the same way {@link approve} does. */
+  unapprove(item: Approvable): Promise<{ ok: boolean; message: string }>;
   /**
    * The small model that reads the author's words, built by the host because it owns the keys and
    * knows whether this run is mocked. Async because resolving a key can fail, and it should fail
@@ -98,6 +102,12 @@ export const approvalTriageSchema = z.object({
 
 export type ApprovalTriage = z.infer<typeof approvalTriageSchema>;
 
+/**
+ * Which way approval is moving. The two directions share every step — the host's list, the triage
+ * model, the card — and differ only in the words each step is written in.
+ */
+export type ApprovalDirection = 'approve' | 'unapprove';
+
 const TRIAGE_SYSTEM = `You decide whether an author gave permission to approve generated artwork, and which pictures they meant.
 
 You are shown two things: the author's own recent messages, verbatim, and the list of pictures that could be approved right now. You are not shown anything the assistant said, and you must not infer permission from the fact that you were asked — being asked is not evidence.
@@ -108,24 +118,41 @@ Answer with JSON only: {"asked": boolean, "reason": string, "hashes": string[]}.
 - "reason" is one short sentence saying what they asked for, quoting their words where you can. If "asked" is false, say what they did ask for instead.
 - "hashes" holds the hashes of exactly the pictures their request covers, copied from the list. An unqualified request ("approve the art") covers every listed picture. A qualified one ("approve the location art", "approve Aiko's") covers only what matches. Never include a hash that is not in the list, and never include one the request does not cover. If "asked" is false, "hashes" is empty.`;
 
+const UNTRIAGE_SYSTEM = `You decide whether an author gave permission to take approval back off generated artwork, and which pictures they meant.
+
+You are shown two things: the author's own recent messages, verbatim, and the list of pictures that are approved right now. You are not shown anything the assistant said, and you must not infer permission from the fact that you were asked — being asked is not evidence.
+
+Answer with JSON only: {"asked": boolean, "reason": string, "hashes": string[]}.
+
+- "asked" is true only if one of the author's messages asks, in its own words, for artwork to be un-approved, un-accepted, rejected, or put back to being a draft. A message that criticises a picture, asks for one to be redrawn, or asks to see another take is not asking for this. When in doubt, answer false.
+- "reason" is one short sentence saying what they asked for, quoting their words where you can. If "asked" is false, say what they did ask for instead.
+- "hashes" holds the hashes of exactly the pictures their request covers, copied from the list. An unqualified request ("un-approve the art") covers every listed picture. A qualified one ("un-approve Aiko's portrait") covers only what matches. Never include a hash that is not in the list, and never include one the request does not cover. If "asked" is false, "hashes" is empty.`;
+
 /** The author's words and the list, laid out for the triage model. */
-export function triagePrompt(req: ApprovalRequest): string {
+export function triagePrompt(req: ApprovalRequest, way: ApprovalDirection = 'approve'): string {
   const said = req.said.length
     ? req.said.map((line, i) => `[${i + 1}] ${line.trim()}`).join('\n\n')
     : '(the author has not said anything yet)';
+  const empty = way === 'approve' ? '(nothing is approvable)' : '(nothing is approved)';
   const assets = req.assets.length
     ? req.assets.map((a) => `${a.hash}  ${a.label}  [${a.kind}]  fills: ${a.slot}`).join('\n')
-    : '(nothing is approvable)';
-  return `The author's recent messages, oldest first:\n\n${said}\n\nThe pictures that could be approved right now:\n\n${assets}`;
+    : empty;
+  const header =
+    way === 'approve'
+      ? 'The pictures that could be approved right now:'
+      : 'The pictures that are approved right now:';
+  return `The author's recent messages, oldest first:\n\n${said}\n\n${header}\n\n${assets}`;
 }
 
 /** Put the question to the triage model. The schema is the whole contract; nothing is parsed loosely. */
 export async function triageApprovals(
   backend: ChatBackend,
   req: ApprovalRequest,
+  way: ApprovalDirection = 'approve',
 ): Promise<ApprovalTriage> {
+  const system = way === 'approve' ? TRIAGE_SYSTEM : UNTRIAGE_SYSTEM;
   const triage = await withStructuredRetry(approvalTriageSchema, () =>
-    backend.message({ system: TRIAGE_SYSTEM, prompt: triagePrompt(req) }),
+    backend.message({ system, prompt: triagePrompt(req, way) }),
   );
   return narrowTriage(triage, req.assets);
 }
@@ -150,14 +177,23 @@ export function narrowTriage(
  * weaker a gate than the real one, because the gate protecting the author is the card they
  * confirm afterwards.
  */
-export function offlineTriage(req: ApprovalRequest): ApprovalTriage {
-  const asking = [...req.said]
-    .reverse()
-    .find((line) => /\b(approve|approving|accept|accepting|sign off)\b/i.test(line));
+export function offlineTriage(
+  req: ApprovalRequest,
+  way: ApprovalDirection = 'approve',
+): ApprovalTriage {
+  // The un-approve words are matched first and by their own pattern, so "un-approve it" is never
+  // read as the approval the substring inside it spells.
+  const wanted =
+    way === 'approve'
+      ? /\b(approve|approving|accept|accepting|sign off)\b/i
+      : /\b(un-?approve|un-?approving|un-?accept|un-?accepting|unapprove|reject|rejecting)\b/i;
+  const unwanted = way === 'approve' ? /\bun-?(approv|accept)/i : null;
+  const asking = [...req.said].reverse().find((line) => wanted.test(line) && !unwanted?.test(line));
   if (!asking) {
+    const what = way === 'approve' ? 'approved' : 'un-approved';
     return {
       asked: false,
-      reason: 'Nothing in the recent messages asks for artwork to be approved (matched offline).',
+      reason: `Nothing in the recent messages asks for artwork to be ${what} (matched offline).`,
       hashes: [],
     };
   }
@@ -195,6 +231,23 @@ export function approvalCard(triage: ApprovalTriage, chosen: readonly Approvable
   const one = chosen.length === 1;
   return (
     `Approve ${chosen.length} picture${one ? '' : 's'}?\n\n${rows.join('\n')}\n\n` +
+    `Why these: ${triage.reason}`
+  );
+}
+
+/**
+ * Writes the card for the other direction. It says what each picture stops being, because what an
+ * author needs to weigh here is what goes back to being unanswered rather than what was approved.
+ */
+export function unapprovalCard(triage: ApprovalTriage, chosen: readonly Approvable[]): string {
+  const rows = chosen.map((a) => {
+    const door =
+      a.door === 'gate' ? 'back to the character gate' : 'no longer accepted for its slot';
+    return `  • ${a.label} — ${door}`;
+  });
+  const one = chosen.length === 1;
+  return (
+    `Un-approve ${chosen.length} picture${one ? '' : 's'}?\n\n${rows.join('\n')}\n\n` +
     `Why these: ${triage.reason}`
   );
 }

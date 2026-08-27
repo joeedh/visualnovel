@@ -437,11 +437,12 @@ are the bridge's.
   rows it draws. `api.ts` is untouched by this: the override lives and dies with the pane, and a
   write through it is still judged and sent as a command.
 - **Keyboard is per-area first.** path.ux routes a keystroke to the focused area's keymaps and
-  falls through to the screen's, so the shell claims only `/` (palette), Ctrl+Z / Ctrl+Shift+Z /
+  falls through to the screen's, so the shell claims only Ctrl+Shift+P (palette), Ctrl+Z /
+  Ctrl+Shift+Z /
   Ctrl+Y, Shift+Tab and Ctrl+Q (quit — it came with the stock menu, which main deletes). Escape is nobody's: a popup installs its own while it is up. An editor that
   wants a key for itself simply takes it, which the room shell's single window-level `keydown`
-  could not allow — and an editor with an **open text row stops its own keydown**, or `/` opens the
-  palette in the middle of a sentence.
+  could not allow — and an editor with an **open text row stops its own keydown**, or Ctrl+Z
+  undoes a command instead of a word mid-sentence.
 - **The palette is a screen popup over the live registry.** `app/catalog.ts` — matching, blank
   values, field coercion — is imported unchanged by both shells, because two palettes disagreeing
   about which command a query names would be a bug in both.
@@ -1349,7 +1350,7 @@ own ([`command-system.md`](command-system.md#the-doc-namespace)).
 - **Ctrl+S, never a timer.** Every `doc.write` is undoable, so it snapshots pre and post trees in
   every owned repo and the `Committer` then commits; save-on-blur would spend that on a focus
   change. A dirty badge shows the unsaved state, and the editor stops its own keydown — the screen
-  keymap is a bubble-phase window listener, so otherwise `/` opens the palette mid-sentence.
+  keymap is a bubble-phase window listener, so otherwise Ctrl+Z undoes a command mid-sentence.
 - **The buffer is not authoritative.** `doc.read` returns the content hash it read at; `doc.write`
   carries it back as `seenHash` and a file something else rewrote underneath — `gate.approve`, the
   agent, an undo — is refused by **content** with a sentence, never overwritten. A file rewritten

@@ -60,8 +60,10 @@ import {
   approvalCard,
   offlineTriage,
   triageApprovals,
+  unapprovalCard,
   type Approvable,
   type ApprovalControl,
+  type ApprovalDirection,
   type ApprovalTriage,
 } from './approve.js';
 import {
@@ -2445,6 +2447,68 @@ const approveAssetsTool: Tool<Record<string, never>> = {
   },
 };
 
+const unapproveAssetsTool: Tool<Record<string, never>> = {
+  name: 'unapprove_assets',
+  description:
+    "Take approval back off the pictures the author asked you to un-approve. Takes no arguments for the same reason `approve_assets` does not: what is un-approved is decided by re-reading what the author themselves typed. Call it when they ask for approved artwork to be un-approved, un-accepted or rejected — 'un-approve the plate', \"put Aiko's portrait back\", 'none of these are right' is not enough — and not otherwise; disliking a picture or asking for a redraw is not this. A second model reads their recent messages and picks from the list of what is approved, and the author sees that list and confirms it before anything is written. The bytes are never touched, so the same take can be approved again.",
+  mutating: true,
+  args: z.object({}),
+  async run(_a, ctx) {
+    if (!ctx.approval) {
+      return fail(
+        'un-approving art writes the manifest and the character gate, which vnauthor does not do — open the project in the desktop app.',
+      );
+    }
+    if (!ctx.said) {
+      return fail('there is no conversation to read, so there is nothing that counts as consent.');
+    }
+    if (!ctx.confirm) {
+      return fail('nobody is here to confirm this, so nothing may be un-approved.');
+    }
+
+    const assets = await ctx.approval.approved();
+    if (assets.length === 0) {
+      return ok('Nothing is approved, so there is no approval to take back.');
+    }
+    const triage = await runTriage(
+      ctx.approval,
+      { said: ctx.said().slice(-SAID_WINDOW), assets },
+      'unapprove',
+    );
+    if (!triage.asked) {
+      return fail(
+        `You did not ask me to un-approve anything. ${triage.reason} Ask for it in your own words and I will.`,
+      );
+    }
+
+    const chosen = assets.filter((a) => triage.hashes.includes(a.hash));
+    if (chosen.length === 0) {
+      return fail(`Nothing approved matches what you asked for. ${triage.reason}`);
+    }
+    if (!(await ctx.confirm(unapprovalCard(triage, chosen)))) {
+      return ok('Nothing un-approved — you said no.');
+    }
+
+    const done: string[] = [];
+    const refused: string[] = [];
+    // In the order the host listed them, which is downstream first: a frame stops being accepted
+    // before the plate it was drawn from does, so nothing is left approved over an unapproved
+    // reference partway through.
+    for (const item of chosen) {
+      const result = await ctx.approval.unapprove(item);
+      (result.ok ? done : refused).push(`${item.label}: ${result.message}`);
+    }
+    const part = (what: string, rows: string[]): string =>
+      rows.length ? `${what} ${rows.length}:\n${rows.map((r) => `  • ${r}`).join('\n')}` : '';
+    return {
+      ok: done.length > 0,
+      output: [part('Un-approved', done), part('Refused', refused)].filter(Boolean).join('\n\n'),
+      written: ['vngen/build/manifest.json'],
+      data: { unapproved: done.length, refused: refused.length },
+    };
+  },
+};
+
 /**
  * The triage call. A host with no model for it — a mocked session — answers `null`, and the
  * offline matcher stands in and says in its own `reason` that no model read anything.
@@ -2452,9 +2516,10 @@ const approveAssetsTool: Tool<Record<string, never>> = {
 async function runTriage(
   approval: ApprovalControl,
   req: { said: readonly string[]; assets: readonly Approvable[] },
+  way: ApprovalDirection = 'approve',
 ): Promise<ApprovalTriage> {
   const backend = await approval.triage();
-  return backend ? triageApprovals(backend, req) : offlineTriage(req);
+  return backend ? triageApprovals(backend, req, way) : offlineTriage(req, way);
 }
 
 // ── Generation graphs ───────────────────────────────────────────────────────
@@ -2624,6 +2689,7 @@ export const ALL_TOOLS: Tool[] = [
   viewImageTool,
   regenerateAssetTool,
   approveAssetsTool,
+  unapproveAssetsTool,
   readAssetGraphTool,
   editAssetGraphTool,
   runAssetGraphTool,

@@ -561,9 +561,11 @@ export class AssetEditor extends VnEditor {
       );
       approve.disabled = !action?.ok;
       // A disabled button with no reason reads as a bug; `approveAction` wrote the sentence.
-      approve.description = action?.ok
-        ? 'Accept these bytes for use downstream'
-        : (action?.reason ?? 'Nothing to approve');
+      approve.description = !action?.ok
+        ? (action?.reason ?? 'Nothing to approve')
+        : action.id === 'asset.unapprove'
+          ? 'Take approval back off these bytes, leaving what they answered unanswered again'
+          : 'Accept these bytes for use downstream';
 
       const regen = this.bar.button('Regenerate', () => void this.regenerate());
       regen.disabled = !info;
@@ -1272,7 +1274,7 @@ export class AssetEditor extends VnEditor {
       box.classList.add('dirty');
     });
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a sentence.
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     text.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {

@@ -49,7 +49,7 @@ its recommendation is [`../plans/archive/command-undo-redo.md`](../plans/archive
 
 Before this, every desktop action was a bespoke IPC channel hand-registered in
 `apps/desktop/src/main/index.ts` and hand-wired to a React handler: `gate:approve`,
-`pipeline:run`, `agent:setMode`. That shape has no room for discovery (the `/` palette was a
+`pipeline:run`, `agent:setMode`. That shape has no room for discovery (the palette was a
 static mockup), no history, no provenance tying an action to the state of the repo when it
 ran, and no way to drive the app from outside for scripting or debugging.
 
@@ -772,7 +772,8 @@ old hand-annotated `ipcMain.handle` calls could and did.
 
 ### From the palette, or from a command's own dialog
 
-The `/` palette (`renderer/pathux/palette.ts`) is a **view of the catalog**, not a hand-kept list:
+The Ctrl+Shift+P palette (`renderer/pathux/palette.ts`) is a **view of the catalog**, not a
+hand-kept list:
 it fetches `command:catalog` once — the live registry, never `dist/commands.json` — and lists what
 matches the query. A newly registered command therefore appears in the palette with no palette edit
 at all, which is what makes the claim at the top of this document ("the palette … reaches the same

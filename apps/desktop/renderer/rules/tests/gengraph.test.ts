@@ -1,7 +1,14 @@
 import { GenImage, GenOutput, Graph, registerGenNodes } from '@vn/gengraph';
 import type { GraphEdit } from 'pathux';
 
-import { commandFor, contestedSlots, genEditFor, noActiveOutput, setPropKey } from '../gengraph.js';
+import {
+  commandFor,
+  contestedSlots,
+  drawnSlot,
+  genEditFor,
+  noActiveOutput,
+  setPropKey,
+} from '../gengraph.js';
 
 /** The kinds that reach a command, so a gesture the pane can write is never refused by mistake. */
 describe('a gesture read as an edit', () => {
@@ -235,5 +242,28 @@ describe('a graph with nothing left to draw', () => {
     graph.add(new GenImage());
     expect(noActiveOutput(graph)).toBe(false);
     expect(noActiveOutput(new Graph())).toBe(false);
+  });
+});
+
+/**
+ * Which slot the pane's Asset button opens. It answers only where the graph can be held to one
+ * picture, because the two silent states above bind no slot at all and a contested one binds
+ * neither claimant.
+ */
+describe('the slot a graph draws', () => {
+  it('names the one slot its active output claims', () => {
+    const graph = graphOf([{ slot: 'portrait:aiko' }, { slot: 'plate:gate/day', active: false }]);
+    expect(drawnSlot(graph)).toBe('portrait:aiko');
+  });
+
+  it('names none where two outputs are live, however they claim', () => {
+    expect(drawnSlot(graphOf([{ slot: 'portrait:aiko' }, { slot: 'plate:gate/day' }]))).toBe('');
+    expect(drawnSlot(graphOf([{ slot: 'portrait:aiko' }, { slot: 'portrait:aiko' }]))).toBe('');
+  });
+
+  it('names none for a graph that draws nothing, or nothing it can name', () => {
+    expect(drawnSlot(graphOf([{ slot: 'portrait:aiko', active: false }]))).toBe('');
+    expect(drawnSlot(graphOf([{ slot: '' }]))).toBe('');
+    expect(drawnSlot(new Graph())).toBe('');
   });
 });

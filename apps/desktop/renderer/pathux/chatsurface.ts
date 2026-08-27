@@ -308,7 +308,7 @@ export class ChatStage {
     this.input.placeholder = hooks.placeholder;
     this.input.title = hooks.inputTitle;
     // The shell keymap is a bubble-phase window listener, so a composer that does not stop its
-    // own keys opens the palette on the first `/` the author types.
+    // own keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     this.input.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key === 'Enter') this.send(hooks);
@@ -319,7 +319,7 @@ export class ChatStage {
       const slash = document.createElement('button');
       slash.className = 'cmdbtn';
       slash.textContent = '/';
-      slash.title = 'Open the palette and run a command by name (/)';
+      slash.title = 'Open the palette and run a command by name (Ctrl+Shift+P)';
       slash.addEventListener('click', () => hooks.onPalette!());
       composer.appendChild(slash);
     }

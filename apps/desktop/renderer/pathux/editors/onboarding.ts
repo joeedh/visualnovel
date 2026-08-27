@@ -225,7 +225,7 @@ export class OnboardingEditor extends VnEditor {
       'The key goes to one file and nowhere else — not to the log, and not to the command ' +
       'history, which records it as <secret>.';
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a pasted key.
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     box.addEventListener('keydown', (event) => event.stopPropagation());
 
     const scope = document.createElement('select');

@@ -119,6 +119,29 @@ const VnTheme = {
     'box-shadow': '0 18px 50px -22px rgba(0, 0, 0, 0.8)',
   },
 
+  nodeframe: {
+    DefaultText: small,
+    HeaderBG: alpha(TOKENS.inkSunken, 0.95),
+    SelectOutline: TOKENS.signal,
+    SocketText: font(11, TOKENS.mist),
+    'background-color': alpha(TOKENS.inkRaised, 0.95),
+    'border-color': TOKENS.inkLine,
+    'border-radius': TOKENS.radiusChrome,
+  },
+
+  // The pan area behind the frames, sunken because the frames sit above it.
+  nodegraphview: {
+    BoxSelectBG: alpha(TOKENS.signal, 0.12),
+    BoxSelectBorder: TOKENS.signal,
+    ErrorColor: TOKENS.vermilion,
+    'background-color': TOKENS.inkSunken,
+  },
+
+  nodelinkcanvas: {
+    LinkColor: TOKENS.mistDim,
+    LinkSelectColor: TOKENS.signal,
+  },
+
   notification: {
     DefaultText: small,
     'background-color': alpha(TOKENS.inkRaised, 0),

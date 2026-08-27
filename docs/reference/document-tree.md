@@ -46,6 +46,7 @@ Wiki               wikidir:<rel>         → wiki:<rel>
 Skills             skill:<id>
 Unapproved assets  unapproved:waiting    → asset:<hash>
                    unapproved:unrendered → slot:<slotKey>
+Stale assets       asset:<hash>
 Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
                                          → asset:<hash>  (its earlier takes)
 ```
@@ -80,7 +81,17 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   three drafts would then be listed as unrendered while its three drafts sat in the other group.
   Both walk `SlotGraph.order`, upstream before downstream, so the top of each list is what can be
   worked on now. A project with nothing outstanding has **no branch at all** rather than an empty
-  one, and so does a caller that did not pass a slot graph.
+  one, and so does a caller that did not pass a slot graph. A **drifted** frame is left out of
+  *Awaiting approval* and filed under Stale assets instead, because the act it is waiting for is a
+  redraw rather than approval — approving it would bless a picture of something the scene no longer
+  says. `session.approvable()`, which the menu bar's pending-approval dropdown and the agent's
+  `approve_assets` both list from, applies the same filter, so the two views of one frontier cannot
+  disagree.
+- **Stale assets** is the frames whose scene has moved on since they were drawn, `driftOf` re-derived
+  on every read like every other reading of drift. The rows reuse the `asset:<hash>` ids, ordered by
+  name since drift has no order of its own, and the branch is absent when nothing has drifted. It
+  sits between Unapproved and Assets because both of the branches around it are lists of work still
+  owed.
 - **Assets** groups `AssetStore.manifest()` by `AssetKind`, each group labelled `base` or `project`
   by the same routing rule the store writes with (`isBaseKind`). The label describes what the asset
   *is*, so a legacy project whose base art is still indexed in the project manifest still groups
@@ -268,6 +279,18 @@ What this table settles:
   with their refusals rather than guessing which applies. There is no _reject_: rejecting a
   candidate is approving a different one, and inventing the command inside a menu would be
   designing the gate through a menu.
+- **Approval is offered in one direction at a time.** A row whose picture is already approved offers
+  `asset.unapprove` in place of the three ways in, decided from `DocNode.approved` — which is
+  separate from the `accepted` badge, since a drifted picture is still approved while wearing the
+  `stale` one. Listing both directions would make the author read a refusal to find out which act
+  their picture has. `shot` rows carry the flag too, so the frame a shot stands for is approvable
+  from the row that names it. The Asset editor's approve button follows the same rule, through
+  `approveAction` in `renderer/rules/assetview.ts`.
+- **Every row addressed by an id offers to copy it.** The id is on screen but not selectable, and an
+  author needs it elsewhere — a scene into the agent, a shot into a command, a hash into a prompt.
+  One `app.copy` entry per row kind, worded for the thing it names. A scene additionally offers
+  _Edit in the agent…_, which is `agent.run` as a form prefilled with `edit <sceneId> `: a first
+  sentence to finish rather than a turn already sent.
 - **A slot is right-clicked as a picture far more often than as a `slot` row.** A `slot` row is
   drawn only under Unapproved ▸ Not yet rendered, for a slot with no candidates at all; everywhere
   else the Assets branch draws the picture filling it. _Create a graph for this slot_ is therefore

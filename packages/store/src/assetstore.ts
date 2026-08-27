@@ -182,6 +182,20 @@ export class AssetRoot {
   }
 
   /**
+   * Un-accept an asset, leaving its slot with no answer. Returns whether this root holds `hash`.
+   * The bytes stay; only the manifest flag moves, so the take is still there to accept again.
+   */
+  async unaccept(hash: string): Promise<boolean> {
+    const asset = this.index.get(hash);
+    if (!asset) return false;
+    if (asset.accepted) {
+      asset.accepted = false;
+      await this.persist();
+    }
+    return true;
+  }
+
+  /**
    * Persist the manifest, serialized through a single-writer queue. The scheduler runs
    * tasks in parallel, so without this two `write`s would atomically rename onto
    * `manifest.json` at once — which fails on Windows (EPERM). Each call also re-snapshots
@@ -271,6 +285,10 @@ export class AssetStore implements IAssetStore {
   async accept(hash: string, supersede: readonly string[] = []): Promise<void> {
     if (!(await this.baseRoot.accept(hash, supersede)))
       await this.projectRoot.accept(hash, supersede);
+  }
+
+  async unaccept(hash: string): Promise<void> {
+    if (!(await this.baseRoot.unaccept(hash))) await this.projectRoot.unaccept(hash);
   }
 
   private rootFor(kind: AssetKind): AssetRoot {

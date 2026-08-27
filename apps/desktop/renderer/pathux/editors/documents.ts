@@ -256,7 +256,7 @@ export class DocumentsEditor extends VnEditor {
       this.rebuild();
     });
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a query.
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     this.search.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key !== 'Escape' || this.query === '') return;
@@ -292,7 +292,7 @@ export class DocumentsEditor extends VnEditor {
     this.newName.placeholder = 'name';
     this.newName.title = 'Name the document — Enter writes it and opens it, Escape gives up';
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a name.
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     this.newName.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key === 'Enter') void this.create();
@@ -553,7 +553,7 @@ export class DocumentsEditor extends VnEditor {
     };
 
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a name.
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     box.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key === 'Enter') finish(box.value.trim());

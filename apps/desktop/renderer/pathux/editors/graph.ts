@@ -156,7 +156,7 @@ export class TaskGraphEditor extends VnEditor {
       this.renderResults();
     });
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
-    // keys opens the palette on the first `/` of a query.
+    // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     this.search.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key !== 'Escape' || this.query === '') return;

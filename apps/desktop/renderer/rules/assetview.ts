@@ -47,6 +47,10 @@ export type ApproveAction =
  * Approval also flows upstream-first, and that refusal is placed ahead of the portrait split so it
  * gates both paths. The sentence comes from main (`previewAccept` refuses `asset.accept` with the
  * same one) so a greyed button states the same rule the command enforces.
+ *
+ * A picture already approved offers the other direction instead. Approving it again writes what
+ * the manifest already says, so the one act left on it is taking that approval back — and the
+ * upstream refusal is not consulted for it, since nothing upstream is at stake in undoing one.
  */
 export function approveAction(info: AssetInfo): ApproveAction {
   if (info.kind === 'concept') {
@@ -62,14 +66,17 @@ export function approveAction(info: AssetInfo): ApproveAction {
         'An upload is not generated art — it counts by being pointed at, not by being blessed.',
     };
   }
-  if (info.unapproved) return { ok: false, reason: info.unapproved };
-  if (info.kind !== 'portrait') {
+  if (info.accepted) {
     return {
       ok: true,
-      id: 'asset.accept',
+      id: 'asset.unapprove',
       props: { hash: info.hash },
-      label: info.accepted ? 'Re-accept' : 'Accept',
+      label: 'Un-approve',
     };
+  }
+  if (info.unapproved) return { ok: false, reason: info.unapproved };
+  if (info.kind !== 'portrait') {
+    return { ok: true, id: 'asset.accept', props: { hash: info.hash }, label: 'Accept' };
   }
   const characterId = characterOf(info);
   if (characterId === '') {
@@ -79,7 +86,7 @@ export function approveAction(info: AssetInfo): ApproveAction {
     ok: true,
     id: 'gate.approve',
     props: { characterId, hash: info.hash },
-    label: info.accepted ? 'Re-approve' : 'Approve',
+    label: 'Approve',
   };
 }
 

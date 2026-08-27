@@ -111,7 +111,7 @@ export function popupLeft(screen: Screenish, width: number): number {
  * Hooks `remove` rather than `end`. `Screen._popup` keeps its own closure over the real `end` and
  * hands that closure to Escape, the click-outside watcher and `_ondestroy`, so a module that
  * overrode the `end` property is never told the popup closed: the box disappears and the `let
- * open` guarding it stays set, which leaves a palette that stops answering `/` and a menu entry
+ * open` guarding it stays set, which leaves a palette that stops opening and a menu entry
  * that opens nothing for the rest of the session. All of those paths finish at `remove()`, which
  * is only ever reached through the property.
  */

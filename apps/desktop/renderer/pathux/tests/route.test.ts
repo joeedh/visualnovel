@@ -33,6 +33,7 @@ const NODES: Record<DocNodeKind, DocNode> = {
   assetkind: node('assetkind', { id: 'assetkind:portrait' }),
   asset: node('asset', { id: 'asset:a1b2c3' }),
   slot: node('slot', { id: 'slot:plate:cafe/night' }),
+  graph: node('graph', { id: 'graph:plates', path: 'vngen/work/graphs/plates.json' }),
   skill: node('skill', {
     id: 'skill:continuity-pass',
     path: '.aiagent/skills/continuity-pass/SKILL.md',
@@ -55,6 +56,7 @@ const WITH_NOTHING_OPEN: Record<DocNodeKind, EditorId | ''> = {
   asset: 'asset',
   // Taskgraph is the one pane that can draw a slot that has no bytes yet.
   slot: 'taskgraph',
+  graph: 'gengraph',
   // Skills answers for a `SKILL.md`, and Wiki deliberately does not claim one: a plain text box
   // would let an author edit the front-matter the Skills pane owns.
   skill: 'skills',

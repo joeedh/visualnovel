@@ -101,8 +101,9 @@ function subjectFor(editor: EditorId, node: DocNode): string {
       return node.path ?? '';
     case 'assetHash':
       return node.kind === 'asset' ? nodeKey(node) : '';
+    // A graph row is the graph, so it names itself; every other row names the graph that draws it.
     case 'graphSlug':
-      return node.boundGraph ?? '';
+      return node.kind === 'graph' ? nodeKey(node) : (node.boundGraph ?? '');
     default:
       return '';
   }

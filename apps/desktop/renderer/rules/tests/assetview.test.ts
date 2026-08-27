@@ -146,13 +146,26 @@ describe('approveAction', () => {
     });
   });
 
-  // Approving a second candidate is how an author changes their mind, so the button stays live
-  // and says what it would do rather than going quiet.
-  it('says re-approve over one that already stands', () => {
-    const again = approveAction(portrait({ accepted: true }));
-    const accepted = approveAction(info({ accepted: true }));
-    expect(again.ok && again.label).toBe('Re-approve');
-    expect(accepted.ok && accepted.label).toBe('Re-accept');
+  // Approving what is already approved writes what the manifest already says, so the button turns
+  // around and offers the only act left on it — through the one command that undoes either door.
+  it('offers to take the approval back off one that already stands', () => {
+    const both = [portrait({ accepted: true }), info({ accepted: true })];
+    for (const one of both) {
+      expect(approveAction(one)).toEqual({
+        ok: true,
+        id: 'asset.unapprove',
+        props: { hash: 'a1b2c3d4' },
+        label: 'Un-approve',
+      });
+    }
+  });
+
+  // Un-approving reaches downwards, not upwards: what this was drawn from is not at stake in
+  // undoing an approval, so the refusal that greys out approving does not grey this out
+  it('still offers it while something upstream is unapproved', () => {
+    const waiting = 'Approve what this was drawn from first: cafe — night plate is not approved.';
+    const action = approveAction(info({ accepted: true, unapproved: waiting }));
+    expect(action.ok && action.id).toBe('asset.unapprove');
   });
 
   // `accepted` means a human approved this for use downstream, and nothing downstream consumes a
