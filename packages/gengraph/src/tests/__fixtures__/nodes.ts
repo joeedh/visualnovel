@@ -12,11 +12,16 @@ import {
   registerGenNode,
   registerSocketType,
 } from '../../index.js';
-import type { NodeDef, NodeMigration, Sockets, SocketTypeDef } from '../../index.js';
+import type { NodeDef, NodeMigration, SocketDir, Sockets, SocketTypeDef } from '../../index.js';
 
 export class TestBlobSocket extends NodeSocketBase<'blob', string> {
   static override socketDef(): SocketTypeDef {
     return { typeName: 'TestBlobSocket', type: 'blob', uiName: 'Blob' };
+  }
+
+  constructor(dir: SocketDir = 'in') {
+    super(dir);
+    this.defaultProp = new StringProperty('');
   }
 }
 registerSocketType(TestBlobSocket);

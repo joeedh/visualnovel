@@ -1,6 +1,7 @@
 import {
   decideGenEdit,
   genNodeSpec,
+  Node as GraphNode,
   nodePropKeys,
   nodePropTarget,
   readGraphFile,
@@ -10,6 +11,7 @@ import {
   type GenPropValue,
   type Graph,
   type Node as GenNode,
+  type NodePropName,
 } from '@vn/gengraph';
 import {
   Context,
@@ -60,7 +62,7 @@ type Weighed =
 /** One property the pane listens to, holding the value it last saw an edit accepted for. */
 interface PropWatch {
   node: GenNode;
-  key: string;
+  key: NodePropName;
   target: ToolProperty;
   last: unknown;
   listener?: () => void;
@@ -464,7 +466,7 @@ export class GenGraphEditor extends VnEditor {
     const value = genValue(watch.target.getValue());
     if (value === undefined || value === watch.last) return;
 
-    const edit = editFor(watch.node, watch.key, value);
+    const edit = editFor(watch.node, GraphNode.decomposePropName(watch.key).name, value);
     const decision = decideGenEdit(this.graph, edit);
     if (!decision.ok) {
       say(decision.reason, true);

@@ -5,7 +5,7 @@
  * agent's graph tool both go through here, so a refusal reads the same in both.
  */
 import { parseSlot } from '@vn/artgen/slotaddr';
-import { nodePropTarget } from 'pathux-graph';
+import { nodePropTarget, Node as GraphNode } from 'pathux-graph';
 import type { Graph, GraphId, Node, NodeSocketBase } from 'pathux-graph';
 import { PropTypes } from 'pathux-toolprop';
 import type { ToolProperty } from 'pathux-toolprop';
@@ -219,11 +219,19 @@ function decideUnlink(graph: Graph, edit: GenEdit & { op: 'unlink' }): GenEditRe
   };
 }
 
+/** A node's own prop by that key, else the matching input socket's editable default. */
+function resolveNodeProp(node: Node, key: string): ToolProperty | undefined {
+  return (
+    nodePropTarget(node, GraphNode.composePropName('prop', key)) ??
+    nodePropTarget(node, GraphNode.composePropName('in', key))
+  );
+}
+
 function decideSetProp(graph: Graph, edit: GenEdit & { op: 'setProp' }): GenEditResult {
   const node = graph.nodeIdMap.get(edit.node);
   if (node === undefined) return refuse(missing(edit.node));
 
-  const prop = nodePropTarget(node, edit.key);
+  const prop = resolveNodeProp(node, edit.key);
   if (prop === undefined) {
     return refuse(
       `node type '${node.def.typeName}' declares no prop or editable input '${edit.key}'`,
@@ -385,7 +393,7 @@ export function readGenPropValue(
   const target = graph.nodeIdMap.get(node);
   if (target === undefined) return { ok: false, reason: missing(node) };
 
-  const prop = nodePropTarget(target, key);
+  const prop = resolveNodeProp(target, key);
   if (prop === undefined) {
     return {
       ok: false,

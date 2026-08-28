@@ -5,6 +5,7 @@
 import { NodeSocketBase, registerSocketType } from 'pathux-graph';
 import type { SocketDir, SocketTypeDef } from 'pathux-graph';
 import { PropFlags, StringProperty } from 'pathux-toolprop';
+import type { ToolProperty } from 'pathux-toolprop';
 
 import type { GenBlobRef } from '../services.js';
 
@@ -26,22 +27,33 @@ export class TextSocket extends NodeSocketBase<'text', string> {
   constructor(dir: SocketDir = 'in', uiname?: string, description?: string) {
     super(dir);
 
-    if (dir === 'in') {
-      // `NO_UNDO` for the same reason the node props carry it: the write is an application
-      // command, so path.ux's own toolstack must not also record it.
-      this.defaultProp = new StringProperty('', undefined, uiname, description, PropFlags.NO_UNDO);
-    }
+    // `NO_UNDO` for the same reason the node props carry it: the write is an application
+    // command, so path.ux's own toolstack must not also record it. An output's default is
+    // read-only: it exists only because copyTo/serialization now require one on every
+    // socket, but the value is derived at run time, not authored, so it draws no row.
+    const flag = dir === 'out' ? PropFlags.NO_UNDO | PropFlags.READ_ONLY : PropFlags.NO_UNDO;
+    this.defaultProp = new StringProperty('', undefined, uiname, description, flag);
   }
 }
 registerSocketType(TextSocket);
 
 /**
- * One picture. An input declares no default, because an unwired picture is missing rather
+ * One picture. Declares no usable default, because an unwired picture is missing rather
  * than empty, and the runtime that needs one refuses by name.
  */
 export class ImageSocket extends NodeSocketBase<'image', GenImageRef> {
   static override socketDef(): SocketTypeDef {
     return { typeName: 'ImageSocket', type: 'image', uiName: 'Image', color: '#7f9cc0' };
+  }
+
+  override useDefaultValue = false;
+
+  // Never read: `useDefaultValue = false` means getValue() never falls back to it. Just a
+  // placeholder so copyTo/serialization, which now require every socket to carry one, have
+  // something to copy.
+  constructor(dir: SocketDir = 'in') {
+    super(dir);
+    this.defaultProp = new StringProperty('') as unknown as ToolProperty<GenImageRef>;
   }
 }
 registerSocketType(ImageSocket);
@@ -50,6 +62,14 @@ registerSocketType(ImageSocket);
 export class RefsSocket extends NodeSocketBase<'refs', GenImageRef[]> {
   static override socketDef(): SocketTypeDef {
     return { typeName: 'RefsSocket', type: 'refs', uiName: 'References', color: '#7fc0a8' };
+  }
+
+  override useDefaultValue = false;
+
+  // Never read, same as ImageSocket above.
+  constructor(dir: SocketDir = 'in') {
+    super(dir);
+    this.defaultProp = new StringProperty('') as unknown as ToolProperty<GenImageRef[]>;
   }
 
   // Reading one picture as a one-item list is destination knowledge, so an image output
