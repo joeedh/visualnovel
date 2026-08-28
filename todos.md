@@ -16,3 +16,4 @@
 	 prompt chunks) will be set at the latest one in the slot.
 [ ]: the asset editor should have a download button for the rendered image
 [ ]: the gen graph editor should show the name of the asset referencing the shot
+[ ]: gen graph editor should have a 'regenerate' button that runs the pipeline

@@ -10,24 +10,32 @@
  * and `registerGenNode` checks the declaration against the class. Renaming a socket or a prop is
  * therefore two edits: bump the type's `typeVersion`, and add the step that lands on it.
  */
+import { Graph, GroupDef } from 'pathux-graph';
 import { genNodeSpecs, type NodeMigration } from './registry.js';
+import { migrateJSON } from 'nstructjs';
 
-/** A file rewritten on the way in, and what changed. `json` is the argument where nothing did. */
+/**
+ * A file rewritten on the way in, and what changed. `json` is a copy whenever the argument was
+ * a record, because path.ux's own pass rewrites in place and the argument is left as it was.
+ */
 export interface GraphMigration {
   json: unknown;
   /** One sentence per node type rewritten, for a host that wants to say the file has moved on. */
   notes: string[];
 }
 
-/** Migrates a graph file's JSON values. */
+/** Migrates a graph file's JSON values. A file that is not a record is passed through. */
 export function migrateGraphJSON(json: unknown): GraphMigration {
   const graph = rec(json);
   if (graph === undefined) return { json, notes: [] };
 
   const copy = structuredClone(graph);
+  // TODO: move the rename replay below to this new system too; for now this handles path.ux's own
+  migrateJSON(copy, Graph, { version: (copy.VERSION as number) ?? 0 });
+
   const rewrite = newRewrite();
   migrateGraph(copy, rewrite);
-  return finish(json, copy, rewrite);
+  return finish(copy, rewrite);
 }
 
 /**
@@ -40,6 +48,9 @@ export function migrateGroupJSON(json: unknown): GraphMigration {
   if (def === undefined) return { json, notes: [] };
 
   const copy = structuredClone(def);
+  // GroupDef's own STRUCT declares the subgraph, so the walk reaches its nodes from here
+  migrateJSON(copy, GroupDef, { version: (copy.VERSION as number) ?? 0 });
+
   const rewrite = newRewrite();
   const subgraph = rec(copy.subgraph);
   if (subgraph !== undefined) migrateGraph(subgraph, rewrite);
@@ -51,7 +62,7 @@ export function migrateGroupJSON(json: unknown): GraphMigration {
     if (renamed !== undefined) row.propKey = renamed;
   }
 
-  return finish(json, copy, rewrite);
+  return finish(copy, rewrite);
 }
 
 /** What one walk collected, so the notes read per type and a group can follow its own rows. */
@@ -66,11 +77,11 @@ function newRewrite(): Rewrite {
   return { tally: new Map(), props: new Map() };
 }
 
-function finish(original: unknown, copy: unknown, rewrite: Rewrite): GraphMigration {
+function finish(copy: unknown, rewrite: Rewrite): GraphMigration {
   const notes = [...rewrite.tally].map(
     ([type, { to, count }]) => `${count} ${type} node${count === 1 ? '' : 's'} updated to v${to}`,
   );
-  return notes.length === 0 ? { json: original, notes } : { json: copy, notes };
+  return { json: copy, notes };
 }
 
 function migrateGraph(graph: Record<string, unknown>, rewrite: Rewrite): void {

@@ -79,12 +79,14 @@ describe('replaying a rename over a graph file', () => {
     expect(keys(only?.outputs)).toEqual(['blob']);
   });
 
-  it('changes nothing on a file already at the current version', () => {
+  it('replays no rename on a file already at the current version', () => {
     const current = file({ nodes: [node('0', { typeVersion: 3 })] });
     const run = migrateGraphJSON(current);
+    const [only] = (run.json as { nodes: Record<string, unknown>[] }).nodes;
 
     expect(run.notes).toEqual([]);
-    expect(run.json).toBe(current);
+    expect(keys(only?.inputs)).toEqual(['src']);
+    expect(keys(only?.outputs)).toEqual(['out']);
   });
 
   it('is idempotent, because the second pass finds nothing behind', () => {
