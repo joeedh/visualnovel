@@ -10,6 +10,8 @@ See [`docs/guides/github-pages.md`](docs/guides/github-pages.md) for how to publ
 Start at [`CLAUDE.md`](CLAUDE.md) for the map of the repository, or
 [`docs/index.md`](docs/index.md) for the documentation index.
 
+**Download the latest release:** [github.com/joeedh/visualnovel/releases](https://github.com/joeedh/visualnovel/releases)
+
 ## Building
 
 ```bash
