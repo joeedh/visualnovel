@@ -177,7 +177,12 @@ which also covers the shell, the canvas, and the sixteen editors in full.
 playable format, [`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md)
 records what persists where, and
 [`docs/reference/document-tree.md`](docs/reference/document-tree.md) covers the document
-tree, asset naming and `doc.rename`.
+tree, asset naming and `doc.rename`. Showing an editor to the author is always `view.open` /
+`view.focus`, reached through `exec` or pushed as a `command:ui` effect, never through the pane
+rules directly:
+[`docs/guides/showEditorPaneGuide.md`](docs/guides/showEditorPaneGuide.md) is how to call it
+correctly, and [`docs/reference/swappingPaneEditors.md`](docs/reference/swappingPaneEditors.md)
+is the pure pane-choice logic (`panes.ts`) it calls into.
 
 ## Command system
 
@@ -385,3 +390,33 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
   pane tab uses neither mechanism: it is painted on the docker's canvas, so its tooltip
   comes from `define().description`, which `registerEditor` splices in from `EDITORS`'s
   `what` — the same sentence View ▸ Editors shows.
+
+## Euphemeral UI data (saveUIData/loadUIData)
+
+See [vendor\path.ux\scripts\core\base\ui_savedata.ts](vendor\path.ux\scripts\core\base\ui_savedata.ts)
+
+Path.ux has a system to store 'euphemeral' data, such as:
+
+- Scroll position
+- Expanded/collapsed state of trees
+- Open/closed state of panels
+- Last selected item in a list
+- etc.
+
+UIBase subclasses can override saveData and loadData methods,
+they should be fault-tolerant.
+
+The typical pattern to use is:
+
+```ts
+// note: the second parameter is currently unused but is required
+const data = saveUIData(widget, 'something');
+// reinitialize widget
+loadUIData(widget, data);
+```
+
+saveUIData is implemented using a simple DOM path system and is
+meant to fail gracefully if e.g. the widget's subtree has reconfigured.
+
+The base pathux editor class (Area) uses this system to save and load
+the state of widgets in area editors in its STRUCT script.

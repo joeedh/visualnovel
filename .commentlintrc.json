@@ -1,4 +1,11 @@
 {
   "exclude": ["vendor/path.ux/**", "vendor/nstructjs/**"],
-  "cache": true
+  "cache": true,
+  "markdown" : false,
+  // whitelist
+  "markdownFiles": [
+     "CLAUDE.md",
+     "docs/reference/swappingPaneEditors.md",
+     "docs/guides/showEditorPaneGuide.md"
+    ] 
 }
