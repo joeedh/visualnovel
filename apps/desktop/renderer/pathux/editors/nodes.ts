@@ -26,7 +26,8 @@ import {
 import type { Button, DataAPI, EditVerdict, GraphEdit, NodeGraphDelegate } from 'pathux';
 import type { ToolProperty } from 'pathux-toolprop';
 
-import { graphDocPath, touchesGraph } from '../../../src/shared/writes.js';
+import type { CheckpointHandle } from '../../../src/shared/ipc.js';
+import { GRAPH_DOCS_DIR, graphDocPath, touchesGraph } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
 import {
   commandFor,
@@ -39,7 +40,7 @@ import {
 } from '../../rules/gengraph.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../api.js';
-import { exec, onWrote, say } from '../bridge.js';
+import { beginCheckpoint, endCheckpoint, exec, onWrote, say } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
@@ -93,6 +94,9 @@ export class GenGraphEditor extends VnEditor {
   /** How far this pane's copy of the open graph has been carried, against everyone else's. */
   private sync = newDocSync();
 
+  /** Set for the span of one `singleUndoStep`, so `send` can tag its `exec` calls onto it. */
+  private checkpoint: CheckpointHandle | undefined;
+
   static override define() {
     return {
       tagname: 'vn-gengraph-editor-x',
@@ -116,11 +120,11 @@ export class GenGraphEditor extends VnEditor {
       'Lay the whole graph out again, left to right',
     );
     describe(
-      bar.button('Delete', () => this.view.deleteSelected()),
+      bar.button('Delete', () => void this.view.deleteSelected()),
       DELETE_WHAT,
     );
     describe(
-      bar.button('Duplicate', () => this.view.duplicateSelected()),
+      bar.button('Duplicate', () => void this.view.duplicateSelected()),
       DUPLICATE_WHAT,
     );
     this.assetButton = bar.button('Asset', () => void this.showAsset());
@@ -174,8 +178,8 @@ export class GenGraphEditor extends VnEditor {
     // This keymap runs ahead of the screen keymap, and path.ux declines to route a keystroke that
     // landed in a textbox, so a node's own prop rows keep their editing keys.
     this.keymap = new KeyMap([
-      new HotKey('Delete', [], () => this.view.deleteSelected(), DELETE_WHAT),
-      new HotKey('D', ['SHIFT'], () => this.view.duplicateSelected(), DUPLICATE_WHAT),
+      new HotKey('Delete', [], () => void this.view.deleteSelected(), DELETE_WHAT),
+      new HotKey('D', ['SHIFT'], () => void this.view.duplicateSelected(), DUPLICATE_WHAT),
     ]);
 
     // The links are painted on a canvas sized from the pan area at paint time, and nothing repaints
@@ -352,16 +356,34 @@ export class GenGraphEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /**
-   * `undoStepBegin`/`undoStepEnd` bracket `deleteSelected`/`duplicateSelected` so path.ux's own
-   * `ToolOpDelegate` can batch them into one undo step. This pane has no such step to batch into:
-   * every dispatched edit is its own `gengraph.*` command and its own undo entry already.
+   * `undoStepBegin`/`undoStepEnd` bracket `deleteSelected`/`duplicateSelected`. This pane opens a
+   * checkpoint there and closes it here, so every `gengraph.*` command the gesture dispatches
+   * lands as one undo entry instead of one each; `send` tags its `exec` calls onto `this.checkpoint`
+   * for the span. A refused open dispatches nothing, so `this.graph` is untouched by it; a refused
+   * close can follow edits already applied optimistically to `this.graph`, so it forces a reload
+   * the same way an ordinary refused write already does through `sync.stale`/`shouldReload`.
    */
   private delegate(): NodeGraphDelegate {
     return {
-      undoStepBegin: (): void => {},
+      undoStepBegin: async (_ctx, shortLabel, message): Promise<void> => {
+        try {
+          this.checkpoint = await beginCheckpoint(shortLabel, message, GRAPH_DOCS_DIR);
+        } catch (err) {
+          say(err instanceof Error ? err.message : String(err), true);
+          throw err;
+        }
+      },
       check: (_ctx, edit): EditVerdict => this.judge(edit),
       perform: (_ctx, edit): void => this.dispatch(edit),
-      undoStepEnd: (): void => {},
+      undoStepEnd: async (): Promise<void> => {
+        const checkpoint = this.checkpoint;
+        this.checkpoint = undefined;
+        if (checkpoint === undefined) return;
+
+        const outcome = await endCheckpoint(checkpoint);
+        if (!outcome.ok) this.sync.stale = true;
+        if (shouldReload(this.sync, this.sync.latest)) void this.load(this.slug);
+      },
     };
   }
 
@@ -416,7 +438,7 @@ export class GenGraphEditor extends VnEditor {
     const command = commandFor(this.slug, edit);
     const path = graphDocPath(this.slug);
     this.sync.inflight++;
-    void exec(command.id, command.props).then((outcome) => {
+    void exec(command.id, command.props, this.checkpoint).then((outcome) => {
       this.sync.inflight--;
       const version = outcome.ok ? outcome.versions?.[path] : undefined;
       if (version !== undefined) this.sync.mine = Math.max(this.sync.mine, version);
