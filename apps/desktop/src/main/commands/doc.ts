@@ -25,6 +25,8 @@ export const docRead = define({
   description:
     'The text of one workspace document — a wiki note, a character or location sheet — with the ' +
     'content hash it was read at, which a later save presents back. Bounded and text only.',
+  notes:
+    'The text of one workspace document, with the content hash it was read at. Bounded and text only.',
   mutating: false,
   props: {
     path: prop.string('workspace-relative path to the file'),
@@ -45,6 +47,8 @@ export const docWrite = define({
     'Front-matter that will not parse is refused, and so is a save dropping a `type:` tag the ' +
     'file had — that deletes an entity. Front-matter that parses but fails the entity schema ' +
     'saves, with the diagnostic beside it.',
+  notes:
+    'Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright.',
   mutating: true,
   undoable: true,
   props: {
@@ -78,6 +82,8 @@ export const docRename = define({
     'first heading — so the new name is read back from wherever the old one was. **The file does ' +
     'not move**: an id is derived from a name once, at creation, and afterwards it is what shots, ' +
     'cast lists and `[[goto:]]` markers point at.',
+  notes:
+    "Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches.",
   mutating: true,
   undoable: true,
   props: {
@@ -104,6 +110,8 @@ export const docCreate = define({
   description:
     'Scaffold a character sheet, a location sheet, a wiki note or a skill from a name, in its ' +
     'conventional home. Refuses rather than overwriting a document already at that path.',
+  notes:
+    "Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path.",
   mutating: true,
   undoable: true,
   props: {

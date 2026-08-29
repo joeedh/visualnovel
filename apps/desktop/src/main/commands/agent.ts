@@ -20,6 +20,7 @@ export const agentRun = define({
   id: 'agent.run',
   title: 'Run agent turn',
   description: 'Send one turn to the authoring agent and return its result.',
+  notes: 'One agent turn. Mutating: a turn in execute mode writes.',
   mutating: true,
   props: {
     input: prop.string('what to ask the agent'),
@@ -78,6 +79,7 @@ export const agentSetModel = define({
   id: 'agent.setModel',
   title: 'Set agent model',
   description: 'Hot-swap the text model, preserving conversation state.',
+  notes: 'Hot-swaps the text model, preserving conversation state.',
   mutating: false,
   props: { modelId: prop.string('the model id to bind') },
   async run({ modelId }, ctx) {
@@ -89,6 +91,8 @@ export const agentSetEffort = define({
   id: 'agent.setEffort',
   title: 'Set agent effort',
   description: 'Set how hard the model thinks, or `none` to switch thinking off.',
+  notes:
+    'How hard the model thinks; `none` switches thinking off. Every choice is accepted — the menu is what filters by model, and one the model will not take is stepped down at the wire (`resolveEffort`). A model with no such knob keeps the setting and ignores it (`supportsEffort`).',
   mutating: false,
   // Every choice is accepted, not just the ones the current model offers. The menu does the
   // filtering, and a level the model will not take is stepped down at the wire rather than refused
@@ -123,6 +127,8 @@ export const agentClear = define({
   id: 'agent.clear',
   title: 'Clear agent context',
   description: 'Reset the conversation, returning the agent to plan mode. The thread is saved.',
+  notes:
+    'Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -140,6 +146,8 @@ export const agentThreads = define({
   id: 'agent.threads',
   title: 'List conversations',
   description: 'Every saved conversation in this project, newest first.',
+  notes:
+    'Every saved conversation, newest first, plus which one is open. Header lines only — no transcripts.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -153,6 +161,7 @@ export const agentNewThread = define({
   id: 'agent.newThread',
   title: 'New conversation',
   description: 'Save the current conversation and start a fresh one.',
+  notes: 'End the open conversation and start again. The next turn opens a new thread file.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -167,6 +176,8 @@ export const agentOpenThread = define({
   description:
     'Replay a saved conversation on screen. Read-only: the agent is not shown it until ' +
     'Continue hands it back.',
+  notes:
+    'Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread unless Continue is pressed first. Returns the whole record as `data`.',
   mutating: false,
   props: { id: prop.string('the conversation to reopen') },
   async run({ id }, ctx) {
@@ -184,6 +195,8 @@ export const agentResumeThread = define({
   id: 'agent.resumeThread',
   title: 'Continue conversation',
   description: 'Continue a saved conversation. The agent is shown everything already in it.',
+  notes:
+    'Continue a saved conversation: the agent is handed the messages from its native log and the session binds to that thread, so later turns append to the same two files. Not mutating — it changes what the agent holds, not the project. Checked because a conversation recorded through another vendor or another protocol cannot be handed to the model bound now; the check answers that sentence, along with a log merged from two clones, one written by a newer version of the app, and a thread that kept only its transcript.',
   mutating: false,
   props: { id: prop.string('the conversation to continue') },
   check: async ({ id }, ctx) => {
@@ -222,6 +235,8 @@ export const agentRenameThread = define({
   id: 'agent.renameThread',
   title: 'Rename conversation',
   description: 'Retitle a saved conversation; an empty id renames the one that is open.',
+  notes:
+    'Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins.',
   mutating: true,
   props: {
     id: prop.string('the conversation to rename, or empty for the open one', { default: '' }),
@@ -245,6 +260,8 @@ export const agentCompact = define({
   description:
     'Summarize this conversation so the agent carries a summary instead of every turn. Nothing ' +
     'is deleted — the transcript on screen is unchanged.',
+  notes:
+    "Summarize the open conversation so the agent carries a summary instead of every turn. Appends one line to each of the thread's logs and rewrites neither, so the transcript on screen is unchanged. Checked because it costs a model call, and refused while a turn is running, with no finished turn to summarize, with the last turn stopped part way through a tool call, and when nothing has been said since the last compaction.",
   mutating: true,
   props: {},
   check: async (_props, ctx) => {

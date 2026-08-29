@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { COMMAND_ID } from '@vn/commands';
 import { catalog, catalogOf } from '../catalog-entry.js';
+import { docIndex } from '../doc-entry.js';
 import { desktopInteractions } from '../interaction.js';
 import { createDesktopRegistry } from '../index.js';
 
@@ -376,6 +377,25 @@ describe('the desktop registry', () => {
       expect(entry.schema.type).toBe('object');
       expect(entry.schema.additionalProperties).toBe(false);
     }
+  });
+
+  /**
+   * `notes` is documentation-only design prose, never a tooltip fallback. `command:catalog`
+   * serves this projection to the renderer, so a leaked `notes` key would be one accidental
+   * property read away from becoming a UI default.
+   */
+  it("never carries a command's doc notes into the runtime catalog", () => {
+    for (const entry of catalog().commands) {
+      expect(entry).not.toHaveProperty('notes');
+    }
+  });
+
+  it('carries doc notes and a namespace in the doc-only index instead', () => {
+    const entries = docIndex();
+    expect(entries).toHaveLength(commands.length);
+    const gateApprove = entries.find((e) => e.id === 'gate.approve');
+    expect(gateApprove?.namespace).toBe('gate');
+    expect(gateApprove?.notes).toBe('Flips `character.md`; writes the approved PNG + manifest.');
   });
 
   /**

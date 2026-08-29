@@ -31,6 +31,8 @@ export const promptInfo = define({
     'The prompt one asset would be generated from: the clauses the builders derived, what the ' +
     'author has done to them, and the one string that gets sent. The same projection the Asset ' +
     'editor draws, so an agent and the pane never disagree about what a picture was asked for.',
+  notes:
+    'The prompt one asset would be generated from: the clauses the builders derived, what the author has done to them, and the one string that gets sent. The same projection the Asset editor draws, so an agent and the pane never disagree about what a picture was asked for.',
   mutating: false,
   props: {
     hash: prop.string('the asset to describe'),
@@ -57,6 +59,8 @@ export const promptSetChunk = define({
     '`mute` it so it is not sent, or `clear` whatever was done to it. The clause keys are what ' +
     '`prompt.info` lists. An edit records the derived text it was written against, so the pane ' +
     'can say when the project has moved underneath it. It re-renders what this rung reaches.',
+  notes:
+    'One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches.',
   mutating: true,
   undoable: true,
   props: {
@@ -85,6 +89,8 @@ export const promptMoveChunk = define({
     'top. Order matters to an image model — what comes first is what it weights — so this is an ' +
     'authorial act and not a display preference. `prompt.clear(part=order)` restores the order ' +
     'the builders derived.',
+  notes:
+    'Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order.',
   mutating: true,
   undoable: true,
   props: {
@@ -109,6 +115,8 @@ export const promptSetCustom = define({
     'Replace the whole derived prompt with one written by hand. The clauses stay underneath — ' +
     'they are what `prompt.condense` reconciles against, and what the pane checks the custom ' +
     'text for — but they are no longer what gets sent. `prompt.clear(part=custom)` goes back.',
+  notes:
+    'Replace the whole prompt with one written by hand. The clauses stay underneath — they are what `prompt.condense` reconciles against and what `prompt.check` measures.',
   mutating: true,
   undoable: true,
   props: {
@@ -135,6 +143,8 @@ export const promptCondense = define({
     'is then **held**: if the clauses move under it, the condensed text is still what gets ' +
     'sent, because re-rendering it would move the task hash and redraw the picture. ' +
     '`force` reconciles against a hand-written prompt instead of refusing over it.',
+  notes:
+    'Ask the text model to rewrite the clauses as one fluent prompt and store it. It is then **held**: clauses moving under it do not re-render the picture. `force` reconciles against a hand-written prompt rather than refusing over it.',
   mutating: true,
   undoable: true,
   props: {
@@ -160,6 +170,8 @@ export const promptClear = define({
     'Discard part of what has been done to a derived prompt: `chunks` (every mute, replacement ' +
     'and appendix), `order`, `custom`, `agent`, or `all` of it. What is left is what the ' +
     'builders derive, byte for byte — which is what makes an untouched project cost nothing.',
+  notes:
+    'Discard part of what was done to a prompt. What is left is what the builders derive, byte for byte.',
   mutating: true,
   undoable: true,
   props: {
@@ -187,6 +199,8 @@ export const promptAddRef = define({
     'sheet:<character>/<outfit>/<angle>, plate:<location>/<variant>, shot:<scene>/<shot>. A slot ' +
     'pins what fills it today and remembers where it came from; a bare hash pins itself and can ' +
     'never move. References are inside the task hash, so this re-renders the picture.',
+  notes:
+    'Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path.',
   mutating: true,
   undoable: true,
   props: {
@@ -210,6 +224,8 @@ export const promptDropRef = define({
   description:
     'Take a reference image off a clause. The bytes stay in the store — this only stops them ' +
     'being sent — and the task is re-keyed, so the picture renders again without it.',
+  notes:
+    'Take a reference off a clause. The bytes stay in the store — this only stops them being sent.',
   mutating: true,
   undoable: true,
   props: {
@@ -236,6 +252,8 @@ export const promptRepin = define({
     'everything downstream instead, and this is how that is cleared. `regenerate=true` re-keys ' +
     'the task and the next run draws it again; `false` is re-approve, which keeps the existing ' +
     "bytes by recording them as the newly-keyed task's output.",
+  notes:
+    "Point a linked reference at whatever its slot holds now, which is how a suspension is cleared. `regenerate=false` is **re-approve**: it keeps the existing bytes by recording them as the newly-keyed task's output, so nothing re-renders.",
   mutating: true,
   undoable: true,
   props: {
@@ -263,6 +281,8 @@ export const promptCheck = define({
     'Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap ' +
     'heuristic and nothing more — it answers "not found", never "it was dropped" — so it is a ' +
     'prompt to go and look, not a verdict. In chunks mode nothing can be missing.',
+  notes:
+    'Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap heuristic — "not found", never "dropped" — so it is a prompt to go and look. In chunks mode nothing can be missing.',
   mutating: false,
   props: {
     hash: prop.string('the asset whose prompt to check'),

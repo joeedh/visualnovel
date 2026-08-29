@@ -64,6 +64,8 @@ export const viewOpen = define({
     'biggest pane that is not the active one — or `popup`, a floating window over the mesh. ' +
     'Already open and asked for `here`, `elsewhere` or `popup`, it is focused rather than ' +
     'opened twice.',
+  notes:
+    'Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane; `window` is not a pane at all — it opens a second window showing the editor.',
   mutating: false,
   props: {
     editor: prop.oneOf(EDITOR_IDS, 'which editor to show'),
@@ -92,6 +94,7 @@ export const viewFocus = define({
   id: 'view.focus',
   title: 'Focus an editor',
   description: 'Make the pane already showing an editor the active one, without moving anything.',
+  notes: 'Makes the pane already showing an editor the active one.',
   mutating: false,
   props: {
     editor: prop.oneOf(EDITOR_IDS, 'which editor to focus'),
@@ -107,6 +110,7 @@ export const viewClose = define({
   id: 'view.close',
   title: 'Close the active pane',
   description: 'Collapse the active pane into its neighbour. The last pane is kept.',
+  notes: 'Collapses the active pane into its neighbour; the last pane is kept.',
   mutating: false,
   props: {},
   run(_props, ctx) {
@@ -122,6 +126,8 @@ export const viewLayout = define({
     'Throw the arrangement away and build the one the app ships with, ignoring the layout ' +
     'templates in the project entirely. The escape hatch for a mesh no template can fix; the ' +
     'menu offers `view.applyLayout` instead.',
+  notes:
+    "Throws the remembered arrangement away and rebuilds the default one, ignoring the project's layout templates. The escape hatch; the menu offers `view.applyLayout` instead.",
   mutating: false,
   props: {},
   run(_props, ctx) {
@@ -137,6 +143,8 @@ export const viewLayouts = define({
     'Every named arrangement this project has, and which one the window is showing. A layout ' +
     'that cannot be applied — one a merge left unresolved, one naming an editor this build has ' +
     'not got — is listed with the reason rather than left out.',
+  notes:
+    'Every layout template the project has, and which one the window is showing. One a merge left unresolved is listed with the reason rather than left out.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -158,6 +166,8 @@ export const viewApplyLayout = define({
   description:
     'Rearrange the whole window to one of the project’s layout templates. Not undoable and not ' +
     'a write: which panes you have open is a window fact, remembered per install.',
+  notes:
+    "Rearranges the whole window to one of the project's layout templates. Refuses a missing or unreadable one by name.",
   mutating: false,
   props: { name: prop.string('the layout’s slug, as `view.layouts` lists it') },
   async run({ name }, ctx) {
@@ -186,6 +196,8 @@ export const viewSaveLayout = define({
     'File the arrangement on screen in the project as a named layout, so it can be applied ' +
     'again and travels to whoever else works on the story. Saving over one that exists is ' +
     'allowed and is one undo away.',
+  notes:
+    'Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away.',
   mutating: true,
   undoable: true,
   props: {
@@ -230,6 +242,8 @@ export const viewResetLayout = define({
     'Put the layouts the app ships with back the way they shipped, overwriting any edits to ' +
     'them, and rearrange the window to the one it was showing. Undoable — the edits come back, ' +
     'and so does the arrangement.',
+  notes:
+    'Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved.',
   mutating: true,
   undoable: true,
   confirm: true,
@@ -281,6 +295,7 @@ export const viewPalette = define({
   id: 'view.palette',
   title: 'Toggle palette',
   description: 'Open or close the command palette.',
+  notes: 'Opens or closes the command palette.',
   mutating: false,
   props: { open: prop.boolean('true to open, false to close', { default: true }) },
   run({ open }, ctx) {

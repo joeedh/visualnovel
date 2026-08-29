@@ -8,6 +8,7 @@ export const gateCandidates = define({
   id: 'gate.candidates',
   title: 'Gate candidates',
   description: "List a character's generated portrait candidates and which is accepted.",
+  notes: 'Pending portrait candidates for one character.',
   mutating: false,
   props: { characterId: prop.string('the character to inspect') },
   async run({ characterId }, ctx) {
@@ -23,6 +24,7 @@ export const gateApprove = define({
   id: 'gate.approve',
   title: 'Approve portrait',
   description: "Approve a character's portrait by asset hash, clearing them from the gate.",
+  notes: 'Flips `character.md`; writes the approved PNG + manifest.',
   mutating: true,
   props: {
     characterId: prop.string('the character to approve'),

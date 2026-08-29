@@ -22,6 +22,8 @@ export const assetInfo = define({
     'Everything known about one generated asset: its display label and kind, which root holds ' +
     'it, whether it is accepted, the task that made it, the prompt it was rendered from, the ' +
     'prompt the builders would write today, and the art-notes rungs that reach it.',
+  notes:
+    'One asset: label, kind, root, accepted, its task, the prompt it was rendered from, the prompt the builders would write **today**, and the art-notes rungs reaching it.',
   mutating: false,
   props: { hash: prop.string('the asset hash') },
   async run({ hash }, ctx) {
@@ -39,6 +41,8 @@ export const assetSuspended = define({
     'Every asset drawn against a reference that has moved, plus everything downstream of one, ' +
     'in dependency order with the reason for each. Derived on every call, never a stored flag — ' +
     'the bytes stay; suspension only says they are out of date.',
+  notes:
+    'Every asset drawn against a reference whose slot has moved, plus everything downstream of one, in dependency order with the reason for each. Derived on every call, never a stored flag — the bytes stay; suspension only says they are out of date.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -54,6 +58,8 @@ export const assetAccept = define({
     'Mark this asset as the accepted one for what it satisfies. A portrait is refused by name: ' +
     'approving one also writes character.md and approved.png, which is `gate.approve`. So is a ' +
     'concept: nothing downstream consumes one, so making it count is `art.promote`.',
+  notes:
+    '`store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved.',
   mutating: true,
   props: { hash: prop.string('the asset hash to accept') },
   async check({ hash }, ctx) {
@@ -97,6 +103,8 @@ export const assetUpload = define({
     'pointed at by a prompt chunk. Name a slot and the same image becomes that picture, the way ' +
     'a repainted plate should. Mock placeholder art and anything that is not an image are ' +
     'refused by name.',
+  notes:
+    'Bring an image from outside into the **base** store. With no `slot` it is a `reference`: nothing generated it, so it is never approved and never planned — it exists to be pointed at by `prompt.addRef`. Name a `slot` and the same act files the bytes and adopts them onto it, which is what a repainted plate wants. Mock placeholder art and anything that is not an image are refused by name; a file that lands but cannot be adopted says so and stays filed as a reference, recoverable with `asset.adopt`.',
   mutating: true,
   // Writes bytes into the repo from a path the author named, which is worth one confirmation
   confirm: true,
@@ -140,6 +148,8 @@ export const assetAdopt = define({
     'rendering one. A portrait is refused by name, because approving a look is `gate.approve`; ' +
     'so is an upload or a concept, which are their own identity. Superseding a render that ' +
     'already holds the slot needs `replace`, and the old bytes stay in the store either way.',
+  notes:
+    'Make an asset already in the store the output of the picture a slot names — `plate:cafe/night`, `sheet:aiko/gala/front`, `shot:greet/s2` — so the next run **adopts** it rather than rendering one. The generalization of `art.promote`, which is now one caller of it. A `portrait:` slot is refused by name (approving a look is `gate.approve`), as is an `asset:` one (an upload and a concept are their own identity). Superseding a render that already holds the slot needs `replace`; the old bytes stay in the store either way, and nothing is auto-accepted.',
   mutating: true,
   // Makes existing bytes the project's art, and with `replace` it supersedes real work
   confirm: true,
@@ -166,6 +176,8 @@ export const assetReplace = define({
     'with the chooser in front and the slot read off the asset instead of typed. The slot is the ' +
     'one these bytes fill now, so an asset a later render superseded is refused, as is anything ' +
     'nothing planned. Cancelling changes nothing.',
+  notes:
+    "The asset editor's Replace strip: open an image chooser and make what comes back this picture's slot — `asset.upload` with the chooser in front and the slot read off the asset instead of typed. Refused when these bytes fill no slot (a concept, an upload, a render something later superseded). Cancelling changes nothing.",
   mutating: true,
   // Supersedes real work with a file from outside, which is the bar `asset.upload` clears too
   confirm: true,
@@ -203,6 +215,8 @@ export const assetRegenerate = define({
     'exactly one task plannable, because a one-task run is not worth a second trip. A fixed ' +
     'image seed makes a plain re-roll deterministic — art notes are how the picture actually ' +
     'changes.',
+  notes:
+    "Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image.",
   mutating: true,
   // Requeuing costs nothing by itself, but running spends a real image call, and the gate is on
   // the command rather than the props.

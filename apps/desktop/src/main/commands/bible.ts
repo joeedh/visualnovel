@@ -12,6 +12,8 @@ export const bibleSearch = define({
   id: 'bible.search',
   title: 'Search the story bible',
   description: 'Rank passages in wiki/ against a query; returns file:line excerpts, not files.',
+  notes:
+    'Ranked excerpts from `wiki/`. There is no `bible.read`: [`@vn/bible`](story-bible.md) has no whole-file API.',
   mutating: false,
   props: {
     query: prop.string('what to look for, in words'),

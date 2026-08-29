@@ -46,6 +46,59 @@ export interface CatalogEntry {
   schema: JsonSchema;
 }
 
+/** One prop as documentation needs it — no `usage`/`schema`-only fields. */
+export interface DocProp {
+  name: string;
+  kind: PropKind;
+  description: string;
+  required: boolean;
+  default?: PropValue;
+  values?: readonly string[];
+  /** Bulk content (`digest.ts`) — the table marks it rather than showing a default. */
+  digest?: boolean;
+}
+
+/**
+ * The doc-only projection of a registry, consumed solely by `scripts/gen-command-table.mjs`.
+ * Deliberately a different shape than `CatalogEntry`: `notes` must never ride along with
+ * whatever `toCatalog` produces, because that object is served over `command:catalog` and read
+ * for UI tooltip defaults.
+ */
+export interface DocCommandEntry {
+  id: string;
+  namespace: string;
+  title: string;
+  mutating: boolean;
+  confirm: boolean;
+  undoable: boolean;
+  /** Whether `stack.check` has a precondition to consult. False means `undeclared`, not `accept`. */
+  checkable: boolean;
+  notes?: string;
+  props: DocProp[];
+}
+
+export function toDocIndex(registry: CommandRegistry<any>): DocCommandEntry[] {
+  return registry.list().map<DocCommandEntry>((command) => ({
+    id: command.id,
+    namespace: command.id.split('.')[0]!,
+    title: command.title,
+    mutating: command.mutating,
+    confirm: command.confirm ?? false,
+    undoable: command.undoable ?? false,
+    checkable: Boolean(command.check),
+    ...(command.notes ? { notes: command.notes } : {}),
+    props: Object.entries(command.props).map(([name, spec]) => ({
+      name,
+      kind: spec.kind,
+      description: spec.description,
+      required: spec.required,
+      ...(spec.default !== undefined ? { default: spec.default } : {}),
+      ...(spec.values ? { values: [...spec.values] } : {}),
+      ...(spec.digest ? { digest: true } : {}),
+    })),
+  }));
+}
+
 export interface CommandCatalog {
   version: 1;
   /** Which registry this was generated from, e.g. `@vn/desktop`. */

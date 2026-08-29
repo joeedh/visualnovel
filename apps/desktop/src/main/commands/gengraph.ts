@@ -93,6 +93,8 @@ export const gengraphList = define({
   description:
     'Every graph this project holds, with the file it lives in. A graph that will not load ' +
     'carries the reason instead, so a conflicted or corrupt one is visible rather than absent.',
+  notes:
+    'Every generation graph the project holds, with the sentence an unreadable one earns instead of opening.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -112,6 +114,8 @@ export const gengraphCreate = define({
   description:
     'Start an empty graph at `vngen/work/graphs/<name>.json`. Nothing is drawn by it until an ' +
     'output node in it binds a slot and is made the active one.',
+  notes:
+    'Start an empty graph at `vngen/work/graphs/<slug>.json`. The slug comes from the name once, at creation, so a graph is renamed the way a scene is — not at all.',
   mutating: true,
   undoable: true,
   props: {
@@ -142,6 +146,8 @@ export const gengraphCreateForSlot = define({
     'Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt ' +
     'and the task references feed an image node, and its picture fills the slot. A slot another ' +
     'graph already draws is refused, because two graphs claiming one slot bind neither.',
+  notes:
+    'Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt and the task references feed an image node, and its picture fills the slot. An empty `name` is derived from the slot address, and takes the next free `<base>-2` where a graph of that name exists. A slot another graph already draws is refused, because two active outputs claiming one slot leave it bound to neither. `open` shows the new graph in the Gen Graph editor, focusing a pane already open on one rather than making a second. This is what _Create a graph for this slot_ dispatches, on a slot row and on a picture a slot claims alike.',
   mutating: true,
   undoable: true,
   props: {
@@ -261,6 +267,8 @@ export const gengraphDelete = define({
   description:
     'Remove a graph document. Its journal and its blobs are left where they are, because they ' +
     'record runs that happened and a slot the graph drew still points at the pictures.',
+  notes:
+    "Remove a graph's document. Its journal and blobs under `vngen/state/graphs/` stay, being the record of runs that happened.",
   mutating: true,
   undoable: true,
   confirm: true,
@@ -287,6 +295,8 @@ export const gengraphAddNode = define({
   description:
     'Put one node of the named type into a graph. A type no plugin provides is refused by name, ' +
     'so a graph never gains a node the run cannot execute.',
+  notes:
+    'Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load.',
   mutating: true,
   undoable: true,
   props: {
@@ -340,6 +350,7 @@ export const gengraphRemoveNode = define({
   id: 'gengraph.removeNode',
   title: 'Remove a node',
   description: 'Take one node out of a graph, along with every link into or out of it.',
+  notes: 'Delete one node and every link touching it.',
   mutating: true,
   undoable: true,
   props: {
@@ -362,6 +373,8 @@ export const gengraphLink = define({
   description:
     "Feed one node's input from another node's output. A link whose types disagree is " +
     'refused, and so is one that would make a cycle, because a cycle has no order to run in.',
+  notes:
+    "Feed one node's input from another node's output. A pair whose types cannot coerce is refused, and so is a link that would close a cycle.",
   mutating: true,
   undoable: true,
   props: {
@@ -399,6 +412,8 @@ export const gengraphUnlink = define({
   description:
     'Cut what feeds one input. Naming a source cuts that one link; leaving it empty cuts every ' +
     'link into the input.',
+  notes:
+    'Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket.',
   mutating: true,
   undoable: true,
   props: {
@@ -443,6 +458,8 @@ export const gengraphSetProp = define({
     "binds. The value is typed as text and the node's own property decides how to read it, " +
     'so a boolean property takes `true` and a numeric one takes a number. A slot string that ' +
     'does not parse is refused, and so is one addressing an asset rather than a slot.',
+  notes:
+    "Write one node property. The value is typed as text and the node's own property decides how to read it, so a number field refuses prose.",
   mutating: true,
   undoable: true,
   // Dragging a slider sends one of these per frame, and each is a separate undo point either way.
@@ -474,6 +491,8 @@ export const gengraphSetActiveOutput = define({
     'Make one output node the one a run of this graph terminates on, standing every rival output ' +
     'for the same slot down. Which output is active is part of the document, so it is undoable ' +
     'and it shows up in a diff.',
+  notes:
+    "Choose which Output node a run targets and which slot binding counts. An Output filling no slot is refused, because a task's slot is what names the graph that draws it.",
   mutating: true,
   undoable: true,
   props: {
@@ -550,6 +569,8 @@ export const gengraphApply = define({
     "Rewrite a whole graph from a JSON description in path.ux's graph DSL. A node the " +
     'description keeps by id keeps its journal, so replacing the graph does not by itself spend ' +
     'anything. A description that will not build leaves the graph on disk untouched.',
+  notes:
+    "Rewrite a whole graph from a JSON description in path.ux's graph DSL, diffed by node id so a node the description leaves alone keeps its position and its journal. The description is a string prop because `@vn/commands` has no JSON kind.",
   mutating: true,
   undoable: true,
   props: {
@@ -579,6 +600,8 @@ export const gengraphEstimate = define({
     'What one run of a graph is expected to spend if it runs from nothing, priced against the ' +
     'table the app ships with. The refine tail is counted `max_refine_attempts` times, so the ' +
     'figure is the worst case rather than the cost of a run that passes first time.',
+  notes:
+    'What one run would cost, per paid node and in total, from the shipped price table. Writes nothing.',
   mutating: false,
   props: {
     slug: prop.string(SLUG),
@@ -604,6 +627,8 @@ export const gengraphRun = define({
     'again. Nothing enters the asset store: a picture becomes an asset on the bound path, where ' +
     "a task's slot names the graph that draws it. `force` re-runs every paid node feeding " +
     'the target instead of resuming it.',
+  notes:
+    'Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal.',
   mutating: true,
   undoable: false,
   confirm: true,

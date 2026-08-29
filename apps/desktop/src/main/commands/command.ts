@@ -16,6 +16,8 @@ export const commandCheck = define({
   description:
     'Ask whether an invocation would run, without running it. Answers accept, refuse (with the ' +
     'reason the command itself would give), or undeclared for a command with no precondition.',
+  notes:
+    'Would that invocation run? See [Preconditions](command-system.md#preconditions-asking-before-acting).',
   mutating: false,
   props: { invocation: prop.string("the invocation to check, e.g. story.setNext(scene='a')") },
   async run({ invocation }, ctx) {

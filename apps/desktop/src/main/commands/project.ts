@@ -32,6 +32,8 @@ export const projectInfo = define({
     'What `project.yaml` says: the title, the entry scene, the art style, the model ids and the ' +
     'image parameters — plus how many image tasks the art style reaches. Never the API keys, ' +
     'whose names live in the file and whose values never leave the environment.',
+  notes:
+    'What `project.yaml` says: title, entry scene, art style, model ids, image params, and how many image tasks the art style reaches. Never the API keys — their *names* are in the file and a pane listing them is one screenshot away from looking like it lists their values.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -48,6 +50,8 @@ export const projectSetArtStyle = define({
     'notes on one rung: it reaches every portrait, sheet, plate and shot, so setting it re-keys ' +
     'every image task and the next `pipeline.run` renders the whole library again. The line is ' +
     'spliced into `project.yaml`, so comments and key order survive.',
+  notes:
+    'The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive.',
   mutating: true,
   undoable: true,
   // Every other document mutator changes one document's words. This one changes what the project
@@ -78,6 +82,8 @@ export const projectSetKey = define({
     'to `.gitignore` before the write so commit-on-save cannot pick it up); `scope=user` writes ' +
     'it once for every project on this machine, into a directory no repository contains. Either ' +
     'way the value reaches that file and nowhere else: the history records `<secret>`.',
+  notes:
+    "Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store.",
   mutating: true,
   // Deliberately not undoable: an undo point is a git snapshot, and this command exists to keep
   // the credential out of git. At the user scope the file is not in a repository at all, so no
@@ -176,6 +182,8 @@ export const projectPagesStatus = define({
   description:
     'Whether this project carries the GitHub Pages publisher, whether it came from this build ' +
     'of the app, and what the repository would publish from.',
+  notes:
+    'Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly.',
   mutating: false,
   props: {
     branch: prop.string('The branch the workflow publishes the site to.', {
@@ -206,6 +214,8 @@ export const projectInstallPages = define({
     'Write a GitHub Actions workflow into this project that publishes it as a light-novel web ' +
     'page. The workflow and the renderer it runs are committed to the project repository; ' +
     'pushing the repository then publishes the site to a branch GitHub Pages can serve.',
+  notes:
+    'Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it writes `.github/` and `.vnstudio/`, outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md).',
   mutating: true,
   confirm: true,
   props: {

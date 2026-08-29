@@ -60,6 +60,12 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
   id: string;
   title: string;
   description: string;
+  /**
+   * Design notes for documentation only: what the command refuses, what it straddles, edge
+   * cases worth knowing. Never a tooltip fallback and never sent to an LLM — see `description`
+   * for the text that's used for both of those.
+   */
+  notes?: string;
   props: M;
   /** True if the command writes files or git history. Recorded; not yet a gate. */
   mutating: boolean;

@@ -26,6 +26,8 @@ export const artSetNotes = define({
     '`character:aiko/gala`, `location:cafe`, `location:cafe/night` or `shot:greet/s2`. It is ' +
     'appended to the prompt, so it re-renders the assets that rung reaches on the next run. ' +
     'Never creates an outfit, a variant or a shot — a note on one that does not exist is refused.',
+  notes:
+    'Art direction on one rung — `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`. Appended to the prompt, so it **re-renders** what that rung reaches. Never creates the rung it names.',
   mutating: true,
   undoable: true,
   props: {
@@ -81,6 +83,8 @@ export const artGenerate = define({
     'the location or character it names — say which, or let the sentence decide — and files under ' +
     'Concepts. A concept is a sketch and nothing more: the pipeline never plans it, no scene ' +
     'renders it, and `vngen export` ignores it. It costs one image generation.',
+  notes:
+    'Draw a concept from a sentence and file it under Concepts, bound to the location or character it names. Spends one image generation; the pipeline never plans one and `vngen export` ignores it.',
   mutating: true,
   // Spends a real image call, the same bar `asset.regenerate(run=true)` clears. It is neither
   // undoable nor journalled, because it writes new content-addressed bytes and there is no prior
@@ -126,6 +130,8 @@ export const artRedraw = define({
     'author can rewrite. The result is a new sketch beside the original — bytes are ' +
     'content-addressed, so nothing is overwritten. A planned asset is refused by name: its ' +
     'prompt comes from the builders, and re-rendering it is `asset.regenerate`.',
+  notes:
+    'Draw a concept again from an edited prompt — the one asset whose prompt is authored rather than derived, so the one prompt there is to rewrite. The result is a **new** sketch beside the original; nothing is overwritten. A planned asset is refused by name: re-rendering one is `asset.regenerate`.',
   mutating: true,
   // One image call, like `art.generate`, and not undoable because new bytes have no prior state
   // to restore
@@ -169,6 +175,8 @@ export const artPromote = define({
     'done — so the next run adopts the picture instead of rendering its own. Only a concept ' +
     'bound to a location can be promoted; a character concept is refused, because a look goes ' +
     'through the approval gate.',
+  notes:
+    "Make a concept the location plate for one variant: the variant joins the sheet if it is new, the bytes are re-recorded as a plate, and that plate's task is logged `done` so the next run **adopts** the picture. A character concept is refused — a look goes through the gate.",
   mutating: true,
   // Writes a sheet, a manifest row and a `done` task record across two trees, which no document
   // snapshot covers, so it is committed like any other act but never undone

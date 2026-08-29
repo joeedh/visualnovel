@@ -104,6 +104,8 @@ export const workspaceCreate = define({
     'folder named after the title inside `path` rather than in `path` itself. Refuses a ' +
     'directory that already has files in it. Closes the current project, its agent ' +
     'conversation and undo history with it.',
+  notes:
+    'Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. `newFolder` puts it in a `slug(title)` folder inside `path`. Refuses a directory with files in it; warns when it sits inside another repo.',
   mutating: true,
   props: {
     path: prop.directory('the folder the project goes in'),
@@ -134,6 +136,8 @@ export const workspaceOpen = define({
     'initializes a git repository and commits whatever is already there. Closes the current ' +
     'project — its agent conversation and undo history go with it. Refuses a project another ' +
     'app instance already has open, and focuses that instance instead.',
+  notes:
+    'Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open).',
   mutating: true,
   props: {
     path: prop.string('the project directory to open'),
@@ -154,6 +158,7 @@ export const workspacePick = define({
   description:
     'Choose a project directory in a file dialog, then open it — `workspace.open` with the ' +
     'picker in front. Cancelling changes nothing.',
+  notes: '`workspace.open` with the native directory chooser in front. Cancelling changes nothing.',
   mutating: true,
   props: {},
   async check(_props, ctx) {
@@ -182,6 +187,8 @@ export const workspaceChooseDirectory = define({
   description:
     'Open the folder chooser and answer with what was chosen, without doing anything to it — ' +
     'what fills in a directory field. Cancelling answers with nothing.',
+  notes:
+    'Open the folder chooser and answer with what was chosen, touching nothing — what fills in a `directory` field.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -201,6 +208,7 @@ export const workspaceRecent = define({
   description:
     'The project that is open and the ones opened before it, most recent first. Remembered per ' +
     'install rather than per project — it has to be readable before any project is open.',
+  notes: 'The open project and the ones opened before it, most recent first.',
   mutating: false,
   props: {},
   run(_props, ctx) {
@@ -218,6 +226,7 @@ export const workspaceIndex = define({
   id: 'workspace.index',
   title: 'Workspace index',
   description: 'The project index: characters, locations, screenplay files, diagnostics.',
+  notes: 'Characters, locations, screenplay files, diagnostics.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -232,6 +241,8 @@ export const workspaceDoctree = define({
   description:
     'The sidebar tree — story, scenes and their shots, characters, locations, the wiki, assets ' +
     'by kind — plus what each entity is attached to (its sheet, its art, its scenes and shots).',
+  notes:
+    'The sidebar tree (story → scenes → shots, characters, locations, wiki, assets by kind) plus per-entity backlinks — see [`document-tree.md`](document-tree.md).',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -250,6 +261,7 @@ export const workspaceFiletree = define({
   description:
     'Every file in the workspace as a tree, `.git` and `node_modules` excluded. The document ' +
     "tree's other mode: what is on disk rather than what the model made of it.",
+  notes: 'Every file in the workspace as a tree, `.git` and `node_modules` excluded.',
   mutating: false,
   props: {},
   async run(_props, ctx) {
@@ -278,6 +290,8 @@ export const workspaceReindex = define({
   description:
     "Rebuild AICONTEXT.generated.md: the cast, the locations, the story graph, and the bible's " +
     'table of contents — the map the authoring agent reads. Facts only, never file contents.',
+  notes:
+    "Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write.",
   mutating: true,
   props: {},
   async check(_props, ctx) {
@@ -306,6 +320,8 @@ export const workspaceImport = define({
     'Convert a screenplay/*.fountain project into one scenes/<id>.md chunk per scene — the ' +
     '`vngen import` equivalent. Refuses over existing chunks; the original is moved aside, ' +
     'not deleted.',
+  notes:
+    'Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside.',
   mutating: true,
   props: {},
   async check(_props, ctx) {

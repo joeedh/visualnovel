@@ -25,6 +25,7 @@ export const interactionList = define({
   description:
     'The direct-manipulation gestures the app offers: what each one carries, what it accepts, ' +
     'and the commands it can commit.',
+  notes: 'The gestures the app offers — see below.',
   mutating: false,
   props: {},
   async run() {
@@ -39,6 +40,8 @@ export const interactionTargets = define({
   description:
     'Every target of a gesture, each marked accept or refuse with the reason the command ' +
     'itself would give. Reads the live story graph; changes nothing.',
+  notes:
+    'Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against.',
   mutating: false,
   props: {
     interaction: prop.oneOf(INTERACTION_IDS, 'which gesture to judge'),

@@ -20,6 +20,8 @@ export const windowNew = define({
     'Open another window onto the same project, so panes can be spread across monitors. It is ' +
     'a second view, not a second app: one process, one undo history, one set of files. Name an ' +
     'editor to have the new window open showing it rather than the arrangement it last had.',
+  notes:
+    'Open another window onto the same project. A second *view*, not a second app: one process, one `WorkspaceSession`, one undo history. Both props are optional; naming an editor opens showing it.',
   mutating: false,
   props: {
     editor: prop.oneOf(
@@ -51,6 +53,8 @@ export const windowClose = define({
     'Close this window. Its panes and its selection are remembered against its index, so the ' +
     'next window to take that index opens where this one left off. Closing the last window ' +
     'quits, which is the one case worth knowing before pressing it.',
+  notes:
+    'Close the asking window. Its note says how many stay open, or that this is the last one and closing it quits.',
   mutating: false,
   props: {},
   check(_props, ctx) {
