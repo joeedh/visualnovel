@@ -424,6 +424,7 @@ export class CommandStack<Host = unknown> {
       status: 'ok',
       message: oc.message,
       undo: journal.point(oc.pre, post),
+      undoScope: oc.scope,
     };
     await this.record(record);
     this.closeCheckpoint(oc);
@@ -688,13 +689,18 @@ export class CommandStack<Host = unknown> {
   private async moveBody(opts: Move): Promise<CommandOutcome> {
     const journal = this.opts.journal!;
     const { target, kind } = opts;
+    const scope = target.undoScope;
     const startedAt = this.now();
     let restored: string[] = [];
     try {
-      const checked = await journal.check(opts.point, opts.from);
+      const checked = scope
+        ? await journal.checkScoped(scope, opts.point, opts.from)
+        : await journal.check(opts.point, opts.from);
       if (!checked.ok)
         return { ok: false, error: `cannot ${kind} ${target.invocation}: ${checked.error}` };
-      const { error, changed } = await journal.restore(checked.tree, opts.point, opts.to);
+      const { error, changed } = scope
+        ? await journal.restoreScoped(scope, checked.tree, opts.point, opts.to)
+        : await journal.restore(checked.tree, opts.point, opts.to);
       restored = changed;
       // A restore that failed part way through leaves the worktree between the two trees, so the
       // failure is reported rather than thrown: a caller told nothing happened would be wrong.

@@ -203,4 +203,12 @@ export interface CommandRecord {
    * in for the whole group.
    */
   checkpoint?: number;
+  /**
+   * Root-relative subtree `undo` is confined to — set on a checkpoint's aggregate record, whose
+   * `pre`/`post` are hashes of `captureScoped`'s subdirectory rather than the whole document
+   * tree. Absent means `undo` holds whole-tree hashes, as every non-checkpoint record's does;
+   * `moveBody` reads this to pick `check`/`restore` or their scoped counterparts, since the two
+   * hash spaces are not comparable.
+   */
+  undoScope?: string;
 }

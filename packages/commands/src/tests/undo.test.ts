@@ -299,6 +299,31 @@ describe('UndoJournal, scoped to a subdirectory', () => {
     }
   });
 
+  it('checkScoped/restoreScoped round-trip a scoped point that check()/restore() cannot', async () => {
+    const { dir, journal, cleanup } = await scopedWorkspace();
+    try {
+      const pre = (await journal.captureScoped('work/graphs', 1))!;
+      await fs.writeFile(join(dir, 'work/graphs/scene.json'), '{"a":2}\n');
+      const post = (await journal.captureScoped('work/graphs', 1))!;
+      const point = journal.point(pre, post);
+
+      // A scoped point holds a subdirectory hash, not a whole-tree one — the two are not
+      // comparable, so the whole-tree check refuses rather than silently doing nothing. This is
+      // the mismatch `CommandStack.moveBody` must route around via `record.undoScope`.
+      const wholeTreeCheck = await journal.check(point, 'post');
+      expect(wholeTreeCheck.ok).toBe(false);
+
+      const scopedCheck = await journal.checkScoped('work/graphs', point, 'post');
+      expect(scopedCheck.ok).toBe(true);
+      if (!scopedCheck.ok) return;
+      const restored = await journal.restoreScoped('work/graphs', scopedCheck.tree, point, 'pre');
+      expect(restored.error).toBeUndefined();
+      expect(await read(dir, 'work/graphs/scene.json')).toBe('{"a":1}\n');
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('pins a captureScoped tree under its own seq, the same way capture does', async () => {
     const { dir, journal, cleanup } = await scopedWorkspace();
     try {

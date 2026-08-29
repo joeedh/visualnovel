@@ -139,6 +139,33 @@ export class UndoJournal {
     return { ok: true, tree };
   }
 
+  /** {@link check}, confined to a root-relative subdirectory. */
+  async checkScoped(
+    subpath: string,
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ ok: true; tree: string } | { ok: false; error: string }> {
+    const expected = point[side];
+    if (this.store.tree(expected) === undefined) {
+      return {
+        ok: false,
+        error: `that command's snapshot is no longer held — undo reaches back ${this.keep} commands`,
+      };
+    }
+    const tree = await this.currentTreeScoped(subpath);
+    if (tree === null)
+      return { ok: false, error: `${join(this.root, subpath)} is no longer a directory` };
+    if (tree !== expected) {
+      return {
+        ok: false,
+        error:
+          'the workspace has changed since that command ran — undoing would discard those ' +
+          'changes. Commit or revert them first.',
+      };
+    }
+    return { ok: true, tree };
+  }
+
   /**
    * Move the working copy from the checked tree to the `side` snapshot, answering the paths it
    * moved so a restore reports what it touched the way any other write does.

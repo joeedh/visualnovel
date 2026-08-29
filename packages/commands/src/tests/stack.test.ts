@@ -1,3 +1,6 @@
+import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { sha256 } from '@vn/util';
 import { toCatalog } from '../catalog.js';
 import {
@@ -10,7 +13,7 @@ import {
 import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
 import { CHECKPOINT_TIMEOUT_MS, CommandStack } from '../stack.js';
-import type { UndoJournal } from '../undo.js';
+import { UndoJournal } from '../undo.js';
 import type { Git } from '@vn/git';
 
 /** Just the slice of Git the stack touches, so tests need no repo on disk. */
@@ -421,6 +424,13 @@ class FakeJournal {
   }
   currentTreeScoped(_scope: string): Promise<string | null> {
     return this.currentTree();
+  }
+  checkScoped(
+    _scope: string,
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ ok: true; tree: string } | { ok: false; error: string }> {
+    return this.check(point, side);
   }
   restoreScoped(
     _scope: string,
@@ -974,6 +984,70 @@ describe('checkpoints', () => {
     await stack.endCheckpoint(handle);
     expect(await outside).toMatchObject({ ok: true });
     expect(world.value).toBe('from-outside');
+  });
+});
+
+/**
+ * `FakeJournal`'s scoped methods alias its whole-tree ones (see the class above), so the
+ * `checkpoints` suite above cannot tell a `moveBody` that calls the wrong pair apart from one
+ * that calls the right one — both "work" against the fake. This suite runs the same round trip
+ * against a real `UndoJournal` and real files, where a scoped and a whole-tree hash are
+ * genuinely different values, to prove `stack.undo()` actually reverts a checkpoint.
+ */
+describe('checkpoints, against a real UndoJournal', () => {
+  async function realCheckpointSetup() {
+    const dir = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'vn-checkpoint-real-')));
+    await fs.mkdir(join(dir, 'graphs'), { recursive: true });
+    await fs.writeFile(join(dir, 'graphs', 'a.json'), '{"nodes":[]}\n');
+
+    const registry = new CommandRegistry<Host>();
+    registry.registerAll([
+      define({
+        id: 'demo.writeGraph',
+        title: 'Write graph',
+        description: 'Overwrite the scoped graph file.',
+        mutating: true,
+        props: { text: prop.string('file contents') },
+        async run(props) {
+          await fs.writeFile(join(dir, 'graphs', 'a.json'), props.text);
+          return { message: `wrote ${props.text}`, written: ['graphs/a.json'] };
+        },
+      }),
+    ]);
+    const stack = new CommandStack<Host>({
+      registry,
+      context: { root: dir, git: fakeGit(), host: { seen: [] }, log: () => {} },
+      journal: new UndoJournal({ root: dir }),
+    });
+    return { dir, stack, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
+  }
+
+  it('reverts the file undo() cannot reach without record.undoScope', async () => {
+    const { dir, stack, cleanup } = await realCheckpointSetup();
+    try {
+      const handle = await stack.beginCheckpoint('Duplicate', 'Duplicated a node', 'graphs');
+      const written = await stack.exec(
+        'demo.writeGraph',
+        { text: '{"nodes":[1]}\n' },
+        'ui',
+        undefined,
+        handle,
+      );
+      expect(written).toMatchObject({ ok: true });
+
+      const closed = await stack.endCheckpoint(handle);
+      expect(closed).toMatchObject({
+        ok: true,
+        record: { id: 'stack.checkpoint', undoScope: 'graphs', undo: { changed: true } },
+      });
+      expect(await fs.readFile(join(dir, 'graphs', 'a.json'), 'utf8')).toBe('{"nodes":[1]}\n');
+
+      const undone = await stack.undo();
+      expect(undone).toMatchObject({ ok: true });
+      expect(await fs.readFile(join(dir, 'graphs', 'a.json'), 'utf8')).toBe('{"nodes":[]}\n');
+    } finally {
+      await cleanup();
+    }
   });
 });
 
