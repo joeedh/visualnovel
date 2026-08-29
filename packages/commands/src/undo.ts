@@ -14,6 +14,7 @@
  * discard.
  */
 import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
 import type { UndoPoint } from './command.js';
 import { ContentStore } from './content.js';
 
@@ -74,6 +75,21 @@ export class UndoJournal {
     return tree;
   }
 
+  /**
+   * {@link capture}, confined to a root-relative subdirectory rather than the whole document
+   * tree — for a checkpoint whose commands are known to write only under `subpath`. `skip` is
+   * passed through unmodified rather than re-relativized to `subpath`; none of its entries nest
+   * inside a scope this plan uses, so it stays inert rather than wrong.
+   */
+  async captureScoped(subpath: string, seq: number): Promise<string | null> {
+    const dir = join(this.root, subpath);
+    const stat = await fs.stat(dir).catch(() => null);
+    if (!stat?.isDirectory()) return null;
+    const tree = await this.store.capture(dir, this.skip);
+    this.taken.push({ seq, tree });
+    return tree;
+  }
+
   /** The undo point a record carries, from the two snapshots bracketing an act. */
   point(pre: string, post: string): UndoPoint {
     return { pre, post, changed: pre !== post };
@@ -84,6 +100,14 @@ export class UndoJournal {
     const stat = await fs.stat(this.root).catch(() => null);
     if (!stat?.isDirectory()) return null;
     return this.store.capture(this.root, this.skip);
+  }
+
+  /** {@link currentTree}, confined to a root-relative subdirectory. */
+  async currentTreeScoped(subpath: string): Promise<string | null> {
+    const dir = join(this.root, subpath);
+    const stat = await fs.stat(dir).catch(() => null);
+    if (!stat?.isDirectory()) return null;
+    return this.store.capture(dir, this.skip);
   }
 
   /**
@@ -131,6 +155,22 @@ export class UndoJournal {
     const changed: string[] = [];
     try {
       await this.store.restore(this.root, from, point[side], changed);
+      return { changed };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err), changed };
+    }
+  }
+
+  /** {@link restore}, confined to a root-relative subdirectory. */
+  async restoreScoped(
+    subpath: string,
+    from: string,
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ error?: string; changed: string[] }> {
+    const changed: string[] = [];
+    try {
+      await this.store.restore(join(this.root, subpath), from, point[side], changed);
       return { changed };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err), changed };

@@ -246,3 +246,73 @@ describe('UndoJournal', () => {
     expect(await journal.check(point, 'post')).toMatchObject({ ok: false });
   });
 });
+
+describe('UndoJournal, scoped to a subdirectory', () => {
+  async function scopedWorkspace() {
+    const dir = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'vn-undo-scoped-')));
+    await fs.mkdir(join(dir, 'work/graphs'), { recursive: true });
+    await fs.writeFile(join(dir, 'doc.md'), 'authored\n');
+    await fs.writeFile(join(dir, 'work/graphs/scene.json'), '{"a":1}\n');
+    const journal = new UndoJournal({ root: dir, keep: 2 });
+    return { dir, journal, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
+  }
+
+  it('captures and restores within the subdirectory, leaving everything else alone', async () => {
+    const { dir, journal, cleanup } = await scopedWorkspace();
+    try {
+      const pre = (await journal.captureScoped('work/graphs', 1))!;
+      await fs.writeFile(join(dir, 'work/graphs/scene.json'), '{"a":2}\n');
+      await fs.writeFile(join(dir, 'doc.md'), 'edited outside the scope\n');
+      const post = (await journal.captureScoped('work/graphs', 1))!;
+      const point = journal.point(pre, post);
+      expect(point.changed).toBe(true);
+
+      const restored = await journal.restoreScoped('work/graphs', post, point, 'pre');
+      expect(restored.error).toBeUndefined();
+      expect(await read(dir, 'work/graphs/scene.json')).toBe('{"a":1}\n');
+      // Never part of the scoped tree, so a scoped restore has no opinion on it.
+      expect(await read(dir, 'doc.md')).toBe('edited outside the scope\n');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reports the current scoped tree without holding it against pruning', async () => {
+    const { dir, journal, cleanup } = await scopedWorkspace();
+    try {
+      const snap = (await journal.captureScoped('work/graphs', 1))!;
+      expect(await journal.currentTreeScoped('work/graphs')).toBe(snap);
+      await fs.writeFile(join(dir, 'work/graphs/scene.json'), '{"a":2}\n');
+      expect(await journal.currentTreeScoped('work/graphs')).not.toBe(snap);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('returns null when the scoped subdirectory does not exist yet, for both reads', async () => {
+    const { journal, cleanup } = await scopedWorkspace();
+    try {
+      expect(await journal.captureScoped('work/missing', 1)).toBeNull();
+      expect(await journal.currentTreeScoped('work/missing')).toBeNull();
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('pins a captureScoped tree under its own seq, the same way capture does', async () => {
+    const { dir, journal, cleanup } = await scopedWorkspace();
+    try {
+      const first = (await journal.captureScoped('work/graphs', 1))!;
+      await fs.writeFile(join(dir, 'work/graphs/scene.json'), '{"a":2}\n');
+      const second = (await journal.captureScoped('work/graphs', 2))!;
+      // keep: 2, so both survive; this is the guard against a checkpoint's own `post` capture
+      // being collected out from under it by the very next prune.
+      journal.prune();
+
+      expect(journal.store.tree(first)).toBeDefined();
+      expect(journal.store.tree(second)).toBeDefined();
+    } finally {
+      await cleanup();
+    }
+  });
+});

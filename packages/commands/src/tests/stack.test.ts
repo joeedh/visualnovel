@@ -9,7 +9,7 @@ import {
 } from '../command.js';
 import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
-import { CommandStack } from '../stack.js';
+import { CHECKPOINT_TIMEOUT_MS, CommandStack } from '../stack.js';
 import type { UndoJournal } from '../undo.js';
 import type { Git } from '@vn/git';
 
@@ -411,6 +411,49 @@ class FakeJournal {
   prune(): void {
     this.pruneCalls++;
   }
+
+  // A checkpoint's scope is one directory inside a document tree this fake models as a single
+  // string, so its scoped methods reuse the whole-tree ones — the scope argument names nothing
+  // this fake needs to act on differently, unlike the real `UndoJournal`, which is exercised
+  // against real directories in `undo.test.ts`.
+  captureScoped(_scope: string, seq: number): Promise<string | null> {
+    return this.capture(seq);
+  }
+  currentTreeScoped(_scope: string): Promise<string | null> {
+    return this.currentTree();
+  }
+  restoreScoped(
+    _scope: string,
+    from: string,
+    point: UndoPoint,
+    side: 'pre' | 'post',
+  ): Promise<{ error?: string; changed: string[] }> {
+    return this.restore(from, point, side);
+  }
+}
+
+/** A hand-driven stand-in for `setTimeout`, so a test fires the checkpoint timeout by hand. */
+function fakeTimer() {
+  const armed = new Map<number, { fn: () => void; ms: number }>();
+  let next = 1;
+  return {
+    set(fn: () => void, ms: number): number {
+      const handle = next++;
+      armed.set(handle, { fn, ms });
+      return handle;
+    },
+    clear(handle: unknown): void {
+      armed.delete(handle as number);
+    },
+    armedMs(): number | null {
+      return [...armed.values()][0]?.ms ?? null;
+    },
+    fire(): void {
+      const due = [...armed.values()];
+      armed.clear();
+      for (const { fn } of due) fn();
+    },
+  };
 }
 
 /** A stack whose one mutating command sets the workspace to a named state. */
@@ -728,6 +771,209 @@ describe('undo/redo', () => {
     expect(await stack.exec('demo.edit', {}, 'ui')).toMatchObject({ ok: true });
     expect(stack.history()[0]!.undo).toBeUndefined();
     expect(logs.join()).toMatch(/undo snapshot.*no repo/);
+  });
+});
+
+/** A stack for exercising `beginCheckpoint`/`endCheckpoint`/`failCheckpoint`. */
+function checkpointSetup() {
+  const world = { value: 'w0' };
+  const registry = new CommandRegistry<Host>();
+  registry.registerAll([
+    define({
+      id: 'demo.edit',
+      title: 'Edit',
+      description: 'Set the workspace to a value.',
+      mutating: true,
+      props: { to: prop.string('the new value') },
+      run(props) {
+        world.value = props.to;
+        return Promise.resolve({ message: `set ${props.to}`, written: ['graphs/scene.json'] });
+      },
+    }),
+    define({
+      id: 'demo.editFails',
+      title: 'Edit (fails)',
+      description: 'Mutates, then throws.',
+      mutating: true,
+      props: { to: prop.string('the new value') },
+      run(props) {
+        world.value = props.to;
+        return Promise.reject(new Error('boom'));
+      },
+    }),
+    define({
+      id: 'demo.outside',
+      title: 'Outside',
+      description: 'Reports a write outside the checkpoint scope.',
+      mutating: true,
+      props: {},
+      run: () => Promise.resolve({ message: 'wrote elsewhere', written: ['elsewhere/file.md'] }),
+    }),
+  ]);
+  const journal = new FakeJournal(world);
+  const timer = fakeTimer();
+  const logs: string[] = [];
+  const persisted: CommandRecord[] = [];
+  const stack = new CommandStack<Host>({
+    registry,
+    context: {
+      root: '/ws',
+      git: fakeGit(),
+      host: { seen: [] },
+      log: (l, m) => logs.push(`${l}: ${m}`),
+    },
+    journal: journal as unknown as UndoJournal,
+    onRecord: (r) => void persisted.push(r),
+    timer,
+    now: () => '2026-07-25T00:00:00.000Z',
+  });
+  return { stack, world, journal, timer, logs, persisted };
+}
+
+describe('checkpoints', () => {
+  it('groups several commands into one undo point', async () => {
+    const { stack, world, persisted } = checkpointSetup();
+    const handle = await stack.beginCheckpoint('Delete nodes', 'Deleted 2 nodes', 'graphs');
+
+    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, handle)).toMatchObject({
+      ok: true,
+    });
+    expect(await stack.exec('demo.edit', { to: 'w2' }, 'ui', undefined, handle)).toMatchObject({
+      ok: true,
+    });
+    const closed = await stack.endCheckpoint(handle);
+    expect(closed).toMatchObject({
+      ok: true,
+      record: { id: 'stack.checkpoint', label: 'Delete nodes' },
+    });
+
+    // Both inner commands are tagged and carry no undo point of their own; the aggregate record
+    // is the one candidate, and undoing it reverts both edits at once.
+    const inner = persisted.filter((r) => r.id === 'demo.edit');
+    expect(inner).toHaveLength(2);
+    for (const r of inner) {
+      expect(r.checkpoint).toBe(handle.seq);
+      expect(r.undo).toBeUndefined();
+    }
+    expect(stack.undoCandidate()).toMatchObject({ id: 'stack.checkpoint' });
+    expect(stack.undoState().undoLabel).toBe('Delete nodes');
+
+    expect(await stack.undo()).toMatchObject({ ok: true });
+    expect(world.value).toBe('w0');
+  });
+
+  it('rolls back to the checkpoint start when an inner command fails, and refuses what was still queued', async () => {
+    const { stack, world, persisted } = checkpointSetup();
+    const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
+
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, handle);
+    // Dispatched without awaiting, the way `GenGraphEditor`'s selection loop does — both land on
+    // the checkpoint's own tail in arrival order.
+    const failing = stack.exec('demo.editFails', { to: 'w2' }, 'ui', undefined, handle);
+    const queuedAfter = stack.exec('demo.edit', { to: 'w3' }, 'ui', undefined, handle);
+
+    expect(await failing).toMatchObject({ ok: false, error: 'boom' });
+    expect(await queuedAfter).toMatchObject({
+      ok: false,
+      error: `no open checkpoint ${handle.seq}`,
+    });
+
+    // The rollback restored to the checkpoint's own pre-state, before even the first inner edit.
+    expect(world.value).toBe('w0');
+    const rollback = persisted.find((r) => r.id === 'stack.checkpointRollback')!;
+    expect(rollback).toMatchObject({ status: 'error', checkpoint: handle.seq, error: 'boom' });
+    expect(rollback.message).toBe('Rolled back "Batch": boom');
+
+    // A late endCheckpoint reports the same failure and appends no aggregate record.
+    expect(await stack.endCheckpoint(handle)).toMatchObject({ ok: false, error: 'boom' });
+    expect(persisted.some((r) => r.id === 'stack.checkpoint')).toBe(false);
+  });
+
+  it('fails and releases a checkpoint left open past its timeout', async () => {
+    const { stack, world, timer, persisted } = checkpointSetup();
+    const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, handle);
+    expect(timer.armedMs()).toBe(CHECKPOINT_TIMEOUT_MS);
+
+    timer.fire();
+    // The internal rollback work is not awaited by `fire()`; a real macrotask boundary drains
+    // every microtask `failCheckpoint`'s own chain of `await`s queues, however many there are.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(world.value).toBe('w0');
+    const rollback = persisted.find((r) => r.id === 'stack.checkpointRollback')!;
+    expect(rollback.error).toMatch(/timed out/);
+
+    // The chain-holding gate released, and a fresh checkpoint can open.
+    const next = await stack.beginCheckpoint('Next', 'Next batch', 'graphs');
+    expect(next.seq).not.toBe(handle.seq);
+    // The stale handle refuses rather than reaching the new checkpoint.
+    expect(await stack.endCheckpoint(handle)).toMatchObject({
+      ok: false,
+      error: `no open checkpoint ${handle.seq}`,
+    });
+  });
+
+  it('refuses a stale or absent checkpoint handle immediately', async () => {
+    const { stack } = checkpointSetup();
+    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, { seq: 999 })).toEqual({
+      ok: false,
+      error: 'no open checkpoint 999',
+    });
+
+    const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
+    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, { seq: 999 })).toEqual({
+      ok: false,
+      error: 'no open checkpoint 999',
+    });
+    await stack.endCheckpoint(handle);
+  });
+
+  it('throws when a checkpoint is already open, rather than queuing', async () => {
+    const { stack } = checkpointSetup();
+    await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
+    await expect(stack.beginCheckpoint('Second', 'Second batch', 'graphs')).rejects.toThrow(
+      /already open/,
+    );
+  });
+
+  it('refuses to open when the scope has nothing to checkpoint', async () => {
+    const { stack, journal } = checkpointSetup();
+    journal.captureScoped = () => Promise.resolve(null);
+    await expect(stack.beginCheckpoint('Batch', 'A batch', 'graphs')).rejects.toThrow(
+      /no graphs to checkpoint/,
+    );
+  });
+
+  it('logs rather than refuses when an inner command writes outside the declared scope', async () => {
+    const { stack, logs } = checkpointSetup();
+    const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
+    expect(await stack.exec('demo.outside', {}, 'ui', undefined, handle)).toMatchObject({
+      ok: true,
+    });
+    expect(logs.join()).toMatch(/wrote outside its scope: elsewhere\/file\.md/);
+    await stack.endCheckpoint(handle);
+  });
+
+  it('produces a no-op undo point for an empty checkpoint', async () => {
+    const { stack, persisted } = checkpointSetup();
+    const handle = await stack.beginCheckpoint('Nothing', 'Nothing happened', 'graphs');
+    const closed = await stack.endCheckpoint(handle);
+    expect(closed).toMatchObject({ ok: true, record: { undo: { changed: false } } });
+    expect(stack.undoCandidate()).toBeNull();
+    expect(persisted.find((r) => r.id === 'stack.checkpoint')).toBeDefined();
+  });
+
+  it('queues a no-handle mutating command behind an open checkpoint rather than interleaving it', async () => {
+    const { stack, world } = checkpointSetup();
+    const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
+    void stack.exec('demo.edit', { to: 'from-checkpoint' }, 'ui', undefined, handle);
+
+    // No handle: this must not run until the checkpoint closes.
+    const outside = stack.exec('demo.edit', { to: 'from-outside' }, 'ui');
+    await stack.endCheckpoint(handle);
+    expect(await outside).toMatchObject({ ok: true });
+    expect(world.value).toBe('from-outside');
   });
 });
 

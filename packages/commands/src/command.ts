@@ -168,6 +168,11 @@ export interface CommandRecord {
   message: string;
   /** One line for the commit subject, when `message` is prose rather than a summary. */
   subject?: string;
+  /**
+   * A human sentence naming this record where `invocation` would otherwise be shown — set on a
+   * checkpoint's own aggregate record, whose `invocation` is synthetic and non-replayable.
+   */
+  label?: string;
   written?: string[];
   error?: string;
   /**
@@ -192,4 +197,10 @@ export interface CommandRecord {
    * but they are history rather than undo points and are skipped when choosing a candidate.
    */
   stack?: 'undo' | 'redo';
+  /**
+   * Set on every record run inside a checkpoint, naming its `seq`. `undoCandidate` skips these:
+   * the checkpoint's own aggregate `stack.checkpoint` record is the one undo point that stands
+   * in for the whole group.
+   */
+  checkpoint?: number;
 }

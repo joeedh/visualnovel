@@ -29,6 +29,20 @@ const NO_JOURNAL = 'undo is unavailable here — no snapshot journal is wired';
  */
 export const BATCH_IDLE_MS = 1500;
 
+/**
+ * How long an open checkpoint waits for `endCheckpoint` before `failCheckpoint` runs and the
+ * chain-holding gate releases on its own. Sized against the real cost driver — every
+ * non-deferring command inside a checkpoint still commits individually, serialized on the
+ * checkpoint's own tail, so a batch of a few hundred nodes is a few hundred real `git commit`
+ * subprocesses before `endCheckpoint` can even take its `post` capture — not against IPC latency.
+ */
+export const CHECKPOINT_TIMEOUT_MS = 120_000;
+
+/** A round-trippable token naming an open checkpoint. No methods, no closed-over state. */
+export interface CheckpointHandle {
+  readonly seq: number;
+}
+
 export interface CommandStackOptions<Host> {
   registry: CommandRegistry<Host>;
   context: CommandContext<Host>;
@@ -57,6 +71,27 @@ export interface CommandStackOptions<Host> {
    * next flush to retry and reports it here; the desktop turns that into a durable notification.
    */
   onCommitError?(error: unknown, records: CommandRecord[]): void;
+}
+
+/**
+ * A checkpoint between `beginCheckpoint` and `endCheckpoint`/`failCheckpoint`. Holds `this.chain`
+ * for its whole span via `release`, which resolves the gate `beginCheckpoint` is awaiting inside
+ * its own `serialize` turn.
+ */
+interface OpenCheckpoint {
+  seq: number;
+  shortLabel: string;
+  message: string;
+  /** Root-relative directory this checkpoint's snapshot is confined to. */
+  scope: string;
+  pre: string;
+  startedAt: string;
+  /** Per-checkpoint mini-chain a handle-tagged `exec()` queues onto, in arrival order. */
+  tail: Promise<void>;
+  /** Set once an inner command or the timeout has failed this checkpoint. */
+  failed?: string;
+  release: () => void;
+  timeoutHandle: unknown;
 }
 
 /** One step between an undo point's two snapshots, in either direction. */
@@ -92,11 +127,17 @@ export class CommandStack<Host = unknown> {
   /** The armed idle flush, if the batch is waiting on one. */
   private idle: unknown = null;
   private disposed = false;
+  private openCheckpoint: OpenCheckpoint | undefined;
 
   constructor(private readonly opts: CommandStackOptions<Host>) {}
 
   /** Parse and run a DSL invocation, e.g. `gate.approve(characterId='aiko')`. */
-  async execDsl(text: string, source: CommandSource, origin?: number): Promise<CommandOutcome> {
+  async execDsl(
+    text: string,
+    source: CommandSource,
+    origin?: number,
+    checkpoint?: CheckpointHandle,
+  ): Promise<CommandOutcome> {
     let parsed;
     try {
       parsed = parseCommand(text);
@@ -104,7 +145,7 @@ export class CommandStack<Host = unknown> {
       const message = err instanceof DslError ? err.message : String(err);
       return { ok: false, error: `could not parse command: ${message}` };
     }
-    return this.exec(parsed.id, parsed.props, source, origin);
+    return this.exec(parsed.id, parsed.props, source, origin, checkpoint);
   }
 
   /**
@@ -112,12 +153,17 @@ export class CommandStack<Host = unknown> {
    * shared context rather than a field on it, because commands genuinely overlap: a mutable
    * field would be clobbered by the next invocation while this one was still running. Absent
    * means nobody in particular asked, and the host decides who to answer.
+   *
+   * `checkpoint` routes a mutating command onto an open checkpoint's own tail instead of the
+   * shared chain, so it lands inside that checkpoint's one undo point rather than getting its
+   * own. A stale handle (wrong seq, or none open) is refused immediately rather than queued.
    */
   async exec(
     id: string,
     raw: Record<string, unknown>,
     source: CommandSource,
     origin?: number,
+    checkpoint?: CheckpointHandle,
   ): Promise<CommandOutcome> {
     const command = this.opts.registry.get(id);
     if (!command) return { ok: false, error: `unknown command "${id}"` };
@@ -149,13 +195,38 @@ export class CommandStack<Host = unknown> {
       !this.disposed,
     );
 
-    const run = (): Promise<CommandOutcome> =>
-      this.runCommand({ command, props, ctx, id, source, defers });
+    if (!command.mutating) {
+      return this.runCommand({ command, props, ctx, id, source, defers });
+    }
+
+    if (checkpoint !== undefined) {
+      const oc = this.openCheckpoint;
+      if (!oc || oc.seq !== checkpoint.seq) {
+        return { ok: false, error: `no open checkpoint ${checkpoint.seq}` };
+      }
+      // Re-checked once this call's turn on the tail actually arrives, so a command queued
+      // before a sibling's failure is refused rather than run against a checkpoint that has
+      // since failed.
+      const guarded = (): Promise<CommandOutcome> => {
+        if (this.openCheckpoint !== oc || oc.failed !== undefined) {
+          return Promise.resolve({ ok: false, error: `no open checkpoint ${checkpoint.seq}` });
+        }
+        return this.runCommand({ command, props, ctx, id, source, defers, checkpoint: oc });
+      };
+      const next = oc.tail.then(guarded);
+      oc.tail = next.then(
+        () => undefined,
+        () => undefined,
+      );
+      return next;
+    }
 
     // Mutating commands contend for one worktree and one `-A` commit scope, so one takes the
     // chain for the whole span from the flush through `run` to the commit. Overlapping them
-    // would let one command's write land on disk inside another's commit.
-    return command.mutating ? this.serialize(run) : run();
+    // would let one command's write land on disk inside another's commit. When a checkpoint is
+    // open, `this.chain` is held for its whole span (see `beginCheckpoint`), so a caller that
+    // forgot the handle simply queues behind it like any other in-flight mutating command.
+    return this.serialize(() => this.runCommand({ command, props, ctx, id, source, defers }));
   }
 
   /** The part of `exec` that runs under the chain: flush, snapshot, run, snapshot, commit. */
@@ -166,8 +237,9 @@ export class CommandStack<Host = unknown> {
     id: string;
     source: CommandSource;
     defers: boolean;
+    checkpoint?: OpenCheckpoint;
   }): Promise<CommandOutcome> {
-    const { command, props, ctx, id, source, defers } = opts;
+    const { command, props, ctx, id, source, defers, checkpoint } = opts;
     // Before `run` rather than before the commit: at this moment the only dirty content is the
     // deferred edits, so the flush commit contains exactly them.
     if (command.mutating && !defers) await this.flush();
@@ -191,12 +263,16 @@ export class CommandStack<Host = unknown> {
 
     // The snapshot is taken before the command runs, because a command that fails partway
     // through can still have written files, and only the pre-state describes where it started.
-    const journal = command.undoable && command.mutating ? this.opts.journal : undefined;
+    // A command run inside a checkpoint skips its own bracket entirely: the checkpoint's own
+    // pre/post pair covers the whole group.
+    const journal =
+      !checkpoint && command.undoable && command.mutating ? this.opts.journal : undefined;
     const pre = await this.capture(journal, seq, 'pre');
 
     try {
       const output = await command.run(props as never, ctx);
       const post = await this.capture(journal, seq, 'post');
+      if (checkpoint && output.written) this.checkWrittenScope(checkpoint, output.written);
       const record: CommandRecord = {
         ...base,
         finishedAt: this.now(),
@@ -205,6 +281,7 @@ export class CommandStack<Host = unknown> {
         ...(output.subject ? { subject: output.subject } : {}),
         ...(output.written ? { written: output.written } : {}),
         ...(journal && pre && post ? { undo: journal.point(pre, post) } : {}),
+        ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
       };
       if (defers) {
         record.commitDeferred = true;
@@ -227,9 +304,241 @@ export class CommandStack<Host = unknown> {
         status: 'error',
         message: `${id} failed`,
         error,
+        ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
       };
       await this.record(record);
+      if (checkpoint) await this.failCheckpoint(checkpoint, error);
       return { ok: false, error, record };
+    }
+  }
+
+  /**
+   * Run several commands as one undo point. `scope` is a root-relative directory the checkpoint's
+   * snapshot is confined to — a fact about what *this* checkpoint's commands are expected to
+   * write, decided by whoever opens it, not a fact about a whole command namespace.
+   *
+   * Occupies `this.chain` from when this resolves until `endCheckpoint`/the timeout releases it,
+   * so every other mutating command queues behind it exactly like any other in-flight one.
+   */
+  async beginCheckpoint(
+    shortLabel: string,
+    message: string,
+    scope: string,
+  ): Promise<CheckpointHandle> {
+    if (this.openCheckpoint) throw new Error('a checkpoint is already open');
+    const journal = this.opts.journal;
+    if (!journal) throw new Error(NO_JOURNAL);
+
+    let resolveHandle!: (handle: CheckpointHandle) => void;
+    let rejectHandle!: (err: unknown) => void;
+    const handle = new Promise<CheckpointHandle>((resolve, reject) => {
+      resolveHandle = resolve;
+      rejectHandle = reject;
+    });
+
+    // Not awaited here: this occupies `this.chain` for the checkpoint's whole span via the gate
+    // below, while `handle` itself resolves as soon as setup finishes, well before the gate
+    // opens. The `try`/`catch` keeps this async body's own promise settled (never rejected), so
+    // the unawaited `serialize` call cannot produce an unhandled rejection.
+    void this.serialize(async () => {
+      try {
+        await this.flush();
+        const seq = ++this.seq;
+        const pre = await journal.captureScoped(scope, seq);
+        if (pre === null) {
+          rejectHandle(new Error(`no ${scope} to checkpoint`));
+          return;
+        }
+
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        this.openCheckpoint = {
+          seq,
+          shortLabel,
+          message,
+          scope,
+          pre,
+          startedAt: this.now(),
+          tail: Promise.resolve(),
+          release,
+          timeoutHandle: this.armCheckpointTimeout(seq),
+        };
+        resolveHandle({ seq });
+        await gate;
+      } catch (err) {
+        rejectHandle(err);
+      }
+    });
+
+    return handle;
+  }
+
+  /**
+   * Close a checkpoint, appending one aggregate `stack.checkpoint` record covering every command
+   * that ran inside it. If an inner command already failed, the rollback in `failCheckpoint` has
+   * already run; this just reports it and releases the chain.
+   */
+  async endCheckpoint(handle: CheckpointHandle): Promise<CommandOutcome> {
+    const oc = this.openCheckpoint;
+    if (!oc || oc.seq !== handle.seq) {
+      return { ok: false, error: `no open checkpoint ${handle.seq}` };
+    }
+    // Lets a command already queued on the tail run or be refused before this closes.
+    await oc.tail;
+    if (oc.failed !== undefined) {
+      const error = oc.failed;
+      this.closeCheckpoint(oc);
+      return { ok: false, error };
+    }
+
+    const journal = this.opts.journal!;
+    // The pinning capture, not `currentTreeScoped`: it holds the tree under this checkpoint's
+    // own `seq` in `journal.taken`, the same way `pre` was pinned, so the `prune()` call right
+    // below cannot collect it out from under the record that is about to name it.
+    const post = await journal.captureScoped(oc.scope, oc.seq);
+    if (post === null) {
+      await this.failCheckpoint(oc, `no ${oc.scope} to checkpoint`);
+      const error = oc.failed!;
+      this.closeCheckpoint(oc);
+      return { ok: false, error };
+    }
+    this.prune(journal);
+
+    const { head, dirty } = await this.gitState();
+    const record: CommandRecord = {
+      seq: ++this.seq,
+      id: 'stack.checkpoint',
+      props: {},
+      // Synthetic and non-replayable, for `commands.jsonl` consistency; `label` is what the UI
+      // shows in its place.
+      invocation: `stack.checkpoint(seq=${oc.seq})`,
+      label: oc.shortLabel,
+      source: 'ui',
+      mutating: true,
+      gitHead: head,
+      gitDirty: dirty,
+      startedAt: oc.startedAt,
+      finishedAt: this.now(),
+      status: 'ok',
+      message: oc.message,
+      undo: journal.point(oc.pre, post),
+    };
+    await this.record(record);
+    this.closeCheckpoint(oc);
+    return { ok: true, record };
+  }
+
+  /**
+   * The one rollback path, used by both an inner-command failure and a timeout. Restores to
+   * `openCheckpoint.pre` with no drift check: the snapshot is scoped to `openCheckpoint.scope`,
+   * so it structurally cannot contain a path outside it, and there is nothing an out-of-band
+   * write elsewhere could do to it.
+   */
+  private async failCheckpoint(openCheckpoint: OpenCheckpoint, error: string): Promise<void> {
+    if (openCheckpoint.failed !== undefined) return;
+    openCheckpoint.failed = error;
+    const { seq, shortLabel, scope, pre } = openCheckpoint;
+    const journal = this.opts.journal;
+
+    if (journal) {
+      try {
+        const current = await journal.currentTreeScoped(scope);
+        if (current !== null && current !== pre) {
+          const restored = await journal.restoreScoped(
+            scope,
+            current,
+            journal.point(pre, current),
+            'pre',
+          );
+          if (restored.error) {
+            this.opts.context.log(
+              'warn',
+              `checkpoint rollback (seq ${seq}) failed: ${restored.error}`,
+            );
+          }
+        }
+      } catch (err) {
+        this.opts.context.log('warn', `checkpoint rollback (seq ${seq}) failed: ${String(err)}`);
+      }
+    }
+
+    const { head, dirty } = await this.gitState();
+    const record: CommandRecord = {
+      seq: ++this.seq,
+      id: 'stack.checkpointRollback',
+      props: { checkpoint: seq },
+      invocation: `stack.checkpointRollback(seq=${seq})`,
+      source: 'ui',
+      mutating: true,
+      checkpoint: seq,
+      gitHead: head,
+      gitDirty: dirty,
+      startedAt: this.now(),
+      finishedAt: this.now(),
+      status: 'error',
+      message: `Rolled back "${shortLabel}": ${error}`,
+      error,
+    };
+    // The same two calls `moveBody` makes for an ordinary restore: the rollback's commit lands
+    // in `commands.jsonl` with a reason attached, and retires any commit an inner command already
+    // made individually before the failure.
+    const commits = await this.commit(true, record);
+    if (commits.length > 0) record.commits = commits;
+    await this.record(record);
+
+    // A deferred commit from this checkpoint must not survive to be flushed under a message
+    // describing content the rollback just erased from disk.
+    this.pending = this.pending.filter((r) => r.checkpoint !== seq);
+
+    if (journal) this.prune(journal);
+  }
+
+  /** Runs `failCheckpoint` then forces the same close `endCheckpoint` would run. */
+  private timeoutCheckpoint(seq: number): void {
+    const oc = this.openCheckpoint;
+    if (!oc || oc.seq !== seq) return;
+    void (async () => {
+      await oc.tail;
+      if (this.openCheckpoint !== oc) return;
+      if (oc.failed === undefined) {
+        await this.failCheckpoint(oc, `checkpoint timed out after ${CHECKPOINT_TIMEOUT_MS}ms`);
+      }
+      this.closeCheckpoint(oc);
+    })();
+  }
+
+  private armCheckpointTimeout(seq: number): unknown {
+    const fire = (): void => this.timeoutCheckpoint(seq);
+    const timer = this.opts.timer;
+    return timer ? timer.set(fire, CHECKPOINT_TIMEOUT_MS) : setTimeout(fire, CHECKPOINT_TIMEOUT_MS);
+  }
+
+  /** Clears the checkpoint's timeout, clears `openCheckpoint`, and releases the held chain. */
+  private closeCheckpoint(oc: OpenCheckpoint): void {
+    const timer = this.opts.timer;
+    if (timer) timer.clear(oc.timeoutHandle);
+    else clearTimeout(oc.timeoutHandle as ReturnType<typeof setTimeout>);
+    if (this.openCheckpoint === oc) this.openCheckpoint = undefined;
+    oc.release();
+  }
+
+  /**
+   * Logs rather than refuses: catches a future command that violates its checkpoint's declared
+   * scope, without relying on `written` for anything the failure path needs (it is only reliable
+   * on success).
+   */
+  private checkWrittenScope(checkpoint: OpenCheckpoint, written: string[]): void {
+    const prefix = `${checkpoint.scope}/`;
+    for (const path of written) {
+      if (path !== checkpoint.scope && !path.startsWith(prefix)) {
+        this.opts.context.log(
+          'warn',
+          `checkpoint ${checkpoint.seq} (${checkpoint.scope}) wrote outside its scope: ${path}`,
+        );
+        return;
+      }
     }
   }
 
@@ -297,6 +606,7 @@ export class CommandStack<Host = unknown> {
     for (let i = this.records.length - 1; i >= 0; i--) {
       const record = this.records[i]!;
       if (!record.mutating || record.status !== 'ok' || record.stack) continue;
+      if (record.checkpoint !== undefined) continue;
       if (record.undo && !record.undo.changed) continue;
       if (undone.has(record.seq)) continue;
       return record;
@@ -311,8 +621,8 @@ export class CommandStack<Host = unknown> {
     return {
       canUndo: undoable,
       canRedo: Boolean(this.opts.journal && redo),
-      undoLabel: undoable ? undo!.invocation : null,
-      redoLabel: redo ? redo.invocation : null,
+      undoLabel: undoable ? (undo!.label ?? undo!.invocation) : null,
+      redoLabel: redo ? (redo.label ?? redo.invocation) : null,
     };
   }
 
@@ -411,7 +721,7 @@ export class CommandStack<Host = unknown> {
       startedAt,
       finishedAt: this.now(),
       status: 'ok',
-      message: `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.invocation}.`,
+      message: `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.label ?? target.invocation}.`,
       // What the restore moved, so a surface following a document hears about an undo on the same
       // channel as the command it is undoing. Absent rather than empty where it moved nothing.
       ...(restored.length > 0 ? { written: restored } : {}),
