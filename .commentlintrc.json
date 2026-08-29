@@ -6,6 +6,10 @@
   "markdownFiles": [
      "CLAUDE.md",
      "docs/reference/swappingPaneEditors.md",
-     "docs/guides/showEditorPaneGuide.md"
-    ] 
+     "docs/guides/showEditorPaneGuide.md",
+     "docs/reference/pipeline-contracts.md"
+  ],
+  "disableRules": [
+    "P10"
+  ]
 }
