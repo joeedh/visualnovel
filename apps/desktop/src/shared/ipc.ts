@@ -36,6 +36,7 @@ import type {
   TaskKind,
 } from '@vn/types';
 import type {
+  CheckpointHandle,
   CommandCatalog,
   CommandOutcome,
   CommandRecord,
@@ -51,6 +52,7 @@ export type { Report } from '@vn/agentreport';
 export type {
   CatalogEntry,
   CatalogProp,
+  CheckpointHandle,
   CommandCatalog,
   CommandOutcome,
   CommandRecord,
@@ -205,6 +207,8 @@ export interface CommandExecRequest {
   props?: Record<string, PropValue>;
   dsl?: string;
   source?: CommandSource;
+  /** Routes a mutating command onto an open checkpoint's own undo point — see `@vn/commands`. */
+  checkpoint?: CheckpointHandle;
 }
 
 /** A precondition's answer. Three states: absence of a check is `undeclared`, not `accept`. */
@@ -881,6 +885,17 @@ export interface InvokeChannels {
   /** Restores a snapshot; refuses (never guesses) if the workspace moved — see `@vn/commands`. */
   'command:undo': () => CommandOutcome;
   'command:redo': () => CommandOutcome;
+  /**
+   * Opens a checkpoint, grouping every `command:exec` tagged with the returned handle into one
+   * undo point — see `CommandStack.beginCheckpoint` in `@vn/commands`.
+   */
+  'command:checkpointBegin': (payload: {
+    shortLabel: string;
+    message: string;
+    scope: string;
+  }) => CheckpointHandle;
+  /** Closes a checkpoint, appending its aggregate undo record — or, on a prior failure, reports it. */
+  'command:checkpointEnd': (handle: CheckpointHandle) => CommandOutcome;
   /**
    * Persist one piece of UI state; the initial read is the synchronous preload snapshot.
    *

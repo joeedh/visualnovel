@@ -17,6 +17,7 @@ import {
 import { api } from '../api.js';
 import type {
   AgentEvent,
+  CheckpointHandle,
   CommandCheck,
   CommandOutcome,
   DocVersions,
@@ -205,13 +206,34 @@ export function onBusy(listener: (state: BusyState) => void): () => void {
 export async function exec(
   id: string,
   props: Record<string, PropValue> = {},
+  checkpoint?: CheckpointHandle,
 ): Promise<ExecOutcome> {
-  const outcome = await api.invoke('command:exec', { id, props, source: 'ui' });
+  const outcome = await api.invoke('command:exec', { id, props, source: 'ui', checkpoint });
   if (!outcome.ok && !outcome.record) say(outcome.error, true);
   for (const watcher of watchers) watcher(id, outcome);
   // `wrote` is not raised here. Main broadcasts every write to every window, so raising it from
   // the outcome as well would tell this window twice and still tell no other window at all.
   if (outcome.ok && outcome.record.mutating) invalidate();
+  return outcome;
+}
+
+/**
+ * Open a checkpoint, so a run of `exec` calls tagged with the returned handle lands as one undo
+ * point instead of one each. Rejects (never resolves to a refusal) on a stale or missing scope, or
+ * a checkpoint already open — the caller decides what to do, since there is no record to `report`.
+ */
+export function beginCheckpoint(
+  shortLabel: string,
+  message: string,
+  scope: string,
+): Promise<CheckpointHandle> {
+  return api.invoke('command:checkpointBegin', { shortLabel, message, scope });
+}
+
+/** Close a checkpoint, appending its aggregate undo record — or reporting a prior failure. */
+export async function endCheckpoint(checkpoint: CheckpointHandle): Promise<CommandOutcome> {
+  const outcome = await api.invoke('command:checkpointEnd', checkpoint);
+  report(outcome);
   return outcome;
 }
 

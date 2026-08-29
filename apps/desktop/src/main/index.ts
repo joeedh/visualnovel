@@ -851,12 +851,16 @@ function registerIpc(): void {
   handle('command:exec', async (origin, request) => {
     const source = request.source ?? 'ui';
     if (request.dsl !== undefined) {
-      return withVersions(await getStack().execDsl(request.dsl, source, origin));
+      return withVersions(
+        await getStack().execDsl(request.dsl, source, origin, request.checkpoint),
+      );
     }
     if (request.id === undefined) {
       return { ok: false as const, error: 'command:exec needs an id or a dsl' };
     }
-    return withVersions(await getStack().exec(request.id, request.props ?? {}, source, origin));
+    return withVersions(
+      await getStack().exec(request.id, request.props ?? {}, source, origin, request.checkpoint),
+    );
   });
   handle('command:check', (origin, request) =>
     getStack().check(request.id, request.props ?? {}, origin),
@@ -864,6 +868,10 @@ function registerIpc(): void {
   handle('command:history', (_origin, limit) => getStack().history(limit));
   handle('command:undo', () => getStack().undo());
   handle('command:redo', () => getStack().redo());
+  handle('command:checkpointBegin', (_origin, { shortLabel, message, scope }) =>
+    getStack().beginCheckpoint(shortLabel, message, scope),
+  );
+  handle('command:checkpointEnd', (_origin, checkpoint) => getStack().endCheckpoint(checkpoint));
 
   handle('notify:list', () => notifications().list());
   handle('notify:post', (_origin, input) => notifications().post(input));
