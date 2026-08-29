@@ -383,3 +383,28 @@ Related documentation updated: [`../../reference/command-system.md`](../../refer
 [`../../reference/repos-and-commits.md`](../../reference/repos-and-commits.md), and
 [`../../reference/desktop-app.md`](../../reference/desktop-app.md) in this repo;
 `documentation/NodeEditor.md` in `vendor/path.ux`.
+
+### Post-ship fixes
+
+Two bugs surfaced immediately after shipping, both from the same root cause:
+`FakeJournal` in `stack.test.ts` collapses scoped and whole-tree state onto one string
+(see its own comment), so nothing in the test suite could tell a `moveBody` that
+compared the wrong hash space apart from one that compared the right one.
+
+- **Checkpoint undo/redo always refused.** `CommandStack.moveBody` called
+  `journal.check`/`journal.restore` — whole-tree — even for a checkpoint's aggregate
+  record, whose `undo.pre`/`undo.post` are `captureScoped` (subdirectory) hashes. The
+  two hash spaces are never equal, so `undo()` on a checkpoint failed unconditionally
+  with "the workspace has changed since that command ran." Fixed by adding
+  `CommandRecord.undoScope`, `UndoJournal.checkScoped`, and branching `moveBody` on
+  `target.undoScope`. Caught only once `stack.test.ts` gained a
+  `describe('checkpoints, against a real UndoJournal', ...)` suite exercising a real
+  `UndoJournal` over real files instead of `FakeJournal`.
+- **Duplicated nodes' selection highlight lagged by about a second.**
+  `NodeGraphView.duplicateSelected()` (`vendor/path.ux`) computed and applied the new
+  selection after `await this.singleUndoStep(...)` resolved — which, now that
+  `undoStepEnd` is a real checkpoint round trip, gated the highlight behind that whole
+  async span even though `GenGraphEditor`'s delegate writes the graph synchronously
+  inside `cb()`. Fixed by moving the selection (and `syncGraph()`) inside the `cb()`
+  closure, so it runs immediately after the synchronous writes rather than after the
+  checkpoint closes.
