@@ -10,6 +10,7 @@
 - [The stack](#the-stack)
   * [`CommandRecord`](#commandrecord)
   * [Undo is opt-in, and rests on content-addressed snapshots](#undo-is-opt-in-and-rests-on-content-addressed-snapshots)
+  * [Checkpoints group several commands into one undo point](#checkpoints-group-several-commands-into-one-undo-point)
   * [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
 - [The registered commands](#the-registered-commands)
   * [The `window.` namespace](#the-window-namespace)
@@ -280,6 +281,47 @@ file nobody edited keeps its mtime.
 
 Undo and redo each append their own `CommandRecord` tagged `stack`, so `commands.jsonl` does
 not lie about what touched the worktree.
+
+### Checkpoints group several commands into one undo point
+
+A gesture that dispatches several mutating commands (path.ux's node editor deleting or
+duplicating a multi-node selection, one command per node) would otherwise leave one undo entry
+per node. `CommandStack.beginCheckpoint(shortLabel, message, scope)` /
+`.endCheckpoint(handle)` bracket such a run so it lands as one. Full design and the five review
+rounds behind it: [`../plans/undo-checkpoints.md`](../plans/undo-checkpoints.md).
+
+- **`scope` is a declared subtree, not a fact about a command namespace.** The checkpoint's
+  snapshot (`UndoJournal.captureScoped`/`restoreScoped`) is confined to `scope`, decided by
+  whoever opens the checkpoint — the caller is asserting "my commands write only here," and a
+  successful command's own `written` is checked against it after the fact (logged, not refused,
+  on mismatch). This sidesteps rather than solves the general drift problem: a scoped snapshot
+  cannot see an edit outside `scope` (an authoring-agent write to a scene file, say), so there is
+  nothing for its rollback to reconcile against such an edit — the cost is that one checkpoint
+  can safely group edits only within one declared subtree.
+- **One handle, one open checkpoint.** `CommandStack` is shared by every window, the agent, CDP
+  and the DSL; `beginCheckpoint` throws if one is already open. `exec()`/`execDsl()` take an
+  optional `CheckpointHandle`: tagged and current chains onto the checkpoint's own serialized
+  `tail` instead of `this.chain`; tagged and stale (wrong seq, or none open) refuses immediately;
+  untagged while one is open queues behind it like any other in-flight mutation — the fallback for
+  a caller that forgot to pass the handle, correct but unbatched.
+  `CheckpointHandle` is deliberately just `{ seq }`, so it round-trips over IPC unchanged.
+- **A failure rolls back the whole checkpoint**, not just the command that failed: an inner
+  command's own catch and a `CHECKPOINT_TIMEOUT_MS` (120 s) timeout both call the same
+  `failCheckpoint`, which restores `scope` to the checkpoint's `pre` tree, drops any
+  still-pending deferred-commit record the checkpoint produced, and records a synthetic
+  `stack.checkpointRollback` command so the reason lands in `commands.jsonl` rather than as an
+  unexplained clean-after-dirty worktree. No aggregate undo record is appended on failure — the
+  checkpoint net-changed nothing from the author's perspective.
+- **A successful close appends one aggregate `stack.checkpoint` record**, `undo` spanning `pre`
+  to a *pinning* `captureScoped` of `post` (pinning, not `currentTreeScoped`, so the next
+  `prune()` cannot collect the checkpoint's own `post` tree out from under it before anything
+  reads it).
+- **The renderer opens/closes one from a widened, genuinely async delegate hook.** path.ux's
+  `NodeGraphDelegate.undoStepBegin`/`undoStepEnd` (`vendor/path.ux`) take `Promise<void>` and
+  `(shortLabel, message)`, so `apps/desktop`'s `GenGraphEditor.delegate()` can `await
+  beginCheckpoint(...)`/`endCheckpoint(...)` there; `deleteSelected`/`duplicateSelected`/
+  `singleUndoStep` are `async` for the same reason, and an `AsyncGateOp` locks input for the
+  span so a second gesture cannot open a competing checkpoint before the first closes.
 
 ### Commit-on-save is the journal's sibling
 

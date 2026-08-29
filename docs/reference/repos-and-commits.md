@@ -292,6 +292,10 @@ worktree, so it cannot perturb a snapshot taken either side of it.
   drift.
 - Undo also works where commit-on-save refuses: a snapshot is held in memory and writes nobody's
   history, so a project nested in a larger repo snapshots like any other.
+- **A checkpoint narrows undo's scope further, to one declared subtree, for the span of one
+  grouped undo point.** Its rollback commit uses the same `record`/`commit(true, record)` pair an
+  ordinary undo restore uses, so it lands in `commands.jsonl` the same way. Full design:
+  [`command-system.md#checkpoints-group-several-commands-into-one-undo-point`](command-system.md#checkpoints-group-several-commands-into-one-undo-point).
 
 ## Multi-repo
 

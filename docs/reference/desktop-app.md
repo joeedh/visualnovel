@@ -1264,6 +1264,14 @@ A drag is applied to the graph on screen as well as sent, because the view resyn
 `node.pos` the moment `perform` returns. Every other gesture waits for the reload `exec` triggers,
 so the pane always draws what the file holds. A property write is the exception, described below.
 
+**Delete and duplicate open a checkpoint** (`command-system.md#checkpoints-group-several-commands-into-one-undo-point`),
+so a multi-node selection lands as one undo point instead of one per node: the delegate's
+`undoStepBegin`/`undoStepEnd` — widened in `vendor/path.ux` to a real `Promise<void>`, taking the
+gesture's label and message — open and close it, and `send` tags its `exec` calls onto the open
+handle. A refused open dispatches nothing, since path.ux's `AsyncGateOp` skips the gesture's
+callback when the bracketing hook throws; a refused close can follow edits already applied
+optimistically to the graph on screen, so it forces a reload the same way a refused write does.
+
 **Node properties are bound through a data API scoped to this pane.** `defineGraphApi` builds a
 `DataAPI` rooted on one member — the graph on screen — and the editor installs it through
 `ctx.override({api})` at `init`, one per instance, because two panes may be open on different
