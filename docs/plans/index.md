@@ -42,6 +42,7 @@ authoring surface, whose running order and checkboxes are in
 | [`archive/command-system.md`](archive/command-system.md) | shipped | `@vn/commands`, the DSL, the catalog, provenance, CDP |
 | [`archive/command-undo-redo.md`](archive/command-undo-redo.md) | shipped | Opt-in undo via shadow snapshots under `refs/vn/undo/<seq>` |
 | [`archive/undo-refactor.md`](archive/undo-refactor.md) | shipped | Undo off git and onto an in-memory content-addressed store, plus the desktop file cache it shares |
+| [`archive/undo-checkpoints.md`](archive/undo-checkpoints.md) | shipped | `CommandStack.beginCheckpoint`/`endCheckpoint` group several commands into one undo point, scoped to a declared subtree with automatic rollback on failure; `apps/desktop`'s `GenGraphEditor` opens one around a multi-node delete/duplicate, through a `vendor/path.ux` `NodeGraphDelegate` widened to genuinely async `undoStepBegin`/`undoStepEnd` |
 | [`archive/preconditions-and-timeline-interaction.md`](archive/preconditions-and-timeline-interaction.md) | shipped | `Command.check`, `stack.check`'s three states, the `timeline.cover` interaction |
 | [desktop-storage-and-draggable-rail](archive/INDEX.md#desktop-storage-and-draggable-rail) | shipped | `.vndesktop/session.json`, `usePanelWidth`, `view.panelSize` |
 | [`archive/sample-workspace-and-asset-cache.md`](archive/sample-workspace-and-asset-cache.md) | shipped | `examples/mySampleRepo` seeding and the recorded asset corpus |

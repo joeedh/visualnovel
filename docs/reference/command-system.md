@@ -288,7 +288,7 @@ A gesture that dispatches several mutating commands (path.ux's node editor delet
 duplicating a multi-node selection, one command per node) would otherwise leave one undo entry
 per node. `CommandStack.beginCheckpoint(shortLabel, message, scope)` /
 `.endCheckpoint(handle)` bracket such a run so it lands as one. Full design and the five review
-rounds behind it: [`../plans/undo-checkpoints.md`](../plans/undo-checkpoints.md).
+rounds behind it: [`../plans/archive/undo-checkpoints.md`](../plans/archive/undo-checkpoints.md).
 
 - **`scope` is a declared subtree, not a fact about a command namespace.** The checkpoint's
   snapshot (`UndoJournal.captureScoped`/`restoreScoped`) is confined to `scope`, decided by

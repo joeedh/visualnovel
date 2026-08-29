@@ -1,6 +1,6 @@
 # Undo checkpoints: grouping several commands into one undo point
 
-Status: **planned**
+Status: **shipped**
 
 This is a condensed rewrite of a plan that went through five review-driven revisions.
 Only the final, resolved design is kept below; the revision history and the bugs each
@@ -346,4 +346,40 @@ ordinary refused write already sets `this.sync.stale = true` to trigger one.
   checkpoint mechanism entirely. Not introduced or worsened by this plan, but not
   resolved by it either — left as a known, pre-existing limitation.
 
-On finishing the plan, update related documentation in the main repo and in path.ux.
+## As shipped
+
+No sixth pressure-test pass was run on this condensed plan before implementation — the
+five rounds folded into **Design** above cover the design, not this specific write-up of
+it. Implemented in the order **Design** lists, one commit per numbered section (the
+`Committer.sweep()` rename first, as its own mechanical commit); nothing it described
+turned out to be wrong against the code. Six things the plan left open or unshown in its
+sketches, and what was decided:
+
+- **`endCheckpoint`'s post-capture failure is treated as fatal.** `UndoJournal.point`'s
+  `pre`/`post` are non-nullable `string`s, so a `null` back from `journal.captureScoped`
+  (the scope directory vanished between open and close) can't be assigned in; it calls
+  `failCheckpoint` and refuses, mirroring how `beginCheckpoint` already treats a `null`
+  `pre` capture.
+- **`failCheckpoint` tolerates a `null` `currentTreeScoped`** (the scope directory is
+  already gone) by skipping the restore step and logging a warning rather than throwing,
+  consistent with `stack.ts`'s existing "degrade gracefully, log, never let bookkeeping
+  fail the command" pattern.
+- **Settled the label-wording open question above:** `deleteSelected()`/
+  `duplicateSelected()` pass `("Delete", "Delete selected nodes")` and `("Duplicate",
+  "Duplicate selected nodes")` through to `beginCheckpoint`.
+- **`GenGraphEditor.delegate()`'s `undoStepBegin` reports and rethrows a `beginCheckpoint`
+  rejection** (`say(...)`, then rethrow) — not shown in §6's sketch. Rethrowing means
+  `AsyncGateOp` never runs `cb`, so a refused open dispatches nothing; nothing was
+  written, so nothing needs a reload.
+- **`undoStepEnd`'s failure branch forces a reload** through the existing
+  `sync.stale`/`shouldReload` pair `send()` already uses for a refused write, per §6's
+  prose ("the failure path must force a reload") rather than adding a separate mechanism.
+- **path.ux's own test suite carries 14 pre-existing failures** (`graph_api`,
+  `graph_ops`, `graph_socket`, `nodeeditor_edit` — a `defaultProp`/`copy()` issue
+  unrelated to this plan), confirmed present on the branch tip before any of this
+  plan's commits by stashing and re-running. Not touched by this work.
+
+Related documentation updated: [`../../reference/command-system.md`](../../reference/command-system.md#checkpoints-group-several-commands-into-one-undo-point),
+[`../../reference/repos-and-commits.md`](../../reference/repos-and-commits.md), and
+[`../../reference/desktop-app.md`](../../reference/desktop-app.md) in this repo;
+`documentation/NodeEditor.md` in `vendor/path.ux`.
