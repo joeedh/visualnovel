@@ -1319,4 +1319,6 @@ Each of the fourth pass's four required fixes is now applied, in the same order:
   of that rule without relying on `written` for anything the failure path needs, since
   `written` is only reliable on success.
 
+On finishing the plan, update any related documentation in the main repo and in pathux.
+
 This is the plan's fifth revision. It has not itself been pressure-tested.
