@@ -5,8 +5,8 @@
  * agent's graph tool both go through here, so a refusal reads the same in both.
  */
 import { parseSlot } from '@vn/artgen/slotaddr';
-import { nodePropTarget, Node as GraphNode } from 'pathux-graph';
-import type { Graph, GraphId, Node, NodeSocketBase } from 'pathux-graph';
+import { nodePropKeys, nodePropTarget, Node as GraphNode } from 'pathux-graph';
+import type { Graph, GraphId, Node, NodeSocketBase, NodeTypeConstructor } from 'pathux-graph';
 import { PropTypes } from 'pathux-toolprop';
 import type { ToolProperty } from 'pathux-toolprop';
 
@@ -18,6 +18,8 @@ export type GenPropValue = string | number | boolean;
 
 export type GenEdit =
   | { op: 'addNode'; type: string; pos?: readonly [number, number] }
+  /** Copies a node's authored values onto a fresh node of the same type, with a fresh id. */
+  | { op: 'duplicateNode'; node: GraphId; pos?: readonly [number, number] }
   | { op: 'removeNode'; node: GraphId }
   | { op: 'link'; from: GraphId; fromSocket: string; to: GraphId; toSocket: string }
   /** Severs one named link, or every link into `toSocket` when no source is named. */
@@ -75,6 +77,8 @@ export function decideGenEdit(graph: Graph, edit: GenEdit): GenEditResult {
   switch (edit.op) {
     case 'addNode':
       return decideAdd(graph, edit);
+    case 'duplicateNode':
+      return decideDuplicate(graph, edit);
     case 'removeNode':
       return decideRemove(graph, edit);
     case 'link':
@@ -117,6 +121,46 @@ function decideAdd(graph: Graph, edit: GenEdit & { op: 'addNode' }): GenEditResu
       return { graph, node: node.id };
     },
   };
+}
+
+/**
+ * Copies a node with a freshly allocated id, so the copy starts with no run journal of its own —
+ * its hash has never matched a record, and it runs the first time the graph does. Only the
+ * source's explicitly authored values travel; links do not, the same as path.ux's own duplicate.
+ */
+function decideDuplicate(graph: Graph, edit: GenEdit & { op: 'duplicateNode' }): GenEditResult {
+  const source = graph.nodeIdMap.get(edit.node);
+  if (source === undefined) {
+    return refuse(missing(edit.node));
+  }
+
+  return {
+    ok: true,
+    note: `Adds a copy of the ${nameOf(source)} node.`,
+    apply: () => {
+      const node = new (source.constructor as NodeTypeConstructor)();
+      copyAuthoredValues(source, node);
+      if (edit.pos === undefined) {
+        placeNewNodes(graph.nodes, [node]);
+      } else {
+        node.pos[0] = edit.pos[0];
+        node.pos[1] = edit.pos[1];
+      }
+      graph.add(node);
+      return { graph, node: node.id };
+    },
+  };
+}
+
+/** Carries every value `source` has explicitly set onto a freshly built node of the same type. */
+function copyAuthoredValues(source: Node, node: Node): void {
+  for (const key of nodePropKeys(source)) {
+    const from = nodePropTarget(source, key);
+    if (from?.wasSet !== true) {
+      continue;
+    }
+    nodePropTarget(node, key)?.setValue(from.getValue());
+  }
 }
 
 function decideRemove(graph: Graph, edit: GenEdit & { op: 'removeNode' }): GenEditResult {

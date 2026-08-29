@@ -22,12 +22,11 @@ export type GenEditFor = { ok: true; edit: GenEdit } | { ok: false; reason: stri
 
 /**
  * Why each gesture path.ux offers has no command here. Group exposure is refused because a
- * generation graph is one flat graph, and the other two are refused because a node's identity is
- * what its journal is keyed by, so neither copying nor retyping a node is an edit this
- * application can make.
+ * generation graph is one flat graph, and retyping is refused because a node's identity is what
+ * its journal is keyed by, and swapping the type in place would leave the journal describing a
+ * node that no longer exists.
  */
 const UNSUPPORTED: Record<string, string> = {
-  duplicateNode: 'copying a node is not offered here; add another of the same type instead',
   replaceNode: "changing a node's type is not offered here; remove it and add the type you want",
   exposeEntry: 'a generation graph is one flat graph, so it has no group properties to expose',
   reorderEntry: 'a generation graph is one flat graph, so it has no group properties to reorder',
@@ -131,6 +130,11 @@ export function genEditFor(edit: GraphEdit): GenEditFor {
       };
     case 'addNode':
       return { ok: true, edit: { op: 'addNode', type: edit.nodeType, pos: [edit.x, edit.y] } };
+    case 'duplicateNode':
+      return {
+        ok: true,
+        edit: { op: 'duplicateNode', node: edit.nodeId, pos: [edit.x, edit.y] },
+      };
     case 'deleteNode':
       return { ok: true, edit: { op: 'removeNode', node: edit.nodeId } };
     case 'connect':
@@ -182,6 +186,10 @@ export function commandFor(slug: string, edit: GenEdit): GenCommand {
     case 'addNode': {
       const [x, y] = edit.pos ?? [0, 0];
       return { id: 'gengraph.addNode', props: { slug, type: edit.type, x, y } };
+    }
+    case 'duplicateNode': {
+      const [x, y] = edit.pos ?? [0, 0];
+      return { id: 'gengraph.duplicateNode', props: { slug, node: String(edit.node), x, y } };
     }
     case 'removeNode':
       return { id: 'gengraph.removeNode', props: { slug, node: String(edit.node) } };

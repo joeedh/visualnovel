@@ -85,6 +85,54 @@ describe('adding and removing a node', () => {
   });
 });
 
+describe('duplicating a node', () => {
+  it('copies the authored values onto a fresh id, and carries no link', () => {
+    const { graph, image, output } = bound();
+    image.props['model']!.setValue('gemini-3');
+
+    const decided = decideGenEdit(graph, { op: 'duplicateNode', node: image.id, pos: [50, 60] });
+    expect(note(decided)).toBe('Adds a copy of the Generate image node.');
+    if (!decided.ok) return;
+
+    const { node } = decided.apply();
+    expect(node).not.toBe(image.id);
+    const copy = graph.nodeIdMap.get(node!)!;
+    expect(copy.props['model']!.getValue()).toBe('gemini-3');
+    expect([...copy.pos]).toEqual([50, 60]);
+    expect(copy.outputs.image!.edges).toHaveLength(0);
+    // The source is untouched, output still fed by the original alone.
+    expect(output.inputs.image!.edges).toHaveLength(1);
+  });
+
+  it('places a duplicate where an add would land, when asked for no position', () => {
+    const { graph, image } = bound();
+    const decided = decideGenEdit(graph, { op: 'duplicateNode', node: image.id });
+    if (!decided.ok) throw new Error(decided.reason);
+
+    const { node } = decided.apply();
+    expect([...graph.nodeIdMap.get(node!)!.pos]).not.toEqual([...image.pos]);
+  });
+
+  it('copies the value rather than sharing the property, so the two drift independently', () => {
+    const { graph, image } = bound();
+    image.props['model']!.setValue('gemini-3');
+
+    const decided = decideGenEdit(graph, { op: 'duplicateNode', node: image.id });
+    if (!decided.ok) throw new Error(decided.reason);
+    const { node } = decided.apply();
+
+    image.props['model']!.setValue('gemini-4');
+    expect(graph.nodeIdMap.get(node!)!.props['model']!.getValue()).toBe('gemini-3');
+  });
+
+  it('refuses a node this graph does not hold', () => {
+    const graph = new Graph();
+    expect(reason(decideGenEdit(graph, { op: 'duplicateNode', node: 7 }))).toBe(
+      'this graph holds no node 7',
+    );
+  });
+});
+
 describe('linking and unlinking', () => {
   it('feeds an input, and says which node feeds which', () => {
     const graph = new Graph();

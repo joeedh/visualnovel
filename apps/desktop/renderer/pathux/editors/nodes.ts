@@ -119,6 +119,10 @@ export class GenGraphEditor extends VnEditor {
       bar.button('Delete', () => this.view.deleteSelected()),
       DELETE_WHAT,
     );
+    describe(
+      bar.button('Duplicate', () => this.view.duplicateSelected()),
+      DUPLICATE_WHAT,
+    );
     this.assetButton = bar.button('Asset', () => void this.showAsset());
     describe(
       bar.button('⟳', () => void this.load(this.slug)),
@@ -171,6 +175,7 @@ export class GenGraphEditor extends VnEditor {
     // landed in a textbox, so a node's own prop rows keep their editing keys.
     this.keymap = new KeyMap([
       new HotKey('Delete', [], () => this.view.deleteSelected(), DELETE_WHAT),
+      new HotKey('D', ['SHIFT'], () => this.view.duplicateSelected(), DUPLICATE_WHAT),
     ]);
 
     // The links are painted on a canvas sized from the pan area at paint time, and nothing repaints
@@ -346,10 +351,17 @@ export class GenGraphEditor extends VnEditor {
   // Writing
   // -------------------------------------------------------------------------
 
+  /**
+   * `undoStepBegin`/`undoStepEnd` bracket `deleteSelected`/`duplicateSelected` so path.ux's own
+   * `ToolOpDelegate` can batch them into one undo step. This pane has no such step to batch into:
+   * every dispatched edit is its own `gengraph.*` command and its own undo entry already.
+   */
   private delegate(): NodeGraphDelegate {
     return {
+      undoStepBegin: (): void => {},
       check: (_ctx, edit): EditVerdict => this.judge(edit),
       perform: (_ctx, edit): void => this.dispatch(edit),
+      undoStepEnd: (): void => {},
     };
   }
 
@@ -500,6 +512,9 @@ const ADD_MENU_AT: readonly [number, number] = [40, 40];
 
 /** What deleting does, shared by the header button and the key that does the same thing. */
 const DELETE_WHAT = 'Remove the selected nodes and sever the selected links';
+
+/** What duplicating does, shared by the header button and the key that does the same thing. */
+const DUPLICATE_WHAT = 'Add a copy of each selected node, carrying over the values it authored';
 
 function describe(button: { description?: string }, description: string): void {
   button.description = description;

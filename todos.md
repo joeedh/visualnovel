@@ -15,8 +15,6 @@
      existing asset and its prompts will become stale and the old one (including its
 	 prompt chunks) will be set at the latest one in the slot.
 [ ]: the asset editor should have a download button for the rendered image
-[ ]: the gen graph editor should show the name of the asset referencing the shot
-[ ]: gen graph editor should have a 'regenerate' button that runs the pipeline
 [ ]: when showing things in editors (e.g. double clicking shots in shot coverage 
      editor to show the shot in the asset editor) the largest available non-document-tree-holding
 	 area should be used according to the normal editor swapping rules, which are documented 

@@ -303,6 +303,39 @@ export const gengraphAddNode = define({
   },
 });
 
+export const gengraphDuplicateNode = define({
+  id: 'gengraph.duplicateNode',
+  title: 'Duplicate a node',
+  description:
+    'Add a copy of one node, carrying over the values it authored. The copy takes a fresh id, ' +
+    'so it starts with no run journal of its own and runs the first time the graph does; links ' +
+    'are not carried over.',
+  mutating: true,
+  undoable: true,
+  props: {
+    slug: prop.string(SLUG),
+    node: prop.string(NODE),
+    x: prop.number('where to place the copy across the canvas', { default: 0 }),
+    y: prop.number('where to place the copy down the canvas', { default: 0 }),
+  },
+  async check({ slug, node, x, y }, ctx) {
+    return verdict(
+      await decide(ctx, slug, (graph) => ({
+        op: 'duplicateNode',
+        node: nodeIdOf(graph, node),
+        pos: [x, y],
+      })),
+    );
+  },
+  async run({ slug, node, x, y }, ctx) {
+    return edit(ctx, slug, (graph) => ({
+      op: 'duplicateNode',
+      node: nodeIdOf(graph, node),
+      pos: [x, y],
+    }));
+  },
+});
+
 export const gengraphRemoveNode = define({
   id: 'gengraph.removeNode',
   title: 'Remove a node',

@@ -39,6 +39,13 @@ describe('a gesture read as an edit', () => {
     ).toEqual({ ok: true, edit: { op: 'addNode', type: 'GenImage', pos: [5, 7] } });
   });
 
+  it('carries the node id and the drop position a duplicate was placed at', () => {
+    expect(genEditFor({ kind: 'duplicateNode', graphPath: '', nodeId: '3', x: 5, y: 7 })).toEqual({
+      ok: true,
+      edit: { op: 'duplicateNode', node: '3', pos: [5, 7] },
+    });
+  });
+
   it('names both ends of a link, and of the link a drag severs', () => {
     const ends = {
       graphPath: '',
@@ -65,14 +72,7 @@ describe('a gesture read as an edit', () => {
  * `check` accepts and then resyncs from a graph that never changed.
  */
 describe('a gesture with no command behind it', () => {
-  const KINDS = [
-    'duplicateNode',
-    'replaceNode',
-    'exposeEntry',
-    'reorderEntry',
-    'repointEntry',
-    'removeEntry',
-  ];
+  const KINDS = ['replaceNode', 'exposeEntry', 'reorderEntry', 'repointEntry', 'removeEntry'];
 
   it.each(KINDS)('refuses %s by name', (kind) => {
     const result = genEditFor({ kind, graphPath: '' } as unknown as GraphEdit);
@@ -103,6 +103,12 @@ describe('the command an edit is written through', () => {
       x: 0,
       y: 0,
     });
+  });
+
+  it('names the source node a duplicate carries, and where it lands', () => {
+    const command = commandFor('plates', { op: 'duplicateNode', node: 3, pos: [10, 20] });
+    expect(command.id).toBe('gengraph.duplicateNode');
+    expect(command.props).toEqual({ slug: 'plates', node: '3', x: 10, y: 20 });
   });
 
   // The command reads an empty source as "cut every link into this input", which is what an
