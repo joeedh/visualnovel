@@ -1,6 +1,6 @@
 /**
  * Records bytes as a slot's output, so the slot becomes that picture rather than a pointer to it
- * (`docs/plans/archive/adopting-an-uploaded-asset.md`).
+ * (`docs/plans/archive/INDEX.md#adopting-an-uploaded-asset`).
  *
  * This generalizes `promoteConcept`, which performed the same act with one slot kind hard-coded. A
  * slot is a `RefBinding`, the same address used by the reference graph, the cycle refusal and

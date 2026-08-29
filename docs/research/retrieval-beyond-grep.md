@@ -6,7 +6,7 @@ carries._
 
 _Status: **nothing built.** `@vn/bible` ships the grep-shaped ranker described in
 [`../reference/story-bible.md`](../reference/story-bible.md#ranking), behind the `query(text) → ranked excerpts` seam
-[`../plans/archive/story-bible-and-retrieval.md`](../plans/archive/story-bible-and-retrieval.md) settled. That
+[`../plans/archive/INDEX.md#story-bible-and-retrieval`](../plans/archive/INDEX.md#story-bible-and-retrieval) settled. That
 plan named the successor — "grep now, embeddings behind the same function" — and this document
 argues the first move is **not** the one it named._
 
@@ -355,7 +355,7 @@ retrieval gain, and it is paid once per file edit rather than per query.
 The same allow-list problem as §E applies, and the same shape of answer, but a different
 mechanism: this is not a call at query time, it is **a build step that writes an artifact
 `@vn/bible` reads**. The project already has the pattern —
-[`../plans/archive/agent-context-regeneration.md`](../plans/archive/agent-context-regeneration.md)'s
+[`../plans/archive/INDEX.md#agent-context-regeneration`](../plans/archive/INDEX.md#agent-context-regeneration)'s
 `workspace.reindex` writes `AICONTEXT.generated.md`, is budgeted, and refuses to overwrite a file
 it did not write. Contextual headers are a second artifact from the same act.
 

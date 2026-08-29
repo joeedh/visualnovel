@@ -2,7 +2,7 @@
 
 A test-only package that builds **real projects on disk** and runs them through the **real
 scheduler** with mock providers, so a test asserts against generated state rather than a
-hand-built model. Plan: [`../plans/archive/test-fixtures.md`](../plans/archive/test-fixtures.md).
+hand-built model. Plan: [`../plans/archive/INDEX.md#test-fixtures`](../plans/archive/INDEX.md#test-fixtures).
 
 <!-- toc -->
 
@@ -112,4 +112,4 @@ and inside the boundaries graph.
   which esbuild rewrites to the _output_ directory, so the script passes `cacheDir` explicitly
   rather than letting a bundle write a complete corpus somewhere adjacent and plausible. Both
   cost a paid run to discover; see
-  [`../plans/archive/sample-workspace-and-asset-cache.md`](../plans/archive/sample-workspace-and-asset-cache.md).
+  [`../plans/archive/INDEX.md#sample-workspace-and-asset-cache`](../plans/archive/INDEX.md#sample-workspace-and-asset-cache).

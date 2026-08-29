@@ -1,14 +1,14 @@
 /**
- * What the app needs from the machine it was installed on, asked once at startup.
+ * Startup sanity checks. Runs before any workspace opens.
  *
- * `git` is the only entry today, and it is a real dependency rather than a nicety: `@vn/git`
- * spawns it for commit-on-save, `initRepoAt`, the undo journal's shadow refs and the repo map.
+ * `git` is the only check today, and it is a real dependency, not a nicety: `@vn/git` spawns
+ * it for commit-on-save, `initRepoAt`, the undo journal's shadow refs and the repo map.
  * Without git a packaged app fails at the first save rather than degrading, so the check runs
- * before a workspace opens. A missing git is deliberately not fatal: watching a generated VN
- * needs no git.
+ * before a workspace opens. A missing git is not fatal: watching a generated VN needs no git.
  *
- * A portable git is not bundled. It would add tens of megabytes and a second thing to keep
- * patched, to solve a problem only Windows has, where the answer is a link to the installer.
+ * No portable git is bundled. Bundling one would add tens of megabytes and a second thing to
+ * keep patched, for a problem only Windows has. The dialog offers a link to the installer
+ * instead.
  */
 import { execFile } from 'node:child_process';
 

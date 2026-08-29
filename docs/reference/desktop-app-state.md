@@ -63,7 +63,7 @@ which file a key lands in. Full write-up: [`desktopAppState.md`](desktopAppState
 
 One workspace at a time, resolved in `app.whenReady()` before the asset protocol or any session
 exists — but no longer resolved *forever*. Plan:
-[`../plans/archive/project-bootstrap-and-workspace-picker.md`](../plans/archive/project-bootstrap-and-workspace-picker.md).
+[`../plans/archive/INDEX.md#project-bootstrap-and-workspace-picker`](../plans/archive/INDEX.md#project-bootstrap-and-workspace-picker).
 
 **Precedence at launch**, first hit wins:
 

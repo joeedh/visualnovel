@@ -4,7 +4,7 @@ A plan-first, git-backed conversational agent that helps an author write and ref
 the pipeline consumes. It does **not** run the generative pipeline — it stops at well-formed,
 validated input files in a clean commit. Design:
 [`../history/authoring-agent-report.md`](../history/authoring-agent-report.md); plan:
-[`../plans/archive/authoring-agent-implementation.md`](../plans/archive/authoring-agent-implementation.md).
+[`../plans/archive/INDEX.md#authoring-agent-implementation`](../plans/archive/INDEX.md#authoring-agent-implementation).
 
 <!-- toc -->
 
@@ -439,7 +439,7 @@ touches the bytes, so the same take can be approved again.
 An author's own documents — a worldbuilding dump, a cast list, an outline someone else wrote —
 come in through **`/upload <file…>`** in the REPL, or **Upload Files…** in the desktop app. Both
 run `archiveUpload` in `packages/authoring/src/archive.ts`, so there is one archive and one layout.
-Plan: [`../plans/archive/upload-and-archive.md`](../plans/archive/upload-and-archive.md).
+Plan: [`../plans/archive/INDEX.md#upload-and-archive`](../plans/archive/INDEX.md#upload-and-archive).
 
 - **The originals are copied verbatim to `archive/<yyyymmdd-hhmmss>-<slug>/<original filename>`**,
   one directory per batch, at the project root. Not under `wiki/` and not under `vngen/`: the first

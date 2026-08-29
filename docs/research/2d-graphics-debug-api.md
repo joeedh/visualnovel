@@ -36,7 +36,7 @@
 
 _Status: exploratory design, **partly shipped**. The first slice of §14 — the fragment/frame
 IR, the DOM adapter, the space registry, the query engine and `explainPick` — is implemented as
-`@vn/debug2d` ([`../plans/archive/2d-graphics-debug-api.md`](../plans/archive/2d-graphics-debug-api.md)); see
+`@vn/debug2d` ([`../plans/archive/INDEX.md#2d-graphics-debug-api`](../plans/archive/INDEX.md#2d-graphics-debug-api)); see
 [`../guides/debugGuide.md`](../guides/debugGuide.md) for how to use it. The canvas/SVG adapters, composite
 frames, time travel, `explainTransform`/`whyInvalidated`, and the node-editor domain layer (§10)
 remain design only._

@@ -1,6 +1,6 @@
 /**
  * Condensing a chunk list into one prompt, and the local check that says what survived
- * (`docs/plans/archive/chunked-prompts.md` §4).
+ * (`docs/plans/archive/INDEX.md#chunked-prompts` §4).
  */
 import type { PromptChunk, TextLLM } from '@vn/types';
 import { condensePrompt, contentWords, coverage, missingChunks, renderPrompt } from '../index.js';

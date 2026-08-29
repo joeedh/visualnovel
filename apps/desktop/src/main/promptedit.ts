@@ -1,5 +1,5 @@
 /**
- * What one prompt edit does to a stored override (`docs/plans/archive/chunked-prompts.md` §5, §6).
+ * What one prompt edit does to a stored override (`docs/plans/archive/INDEX.md#chunked-prompts` §5, §6).
  *
  * The inputs are the chunks and the current override; the output is the next override, or the
  * sentence refusing the edit. The session owns loading and writing and this file owns the rules, so

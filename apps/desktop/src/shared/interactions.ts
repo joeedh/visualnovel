@@ -10,7 +10,7 @@
  *
  * This module is in `shared/` rather than in the renderer because both halves need it: the
  * surfaces run `targets` during a gesture, and main runs it to answer an agent. See
- * `docs/plans/archive/interaction-model.md`.
+ * `docs/plans/archive/INDEX.md#interaction-model`.
  */
 import { defineInteraction, InteractionRegistry, UNRESOLVED, type Verdict } from '@vn/commands';
 import {

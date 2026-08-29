@@ -69,7 +69,7 @@ sixteen tests over the three drags.
 numbers and cues, the composer at the end. `rooms/studio/script/script.ts` (`scriptRows`, `keyAct`,
 `stepsOf`, `checkOf`, `splitBoundaries`, `mergeTarget`, `dropTarget`, `nextEditing`) is imported
 unchanged; the drag machine from `ScriptEditor.tsx` is now `pathux/script.ts` with six tests. Plan:
-[`../plans/archive/script-composition-in-studio.md`](../plans/archive/script-composition-in-studio.md).
+[`../plans/archive/INDEX.md#script-composition-in-studio`](../plans/archive/INDEX.md#script-composition-in-studio).
 
 - **The model is a list of lines, not a buffer.** There is no document being diffed on save: a
   keystroke either belongs to the open row's textarea or names one command, and `script.ts` is the
@@ -272,7 +272,7 @@ the same events** to write the transcript — see the threads bullet below.
   `asked` drops the chips the instant one is. A cancelled dialog and a batch where every file was
   refused both leave the conversation in progress alone — the renderer keys on the `seed` the
   command emits only when something was written. See
-  [`../plans/archive/upload-and-archive.md`](../plans/archive/upload-and-archive.md) and
+  [`../plans/archive/INDEX.md#upload-and-archive`](../plans/archive/INDEX.md#upload-and-archive) and
   [`vnauthor.md`](vnauthor.md#the-archive).
 - **Two surfaces open a conversation about what is on screen.** Right-clicking a script line offers
   **Edit with agent** (`agent.editLine`); the failure band in the Asset editor carries **Fix with
@@ -310,7 +310,7 @@ the same events** to write the transcript — see the threads bullet below.
   and `/effort` read too. **The effort menu offers what the model takes, and there is no
   `default` item**: it lists that model's own ladder plus `no thinking` where an explicit
   `thinking: disabled` is accepted, and it starts at `low` — see
-  [`../plans/archive/deliberate-reasoning-effort-defaults.md`](../plans/archive/deliberate-reasoning-effort-defaults.md)
+  [`../plans/archive/INDEX.md#deliberate-reasoning-effort-defaults`](../plans/archive/INDEX.md#deliberate-reasoning-effort-defaults)
   for why the absent knob was the wrong default. A model with no reasoning knob at all greys the
   menu and says why; the setting is **kept** rather than cleared, so switching back to a model
   that honours it needs no second gesture — but a level the new model does not offer is stepped
@@ -342,8 +342,8 @@ The pure rules live in `renderer/rules/timeline/` (`drift`, `editing`, `wardrobe
 `@vn/scriptedit` (`coverage.ts`, `shotcreate.ts` — geometry and shot creation, shared with the
 agent's tools); the state machine the React component kept in its own `.tsx` is now
 `pathux/timeline.ts`, with its tests beside it.
-Plans: [`../plans/archive/shot-timeline-editor.md`](../plans/archive/shot-timeline-editor.md) and
-[`../plans/archive/line-editing-in-floor.md`](../plans/archive/line-editing-in-floor.md).
+Plans: [`../plans/archive/INDEX.md#shot-timeline-editor`](../plans/archive/INDEX.md#shot-timeline-editor) and
+[`../plans/archive/INDEX.md#line-editing-in-floor`](../plans/archive/INDEX.md#line-editing-in-floor).
 
 This is the only surface that edits `Shot.coversLines` directly — the `story.*` scene editors also
 move it, as fallout of a split or merge rather than as the point — and `buildShotPrompt` ignores it,

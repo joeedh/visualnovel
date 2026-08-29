@@ -429,7 +429,7 @@ from logging a header map with it.
    asserting steps 2 and later read from cache, one `report.agent` analysis asserting the same
    plus no tool-search round and no `fellBack`. The analyst check is already prescribed as a
    manual ritual in
-   [`../plans/archive/prompt-caching-for-the-report-analyst.md`](../plans/archive/prompt-caching-for-the-report-analyst.md);
+   [`../plans/archive/INDEX.md#prompt-caching-for-the-report-analyst`](../plans/archive/INDEX.md#prompt-caching-for-the-report-analyst);
    this makes it runnable.
 7. **Read the capability declaration once it exists.** When stage 1 of
    [`../plans/recording-cache-misses-in-a-thread.md`](../plans/recording-cache-misses-in-a-thread.md)

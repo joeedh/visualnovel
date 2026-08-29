@@ -1,7 +1,7 @@
 # Code signing and notarization
 
 Status: **deferred by decision**, not by oversight. Listed as plan 6 of
-[`archive/shipping-the-app-tasklist.md`](archive/shipping-the-app-tasklist.md) and deliberately not scheduled.
+[`archive/INDEX.md#shipping-the-app-tasklist`](archive/INDEX.md#shipping-the-app-tasklist) and deliberately not scheduled.
 
 This page exists so the decision is written down rather than rediscovered the first time
 somebody reports a scary warning.
@@ -16,7 +16,7 @@ certificate accrues reputation, which means it does not fade at all while unsign
 **macOS.** Materially worse, and the reason mac is not in the first release. Gatekeeper
 quarantines a downloaded unsigned app and the ordinary path to open it is not "click through a
 warning", it is a terminal command. And per
-[`archive/in-app-update-checks.md`](archive/in-app-update-checks.md), auto-update on mac requires signing
+[`archive/INDEX.md#in-app-update-checks`](archive/INDEX.md#in-app-update-checks), auto-update on mac requires signing
 outright — Squirrel.Mac refuses an unsigned bundle and fails **silently**.
 
 **Linux.** Nothing. AppImage has no equivalent gate.
@@ -48,10 +48,10 @@ one line and removes most of the doubt the warning creates.
 ## What lands when it does
 
 - Repo secrets for the signing credentials, and the matrix legs in
-  [`archive/release-ci-workflow.md`](archive/release-ci-workflow.md) gaining a signing step.
+  [`archive/INDEX.md#release-ci-workflow`](archive/INDEX.md#release-ci-workflow) gaining a signing step.
 - `macos-latest` in that matrix, with notarization, which adds real wall-clock to a release —
   Apple's service takes minutes, sometimes longer.
 - `electron-updater`'s mac path becomes viable, so stage 2 of
-  [`archive/in-app-update-checks.md`](archive/in-app-update-checks.md) becomes worth building.
+  [`archive/INDEX.md#in-app-update-checks`](archive/INDEX.md#in-app-update-checks) becomes worth building.
 - A note wherever the download lives that the warning is gone, because the old sentence telling
   people to expect one is then itself a reason to distrust the download.

@@ -5,7 +5,7 @@
  * cache exists so that a generated project is viewable, and the P7 refine loop reviewable,
  * by someone who has never held an API key.
  *
- * Plan: `docs/plans/archive/sample-workspace-and-asset-cache.md`.
+ * Plan: `docs/plans/archive/INDEX.md#sample-workspace-and-asset-cache`.
  */
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';

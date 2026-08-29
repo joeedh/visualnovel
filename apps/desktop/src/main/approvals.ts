@@ -15,12 +15,13 @@ export interface ApprovalQueue {
 }
 
 /**
- * Put `items` in most-recently-surfaced-first order against `previousOrder`.
+ * Order `items` most-recently-surfaced first, using `previousOrder` as the prior ranking.
  *
- * A hash `previousOrder` already knows keeps its place relative to the others it knows. A hash it
- * does not is new since the list was last read, so it goes ahead of all of them, keeping the
- * upstream-first order `approvable()` returned within that batch. A hash `previousOrder` holds
- * that is no longer waiting (approved, or its slot is gone) is dropped.
+ * An item whose hash is already in `previousOrder` keeps its position relative to the other
+ * known items. An item whose hash is not in `previousOrder` is new since the list was last
+ * read; it's placed ahead of all known items in the upstream-first order `approvable()`
+ * returned for that batch. An item in `previousOrder` that is no longer waiting (approved, or
+ * its slot is gone) is dropped.
  */
 export function reorderApprovals(
   items: readonly Approvable[],

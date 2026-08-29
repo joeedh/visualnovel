@@ -65,7 +65,7 @@ pnpm --filter @vn/desktop dev -- --mock         # live dev loop
 - **Shipping it is a different command.** `pnpm package` builds an installer and `pnpm smoke`
   runs the packaged binary to prove the two lazily-imported SDKs actually reached the app image.
   Why it is built the way it is: [`../guides/toolchain.md`](../guides/toolchain.md#packaging-the-desktop-app) and
-  [`../plans/archive/packaging-the-desktop-app.md`](../plans/archive/packaging-the-desktop-app.md).
+  [`../plans/archive/INDEX.md#packaging-the-desktop-app`](../plans/archive/INDEX.md#packaging-the-desktop-app).
 - **`pnpm vndesktop` opens CDP on 9222**, like the dev loop — `scripts/vndesktop.mjs` sets
   `VN_CDP_PORT` before launching Electron, because the switch can only be appended before
   `app.whenReady()` and this is the entry point you reach for when you mean to drive the app from
@@ -385,7 +385,7 @@ are the bridge's.
   notification, because that is the one verdict worth surviving the frame; "you are up to date" is
   said and not filed. The check is fired through `act` rather than a form: it takes no arguments
   the author would fill in, and `report` is what voices the answer. Full write-up:
-  [`../plans/archive/in-app-update-checks.md`](../plans/archive/in-app-update-checks.md).
+  [`../plans/archive/INDEX.md#in-app-update-checks`](../plans/archive/INDEX.md#in-app-update-checks).
 - **The Help menu's other entry opens two dialogs in turn.** Report a Difficult Agent…
   (`pathux/report.ts`) is not a bare `openCommandDialog`: three of `report.agent`'s five fields have
   a vocabulary the command cannot carry — the conversations in *this* project, the models a key
@@ -469,7 +469,7 @@ A **layout template** is a named screen arrangement the *project* owns:
 put back by Reset View Layout…. Two ship — **Writing** (the documents tree, the script with the
 branch cards behind it, the agent) and **Art** (the documents tree, one asset with its art notes,
 the pipeline queue). Full write-up:
-[`../plans/archive/layout-templates-and-the-view-menu.md`](../plans/archive/layout-templates-and-the-view-menu.md).
+[`../plans/archive/INDEX.md#layout-templates-and-the-view-menu`](../plans/archive/INDEX.md#layout-templates-and-the-view-menu).
 
 - **The template is the saved arrangement; the live mesh is not.** A template is committed with the
   project. What is on screen right now goes in the project's gitignored
@@ -507,7 +507,7 @@ Two editors draw a graph, and they share both the geometry and the surface. `ren
 the domain-free math — `layout.ts` (layered DAG layout), `edges.ts` (routes plus the polyline every
 hit test uses), `hit.ts` (`pick`), `viewport.ts` (pan/zoom) — all pure, all tested.
 `pathux/graph/canvas.ts` is the imperative surface over it. Plan:
-[`../plans/archive/story-branch-editor.md`](../plans/archive/story-branch-editor.md).
+[`../plans/archive/INDEX.md#story-branch-editor`](../plans/archive/INDEX.md#story-branch-editor).
 
 - **One geometry, drawn and hit-tested.** `routeEdges` emits the SVG path and its sampled
   polyline together, so an edge can't be clickable where it isn't drawn. Slop is authored in

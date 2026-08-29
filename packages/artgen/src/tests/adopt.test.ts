@@ -1,6 +1,6 @@
 /**
  * The adoption guard: bytes that already exist recorded as the output of the task that would have
- * produced them (`docs/plans/archive/chunked-prompts.md` §13).
+ * produced them (`docs/plans/archive/INDEX.md#chunked-prompts` §13).
  *
  * These tests cover the safety property rather than the record shape. The identity is computed here
  * from inputs the caller derived, so only a node the project still describes can be marked done,

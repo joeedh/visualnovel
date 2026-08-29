@@ -8,7 +8,7 @@
  * the first two and 3,045 for the rest — and a second run reported one on call 4 alone. That an
  * identical request is answered either way is why an absent count must stay absent rather than
  * become a zero, and why a reported one is marked an estimate. See
- * `docs/plans/archive/gemini-estimated-cache-hit-rate.md`.
+ * `docs/plans/archive/INDEX.md#gemini-estimated-cache-hit-rate`.
  */
 import { createGeminiChat, type GeminiClient } from '../index.js';
 

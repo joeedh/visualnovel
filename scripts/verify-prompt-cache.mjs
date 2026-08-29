@@ -1,6 +1,6 @@
 /**
  * This proves that the agent's prompt prefix is actually being cached
- * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md` § Tests).
+ * (`docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading` § Tests).
  *
  * A unit test can only check claims about the request itself, such as where the breakpoints are,
  * what defers, and what was echoed, and those are checked in
@@ -13,7 +13,7 @@
  * - Gemini: five calls carrying a byte-identical prefix, asserting that some call came back
  *   reporting a hit. There is nothing to place, because the implicit cache is opportunistic and
  *   says nothing at all on many calls that hit
- *   (`docs/plans/archive/gemini-estimated-cache-hit-rate.md`), which is why five calls and not two.
+ *   (`docs/plans/archive/INDEX.md#gemini-estimated-cache-hit-rate`), which is why five calls and not two.
  *
  * Usage:
  *   node scripts/verify-prompt-cache.mjs [dir]        # costs money; a handful of small calls

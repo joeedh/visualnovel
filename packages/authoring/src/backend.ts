@@ -5,7 +5,7 @@
  * on the existing `ChatBackend` text seam — the model emits one zod-validated action per
  * turn and we feed back an observation. Path B is native function-calling over
  * `chatConversation`, which is the cached path
- * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md`).
+ * (`docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading`).
  */
 import { z } from 'zod';
 import { ProviderError } from '@vn/util';

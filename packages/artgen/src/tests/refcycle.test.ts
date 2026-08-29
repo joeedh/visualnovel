@@ -1,5 +1,5 @@
 /**
- * The reference-graph cycle check (`docs/plans/archive/chunked-prompts.md` §14). The cycle is over logical
+ * The reference-graph cycle check (`docs/plans/archive/INDEX.md#chunked-prompts` §14). The cycle is over logical
  * slots rather than hashes, so the interesting cases are the ones where no hash repeats.
  */
 import type { Asset, Location, ProjectModel, RefBinding, Shot } from '@vn/types';

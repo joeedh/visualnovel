@@ -2,7 +2,7 @@
  * This file checks where the breakpoints land and nothing else. A cache hit cannot be observed
  * without a key and a bill, so `scripts/verify-prompt-cache.mjs` is where that is proved.
  * The claim here is narrower and testable: the request body says what
- * `docs/plans/archive/prompt-caching-and-deferred-tool-loading.md` says it says.
+ * `docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading` says it says.
  */
 import type { ChatTurn, ToolSchema } from '../../backend.js';
 import { buildConvoRequest } from '../convo-request.js';
@@ -45,7 +45,7 @@ const SEARCHED: Block[] = [
  * The rule the API states as an error rather than as prose: every `tool_search_tool_result` pairs
  * with a `server_tool_use` of the same id earlier in the same message, and no `tool_result` is
  * ever returned for a `srvtoolu_` id
- * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md:386`).
+ * (`docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading:386`).
  *
  * Checked over the whole body rather than over the turn under test, because a pair is broken by
  * something beside it: a turn that merged into it, or a marker that landed between the two blocks.

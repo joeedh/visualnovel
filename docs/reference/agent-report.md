@@ -26,11 +26,11 @@ ever posted for them.
 The pure logic lives in **`@vn/agentreport`**; the desktop app's main process is its only
 consumer (`apps/desktop/src/main/commands/report.ts` defines the seven `report.*` commands). The
 plans that built it, with the implementation history:
-[`../plans/archive/reporting-a-difficult-agent.md`](../plans/archive/reporting-a-difficult-agent.md)
+[`../plans/archive/INDEX.md#reporting-a-difficult-agent`](../plans/archive/INDEX.md#reporting-a-difficult-agent)
 and, for the request-capture tools,
-[`../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`](../plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md);
+[`../plans/archive/INDEX.md#diagnosing-an-api-error-from-the-request-that-caused-it`](../plans/archive/INDEX.md#diagnosing-an-api-error-from-the-request-that-caused-it);
 for the pane and the held conversation,
-[`../plans/archive/the-debug-agent-as-a-conversation.md`](../plans/archive/the-debug-agent-as-a-conversation.md).
+[`../plans/archive/INDEX.md#the-debug-agent-as-a-conversation`](../plans/archive/INDEX.md#the-debug-agent-as-a-conversation).
 
 ## The privacy model
 

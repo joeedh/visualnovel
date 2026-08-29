@@ -162,7 +162,7 @@ describe('the desktop registry', () => {
    * survive undoing the edits it produced), write a credential to a gitignored file (`project.setKey`: an undo point is
    * a git snapshot, and snapshotting a key is the one thing that command exists to avoid), or
    * straddle both classes (`gate.approve` flips `character.md` and marks the asset accepted in
-   * `manifest.json`) — see `docs/plans/archive/command-undo-redo.md`.
+   * `manifest.json`) — see `docs/plans/archive/INDEX.md#command-undo-redo`.
    *
    * `view.saveLayout` and `view.resetLayout` are the exception that proves the rule: a layout
    * template is not a document, but it is an authored file inside the snapshot's pathspec, so undo

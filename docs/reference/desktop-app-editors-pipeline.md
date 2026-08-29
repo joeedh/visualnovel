@@ -19,7 +19,7 @@ list), `editors/graph.ts` (the DAG, on the shared canvas) and `editors/inspector
 detail). The list is better for scanning, the graph for structure; both are read-only, and the only
 mutations from any of the three are `pipeline.run` and `gate.approve`. `rooms/floor/taskGraph.ts`
 owns the derivation and `rooms/floor/attempts.ts` the review merge, both unchanged with their tests.
-Plan: [`../plans/archive/task-dag-view.md`](../plans/archive/task-dag-view.md).
+Plan: [`../plans/archive/INDEX.md#task-dag-view`](../plans/archive/INDEX.md#task-dag-view).
 
 - **A task surface publishes `ui.taskHash`, and that is what the inspector watches.** The three
   authored ids answer "where in the story", which is not the same question as "which node" — a task
@@ -121,7 +121,7 @@ and each fix is a pure function tested in node:
   `docPath`. `← Overview` clears the scope, and a scope naming an id the next plan no longer
   carries falls back to the overview. The scope is part of the pane's `stateKey` and is
   deliberately not persisted the way `tidy` is. Plan:
-  [`../plans/archive/clustering-the-global-task-graph.md`](../plans/archive/clustering-the-global-task-graph.md).
+  [`../plans/archive/INDEX.md#clustering-the-global-task-graph`](../plans/archive/INDEX.md#clustering-the-global-task-graph).
 - **Tidy is a second layout, not a second graph.** The graph view's `Tidy` tick re-runs
   `layoutGraph` with `tidy: true`, which spends more ordering sweeps and then straightens each rank
   with weighted isotonic regression (PAVA): writing a node's left edge as `u + prefix` turns "keep
@@ -146,7 +146,7 @@ and each fix is a pure function tested in node:
   exactly as `mergeReports` (`@vn/providers`) computes it, so the UI can't disagree with the verdict
   the runner acted on; and every attempt's bytes are in the store (`store.write` runs per attempt,
   `store.accept` only on the clean one), so rejected frames are viewable over `vnasset://`. Plan:
-  [`../plans/archive/refine-loop-inspector.md`](../plans/archive/refine-loop-inspector.md).
+  [`../plans/archive/INDEX.md#refine-loop-inspector`](../plans/archive/INDEX.md#refine-loop-inspector).
 
 ## Gen Graph
 
@@ -267,8 +267,8 @@ box, none of which is a control.
 that would make them differently. Its subject is `ui.assetHash`, which the documents tree publishes
 when an asset leaf is clicked; the rules on top of it (which approve command applies, the badges,
 the failure and drift notes, which prompt to show) are pure in `renderer/rules/assetview.ts` with tests beside
-them. Plans: [`../plans/archive/asset-names-and-the-asset-editor.md`](../plans/archive/asset-names-and-the-asset-editor.md)
-and [`../plans/archive/on-demand-concept-images.md`](../plans/archive/on-demand-concept-images.md).
+them. Plans: [`../plans/archive/INDEX.md#asset-names-and-the-asset-editor`](../plans/archive/INDEX.md#asset-names-and-the-asset-editor)
+and [`../plans/archive/INDEX.md#on-demand-concept-images`](../plans/archive/INDEX.md#on-demand-concept-images).
 
 `art.generate(sentence=…)` is the other way in: it draws a concept and, unless told not to, opens
 it here — so asking for a picture ends looking at it. `art.redraw` does the same with the sketch
@@ -281,7 +281,7 @@ it produces.
   came from a document offers a `⇱` to it. The art notes are still the append-only half beside it,
   and both are authored input: setting either re-keys the task, so "regenerate" is the pipeline that
   already exists rather than a second path to the image model. See
-  [`../plans/archive/chunked-prompts.md`](../plans/archive/chunked-prompts.md).
+  [`../plans/archive/INDEX.md#chunked-prompts`](../plans/archive/INDEX.md#chunked-prompts).
 - **A reference image lives on the card of the clause it is evidence for.** Under each card is a
   strip of thumbnails (`vnasset://<hash>.<ext>`); a click opens that picture `elsewhere` — this pane
   is showing what the reference is *for* — and `×` runs `prompt.dropRef`. A chip on a muted clause is
@@ -384,7 +384,7 @@ it produces.
   layout. The hint says what it costs: the render it stands in for keeps its bytes in the store, and
   the next run adopts the author's picture instead of drawing one. Nothing is auto-accepted, and the
   pane moves to the new hash afterwards, because the bytes it was showing are no longer the slot's.
-  See [`../plans/archive/adopting-an-uploaded-asset.md`](../plans/archive/adopting-an-uploaded-asset.md).
+  See [`../plans/archive/INDEX.md#adopting-an-uploaded-asset`](../plans/archive/INDEX.md#adopting-an-uploaded-asset).
 - **Show task hands off rather than duplicating.** `ui.taskHash` is published and the inspector is
   opened `elsewhere` — attempts, the refine loop and the reviewer's verdict are its subject, and
   this pane does not re-render them.

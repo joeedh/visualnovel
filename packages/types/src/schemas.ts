@@ -71,7 +71,7 @@ const chunkRef = z
   .strict();
 
 /**
- * An author's override of one derived image prompt (`docs/plans/archive/chunked-prompts.md`). Stored at
+ * An author's override of one derived image prompt (`docs/plans/archive/INDEX.md#chunked-prompts`). Stored at
  * the rung that names the whole picture, so "which override applies" is a lookup, never a merge.
  *
  * Nothing in here carries a `.default()`. A default would make `compact()` keep an empty
@@ -329,7 +329,7 @@ export const projectConfig = z.object({
    * because a shot prompt names its own subjects, so the frame already contains them and an
    * overlay is the same character twice. Turning it on stages the classic
    * background-plus-sprite look — but against a P3 portrait, which is an opaque plate and not
-   * a keyed cutout (docs/plans/archive/portrait-overlay-opt-in.md).
+   * a keyed cutout (docs/plans/archive/INDEX.md#portrait-overlay-opt-in).
    */
   portrait_overlay: z.boolean().default(false),
 });
@@ -391,7 +391,7 @@ export const shotDecompositionSchema = z.object({
 export type ShotDecomposition = z.infer<typeof shotDecompositionSchema>;
 
 /**
- * One prompt condensed from a chunk list by the LLM (`docs/plans/archive/chunked-prompts.md` §4).
+ * One prompt condensed from a chunk list by the LLM (`docs/plans/archive/INDEX.md#chunked-prompts` §4).
  *
  * `omitted` is what the model reports it could not fit. It is advisory and nothing rejects a
  * condensation over it — the authoritative answer is the local coverage check run over `prompt`.

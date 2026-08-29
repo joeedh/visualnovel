@@ -1,5 +1,5 @@
 /**
- * What a linked reference points at today (`docs/plans/archive/chunked-prompts.md` §11).
+ * What a linked reference points at today (`docs/plans/archive/INDEX.md#chunked-prompts` §11).
  *
  * A `ChunkRef` pins a hash, which is what is fed to the model and what the task hashes over, and it
  * separately remembers the slot that hash came from. A live lookup would silently re-key every task

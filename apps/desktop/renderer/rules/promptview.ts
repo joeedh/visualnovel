@@ -1,7 +1,7 @@
 /**
  * Decisions the prompt half of the asset editor makes before it draws: how a chunk reads, where its
  * `⇱` button goes, what the mode strip offers, and how holding reads as a sentence
- * (`docs/plans/archive/chunked-prompts.md` §7, §8, §9).
+ * (`docs/plans/archive/INDEX.md#chunked-prompts` §7, §8, §9).
  *
  * These functions are pure because the desktop jest project is node-only and the pane itself can
  * only be checked live over CDP, so everything that is a rule rather than markup is tested here.

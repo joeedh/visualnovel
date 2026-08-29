@@ -1,6 +1,6 @@
 /**
  * The chunk model: a derived prompt made addressable, and the collapse back to the flat string
- * every task hash is computed over (`docs/plans/archive/chunked-prompts.md` §1).
+ * every task hash is computed over (`docs/plans/archive/INDEX.md#chunked-prompts` §1).
  *
  * The builders stay authoritative. What changes is that each clause they already assembled is now
  * a named `PromptChunk`, so an author can mute, replace, append to or reorder one — and a project

@@ -8,7 +8,7 @@
  * bytes. Mocking text pins the run to the deterministic baseline decomposition, which is what a
  * replay produces. The cost is that a recorded P7 loop is one attempt deep.
  *
- * Plan: `docs/plans/archive/sample-workspace-and-asset-cache.md`.
+ * Plan: `docs/plans/archive/INDEX.md#sample-workspace-and-asset-cache`.
  */
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import type { AnyTask, AssetCacheEntry, Logger } from '@vn/types';

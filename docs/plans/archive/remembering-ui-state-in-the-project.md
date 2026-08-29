@@ -12,7 +12,7 @@ Two claims in that sentence need separating, because only one of them is about w
 live.
 
 **Where it is stored.** Layout _templates_ are project-owned already
-(`.vnstudio/layouts/<slug>.json`, [`layout-templates-and-the-view-menu.md`](layout-templates-and-the-view-menu.md)).
+(`.vnstudio/layouts/<slug>.json`, [`archive/INDEX.md#layout-templates-and-the-view-menu`](INDEX.md#layout-templates-and-the-view-menu)).
 The live arrangement is not: every window fact — the mesh, the selection, the applied template,
 the window list and their bounds — goes into `<userConfigDir()>/desktop/session.json`, which is
 install-global. `sessionkeys.ts` compensates by putting a digest of the project path into each

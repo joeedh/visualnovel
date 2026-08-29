@@ -1,5 +1,5 @@
 /**
- * Bringing outside bytes into the store (`docs/plans/archive/chunked-prompts.md` §15).
+ * Bringing outside bytes into the store (`docs/plans/archive/INDEX.md#chunked-prompts` §15).
  *
  * A custom reference is not generated at all, unlike a concept, which comes from an unplanned
  * call. It has no binding, so it can never drift, and it is the store's only ingress for bytes

@@ -1,5 +1,5 @@
 /**
- * Which rung owns a prompt, and what it currently says (`docs/plans/archive/chunked-prompts.md` §2).
+ * Which rung owns a prompt, and what it currently says (`docs/plans/archive/INDEX.md#chunked-prompts` §2).
  *
  * An override lives at exactly the rung that names one whole picture, so answering "which override
  * applies" is a lookup and never a merge chain. The builders resolve their own rung from the entity

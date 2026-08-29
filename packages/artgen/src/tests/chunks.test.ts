@@ -1,6 +1,6 @@
 /**
  * The override algebra: replace, append, mute, reorder, and the two whole-prompt modes
- * (`docs/plans/archive/chunked-prompts.md` §18).
+ * (`docs/plans/archive/INDEX.md#chunked-prompts` §18).
  *
  * The hold is the load-bearing case. An agent-condensed prompt whose chunks have moved must keep
  * returning the stored text. Falling back to freshly rendered chunks would move the task hash and

@@ -1,6 +1,6 @@
 /**
  * Whether a newer VN Studio exists — stage 1 of
- * [`docs/plans/archive/in-app-update-checks.md`](../../../../docs/plans/archive/in-app-update-checks.md): read the
+ * [`docs/plans/archive/INDEX.md#in-app-update-checks`](../../../../docs/plans/archive/INDEX.md#in-app-update-checks): read the
  * releases feed, compare, tell the author, and open the page if they want it. Nothing here
  * downloads or installs anything, and nothing here runs unless it is asked to.
  *

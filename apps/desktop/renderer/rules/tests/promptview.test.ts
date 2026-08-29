@@ -1,6 +1,6 @@
 /**
  * The prompt pane's rules: voice, tags, the `⇱` routing table, the mode strip, and how holding
- * reads as a sentence (`docs/plans/archive/chunked-prompts.md` §7-§9).
+ * reads as a sentence (`docs/plans/archive/INDEX.md#chunked-prompts` §7-§9).
  */
 import type { ChunkOrigin } from '@vn/types';
 import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js';

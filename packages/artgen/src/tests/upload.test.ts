@@ -1,5 +1,5 @@
 /**
- * Ingesting outside bytes as a `reference` asset (`docs/plans/archive/chunked-prompts.md` §15).
+ * Ingesting outside bytes as a `reference` asset (`docs/plans/archive/INDEX.md#chunked-prompts` §15).
  *
  * Two properties need a real store. The bytes land in the base root, beside the authored art. Two
  * kinds of file are refused: one that is not an image, and mock art, which a real backend rejects

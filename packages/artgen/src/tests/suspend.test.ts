@@ -1,5 +1,5 @@
 /**
- * Suspension is derived and transitive (`docs/plans/archive/chunked-prompts.md` §13). No flag is
+ * Suspension is derived and transitive (`docs/plans/archive/INDEX.md#chunked-prompts` §13). No flag is
  * stored anywhere; each test builds a manifest, edits one pin, and re-derives.
  */
 import type { Asset, AssetKind, Location, ProjectModel, Shot } from '@vn/types';

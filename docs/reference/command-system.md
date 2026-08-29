@@ -40,9 +40,9 @@ see [From the agent](#from-the-agent).
 
 This document describes what shipped. The implementation plan — including the deviations
 from it and the follow-ons deliberately left out — is
-[`../plans/archive/command-system.md`](../plans/archive/command-system.md). Undo/redo landed later, on top of this;
+[`../plans/archive/INDEX.md#command-system`](../plans/archive/INDEX.md#command-system). Undo/redo landed later, on top of this;
 the strategy survey is [`../history/gitUndoOptions.md`](../history/gitUndoOptions.md) and the plan that carried out
-its recommendation is [`../plans/archive/command-undo-redo.md`](../plans/archive/command-undo-redo.md).
+its recommendation is [`../plans/archive/INDEX.md#command-undo-redo`](../plans/archive/INDEX.md#command-undo-redo).
 
 ---
 
@@ -241,7 +241,7 @@ tree, **split by data class**, and **refuse rather than guess** when the worktre
 mechanism underneath was git shadow commits until
 [`../plans/archive/undo-refactor.md`](../plans/archive/undo-refactor.md) replaced it with an in-memory store of
 the same shape; the three properties above are unchanged. Full write-up of the original:
-[`../plans/archive/command-undo-redo.md`](../plans/archive/command-undo-redo.md).
+[`../plans/archive/INDEX.md#command-undo-redo`](../plans/archive/INDEX.md#command-undo-redo).
 
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and only
   document mutators set it — every `story.*` one (the branch/coverage commands it shipped for, the
@@ -397,7 +397,7 @@ purpose, so no undo can write over or delete a credential;
 was open, which `vngen/state` being outside the snapshot means undo could not put back; and
 `workspace.open`/`workspace.pick`/`workspace.create` write into a *different* tree than the one a
 snapshot covers, and switching workspaces drops the journal along with the stack. The reasoning is in
-[`../plans/archive/command-undo-redo.md`](../plans/archive/command-undo-redo.md).
+[`../plans/archive/INDEX.md#command-undo-redo`](../plans/archive/INDEX.md#command-undo-redo).
 
 **`view.*` commands run in the main process** and push a `command:ui` effect that the renderer
 applies (`applyView` moves the panes; `openPalette`/`closePalette` for the palette). The
@@ -539,7 +539,7 @@ write path and it is `story.*`.
 every builder assembles a `PromptChunk[]` and `renderPrompt` collapses it byte-identically to the
 flat string it always produced — so what these commands write is an **override** stored beside the
 authored input, and a project that runs none of them keeps every task hash it had. Full statement:
-[`../plans/archive/chunked-prompts.md`](../plans/archive/chunked-prompts.md).
+[`../plans/archive/INDEX.md#chunked-prompts`](../plans/archive/INDEX.md#chunked-prompts).
 
 - **One asset, one rung.** Every command takes the asset `hash` and the session resolves it to the
   rung that names the whole picture: the character for a portrait, the outfit entry for a sheet, the
@@ -612,7 +612,7 @@ node scripts/vn-cdp.mjs "interaction.targets(interaction='branch.splice' carried
 ```
 
 Full design, including what deliberately is _not_ an interaction:
-[`../plans/archive/interaction-model.md`](../plans/archive/interaction-model.md).
+[`../plans/archive/INDEX.md#interaction-model`](../plans/archive/INDEX.md#interaction-model).
 
 `CommandHost` is the app-specific service bundle every command receives:
 `{ session: WorkspaceSession; state: SessionStore; ui(effect: UiEffect): void; check(id, props) }`.
@@ -673,7 +673,7 @@ node scripts/vn-cdp.mjs --raw "window.vn.check('pipeline.run', {mock: false})"
 ```
 
 Full design, and why this is not the same function as `targets`:
-[`../plans/archive/preconditions-and-timeline-interaction.md`](../plans/archive/preconditions-and-timeline-interaction.md).
+[`../plans/archive/INDEX.md#preconditions-and-timeline-interaction`](../plans/archive/INDEX.md#preconditions-and-timeline-interaction).
 
 ---
 
@@ -960,7 +960,7 @@ schemas instead is an obvious follow-on.
 Deliberately out of scope for v1, in rough order of value:
 
 1. ~~**Make `renderer/app/Palette.tsx` data-driven** off `command:catalog`.~~ **Shipped** as
-   step 7 of [`../plans/archive/allocated-line-ids.md`](../plans/archive/allocated-line-ids.md) — see
+   step 7 of [`../plans/archive/INDEX.md#allocated-line-ids`](../plans/archive/INDEX.md#allocated-line-ids) — see
    [From the palette](#from-the-palette-or-from-a-commands-own-dialog).
 2. **Route `confirm` through the renderer.** The palette now takes a second click, but the main
    process still auto-approves for every other caller, so `pipeline.run`'s `confirm: true` is not

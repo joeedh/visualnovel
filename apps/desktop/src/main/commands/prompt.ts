@@ -1,5 +1,5 @@
 /**
- * Commands for the prompt an asset is generated from (docs/plans/archive/chunked-prompts.md §5).
+ * Commands for the prompt an asset is generated from (docs/plans/archive/INDEX.md#chunked-prompts §5).
  *
  * Deliberately a separate namespace from `art.*`. `art.setNotes` writes authored input that feeds
  * the derivation: it lands in the sheet and the builders read it back. Everything here writes an

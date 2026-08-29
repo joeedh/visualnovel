@@ -54,7 +54,7 @@ this file, and to everything under `docs/`.
     above smuggled in through an adjunct.
 - **Reserve backticks for code symbols.** Backticks belong on identifiers, types, commands,
   and file globs the reader will type. A file path cited mid-sentence as a reference —
-  docs/plans/archive/chunked-prompts.md §5 — takes none, because marking it up gives it the
+  docs/plans/archive/INDEX.md#chunked-prompts §5 — takes none, because marking it up gives it the
   same weight as the identifiers around it and dilutes them. Markdown link text is the one
   exception and keeps its backticks, where the marking separates a path from the prose around
   it rather than competing with nearby identifiers.

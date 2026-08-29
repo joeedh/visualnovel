@@ -307,9 +307,9 @@ describe('UndoJournal, scoped to a subdirectory', () => {
       const post = (await journal.captureScoped('work/graphs', 1))!;
       const point = journal.point(pre, post);
 
-      // A scoped point holds a subdirectory hash, not a whole-tree one — the two are not
-      // comparable, so the whole-tree check refuses rather than silently doing nothing. This is
-      // the mismatch `CommandStack.moveBody` must route around via `record.undoScope`.
+      // A scoped point holds a subdirectory hash (not a whole-tree one) so the whole-tree
+      // check refuses instead of comparing incompatible hashes. `CommandStack.moveBody` reads
+      // `record.undoScope` to call the scoped check instead of this one.
       const wholeTreeCheck = await journal.check(point, 'post');
       expect(wholeTreeCheck.ok).toBe(false);
 

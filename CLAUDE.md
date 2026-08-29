@@ -205,7 +205,7 @@ provenance, and one JSON catalog.
   counterpart uses, without invoking the registry, so a command with no tool wrapper
   (`story.decomposeAll`, for one) is unreachable to the agent in either host.
   ([`docs/reference/command-system.md#from-the-agent`](docs/reference/command-system.md#from-the-agent),
-  [`docs/plans/archive/document-tree-context-menus.md`](docs/plans/archive/document-tree-context-menus.md))
+  [`docs/plans/archive/INDEX.md#document-tree-context-menus`](docs/plans/archive/INDEX.md#document-tree-context-menus))
 - Provenance, undo and commits are each opt-in: `vngen/state/commands.jsonl` for
   provenance, undo over an in-memory content-addressed snapshot of the document tree (no git,
   and no history across a restart), and per-repo commit-on-save. A command sent once per
@@ -223,9 +223,9 @@ provenance, and one JSON catalog.
   approved plan produces one commit, edits round-trip through `@vn/model`'s serializers,
   and approval is authorized only by the author's own typed words, never agent-written text.
   [`docs/reference/vnauthor.md`](docs/reference/vnauthor.md),
-  [`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md`](docs/plans/archive/prompt-caching-and-deferred-tool-loading.md),
-  [`docs/plans/archive/improving-the-authoring-agent.md`](docs/plans/archive/improving-the-authoring-agent.md),
-  [`docs/plans/archive/skills-editor-and-agent-authored-skills.md`](docs/plans/archive/skills-editor-and-agent-authored-skills.md).
+  [`docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading`](docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading),
+  [`docs/plans/archive/INDEX.md#improving-the-authoring-agent`](docs/plans/archive/INDEX.md#improving-the-authoring-agent),
+  [`docs/plans/archive/INDEX.md#skills-editor-and-agent-authored-skills`](docs/plans/archive/INDEX.md#skills-editor-and-agent-authored-skills).
 - **`@vn/bible`** — retrieval over `wiki/`. `query` is budgeted and is the only entry
   point. A missing `wiki/` yields an empty bible, not an error.
   [`docs/reference/story-bible.md`](docs/reference/story-bible.md).

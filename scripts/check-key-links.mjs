@@ -1,5 +1,5 @@
 /**
- * Tier 1 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: every URL `docs/guides/api-keys.md`
+ * Tier 1 of [`docs/plans/archive/INDEX.md#auditing-the-api-key-instructions`]: every URL `docs/guides/api-keys.md`
  * states in a vendor's yaml block still resolves.
  *
  * This is the failure that actually happens to a new user. Both vendors reword and rearrange

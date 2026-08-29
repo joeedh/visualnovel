@@ -1,6 +1,6 @@
 /**
  * The cached, conversation-shaped Anthropic request body
- * (`docs/plans/archive/prompt-caching-and-deferred-tool-loading.md`, workstreams B and E).
+ * (`docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading`, workstreams B and E).
  *
  * Pure, and separate from the backend, because what the plan claims about caching is a claim about
  * where the breakpoints land, which is what a test can check without a key. Caching is a prefix

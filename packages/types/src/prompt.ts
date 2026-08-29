@@ -1,5 +1,5 @@
 /**
- * The chunk model behind an editable image prompt (`docs/plans/archive/chunked-prompts.md`).
+ * The chunk model behind an editable image prompt (`docs/plans/archive/INDEX.md#chunked-prompts`).
  *
  * A prompt is still a flat string everywhere it matters — `TaskInputs.*.prompt` is inside the task
  * hash, so it cannot become structured without re-keying every task in every project. Chunks are

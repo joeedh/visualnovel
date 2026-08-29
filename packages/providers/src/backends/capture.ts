@@ -9,7 +9,7 @@
  * There are two destinations. A ring in memory is always on, bounded by bytes and by count, oldest
  * evicted; it never leaves the process on its own, and its one reader is the debug agent, on the
  * author's own key, only when the author ticks the box that says so
- * (`docs/plans/archive/diagnosing-an-api-error-from-the-request-that-caused-it.md`). Files on disk
+ * (`docs/plans/archive/INDEX.md#diagnosing-an-api-error-from-the-request-that-caused-it`). Files on disk
  * are off unless `VN_DUMP_REQUESTS` names a directory, and deliberately not wired to a log level:
  * the body carries the whole conversation, which is the author's fiction and their file contents,
  * and a verbosity flag should not start writing that out.

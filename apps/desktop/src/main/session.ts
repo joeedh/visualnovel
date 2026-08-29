@@ -2474,7 +2474,7 @@ export class WorkspaceSession {
   /**
    * Every suspended asset, upstream first, with the reason for each. Derived on every call:
    * suspension is a walk over the manifest and the rungs, never a stored flag
-   * (`docs/plans/archive/chunked-prompts.md` §13).
+   * (`docs/plans/archive/INDEX.md#chunked-prompts` §13).
    */
   async suspensions(): Promise<Suspension[]> {
     const project = await loadProject(this.dir);
@@ -3136,7 +3136,7 @@ export class WorkspaceSession {
 
   /**
    * The `ChunkRef` an address would attach, and the cycle it would close if it closed one
-   * (`docs/plans/archive/chunked-prompts.md` §14).
+   * (`docs/plans/archive/INDEX.md#chunked-prompts` §14).
    *
    * Enforcement is here, at write time, rather than in the planner: refusing at plan time would mean
    * the project is already broken on disk and the author meets a run failure instead of a rejected
@@ -3225,7 +3225,7 @@ export class WorkspaceSession {
   /**
    * What a repin would move, decided against one load: the slot the reference names, the hash that
    * slot holds today, and — when the author is re-approving — the `done` record that keeps the
-   * existing bytes (`docs/plans/archive/chunked-prompts.md` §13). Both the check and the write
+   * existing bytes (`docs/plans/archive/INDEX.md#chunked-prompts` §13). Both the check and the write
    * ask this, so they cannot disagree.
    *
    * The adopted task's inputs are the previous node's with the old pin swapped for the new one in

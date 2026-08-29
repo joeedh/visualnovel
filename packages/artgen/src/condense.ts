@@ -1,6 +1,6 @@
 /**
  * Rewrite a chunk list into one prompt an image model handles well
- * (`docs/plans/archive/chunked-prompts.md` §4).
+ * (`docs/plans/archive/INDEX.md#chunked-prompts` §4).
  *
  * Condensing is an authoring-time action. It never runs during planning, which is what keeps
  * `planTasks` deterministic and offline — and it is why `ArtGenDeps` is not widened to carry a

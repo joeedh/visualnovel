@@ -42,7 +42,7 @@ cast. That replacement has already shipped. `portrait_overlay` in project.yaml d
 (packages/types/src/schemas.ts:334), `buildShotChunks` names the shot's subjects in the prompt it
 derives, and the desktop Play editor composites a portrait over the frame only when the project
 turned the flag on. The reasoning and the alternatives considered are in
-[`../plans/archive/portrait-overlay-opt-in.md`](../plans/archive/portrait-overlay-opt-in.md), and the
+[`../plans/archive/INDEX.md#portrait-overlay-opt-in`](../plans/archive/INDEX.md#portrait-overlay-opt-in), and the
 contract is stated in [`../reference/playable-format.md`](../reference/playable-format.md): a frame
 with a cast already is a picture of that cast, so staging a portrait over it draws the same character
 twice.

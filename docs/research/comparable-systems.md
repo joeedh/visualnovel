@@ -182,7 +182,7 @@ deliberate about it, because it is not the axis anyone is competing on.
 - **Export lock-in.** `story.play.json` is in-house. Summer Engine's pitch is a standard Godot 4
   project with no royalties, and that is a real adoption argument. The mitigation is cheap
   relative to what it buys: Fountain already round-trips
-  ([`../plans/archive/fountain-import-export.md`](../plans/archive/fountain-import-export.md)), the playable
+  ([`../plans/archive/INDEX.md#fountain-import-export`](../plans/archive/INDEX.md#fountain-import-export)), the playable
   projection is already a manifest-driven projection
   ([`../reference/playable-format.md`](../reference/playable-format.md)), and a Ren'Py or Godot target is another
   projection rather than a new architecture.
@@ -228,7 +228,7 @@ Two consequences worth recording:
    and shot rendering, it would produce a layout artifact the shot prompt references — arriving at
    the planner a wave later than the decomposition, exactly as a shot already waits on its
    location plate, and exactly as a non-default outfit already waits on its sheet
-   ([`../plans/archive/outfits-at-scene-and-shot-level.md`](../plans/archive/outfits-at-scene-and-shot-level.md)).
+   ([`../plans/archive/INDEX.md#outfits-at-scene-and-shot-level`](../plans/archive/INDEX.md#outfits-at-scene-and-shot-level)).
    The graph absorbs it. This is the cheapest available answer to the camera-continuity gap and it
    costs none of the four properties above.
 

@@ -54,8 +54,8 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   the P3 gate owns it, mock-marked bytes are refused because mock art never becomes real output, and
   superseding a render that already holds the slot is a **declared** act (`replace`), not a silent
   one. `promoteConcept` is one caller of this; nothing else in the system writes a terminal record it
-  did not run. Plans: [`../plans/archive/adopting-an-uploaded-asset.md`](../plans/archive/adopting-an-uploaded-asset.md),
-  [`../plans/archive/on-demand-concept-images.md`](../plans/archive/on-demand-concept-images.md).
+  did not run. Plans: [`../plans/archive/INDEX.md#adopting-an-uploaded-asset`](../plans/archive/INDEX.md#adopting-an-uploaded-asset),
+  [`../plans/archive/INDEX.md#on-demand-concept-images`](../plans/archive/INDEX.md#on-demand-concept-images).
 
 ## Scheduling
 
@@ -90,7 +90,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   be referenced by a shot that does not exist yet. The gate is untouched — `gateStatus` keeps its
   own reachable-scene walk, so an uncast character's unapproved portrait halts nothing, and it
   surfaces instead in the tree's *Awaiting approval* branch. Plan:
-  [`../plans/archive/drawing-a-character-before-a-scene-casts-them.md`](../plans/archive/drawing-a-character-before-a-scene-casts-them.md).
+  [`../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them`](../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them).
 - **`SlotNode.approved` is two different things wearing one word, deliberately.** A `portrait:`
   slot is approved when the character's `approvedPortrait` names it — that is the P3 gate, read
   from the model — and every other slot when the asset filling it has `accepted === true`.
@@ -117,7 +117,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   throwing exists solely to make that last distinction reportable: inside one
   run, one scene at a time, the silent fallback is the deterministic-fallback contract working;
   sixty scenes at once with a bad key would baseline the project permanently. Plan:
-  [`../plans/archive/the-full-slot-graph-and-approving-upstream-first.md`](../plans/archive/the-full-slot-graph-and-approving-upstream-first.md).
+  [`../plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first`](../plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first).
 - **A terminal task records why, is retried once, and is reported from the live plan.** Three
   rules, each of which was a separate defect: a `shot_image` failed, the reason existed only on a
   logger event nobody kept, the next run planned nothing for it, and the CLI printed `Gate
@@ -146,7 +146,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   the Gemini and Claude backends retry a transient failure in place (429/5xx/transport, 3
   attempts) and refuse to retry anything else — an unrecognized error is terminal by default,
   since three refusals cost three times one refusal. Plan:
-  [`../plans/archive/task-failure-visibility-and-retry.md`](../plans/archive/task-failure-visibility-and-retry.md).
+  [`../plans/archive/INDEX.md#task-failure-visibility-and-retry`](../plans/archive/INDEX.md#task-failure-visibility-and-retry).
 
 ## Scenes, shots, and lines
 
@@ -171,7 +171,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   diagnostic (error under the conventional directories, warning under the wiki, where the file was
   never known to be an entity) rather than a thrown load: one hand-edited sheet must not take the
   whole project down. Plan:
-  [`../plans/archive/entity-discovery-by-meta-tag.md`](../plans/archive/entity-discovery-by-meta-tag.md).
+  [`../plans/archive/INDEX.md#entity-discovery-by-meta-tag`](../plans/archive/INDEX.md#entity-discovery-by-meta-tag).
 - **A scene is one file, and only the reader decides which files those are.** Authored scenes are
   `scenes/<id>.md`: front-matter that is `scene: <id>` and nothing else (a closed schema — a key
   the body owns, like `next` or `location`, is an error), over a body that is a complete one-scene
@@ -191,8 +191,8 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   the third file must leave the first two exactly as they were), and front-matter is spliced
   byte-exactly via `splitFrontMatter` rather than re-serialized, because re-serializing YAML
   silently drops the author's comments. Plans:
-  [`../plans/archive/scene-chunk-files.md`](../plans/archive/scene-chunk-files.md) and
-  [`../plans/archive/fountain-import-export.md`](../plans/archive/fountain-import-export.md); the format itself is in
+  [`../plans/archive/INDEX.md#scene-chunk-files`](../plans/archive/INDEX.md#scene-chunk-files) and
+  [`../plans/archive/INDEX.md#fountain-import-export`](../plans/archive/INDEX.md#fountain-import-export); the format itself is in
   [`fountain.md`](fountain.md#where-the-fountain-lives-project-specific).
 - **Shot decompositions are persisted, not re-derived.** P5 is an LLM step, so re-running it
   would produce different shot ids — hence different task hashes — and regenerate art for no
@@ -219,7 +219,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   changes, and every shot's covered lines keep their relative order — so nothing drifts
   (`proseHash` walks `scene.lines` in order, and that order is preserved within each shot) and
   nothing re-renders. Plan:
-  [`../plans/archive/shot-ordering-in-scenes.md`](../plans/archive/shot-ordering-in-scenes.md).
+  [`../plans/archive/INDEX.md#shot-ordering-in-scenes`](../plans/archive/INDEX.md#shot-ordering-in-scenes).
 - **What a character wears is inherited, and the chain is written down once.** `outfitFor`
   (`packages/model/src/outfits.ts`) is the only answer, in three rungs: a shot subject's own
   `outfit`, then the scene's `[[outfit: aiko=track]]` marker, then `character.defaultOutfit`.
@@ -238,7 +238,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   takes that outfit's **front** sheet as a reference and depends on its task — one angle, because a
   frame needs the clothes and not a turnaround — reaching the planner a wave later than the marker
   did, the same way a shot waits on its location plate. Plan:
-  [`../plans/archive/outfits-at-scene-and-shot-level.md`](../plans/archive/outfits-at-scene-and-shot-level.md).
+  [`../plans/archive/INDEX.md#outfits-at-scene-and-shot-level`](../plans/archive/INDEX.md#outfits-at-scene-and-shot-level).
 - **Art direction is authored, appended, and re-renders exactly what it reaches.** `artNotes` is an optional free-text
   field at five rungs — `Character`, `Location`, `Shot`, each `Outfit`, each `LocationVariant` — that
   the builders **append** to what they derived, entity note first and the specific rung second, so
@@ -254,8 +254,8 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   and `describeAsset` (a plain vision question, not the P7 `VisionReviewer`) lets it read a
   rendered asset back before proposing the next note; `regenerate_asset` is an injected
   `PipelineControl` capability, confirm-gated always, and refuses outright where the capability is
-  absent (a bare REPL). Plans: [`../plans/archive/asset-names-and-the-asset-editor.md`](../plans/archive/asset-names-and-the-asset-editor.md),
-  [`../plans/archive/agent-art-revision.md`](../plans/archive/agent-art-revision.md).
+  absent (a bare REPL). Plans: [`../plans/archive/INDEX.md#asset-names-and-the-asset-editor`](../plans/archive/INDEX.md#asset-names-and-the-asset-editor),
+  [`../plans/archive/INDEX.md#agent-art-revision`](../plans/archive/INDEX.md#agent-art-revision).
 - **A prompt is a list of clauses, and an override edits the list rather than the string.** Every
   builder in `@vn/artgen` assembles a `PromptChunk[]` — each clause keyed, categorised, and carrying
   the origin (a builder, or the document and field the sentence came from) that lets a surface offer
@@ -278,7 +278,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   stored text unconditionally and never falls back to freshly rendered chunks, because falling back
   would re-render the asset the moment an unrelated note changed. The staleness is derived on read
   and reported on the pane, never stored and never silently resolved. Plan:
-  [`../plans/archive/chunked-prompts.md`](../plans/archive/chunked-prompts.md).
+  [`../plans/archive/INDEX.md#chunked-prompts`](../plans/archive/INDEX.md#chunked-prompts).
 - **A reference attaches to a clause, pins a hash, and separately remembers where it came from.**
   A `ChunkRef` on a `PromptChunk` is evidence for that clause, so muting the clause drops the
   reference with it — one authorial act, one meaning. A **linked** ref also carries a `RefBinding`
@@ -317,7 +317,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   is whether this frame illustrates the words it is against. Every surface that can change prose owes
   the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it —
   see [`desktop-app-editors-story.md`](desktop-app-editors-story.md#shot-coverage). Plan:
-  [`../plans/archive/line-editing-in-floor.md`](../plans/archive/line-editing-in-floor.md).
+  [`../plans/archive/INDEX.md#line-editing-in-floor`](../plans/archive/INDEX.md#line-editing-in-floor).
 - **Editing a generation graph invalidates the slots it draws — the opposite of the prose posture
   above.** A bound graph is the slot's runner: editing it never moves the task's hash, so the
   difference has to show as drift instead. `graphDrift` recomputes each active Output node's hash
@@ -374,7 +374,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   `packages/model/src/lineids.ts`), a surgical patcher that adds only whole marker lines and
   re-parses its own output, discarding the patch unless it reproduces the same scenes line for
   line — a note above a `CHARACTER` cue would turn it into action and un-speak the dialogue
-  below it. Plan: [`../plans/archive/allocated-line-ids.md`](../plans/archive/allocated-line-ids.md).
+  below it. Plan: [`../plans/archive/INDEX.md#allocated-line-ids`](../plans/archive/INDEX.md#allocated-line-ids).
 - **A scene survives a trip through text: `parse(write(scene)) ≡ scene`.** `sceneToFountain`
   (`packages/model/src/serialize.ts`) writes from `Scene.lines` — the sibling of the
   `fromDoc(toDoc(x)) ≡ x` the character/location serializers already give, and pinned the same
@@ -392,7 +392,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   parser has, not just the ones this writer's own layout would allow. Byte-exactness is neither
   achievable nor wanted: the surgical patchers (`branchpatch.ts`, `lineids.ts`) still handle
   files the author wrote, because their formatting is theirs. Plan:
-  [`../plans/archive/lossless-scene-serialization.md`](../plans/archive/lossless-scene-serialization.md).
+  [`../plans/archive/INDEX.md#lossless-scene-serialization`](../plans/archive/INDEX.md#lossless-scene-serialization).
 - **P5 is shown the scene as identified lines, not prose.** `coversLines` asks for line ids, so
   `decomposeScene` enumerates the scene as `[<lineId>] <kind>/<speaker>: <text>` and requires
   every line be assigned to exactly one shot. Handing over flattened prose and a response
@@ -400,7 +400,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   only thing it could — copied the empty array, producing shots that were generated and never
   displayed. `withCoverage` is the backstop: a decomposition binding no real line falls back to
   the baseline, and an uncovered first line goes to the first shot so a scene cannot open on a
-  blank frame. See [`../plans/archive/shot-timeline-editor.md`](../plans/archive/shot-timeline-editor.md).
+  blank frame. See [`../plans/archive/INDEX.md#shot-timeline-editor`](../plans/archive/INDEX.md#shot-timeline-editor).
 
 ## Generation and review
 

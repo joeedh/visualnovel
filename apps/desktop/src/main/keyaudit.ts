@@ -1,5 +1,5 @@
 /**
- * Tier 2 of [`docs/plans/archive/auditing-the-api-key-instructions.md`]: whether the wording in
+ * Tier 2 of [`docs/plans/archive/INDEX.md#auditing-the-api-key-instructions`]: whether the wording in
  * `docs/guides/api-keys.md` still describes what a vendor's own page says today.
  *
  * Tier 1 (`scripts/check-key-links.mjs`) answers whether the links resolve, which is a fact.
