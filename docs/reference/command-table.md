@@ -155,7 +155,7 @@ for confirmation.
 | `workspace.filetree` | — | Every file in the workspace as a tree, `.git` and `node_modules` excluded. |
 | `workspace.import` ✍ ✓ | — | Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
 | `workspace.index` | — | Characters, locations, screenplay files, diagnostics. |
-| `workspace.open` ✍ ✓ | `path` | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open). |
+| `workspace.open` ✍ ✓ | `path` | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app-state.md`](desktop-app-state.md#which-project-is-open). |
 | `workspace.pick` ✍ ✓ | — | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
 | `workspace.recent` | — | The open project and the ones opened before it, most recent first. |
 | `workspace.reindex` ✍ ✓ | — | Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write. |

@@ -30,7 +30,7 @@ optimistically and `apps/desktop/renderer/pathux/view.ts` applies the effect in 
 using `panes.ts` to pick a pane and returning a correction sentence when the mesh disagrees —
 "No pane is showing Script." The full command shape is in
 [`command-system.md`](command-system.md); the mesh-level behavior of `view.*` is described in
-[`desktop-app.md`](desktop-app.md#the-shell). This page covers only `panes.ts` itself:
+[`desktop-app-shell.md`](desktop-app-shell.md#the-shell). This page covers only `panes.ts` itself:
 its inputs, its six exported functions, and who calls each one.
 
 ## The `Pane` shape

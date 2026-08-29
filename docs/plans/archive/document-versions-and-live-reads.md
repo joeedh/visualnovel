@@ -311,7 +311,7 @@ main writes, on two grounds worth stating because the design rests on them:
 
 - Both sides decide the edit with `decideGenEdit` against the same file, which is already the rule
   the mid-gesture refusal depends on
-  ([`desktop-app.md`](../../reference/desktop-app.md#gen-graph)).
+  ([`desktop-app-editors-pipeline.md`](../../reference/desktop-app-editors-pipeline.md#gen-graph)).
 - A new node's id comes from `Graph.add`, which allocates from an `idgen` counter the graph's own
   nstructjs struct carries (`vendor/path.ux/scripts/graph/graph.ts:88, 141-150`). Two parses of
   one file therefore hand out the same next id, so the node this creates is the node main writes.

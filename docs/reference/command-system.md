@@ -482,7 +482,7 @@ a stream of them.
 `doc.*` is how a surface reads and writes a workspace document as **text**. The story editors
 speak in scenes, lines and shots; a character sheet or a wiki note has no such structure, so the
 one honest interface to it is its bytes. Full write-up of the editors on top:
-[`desktop-app.md`](desktop-app.md#wiki).
+[`desktop-app-editors-misc.md`](desktop-app-editors-misc.md#wiki).
 
 **The rule is about bytes, not about documents.** Moving a sheet's *bytes* happens only through
 `doc.*`; a **named field** inside one may also be set by a command that round-trips through

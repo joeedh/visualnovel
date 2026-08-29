@@ -275,7 +275,7 @@ why it lives *there* (two hosts, one rule), in the voice of `@vn/scriptedit`'s e
 The re-export left behind during the move carries a comment naming its replacement so it cannot
 outlive the migration silently.
 
-**The docs that describe the surfaces.** [`../reference/desktop-app.md`](../reference/desktop-app.md#shot-coverage) — the
+**The docs that describe the surfaces.** [`../reference/desktop-app-editors-story.md`](../reference/desktop-app-editors-story.md#shot-coverage) — the
 Shot Coverage section's "decomposed on purpose" bullet gains the creation door, and the busy state
 joins the gesture rules; [`../reference/vnauthor.md`](../reference/vnauthor.md#tools) — the tool table;
 [`../reference/command-system.md`](../reference/command-system.md) — anywhere a command count is named. Shipped plans

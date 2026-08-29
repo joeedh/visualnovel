@@ -114,7 +114,7 @@ thing that decides: [`../reference/pipeline-contracts.md`](../reference/pipeline
 
 [`templates/basic`](../../templates/basic) is a small branching VN, and a **read-only template**: the
 desktop app copies it rather than running in it (see
-[`../reference/desktop-app.md`](../reference/desktop-app.md#seeded-workspace-examplesmysamplerepo)). The CLI has no such
+[`../reference/desktop-app-state.md`](../reference/desktop-app-state.md#seeded-workspace-examplesmysamplerepo)). The CLI has no such
 indirection — it runs wherever you point it — so copy it first. `examples/` is gitignored whole and
 exists for exactly this, which keeps a real run's ~100 MB of generated art out of `git status`.
 

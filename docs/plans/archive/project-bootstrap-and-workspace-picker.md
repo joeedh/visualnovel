@@ -8,7 +8,7 @@ Item 10 of [`../refactorTaskList.md`](../refactorTaskList.md). The requirement, 
 > existing files.
 
 Status: **shipped** (deviations in [As shipped](#as-shipped)); the as-shipped page is
-[`desktop-app.md` § Which project is open](../../reference/desktop-app.md#which-project-is-open).
+[`desktop-app-state.md` § Which project is open](../../reference/desktop-app-state.md#which-project-is-open).
 
 <!-- toc -->
 

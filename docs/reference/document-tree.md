@@ -6,7 +6,7 @@ per-entity **backlinks** answering "what is this character attached to". Both co
 file actually on disk.
 
 The pane that draws them is the `documents` editor
-([`desktop-app.md`](desktop-app.md#documents)); this page is the shape underneath it. Plan and the
+([`desktop-app-editors-misc.md`](desktop-app-editors-misc.md#documents)); this page is the shape underneath it. Plan and the
 reasoning behind each decision:
 [`../plans/archive/document-tree-and-backlinks.md`](../plans/archive/document-tree-and-backlinks.md).
 
@@ -159,7 +159,7 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   a selection itself (`selectionForNode`) and then to an editor (`routeFor` in
   `pathux/route.ts`, over the `claims` each editor declares beside its name), and the tree stays a
   shape any surface can draw. The claim table is in
-  [`desktop-app.md`](desktop-app.md#documents); what a click does stays the shell's business.
+  [`desktop-app-editors-misc.md`](desktop-app-editors-misc.md#documents); what a click does stays the shell's business.
 - **Paths are workspace-relative with `/` separators**, like the generated project map's — they are
   shown to a human, and an absolute path in a serialized shape is unportable.
 - **A cap is a number in the shape, and the remainder rides under it.** A branch over its cap (50

@@ -137,7 +137,7 @@ export const workspaceOpen = define({
     'project — its agent conversation and undo history go with it. Refuses a project another ' +
     'app instance already has open, and focuses that instance instead.',
   notes:
-    'Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app.md`](desktop-app.md#which-project-is-open).',
+    'Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app-state.md`](desktop-app-state.md#which-project-is-open).',
   mutating: true,
   props: {
     path: prop.string('the project directory to open'),

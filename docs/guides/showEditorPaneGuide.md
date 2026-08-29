@@ -172,7 +172,7 @@ whether the editor is already open.
 `EDITORS` list — an id not in that list is not a valid `view.open` target and the command
 refuses it. An id in the list still needs a renderer class registered under the matching area
 name (`registerEditor`, checked against the list at boot by `checkEditorNames`) before an open
-actually shows anything; see [`desktop-app.md`](../reference/desktop-app.md#the-shell) for
+actually shows anything; see [`desktop-app-shell.md`](../reference/desktop-app-shell.md#the-shell) for
 adding a new editor from scratch. This guide assumes the editor being shown already exists.
 
 ## Checklist

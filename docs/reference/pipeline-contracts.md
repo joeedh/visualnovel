@@ -316,7 +316,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   `scene.lines`, so reordering `coversLines` is not an edit but extending coverage is: the question
   is whether this frame illustrates the words it is against. Every surface that can change prose owes
   the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it —
-  see [`desktop-app.md`](desktop-app.md#shot-coverage). Plan:
+  see [`desktop-app-editors-story.md`](desktop-app-editors-story.md#shot-coverage). Plan:
   [`../plans/archive/line-editing-in-floor.md`](../plans/archive/line-editing-in-floor.md).
 - **Editing a generation graph invalidates the slots it draws — the opposite of the prose posture
   above.** A bound graph is the slot's runner: editing it never moves the task's hash, so the

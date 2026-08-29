@@ -195,7 +195,7 @@ directory the author already had must not silently grow a nested one, which is w
 subject, and so does `openWorkspace(root)` — the directory the user picked, made a project if it
 is not one yet (a one-line `project.yaml`) and then brought under version control. Which project
 is open, and what a switch tears down, is
-[`desktop-app.md`](desktop-app.md#which-project-is-open).
+[`desktop-app-state.md`](desktop-app-state.md#which-project-is-open).
 
 ### The `.gitattributes` a project gets
 
@@ -252,7 +252,7 @@ The second rule, and the one with teeth:
 .vnstudio/layouts/*.json text eol=lf -merge
 ```
 
-A [layout template](desktop-app.md#layout-templates) is one blob describing a whole window: which
+A [layout template](desktop-app-shell.md#layout-templates) is one blob describing a whole window: which
 panes exist, how big they are, what each holds. Two authors' versions merged line by line make an
 arrangement neither of them built, so git is told not to try. `-merge` rather than a registered
 custom merge driver, because a driver needs `git config merge.<driver>.driver` installed in every
