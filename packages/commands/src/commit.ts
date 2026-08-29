@@ -142,8 +142,8 @@ export class Committer {
    * the app (a CLI run, another editor) as their own event rather than folding them into the next
    * authored act.
    */
-  async checkpoint(reason: string): Promise<CommitResult[]> {
-    return this.run(subject(reason, 'Checkpoint'), { 'Vn-Checkpoint': 'true' });
+  async sweep(reason: string): Promise<CommitResult[]> {
+    return this.run(subject(reason, 'Sweep'), { 'Vn-Sweep': 'true' });
   }
 
   private async run(subject: string, trailers: Record<string, string>): Promise<CommitResult[]> {

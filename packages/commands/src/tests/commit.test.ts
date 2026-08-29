@@ -127,17 +127,17 @@ describe('Committer', () => {
     }
   }, 20_000);
 
-  it('marks a checkpoint as its own kind of event', async () => {
+  it('marks a sweep as its own kind of event', async () => {
     const { dir, git, cleanup } = await tempProject();
     try {
       await fs.writeFile(join(dir, 'doc.md'), 'edited outside the app\n');
-      const commits = await new Committer({ repos: () => [git] }).checkpoint(
+      const commits = await new Committer({ repos: () => [git] }).sweep(
         'Changes made outside the app',
       );
       expect(commits).toHaveLength(1);
       const body = await git.show(commits[0]!.sha);
       expect(body).toContain('Changes made outside the app');
-      expect(body).toContain('Vn-Checkpoint: true');
+      expect(body).toContain('Vn-Sweep: true');
       expect(body).not.toContain('Vn-Command:');
     } finally {
       await cleanup();

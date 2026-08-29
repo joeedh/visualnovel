@@ -398,7 +398,7 @@ async function openRepos(): Promise<void> {
   // an explicit `workspace.open` — a project reached from the recents list or `VN_PROJECT` gets
   // its layout templates, its merge attribute and its ignore line here.
   const scaffolded = await writeScaffolding(root);
-  // Everything down to the checkpoint spawns `git`, and on a machine without it the first call
+  // Everything down to the sweep spawns `git`, and on a machine without it the first call
   // would throw before any window exists, so the app would never appear. Branching on the
   // doctor's finding beats a try/catch, which would have to guess which failures mean "no git".
   if (gitHealth().ok) {
@@ -408,15 +408,15 @@ async function openRepos(): Promise<void> {
       if (ref.owned) ownedRepos.push(openGit(ref.root));
       else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
     }
-    // Before the checkpoint, so what was just written lands under a subject saying what it is
+    // Before the sweep, so what was just written lands under a subject saying what it is
     // rather than under "Changes made outside the app".
     await commitScaffolding(root, scaffolded);
-    const committed = await committer().checkpoint('Changes made outside the app');
+    const committed = await committer().sweep('Changes made outside the app');
     for (const c of committed) {
-      console.log(`[vnstudio] checkpoint ${c.sha.slice(0, 8)} in ${c.repo}`);
+      console.log(`[vnstudio] sweep ${c.sha.slice(0, 8)} in ${c.repo}`);
     }
   }
-  // Opened only after the checkpoint: a notification written earlier would have been swept
+  // Opened only after the sweep: a notification written earlier would have been swept
   // into that commit under a subject that has nothing to do with it.
   await notifications().open();
   await noticeMissingGit();
@@ -501,7 +501,7 @@ function committer(): Committer {
 
 /**
  * The notification hub. Installed at module load and dormant until `openRepos` opens it, so
- * nothing reaches `vngen/state` before the open-time checkpoint has swept the worktree.
+ * nothing reaches `vngen/state` before the open-time sweep has swept the worktree.
  *
  * The log path is resolved per post rather than captured — `switchWorkspace` replaces the root
  * under it, and a captured one would write into a directory `workspace.create` is about to

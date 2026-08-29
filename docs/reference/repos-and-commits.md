@@ -90,8 +90,8 @@ set, so the simplest scope is also the correct one. A run of deferring acts is t
 the worktree stays dirty between acts, and the next act that does commit flushes the run before
 it runs, so the set is never mixed. "Deferral" below covers it.
 
-Session open establishes it with a **checkpoint commit** in each owned repo:
-`Committer.checkpoint(reason)` commits whatever is already there under a `Vn-Checkpoint: true`
+Session open establishes it with a **sweep commit** in each owned repo:
+`Committer.sweep(reason)` commits whatever is already there under a `Vn-Sweep: true`
 trailer. That is where a `vngen run` from the terminal, or an edit made in another editor, gets
 recorded — as its own event rather than folded into whatever the author does next.
 
@@ -113,8 +113,8 @@ A command whose `message` is prose rather than a summary sets `CommandRecord.sub
 commit is named after that instead. `agent.run` is the only one that does: its message is the
 agent's whole reply, which the conversation pane renders, so the commit takes `Agent turn: <ask>`.
 
-An undo or redo adds `Vn-Undo:` / `Vn-Redo:` naming the seq it reverses. A checkpoint carries
-`Vn-Checkpoint: true` and no command fields.
+An undo or redo adds `Vn-Undo:` / `Vn-Redo:` naming the seq it reverses. A sweep carries
+`Vn-Sweep: true` and no command fields.
 
 The resulting shas land on `CommandRecord.commits` (`{ repo, sha }[]`) in
 `vngen/state/commands.jsonl`, absent on a record that changed nothing, ran without a committer,
@@ -162,14 +162,14 @@ batch produce two `Vn-Command` trailers.
 
 A flush that fails keeps the batch for the next flush to retry and files a durable notification
 naming the count and the seq range. The edits are on disk either way; what a lost batch costs
-is the attribution, since the next session's checkpoint commit picks the bytes up under
+is the attribution, since the next session's sweep commit picks the bytes up under
 "Changes made outside the app".
 
 ### Who does not commit
 
 | Surface | Why |
 | --- | --- |
-| `vngen` CLI | A CLI run is a build step; build steps do not author history, and a headless run in CI that committed would be a surprise. Its output is picked up by the next session's checkpoint commit. |
+| `vngen` CLI | A CLI run is a build step; build steps do not author history, and a headless run in CI that committed would be a surprise. Its output is picked up by the next session's sweep commit. |
 | `vnauthor` | It already commits once per approved plan, and that plan — not each `edit_character` inside it — is the authorial event. A command whose implementation owns its commits declares `commitsItself: true` and the committer leaves it alone. |
 | A project inside a foreign repo | See `owned` above. |
 
@@ -226,7 +226,7 @@ and the scaffolding is already in its first commit.
 `openWorkspace` is not enough on its own, because the ordinary launch never calls it: `main`
 resolves a root from the recents list or `VN_PROJECT` and goes straight to `openRepos()`. So
 `openRepos()` calls `adoptGitAttributes(root)` — the same ensure, plus that separate commit —
-between `ensureRepo` and the `checkpoint`, which is what keeps the line out of "Changes made
+between `ensureRepo` and the `sweep`, which is what keeps the line out of "Changes made
 outside the app". Its caller skips it when the project sits inside a larger repo, and it asks
 `ownsRepo` again itself: the guard travels with the write rather than living only at the one call
 site that happens to remember it.
@@ -242,7 +242,7 @@ sets `core.autocrlf=false` for the byte-exact reasons the branch editor needs.
 
 **Notification writes ride along in the next act's commit**, because `Committer.commit` stages the
 whole worktree. That is not new — `vngen/state/commands.jsonl` has always behaved this way, and
-the open-time checkpoint exists to absorb it.
+the open-time sweep exists to absorb it.
 
 ## The one thing git is told not to merge
 
