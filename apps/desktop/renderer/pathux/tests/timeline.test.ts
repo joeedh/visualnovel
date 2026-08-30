@@ -23,6 +23,7 @@ const shot = (id: string, coversLines: string[]): CoverageShot => ({
   id,
   framing: 'medium',
   subjects: [],
+  location: 'day',
   outfits: {},
   coversLines,
   status: 'accepted',
@@ -42,6 +43,8 @@ const data: SceneCoverage = {
   lines: LINES,
   shots: SHOTS,
   cast: [],
+  characters: [],
+  variants: ['day'],
   decomposed: true,
 };
 

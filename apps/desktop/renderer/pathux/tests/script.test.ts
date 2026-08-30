@@ -23,6 +23,8 @@ const scene: SceneCoverage = {
   lines,
   shots: [],
   cast: [],
+  characters: [],
+  variants: ['day'],
   decomposed: false,
 };
 
@@ -78,6 +80,7 @@ describe('what right-clicking a line offers', () => {
     id,
     framing: 'medium',
     subjects: [],
+    location: 'day',
     outfits: {},
     coversLines: covers,
     status: 'accepted',

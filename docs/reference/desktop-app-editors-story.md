@@ -351,7 +351,7 @@ the same events** to write the transcript — see the threads bullet below.
 
 `editors/timeline.ts` — a scene's screenplay down the pane with the shots covering it bracketed
 beside it, and the wardrobe under it. It runs **vertically** because screenplays do.
-The pure rules live in `renderer/rules/timeline/` (`drift`, `editing`, `wardrobe`, `busy`) and in
+The pure rules live in `renderer/rules/timeline/` (`drift`, `editing`, `wardrobe`, `cast`, `busy`) and in
 `@vn/scriptedit` (`coverage.ts`, `shotcreate.ts` — geometry and shot creation, shared with the
 agent's tools); the state machine the React component kept in its own `.tsx` is now
 `pathux/timeline.ts`, with its tests beside it.
@@ -508,3 +508,18 @@ below.
   re-decided here, so the strip and the prompt cannot disagree. A shot decomposed before outfits
   were authorable carries an explicit outfit, so a marker cannot reach it; that is the one case the
   strip calls out (`hides the scene's "track" — clear it to let the marker through`).
+- **`IN THIS SHOT` is where the shot itself is edited, not only what its cast wears.** The section
+  carries four more controls, each sending the command that owns its rule so a refusal is that
+  command's own sentence. A `set in` select moves the shot to another variant of the scene's
+  location (`story.setVariant`); a variant the location has since dropped is added to the select
+  by name, because the alternative is silently showing a value the author never chose. A `×` on
+  each subject row takes that character out, and an `add` select puts another one in — both are
+  `story.setSubjects`, which replaces the whole list, so the editor sends the list it wants rather
+  than a delta. A character that stays keeps its outfit override; one that leaves takes its own
+  with it. A `must appear in the frame` checkbox is `story.requireCast`: cleared, the shot's cast
+  still reaches the generator as reference sheets, but `shotSpec` hands the reviewer an empty
+  `characters`, so an absence stops being a blocking defect and the refine loop stops spending
+  attempts on a frame it cannot satisfy. It is disabled on a shot that frames nobody, and says so.
+  The shape all four read is `shotCast` in `timeline/cast.ts`; the two writes are `setShotSubjects`
+  and `requireShotCast` in `@vn/scriptedit`'s `cast.ts`, beside the outfit and variant rules for
+  the same reason those are there.

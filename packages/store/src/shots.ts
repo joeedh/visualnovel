@@ -89,6 +89,7 @@ export async function readShots(
       coversLines: kept,
       status: s.shotData?.status ?? 'pending',
     };
+    if (s.castOptional !== undefined) shot.castOptional = s.castOptional;
     if (s.camera !== undefined) shot.camera = s.camera;
     if (s.artNotes !== undefined) shot.artNotes = s.artNotes;
     if (s.seed !== undefined) shot.seed = s.seed;
@@ -117,6 +118,8 @@ function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): 
       framing: s.framing,
       location: s.location,
       subjects: s.subjects,
+      // Only when set, so a file that never turned enforcement off stays byte-stable.
+      ...(s.castOptional ? { castOptional: true } : {}),
       ...(s.camera !== undefined ? { camera: s.camera } : {}),
       ...(s.artNotes !== undefined ? { artNotes: s.artNotes } : {}),
       ...(s.seed !== undefined ? { seed: s.seed } : {}),

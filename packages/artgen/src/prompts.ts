@@ -482,6 +482,21 @@ export function shotInputs(
  * the refine loop cannot converge and burns every attempt. `characters` is the authority on
  * who must be in frame, and the description states that explicitly.
  */
+/**
+ * What the description says about who is in frame. A shot with `castOptional` names its subjects
+ * and then says their absence is not a defect, so the sheets still reach the image as references
+ * while nothing is required of the result.
+ */
+function castLine(shot: Shot): string {
+  const named = shot.subjects.map((s) => s.characterId).join(', ');
+  if (shot.subjects.length === 0) {
+    return 'This is a background plate: no characters are intended in frame, and their absence is not a defect.';
+  }
+  return shot.castOptional
+    ? `Characters this frame may show: ${named}. None of them has to be in frame, and an absence is not a defect.`
+    : `Characters that must be in frame: ${named}.`;
+}
+
 function shotDescription(shot: Shot, scene: Scene): string {
   const covered = shot.coversLines.length
     ? scene.lines.filter((l) => shot.coversLines.includes(l.id))
@@ -489,9 +504,7 @@ function shotDescription(shot: Shot, scene: Scene): string {
   const prose = covered.map((l) => (l.speaker ? `${l.speaker}: ${l.text}` : l.text)).join(' ');
   return [
     `A single ${shot.framing} shot set in ${shot.location}.`,
-    shot.subjects.length
-      ? `Characters that must be in frame: ${shot.subjects.map((s) => s.characterId).join(', ')}.`
-      : 'This is a background plate: no characters are intended in frame, and their absence is not a defect.',
+    castLine(shot),
     shot.camera ? `Camera: ${shot.camera}.` : '',
     prose ? `Narrative context, for setting and mood only: ${prose}` : '',
   ]
@@ -504,6 +517,10 @@ function shotDescription(shot: Shot, scene: Scene): string {
 /**
  * A reviewer-facing spec for a shot (report §P7). `model` is what lets the outfit resolve all the
  * way down to the character's default; without it only the two authored levels can answer.
+ *
+ * `characters` is empty on a `castOptional` shot, because that field is what the reviewer reads as
+ * the casting instruction: leaving the subjects in it would ask for the defect the flag exists to
+ * stop. The description still names them, so the generator has them.
  */
 export function shotSpec(
   shot: Shot,
@@ -520,7 +537,7 @@ export function shotSpec(
   const lead = shot.subjects[0];
   return {
     description: shotDescription(shot, scene),
-    characters: shot.subjects.map((s) => s.characterId),
+    characters: shot.castOptional ? [] : shot.subjects.map((s) => s.characterId),
     outfit: lead && outfitFor(lead, scene, model?.characters.get(lead.characterId)).id,
     location: shot.location,
     expression: shot.subjects[0]?.expression,

@@ -705,7 +705,10 @@ describe('WorkspaceSession — outfits', () => {
     p = await makeProject({
       title: 'Outfits',
       script: SCRIPTS.linear,
-      characters: [{ id: 'aiko', outfits: { uniform: 'navy blazer', track: 'club tracksuit' } }],
+      characters: [
+        { id: 'aiko', outfits: { uniform: 'navy blazer', track: 'club tracksuit' } },
+        { id: 'ren', outfits: { uniform: 'grey blazer' } },
+      ],
     });
     session = sessionFor(p);
     await writeShots(p.paths, 'arrival', [
@@ -797,6 +800,60 @@ describe('WorkspaceSession — outfits', () => {
     const after = await session.sceneCoverage('arrival');
     expect(after.cast.find((c) => c.id === 'aiko')?.marked).toBe('track');
     expect(after.shots[0]!.outfits).toEqual({ aiko: 'uniform' });
+  });
+
+  it('changes who a shot frames, keeping the override of a character that stays', async () => {
+    await session.setShotOutfit('arrival', 'arrival__beat1', 'aiko', 'track');
+
+    const set = await session.setShotSubjects('arrival', 'arrival__beat1', ['aiko', 'ren']);
+    expect(set).toMatchObject({ ok: true, written: ['vngen/work/shots/arrival.json'] });
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]!.subjects).toEqual([
+      { characterId: 'aiko', outfit: 'track' },
+      { characterId: 'ren' },
+    ]);
+
+    const emptied = await session.setShotSubjects('arrival', 'arrival__beat1', []);
+    expect(emptied.message).toContain('background plate');
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]!.subjects).toEqual([]);
+  });
+
+  it('refuses a subject no sheet describes, and writes nothing', async () => {
+    const preview = await session.previewShotSubjects('arrival', 'arrival__beat1', ['nobody']);
+    expect(preview).toMatchObject({ ok: false });
+
+    const run = await session.setShotSubjects('arrival', 'arrival__beat1', ['nobody']);
+    expect(run).toMatchObject({ ok: false, written: [] });
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]!.subjects).toEqual([
+      { characterId: 'aiko' },
+    ]);
+  });
+
+  it('lets a shot off showing its cast without taking the cast off the shot', async () => {
+    const off = await session.requireShotCast('arrival', 'arrival__beat1', false);
+    expect(off).toMatchObject({ ok: true, written: ['vngen/work/shots/arrival.json'] });
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]).toMatchObject({
+      castOptional: true,
+      subjects: [{ characterId: 'aiko' }],
+    });
+    expect(off.coverage?.shots[0]!.castOptional).toBe(true);
+
+    expect(await session.previewShotCast('arrival', 'arrival__beat1', false)).toMatchObject({
+      ok: false,
+      noop: true,
+    });
+
+    const on = await session.requireShotCast('arrival', 'arrival__beat1', true);
+    expect(on.ok).toBe(true);
+    expect((await readShots(p.paths, 'arrival'))?.shots[0]!.castOptional).toBeUndefined();
+  });
+
+  /** The variant control on the strip needs both, and a select built from anything else would
+   * offer refusals. */
+  it('carries the shot’s variant and the ones it could be moved to', async () => {
+    const coverage = await session.sceneCoverage('arrival');
+    expect(coverage.shots[0]!.location).toBe('classroom/day');
+    expect(coverage.characters).toContain('aiko');
+    expect(coverage.variants.length).toBeGreaterThan(0);
   });
 });
 

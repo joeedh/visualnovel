@@ -208,6 +208,26 @@ describe('shotSpec', () => {
     // The covered prose still travels, but explicitly demoted to context.
     expect(spec.description).toContain('for setting and mood only: Rain streaks the windows.');
   });
+
+  it('names a relaxed shot’s cast to the generator and demands it of nobody', () => {
+    const spec = shotSpec(
+      {
+        id: 's1__b1',
+        sceneId: 's1',
+        framing: 'medium',
+        location: 'day',
+        subjects: [{ characterId: 'aiko' }],
+        castOptional: true,
+        coversLines: ['s1:L2'],
+        status: 'pending',
+      },
+      s,
+    );
+    // Empty, because this is the field the reviewer reads as the casting instruction.
+    expect(spec.characters).toEqual([]);
+    expect(spec.description).toContain('may show: aiko');
+    expect(spec.description).toContain('an absence is not a defect');
+  });
 });
 
 describe('refinePrompt', () => {

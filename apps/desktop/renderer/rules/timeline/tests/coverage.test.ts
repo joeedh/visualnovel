@@ -13,6 +13,7 @@ const shot = (id: string, coversLines: string[]): CoverageShot => ({
   id,
   framing: 'medium',
   subjects: [],
+  location: 'day',
   outfits: {},
   coversLines,
   status: 'accepted',

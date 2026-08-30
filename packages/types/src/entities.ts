@@ -189,6 +189,13 @@ export interface Shot {
   /** Location variant id this shot is set in. */
   location: string;
   subjects: ShotSubject[];
+  /**
+   * Whether {@link subjects} are carried as references rather than as a casting instruction. The
+   * reviewer is then told nothing has to be in frame, so a subject the image leaves out is no
+   * longer a blocking defect and the refine loop stops burning attempts on it. Absent means the
+   * subjects must appear, which is what every shot a decomposer wrote means.
+   */
+  castOptional?: boolean;
   camera?: string;
   /** Art direction for this frame alone — see {@link Character.artNotes}. Authored, like
    * {@link camera}, and in the prompt, so editing it re-renders this shot and nothing else. */

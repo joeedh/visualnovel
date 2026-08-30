@@ -11,6 +11,8 @@ const scene: SceneCoverage = {
   ],
   shots: [],
   cast: [],
+  characters: [],
+  variants: [],
   decomposed: true,
 };
 

@@ -387,6 +387,10 @@ export interface CoverageShot {
   framing: string;
   /** Character ids in frame; empty is a background plate. */
   subjects: string[];
+  /** The location variant this shot is drawn against — one of {@link SceneCoverage.variants}. */
+  location: string;
+  /** Whether {@link subjects} are references rather than a requirement — see `Shot.castOptional`. */
+  castOptional?: boolean;
   /**
    * Per-subject outfit overrides, character id → outfit id. A subject absent from this map
    * inherits — an empty map is the normal state, not an unfilled one.
@@ -442,6 +446,14 @@ export interface SceneCoverage {
   shots: CoverageShot[];
   /** Who is in the scene and what they own; the scene half of the outfit strip. */
   cast: CoverageCast[];
+  /**
+   * Every character the project describes, in model order. {@link cast} is who the scene already
+   * involves; this is who a shot could be given, which is a longer list whenever the scene's own
+   * `characters` forgot someone.
+   */
+  characters: string[];
+  /** The variant ids of the scene's location, in authored order; what a shot may be set in. */
+  variants: string[];
   /** No decomposition on disk yet: the scene has not been planned past the gate. */
   decomposed: boolean;
   /**

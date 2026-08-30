@@ -12,6 +12,16 @@ import {
   revealBusy,
   type Busy,
 } from '../../rules/timeline/busy.js';
+import {
+  requireCastInvocation,
+  requireCastTitle,
+  shotCast,
+  subjectsInvocation,
+  variantInvocation,
+  withCharacter,
+  withoutCharacter,
+  type ShotCast,
+} from '../../rules/timeline/cast.js';
 import { insertionRow, previewOf } from '../../rules/timeline/coverage.js';
 import { driftTag, staleCount } from '../../rules/timeline/drift.js';
 import { canEdit, canGrab, canReread, grabRefusal } from '../../rules/timeline/editing.js';
@@ -680,13 +690,12 @@ export class TimelineEditor extends VnEditor {
         rows.filter((r) => r.level === 'scene'),
       ),
     );
-    if (shotId) {
-      const shotRows = rows.filter((r) => r.level === 'shot');
+    const cast = shotCast(data, shotId || null);
+    if (cast) {
       box.appendChild(
-        this.wardrobeSection(
-          'IN THIS SHOT',
-          shotRows.length ? shotId : `${shotId} frames nobody`,
-          shotRows,
+        this.shotSection(
+          cast,
+          rows.filter((r) => r.level === 'shot'),
         ),
       );
     }
@@ -703,7 +712,109 @@ export class TimelineEditor extends VnEditor {
     return section;
   }
 
-  private wardrobeRow(row: OutfitRow): HTMLElement {
+  /**
+   * The selected shot's own section: what it is set in, who it frames, and whether the picture
+   * has to show them. Each control sends the command that owns its rule, so a refusal — the last
+   * shot of a scene, a character no sheet describes — is the command's own sentence.
+   */
+  private shotSection(cast: ShotCast, rows: OutfitRow[]): HTMLElement {
+    const section = this.wardrobeSection(
+      'IN THIS SHOT',
+      rows.length ? cast.shot : `${cast.shot} frames nobody`,
+      [],
+    );
+    section.appendChild(this.variantRow(cast));
+    for (const row of rows) section.appendChild(this.wardrobeRow(row, cast));
+    if (cast.spare.length > 0) section.appendChild(this.addCastRow(cast));
+    section.appendChild(this.requireCastRow(cast));
+    return section;
+  }
+
+  /** Which variant of the scene's location this one shot is drawn against. */
+  private variantRow(cast: ShotCast): HTMLElement {
+    const line = el('div', 'wd-row');
+    line.appendChild(el('span', 'who', 'set in'));
+
+    const select = document.createElement('select');
+    select.className = 'wd-pick';
+    select.setAttribute('aria-label', `Which variant ${cast.shot} is drawn against`);
+    select.title =
+      'Draw this shot against another variant of the location. That is the plate behind it, ' +
+      'so the frame is drawn again.';
+    for (const variant of cast.variants) select.appendChild(option(variant, variant));
+    // A shot set in a variant the location has since dropped would otherwise show the first
+    // option, which is a value the author never chose.
+    if (!cast.variants.includes(cast.variant)) {
+      select.appendChild(option(cast.variant, `${cast.variant} — the location no longer has this`));
+    }
+    select.value = cast.variant;
+    select.addEventListener(
+      'change',
+      () => void this.run(variantInvocation(cast, select.value), 'Setting variant', 'Variant set.'),
+    );
+    line.appendChild(select);
+    return line;
+  }
+
+  /** The control that puts one more character in the shot. */
+  private addCastRow(cast: ShotCast): HTMLElement {
+    const line = el('div', 'wd-row');
+    line.appendChild(el('span', 'who', 'add'));
+
+    const select = document.createElement('select');
+    select.className = 'wd-pick';
+    select.setAttribute('aria-label', `Put another character in ${cast.shot}`);
+    select.title =
+      'Put another character in this shot. Their sheet becomes one of the references the ' +
+      'frame is drawn from, so the frame is drawn again.';
+    select.appendChild(option('', 'nobody else'));
+    for (const id of cast.spare) select.appendChild(option(id, id));
+    select.value = '';
+    select.addEventListener('change', () => {
+      const chosen = select.value;
+      if (!chosen) return;
+      void this.setSubjects(cast, withCharacter(cast, chosen), 'Adding to the shot');
+    });
+    line.appendChild(select);
+    return line;
+  }
+
+  /** The checkbox behind `story.requireCast`. */
+  private requireCastRow(cast: ShotCast): HTMLElement {
+    const line = el('div', 'wd-row');
+    const label = document.createElement('label');
+    label.className = 'wd-toggle';
+    label.title = requireCastTitle(cast);
+
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = cast.required;
+    box.disabled = cast.framed.length === 0;
+    box.title = label.title;
+    box.addEventListener(
+      'change',
+      () =>
+        void this.run(
+          requireCastInvocation(cast, box.checked),
+          'Setting the cast rule',
+          'Cast rule set.',
+        ),
+    );
+    label.appendChild(box);
+    label.appendChild(el('span', 'wd-from', 'must appear in the frame'));
+    line.appendChild(label);
+    return line;
+  }
+
+  private async setSubjects(
+    cast: ShotCast,
+    subjects: readonly string[],
+    progress: string,
+  ): Promise<void> {
+    await this.run(subjectsInvocation(cast, subjects), progress, 'Cast set.');
+  }
+
+  private wardrobeRow(row: OutfitRow, cast?: ShotCast): HTMLElement {
     const line = el('div', 'wd-row');
     line.appendChild(el('span', 'who', row.character));
 
@@ -731,7 +842,25 @@ export class TimelineEditor extends VnEditor {
           )
         : el('span', 'wd-from', sourceLabel(row.effective)),
     );
+    if (cast) line.appendChild(this.dropCastButton(cast, row.character));
     return line;
+  }
+
+  /** Takes one character out of the shot, leaving the rest of the list as it stands. */
+  private dropCastButton(cast: ShotCast, character: string): HTMLElement {
+    const button = document.createElement('button');
+    button.className = 'wd-drop';
+    button.textContent = '\u00d7';
+    button.setAttribute('aria-label', `Take ${character} out of ${cast.shot}`);
+    button.title =
+      `Take ${character} out of this shot. Their sheet stops being one of the references the ` +
+      'frame is drawn from, and their outfit override goes with them.';
+    button.addEventListener(
+      'click',
+      () =>
+        void this.setSubjects(cast, withoutCharacter(cast, character), 'Taking out of the shot'),
+    );
+    return button;
   }
 
   // -------------------------------------------------------------------------

@@ -233,10 +233,12 @@ import { buildPlayable, loadSceneShots } from '@vn/export';
 import {
   deleteShot as planDeleteShot,
   moveShot,
+  requireShotCast,
   newShot as planNewShot,
   setCoverage,
   setSceneOutfit,
   setShotOutfit,
+  setShotSubjects,
   setShotVariant,
   wardrobesOf,
   type BranchOp,
@@ -4965,6 +4967,8 @@ export class WorkspaceSession {
         id: s.id,
         framing: s.framing,
         subjects: s.subjects.map((sub) => sub.characterId),
+        location: s.location,
+        ...(s.castOptional ? { castOptional: true } : {}),
         // Only the subjects that state one: the strip resolves the rest through `outfitFor`,
         // and a map that pre-filled the inherited answer would erase the distinction.
         outfits: Object.fromEntries(
@@ -4985,6 +4989,10 @@ export class WorkspaceSession {
         const marked = scene.outfits?.[id];
         return [{ id, ...wardrobe, ...(marked ? { marked } : {}) }];
       }),
+      // Only the ones with a wardrobe, for the reason `cast` is filtered: a shot may only be
+      // given a character the subject rule would accept.
+      characters: [...wardrobes.keys()],
+      variants: (project.model.locations.get(scene.location)?.variants ?? []).map((v) => v.id),
       decomposed: loaded !== null,
       ...(loaded?.nextShot !== undefined ? { nextShot: loaded.nextShot } : {}),
     };
@@ -5188,6 +5196,113 @@ export class WorkspaceSession {
     variant: string,
   ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
     const { project, op } = await this.shotVariantRule(sceneId, shotId, variant);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok: true,
+      message: op.message,
+      written: [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.sceneCoverage(sceneId),
+    };
+  }
+
+  /**
+   * A rule over one scene's shots, run against a fresh load. The scene and its decomposition are
+   * the two things every such rule needs and the two that can be missing, so the refusals for
+   * both are written once here.
+   */
+  private async shotsRule(
+    sceneId: string,
+    rule: (shots: readonly Shot[], scene: Scene, project: LoadedProject) => ShotOutfitOp,
+  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
+    const project = await loadProject(this.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return { project, op: { ok: false, error: `No scene "${sceneId}".` } };
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return {
+        project,
+        op: {
+          ok: false,
+          error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+        },
+      };
+    }
+    return { project, op: rule(loaded.shots, scene, project) };
+  }
+
+  /** What `story.setSubjects` would do, without writing it. */
+  async previewShotSubjects(
+    sceneId: string,
+    shotId: string,
+    subjects: readonly string[],
+  ): Promise<ShotOutfitOp> {
+    return (await this.subjectsRule(sceneId, shotId, subjects)).op;
+  }
+
+  private subjectsRule(
+    sceneId: string,
+    shotId: string,
+    subjects: readonly string[],
+  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
+    return this.shotsRule(sceneId, (shots, scene, project) =>
+      setShotSubjects(shots, scene, [...project.model.characters.keys()], {
+        shot: shotId,
+        subjects,
+      }),
+    );
+  }
+
+  /**
+   * Set the characters one shot frames. Like `setShotOutfit` this changes the shot's prompt, so
+   * the shot re-hashes and the next run re-renders it — and it changes which character sheets are
+   * carried in as references, so the frame is drawn from different material as well.
+   */
+  async setShotSubjects(
+    sceneId: string,
+    shotId: string,
+    subjects: readonly string[],
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.subjectsRule(sceneId, shotId, subjects);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok: true,
+      message: op.message,
+      written: [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.sceneCoverage(sceneId),
+    };
+  }
+
+  /** What `story.requireCast` would do, without writing it. */
+  async previewShotCast(sceneId: string, shotId: string, required: boolean): Promise<ShotOutfitOp> {
+    return (await this.castRule(sceneId, shotId, required)).op;
+  }
+
+  private castRule(
+    sceneId: string,
+    shotId: string,
+    required: boolean,
+  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
+    return this.shotsRule(sceneId, (shots, scene) =>
+      requireShotCast(shots, scene, { shot: shotId, required }),
+    );
+  }
+
+  /**
+   * Say whether one shot's cast has to be in the frame it produces. The subjects stay on the shot
+   * either way, so the references it is drawn from do not change; only the reviewer's demand does.
+   * It is in the prompt, so the frame is drawn again on the next run.
+   */
+  async requireShotCast(
+    sceneId: string,
+    shotId: string,
+    required: boolean,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.castRule(sceneId, shotId, required);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
     await writeShots(project.paths, sceneId, op.shots);

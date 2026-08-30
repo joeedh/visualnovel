@@ -8,6 +8,7 @@ const shot = (outfits: Record<string, string>, subjects = ['aiko', 'ren']): Cove
   id: 'club__beat1',
   framing: 'medium',
   subjects,
+  location: 'day',
   outfits,
   coversLines: ['club:L1'],
   status: 'accepted',
@@ -21,6 +22,8 @@ const coverage = (cast: CoverageCast[], shots: CoverageShot[]): SceneCoverage =>
   lines: [],
   shots,
   cast,
+  characters: [],
+  variants: ['day'],
   decomposed: shots.length > 0,
 });
 

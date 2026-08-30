@@ -2,8 +2,8 @@
 
 # Registered commands
 
-153 commands, in 21 namespaces. 83 are `mutating`;
-96 declare a precondition; 51 are undoable; 19 ask
+155 commands, in 21 namespaces. 85 are `mutating`;
+98 declare a precondition; 53 are undoable; 19 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -122,9 +122,10 @@ for confirmation.
 | `story.moveLine` ✍ ↺ ✓ | `line`, `after` (default `''`) | Reorder within the scene. What `script.moveLine` commits. |
 | `story.moveShot` ✍ ↺ ✓ | `scene`, `shot`, `after` (default `''`) | Reorder a shot by moving the lines it covers; empty `after` means the top. A shot other shots draw inside is refused by name. |
 | `story.newScene` ✍ ↺ ✓ | `scene`, `heading` | A `scenes/<id>.md` with a heading and no lines; nothing points at it yet. |
-| `story.newShot` ✍ ↺ ✓ | `scene`, `lines`, `framing` (`medium`\|`wide`\|`close`\|`establishing`, default `'medium'`), `subjects` (default `''`) | Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name, since nothing sets a shot's cast afterwards. |
+| `story.newShot` ✍ ↺ ✓ | `scene`, `lines`, `framing` (`medium`\|`wide`\|`close`\|`establishing`, default `'medium'`), `subjects` (default `''`) | Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name. `story.setSubjects` changes the cast afterwards. |
 | `story.play` | — | Build the playable in memory; writes nothing. |
 | `story.removeChoice` ✍ ↺ ✓ | `scene`, `index` | Deletes the marker line; the prose is untouched. |
+| `story.requireCast` ✍ ↺ ✓ | `scene`, `shot`, `required` (default `true`) | Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck. |
 | `story.screenplay` ✍ ✓ | `clean` (default `false`) | Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way. |
 | `story.setChoice` ✍ ↺ ✓ | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
 | `story.setCoverage` ✍ ↺ ✓ | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
@@ -134,6 +135,7 @@ for confirmation.
 | `story.setOutfit` ✍ ↺ ✓ | `scene`, `shot`, `character`, `outfit` (default `''`) | One subject of one shot; empty clears the override. Unlike coverage this re-hashes the shot. |
 | `story.setSceneOutfit` ✍ ↺ ✓ | `scene`, `character`, `outfit` (default `''`) | Writes the scene's `[[outfit:]]` marker; empty clears it. Every shot that does not override it re-renders. |
 | `story.setSpeaker` ✍ ↺ ✓ | `line`, `speaker` (default `''`) | Empty `speaker` makes the line narration. |
+| `story.setSubjects` ✍ ↺ ✓ | `scene`, `shot`, `subjects` (default `''`) | Replace the cast of one shot; empty makes it a background plate. Changes the prompt and the reference sheets, so the frame is drawn again. A character no sheet describes is refused by name. |
 | `story.setVariant` ✍ ↺ ✓ | `scene`, `shot`, `variant` | — |
 | `story.spliceScene` ✍ ↺ ✓ | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch. |
 | `story.splitScene` ✍ ↺ ✓ | `scene`, `at`, `into` | `at` starts the second half; shots follow their lines, keeping their ids. |

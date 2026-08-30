@@ -500,6 +500,12 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
     and cast, and demotes the prose of its covered lines to "context only"; `spec.characters` is
     the authority on who must be in frame, and an empty one says outright that a missing
     character is not a defect.
+  - `Shot.castOptional` spares a shot that does have a cast from the same trap. The subjects stay
+    on the shot, so the character sheets still reach the generator as references, but `shotSpec`
+    hands the reviewer an empty `characters` and the description says an absence is not a defect.
+    Without it, a frame the reviewer will never accept — a figure seen from behind, a crowd, a
+    hand — spends the whole cap and lands on `needs_human`. It sits in the prompt, so setting it
+    re-renders that frame. `story.requireCast` writes it, normally from the Shot Coverage strip.
   - Handing over the scene synopsis instead made every background plate fail for the characters
     the scene mentions but the shot never ordered — unsatisfiable, so the loop burned every
     attempt and landed on `needs_human`.

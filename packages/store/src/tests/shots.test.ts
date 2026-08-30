@@ -103,6 +103,21 @@ describe('shots file', () => {
     expect(await writeShots(paths, 'arrival', [overridden])).toBe(false);
   });
 
+  it('round-trips a relaxed cast rule, and writes nothing for the ordinary one', async () => {
+    const paths = await tempPaths();
+    const relaxed = shot({ castOptional: true });
+    await writeShots(paths, 'arrival', [relaxed]);
+
+    const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect(raw.shots[0].castOptional).toBe(true);
+    expect((await readShots(paths, 'arrival'))?.shots).toEqual([relaxed]);
+    expect(await writeShots(paths, 'arrival', [relaxed])).toBe(false);
+
+    await writeShots(paths, 'arrival', [shot()]);
+    const plain = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect('castOptional' in plain.shots[0]).toBe(false);
+  });
+
   it('round-trips a chunk’s references, pin and binding both', async () => {
     const paths = await tempPaths();
     const withRefs = shot({

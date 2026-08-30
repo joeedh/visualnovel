@@ -551,10 +551,10 @@ export const storyNewShot = define({
     'way a coverage drag takes them; a new shot id is a new task, so this is a new frame to ' +
     'render. On a scene with no storyboard yet, this creates it — which ends decomposition for ' +
     'that scene, and every line the shot does not claim stays uncovered until covered by hand. ' +
-    "A shot's cast cannot be changed afterwards, so name it here when the speakers of the covered " +
-    'lines are not who is on screen.',
+    'Name the cast here when the speakers of the covered lines are not who is on screen; ' +
+    '`story.setSubjects` can change it afterwards.',
   notes:
-    "Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name, since nothing sets a shot's cast afterwards.",
+    'Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name. `story.setSubjects` changes the cast afterwards.',
   mutating: true,
   undoable: true,
   props: {
@@ -688,6 +688,65 @@ export const storySetVariant = define({
   },
   async run({ scene, shot, variant }, ctx) {
     const result = await ctx.host.session.setShotVariant(scene, shot, variant);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+export const storySetSubjects = define({
+  id: 'story.setSubjects',
+  title: 'Set who a shot frames',
+  description:
+    'Replace the characters one shot frames, in the order given. Their sheets are what the frame ' +
+    'is drawn from, so this changes both the prompt and the references: the shot re-hashes and ' +
+    'the next run draws it again. An empty list makes it a background plate. A character that ' +
+    'stays keeps its outfit override; one that leaves takes its own with it.',
+  notes:
+    'Replace the cast of one shot; empty makes it a background plate. Changes the prompt and the reference sheets, so the frame is drawn again. A character no sheet describes is refused by name.',
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    subjects: prop.string('comma-separated character ids on screen; empty frames nobody', {
+      default: '',
+    }),
+  },
+  async check({ scene, shot, subjects }, ctx) {
+    const op = await ctx.host.session.previewShotSubjects(scene, shot, idsOf(subjects));
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot, subjects }, ctx) {
+    const result = await ctx.host.session.setShotSubjects(scene, shot, idsOf(subjects));
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+export const storyRequireCast = define({
+  id: 'story.requireCast',
+  title: 'Require a shot to show its cast',
+  description:
+    "Say whether the characters a shot frames have to appear in it. Turned off, the shot's cast " +
+    'still reaches the generator as reference sheets, but the vision reviewer is told nothing ' +
+    'has to be in frame — so an absence stops being a blocking defect and the refine loop stops ' +
+    'spending attempts on a frame it cannot fix. It is in the prompt, so the frame is drawn ' +
+    'again on the next run.',
+  notes:
+    "Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck.",
+  mutating: true,
+  undoable: true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    required: prop.boolean('whether the cast must be in frame', { default: true }),
+  },
+  async check({ scene, shot, required }, ctx) {
+    const op = await ctx.host.session.previewShotCast(scene, shot, required);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot, required }, ctx) {
+    const result = await ctx.host.session.requireShotCast(scene, shot, required);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result.coverage, written: result.written };
   },

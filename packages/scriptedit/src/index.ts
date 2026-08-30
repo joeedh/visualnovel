@@ -77,6 +77,7 @@ export {
   type WardrobeMap,
 } from './outfits.js';
 export { setShotVariant } from './variants.js';
+export { requireShotCast, setShotSubjects } from './cast.js';
 export {
   scenesTouchedBy,
   shotFallout,
