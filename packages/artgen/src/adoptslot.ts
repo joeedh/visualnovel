@@ -42,6 +42,15 @@ export interface AdoptSlotRequest {
    * and never used by {@link adoptSlot}, which adopts what is in the store.
    */
   bytes?: Uint8Array;
+  /**
+   * Record the prompt these bytes already carry rather than the slot's current one.
+   *
+   * For an upload the slot's prompt is the only one there is. For a render being put back in a
+   * slot a later render took over, stamping today's prompt would claim the picture was drawn from
+   * words written after it, and drift would then report none. Ignored for an asset carrying no
+   * prompt of its own.
+   */
+  keepPrompt?: boolean;
 }
 
 /**
@@ -260,7 +269,10 @@ export async function adoptSlot(
   const ref = await deps.store.write(bytes, asset.ext, {
     kind: resolved.plan.slot.kind,
     sourceTask: decided.plan.taskHash,
-    prompt: resolved.plan.slot.inputs.prompt,
+    prompt:
+      req.keepPrompt && asset.prompt !== undefined
+        ? asset.prompt
+        : resolved.plan.slot.inputs.prompt,
     refs: resolved.plan.slot.inputs.refs.map((r) => r.hash),
     modelId: asset.modelId,
     // `mergeBindings` keeps what the bytes already served, so the tree still shows where an adopted

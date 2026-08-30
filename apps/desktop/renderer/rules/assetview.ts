@@ -75,6 +75,13 @@ export function approveAction(info: AssetInfo): ApproveAction {
     };
   }
   if (info.unapproved) return { ok: false, reason: info.unapproved };
+  // An older take, which a later render pushed out of its slot. Accepting one has to put it back
+  // as well: the flag alone would leave the slot naming the later render, so the runner and the
+  // exporter would go on using it and the click would appear to do nothing. A portrait is left
+  // out for the reason it is left out below — an earlier look goes back through the gate.
+  if (info.newerTake !== undefined && info.kind !== 'portrait') {
+    return { ok: true, id: 'asset.restore', props: { hash: info.hash }, label: 'Accept' };
+  }
   if (info.kind !== 'portrait') {
     return { ok: true, id: 'asset.accept', props: { hash: info.hash }, label: 'Accept' };
   }

@@ -1568,6 +1568,69 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
  * answer, and auto-allowed every always-confirm tool. What is pinned here is that each door
  * reaches the renderer and returns what came back, nothing more clever.
  */
+/**
+ * Putting an older take back. Its own project because it writes two `done` records for one plate's
+ * task, and because the assertions are about which of three takes the slot names.
+ */
+describe('WorkspaceSession — restoring an older take', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({ title: 'Restored', script: SCRIPTS.linear });
+    session = sessionFor(p);
+    await p.run(); // locations render before the gate, so there is a plate to take over
+  }, 30_000);
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  const plate = async (): Promise<string> => {
+    const { store } = await p.reload();
+    return store.manifest().find((a) => a.kind === 'location_ref')!.hash;
+  };
+
+  const paint = async (name: string, tail: number[]): Promise<string> => {
+    const file = join(p.dir, name);
+    await fs.writeFile(file, new Uint8Array([...realPng(), ...tail]));
+    return file;
+  };
+
+  it('refuses to put back a take that is already the picture in its slot', async () => {
+    expect(await session.previewRestore(await plate())).toMatchObject({
+      ok: false,
+      message: expect.stringContaining('already the'),
+    });
+  });
+
+  // Accepting an older take only flips a flag; the slot goes on naming the later render until the
+  // take is adopted back onto it, which is the whole of what `asset.restore` adds
+  it('puts an older take back, and the take that replaced it becomes the old one', async () => {
+    // Twice, because the picture a mock run drew is placeholder art and never becomes real output
+    const slot = (await session.assetInfo(await plate()))!.slot!;
+    const first = await session.replaceAsset(await plate(), await paint('one.png', [21, 22]));
+    const second = await session.replaceAsset(first.hash!, await paint('two.png', [31, 32]));
+    expect(second.ok).toBe(true);
+    const drawnFrom = (await session.assetInfo(first.hash!))!.prompt;
+
+    expect(await session.previewRestore(first.hash!)).toMatchObject({
+      ok: true,
+      message: expect.stringContaining('again'),
+    });
+    expect(await session.restoreAsset(first.hash!)).toMatchObject({ ok: true });
+
+    const back = (await session.assetInfo(first.hash!))!;
+    expect(back.slot).toBe(slot);
+    expect(back.newerTake).toBeUndefined();
+    expect(back.accepted).toBe(true);
+    // The picture is still the one it always was, so it goes on reporting the drift it really has
+    expect(back.prompt).toBe(drawnFrom);
+    // And the file that had taken the slot is now the older take, pointing back at this one
+    expect((await session.assetInfo(second.hash!))!.newerTake).toBe(first.hash);
+  });
+});
+
 describe('WorkspaceSession — the agent asks the author', () => {
   const doors = (
     session: WorkspaceSession,

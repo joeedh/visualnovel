@@ -72,6 +72,31 @@ export const assetAccept = define({
   },
 });
 
+export const assetRestore = define({
+  id: 'asset.restore',
+  title: 'Put this take back',
+  description:
+    'Make an older take the picture in its slot again, and accept it. Accepting alone only ' +
+    'flips a manifest flag — the slot still names the later render, so the runner and the ' +
+    'exporter go on using it. The later take stays in the store as a take of the same slot, and ' +
+    'the prompt these bytes were drawn from is kept rather than restamped, so the picture goes ' +
+    'on reporting the drift it really has.',
+  notes:
+    '`asset.adopt(replace)` followed by `asset.accept`, as one act. Refused for a take that is already the picture in its slot, for one nothing planned, and — by name — for a portrait (`gate.approve`), a concept and an upload. The suspension and upstream-approval refusals are the ones `asset.accept` would give.',
+  mutating: true,
+  // Supersedes a render the project is currently using, which is the bar `asset.adopt` clears too
+  confirm: true,
+  props: { hash: prop.string('the older take to put back') },
+  async check({ hash }, ctx) {
+    return verdict(await ctx.host.session.previewRestore(hash));
+  },
+  async run({ hash }, ctx) {
+    const result = await ctx.host.session.restoreAsset(hash);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
 export const assetUnapprove = define({
   id: 'asset.unapprove',
   title: 'Un-approve asset',

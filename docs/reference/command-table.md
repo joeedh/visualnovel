@@ -2,8 +2,8 @@
 
 # Registered commands
 
-151 commands, in 21 namespaces. 82 are `mutating`;
-95 declare a precondition; 51 are undoable; 18 ask
+152 commands, in 21 namespaces. 83 are `mutating`;
+96 declare a precondition; 51 are undoable; 19 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -40,6 +40,7 @@ for confirmation.
 | `asset.info` | `hash` | One asset: label, kind, root, accepted, its task, the prompt it was rendered from, the prompt the builders would write **today**, and the art-notes rungs reaching it. |
 | `asset.regenerate` ✍ ⚠ ✓ | `hash`, `run` (default `false`) | Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image. |
 | `asset.replace` ✍ ⚠ ✓ | `hash` | The asset editor's Replace strip: open an image chooser and make what comes back this picture's slot — `asset.upload` with the chooser in front and the slot read off the asset instead of typed. Refused when these bytes fill no slot (a concept, an upload, a render something later superseded). Cancelling changes nothing. |
+| `asset.restore` ✍ ⚠ ✓ | `hash` | `asset.adopt(replace)` followed by `asset.accept`, as one act. Refused for a take that is already the picture in its slot, for one nothing planned, and — by name — for a portrait (`gate.approve`), a concept and an upload. The suspension and upstream-approval refusals are the ones `asset.accept` would give. |
 | `asset.suspended` | — | Every asset drawn against a reference whose slot has moved, plus everything downstream of one, in dependency order with the reason for each. Derived on every call, never a stored flag — the bytes stay; suspension only says they are out of date. |
 | `asset.unapprove` ✍ ⚠ ✓ | `hash` | — |
 | `asset.upload` ✍ ⚠ ✓ | `file`, `title` (default `''`), `slot` (default `''`), `replace` (default `false`), `open` (default `true`) | Bring an image from outside into the **base** store. With no `slot` it is a `reference`: nothing generated it, so it is never approved and never planned — it exists to be pointed at by `prompt.addRef`. Name a `slot` and the same act files the bytes and adopts them onto it, which is what a repainted plate wants. Mock placeholder art and anything that is not an image are refused by name; a file that lands but cannot be adopted says so and stays filed as a reference, recoverable with `asset.adopt`. |

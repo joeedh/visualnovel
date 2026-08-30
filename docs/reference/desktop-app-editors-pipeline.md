@@ -366,6 +366,17 @@ it produces.
   per hop litters the mesh. One `← back` chip makes that walk reversible, and it clears itself when
   the subject changes any other way. A prerequisite whose bytes the manifest has lost is a disabled
   row whose tooltip is its own refusal.
+- **Accept on an older take puts it back, not just a flag on it.** `asset.accept` writes one bit of
+  the manifest, and the slot's task goes on naming the later render — so on a take something
+  replaced, the click would appear to do nothing while the runner and the exporter carried on with
+  the newer picture. `approveAction` routes a take with a `newerTake` to `asset.restore` instead,
+  which is `asset.adopt(replace)` followed by `asset.accept` as one confirmed act. The take that had
+  the slot becomes the older one, in the store and named by `newerTake` from the other side. The
+  prompt these bytes were drawn from is **kept** rather than restamped with the slot's current one
+  (`AdoptSlotRequest.keepPrompt`), because a picture drawn before today's words has drift and
+  claiming otherwise would hide it. A portrait is left out by name — an earlier look goes back
+  through `gate.approve` — and the suspension and upstream-approval refusals are the ones accepting
+  would have given.
 - **A concept gets a Promote strip instead, and only a concept does.** It names the location the
   sketch is bound to, takes a variant id, and runs `art.promote` — the variant joins that location's
   sheet if it is new, the bytes become the plate, and the next run adopts them. `promoteAction`

@@ -168,6 +168,30 @@ describe('approveAction', () => {
     expect(action.ok && action.id).toBe('asset.unapprove');
   });
 
+  // Flipping the flag alone would leave the slot naming the later render, so the click would
+  // appear to do nothing at all
+  it('puts an older take back in its slot rather than only flagging it', () => {
+    expect(approveAction(info({ newerTake: 'e5f6a7b8' }))).toEqual({
+      ok: true,
+      id: 'asset.restore',
+      props: { hash: 'a1b2c3d4' },
+      label: 'Accept',
+    });
+  });
+
+  it('sends an earlier look back through the gate rather than restoring it', () => {
+    const action = approveAction(portrait({ newerTake: 'e5f6a7b8' }));
+    expect(action.ok && action.id).toBe('gate.approve');
+  });
+
+  it('refuses an older take whose upstream is unapproved, like any other', () => {
+    const waiting = 'Approve what this was drawn from first: cafe — night plate is not approved.';
+    expect(approveAction(info({ newerTake: 'e5f6a7b8', unapproved: waiting }))).toEqual({
+      ok: false,
+      reason: waiting,
+    });
+  });
+
   // `accepted` means a human approved this for use downstream, and nothing downstream consumes a
   // concept — so the button says so instead of offering a state with no meaning.
   it('refuses a concept, which promotion is for', () => {

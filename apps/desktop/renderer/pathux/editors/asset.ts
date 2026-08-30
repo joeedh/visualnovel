@@ -565,7 +565,9 @@ export class AssetEditor extends VnEditor {
         ? (action?.reason ?? 'Nothing to approve')
         : action.id === 'asset.unapprove'
           ? 'Take approval back off these bytes, leaving what they answered unanswered again'
-          : 'Accept these bytes for use downstream';
+          : action.id === 'asset.restore'
+            ? 'Put this take back in its slot and accept it, superseding the one that replaced it'
+            : 'Accept these bytes for use downstream';
 
       const regen = this.bar.button('Regenerate', () => void this.regenerate());
       regen.disabled = !info;

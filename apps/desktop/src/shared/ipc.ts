@@ -628,6 +628,12 @@ export interface AssetInfo {
    */
   slot?: string;
   /**
+   * The slot these bytes were drawn for, whether or not they still fill it. {@link slot} is the
+   * narrower question a replace acts on; this is the one an older take has to be put back into.
+   * Absent for an asset nothing planned.
+   */
+  drawnFor?: string;
+  /**
    * The asset filling that slot now, when it is not this one. Present for an earlier take and for
    * a render something later replaced; absent while these are the bytes in the slot, and absent
    * when the slot's task has produced nothing yet. The pane follows it, so a run that finishes
