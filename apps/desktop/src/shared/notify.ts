@@ -76,6 +76,33 @@ export function visibleNotifications(
   return all.filter((n) => wanted.has(n.category) && (filter.showHidden || !n.h)).reverse();
 }
 
+/** How many rows the list draws before it asks whether to draw more. */
+export const NOTIFICATION_PAGE = 30;
+
+/** One page of the list, and how many rows are still behind it. */
+export interface NotificationPage {
+  rows: Notification[];
+  /** Rows not drawn yet. Zero means the page reaches the end of the list. */
+  more: number;
+}
+
+/**
+ * The first `shown` of what the filter admits, plus the count still behind them.
+ *
+ * The log is append-only and never pruned, so a project a few weeks old holds thousands of rows.
+ * Each one is a path.ux row with a wrapped paragraph inside it, and building every one of them is
+ * what makes opening the bell slow; the author reads the newest handful and never scrolls to the
+ * rest. `shown` below one page still draws one, since a list nothing can be added to is not a
+ * list the author can page through.
+ */
+export function notificationPage(
+  visible: readonly Notification[],
+  shown: number,
+): NotificationPage {
+  const take = Math.min(Math.max(shown, NOTIFICATION_PAGE), visible.length);
+  return { rows: visible.slice(0, take), more: visible.length - take };
+}
+
 /**
  * What the bell says. Counted over the filter so the badge and the list always agree, but never
  * over `showHidden`: an archived notification is dealt with, and turning that checkbox on must

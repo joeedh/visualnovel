@@ -60,7 +60,11 @@ plays it — deliberately not an external DSL export.
   produces no total (never `0`).
   ([`../plans/archive/INDEX.md#gemini-estimated-cache-hit-rate`](../plans/archive/INDEX.md#gemini-estimated-cache-hit-rate))
 - Every notification is durable, filed by a single hook to
-  `vngen/state/notifications.jsonl`, one version per line because git union-merges the file.
+  `vngen/state/notifications.jsonl`, one version per line because git union-merges the file. The
+  bell's list draws one page of `NOTIFICATION_PAGE` rows and a `Show N more` button; the log is
+  append-only and never pruned, so building a row per entry is what made opening the bell slow on
+  an old project. `notificationPage` in `src/shared/notify.ts` is the whole rule, and the header
+  says `X of Y` while a page is short of the end.
   ([`../plans/archive/INDEX.md#notifications`](../plans/archive/INDEX.md#notifications))
 - Non-scene documents are written as text, and only by `doc.*`; `scenes/**` is refused
   outright, because prose belongs to `story.*`.

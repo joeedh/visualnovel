@@ -417,3 +417,10 @@ it produces.
   one. Which take that is is decided when the pane arrives on an asset and then kept, because an
   authored edit re-keys the slot and empties it until something renders, and inside that window
   every take alike reports no newer one. A pinned pane never follows, which is what the pin is for.
+- **A picture nothing can finish says so beside the Task button.** When `blockedNote` finds a
+  reason — the task gave up, something upstream is unapproved, or a reference the bytes were drawn
+  against has moved — a red `?` follows Task in the header, and its tooltip is that reason plus
+  where to read the rest. It sits in the header rather than the body because the band that says
+  the same thing is below the picture, and a tall asset pushes it off screen. Every sentence it
+  shows is written somewhere else (by the pipeline, by `asset.accept`'s refusal, by the suspension
+  check), so the marker can never disagree with the band under it.

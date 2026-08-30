@@ -3,6 +3,8 @@ import {
   categoryOfCommand,
   DEFAULT_FILTER,
   linkTarget,
+  NOTIFICATION_PAGE,
+  notificationPage,
   shouldFileCommand,
   unreadCount,
   visibleNotifications,
@@ -141,6 +143,39 @@ describe('unreadCount', () => {
   it('ignores showHidden', () => {
     const all = [note(), note({ h: 1 })];
     expect(unreadCount(all, { ...DEFAULT_FILTER, showHidden: true })).toBe(1);
+  });
+});
+
+describe('notificationPage', () => {
+  const many = (n: number): Notification[] => Array.from({ length: n }, () => note());
+
+  it('draws one page and counts what is behind it', () => {
+    const page = notificationPage(many(NOTIFICATION_PAGE + 7), NOTIFICATION_PAGE);
+    expect(page.rows).toHaveLength(NOTIFICATION_PAGE);
+    expect(page.more).toBe(7);
+  });
+
+  it('draws the whole list when it fits, with nothing behind it', () => {
+    const page = notificationPage(many(4), NOTIFICATION_PAGE);
+    expect(page.rows).toHaveLength(4);
+    expect(page.more).toBe(0);
+  });
+
+  it('never draws less than a page, whatever it is asked for', () => {
+    expect(notificationPage(many(NOTIFICATION_PAGE + 1), 0).rows).toHaveLength(NOTIFICATION_PAGE);
+  });
+
+  it('reaches the end once it has been asked for more than there is', () => {
+    const page = notificationPage(many(NOTIFICATION_PAGE + 2), NOTIFICATION_PAGE * 4);
+    expect(page.rows).toHaveLength(NOTIFICATION_PAGE + 2);
+    expect(page.more).toBe(0);
+  });
+
+  it('keeps the order it was given, newest first', () => {
+    const all = many(3);
+    expect(notificationPage(all, NOTIFICATION_PAGE).rows.map((n) => n.id)).toEqual(
+      all.map((n) => n.id),
+    );
   });
 });
 

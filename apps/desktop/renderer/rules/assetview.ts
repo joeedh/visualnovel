@@ -291,3 +291,19 @@ export function promptShown(info: AssetInfo): { text: string; derived: boolean }
   if (info.prompt !== undefined) return { text: info.prompt, derived: false };
   return { text: '', derived: false };
 }
+
+/**
+ * Why this picture is not moving, or null when nothing is holding it up. Three states qualify, in
+ * the order a reader needs them: the task gave up, something upstream is unapproved, or a
+ * reference it was drawn against has moved.
+ *
+ * Every sentence here is written elsewhere — by the pipeline, by `asset.accept`'s refusal, by the
+ * suspension check — so the header's marker cannot say something the body contradicts. It is a
+ * summary for the header, not a fourth opinion.
+ */
+export function blockedNote(info: AssetInfo): string | null {
+  if (info.failure) return failureNote(info);
+  if (info.unapproved) return info.unapproved;
+  if (info.suspended) return info.suspended;
+  return null;
+}

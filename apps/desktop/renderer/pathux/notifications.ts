@@ -11,6 +11,8 @@
 import { UIBase, type Container } from 'pathux';
 import {
   DEFAULT_FILTER,
+  NOTIFICATION_PAGE,
+  notificationPage,
   unreadCount,
   visibleNotifications,
   type NotificationFilter,
@@ -101,6 +103,8 @@ class NotificationList {
   private readonly body: Container;
   /** Rows the author archived this session, so the ×'d row can offer Undo in the same space. */
   private readonly archived = new Set<string>();
+  /** How many rows this popup has been asked to draw. Rises a page at a time, never falls. */
+  private shown = NOTIFICATION_PAGE;
 
   constructor(anchor?: Anchor) {
     const screen = shell().screen;
@@ -132,8 +136,9 @@ class NotificationList {
   render(): void {
     this.body.clear();
     const shown = this.showing();
+    const page = notificationPage(shown, this.shown);
 
-    this.header(shown);
+    this.header(shown, page.rows.length);
     const rows = this.body.col();
     rows.style['overflowY'] = 'auto';
     // Bounded by the window as well as by a fixed height, because 420px is taller than a short
@@ -148,7 +153,8 @@ class NotificationList {
       const empty = rows.label(this.emptyBecause());
       empty.style['flexShrink'] = '0';
     }
-    shown.forEach((note, i) => this.row(rows, note, i > 0));
+    page.rows.forEach((note, i) => this.row(rows, note, i > 0));
+    if (page.more > 0) this.moreRow(rows, page.more);
 
     this.body.flushUpdate();
   }
@@ -172,12 +178,33 @@ class NotificationList {
       : 'Nothing new — everything is archived.';
   }
 
-  private header(shown: readonly Notification[]): void {
+  /**
+   * The way to the rest of the list. Drawing every row is what made opening the bell slow on a
+   * project with a long log, so the rows behind this button are never built until it is pressed.
+   */
+  private moreRow(rows: Container, more: number): void {
+    const row = rows.row();
+    row.style['flexShrink'] = '0';
+    const next = Math.min(more, NOTIFICATION_PAGE);
+    const button = row.button(`Show ${next} more`, () => {
+      this.shown += NOTIFICATION_PAGE;
+      this.render();
+    });
+    button.description = `${more} older notification(s) are not drawn yet. This draws the next ${next}.`;
+  }
+
+  private header(shown: readonly Notification[], drawn: number): void {
     const row = this.body.row();
     // The list below is the part that scrolls, and a header allowed to shrink is the first thing
     // the rows are drawn on top of
     row.style['flexShrink'] = '0';
-    row.label(`NOTIFICATIONS · ${shown.length}`);
+    // Both numbers, because a count that said only how many were drawn would read as the whole
+    // log having that many rows in it.
+    row.label(
+      drawn < shown.length
+        ? `NOTIFICATIONS · ${drawn} of ${shown.length}`
+        : `NOTIFICATIONS · ${shown.length}`,
+    );
 
     // An already-archived row is still drawn, offering its Undo; Clear has nothing to do to it.
     const live = shown.filter((note) => !note.h);

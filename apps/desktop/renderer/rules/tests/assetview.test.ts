@@ -1,6 +1,7 @@
 import {
   approveAction,
   badgesOf,
+  blockedNote,
   characterOf,
   driftNote,
   failureNote,
@@ -387,5 +388,28 @@ describe('promptShown', () => {
   it('falls back to what the bytes recorded when the project no longer describes it', () => {
     expect(promptShown(info({ prompt: 'old' }))).toEqual({ text: 'old', derived: false });
     expect(promptShown(info())).toEqual({ text: '', derived: false });
+  });
+});
+
+describe('blockedNote', () => {
+  it('answers nothing for a picture nothing is holding up', () => {
+    expect(blockedNote(info())).toBeNull();
+  });
+
+  it('reports the failure first, in the words the band already uses', () => {
+    const held = info({ failure: failed(), unapproved: 'Approve the plate first.' });
+    expect(blockedNote(held)).toBe(failureNote(held));
+  });
+
+  it('reports an unapproved upstream in the refusal asset.accept would give', () => {
+    expect(blockedNote(info({ unapproved: 'Approve the plate first.' }))).toBe(
+      'Approve the plate first.',
+    );
+  });
+
+  it('reports a suspension when nothing louder is wrong', () => {
+    expect(blockedNote(info({ suspended: 'The plate it was drawn against moved.' }))).toBe(
+      'The plate it was drawn against moved.',
+    );
   });
 });

@@ -6,9 +6,11 @@ import { menuFor } from '../doctree.js';
 import { assetNode } from '../open.js';
 import { openCommandDialog } from '../dialog.js';
 import { showContextMenu } from '../showmenu.js';
+import { TOKENS } from '../tokens.js';
 import {
   approveAction,
   badgesOf,
+  blockedNote,
   driftNote,
   failureNote,
   promoteAction,
@@ -587,6 +589,19 @@ export class AssetEditor extends VnEditor {
     const task = this.bar.button('Task', () => this.showTask());
     task.disabled = !info?.sourceTask;
     task.description = 'Show the task that produced this asset in the inspector';
+
+    // Beside Task rather than in the body, because the band that says the same thing is below the
+    // picture and a tall asset pushes it off screen.
+    const blocked = info ? blockedNote(info) : null;
+    if (blocked) {
+      const mark = this.bar.label('?');
+      mark.description = `${blocked} Click Task to see what is holding it up.`;
+      mark.setCSSAfter(() => {
+        mark.style['padding'] = '0px 8px';
+        mark.style['color'] = TOKENS.vermilion;
+        mark.style['fontWeight'] = '800';
+      });
+    }
 
     const save = this.bar.button('Download', () => void this.download());
     save.disabled = !info;
