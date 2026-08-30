@@ -442,22 +442,23 @@ export class CommandStack<Host = unknown> {
     openCheckpoint.failed = error;
     const { seq, shortLabel, scope, pre } = openCheckpoint;
     const journal = this.opts.journal;
+    // Root-relative, the same as every other `written` — `restoreScoped` itself only knows the
+    // scope-relative names, so the prefix is put back on here before a pane can compare them.
+    let restored: string[] = [];
 
     if (journal) {
       try {
         const current = await journal.currentTreeScoped(scope);
         if (current !== null && current !== pre) {
-          const restored = await journal.restoreScoped(
+          const move = await journal.restoreScoped(
             scope,
             current,
             journal.point(pre, current),
             'pre',
           );
-          if (restored.error) {
-            this.opts.context.log(
-              'warn',
-              `checkpoint rollback (seq ${seq}) failed: ${restored.error}`,
-            );
+          restored = move.changed.map((path) => `${scope}/${path}`);
+          if (move.error) {
+            this.opts.context.log('warn', `checkpoint rollback (seq ${seq}) failed: ${move.error}`);
           }
         }
       } catch (err) {
@@ -481,6 +482,7 @@ export class CommandStack<Host = unknown> {
       status: 'error',
       message: `Rolled back "${shortLabel}": ${error}`,
       error,
+      ...(restored.length > 0 ? { written: restored } : {}),
     };
     // The same two calls `moveBody` makes for an ordinary restore: the rollback's commit lands
     // in `commands.jsonl` with a reason attached, and retires any commit an inner command already
@@ -701,7 +703,10 @@ export class CommandStack<Host = unknown> {
       const { error, changed } = scope
         ? await journal.restoreScoped(scope, checked.tree, opts.point, opts.to)
         : await journal.restore(checked.tree, opts.point, opts.to);
-      restored = changed;
+      // `restoreScoped` reports paths relative to the scope directory; `written` is read as
+      // root-relative everywhere else (a pane's `onWrote` matches it against `graphDocPath`), so a
+      // scoped undo/redo has to carry the scope back on or its write reads as touching nothing.
+      restored = scope ? changed.map((path) => `${scope}/${path}`) : changed;
       // A restore that failed part way through leaves the worktree between the two trees, so the
       // failure is reported rather than thrown: a caller told nothing happened would be wrong.
       if (error !== undefined) return { ok: false, error: `${kind} failed: ${error}` };

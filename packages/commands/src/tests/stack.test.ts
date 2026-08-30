@@ -1013,6 +1013,17 @@ describe('checkpoints, against a real UndoJournal', () => {
           return { message: `wrote ${props.text}`, written: ['graphs/a.json'] };
         },
       }),
+      define({
+        id: 'demo.writeGraphFails',
+        title: 'Write graph (fails)',
+        description: 'Overwrite the scoped graph file, then throw.',
+        mutating: true,
+        props: { text: prop.string('file contents') },
+        async run(props) {
+          await fs.writeFile(join(dir, 'graphs', 'a.json'), props.text);
+          throw new Error('boom');
+        },
+      }),
     ]);
     const stack = new CommandStack<Host>({
       registry,
@@ -1045,6 +1056,56 @@ describe('checkpoints, against a real UndoJournal', () => {
       const undone = await stack.undo();
       expect(undone).toMatchObject({ ok: true });
       expect(await fs.readFile(join(dir, 'graphs', 'a.json'), 'utf8')).toBe('{"nodes":[]}\n');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  /**
+   * `written` is read as root-relative everywhere else (a pane's `onWrote` matches it against
+   * its own document path), but `restoreScoped` reports paths relative to the scope directory.
+   * Without the scope folded back on, a checkpoint's undo/redo record named `a.json` instead of
+   * `graphs/a.json`, so an open Gen Graph pane never recognized the write and never reloaded —
+   * the redo (and undo) worked on disk but looked like nothing happened on screen.
+   */
+  it('reports undo/redo written paths root-relative, not scope-relative', async () => {
+    const { stack, cleanup } = await realCheckpointSetup();
+    try {
+      const handle = await stack.beginCheckpoint('Duplicate', 'Duplicated a node', 'graphs');
+      await stack.exec('demo.writeGraph', { text: '{"nodes":[1]}\n' }, 'ui', undefined, handle);
+      await stack.endCheckpoint(handle);
+
+      const undone = await stack.undo();
+      expect(undone).toMatchObject({ ok: true, record: { written: ['graphs/a.json'] } });
+
+      const redone = await stack.redo();
+      expect(redone).toMatchObject({ ok: true, record: { written: ['graphs/a.json'] } });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  /** Same root cause as the undo/redo case above, but for `failCheckpoint`'s own rollback restore. */
+  it('reports a checkpoint rollback written path root-relative too', async () => {
+    const { dir, stack, cleanup } = await realCheckpointSetup();
+    try {
+      const handle = await stack.beginCheckpoint('Duplicate', 'Duplicated a node', 'graphs');
+      await stack.exec('demo.writeGraph', { text: '{"nodes":[1]}\n' }, 'ui', undefined, handle);
+      const failed = await stack.exec(
+        'demo.writeGraphFails',
+        { text: '{"nodes":[1,2]}\n' },
+        'ui',
+        undefined,
+        handle,
+      );
+      expect(failed).toMatchObject({ ok: false, error: 'boom' });
+
+      const outcome = await stack.endCheckpoint(handle);
+      expect(outcome).toMatchObject({ ok: false, error: 'boom' });
+      expect(await fs.readFile(join(dir, 'graphs', 'a.json'), 'utf8')).toBe('{"nodes":[]}\n');
+
+      const rollback = stack.history().find((r) => r.id === 'stack.checkpointRollback');
+      expect(rollback).toMatchObject({ status: 'error', written: ['graphs/a.json'] });
     } finally {
       await cleanup();
     }
