@@ -29,6 +29,7 @@
       "@vn/gengraph/plugin": ["./packages/gengraph/src/plugin.ts"],
       "@vn/cli": ["./apps/cli/src/index.ts"],
       "pathux-graph": ["./apps/desktop/dist/pathux-types/graph/index.d.ts"],
+      "pathux-base-types": ["./apps/desktop/dist/pathux-types/core/base/ui_base_types.d.ts"],
       "pathux-toolprop": ["./apps/desktop/dist/pathux-types/path-controller/toolsys/toolprop.d.ts"],
       "nstructjs": ["./vendor/nstructjs/build/structjs.d.ts"]
     }

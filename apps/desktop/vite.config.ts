@@ -26,6 +26,10 @@ export default defineConfig({
         __dirname,
         '../../vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
       ),
+      'pathux-base-types': resolve(
+        __dirname,
+        '../../vendor/path.ux/scripts/core/base/ui_base_types.ts',
+      ),
       nstructjs: resolve(__dirname, '../../vendor/nstructjs'),
     },
   },

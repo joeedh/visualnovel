@@ -6,8 +6,9 @@
 import { Node } from 'pathux-graph';
 import type { NodeDef, Sockets } from 'pathux-graph';
 import { BoolProperty, PropFlags, StringProperty } from 'pathux-toolprop';
+import { TEXT_MODELS } from '@vn/types';
 
-import { mtok } from '../prices.js';
+import { mtok, SHIPPED_PRICES } from '../prices.js';
 import { registerGenNode, type NodeMigration } from '../registry.js';
 import { ImageSocket, RefsSocket, TextSocket } from './sockets.js';
 
@@ -126,6 +127,30 @@ const TEMPLATE_VARS: NodeMigration = {
   placeholders: ['template'],
 };
 
+/** Image models the shipped price table knows about, so the list can't drift from what estimates price. */
+function getImageModelList(): string[] {
+  return Object.keys(SHIPPED_PRICES.models).filter(
+    (id) => SHIPPED_PRICES.models[id]?.image !== undefined,
+  );
+}
+
+/**
+ * Builds a `customPropUX` entry for a model prop, drawing it as a dropdown over `models`
+ * rather than a free-text field. `getModels` is called each time the menu opens, so the list
+ * stays current if it is ever backed by something dynamic.
+ */
+function modelDropdownUX(
+  getModels: () => readonly string[],
+): NonNullable<NodeDef['customPropUX']>[string] {
+  return (row, path, label) => {
+    const dropdown = row.listenum(path, {
+      enumDef: () => Object.fromEntries(getModels().map((m) => [m, m])),
+      name: label,
+    });
+    dropdown.setAttribute('fit-to-width', 'true');
+  };
+}
+
 /** Rewrites its input through a text model. */
 export class GenRewrite extends Node<{ text: TextSocket }, { text: TextSocket }> {
   static override graphDef(): NodeDef {
@@ -140,7 +165,10 @@ export class GenRewrite extends Node<{ text: TextSocket }, { text: TextSocket }>
         instruction: str('', 'Instruction', 'What to ask the model to do to the text.'),
         system: str('', 'System', 'The system prompt sent ahead of the instruction.'),
       },
-      typeVersion: 1,
+      customPropUX: {
+        model: modelDropdownUX(() => TEXT_MODELS),
+      },
+      typeVersion: 2,
     };
   }
 }
@@ -169,6 +197,9 @@ export class GenImage extends Node<
           'The aspect ratio to ask for, such as 16:9. Empty asks for none.',
         ),
         seed: str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
+      },
+      customPropUX: {
+        model: modelDropdownUX(getImageModelList),
       },
       typeVersion: 1,
     };
@@ -199,6 +230,9 @@ export class GenEditImage extends Node<
           'The aspect ratio to ask for, such as 16:9. Empty asks for none.',
         ),
         seed: str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
+      },
+      customPropUX: {
+        model: modelDropdownUX(getImageModelList),
       },
       typeVersion: 1,
     };

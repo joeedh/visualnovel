@@ -28,6 +28,7 @@ const VENDOR_ALIAS = {
     REPO_ROOT,
     'vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
   ),
+  'pathux-base-types': resolve(REPO_ROOT, 'vendor/path.ux/scripts/core/base/ui_base_types.ts'),
   nstructjs: resolve(REPO_ROOT, 'vendor/nstructjs/build/nstructjs_es6.js'),
 };
 

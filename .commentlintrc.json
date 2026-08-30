@@ -1,15 +1,13 @@
 {
   "exclude": ["vendor/path.ux/**", "vendor/nstructjs/**"],
   "cache": true,
-  "markdown" : false,
+  "markdown": false,
   // whitelist
   "markdownFiles": [
-     "CLAUDE.md",
-     "docs/reference/swappingPaneEditors.md",
-     "docs/guides/showEditorPaneGuide.md",
-     "docs/reference/pipeline-contracts.md"
+    "CLAUDE.md",
+    "docs/reference/swappingPaneEditors.md",
+    "docs/guides/showEditorPaneGuide.md",
+    "docs/reference/pipeline-contracts.md"
   ],
-  "disableRules": [
-    "P10"
-  ]
+  "disableRules": ["P10"]
 }

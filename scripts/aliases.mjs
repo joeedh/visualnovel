@@ -64,6 +64,7 @@ export const alias = Object.fromEntries([
     'pathux-toolprop',
     resolve(REPO_ROOT, 'vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts'),
   ],
+  ['pathux-base-types', resolve(REPO_ROOT, 'vendor/path.ux/scripts/core/base/ui_base_types.ts')],
   // Pinned to the vendored submodule so one nstructjs STRUCT registry serves both
   // path.ux and this repo; a second copy would register nothing path.ux's classes use.
   ['nstructjs', resolve(REPO_ROOT, 'vendor/nstructjs/build/nstructjs_es6.js')],

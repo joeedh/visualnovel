@@ -71,6 +71,7 @@ const shared = {
     // specs are authored with; source here, declarations in the root tsconfig's paths.
     '^pathux-graph$': '<rootDir>/vendor/path.ux/scripts/graph/index.ts',
     '^pathux-toolprop$': '<rootDir>/vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
+    '^pathux-base-types$': '<rootDir>/vendor/path.ux/scripts/core/base/ui_base_types.ts',
     // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
     // same build ships beside it in CommonJS. Shared because both the desktop app and
     // @vn/gengraph depend on it, always as the `vendor/nstructjs` submodule.
