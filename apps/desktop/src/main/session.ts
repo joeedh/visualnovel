@@ -21,7 +21,7 @@ import {
   type ResolvedKeys,
   type VendorKeyStatus,
 } from '@vn/config';
-import { chmod, mkdir, readdir, readFile, rename, stat } from 'node:fs/promises';
+import { chmod, mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
 import {
@@ -4167,6 +4167,23 @@ export class WorkspaceSession {
     const decided = await this.adoptPlan(hash, info.drawnFor, true);
     if (!decided.ok) return { ok: false, reason: decided.reason };
     return { ok: true, slot: info.drawnFor, newer: info.newerTake, label: info.label };
+  }
+
+  /**
+   * Copy one asset's bytes to a path the author chose. Nothing about the project changes — this is
+   * the picture leaving, not the project being edited — so no manifest is touched and no
+   * provenance is written, and the path is deliberately not narrowed to the workspace.
+   */
+  async exportAsset(
+    hash: string,
+    file: string,
+  ): Promise<{ ok: boolean; message: string; file?: string }> {
+    const project = await loadProject(this.dir);
+    const asset = project.store.manifest().find((a) => a.hash === hash);
+    if (!asset) return { ok: false, message: `No asset "${hash}" in the manifest.` };
+    const bytes = await project.store.read({ hash: asset.hash, ext: asset.ext });
+    await writeFile(file, bytes);
+    return { ok: true, message: `Saved ${basename(file)}.`, file };
   }
 
   /** What `asset.restore` would put back, without writing it. */

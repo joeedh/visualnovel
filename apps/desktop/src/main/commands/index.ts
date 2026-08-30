@@ -34,6 +34,7 @@ import { artGenerate, artPromote, artRedraw, artSetNotes, artSetSeed } from './a
 import {
   assetAccept,
   assetAdopt,
+  assetExport,
   assetInfo,
   assetRegenerate,
   assetReplace,
@@ -196,6 +197,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     artSetSeed,
     assetAccept,
     assetAdopt,
+    assetExport,
     assetInfo,
     assetRegenerate,
     assetReplace,

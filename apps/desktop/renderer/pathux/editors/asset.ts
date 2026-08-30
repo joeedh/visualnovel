@@ -210,6 +210,12 @@ export class AssetEditor extends VnEditor {
     report(await exec(action.id, action.props));
   }
 
+  /** Save a copy of the picture on screen. The chooser is main's, so the path never crosses IPC. */
+  private async download(): Promise<void> {
+    if (!this.info) return;
+    report(await exec('asset.export', { hash: this.info.hash }));
+  }
+
   /**
    * Requeue the task behind these bytes and run it. `asset.regenerate` is `confirm: true` and
    * takes the run itself, so this is one act with one provenance record rather than two.
@@ -581,6 +587,12 @@ export class AssetEditor extends VnEditor {
     const task = this.bar.button('Task', () => this.showTask());
     task.disabled = !info?.sourceTask;
     task.description = 'Show the task that produced this asset in the inspector';
+
+    const save = this.bar.button('Download', () => void this.download());
+    save.disabled = !info;
+    save.description = info
+      ? 'Save a copy of this picture wherever you like. The project is not touched'
+      : 'No picture on screen to save';
 
     // The same entries the tree's right-click offers, raised from the pane already showing the
     // asset — which is also the check that `menuFor` is node-shaped rather than tree-shaped. The

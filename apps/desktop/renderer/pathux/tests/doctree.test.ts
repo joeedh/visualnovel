@@ -532,6 +532,7 @@ describe('menuFor', () => {
       'gate.approve',
       'art.promote',
       MENU_SEP,
+      'asset.export',
       'app.copy',
       'view.open',
     ]);
@@ -546,6 +547,7 @@ describe('menuFor', () => {
       'asset.regenerate',
       'asset.unapprove',
       MENU_SEP,
+      'asset.export',
       'app.copy',
       'view.open',
     ]);

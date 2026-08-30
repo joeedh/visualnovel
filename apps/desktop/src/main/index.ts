@@ -713,6 +713,19 @@ function getStack(): CommandStack<CommandHost> {
         });
         return result.canceled ? [] : result.filePaths;
       },
+      saveFile: async (options, target) => {
+        const parent = windowFor(target);
+        if (!parent) throw new Error('that window is gone');
+        const result = await dialog.showSaveDialog(parent, {
+          title: options?.title ?? 'Save a copy',
+          buttonLabel: options?.buttonLabel ?? 'Save',
+          ...(options?.defaultName ? { defaultPath: options.defaultName } : {}),
+          ...(options?.extensions
+            ? { filters: [{ name: options.filterName ?? 'Files', extensions: options.extensions }] }
+            : {}),
+        });
+        return result.canceled ? undefined : result.filePath;
+      },
       // Lazily through `getStack`, not the local `stack`: the host is built while the stack
       // is still being constructed, so capturing it here would capture `undefined`.
       check: (id, props) => getStack().check(id, props),

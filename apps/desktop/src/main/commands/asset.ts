@@ -6,6 +6,7 @@
  * is authored input instead, and lives in `art.setNotes`.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
+import { downloadName } from '../../shared/assetfile.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -69,6 +70,37 @@ export const assetAccept = define({
     const result = await ctx.host.session.acceptAsset(hash);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: ['manifest.json'] };
+  },
+});
+
+export const assetExport = define({
+  id: 'asset.export',
+  title: 'Download image…',
+  description:
+    "Save a copy of this picture's bytes wherever you choose. The project is not touched — the " +
+    'store keeps the asset, and where the copy goes is yours. Cancelling changes nothing.',
+  notes:
+    "Save a copy of one asset's bytes outside the project, through the native save dialog. `mutating: false`: nothing in the workspace changes, so there is no commit and no undo point. Cancelling changes nothing.",
+  mutating: false,
+  props: { hash: prop.string('the asset to save a copy of') },
+  async run({ hash }, ctx) {
+    const info = await ctx.host.session.assetInfo(hash);
+    if (!info) throw new Error(`No asset "${hash}" in the manifest.`);
+    const file = await ctx.host.saveFile(
+      {
+        title: 'Download image',
+        buttonLabel: 'Save',
+        defaultName: downloadName(info.label, info.hash, info.ext),
+        extensions: [info.ext],
+        filterName: 'Images',
+      },
+      ctx.origin,
+    );
+    if (file === undefined) return { message: 'Cancelled.' };
+
+    const result = await ctx.host.session.exportAsset(hash, file);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result };
   },
 });
 

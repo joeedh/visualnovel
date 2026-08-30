@@ -15,6 +15,18 @@ export interface FilePickOptions {
   single?: boolean;
 }
 
+/** Presentation of a save-as chooser, and the name it opens filled in with. */
+export interface FileSaveOptions {
+  title?: string;
+  buttonLabel?: string;
+  /** The filename the dialog opens on, which the author may change. */
+  defaultName?: string;
+  /** Extensions offered, without dots. Absent means every file. */
+  extensions?: string[];
+  /** What that filter is called in the dialog's dropdown. */
+  filterName?: string;
+}
+
 /**
  * Presentation of a directory chooser. The defaults are worded for opening a project, so a
  * chooser that only browses for a folder overrides them.
@@ -60,6 +72,12 @@ export interface CommandHost {
   pickDirectory(options?: DirectoryPickOptions, target?: WindowId): Promise<string | undefined>;
   /** The native file chooser. Empty when the user cancelled; throws with no window. */
   pickFiles(options?: FilePickOptions, target?: WindowId): Promise<string[]>;
+  /**
+   * The native save-as chooser, for a file leaving the app. `undefined` when the user cancelled;
+   * throws with no window. Where it saves to is the author's, so nothing here narrows it to the
+   * workspace — a downloaded picture usually belongs anywhere but.
+   */
+  saveFile(options?: FileSaveOptions, target?: WindowId): Promise<string | undefined>;
   /** Open a new window, optionally on an editor and subject. Answers its index. */
   newWindow(options?: { editor?: string; subject?: string }): Promise<WindowId>;
   /** Close one window — the origin when none is named. Answers whether there was one to close. */

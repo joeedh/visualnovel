@@ -377,6 +377,14 @@ it produces.
   claiming otherwise would hide it. A portrait is left out by name — an earlier look goes back
   through `gate.approve` — and the suspension and upstream-approval refusals are the ones accepting
   would have given.
+- **Download writes the bytes out of the store.** `asset.export` asks the host for a path through
+  `saveFile`, then copies the picture there; it reads the project and writes nothing back, so it is
+  not `mutating` and takes no confirmation. The offered name comes from `downloadName` in
+  `apps/desktop/src/shared/assetfile.ts`, which strips the characters a filesystem refuses, trims a
+  trailing dot or space, caps the length, and falls back to the short hash when the label survives
+  none of that or is a name Windows reserves. The button sits beside Task in the asset editor's
+  header, and the same act is on the document tree's asset menu, below the separator with the other
+  entries that leave the project alone.
 - **A concept gets a Promote strip instead, and only a concept does.** It names the location the
   sketch is bound to, takes a variant id, and runs `art.promote` — the variant joins that location's
   sheet if it is new, the bytes become the plate, and the next run adopts them. `promoteAction`

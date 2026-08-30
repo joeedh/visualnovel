@@ -401,6 +401,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
         ...approvalActs(key, node.approved === true),
         ...graphAct(node.slot),
         { label: MENU_SEP, id: MENU_SEP },
+        // Below the separator with the other acts that leave the project alone: this one copies
+        // the bytes out and changes nothing in the workspace
+        { label: 'Download image…', id: 'asset.export', props: { hash: key } },
         copyId('asset', key),
         {
           label: 'Open in the Asset editor',
