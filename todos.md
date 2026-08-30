@@ -1,10 +1,5 @@
-[ ]: pressing ctrl +/- should increase/decrease text size 
-     (presumably via whatever api electron exposes to alter devicePixelRatio?).
-[ ]: review the text in the run pipeline dialog.
-[ ]: make sure the debug agent editor has text warning the user about 
-     token cost.
 [ ]: typing '/' in the convo editor should show available skills with proper 
-     autocomplete semantics
+     autocomplete semantics.
 [ ]: DEFERRED: create a system where we can have default skills for the vn agent  that 
      are bundled with the app.  these are readonly, but the users are given 
 	 the option to copy the skill into their project repo.  skill with the 
@@ -29,6 +24,6 @@
      should display next to the task button in the header, with a tooltip explaining
 	 to click on the task button to see what's blocking the task.
 [ ]: clicking the notification button can take a while to pop up notifications, 
-     add support for paging so we're not instantiating all of them at once into 
-	 the DOM.
+     add support for paging notifications so we're not instantiating all of them 
+	 at once into  the DOM.
 	 
