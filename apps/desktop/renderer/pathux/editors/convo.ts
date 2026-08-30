@@ -14,7 +14,16 @@ import {
   setAskForm,
   takeSeed,
 } from '../agent.js';
-import { exec, report, setBudget, setEffort, setModel, toggleMode } from '../bridge.js';
+import { api } from '../../api.js';
+import {
+  exec,
+  onInvalidate,
+  report,
+  setBudget,
+  setEffort,
+  setModel,
+  toggleMode,
+} from '../bridge.js';
 import {
   AskCards,
   CHAT_CSS,
@@ -38,7 +47,7 @@ import {
 } from '../../../src/shared/convo.js';
 import { resumeRefusal } from '../../../src/shared/threads.js';
 import type { AskForm } from '../../rules/askform.js';
-import type { ConfirmRequest, Plan } from '../../../src/shared/ipc.js';
+import type { ConfirmRequest, Plan, SkillEntry } from '../../../src/shared/ipc.js';
 
 /**
  * The vnauthor conversation: the transcript, the plan card, the dialogue box and the composer.
@@ -81,6 +90,12 @@ export class ConvoEditor extends VnEditor {
   private budgetKey = '';
   /** The three bar facts that live in `ShellState` rather than in the conversation. */
   private barKey = '';
+  /**
+   * The project's skills, for the composer's `/` menu. Held rather than fetched per keystroke, and
+   * re-read whenever anything writes: `create_skill` is a turn in this very pane, so a composer
+   * that only read them at boot would not offer the skill the author just asked for.
+   */
+  private skills: readonly SkillEntry[] = [];
 
   static override define() {
     return {
@@ -106,7 +121,9 @@ export class ConvoEditor extends VnEditor {
     this.stage = new ChatStage({
       nameplate: 'VNAUTHOR',
       placeholder: 'Reply to vnauthor, or ask for a change…',
-      inputTitle: 'Say what you want changed. Enter sends it; the agent answers with a plan.',
+      inputTitle:
+        'Say what you want changed. Enter sends it; the agent answers with a plan. Start the ' +
+        'line with / to name one of this project’s skills.',
       sendTitle: 'Send what is in the box to the agent',
       // Through the registry like everything else, so interrupting from here and interrupting
       // from the palette are one act with one record. A turn that ended in the meantime is
@@ -115,13 +132,30 @@ export class ConvoEditor extends VnEditor {
       onSend: (text) => void ask(text),
       onStop: () => void exec('agent.stop').then(report),
       onPalette: () => openPalette(),
+      skills: () => this.skills,
     });
     this.surface.appendChild(this.stage.root);
     this.appendSurface(this.surface);
 
     this.asks = new AskCards(this.askHost());
 
+    this.watch(
+      () => onInvalidate(() => void this.loadSkills()),
+      () => void this.loadSkills(),
+    );
+    void this.loadSkills();
+
     this.rebuild();
+  }
+
+  /** Re-read the skills the `/` menu offers. A project with none simply offers nothing. */
+  private async loadSkills(): Promise<void> {
+    try {
+      this.skills = await api.invoke('workspace:skills');
+    } catch {
+      // Nothing to say and nothing to break: with no list the composer treats `/` as a character.
+      this.skills = [];
+    }
   }
 
   /** The vnauthor side of a question card: the store in `agent.ts`, and this pane's redraw. */

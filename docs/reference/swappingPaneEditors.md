@@ -173,13 +173,13 @@ function sparing(candidates: readonly Pane[]): readonly Pane[] {
 Two editors are covered last, and `SPARED` lists them in the order the rules are most reluctant
 to cover them.
 
-- **Documents** is the document tree, which is how the author reached whatever is opening.
-  Covering it takes away the list the next click comes from. This is the rule a shot
-  double-clicked in Shot Coverage used to break: the tree was the biggest pane that was not the
-  strip, so the frame landed on it.
-- **Convo** is the one editor whose contents the author wrote. Every other editor redraws from
-  the project, so covering it costs a scroll position at worst; covering a transcript mid-turn
-  hides the answer the author is waiting for.
+The document tree is how the author reached whatever is opening, so covering it takes away the
+list the next click comes from. That is the rule a shot double-clicked in Shot Coverage used to
+break: the tree was the biggest pane that was not the strip, so the frame landed on it.
+
+Convo is the one editor whose contents the author wrote. Every other editor redraws from the
+project, so covering it costs a scroll position at worst; covering a transcript mid-turn hides
+the answer the author is waiting for.
 
 `sparing` drops both from a candidate list. When that leaves nothing, it walks `SPARED` backwards
 and answers with the least reluctantly spared kind present — a mesh of a tree and a transcript

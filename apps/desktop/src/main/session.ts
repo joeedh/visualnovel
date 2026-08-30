@@ -4315,11 +4315,11 @@ export class WorkspaceSession {
   }
 
   /**
-   * The project's skills, as the tree needs them — one `discoverSkills` per doc-tree read. Only
-   * identity fields ship; the instruction body is dropped here rather than sent to the renderer
-   * and ignored there.
+   * The project's skills, as the tree and the composer's `/` completion need them — one
+   * `discoverSkills` per read. Only identity fields ship; the instruction body is dropped here
+   * rather than sent to the renderer and ignored there.
    */
-  private async skillEntries(): Promise<SkillEntry[]> {
+  async skillEntries(): Promise<SkillEntry[]> {
     const skills = await discoverSkills(skillRoots(this.dir));
     return skills.map((skill) => ({
       id: skill.id,

@@ -745,6 +745,25 @@ export interface DocTree {
 }
 
 /**
+ * One skill, as anything that lists them needs it. Deliberately not `@vn/authoring`'s `Skill`,
+ * which carries the whole instruction body and absolute paths on disk; neither belongs on the
+ * wire, and a list that shipped the body would put every playbook in the renderer on every read.
+ *
+ * It lives here rather than beside the document tree because two things now list skills: the tree
+ * builds a row per skill, and the composer completes one when the author types `/`.
+ */
+export interface SkillEntry {
+  /** The skill directory's name, which is its id everywhere else. */
+  id: string;
+  name: string;
+  description: string;
+  /** Its `SKILL.md`, workspace-relative with `/` separators. */
+  file: string;
+  /** Whether a person has given it a script to run. */
+  script: boolean;
+}
+
+/**
  * What `doc.read` hands back. Re-exported rather than restated: the reader owns the shape, and
  * restating it here would let the two copies drift until a hash no longer meant the same thing
  * at both ends.
@@ -833,6 +852,12 @@ export interface InvokeChannels {
   'workspace:filetree': () => DocNode[];
   /** The files under `.aiagent/skills`, which the document tree deliberately does not carry. */
   'workspace:skilltree': () => DocNode[];
+  /**
+   * The project's skills as playbooks rather than as files — what the composer's `/` completion
+   * offers. Its own channel because that completion runs on a keystroke and `workspace:doctree`
+   * reads every storyboard and the manifest to answer.
+   */
+  'workspace:skills': () => SkillEntry[];
   'agent:run': (userInput: string) => RunResult;
   'agent:setMode': (mode: AgentMode) => AgentMode;
   'agent:setModel': (modelId: string) => string;

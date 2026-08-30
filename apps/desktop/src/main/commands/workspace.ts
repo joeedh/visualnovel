@@ -284,6 +284,20 @@ export const workspaceSkilltree = define({
   },
 });
 
+export const workspaceSkills = define({
+  id: 'workspace.skills',
+  title: 'Skills',
+  description:
+    "The project's playbooks as skills rather than as files — id, name and description, which " +
+    'is what a list of them to choose from needs.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const skills = await ctx.host.session.skillEntries();
+    return { message: `${skills.length} skill(s).`, data: skills };
+  },
+});
+
 export const workspaceReindex = define({
   id: 'workspace.reindex',
   title: 'Regenerate the project map',

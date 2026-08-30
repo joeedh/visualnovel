@@ -153,6 +153,19 @@ the same events** to write the transcript — see the threads bullet below.
   instead of a sentence about a scene that is gone; the prop defaults to `''` because the palette
   and CDP have no selection. It reaches the agent as a `context` message, not as part of the system
   prompt, and emits no `FeedItem` — a thread records what was said, not the context for saying it.
+- **A line that starts with `/` names a skill.** The composer opens a menu of the project's
+  playbooks as soon as the first character is a slash, filtered as the name is typed: ↑/↓ move,
+  Enter or Tab completes, Escape closes it until the token is left, and a click completes without
+  the box ever losing focus. Only at the start of the line, because a `/` anywhere else is
+  punctuation and a menu that opened over "and/or" would fight the author on every second
+  sentence. On send the token is **expanded** rather than passed through
+  (`renderer/rules/slash.ts`, pure and unit-tested): `/continuity-pass scene 3` reaches the agent
+  and the transcript as `Follow the “Continuity pass” skill (.aiagent/skills/continuity-pass/SKILL.md). scene 3`.
+  A token naming no skill goes as typed. The list comes from `workspace:skills`, its own channel
+  because a completion runs on a keystroke and `workspace:doctree` reads every storyboard and the
+  manifest to answer; it is re-read on `onInvalidate`, since `create_skill` is a turn in this very
+  pane. The debug agent's composer supplies no list and so has no menu — it talks to an agent with
+  no project.
 - **The agent's permission gate has three doors, and the pane answers all three.** Beside the plan
   card are a **question card** (`ask_user`: the question, a one-line box focused on arrival, Enter
   answers — an empty answer is allowed, because "nothing to add" is a real answer) and a **confirm

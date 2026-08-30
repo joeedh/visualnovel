@@ -11,7 +11,7 @@ import { isBaseKind } from '@vn/store';
 import { assetApproved, type SlotGraph } from '@vn/artgen';
 import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
-import type { DocNode, DocTree, EntityLinks } from '../shared/ipc.js';
+import type { DocNode, DocTree, EntityLinks, SkillEntry } from '../shared/ipc.js';
 
 /** Most children a branch prints before the remainder is folded into a counted `more` node. */
 export const DEFAULT_CAP = 50;
@@ -63,21 +63,7 @@ export interface DocTreeInput {
   cap?: number;
 }
 
-/**
- * One skill, as the tree needs it. Deliberately not `@vn/authoring`'s `Skill`, which carries the
- * whole instruction body and absolute paths on disk; neither belongs on the wire, and a tree that
- * shipped the body would put every playbook in the renderer on every read.
- */
-export interface SkillEntry {
-  /** The skill directory's name, which is its id everywhere else. */
-  id: string;
-  name: string;
-  description: string;
-  /** Its `SKILL.md`, workspace-relative with `/` separators. */
-  file: string;
-  /** Whether a person has given it a script to run. */
-  script: boolean;
-}
+export type { SkillEntry } from '../shared/ipc.js';
 
 /**
  * One generation graph, as the tree needs it. Deliberately not `GraphSummary`, which this module

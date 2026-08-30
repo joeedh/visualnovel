@@ -21,8 +21,15 @@ import {
   type,
   type AskForm,
 } from '../rules/askform.js';
+import {
+  completeSlash,
+  expandSlash,
+  matchSkills,
+  moveHighlight,
+  slashQuery,
+} from '../rules/slash.js';
 import type { CompactionMark, FeedItem } from '../../src/shared/convo.js';
-import type { AskRequest } from '../../src/shared/ipc.js';
+import type { AskRequest, SkillEntry } from '../../src/shared/ipc.js';
 
 /**
  * The frame around `studio.css`, which is imported as-is: the transcript, the dialogue box and the
@@ -159,6 +166,46 @@ const SURFACE_CSS = `
   cursor: default;
 }
 
+/* The skill menu a slash opens, over the transcript rather than under the composer: the composer
+   is already at the bottom of the pane, so a list below it would be off screen. */
+.cv-surface .composer { position: relative; }
+.cv-surface .slash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  background: var(--ink-raised);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.cv-surface .slash button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--ink-line);
+  background: none;
+  padding: 8px 13px;
+  text-align: left;
+}
+.cv-surface .slash button:last-child { border-bottom: 0; }
+.cv-surface .slash button.at { background: rgba(244, 162, 76, 0.12); }
+.cv-surface .slash .sk-id {
+  color: var(--sodium);
+  font-size: 13px;
+}
+.cv-surface .slash .sk-what {
+  display: block;
+  color: var(--mist-dim);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Where the agent's memory of the conversation was replaced by a summary. A rule rather than a
    turn: nobody said it, and the turns above it are still there to read. */
 .cv-surface .compaction {
@@ -266,8 +313,14 @@ export interface StageHooks {
   stopTitle: string;
   onSend(text: string): void;
   onStop(): void;
-  /** The `/` button beside the composer. Left out where the pane is not a palette host. */
+  /** The `⌘` button beside the composer. Left out where the pane is not a palette host. */
   onPalette?: () => void;
+  /**
+   * The project's skills, as the composer last heard them. A pane that supplies this gets the `/`
+   * menu and the expansion that goes with it; one that does not — the debug agent's, which talks
+   * to an agent with no project — gets a composer where `/` is an ordinary character.
+   */
+  skills?: () => readonly SkillEntry[];
 }
 
 /**
@@ -286,7 +339,18 @@ export class ChatStage {
   /** Shown only while a turn is in flight; the stop command refuses an idle agent by name anyway. */
   private readonly stopBtn: HTMLButtonElement;
 
+  private readonly hooks: StageHooks;
+  /** The `/` menu, empty and hidden until a token is being typed. */
+  private readonly menuEl: HTMLDivElement;
+  /** What the menu is offering, in the order it draws them. */
+  private offered: readonly SkillEntry[] = [];
+  /** Which row the keyboard is on. */
+  private at = 0;
+  /** Escape closes the menu until the token changes, so it does not reopen on the next keystroke. */
+  private dismissed = false;
+
   constructor(hooks: StageHooks) {
+    this.hooks = hooks;
     this.root = el('div', 'stage');
 
     const dbox = el('div', 'dbox');
@@ -311,17 +375,32 @@ export class ChatStage {
     // own keys hands Ctrl+Z and the shell's other gestures away mid-edit.
     this.input.addEventListener('keydown', (event) => {
       event.stopPropagation();
+      if (this.menuKey(event)) return;
       if (event.key === 'Enter') this.send(hooks);
     });
+    // A caret moved by an arrow key or a click leaves a token it is no longer in, and a menu that
+    // stayed open over one would complete a word nobody is typing.
+    this.input.addEventListener('input', () => this.offerSkills());
+    this.input.addEventListener('click', () => this.offerSkills());
+    this.input.addEventListener('keyup', () => this.offerSkills());
+    this.input.addEventListener('blur', () => this.closeMenu());
     composer.appendChild(this.input);
 
+    this.menuEl = el('div', 'slash') as HTMLDivElement;
+    this.menuEl.hidden = true;
+    // Stops the box losing focus, since the blur would detach the row before its click landed
+    this.menuEl.addEventListener('mousedown', (event) => event.preventDefault());
+    composer.appendChild(this.menuEl);
+
     if (hooks.onPalette) {
-      const slash = document.createElement('button');
-      slash.className = 'cmdbtn';
-      slash.textContent = '/';
-      slash.title = 'Open the palette and run a command by name (Ctrl+Shift+P)';
-      slash.addEventListener('click', () => hooks.onPalette!());
-      composer.appendChild(slash);
+      const palette = document.createElement('button');
+      palette.className = 'cmdbtn';
+      // A `>` rather than the `/` it used to be: `/` now names a skill in the box beside it, and
+      // one glyph cannot mean two things a keystroke apart.
+      palette.textContent = '>';
+      palette.title = 'Open the palette and run a command by name (Ctrl+Shift+P)';
+      palette.addEventListener('click', () => hooks.onPalette!());
+      composer.appendChild(palette);
     }
 
     this.sendBtn = document.createElement('button');
@@ -345,7 +424,97 @@ export class ChatStage {
     const text = this.input.value;
     if (!text.trim()) return;
     this.input.value = '';
-    hooks.onSend(text);
+    this.closeMenu();
+    hooks.onSend(hooks.skills ? expandSlash(text, hooks.skills()) : text);
+  }
+
+  // -------------------------------------------------------------------------
+  // The `/` menu
+  // -------------------------------------------------------------------------
+
+  /**
+   * Offer the skills the token in the box names, or close the menu because it names none. Called on
+   * every keystroke and every caret move, so it decides both when the menu opens and when it goes.
+   */
+  private offerSkills(): void {
+    const skills = this.hooks.skills?.();
+    const query = skills ? slashQuery(this.input.value, this.input.selectionStart ?? 0) : null;
+    // Leaving the token forgets an Escape, so the next `/` opens the menu again while the one it
+    // was pressed over stays closed for as long as the author is typing it.
+    if (query === null) this.dismissed = false;
+    if (query === null || this.dismissed) return this.closeMenu();
+    const matched = matchSkills(skills as readonly SkillEntry[], query);
+    if (matched.length === 0) return this.closeMenu();
+    // The highlight starts at the best match again whenever the list changes, because the row that
+    // was highlighted is rarely still the row under the same index.
+    if (matched.length !== this.offered.length || matched[0]?.id !== this.offered[0]?.id)
+      this.at = 0;
+    this.offered = matched;
+    this.paintMenu();
+  }
+
+  private paintMenu(): void {
+    this.menuEl.textContent = '';
+    this.menuEl.hidden = false;
+    this.offered.forEach((skill, index) => {
+      const row = document.createElement('button');
+      if (index === this.at) row.classList.add('at');
+      row.title = skill.description
+        ? `${skill.description} Enter puts /${skill.id} in the box; the agent is asked to follow it.`
+        : `Ask the agent to follow the ${skill.name} playbook.`;
+      row.appendChild(el('span', 'sk-id', `/${skill.id}`));
+      row.appendChild(el('span', 'sk-what', skill.description || skill.name));
+      row.addEventListener('click', () => this.takeSkill(skill));
+      this.menuEl.appendChild(row);
+    });
+    (this.menuEl.children[this.at] as HTMLElement | undefined)?.scrollIntoView({
+      block: 'nearest',
+    });
+  }
+
+  private closeMenu(): void {
+    this.menuEl.hidden = true;
+    this.menuEl.textContent = '';
+    this.offered = [];
+    this.at = 0;
+  }
+
+  /** Put the picked skill in the box, and leave the caret where what it applies to is typed. */
+  private takeSkill(skill: SkillEntry): void {
+    const { text, caret } = completeSlash(this.input.value, skill);
+    this.input.value = text;
+    this.closeMenu();
+    this.input.focus();
+    this.input.setSelectionRange(caret, caret);
+  }
+
+  /**
+   * A key the open menu answers, in which case the composer does not. Enter completes rather than
+   * sending, which is what makes the list worth opening — Enter on a half-typed name would send the
+   * half-typed name.
+   */
+  private menuKey(event: KeyboardEvent): boolean {
+    if (this.menuEl.hidden || this.offered.length === 0) return false;
+    switch (event.key) {
+      case 'ArrowDown':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.at = moveHighlight(this.at, this.offered.length, event.key === 'ArrowDown' ? 1 : -1);
+        this.paintMenu();
+        return true;
+      case 'Enter':
+      case 'Tab':
+        event.preventDefault();
+        this.takeSkill(this.offered[this.at] as SkillEntry);
+        return true;
+      case 'Escape':
+        event.preventDefault();
+        this.dismissed = true;
+        this.closeMenu();
+        return true;
+      default:
+        return false;
+    }
   }
 
   /** What the dialogue box says. */
