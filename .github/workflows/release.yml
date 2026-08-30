@@ -124,6 +124,13 @@ jobs:
       # separate `publish` job below exists to prevent.
       - run: pnpm package
 
+      # The one check only the built binary can make: whether the three packages left out of the
+      # bundle still resolve from the app image, whether the plugin bundler's binary shipped
+      # unpacked, and whether the debug agent's source snapshot is there and whole. Every one of
+      # those failures produces an installer that launches and looks right, so this runs before
+      # the artifact is uploaded rather than after someone installs it.
+      - run: pnpm smoke
+
       # Named files rather than the directory: `apps/desktop/release/` also holds `win-unpacked/`
       # and electron-builder's own debug dump, neither of which belongs in a release. The globs
       # for targets we do not build yet cost nothing and mean the matrix line above really is the

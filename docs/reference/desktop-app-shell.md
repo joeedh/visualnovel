@@ -63,7 +63,9 @@ pnpm --filter @vn/desktop dev -- --mock         # live dev loop
 `--project <dir>` overrides the workspace (`VN_PROJECT=<dir>` is an equivalent env fallback).
 
 - **Shipping it is a different command.** `pnpm package` builds an installer and `pnpm smoke`
-  runs the packaged binary to prove the two lazily-imported SDKs actually reached the app image.
+  runs the packaged binary to prove the two lazily-imported SDKs, the plugin bundler's own binary
+  and the debug agent's source snapshot all reached the app image. The release workflow runs it
+  before uploading anything.
   Why it is built the way it is: [`../guides/toolchain.md`](../guides/toolchain.md#packaging-the-desktop-app) and
   [`../plans/archive/INDEX.md#packaging-the-desktop-app`](../plans/archive/INDEX.md#packaging-the-desktop-app).
 - **`pnpm vndesktop` opens CDP on 9222**, like the dev loop — `scripts/vndesktop.mjs` sets

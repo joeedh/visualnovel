@@ -136,9 +136,13 @@ about how it fits the rest of the toolchain:
   after every check that only watches for a window. `scripts/smoke.desktop.mjs` launches the built
   binary with `--smoke`, which forces one import of each and exits; `src/main/smoke.ts` holds the
   logic and its tests. It runs with the vendor key variables blanked, because a smoke test that
-  quietly leans on the developer's key is not a test of the installer. The same run checks that
-  `sourceRoot()` finds the shipped source, which fails the same silent way: the app is perfectly
-  usable, and only the debug agent's source box refuses.
+  quietly leans on the developer's key is not a test of the installer. The same run checks the
+  shipped source, which fails the same silent way: the app is perfectly usable, and only the debug
+  agent's source box refuses. It checks every root of `READABLE`, not just that `sourceRoot()`
+  answered — that lookup is satisfied by `CLAUDE.md` and `packages/` alone, so a snapshot that lost
+  `docs/` or `apps/` would resolve and the analyst would then read a build it cannot see half of.
+  The release workflow runs `pnpm smoke` between `pnpm package` and the artifact upload, so none of
+  these reaches a draft release.
 - **The installer carries the app's own source, at `<resourcesPath>/source`.** The debug agent
   reads it to explain a bad conversation. `scripts/package.desktop.mjs` bundles
   `packages/agentreport/src/sourcemap.ts` to a throwaway CJS file (the trick

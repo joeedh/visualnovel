@@ -17,13 +17,18 @@
  *
  * The source check has the same shape. `extraResources` and `sourceRoot()` have to agree on one
  * directory name, and when they do not, the app runs correctly and Help ▸ Report a Difficult
- * Agent… refuses the source box — months later, on someone else's machine.
+ * Agent… refuses the source box — months later, on someone else's machine. It checks every root
+ * of `READABLE` rather than only that the directory resolved: `sourceRoot()` is satisfied by
+ * `CLAUDE.md` and `packages/`, so a snapshot that lost `docs/` or `apps/` would answer, and the
+ * analyst would then read a build it cannot see the UI layer of and say nothing about why.
  *
  * The packaged executable does those reads and nothing else. It takes no key, makes no call, and
  * opens no window, because constructing a client is a local act. Whether the key it was handed is
  * any good is `project.testKey`'s question, not this one.
  */
-import { sourceRoot } from '@vn/agentreport';
+import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
+import { READABLE, sourceRoot } from '@vn/agentreport';
 
 /** The dynamic `import()`, as a parameter — because it is the only part a test cannot run. */
 export type Loader = (spec: string) => Promise<unknown>;
@@ -80,6 +85,23 @@ async function transformCheck(load: Loader): Promise<SmokeCheck> {
 }
 
 /**
+ * Which roots of {@link READABLE} the snapshot at `root` does not hold. The analyst refuses a path
+ * outside that list by name, so a root missing from the image turns an honest refusal into "no
+ * such file".
+ */
+export async function missingRoots(root: string): Promise<string[]> {
+  const gone: string[] = [];
+  for (const entry of READABLE) {
+    try {
+      await fs.stat(join(root, entry));
+    } catch {
+      gone.push(entry);
+    }
+  }
+  return gone;
+}
+
+/**
  * Load each SDK and construct one client from it. A resolved module whose constructor is missing
  * counts as a failure: the import having succeeded is not the same as the backend being able to
  * use what it got back.
@@ -87,6 +109,7 @@ async function transformCheck(load: Loader): Promise<SmokeCheck> {
 export async function runSmoke(
   load: Loader,
   findSource: () => Promise<string | undefined> = sourceRoot,
+  findMissing: (root: string) => Promise<string[]> = missingRoots,
 ): Promise<SmokeReport> {
   const checks: SmokeCheck[] = [];
   for (const { spec, pick } of SDKS) {
@@ -109,14 +132,28 @@ export async function runSmoke(
 
   checks.push(await transformCheck(load));
 
-  const root = await findSource().catch(() => undefined);
-  checks.push({
-    what: 'source',
-    ok: root !== undefined,
-    detail: root ?? 'not found — the debug agent will refuse to read the source',
-  });
+  checks.push(await sourceCheck(findSource, findMissing));
 
   return { ok: checks.every((c) => c.ok), checks };
+}
+
+async function sourceCheck(
+  findSource: () => Promise<string | undefined>,
+  findMissing: (root: string) => Promise<string[]>,
+): Promise<SmokeCheck> {
+  const root = await findSource().catch(() => undefined);
+  if (root === undefined) {
+    return {
+      what: 'source',
+      ok: false,
+      detail: 'not found — the debug agent will refuse to read the source',
+    };
+  }
+  const gone = await findMissing(root).catch((err: Error) => [err.message]);
+  if (gone.length > 0) {
+    return { what: 'source', ok: false, detail: `${root} — missing ${gone.join(', ')}` };
+  }
+  return { what: 'source', ok: true, detail: root };
 }
 
 /** The line `scripts/smoke.desktop.mjs` looks for, so the report survives a noisy stdout. */
