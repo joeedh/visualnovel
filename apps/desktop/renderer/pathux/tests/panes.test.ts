@@ -80,6 +80,15 @@ describe('which pane an editor is put in', () => {
     expect(paneToShowIn(panes)).toBe(1);
   });
 
+  test('not the document tree, when there is anywhere else', () => {
+    const panes = [
+      pane('header', { chrome: true, active: true, height: 34 }),
+      pane('documents', { width: 900 }),
+      pane('script', { width: 300 }),
+    ];
+    expect(paneToShowIn(panes)).toBe(2);
+  });
+
   test('nowhere at all when the mesh is only chrome', () => {
     expect(paneToShowIn([header])).toBe(NO_PANE);
   });
@@ -111,6 +120,20 @@ describe('which pane an open lands in when it must not land here', () => {
 
   test('lands in the conversation when it is the only other pane', () => {
     expect(paneElsewhere([header, pane('documents'), pane('convo')], 1)).toBe(2);
+  });
+
+  test('steps around the document tree, even when the tree is the biggest', () => {
+    const panes = [header, pane('timeline'), pane('documents', { width: 900 }), pane('script')];
+    expect(paneElsewhere(panes, 1)).toBe(3);
+  });
+
+  test('covers the conversation before the tree, when those are the only two', () => {
+    const panes = [header, pane('timeline'), pane('documents', { width: 900 }), pane('convo')];
+    expect(paneElsewhere(panes, 1)).toBe(3);
+  });
+
+  test('lands in the document tree when it is the only other pane', () => {
+    expect(paneElsewhere([header, pane('timeline'), pane('documents')], 1)).toBe(2);
   });
 });
 

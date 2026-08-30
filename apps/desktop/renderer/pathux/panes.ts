@@ -9,12 +9,18 @@
 import type { EditorId } from '../../src/shared/editors.js';
 
 /**
- * The one editor an automatic open steps around. A conversation is the only pane whose contents
- * the author wrote — everything else redraws from the project, so covering it costs a scroll
- * position at worst, while covering a transcript mid-turn hides the answer they are waiting for.
- * This is a preference rather than a rule: a mesh with nowhere else still opens over it.
+ * The editors an automatic open covers last, in the order it is most reluctant to cover them.
+ *
+ * The document tree is how the author reached whatever is opening, so covering it takes away the
+ * list the next click comes from — a shot opened from Shot Coverage must not land on the tree that
+ * names the scene. A conversation is the only pane whose contents the author wrote, and covering a
+ * transcript mid-turn hides the answer they are waiting for. Everything else redraws from the
+ * project, so covering it costs a scroll position at worst.
+ *
+ * These are preferences rather than rules: a mesh with nothing else still opens over them, taking
+ * the last of this list first.
  */
-const SPOKEN_IN: EditorId = 'convo';
+const SPARED: readonly EditorId[] = ['documents', 'convo'];
 
 /** One screen area, reduced to what a choice depends on. */
 export interface Pane {
@@ -122,10 +128,19 @@ export function paneClosable(panes: readonly Pane[], index: number): boolean {
   return panes.filter(arrangeable).length >= 2;
 }
 
-/** The candidates worth covering. Drops the conversation panes, unless they are all of them. */
+/**
+ * The candidates worth covering: everything {@link SPARED} does not name. When they are all spared,
+ * the least reluctantly spared of them answers, so a mesh of a tree and a transcript covers the
+ * transcript rather than the tree.
+ */
 function sparing(candidates: readonly Pane[]): readonly Pane[] {
-  const quiet = candidates.filter((pane) => pane.editor !== SPOKEN_IN);
-  return quiet.length > 0 ? quiet : candidates;
+  const free = candidates.filter((pane) => !SPARED.includes(pane.editor as EditorId));
+  if (free.length > 0) return free;
+  for (const spared of [...SPARED].reverse()) {
+    const only = candidates.filter((pane) => pane.editor === spared);
+    if (only.length > 0) return only;
+  }
+  return candidates;
 }
 
 const area = (pane: Pane): number => pane.width * pane.height;

@@ -182,7 +182,11 @@ tree, asset naming and `doc.rename`. Showing an editor to the author is always `
 rules directly:
 [`docs/guides/showEditorPaneGuide.md`](docs/guides/showEditorPaneGuide.md) is how to call it
 correctly, and [`docs/reference/swappingPaneEditors.md`](docs/reference/swappingPaneEditors.md)
-is the pure pane-choice logic (`panes.ts`) it calls into.
+is the pure pane-choice logic (`panes.ts`) it calls into. An editor the app decides to show —
+a shot double-clicked in Shot Coverage, an asset clicked in the tree — lands in the biggest pane
+that is neither the document tree nor a conversation, and never covers the pane the author is
+navigating from. That rule lives in `sparing` in `panes.ts`; a surface must not pick a pane of its
+own.
 
 ## Command system
 

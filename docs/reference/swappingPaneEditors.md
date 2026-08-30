@@ -13,7 +13,7 @@
   * [`paneElsewhere`](#paneelsewhere)
   * [`paneToClose`](#panetoclose)
   * [`paneClosable`](#paneclosable)
-- [The conversation preference](#the-conversation-preference)
+- [The panes an automatic open spares](#the-panes-an-automatic-open-spares)
 - [Callers](#callers)
 - [Testing](#testing)
 
@@ -111,10 +111,11 @@ function paneToShowIn(panes: readonly Pane[]): number
 ```
 
 The pane an automatic `open` replaces. Same rule as `paneToUse`, except the candidates are
-narrowed by `sparing` first (see [The conversation preference](#the-conversation-preference)):
-a click in the document tree while reading what the agent said should not open the scene over
-the sentence being read. Falls back to the conversation pane when it is the only pane there
-is.
+narrowed by `sparing` first (see
+[The panes an automatic open spares](#the-panes-an-automatic-open-spares)): a click in the
+document tree while reading what the agent said should not open the scene over the sentence being
+read, and it should not open over the tree that was clicked either. Falls back to a spared pane
+when those are the only panes there are.
 
 ### `paneElsewhere`
 
@@ -123,10 +124,11 @@ function paneElsewhere(panes: readonly Pane[], from: number): number
 ```
 
 The pane `open(where='elsewhere')` lands in: the biggest arrangeable pane that is not `from`,
-after the same conversation-avoiding narrowing `paneToShowIn` applies. `elsewhere` is what a
-click in the document tree asks for, so opening an asset never replaces the tree that named
-it. Returns `NO_PANE` when `from` is the only arrangeable pane — a window with one pane has
-nowhere else, and the caller splits instead of calling this again.
+after the same narrowing `paneToShowIn` applies. `elsewhere` is what a click in the document
+tree asks for, and what a double-click in Shot Coverage asks for, so opening an asset never
+replaces the tree that named it — from either direction. Returns `NO_PANE` when `from` is the
+only arrangeable pane — a window with one pane has nowhere else, and the caller splits instead
+of calling this again.
 
 ### `paneToClose`
 
@@ -152,25 +154,40 @@ interactive picker needs the verdict per pane, one at a time, because it has to 
 the pointer is still moving over a candidate; `paneToClose` only ever names the one pane the
 rules would pick on their own, which the picker overrides with wherever the author points.
 
-## The conversation preference
+## The panes an automatic open spares
 
 ```ts
-const SPOKEN_IN: EditorId = 'convo';
+const SPARED: readonly EditorId[] = ['documents', 'convo'];
 
 function sparing(candidates: readonly Pane[]): readonly Pane[] {
-  const quiet = candidates.filter((pane) => pane.editor !== SPOKEN_IN);
-  return quiet.length > 0 ? quiet : candidates;
+  const free = candidates.filter((pane) => !SPARED.includes(pane.editor as EditorId));
+  if (free.length > 0) return free;
+  for (const spared of [...SPARED].reverse()) {
+    const only = candidates.filter((pane) => pane.editor === spared);
+    if (only.length > 0) return only;
+  }
+  return candidates;
 }
 ```
 
-Convo is the one editor whose contents the author wrote. Every other editor redraws from the
-project, so covering it costs a scroll position at worst; covering a transcript mid-turn hides
-the answer the author is waiting for. `sparing` drops conversation panes from a candidate list
-unless doing so would leave nothing, so `paneToShowIn` and `paneElsewhere` step around Convo
-when another pane is free and land in it anyway when it is the only pane there is.
+Two editors are covered last, and `SPARED` lists them in the order the rules are most reluctant
+to cover them.
+
+- **Documents** is the document tree, which is how the author reached whatever is opening.
+  Covering it takes away the list the next click comes from. This is the rule a shot
+  double-clicked in Shot Coverage used to break: the tree was the biggest pane that was not the
+  strip, so the frame landed on it.
+- **Convo** is the one editor whose contents the author wrote. Every other editor redraws from
+  the project, so covering it costs a scroll position at worst; covering a transcript mid-turn
+  hides the answer the author is waiting for.
+
+`sparing` drops both from a candidate list. When that leaves nothing, it walks `SPARED` backwards
+and answers with the least reluctantly spared kind present — a mesh of a tree and a transcript
+covers the transcript. So `paneToShowIn` and `paneElsewhere` step around both when another pane
+is free, and land in one anyway when there is no other pane.
 
 `paneToUse` ignores this preference on purpose. Closing a pane or splitting one always means
-the pane the pointer is in, whether or not it happens to be showing Convo. Only
+the pane the pointer is in, whether or not it happens to be showing Convo or the tree. Only
 `paneToShowIn` and `paneElsewhere`, which choose where an automatic open lands, apply the
 preference.
 
