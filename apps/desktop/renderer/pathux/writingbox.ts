@@ -6,7 +6,7 @@
  * bold/italic toolbar and `innerHTML` for a value. That is more widget than a note needs, and it
  * stores markup where a command expects a string. Two surfaces draw one (a `multiline` prop in a
  * command form, the report preview), so the styling and the keydown rule live here rather than in
- * either surface.
+ * either surface.  UPDATE: path.ux now has a plain text area
  */
 import type { Container } from 'pathux';
 import { TOKENS } from './tokens.js';

@@ -4,5 +4,99 @@
     "recorded": "2026-08-27T16:22:30+00:00",
     "version": "0.3.2",
     "text": "Reads a gesture as the edit this application decides, refusing the kinds it cannot write."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:12:16+00:00",
+    "version": "0.3.7",
+    "text": "This is the failure that actually happens to a new user."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:42+00:00",
+    "version": "0.3.7",
+    "text": "A skill is the one thing in the app the agent can author, and an author who has not read `docs/` has no way to know that.",
+    "rule": "P3",
+    "note": "Literal statement of fact (the skill editor is the only agent-authorable surface) plus its consequence; no metaphorical equation."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:43+00:00",
+    "version": "0.3.7",
+    "text": "Escape is not here: a popup installs its own handler while it is up, and nothing else in the shell claims it.",
+    "rule": "P7",
+    "note": "Not a clause-A-else-B construction; it states an absence and spells out the reason as ordinary sentences."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:45+00:00",
+    "version": "0.3.7",
+    "text": "Everything else here is about arranging the mesh, and a popup is not part of the mesh, so splitting one, collapsing one, or covering one with a different editor are all things the author never asked for.",
+    "rule": "P7",
+    "note": "No conditional case-split at all; plain declarative reasoning about why popups are exempt from mesh operations."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:46+00:00",
+    "version": "0.3.7",
+    "text": "This is the case that actually happens when git is not on PATH at all.",
+    "rule": "P3",
+    "note": "'This is the case that happens' is a literal claim about which failure occurs, not a metaphorical equation."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:47+00:00",
+    "version": "0.3.7",
+    "text": "Absent means the question was not answerable, never that the cache worked.",
+    "rule": "P5",
+    "note": "'X means A, never B' contains no double negative; it is a clear definitional contrast."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:48+00:00",
+    "version": "0.3.7",
+    "text": "A task that is queued but not run has no image, and the refusal says so.",
+    "rule": "P3",
+    "note": "Plain factual sentence about behavior; 'the refusal says so' is literal (the refusal message states it), not a metaphorical equation."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:49+00:00",
+    "version": "0.3.7",
+    "text": "Absent means the question was not answerable, never that the cache hit.",
+    "rule": "P5",
+    "note": "'X means A, never B' contains no double negative; it is a clear definitional contrast."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:50+00:00",
+    "version": "0.3.7",
+    "text": "A chunk not named here is left exactly as it is.",
+    "rule": "P6",
+    "note": "No dangling reference: 'it' refers to 'a chunk' inside the same sentence; the sentence is a plain statement of behavior."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:51+00:00",
+    "version": "0.3.7",
+    "text": "An absent one is not an error â€” see `AssetStore`.",
+    "rule": "P3",
+    "note": "'X is not an error' is a literal claim about error handling, not a metaphorical equation; the cross-reference is ordinary."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:53+00:00",
+    "version": "0.3.7",
+    "text": "This is the failure that actually happens to a new user.",
+    "rule": "P3",
+    "note": "Literal claim about which failure mode occurs in practice; no metaphorical equation."
+  },
+  {
+    "kind": "false_positive",
+    "recorded": "2026-08-31T19:29:54+00:00",
+    "version": "0.3.7",
+    "text": "This is **not** `--mock`: `--mock` makes no calls at all, and `previewReport` refuses to analyse under it.",
+    "rule": "P3",
+    "note": "Literal contrast between two modes stated as plain facts about what each does; no metaphorical equation."
   }
 ]

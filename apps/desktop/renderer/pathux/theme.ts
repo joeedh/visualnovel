@@ -44,6 +44,10 @@ const VnTheme = {
     'border-radius': TOKENS.radiusChrome,
   },
 
+  propLabels: {
+    font: body,
+  },
+
   button: {
     ...surface,
     DefaultText: small,
