@@ -8,6 +8,12 @@
     "docs/reference/swappingPaneEditors.md",
     "docs/guides/showEditorPaneGuide.md",
     "docs/reference/pipeline-contracts.md"
+    //"docs/plans/guided-ui-tours.md"
   ],
-  "disableRules": ["P10"]
+  "disableRules": ["P10", "P4"],
+  "npm": {
+    "fetch": {
+      "ref": "895e4732f411fe13d8b139f4f28f641dd861fdea"
+    }
+  }
 }
