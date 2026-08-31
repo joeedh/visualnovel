@@ -6,7 +6,7 @@ import {
   type StructableInstance,
 } from 'nstructjs';
 import { Graph, GroupDef } from 'pathux-graph';
-import type { ToolProperty } from 'pathux-toolprop';
+import { ToolProperty } from 'pathux-toolprop';
 
 import { migrateGraphJSON, migrateGroupJSON, type GraphMigration } from './migrate.js';
 
@@ -85,18 +85,31 @@ function restampDeclared(graph: Graph): void {
     const def = node.def;
 
     for (const key of Object.keys(def.props ?? {})) {
-      stamp(def.props?.[key], node.props[key]);
+      stamp(key, def.props?.[key], node.props[key]);
     }
     for (const key of Object.keys(def.inputs ?? {})) {
-      stamp(def.inputs?.[key]?.defaultProp, node.inputs[key]?.defaultProp);
+      stamp(key, def.inputs?.[key]?.defaultProp, node.inputs[key]?.defaultProp);
+    }
+    for (const key of Object.keys(def.outputs ?? {})) {
+      stamp(key, def.outputs?.[key]?.defaultProp, node.outputs[key]?.defaultProp);
     }
   }
 }
 
-function stamp(declared: ToolProperty | undefined, loaded: ToolProperty | undefined): void {
+/**
+ * Copies one declared row's metadata onto the property loaded in its place. The declaration is
+ * read off the shared `NodeDef`, whose properties are the ones the type handed over rather than
+ * the adopted copies an instance holds, so a socket that names itself only through its record
+ * key arrives here with an empty `uiname` and falls back the way `Node` itself does.
+ */
+function stamp(
+  key: string,
+  declared: ToolProperty | undefined,
+  loaded: ToolProperty | undefined,
+): void {
   if (declared === undefined || loaded === undefined) return;
 
-  loaded.uiname = declared.uiname;
+  loaded.uiname = declared.uiname || ToolProperty.makeUIName(key);
   loaded.description = declared.description;
   loaded.flag = declared.flag;
 }

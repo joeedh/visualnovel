@@ -24,7 +24,10 @@ export class TextSocket extends NodeSocketBase<'text', string> {
    * Takes the name and description its row is drawn with, because an unconnected input is
    * edited on that row and every control this application draws carries a tooltip.
    */
-  constructor(dir: SocketDir = 'in', uiname?: string, description?: string) {
+  constructor(
+    dir: SocketDir = 'in',
+    { uiName = '', description = '' }: { uiName?: string; description?: string } = {},
+  ) {
     super(dir);
 
     // `NO_UNDO` for the same reason the node props carry it: the write is an application
@@ -32,7 +35,10 @@ export class TextSocket extends NodeSocketBase<'text', string> {
     // read-only: it exists only because copyTo/serialization now require one on every
     // socket, but the value is derived at run time, not authored, so it draws no row.
     const flag = dir === 'out' ? PropFlags.NO_UNDO | PropFlags.READ_ONLY : PropFlags.NO_UNDO;
-    this.defaultProp = new StringProperty('', undefined, uiname, description, flag);
+    this.defaultProp = new StringProperty('')
+      .setUIName(uiName)
+      .setDescription(description)
+      .setFlag(flag);
   }
 }
 registerSocketType(TextSocket);
@@ -51,9 +57,14 @@ export class ImageSocket extends NodeSocketBase<'image', GenImageRef> {
   // Never read: `useDefaultValue = false` means getValue() never falls back to it. Just a
   // placeholder so copyTo/serialization, which now require every socket to carry one, have
   // something to copy.
-  constructor(dir: SocketDir = 'in') {
+  constructor(
+    dir: SocketDir = 'in',
+    { uiName = '', description = '' }: { uiName?: string; description?: string } = {},
+  ) {
     super(dir);
-    this.defaultProp = new StringProperty('') as unknown as ToolProperty<GenImageRef>;
+    this.defaultProp = (new StringProperty('') as unknown as ToolProperty<GenImageRef>)
+      .setUIName(uiName)
+      .setDescription(description);
   }
 }
 registerSocketType(ImageSocket);
@@ -67,9 +78,14 @@ export class RefsSocket extends NodeSocketBase<'refs', GenImageRef[]> {
   override useDefaultValue = false;
 
   // Never read, same as ImageSocket above.
-  constructor(dir: SocketDir = 'in') {
+  constructor(
+    dir: SocketDir = 'in',
+    { uiName = '', description = '' }: { uiName?: string; description?: string } = {},
+  ) {
     super(dir);
-    this.defaultProp = new StringProperty('') as unknown as ToolProperty<GenImageRef[]>;
+    this.defaultProp = (new StringProperty('') as unknown as ToolProperty<GenImageRef[]>)
+      .setUIName(uiName)
+      .setDescription(description);
   }
 
   // Reading one picture as a one-item list is destination knowledge, so an image output

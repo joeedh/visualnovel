@@ -1,6 +1,14 @@
 import { PropFlags } from 'pathux-toolprop';
 
-import { GenImage, Graph, readGraphFile, registerGenNodes, writeGraphFile } from '../index.js';
+import {
+  GenDerivedPrompt,
+  GenEditImage,
+  GenImage,
+  Graph,
+  readGraphFile,
+  registerGenNodes,
+  writeGraphFile,
+} from '../index.js';
 import type { GraphId } from '../index.js';
 import {
   TestOutput,
@@ -122,5 +130,35 @@ describe('what a file is not trusted for', () => {
     const prompt = node?.inputs['prompt']?.defaultProp;
     expect(prompt?.uiname).toBe('Prompt');
     expect(prompt?.description).not.toBe('');
+  });
+
+  it('names a socket that carries no declared name of its own', () => {
+    const graph = new Graph();
+    graph.add(new GenEditImage());
+
+    const loaded = readGraphFile(JSON.parse(JSON.stringify(writeGraphFile(graph))) as unknown);
+    const node = loaded.graph?.nodes[0];
+
+    // A picture socket declares no name, so the record key is the only one there is. A blank
+    // here draws a row with no text at all.
+    expect(node?.inputs['base']?.defaultProp.uiname).toBe('Base');
+    expect(node?.inputs['refs']?.defaultProp.uiname).toBe('Refs');
+    expect(node?.outputs['image']?.defaultProp.uiname).toBe('Image');
+  });
+
+  it('restamps an output, which carries the same row metadata an input does', () => {
+    const graph = new Graph();
+    graph.add(new GenDerivedPrompt());
+
+    const json = JSON.parse(JSON.stringify(writeGraphFile(graph))) as {
+      nodes: { outputs: { defaultProp?: FileProp | null }[] }[];
+    };
+    for (const output of json.nodes[0]!.outputs) blank(output.defaultProp);
+
+    const prompt = readGraphFile(json).graph?.nodes[0]?.outputs['prompt']?.defaultProp;
+    expect(prompt?.uiname).toBe('Prompt');
+    // An output's default is read-only, and a file that lost the flag would draw it as a
+    // field the author can type into.
+    expect((prompt?.flag ?? 0) & (PropFlags.READ_ONLY ?? 0)).not.toBe(0);
   });
 });
