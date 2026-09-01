@@ -19,7 +19,7 @@
  * first and replaces the second, because DOM identity does not survive a rebuild but a node id
  * does. `rowElementFor` is the supported way to do the lookup.
  */
-import type { DocRow } from './doctree.js';
+import { nodeKey, type DocRow } from './doctree.js';
 import TREEVIEW_CSS from '../styles/treeview.css?inline';
 
 export { TREEVIEW_CSS };
@@ -42,6 +42,8 @@ export interface TreeHandlers {
   /** A second click on the row the last one landed on, inside `DOUBLE_CLICK_MS`. */
   onSecondClick?(row: DocRow): void;
   onMenu?(row: DocRow, x: number, y: number): void;
+  /** Each row as it is drawn, for a host that wants the element the click landed on. */
+  onRow?(row: DocRow, line: HTMLElement): void;
 }
 
 /** Records the last row clicked and when, so a second click on the same row can be recognised. */
@@ -132,6 +134,10 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
   // The node's own id, so a rename opened by the second of two clicks can find the row the
   // first click's rebuild replaced. DOM identity does not survive a rebuild; this does.
   line.dataset['id'] = node.id;
+  // The app-wide address of the thing this row names, so a tour that wants a scene on screen can
+  // find the row that puts one there. `id` cannot serve: it is namespaced with a colon, and the
+  // address a step is written against is the pair the tour already speaks in.
+  line.dataset['anchor'] = `${node.kind}/${nodeKey(node)}`;
   if (counted) line.classList.add('inert');
   if (group) line.classList.add('group');
   if (look.selected) line.classList.add('sel');
@@ -170,6 +176,7 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
     event.preventDefault();
     h.onMenu?.(row, event.clientX, event.clientY);
   });
+  h.onRow?.(row, line);
   return line;
 }
 

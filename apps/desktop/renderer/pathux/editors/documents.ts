@@ -12,6 +12,8 @@ import {
   flattenTree,
   menuFor,
   nodeIsSelected,
+  nodeKey,
+  publishedBy,
   renameOf,
   rowTitle,
   selectionForNode,
@@ -20,6 +22,7 @@ import {
 } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { VN_ICONS } from '../icons.js';
+import { redrawing } from '../anchors.js';
 import { assetNode, openNode } from '../open.js';
 import { layoutChanged } from '../persist.js';
 import type { VnScreen } from '../screen.js';
@@ -366,6 +369,7 @@ export class DocumentsEditor extends VnEditor {
     }
 
     const selection = this.selection();
+    const anchors = redrawing('documents', 'rows');
     renderTree(this.rows, rows, {
       look: (row) => ({
         selected: nodeIsSelected(row.node, selection),
@@ -388,6 +392,10 @@ export class DocumentsEditor extends VnEditor {
         else if (row.node.kind === 'shot' && row.node.hash) this.openAsset(row.node.hash);
       },
       onMenu: (row, x, y) => this.openMenu(row, x, y),
+      // Records every row, including the headings that publish nothing, so a tour pointing at one
+      // still has somewhere to draw its ring.
+      onRow: (row, line) =>
+        anchors.item(line, row.node.kind, nodeKey(row.node), publishedBy(row.node, selection)),
     });
   }
 

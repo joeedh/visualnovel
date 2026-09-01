@@ -12,6 +12,7 @@ import {
   offerOf,
   renameOf,
   rowTitle,
+  publishedBy,
   selectionForNode,
   shotGroups,
   toggleExpanded,
@@ -205,6 +206,26 @@ describe('toggleExpanded', () => {
 describe('defaultExpanded', () => {
   it('opens every root that has something under it, and no further', () => {
     expect([...defaultExpanded(TREE)]).toEqual(['branch:story', 'branch:characters']);
+  });
+});
+
+describe('publishedBy', () => {
+  it('names only the fields the click would change', () => {
+    const scene = TREE[0]!.children![0]!;
+    expect(publishedBy(scene, NONE)).toEqual({ sceneId: 'greet', docPath: 'scenes/greet.md' });
+    expect(publishedBy(scene, { ...NONE, sceneId: 'greet' })).toEqual({
+      docPath: 'scenes/greet.md',
+    });
+  });
+
+  it('reports a cleared field as the empty string it becomes', () => {
+    const scene = TREE[0]!.children![0]!;
+    const away = { ...NONE, sceneId: 'greet', docPath: 'scenes/greet.md', shotId: 'leave__s1' };
+    expect(publishedBy(scene, away)).toEqual({ shotId: '' });
+  });
+
+  it('is empty for a row that names no subject', () => {
+    expect(publishedBy(node('branch:story', 'branch'), NONE)).toEqual({});
   });
 });
 

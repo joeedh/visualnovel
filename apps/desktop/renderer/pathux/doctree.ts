@@ -182,6 +182,19 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
 }
 
 /**
+ * Which `ui.*` fields clicking this row would change, and to what. An anchor carries this so a tour
+ * can say which row puts a subject on screen without running the click to find out.
+ */
+export function publishedBy(node: DocNode, current: Selection): Record<string, string> {
+  const next = selectionForNode(node, current);
+  const changed: Record<string, string> = {};
+  for (const field of Object.keys(next) as (keyof Selection)[]) {
+    if (next[field] !== current[field]) changed[field] = next[field];
+  }
+  return changed;
+}
+
+/**
  * Whose backlinks the panel shows, as a node id `DocTree.backlinks` is keyed by. A character can
  * be named by any surface, so the shared selection answers for one. A location has no selection
  * field of its own, so a click in this tree is the only record of one, and a location clicked last

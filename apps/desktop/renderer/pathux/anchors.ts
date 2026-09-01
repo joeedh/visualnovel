@@ -162,13 +162,6 @@ function keyFor(id: string | undefined, on: string | undefined): string {
   return on === undefined ? commandKey(id) : `${commandKey(id)}#${on}`;
 }
 
-/** Drop everything an editor recorded, for a pane being torn down. */
-export function forgetAnchors(editor: EditorId): void {
-  for (const [id, pass] of passes) {
-    if (pass.editor === editor) passes.delete(id);
-  }
-}
-
 /** Every anchor drawn right now, in the order the passes laid them down. */
 export function liveAnchors(): Anchor[] {
   return [...passes.values()].flatMap((pass) => pass.anchors);
@@ -177,9 +170,13 @@ export function liveAnchors(): Anchor[] {
 /**
  * What the resolver reads. `open` comes from the caller because only the mesh knows how many panes
  * there are; the offscreen half is measured here, since it is a rect question.
+ *
+ * An editor no pane shows keeps its records — path.ux detaches an area on a tab switch and does
+ * not redraw it on the way back — so they are dropped here rather than on the way out. Without
+ * that, a step would resolve onto a widget that is no longer in the document.
  */
 export function anchorSnapshot(open: readonly EditorId[]): LiveAnchors {
-  const anchors = liveAnchors();
+  const anchors = liveAnchors().filter((anchor) => open.includes(anchor.editor));
   return { anchors, open, offscreen: anchors.filter(hidden).map((anchor) => anchor.key) };
 }
 

@@ -1,0 +1,512 @@
+{
+  "sweptAt": "2026-09-01T02:26:41.197Z",
+  "gitSha": "09426404a375327b284d08a15fc2dc38caf48f7f",
+  "under": {
+    "project": "The Transfer Student",
+    "selected": {
+      "scene": "scene/arrival",
+      "shot": ""
+    }
+  },
+  "commands": [
+    "agent.clear",
+    "agent.compact",
+    "agent.editLine",
+    "agent.fixAsset",
+    "agent.newThread",
+    "agent.openThread",
+    "agent.renameThread",
+    "agent.resumeThread",
+    "agent.run",
+    "agent.setBudget",
+    "agent.setEffort",
+    "agent.setMode",
+    "agent.setModel",
+    "agent.stop",
+    "agent.threads",
+    "app.checkForUpdates",
+    "app.copy",
+    "app.keyGuide",
+    "app.openKeyLink",
+    "app.openReleases",
+    "art.generate",
+    "art.promote",
+    "art.redraw",
+    "art.setNotes",
+    "art.setSeed",
+    "asset.accept",
+    "asset.adopt",
+    "asset.export",
+    "asset.info",
+    "asset.regenerate",
+    "asset.replace",
+    "asset.restore",
+    "asset.suspended",
+    "asset.unapprove",
+    "asset.upload",
+    "bible.search",
+    "command.check",
+    "doc.create",
+    "doc.read",
+    "doc.rename",
+    "doc.write",
+    "gate.approve",
+    "gate.candidates",
+    "gengraph.addNode",
+    "gengraph.apply",
+    "gengraph.create",
+    "gengraph.createForSlot",
+    "gengraph.delete",
+    "gengraph.duplicateNode",
+    "gengraph.estimate",
+    "gengraph.link",
+    "gengraph.list",
+    "gengraph.moveNodes",
+    "gengraph.removeNode",
+    "gengraph.run",
+    "gengraph.setActiveOutput",
+    "gengraph.setProp",
+    "gengraph.unlink",
+    "interaction.list",
+    "interaction.targets",
+    "notify.clear",
+    "notify.deleteAll",
+    "notify.follow",
+    "notify.hide",
+    "notify.list",
+    "notify.markRead",
+    "notify.unhide",
+    "pipeline.approveAndRun",
+    "pipeline.run",
+    "pipeline.status",
+    "pipeline.stop",
+    "plugin.install",
+    "plugin.list",
+    "plugin.prices",
+    "plugin.remove",
+    "project.info",
+    "project.installPages",
+    "project.keyStatus",
+    "project.pagesStatus",
+    "project.setArtStyle",
+    "project.setKey",
+    "project.testKey",
+    "prompt.addRef",
+    "prompt.check",
+    "prompt.clear",
+    "prompt.condense",
+    "prompt.dropRef",
+    "prompt.info",
+    "prompt.moveChunk",
+    "prompt.repin",
+    "prompt.setChunk",
+    "prompt.setCustom",
+    "report.agent",
+    "report.grant",
+    "report.open",
+    "report.openIssue",
+    "report.say",
+    "report.state",
+    "report.stop",
+    "story.assignLineIds",
+    "story.coverage",
+    "story.decomposeAll",
+    "story.deleteLine",
+    "story.deleteScene",
+    "story.deleteShot",
+    "story.export",
+    "story.graph",
+    "story.insertLine",
+    "story.mergeScene",
+    "story.moveLine",
+    "story.moveShot",
+    "story.newScene",
+    "story.newShot",
+    "story.play",
+    "story.removeChoice",
+    "story.requireCast",
+    "story.screenplay",
+    "story.setChoice",
+    "story.setCoverage",
+    "story.setHeading",
+    "story.setLineText",
+    "story.setNext",
+    "story.setOutfit",
+    "story.setSceneOutfit",
+    "story.setSpeaker",
+    "story.setSubjects",
+    "story.setVariant",
+    "story.spliceScene",
+    "story.splitScene",
+    "upload.files",
+    "upload.pick",
+    "view.applyLayout",
+    "view.close",
+    "view.focus",
+    "view.layout",
+    "view.layouts",
+    "view.open",
+    "view.palette",
+    "view.resetLayout",
+    "view.saveLayout",
+    "window.close",
+    "window.new",
+    "window.quit",
+    "workspace.chooseDirectory",
+    "workspace.create",
+    "workspace.doctree",
+    "workspace.filetree",
+    "workspace.import",
+    "workspace.index",
+    "workspace.open",
+    "workspace.pick",
+    "workspace.recent",
+    "workspace.reindex",
+    "workspace.skills",
+    "workspace.skilltree"
+  ],
+  "anchored": [
+    "agent.run",
+    "app.copy",
+    "art.generate",
+    "art.promote",
+    "art.setNotes",
+    "asset.accept",
+    "asset.adopt",
+    "asset.export",
+    "asset.regenerate",
+    "asset.upload",
+    "doc.create",
+    "gate.approve",
+    "gengraph.create",
+    "gengraph.createForSlot",
+    "gengraph.delete",
+    "gengraph.estimate",
+    "gengraph.run",
+    "pipeline.run",
+    "story.assignLineIds",
+    "story.newScene",
+    "story.screenplay",
+    "story.setCoverage",
+    "story.setOutfit",
+    "view.open"
+  ],
+  "records": [
+    {
+      "id": "story.assignLineIds",
+      "editor": "documents",
+      "when": "scene:sample"
+    },
+    {
+      "id": "agent.run",
+      "editor": "documents",
+      "when": "scene:sample",
+      "form": true
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "scene:sample"
+    },
+    {
+      "id": "story.newScene",
+      "editor": "documents",
+      "when": "scene:sample",
+      "form": true
+    },
+    {
+      "id": "story.screenplay",
+      "editor": "documents",
+      "when": "scene:sample"
+    },
+    {
+      "id": "story.setCoverage",
+      "editor": "documents",
+      "when": "shot:sample/shot1",
+      "form": true
+    },
+    {
+      "id": "story.setOutfit",
+      "editor": "documents",
+      "when": "shot:sample/shot1",
+      "form": true
+    },
+    {
+      "id": "asset.accept",
+      "editor": "documents",
+      "when": "shot:sample/shot1"
+    },
+    {
+      "id": "gate.approve",
+      "editor": "documents",
+      "when": "shot:sample/shot1",
+      "form": true
+    },
+    {
+      "id": "art.promote",
+      "editor": "documents",
+      "when": "shot:sample/shot1",
+      "form": true
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "shot:sample/shot1"
+    },
+    {
+      "id": "art.generate",
+      "editor": "documents",
+      "when": "character:sample",
+      "form": true
+    },
+    {
+      "id": "art.setNotes",
+      "editor": "documents",
+      "when": "character:sample",
+      "form": true
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "character:sample"
+    },
+    {
+      "id": "view.open",
+      "editor": "documents",
+      "when": "character:sample"
+    },
+    {
+      "id": "art.generate",
+      "editor": "documents",
+      "when": "location:sample",
+      "form": true
+    },
+    {
+      "id": "art.setNotes",
+      "editor": "documents",
+      "when": "location:sample",
+      "form": true
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "location:sample"
+    },
+    {
+      "id": "view.open",
+      "editor": "documents",
+      "when": "location:sample"
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "wikidir:sample",
+      "form": true
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "wikidir:sample",
+      "form": true
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "wikidir:sample",
+      "form": true
+    },
+    {
+      "id": "asset.regenerate",
+      "editor": "documents",
+      "when": "asset:sample",
+      "form": true
+    },
+    {
+      "id": "asset.accept",
+      "editor": "documents",
+      "when": "asset:sample"
+    },
+    {
+      "id": "gate.approve",
+      "editor": "documents",
+      "when": "asset:sample",
+      "form": true
+    },
+    {
+      "id": "art.promote",
+      "editor": "documents",
+      "when": "asset:sample",
+      "form": true
+    },
+    {
+      "id": "gengraph.createForSlot",
+      "editor": "documents",
+      "when": "asset:sample"
+    },
+    {
+      "id": "asset.export",
+      "editor": "documents",
+      "when": "asset:sample"
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "asset:sample"
+    },
+    {
+      "id": "view.open",
+      "editor": "documents",
+      "when": "asset:sample"
+    },
+    {
+      "id": "asset.upload",
+      "editor": "documents",
+      "when": "slot:sample",
+      "form": true
+    },
+    {
+      "id": "asset.adopt",
+      "editor": "documents",
+      "when": "slot:sample",
+      "form": true
+    },
+    {
+      "id": "gengraph.createForSlot",
+      "editor": "documents",
+      "when": "slot:sample"
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "slot:sample"
+    },
+    {
+      "id": "pipeline.run",
+      "editor": "documents",
+      "when": "slot:sample",
+      "form": true
+    },
+    {
+      "id": "view.open",
+      "editor": "documents",
+      "when": "skill:sample"
+    },
+    {
+      "id": "agent.run",
+      "editor": "documents",
+      "when": "skill:sample",
+      "form": true
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "skill:sample"
+    },
+    {
+      "id": "gengraph.estimate",
+      "editor": "documents",
+      "when": "graph:sample"
+    },
+    {
+      "id": "gengraph.run",
+      "editor": "documents",
+      "when": "graph:sample",
+      "form": true
+    },
+    {
+      "id": "app.copy",
+      "editor": "documents",
+      "when": "graph:sample"
+    },
+    {
+      "id": "gengraph.delete",
+      "editor": "documents",
+      "when": "graph:sample",
+      "form": true
+    },
+    {
+      "id": "story.newScene",
+      "editor": "documents",
+      "when": "branch:story",
+      "form": true
+    },
+    {
+      "id": "story.screenplay",
+      "editor": "documents",
+      "when": "branch:story"
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "branch:characters",
+      "form": true
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "branch:locations",
+      "form": true
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "branch:wiki",
+      "form": true
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "branch:wiki",
+      "form": true
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "branch:wiki",
+      "form": true
+    },
+    {
+      "id": "gengraph.create",
+      "editor": "documents",
+      "when": "branch:graphs",
+      "form": true
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "when": "branch:skills",
+      "form": true
+    },
+    {
+      "id": "agent.run",
+      "editor": "documents",
+      "when": "branch:skills",
+      "form": true
+    },
+    {
+      "id": "asset.accept",
+      "editor": "asset",
+      "key": "cmd:asset.accept",
+      "refused": "No asset is on screen."
+    },
+    {
+      "id": "asset.regenerate",
+      "editor": "asset",
+      "key": "cmd:asset.regenerate",
+      "refused": "No asset is on screen."
+    },
+    {
+      "id": "view.open",
+      "editor": "asset",
+      "key": "cmd:view.open",
+      "refused": "The manifest records no task for this asset."
+    },
+    {
+      "id": "asset.export",
+      "editor": "asset",
+      "key": "cmd:asset.export",
+      "refused": "No picture on screen to save"
+    }
+  ],
+  "disagreements": []
+}
