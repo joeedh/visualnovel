@@ -223,7 +223,7 @@
 | `tour.cancel` | — | Ends the running tour. |
 | `tour.explain` | — | Says what the step a running tour is on would do, and where its control is. |
 | `tour.next` | — | Moves a running tour on without doing the step it is on. |
-| `tour.start` | `tour` (default `''`), `steps` (default `''`) | Starts a guided tour: each step rings the control to press and waits for the author to press it. |
+| `tour.start` | `tour` (default `''`), `custom` (default `''`) | Starts a guided tour: each step rings the control to press and waits for the author to press it. |
 
 ## `upload.`
 

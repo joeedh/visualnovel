@@ -29,14 +29,18 @@ export const tourStart = define({
   mutating: false,
   props: {
     tour: prop.string(`which curated tour to run — one of ${CURATED.join(', ')}`, { default: '' }),
-    steps: prop.string('a tour written for the moment, as JSON', { default: '' }),
+    custom: prop.string('a tour written for the moment, as JSON', { default: '' }),
   },
-  run({ tour, steps }, ctx) {
-    if (!tour && !steps) throw new Error('name a curated tour, or pass steps for one of your own.');
+  run({ tour, custom }, ctx) {
+    if (!tour && !custom)
+      throw new Error('name a curated tour, or pass steps for one of your own.');
     if (tour && !tourById(tour)) {
       throw new Error(`no tour called "${tour}". The ones that ship are: ${CURATED.join(', ')}.`);
     }
-    ctx.host.ui({ type: 'tour', action: 'start', tour, ...(steps ? { steps } : {}) }, ctx.origin);
+    ctx.host.ui(
+      { type: 'tour', action: 'start', tour, ...(custom ? { steps: custom } : {}) },
+      ctx.origin,
+    );
     return Promise.resolve({
       message: tour ? `Walking through ${tourById(tour)?.title}.` : 'Walking through your steps.',
     });
