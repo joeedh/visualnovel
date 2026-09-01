@@ -56,13 +56,15 @@ export interface AnchorNode {
 }
 
 /**
- * How the ring is placed and checked. `dom` is wired by `act()` — one listener and one record
- * from one object. `pick` is wired by a canvas's existing `pick()` dispatch, and carries its own
- * rect because the graph editors' geometry comes from the layout rather than from the DOM.
+ * How the ring is placed and checked. `dom` is wired by `act()` — one listener and one record from
+ * one object. `pick` marks a target whose click the canvas resolves rather than the node: a graph's
+ * node layer takes no pointer events, so a click on the box would land on the canvas underneath and
+ * be answered by its `pick()`. The box is still where the ring goes, and it is still in the
+ * document, so it is kept for its rect; `rect` stands in where there is no box to read.
  */
 export type AnchorVia =
   | { kind: 'dom'; node: AnchorNode }
-  | { kind: 'pick'; nodeId: string; rect?: AnchorRect };
+  | { kind: 'pick'; nodeId: string; node?: AnchorNode; rect?: AnchorRect };
 
 /** One thing on screen that can be pointed at, and what pointing at it would do. */
 export interface Anchor {

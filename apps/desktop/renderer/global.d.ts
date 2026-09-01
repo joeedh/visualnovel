@@ -18,6 +18,8 @@ declare global {
       dump: () => AnchorDump[];
       /** The half of the map derived from `menuFor`, which no pane draws and no sweep can see. */
       tree: () => AnchorRecord[];
+      /** Pick anchors whose ring would not land on the node they name. Empty is the healthy answer. */
+      strays: () => string[];
     };
   }
 }

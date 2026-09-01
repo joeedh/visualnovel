@@ -1,6 +1,6 @@
 {
-  "sweptAt": "2026-09-01T03:01:40.902Z",
-  "gitSha": "c759315601d73d856f4bec390ee0f71fbd26c4dd",
+  "sweptAt": "2026-09-01T03:11:25.946Z",
+  "gitSha": "24e513aa9fd09cc270553eef7210fa6768745773",
   "under": {
     "project": "The Transfer Student",
     "selected": {
@@ -716,5 +716,6 @@
       "refused": "Not while this workspace is running with mock providers — a real model has to read the conversation."
     }
   ],
-  "disagreements": []
+  "disagreements": [],
+  "strays": []
 }

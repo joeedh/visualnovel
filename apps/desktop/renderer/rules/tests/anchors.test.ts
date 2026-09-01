@@ -93,6 +93,27 @@ describe('subsumes', () => {
   });
 });
 
+describe('a graph node', () => {
+  const card = (): Anchor => ({
+    key: itemKey('scene', 'greet'),
+    props: {},
+    enabled: true,
+    publishes: { sceneId: 'greet' },
+    editor: 'branches' as EditorId,
+    via: { kind: 'pick', nodeId: 'greet', node },
+  });
+
+  it('resolves as the place its subject is chosen', () => {
+    expect(
+      resolveItem(live([card()], { open: ['branches' as EditorId] }), 'scene', 'greet'),
+    ).toEqual({ state: 'ready', anchor: card() });
+  });
+
+  it('is nowhere when the graph does not draw it', () => {
+    expect(resolveItem(live([card()]), 'scene', 'ending')).toEqual({ state: 'absent' });
+  });
+});
+
 describe('a form anchor', () => {
   const door = anchor({ id: 'pipeline.run', props: {}, form: true });
 

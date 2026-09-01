@@ -30,7 +30,7 @@ import {
   noticeOf,
   type Drag,
 } from '../branch.js';
-import { redrawing } from '../anchors.js';
+import { pickOracle, redrawing } from '../anchors.js';
 import { exec, refreshWorkspace } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
@@ -161,6 +161,12 @@ export class BranchEditor extends VnEditor {
       onPick: (hit, event) => this.onPick(hit, event),
       onSurfaceChange: () => this.fitOnce(),
     });
+    // The canvas's own `pickAt`, so a tour asking whether a ring lands on its node gets the
+    // answer the pointer would get rather than a second reading of the same geometry.
+    pickOracle('branches', (nodeId, x, y) => {
+      const hit = this.canvas.pickAt(x, y);
+      return hit.type === 'node' && hit.node.id === nodeId;
+    });
     this.canvas.element.className = 'branch-canvas';
     // On the canvas rather than on a card: the node layer takes no pointer events, so a card is
     // never the target of an event the canvas did not resolve.
@@ -283,11 +289,20 @@ export class BranchEditor extends VnEditor {
   private paint(): void {
     this.repainting = true;
     this.paintOverlay();
+    const nodes = redrawing('branches', 'nodes');
     this.canvas.setContent({
       layout: this.layout,
       edges: this.edges,
       renderNode: (node) => this.renderNode(node),
       renderLabel: (edge) => this.renderLabel(edge),
+      // The scene a card names, so a step that wants another scene on screen can ring the card
+      // that puts one there. A shot left over from another scene is dropped, which is what
+      // `selectionForNode` does for the same click in the document tree.
+      onNode: (node, box) =>
+        nodes.pickItem(node.id, box, 'scene', node.id, {
+          sceneId: node.id,
+          ...(this.ui.shotId.startsWith(`${node.id}__`) ? {} : { shotId: '' }),
+        }),
     });
     // Re-appended by every draw, so the caret is restored rather than kept: an input's value and
     // selection survive being moved in the DOM, its focus does not.

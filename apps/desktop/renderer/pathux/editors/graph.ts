@@ -17,9 +17,9 @@ import {
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
-import { isSelected, selectionForTask, type Selection } from '../selection.js';
+import { isSelected, selectionForTask, taskPublishes, type Selection } from '../selection.js';
 import { openCommandDialog } from '../dialog.js';
-import { redrawing, type AnchorPass } from '../anchors.js';
+import { pickOracle, redrawing, type AnchorPass } from '../anchors.js';
 import { TOKENS, alpha } from '../tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
@@ -109,6 +109,12 @@ export class TaskGraphEditor extends VnEditor {
       edgeStyle: wireStyle,
       onPick: (hit) => this.onPick(hit),
       onSurfaceChange: () => this.fitOnce(),
+    });
+    // The canvas's own `pickAt`, so a tour asking whether a ring lands on its node gets the
+    // answer the pointer would get rather than a second reading of the same geometry.
+    pickOracle('taskgraph', (nodeId, x, y) => {
+      const hit = this.canvas.pickAt(x, y);
+      return hit.type === 'node' && hit.node.id === nodeId;
     });
     Object.assign(this.canvas.element.style, { flex: '1 1 auto', minHeight: '0px' });
 
@@ -345,10 +351,24 @@ export class TaskGraphEditor extends VnEditor {
     if (!layout) return;
 
     this.canvas.setOverlay(this.gateRule(layout));
+    const nodes = redrawing('taskgraph', 'nodes');
     this.canvas.setContent({
       layout,
       edges: this.routes,
       renderNode: (node) => this.renderNode(node),
+      // Only the task cards. A gate, a slot and a cluster are all drawn here too, and none of them
+      // is a subject any other pane follows.
+      onNode: (node, box) => {
+        const view = this.view?.nodes.get(node.id);
+        if (view?.kind !== 'task') return;
+        nodes.pickItem(
+          node.id,
+          box,
+          'task',
+          view.task.hash,
+          taskPublishes(view.task, this.selection()),
+        );
+      },
     });
   }
 

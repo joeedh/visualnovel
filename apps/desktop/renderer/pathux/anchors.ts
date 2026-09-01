@@ -137,6 +137,28 @@ export class AnchorPass {
   }
 
   /**
+   * Record where a subject is chosen on a graph, whose gesture the canvas's own `pick()`
+   * dispatches. `box` is the node's own element, kept for its rect: it moves with every pan and
+   * zoom, so a rect copied at draw time would be wrong by the next frame.
+   */
+  pickItem(
+    nodeId: string,
+    box: AnchorNode,
+    kind: string,
+    key: string,
+    publishes: Record<string, string>,
+  ): void {
+    this.pass.anchors.push({
+      key: itemKey(kind, key),
+      props: {},
+      enabled: true,
+      publishes,
+      editor: this.pass.editor,
+      via: { kind: 'pick', nodeId, node: box },
+    });
+  }
+
+  /**
    * Record a graph node, whose gesture the canvas's own `pick()` dispatches. The rule survives
    * here differently: the anchor is honest because the oracle calls the same `pick()` the pointer
    * does, not because one object feeds both sides.
@@ -179,8 +201,8 @@ export function liveAnchors(): Anchor[] {
  * answers: the overlay scrolls to the first and must not try to scroll to the second.
  */
 function drawn(anchor: Anchor): boolean {
-  if (anchor.via.kind !== 'dom') return true;
-  const node = anchor.via.node;
+  const node = anchor.via.kind === 'dom' ? anchor.via.node : anchor.via.node;
+  if (!node) return true;
   if (typeof Node !== 'undefined' && node instanceof Node && !node.isConnected) return false;
   const rect = node.getBoundingClientRect();
   return rect.width > 0 && rect.height > 0;
@@ -219,7 +241,7 @@ function hidden(anchor: Anchor): boolean {
 /** Where the ring goes. A `pick` anchor carries its own rect, since its geometry is the layout's. */
 export function rectOf(anchor: Anchor): AnchorRect | undefined {
   if (anchor.via.kind === 'dom') return anchor.via.node.getBoundingClientRect();
-  return anchor.via.rect;
+  return anchor.via.node?.getBoundingClientRect() ?? anchor.via.rect;
 }
 
 /** One anchor as the sweep writes it down: everything but the node, which does not serialize. */
@@ -266,6 +288,50 @@ const plain = (rect: AnchorRect): AnchorRect => ({
   height: rect.height,
 });
 
+/**
+ * How one editor answers whether a screen point resolves to the graph node it names. The editor
+ * registers its canvas's own `pickAt`, so the oracle and the pointer read the same geometry.
+ */
+export type PickOracle = (nodeId: string, x: number, y: number) => boolean;
+
+const oracles = new Map<AnchorHome, PickOracle>();
+
+/** Register an editor's pick oracle. Replaces whatever was registered for that editor. */
+export function pickOracle(editor: AnchorHome, oracle: PickOracle): void {
+  oracles.set(editor, oracle);
+}
+
+/**
+ * Whether a click in the middle of this anchor would reach the node it names. A `pick` anchor sits
+ * on a layer that takes no pointer events, so knowing where its box was drawn settles nothing; the
+ * canvas's own `pick()` decides what a click there reaches.
+ *
+ * Answers `true` for every other anchor, and for a `pick` anchor whose editor registered no oracle:
+ * the question is about the canvas, and having no answer does not make it a refusal.
+ */
+export function picksThrough(anchor: Anchor): boolean {
+  if (anchor.via.kind !== 'pick') return true;
+  const oracle = oracles.get(anchor.editor);
+  const rect = rectOf(anchor);
+  if (!oracle || !rect) return true;
+  return oracle(anchor.via.nodeId, rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+
+/**
+ * Every `pick` anchor whose ring would not land on the node it names. Empty is the healthy answer;
+ * anything in it is a card the canvas would not resolve to, which the sweep reports.
+ */
+export function strayPicks(): string[] {
+  return liveAnchors()
+    .filter((anchor) => anchor.via.kind === 'pick' && !picksThrough(anchor))
+    .map((anchor) => `${anchor.editor} ${anchor.key}`);
+}
+
 export function installAnchors(): void {
-  window.__vnAnchors = { generation: () => generation, dump: dumpAnchors, tree: menuAnchors };
+  window.__vnAnchors = {
+    generation: () => generation,
+    dump: dumpAnchors,
+    tree: menuAnchors,
+    strays: strayPicks,
+  };
 }

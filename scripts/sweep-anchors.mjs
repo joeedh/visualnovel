@@ -109,6 +109,7 @@ async function select(kind) {
 }
 
 const disagreements = [];
+const strays = [];
 const drawn = [];
 
 // The tree first, so a scene and a shot are selected before the panes that follow them are opened.
@@ -129,6 +130,11 @@ for (const editor of editors) {
   const mine = dump.filter((a) => a.editor === editor && a.id !== undefined);
   const items = dump.filter((a) => a.editor === editor && a.id === undefined).length;
   drawn.push({ editor, count: mine.length, items });
+
+  // The second oracle for a graph pane: a card's box being where it says proves nothing, because
+  // the node layer takes no pointer events. Only the canvas's own `pick()` says what a click on
+  // the ring would reach.
+  strays.push(...JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.strays())')));
 
   for (const anchor of mine) {
     records.push({
@@ -180,6 +186,7 @@ await fs.writeFile(
       anchored,
       records,
       disagreements,
+      strays: [...new Set(strays)].sort(),
     },
     null,
     2,
@@ -194,6 +201,10 @@ for (const { editor, count, items } of drawn) {
   if (count > 0) continue;
   const item = items > 0 ? ` (${items} subjects to click, and no command)` : '';
   process.stdout.write(`  ${editor}: draws no command anchor yet${item}\n`);
+}
+for (const stray of new Set(strays)) {
+  process.stdout.write(`  ⚠ ${stray}: the card is drawn, but a click on it picks something else
+`);
 }
 for (const d of disagreements) {
   process.stdout.write(`  ⚠ ${d.editor} ${d.key}: the pane ${d.pane}; the stack ${d.stack}\n`);

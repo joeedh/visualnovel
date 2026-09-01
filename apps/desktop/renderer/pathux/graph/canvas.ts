@@ -52,6 +52,11 @@ export interface CanvasContent {
   renderNode: (node: LaidOutNode) => HTMLElement | null;
   /** Optional per-edge label, centred on the route's anchor. */
   renderLabel?: (edge: EdgeRoute) => HTMLElement | null;
+  /**
+   * Each node's positioned box, as it is drawn. The box moves with every pan and zoom, so an
+   * owner that wants a node's screen rect keeps this element rather than a copy of the rect.
+   */
+  onNode?: (node: LaidOutNode, box: HTMLElement) => void;
 }
 
 export interface CanvasOptions {
@@ -193,7 +198,7 @@ export class GraphCanvas {
     this.layer.textContent = '';
     if (!this.content) return;
 
-    const { layout, edges, renderNode, renderLabel } = this.content;
+    const { layout, edges, renderNode, renderLabel, onNode } = this.content;
     const style = this.opts.edgeStyle;
 
     for (const edge of edges) {
@@ -227,6 +232,7 @@ export class GraphCanvas {
       });
       box.appendChild(content);
       this.layer.appendChild(box);
+      onNode?.(node, box);
     }
 
     if (renderLabel) {
@@ -278,12 +284,20 @@ export class GraphCanvas {
     );
   };
 
+  /**
+   * What a click at this screen point would land on. The pointer path calls this too, so an oracle
+   * asking it gets the canvas's own answer rather than a second reading of the same geometry.
+   */
+  pickAt(clientX: number, clientY: number): Pick {
+    const at = this.local(clientX, clientY);
+    return this.content
+      ? pick(this.content.layout, this.content.edges, at, this.view, this.opts.pickOptions)
+      : { type: 'background' };
+  }
+
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0) return;
-    const at = this.local(event.clientX, event.clientY);
-    const hit = this.content
-      ? pick(this.content.layout, this.content.edges, at, this.view, this.opts.pickOptions)
-      : ({ type: 'background' } as Pick);
+    const hit = this.pickAt(event.clientX, event.clientY);
 
     this.opts.onPick?.(hit, event);
     if (hit.type !== 'background' || event.defaultPrevented) return;
