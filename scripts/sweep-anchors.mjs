@@ -131,9 +131,9 @@ for (const editor of editors) {
   const items = dump.filter((a) => a.editor === editor && a.id === undefined).length;
   drawn.push({ editor, count: mine.length, items });
 
-  // The second oracle for a graph pane: a card's box being where it says proves nothing, because
-  // the node layer takes no pointer events. Only the canvas's own `pick()` says what a click on
-  // the ring would reach.
+  // The second oracle. A box being where it says proves nothing about what a click there reaches:
+  // a graph's node layer takes no pointer events, and a widget can be covered. The canvas's own
+  // `pick()` answers for one, a shadow-piercing hit test for the other.
   strays.push(...JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.strays())')));
 
   for (const anchor of mine) {
@@ -203,7 +203,7 @@ for (const { editor, count, items } of drawn) {
   process.stdout.write(`  ${editor}: draws no command anchor yet${item}\n`);
 }
 for (const stray of new Set(strays)) {
-  process.stdout.write(`  ⚠ ${stray}: the card is drawn, but a click on it picks something else
+  process.stdout.write(`  ⚠ ${stray}: it is drawn, but a click in the middle of it lands elsewhere
 `);
 }
 for (const d of disagreements) {

@@ -45,13 +45,14 @@ export function actionOf(step: Step): Action | undefined {
  * `ring` is where the author is being pointed. `route` says the app has no control for this and the
  * palette is standing in — the guaranteed floor, since `CommandForm` shows the live `stack.check`
  * verdict above the run button. `open` names a pane the author has to bring up first, and `blocked`
- * carries the app's own refusal rather than one written here.
+ * carries the app's own refusal rather than one written here, along with the control that refused
+ * where there is one, since a greyed control saying why is the whole answer.
  */
 export type Guidance =
   | { show: 'ring'; say: string; where: Resolution }
   | { show: 'route'; say: string; action: Action }
   | { show: 'open'; say: string; editor: string }
-  | { show: 'blocked'; say: string; reason: string }
+  | { show: 'blocked'; say: string; reason: string; where?: Resolution }
   | { show: 'done' };
 
 /**
@@ -67,7 +68,9 @@ export function guide(map: AnchorMap, live: LiveAnchors, state: TourState): Guid
 
   if (step.kind === 'select') {
     const where = resolveItem(live, step.itemKind, step.key);
-    if (where.state === 'disabled') return { show: 'blocked', say: step.say, reason: where.reason };
+    if (where.state === 'disabled') {
+      return { show: 'blocked', say: step.say, reason: where.reason, where };
+    }
     if (where.state === 'absent') {
       return { show: 'blocked', say: step.say, reason: 'Nothing on screen names that yet.' };
     }
@@ -83,7 +86,7 @@ export function guide(map: AnchorMap, live: LiveAnchors, state: TourState): Guid
     case 'wrong-subject':
       return { show: 'ring', say: step.say, where };
     case 'disabled':
-      return { show: 'blocked', say: step.say, reason: where.reason };
+      return { show: 'blocked', say: step.say, reason: where.reason, where };
     case 'pane-closed':
       return { show: 'open', say: step.say, editor: where.editor };
     default:

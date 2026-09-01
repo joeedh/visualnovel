@@ -12,6 +12,8 @@
  */
 import type { PropValue } from '../../src/shared/ipc.js';
 import { menuAnchors } from './doctree.js';
+import { hitFor } from './hittest.js';
+import { centreOf } from '../rules/ring.js';
 import {
   HEADER,
   commandKey,
@@ -195,6 +197,14 @@ export function liveAnchors(): Anchor[] {
 }
 
 /**
+ * The anchor a key names right now. Nothing may hold an {@link Anchor} across a frame, so the
+ * overlay keeps the key and asks again — every frame for the rect, which a scroll moves.
+ */
+export function anchorFor(key: string): Anchor | undefined {
+  return liveAnchors().find((anchor) => anchor.key === key);
+}
+
+/**
  * Whether the node an anchor points at is on screen at all — in the document, and drawn with a
  * size. A control that comes and goes without a redraw of its whole pass (a rename box, a Stop
  * button hidden between turns) is not scrolled away, it is not there, and the two get different
@@ -302,28 +312,39 @@ export function pickOracle(editor: AnchorHome, oracle: PickOracle): void {
 }
 
 /**
- * Whether a click in the middle of this anchor would reach the node it names. A `pick` anchor sits
- * on a layer that takes no pointer events, so knowing where its box was drawn settles nothing; the
- * canvas's own `pick()` decides what a click there reaches.
+ * Whether a click in the middle of this anchor would reach it, with the box of whatever the DOM
+ * hit test found there. The two flavours need different oracles: a `pick` anchor sits on a layer
+ * that takes no pointer events, so a click on its box lands on the canvas by design, and a DOM
+ * oracle would report every graph card as a stray, correctly and uselessly.
  *
- * Answers `true` for every other anchor, and for a `pick` anchor whose editor registered no oracle:
- * the question is about the canvas, and having no answer does not make it a refusal.
+ * The result is `ok` for a `pick` anchor whose editor registered no oracle, because only that
+ * canvas can tell and it was never asked. It is `ok` for a greyed control too, which commonly
+ * takes no pointer events, so the hit test would report a miss on a click nobody will make.
  */
-export function picksThrough(anchor: Anchor): boolean {
-  if (anchor.via.kind !== 'pick') return true;
-  const oracle = oracles.get(anchor.editor);
+export function landsOn(anchor: Anchor): { ok: boolean; hit?: AnchorRect } {
   const rect = rectOf(anchor);
-  if (!oracle || !rect) return true;
-  return oracle(anchor.via.nodeId, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  if (!anchor.enabled || !rect) return { ok: true };
+  const { x, y } = centreOf(rect);
+  // A point outside the window has no hit test to give. That is the offscreen case, which
+  // {@link hidden} already reports and the overlay answers by scrolling rather than by warning.
+  if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return { ok: true };
+  if (anchor.via.kind === 'pick') {
+    const oracle = oracles.get(anchor.editor);
+    return { ok: oracle ? oracle(anchor.via.nodeId, x, y) : true };
+  }
+  const node = anchor.via.node;
+  if (typeof Node === 'undefined' || !(node instanceof Node)) return { ok: true };
+  const { ok, hit } = hitFor(node, x, y);
+  return { ok, ...(hit ? { hit: hit.getBoundingClientRect() } : {}) };
 }
 
 /**
- * Every `pick` anchor whose ring would not land on the node it names. Empty is the healthy answer;
- * anything in it is a card the canvas would not resolve to, which the sweep reports.
+ * Every anchor whose ring would not land on the thing it names. Empty is the healthy answer;
+ * anything in it is a control a click would miss, which the sweep reports rather than reconciles.
  */
-export function strayPicks(): string[] {
+export function strayAnchors(): string[] {
   return liveAnchors()
-    .filter((anchor) => anchor.via.kind === 'pick' && !picksThrough(anchor))
+    .filter((anchor) => !landsOn(anchor).ok)
     .map((anchor) => `${anchor.editor} ${anchor.key}`);
 }
 
@@ -332,6 +353,6 @@ export function installAnchors(): void {
     generation: () => generation,
     dump: dumpAnchors,
     tree: menuAnchors,
-    strays: strayPicks,
+    strays: strayAnchors,
   };
 }

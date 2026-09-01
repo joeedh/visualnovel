@@ -47,12 +47,13 @@ describe('guide', () => {
     expect(shown).toMatchObject({ show: 'ring', say: 'Press Redraw.' });
   });
 
-  it('passes on the app’s own refusal rather than writing one', () => {
+  it('passes on the app’s own refusal rather than writing one, and rings what refused', () => {
     const greyed = anchor({ enabled: false, reason: 'This take is already approved.' });
     expect(guide(map, live([greyed]), state)).toEqual({
       show: 'blocked',
       say: 'Press Redraw.',
       reason: 'This take is already approved.',
+      where: { state: 'disabled', anchor: greyed, reason: 'This take is already approved.' },
     });
   });
 

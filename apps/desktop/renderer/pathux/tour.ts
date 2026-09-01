@@ -17,6 +17,7 @@ import { guide, satisfies, start, stepOf, type Guidance, type TourState } from '
 import type { AnchorHome, LiveAnchors } from '../rules/anchors.js';
 import { anchorSnapshot } from './anchors.js';
 import { onExec, say } from './bridge.js';
+import { follow, ringing, unfollow } from './overlay.js';
 import { openPalette } from './palette.js';
 
 type TourEffect = Extract<UiEffect, { type: 'tour' }>;
@@ -31,7 +32,14 @@ export const runningTour = (): TourState | undefined => running;
 export function installTour(): void {
   window.__vnTour = () => {
     const state = running;
-    return state ? { tour: state.tour.id, at: state.at, step: stepOf(state)?.say ?? '' } : null;
+    if (!state) return null;
+    const ring = ringing();
+    return {
+      tour: state.tour.id,
+      at: state.at,
+      step: stepOf(state)?.say ?? '',
+      ...(ring === undefined ? {} : { ring }),
+    };
   };
 }
 
@@ -75,12 +83,16 @@ function parse(steps: string): Tour | undefined {
 function watch(): void {
   unwatch?.();
   unwatch = onExec((id, outcome) => ran(id, outcome));
+  // The overlay asks rather than being told, because the ring has to survive everything that moves
+  // under it between two steps — a pane opening, a scroll, a redraw that rebuilt the control.
+  follow(() => (running ? guide(ANCHOR_MAP, live(), running) : undefined));
 }
 
 function stop(): void {
   unwatch?.();
   unwatch = undefined;
   running = undefined;
+  unfollow();
 }
 
 /**
@@ -98,17 +110,23 @@ function step(next: TourState): void {
   present(shown);
 }
 
-/** Say what the step wants, and open the palette where the app draws no control for it. */
+/**
+ * Say what the step wants, and open the palette where the app draws no control for it.
+ *
+ * A step the overlay is ringing says nothing here: the caption beside the ring already carries the
+ * sentence, and a notification saying it again would be the same words in two places. What is left
+ * is the steps with nothing to ring.
+ */
 function present(shown: Guidance): void {
-  if (shown.show === 'done') return;
-  if (shown.show === 'blocked') return say(`${shown.say} — but ${shown.reason}`, true);
-  if (shown.show === 'open') return say(`${shown.say} Open the ${shown.editor} pane first.`);
-  if (shown.show === 'route') {
-    // The floor. `CommandForm` shows the command's own live verdict above its run button, so the
-    // author sees the same refusal a control would have shown, and presses the button themselves.
-    openPalette(shown.action.id, shown.action.props);
-    return say(shown.say);
+  if (shown.show === 'done' || shown.show === 'ring') return;
+  if (shown.show === 'blocked') {
+    if (!shown.where) say(`${shown.say} — but ${shown.reason}`, true);
+    return;
   }
+  if (shown.show === 'open') return say(`${shown.say} Open the ${shown.editor} pane first.`);
+  // The floor. `CommandForm` shows the command's own live verdict above its run button, so the
+  // author sees the same refusal a control would have shown, and presses the button themselves.
+  openPalette(shown.action.id, shown.action.props);
   say(shown.say);
 }
 

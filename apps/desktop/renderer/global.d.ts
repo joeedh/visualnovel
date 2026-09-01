@@ -18,11 +18,11 @@ declare global {
       dump: () => AnchorDump[];
       /** The half of the map derived from `menuFor`, which no pane draws and no sweep can see. */
       tree: () => AnchorRecord[];
-      /** Pick anchors whose ring would not land on the node they name. Empty is the healthy answer. */
+      /** Anchors whose ring would not land on the thing they name. A healthy screen lists none. */
       strays: () => string[];
     };
-    /** Which tour is running and which step it is on, or null. Read over CDP. */
-    __vnTour?: () => { tour: string; at: number; step: string } | null;
+    /** Which tour is running, which step it is on, and what the overlay is ringing. Read over CDP. */
+    __vnTour?: () => { tour: string; at: number; step: string; ring?: string } | null;
   }
 }
 
