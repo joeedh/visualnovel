@@ -33,6 +33,7 @@ import type { ShellApp } from './context.js';
 import { approvalsChanged, refreshApprovals } from './approvals.js';
 import { notificationsChanged, refreshNotifications } from './notifications.js';
 import { closePalette, openPalette } from './palette.js';
+import { applyTour } from './tour.js';
 import { seedReport } from './reportconvo.js';
 import { applyView } from './view.js';
 
@@ -384,6 +385,8 @@ That is a fault in what was ` +
           'the requests this session sent. The requests stay on this machine — they are read on ' +
           'your own key, and nothing from them goes into the report.',
       });
+    } else if (effect.type === 'tour') {
+      applyTour(effect);
     } else if (effect.type === 'view') {
       // The command already said what it meant to do; the mesh answers only when it disagrees,
       // and that answer displaces the optimistic sentence rather than following it.

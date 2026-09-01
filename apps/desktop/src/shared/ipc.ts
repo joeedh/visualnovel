@@ -140,6 +140,13 @@ export type SessionValue =
 export type UiEffect =
   | { type: 'palette'; open: boolean }
   /**
+   * A guided tour started, moved on, or ended. `tour` names one of the curated tours by id, or
+   * carries the steps outright for one the agent wrote. The renderer holds where the tour has got
+   * to, because only it knows what is drawn and what the author has just clicked.
+   */
+  | { type: 'tour'; action: 'start'; tour: string; steps?: string }
+  | { type: 'tour'; action: 'next' | 'cancel' | 'explain' }
+  /**
    * Where an editor goes and which pane is active. An effect names an editor, never a room,
    * because the shell is a mesh of panes the author arranges.
    *

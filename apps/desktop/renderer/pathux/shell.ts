@@ -16,6 +16,9 @@ import { installAgent } from './agent.js';
 import { api } from '../api.js';
 import { defineShellApi } from './api.js';
 import { installAnchors } from './anchors.js';
+import type { AnchorHome } from '../rules/anchors.js';
+import { installTour, tourReadsPanes } from './tour.js';
+import { panesOf } from './view.js';
 import { exec, installBridge } from './bridge.js';
 import type { AssetInfo } from '../../src/shared/ipc.js';
 import { editorNameProblems, isOfferedEditor } from '../../src/shared/editors.js';
@@ -103,6 +106,14 @@ class Shell implements ShellApp {
     // Before the bridge, so the first pane an editor draws already has somewhere to record what
     // it can be asked to do.
     installAnchors();
+    // Which editors are in a pane right now, which is what stops a step resolving onto a widget
+    // path.ux detached on a tab switch and never redrew.
+    tourReadsPanes(() =>
+      panesOf(this.screen as VnScreen)
+        .filter((pane) => !pane.chrome)
+        .map((pane) => pane.editor as AnchorHome),
+    );
+    installTour();
     installBridge(this);
     // After the bridge, and whether or not a convo pane is open: the agent streams into the
     // store from boot, so a pane opened later shows what was already said.

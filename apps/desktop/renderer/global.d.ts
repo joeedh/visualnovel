@@ -21,6 +21,8 @@ declare global {
       /** Pick anchors whose ring would not land on the node they name. Empty is the healthy answer. */
       strays: () => string[];
     };
+    /** Which tour is running and which step it is on, or null. Read over CDP. */
+    __vnTour?: () => { tour: string; at: number; step: string } | null;
   }
 }
 

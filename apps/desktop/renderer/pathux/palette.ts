@@ -37,6 +37,8 @@ class Palette {
 
   private commands: CatalogEntry[] = [];
   private query = '';
+  /** The command to open on, held until the catalog lands. Re-armed by {@link retarget}. */
+  private wanted: { id: string; overrides?: Record<string, PropValue> } | undefined;
 
   constructor(preselect?: string, overrides?: Record<string, PropValue>) {
     const screen = shell().screen;
@@ -72,16 +74,11 @@ class Palette {
     this.listCol.style['maxHeight'] = '360px';
     this.detailCol = col.col();
 
+    if (preselect) this.wanted = { id: preselect, ...(overrides ? { overrides } : {}) };
     void api.invoke('command:catalog').then((catalog) => {
       this.commands = catalog.commands;
       this.renderList();
-
-      const entry = catalog.commands.find((c) => c.id === preselect);
-      if (!entry) return;
-      this.select(entry, overrides);
-      // The constructor focused the search box, but an author who picked this command off a menu
-      // wants its first blank field instead
-      this.form?.focusFirst();
+      this.openWanted();
     });
 
     this.popup.flushUpdate();
@@ -90,6 +87,31 @@ class Palette {
 
   close(): void {
     this.popup.end();
+  }
+
+  /**
+   * Point a palette that is already up at another command, so a tour can walk several steps through
+   * one form without the popup closing and reopening under the author.
+   *
+   * Naming nothing leaves the palette as the author had it, which is what `view.palette` repeating
+   * has to do.
+   */
+  retarget(preselect?: string, overrides?: Record<string, PropValue>): void {
+    if (!preselect) return;
+    this.wanted = { id: preselect, ...(overrides ? { overrides } : {}) };
+    this.openWanted();
+  }
+
+  /** Open on the command that was asked for, once the catalog has arrived to name it. */
+  private openWanted(): void {
+    const wanted = this.wanted;
+    const entry = wanted && this.commands.find((command) => command.id === wanted.id);
+    if (!wanted || !entry) return;
+    this.wanted = undefined;
+    this.select(entry, wanted.overrides);
+    // The constructor focused the search box, but an author who picked this command off a menu
+    // wants its first blank field instead
+    this.form?.focusFirst();
   }
 
   private renderList(): void {
@@ -132,9 +154,12 @@ class Palette {
 /**
  * Open the palette. Idempotent — `view.palette` may repeat. `preselect` still works and is what
  * `command:ui` uses; a caller naming a command from a menu wants `openCommandDialog`.
+ *
+ * A palette that is already up is pointed at the named command rather than left alone, so a
+ * multi-step tour routed through the palette does not have to close and reopen it between steps.
  */
 export function openPalette(preselect?: string, overrides?: Record<string, PropValue>): void {
-  if (open) return;
+  if (open) return open.retarget(preselect, overrides);
   open = new Palette(preselect, overrides);
 }
 

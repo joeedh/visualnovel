@@ -216,6 +216,15 @@
 | `story.spliceScene` ✍ ↺ ✓ | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch. |
 | `story.splitScene` ✍ ↺ ✓ | `scene`, `at`, `into` | `at` starts the second half; shots follow their lines, keeping their ids. |
 
+## `tour.`
+
+| Command | Props | Notes |
+| ------- | ----- | ----- |
+| `tour.cancel` | — | Ends the running tour. |
+| `tour.explain` | — | Says what the step a running tour is on would do, and where its control is. |
+| `tour.next` | — | Moves a running tour on without doing the step it is on. |
+| `tour.start` | `tour` (default `''`), `steps` (default `''`) | Starts a guided tour: each step rings the control to press and waits for the author to press it. |
+
 ## `upload.`
 
 | Command | Props | Notes |

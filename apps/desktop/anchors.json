@@ -1,6 +1,6 @@
 {
-  "sweptAt": "2026-09-01T03:11:25.946Z",
-  "gitSha": "24e513aa9fd09cc270553eef7210fa6768745773",
+  "sweptAt": "2026-09-01T03:30:01.035Z",
+  "gitSha": "e58129766ee25985201293933ed8be9981f05360",
   "under": {
     "project": "The Transfer Student",
     "selected": {
@@ -138,6 +138,10 @@
     "story.setVariant",
     "story.spliceScene",
     "story.splitScene",
+    "tour.cancel",
+    "tour.explain",
+    "tour.next",
+    "tour.start",
     "upload.files",
     "upload.pick",
     "view.applyLayout",

@@ -138,6 +138,7 @@ import {
   storySpliceScene,
   storySplitScene,
 } from './story.js';
+import { tourCancel, tourExplain, tourNext, tourStart } from './tour.js';
 import { uploadFiles, uploadPick } from './upload.js';
 import {
   viewApplyLayout,
@@ -301,6 +302,10 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storySetVariant,
     storySpliceScene,
     storySplitScene,
+    tourCancel,
+    tourExplain,
+    tourNext,
+    tourStart,
     uploadFiles,
     uploadPick,
     viewApplyLayout,

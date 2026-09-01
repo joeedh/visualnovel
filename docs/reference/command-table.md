@@ -2,7 +2,7 @@
 
 # Registered commands
 
-155 commands, in 21 namespaces. 85 are `mutating`;
+159 commands, in 22 namespaces. 85 are `mutating`;
 98 declare a precondition; 53 are undoable; 19 ask
 for confirmation.
 
@@ -139,6 +139,10 @@ for confirmation.
 | `story.setVariant` ✍ ↺ ✓ | `scene`, `shot`, `variant` | — |
 | `story.spliceScene` ✍ ↺ ✓ | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch. |
 | `story.splitScene` ✍ ↺ ✓ | `scene`, `at`, `into` | `at` starts the second half; shots follow their lines, keeping their ids. |
+| `tour.cancel` | — | Ends the running tour. |
+| `tour.explain` | — | Says what the step a running tour is on would do, and where its control is. |
+| `tour.next` | — | Moves a running tour on without doing the step it is on. |
+| `tour.start` | `tour` (default `''`), `steps` (default `''`) | Starts a guided tour: each step rings the control to press and waits for the author to press it. |
 | `upload.files` ✍ ⚠ ✓ | `paths` | Copy the author's own documents into `archive/` verbatim, then open a fresh conversation in plan mode asking what to do with them. The archive is outside every directory the agent sweeps, so nothing here reaches `search` or the bible — it is read by name. |
 | `upload.pick` ✍ ⚠ ✓ | — | `upload.files` with the native multi-select file chooser in front. Cancelling changes nothing, and the dialog is not a permission: what the command refuses is refused after it too. |
 | `view.applyLayout` | `name` | Rearranges the whole window to one of the project's layout templates. Refuses a missing or unreadable one by name. |

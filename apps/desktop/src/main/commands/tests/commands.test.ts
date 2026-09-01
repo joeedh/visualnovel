@@ -35,6 +35,7 @@ describe('the desktop registry', () => {
       'prompt',
       'report',
       'story',
+      'tour',
       'upload',
       'view',
       'window',
