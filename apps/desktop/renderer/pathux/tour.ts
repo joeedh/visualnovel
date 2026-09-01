@@ -9,15 +9,17 @@
  * A tour never runs a step. Where a step has no control, the palette is opened on the command with
  * its props filled in and the author presses the run button themselves.
  */
-import type { CommandOutcome, PropValue, UiEffect } from '../../src/shared/ipc.js';
+import type { CatalogProp, CommandOutcome, PropValue, UiEffect } from '../../src/shared/ipc.js';
 import type { Tour } from '../../src/shared/tours.js';
 import { readTour } from '../../src/shared/tourcheck.js';
 import { tourById } from '../../src/shared/tours.js';
+import { api } from '../api.js';
 import { ANCHOR_MAP, SWEPT } from '../rules/anchormap.js';
+import { askedAs, checkFor } from '../rules/precheck.js';
 import { guide, satisfies, start, stepOf, type Guidance, type TourState } from '../rules/tour.js';
-import type { Action, AnchorHome, LiveAnchors } from '../rules/anchors.js';
+import type { Action, Anchor, AnchorHome, LiveAnchors } from '../rules/anchors.js';
 import { anchorSnapshot } from './anchors.js';
-import { onExec, say } from './bridge.js';
+import { onExec, onWrote, say } from './bridge.js';
 import { verdictsFor } from './gestures.js';
 import { follow, ringing, unfollow } from './overlay.js';
 import { closePalette, openPalette } from './palette.js';
@@ -29,6 +31,14 @@ let unwatch: (() => void) | undefined;
 let awaiting: Action | undefined;
 /** Whether the palette is up because a step routed to it, so the tour can take it back down. */
 let routed = false;
+/**
+ * What `stack.check` said about a ringed anchor, keyed by anchor key. `as` is the invocation that
+ * answer was about, so a redraw that changed the anchor's props asks again and one that did not
+ * costs nothing.
+ */
+const asked = new Map<string, { as: string; reason?: string }>();
+/** Each command's props, for the blanks {@link checkFor} fills in. Fetched once per tour. */
+let specs: Map<string, readonly CatalogProp[]> | undefined;
 
 /** The tour being walked through, for the overlay to draw and for a test to read. */
 export const runningTour = (): TourState | undefined => running;
@@ -89,7 +99,15 @@ function parse(steps: string): Tour | undefined {
 
 function watch(): void {
   unwatch?.();
-  unwatch = onExec((id, outcome) => ran(id, outcome));
+  const feeds = [
+    onExec((id, outcome) => ran(id, outcome)),
+    // A refusal is about the project, so it stops being true as soon as anything is written.
+    onWrote(() => asked.clear()),
+  ];
+  unwatch = () => feeds.forEach((drop) => drop());
+  void api.invoke('command:catalog').then((catalog) => {
+    specs = new Map(catalog.commands.map((entry) => [entry.id, entry.props]));
+  });
   // The overlay asks rather than being told, because the ring has to survive everything that moves
   // under it between two steps — a pane opening, a scroll, a redraw that rebuilt the control.
   follow(shownNow);
@@ -101,7 +119,27 @@ function stop(): void {
   running = undefined;
   awaiting = undefined;
   routed = false;
+  asked.clear();
   unfollow();
+}
+
+/**
+ * Ask whether the anchor a step points at would run. The answer is not waited for: it lands in
+ * {@link asked} and the overlay's next re-resolve reads it, a beat later.
+ */
+function askAbout(anchor: Anchor): void {
+  const props = specs?.get(anchor.id ?? '');
+  if (!props) return;
+  const action = checkFor(anchor, props);
+  if (!action) return;
+  const as = askedAs(action);
+  if (asked.get(anchor.key)?.as === as) return;
+  asked.set(anchor.key, { as });
+  void api.invoke('command:check', { id: action.id, props: action.props }).then((verdict) => {
+    if (asked.get(anchor.key)?.as !== as) return;
+    const refused = verdict.state === 'refuse';
+    asked.set(anchor.key, { as, ...(refused ? { reason: verdict.message } : {}) });
+  });
 }
 
 /**
@@ -110,8 +148,10 @@ function stop(): void {
  */
 function shownNow(): Guidance | undefined {
   if (!running) return undefined;
-  const shown = guide(ANCHOR_MAP, live(), running, verdictsFor);
+  const shown = guide(ANCHOR_MAP, live(), running, verdictsFor, refusedFor);
   awaiting = shown.show === 'ring' ? shown.awaits : undefined;
+  const at = shown.show === 'ring' || shown.show === 'blocked' ? shown.where : undefined;
+  if (at && 'anchor' in at) askAbout(at.anchor);
   // Opening the pane that draws a routed step turns the answer into a ring, and a palette left up
   // over that ring covers the control the author is being sent to.
   if (routed && shown.show !== 'route') {
@@ -156,6 +196,9 @@ function present(shown: Guidance): void {
   routed = true;
   say(shown.say);
 }
+
+/** The refusal standing against this anchor, for `guide` to read without awaiting anything. */
+const refusedFor = (key: string): string | undefined => asked.get(key)?.reason;
 
 /** What is drawn, filtered to the panes the mesh currently shows. */
 function live(): LiveAnchors {

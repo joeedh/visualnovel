@@ -109,7 +109,9 @@ function aimOf(shown: Guidance): Aim | undefined {
   if (shown.show !== 'ring' && shown.show !== 'blocked') return undefined;
   const where = shown.where;
   if (!where || !('anchor' in where)) return undefined;
-  const say = shown.show === 'blocked' ? `${shown.say} — but ${shown.reason}` : shown.say;
+  // The refusal goes on its own line. A command's own sentence often contains a dash of its own,
+  // and joining the two with another one runs them together.
+  const say = shown.show === 'blocked' ? `${shown.say}\n${shown.reason}` : shown.say;
   const also = shown.show === 'ring' ? (shown.also ?? []) : [];
   return { anchor: where.anchor, say, also, offscreen: where.state === 'offscreen' };
 }
@@ -265,6 +267,7 @@ function build(): [HTMLElement, HTMLElement] {
     fontFamily: TOKENS.sans,
     fontSize: '12px',
     lineHeight: '1.4',
+    whiteSpace: 'pre-line',
   });
 
   const style = document.createElement('style');

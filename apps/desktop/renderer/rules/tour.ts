@@ -82,6 +82,7 @@ export function guide(
   live: LiveAnchors,
   state: TourState,
   judge?: Judge,
+  refused?: Refused,
 ): Guidance {
   const step = stepOf(state);
   if (!step) return { show: 'done' };
@@ -104,7 +105,13 @@ export function guide(
   switch (where.state) {
     case 'ready':
     case 'input':
-    case 'offscreen':
+    case 'offscreen': {
+      // A control that opens a form is drawn enabled, because the button is not what was refused.
+      // The refusal belongs to the command behind it, and is the app's own sentence either way.
+      const reason = refused?.(where.anchor.key);
+      if (reason !== undefined) return { show: 'blocked', say: step.say, reason, where };
+      return { show: 'ring', say: step.say, where };
+    }
     case 'wrong-subject':
       return { show: 'ring', say: step.say, where };
     case 'disabled':
@@ -124,6 +131,16 @@ export type Judge = (
   interaction: string,
   carried: string,
 ) => { editor: AnchorHome; verdicts: readonly Verdict[] } | undefined;
+
+/**
+ * What `stack.check` last said about the anchor with this key, where it said no. Undefined covers
+ * both an accepted invocation and one nothing has asked about yet.
+ *
+ * A lookup rather than a call, because `stack.check` is asynchronous and lives in main while
+ * {@link guide} is pure over a snapshot. The caller owns the cache and re-asks; `guide` only reads
+ * what came back. See `pathux/tour.ts`.
+ */
+export type Refused = (key: string) => string | undefined;
 
 type GestureStep = Extract<Step, { kind: 'gesture' }>;
 

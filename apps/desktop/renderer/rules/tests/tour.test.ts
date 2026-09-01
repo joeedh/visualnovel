@@ -48,6 +48,29 @@ describe('guide', () => {
     expect(shown).toMatchObject({ show: 'ring', say: 'Press Redraw.' });
   });
 
+  /**
+   * The gate button in the task graph is drawn enabled because opening a form is not what was
+   * refused. `stack.check`, asked separately, is the only thing that knows.
+   */
+  it('blocks an enabled control the stack refuses, and still says where it is', () => {
+    const drawn = anchor({ supplies: ['hash'], form: true });
+    const shown = guide(map, live([drawn]), state, undefined, (key) =>
+      key === drawn.key ? 'aiko has no portrait yet.' : undefined,
+    );
+    expect(shown).toEqual({
+      show: 'blocked',
+      say: 'Press Redraw.',
+      reason: 'aiko has no portrait yet.',
+      where: { state: 'ready', anchor: drawn },
+    });
+  });
+
+  it('rings as usual where the stack accepts, or has not answered', () => {
+    expect(guide(map, live([anchor()]), state, undefined, () => undefined)).toMatchObject({
+      show: 'ring',
+    });
+  });
+
   it('passes on the app’s own refusal rather than writing one, and rings what refused', () => {
     const greyed = anchor({ enabled: false, reason: 'This take is already approved.' });
     expect(guide(map, live([greyed]), state)).toEqual({
