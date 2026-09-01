@@ -29,5 +29,5 @@ const records: AnchorRecord[] = (sweep.records as SweptRecord[]).map((record) =>
 
 export const ANCHOR_MAP: AnchorMap = mapOf(records);
 
-/** When the map was measured, and against which build. Shown by `tour.explain`. */
+/** When the map was measured, and against which build. `tour.explain` names both for a routed step. */
 export const SWEPT = { at: sweep.sweptAt as string, sha: sweep.gitSha as string };

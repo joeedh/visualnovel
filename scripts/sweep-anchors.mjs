@@ -1,10 +1,10 @@
 /**
  * Measure which commands the app's drawn surfaces reach, in a running desktop app, and write
- * `apps/desktop/anchors.json` (`docs/plans/guided-ui-tours.md` §10).
+ * `apps/desktop/anchors.json` (`docs/reference/guided-tours.md`).
  *
- * Usage:
- *   pnpm build:desktop && pnpm vndesktop --mock
- *   node scripts/sweep-anchors.mjs [--window 0]
+ * Usage, in two shells, since the launcher keeps running and announces the port it opened:
+ *   pnpm build:desktop && pnpm vndesktop --mock --project <dir>
+ *   VN_CDP_PORT=<that port> node scripts/sweep-anchors.mjs [--window 0]
  *
  * Read-only: it opens each editor in turn and runs `command:check`, and nothing it runs mutates
  * the project. The pane it cycles through is whichever one was active, so the arrangement is left

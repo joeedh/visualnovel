@@ -23,7 +23,7 @@ themselves.
   * [What the app answers](#what-the-app-answers)
   * [The overlay](#the-overlay)
   * [Advancing](#advancing)
-  * [The palette is the floor](#the-palette-is-the-floor)
+  * [Where no control is drawn](#where-no-control-is-drawn)
   * [Who writes one](#who-writes-one)
   * [Commands](#commands)
 - [Files](#files)
@@ -33,10 +33,10 @@ themselves.
 
 ## The rule everything rests on
 
-**An anchor runs the same invocation it points at. It is never built from a description of that
-invocation.** A widget tagged with a command it happens to call is a comment, and comments go
-stale silently; `act()` takes one `Offer` and uses it for both halves — the click it installs and
-the record it keeps — so a rewired control cannot leave a stale anchor behind.
+**An anchor runs the same invocation it points at, rather than a description of that invocation.**
+A widget tagged with the command it happens to call is a comment, and comments go stale silently.
+`act()` takes one `Offer` and uses that offer for both halves — the click it installs and the
+record it keeps — so rewiring a control cannot leave a stale anchor behind.
 
 The tour inherits from this. Where the app refuses, the author is shown the app's own sentence.
 Nothing in the tour layer writes a refusal of its own.
@@ -76,6 +76,7 @@ for a listener to hear.
 | `on`       | What tells this control apart from another running the same command on the pane |
 | `about`    | The command a refusal is about, where the rule's refusal names none             |
 | `key`      | An `item:` key, for a click that publishes a selection rather than running       |
+| `publishes`| The `ui.*` fields that click sets, recorded beside the `item:` key it sets them from |
 
 ### Keys
 
@@ -128,15 +129,18 @@ that was never swept as well as about a command no pane draws; either way the pa
 Run it after touching `apps/desktop/renderer/pathux/editors/**`:
 
 ```bash
-pnpm build:desktop && pnpm vndesktop --mock --project <dir>
-node scripts/sweep-anchors.mjs
+pnpm build:desktop
+pnpm vndesktop --mock --project <dir>   # keeps running; prints the port it opened
+node scripts/sweep-anchors.mjs          # second shell, VN_CDP_PORT set to that port
 ```
+
+The launcher takes the first free port from 9222 upward and announces it, and `scripts/cdp.mjs`
+assumes 9222, so the second shell needs `VN_CDP_PORT` set wherever another app already holds it.
 
 ### Resolution
 
-`resolveAnchor(map, live, action)` is pure over a snapshot, so it is unit-testable in node despite
-the surface being a browser. Eight answers — the plan that introduced them said seven and listed
-eight:
+`resolveAnchor(map, live, action)` reads a snapshot and returns one of eight answers. The function
+is pure, so it is unit-testable in node even though the surface it describes is a browser.
 
 | Answer          | What the caller does                                          |
 | --------------- | ------------------------------------------------------------- |
@@ -170,8 +174,8 @@ Each half of the layer is cross-checked by something that was not consulted when
 - **The rect against the hit test.** `landsOn` asks what a click in the middle of an anchor would
   actually reach: `pick()` for a graph card, and a shadow-piercing descent for everything else,
   since `document.elementsFromPoint` stops at a shadow host and every editor surface is mounted
-  inside one. A greyed control and a point outside the window both answer `ok` — the first takes no
-  pointer events, and the second is the offscreen case, answered by scrolling.
+  inside one. A greyed control answers `ok` because it takes no pointer events; a point outside the
+  window answers `ok` because the overlay scrolls that anchor in rather than warning about it.
 
 `getBoundingClientRect()` is not the hit area. A gen-graph socket is an 8×8 dot carrying a
 `::before` of `inset: -5px`, so the browser hit-tests 18×18 while the box reports 8×8, and
@@ -185,14 +189,14 @@ Split, because CI has no app, no CDP port and no workspace:
 - **Blocking.** `apps/desktop/src/main/tests/anchorcoverage.test.ts` reads the committed
   `anchors.json`: every record points at a live command, the file's command list equals the live
   registry's, and the anchored count does not fall below the floor.
-- **Advisory.** The sweep itself, run by hand, which is where disagreements and strays surface.
+- **Advisory.** The sweep, run by hand. Disagreements and strays are reported only there.
 
 ## Part II — the tour
 
 ### One rule worth repeating
 
-**A tour never performs the step.** The default is that the human clicks; without it the feature
-would not be a tutorial, it would do the work instead of teaching it.
+**A tour never performs the step.** The author presses every control themselves. A tour that
+pressed them would do the author's work rather than teach it.
 
 ### Steps
 
@@ -238,7 +242,7 @@ block: the step is shown again, resolved against wherever they have got to.
 CDP's `window.vn.exec` goes straight to `command:exec` and bypasses `bridge.exec`, so a command run
 that way does not advance a tour. That is by design; the palette's own run button does.
 
-### The palette is the floor
+### Where no control is drawn
 
 `openPalette(id, props)` fills the form in and `CommandForm` shows the live `stack.check` verdict
 above the run button, so the author sees the same refusal a control would have shown and presses
@@ -267,7 +271,11 @@ live verdict is shown at the step instead.
 
 `tour.start`, `tour.next`, `tour.cancel`, `tour.explain`. All non-mutating, none undoable. They run
 in main like every other command and push a `command:ui` effect; where the tour has got to lives in
-the renderer, because only it knows what is drawn.
+the renderer, because only the renderer knows what is drawn.
+
+`tour.explain` says the current step again. For a step the palette is standing in for, it also
+names when the anchor map was swept and against which commit, since that answer came from the
+measured file rather than from the screen.
 
 The agent reaches tours through `show_me` and not through these: a command with no tool wrapper is
 unreachable to the agent in either host.

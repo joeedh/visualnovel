@@ -13,7 +13,7 @@ import type { CommandOutcome, PropValue, UiEffect } from '../../src/shared/ipc.j
 import type { Tour } from '../../src/shared/tours.js';
 import { readTour } from '../../src/shared/tourcheck.js';
 import { tourById } from '../../src/shared/tours.js';
-import { ANCHOR_MAP } from '../rules/anchormap.js';
+import { ANCHOR_MAP, SWEPT } from '../rules/anchormap.js';
 import { guide, satisfies, start, stepOf, type Guidance, type TourState } from '../rules/tour.js';
 import type { Action, AnchorHome, LiveAnchors } from '../rules/anchors.js';
 import { anchorSnapshot } from './anchors.js';
@@ -170,5 +170,9 @@ function explain(): void {
   if (!state) return say('No tour is running.', true);
   const shown = shownNow();
   if (!shown || shown.show === 'done') return say('The tour is finished.');
-  present(shown);
+  if (shown.show !== 'route') return present(shown);
+  // A `route` answer comes from the swept map rather than from the screen, so explaining it means
+  // saying how old that measurement is.
+  const swept = `${SWEPT.at.slice(0, 10)} at ${SWEPT.sha.slice(0, 8)}`;
+  present({ ...shown, say: `${shown.say} No pane drew it when the map was swept, ${swept}.` });
 }

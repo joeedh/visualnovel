@@ -7,7 +7,8 @@
     "CLAUDE.md",
     "docs/reference/swappingPaneEditors.md",
     "docs/guides/showEditorPaneGuide.md",
-    "docs/reference/pipeline-contracts.md"
+    "docs/reference/pipeline-contracts.md",
+    "docs/reference/guided-tours.md"
     //"docs/plans/guided-ui-tours.md"
   ],
   "disableRules": ["P10", "P4"],
