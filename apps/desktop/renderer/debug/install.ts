@@ -12,13 +12,45 @@ import { createDebugger, domSource, type DomDocument } from '@vn/debug2d';
 
 let teardown: (() => void) | undefined;
 
+/**
+ * Answers with every element at a point, descending open shadow roots, innermost first.
+ *
+ * `document.elementsFromPoint` stops at a shadow host, and every editor surface is mounted inside
+ * one, so the plain call ranks a host above the content painting on top of it — while the snapshot
+ * walk descends into that content. The oracle is a cross-check on that walk, so it has to go as deep.
+ */
+function piercedElementsFromPoint(x: number, y: number): Element[] {
+  const seen = new Set<Element>();
+  // A root answers with its own tree, retargeting anything deeper to the host it hangs off, so
+  // `seen` is what keeps an outer tree from being walked again at every level
+  const walk = (root: DocumentOrShadowRoot): Element[] => {
+    const hits: Element[] = root.elementsFromPoint(x, y).filter((el) => !seen.has(el));
+    for (const el of hits) seen.add(el);
+    const out: Element[] = [];
+    for (const el of hits) {
+      // Shadow content paints over the host, so the content is emitted first. Every host at the
+      // point is descended into, since the topmost element may be a plain one above a widget
+      if (el.shadowRoot) out.push(...walk(el.shadowRoot));
+      out.push(el);
+    }
+    return out;
+  };
+  return walk(document);
+}
+
 /** Installing again (Vite HMR re-executes this module) tears down the previous debugger. */
 export function installDebug(): () => void {
   teardown?.();
-  // The structural DomDocument seam exists because @vn/debug2d compiles without lib.dom;
-  // the real document satisfies it at runtime.
+  // The structural DomDocument seam exists because @vn/debug2d compiles without lib.dom. It is
+  // also where the hit test is supplied, so the oracle sees what the snapshot walk sees
   const dbg = createDebugger({
-    sources: [domSource(document as unknown as DomDocument)],
+    sources: [
+      domSource({
+        documentElement: document.documentElement,
+        defaultView: document.defaultView,
+        elementsFromPoint: piercedElementsFromPoint,
+      } as unknown as DomDocument),
+    ],
     spaces: {},
   });
   window.__vnDebug = dbg;
