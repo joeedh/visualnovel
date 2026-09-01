@@ -45,6 +45,11 @@ export interface ActOptions {
   about?: string;
   /** Prop names the click reads from the widget at commit time — a textarea, a typed id. */
   supplies?: string[];
+  /**
+   * What tells this control apart from another running the same command on the same pane — a
+   * chunk key, a task hash. Appended to the key, so re-resolving by key lands on the same control.
+   */
+  on?: string;
   /** An `item:` key, for a control whose click publishes a selection rather than running a command. */
   key?: string;
   /** The `ui.*` fields an `item:` anchor's click publishes. */
@@ -75,7 +80,7 @@ export class AnchorPass {
    * The node is left alone for a refused offer: a control the rule turned down has nothing to run,
    * and the caller greys it and shows `reason` as it already does.
    */
-  act<N extends AnchorNode & { addEventListener(type: 'click', run: () => void): void }>(
+  act<N extends AnchorNode>(
     node: N,
     offer: Offer,
     run: (action: Action) => void,
@@ -83,7 +88,9 @@ export class AnchorPass {
   ): N {
     if (offer.ok) {
       const action: Action = { id: offer.id, props: offer.props };
-      node.addEventListener('click', () => run(action));
+      // Assigned rather than added. A path.ux `Button` calls its own `onclick` on a touch pointer,
+      // where the browser dispatches no click event for a listener to hear.
+      (node as { onclick?: unknown }).onclick = () => run(action);
     }
     this.record(node, offer, opts);
     return node;
@@ -97,7 +104,7 @@ export class AnchorPass {
   record(node: AnchorNode, offer: Offer, opts: ActOptions = {}): void {
     const id = offer.ok ? offer.id : (offer.id ?? opts.about);
     this.pass.anchors.push({
-      key: opts.key ?? (id === undefined ? unkeyed() : commandKey(id)),
+      key: opts.key ?? keyFor(id, opts.on),
       ...(id === undefined ? {} : { id }),
       props: offer.ok ? offer.props : {},
       ...(opts.supplies && opts.supplies.length > 0 ? { supplies: opts.supplies } : {}),
@@ -132,7 +139,7 @@ export class AnchorPass {
   pick(nodeId: string, offer: Offer, rect: AnchorRect | undefined, opts: ActOptions = {}): void {
     const id = offer.ok ? offer.id : (offer.id ?? opts.about);
     this.pass.anchors.push({
-      key: opts.key ?? (id === undefined ? unkeyed() : commandKey(id)),
+      key: opts.key ?? keyFor(id, opts.on),
       ...(id === undefined ? {} : { id }),
       props: offer.ok ? offer.props : {},
       ...(opts.supplies && opts.supplies.length > 0 ? { supplies: opts.supplies } : {}),
@@ -146,8 +153,14 @@ export class AnchorPass {
 
 let anonymous = 0;
 
-/** A key for a control that names no command, so two of them never collide in the registry. */
-const unkeyed = (): string => `anon:${++anonymous}`;
+/**
+ * The key an anchor is re-resolved by. A control naming no command gets a fresh one, so two of
+ * them never collide; two controls running the same command are told apart by `on`.
+ */
+function keyFor(id: string | undefined, on: string | undefined): string {
+  if (id === undefined) return `anon:${++anonymous}`;
+  return on === undefined ? commandKey(id) : `${commandKey(id)}#${on}`;
+}
 
 /** Drop everything an editor recorded, for a pane being torn down. */
 export function forgetAnchors(editor: EditorId): void {

@@ -162,6 +162,19 @@ export function promoteAction(info: AssetInfo): PromoteAction {
   };
 }
 
+/** The prop the promote strip's field fills in, which is not known until it is typed. */
+export const PROMOTE_SUPPLIES = ['variant'];
+
+/** The props the two boxes in a rung fill in — the art direction, and the seed to draw it from. */
+export const NOTES_SUPPLIES = ['notes'];
+export const SEED_SUPPLIES = ['seed'];
+
+/**
+ * The `data-anchor` on the concept prompt box, which the `⇱` of a `request` chunk scrolls to.
+ * Every `data-anchor` in the app is `<kind>/<key>`, and this one's key is the box itself.
+ */
+export const REQUEST_ANCHOR = 'request/prompt';
+
 /** The replace strip: the slot a chosen file would fill, or why these bytes have none. */
 export type ReplaceAction =
   | {
