@@ -11,6 +11,7 @@ import {
   promptShown,
   regenerateAction,
   replaceAction,
+  taskAction,
   watchSlot,
 } from '../assetview.js';
 import type { AssetFailure, AssetInfo } from '../../../src/shared/ipc.js';
@@ -81,16 +82,27 @@ describe('locationOf', () => {
 
 describe('promoteAction', () => {
   it('offers the location a concept sketches', () => {
-    expect(promoteAction(concept())).toEqual({ ok: true, locationId: 'cafe' });
+    expect(promoteAction(concept())).toEqual({
+      ok: true,
+      id: 'art.promote',
+      props: { hash: 'a1b2c3d4' },
+      label: 'Promote',
+      locationId: 'cafe',
+    });
   });
 
   // A character's look is the gate's business. Only character.md and approved.png actually
   // clear the gate, and promotion writes neither.
   it('refuses a character concept, and a plate that is already what it is', () => {
     const person = promoteAction(concept({ rungs: [{ target: 'character:aiko', label: 'Aiko' }] }));
-    expect(person).toEqual({ ok: false, reason: expect.stringContaining('approval gate') });
+    expect(person).toEqual({
+      ok: false,
+      id: 'art.promote',
+      reason: expect.stringContaining('approval gate'),
+    });
     expect(promoteAction(info())).toEqual({
       ok: false,
+      id: 'art.promote',
       reason: expect.stringContaining('only a concept'),
     });
   });
@@ -98,6 +110,7 @@ describe('promoteAction', () => {
   it('refuses a concept bound to nothing, rather than picking a sheet', () => {
     expect(promoteAction(concept({ rungs: [] }))).toEqual({
       ok: false,
+      id: 'art.promote',
       reason: expect.stringContaining('no location'),
     });
   });
@@ -107,6 +120,9 @@ describe('replaceAction', () => {
   it('offers the slot the asset itself fills', () => {
     expect(replaceAction(info({ slot: 'plate:cafe/night' }))).toEqual({
       ok: true,
+      id: 'asset.replace',
+      props: { hash: 'a1b2c3d4' },
+      label: 'Replace with a file…',
       slot: 'plate:cafe/night',
     });
   });
@@ -116,6 +132,7 @@ describe('replaceAction', () => {
   it('is absent for anything that is not the picture in a slot', () => {
     expect(replaceAction(concept())).toEqual({
       ok: false,
+      id: 'asset.replace',
       reason: expect.stringContaining('fills no slot'),
     });
   });
@@ -123,6 +140,7 @@ describe('replaceAction', () => {
   it('refuses a portrait, whose look is the gate’s to bless', () => {
     expect(replaceAction(portrait({ slot: 'portrait:aiko' }))).toEqual({
       ok: false,
+      id: 'asset.replace',
       reason: expect.stringContaining('gate.approve'),
     });
   });
@@ -189,6 +207,7 @@ describe('approveAction', () => {
     const waiting = 'Approve what this was drawn from first: cafe — night plate is not approved.';
     expect(approveAction(info({ newerTake: 'e5f6a7b8', unapproved: waiting }))).toEqual({
       ok: false,
+      id: 'asset.accept',
       reason: waiting,
     });
   });
@@ -198,6 +217,7 @@ describe('approveAction', () => {
   it('refuses a concept, which promotion is for', () => {
     expect(approveAction(concept())).toEqual({
       ok: false,
+      id: 'asset.accept',
       reason: expect.stringContaining('Promote it to a plate'),
     });
   });
@@ -206,6 +226,7 @@ describe('approveAction', () => {
   it('refuses an upload, which nothing generated', () => {
     expect(approveAction(info({ kind: 'reference', label: 'moodboard.png' }))).toEqual({
       ok: false,
+      id: 'asset.accept',
       reason: expect.stringContaining('pointed at'),
     });
   });
@@ -215,10 +236,16 @@ describe('approveAction', () => {
   it('refuses while anything it was drawn from is unapproved, in main’s own words', () => {
     const waiting =
       'Approve what this was drawn from first: cafe — night plate is not approved yet.';
-    expect(approveAction(info({ unapproved: waiting }))).toEqual({ ok: false, reason: waiting });
-    // The unapproved check runs ahead of the portrait split, so the gate button greys out too
+    expect(approveAction(info({ unapproved: waiting }))).toEqual({
+      ok: false,
+      id: 'asset.accept',
+      reason: waiting,
+    });
+    // The unapproved check runs ahead of the portrait split, so the gate button greys out too, and
+    // the refusal names the gate rather than the generic accept
     expect(approveAction(portrait({ unapproved: waiting }))).toEqual({
       ok: false,
+      id: 'gate.approve',
       reason: waiting,
     });
   });
@@ -226,6 +253,7 @@ describe('approveAction', () => {
   it('refuses a portrait whose character the project has lost, rather than guessing one', () => {
     expect(approveAction(portrait({ rungs: [] }))).toEqual({
       ok: false,
+      id: 'gate.approve',
       reason: 'This portrait names no character — approve it from the gate.',
     });
   });
@@ -237,16 +265,34 @@ describe('promptEditable', () => {
   it('hands back the concept’s recorded prompt and name to start from', () => {
     expect(
       promptEditable(concept({ prompt: 'Subject: Café Mori. from above', title: 'aerial' })),
-    ).toEqual({ ok: true, prompt: 'Subject: Café Mori. from above', title: 'aerial' });
+    ).toEqual({
+      ok: true,
+      id: 'art.redraw',
+      props: { hash: 'a1b2c3d4' },
+      label: 'Redraw',
+      prompt: 'Subject: Café Mori. from above',
+      title: 'aerial',
+    });
   });
 
   it('starts empty for a concept the manifest recorded nothing for', () => {
-    expect(promptEditable(concept())).toEqual({ ok: true, prompt: '', title: '' });
+    expect(promptEditable(concept())).toEqual({
+      ok: true,
+      id: 'art.redraw',
+      props: { hash: 'a1b2c3d4' },
+      label: 'Redraw',
+      prompt: '',
+      title: '',
+    });
   });
 
   it('refuses every derived kind, naming the clauses as the way those move', () => {
     const plate = promptEditable(info());
-    expect(plate).toEqual({ ok: false, reason: expect.stringContaining('a clause at a time') });
+    expect(plate).toEqual({
+      ok: false,
+      id: 'art.redraw',
+      reason: expect.stringContaining('a clause at a time'),
+    });
     expect(plate.ok === false && plate.reason).toContain('location_ref');
     expect(promptEditable(portrait())).toMatchObject({ ok: false });
   });
@@ -411,5 +457,28 @@ describe('blockedNote', () => {
     expect(blockedNote(info({ suspended: 'The plate it was drawn against moved.' }))).toBe(
       'The plate it was drawn against moved.',
     );
+  });
+});
+
+describe('taskAction', () => {
+  // Two acts in a load-bearing order: the inspector reads the selection on its first update(),
+  // so the hash is published and only then is the pane opened.
+  it('publishes the task before it opens the pane that reads one', () => {
+    expect(taskAction('t1')).toEqual({
+      ok: true,
+      id: 'view.open',
+      props: { editor: 'inspector', where: 'elsewhere' },
+      label: 'Task',
+      publish: { taskHash: 't1' },
+    });
+  });
+
+  it('refuses an asset the manifest records no task for', () => {
+    expect(taskAction(undefined)).toEqual({
+      ok: false,
+      id: 'view.open',
+      reason: 'The manifest records no task for this asset.',
+    });
+    expect(taskAction('')).toMatchObject({ ok: false });
   });
 });

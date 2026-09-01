@@ -286,6 +286,23 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  // An editor reaches a command through `bridge.exec` and nowhere else. The bridge is what
+  // `onExec`, `onInvalidate` and `onWrote` hang off, so a pane that invokes the channel itself
+  // writes the file and tells no other pane about it. There is no legitimate exception here, so
+  // the rule carries no allowlist.
+  {
+    files: ['apps/desktop/renderer/pathux/editors/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='invoke'] > Literal[value='command:exec']",
+          message:
+            "Run the command through `exec` from '../bridge.js' instead of invoking 'command:exec'.",
+        },
+      ],
+    },
+  },
   {
     files: ['**/*.test.ts', '**/__fixtures__/**'],
     rules: { 'boundaries/element-types': 'off' },

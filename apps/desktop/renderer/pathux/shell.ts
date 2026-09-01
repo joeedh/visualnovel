@@ -15,6 +15,7 @@ import {
 import { installAgent } from './agent.js';
 import { api } from '../api.js';
 import { defineShellApi } from './api.js';
+import { installAnchors } from './anchors.js';
 import { exec, installBridge } from './bridge.js';
 import type { AssetInfo } from '../../src/shared/ipc.js';
 import { editorNameProblems, isOfferedEditor } from '../../src/shared/editors.js';
@@ -99,6 +100,9 @@ class Shell implements ShellApp {
     screen.completeUpdate();
 
     installKeymap(this);
+    // Before the bridge, so the first pane an editor draws already has somewhere to record what
+    // it can be asked to do.
+    installAnchors();
     installBridge(this);
     // After the bridge, and whether or not a convo pane is open: the agent streams into the
     // store from boot, so a pane opened later shows what was already said.

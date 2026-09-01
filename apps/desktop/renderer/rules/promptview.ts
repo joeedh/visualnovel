@@ -11,6 +11,7 @@ import type { ChunkOrigin } from '@vn/types';
 import { TOP_CHUNK } from '../../src/shared/promptops.js';
 import type { PropValue } from '../../src/shared/ipc.js';
 import type { PromptChunkInfo, PromptView } from '../../src/shared/prompt.js';
+import type { Offer } from './anchors.js';
 
 /**
  * The hue distinguishes who wrote the words. `--sodium` means they come verbatim out of a
@@ -158,9 +159,10 @@ export interface ModeButton {
   id: 'chunks' | 'custom' | 'agent';
   label: string;
   active: boolean;
+  /** A refusal names its command too, so a greyed segment is still an anchor rather than a gap. */
   action:
     | { ok: true; id: string; props: Record<string, PropValue> }
-    | { ok: false; reason: string };
+    | { ok: false; reason: string; id: string };
 }
 
 /**
@@ -175,7 +177,11 @@ export function modeStrip(view: PromptView): ModeButton[] {
     id,
     label,
     active: view.mode === id,
-    action: frozen ? { ok: false, reason: frozen } : view.mode === id ? alreadyIn(id) : action,
+    action: frozen
+      ? { ok: false, id: commandOfMode[id], reason: frozen }
+      : view.mode === id
+        ? alreadyIn(id)
+        : action,
   });
 
   return [
@@ -193,8 +199,16 @@ export function modeStrip(view: PromptView): ModeButton[] {
   ];
 }
 
-const alreadyIn = (id: ModeButton['id']): { ok: false; reason: string } => ({
+/** Which command each segment runs, so a refused segment still names what it is about. */
+const commandOfMode: Record<ModeButton['id'], string> = {
+  chunks: 'prompt.clear',
+  custom: 'prompt.setCustom',
+  agent: 'prompt.condense',
+};
+
+const alreadyIn = (id: ModeButton['id']): { ok: false; reason: string; id: string } => ({
   ok: false,
+  id: commandOfMode[id],
   reason: `This prompt is already in ${id} mode.`,
 });
 
@@ -209,7 +223,7 @@ export const condenseNeedsForce = (hash: string): string =>
 /** The Condense control: the invocation it runs, or why there is nothing to condense. */
 export type CondenseAction =
   | { ok: true; id: string; props: Record<string, PropValue>; label: string; note: string }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; id: string };
 
 /**
  * Condensing from custom mode passes `force`, because refusing would leave an author who wrote a
@@ -218,9 +232,9 @@ export type CondenseAction =
  * text it is about to reconcile.
  */
 export function condenseAction(view: PromptView): CondenseAction {
-  if (view.frozen) return { ok: false, reason: view.frozen };
+  if (view.frozen) return { ok: false, id: 'prompt.condense', reason: view.frozen };
   if (view.chunks.length === 0) {
-    return { ok: false, reason: 'There are no chunks to condense.' };
+    return { ok: false, id: 'prompt.condense', reason: 'There are no chunks to condense.' };
   }
   if (view.mode === 'custom') {
     return {
@@ -293,6 +307,99 @@ export function refStrip(chunk: PromptChunkInfo): RefChip[] {
       .filter(Boolean)
       .join(' · '),
   }));
+}
+
+/** One act on a clause: what its button says, and the invocation a click runs. */
+export interface ChunkAct {
+  key: 'mute' | 'replace' | 'append' | 'reset';
+  label: string;
+  /** What the button says on hover. A refused act repeats its own reason here. */
+  title: string;
+  offer: Offer;
+  /**
+   * The box this click opens instead of running the offer at once. `text` is typed into it and
+   * arrives as a supplied prop, which is why the two boxed acts record `supplies` rather than a
+   * complete invocation.
+   */
+  opens?: 'replace' | 'append';
+}
+
+/** The prop the two boxed clause acts fill in, which is not known until it is typed. */
+export const CHUNK_SUPPLIES = ['text'];
+
+/**
+ * The four acts on one clause. `Reset` is also how a mute comes off — `prompt.setChunk(op=clear)`
+ * discards everything done to the chunk, which is one act to explain rather than two.
+ *
+ * Every act is the same command with a different `op`, so the strip is a list rather than four
+ * hand-wired buttons, and each carries the invocation the click runs rather than a description
+ * of it.
+ */
+export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] {
+  const setChunk = (op: string, text?: string): Offer => ({
+    ok: true,
+    id: 'prompt.setChunk',
+    props: { hash: view.hash, chunk: chunk.key, op, ...(text === undefined ? {} : { text }) },
+  });
+  const nothingDone = !chunk.muted && !chunk.edit;
+
+  return [
+    {
+      key: 'mute',
+      label: 'Mute',
+      title: chunk.muted ? 'Already muted.' : 'Leave this clause out of the prompt',
+      offer: chunk.muted
+        ? { ok: false, id: 'prompt.setChunk', reason: 'Already muted.' }
+        : setChunk('mute', ''),
+    },
+    {
+      key: 'replace',
+      label: 'Replace…',
+      title: 'Say this clause in your own words',
+      offer: setChunk('replace'),
+      opens: 'replace',
+    },
+    {
+      key: 'append',
+      label: 'Append…',
+      title: 'Add to what the builders derived, keeping it',
+      offer: setChunk('append'),
+      opens: 'append',
+    },
+    {
+      key: 'reset',
+      label: 'Reset',
+      title: nothingDone
+        ? 'Nothing has been done to this clause.'
+        : 'Go back to the words the builders derived',
+      offer: nothingDone
+        ? { ok: false, id: 'prompt.setChunk', reason: 'Nothing has been done to this clause.' }
+        : setChunk('clear', ''),
+    },
+  ];
+}
+
+/** Detach one reference image from a clause. Its own function so the strip records what it runs. */
+export function dropRefAction(view: PromptView, chunk: PromptChunkInfo, pin: string): Offer {
+  return {
+    ok: true,
+    id: 'prompt.dropRef',
+    props: { hash: view.hash, chunk: chunk.key, ref: pin },
+  };
+}
+
+/**
+ * The whole prompt, written by hand. The text is supplied by the box, so the offer carries only
+ * the subject and {@link CHUNK_SUPPLIES} names what is still owed.
+ */
+export function customAction(view: PromptView): Offer {
+  if (view.frozen) return { ok: false, id: 'prompt.setCustom', reason: view.frozen };
+  return { ok: true, id: 'prompt.setCustom', props: { hash: view.hash }, label: 'Save' };
+}
+
+/** Which clauses the prompt in force no longer appears to say. Reads; writes nothing. */
+export function checkAction(view: PromptView): Offer {
+  return { ok: true, id: 'prompt.check', props: { hash: view.hash }, label: 'Check' };
 }
 
 /** One card's vertical extent on screen, which is all the drop geometry reads. */

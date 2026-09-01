@@ -5,7 +5,7 @@
  * These are pure functions so they can be tested here. The desktop jest project is node-only and
  * the pane itself can only be checked live over CDP, so the rules are kept out of the markup.
  */
-import type { AssetInfo } from '../../src/shared/ipc.js';
+import type { AssetInfo, PropValue } from '../../src/shared/ipc.js';
 
 /** The character an entity-level rung names — `character:aiko/gala` → `aiko`. */
 export function characterOf(info: AssetInfo): string {
@@ -33,10 +33,14 @@ export function locationOf(info: AssetInfo): string {
   return '';
 }
 
-/** The approve button: which command it runs, or why there is nothing for it to run. */
+/**
+ * The approve button: which command it runs, or why there is nothing for it to run. A refusal
+ * still names the command it is about, so a tour asked for that command can ring the greyed
+ * button and say this sentence rather than reporting the button as missing.
+ */
 export type ApproveAction =
   | { ok: true; id: string; props: Record<string, string>; label: string }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; id: string };
 
 /**
  * A portrait is approved through the gate and nothing else. `gate.approve` also writes
@@ -53,15 +57,20 @@ export type ApproveAction =
  * upstream refusal is not consulted for it, since nothing upstream is at stake in undoing one.
  */
 export function approveAction(info: AssetInfo): ApproveAction {
+  // Which command a refusal below is about: a look goes through the gate, everything else is
+  // accepted directly.
+  const approving = info.kind === 'portrait' ? 'gate.approve' : 'asset.accept';
   if (info.kind === 'concept') {
     return {
       ok: false,
+      id: approving,
       reason: 'A concept is a sketch — nothing downstream consumes one. Promote it to a plate.',
     };
   }
   if (info.kind === 'reference') {
     return {
       ok: false,
+      id: approving,
       reason:
         'An upload is not generated art — it counts by being pointed at, not by being blessed.',
     };
@@ -74,7 +83,7 @@ export function approveAction(info: AssetInfo): ApproveAction {
       label: 'Un-approve',
     };
   }
-  if (info.unapproved) return { ok: false, reason: info.unapproved };
+  if (info.unapproved) return { ok: false, id: approving, reason: info.unapproved };
   // An older take, which a later render pushed out of its slot. Accepting one has to put it back
   // as well: the flag alone would leave the slot naming the later render, so the runner and the
   // exporter would go on using it and the click would appear to do nothing. A portrait is left
@@ -87,7 +96,11 @@ export function approveAction(info: AssetInfo): ApproveAction {
   }
   const characterId = characterOf(info);
   if (characterId === '') {
-    return { ok: false, reason: 'This portrait names no character — approve it from the gate.' };
+    return {
+      ok: false,
+      id: approving,
+      reason: 'This portrait names no character — approve it from the gate.',
+    };
   }
   return {
     ok: true,
@@ -97,8 +110,20 @@ export function approveAction(info: AssetInfo): ApproveAction {
   };
 }
 
-/** The promote control: the location a concept would become a plate for, or why it cannot. */
-export type PromoteAction = { ok: true; locationId: string } | { ok: false; reason: string };
+/**
+ * The promote control: `art.promote` on this concept, or why it cannot run. The variant id is not
+ * here because it is not known until it is typed — the strip records it as a supplied prop.
+ */
+export type PromoteAction =
+  | {
+      ok: true;
+      id: string;
+      props: Record<string, PropValue>;
+      label: string;
+      /** The place the plate is for, which is what the strip says above its field. */
+      locationId: string;
+    }
+  | { ok: false; reason: string; id: string };
 
 /**
  * Only a concept is promotable, and only one bound to a location. Promoting a character concept
@@ -106,11 +131,16 @@ export type PromoteAction = { ok: true; locationId: string } | { ok: false; reas
  */
 export function promoteAction(info: AssetInfo): PromoteAction {
   if (info.kind !== 'concept') {
-    return { ok: false, reason: `A ${info.kind} is already what it is — only a concept promotes.` };
+    return {
+      ok: false,
+      id: 'art.promote',
+      reason: `A ${info.kind} is already what it is — only a concept promotes.`,
+    };
   }
   if (characterOf(info) !== '') {
     return {
       ok: false,
+      id: 'art.promote',
       reason:
         "That is a concept of a character, and a character's look goes through the approval gate.",
     };
@@ -119,14 +149,30 @@ export function promoteAction(info: AssetInfo): PromoteAction {
   if (locationId === '') {
     return {
       ok: false,
+      id: 'art.promote',
       reason: 'This concept names no location, so there is no sheet to write to.',
     };
   }
-  return { ok: true, locationId };
+  return {
+    ok: true,
+    id: 'art.promote',
+    props: { hash: info.hash },
+    label: 'Promote',
+    locationId,
+  };
 }
 
 /** The replace strip: the slot a chosen file would fill, or why these bytes have none. */
-export type ReplaceAction = { ok: true; slot: string } | { ok: false; reason: string };
+export type ReplaceAction =
+  | {
+      ok: true;
+      id: string;
+      props: Record<string, PropValue>;
+      label: string;
+      /** The slot the file stands in for, which the strip names beside its button. */
+      slot: string;
+    }
+  | { ok: false; reason: string; id: string };
 
 /**
  * A file can only stand in for a picture the project actually planned, and only while the asset on
@@ -138,23 +184,42 @@ export function replaceAction(info: AssetInfo): ReplaceAction {
   if (info.slot === undefined) {
     return {
       ok: false,
+      id: 'asset.replace',
       reason: `A ${info.kind} fills no slot — nothing planned it, or a newer render holds the slot now.`,
     };
   }
   if (info.slot.startsWith('portrait:')) {
     return {
       ok: false,
+      id: 'asset.replace',
       reason:
         'A portrait is the look the gate owns — upload the file, then approve it with gate.approve.',
     };
   }
-  return { ok: true, slot: info.slot };
+  return {
+    ok: true,
+    id: 'asset.replace',
+    props: { hash: info.hash },
+    label: 'Replace with a file…',
+    slot: info.slot,
+  };
 }
 
-/** The redraw strip: what the boxes start out holding, or why this prompt cannot be edited. */
+/**
+ * The redraw strip: what the boxes start out holding, or why this prompt cannot be edited. The
+ * words themselves are supplied by the boxes at commit time, so `props` carries only the subject.
+ */
 export type RedrawAction =
-  | { ok: true; prompt: string; title: string }
-  | { ok: false; reason: string };
+  | {
+      ok: true;
+      id: string;
+      props: Record<string, PropValue>;
+      label: string;
+      /** What the two boxes are prefilled with. */
+      prompt: string;
+      title: string;
+    }
+  | { ok: false; reason: string; id: string };
 
 /**
  * A concept is the one asset whose prompt is authored: nothing derives it, so nothing rewrites it
@@ -168,16 +233,38 @@ export function promptEditable(info: AssetInfo): RedrawAction {
   if (info.kind !== 'concept') {
     return {
       ok: false,
+      id: 'art.redraw',
       reason: `A ${info.kind}'s prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string.`,
     };
   }
-  return { ok: true, prompt: info.prompt ?? '', title: info.title ?? '' };
+  return {
+    ok: true,
+    id: 'art.redraw',
+    props: { hash: info.hash },
+    label: 'Redraw',
+    prompt: info.prompt ?? '',
+    title: info.title ?? '',
+  };
 }
 
-/** The Regenerate button: requeue this asset's own task, or offer to run the pipeline instead. */
+/** The prop names the redraw boxes fill in, which no anchor can record before they are typed. */
+export const REDRAW_SUPPLIES = ['prompt', 'title'];
+
+/**
+ * The Regenerate button: requeue this asset's own task, or offer to run the pipeline instead.
+ * Both carry the invocation, so the button and the anchor read the same object; the `pipeline`
+ * act reaches it through a form, because what the author confirms there is the work and its cost.
+ */
 export type RegenerateAction =
-  | { act: 'requeue'; hint: string }
-  | { act: 'pipeline'; hint: string; note: string };
+  | { act: 'requeue'; id: string; props: Record<string, PropValue>; label: string; hint: string }
+  | {
+      act: 'pipeline';
+      id: string;
+      props: Record<string, PropValue>;
+      label: string;
+      hint: string;
+      note: string;
+    };
 
 /**
  * Which of the two acts Regenerate performs. A stale asset's own task is an orphan — the prompt
@@ -194,18 +281,61 @@ export type RegenerateAction =
 export function regenerateAction(info: AssetInfo): RegenerateAction {
   const requeue = {
     act: 'requeue',
+    id: 'asset.regenerate',
+    props: { hash: info.hash, run: true },
+    label: 'Regenerate',
     hint: 'Requeue the task behind these bytes and run the pipeline',
   } as const;
   if (info.failure?.later) return requeue;
   if (!info.stale) return requeue;
   return {
     act: 'pipeline',
+    id: 'pipeline.run',
+    props: { mock: false },
+    label: 'Regenerate',
     hint: 'Offer a pipeline run: this picture is behind the project, and the task that catches it up is already planned',
     note:
       `${info.label} was rendered from a prompt the project has since changed, so re-running its own ` +
       'task would draw the picture you edited away from. A fresh task is already planned for it, and ' +
       'a run is what reaches it. Dry run is unticked because Regenerate asked for the picture rather ' +
       'than a preview of the work.',
+  };
+}
+
+/** The Task button: hand a task to the inspector, or say there is no task to hand over. */
+export type TaskAction =
+  | {
+      ok: true;
+      id: string;
+      props: Record<string, PropValue>;
+      label: string;
+      /**
+       * `ShellState` fields to publish before the pane opens. The ordering is load-bearing for the
+       * reason `originAction`'s is: the new pane reads the selection on its first `update()`.
+       */
+      publish: Record<string, string>;
+    }
+  | { ok: false; reason: string; id: string };
+
+/**
+ * The inspector is the pane that reads attempts, and `view.open` has one `subject` while this
+ * needs a task hash in the selection — so the act is a publish followed by an open, not one
+ * command carrying both.
+ */
+export function taskAction(taskHash: string | undefined): TaskAction {
+  if (taskHash === undefined || taskHash === '') {
+    return {
+      ok: false,
+      id: 'view.open',
+      reason: 'The manifest records no task for this asset.',
+    };
+  }
+  return {
+    ok: true,
+    id: 'view.open',
+    props: { editor: 'inspector', where: 'elsewhere' },
+    label: 'Task',
+    publish: { taskHash },
   };
 }
 

@@ -37,7 +37,7 @@ import type { VnScreen } from '../screen.js';
 import { aim, dropOf, grabLine, lineMenu, noticeOf, type Drag } from '../script.js';
 import { menuIsOpen, showContextMenu } from '../showmenu.js';
 import type { VnContext } from '../context.js';
-import { onInvalidate, onWrote, refreshWorkspace } from '../bridge.js';
+import { exec, onInvalidate, onWrote, refreshWorkspace } from '../bridge.js';
 import { touchesScene } from '../../../src/shared/writes.js';
 import SCRIPT_CSS from '../../styles/script.css?inline';
 import type { Invocation } from '@vn/commands';
@@ -949,7 +949,10 @@ export class ScriptEditor extends VnEditor {
     this.editing = null;
     let ran = false;
     for (const step of steps) {
-      const outcome = await api.invoke('command:exec', { ...step, source: 'ui' });
+      // Goes through the bridge rather than `command:exec`: a line edit rewrites a scene chunk,
+      // and every surface watching for that hears it from `exec`'s invalidate. Invoking the
+      // channel directly writes the file and notifies nothing
+      const outcome = await exec(step.id, step.props);
       if (!outcome.ok) {
         this.notice = { tone: 'refused', text: outcome.error };
         if (from) {

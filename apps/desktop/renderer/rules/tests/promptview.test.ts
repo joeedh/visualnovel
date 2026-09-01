@@ -5,6 +5,8 @@
 import type { ChunkOrigin } from '@vn/types';
 import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js';
 import {
+  CHUNK_SUPPLIES,
+  chunkActs,
   chunkAddress,
   chunkDropTarget,
   chunkTag,
@@ -14,6 +16,9 @@ import {
   condenseNeedsForce,
   coverageMark,
   heldNote,
+  checkAction,
+  customAction,
+  dropRefAction,
   modeStrip,
   originAction,
 } from '../promptview.js';
@@ -183,6 +188,7 @@ describe('modeStrip', () => {
     expect(strip[0]!.active).toBe(true);
     expect(strip[0]!.action).toEqual({
       ok: false,
+      id: 'prompt.clear',
       reason: 'This prompt is already in chunks mode.',
     });
   });
@@ -209,9 +215,10 @@ describe('modeStrip', () => {
 
   it('is entirely disabled on a frozen prompt, each segment carrying the reason', () => {
     const frozen = 'A concept’s prompt is the sentence it was asked for.';
-    for (const segment of modeStrip(view({ frozen }))) {
-      expect(segment.action).toEqual({ ok: false, reason: frozen });
-    }
+    const commands = ['prompt.clear', 'prompt.setCustom', 'prompt.condense'];
+    modeStrip(view({ frozen })).forEach((segment, i) => {
+      expect(segment.action).toEqual({ ok: false, id: commands[i], reason: frozen });
+    });
   });
 });
 
@@ -242,10 +249,12 @@ describe('condenseAction', () => {
   it('refuses when there is nothing derived under the prompt', () => {
     expect(condenseAction(view({ frozen: 'Authored, not derived.' }))).toEqual({
       ok: false,
+      id: 'prompt.condense',
       reason: 'Authored, not derived.',
     });
     expect(condenseAction(view({ chunks: [] }))).toEqual({
       ok: false,
+      id: 'prompt.condense',
       reason: 'There are no chunks to condense.',
     });
   });
@@ -279,5 +288,84 @@ describe('coverageMark', () => {
   it('says nothing about a chunk that was never going to be sent', () => {
     const v = view({ mode: 'agent', missing: ['palette'] });
     expect(coverageMark(v, chunk({ muted: true }))).toBeUndefined();
+  });
+});
+
+describe('chunkActs', () => {
+  it('offers the same command four times, one op each', () => {
+    const acts = chunkActs(view(), chunk());
+    expect(acts.map((a) => a.key)).toEqual(['mute', 'replace', 'append', 'reset']);
+    for (const act of acts) expect(act.offer.id).toBe('prompt.setChunk');
+    expect(acts[0]!.offer).toEqual({
+      ok: true,
+      id: 'prompt.setChunk',
+      props: { hash: 'abc123', chunk: 'palette', op: 'mute', text: '' },
+    });
+  });
+
+  // The two boxed acts leave `text` out. The author has not typed it yet, so any value an anchor
+  // recorded for it would be a guess.
+  it('leaves the text off the two acts that open a box', () => {
+    const acts = chunkActs(view(), chunk());
+    expect(acts[1]!.opens).toBe('replace');
+    expect(acts[1]!.offer).toEqual({
+      ok: true,
+      id: 'prompt.setChunk',
+      props: { hash: 'abc123', chunk: 'palette', op: 'replace' },
+    });
+    expect(CHUNK_SUPPLIES).toEqual(['text']);
+  });
+
+  it('refuses muting what is already muted, and resetting what nothing was done to', () => {
+    const [mute] = chunkActs(view(), chunk({ muted: true }));
+    expect(mute!.offer).toEqual({
+      ok: false,
+      id: 'prompt.setChunk',
+      reason: 'Already muted.',
+    });
+    const acts = chunkActs(view(), chunk());
+    expect(acts[3]!.offer).toMatchObject({ ok: false, id: 'prompt.setChunk' });
+  });
+
+  it('offers Reset once anything has been done to the clause', () => {
+    const edited = chunkActs(view(), chunk({ edit: 'replace', authored: 'Aiko, in green.' }));
+    expect(edited[3]!.offer).toEqual({
+      ok: true,
+      id: 'prompt.setChunk',
+      props: { hash: 'abc123', chunk: 'palette', op: 'clear', text: '' },
+    });
+  });
+});
+
+describe('the rest of the prompt pane’s invocations', () => {
+  it('detaches one reference by its pin', () => {
+    expect(dropRefAction(view(), chunk(), 'pin1')).toEqual({
+      ok: true,
+      id: 'prompt.dropRef',
+      props: { hash: 'abc123', chunk: 'palette', ref: 'pin1' },
+    });
+  });
+
+  it('leaves the custom prompt’s text to the box, and refuses on a frozen prompt', () => {
+    expect(customAction(view())).toEqual({
+      ok: true,
+      id: 'prompt.setCustom',
+      props: { hash: 'abc123' },
+      label: 'Save',
+    });
+    expect(customAction(view({ frozen: 'Authored.' }))).toEqual({
+      ok: false,
+      id: 'prompt.setCustom',
+      reason: 'Authored.',
+    });
+  });
+
+  it('checks the prompt in force', () => {
+    expect(checkAction(view())).toEqual({
+      ok: true,
+      id: 'prompt.check',
+      props: { hash: 'abc123' },
+      label: 'Check',
+    });
   });
 });

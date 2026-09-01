@@ -33,7 +33,7 @@ import {
   sourceLabel,
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
-import { onInvalidate } from '../bridge.js';
+import { exec, onInvalidate } from '../bridge.js';
 import { MENU_SEP } from '../contextmenu.js';
 import type { VnContext } from '../context.js';
 import { openCommandDialog } from '../dialog.js';
@@ -1079,7 +1079,7 @@ export class TimelineEditor extends VnEditor {
       return;
     }
     this.beginBusy('Retyping line');
-    const outcome = await api.invoke('command:exec', { ...invocation, source: 'ui' });
+    const outcome = await exec(invocation.id, invocation.props);
     this.settleBusy();
     if (!outcome.ok) {
       // The draft is still held, so reopening hands back what the author typed alongside the
@@ -1111,7 +1111,10 @@ export class TimelineEditor extends VnEditor {
    */
   private async run(invocation: Invocation, progress: string, fallback: string): Promise<void> {
     this.beginBusy(progress);
-    const outcome = await api.invoke('command:exec', { ...invocation, source: 'ui' });
+    // Goes through the bridge rather than `command:exec`: a coverage or wardrobe edit rewrites
+    // files other panes show, and they hear it from `exec`'s invalidate. Invoking the channel
+    // directly writes the file and notifies nothing
+    const outcome = await exec(invocation.id, invocation.props);
     this.settleBusy();
     if (!outcome.ok) return this.say({ tone: 'refused', text: outcome.error });
     this.notice = { tone: 'ok', text: outcome.record.message ?? fallback };
