@@ -6,10 +6,12 @@
  * form that refuses — and it would do so silently, because a tour is only read when it is run.
  */
 import { coerceProps } from '@vn/commands';
+import { createDesktopInteractions } from '../../shared/interactions.js';
 import { TOURS } from '../../shared/tours.js';
 import { createDesktopRegistry } from '../commands/index.js';
 
 const registry = createDesktopRegistry();
+const interactions = createDesktopInteractions();
 
 describe('the curated tours', () => {
   it('have distinct ids', () => {
@@ -29,6 +31,14 @@ describe('the curated tours', () => {
     for (const tour of TOURS) {
       for (const step of tour.steps) {
         if (step.kind === 'select') continue;
+        if (step.kind === 'gesture') {
+          expect([tour.id, step.id, interactions.get(step.id) !== undefined]).toEqual([
+            tour.id,
+            step.id,
+            true,
+          ]);
+          continue;
+        }
         expect([tour.id, step.id, registry.get(step.id) !== undefined]).toEqual([
           tour.id,
           step.id,
@@ -46,7 +56,7 @@ describe('the curated tours', () => {
   it('carry props the commands accept', () => {
     for (const tour of TOURS) {
       for (const step of tour.steps) {
-        if (step.kind === 'select' || !step.props) continue;
+        if (step.kind === 'select' || step.kind === 'gesture' || !step.props) continue;
         const command = registry.get(step.id);
         const named = Object.fromEntries(
           Object.entries(command?.props ?? {}).filter(([name]) => name in (step.props ?? {})),

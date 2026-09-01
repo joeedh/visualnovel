@@ -9,12 +9,15 @@
  * The steps themselves are `shared/tours.ts`, because main's `tour.*` commands name the curated
  * ones. Everything here is pure and node-testable; reaching the screen is `pathux/tour.ts`.
  */
+import { UNRESOLVED, type Verdict } from '@vn/commands';
 import type { PropValue } from '../../src/shared/ipc.js';
 import type { Step, Tour } from '../../src/shared/tours.js';
 import {
   resolveAnchor,
   resolveItem,
+  resolveNamed,
   type Action,
+  type AnchorHome,
   type AnchorMap,
   type LiveAnchors,
   type Resolution,
@@ -34,9 +37,13 @@ export const finished = (state: TourState): boolean => state.at >= state.tour.st
 
 export const advance = (state: TourState): TourState => ({ ...state, at: state.at + 1 });
 
-/** The invocation a step is about, or nothing for a `select`, which names a subject rather than an act. */
+/**
+ * The invocation a step is about. Nothing for a `select`, which names a subject rather than an
+ * act, and nothing for a `gesture`, whose invocation is the verdict's answer over live state.
+ */
 export function actionOf(step: Step): Action | undefined {
-  return step.kind === 'select' ? undefined : { id: step.id, props: step.props ?? {} };
+  if (step.kind === 'select' || step.kind === 'gesture') return undefined;
+  return { id: step.id, props: step.props ?? {} };
 }
 
 /**
@@ -49,7 +56,15 @@ export function actionOf(step: Step): Action | undefined {
  * where there is one, since a greyed control saying why is the whole answer.
  */
 export type Guidance =
-  | { show: 'ring'; say: string; where: Resolution }
+  | {
+      show: 'ring';
+      say: string;
+      where: Resolution;
+      /** Keys to outline more faintly beside the ring — where a gesture could be dropped. */
+      also?: readonly string[];
+      /** What running the step would invoke, where only the live state can say. */
+      awaits?: Action;
+    }
   | { show: 'route'; say: string; action: Action }
   | { show: 'open'; say: string; editor: string }
   | { show: 'blocked'; say: string; reason: string; where?: Resolution }
@@ -62,9 +77,16 @@ export type Guidance =
  * resolver names the selection the step would need, and the tour then asks the author to pick that
  * before pressing a button that would act on the wrong thing.
  */
-export function guide(map: AnchorMap, live: LiveAnchors, state: TourState): Guidance {
+export function guide(
+  map: AnchorMap,
+  live: LiveAnchors,
+  state: TourState,
+  judge?: Judge,
+): Guidance {
   const step = stepOf(state);
   if (!step) return { show: 'done' };
+
+  if (step.kind === 'gesture') return gesture(live, step, judge);
 
   if (step.kind === 'select') {
     const where = resolveItem(live, step.itemKind, step.key);
@@ -95,16 +117,88 @@ export function guide(map: AnchorMap, live: LiveAnchors, state: TourState): Guid
 }
 
 /**
+ * How the app answers what a gesture would do. Undefined where no open surface holds the state
+ * that gesture is judged against, which is a different answer from a gesture with nowhere to go.
+ */
+export type Judge = (
+  interaction: string,
+  carried: string,
+) => { editor: AnchorHome; verdicts: readonly Verdict[] } | undefined;
+
+type GestureStep = Extract<Step, { kind: 'gesture' }>;
+
+/**
+ * A gesture step, judged by the same `targets` the drop itself would call. Nothing is armed and no
+ * pointer goes down: the verdicts are read, the thing to pick up is ringed, and whatever would take
+ * it is outlined beside it. A refusal is the sentence the command would have given.
+ */
+function gesture(live: LiveAnchors, step: GestureStep, judge?: Judge): Guidance {
+  const judged = judge?.(step.id, step.carried);
+  if (!judged) {
+    return { show: 'blocked', say: step.say, reason: `Nothing on screen runs ${step.id} yet.` };
+  }
+  const { editor, verdicts } = judged;
+  const unresolved = verdicts.find((verdict) => verdict.target === UNRESOLVED);
+  if (unresolved && !unresolved.accept) {
+    return { show: 'blocked', say: step.say, reason: unresolved.reason };
+  }
+
+  const grab = resolveNamed(live, editor, step.carried);
+  if (grab.state === 'absent') {
+    return { show: 'blocked', say: step.say, reason: `Nothing on screen names ${step.carried}.` };
+  }
+
+  if (step.target === undefined) {
+    const taking = verdicts.filter((verdict) => verdict.accept);
+    if (taking.length === 0) {
+      return { show: 'blocked', say: step.say, reason: 'There is nowhere to drop it.' };
+    }
+    return { show: 'ring', say: step.say, where: grab, also: keysOf(live, editor, taking) };
+  }
+
+  const at = verdicts.find((verdict) => verdict.target === step.target);
+  if (!at) {
+    return { show: 'blocked', say: step.say, reason: `${step.target} takes no ${step.id}.` };
+  }
+  if (!at.accept) return { show: 'blocked', say: step.say, reason: at.reason };
+  return {
+    show: 'ring',
+    say: step.say,
+    where: grab,
+    also: keysOf(live, editor, [at]),
+    awaits: { id: at.invoke.id, props: at.invoke.props },
+  };
+}
+
+/** The anchor each of these targets is drawn as, leaving out the ones nothing on screen names. */
+function keysOf(live: LiveAnchors, editor: AnchorHome, verdicts: readonly Verdict[]): string[] {
+  const keys: string[] = [];
+  for (const verdict of verdicts) {
+    const where = resolveNamed(live, editor, verdict.target);
+    if ('anchor' in where) keys.push(where.anchor.key);
+  }
+  return keys;
+}
+
+/**
  * Whether what just ran is the step the tour was waiting for. Compared by subsumption rather than
  * equality, because an `input` step names a prop the author has only now typed, and a `command`
  * step may leave a prop for the form to fill in.
  *
+ * A gesture names no invocation of its own — which command a drop commits is the verdict's answer,
+ * over state only the screen has — so `awaits` is what it is compared against.
+ *
  * Anything else means the author went their own way, which is not an error. The caller re-plans.
  */
-export function satisfies(step: Step, ran: Action): boolean {
+export function satisfies(step: Step, ran: Action, awaits?: Action): boolean {
+  if (step.kind === 'gesture') return awaits !== undefined && subsumed(awaits, ran, '');
   const wanted = actionOf(step);
-  if (!wanted || wanted.id !== ran.id) return false;
-  const typed = step.kind === 'input' ? step.supplies : '';
+  return wanted !== undefined && subsumed(wanted, ran, step.kind === 'input' ? step.supplies : '');
+}
+
+/** Whether `ran` carries every prop `wanted` names, ignoring the one the author was to type. */
+function subsumed(wanted: Action, ran: Action, typed: string): boolean {
+  if (wanted.id !== ran.id) return false;
   for (const [name, value] of Object.entries(wanted.props)) {
     if (name === typed) continue;
     if (!same(ran.props[name], value)) return false;

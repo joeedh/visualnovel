@@ -1,3 +1,4 @@
+import { UNRESOLVED, type Verdict } from '@vn/commands';
 import { advance, finished, guide, satisfies, start, stepOf } from '../tour.js';
 import { commandKey, itemKey, type Anchor, type AnchorMap, type LiveAnchors } from '../anchors.js';
 import type { Step, Tour } from '../../../src/shared/tours.js';
@@ -89,6 +90,88 @@ describe('guide', () => {
       tour([{ kind: 'select', itemKind: 'scene', key: 'ending', say: 'Pick the last scene.' }]),
     );
     expect(guide(map, live([]), picking)).toMatchObject({ show: 'blocked' });
+  });
+});
+
+describe('a gesture step', () => {
+  const drag: Step = {
+    kind: 'gesture',
+    id: 'branch.connect',
+    carried: 'arrival',
+    target: 'greet',
+    say: 'Drag the handle onto the next scene.',
+  };
+  const state = start(tour([drag]));
+
+  const cards = (): Anchor[] =>
+    ['arrival', 'greet', 'ending'].map((id) =>
+      anchor({ key: itemKey('scene', id), id: undefined, editor: 'branches' as EditorId }),
+    );
+
+  const seen = live(cards(), { open: ['branches' as EditorId] });
+
+  const judged = (verdicts: Verdict[]) => () => ({ editor: 'branches' as EditorId, verdicts });
+
+  const wire: Verdict = {
+    target: 'greet',
+    accept: true,
+    note: 'arrival now leads to greet.',
+    invoke: { id: 'story.setNext', props: { scene: 'arrival', next: 'greet' } },
+  };
+
+  it('rings what is picked up and outlines what would take it', () => {
+    const shown = guide(map, seen, state, judged([wire]));
+    expect(shown).toMatchObject({
+      show: 'ring',
+      say: 'Drag the handle onto the next scene.',
+      also: [itemKey('scene', 'greet')],
+      awaits: { id: 'story.setNext', props: { scene: 'arrival', next: 'greet' } },
+    });
+  });
+
+  it('passes on the verdict’s own refusal', () => {
+    const refused: Verdict = { target: 'greet', accept: false, reason: 'greet already forks.' };
+    expect(guide(map, seen, state, judged([refused]))).toMatchObject({
+      show: 'blocked',
+      reason: 'greet already forks.',
+    });
+  });
+
+  it('says so when no open surface can judge the gesture', () => {
+    expect(guide(map, seen, state, () => undefined)).toMatchObject({
+      show: 'blocked',
+      reason: 'Nothing on screen runs branch.connect yet.',
+    });
+  });
+
+  it('reports a carried token the state does not have', () => {
+    const lost: Verdict = { target: UNRESOLVED, accept: false, reason: 'No scene "arrival".' };
+    expect(guide(map, seen, state, judged([lost]))).toMatchObject({
+      show: 'blocked',
+      reason: 'No scene "arrival".',
+    });
+  });
+
+  it('outlines every target that would take it when the step names none', () => {
+    const open = start(tour([{ ...drag, target: undefined }]));
+    const both: Verdict[] = [
+      wire,
+      { ...wire, target: 'ending', invoke: { id: 'story.setNext', props: { next: 'ending' } } },
+      { target: 'arrival', accept: false, reason: 'A scene cannot lead to itself.' },
+    ];
+    expect(guide(map, seen, open, judged(both))).toMatchObject({
+      show: 'ring',
+      also: [itemKey('scene', 'greet'), itemKey('scene', 'ending')],
+    });
+  });
+
+  it('advances on the invocation the verdict named, and on nothing else', () => {
+    const awaits = { id: 'story.setNext', props: { scene: 'arrival', next: 'greet' } };
+    expect(satisfies(drag, awaits, awaits)).toBe(true);
+    expect(satisfies(drag, { id: 'story.setNext', props: { scene: 'arrival' } }, awaits)).toBe(
+      false,
+    );
+    expect(satisfies(drag, awaits)).toBe(false);
   });
 });
 

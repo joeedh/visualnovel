@@ -31,6 +31,7 @@ import {
   type Drag,
 } from '../branch.js';
 import { pickOracle, redrawing } from '../anchors.js';
+import { gestureState } from '../gestures.js';
 import { exec, refreshWorkspace } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
@@ -222,6 +223,8 @@ export class BranchEditor extends VnEditor {
   private rebuild(): void {
     const story = this.story;
     this.state = story ? branchState(story) : EMPTY_STATE;
+    // What a tour needs to say where a wire could be dropped, without a pointer going down.
+    gestureState('branch', 'branches', () => this.state);
     this.sceneById = new Map((story?.scenes ?? []).map((s) => [s.id, s]));
     this.edgeById = new Map((story?.edges ?? []).map((e) => [e.id, e]));
 

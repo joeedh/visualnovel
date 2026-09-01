@@ -6,6 +6,9 @@
  * registry in `main/tests/tours.test.ts`. A step whose command no pane draws is not a mistake — the
  * palette is the floor, and `guide` routes there.
  *
+ * None of them is a `gesture`, which needs the id of a scene or a shot in the project at hand.
+ * That is the tail the agent writes a tour for, from the workspace index.
+ *
  * Here rather than beside the resolution rules because main's `tour.*` commands name these ids in
  * their own description, and main may not reach into the renderer.
  */
@@ -28,7 +31,17 @@ export type Step =
       supplies: string;
       say: string;
     }
-  | { kind: 'select'; itemKind: string; key: string; say: string };
+  | { kind: 'select'; itemKind: string; key: string; say: string }
+  | {
+      kind: 'gesture';
+      /** An interaction id — `branch.connect`, `timeline.cover`. */
+      id: string;
+      /** What the author picks up, as the interaction spells it: a scene id, a `<shot>#start`. */
+      carried: string;
+      /** Where to drop it. Left out to point at every target that would take it. */
+      target?: string;
+      say: string;
+    };
 
 export interface Tour {
   id: string;

@@ -23,12 +23,14 @@ const LAYER_Z = 1_000_000;
 let layer: HTMLElement | undefined;
 let ring: HTMLElement | undefined;
 let caption: HTMLElement | undefined;
+const marks: HTMLElement[] = [];
 
 let frame: number | undefined;
 let timer: ReturnType<typeof setInterval> | undefined;
 let ask: (() => Guidance | undefined) | undefined;
 let beat = 0;
 let key: string | undefined;
+let also: readonly string[] = [];
 let says = '';
 const scrolled = new Set<string>();
 const warned = new Set<string>();
@@ -57,6 +59,7 @@ export function unfollow(): void {
   timer = undefined;
   ask = undefined;
   key = undefined;
+  also = [];
   says = '';
   scrolled.clear();
   warned.clear();
@@ -80,6 +83,7 @@ function paint(now: number): void {
   const anchor = key === undefined ? undefined : anchorFor(key);
   if (anchor) place(anchor);
   else hide();
+  mark();
 }
 
 /** Ask the tour again what the step means now, since a click may have moved everything under it. */
@@ -88,9 +92,11 @@ function reresolve(): void {
   const target = shown && aimOf(shown);
   if (!target) {
     key = undefined;
+    also = [];
     return;
   }
   key = target.anchor.key;
+  also = target.also;
   says = target.say;
   if (target.offscreen) scrollTo(target.anchor);
 }
@@ -99,12 +105,21 @@ function reresolve(): void {
  * What a guidance points at, where it points at something drawn. A refusal is carried into the
  * caption, so a greyed control the tour rings says why it is greyed in the same breath.
  */
-function aimOf(shown: Guidance): { anchor: Anchor; say: string; offscreen: boolean } | undefined {
+function aimOf(shown: Guidance): Aim | undefined {
   if (shown.show !== 'ring' && shown.show !== 'blocked') return undefined;
   const where = shown.where;
   if (!where || !('anchor' in where)) return undefined;
   const say = shown.show === 'blocked' ? `${shown.say} — but ${shown.reason}` : shown.say;
-  return { anchor: where.anchor, say, offscreen: where.state === 'offscreen' };
+  const also = shown.show === 'ring' ? (shown.also ?? []) : [];
+  return { anchor: where.anchor, say, also, offscreen: where.state === 'offscreen' };
+}
+
+interface Aim {
+  anchor: Anchor;
+  say: string;
+  /** Keys to outline beside the ring — where a gesture could be dropped. */
+  also: readonly string[];
+  offscreen: boolean;
 }
 
 /**
@@ -167,6 +182,46 @@ function draw(rect: AnchorRect, enabled: boolean): void {
     top: room ? `${below}px` : '',
     bottom: room ? '' : `${window.innerHeight - rect.top + 8}px`,
   });
+}
+
+/**
+ * Outline whatever else the step points at, more faintly than the ring: for a gesture, every
+ * target that said it would take what is being carried.
+ */
+function mark(): void {
+  for (let i = 0; i < Math.max(also.length, marks.length); i++) {
+    const anchor = i < also.length ? anchorFor(also[i] ?? '') : undefined;
+    const rect = anchor && rectOf(anchor);
+    const box = marks[i] ?? newMark();
+    if (!rect) {
+      box.style.display = 'none';
+      continue;
+    }
+    const at = outset(rect, RING_PAD);
+    Object.assign(box.style, {
+      display: 'block',
+      left: `${at.left}px`,
+      top: `${at.top}px`,
+      width: `${at.width}px`,
+      height: `${at.height}px`,
+    });
+  }
+}
+
+/** One more outline than the layer had. Kept and reused, since a gesture re-marks every beat. */
+function newMark(): HTMLElement {
+  build();
+  const box = document.createElement('div');
+  Object.assign(box.style, {
+    position: 'fixed',
+    display: 'none',
+    boxSizing: 'border-box',
+    border: `1px dashed ${TOKENS.signal}`,
+    borderRadius: `${TOKENS.radiusChrome}px`,
+  });
+  layer?.appendChild(box);
+  marks.push(box);
+  return box;
 }
 
 function hide(): void {

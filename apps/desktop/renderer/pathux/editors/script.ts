@@ -33,6 +33,8 @@ import { shotGroups } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
 import { redrawing, type AnchorPass } from '../anchors.js';
+import { gestureState } from '../gestures.js';
+import { moveStateOf } from '../../rules/script.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
 import { aim, dropOf, grabLine, lineMenu, noticeOf, type Drag } from '../script.js';
@@ -314,6 +316,7 @@ export class ScriptEditor extends VnEditor {
     if (!sceneId) return void this.rebuild();
     this.loading = sceneId;
     this.data = await api.invoke('story:coverage', sceneId);
+    gestureState('script', 'script', () => moveStateOf(this.data as SceneCoverage));
     this.editing = null;
     this.attributing = null;
     this.pending = null;

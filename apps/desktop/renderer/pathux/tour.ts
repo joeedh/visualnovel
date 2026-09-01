@@ -14,9 +14,10 @@ import type { Tour } from '../../src/shared/tours.js';
 import { tourById } from '../../src/shared/tours.js';
 import { ANCHOR_MAP } from '../rules/anchormap.js';
 import { guide, satisfies, start, stepOf, type Guidance, type TourState } from '../rules/tour.js';
-import type { AnchorHome, LiveAnchors } from '../rules/anchors.js';
+import type { Action, AnchorHome, LiveAnchors } from '../rules/anchors.js';
 import { anchorSnapshot } from './anchors.js';
 import { onExec, say } from './bridge.js';
+import { verdictsFor } from './gestures.js';
 import { follow, ringing, unfollow } from './overlay.js';
 import { openPalette } from './palette.js';
 
@@ -24,6 +25,7 @@ type TourEffect = Extract<UiEffect, { type: 'tour' }>;
 
 let running: TourState | undefined;
 let unwatch: (() => void) | undefined;
+let awaiting: Action | undefined;
 
 /** The tour being walked through, for the overlay to draw and for a test to read. */
 export const runningTour = (): TourState | undefined => running;
@@ -85,14 +87,26 @@ function watch(): void {
   unwatch = onExec((id, outcome) => ran(id, outcome));
   // The overlay asks rather than being told, because the ring has to survive everything that moves
   // under it between two steps — a pane opening, a scroll, a redraw that rebuilt the control.
-  follow(() => (running ? guide(ANCHOR_MAP, live(), running) : undefined));
+  follow(shownNow);
 }
 
 function stop(): void {
   unwatch?.();
   unwatch = undefined;
   running = undefined;
+  awaiting = undefined;
   unfollow();
+}
+
+/**
+ * What the step the tour is on means right now, and what running it would invoke. A gesture names
+ * no invocation until the verdicts are read, so the answer is kept here for {@link ran}.
+ */
+function shownNow(): Guidance | undefined {
+  if (!running) return undefined;
+  const shown = guide(ANCHOR_MAP, live(), running, verdictsFor);
+  awaiting = shown.show === 'ring' ? shown.awaits : undefined;
+  return shown;
 }
 
 /**
@@ -101,7 +115,7 @@ function stop(): void {
  */
 function step(next: TourState): void {
   running = next;
-  const shown = guide(ANCHOR_MAP, live(), next);
+  const shown = shownNow() ?? { show: 'done' as const };
   if (shown.show === 'done') {
     say(`Done — ${next.tour.what}`);
     stop();
@@ -145,13 +159,13 @@ function ran(id: string, outcome: CommandOutcome): void {
   const now = state && stepOf(state);
   if (!state || !now || !outcome.ok) return;
   const props = outcome.record.props as Record<string, PropValue>;
-  if (satisfies(now, { id, props })) step({ ...state, at: state.at + 1 });
+  if (satisfies(now, { id, props }, awaiting)) step({ ...state, at: state.at + 1 });
 }
 
 function explain(): void {
   const state = running;
   if (!state) return say('No tour is running.', true);
-  const shown = guide(ANCHOR_MAP, live(), state);
-  if (shown.show === 'done') return say('The tour is finished.');
+  const shown = shownNow();
+  if (!shown || shown.show === 'done') return say('The tour is finished.');
   present(shown);
 }

@@ -35,6 +35,7 @@ import {
 } from '../../rules/timeline/wardrobe.js';
 import { redrawing } from '../anchors.js';
 import { exec, onInvalidate } from '../bridge.js';
+import { gestureState } from '../gestures.js';
 import { MENU_SEP } from '../contextmenu.js';
 import type { VnContext } from '../context.js';
 import { openCommandDialog } from '../dialog.js';
@@ -42,6 +43,7 @@ import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
 import { shotAssetEntry } from '../script.js';
+import { coverState } from '../timeline.js';
 import { showContextMenu } from '../showmenu.js';
 import {
   aimCreate,
@@ -280,6 +282,7 @@ export class TimelineEditor extends VnEditor {
     this.loading = sceneId;
     this.data = await api.invoke('story:coverage', sceneId);
     this.coverage = spansFor(this.data.lines, this.data.shots);
+    gestureState('timeline', 'timeline', () => coverState(this.data ?? null));
     this.editing = null;
     this.revision += 1;
     this.rebuild();

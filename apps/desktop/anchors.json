@@ -1,6 +1,6 @@
 {
-  "sweptAt": "2026-09-01T03:59:21.135Z",
-  "gitSha": "1fb08c5587434da7ec5561da4c50895b4362cee9",
+  "sweptAt": "2026-09-01T04:21:20.202Z",
+  "gitSha": "1ecb86aecc47f4d14ca210e38c8ee7a136accf55",
   "under": {
     "project": "The Transfer Student",
     "selected": {
@@ -611,7 +611,7 @@
       "editor": "skills",
       "key": "cmd:doc.write",
       "supplies": ["text", "seenHash"],
-      "refused": "Nothing to save"
+      "refused": "No document is open."
     },
     {
       "id": "doc.write",

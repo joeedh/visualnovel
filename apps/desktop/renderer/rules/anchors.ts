@@ -227,6 +227,26 @@ export function resolveItem(live: LiveAnchors, kind: string, key: string): Resol
   return { state: 'ready', anchor };
 }
 
+/**
+ * Where a thing is drawn, found by its id alone rather than by kind as well.
+ *
+ * A gesture carries the id of a scene, a shot or a line and never says which of the three, because
+ * the interaction that named it does not either. Domain ids do not collide across kinds, so the
+ * suffix is enough to find the row or the card that names one.
+ *
+ * The editor is part of the question because the documents tree names a scene too, and a drag has
+ * to start on the surface that runs the gesture.
+ */
+export function resolveNamed(live: LiveAnchors, editor: AnchorHome, key: string): Resolution {
+  const anchor = live.anchors.find(
+    (entry) =>
+      entry.editor === editor && entry.key.startsWith('item:') && entry.key.endsWith(`/${key}`),
+  );
+  if (!anchor) return { state: 'absent' };
+  if ((live.offscreen ?? []).includes(anchor.key)) return { state: 'offscreen', anchor };
+  return { state: 'ready', anchor };
+}
+
 /** One command's coverage, as the sweep and the doctree enumeration both write it. */
 export interface AnchorRecord {
   id: string;
