@@ -223,6 +223,7 @@ import {
   type RunResult,
   type SectionDelta,
   type SystemSection,
+  type Tool,
   type ToolContext,
   type UploadBatch,
   type WorkspaceIndex,
@@ -356,6 +357,10 @@ import { storyGraphOf } from './storygraph.js';
 import { renameInText } from './rename.js';
 import { confirmDetail } from './toolconfirm.js';
 import { ensureIgnored } from './workspace.js';
+import { showMeTool } from './showme.js';
+import { createDesktopInteractions } from '../shared/interactions.js';
+import { createDesktopRegistry } from './commands/index.js';
+import type { Tour } from '../shared/tours.js';
 import {
   answered,
   answeredQuestion,
@@ -470,6 +475,12 @@ export interface SessionDeps {
    * outcome to hang it on.
    */
   offerDiagnosis?(fault: { thread?: string; message: string }): void;
+  /**
+   * Walk the author through a tour the agent wrote. Pushed for the same reason {@link pushBusy}
+   * is: the agent is still mid-turn and there is no command outcome to hang an effect on. Absent
+   * where there is no window, and `show_me` then refuses rather than claim it showed anything.
+   */
+  showTour?(tour: Tour): void;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -1309,7 +1320,14 @@ export class WorkspaceSession {
     this.agent = new Agent({
       backend: await this.buildBackend(config),
       ctx,
-      registry: createRegistry(historyTools(this.history())),
+      registry: createRegistry([
+        ...historyTools(this.history()),
+        showMeTool({
+          ...(this.deps.showTour ? { show: this.deps.showTour.bind(this.deps) } : {}),
+          commands: createDesktopRegistry(),
+          interactions: createDesktopInteractions(),
+        }) as Tool,
+      ]),
       permission: this.permission(),
       system: composeSystem(context),
       budget: this.budget,

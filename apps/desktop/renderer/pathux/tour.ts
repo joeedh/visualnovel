@@ -11,6 +11,7 @@
  */
 import type { CommandOutcome, PropValue, UiEffect } from '../../src/shared/ipc.js';
 import type { Tour } from '../../src/shared/tours.js';
+import { readTour } from '../../src/shared/tourcheck.js';
 import { tourById } from '../../src/shared/tours.js';
 import { ANCHOR_MAP } from '../rules/anchormap.js';
 import { guide, satisfies, start, stepOf, type Guidance, type TourState } from '../rules/tour.js';
@@ -63,23 +64,25 @@ export function applyTour(effect: TourEffect): void {
     return step({ ...running, at: running.at + 1 });
   }
   const tour = effect.steps ? parse(effect.steps) : tourById(effect.tour);
-  if (!tour) return say('That tour could not be read.', true);
+  // `parse` has already said what was wrong with the JSON, which is more than a name can be.
+  if (!tour)
+    return effect.steps ? undefined : say(`There is no tour called "${effect.tour}".`, true);
   watch();
   step(start(tour));
 }
 
 /**
- * Read a tour the agent wrote, as JSON. Only the shape is checked here. Whether a step's command
- * would run is `stack.check`'s answer, asked when the step comes up and over the props the author
- * has by then, rather than asked now over props the author has not typed.
+ * Read a tour written for the moment, as JSON.
+ *
+ * Only the shape is decided here. Whether a step's command exists is `checkTour`'s answer, asked
+ * of `show_me` where an agent-written tour enters, and whether a step would be accepted is
+ * `stack.check`'s, asked when the step comes up and over the props the author has by then.
  */
 function parse(steps: string): Tour | undefined {
-  try {
-    const read = JSON.parse(steps) as Tour;
-    return Array.isArray(read.steps) && read.steps.length > 0 ? read : undefined;
-  } catch {
-    return undefined;
-  }
+  const read = readTour(steps);
+  if (read.ok) return read.tour;
+  say(`That tour could not be read — ${read.reason}.`, true);
+  return undefined;
 }
 
 function watch(): void {

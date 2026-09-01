@@ -620,6 +620,13 @@ const deps: SessionDeps = {
   pushBusy: (state) => broadcast('command:ui', { type: 'busy', ...state }),
   offerDiagnosis: (fault) =>
     broadcast('command:ui', { type: 'agent', action: 'diagnose', ...fault }),
+  showTour: (tour) =>
+    broadcast('command:ui', {
+      type: 'tour',
+      action: 'start',
+      tour: '',
+      steps: JSON.stringify(tour),
+    }),
 };
 
 function getSession(): WorkspaceSession {
