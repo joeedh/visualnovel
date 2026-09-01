@@ -509,6 +509,7 @@ export class TaskGraphEditor extends VnEditor {
     // The gate is an inference rather than an edge, and the node says so in place of a legend.
     box.appendChild(mono('derived', TOKENS.mistDim, 9.5));
 
+    const buttons: { character: string; cta: HTMLButtonElement }[] = [];
     for (const character of pending) {
       const cta = document.createElement('button');
       cta.textContent = `${character} →`;
@@ -531,20 +532,59 @@ export class TaskGraphEditor extends VnEditor {
         fontFamily: TOKENS.mono,
         fontSize: '11px',
       });
-      // The hash is the author's judgement rather than the graph's, so the dialog asks for it and
-      // the anchor names it as something supplied rather than carrying a wrong one.
-      this.anchors.record(
-        cta,
-        { ok: true, id: 'gate.approve', props: { characterId: character } },
-        { on: character, supplies: ['hash'], form: true },
-      );
       cta.addEventListener('click', (event) => {
         event.stopPropagation();
         this.resolve(character);
       });
       box.appendChild(cta);
+      buttons.push({ character, cta });
     }
+    this.drawGate(buttons);
     return box;
+  }
+
+  /**
+   * Ask what the gate would say for each character, then record the buttons from the answer.
+   *
+   * Drawing them unconditionally live and letting the form carry the refusal leaves a tour ringing
+   * a control that cannot do anything, which is the disagreement the sweep's `stack.check` oracle
+   * reports for every anchor it is allowed to ask about. It is not allowed to ask about this one:
+   * the hash is deliberately blank, so `sweep-anchors.mjs` skips it.
+   *
+   * Two answers rather than one, because the two refusals want opposite controls. With nothing on
+   * file the form cannot be completed, so the button is greyed. With candidates on file the form is
+   * where the portrait is named, so the button stays live and the sentence goes to the tooltip.
+   * The sentence is `gate.approve`'s own either way.
+   */
+  private drawGate(buttons: { character: string; cta: HTMLButtonElement }[]): void {
+    const ask = (characterId: string) =>
+      Promise.all([
+        api.invoke('command:check', { id: 'gate.approve', props: { characterId, hash: '' } }),
+        api.invoke('gate:candidates', characterId),
+      ]);
+    void Promise.all(buttons.map(({ character }) => ask(character))).then((answers) => {
+      // One pass for the whole gate: a character approved since the last draw has to leave the
+      // registry, and a pass is the only thing that drops records.
+      const pass = redrawing('taskgraph', 'gate');
+      buttons.forEach(({ character, cta }, at) => {
+        const [check, candidates] = answers[at] ?? [];
+        const refusal = check?.state === 'refuse' ? check.message : undefined;
+        const greyed = refusal !== undefined && (candidates?.length ?? 0) === 0;
+        cta.disabled = greyed;
+        cta.style.opacity = greyed ? '0.5' : '1';
+        cta.style.cursor = greyed ? 'default' : 'pointer';
+        cta.title = refusal ?? `Approve a portrait for ${character}`;
+        // The hash is the author's judgement rather than the graph's, so the dialog asks for it and
+        // the anchor names it as something supplied rather than carrying a wrong one.
+        pass.record(
+          cta,
+          greyed
+            ? { ok: false, id: 'gate.approve', reason: refusal }
+            : { ok: true, id: 'gate.approve', props: { characterId: character } },
+          { on: character, supplies: ['hash'], form: true },
+        );
+      });
+    });
   }
 
   /**

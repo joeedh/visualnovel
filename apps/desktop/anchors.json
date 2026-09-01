@@ -1,6 +1,6 @@
 {
-  "sweptAt": "2026-09-01T04:21:20.202Z",
-  "gitSha": "1ecb86aecc47f4d14ca210e38c8ee7a136accf55",
+  "sweptAt": "2026-09-01T07:13:04.075Z",
+  "gitSha": "1e8cb8ae943709fbb63ec0e8aa396ea535c01132",
   "under": {
     "project": "The Transfer Student",
     "selected": {
@@ -597,21 +597,23 @@
       "editor": "taskgraph",
       "key": "cmd:gate.approve#aiko",
       "supplies": ["hash"],
-      "form": true
+      "form": true,
+      "refused": "aiko has no portrait yet — run the pipeline before approving one."
     },
     {
       "id": "gate.approve",
       "editor": "taskgraph",
       "key": "cmd:gate.approve#haruki",
       "supplies": ["hash"],
-      "form": true
+      "form": true,
+      "refused": "haruki has no portrait yet — run the pipeline before approving one."
     },
     {
       "id": "doc.write",
       "editor": "skills",
       "key": "cmd:doc.write",
       "supplies": ["text", "seenHash"],
-      "refused": "No document is open."
+      "refused": "Nothing to save"
     },
     {
       "id": "doc.write",
@@ -702,14 +704,14 @@
     {
       "id": "project.setKey",
       "editor": "onboarding",
-      "key": "cmd:project.setKey#gemini",
+      "key": "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused": "Paste a key first"
     },
     {
       "id": "project.setKey",
       "editor": "onboarding",
-      "key": "cmd:project.setKey#anthropic",
+      "key": "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused": "Paste a key first"
     },

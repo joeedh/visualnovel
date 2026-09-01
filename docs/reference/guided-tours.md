@@ -196,6 +196,14 @@ Both halves of the layer are checked against an independent source:
   stack's verdict. This caught the branch editor drawing `delete <scene>` enabled for the entry
   scene, which main refuses to delete; the editor was calling `stack.check` only on hover, and now
   calls it when the button is drawn.
+
+  Anchors with `supplies` or `form` are exempt, because their props are deliberately incomplete and
+  the verdict would be about the blank rather than about the project. That exemption hides a real
+  case: the task graph's gate buttons were drawn live on a project with nothing rendered, so a tour
+  rang a button whose form could not be completed. The editor now asks as it draws, passing the
+  blank hash explicitly, and greys the button only when `gate:candidates` is empty — with candidates
+  on file the form is where the portrait is named, so the button stays live and the sentence goes to
+  its tooltip.
 - Recorded rect against a hit test. `landsOn` checks whether a click at the anchor's centre would
   reach it: for a `pick` anchor by calling the canvas's `pick()`, for everything else through
   `hittest.ts`, which descends into shadow roots because `document.elementsFromPoint` stops at a
@@ -244,8 +252,8 @@ the one that runs the gesture.
 
 ### What a step displays
 
-`guide(map, live, state, judge)` in `renderer/rules/tour.ts` computes what the overlay shows for
-the current step:
+`guide(map, live, state, judge, refused)` in `renderer/rules/tour.ts` computes what the overlay
+shows for the current step:
 
 - `ring`: highlight an anchor, with the instruction as a caption.
 - `route`: no control is drawn for this command; open the palette instead.
@@ -254,6 +262,25 @@ the current step:
   `Interaction.targets`, and, when the disabled control is on screen, its anchor, so the control is
   highlighted with the reason in its caption.
 - `done`: no steps remain.
+
+A control that opens the command's form is drawn enabled, because opening a form is not what the
+command refused. The refusal belongs to the command behind it, so `guide` takes a `refused` lookup
+alongside the snapshot and turns a `ring` into a `blocked` when the stack has answered no. The
+lookup is a plain function of a cache the caller owns: `stack.check` is asynchronous and lives in
+main, while `guide` stays pure over what is drawn.
+
+`renderer/pathux/tour.ts` fills that cache. For the anchor a step points at it calls
+`checkFor(anchor, props)` (`renderer/rules/precheck.ts`) to build the invocation to ask about, then
+`command:check`, and stores the refusal under the anchor key. The answer lands a beat later and the
+overlay's next re-resolve reads it. The cache is cleared on `onWrote`, since a refusal describes the
+project rather than the screen, and re-asked whenever an anchor's recorded props change.
+
+`checkFor` exists because `stack.check` coerces props before it reaches a command's precondition.
+Asking with a prop the widget has not supplied yet answers about the blank —
+`missing required property "hash"` — where the useful sentence is `aiko has no portrait yet`.
+Passing the blank explicitly as an empty value reaches the precondition, which is written for that
+case. Nothing is invented: a required prop with no empty value, such as a number or an enum, leaves
+the anchor unaskable, and a secret is never filled in even with a blank.
 
 ### The overlay
 
@@ -342,6 +369,7 @@ the agent in either host.
 | `renderer/rules/ring.ts`      | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                        |
 | `renderer/rules/tour.ts`      | `TourState`, `guide`, `satisfies`; pure, no DOM                                                 |
 | `renderer/rules/anchormap.ts` | `ANCHOR_MAP`, loaded from `anchors.json`                                                        |
+| `renderer/rules/precheck.ts`  | `checkFor`, `askedAs`: which invocation a ringed anchor is checked with                        |
 | `renderer/pathux/anchors.ts`  | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors`                                     |
 | `renderer/pathux/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                             |
 | `renderer/pathux/overlay.ts`  | The ring layer and its two timers                                                               |
