@@ -88,7 +88,7 @@ mechanical fit is real; nothing needs inventing.
 
 **6. The agent could show rather than tell.** `view.open(editor='asset' subject=<hash>)` turns
 "her sheet is out of date" into the pane being open. This is the single most author-visible win,
-and it is also the prerequisite the [guided tours](../plans/guided-ui-tours.md) plan already
+and it is also the prerequisite the [guided tours](../plans/archive/guided-ui-tours.md) plan already
 assumes — though note that plan's own leaning: the agent reaches anchors *through a `tour.*`
 command*, one door, not through the map directly.
 
@@ -123,7 +123,7 @@ unit is *the approved plan*, not the act.
 **4. Results are sentences.** `CommandOutcome.message` is written for a message line. Some
 commands carry `data`; most do not. A model reading "Showing Coverage below." learns less than a
 tool return designed to be read. Giving commands a second, machine-facing projection is a second
-truth about the same thing — the exact shape [`../plans/guided-ui-tours.md`](../plans/guided-ui-tours.md)
+truth about the same thing — the exact shape [`../plans/archive/guided-ui-tours.md`](../plans/archive/guided-ui-tours.md)
 §8 rejects for the anchor map.
 
 **5. "Full" is not achievable, so a second list appears.** A dozen commands are meaningless or

@@ -3,7 +3,7 @@
 Status: **planned**
 
 Pressure-tested against the code by
-[`../research/pressure-test-guided-ui-tours.md`](../research/pressure-test-guided-ui-tours.md).
+[`../../research/pressure-test-guided-ui-tours.md`](../../research/pressure-test-guided-ui-tours.md).
 Every finding is answered in the section it lands in; [Review](#review) is the index, and
 [Staging](#staging) carries the three that moved work earlier.
 
@@ -626,10 +626,63 @@ to.
 Stages 1–5 are unaffected by the two findings that could still enlarge the overlay, which is this
 plan's own argument for why the anchor layer should stand alone, and it holds.
 
-## Decisions still open
+## Shipped
 
-- **Whether `openPalette` learns to re-target** an already-open palette, or the tour closes and
-  reopens it between steps.
+All ten stages landed. The as-shipped write-up is
+[`../../reference/guided-tours.md`](../../reference/guided-tours.md); what follows is what the work
+decided that this plan did not, and where it went a different way.
+
+### The one open decision, settled
+
+- **`openPalette` re-targets.** An already-open palette selects the new entry and refills the form
+  rather than closing and reopening. Closing would drop the author's focus between every two steps
+  of a palette-routed tour. Verified live: a two-step tour walked through one palette without it
+  closing.
+
+### Where the work went a different way
+
+- **`stack.check` is not part of the gate on an agent-written tour**, against what
+  [Part II](#who-authors-a-tour) says. `stack.check` answers whether a step is accepted *now*, and a
+  tour's later steps are routinely refused until its earlier ones are done — approve the portrait,
+  then run — so refusing a tour on that would refuse every correct multi-step tour. The
+  hallucination this plan wants caught is caught by the registry lookup and `coerceProps` in
+  `shared/tourcheck.ts`; the live verdict is shown at the step, beside the ring or above the
+  palette's run button.
+- **The overlay runs on two clocks, not one.** [§7](#7-the-registry-is-generation-scoped) is right
+  that path.ux's 150 ms beat is too slow for the ring's rect, but Chromium suspends
+  `requestAnimationFrame` altogether for an occluded window — measured, not assumed — so an interval
+  at the slow beat drives the same update where frames stop arriving.
+- **The pick oracle does not call `pickElement`.** [§9](#9-the-pick-oracle) says to call path.ux's
+  rather than repeat it, and `pickElement` returns the innermost `UIBase` and discards the chain the
+  descent walked. A raw `<button>` in an editor surface is an anchor too and is exactly what that
+  filter skips. `renderer/pathux/hittest.ts` makes the same descent over the standard `shadowRoot`
+  property — the walk `renderer/debug/install.ts` already made in plural form, now shared with it,
+  which is also how that file's line in [§14](#14-files) was answered: `pickElements` would have
+  narrowed the debug oracle's answer to widgets, where the hand-rolled walk already sees everything.
+- **`shadow.parentWidget` needed no submodule bump.** [§9](#9-the-pick-oracle) expected one; it is
+  already in the pinned commit, at `ui_base_init.ts:52`.
+- **`header` is a home, not a pane.** The toolbar is drawn once and cannot be closed, so `AnchorHome`
+  widens `EditorId` by it and it never resolves `pane-closed`. This plan's closing note says a tour
+  has no reason to point at the header bar, which turned out to be wrong: `pipeline.run` lives
+  there and is the last step of the first-run tour.
+- **`Anchor.form` was added**, for a control that opens the command's own form rather than running
+  it. It reads as `supplies` over whatever a step names, which is what makes a palette-routed door a
+  real answer for a step, and it is what the sweep skips when asking `stack.check` — the same
+  reasoning `MenuEntry.form` already used.
+- **`guide`'s `blocked` carries the resolution.** A greyed control the tour rings says why it is
+  greyed in the same breath, rather than the refusal arriving as a notification with no control
+  attached to it.
+- **`prompt.reorder` has no gesture state registered.** The asset editor holds its chunks per
+  rebuild rather than in a field, and its cards carry no `item:` anchor to ring. The other three
+  namespaces are wired; this one is coverage the ratchet picks up.
+
+### What the two oracles found
+
+- The branch editor drew `delete <scene>` enabled and only asked `stack.check` on hover, so the
+  entry scene offered a delete main refuses. `askDelete` now runs as the button is drawn.
+- Against `examples/test4`, `asset.unapprove` disagreed: the pane offered it where the stack refused
+  it ("caedon_vale's approved portrait is a different take"). Not reproduced against the sample
+  project, which holds no approved portrait.
 
 ## Decisions since made
 

@@ -188,6 +188,13 @@ that is neither the document tree nor a conversation, and never covers the pane 
 navigating from. That rule lives in `sparing` in `panes.ts`; a surface must not pick a pane of its
 own.
 
+Every control an editor draws also records what pressing it would run, through `act()` in
+`renderer/pathux/anchors.ts` — one `Offer` wires the click and the record together, so the two
+cannot drift apart. That layer is what lets the app point at itself, and a guided tour rides on it.
+[`docs/reference/guided-tours.md`](docs/reference/guided-tours.md) covers both, including the
+committed `anchors.json` and the CDP sweep that measures it, which must be re-run after touching
+`apps/desktop/renderer/pathux/editors/**`.
+
 ## Command system
 
 Every desktop action is a registered command rather than a bespoke IPC channel. A command

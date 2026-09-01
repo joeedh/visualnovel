@@ -1,4 +1,4 @@
-# Pressure test — `plans/guided-ui-tours.md`
+# Pressure test — `plans/archive/guided-ui-tours.md`
 
 An adversarial read of the guided-tours plan against the code as it stands (August 2026). The
 plan's central rule — *an anchor is the wiring, not a description of it* — survives. Most of what
