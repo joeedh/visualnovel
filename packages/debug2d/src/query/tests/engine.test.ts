@@ -35,31 +35,31 @@ describe('at()', () => {
   it('returns the stack top-first: z descending, then FragId', () => {
     expect(
       dbg()
-        .at(150, 130)
+        .at(150, 125)
         .fragments.map((f) => f.id),
     ).toEqual(['ghost', 'label', 'card', 'bg']);
   });
 
   it('is deterministic between runs', () => {
     const a = dbg()
-      .at(150, 130)
+      .at(150, 125)
       .fragments.map((f) => f.id);
     const b = dbg()
-      .at(150, 130)
+      .at(150, 125)
       .fragments.map((f) => f.id);
     expect(a).toEqual(b);
   });
 
   it("defaults to pick geometry: pointer-events 'none' fragments are not in a click's stack", () => {
     const ids = dbg()
-      .at(150, 130)
+      .at(150, 125)
       .fragments.map((f) => f.id);
     expect(ids).not.toContain('scrim');
   });
 
   it("includes pick='none' fragments when using 'paint'", () => {
     const ids = dbg()
-      .at(150, 130, { using: 'paint' })
+      .at(150, 125, { using: 'paint' })
       .fragments.map((f) => f.id);
     expect(ids).toContain('scrim');
   });

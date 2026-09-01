@@ -73,8 +73,9 @@ describe('explainPickFrame', () => {
         'explainPick(50, 50) css → winner + 1 rejection',
         '  ✓  test  #b  b  wins (z=1)',
         '  ✗  test  #a  a  below winner (z=0 < 1)',
-        '  ⚠ oracle disagreement: elementsFromPoint ranks #a above #b — computed',
-        '    stacking order may be wrong here, or the DOM adapter is stale relative to this frame.',
+        '  ⚠ oracle disagreement: elementsFromPoint ranks #a above #b — a',
+        '    recorded box may not be the real hit area (a ::before pad never reaches',
+        '    getBoundingClientRect), or the computed stacking order may be wrong.',
       ].join('\n'),
     );
   });

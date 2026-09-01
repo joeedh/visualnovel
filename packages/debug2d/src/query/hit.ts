@@ -3,7 +3,7 @@
  * different geometry: `using: 'pick'` tests the pick authority (pick.shape, expanded by
  * slop) and respects `pointer-events`, while `using: 'paint'` tests the drawn bounds.
  */
-import { containsPoint, type Rect, type Vec2 } from '../geom.js';
+import { boxHitsPoint, type Rect, type Vec2 } from '../geom.js';
 import type { Fragment, Shape } from '../types.js';
 
 export type Using = 'paint' | 'pick';
@@ -51,7 +51,7 @@ export function pickBounds(f: Fragment): Rect {
 
 /** True when `p` (in the fragment's own space) is inside every ancestor clip. */
 export function insideClips(f: Fragment, p: Vec2): boolean {
-  return (f.clip ?? []).every((c) => containsPoint(c.rect, p));
+  return (f.clip ?? []).every((c) => boxHitsPoint(c.rect, p));
 }
 
 /**
@@ -61,7 +61,7 @@ export function insideClips(f: Fragment, p: Vec2): boolean {
 export function hitsPoint(f: Fragment, p: Vec2, using: Using): boolean {
   if (using === 'pick') {
     if (f.pick.mode === 'none') return false;
-    return containsPoint(pickBounds(f), p) && insideClips(f, p);
+    return boxHitsPoint(pickBounds(f), p) && insideClips(f, p);
   }
-  return containsPoint(f.bounds, p) && insideClips(f, p);
+  return boxHitsPoint(f.bounds, p) && insideClips(f, p);
 }

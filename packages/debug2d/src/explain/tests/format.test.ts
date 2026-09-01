@@ -54,9 +54,9 @@ describe('ResultSet explain/table goldens', () => {
     });
 
   it('explain() is the compact ASCII stack, golden-stable', () => {
-    expect(dbg().at(150, 130).explain()).toBe(
+    expect(dbg().at(150, 125).explain()).toBe(
       [
-        'at(150, 130) css → 4 fragments, top-first',
+        'at(150, 125) css → 4 fragments, top-first',
         '  test  #ghost  box  ghost        150,120 40x40    z=3  α0',
         '  test  #label  box  Floor/label  110,110 80x20    z=2',
         '  test  #card   box  Floor/card   100,100 200x150  z=1',
@@ -66,7 +66,7 @@ describe('ResultSet explain/table goldens', () => {
   });
 
   it('table() is plain JSON-safe data', () => {
-    expect(dbg().at(150, 130).table()).toEqual([
+    expect(dbg().at(150, 125).table()).toEqual([
       {
         id: 'ghost',
         owner: 'ghost',

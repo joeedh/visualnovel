@@ -64,9 +64,21 @@ export function applyToRect(m: Mat3, r: Rect): Rect {
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
-/** Point-in-rect, inclusive of all edges — a click on the boundary hits. */
+/**
+ * Point-in-rect with every edge inclusive, for range queries where a fragment grazing the
+ * boundary should still count. {@link boxHitsPoint} is the one that answers where a click lands.
+ */
 export function containsPoint(r: Rect, p: Vec2): boolean {
   return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+}
+
+/**
+ * Whether a click at `p` would land on `r`, excluding the far edges the way a CSS box is
+ * half-open. Two boxes sharing a border therefore tile rather than both claiming it, and a rect
+ * with no area catches nothing.
+ */
+export function boxHitsPoint(r: Rect, p: Vec2): boolean {
+  return p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
 }
 
 export function containsRect(outer: Rect, inner: Rect): boolean {

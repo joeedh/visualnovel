@@ -1,11 +1,11 @@
 /**
  * Explains what a pick at a point hit and why. The report lists the winning fragment
  * first, then each losing candidate under the point with the reason it lost (clipped
- * out, ignored z-index, lower in stacking order). When our computed stacking order
- * disagrees with the browser's own `elementsFromPoint` result, the report adds a ⚠
- * line describing the disagreement instead of silently trusting either one.
+ * out, ignored z-index, lower in stacking order). When the computed winner disagrees with the
+ * browser's own `elementsFromPoint` result, the report adds a ⚠ line naming what the two
+ * could be differing about, instead of silently trusting either one.
  */
-import { applyToPoint, containsPoint, type Vec2 } from '../geom.js';
+import { applyToPoint, boxHitsPoint, type Vec2 } from '../geom.js';
 import { insideClips, pickBounds } from '../query/hit.js';
 import { fmtNum, padCols } from './format.js';
 import type { ClipRef, Fragment, Frame, SpaceId } from '../types.js';
@@ -17,7 +17,7 @@ type Candidate = {
 };
 
 function clipCulprit(f: Fragment, p: Vec2): ClipRef | undefined {
-  return (f.clip ?? []).find((c) => !containsPoint(c.rect, p));
+  return (f.clip ?? []).find((c) => !boxHitsPoint(c.rect, p));
 }
 
 function labelOf(frame: Frame, id: string): string {
@@ -41,7 +41,7 @@ export function explainPickFrame(frame: Frame, point: Vec2, space: SpaceId = 'cs
     }
     const p = applyToPoint(m, point);
     for (const f of frags) {
-      if (containsPoint(f.bounds, p) || containsPoint(pickBounds(f), p)) {
+      if (boxHitsPoint(f.bounds, p) || boxHitsPoint(pickBounds(f), p)) {
         candidates.push({ f, p });
       }
     }
@@ -49,7 +49,7 @@ export function explainPickFrame(frame: Frame, point: Vec2, space: SpaceId = 'cs
   candidates.sort((a, b) => b.f.z - a.f.z || a.f.id.localeCompare(b.f.id));
 
   const winner = candidates.find(
-    ({ f, p }) => f.pick.mode !== 'none' && insideClips(f, p) && containsPoint(pickBounds(f), p),
+    ({ f, p }) => f.pick.mode !== 'none' && insideClips(f, p) && boxHitsPoint(pickBounds(f), p),
   );
 
   const header = `explainPick(${fmtNum(point.x)}, ${fmtNum(point.y)}) ${space} → ${
@@ -71,7 +71,7 @@ export function explainPickFrame(frame: Frame, point: Vec2, space: SpaceId = 'cs
       reason = "pick='none' (pointer-events)";
     } else if (clip) {
       reason = `clipped away by ${labelOf(frame, clip.by)}`;
-    } else if (!containsPoint(pickBounds(f), p)) {
+    } else if (!boxHitsPoint(pickBounds(f), p)) {
       reason = 'painted here, but its pick geometry misses this point';
     } else if (f.zContext && f.style.zIndex !== undefined) {
       reason = `z-index ${f.style.zIndex} ignored — ${f.zContext.byLabel} established a stacking context via ${f.zContext.reason}`;
@@ -93,8 +93,9 @@ export function explainPickFrame(frame: Frame, point: Vec2, space: SpaceId = 'cs
     const oracleTop = known[0];
     if (oracleTop && winner && oracleTop !== winner.f.id) {
       lines.push(
-        `  ⚠ oracle disagreement: elementsFromPoint ranks #${oracleTop} above #${winner.f.id} — computed`,
-        '    stacking order may be wrong here, or the DOM adapter is stale relative to this frame.',
+        `  ⚠ oracle disagreement: elementsFromPoint ranks #${oracleTop} above #${winner.f.id} — a`,
+        '    recorded box may not be the real hit area (a ::before pad never reaches',
+        '    getBoundingClientRect), or the computed stacking order may be wrong.',
       );
     }
   }
