@@ -5,9 +5,11 @@ import {
   filterTree,
   findNode,
   flattenTree,
+  menuAnchors,
   menuFor,
   nodeIsSelected,
   nodeKey,
+  offerOf,
   renameOf,
   rowTitle,
   selectionForNode,
@@ -16,6 +18,7 @@ import {
   type DocRow,
 } from '../doctree.js';
 import { MENU_SEP } from '../contextmenu.js';
+import { mapOf } from '../../rules/anchors.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import type { Selection } from '../selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
@@ -778,5 +781,83 @@ describe('nodeKey', () => {
   it('is everything after the kind, colons in the rest included', () => {
     expect(nodeKey(node('shot:greet/greet__s1', 'shot'))).toBe('greet/greet__s1');
     expect(nodeKey(node('more:assetkind:portrait', 'more'))).toBe('assetkind:portrait');
+  });
+});
+
+describe('offerOf', () => {
+  it('reads a menu entry as the invocation it already holds', () => {
+    expect(offerOf({ label: 'Accept', id: 'asset.accept', props: { hash: 'a1' } })).toEqual({
+      ok: true,
+      id: 'asset.accept',
+      props: { hash: 'a1' },
+      label: 'Accept',
+    });
+  });
+
+  it('gives an entry with no props an empty set rather than leaving it undefined', () => {
+    expect(offerOf({ label: 'Export Fountain', id: 'story.screenplay' })).toMatchObject({
+      props: {},
+    });
+  });
+
+  it('carries a declared refusal through, still naming its command', () => {
+    expect(
+      offerOf({ label: 'Open', id: 'view.open', refused: 'No shot covers this line.' }),
+    ).toEqual({ ok: false, id: 'view.open', reason: 'No shot covers this line.' });
+  });
+});
+
+describe('menuAnchors', () => {
+  const records = menuAnchors();
+
+  it('reaches every node kind the tree can draw', () => {
+    const kinds: DocNodeKind[] = [
+      'branch',
+      'scene',
+      'shot',
+      'character',
+      'location',
+      'wikidir',
+      'wiki',
+      'assetkind',
+      'asset',
+      'slot',
+      'skill',
+      'graph',
+      'dir',
+      'file',
+      'more',
+    ];
+    // The five kinds with nothing to offer contribute no record. Naming them keeps a kind that
+    // was covered distinguishable from one that was forgotten.
+    const seen = new Set(records.map((record) => record.when?.split(':')[0]));
+    const silent: DocNodeKind[] = ['assetkind', 'wiki', 'dir', 'file', 'more'];
+    for (const kind of kinds) {
+      expect(seen.has(kind)).toBe(!silent.includes(kind));
+    }
+  });
+
+  it('carries no separators', () => {
+    expect(records.some((record) => record.id === MENU_SEP)).toBe(false);
+  });
+
+  it('files every record against the documents editor', () => {
+    for (const record of records) expect(record.editor).toBe('documents');
+  });
+
+  // `form: true` is the menu saying it cannot supply an argument, which is the same fact
+  // `supplies` states for a drawn box: both mean the palette is where the blank gets filled in.
+  it('marks the entries that open the palette on their own form', () => {
+    const promote = records.find((record) => record.id === 'art.promote');
+    expect(promote?.form).toBe(true);
+    const accept = records.find((record) => record.id === 'asset.accept');
+    expect(accept?.form).toBeUndefined();
+  });
+
+  it('covers a slice of the catalog no drawn control reaches', () => {
+    const built = mapOf(records);
+    for (const id of ['asset.adopt', 'asset.upload', 'gengraph.createForSlot', 'story.newScene']) {
+      expect(built.editorsFor[id]).toEqual(['documents']);
+    }
   });
 });

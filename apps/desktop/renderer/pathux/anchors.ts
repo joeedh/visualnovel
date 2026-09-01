@@ -12,6 +12,7 @@
  */
 import type { EditorId } from '../../src/shared/editors.js';
 import type { PropValue } from '../../src/shared/ipc.js';
+import { menuAnchors } from './doctree.js';
 import {
   commandKey,
   itemKey,
@@ -234,5 +235,5 @@ const plain = (rect: AnchorRect): AnchorRect => ({
 });
 
 export function installAnchors(): void {
-  window.__vnAnchors = { generation: () => generation, dump: dumpAnchors };
+  window.__vnAnchors = { generation: () => generation, dump: dumpAnchors, tree: menuAnchors };
 }

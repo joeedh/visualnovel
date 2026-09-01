@@ -7,8 +7,9 @@
  * The same functions serve both modes: a file tree is a different source, not a different kind of
  * tree, so the toggle in the header buys a second fetch and no second flattener.
  */
+import type { AnchorRecord, Offer } from '../rules/anchors.js';
 import { NEW_SKILL_PROMPT } from '../rules/skills.js';
-import type { DocNode, EntityLinks } from '../../src/shared/ipc.js';
+import type { DocNode, DocNodeKind, EntityLinks } from '../../src/shared/ipc.js';
 import { MENU_SEP, type MenuEntry } from './contextmenu.js';
 import type { Selection } from './selection.js';
 
@@ -505,6 +506,81 @@ export function menuFor(node: DocNode): MenuEntry[] {
     case 'more':
       return [];
   }
+}
+
+/**
+ * One right-click entry as an offer. A menu entry already holds a command and its props rather
+ * than a callback, so the two shapes say the same thing and this is a projection rather than a
+ * second source of truth. A separator has no command and is filtered out before it gets here.
+ */
+export function offerOf(entry: MenuEntry): Offer {
+  if (entry.refused !== undefined) {
+    return { ok: false, id: entry.id, reason: entry.refused };
+  }
+  return { ok: true, id: entry.id, props: entry.props ?? {}, label: entry.label };
+}
+
+/**
+ * One node of each kind the tree draws, and one of each branch heading, so the coverage below is
+ * total rather than however much of a project happens to be on screen. Every node carries a path
+ * and a hash, since several kinds offer more entries once they have one.
+ */
+const MENU_NODES: readonly DocNode[] = [
+  ...(
+    [
+      'scene',
+      'shot',
+      'character',
+      'location',
+      'wikidir',
+      'wiki',
+      'assetkind',
+      'asset',
+      'slot',
+      'skill',
+      'graph',
+      'dir',
+      'file',
+      'more',
+    ] as const satisfies readonly Exclude<DocNodeKind, 'branch'>[]
+  ).map((kind) => ({
+    id: `${kind}:sample${kind === 'shot' ? '/shot1' : ''}`,
+    kind: kind as DocNodeKind,
+    label: kind,
+    path: `wiki/${kind}.md`,
+    hash: 'a1b2c3d4',
+    slot: 'plate:sample/night',
+    approved: false,
+  })),
+  ...['story', 'characters', 'locations', 'wiki', 'graphs', 'skills', 'assets'].map((key) => ({
+    id: `branch:${key}`,
+    kind: 'branch' as DocNodeKind,
+    label: key,
+  })),
+];
+
+/**
+ * Which commands the tree's right-click reaches, enumerated over every node kind. `menuFor`
+ * answers from the node alone, so this half of the map needs no app, no fixtures and no CDP.
+ *
+ * Nothing anchors a menu, which is built on demand and gone again before a tour could point at
+ * it. Every record here therefore names the palette route, and the coverage count treats these
+ * commands as palette-only rather than as a gap left to close.
+ */
+export function menuAnchors(): AnchorRecord[] {
+  const records: AnchorRecord[] = [];
+  for (const node of MENU_NODES) {
+    for (const entry of menuFor(node)) {
+      if (entry.id === MENU_SEP) continue;
+      records.push({
+        id: entry.id,
+        editor: 'documents',
+        when: node.id,
+        ...(entry.form ? { form: true } : {}),
+      });
+    }
+  }
+  return records;
 }
 
 /**

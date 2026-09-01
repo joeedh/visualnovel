@@ -215,6 +215,8 @@ export interface AnchorRecord {
   /** The condition the record appeared under, so the map states its own coverage. */
   when?: string;
   supplies?: string[];
+  /** Reached by opening the palette on the command's own form rather than by a direct click. */
+  form?: boolean;
 }
 
 /** The map a tour plans against, folded from however many records name the same command. */

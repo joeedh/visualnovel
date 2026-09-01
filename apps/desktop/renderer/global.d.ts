@@ -1,4 +1,5 @@
 import type { DesktopApi } from '../src/shared/ipc';
+import type { AnchorRecord } from './rules/anchors';
 import type { AnchorDump } from './pathux/anchors';
 import type { Debugger2D } from '@vn/debug2d';
 
@@ -12,7 +13,12 @@ declare global {
      * Every anchor drawn right now. Ships in production, unlike `__vnDebug`: the sweep reads it
      * over CDP and the tour overlay reads it at runtime.
      */
-    __vnAnchors?: { generation: () => number; dump: () => AnchorDump[] };
+    __vnAnchors?: {
+      generation: () => number;
+      dump: () => AnchorDump[];
+      /** The half of the map derived from `menuFor`, which no pane draws and no sweep can see. */
+      tree: () => AnchorRecord[];
+    };
   }
 }
 
