@@ -31,8 +31,13 @@ function flakyImages(failures: number, message: string): ImageBackend {
   };
 }
 
-/** The `art.setNotes` rung a location_ref task's own inputs name. */
+/**
+ * The `art.setNotes` rung a location_ref task's own inputs name. The kind is checked before the
+ * cast so a task of another kind says so here, rather than reaching `setArtNotes` as the rung
+ * `location:undefined/undefined` and failing several packages away.
+ */
 function locationRung(task: AnyTask): string {
+  if (task.kind !== 'location_ref') throw new Error(`not a location_ref task: ${task.kind}`);
   const inputs = task.inputs as TaskInputs['location_ref'];
   return `location:${inputs.locationId}/${inputs.variant}`;
 }
@@ -54,7 +59,12 @@ async function shotRung(p: TestProject, task: AnyTask): Promise<string> {
 
 describe('an authored change to a picture the pipeline gave up on', () => {
   it('re-renders a base asset whose art notes changed after it failed', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear, config: { max_task_attempts: 1 } });
+    const p = await makeProject({
+      script: SCRIPTS.linear,
+      // Serial, so the one call `flakyImages` rejects is always the same task's. Under the
+      // default cap the pool starts four at once and the loser varies with machine load.
+      config: { max_task_attempts: 1, concurrency: 1 },
+    });
     try {
       const first = await p.run({ imageBackend: flakyImages(1, 'the model returned 503') });
       const dead = first.ran.find((t) => t.status === 'failed')!;
@@ -83,7 +93,12 @@ describe('an authored change to a picture the pipeline gave up on', () => {
   });
 
   it('re-renders a shot P7 flagged, on the same terms', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 2 } });
+    const p = await makeProject({
+      script: SCRIPTS.linear,
+      // Serial, so the one scripted `BLOCKING` review always lands on the same shot. Under the
+      // default cap several shots review at once and which one reads it varies with load.
+      config: { max_refine_attempts: 2, concurrency: 1 },
+    });
     try {
       await p.run();
       await p.approve('aiko');
@@ -109,10 +124,16 @@ describe('an authored change to a picture the pipeline gave up on', () => {
   });
 
   it('leaves an identity terminal when an edit lands back on one that spent its budget', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear, config: { max_task_attempts: 1 } });
+    const p = await makeProject({
+      script: SCRIPTS.linear,
+      // Serial, so the one call `flakyImages` rejects is always the same task's. Under the
+      // default cap the pool starts four at once and the loser varies with machine load.
+      config: { max_task_attempts: 1, concurrency: 1 },
+    });
     try {
       const first = await p.run({ imageBackend: flakyImages(1, 'the model returned 503') });
       const dead = first.ran.find((t) => t.status === 'failed')!;
+      expect(dead.kind).toBe('location_ref');
       const config = await loadConfig(p.dir);
       const target = locationRung(dead);
 
