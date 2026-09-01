@@ -20,20 +20,38 @@ const RESOLVE_MS = 150;
 /** Above every pane, the docker's own popups included. */
 const LAYER_Z = 1_000_000;
 
+/**
+ * What a tour is showing: what the step means now, and where the tour has got to.
+ *
+ * The progress travels with the guidance because a step that rings nothing — one routed to the
+ * palette, one waiting on a pane — would otherwise leave the screen with no sign a tour is running
+ * at all. That is what the banner is for.
+ */
+export interface Showing {
+  shown: Guidance;
+  title: string;
+  at: number;
+  of: number;
+}
+
 let layer: HTMLElement | undefined;
 let ring: HTMLElement | undefined;
 let caption: HTMLElement | undefined;
+let banner: HTMLElement | undefined;
+let bannerText: HTMLElement | undefined;
 const marks: HTMLElement[] = [];
 
 let frame: number | undefined;
 let timer: ReturnType<typeof setInterval> | undefined;
-let ask: (() => Guidance | undefined) | undefined;
+let ask: (() => Showing | undefined) | undefined;
 let beat = 0;
 let key: string | undefined;
 let also: readonly string[] = [];
 let says = '';
 const scrolled = new Set<string>();
 const warned = new Set<string>();
+/** Runs `tour.cancel`, so the banner's own button leaves a record like any other route to it. */
+let stopTour: (() => void) | undefined;
 
 /**
  * Follow a tour: ask it what to show on the slow beat, and keep the ring on whatever it named.
@@ -43,9 +61,10 @@ const warned = new Set<string>();
  * suspends frame callbacks altogether for an occluded window, so an interval drives the same
  * update at {@link RESOLVE_MS} — coarsely, which is enough for a window nobody is looking at.
  */
-export function follow(resolve: () => Guidance | undefined): void {
+export function follow(resolve: () => Showing | undefined, cancel: () => void): void {
   unfollow();
   ask = resolve;
+  stopTour = cancel;
   beat = 0;
   timer = setInterval(() => paint(performance.now()), RESOLVE_MS);
   frame = requestAnimationFrame(tick);
@@ -58,12 +77,14 @@ export function unfollow(): void {
   frame = undefined;
   timer = undefined;
   ask = undefined;
+  stopTour = undefined;
   key = undefined;
   also = [];
   says = '';
   scrolled.clear();
   warned.clear();
   hide();
+  if (banner) banner.style.display = 'none';
 }
 
 /** What the overlay is ringing, for a test to read over CDP. */
@@ -88,8 +109,9 @@ function paint(now: number): void {
 
 /** Ask the tour again what the step means now, since a click may have moved everything under it. */
 function reresolve(): void {
-  const shown = ask?.();
-  const target = shown && aimOf(shown);
+  const showing = ask?.();
+  const target = showing && aimOf(showing.shown);
+  tell(showing, target !== undefined);
   if (!target) {
     key = undefined;
     also = [];
@@ -99,6 +121,35 @@ function reresolve(): void {
   also = target.also;
   says = target.say;
   if (target.offscreen) scrollTo(target.anchor);
+}
+
+/**
+ * Update the banner, which names the running tour and counts the steps.
+ *
+ * A step with a control to point at already says what to do in the caption beside the ring, so the
+ * banner then shows only the title and the count. A step with nothing to point at draws no caption,
+ * and without the banner nothing on screen would report that a tour was running — which is how a
+ * tour started from the palette read before, since the palette retargeted without saying so.
+ */
+function tell(showing: Showing | undefined, ringed: boolean): void {
+  const [, , box, text] = build();
+  if (!showing || showing.shown.show === 'done') {
+    box.style.display = 'none';
+    return;
+  }
+  const lines = [`${showing.title} · step ${showing.at + 1} of ${showing.of}`];
+  if (!ringed) lines.push(...asks(showing.shown));
+  text.textContent = lines.join('\n');
+  box.style.display = 'flex';
+}
+
+/** The instruction for a step that rings nothing, followed by where the author will find it. */
+function asks(shown: Guidance): string[] {
+  if (shown.show === 'route')
+    return [shown.say, 'Filled into the command palette — press run there.'];
+  if (shown.show === 'open') return [shown.say, `Open the ${shown.editor} pane first.`];
+  if (shown.show === 'blocked') return [shown.say, shown.reason];
+  return [];
 }
 
 /**
@@ -234,8 +285,8 @@ function hide(): void {
 }
 
 /** The layer, made on first use and kept, so a tour that starts and stops does not thrash the DOM. */
-function build(): [HTMLElement, HTMLElement] {
-  if (layer && ring && caption) return [ring, caption];
+function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
+  if (layer && ring && caption && banner && bannerText) return [ring, caption, banner, bannerText];
   layer = document.createElement('div');
   Object.assign(layer.style, {
     position: 'fixed',
@@ -270,13 +321,57 @@ function build(): [HTMLElement, HTMLElement] {
     whiteSpace: 'pre-line',
   });
 
+  banner = document.createElement('div');
+  Object.assign(banner.style, {
+    position: 'fixed',
+    display: 'none',
+    left: '50%',
+    bottom: '16px',
+    transform: 'translateX(-50%)',
+    alignItems: 'flex-start',
+    gap: '10px',
+    maxWidth: '460px',
+    padding: '8px 10px',
+    borderRadius: `${TOKENS.radiusChrome}px`,
+    border: `1px solid ${alpha(TOKENS.sodium, 0.55)}`,
+    background: TOKENS.inkRaised,
+    // Restores what the layer switches off, so the cancel button below can be clicked.
+    pointerEvents: 'auto',
+  });
+
+  bannerText = document.createElement('div');
+  Object.assign(bannerText.style, {
+    color: TOKENS.paper,
+    fontFamily: TOKENS.sans,
+    fontSize: '12px',
+    lineHeight: '1.4',
+    whiteSpace: 'pre-line',
+  });
+
+  const stop = document.createElement('button');
+  stop.textContent = '✕';
+  stop.title = 'Stop the tour. Nothing it walked you through is undone.';
+  Object.assign(stop.style, {
+    flex: 'none',
+    cursor: 'pointer',
+    padding: '2px 7px',
+    color: TOKENS.paper,
+    background: 'transparent',
+    border: `1px solid ${TOKENS.inkLine}`,
+    borderRadius: `${TOKENS.radiusChrome}px`,
+    fontFamily: TOKENS.mono,
+    fontSize: '11px',
+  });
+  stop.addEventListener('click', () => stopTour?.());
+  banner.append(bannerText, stop);
+
   const style = document.createElement('style');
   style.textContent = `@keyframes vn-tour-pulse {
     0%, 100% { opacity: 1 }
     50% { opacity: 0.45 }
   }`;
 
-  layer.append(style, ring, caption);
+  layer.append(style, ring, caption, banner);
   document.body.appendChild(layer);
-  return [ring, caption];
+  return [ring, caption, banner, bannerText];
 }

@@ -19,9 +19,9 @@ import { askedAs, checkFor } from '../rules/precheck.js';
 import { guide, satisfies, start, stepOf, type Guidance, type TourState } from '../rules/tour.js';
 import type { Action, Anchor, AnchorHome, LiveAnchors } from '../rules/anchors.js';
 import { anchorSnapshot } from './anchors.js';
-import { onExec, onWrote, say } from './bridge.js';
+import { exec, onExec, onWrote, say } from './bridge.js';
 import { verdictsFor } from './gestures.js';
-import { follow, ringing, unfollow } from './overlay.js';
+import { follow, ringing, unfollow, type Showing } from './overlay.js';
 import { closePalette, openPalette } from './palette.js';
 
 type TourEffect = Extract<UiEffect, { type: 'tour' }>;
@@ -110,7 +110,7 @@ function watch(): void {
   });
   // The overlay asks rather than being told, because the ring has to survive everything that moves
   // under it between two steps — a pane opening, a scroll, a redraw that rebuilt the control.
-  follow(shownNow);
+  follow(showingNow, () => void exec('tour.cancel'));
 }
 
 function stop(): void {
@@ -177,24 +177,27 @@ function step(next: TourState): void {
 }
 
 /**
- * Say what the step wants, and open the palette where the app draws no control for it.
+ * What showing a step does beyond drawing it. Only a routed step acts: the palette stands in where
+ * the app draws no control for the command.
  *
- * A step the overlay is ringing says nothing here: the caption beside the ring already carries the
- * sentence, and a notification saying it again would be the same words in two places. What is left
- * is the steps with nothing to ring.
+ * Nothing is said here. The overlay's banner carries the step for as long as the tour is on it,
+ * where a notification would have scrolled away after a few seconds — which is what made a tour
+ * started from the palette look like nothing had happened.
  */
 function present(shown: Guidance): void {
-  if (shown.show === 'done' || shown.show === 'ring') return;
-  if (shown.show === 'blocked') {
-    if (!shown.where) say(`${shown.say} — but ${shown.reason}`, true);
-    return;
-  }
-  if (shown.show === 'open') return say(`${shown.say} Open the ${shown.editor} pane first.`);
+  if (shown.show !== 'route') return;
   // The floor. `CommandForm` shows the command's own live verdict above its run button, so the
   // author sees the same refusal a control would have shown, and presses the button themselves.
   openPalette(shown.action.id, shown.action.props);
   routed = true;
-  say(shown.say);
+}
+
+/** The same answer with the tour's progress, which the banner needs and `guide` has no view of. */
+function showingNow(): Showing | undefined {
+  const state = running;
+  const shown = shownNow();
+  if (!state || !shown) return undefined;
+  return { shown, title: state.tour.title, at: state.at, of: state.tour.steps.length };
 }
 
 /** The refusal standing against this anchor, for `guide` to read without awaiting anything. */
@@ -223,9 +226,14 @@ function explain(): void {
   if (!state) return say('No tour is running.', true);
   const shown = shownNow();
   if (!shown || shown.show === 'done') return say('The tour is finished.');
-  if (shown.show !== 'route') return present(shown);
-  // A `route` answer comes from the swept map rather than from the screen, so explaining it means
-  // saying how old that measurement is.
-  const swept = `${SWEPT.at.slice(0, 10)} at ${SWEPT.sha.slice(0, 8)}`;
-  present({ ...shown, say: `${shown.say} No pane drew it when the map was swept, ${swept}.` });
+  present(shown);
+  if (shown.show === 'route') {
+    // A routed answer comes from the swept map rather than from the screen, so explaining it means
+    // saying how old that measurement is.
+    const swept = `${SWEPT.at.slice(0, 10)} at ${SWEPT.sha.slice(0, 8)}`;
+    return say(`${shown.say} No pane drew it when the map was swept, ${swept}.`);
+  }
+  if (shown.show === 'open') return say(`${shown.say} Open the ${shown.editor} pane first.`);
+  if (shown.show === 'blocked') return say(`${shown.say} — ${shown.reason}`, true);
+  say(shown.say);
 }

@@ -33,6 +33,7 @@ class Palette {
   private readonly popup: Popup;
   private readonly listCol: Container;
   private readonly detailCol: Container;
+  private search: TextBox | undefined;
   private form: CommandForm | undefined;
 
   private commands: CatalogEntry[] = [];
@@ -68,6 +69,7 @@ class Palette {
     box.style['width'] = 'calc(100% - 8px)';
     box.style['maxWidth'] = '100%';
     box.description = 'Narrow the list. Every word you type has to appear in the id or the title.';
+    this.search = box;
 
     this.listCol = col.col();
     this.listCol.style['overflowY'] = 'auto';
@@ -99,6 +101,12 @@ class Palette {
   retarget(preselect?: string, overrides?: Record<string, PropValue>): void {
     if (!preselect) return;
     this.wanted = { id: preselect, ...(overrides ? { overrides } : {}) };
+    // The list has to follow the form. A tour stepping the palette from one command to the next
+    // otherwise leaves the rows the author last searched for above a form for something else,
+    // which reads as the palette having broken rather than moved on.
+    this.query = preselect;
+    if (this.search) this.search.text = preselect;
+    this.renderList();
     this.openWanted();
   }
 

@@ -300,6 +300,18 @@ inside the window. If the hit test still fails after that, it logs one `console.
 and leaves the ring where it is; it cannot distinguish an element covered by another from an
 element that moved between frames.
 
+The same layer draws a banner at the bottom of the window for as long as a tour is running: the
+tour's title, which step of how many, and a button that runs `tour.cancel`. A step with a control
+to point at says what to do in the ring's caption, so the banner shows only the title and the
+count; a step with nothing to point at has no caption, and the banner carries the instruction and
+where to find it.
+
+The banner is what makes a tour visible at all when the first step routes to the palette. Before
+it, starting a tour from the palette retargeted that palette to the step's command, and the only
+other sign was a notification that cleared after a few seconds — so the author was left looking at
+a form for a command they had not asked for, with nothing saying a tour had started. `retarget`
+now also sets the search box to the command it moved to, so the list agrees with the form.
+
 ### Advancing
 
 The tour subscribes to `onExec` in `bridge.ts` and advances when a successful command matches the
