@@ -15,15 +15,7 @@ import {
   takeSeed,
 } from '../agent.js';
 import { api } from '../../api.js';
-import {
-  exec,
-  onInvalidate,
-  report,
-  setBudget,
-  setEffort,
-  setModel,
-  toggleMode,
-} from '../bridge.js';
+import { exec, onInvalidate, report, setBudget, setEffort, setMode, setModel } from '../bridge.js';
 import {
   AskCards,
   CHAT_CSS,
@@ -42,10 +34,17 @@ import {
   threadLabel,
   tokensDetail,
   uncachedTokens,
-  type Convo,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
-import { resumeRefusal } from '../../../src/shared/threads.js';
+import { redrawing, type AnchorPass } from '../anchors.js';
+import { modeAction, MODEL_SUPPLIES } from '../../rules/headerbar.js';
+import {
+  THREAD_SUPPLIES,
+  compactAction,
+  newThreadAction,
+  resumeAction,
+  stopTurnAction,
+} from '../../rules/convobar.js';
 import type { AskForm } from '../../rules/askform.js';
 import type { ConfirmRequest, Plan, SkillEntry } from '../../../src/shared/ipc.js';
 
@@ -72,6 +71,7 @@ export class ConvoEditor extends VnEditor {
   private asks!: AskCards;
   /** Kept because the thread menu opens under it, and only the button knows where that is. */
   private threadsBtn!: Button;
+  private anchors: AnchorPass = redrawing('convo', 'bar');
   /**
    * The running token total. Retitled in place rather than keyed into {@link stateKey}: a step
    * finishing would otherwise rebuild the whole bar mid-turn, closing any menu open over it.
@@ -130,7 +130,13 @@ export class ConvoEditor extends VnEditor {
       // refused in the command's own words
       stopTitle: 'Stop the agent after the step it is on. What it already did is kept.',
       onSend: (text) => void ask(text),
-      onStop: () => void exec('agent.stop').then(report),
+      onStop: () => {
+        const offer = stopTurnAction(convo().busy);
+        if (offer.ok) void exec(offer.id, offer.props).then(report);
+      },
+      // Recorded once with the composer, which outlives every rebuild. The button is hidden between
+      // turns, and a hidden node is dropped from the live set, so the anchor comes and goes with it.
+      onStopButton: (button) => redrawing('convo', 'composer').record(button, stopTurnAction(true)),
       onPalette: () => openPalette(),
       skills: () => this.skills,
     });
@@ -196,12 +202,17 @@ export class ConvoEditor extends VnEditor {
     const ui = this.ui;
 
     this.bar.clear();
+    this.anchors = redrawing('convo', 'bar');
     // Row one shows what answered a turn. Row two shows what it cost and where the thread is kept.
     const top = this.bar.row();
     const low = this.bar.row();
 
     top.label('VNAUTHOR').style['padding'] = '0px 8px';
-    const mode = top.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => void toggleMode());
+    const mode = this.anchors.act(
+      top.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => {}),
+      modeAction(ui.agentMode),
+      (action) => void setMode(String(action.props['mode'] ?? '')),
+    );
     mode.description =
       ui.agentMode === 'plan'
         ? 'Plan mode: the agent reads and proposes, and edits nothing. Click to let it edit.'
@@ -219,6 +230,11 @@ export class ConvoEditor extends VnEditor {
     ]) as MenuTemplate;
     const model = top.menu(ui.model || 'model…', models);
     model.description = 'Which model answers. Switching takes effect on the next turn.';
+    this.anchors.record(
+      model,
+      { ok: true, id: 'agent.setModel', props: {} },
+      { supplies: MODEL_SUPPLIES },
+    );
 
     // Offers only the levels this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable
     // thinks unconditionally, so it is never offered `no thinking`
@@ -259,7 +275,11 @@ export class ConvoEditor extends VnEditor {
     this.tokensLbl.setCSSAfter(() => (this.tokensLbl!.style['padding'] = '0px 8px'));
     this.sayTokens();
 
-    this.threadsBtn = low.button('Threads', () => void this.showThreads());
+    this.threadsBtn = this.anchors.record(
+      low.button('Threads', () => void this.showThreads()),
+      { ok: true, id: 'agent.openThread', props: {} },
+      { supplies: THREAD_SUPPLIES },
+    );
     this.threadsBtn.description =
       'Saved conversations. Reopening one is read-only — the agent is not shown it until ' +
       'Continue hands it back.';
@@ -267,27 +287,36 @@ export class ConvoEditor extends VnEditor {
     // This button sits beside the Threads list rather than only inside it. Starting a fresh
     // conversation is the commonest thing anyone opens that menu for, and putting it here makes
     // it one gesture instead of two.
-    const fresh = low.button('New', () => void exec('agent.newThread'));
+    const fresh = this.anchors.act(
+      low.button('New', () => {}),
+      newThreadAction(),
+      (action) => void exec(action.id, action.props),
+    );
     fresh.description =
       'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
       'stays under Threads.';
 
-    this.compactBtn = low.button('Compact', () => void exec('agent.compact').then(report));
+    this.compactBtn = this.anchors.act(
+      low.button('Compact', () => {}),
+      compactAction(convo(), reopenedThread() !== undefined),
+      (action) => void exec(action.id, action.props).then(report),
+    );
     this.sayCompact();
 
     // Drawn only while a saved conversation is on screen, because there is nothing to continue
-    // while the live one is. The refusal is the renderer's four checks; main runs a fifth over the
-    // protocol its backend speaks, which only main knows.
+    // while the live one is.
     const opened = reopenedThread();
     if (opened) {
-      const refusal = resumeRefusal(opened.title, opened.resume, { model: ui.model });
-      const cont = low.button(
-        'Continue',
-        () => void exec('agent.resumeThread', { id: opened.id }).then(report),
+      const offer = resumeAction(opened, ui.model);
+      const cont = this.anchors.act(
+        low.button('Continue', () => {}),
+        offer,
+        (action) => void exec(action.id, action.props).then(report),
       );
-      cont.description =
-        refusal ?? 'Continue this conversation — the agent is shown everything above.';
-      cont.disabled = refusal !== undefined;
+      cont.description = offer.ok
+        ? 'Continue this conversation — the agent is shown everything above.'
+        : offer.reason;
+      cont.disabled = !offer.ok;
     }
 
     this.bar.flushUpdate();
@@ -349,19 +378,6 @@ export class ConvoEditor extends VnEditor {
    * what the renderer can see, so the button is greyed with a sentence rather than reporting one a
    * click later. Main's check stays the authority and answers the rest on the click.
    */
-  private compactRefusal(state: Convo): string | undefined {
-    if (state.busy) return 'A turn is still running; wait for it to finish.';
-    if (reopenedThread()) {
-      return 'This conversation is open for reading. Continue it before compacting it.';
-    }
-    const last = state.feed[state.feed.length - 1];
-    if (!last) return 'Nothing has been said in this conversation yet.';
-    if (state.compactions[state.compactions.length - 1]?.afterId === last.id) {
-      return 'This conversation was compacted already, and nothing has been said since.';
-    }
-    return undefined;
-  }
-
   /**
    * The Compact button, retitled in place for the reason the token counter is: what it says changes
    * on every step of a turn, and rebuilding the bar closes a menu open over it. Past
@@ -370,9 +386,9 @@ export class ConvoEditor extends VnEditor {
   private sayCompact(): void {
     if (!this.compactBtn) return;
     const state = convo();
-    const refusal = this.compactRefusal(state);
-    this.compactBtn.disabled = refusal !== undefined;
-    this.compactBtn.description = refusal ?? contextDetail(state);
+    const offer = compactAction(state, reopenedThread() !== undefined);
+    this.compactBtn.disabled = !offer.ok;
+    this.compactBtn.description = offer.ok ? contextDetail(state) : offer.reason;
   }
 
   /**

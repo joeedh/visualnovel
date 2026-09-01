@@ -276,10 +276,13 @@ export async function closeWindow(): Promise<void> {
  * rather than left to a push that may not come.
  */
 export async function toggleMode(): Promise<void> {
-  const ui = shell().ui;
-  const next = ui.agentMode === 'plan' ? 'execute' : 'plan';
+  await setMode(shell().ui.agentMode === 'plan' ? 'execute' : 'plan');
+}
+
+/** Put the agent into this mode. Takes the mode so an anchored button runs the props it recorded. */
+export async function setMode(next: string): Promise<void> {
   if ((await exec('agent.setMode', { mode: next })).ok) {
-    ui.agentMode = next;
+    shell().ui.agentMode = next === 'plan' ? 'plan' : 'execute';
     touch();
   }
 }

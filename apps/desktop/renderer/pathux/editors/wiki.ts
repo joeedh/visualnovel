@@ -2,7 +2,8 @@ import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
 import { onInvalidate, onWrote } from '../bridge.js';
-import { DocBuffer } from '../docbuffer.js';
+import { DocBuffer, WRITE_SUPPLIES } from '../docbuffer.js';
+import { redrawing } from '../anchors.js';
 import { assetGroups } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { assetNode, openNode } from '../open.js';
@@ -181,7 +182,17 @@ export class WikiEditor extends VnEditor {
     this.pathEl.textContent = open ? this.buf.path : '';
     this.pathEl.title = this.pathEl.textContent;
     this.badge.style.display = this.buf.dirty ? 'inline-block' : 'none';
-    this.saveBtn.disabled = !this.buf.dirty;
+    const save = this.buf.saveOffer;
+    this.saveBtn.disabled = !save.ok;
+    this.saveBtn.description = save.ok
+      ? 'Write this document back to disk, and commit it'
+      : save.reason;
+    // Re-recorded on every paint rather than once with the bar: the bar is built at init and
+    // the offer changes with the buffer, so a record kept from init would say `Nothing to save`
+    // for the life of the pane.
+    redrawing('wiki', 'bar').act(this.saveBtn, save, () => void this.buf.save(), {
+      supplies: WRITE_SUPPLIES,
+    });
     this.noteEl.textContent = this.buf.note;
     this.noteEl.className = this.buf.bad ? 'wk-note bad' : 'wk-note';
     this.noteEl.title = this.buf.note;

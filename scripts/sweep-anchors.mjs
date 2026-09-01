@@ -136,12 +136,14 @@ for (const editor of editors) {
       editor,
       key: anchor.key,
       ...(anchor.supplies ? { supplies: anchor.supplies } : {}),
+      ...(anchor.form ? { form: true } : {}),
       ...(anchor.enabled ? {} : { refused: anchor.reason ?? '' }),
     });
     // An anchor that supplies a prop is deliberately incomplete, so asking `stack.check` about it
-    // asks about the blank the author is on their way to filling in. `MenuEntry.form` leaves its
-    // entries unchecked for the same reason.
-    if (anchor.supplies) continue;
+    // asks about the blank the author is on their way to filling in. A `form` anchor's props are a
+    // prefill for the same reason: the form is where the author finishes them. `MenuEntry.form`
+    // leaves its entries unchecked on that reasoning too.
+    if (anchor.supplies || anchor.form) continue;
     const verdict = await evaluate(
       socket,
       `window.vn.check(${JSON.stringify(anchor.id)}, ${JSON.stringify(anchor.props)})`,

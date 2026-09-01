@@ -7,7 +7,8 @@ import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
 import { layoutChanged } from '../persist.js';
-import { selectionForTask, taskIsSelected, type Selection } from '../selection.js';
+import { selectionForTask, taskIsSelected, taskPublishes, type Selection } from '../selection.js';
+import { redrawing, type AnchorPass } from '../anchors.js';
 import { TOKENS, alpha } from '../tokens.js';
 import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
 
@@ -28,6 +29,7 @@ export class TaskListEditor extends VnEditor {
   private status: PipelineStatus | undefined;
   private failure = '';
   private drawn = '';
+  private anchors: AnchorPass = redrawing('tasklist', 'body');
   /** Rising with every fetch, so a slow answer that arrived out of order is dropped. */
   private token = 0;
   /** Remembered per pane: whether the list is narrowed to what has already finished. */
@@ -162,6 +164,7 @@ export class TaskListEditor extends VnEditor {
   }
 
   private rebuild(): void {
+    this.anchors = redrawing('tasklist', 'body');
     this.drawn = this.stateKey();
     this.rebuildBar();
     this.rebuildList();
@@ -188,8 +191,12 @@ export class TaskListEditor extends VnEditor {
 
     // A run spends money and writes assets, so it goes through the palette's form and its
     // confirmation rather than off a bare button — `pipeline.run` is gated on the command.
-    low.button('▸ Run', () => openCommandDialog('pipeline.run')).description =
-      'Open the run form, where the flags are spelled out before anything is spent';
+    this.anchors.act(
+      low.button('▸ Run', () => {}),
+      { ok: true, id: 'pipeline.run', props: {}, label: '▸ Run' },
+      (action) => openCommandDialog(action.id),
+      { form: true },
+    ).description = 'Open the run form, where the flags are spelled out before anything is spent';
 
     const only = low.check(undefined, 'only done') as Check;
     only.checked = this.onlyDone;
@@ -343,6 +350,9 @@ export class TaskListEditor extends VnEditor {
       ? `Open what this ${task.kind} drew in the asset editor — the last frame it rendered, ` +
         'accepted or not; every other pane follows the pick'
       : `Inspect this ${task.kind} — it rendered nothing to open; every other pane follows the pick`;
+    // The card publishes a task rather than running one, so it is anchored as the thing it names.
+    // A step wanting a command that acts on this task rings this card when the pane is on another.
+    this.anchors.item(box, 'task', task.hash, taskPublishes(task, this.selection()));
     box.addEventListener('click', () => this.select(task));
     return box;
   }

@@ -23,6 +23,7 @@ import {
 import { VnEditor, registerEditor } from '../editor.js';
 import { VN_ICONS } from '../icons.js';
 import { redrawing } from '../anchors.js';
+import { CREATE_SUPPLIES, RENAME_SUPPLIES } from '../../rules/doctreebar.js';
 import { assetNode, openNode } from '../open.js';
 import { layoutChanged } from '../persist.js';
 import type { VnScreen } from '../screen.js';
@@ -228,8 +229,15 @@ export class DocumentsEditor extends VnEditor {
     ).description = files
       ? 'Showing every file on disk. Click to group by what the documents are instead.'
       : 'Showing cast, locations and scenes. Click to see the folders they live in instead.';
-    this.bar.button('New…', () => this.showNewRow()).description =
-      'Add a character, location, page or skill to this project';
+    const anchors = redrawing('documents', 'bar');
+    // The button rather than the row it opens: pressing it is where writing a document starts, and
+    // the kind and the name are both typed after it.
+    anchors.act(
+      this.bar.button('New…', () => {}),
+      { ok: true, id: 'doc.create', props: {}, label: 'New…' },
+      () => this.showNewRow(),
+      { supplies: CREATE_SUPPLIES },
+    ).description = 'Add a character, location, page or skill to this project';
     this.bar.button('Refresh', () => void this.load()).description =
       'Re-read the project from disk';
     // Folding the tree back up is not the same as reloading: expansion survives every refetch, so
@@ -545,6 +553,13 @@ export class DocumentsEditor extends VnEditor {
     box.value = target.name;
     box.title = 'Type the new name — Enter renames the document, Escape leaves it as it was';
     line.replaceChild(box, label);
+    // Its own pass: the box appears and vanishes without the rows around it being redrawn, and a
+    // detached node is dropped from the live set rather than reported as scrolled away.
+    redrawing('documents', 'rename').record(
+      box,
+      { ok: true, id: 'doc.rename', props: { path: target.path } },
+      { supplies: RENAME_SUPPLIES },
+    );
 
     let settled = false;
     const finish = (name?: string): void => {

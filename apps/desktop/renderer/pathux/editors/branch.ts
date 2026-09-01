@@ -1,4 +1,4 @@
-import type { Container } from 'pathux';
+import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
 import { seed } from '../agent.js';
 import { handleAnchor, routeEdges, type EdgeRoute } from '../../graph/edges.js';
@@ -30,6 +30,7 @@ import {
   noticeOf,
   type Drag,
 } from '../branch.js';
+import { redrawing } from '../anchors.js';
 import { exec, refreshWorkspace } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
@@ -307,16 +308,23 @@ export class BranchEditor extends VnEditor {
         : `${scenes} scenes · ${edges} edges${dead > 0 ? ` · ${dead} unreachable` : ''}`,
     ).style['padding'] = '0px 8px';
 
+    const anchors = redrawing('branches', 'bar');
     if (!this.naming) {
-      this.bar.button('+ scene', () => this.startNaming()).description =
-        'Name a new scene and add it to the graph, unconnected';
+      // The button that opens the naming row, not the row's own Write it: this is where writing a
+      // scene starts, and both the id and the heading are typed after it.
+      anchors.act(
+        this.bar.button('+ scene', () => {}),
+        { ok: true, id: 'story.newScene', props: {}, label: '+ scene' },
+        () => this.startNaming(),
+        { supplies: ['scene', 'heading'] },
+      ).description = 'Name a new scene and add it to the graph, unconnected';
       const scene = this.ui.sceneId;
       if (scene && this.sceneById.has(scene)) {
-        // Hover asks the command for its check and the click runs it, so a scene something still
-        // points at says so in the command's own words before the pointer goes down
         const remove = this.bar.button(`delete ${scene}`, () => void this.deleteScene(scene));
         remove.description = `Remove ${scene} and the shots that illustrate it`;
-        remove.addEventListener('pointerenter', () => this.askDelete(scene, remove));
+        // Asked as the button is drawn rather than on hover, so a scene something still points at
+        // is greyed and says why in the command's own words without being reached for first.
+        this.askDelete(scene, remove);
       }
     }
 
@@ -582,12 +590,23 @@ export class BranchEditor extends VnEditor {
   }
 
   /** What removing the selected scene would cost, from `deleteScene`'s own `check`. */
-  private askDelete(scene: string, button: { description?: string }): void {
-    void api.invoke('command:check', asInvocation(deleteSceneIntent(scene))).then((check) => {
+  private askDelete(scene: string, button: Button): void {
+    const step = asInvocation(deleteSceneIntent(scene));
+    void api.invoke('command:check', step).then((check) => {
+      const refused = check.state === 'refuse';
+      button.disabled = refused;
+      // Its own pass, keyed on the scene: the answer lands after the bar is drawn, and the anchor
+      // has to carry the refusal the button ends up wearing rather than the offer it was drawn on.
+      redrawing('branches', 'delete').act(
+        button,
+        refused
+          ? { ok: false, id: step.id, reason: check.message }
+          : { ok: true, ...step, label: `delete ${scene}` },
+        () => void this.deleteScene(scene),
+      );
       const notice = noticeForCheck(check);
       if (!notice) return;
       button.description = notice.text;
-      this.say(notice);
     });
   }
 
@@ -664,6 +683,12 @@ export class BranchEditor extends VnEditor {
 
     const go = el('button', 'go', 'Write it');
     go.title = 'Create the scene file and put it on the graph, connected to nothing';
+    // Its own pass: the row appears and vanishes without the bar being redrawn, and a detached
+    // node is dropped from the live set rather than reported as scrolled away.
+    redrawing('branches', 'naming').record(go, {
+      ok: true,
+      ...asInvocation(newSceneIntent(this.naming)),
+    });
     go.addEventListener('click', () => void this.write());
     const no = el('button', 'no', 'Cancel');
     no.title = 'Abandon the new scene. Nothing is written.';

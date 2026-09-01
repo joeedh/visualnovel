@@ -14,7 +14,7 @@ import { createDesktopRegistry } from '../commands/index.js';
  * The number of distinct commands the sweep must still find a control for. Raise it when a
  * conversion lands; never lower it to make a red run green.
  */
-const FLOOR = 24;
+const FLOOR = 40;
 
 interface Sweep {
   sweptAt: string;

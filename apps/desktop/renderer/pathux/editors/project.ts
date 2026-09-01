@@ -1,6 +1,8 @@
 import type { Button, Container } from 'pathux';
 import { exec, onInvalidate, report } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { redrawing } from '../anchors.js';
+import { STYLE_SUPPLIES, applyStyleAction } from '../../rules/projectbar.js';
 import PROJECT_CSS from '../../styles/project.css?inline';
 import type { ProjectView } from '../../../src/shared/ipc.js';
 
@@ -149,7 +151,16 @@ export class ProjectEditor extends VnEditor {
 
   private paint(): void {
     const view = this.view;
-    this.applyBtn.disabled = !view || !this.dirty;
+    const offer = applyStyleAction(view !== undefined, this.dirty);
+    this.applyBtn.disabled = !offer.ok;
+    this.applyBtn.description = offer.ok
+      ? 'Write these settings back to project.yaml'
+      : offer.reason;
+    // Re-recorded on every paint: the bar is built once at init, and what Apply offers follows the
+    // box the author is typing in.
+    redrawing('project', 'bar').act(this.applyBtn, offer, () => void this.apply(), {
+      supplies: STYLE_SUPPLIES,
+    });
     this.titleEl.textContent = view?.title ?? 'No project open';
     this.rootEl.textContent = view?.root ?? '';
     this.warn.textContent =

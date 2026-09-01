@@ -10,6 +10,15 @@
 import type { EditorId } from '../../src/shared/editors.js';
 import type { PropValue } from '../../src/shared/ipc.js';
 
+/**
+ * The app's toolbar, which is not a pane. It is drawn once at startup and cannot be closed, so it
+ * never resolves to `pane-closed` and never leaves the open set.
+ */
+export const HEADER = 'header';
+
+/** Where an anchor was drawn: a pane the author can close, or the toolbar that is always there. */
+export type AnchorHome = EditorId | typeof HEADER;
+
 /** What a surface can be asked to do, as data, before it is a click. */
 export interface Action {
   id: string;
@@ -65,12 +74,17 @@ export interface Anchor {
   props: Record<string, PropValue>;
   /** Prop names the click reads from the widget at commit time, so a step naming one is an input. */
   supplies?: string[];
+  /**
+   * The click opens the command's own form rather than running it, so every prop is typed there.
+   * Reads as `supplies` over whatever the step names, which is what makes the palette a floor.
+   */
+  form?: boolean;
   enabled: boolean;
   /** Why it is greyed. The sentence the rule already wrote, never invented here. */
   reason?: string;
   /** The `ui.*` fields an `item:` anchor's click publishes. */
   publishes?: Record<string, string>;
-  editor: EditorId;
+  editor: AnchorHome;
   via: AnchorVia;
 }
 
@@ -88,7 +102,7 @@ export type Resolution =
 /** The screen as the resolver reads it: what is drawn, what is open, and what has scrolled away. */
 export interface LiveAnchors {
   anchors: readonly Anchor[];
-  open: readonly EditorId[];
+  open: readonly AnchorHome[];
   /** Keys whose rect lies outside the pane that drew them. */
   offscreen?: readonly string[];
 }
@@ -98,7 +112,7 @@ export interface LiveAnchors {
  * happens before any pane is open, so this is what answers "where does `prompt.condense` live".
  */
 export interface AnchorMap {
-  editorsFor: Readonly<Record<string, readonly EditorId[]>>;
+  editorsFor: Readonly<Record<string, readonly AnchorHome[]>>;
 }
 
 export const commandKey = (id: string): string => `cmd:${id}`;
@@ -125,7 +139,7 @@ export type Subsumption =
  * widget supplies, and then the step is an input rather than a click; an anchor that supplies
  * neither is incomplete, which is a bug worth reporting rather than hiding. An anchor with
  * `supplies` that the step names none of is still ready — the human is being shown where to
- * start.
+ * start. A `form` anchor supplies whatever is asked of it, because its form holds every prop.
  */
 export function subsumes(anchor: Anchor, step: Action): Subsumption {
   const supplies = anchor.supplies ?? [];
@@ -135,7 +149,7 @@ export function subsumes(anchor: Anchor, step: Action): Subsumption {
   for (const [name, value] of Object.entries(step.props)) {
     if (name in anchor.props) {
       if (!sameValue(anchor.props[name], value)) needs[name] = value;
-    } else if (supplies.includes(name)) {
+    } else if (supplies.includes(name) || anchor.form) {
       asked.push(name);
     } else {
       needs[name] = value;
@@ -190,7 +204,10 @@ export function resolveAnchor(map: AnchorMap, live: LiveAnchors, step: Action): 
   const editors = map.editorsFor[step.id] ?? [];
   if (editors.length === 0) return { state: 'unanchored' };
   if (editors.some((editor) => live.open.includes(editor))) return { state: 'absent' };
-  return { state: 'pane-closed', editor: editors[0] as EditorId };
+  // The toolbar cannot be closed, so a command the map places only there and that is nonetheless
+  // not drawn is a statement about the screen rather than about a missing pane.
+  const pane = editors.find((editor) => editor !== HEADER);
+  return pane === undefined ? { state: 'absent' } : { state: 'pane-closed', editor: pane };
 }
 
 /**
@@ -211,7 +228,7 @@ export function resolveItem(live: LiveAnchors, kind: string, key: string): Resol
 /** One command's coverage, as the sweep and the doctree enumeration both write it. */
 export interface AnchorRecord {
   id: string;
-  editor: EditorId;
+  editor: AnchorHome;
   /** The condition the record appeared under, so the map states its own coverage. */
   when?: string;
   supplies?: string[];
@@ -221,7 +238,7 @@ export interface AnchorRecord {
 
 /** The map a tour plans against, folded from however many records name the same command. */
 export function mapOf(records: readonly AnchorRecord[]): AnchorMap {
-  const editorsFor: Record<string, EditorId[]> = {};
+  const editorsFor: Record<string, AnchorHome[]> = {};
   for (const record of records) {
     const seen = (editorsFor[record.id] ??= []);
     if (!seen.includes(record.editor)) seen.push(record.editor);

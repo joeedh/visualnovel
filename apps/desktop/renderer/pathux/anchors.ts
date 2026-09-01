@@ -10,14 +10,15 @@
  * Exposed as `window.__vnAnchors` for the sweep and for DevTools. Unlike `window.__vnDebug` this
  * ships in production, because the tour reads it at runtime.
  */
-import type { EditorId } from '../../src/shared/editors.js';
 import type { PropValue } from '../../src/shared/ipc.js';
 import { menuAnchors } from './doctree.js';
 import {
+  HEADER,
   commandKey,
   itemKey,
   type Action,
   type Anchor,
+  type AnchorHome,
   type AnchorNode,
   type AnchorRect,
   type LiveAnchors,
@@ -26,7 +27,7 @@ import {
 
 /** What one redraw of one part of one editor laid down. */
 interface Pass {
-  editor: EditorId;
+  editor: AnchorHome;
   generation: number;
   anchors: Anchor[];
 }
@@ -50,6 +51,8 @@ export interface ActOptions {
    * chunk key, a task hash. Appended to the key, so re-resolving by key lands on the same control.
    */
   on?: string;
+  /** The click opens the command's own form rather than running it, so every prop is typed there. */
+  form?: boolean;
   /** An `item:` key, for a control whose click publishes a selection rather than running a command. */
   key?: string;
   /** The `ui.*` fields an `item:` anchor's click publishes. */
@@ -62,7 +65,7 @@ export interface ActOptions {
  * `part` separates the passes an editor makes independently — the asset editor redraws its bar and
  * its body from different places — so redrawing one does not discard the other's records.
  */
-export function redrawing(editor: EditorId, part: string): AnchorPass {
+export function redrawing(editor: AnchorHome, part: string): AnchorPass {
   const id = `${editor}/${part}`;
   const pass: Pass = { editor, generation: ++generation, anchors: [] };
   passes.set(id, pass);
@@ -101,19 +104,21 @@ export class AnchorPass {
    * reasons of its own — a box committed on blur, a field committed on Enter. The offer is still
    * the one object the click reads, so naming it here is what keeps the two together.
    */
-  record(node: AnchorNode, offer: Offer, opts: ActOptions = {}): void {
+  record<N extends AnchorNode>(node: N, offer: Offer, opts: ActOptions = {}): N {
     const id = offer.ok ? offer.id : (offer.id ?? opts.about);
     this.pass.anchors.push({
       key: opts.key ?? keyFor(id, opts.on),
       ...(id === undefined ? {} : { id }),
       props: offer.ok ? offer.props : {},
       ...(opts.supplies && opts.supplies.length > 0 ? { supplies: opts.supplies } : {}),
+      ...(opts.form ? { form: true } : {}),
       enabled: offer.ok,
       ...(offer.ok ? {} : { reason: offer.reason }),
       ...(opts.publishes ? { publishes: opts.publishes } : {}),
       editor: this.pass.editor,
       via: { kind: 'dom', node },
     });
+    return node;
   }
 
   /**
@@ -164,7 +169,21 @@ function keyFor(id: string | undefined, on: string | undefined): string {
 
 /** Every anchor drawn right now, in the order the passes laid them down. */
 export function liveAnchors(): Anchor[] {
-  return [...passes.values()].flatMap((pass) => pass.anchors);
+  return [...passes.values()].flatMap((pass) => pass.anchors).filter(drawn);
+}
+
+/**
+ * Whether the node an anchor points at is on screen at all — in the document, and drawn with a
+ * size. A control that comes and goes without a redraw of its whole pass (a rename box, a Stop
+ * button hidden between turns) is not scrolled away, it is not there, and the two get different
+ * answers: the overlay scrolls to the first and must not try to scroll to the second.
+ */
+function drawn(anchor: Anchor): boolean {
+  if (anchor.via.kind !== 'dom') return true;
+  const node = anchor.via.node;
+  if (typeof Node !== 'undefined' && node instanceof Node && !node.isConnected) return false;
+  const rect = node.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
 }
 
 /**
@@ -175,19 +194,20 @@ export function liveAnchors(): Anchor[] {
  * not redraw it on the way back — so they are dropped here rather than on the way out. Without
  * that, a step would resolve onto a widget that is no longer in the document.
  */
-export function anchorSnapshot(open: readonly EditorId[]): LiveAnchors {
-  const anchors = liveAnchors().filter((anchor) => open.includes(anchor.editor));
-  return { anchors, open, offscreen: anchors.filter(hidden).map((anchor) => anchor.key) };
+export function anchorSnapshot(open: readonly AnchorHome[]): LiveAnchors {
+  const shown: readonly AnchorHome[] = [...open, HEADER];
+  const anchors = liveAnchors().filter((anchor) => shown.includes(anchor.editor));
+  return { anchors, open: shown, offscreen: anchors.filter(hidden).map((anchor) => anchor.key) };
 }
 
 /**
- * Whether an anchor has scrolled out of the window or collapsed to nothing. A pane's own clip is
- * not consulted: a rect inside the window but under another pane is a stacking question, and the
- * pick oracle is what answers that.
+ * Whether an anchor has scrolled out of the window. Anything that is not drawn at all has already
+ * been dropped by {@link drawn}. A pane's own clip is not consulted: a rect inside the window but
+ * under another pane is a stacking question, and the pick oracle is what answers that.
  */
 function hidden(anchor: Anchor): boolean {
   const rect = rectOf(anchor);
-  if (!rect || rect.width === 0 || rect.height === 0) return true;
+  if (!rect) return true;
   return (
     rect.bottom <= 0 ||
     rect.right <= 0 ||
@@ -208,9 +228,10 @@ export interface AnchorDump {
   id?: string;
   props: Record<string, PropValue>;
   supplies?: string[];
+  form?: boolean;
   enabled: boolean;
   reason?: string;
-  editor: EditorId;
+  editor: AnchorHome;
   via: 'dom' | 'pick';
   nodeId?: string;
   rect?: AnchorRect;
@@ -224,6 +245,7 @@ export function dumpAnchors(): AnchorDump[] {
       ...(anchor.id === undefined ? {} : { id: anchor.id }),
       props: anchor.props,
       ...(anchor.supplies ? { supplies: anchor.supplies } : {}),
+      ...(anchor.form ? { form: true } : {}),
       enabled: anchor.enabled,
       ...(anchor.reason === undefined ? {} : { reason: anchor.reason }),
       editor: anchor.editor,

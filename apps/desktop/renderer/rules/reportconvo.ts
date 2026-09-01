@@ -14,6 +14,7 @@ import {
   type ThreadHeader,
 } from '../../src/shared/convo.js';
 import type { CommandCheck, ReportRow, ReportStateView } from '../../src/shared/ipc.js';
+import type { Offer } from './anchors.js';
 
 /** What the dialogue box says before the analyst has been asked anything. */
 export const REPORT_OPENING = 'Pick the conversation that went wrong, then press Start.';
@@ -84,6 +85,12 @@ export function grantBox(
     disabled: granted || verdict?.state === 'refuse',
     tooltip: verdict?.message || offer,
   };
+}
+
+/** Grant the open conversation one access, as the box `grantBox` just described would run it. */
+export function grantAction(kind: string, box: GrantBox): Offer {
+  if (box.disabled) return { ok: false, id: 'report.grant', reason: box.tooltip };
+  return { ok: true, id: 'report.grant', props: { access: kind } };
 }
 
 /**

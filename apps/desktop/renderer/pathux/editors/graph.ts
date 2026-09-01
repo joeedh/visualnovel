@@ -19,6 +19,7 @@ import { VnEditor, registerEditor } from '../editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
 import { isSelected, selectionForTask, type Selection } from '../selection.js';
 import { openCommandDialog } from '../dialog.js';
+import { redrawing, type AnchorPass } from '../anchors.js';
 import { TOKENS, alpha } from '../tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
@@ -89,6 +90,7 @@ export class TaskGraphEditor extends VnEditor {
   /** Fit once, when the first layout meets a sized surface; refitting later would undo panning. */
   private fitted = false;
   private drawn = '';
+  private anchors: AnchorPass = redrawing('taskgraph', 'body');
 
   static override define() {
     return {
@@ -263,6 +265,7 @@ export class TaskGraphEditor extends VnEditor {
 
   /** Recompute the derivation, then the layout, then draw. */
   private rebuild(): void {
+    this.anchors = redrawing('taskgraph', 'body');
     const status = this.status;
     if (status) {
       this.model = taskGraphOf(status, this.story);
@@ -508,6 +511,13 @@ export class TaskGraphEditor extends VnEditor {
         fontFamily: TOKENS.mono,
         fontSize: '11px',
       });
+      // The hash is the author's judgement rather than the graph's, so the dialog asks for it and
+      // the anchor names it as something supplied rather than carrying a wrong one.
+      this.anchors.record(
+        cta,
+        { ok: true, id: 'gate.approve', props: { characterId: character } },
+        { on: character, supplies: ['hash'], form: true },
+      );
       cta.addEventListener('click', (event) => {
         event.stopPropagation();
         this.resolve(character);

@@ -1,6 +1,6 @@
 {
-  "sweptAt": "2026-09-01T02:26:41.197Z",
-  "gitSha": "09426404a375327b284d08a15fc2dc38caf48f7f",
+  "sweptAt": "2026-09-01T03:01:40.902Z",
+  "gitSha": "c759315601d73d856f4bec390ee0f71fbd26c4dd",
   "under": {
     "project": "The Transfer Student",
     "selected": {
@@ -166,8 +166,14 @@
     "workspace.skilltree"
   ],
   "anchored": [
+    "agent.compact",
+    "agent.newThread",
+    "agent.openThread",
     "agent.run",
+    "agent.setMode",
+    "agent.setModel",
     "app.copy",
+    "app.openKeyLink",
     "art.generate",
     "art.promote",
     "art.setNotes",
@@ -177,6 +183,7 @@
     "asset.regenerate",
     "asset.upload",
     "doc.create",
+    "doc.write",
     "gate.approve",
     "gengraph.create",
     "gengraph.createForSlot",
@@ -184,10 +191,19 @@
     "gengraph.estimate",
     "gengraph.run",
     "pipeline.run",
+    "project.setArtStyle",
+    "project.setKey",
+    "project.testKey",
+    "report.open",
     "story.assignLineIds",
+    "story.decomposeAll",
+    "story.deleteScene",
     "story.newScene",
+    "story.newShot",
     "story.screenplay",
     "story.setCoverage",
+    "story.setHeading",
+    "story.setLineText",
     "story.setOutfit",
     "view.open"
   ],
@@ -484,6 +500,129 @@
       "form": true
     },
     {
+      "id": "story.newScene",
+      "editor": "branches",
+      "key": "cmd:story.newScene",
+      "supplies": ["scene", "heading"]
+    },
+    {
+      "id": "story.deleteScene",
+      "editor": "branches",
+      "key": "cmd:story.deleteScene",
+      "refused": "arrival is the entry scene — point start: in project.yaml elsewhere first."
+    },
+    {
+      "id": "story.setHeading",
+      "editor": "script",
+      "key": "cmd:story.setHeading",
+      "form": true
+    },
+    {
+      "id": "story.setLineText",
+      "editor": "script",
+      "key": "cmd:story.setLineText#arrival:L1",
+      "supplies": ["text"]
+    },
+    {
+      "id": "story.setLineText",
+      "editor": "script",
+      "key": "cmd:story.setLineText#arrival:L2",
+      "supplies": ["text"]
+    },
+    {
+      "id": "story.setLineText",
+      "editor": "script",
+      "key": "cmd:story.setLineText#arrival:L3",
+      "supplies": ["text"]
+    },
+    {
+      "id": "agent.setMode",
+      "editor": "convo",
+      "key": "cmd:agent.setMode"
+    },
+    {
+      "id": "agent.setModel",
+      "editor": "convo",
+      "key": "cmd:agent.setModel",
+      "supplies": ["modelId"]
+    },
+    {
+      "id": "agent.openThread",
+      "editor": "convo",
+      "key": "cmd:agent.openThread",
+      "supplies": ["id"]
+    },
+    {
+      "id": "agent.newThread",
+      "editor": "convo",
+      "key": "cmd:agent.newThread"
+    },
+    {
+      "id": "agent.compact",
+      "editor": "convo",
+      "key": "cmd:agent.compact",
+      "refused": "This conversation is open for reading. Continue it before compacting it."
+    },
+    {
+      "id": "story.newShot",
+      "editor": "timeline",
+      "key": "cmd:story.newShot",
+      "form": true
+    },
+    {
+      "id": "story.newShot",
+      "editor": "timeline",
+      "key": "cmd:story.newShot",
+      "form": true
+    },
+    {
+      "id": "story.decomposeAll",
+      "editor": "timeline",
+      "key": "cmd:story.decomposeAll",
+      "form": true,
+      "refused": "missing anthropic API key: set $ANTHROPIC_API_KEY or place claude.txt in a keys/ dir"
+    },
+    {
+      "id": "pipeline.run",
+      "editor": "tasklist",
+      "key": "cmd:pipeline.run",
+      "form": true
+    },
+    {
+      "id": "gate.approve",
+      "editor": "taskgraph",
+      "key": "cmd:gate.approve#aiko",
+      "supplies": ["hash"],
+      "form": true
+    },
+    {
+      "id": "gate.approve",
+      "editor": "taskgraph",
+      "key": "cmd:gate.approve#haruki",
+      "supplies": ["hash"],
+      "form": true
+    },
+    {
+      "id": "doc.write",
+      "editor": "skills",
+      "key": "cmd:doc.write",
+      "supplies": ["text", "seenHash"],
+      "refused": "Nothing to save"
+    },
+    {
+      "id": "doc.write",
+      "editor": "wiki",
+      "key": "cmd:doc.write",
+      "supplies": ["text", "seenHash"],
+      "refused": "Nothing to save"
+    },
+    {
+      "id": "doc.create",
+      "editor": "documents",
+      "key": "cmd:doc.create",
+      "supplies": ["kind", "name"]
+    },
+    {
       "id": "asset.accept",
       "editor": "asset",
       "key": "cmd:asset.accept",
@@ -506,6 +645,75 @@
       "editor": "asset",
       "key": "cmd:asset.export",
       "refused": "No picture on screen to save"
+    },
+    {
+      "id": "project.setArtStyle",
+      "editor": "project",
+      "key": "cmd:project.setArtStyle",
+      "supplies": ["style"],
+      "refused": "No changes"
+    },
+    {
+      "id": "app.openKeyLink",
+      "editor": "onboarding",
+      "key": "cmd:app.openKeyLink#gemini/console"
+    },
+    {
+      "id": "app.openKeyLink",
+      "editor": "onboarding",
+      "key": "cmd:app.openKeyLink#gemini/docs"
+    },
+    {
+      "id": "app.openKeyLink",
+      "editor": "onboarding",
+      "key": "cmd:app.openKeyLink#gemini/billing"
+    },
+    {
+      "id": "app.openKeyLink",
+      "editor": "onboarding",
+      "key": "cmd:app.openKeyLink#anthropic/console"
+    },
+    {
+      "id": "app.openKeyLink",
+      "editor": "onboarding",
+      "key": "cmd:app.openKeyLink#anthropic/docs"
+    },
+    {
+      "id": "app.openKeyLink",
+      "editor": "onboarding",
+      "key": "cmd:app.openKeyLink#anthropic/billing"
+    },
+    {
+      "id": "project.testKey",
+      "editor": "onboarding",
+      "key": "cmd:project.testKey#gemini",
+      "refused": "Mock mode makes no calls, so there is nothing to test."
+    },
+    {
+      "id": "project.testKey",
+      "editor": "onboarding",
+      "key": "cmd:project.testKey#anthropic",
+      "refused": "Mock mode makes no calls, so there is nothing to test."
+    },
+    {
+      "id": "project.setKey",
+      "editor": "onboarding",
+      "key": "cmd:project.setKey#gemini",
+      "supplies": ["key"],
+      "refused": "Paste a key first"
+    },
+    {
+      "id": "project.setKey",
+      "editor": "onboarding",
+      "key": "cmd:project.setKey#anthropic",
+      "supplies": ["key"],
+      "refused": "Paste a key first"
+    },
+    {
+      "id": "report.open",
+      "editor": "report",
+      "key": "cmd:report.open",
+      "refused": "Not while this workspace is running with mock providers — a real model has to read the conversation."
     }
   ],
   "disagreements": []

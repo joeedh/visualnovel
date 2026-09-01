@@ -17,6 +17,7 @@
  * `bridge.js` reaches `window` through `api.js`.
  */
 import { touches } from '../../src/shared/writes.js';
+import type { Offer } from '../rules/anchors.js';
 import type { DocFile, DocSaveResult } from '../../src/shared/ipc.js';
 
 /** The only two document commands a buffer needs from the app: reading and writing a file. */
@@ -75,6 +76,9 @@ if (typeof window !== 'undefined') {
   });
 }
 
+/** The text and the hash it was read at, both of which the buffer holds rather than the bar. */
+export const WRITE_SUPPLIES = ['text', 'seenHash'];
+
 export class DocBuffer {
   private shown = '';
   private buffer = '';
@@ -103,6 +107,16 @@ export class DocBuffer {
   /** The most recent message about this buffer: a refusal, a diagnostic, or an empty string. */
   get note(): string {
     return this.message;
+  }
+
+  /**
+   * What Save would run, or the sentence for why it is greyed. The host reads this for the button's
+   * state and hands the same value to `act`, so the anchor cannot describe a save the click is not.
+   */
+  get saveOffer(): Offer {
+    if (this.shown === '') return { ok: false, id: 'doc.write', reason: 'No document is open.' };
+    if (!this.isDirty) return { ok: false, id: 'doc.write', reason: 'Nothing to save' };
+    return { ok: true, id: 'doc.write', props: { path: this.shown }, label: 'Save' };
   }
 
   /** Whether `note` is a refusal rather than news. The host paints the two differently. */

@@ -1,5 +1,6 @@
 import { CHAT_CSS, ChatStage, el, turnRow } from '../chatsurface.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { redrawing, type AnchorPass } from '../anchors.js';
 import { check, exec, report } from '../bridge.js';
 import { effortRows, modelRows } from '../report.js';
 import { openReportPreview } from '../reportpreview.js';
@@ -11,7 +12,7 @@ import {
   startReport,
   threadRow,
 } from '../reportconvo.js';
-import { grantBox } from '../../rules/reportconvo.js';
+import { grantAction, grantBox } from '../../rules/reportconvo.js';
 import type { FiledReport, ReportConvo } from '../../rules/reportconvo.js';
 import type { ChoiceRow } from '../commandform.js';
 import type { CommandCheck } from '../../../src/shared/ipc.js';
@@ -87,6 +88,7 @@ export class ReportEditor extends VnEditor {
   private transcript!: HTMLDivElement;
   private stage!: ChatStage;
   private drawn = -1;
+  private anchors: AnchorPass = redrawing('report', 'setup');
   /** `report.open`'s own verdict on what the setup card holds, for the Start button's tooltip. */
   private verdict?: CommandCheck;
   /** The setup the verdict was asked about, so a stale answer is dropped rather than drawn. */
@@ -124,6 +126,15 @@ export class ReportEditor extends VnEditor {
       stopTitle: 'Stop the debug agent after the step it is on. What it said is kept.',
       onSend: (text) => void sayToReport(text),
       onStop: () => void exec('report.stop').then(report),
+      // Recorded once with the composer, which outlives every rebuild. The button is hidden
+      // between turns, and a hidden node is dropped from the live set, so the anchor comes and
+      // goes with the button without anything having to re-record it.
+      onStopButton: (button) =>
+        redrawing('report', 'composer').record(button, {
+          ok: true,
+          id: 'report.stop',
+          props: {},
+        }),
     });
     this.surface.appendChild(this.stage.root);
     this.appendSurface(this.surface);
@@ -140,6 +151,7 @@ export class ReportEditor extends VnEditor {
 
   private rebuild(): void {
     this.drawn = reportRevision();
+    this.anchors = redrawing('report', 'setup');
     const state = reportConvo();
 
     this.stage.say(state.convo.line);
@@ -297,6 +309,12 @@ export class ReportEditor extends VnEditor {
             : 'Have the debug agent read this conversation and say what went wrong.',
     );
     (button as HTMLButtonElement).disabled = refused || busy;
+    this.anchors.record(
+      button,
+      (button as HTMLButtonElement).disabled
+        ? { ok: false, id: 'report.open', reason: button.title }
+        : { ok: true, id: 'report.open', props: { ...state.setup, note: '' } },
+    );
     button.addEventListener('click', () => {
       void startReport().then((view) => {
         if (view) this.changing = false;
@@ -414,6 +432,7 @@ export class ReportEditor extends VnEditor {
     input.checked = box.checked;
     input.disabled = box.disabled;
     input.title = box.tooltip;
+    this.anchors.record(input, grantAction(kind, box), { on: kind });
     input.addEventListener('change', () => {
       // Disabled before the answer lands, because a second press could only ask for what the first
       // press already asked for.

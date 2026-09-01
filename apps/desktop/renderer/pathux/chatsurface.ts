@@ -311,6 +311,8 @@ export interface StageHooks {
   inputTitle: string;
   sendTitle: string;
   stopTitle: string;
+  /** The Stop button, once. Hosts anchor it here rather than reaching into the composer. */
+  onStopButton?(button: HTMLButtonElement): void;
   onSend(text: string): void;
   onStop(): void;
   /** The `⌘` button beside the composer. Left out where the pane is not a palette host. */
@@ -416,6 +418,7 @@ export class ChatStage {
     this.stopBtn.title = hooks.stopTitle;
     this.stopBtn.addEventListener('click', () => hooks.onStop());
     composer.appendChild(this.stopBtn);
+    hooks.onStopButton?.(this.stopBtn);
 
     this.root.appendChild(composer);
   }

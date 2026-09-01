@@ -32,6 +32,7 @@ import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
 import { shotGroups } from '../doctree.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { openCommandDialog } from '../dialog.js';
+import { redrawing, type AnchorPass } from '../anchors.js';
 import { assetNode, openNode } from '../open.js';
 import type { VnScreen } from '../screen.js';
 import { aim, dropOf, grabLine, lineMenu, noticeOf, type Drag } from '../script.js';
@@ -125,6 +126,7 @@ export class ScriptEditor extends VnEditor {
   private cast: CastMember[] = [];
   private failure = '';
   private drawn = '';
+  private anchors: AnchorPass = redrawing('script', 'page');
   /** The scene `data` is for, or the one a fetch in flight will make it for. Not `data.sceneId`. */
   private loading = '';
   /** Bumped on every load, so a reload redraws even when nothing about the selection moved. */
@@ -346,6 +348,7 @@ export class ScriptEditor extends VnEditor {
 
   private rebuild(): void {
     this.drawn = this.stateKey();
+    this.anchors = redrawing('script', 'page');
     this.rebuildBar();
     this.rebuildSurface();
   }
@@ -432,8 +435,15 @@ export class ScriptEditor extends VnEditor {
     heading.title =
       'Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn ' +
       'again — the dialog says how many — and the prose is left describing the old place.';
-    heading.addEventListener('click', () =>
-      openCommandDialog('story.setHeading', { scene: shown.sceneId, heading: shown.heading }),
+    this.anchors.act(
+      heading,
+      {
+        ok: true,
+        id: 'story.setHeading',
+        props: { scene: shown.sceneId, heading: shown.heading },
+      },
+      (action) => openCommandDialog(action.id, action.props as Record<string, string>),
+      { form: true },
     );
     page.appendChild(heading);
 
@@ -543,6 +553,13 @@ export class ScriptEditor extends VnEditor {
     } else {
       const text = el('div', 'text', line.text);
       text.title = 'Click to retype this line';
+      // The click opens a box rather than writing anything, so the new text is what the widget
+      // supplies. The line is named by its own id, which survives every re-sort of the scene.
+      this.anchors.record(
+        text,
+        { ok: true, id: 'story.setLineText', props: { line: line.id } },
+        { on: line.id, supplies: ['text'] },
+      );
       text.addEventListener('click', () => this.openLine(line));
       body.appendChild(text);
     }
@@ -769,6 +786,11 @@ export class ScriptEditor extends VnEditor {
         : pending.act === 'merge'
           ? 'Fold that scene into this one and delete the file it came from'
           : 'Write the new scene and point this one at it';
+    const sceneId = this.ui.sceneId;
+    if (this.pending && sceneId) {
+      const step = checkOf(this.pending, sceneId);
+      this.anchors.record(go, { ok: true, id: step.id, props: step.props });
+    }
     go.addEventListener('click', () => void this.confirm());
     box.appendChild(go);
 

@@ -1,4 +1,5 @@
 import {
+  HEADER,
   commandKey,
   itemKey,
   mapOf,
@@ -92,6 +93,25 @@ describe('subsumes', () => {
   });
 });
 
+describe('a form anchor', () => {
+  const door = anchor({ id: 'pipeline.run', props: {}, form: true });
+
+  it('reads every prop the step names as something typed in the form', () => {
+    expect(subsumes(door, { id: 'pipeline.run', props: { mock: true, only: 'greet' } })).toEqual({
+      state: 'input',
+      supplies: ['mock', 'only'],
+    });
+  });
+
+  it('still refuses a step naming a different value for a prop it records', () => {
+    const scoped = anchor({ id: 'gate.approve', props: { characterId: 'aiko' }, form: true });
+    expect(subsumes(scoped, { id: 'gate.approve', props: { characterId: 'haruki' } })).toEqual({
+      state: 'wrong-subject',
+      needs: { id: 'gate.approve', props: { characterId: 'haruki' } },
+    });
+  });
+});
+
 describe('resolveAnchor', () => {
   const step = { id: 'asset.regenerate', props: { hash: 'a1b2' } };
 
@@ -134,6 +154,18 @@ describe('resolveAnchor', () => {
       state: 'pane-closed',
       editor: 'asset',
     });
+  });
+
+  it('says absent, not pane-closed, for a command the toolbar alone anchors', () => {
+    const toolbar: AnchorMap = { editorsFor: { 'pipeline.run': [HEADER] } };
+    const found = resolveAnchor(toolbar, live([], { open: [] }), { id: 'pipeline.run', props: {} });
+    expect(found).toEqual({ state: 'absent' });
+  });
+
+  it('names the pane when a command is anchored both in the toolbar and in one', () => {
+    const both: AnchorMap = { editorsFor: { 'pipeline.run': [HEADER, 'tasklist' as EditorId] } };
+    const found = resolveAnchor(both, live([], { open: [] }), { id: 'pipeline.run', props: {} });
+    expect(found).toEqual({ state: 'pane-closed', editor: 'tasklist' });
   });
 
   it('says absent when the pane is open and the control was not drawn', () => {

@@ -10,6 +10,16 @@ import {
 } from '../../../src/shared/editors.js';
 import type { PropValue } from '../../../src/shared/ipc.js';
 import { busyControls, type BusyControls } from '../../rules/busy.js';
+import { HEADER } from '../../rules/anchors.js';
+import {
+  EDITOR_SUPPLIES,
+  LAYOUT_SUPPLIES,
+  MODEL_SUPPLIES,
+  modeAction,
+  runAction,
+  stopAction,
+} from '../../rules/headerbar.js';
+import { redrawing, type AnchorPass } from '../anchors.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
 import {
   check,
@@ -20,6 +30,7 @@ import {
   quit,
   report,
   say,
+  setMode,
   setModel,
   toggleMode,
 } from '../bridge.js';
@@ -59,13 +70,10 @@ function act(id: string, props: Record<string, PropValue> = {}): void {
  * Start a run without a form. The app menu's entry and the header's button both come through
  * here, so an author sees the same refusal whichever they clicked, and it is the command's own.
  * `check` runs first, because a refused `exec` says nothing a surface can show before the work
- * would have started.
- *
- * `mock` follows whether this is a live app. A browser preview has no keys and no main process,
- * so a dry run is the only thing it could do.
+ * would have started. The props come from `runAction`, so the button and the entry cannot differ
+ * about what a run is.
  */
-function runPipelineNow(): void {
-  const props = { mock: !isLive };
+function runPipelineNow(props: Record<string, PropValue>): void {
   void check('pipeline.run', props).then((verdict) => {
     if (verdict.state === 'refuse') {
       say(verdict.message, true);
@@ -88,6 +96,7 @@ function runPipelineNow(): void {
  */
 export class VnHeaderEditor extends VnEditor {
   private bar!: Container;
+  private anchors: AnchorPass = redrawing(HEADER, 'bar');
   /** What the bar last drew. Rebuilding on a change beats a widget-per-field push. */
   private drawn = '';
 
@@ -266,12 +275,25 @@ export class VnHeaderEditor extends VnEditor {
     const ui = this.ui;
 
     this.bar.clear();
+    this.anchors = redrawing(HEADER, 'bar');
     this.bar.menu('VN STUDIO', this.appMenu()).description =
       'Open, create and export a project, and everything that acts on the workspace as a whole.';
     this.bar.menu('Edit', this.editMenu()).description =
       'Undo and redo, and the one act that approves and renders the art in a single pass.';
-    this.bar.menu('View', this.viewMenu()).description =
-      'Split and close panes, and switch between the saved window layouts.';
+    const view = this.bar.menu('View', this.viewMenu());
+    view.description = 'Split and close panes, and switch between the saved window layouts.';
+    // The menu button, not its rows: the rows exist only while the menu is open, and the author's
+    // choice among them is what supplies the prop.
+    this.anchors.record(
+      view,
+      { ok: true, id: 'view.open', props: {} },
+      { supplies: EDITOR_SUPPLIES },
+    );
+    this.anchors.record(
+      view,
+      { ok: true, id: 'view.applyLayout', props: {} },
+      { supplies: LAYOUT_SUPPLIES },
+    );
     this.bar.menu('Help', this.helpMenu()).description =
       'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.';
     this.badge(`project ${ui.projectTitle || '—'}`, true);
@@ -309,9 +331,11 @@ export class VnHeaderEditor extends VnEditor {
         ? 'A real run: this window can call models and write assets'
         : 'A browser preview: every run is a dry run, and no model is called',
     );
-    const mode = this.bar.button(
-      ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE',
-      () => void toggleMode(),
+    const modeOffer = modeAction(ui.agentMode);
+    const mode = this.anchors.act(
+      this.bar.button(modeOffer.ok ? (modeOffer.label ?? '') : 'PLAN', () => {}),
+      modeOffer,
+      (action) => void setMode(String(action.props['mode'] ?? '')),
     );
     mode.description =
       ui.agentMode === 'plan'
@@ -348,8 +372,13 @@ export class VnHeaderEditor extends VnEditor {
   private runControls(): void {
     const busy = this.ui.busyWhat;
 
-    const run = this.bar.button('▶ Run', () => runPipelineNow());
-    run.disabled = busy !== '';
+    const runOffer = runAction(busy, isLive);
+    const run = this.anchors.act(
+      this.bar.button('▶ Run', () => {}),
+      runOffer,
+      (action) => runPipelineNow(action.props),
+    );
+    run.disabled = !runOffer.ok;
     run.description = busy
       ? `Cannot start: ${busy} is already in progress.`
       : isLive
@@ -376,7 +405,11 @@ export class VnHeaderEditor extends VnEditor {
       iterations: Infinity,
     });
 
-    const stop = this.bar.button('■', () => void exec(controls.stop).then(report));
+    const stop = this.anchors.act(
+      this.bar.button('■', () => {}),
+      stopAction(controls),
+      (action) => void exec(action.id, action.props).then(report),
+    );
     stop.description = controls.stops;
     stop.setCSSAfter(() => (stop.style['color'] = 'var(--vermilion, #e5534b)'));
   }
@@ -398,6 +431,11 @@ export class VnHeaderEditor extends VnEditor {
     ]) as MenuTemplate;
     const menu = this.bar.menu(this.ui.model || 'model…', rows);
     menu.description = 'Which model the agent answers with. Switching takes effect next turn.';
+    this.anchors.record(
+      menu,
+      { ok: true, id: 'agent.setModel', props: {} },
+      { supplies: MODEL_SUPPLIES },
+    );
   }
 
   /**
@@ -475,7 +513,11 @@ export class VnHeaderEditor extends VnEditor {
       // anything starts.
       {
         name: 'Run Pipeline',
-        callback: () => runPipelineNow(),
+        callback: () => {
+          const offer = runAction(this.ui.busyWhat, isLive);
+          if (offer.ok) runPipelineNow(offer.props);
+          else say(offer.reason, true);
+        },
         tooltip: 'Plan and render everything that is ready, to the next gate',
       },
       // The advanced entry opens `pipeline.run`'s own form, where the flags live. `mock` is

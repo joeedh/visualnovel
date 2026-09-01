@@ -28,6 +28,19 @@ export interface Selection {
   graphSlug: string;
 }
 
+/**
+ * Which `ui.*` fields clicking this task would change, and to what. An anchor carries this so a
+ * tour can say which card puts a task on screen without running the click to find out.
+ */
+export function taskPublishes(task: Task, current: Selection): Record<string, string> {
+  const next = selectionForTask(task, current);
+  const changed: Record<string, string> = { taskHash: task.hash };
+  for (const field of Object.keys(next) as (keyof Selection)[]) {
+    if (next[field] !== current[field]) changed[field] = next[field];
+  }
+  return changed;
+}
+
 /** Shot ids are namespaced `<sceneId>__<raw>`, which is a shot task's only link to a scene. */
 const sceneOfShot = (shotId: string): string => shotId.split('__')[0] ?? shotId;
 

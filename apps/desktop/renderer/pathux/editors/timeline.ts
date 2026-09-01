@@ -33,6 +33,7 @@ import {
   sourceLabel,
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
+import { redrawing } from '../anchors.js';
 import { exec, onInvalidate } from '../bridge.js';
 import { MENU_SEP } from '../contextmenu.js';
 import type { VnContext } from '../context.js';
@@ -320,8 +321,14 @@ export class TimelineEditor extends VnEditor {
     // A door into `story.newShot` for a scene with no gaps: the gutter drag needs a row to sweep,
     // and a scene whose every line is covered still takes a hand-placed shot, which claims its
     // lines off the shots that hold them.
-    const add = this.bar.button('+ shot', () =>
-      openCommandDialog('story.newShot', { scene: this.ui.sceneId }),
+    const anchors = redrawing('timeline', 'bar');
+    const add = anchors.act(
+      this.bar.button('+ shot', () => {}),
+      this.ui.sceneId
+        ? { ok: true, id: 'story.newShot', props: { scene: this.ui.sceneId }, label: '+ shot' }
+        : { ok: false, id: 'story.newShot', reason: 'No scene is on screen.' },
+      (action) => openCommandDialog(action.id, action.props as Record<string, string>),
+      { form: true },
     );
     add.description =
       'Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.';
@@ -442,13 +449,18 @@ export class TimelineEditor extends VnEditor {
     button.disabled = true;
     button.title = does;
     void api.invoke('command:check', { id, props }).then((check) => {
-      if (check.state === 'refuse') {
-        // A disabled control's tooltip is its refusal — the door stays visible and says why.
-        button.title = check.message;
-        return;
-      }
-      button.disabled = false;
-      button.addEventListener('click', () => openCommandDialog(id, props));
+      const refused = check.state === 'refuse';
+      // A disabled control's tooltip is its refusal — the door stays visible and says why.
+      if (refused) button.title = check.message;
+      button.disabled = refused;
+      // Recorded once the verdict lands, in its own pass: a door is drawn before its answer comes
+      // back, and the anchor has to carry the refusal the button ends up wearing.
+      redrawing('timeline', `door:${id}`).act(
+        button,
+        refused ? { ok: false, id, reason: check.message } : { ok: true, id, props, label },
+        (action) => openCommandDialog(action.id, action.props as Record<string, string>),
+        { form: true },
+      );
     });
     return button;
   }
@@ -465,7 +477,9 @@ export class TimelineEditor extends VnEditor {
     // tint, since a released row keeps its bracket until release.
     for (const row of cov.rows) {
       const band = el('div', 'tl-band');
-      band.dataset['lineIndex'] = String(row.index);
+      // The line's own id, not its row number: a re-sort or an inserted line renumbers every row
+      // below it, and an address that moves is an address a tour cannot be written against.
+      band.dataset['anchor'] = `line/${row.line.id}`;
       band.style.gridColumn = '1 / -1';
       band.style.gridRow = String(row.index + 1);
       this.bands.set(row.index, band);

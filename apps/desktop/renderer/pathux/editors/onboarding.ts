@@ -1,6 +1,9 @@
 import type { Container } from 'pathux';
 import { check, exec, onInvalidate, report } from '../bridge.js';
 import { VnEditor, registerEditor } from '../editor.js';
+import { redrawing, type AnchorPass } from '../anchors.js';
+import type { Offer } from '../../rules/anchors.js';
+import { KEY_SUPPLIES } from '../../rules/keysetup.js';
 import ONBOARDING_CSS from '../../styles/onboarding.css?inline';
 import {
   GUIDE_URL_FIELDS,
@@ -68,6 +71,8 @@ export class OnboardingEditor extends VnEditor {
     void this.load();
   }
 
+  private anchors: AnchorPass = redrawing('onboarding', 'page');
+
   override on_remove() {
     this.unwatch?.();
     this.unwatch = undefined;
@@ -108,6 +113,7 @@ export class OnboardingEditor extends VnEditor {
   }
 
   private paint(): void {
+    this.anchors = redrawing('onboarding', 'page');
     this.page.textContent = '';
     const guide = this.guide;
     if (!guide) {
@@ -197,8 +203,12 @@ export class OnboardingEditor extends VnEditor {
         url === ''
           ? `The setup guide names no ${field} page for ${vendor.vendor}.`
           : `${why} — ${url}`;
-      button.addEventListener('click', () => {
-        void exec('app.openKeyLink', { provider: vendor.vendor, link: field }).then(report);
+      const offer: Offer =
+        url === ''
+          ? { ok: false, id: 'app.openKeyLink', reason: button.title }
+          : { ok: true, id: 'app.openKeyLink', props: { provider: vendor.vendor, link: field } };
+      this.anchors.act(button, offer, (action) => void exec(action.id, action.props).then(report), {
+        on: `${vendor.vendor}/${field}`,
       });
       row.appendChild(button);
     }
@@ -260,6 +270,15 @@ export class OnboardingEditor extends VnEditor {
       save.title =
         reason ||
         (box.value.trim() === '' ? 'Paste a key first' : verdict.message || 'Write this key');
+      // Re-recorded whenever the scope changes, because the scope is a prop the anchor carries.
+      // The key is not: it is typed, so it is what the anchor says the widget supplies.
+      this.anchors.record(
+        save,
+        save.disabled
+          ? { ok: false, id: 'project.setKey', reason: save.title }
+          : { ok: true, id: 'project.setKey', props: { provider: vendor.vendor, scope: chosen } },
+        { on: vendor.vendor, supplies: KEY_SUPPLIES },
+      );
     };
 
     box.addEventListener('input', () => void describe());
@@ -298,11 +317,20 @@ export class OnboardingEditor extends VnEditor {
     // refuses when nothing resolves, and that refusal is the more useful sentence here than
     // anything this pane could work out for itself.
     void check('project.testKey', { provider: vendor.vendor }).then((verdict) => {
-      test.disabled = verdict.state === 'refuse';
-      test.title =
-        verdict.state === 'refuse'
-          ? verdict.message
-          : 'Make one small real call and say whether the key works. It costs a fraction of a cent.';
+      const refused = verdict.state === 'refuse';
+      test.disabled = refused;
+      test.title = refused
+        ? verdict.message
+        : 'Make one small real call and say whether the key works. It costs a fraction of a cent.';
+      // Recorded once the verdict lands rather than beside the button: the button is drawn before
+      // the answer comes back, and the anchor has to carry the refusal it ends up wearing.
+      this.anchors.record(
+        test,
+        refused
+          ? { ok: false, id: 'project.testKey', reason: verdict.message }
+          : { ok: true, id: 'project.testKey', props: { provider: vendor.vendor } },
+        { on: vendor.vendor },
+      );
     });
 
     return wrapEl;
