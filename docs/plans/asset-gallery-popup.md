@@ -153,7 +153,7 @@ Stages 1–3 below are entirely inside `vendor/path.ux`, so:
 
 ## Staged implementation
 
-1. **path.ux — spike, then cache + cell.** Before writing `ThumbnailCache` for real: spike
+1. **path.ux — spike, then cache + cell.** **Done.** Before writing `ThumbnailCache` for real: spike
    whether `createImageBitmap(await (await fetch('vnasset://<hash>.<ext>')).blob())` actually
    decodes cleanly from the `vnasset` custom protocol in the Electron renderer. No `ImageBitmap`
    usage exists anywhere in this codebase today, so this is unverified, not just unbuilt — favorable
@@ -166,16 +166,30 @@ Stages 1–3 below are entirely inside `vendor/path.ux`, so:
    (bind/hover/focus/active states, tooltip, theme-driven border/padding/margin). Vitest
    coverage for the cache's eviction and coalescing logic in isolation — no DOM needed for that
    part.
-2. **path.ux — virtualized grid.** `AssetGalleryGrid`: pool sizing off measured viewport,
+
+   **Spike result (2026-09-01, run over CDP against the built app on a copy of
+   `examples/mySampleRepo`).** `createImageBitmap` decodes cleanly from `vnasset://` for assets
+   in both roots — base art under `assets/objects/` and shot frames under `vngen/build/assets/`
+   — returning a bitmap whose `.close()` is a real function, so the eviction hook stands and the
+   `HTMLImageElement` fallback is not needed. Two findings the cache and the loader are built
+   around:
+   - A missing hash answers `404` with an empty `text/html` body rather than failing the fetch,
+     and `createImageBitmap` then throws `InvalidStateError: The source image could not be
+     decoded`. The desktop loader checks `res.ok` and throws a named error instead of letting
+     the decode report the failure.
+   - `createImageBitmap(blob, {resizeWidth, resizeQuality})` works over the same protocol.
+     Sample assets are 1024×1024, so an unresized 200-entry cache would hold roughly 840 MB of
+     decoded pixels; the desktop loader decodes to a thumbnail width instead.
+2. **path.ux — virtualized grid.** **Done.** `AssetGalleryGrid`: pool sizing off measured viewport,
    scroll→rebind, roving-tabindex keyboard nav with scroll-into-view-before-rebind. This has no
    in-repo precedent (see the `ListBox` correction above), so budget real iteration time here,
    not a port. Playwright DOM test covering scroll, arrow-key nav, and a resize-triggered pool
    resize.
-3. **path.ux — outer widget.** `AssetGallery` (search bar + grid, `active`/`"change"`/
+3. **path.ux — outer widget.** **Done.** `AssetGallery` (search bar + grid, `active`/`"change"`/
    `"confirm"`), `pickAssetPopup()` with its OK/Cancel footer. Register the theme keys, run
    `gen:themes`. Write `documentation/gallery.md`.
-4. **Desktop — data + wiring.** Two things this stage owns that earlier drafts of this plan
-   glossed over:
+4. **Desktop — data + wiring.** **Done.** Two things this stage owns that earlier drafts of this
+   plan glossed over:
    - **`searchTags` needs real name resolution, not a spare field.** `Asset`
      (`packages/types/src/entities.ts`) has `kind` and `satisfies: AssetBinding[]` — no `label`.
      The human-readable name shown today (`RefChip.label`, resolved in
@@ -194,8 +208,37 @@ Stages 1–3 below are entirely inside `vendor/path.ux`, so:
    address (`portrait:<character>`, etc.), not just a hash — this button only ever supplies a
    hash, so slot-address refs remain reachable solely through the command palette/agent, not
    through this UI. That's an accepted scope limit (see Open questions), not an oversight.
-5. **Verify in the running app.** Open a project with a real asset library (`pnpm run` skill);
-   confirm scroll performance, search, full keyboard nav, and the attach flow end to end.
+
+   **Result.** The name resolution turned out to exist already: `labelAssets`
+   (`apps/desktop/src/main/assetlabel.ts`) names the whole manifest at once, and is what the
+   document tree draws from. So the work was exposing it to the renderer rather than writing it —
+   a new `AssetListing` shape, `WorkspaceSession.assetLibrary()` behind it, and a read-only
+   `asset.list` command the renderer reaches through `exec`. The loader landed as
+   `apps/desktop/renderer/pathux/assetthumb.ts`, holding `assetThumbUrl`, `loadAssetThumb` (which
+   checks `res.ok` before decoding, per the stage-1 spike, and decodes at a thumbnail width) and
+   `galleryItem`, which projects one listing into the widget's item shape.
+
+   Placing the popup needed one change back in path.ux: the Attach button is a raw DOM node in an
+   `appendSurface` root rather than a widget, so `pickAssetPopup` grew an `at` argument taking
+   client coordinates, and the editor passes the button's own rect.
+5. **Verify in the running app.** **Done.** Open a project with a real asset library (`pnpm run`
+   skill); confirm scroll performance, search, full keyboard nav, and the attach flow end to end.
+
+   **Result** (over CDP, against the built app on a 70-asset copy of the sample project, with the
+   Aiko portrait open in the asset pane):
+   - Clicking Attach on the `style` clause opened the popup holding all 70 items behind a pool of
+     27 cells in 3 columns, and every one of the 27 painted a decoded thumbnail rather than an
+     empty cell.
+   - Scrolling the grid across 40 frames moved `firstBoundIndex` from 0 to 51 over 18 distinct
+     rebinds while `poolSize` stayed 27 and the whole grid held 139 DOM nodes; the 40 frames took
+     639 ms, which is the vsync cadence rather than a frame budget being missed.
+   - Arrow keys moved by one cell and by one row, End jumped to item 69 and rebound the pool to
+     start at 54, Home returned to 0, and Up and Left clamped there instead of wrapping.
+   - The search box narrowed 70 items to 2 on `portrait`, to 27 on `accepted`, to none on a
+     string nothing matches, and back to 70 when cleared.
+   - Enter on the focused cell closed the popup and ran
+     `prompt.addRef(hash='6f41ba9a…' chunk='style' ref='05e0b18a…')`, which answered
+     `Attached 05e0b18a to "style"`.
 
 ## Open questions
 
@@ -239,4 +282,43 @@ were fixed in place (see the sections above); recorded here so the review itself
 
 ## As shipped
 
-_(filled in once the plan lands)_
+Landed 2026-09-01, on a worktree branch, in five commits — three in `vendor/path.ux`, then the
+gitlink bump and the desktop wiring in the parent.
+
+**In path.ux** (`documentation/gallery.md` is the write-up; linked from `documentation/index.md`
+and the widgets list in path.ux's own `CLAUDE.md`):
+
+- `scripts/widgets/ui_gallery.ts` — `GalleryItem`, `ThumbnailCache` (+ `sharedThumbnailCache`),
+  `AssetThumb`, `AssetGalleryGrid`, `AssetGallery`, `pickAssetPopup`, and the two events
+  (`GalleryChangeEvent`, `GalleryConfirmEvent`). Exported through the `pathux` barrel.
+- `scripts/core/theme.ts` — the `assetgallery` and `assetthumb` style classes.
+- `tests/thumbnail_cache.test.ts` (8 vitest cases over eviction, coalescing and release) and
+  `playwright/gallery.spec.ts` (6 DOM cases over pooling, scrolling, keys, selection, search and
+  re-columning). The example app grew a Gallery tab for the Playwright specs to drive.
+
+**In the desktop app:**
+
+- `AssetListing` (`src/shared/ipc.ts`), `WorkspaceSession.assetLibrary()`, and the read-only
+  `asset.list` command over it.
+- `renderer/pathux/assetthumb.ts` — `assetThumbUrl`, `loadAssetThumb`, `galleryItem`, with jest
+  coverage in `renderer/pathux/tests/assetthumb.test.ts`.
+- A fifth clause act, `attach`, in `renderer/rules/promptview.ts`, and `pickRef` in
+  `renderer/pathux/editors/asset.ts` behind it.
+- `anchors.json` re-swept. It moves 40 → 47 anchored commands and gains seven strays, both from
+  master commits it had not been measured against rather than from this work.
+
+Three things worth carrying forward:
+
+- **The popup needed an `at` argument.** The Attach button is a raw DOM node in an
+  `appendSurface` root, so `screen.popup`'s owner-corner placement put the popup in the wrong
+  place. `PickAssetArgs.at` takes client coordinates instead.
+- **Dismissal is observed on `remove`, not `end`.** `makePopup`'s Escape and outside-click
+  handlers call a local `end` closure, so overriding `popup.end` sees nothing; every teardown
+  path does funnel through `container.remove()`.
+- **The name resolution stage 4 was scoped for already existed.** `labelAssets` names the whole
+  manifest, so that half of the stage was exposure rather than construction. The finding it came
+  from (pressure-test finding 2) was still right that `Asset.label` does not exist — it just
+  landed one layer further along than the plan assumed.
+
+Left unbuilt, as the Open questions say: multi-select, a live data-path-backed item list, and
+slot-address refs through this UI.

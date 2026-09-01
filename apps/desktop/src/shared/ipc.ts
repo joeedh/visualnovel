@@ -694,6 +694,22 @@ export interface AssetInfo {
 }
 
 /**
+ * One row of the asset library, as a picker lists it. Deliberately thin next to {@link AssetInfo}:
+ * this is every asset in the manifest at once, so a surface offering a choice between them needs
+ * only what it can show on a thumbnail and search over.
+ */
+export interface AssetListing {
+  hash: string;
+  ext: string;
+  kind: AssetKind;
+  /** Display name from `labelAssets` — the same words the document tree shows. */
+  label: string;
+  accepted: boolean;
+  /** The picture it fills, as a slot address, when something plans it. */
+  slot?: string;
+}
+
+/**
  * What the Project editor draws: `project.yaml` as the app reads it, plus the one number that
  * makes the art style consequential. Only `artStyle` is editable — everything else is shown so
  * the author can see what the run is configured with without leaving the shell.

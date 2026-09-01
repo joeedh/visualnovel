@@ -195,6 +195,14 @@ cannot drift apart. That layer is what lets the app point at itself, and a guide
 committed `anchors.json` and the CDP sweep that measures it, which must be re-run after touching
 `apps/desktop/renderer/pathux/editors/**`.
 
+Picking an asset out of the whole manifest — **Attach…** on a prompt clause — goes through
+path.ux's gallery popup rather than a bespoke browser.
+[`docs/reference/asset-picker.md`](docs/reference/asset-picker.md) is the app's half of it: the
+`asset.list` snapshot behind the entries, the `vnasset://` decode that feeds the thumbnail cache,
+and why the picked value only ever reaches `prompt.addRef` as a hash. The widget itself is
+documented in path.ux, at
+[`vendor/path.ux/documentation/gallery.md`](vendor/path.ux/documentation/gallery.md).
+
 ## Command system
 
 Every desktop action is a registered command rather than a bespoke IPC channel. A command

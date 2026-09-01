@@ -35,6 +35,23 @@ export const assetInfo = define({
   },
 });
 
+export const assetList = define({
+  id: 'asset.list',
+  title: 'Asset library',
+  description:
+    'Every asset in the manifest, with the display name the document tree gives it, its kind, ' +
+    'whether it is accepted, and the picture it fills. Thin on purpose: this answers "what is ' +
+    'there to choose from", and `asset.info` answers everything about one of them.',
+  notes:
+    'Every asset in the manifest: hash, extension, kind, display label, whether it is accepted, and the slot it fills. `asset.info` is the detailed read for one.',
+  mutating: false,
+  props: {},
+  async run(_props, ctx) {
+    const assets = await ctx.host.session.assetLibrary();
+    return { message: `${assets.length} asset(s) in the manifest.`, data: assets };
+  },
+});
+
 export const assetSuspended = define({
   id: 'asset.suspended',
   title: 'Suspended assets',

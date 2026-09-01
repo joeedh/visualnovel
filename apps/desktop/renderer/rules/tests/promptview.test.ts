@@ -6,6 +6,7 @@ import type { ChunkOrigin } from '@vn/types';
 import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js';
 import {
   CHUNK_SUPPLIES,
+  REF_SUPPLIES,
   chunkActs,
   chunkAddress,
   chunkDropTarget,
@@ -294,8 +295,9 @@ describe('coverageMark', () => {
 describe('chunkActs', () => {
   it('offers the same command four times, one op each', () => {
     const acts = chunkActs(view(), chunk());
-    expect(acts.map((a) => a.key)).toEqual(['mute', 'replace', 'append', 'reset']);
-    for (const act of acts) expect(act.offer.id).toBe('prompt.setChunk');
+    expect(acts.map((a) => a.key)).toEqual(['mute', 'replace', 'append', 'attach', 'reset']);
+    for (const act of acts)
+      expect(act.offer.id).toBe(act.key === 'attach' ? 'prompt.addRef' : 'prompt.setChunk');
     expect(acts[0]!.offer).toEqual({
       ok: true,
       id: 'prompt.setChunk',
@@ -316,6 +318,19 @@ describe('chunkActs', () => {
     expect(CHUNK_SUPPLIES).toEqual(['text']);
   });
 
+  // Attach carries no `ref` for the same reason: the gallery has not been opened yet, so the
+  // anchor records what it will run and names the prop the pick supplies.
+  it('leaves the ref off the act that opens the gallery', () => {
+    const attach = chunkActs(view(), chunk())[3]!;
+    expect(attach.picks).toBe(true);
+    expect(attach.offer).toEqual({
+      ok: true,
+      id: 'prompt.addRef',
+      props: { hash: 'abc123', chunk: 'palette' },
+    });
+    expect(REF_SUPPLIES).toEqual(['ref']);
+  });
+
   it('refuses muting what is already muted, and resetting what nothing was done to', () => {
     const [mute] = chunkActs(view(), chunk({ muted: true }));
     expect(mute!.offer).toEqual({
@@ -324,12 +339,12 @@ describe('chunkActs', () => {
       reason: 'Already muted.',
     });
     const acts = chunkActs(view(), chunk());
-    expect(acts[3]!.offer).toMatchObject({ ok: false, id: 'prompt.setChunk' });
+    expect(acts[4]!.offer).toMatchObject({ ok: false, id: 'prompt.setChunk' });
   });
 
   it('offers Reset once anything has been done to the clause', () => {
     const edited = chunkActs(view(), chunk({ edit: 'replace', authored: 'Aiko, in green.' }));
-    expect(edited[3]!.offer).toEqual({
+    expect(edited[4]!.offer).toEqual({
       ok: true,
       id: 'prompt.setChunk',
       props: { hash: 'abc123', chunk: 'palette', op: 'clear', text: '' },

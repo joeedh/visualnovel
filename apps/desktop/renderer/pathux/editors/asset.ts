@@ -1,10 +1,11 @@
-import type { Container } from 'pathux';
+import { ThumbnailCache, pickAssetPopup, type Container } from 'pathux';
 import { UNRESOLVED, type Verdict } from '@vn/commands';
 import { redrawing } from '../anchors.js';
-import { exec, notify, onInvalidate, report } from '../bridge.js';
+import { exec, notify, onInvalidate, report, say } from '../bridge.js';
 import type { VnContext } from '../context.js';
 import { menuFor } from '../doctree.js';
 import { assetNode } from '../open.js';
+import { galleryItem } from '../assetthumb.js';
 import { openCommandDialog } from '../dialog.js';
 import { showContextMenu } from '../showmenu.js';
 import { TOKENS } from '../tokens.js';
@@ -33,6 +34,7 @@ import {
 } from '../../rules/assetview.js';
 import {
   CHUNK_SUPPLIES,
+  REF_SUPPLIES,
   checkAction,
   chunkActs,
   chunkAddress,
@@ -59,6 +61,7 @@ import ASSET_CSS from '../../styles/asset.css?inline';
 import type {
   AssetFailure,
   AssetInfo,
+  AssetListing,
   ArtRungInfo,
   Prereq,
   PropValue,
@@ -115,6 +118,8 @@ export class AssetEditor extends VnEditor {
   private drag: ChunkDrag | undefined;
   private refocus = '';
   private dragNote: HTMLElement | undefined;
+  /** Decoded reference thumbnails, kept across popups so reopening the gallery redraws at once. */
+  private thumbs = new ThumbnailCache();
   /** One hop of history, so walking up DRAWN FROM is reversible: where from, and back to what. */
   private back = '';
   private backFor = '';
@@ -1028,11 +1033,21 @@ export class AssetEditor extends VnEditor {
 
     for (const act of chunkActs(view, chunk)) {
       const opens = act.opens;
+      const picks = act.picks;
       const b = this.drawing.act(
         button('as-chunk-act', act.label),
         act.offer,
-        (a) => void (opens ? this.openBox(chunk.key, opens) : this.runChunk(chunk.key, a)),
-        { on: `${chunk.key}/${act.key}`, ...(opens ? { supplies: CHUNK_SUPPLIES } : {}) },
+        (a) =>
+          void (opens
+            ? this.openBox(chunk.key, opens)
+            : picks
+              ? this.pickRef(chunk.key, a, b)
+              : this.runChunk(chunk.key, a)),
+        {
+          on: `${chunk.key}/${act.key}`,
+          ...(opens ? { supplies: CHUNK_SUPPLIES } : {}),
+          ...(picks ? { supplies: REF_SUPPLIES } : {}),
+        },
       );
       b.disabled = !act.offer.ok;
       b.title = act.title;
@@ -1042,6 +1057,34 @@ export class AssetEditor extends VnEditor {
     // The card carries the dirty mark, so the box below can be built and rebuilt without it.
     card.classList.toggle('dirty', this.dirty.has(`chunk:${chunk.key}`));
     return acts;
+  }
+
+  /**
+   * Attach a reference through the asset gallery. The manifest is read when the popup opens
+   * rather than followed, since the choice is over what is there at that moment, and the thumbnail
+   * cache is the pane's own so reopening the popup redraws from what it already decoded.
+   *
+   * `anchor` is a raw DOM button rather than a widget, so the editor is the popup's owner and the
+   * button supplies only the corner to open at.
+   */
+  private async pickRef(chunk: string, action: Action, anchor: HTMLElement): Promise<void> {
+    const outcome = await exec('asset.list', {});
+    if (!outcome.ok) return report(outcome);
+
+    const assets = outcome.data as AssetListing[] | undefined;
+    if (!assets?.length) {
+      return say('This project has no assets to attach yet.', true);
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const picked = await pickAssetPopup(this, {
+      items: assets.map(galleryItem),
+      cache: this.thumbs,
+      at: { x: rect.left, y: rect.bottom },
+    });
+    if (!picked) return;
+
+    await this.runChunk(chunk, { id: action.id, props: { ...action.props, ref: picked.id } });
   }
 
   /** Open the box one of the two boxed clause acts commits through. */

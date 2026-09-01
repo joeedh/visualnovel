@@ -1,6 +1,6 @@
 {
-  "sweptAt": "2026-09-01T07:13:04.075Z",
-  "gitSha": "1e8cb8ae943709fbb63ec0e8aa396ea535c01132",
+  "sweptAt": "2026-09-01T10:15:07.846Z",
+  "gitSha": "4f4b2ee0253de1b65ac1b32f18e94a4d3278f6ed",
   "under": {
     "project": "The Transfer Student",
     "selected": {
@@ -38,6 +38,7 @@
     "asset.adopt",
     "asset.export",
     "asset.info",
+    "asset.list",
     "asset.regenerate",
     "asset.replace",
     "asset.restore",
@@ -181,10 +182,12 @@
     "art.generate",
     "art.promote",
     "art.setNotes",
+    "art.setSeed",
     "asset.accept",
     "asset.adopt",
     "asset.export",
     "asset.regenerate",
+    "asset.replace",
     "asset.upload",
     "doc.create",
     "doc.write",
@@ -198,9 +201,14 @@
     "project.setArtStyle",
     "project.setKey",
     "project.testKey",
+    "prompt.addRef",
+    "prompt.check",
+    "prompt.clear",
+    "prompt.condense",
+    "prompt.setChunk",
+    "prompt.setCustom",
     "report.open",
     "story.assignLineIds",
-    "story.decomposeAll",
     "story.deleteScene",
     "story.newScene",
     "story.newShot",
@@ -524,12 +532,6 @@
     {
       "id": "story.setLineText",
       "editor": "script",
-      "key": "cmd:story.setLineText#arrival:L1",
-      "supplies": ["text"]
-    },
-    {
-      "id": "story.setLineText",
-      "editor": "script",
       "key": "cmd:story.setLineText#arrival:L2",
       "supplies": ["text"]
     },
@@ -537,6 +539,12 @@
       "id": "story.setLineText",
       "editor": "script",
       "key": "cmd:story.setLineText#arrival:L3",
+      "supplies": ["text"]
+    },
+    {
+      "id": "story.setLineText",
+      "editor": "script",
+      "key": "cmd:story.setLineText#arrival:L1",
       "supplies": ["text"]
     },
     {
@@ -574,46 +582,17 @@
       "form": true
     },
     {
-      "id": "story.newShot",
-      "editor": "timeline",
-      "key": "cmd:story.newShot",
-      "form": true
-    },
-    {
-      "id": "story.decomposeAll",
-      "editor": "timeline",
-      "key": "cmd:story.decomposeAll",
-      "form": true,
-      "refused": "missing anthropic API key: set $ANTHROPIC_API_KEY or place claude.txt in a keys/ dir"
-    },
-    {
       "id": "pipeline.run",
       "editor": "tasklist",
       "key": "cmd:pipeline.run",
       "form": true
     },
     {
-      "id": "gate.approve",
-      "editor": "taskgraph",
-      "key": "cmd:gate.approve#aiko",
-      "supplies": ["hash"],
-      "form": true,
-      "refused": "aiko has no portrait yet — run the pipeline before approving one."
-    },
-    {
-      "id": "gate.approve",
-      "editor": "taskgraph",
-      "key": "cmd:gate.approve#haruki",
-      "supplies": ["hash"],
-      "form": true,
-      "refused": "haruki has no portrait yet — run the pipeline before approving one."
-    },
-    {
       "id": "doc.write",
       "editor": "skills",
       "key": "cmd:doc.write",
       "supplies": ["text", "seenHash"],
-      "refused": "Nothing to save"
+      "refused": "No document is open."
     },
     {
       "id": "doc.write",
@@ -629,28 +608,312 @@
       "supplies": ["kind", "name"]
     },
     {
-      "id": "asset.accept",
+      "id": "asset.replace",
       "editor": "asset",
-      "key": "cmd:asset.accept",
-      "refused": "No asset is on screen."
+      "key": "cmd:asset.replace"
     },
     {
-      "id": "asset.regenerate",
+      "id": "prompt.clear",
       "editor": "asset",
-      "key": "cmd:asset.regenerate",
-      "refused": "No asset is on screen."
+      "key": "cmd:prompt.clear#chunks",
+      "refused": "This prompt is already in chunks mode."
+    },
+    {
+      "id": "prompt.setCustom",
+      "editor": "asset",
+      "key": "cmd:prompt.setCustom#custom"
+    },
+    {
+      "id": "prompt.condense",
+      "editor": "asset",
+      "key": "cmd:prompt.condense#agent"
+    },
+    {
+      "id": "prompt.condense",
+      "editor": "asset",
+      "key": "cmd:prompt.condense"
+    },
+    {
+      "id": "prompt.check",
+      "editor": "asset",
+      "key": "cmd:prompt.check"
     },
     {
       "id": "view.open",
       "editor": "asset",
-      "key": "cmd:view.open",
-      "refused": "The manifest records no task for this asset."
+      "key": "cmd:view.open#style"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#style/mute"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#style/replace",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#style/append",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.addRef",
+      "editor": "asset",
+      "key": "cmd:prompt.addRef#style/attach",
+      "supplies": ["ref"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#style/reset",
+      "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id": "view.open",
+      "editor": "asset",
+      "key": "cmd:view.open#subject"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#subject/mute"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#subject/replace",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#subject/append",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.addRef",
+      "editor": "asset",
+      "key": "cmd:prompt.addRef#subject/attach",
+      "supplies": ["ref"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#subject/reset",
+      "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id": "view.open",
+      "editor": "asset",
+      "key": "cmd:view.open#description"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#description/mute"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#description/replace",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#description/append",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.addRef",
+      "editor": "asset",
+      "key": "cmd:prompt.addRef#description/attach",
+      "supplies": ["ref"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#description/reset",
+      "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id": "view.open",
+      "editor": "asset",
+      "key": "cmd:view.open#mood"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#mood/mute"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#mood/replace",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#mood/append",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.addRef",
+      "editor": "asset",
+      "key": "cmd:prompt.addRef#mood/attach",
+      "supplies": ["ref"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#mood/reset",
+      "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id": "view.open",
+      "editor": "asset",
+      "key": "cmd:view.open#variant"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#variant/mute"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#variant/replace",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#variant/append",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.addRef",
+      "editor": "asset",
+      "key": "cmd:prompt.addRef#variant/attach",
+      "supplies": ["ref"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#variant/reset",
+      "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id": "view.open",
+      "editor": "asset",
+      "key": "cmd:view.open#palette"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#palette/mute"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#palette/replace",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#palette/append",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.addRef",
+      "editor": "asset",
+      "key": "cmd:prompt.addRef#palette/attach",
+      "supplies": ["ref"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#palette/reset",
+      "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#scaffolding/mute"
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#scaffolding/replace",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#scaffolding/append",
+      "supplies": ["text"]
+    },
+    {
+      "id": "prompt.addRef",
+      "editor": "asset",
+      "key": "cmd:prompt.addRef#scaffolding/attach",
+      "supplies": ["ref"]
+    },
+    {
+      "id": "prompt.setChunk",
+      "editor": "asset",
+      "key": "cmd:prompt.setChunk#scaffolding/reset",
+      "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id": "art.setSeed",
+      "editor": "asset",
+      "key": "cmd:art.setSeed#location:classroom",
+      "supplies": ["seed"]
+    },
+    {
+      "id": "art.setNotes",
+      "editor": "asset",
+      "key": "cmd:art.setNotes#location:classroom",
+      "supplies": ["notes"]
+    },
+    {
+      "id": "art.setSeed",
+      "editor": "asset",
+      "key": "cmd:art.setSeed#location:classroom/day",
+      "supplies": ["seed"]
+    },
+    {
+      "id": "art.setNotes",
+      "editor": "asset",
+      "key": "cmd:art.setNotes#location:classroom/day",
+      "supplies": ["notes"]
+    },
+    {
+      "id": "asset.accept",
+      "editor": "asset",
+      "key": "cmd:asset.accept"
+    },
+    {
+      "id": "asset.regenerate",
+      "editor": "asset",
+      "key": "cmd:asset.regenerate"
+    },
+    {
+      "id": "view.open",
+      "editor": "asset",
+      "key": "cmd:view.open"
     },
     {
       "id": "asset.export",
       "editor": "asset",
-      "key": "cmd:asset.export",
-      "refused": "No picture on screen to save"
+      "key": "cmd:asset.export"
     },
     {
       "id": "project.setArtStyle",
@@ -704,14 +967,14 @@
     {
       "id": "project.setKey",
       "editor": "onboarding",
-      "key": "cmd:project.setKey#anthropic",
+      "key": "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused": "Paste a key first"
     },
     {
       "id": "project.setKey",
       "editor": "onboarding",
-      "key": "cmd:project.setKey#gemini",
+      "key": "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused": "Paste a key first"
     },
@@ -723,5 +986,13 @@
     }
   ],
   "disagreements": [],
-  "strays": []
+  "strays": [
+    "branches cmd:story.newScene",
+    "gengraph item:gnode/0",
+    "gengraph item:gnode/1",
+    "gengraph item:gnode/2",
+    "gengraph item:gnode/4",
+    "gengraph item:gnode/5",
+    "timeline cmd:story.newShot"
+  ]
 }

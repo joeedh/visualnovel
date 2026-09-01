@@ -311,6 +311,7 @@ import type {
   ApproveResult,
   AssetFailure,
   AssetInfo,
+  AssetListing,
   BranchEditResult,
   DocNode,
   DocSaveResult,
@@ -2553,6 +2554,29 @@ export class WorkspaceSession {
       };
     }
     return undefined;
+  }
+
+  /**
+   * Every asset in the manifest, named the way the document tree names them. One label pass over
+   * the whole manifest rather than the per-asset resolution `assetInfo` does, because the caller
+   * is a picker showing all of them at once.
+   */
+  async assetLibrary(): Promise<AssetListing[]> {
+    const project = await loadProject(this.dir);
+    const manifest = project.store.manifest();
+    const labels = labelContext(project.model, project.graph);
+    const names = labelAssets(manifest, labels);
+    return manifest.map((asset) => {
+      const slot = slotOf(asset, labels.angleOf?.(asset.sourceTask));
+      return {
+        hash: asset.hash,
+        ext: asset.ext,
+        kind: asset.kind,
+        label: names.get(asset.hash) ?? asset.hash,
+        accepted: assetApproved(asset, project.model),
+        ...(slot ? { slot: slotKey(slot) } : {}),
+      };
+    });
   }
 
   /**

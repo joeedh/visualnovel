@@ -311,7 +311,7 @@ export function refStrip(chunk: PromptChunkInfo): RefChip[] {
 
 /** One act on a clause: what its button says, and the invocation a click runs. */
 export interface ChunkAct {
-  key: 'mute' | 'replace' | 'append' | 'reset';
+  key: 'mute' | 'replace' | 'append' | 'attach' | 'reset';
   label: string;
   /** What the button says on hover. A refused act repeats its own reason here. */
   title: string;
@@ -322,18 +322,26 @@ export interface ChunkAct {
    * complete invocation.
    */
   opens?: 'replace' | 'append';
+  /**
+   * The click opens the asset gallery instead of running the offer at once. The hash the author
+   * picks arrives as the supplied `ref` prop, which is why this act records {@link REF_SUPPLIES}.
+   */
+  picks?: true;
 }
 
 /** The prop the two boxed clause acts fill in, which is not known until it is typed. */
 export const CHUNK_SUPPLIES = ['text'];
 
+/** The prop Attach fills in, which is not known until the author picks a picture. */
+export const REF_SUPPLIES = ['ref'];
+
 /**
- * The four acts on one clause. `Reset` is also how a mute comes off — `prompt.setChunk(op=clear)`
+ * The five acts on one clause. `Reset` is also how a mute comes off — `prompt.setChunk(op=clear)`
  * discards everything done to the chunk, which is one act to explain rather than two.
  *
- * Every act is the same command with a different `op`, so the strip is a list rather than four
- * hand-wired buttons, and each carries the invocation the click runs rather than a description
- * of it.
+ * Four of the five are the same command with a different `op`, so the strip is a list rather than
+ * hand-wired buttons, and each carries the invocation the click runs rather than a description of
+ * it. Attach is the exception: a different command, and one whose `ref` the gallery supplies.
  */
 export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] {
   const setChunk = (op: string, text?: string): Offer => ({
@@ -365,6 +373,13 @@ export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] 
       title: 'Add to what the builders derived, keeping it',
       offer: setChunk('append'),
       opens: 'append',
+    },
+    {
+      key: 'attach',
+      label: 'Attach…',
+      title: 'Send a reference image with this clause',
+      offer: { ok: true, id: 'prompt.addRef', props: { hash: view.hash, chunk: chunk.key } },
+      picks: true,
     },
     {
       key: 'reset',
