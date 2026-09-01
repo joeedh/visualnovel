@@ -72,6 +72,18 @@ const VnTheme = {
     },
   },
 
+  assetgallery: {
+    'background-color': TOKENS.inkSunken,
+  },
+
+  assetthumb: {
+    'background-color': TOKENS.inkRaised,
+    highlight: alpha(TOKENS.signal, 0.25),
+    active: alpha(TOKENS.signalDeep, 0.55),
+    focusRing: TOKENS.signal,
+    border: { color: TOKENS.inkLine, width: 1 },
+  },
+
   checkbox: { 'background-color': TOKENS.inkRaised },
 
   curvewidget: { CanvasBG: TOKENS.inkSunken },
