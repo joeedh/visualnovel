@@ -115,4 +115,4 @@ Three limits are deliberate rather than unfinished.
 | `apps/desktop/renderer/pathux/assetthumb.ts` | `assetThumbUrl`, `loadAssetThumb`, `galleryItem` |
 | `apps/desktop/renderer/rules/promptview.ts` | the `attach` clause act and `REF_SUPPLIES` |
 | `apps/desktop/renderer/pathux/editors/asset.ts` | `pickRef`, and the pane's `ThumbnailCache` |
-| `vendor/path.ux/scripts/widgets/ui_gallery.ts` | the widget, its cache, and `pickAssetPopup` |
+| `vendor/path.ux/scripts/gallery/` | the widget, its cache, and `pickAssetPopup` |
