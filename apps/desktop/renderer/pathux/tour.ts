@@ -20,13 +20,15 @@ import { anchorSnapshot } from './anchors.js';
 import { onExec, say } from './bridge.js';
 import { verdictsFor } from './gestures.js';
 import { follow, ringing, unfollow } from './overlay.js';
-import { openPalette } from './palette.js';
+import { closePalette, openPalette } from './palette.js';
 
 type TourEffect = Extract<UiEffect, { type: 'tour' }>;
 
 let running: TourState | undefined;
 let unwatch: (() => void) | undefined;
 let awaiting: Action | undefined;
+/** Whether the palette is up because a step routed to it, so the tour can take it back down. */
+let routed = false;
 
 /** The tour being walked through, for the overlay to draw and for a test to read. */
 export const runningTour = (): TourState | undefined => running;
@@ -98,6 +100,7 @@ function stop(): void {
   unwatch = undefined;
   running = undefined;
   awaiting = undefined;
+  routed = false;
   unfollow();
 }
 
@@ -109,6 +112,12 @@ function shownNow(): Guidance | undefined {
   if (!running) return undefined;
   const shown = guide(ANCHOR_MAP, live(), running, verdictsFor);
   awaiting = shown.show === 'ring' ? shown.awaits : undefined;
+  // Opening the pane that draws a routed step turns the answer into a ring, and a palette left up
+  // over that ring covers the control the author is being sent to.
+  if (routed && shown.show !== 'route') {
+    routed = false;
+    closePalette();
+  }
   return shown;
 }
 
@@ -144,6 +153,7 @@ function present(shown: Guidance): void {
   // The floor. `CommandForm` shows the command's own live verdict above its run button, so the
   // author sees the same refusal a control would have shown, and presses the button themselves.
   openPalette(shown.action.id, shown.action.props);
+  routed = true;
   say(shown.say);
 }
 

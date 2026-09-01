@@ -296,6 +296,10 @@ button, so the author sees the same refusal a dedicated control would show, and 
 themselves. If the palette is already open it is retargeted rather than closed and reopened, so
 consecutive palette steps do not move focus.
 
+The tour closes a palette it opened as soon as the step resolves to something else. Opening the
+pane that draws a routed step is what usually causes that, and a palette left up would sit over the
+control the ring points at.
+
 ### Sources of tours
 
 - Curated tours are hard-coded in `apps/desktop/src/shared/tours.ts` (three at present).
