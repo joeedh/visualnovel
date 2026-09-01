@@ -1,132 +1,149 @@
-# Guided tours, and the anchor layer under them
+# Guided tours and the anchor layer
 
-How the desktop app points at its own controls: what an anchor is, how a wanted invocation
-resolves against what is drawn, and how a tour walks an author through pressing things
-themselves.
+A guided tour walks the author through a task in the desktop app. Each step highlights the control
+to use and shows a one-line instruction; the tour waits until the author has used that control,
+then moves to the next step. The tour never performs a step itself.
+
+To highlight a control, the app needs a mapping from commands to the DOM elements that run them.
+That mapping is the anchor layer: every control an editor draws registers an anchor recording
+which command, with which props, a click on it runs. Part I covers the anchor layer, Part II the
+tour built on it.
 
 <!-- toc -->
 
-- [The rule everything rests on](#the-rule-everything-rests-on)
+- [Design rule](#design-rule)
 - [Part I — the anchor layer](#part-i--the-anchor-layer)
-  * [What a surface offers](#what-a-surface-offers)
-  * [Recording](#recording)
+  * [Offers](#offers)
+  * [Recording anchors](#recording-anchors)
   * [Keys](#keys)
-  * [Two flavours](#two-flavours)
+  * [`dom` and `pick` anchors](#dom-and-pick-anchors)
   * [The registry](#the-registry)
-  * [The map](#the-map)
+  * [The anchor map](#the-anchor-map)
   * [Resolution](#resolution)
-  * [Two oracles, twice](#two-oracles-twice)
+  * [Cross-checks](#cross-checks)
   * [Enforcement](#enforcement)
 - [Part II — the tour](#part-ii--the-tour)
-  * [One rule worth repeating](#one-rule-worth-repeating)
   * [Steps](#steps)
-  * [What the app answers](#what-the-app-answers)
+  * [What a step displays](#what-a-step-displays)
   * [The overlay](#the-overlay)
   * [Advancing](#advancing)
-  * [Where no control is drawn](#where-no-control-is-drawn)
-  * [Who writes one](#who-writes-one)
+  * [Palette fallback](#palette-fallback)
+  * [Sources of tours](#sources-of-tours)
   * [Commands](#commands)
 - [Files](#files)
 - [See also](#see-also)
 
 <!-- tocstop -->
 
-## The rule everything rests on
+## Design rule
 
-**An anchor runs the same invocation it points at, rather than a description of that invocation.**
-A widget tagged with the command it happens to call is a comment, and comments go stale silently.
-`act()` takes one `Offer` and uses that offer for both halves — the click it installs and the
-record it keeps — so rewiring a control cannot leave a stale anchor behind.
+An anchor is registered from the same object that installs the control's click handler. `act()`
+in `renderer/pathux/anchors.ts` takes one `Offer` (the command id and props the control runs),
+sets `node.onclick` from it, and records the anchor from it. A separate annotation, such as a
+`data-command` attribute, would be a description of the handler and could drift from it when the
+control was rewired. Sharing one object makes drift impossible.
 
-The tour inherits from this. Where the app refuses, the author is shown the app's own sentence.
-Nothing in the tour layer writes a refusal of its own.
+The same principle covers refusals. When a command cannot run, the tour displays the reason string
+the command's own rule module returned. Tour code never composes a reason of its own.
 
 ## Part I — the anchor layer
 
-### What a surface offers
+### Offers
 
-A rule module answers with an `Offer`: the invocation a control is offering, or the surface's own
-sentence for why it is not.
+A rule module describes each control as an `Offer`: either the invocation the control runs, or the
+reason it is disabled.
 
 ```ts
 type Offer = (Action & { ok: true; label?: string }) | { ok: false; reason: string; id?: string };
 ```
 
-A refusal may still name the command it is about. A greyed control is recorded as an anchor rather
-than as an absence, so a tour asked for that command can ring the control and repeat the refusal
-instead of inventing one.
+A disabled control is still registered as an anchor when its `Offer` carries a command id (`id` on
+the refusal, or `about` in `ActOptions`). This lets a tour highlight the disabled control and show
+its reason, instead of reporting that the command has no control.
 
-### Recording
+### Recording anchors
 
-`redrawing(editor, part)` opens a pass; `act`, `record`, `item`, `pick` and `pickItem` fill it. A
-pass is dropped whole and laid down again on every redraw, under a rising generation counter,
-because `rebuildBody()` does `surface.textContent = ''` and a reference held across a frame is a
-dangling pointer. **Nothing outside may hold an `Anchor`.** The tour keeps the key and asks again.
+- `redrawing(editor, part)` starts a recording pass and returns an `AnchorPass`. Its `act`,
+  `record`, `item`, `pick` and `pickItem` methods add anchors to the pass.
+- Each pass replaces the previous pass for the same `editor/part` in full and increments a global
+  generation counter. This is required because `rebuildBody()` clears the editor surface with
+  `surface.textContent = ''` on every redraw, so a DOM reference from an earlier pass is stale. For
+  the same reason, no code outside the registry may keep an `Anchor` object: the tour stores the
+  anchor's key and looks it up again each frame.
+- `part` lets an editor that redraws separate regions from separate places (the asset editor
+  redraws its toolbar and its body independently) replace one region's anchors without discarding
+  the other's.
+- `act(node, offer, run, opts)` sets `node.onclick` rather than calling
+  `addEventListener('click')`. path.ux's `Button` invokes `onclick` directly on touch input, where
+  no DOM click event is dispatched.
 
-`act(node, offer, run, opts)` assigns `node.onclick` rather than adding a listener: a path.ux
-`Button` calls its own `onclick` on a touch pointer, where the browser dispatches no click event
-for a listener to hear.
+`ActOptions` supplies facts the `Offer` does not carry:
 
-`ActOptions` carries the facts an offer cannot:
-
-| Option     | What it says                                                                   |
-| ---------- | ------------------------------------------------------------------------------ |
-| `supplies` | Prop names the click reads from the widget at commit time — a textarea, an id   |
-| `form`     | The click opens the command's own form, so every prop is typed there            |
-| `on`       | What tells this control apart from another running the same command on the pane |
-| `about`    | The command a refusal is about, where the rule's refusal names none             |
-| `key`      | An `item:` key, for a click that publishes a selection rather than running       |
-| `publishes`| The `ui.*` fields that click sets, recorded beside the `item:` key it sets them from |
+| Option      | Meaning                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| `supplies`  | Prop names whose values are read from the widget when the command runs (a textarea's text, a typed id).              |
+| `form`      | A click opens the command's form in the palette instead of running it; every prop is entered there.                  |
+| `on`        | A discriminator appended to the key when one pane has several controls for the same command (a chunk key, a task hash). |
+| `about`     | The command id a disabled control belongs to, when the refusal `Offer` does not carry one.                           |
+| `key`       | An `item:` key, for a control that selects a subject rather than running a command.                                  |
+| `publishes` | The `ui.*` fields a selection control sets.                                                                          |
 
 ### Keys
 
-- `cmd:<id>`, plus `#<on>` where one pane draws two of them.
-- `item:<kind>/<key>` for a thing rather than an act. The key must be domain identity, never an
-  index, a position or a label: indices break on any re-sort, and a tree's labels carry a
-  disambiguating suffix only on collision.
+- Command anchors: `cmd:<id>`, or `cmd:<id>#<on>` when `on` is given.
+- Item anchors: `item:<kind>/<key>`, for a control that selects something (a scene row, an asset
+  thumbnail). `<key>` must be a domain id, never an index, a position or a label. An index changes
+  on re-sort, and tree labels are only made unique when two of them collide.
+- Every document-tree row also has a `data-anchor="<kind>/<key>"` attribute. The sweep script
+  (below) uses it to click a row and select a subject without depending on the tree's DOM
+  structure.
 
-Every document-tree row also carries `data-anchor="<kind>/<key>"`, which is how the CDP sweep
-selects a subject without knowing the tree's internals.
+### `dom` and `pick` anchors
 
-### Two flavours
+An anchor's `via` field records how a click reaches it, which determines how the anchor is
+verified.
 
-| | `dom` | `pick` |
-| --- | --- | --- |
-| Where the click lands | on the node | on the canvas underneath it |
-| Wired by | `act()`, one object for both halves | the canvas's own `pick()` dispatch |
-| Verified by | a shadow-piercing hit test | calling `pick()` at the ring's centre |
+|               | `dom`                           | `pick`                                             |
+| ------------- | ------------------------------- | -------------------------------------------------- |
+| Click target  | the node itself                 | the canvas beneath the node                        |
+| Registered by | `act()` / `record()`            | `pick()` / `pickItem()`                            |
+| Verified by   | a hit test at the node's centre | calling the canvas's `pick()` at the node's centre |
 
-The graph editors draw node boxes into a layer with `pointerEvents: 'none'`, so a click on a box
-lands on the canvas by design. The box is kept anyway, for its rect: it moves with every pan and
-zoom, so a rect copied at draw time would be wrong by the next frame.
+The graph editors draw node boxes in a layer with `pointer-events: none`, so clicks pass through
+to the canvas, which resolves them with its own `pick()`. The box element is still stored on the
+anchor so its rect can be read each frame: the box moves on pan and zoom, so a rect copied at draw
+time would be stale by the next frame.
 
 ### The registry
 
-`window.__vnAnchors` ships in production, unlike `window.__vnDebug`, because the tour reads it at
-runtime. It answers `generation()`, `dump()`, `tree()` and `strays()`.
+- `window.__vnAnchors` exposes `generation()`, `dump()`, `tree()` and `strays()`. It is present
+  in production builds, unlike `window.__vnDebug`, because the tour uses it at runtime.
+- `anchorSnapshot(open)` produces the `LiveAnchors` object the resolver reads. The caller passes
+  the list of open panes, since only the pane mesh knows that. The registry computes which anchors
+  are offscreen itself, from their rects.
+- Anchors for a pane that is not open stay in the registry but are excluded from the snapshot.
+  path.ux detaches an area on a tab switch and does not redraw it when the tab returns, so the
+  records cannot be dropped when the pane closes.
 
-`anchorSnapshot(open)` is what the resolver reads. `open` comes from the caller because only the
-mesh knows how many panes there are; the offscreen half is measured in the registry, since it is a
-rect question. An editor no pane shows keeps its records — path.ux detaches an area on a tab
-switch and does not redraw it on the way back — so they are dropped on the way in rather than on
-the way out.
+### The anchor map
 
-### The map
+The tour needs to know which editors draw a control for a command before any pane is open (which
+pane has the `prompt.condense` button?). That is the anchor map, `ANCHOR_MAP`, and it has two
+sources:
 
-Which editors are known to anchor a command, in two halves:
+- Derived: the document tree's right-click menu is built from `menuFor`, which is plain data, so
+  `window.__vnAnchors.tree()` enumerates those entries without opening a pane.
+- Measured: `scripts/sweep-anchors.mjs` connects to a running app over CDP, opens each editor in
+  turn, dumps the anchors, and writes `apps/desktop/anchors.json`. The file is committed, at the
+  app root rather than under the gitignored `dist/`, so a change in coverage appears in review as
+  a diff.
 
-- **Derived.** `menuFor` in the document tree is already pure data, so the right-click entries
-  enumerate themselves through `window.__vnAnchors.tree()`.
-- **Measured.** `scripts/sweep-anchors.mjs` drives a running app over CDP, opens each editor in
-  turn, and writes `apps/desktop/anchors.json`. Committed, at the app root rather than under the
-  gitignored `dist/`, so drift is a reviewable diff.
+`anchors.json` records the project title and the selected scene and shot it was measured with,
+because many controls are only drawn when a subject is selected. A command absent from the file
+resolves as `unanchored`, and the tour falls back to the command palette. The fallback is the same
+whether the file is stale, the project was never swept, or the command has no control.
 
-The file records what it was measured against — the project's title and which scene and shot were
-selected — because whether a control is drawn at all depends on what the pane was showing. A
-command the file does not name resolves `unanchored`, which is a true statement about a project
-that was never swept as well as about a command no pane draws; either way the palette is the floor.
-
-Run it after touching `apps/desktop/renderer/pathux/editors/**`:
+Re-run the sweep after changing anything under `apps/desktop/renderer/pathux/editors/**`:
 
 ```bash
 pnpm build:desktop
@@ -134,177 +151,210 @@ pnpm vndesktop --mock --project <dir>   # keeps running; prints the port it open
 node scripts/sweep-anchors.mjs          # second shell, VN_CDP_PORT set to that port
 ```
 
-The launcher takes the first free port from 9222 upward and announces it, and `scripts/cdp.mjs`
-assumes 9222, so the second shell needs `VN_CDP_PORT` set wherever another app already holds it.
+`pnpm vndesktop` takes the first free port from 9222 upward and prints it. `scripts/cdp.mjs`
+defaults to 9222, so set `VN_CDP_PORT` in the second shell if the launcher printed a different
+port.
 
 ### Resolution
 
-`resolveAnchor(map, live, action)` reads a snapshot and returns one of eight answers. The function
-is pure, so it is unit-testable in node even though the surface it describes is a browser.
+`resolveAnchor(map, live, action)` finds the anchor for a wanted invocation in a snapshot. It is a
+pure function in `renderer/rules/anchors.ts` with node unit tests. It returns one of:
 
-| Answer          | What the caller does                                          |
-| --------------- | ------------------------------------------------------------- |
-| `ready`         | ring it                                                        |
-| `input`         | ring it and say what to type                                   |
-| `disabled`      | ring it and repeat the app's refusal                           |
-| `offscreen`     | scroll it in, then ask again                                   |
-| `wrong-subject` | the id matches and the props conflict; pick the subject first  |
-| `pane-closed`   | name the pane to open                                          |
-| `absent`        | declared for an open editor, not drawn                         |
-| `unanchored`    | no UI route — the palette                                      |
+| Result          | Meaning                                                                                     | Tour response                                    |
+| --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `ready`         | An enabled anchor matches.                                                                  | Highlight it.                                    |
+| `input`         | An anchor matches, and the step's remaining props are ones the widget `supplies`.           | Highlight it and say what to type.               |
+| `disabled`      | The matching anchor is disabled.                                                            | Highlight it and show the recorded reason.       |
+| `offscreen`     | The matching anchor is scrolled out of the window.                                          | Scroll it into view and resolve again.           |
+| `wrong-subject` | Anchors exist for the command id, but their props conflict with the step's.                 | Ask the author to select the right subject first. |
+| `pane-closed`   | The map lists editors for this command, and none of them is open.                          | Say which pane to open.                          |
+| `absent`        | An editor the map lists is open, but it is not drawing the control now.                     | Fall back to the palette.                        |
+| `unanchored`    | The map lists no editor for this command.                                                   | Fall back to the palette.                        |
 
-`absent` and `unanchored` are different answers for the reason `Interaction.targets` distinguishes
-an empty target list from `UNRESOLVED`: one is a statement about the screen, the other about the
-map.
+`absent` and `unanchored` are kept distinct for the same reason `Interaction.targets`
+distinguishes an empty target list from `UNRESOLVED`: `absent` describes the current screen,
+`unanchored` describes the map, and a caller diagnosing a stale map needs to know which.
 
-**Subsumption, not equality.** An anchor's props are partial by design, so "id matches, props do
-not" would answer `wrong-subject` against any input surface every time. Every key the anchor
-records must equal the step's; every key only the step names must be one the widget `supplies`,
-and the step is then an input rather than a click. A `form` anchor supplies whatever is asked of
-it, because its form holds every prop — which is what makes a palette-routed door a real answer.
+Prop matching uses subsumption rather than equality (`subsumes`). An anchor records only the props
+known at draw time, and the prop the author is about to type cannot be recorded, so:
 
-### Two oracles, twice
+- every prop the anchor records must equal the step's value;
+- a prop the step names and the anchor does not must be one the anchor `supplies` (the result is
+  then `input`), or the anchor must be a `form` anchor, which accepts any prop because the form
+  takes them all;
+- any other difference is `wrong-subject`.
 
-Each half of the layer is cross-checked by something that was not consulted when it was built.
+The `form` case is what makes the palette a valid resolution for any step rather than a last
+resort.
 
-- **The pane against the stack.** The sweep asks `stack.check` about every anchor it recorded and
-  reports a disagreement rather than reconciling it. This found the branch editor drawing
-  `delete <scene>` enabled and only asking on hover, so the entry scene offered a delete main
-  refuses; the fix was to ask as the button is drawn.
-- **The rect against the hit test.** `landsOn` asks what a click in the middle of an anchor would
-  actually reach: `pick()` for a graph card, and a shadow-piercing descent for everything else,
-  since `document.elementsFromPoint` stops at a shadow host and every editor surface is mounted
-  inside one. A greyed control answers `ok` because it takes no pointer events; a point outside the
-  window answers `ok` because the overlay scrolls that anchor in rather than warning about it.
+### Cross-checks
 
-`getBoundingClientRect()` is not the hit area. A gen-graph socket is an 8×8 dot carrying a
-`::before` of `inset: -5px`, so the browser hit-tests 18×18 while the box reports 8×8, and
-`getClientRects()` does not report pseudo-elements either. The ring is drawn with `RING_PAD` of
-slack and widens to the hit wherever the hit reaches the anchor from outside the anchor's own box.
+Both halves of the layer are checked against an independent source:
+
+- Enabled state against `stack.check`. The sweep calls `stack.check` for every anchor it records
+  and reports, without fixing, each case where the control's enabled state disagrees with the
+  stack's verdict. This caught the branch editor drawing `delete <scene>` enabled for the entry
+  scene, which main refuses to delete; the editor was calling `stack.check` only on hover, and now
+  calls it when the button is drawn.
+- Recorded rect against a hit test. `landsOn` checks whether a click at the anchor's centre would
+  reach it: for a `pick` anchor by calling the canvas's `pick()`, for everything else through
+  `hittest.ts`, which descends into shadow roots because `document.elementsFromPoint` stops at a
+  shadow host and every editor surface is inside one. Disabled controls are skipped, since they
+  usually have `pointer-events: none`. Points outside the window are skipped too; that case is
+  already reported as `offscreen`.
+
+`getBoundingClientRect()` does not report the hit area. A gen-graph socket is an 8×8 element with
+a `::before` of `inset: -5px`; the browser hit-tests the pseudo-element as part of the socket, so
+the socket accepts clicks over 18×18 while its rect reports 8×8, and `getClientRects()` excludes
+pseudo-elements as well. The ring is drawn `RING_PAD` px outside the rect, and is enlarged to
+include the hit element's rect when the hit test lands on a descendant that extends outside it.
 
 ### Enforcement
 
-Split, because CI has no app, no CDP port and no workspace:
+CI has no app, no CDP port and no workspace, so the checks are split:
 
-- **Blocking.** `apps/desktop/src/main/tests/anchorcoverage.test.ts` reads the committed
-  `anchors.json`: every record points at a live command, the file's command list equals the live
-  registry's, and the anchored count does not fall below the floor.
-- **Advisory.** The sweep, run by hand. Disagreements and strays are reported only there.
+- Blocking: `apps/desktop/src/main/tests/anchorcoverage.test.ts` reads the committed
+  `anchors.json` and fails if a record names a command that no longer exists, if the file's
+  command list differs from the live registry's, or if the number of anchored commands has dropped
+  below `FLOOR`.
+- Advisory: the sweep itself, run by hand. It is the only place disagreements and strays are
+  reported.
 
 ## Part II — the tour
 
-### One rule worth repeating
-
-**A tour never performs the step.** The author presses every control themselves. A tour that
-pressed them would do the author's work rather than teach it.
-
 ### Steps
 
-| Kind      | What it asks for                                                              |
-| --------- | ----------------------------------------------------------------------------- |
-| `command` | a button to press                                                             |
-| `input`   | a box to type in; `supplies` names the prop the author types                   |
-| `select`  | a subject to publish first, by clicking an `item:` anchor                     |
-| `gesture` | a drag, named by an interaction id and what it carries                        |
+A `Tour` (`src/shared/tours.ts`) is an id, a title, a one-sentence `what`, and a list of steps.
+Each step has a `say` instruction and one of four kinds:
 
-A `gesture` step is judged by the same `targets` the drop itself would call. Nothing is armed and
-no pointer goes down: the verdicts are read, the thing to pick up is ringed, and whatever would
-take it is outlined beside it. Each surface leaves the state its gestures are judged against in
-`renderer/pathux/gestures.ts`, keyed by namespace and naming its editor — the document tree draws
-a card for a scene too, and a drag has to start on the surface that runs the gesture.
+| Kind      | The author is asked to                       | Fields                                            |
+| --------- | -------------------------------------------- | ------------------------------------------------- |
+| `command` | click a control that runs a command          | `id`, optional `props`                            |
+| `input`   | type into a field and commit it              | `id`, `supplies` (the prop typed), optional `props` |
+| `select`  | select a subject by clicking an `item:` anchor | `itemKind`, `key`                               |
+| `gesture` | drag something                               | `id` (an interaction id), `carried`, optional `target` |
 
-### What the app answers
+A `gesture` step is evaluated with the same `Interaction.targets` a real drop calls, without arming
+anything or moving the pointer. The tour highlights the element to pick up and outlines each target
+that would accept it. `Interaction.targets` needs the surface's current state, so each editor
+registers a state reader in `renderer/pathux/gestures.ts` under its interaction namespace, with
+`gestureState(namespace, editor, read)`. The editor is part of the registration because two panes
+can show the same scene (the document tree and the branch editor), and the drag has to start on
+the one that runs the gesture.
 
-`guide(map, live, state, judge)` returns one of `ring`, `route`, `open`, `blocked` or `done`.
-`route` says the app draws no control and the palette is standing in; `blocked` carries the app's
-own refusal along with the control that gave it, so a greyed button says why in the same breath.
+### What a step displays
+
+`guide(map, live, state, judge)` in `renderer/rules/tour.ts` computes what the overlay shows for
+the current step:
+
+- `ring`: highlight an anchor, with the instruction as a caption.
+- `route`: no control is drawn for this command; open the palette instead.
+- `open`: a pane must be opened first; names it.
+- `blocked`: the step cannot run now. Carries the reason, from the command's rule or from
+  `Interaction.targets`, and, when the disabled control is on screen, its anchor, so the control is
+  highlighted with the reason in its caption.
+- `done`: no steps remain.
 
 ### The overlay
 
-A `pointer-events: none` layer at document level, above every path.ux stacking context. It runs on
-two clocks: a frame callback keeps the ring with a scroll, and Chromium suspends frame callbacks
-altogether for an occluded window, so an interval drives the same update every 150 ms. Which anchor
-a step means is re-asked on the slow beat; where that anchor is, every frame.
+The highlight (the ring) is drawn in a fixed-position `<div>` with `pointer-events: none`,
+appended to `document.body` with a z-index above every path.ux layer, including the docker's own
+popups. Two timers drive it:
 
-A ring over something a click would not reach scrolls once — a control clipped by a scroll
-container keeps a rect inside the window — and what is left is reported to the console rather than
-resolved, because the overlay cannot tell a stacking fault from a control that has just moved.
+- a `requestAnimationFrame` loop re-reads the anchor's rect every frame, so the ring follows a
+  scroll without lag;
+- a `setInterval` every `RESOLVE_MS` re-runs `guide()`, since the step's target may have changed
+  after a click, and repaints as well, because Chromium stops delivering frame callbacks to an
+  occluded window.
+
+If the hit test says a click at the ring's centre would not reach the anchor, the overlay first
+calls `scrollIntoView` once, because a control clipped by a scrolling container still has a rect
+inside the window. If the hit test still fails after that, it logs one `console.warn` per anchor
+and leaves the ring where it is; it cannot distinguish an element covered by another from an
+element that moved between frames.
 
 ### Advancing
 
-On `onExec` seeing the step's own invocation, whatever ran it — a button, the palette, a hotkey.
-Comparison is by subsumption, so an `input` step ignores the prop the author has only now typed. A
-gesture names no invocation of its own, so the verdict's `invoke` is what it waits for.
+The tour subscribes to `onExec` in `bridge.ts` and advances when a successful command matches the
+current step, whichever control ran it: a button, the palette, or a hotkey. Matching uses
+subsumption (`satisfies`), so an `input` step matches regardless of the value the author typed for
+its `supplies` prop. A gesture step has no fixed invocation, because which command a drop runs
+depends on the target, so it waits for the `invoke` from the verdict it was displayed with.
 
-Anything else means the author went their own way. That is neither an error nor something to
-block: the step is shown again, resolved against wherever they have got to.
+Any other command is ignored. The author may do things in another order, and the step is simply
+re-resolved against the new screen state.
 
-CDP's `window.vn.exec` goes straight to `command:exec` and bypasses `bridge.exec`, so a command run
-that way does not advance a tour. That is by design; the palette's own run button does.
+`window.vn.exec`, the CDP scripting bridge, calls main directly and does not pass through
+`bridge.exec`, so a command run from CDP does not advance a tour. The palette's run button does go
+through the bridge.
 
-### Where no control is drawn
+### Palette fallback
 
-`openPalette(id, props)` fills the form in and `CommandForm` shows the live `stack.check` verdict
-above the run button, so the author sees the same refusal a control would have shown and presses
-the button themselves. An already-open palette re-targets rather than closing and reopening, so a
-palette-routed tour does not drop the author's focus between every two steps.
+For a `route` step, `openPalette(id, props)` opens the command palette on the command with the
+step's props pre-filled. `CommandForm` shows the current `stack.check` verdict above its run
+button, so the author sees the same refusal a dedicated control would show, and clicks run
+themselves. If the palette is already open it is retargeted rather than closed and reopened, so
+consecutive palette steps do not move focus.
 
-### Who writes one
+### Sources of tours
 
-- **Curated**, in `apps/desktop/src/shared/tours.ts`, checked against the live registry by
-  `main/tests/tours.test.ts`. None of them is a `gesture`, which needs the id of a scene or a shot
-  in the project at hand.
-- **Agent-written**, through the `show_me` tool, for everything else.
+- Curated tours are hard-coded in `apps/desktop/src/shared/tours.ts` (three at present).
+  `main/tests/tours.test.ts` checks each step against the live registry. None uses `gesture`,
+  since a gesture step needs a scene or shot id from a specific project.
+- Agent-written tours come from the `show_me` tool (`src/main/showme.ts`), which the agent uses
+  for anything the curated tours do not cover.
 
-`show_me` is desktop-only: a tour points at controls and `vnauthor` has none, so the push is a
-session dependency and the tool refuses where there is no window. Every tour it is handed goes
-through `shared/tourcheck.ts` first — a command the app does not have, a prop it does not take, a
-typed prop that is not one of its props, or a gesture that is not declared, all refused through
-`coerceProps`, the same authority a loose CDP value goes through.
+`show_me` exists only in the desktop app. It needs a window to display in, and `vnauthor` has
+none, so the window push is a session dependency and the tool returns an error when it is absent.
+Before a tour is displayed, `checkTour` in `shared/tourcheck.ts` rejects a step that names a
+command that does not exist, a prop the command does not declare, a `supplies` prop that is not
+one of the command's props, or an undeclared interaction id. Prop values are validated with
+`coerceProps`, the same function that validates CDP input.
 
-`stack.check` is deliberately *not* part of that gate. It answers whether a step is accepted now,
-and a tour's later steps are routinely refused until its earlier ones are done — approve the
-portrait, then run — so refusing a tour on that would refuse every correct multi-step tour. The
-live verdict is shown at the step instead.
+`checkTour` deliberately does not call `stack.check`. `stack.check` says whether a command can run
+now, and the later steps of a tour are usually refused until the earlier ones complete (approve
+the portrait, then run), so gating on it would reject every correct multi-step tour. The verdict is
+shown when the step is reached instead.
 
 ### Commands
 
-`tour.start`, `tour.next`, `tour.cancel`, `tour.explain`. All non-mutating, none undoable. They run
-in main like every other command and push a `command:ui` effect; where the tour has got to lives in
-the renderer, because only the renderer knows what is drawn.
+`tour.start`, `tour.next`, `tour.cancel` and `tour.explain` are registered commands, all
+non-mutating and none undoable. Like every other command they run in main and push a `command:ui`
+effect; the renderer applies the effect and owns the tour's state, since only the renderer knows
+what is drawn.
 
-`tour.explain` says the current step again. For a step the palette is standing in for, it also
-names when the anchor map was swept and against which commit, since that answer came from the
-measured file rather than from the screen.
+`tour.explain` re-displays the current step. For a `route` step it also states when `anchors.json`
+was swept and at which commit, since the decision to use the palette came from that file rather
+than from the screen.
 
-The agent reaches tours through `show_me` and not through these: a command with no tool wrapper is
-unreachable to the agent in either host.
+The agent uses `show_me`, not these commands: a command without a tool wrapper is unreachable from
+the agent in either host.
 
 ## Files
 
-| Path | What it holds |
-| ---- | ------------- |
-| `renderer/rules/anchors.ts` | The shapes, `subsumes`, `resolveAnchor`, `resolveItem`, `resolveNamed`, `mapOf` |
-| `renderer/rules/ring.ts` | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD` |
-| `renderer/rules/tour.ts` | `TourState`, `guide`, `satisfies` — the pure walk |
-| `renderer/rules/anchormap.ts` | `ANCHOR_MAP`, read from the swept file |
-| `renderer/pathux/anchors.ts` | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors` |
-| `renderer/pathux/hittest.ts` | `elementsAt`, `reaches`, `hitFor` — the shadow-piercing descent |
-| `renderer/pathux/overlay.ts` | The ring layer and its two clocks |
-| `renderer/pathux/tour.ts` | The running tour, and `window.__vnTour` |
-| `renderer/pathux/gestures.ts` | Where each surface leaves its gesture state |
-| `src/shared/tours.ts` | `Step`, `Tour`, and the curated three |
-| `src/shared/tourcheck.ts` | `readTour`, `checkTour` |
-| `src/main/commands/tour.ts` | The `tour.*` namespace |
-| `src/main/showme.ts` | The agent's tool |
-| `apps/desktop/anchors.json` | The measured map |
-| `scripts/sweep-anchors.mjs` | What measures it |
+| Path                          | Contents                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `renderer/rules/anchors.ts`   | Anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveNamed`, `mapOf` |
+| `renderer/rules/ring.ts`      | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                        |
+| `renderer/rules/tour.ts`      | `TourState`, `guide`, `satisfies`; pure, no DOM                                                 |
+| `renderer/rules/anchormap.ts` | `ANCHOR_MAP`, loaded from `anchors.json`                                                        |
+| `renderer/pathux/anchors.ts`  | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors`                                     |
+| `renderer/pathux/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                             |
+| `renderer/pathux/overlay.ts`  | The ring layer and its two timers                                                               |
+| `renderer/pathux/tour.ts`     | The running tour; `window.__vnTour`                                                             |
+| `renderer/pathux/gestures.ts` | Per-editor gesture state readers                                                                |
+| `src/shared/tours.ts`         | `Step`, `Tour`, and the curated tours                                                           |
+| `src/shared/tourcheck.ts`     | `readTour`, `checkTour`                                                                         |
+| `src/main/commands/tour.ts`   | The `tour.*` commands                                                                           |
+| `src/main/showme.ts`          | The `show_me` agent tool                                                                        |
+| `apps/desktop/anchors.json`   | The measured anchor map                                                                         |
+| `scripts/sweep-anchors.mjs`   | The sweep that writes it                                                                        |
 
 ## See also
 
 - [`command-system.md`](command-system.md) — commands, props, `stack.check`, and the interaction
-  layer a gesture step is judged by.
-- [`desktop-app.md`](desktop-app.md) — the editors an anchor is recorded in, and the pane rules a
-  `pane-closed` answer sends the author to.
-- [`../guides/debugGuide.md`](../guides/debugGuide.md) — `@vn/debug2d`, whose hit oracle shares the
-  overlay's shadow-piercing descent.
+  layer that evaluates gesture steps.
+- [`desktop-app.md`](desktop-app.md) — the editors anchors are recorded in, and the pane rules
+  behind a `pane-closed` result.
+- [`../guides/debugGuide.md`](../guides/debugGuide.md) — `@vn/debug2d`, whose hit oracle shares
+  the overlay's shadow-root descent.
