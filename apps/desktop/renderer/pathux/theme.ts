@@ -1,4 +1,4 @@
-import { CSSFont, setTheme } from 'pathux';
+import { CSSFont, setTheme, BoxBorder } from 'pathux';
 import { TOKENS, alpha } from './tokens.js';
 
 /**
@@ -25,11 +25,22 @@ const dim = font(12, TOKENS.mist);
 /** The resting state shared by widgets is a raised surface; the states below vary from it. */
 const surface = {
   'background-color': TOKENS.inkRaised,
-  'border-color': TOKENS.inkLine,
-  'border-radius': TOKENS.radiusChrome,
-  'border-style': 'solid',
-  'border-width': 1,
+  border: BoxBorder.withVars({
+    color: TOKENS.inkLine,
+    radius: TOKENS.radiusChrome,
+    style: 'solid',
+    width: 1,
+  }),
 };
+
+/**
+ * Lifts a floating surface off whatever it covers. Shared with `menu`.
+ *
+ * Two layers and no negative spread, because the chrome underneath is already near-black: a
+ * single wide shadow pulled in by its spread darkens almost nothing it is laid over. The tight
+ * layer draws the edge and the wide one carries the depth.
+ */
+const POPUP_SHADOW = '0 2px 6px rgba(0, 0, 0, 0.7), 0 12px 32px rgba(0, 0, 0, 0.55)';
 
 const VnTheme = {
   base: {
@@ -74,6 +85,7 @@ const VnTheme = {
 
   assetgallery: {
     'background-color': TOKENS.inkSunken,
+    rowHeight: 64,
   },
 
   assetthumb: {
@@ -82,6 +94,8 @@ const VnTheme = {
     active: alpha(TOKENS.signalDeep, 0.55),
     focusRing: TOKENS.signal,
     border: { color: TOKENS.inkLine, width: 1 },
+    boxPadding: 6,
+    rowFont: small,
   },
 
   checkbox: { 'background-color': TOKENS.inkRaised },
@@ -132,7 +146,7 @@ const VnTheme = {
     },
     MenuText: small,
     'border-color': TOKENS.inkLine,
-    'box-shadow': '0 18px 50px -22px rgba(0, 0, 0, 0.8)',
+    'box-shadow': POPUP_SHADOW,
   },
 
   nodeframe: {
@@ -202,6 +216,19 @@ const VnTheme = {
     'background-color': alpha(TOKENS.inkRaised, 0.76),
     'border-color': TOKENS.inkLine,
     'border-style': 'solid',
+  },
+
+  // Every container `Screen.popup` floats: menus, dropdowns, the color picker, the asset picker.
+  // The soft radius rather than the chrome one, because these sit above the chrome.
+  popup: {
+    'background-color': TOKENS.inkRaised,
+    border: BoxBorder.withVars({
+      color: TOKENS.inkLine,
+      radius: TOKENS.radiusSoft,
+      style: 'solid',
+      width: 1,
+    }),
+    'box-shadow': POPUP_SHADOW,
   },
 
   richtext: {
