@@ -300,8 +300,12 @@ main, while `guide` stays pure over what is drawn.
 `renderer/pathux/tour.ts` fills that cache. For the anchor a step points at it calls
 `checkFor(anchor, props)` (`renderer/rules/precheck.ts`) to build the invocation to ask about, then
 `command:check`, and stores the refusal under the anchor key. The answer lands a beat later and the
-overlay's next re-resolve reads it. The cache is cleared on `onWrote`, since a refusal describes the
-project rather than the screen, and re-asked whenever an anchor's recorded props change.
+overlay's next re-resolve reads it. An entry is re-asked whenever an anchor's recorded props change.
+
+A refusal describes the project rather than the screen, so it is cleared by anything that could have
+changed the project under it. Three things do: `onWrote`; any command that ran successfully, since
+`onWrote` does not fire for one that reports no written path, such as `project.setKey` writing a key
+file outside the repository; and starting a tour, so refusals from the previous one do not stand.
 
 `checkFor` exists because `stack.check` coerces props before it reaches a command's precondition.
 Asking with a prop the widget has not supplied yet answers about the blank —
@@ -365,7 +369,9 @@ consecutive palette steps do not move focus.
 
 The tour closes a palette it opened as soon as the step resolves to something else. Opening the
 pane that draws a routed step is what usually causes that, and a palette left up would sit over the
-control the ring points at.
+control the ring points at. It closes it when the tour ends too, whether that is `tour.cancel`, the
+last step, or another tour starting: a form the author did not ask for, with no tour behind it, is
+the same fault a beat later.
 
 ### Sources of tours
 

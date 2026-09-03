@@ -35,6 +35,10 @@ let routed = false;
  * What `stack.check` said about a ringed anchor, keyed by anchor key. `as` is the invocation that
  * answer was about, so a redraw that changed the anchor's props asks again and one that did not
  * costs nothing.
+ *
+ * An entry is asked once and then stands until something clears it, so every way the project can
+ * change under it has to. `onWrote` is one: it does not fire for a command that reports no path,
+ * such as `project.setKey` writing a key file outside the repository. {@link ran} is the other.
  */
 const asked = new Map<string, { as: string; reason?: string }>();
 /** Each command's props, for the blanks {@link checkFor} fills in. Fetched once per tour. */
@@ -79,6 +83,8 @@ export function applyTour(effect: TourEffect): void {
   // `parse` has already said what was wrong with the JSON, which is more than a name can be.
   if (!tour)
     return effect.steps ? undefined : say(`There is no tour called "${effect.tour}".`, true);
+  // After the parse, so a tour that could not be read does not end the one already running.
+  stop();
   watch();
   step(start(tour));
 }
@@ -118,6 +124,8 @@ function stop(): void {
   unwatch = undefined;
   running = undefined;
   awaiting = undefined;
+  // A palette a step opened belongs to the tour. Left up, it is a form with nothing behind it.
+  if (routed) closePalette();
   routed = false;
   asked.clear();
   unfollow();
@@ -217,6 +225,8 @@ function ran(id: string, outcome: CommandOutcome): void {
   const state = running;
   const now = state && stepOf(state);
   if (!state || !now || !outcome.ok) return;
+  // Whatever it reported writing, a command that ran is reason to ask the preconditions again.
+  asked.clear();
   const props = outcome.record.props as Record<string, PropValue>;
   if (satisfies(now, { id, props }, awaiting)) step({ ...state, at: state.at + 1 });
 }
