@@ -96,6 +96,8 @@ to repeat here:
 
 ## Architecture
 
+- **Module map**: docs/reference/api-map.md
+
 ### Package layering
 
 The graph is acyclic, enforced by `eslint-plugin-boundaries` and `import/no-cycle`. What
